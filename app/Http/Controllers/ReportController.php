@@ -349,6 +349,26 @@ class ReportController extends Controller
      */
     public function gmqReport(Request $request): View
     {
+        ['batchStats' => $batchStats, 'avgGmq' => $avgGmq, 'statusFilter' => $statusFilter] = $this->buildGmqStats($request);
+
+        return view('reports.gmq', compact('batchStats', 'avgGmq', 'statusFilter'));
+    }
+
+    /**
+     * Export PDF du rapport GMQ.
+     */
+    public function gmqReportPdf(Request $request)
+    {
+        ['batchStats' => $batchStats, 'avgGmq' => $avgGmq, 'statusFilter' => $statusFilter] = $this->buildGmqStats($request);
+
+        $pdf = \Pdf::loadView('reports.pdf.gmq', compact('batchStats', 'avgGmq', 'statusFilter'))
+            ->setPaper('a4', 'portrait');
+
+        return $pdf->download('rapport-gmq-' . now()->format('Y-m-d') . '.pdf');
+    }
+
+    private function buildGmqStats(Request $request): array
+    {
         $farmId = session('current_farm_id');
 
         $query = \App\Models\Batch::with(['species', 'building', 'dailyChecks' => function($q) {
@@ -403,13 +423,33 @@ class ReportController extends Controller
 
         $avgGmq = $batchStats->whereNotNull('gmq')->avg('gmq');
 
-        return view('reports.gmq', compact('batchStats', 'avgGmq', 'statusFilter'));
+        return compact('batchStats', 'avgGmq', 'statusFilter');
     }
 
     /**
      * Rapport Pisciculture : qualité de l'eau et survie pour les lots aquacoles.
      */
     public function aquacultureReport(Request $request): View
+    {
+        $stats = $this->buildAquacultureStats($request);
+
+        return view('reports.aquaculture', $stats);
+    }
+
+    /**
+     * Export PDF du rapport Pisciculture.
+     */
+    public function aquacultureReportPdf(Request $request)
+    {
+        $stats = $this->buildAquacultureStats($request);
+
+        $pdf = \Pdf::loadView('reports.pdf.aquaculture', $stats)
+            ->setPaper('a4', 'portrait');
+
+        return $pdf->download('rapport-pisciculture-' . now()->format('Y-m-d') . '.pdf');
+    }
+
+    private function buildAquacultureStats(Request $request): array
     {
         $farmId = session('current_farm_id');
 
@@ -465,6 +505,6 @@ class ReportController extends Controller
         $totalAlerts = $batchStats->sum(fn($s) => count($s['alerts']));
         $criticalCount = $batchStats->sum(fn($s) => collect($s['alerts'])->where('level', 'critical')->count());
 
-        return view('reports.aquaculture', compact('batchStats', 'statusFilter', 'totalAlerts', 'criticalCount'));
+        return compact('batchStats', 'statusFilter', 'totalAlerts', 'criticalCount');
     }
 }

@@ -15,7 +15,7 @@
                 </div>
             </div>
             {{-- Status filter --}}
-            <div class="flex gap-2">
+            <div class="flex items-center gap-2">
                 @foreach(['Actif' => 'Actifs', 'all' => 'Tous', 'Terminé' => 'Terminés'] as $val => $label)
                 <a href="{{ route('reports.gmq', ['status' => $val]) }}"
                    @class(['px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all no-underline',
@@ -24,6 +24,10 @@
                     {{ $label }}
                 </a>
                 @endforeach
+                <a href="{{ route('reports.gmq.pdf', ['status' => $statusFilter]) }}"
+                   class="px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all no-underline bg-slate-800 text-white hover:bg-slate-700 flex items-center gap-2">
+                    <i class="fa-solid fa-file-pdf"></i> PDF
+                </a>
             </div>
         </div>
     </x-slot>

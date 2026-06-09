@@ -268,7 +268,9 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/health-finance', 'healthFinancialReport')->name('health_finance');
         Route::get('/monthly', 'monthlyExpenses')->name('monthly');
         Route::get('/gmq', 'gmqReport')->name('gmq');
+        Route::get('/gmq/pdf', 'gmqReportPdf')->name('gmq.pdf');
         Route::get('/aquaculture', 'aquacultureReport')->name('aquaculture');
+        Route::get('/aquaculture/pdf', 'aquacultureReportPdf')->name('aquaculture.pdf');
     });
 
     // ──────────────────────────────────────────────
