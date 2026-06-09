@@ -226,6 +226,8 @@ class BatchController extends Controller
             abort(403, 'Modification interdite.');
         }
 
+        $batch->load('species.productionTypes');
+
         $buildings     = Building::physical()->orderBy('name')->get();
         $employees     = Employee::where('status', 'Actif')->get();
         $providers     = Provider::where('status', 'Actif')->get();
