@@ -11,10 +11,12 @@ return new class extends Migration
      */
     public function up()
     {
-        Schema::table('users', function (Blueprint $table) {
-            // On ajoute role_id et on pourra supprimer l'ancienne colonne string 'role' plus tard
-            $table->foreignId('role_id')->nullable()->after('id')->constrained('roles');
-        });
+        if (!Schema::hasColumn('users', 'role_id')) {
+            Schema::table('users', function (Blueprint $table) {
+                // On ajoute role_id et on pourra supprimer l'ancienne colonne string 'role' plus tard
+                $table->foreignId('role_id')->nullable()->after('id')->constrained('roles');
+            });
+        }
     }
 
     /**

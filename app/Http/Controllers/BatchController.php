@@ -8,6 +8,7 @@ use App\Models\Employee;
 use App\Models\Protocol;
 use App\Models\Provider;
 use App\Models\ProductionNorm;
+use App\Models\Species;
 use App\Actions\Batch\CreateBatch;
 use App\Actions\Batch\UpdateBatch;
 use App\Actions\Batch\CloseBatch;
@@ -119,13 +120,15 @@ class BatchController extends Controller
             abort(403, 'Privilèges insuffisants.');
         }
 
-        $buildings = Building::physical()->orderBy('name')->get();
-        $normModels = ProductionNorm::select('model_name', 'batch_type')->distinct()->get();
-        $protocols = Protocol::all();
-        $employees = Employee::where('status', 'Actif')->orderBy('last_name')->get();
-        $providers = Provider::where('status', 'Actif')->orderBy('name')->get();
+        $buildings   = Building::physical()->orderBy('name')->get();
+        $normModels  = ProductionNorm::select('model_name', 'batch_type')->distinct()->get();
+        $protocols   = Protocol::all();
+        $employees   = Employee::where('status', 'Actif')->orderBy('last_name')->get();
+        $providers   = Provider::where('status', 'Actif')->orderBy('name')->get();
+        $activeSpecies = Species::active()->with('productionTypes:id,species_id,slug,name_fr,cycle_days_default,kpi_primary')
+            ->orderBy('sort_order')->get();
 
-        return view('batches.create', compact('buildings', 'normModels', 'protocols', 'employees', 'providers'));
+        return view('batches.create', compact('buildings', 'normModels', 'protocols', 'employees', 'providers', 'activeSpecies'));
     }
 
     /**
@@ -192,13 +195,15 @@ class BatchController extends Controller
             abort(403, 'Modification interdite.');
         }
 
-        $buildings = Building::physical()->orderBy('name')->get();
-        $employees = Employee::where('status', 'Actif')->get();
-        $providers = Provider::where('status', 'Actif')->get();
-        $protocols = Protocol::all();
-        $normModels = ProductionNorm::select('batch_type', 'model_name')->distinct()->get();
+        $buildings     = Building::physical()->orderBy('name')->get();
+        $employees     = Employee::where('status', 'Actif')->get();
+        $providers     = Provider::where('status', 'Actif')->get();
+        $protocols     = Protocol::all();
+        $normModels    = ProductionNorm::select('batch_type', 'model_name')->distinct()->get();
+        $activeSpecies = Species::active()->with('productionTypes:id,species_id,slug,name_fr,cycle_days_default,kpi_primary')
+            ->orderBy('sort_order')->get();
 
-        return view('batches.edit', compact('batch', 'buildings', 'providers', 'employees', 'protocols', 'normModels'));
+        return view('batches.edit', compact('batch', 'buildings', 'providers', 'employees', 'protocols', 'normModels', 'activeSpecies'));
     }
 
     /**

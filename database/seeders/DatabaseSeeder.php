@@ -107,6 +107,8 @@ class DatabaseSeeder extends Seeder
     foreach ($items as $item) {
         \App\Models\Stock::updateOrCreate(['item_name' => $item['item_name']], $item);
     }
-        
+
+        $this->call(SpeciesSeeder::class);
+
     }
 }

@@ -11,9 +11,11 @@ return new class extends Migration
      */
     public function up()
 {
-    Schema::table('batches', function (Blueprint $table) {
-        $table->softDeletes(); // Ajoute la colonne deleted_at
-    });
+    if (!Schema::hasColumn('batches', 'deleted_at')) {
+        Schema::table('batches', function (Blueprint $table) {
+            $table->softDeletes(); // Ajoute la colonne deleted_at
+        });
+    }
 }
 
 public function down()
