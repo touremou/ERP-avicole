@@ -219,6 +219,72 @@
                         <textarea name="observations" rows="2" class="w-full bg-slate-50 rounded-[2rem] p-6 outline-none focus:bg-white border-2 border-transparent focus:border-blue-500 font-black text-slate-600 shadow-inner text-xs uppercase italic" placeholder="OBSERVATIONS OU SYMPTÔMES..."></textarea>
                     </div>
 
+                    {{-- ═══ SECTION RUMINANTS ═══ --}}
+                    @if($batch->isRuminant())
+                    <div class="mt-8 bg-emerald-50 border border-emerald-200 rounded-[2rem] p-6">
+                        <h3 class="text-[10px] font-black uppercase text-emerald-800 tracking-widest mb-6 flex items-center gap-2">
+                            <span class="w-8 h-8 bg-emerald-600 rounded-xl flex items-center justify-center text-white text-sm">🐑</span>
+                            Suivi Spécifique Ruminants
+                        </h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {{-- Naissances --}}
+                            <div>
+                                <label class="block text-[9px] font-black uppercase text-slate-500 tracking-widest mb-2">
+                                    Naissances du jour
+                                </label>
+                                <input type="number" name="ext_qty_born" value="{{ old('ext_qty_born', 0) }}"
+                                    min="0"
+                                    class="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 text-sm font-black text-slate-800 outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100">
+                            </div>
+                            {{-- Sevrages --}}
+                            <div>
+                                <label class="block text-[9px] font-black uppercase text-slate-500 tracking-widest mb-2">
+                                    Sevrages du jour
+                                </label>
+                                <input type="number" name="ext_qty_weaned" value="{{ old('ext_qty_weaned', 0) }}"
+                                    min="0"
+                                    class="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 text-sm font-black text-slate-800 outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100">
+                            </div>
+                            {{-- Lait (chèvres uniquement) --}}
+                            @if($batch->species?->tracks_milk)
+                            <div>
+                                <label class="block text-[9px] font-black uppercase text-slate-500 tracking-widest mb-2">
+                                    Production lait (litres)
+                                </label>
+                                <input type="number" name="ext_milk_liters" value="{{ old('ext_milk_liters') }}"
+                                    min="0" step="0.1"
+                                    class="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 text-sm font-black text-slate-800 outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100">
+                            </div>
+                            <div>
+                                <label class="block text-[9px] font-black uppercase text-slate-500 tracking-widest mb-2">
+                                    Taux Matière Grasse (%)
+                                </label>
+                                <input type="number" name="ext_milk_fat_pct" value="{{ old('ext_milk_fat_pct') }}"
+                                    min="0" max="10" step="0.1"
+                                    class="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 text-sm font-black text-slate-800 outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100">
+                            </div>
+                            @endif
+                        </div>
+                        {{-- GMQ info (calculated display) --}}
+                        @php
+                            $lastCheck = $batch->dailyChecks()->latest('check_date')->first();
+                            $prevWeight = $lastCheck?->avg_weight ?? $batch->avg_weight_start;
+                            $daysSinceLast = $lastCheck ? now()->diffInDays($lastCheck->check_date) : $batch->age;
+                        @endphp
+                        @if($prevWeight && $daysSinceLast > 0)
+                        <div class="mt-4 p-4 bg-white rounded-2xl border border-emerald-100">
+                            <p class="text-[8px] font-black uppercase text-slate-400 tracking-widest mb-1">Dernier poids enregistré</p>
+                            <p class="text-sm font-black text-slate-800">{{ number_format($prevWeight, 3) }} kg
+                                <span class="text-[8px] text-slate-400 font-normal ml-2">il y a {{ $daysSinceLast }} jour(s)</span>
+                            </p>
+                            <p class="text-[8px] text-emerald-600 mt-1 uppercase font-black">
+                                Saisir le poids moyen aujourd'hui dans le champ "Poids moyen" pour calculer le GMQ automatiquement.
+                            </p>
+                        </div>
+                        @endif
+                    </div>
+                    @endif
+
                     <div class="flex flex-col md:flex-row gap-4 pt-6">
                         <a href="{{ $backUrl }}" class="flex-1 bg-white border-2 border-slate-100 text-slate-400 font-black py-6 rounded-[2rem] shadow-sm hover:bg-slate-50 text-center uppercase tracking-widest text-[10px] italic no-underline flex items-center justify-center">
                             <i class="fas fa-times mr-2"></i> Annuler

@@ -167,6 +167,53 @@
                 </div>
             </div>
 
+            {{-- WIDGET TABASKI — visible uniquement si lots ovins actifs --}}
+            @if($tabaskiWidget ?? false)
+            <div @class([
+                'mb-8 rounded-[2rem] border-2 p-6 flex flex-col md:flex-row items-center justify-between gap-6 shadow-lg transition-all',
+                'bg-gradient-to-r from-emerald-900 to-emerald-800 border-emerald-600 animate-pulse' => $tabaskiWidget['critical'],
+                'bg-gradient-to-r from-amber-900 to-amber-800 border-amber-500' => !$tabaskiWidget['critical'] && $tabaskiWidget['urgent'],
+                'bg-gradient-to-r from-slate-800 to-slate-900 border-slate-600' => !$tabaskiWidget['urgent'],
+            ])>
+                <div class="flex items-center gap-5">
+                    <div @class([
+                        'w-16 h-16 rounded-[1.5rem] flex items-center justify-center text-3xl shadow-2xl',
+                        'bg-emerald-600' => $tabaskiWidget['critical'],
+                        'bg-amber-600' => !$tabaskiWidget['critical'] && $tabaskiWidget['urgent'],
+                        'bg-slate-700' => !$tabaskiWidget['urgent'],
+                    ])>🐑</div>
+                    <div class="text-white">
+                        <p class="text-[8px] font-black uppercase tracking-[0.3em] opacity-60 mb-1">Compte à rebours Tabaski</p>
+                        <p class="text-3xl font-black italic tracking-tighter leading-none">
+                            @if($tabaskiWidget['days'] == 0)
+                                AUJOURD'HUI !
+                            @else
+                                J — {{ $tabaskiWidget['days'] }}
+                            @endif
+                        </p>
+                        <p class="text-[9px] opacity-50 mt-1 uppercase font-black">Eid al-Adha · {{ $tabaskiWidget['date'] }}</p>
+                    </div>
+                </div>
+                <div class="flex gap-6 text-white text-center">
+                    <div>
+                        <p class="text-2xl font-black italic">{{ number_format($tabaskiWidget['head_count']) }}</p>
+                        <p class="text-[7px] font-black uppercase opacity-50 tracking-widest mt-1">Têtes Prêtes</p>
+                    </div>
+                    <div class="w-px bg-white/20"></div>
+                    <div>
+                        <p class="text-2xl font-black italic">{{ $tabaskiWidget['batches'] }}</p>
+                        <p class="text-[7px] font-black uppercase opacity-50 tracking-widest mt-1">Lots Actifs</p>
+                    </div>
+                    <div class="w-px bg-white/20"></div>
+                    <div>
+                        <a href="{{ route('batches.index') }}" class="text-[8px] font-black uppercase text-white/60 hover:text-white no-underline tracking-widest">
+                            Voir les lots <i class="fa-solid fa-arrow-right ml-1"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            @endif
+
             {{-- KPI ROW --}}
             <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-10">
                 <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm">

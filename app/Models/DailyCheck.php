@@ -61,6 +61,11 @@ class DailyCheck extends Model
         return $this->belongsTo(Batch::class);
     }
 
+    public function extension(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(\App\Models\DailyCheckExtension::class);
+    }
+
     public function calculateNetImpact(): int
     {
         return (

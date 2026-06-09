@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Carbon\Carbon;
 use App\Models\Batch;
 use App\Models\Stock;
+use App\Models\Species;
 use App\Models\Building;
 use App\Models\DailyCheck;
 use App\Models\HealthCheck;
@@ -148,11 +149,57 @@ class DashboardController extends Controller
             ->where('initial_quantity', '>', 0) // 💡 CORRECTION
             ->paginate((int) setting('general.items_per_page', 20));
 
+        // ---------------------------------------------------------
+        // 7. WIDGET TABASKI (Eid al-Adha countdown)
+        // ---------------------------------------------------------
+        $tabaskiWidget = null;
+        $hasOvineBatches = Batch::where('status', 'Actif')
+            ->whereHas('species', function($q) {
+                $q->where('family', 'petit_ruminant');
+            })->exists();
+
+        if ($hasOvineBatches) {
+            // Dates approchées Eid al-Adha (10 Dhu al-Hijja) pour les prochaines années
+            $eidDates = [
+                '2026-06-16',
+                '2027-06-06',
+                '2028-05-26',
+                '2029-05-15',
+                '2030-05-05',
+            ];
+            $today = now()->startOfDay();
+            $nextEid = null;
+            foreach ($eidDates as $date) {
+                $eid = Carbon::parse($date)->startOfDay();
+                if ($eid->gte($today)) {
+                    $nextEid = $eid;
+                    break;
+                }
+            }
+            if ($nextEid) {
+                $daysUntilEid = (int) $today->diffInDays($nextEid, false);
+                $ovineBatchCount = Batch::where('status', 'Actif')
+                    ->whereHas('species', function($q) { $q->where('family', 'petit_ruminant'); })
+                    ->count();
+                $ovineHeadCount = Batch::where('status', 'Actif')
+                    ->whereHas('species', function($q) { $q->where('family', 'petit_ruminant'); })
+                    ->sum('current_quantity');
+                $tabaskiWidget = [
+                    'days'        => $daysUntilEid,
+                    'date'        => $nextEid->translatedFormat('d F Y'),
+                    'batches'     => $ovineBatchCount,
+                    'head_count'  => $ovineHeadCount,
+                    'urgent'      => $daysUntilEid <= 30,
+                    'critical'    => $daysUntilEid <= 7,
+                ];
+            }
+        }
+
         return view('dashboard', compact(
-            'totalBirds', 'globalMortalityRate', 'hdp', 
+            'totalBirds', 'globalMortalityRate', 'hdp',
             'totalEggsStock', 'totalBrokenToday', 'rawMaterialsValue', 'safeProfit',
             'criticalTypes', 'emergencyBatches', 'underperformingBatches', 'sanitaryAlertsCount',
-            'activeBatches', 'buildings', 'totalEggsToday'
+            'activeBatches', 'buildings', 'totalEggsToday', 'tabaskiWidget'
         ));
     }
 }

@@ -98,6 +98,19 @@ class DailyCheckController extends Controller
         }
         $check = $action->execute($request->validated());
 
+        // Save ruminant extension if applicable
+        if ($check->batch->isRuminant() && ($request->has('ext_qty_born') || $request->has('ext_milk_liters'))) {
+            \App\Models\DailyCheckExtension::updateOrCreate(
+                ['daily_check_id' => $check->id],
+                [
+                    'qty_born'     => $request->integer('ext_qty_born', 0),
+                    'qty_weaned'   => $request->integer('ext_qty_weaned', 0),
+                    'milk_liters'  => $request->input('ext_milk_liters'),
+                    'milk_fat_pct' => $request->input('ext_milk_fat_pct'),
+                ]
+            );
+        }
+
         return redirect()->route('batches.show', $check->batch_id)
             ->with('success', 'Pointage enregistré et stock mis à jour.');
     }
