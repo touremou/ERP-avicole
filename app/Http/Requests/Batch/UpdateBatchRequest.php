@@ -30,7 +30,7 @@ class UpdateBatchRequest extends FormRequest
         $isRepro = in_array($this->input('type'), ['repro', 'reproducteur']);
 
         return [
-            'type'               => 'required|in:chair,ponte,poussiniere,reproducteur',
+            'type'               => 'required|in:chair,ponte,poussiniere,reproducteur,engraissement',
             'model_name'         => 'required|string|max:100',
             'building_id'        => 'required|integer|exists:buildings,id',
             'employee_id'        => 'required|integer|exists:employees,id',
@@ -41,6 +41,8 @@ class UpdateBatchRequest extends FormRequest
             'arrival_date'       => 'required|date',
             'status'             => 'required|in:Actif,Terminé,Annulé',
             'observations'       => 'nullable|string|max:2000',
+            'species_id'         => 'nullable|integer|exists:species,id',
+            'production_type_id' => 'nullable|integer|exists:production_types,id',
 
             // Reproducteurs : on peut corriger la répartition M/F
             'qty_males'   => $isRepro ? 'nullable|integer|min:0' : 'nullable',
