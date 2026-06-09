@@ -8,6 +8,7 @@ use App\Models\DailyCheck;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\View\View;
 use Carbon\Carbon;
 
 class ReportController extends Controller

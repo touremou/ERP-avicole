@@ -187,6 +187,41 @@
                         </p>
                     </div>
 
+                    {{-- ═══ SECTION RUMINANTS ═══ --}}
+                    @if($check->batch->isRuminant())
+                    <div class="mt-8 bg-emerald-50 border border-emerald-200 rounded-[2rem] p-6">
+                        <h3 class="text-[10px] font-black uppercase text-emerald-800 tracking-widest mb-6 flex items-center gap-2">
+                            <span class="w-8 h-8 bg-emerald-600 rounded-xl flex items-center justify-center text-white text-sm">🐑</span>
+                            Suivi Spécifique Ruminants
+                        </h3>
+                        @php $ext = $check->extension; @endphp
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-[9px] font-black uppercase text-slate-500 tracking-widest mb-2">Naissances du jour</label>
+                                <input type="number" name="ext_qty_born" value="{{ old('ext_qty_born', $ext?->qty_born ?? 0) }}"
+                                    min="0" class="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 text-sm font-black text-slate-800 outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100">
+                            </div>
+                            <div>
+                                <label class="block text-[9px] font-black uppercase text-slate-500 tracking-widest mb-2">Sevrages du jour</label>
+                                <input type="number" name="ext_qty_weaned" value="{{ old('ext_qty_weaned', $ext?->qty_weaned ?? 0) }}"
+                                    min="0" class="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 text-sm font-black text-slate-800 outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100">
+                            </div>
+                            @if($check->batch->species?->tracks_milk)
+                            <div>
+                                <label class="block text-[9px] font-black uppercase text-slate-500 tracking-widest mb-2">Production lait (litres)</label>
+                                <input type="number" name="ext_milk_liters" value="{{ old('ext_milk_liters', $ext?->milk_liters) }}"
+                                    min="0" step="0.1" class="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 text-sm font-black text-slate-800 outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100">
+                            </div>
+                            <div>
+                                <label class="block text-[9px] font-black uppercase text-slate-500 tracking-widest mb-2">Taux Matière Grasse (%)</label>
+                                <input type="number" name="ext_milk_fat_pct" value="{{ old('ext_milk_fat_pct', $ext?->milk_fat_pct) }}"
+                                    min="0" max="10" step="0.1" class="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 text-sm font-black text-slate-800 outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100">
+                            </div>
+                            @endif
+                        </div>
+                    </div>
+                    @endif
+
                     <div class="flex flex-col md:flex-row gap-4 pt-6">
                         <a href="{{ route('batches.show', $check->batch_id) }}" class="flex-1 bg-white border-2 border-slate-100 text-slate-400 font-black py-6 rounded-[2rem] shadow-sm hover:bg-slate-50 text-center uppercase tracking-widest text-[10px] italic transition no-underline flex items-center justify-center">
                             <i class="fas fa-times mr-2"></i> Annuler
