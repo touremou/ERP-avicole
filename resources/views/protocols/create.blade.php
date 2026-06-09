@@ -129,7 +129,7 @@
 
                     {{-- ACTIONS --}}
                     <div class="mt-16 flex flex-col md:flex-row gap-6">
-                        <a href="{{ url()->previous() }}" class="flex-1 bg-white border-2 border-slate-100 text-slate-400 font-black py-7 rounded-[2.5rem] shadow-sm hover:bg-slate-50 transition-all text-center uppercase tracking-[0.2em] text-[10px] italic flex items-center justify-center no-underline">
+                        <a href="{{ route('protocols.index') }}" class="flex-1 bg-white border-2 border-slate-100 text-slate-400 font-black py-7 rounded-[2.5rem] shadow-sm hover:bg-slate-50 transition-all text-center uppercase tracking-[0.2em] text-[10px] italic flex items-center justify-center no-underline">
                            Abandonner
                         </a>
                         <button type="submit" class="flex-[3] bg-slate-900 text-white py-7 rounded-[2.5rem] font-black uppercase italic tracking-[0.3em] text-[11px] hover:bg-emerald-600 transition-all shadow-2xl transform active:scale-95 border-none cursor-pointer">

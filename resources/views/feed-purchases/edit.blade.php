@@ -27,7 +27,7 @@
             @endif
 
             {{-- Permission M : Modification --}}
-            @can('M')
+            @can('provenderie.M')
             <form action="{{ route('feed-purchases.update', $feedPurchase->id) }}" method="POST" 
                   class="bg-white p-10 rounded-[3.5rem] shadow-2xl border border-slate-100 space-y-8"
                   x-data="{ 

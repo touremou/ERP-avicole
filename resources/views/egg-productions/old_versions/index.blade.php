@@ -12,7 +12,7 @@
             </div>
 
             <div class="flex flex-wrap items-center gap-2 md:gap-3 w-full md:w-auto">
-                @can('L')
+                @can('production.L')
                 <a href="{{ route('stocks.index', ['category' => 'oeufs']) }}" class="flex-1 md:flex-none text-center bg-white border border-slate-200 text-slate-700 px-4 py-2.5 md:px-6 md:py-3 rounded-xl md:rounded-2xl text-[9px] md:text-[10px] font-black uppercase italic hover:bg-slate-50 transition-all shadow-sm no-underline">
                     <i class="fa-solid fa-box-open mr-1 md:mr-2 text-emerald-500"></i> Magasin
                 </a>
@@ -21,7 +21,7 @@
                 </a>
                 @endcan
 
-                @can('M')
+                @can('production.M')
                 <a href="{{ route('stocks.maintenance') }}" 
                     class="w-full md:w-auto flex items-center justify-center gap-2 px-4 py-2.5 md:px-6 md:py-3 bg-slate-900 text-white rounded-xl md:rounded-2xl text-[9px] md:text-[10px] font-black uppercase italic hover:bg-red-600 transition-all shadow-xl shadow-slate-200 no-underline">
                         <i class="fa-solid fa-wrench text-red-400"></i> <span class="md:inline">Inventaire</span>
@@ -183,7 +183,7 @@
                                         </div>
                                     </td>
                                     <td class="px-6 md:px-10 py-5 md:py-8 text-right">
-                                        @can('C')
+                                        @can('production.C')
                                             @if(!$isGraded && $passagesCount < 4)
                                                 <a href="{{ route('egg-productions.create', ['batch_id' => $b->id]) }}" class="px-3 md:px-6 py-2 md:py-4 bg-slate-900 text-white rounded-xl md:rounded-2xl text-[8px] md:text-[10px] font-black uppercase shadow-lg shadow-slate-200 hover:bg-emerald-600 transition-all inline-flex items-center gap-1 md:gap-2 italic no-underline whitespace-nowrap">
                                                     <i class="fa-solid fa-plus text-emerald-400"></i> <span class="hidden sm:inline">Nouveau Passage</span><span class="sm:hidden">Collecter</span>
@@ -230,13 +230,13 @@
                                         </td>
                                         <td class="px-6 md:px-8 py-4 md:py-5 text-right border-none">
                                             <div class="flex justify-end gap-2 md:gap-3">
-                                                @can('M')
+                                                @can('production.M')
                                                     @if(!$prod->is_graded)
                                                         <a href="{{ route('egg-productions.edit', $prod->id) }}" class="w-7 h-7 md:w-9 md:h-9 rounded-lg md:rounded-xl bg-slate-100 text-slate-500 flex items-center justify-center hover:bg-slate-800 hover:text-white transition-all shadow-sm no-underline"><i class="fa-solid fa-pen text-[10px] md:text-sm"></i></a>
                                                     @endif
                                                     <a href="{{ route('egg-productions.tri', $prod->id) }}" class="w-7 h-7 md:w-9 md:h-9 rounded-lg md:rounded-xl bg-blue-50 text-blue-500 flex items-center justify-center hover:bg-blue-500 hover:text-white transition-all shadow-sm shadow-blue-100 no-underline"><i class="fa-solid fa-scale-balanced text-[10px] md:text-sm"></i></a>
                                                 @endcan
-                                                @can('S')
+                                                @can('production.S')
                                                     <form action="{{ route('egg-productions.destroy', $prod->id) }}" method="POST" onsubmit="return confirm('Attention : Annuler le flux ?')" class="m-0">
                                                         @csrf @method('DELETE')
                                                         <button type="submit" class="w-7 h-7 md:w-9 md:h-9 text-red-200 hover:text-red-500 transition-colors flex items-center justify-center outline-none bg-transparent border-none cursor-pointer"><i class="fa-solid fa-trash-can text-[10px] md:text-sm"></i></button>

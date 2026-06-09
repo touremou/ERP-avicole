@@ -287,7 +287,7 @@
 
                     {{-- Actions Rapides --}}
                     <div class="grid grid-cols-1 gap-3">
-                        @can('C')
+                        @can('elevage.C')
                         <a href="{{ route('batches.create') }}" class="bg-slate-900 p-5 rounded-3xl text-white hover:bg-blue-600 transition-all flex justify-between items-center italic shadow-lg no-underline">
                             <span class="text-[10px] font-black uppercase tracking-widest">Nouvelle Bande</span>
                             <i class="fa-solid fa-plus text-xs"></i>

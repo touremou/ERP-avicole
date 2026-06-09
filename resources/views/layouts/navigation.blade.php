@@ -159,7 +159,7 @@
                         @can('stocks.L')
                         <a href="{{ route('stocks.index') }}" class="{{ $linkClass }} {{ request()->routeIs('stocks.*') ? $activeClass : $inactiveClass }}">Stocks</a>
                         @endcan
-                        @can('Logistique.L')
+                        @can('logistique.L')
                         <a href="{{ route('dispatches.index') }}" class="{{ $linkClass }} {{ request()->routeIs('dispatches.index') ? $activeClass : $inactiveClass }}">Expéditions</a>
                         <a href="{{ route('dispatches.discrepancies') }}" class="{{ $linkClass }} {{ request()->routeIs('dispatches.discrepancies') ? 'bg-red-50 text-red-600' : 'text-red-400 hover:text-red-600 hover:bg-red-50' }}">Écarts</a>
                         @endcan

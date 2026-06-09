@@ -184,7 +184,7 @@
                         <button type="submit" class="w-full bg-slate-900 text-white font-black py-8 rounded-[2rem] hover:bg-blue-600 transition-all uppercase tracking-[0.3em] text-[10px] italic shadow-2xl border-none cursor-pointer">
                             <i class="fas fa-file-invoice-dollar mr-2"></i> Clôturer & Archiver
                         </button>
-                        <a href="{{ url()->previous() }}" class="w-full block bg-white border border-slate-200 text-slate-400 font-black py-5 rounded-[2rem] hover:bg-red-50 hover:text-red-500 text-center uppercase tracking-widest text-[9px] italic no-underline transition-all">
+                        <a href="{{ route('batches.show', $batch->id) }}" class="w-full block bg-white border border-slate-200 text-slate-400 font-black py-5 rounded-[2rem] hover:bg-red-50 hover:text-red-500 text-center uppercase tracking-widest text-[9px] italic no-underline transition-all">
                             Annuler
                         </a>
                     </div>

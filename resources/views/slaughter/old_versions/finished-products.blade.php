@@ -141,7 +141,7 @@
                                 @endif
                             </td>
                             <td class="px-5 py-3 text-center">
-                                @can('M')
+                                @can('abattoir.M')
                                 <div class="flex items-center justify-center gap-1">
                                     {{-- Éditer (prix, péremption, seuil) --}}
                                     <button @click="openEdit({{ $fp->id }}, '{{ addslashes($fp->product_name) }}', {{ $fp->unit_price }}, '{{ $fp->expiry_date?->format('Y-m-d') ?? '' }}', {{ $fp->alert_threshold_kg }}, '{{ $fp->storage_location }}')"

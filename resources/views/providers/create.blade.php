@@ -116,7 +116,7 @@
 
                         {{-- ACTIONS --}}
                         <div class="flex flex-col md:flex-row gap-4 pt-10">
-                            <a href="{{ url()->previous() }}" class="flex-1 bg-white border-2 border-slate-100 text-slate-400 font-black py-6 rounded-[2rem] shadow-sm hover:bg-slate-50 transition-all text-center uppercase tracking-widest text-[10px] italic flex items-center justify-center gap-2 no-underline">
+                            <a href="{{ route('providers.index') }}" class="flex-1 bg-white border-2 border-slate-100 text-slate-400 font-black py-6 rounded-[2rem] shadow-sm hover:bg-slate-50 transition-all text-center uppercase tracking-widest text-[10px] italic flex items-center justify-center gap-2 no-underline">
                                 <i class="fas fa-times"></i> Annuler
                             </a>              
                             <button type="submit" class="flex-[2] bg-slate-900 text-white font-black py-6 rounded-[2rem] hover:bg-emerald-600 transition-all uppercase tracking-[0.2em] text-[10px] italic shadow-xl group">

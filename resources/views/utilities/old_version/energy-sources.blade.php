@@ -87,7 +87,7 @@
                         </div>
                     </div>
 
-                    @can('M')
+                    @can('ressources.M')
                         @if($source->needs_maintenance || $source->status === 'maintenance')
                         <form method="POST" action="{{ route('utilities.energy.maintenance', $source) }}" class="mt-4 flex gap-3 items-end">
                             @csrf 
@@ -107,7 +107,7 @@
             </div>
 
             {{-- FORMULAIRE AJOUT --}}
-            @can('C')
+            @can('ressources.C')
             <div class="bg-amber-50 p-8 rounded-[3rem] border border-amber-200">
                 <h3 class="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-6 flex items-center gap-2">
                     <i class="fa-solid fa-plus"></i> Ajouter une source d'énergie

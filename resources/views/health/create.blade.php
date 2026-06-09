@@ -125,7 +125,7 @@
 
                 {{-- ACTIONS --}}
                 <div class="flex flex-col md:flex-row gap-5 pt-8">
-                    <a href="{{ url()->previous() }}" class="flex-1 bg-white border-2 border-slate-100 text-slate-400 font-black py-7 rounded-[2.5rem] shadow-sm hover:bg-slate-50 text-center uppercase tracking-widest text-[10px] italic no-underline flex items-center justify-center">
+                    <a href="{{ route('health.index') }}" class="flex-1 bg-white border-2 border-slate-100 text-slate-400 font-black py-7 rounded-[2.5rem] shadow-sm hover:bg-slate-50 text-center uppercase tracking-widest text-[10px] italic no-underline flex items-center justify-center">
                         Annuler
                     </a>
                     <button type="submit" class="flex-[2] bg-slate-900 text-white font-black py-7 rounded-[2.5rem] hover:bg-blue-600 active:scale-95 transition-all uppercase tracking-[0.3em] text-[10px] italic shadow-2xl group cursor-pointer">
