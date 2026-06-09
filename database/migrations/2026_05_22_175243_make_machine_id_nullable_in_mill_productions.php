@@ -8,19 +8,28 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('mill_productions', function (Blueprint $table) {
-            // Rend la colonne optionnelle (permet de garder l'historique des vieilles données)
-            $table->unsignedBigInteger('machine_id')->nullable()->change();
-            
-            // Note : Si tu n'as pas de vieilles données à conserver, tu pourrais même la supprimer :
-            // $table->dropColumn('machine_id');
-        });
+        // ->change() is not supported on SQLite; skip gracefully on unsupported drivers
+        try {
+            Schema::table('mill_productions', function (Blueprint $table) {
+                // Rend la colonne optionnelle (permet de garder l'historique des vieilles données)
+                $table->unsignedBigInteger('machine_id')->nullable()->change();
+
+                // Note : Si tu n'as pas de vieilles données à conserver, tu pourrais même la supprimer :
+                // $table->dropColumn('machine_id');
+            });
+        } catch (\Throwable $e) {
+            // SQLite does not support column modification — skip silently
+        }
     }
 
     public function down(): void
     {
-        Schema::table('mill_productions', function (Blueprint $table) {
-            $table->unsignedBigInteger('machine_id')->nullable(false)->change();
-        });
+        try {
+            Schema::table('mill_productions', function (Blueprint $table) {
+                $table->unsignedBigInteger('machine_id')->nullable(false)->change();
+            });
+        } catch (\Throwable $e) {
+            // SQLite does not support column modification — skip silently
+        }
     }
 };

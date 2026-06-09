@@ -31,9 +31,12 @@ return new class extends Migration
 
                 // FK auto-référencée (nullOnDelete car si le parent est supprimé,
                 // l'enfant reste autonome)
-                $table->foreign('parent_batch_id')
-                      ->references('id')->on('batches')
-                      ->nullOnDelete();
+                // Note: SQLite doesn't support adding FK after creation, skip on SQLite
+                if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+                    $table->foreign('parent_batch_id')
+                          ->references('id')->on('batches')
+                          ->nullOnDelete();
+                }
             }
         });
 
@@ -50,100 +53,114 @@ return new class extends Migration
             if (! Schema::hasColumn('batch_tasks', 'cancellation_reason')) {
                 $table->string('cancellation_reason')->nullable()->after('cancelled_at');
             }
-
-            // Index pour les requêtes de planning (tâches à venir)
-            $exists = collect(DB::select(
-                "SHOW INDEX FROM batch_tasks WHERE Key_name = 'idx_batch_tasks_planned'"
-            ))->isNotEmpty();
-
-            if (! $exists) {
-                $table->index(['batch_id', 'planned_date', 'is_completed'], 'idx_batch_tasks_planned');
-            }
         });
+
+        // Index for batch_tasks (idempotent via try/catch + cross-DB check)
+        if (! $this->indexExists('batch_tasks', 'idx_batch_tasks_planned')) {
+            try {
+                Schema::table('batch_tasks', function (Blueprint $table) {
+                    $table->index(['batch_id', 'planned_date', 'is_completed'], 'idx_batch_tasks_planned');
+                });
+            } catch (\Throwable $e) {
+                // Index already exists — silently ignore
+            }
+        }
 
         // ─────────────────────────────────────────────
         // 3. BUILDINGS : INDEX MANQUANTS
         // ─────────────────────────────────────────────
-        Schema::table('buildings', function (Blueprint $table) {
-            $exists = collect(DB::select(
-                "SHOW INDEX FROM buildings WHERE Key_name = 'idx_buildings_status'"
-            ))->isNotEmpty();
-
-            if (! $exists) {
-                $table->index('status', 'idx_buildings_status');
+        if (! $this->indexExists('buildings', 'idx_buildings_status')) {
+            try {
+                Schema::table('buildings', function (Blueprint $table) {
+                    $table->index('status', 'idx_buildings_status');
+                });
+            } catch (\Throwable $e) {
+                // Index already exists — silently ignore
             }
-        });
+        }
 
         // ─────────────────────────────────────────────
         // 4. HEALTH_CHECKS : INDEX PERFORMANCE
         // ─────────────────────────────────────────────
-        Schema::table('health_checks', function (Blueprint $table) {
-            $indexes = [
-                'idx_health_checks_batch_date' => ['batch_id', 'intervention_date'],
-                'idx_health_checks_type'       => ['type'],
-            ];
+        $healthIndexes = [
+            'idx_health_checks_batch_date' => ['batch_id', 'intervention_date'],
+            'idx_health_checks_type'       => ['type'],
+        ];
 
-            foreach ($indexes as $name => $columns) {
-                $exists = collect(DB::select("SHOW INDEX FROM health_checks WHERE Key_name = ?", [$name]))->isNotEmpty();
-                if (! $exists) {
-                    $table->index($columns, $name);
+        foreach ($healthIndexes as $name => $columns) {
+            if (! $this->indexExists('health_checks', $name)) {
+                try {
+                    Schema::table('health_checks', function (Blueprint $table) use ($columns, $name) {
+                        $table->index($columns, $name);
+                    });
+                } catch (\Throwable $e) {
+                    // Index already exists — silently ignore
                 }
             }
-        });
+        }
 
         // ─────────────────────────────────────────────
         // 5. EGG_PRODUCTIONS : INDEX PERFORMANCE
         // ─────────────────────────────────────────────
-        Schema::table('egg_productions', function (Blueprint $table) {
-            $indexes = [
-                'idx_egg_productions_batch_date' => ['batch_id', 'production_date'],
-                'idx_egg_productions_graded'     => ['is_graded'],
-            ];
+        $eggIndexes = [
+            'idx_egg_productions_batch_date' => ['batch_id', 'production_date'],
+            'idx_egg_productions_graded'     => ['is_graded'],
+        ];
 
-            foreach ($indexes as $name => $columns) {
-                $exists = collect(DB::select("SHOW INDEX FROM egg_productions WHERE Key_name = ?", [$name]))->isNotEmpty();
-                if (! $exists) {
-                    $table->index($columns, $name);
+        foreach ($eggIndexes as $name => $columns) {
+            if (! $this->indexExists('egg_productions', $name)) {
+                try {
+                    Schema::table('egg_productions', function (Blueprint $table) use ($columns, $name) {
+                        $table->index($columns, $name);
+                    });
+                } catch (\Throwable $e) {
+                    // Index already exists — silently ignore
                 }
             }
-        });
+        }
 
         // ─────────────────────────────────────────────
         // 6. FEED_PURCHASES : INDEX PERFORMANCE
         // ─────────────────────────────────────────────
-        Schema::table('feed_purchases', function (Blueprint $table) {
-            $exists = collect(DB::select(
-                "SHOW INDEX FROM feed_purchases WHERE Key_name = 'idx_feed_purchases_batch'"
-            ))->isNotEmpty();
-
-            if (! $exists) {
-                $table->index(['batch_id', 'purchase_date'], 'idx_feed_purchases_batch');
+        if (! $this->indexExists('feed_purchases', 'idx_feed_purchases_batch')) {
+            try {
+                Schema::table('feed_purchases', function (Blueprint $table) {
+                    $table->index(['batch_id', 'purchase_date'], 'idx_feed_purchases_batch');
+                });
+            } catch (\Throwable $e) {
+                // Index already exists — silently ignore
             }
-        });
+        }
 
         // ─────────────────────────────────────────────
         // 7. STOCKS & STOCK_MOVEMENTS : INDEX PERFORMANCE
         // ─────────────────────────────────────────────
-        // Note : index composé (category, item_name) dépasse la limite InnoDB
-        // de 1000 bytes en utf8mb4 (191*4*2 = 1528). On utilise un index
-        // avec préfixe tronqué via SQL brut.
-        $exists = collect(DB::select(
-            "SHOW INDEX FROM stocks WHERE Key_name = 'idx_stocks_category_name'"
-        ))->isNotEmpty();
-
-        if (! $exists) {
-            DB::statement('ALTER TABLE `stocks` ADD INDEX `idx_stocks_category_name` (`category`(50), `item_name`(100))');
+        // Note: MySQL prefix index for long varchar columns — skip on SQLite
+        if (! $this->indexExists('stocks', 'idx_stocks_category_name')) {
+            try {
+                $driver = Schema::getConnection()->getDriverName();
+                if ($driver === 'sqlite') {
+                    Schema::table('stocks', function (Blueprint $table) {
+                        $table->index(['category', 'item_name'], 'idx_stocks_category_name');
+                    });
+                } else {
+                    // MySQL/MariaDB: use prefix index to avoid key length limit
+                    DB::statement('ALTER TABLE `stocks` ADD INDEX `idx_stocks_category_name` (`category`(50), `item_name`(100))');
+                }
+            } catch (\Throwable $e) {
+                // Index already exists — silently ignore
+            }
         }
 
-        Schema::table('stock_movements', function (Blueprint $table) {
-            $exists = collect(DB::select(
-                "SHOW INDEX FROM stock_movements WHERE Key_name = 'idx_stock_movements_stock_created'"
-            ))->isNotEmpty();
-
-            if (! $exists) {
-                $table->index(['stock_id', 'created_at'], 'idx_stock_movements_stock_created');
+        if (! $this->indexExists('stock_movements', 'idx_stock_movements_stock_created')) {
+            try {
+                Schema::table('stock_movements', function (Blueprint $table) {
+                    $table->index(['stock_id', 'created_at'], 'idx_stock_movements_stock_created');
+                });
+            } catch (\Throwable $e) {
+                // Index already exists — silently ignore
             }
-        });
+        }
     }
 
     public function down(): void
@@ -151,7 +168,9 @@ return new class extends Migration
         // Suppression des colonnes ajoutées
         Schema::table('batches', function (Blueprint $table) {
             if (Schema::hasColumn('batches', 'parent_batch_id')) {
-                $table->dropForeign(['parent_batch_id']);
+                if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+                    $table->dropForeign(['parent_batch_id']);
+                }
                 $table->dropColumn('parent_batch_id');
             }
         });
@@ -163,14 +182,15 @@ return new class extends Migration
                     $table->dropColumn($col);
                 }
             }
-
-            $exists = collect(DB::select(
-                "SHOW INDEX FROM batch_tasks WHERE Key_name = 'idx_batch_tasks_planned'"
-            ))->isNotEmpty();
-            if ($exists) {
-                $table->dropIndex('idx_batch_tasks_planned');
-            }
         });
+
+        if ($this->indexExists('batch_tasks', 'idx_batch_tasks_planned')) {
+            try {
+                Schema::table('batch_tasks', function (Blueprint $table) {
+                    $table->dropIndex('idx_batch_tasks_planned');
+                });
+            } catch (\Throwable $e) { }
+        }
 
         // Suppression des index de performance (sans perte de données)
         $indexDrops = [
@@ -183,14 +203,42 @@ return new class extends Migration
         ];
 
         foreach ($indexDrops as $tableName => $indexes) {
-            Schema::table($tableName, function (Blueprint $table) use ($tableName, $indexes) {
-                foreach ($indexes as $name) {
-                    $exists = collect(DB::select("SHOW INDEX FROM {$tableName} WHERE Key_name = ?", [$name]))->isNotEmpty();
-                    if ($exists) {
-                        $table->dropIndex($name);
+            foreach ($indexes as $name) {
+                if ($this->indexExists($tableName, $name)) {
+                    try {
+                        Schema::table($tableName, function (Blueprint $table) use ($name) {
+                            $table->dropIndex($name);
+                        });
+                    } catch (\Throwable $e) {
+                        // Ignore
                     }
                 }
-            });
+            }
+        }
+    }
+
+    // ─────────────────────────────────────────────
+    // HELPERS CROSS-DB (MySQL + SQLite)
+    // ─────────────────────────────────────────────
+
+    /**
+     * Vérifie si un index existe — compatible MySQL ET SQLite.
+     */
+    private function indexExists(string $table, string $indexName): bool
+    {
+        $driver = Schema::getConnection()->getDriverName();
+
+        try {
+            if ($driver === 'sqlite') {
+                $indexes = DB::select("PRAGMA index_list(\"{$table}\")");
+                return collect($indexes)->contains('name', $indexName);
+            }
+
+            // MySQL / MariaDB
+            $indexes = DB::select("SHOW INDEX FROM `{$table}` WHERE Key_name = ?", [$indexName]);
+            return count($indexes) > 0;
+        } catch (\Throwable $e) {
+            return false;
         }
     }
 };
