@@ -58,6 +58,10 @@
         
         $showPonte = in_array($batch->type, ['ponte', 'repro', 'reproducteur']);
         $colCount = 3 + ($showPonte ? 1 : 0) + ($isChair ? 1 : 0);
+
+        // Species-specific
+        $isRuminant    = $batch->isRuminant();
+        $isAquaculture = $batch->isAquaculture();
     @endphp
 
     <x-slot name="header">
@@ -249,6 +253,28 @@
                 <h4 class="text-xl font-black text-white tracking-tighter">J-{{ number_format($batchAge, 0) }} <span class="text-[9px] text-blue-400 font-black ml-1">S-{{ $currentWeek }}</span></h4>
             </div>
         </div>
+
+        @if($isRuminant && isset($stats['gmq']))
+        <div class="bg-white p-5 rounded-[2rem] shadow-xl border border-emerald-50 flex items-center gap-4 group transition-transform hover:scale-[1.02]">
+            <div class="w-12 h-12 bg-emerald-600 rounded-2xl flex items-center justify-center text-white shadow-lg">
+                <i class="fa-solid fa-arrow-trend-up text-lg"></i>
+            </div>
+            <div class="text-left leading-none">
+                <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1 italic">GMQ</p>
+                @if($stats['gmq'] !== null)
+                <h4 @class(['text-xl font-black tracking-tighter',
+                    'text-emerald-600' => $stats['gmq'] >= 150,
+                    'text-amber-600'   => $stats['gmq'] >= 80 && $stats['gmq'] < 150,
+                    'text-rose-600'    => $stats['gmq'] < 80])>
+                    {{ number_format($stats['gmq'], 0) }} <small class="text-xs opacity-50">g/j</small>
+                </h4>
+                @else
+                <h4 class="text-sm font-black text-slate-300 uppercase">—</h4>
+                @endif
+                <p class="text-[7px] text-slate-400 mt-1 uppercase font-black">Gain Moyen Quotidien</p>
+            </div>
+        </div>
+        @endif
     </div>
 
     <div class="py-12 italic font-bold text-left">

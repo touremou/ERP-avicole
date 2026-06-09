@@ -159,8 +159,9 @@ class BatchController extends Controller
         }
         $batch->load([
             'building', 'protocol.steps', 'healthChecks',
-            'feedPurchases', 'tasks',
+            'feedPurchases', 'tasks', 'species',
             'dailyChecks' => fn($q) => $q->orderBy('check_date', 'asc'),
+            'dailyChecks.extension',
         ]);
 
         $buildings = Building::physical()->orderBy('name')->get();
@@ -182,6 +183,36 @@ class BatchController extends Controller
             'current_phase'    => $batch->current_phase,
             'net_margin'       => $batch->net_margin,
         ];
+
+        // Ruminant stats
+        if ($batch->isRuminant()) {
+            $checksWithWeight = $batch->dailyChecks->filter(fn($c) => $c->avg_weight > 0)->values();
+            $gmq = null;
+            if ($checksWithWeight->count() >= 2) {
+                $first = $checksWithWeight->first();
+                $last  = $checksWithWeight->last();
+                $days  = max(1, \Carbon\Carbon::parse($first->check_date)->diffInDays($last->check_date));
+                $gmq   = round((($last->avg_weight - $first->avg_weight) * 1000) / $days);
+            }
+            $totalBorn   = $batch->dailyChecks->sum(fn($c) => $c->extension?->qty_born ?? 0);
+            $totalWeaned = $batch->dailyChecks->sum(fn($c) => $c->extension?->qty_weaned ?? 0);
+            $stats['gmq']          = $gmq;
+            $stats['total_born']   = $totalBorn;
+            $stats['total_weaned'] = $totalWeaned;
+        }
+
+        // Aquaculture stats
+        if ($batch->isAquaculture()) {
+            $lastExt = $batch->dailyChecks->sortByDesc('check_date')
+                ->firstWhere(fn($c) => $c->extension !== null)?->extension;
+            $stats['last_water_temp']    = $lastExt?->water_temp;
+            $stats['last_water_ph']      = $lastExt?->water_ph;
+            $stats['last_water_o2']      = $lastExt?->water_o2_ppm;
+            $stats['last_water_ammonia'] = $lastExt?->water_ammonia_ppm;
+            $stats['water_alerts']       = $lastExt?->getWaterAlerts() ?? [];
+            $stats['last_biomass']       = $lastExt?->biomass_kg;
+            $stats['last_survival_rate'] = $lastExt?->survival_rate;
+        }
 
         return view('batches.show', compact('batch', 'buildings', 'protocols', 'providers', 'stats'));
     }
