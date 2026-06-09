@@ -9,6 +9,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Supprimer l'ancienne table settings (structure simplifiée de mars 2026) si elle existe
+        Schema::dropIfExists('setting_audits');
+        Schema::dropIfExists('settings');
+
         Schema::create('settings', function (Blueprint $table) {
             $table->id();
             $table->string('group', 50)->index();           // general, elevage, abattoir...

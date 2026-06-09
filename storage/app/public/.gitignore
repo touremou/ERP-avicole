@@ -1,2 +1,8 @@
 *
 !.gitignore
+# Autoriser la structure des dossiers de upload sans committer les fichiers
+!employees/
+!employees/photos/
+!employees/photos/.gitkeep
+!employees/cvs/
+!employees/cvs/.gitkeep
