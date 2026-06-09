@@ -15,7 +15,7 @@
         <div class="max-w-4xl mx-auto sm:px-6 lg:px-8 italic font-bold">
             
             {{-- Permission C : Accès à la création --}}
-            @can('C')
+            @can('annuaire.C')
                 @if ($errors->any())
                     <div class="mb-8 p-6 bg-rose-600 text-white rounded-[2.5rem] shadow-xl animate-pulse text-left">
                         <p class="text-[10px] font-black uppercase italic mb-2">❌ Erreurs de validation :</p>
@@ -145,7 +145,7 @@
                 <div class="bg-white p-20 rounded-[4rem] border border-slate-100 shadow-xl text-center italic">
                     <i class="fas fa-lock text-slate-200 text-6xl mb-6"></i>
                     <h3 class="text-xl font-black text-slate-800 uppercase italic mb-2">Accès Restreint</h3>
-                    <p class="text-slate-400 text-[10px] font-black uppercase tracking-widest">Vous n'avez pas la permission (C) pour recruter du personnel.</p>
+                    <p class="text-slate-400 text-[10px] font-black uppercase tracking-widest">La permission <span class="text-blue-500">rh.C</span> (Créer) est requise pour recruter du personnel.</p>
                     <a href="{{ route('employees.index') }}" class="inline-block mt-8 px-10 py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase italic no-underline hover:bg-blue-600 transition-all">Retour à la liste</a>
                 </div>
             @endcan

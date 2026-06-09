@@ -213,7 +213,7 @@
                         </div>
 
                         <div class="flex flex-col gap-3">
-                            @can('C')
+                            @can('planning.C')
                             <button type="submit" id="submitBtn" class="w-full bg-indigo-600 text-white font-black py-8 rounded-[2rem] hover:bg-indigo-700 transition-all uppercase tracking-[0.3em] text-[10px] italic shadow-2xl border-none cursor-pointer">
                                 <i class="fas fa-calendar-plus mr-2"></i> Enregistrer la planification
                             </button>

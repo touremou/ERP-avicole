@@ -28,7 +28,7 @@
                 </div>
             @endif
 
-            @can('C')
+            @can('provenderie.C')
             <form action="{{ route('formulas.store') }}" method="POST" class="space-y-8" id="formula_form" @submit.prevent="submitForm">
                 @csrf
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">

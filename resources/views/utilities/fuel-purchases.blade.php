@@ -24,7 +24,7 @@
             @endforeach
 
             {{-- FORMULAIRE RAPIDE --}}
-            @can('C')
+            @can('ressources.C')
             <div class="bg-orange-50 p-8 rounded-[3rem] border border-orange-200 mb-8">
                 <h3 class="text-[10px] font-black text-orange-600 uppercase tracking-widest mb-6 flex items-center gap-2">
                     <i class="fa-solid fa-gas-pump"></i> Enregistrer un achat

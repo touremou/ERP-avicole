@@ -18,7 +18,7 @@
                     <i class="fa-solid fa-triangle-exclamation"></i> {{ $stats['in_dispute'] }} litige(s)
                 </a>
                 @endif
-                @can('C')
+                @can('logistique.C')
                 <a href="{{ route('dispatches.create') }}" class="bg-slate-900 text-white px-8 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-orange-600 transition-all shadow-2xl italic flex items-center gap-2 no-underline">
                     <i class="fa-solid fa-truck-ramp-box"></i> Nouvelle Expédition
                 </a>

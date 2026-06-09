@@ -12,7 +12,7 @@
             </div>
 
             {{-- Permission C : Ajout de machine --}}
-            @can('C')
+            @can('provenderie.C')
             <button onclick="openModal('modal-add')" class="bg-slate-900 text-white px-8 py-4 rounded-[2rem] text-[10px] font-black uppercase italic tracking-widest shadow-2xl hover:bg-emerald-500 transition-all active:scale-95">
                 <i class="fa-solid fa-plus mr-2 text-emerald-400"></i> Nouvelle Machine
             </button>
@@ -42,14 +42,14 @@
                     <div class="absolute top-8 left-8 flex gap-2 opacity-0 group-hover:opacity-100 transition-all transform -translate-x-2 group-hover:translate-x-0">
                         @if($machine->status != 'Désactivé')
                             {{-- Permission M : Edition --}}
-                            @can('M')
+                            @can('provenderie.M')
                             <button onclick='openEditModal(@json($machine))' class="w-8 h-8 bg-slate-900 text-white rounded-xl flex items-center justify-center hover:bg-blue-500 transition-colors shadow-lg">
                                 <i class="fa-solid fa-pen text-[10px]"></i>
                             </button>
                             @endcan
 
                             {{-- Permission S : Suppression --}}
-                            @can('S')
+                            @can('provenderie.S')
                                 @if($machine->hasProductionHistory())
                                     <div title="Historique existant : Désactivation conseillée" 
                                          class="w-8 h-8 bg-slate-100 text-slate-400 rounded-xl flex items-center justify-center cursor-help border border-slate-200">
@@ -137,7 +137,7 @@
                     <div class="grid grid-cols-1 gap-3 pt-6 border-t border-slate-50">
                         <div class="grid grid-cols-2 gap-3">
                             {{-- Permission M : Révision --}}
-                            @can('M')
+                            @can('provenderie.M')
                             <button type="button" 
                                     @disabled($machine->status == 'Désactivé')
                                     onclick="openMaintenanceModal({{ $machine->id }}, '{{ addslashes($machine->name) }}', '{{ number_format($machine->total_hours_run, 2) }}')" 
@@ -167,7 +167,7 @@
                         </div>
 
                         {{-- Permission S : Désactivation --}}
-                        @can('S')
+                        @can('provenderie.S')
                         <form action="{{ route('machines.status', $machine->id) }}" method="POST">
                             @csrf @method('PUT')
                             <input type="hidden" name="status" value="{{ $machine->status === 'Désactivé' ? 'Opérationnel' : 'Désactivé' }}">
@@ -190,7 +190,7 @@
 
     {{-- MODALES (AJOUT, EDIT, MAINTENANCE) : Protégées par les permissions correspondantes --}}
     {{-- MODALE AJOUTER --}}
-     @can('C')
+     @can('provenderie.C')
     <div id="modal-add" class="fixed inset-0 bg-slate-900/90 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-[3rem] p-10 max-w-lg w-full shadow-2xl overflow-hidden text-left">
             <h3 class="text-2xl font-black text-slate-900 uppercase italic tracking-tighter mb-8">Nouvelle Machine</h3>
@@ -224,7 +224,7 @@
     @endcan
 
     {{-- MODALE MODIFIER --}}
-     @can('M')
+     @can('provenderie.M')
     <div id="modal-edit" class="fixed inset-0 bg-slate-900/90 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-[3rem] p-10 max-w-lg w-full shadow-2xl overflow-hidden text-left">
             <h3 class="text-2xl font-black text-slate-900 uppercase italic tracking-tighter mb-8">Modifier Machine</h3>
@@ -258,7 +258,7 @@
     @endcan
 
     {{-- MODALE MAINTENANCE --}}
-     @can('M')
+     @can('provenderie.M')
     <div id="modal-maintenance" class="fixed inset-0 bg-slate-900/90 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-[3rem] p-10 max-w-lg w-full shadow-2xl text-left">
             <h3 class="text-2xl font-black text-slate-900 uppercase italic tracking-tighter mb-2">Clôturer Révision</h3>

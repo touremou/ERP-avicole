@@ -135,7 +135,7 @@
             <div class="bg-white p-20 rounded-[4rem] border border-slate-100 shadow-xl text-center italic font-black">
                 <i class="fas fa-lock text-slate-200 text-6xl mb-8"></i>
                 <h3 class="text-xl text-slate-800 uppercase italic tracking-tighter mb-2">Accès Restreint</h3>
-                <p class="text-slate-400 text-[10px] font-black uppercase tracking-widest leading-relaxed">Vous n'avez pas la permission (M) pour modifier ce ravitaillement.</p>
+                <p class="text-slate-400 text-[10px] font-black uppercase tracking-widest leading-relaxed">La permission <span class="text-orange-500">provenderie.M</span> (Modifier) est requise pour modifier ce ravitaillement.</p>
                 <a href="{{ route('batches.show', $batch->id) }}" class="inline-block mt-10 px-10 py-4 bg-slate-900 text-white rounded-2xl text-[10px] uppercase italic no-underline">Retour à la fiche</a>
             </div>
             @endcan

@@ -29,7 +29,7 @@
                 </div>
             </div>
 
-            @can('C')
+            @can('production.C')
                 {{-- 3. ALERTE CUMUL OU VERROUILLAGE --}}
                 @if(isset($existingToday))
                     @if($existingToday->is_graded)
@@ -113,7 +113,7 @@
                 <div class="bg-white p-20 rounded-[4rem] border border-slate-100 shadow-xl text-center italic">
                     <i class="fas fa-lock text-slate-200 text-6xl mb-6"></i>
                     <h3 class="text-xl font-black text-slate-800 uppercase italic mb-2 tracking-tighter">Accès Verrouillé</h3>
-                    <p class="text-slate-400 text-[10px] font-black uppercase tracking-widest italic leading-none">Vous n'avez pas la permission (C).</p>
+                    <p class="text-slate-400 text-[10px] font-black uppercase tracking-widest italic leading-none">La permission <span class="text-blue-500">production.C</span> (Créer) est requise pour enregistrer la production.</p>
                 </div>
             @endcan
         </div>

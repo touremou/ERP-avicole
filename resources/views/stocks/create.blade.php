@@ -194,7 +194,7 @@
                 <div class="bg-white p-20 rounded-[4rem] border border-slate-100 shadow-xl text-center">
                     <i class="fa-solid fa-lock text-slate-200 text-6xl mb-6"></i>
                     <h3 class="text-xl font-black text-slate-800 uppercase italic mb-2 tracking-tighter">Accès Restreint</h3>
-                    <p class="text-slate-400 text-[10px] font-black uppercase tracking-widest italic leading-none">Vous n'avez pas la permission (C) pour créer de nouveaux articles.</p>
+                    <p class="text-slate-400 text-[10px] font-black uppercase tracking-widest italic leading-none">La permission <span class="text-blue-500">stocks.C</span> (Créer) est requise pour créer de nouveaux articles.</p>
                     <a href="{{ route('stocks.index') }}" class="inline-block mt-8 px-10 py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase italic no-underline hover:bg-emerald-500 transition-all">Retour au Stock</a>
                 </div>
             @endcan

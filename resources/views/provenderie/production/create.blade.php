@@ -20,7 +20,7 @@
         <div class="max-w-5xl mx-auto sm:px-6 lg:px-8">
             
             {{-- VÉRIFICATION PERMISSION CRÉATION (C) --}}
-            @can('C')
+            @can('provenderie.C')
             <div class="bg-white p-10 rounded-[3.5rem] shadow-2xl border border-slate-100 text-left relative overflow-hidden">
                 <div class="absolute top-0 right-0 w-32 h-32 bg-emerald-50 rounded-bl-full opacity-50 -mr-10 -mt-10"></div>
 

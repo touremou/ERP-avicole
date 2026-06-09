@@ -17,7 +17,7 @@
 
             <div class="flex gap-4">
                 {{-- Permission L : Accès au parc machines --}}
-                @can('L')
+                @can('provenderie.L')
                 <a href="{{ route('machines.index') }}" 
                     class="bg-slate-50 text-slate-600 border border-slate-200 px-8 py-4 rounded-[2rem] text-[10px] font-black uppercase italic tracking-widest shadow-sm hover:bg-slate-100 transition-all active:scale-95">
                     <i class="fa-solid fa-gears mr-2"></i> Parc Machines
@@ -25,7 +25,7 @@
                 @endcan
 
                 {{-- Permission C : Création d'un nouvel ordre --}}
-                @can('C')
+                @can('provenderie.C')
                 <a href="{{ route('production.create') }}" 
                     class="bg-slate-900 text-white px-8 py-4 rounded-[2rem] text-[10px] font-black uppercase italic tracking-widest shadow-2xl hover:bg-emerald-500 transition-all active:scale-95">
                     <i class="fa-solid fa-plus mr-2 text-emerald-400"></i> Nouvel Ordre (OP)
@@ -126,7 +126,7 @@
                                                 <i class="fa-solid fa-spinner fa-spin mr-1"></i> En cours
                                             </span>
                                             {{-- Accès L pour voir le bon de pesée --}}
-                                            @can('L')
+                                            @can('provenderie.L')
                                             <a href="{{ route('production.show', $prod->id) }}" class="p-1.5 bg-slate-900 text-white rounded-lg hover:bg-emerald-500 transition-all shadow-lg" title="Imprimer Bon de Pesée">
                                                 <i class="fa-solid fa-print text-[10px]"></i>
                                             </a>
@@ -134,7 +134,7 @@
                                         </div>
                                         
                                         {{-- Permission M : Finalisation de la production --}}
-                                        @can('M')
+                                        @can('provenderie.M')
                                         <form action="{{ route('production.complete', $prod->id) }}" method="POST" onsubmit="return confirm('Confirmer la fin de production ? Le stock sera mis à jour.')">
                                             @csrf
                                             @method('PUT')

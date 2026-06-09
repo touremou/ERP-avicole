@@ -9,7 +9,7 @@
                 </a>
                 <div class="flex gap-4">
                     {{-- Permission M : Clôture de la production --}}
-                    @can('M')
+                    @can('provenderie.M')
                         @if($production->status === 'Planifié' || $production->status === 'En cours')
                             <form action="{{ route('production.complete', $production->id) }}" method="POST" onsubmit="return confirm('Confirmer la fin du mélange ? Les stocks et compteurs machines seront mis à jour.')">
                                 @csrf
@@ -22,7 +22,7 @@
                     @endcan
                     
                     {{-- Permission L : Impression --}}
-                    @can('L')
+                    @can('provenderie.L')
                     <button onclick="window.print()" class="bg-slate-900 text-white px-8 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl hover:bg-slate-700 transition-all">
                         <i class="fa-solid fa-print mr-2"></i> Imprimer le Bon
                     </button>

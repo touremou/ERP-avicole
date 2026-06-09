@@ -110,7 +110,7 @@
                         <i class="fas fa-times"></i> Annuler
                     </a>
                     
-                    @can('M')
+                    @can('elevage.M')
                     <button type="submit" class="flex-[2] bg-slate-900 text-white font-black py-6 rounded-[2rem] hover:bg-orange-600 transition-all uppercase tracking-[0.2em] text-[10px] italic shadow-xl group cursor-pointer border-none">
                         <i class="fas fa-sync-alt mr-2 group-hover:rotate-180 transition-transform duration-700"></i>
                         Enregistrer les modifications

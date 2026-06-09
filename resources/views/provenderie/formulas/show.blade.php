@@ -19,7 +19,7 @@
                 </a>
                 
                 {{-- Permission C : Lancer une production basée sur cette formule --}}
-                @can('C')
+                @can('provenderie.C')
                 <a href="{{ route('production.create', ['formula_id' => $formula->id]) }}" class="bg-emerald-500 text-white px-6 py-3 rounded-2xl text-[10px] font-black uppercase italic tracking-widest shadow-lg shadow-emerald-200 hover:bg-emerald-600 transition-all no-underline">
                     <i class="fa-solid fa-play mr-2"></i> Produire ce lot
                 </a>
@@ -49,14 +49,14 @@
                         <p class="text-[9px] font-black text-slate-300 uppercase text-center mb-4 italic tracking-widest">Administration de la fiche</p>
                         <div class="grid grid-cols-1 gap-3">
                             {{-- Permission M : Édition --}}
-                            @can('M')
+                            @can('provenderie.M')
                             <a href="{{ route('formulas.edit', $formula->id) }}" class="flex items-center justify-center gap-2 p-4 bg-slate-900 text-white rounded-2xl hover:bg-blue-600 transition-all text-[10px] uppercase tracking-widest no-underline">
                                 <i class="fa-solid fa-pen-to-square text-amber-400"></i> Optimiser la Recette
                             </a>
                             @endcan
                             
                             {{-- Permission S : Suppression --}}
-                            @can('S')
+                            @can('provenderie.S')
                             <form action="{{ route('formulas.destroy', $formula->id) }}" method="POST" onsubmit="return confirm('Attention : Cette action est irréversible. Supprimer cette formulation ?')">
                                 @csrf @method('DELETE')
                                 <button type="submit" class="w-full flex items-center justify-center gap-2 p-4 bg-red-50 text-red-500 rounded-2xl hover:bg-red-500 hover:text-white transition-all text-[10px] uppercase tracking-widest border border-red-100 italic font-black">

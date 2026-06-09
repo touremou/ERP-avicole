@@ -230,7 +230,7 @@
                                 Annuler
                             </a>
                             
-                            @can('M')
+                            @can('elevage.M')
                             <button type="submit" id="submitBtn" class="flex-[2] bg-slate-900 text-white font-black py-6 rounded-[2rem] hover:bg-blue-600 transition-all uppercase tracking-[0.3em] text-[10px] italic shadow-2xl">
                                 <i class="fas fa-sync-alt mr-3"></i> Enregistrer les modifications
                             </button>

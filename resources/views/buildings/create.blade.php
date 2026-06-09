@@ -74,7 +74,7 @@
                         </a>
 
                         {{-- PERMISSION C : CRÉATION --}}
-                        @can('C')
+                        @can('elevage.C')
                         <button type="submit" class="flex-[2] bg-slate-900 text-white font-black py-6 rounded-[2rem] hover:bg-blue-600 transition-all uppercase tracking-[0.2em] text-[10px] italic shadow-xl group cursor-pointer border-none">
                             <i class="fas fa-check mr-2 group-hover:scale-110 transition-transform"></i>
                             Enregistrer le nouveau bâtiment

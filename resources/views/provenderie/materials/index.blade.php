@@ -16,7 +16,7 @@
             </div>
 
             {{-- Permission C : Ajout de nouvel ingrédient --}}
-            @can('C')
+            @can('provenderie.C')
             <button onclick="document.getElementById('modalAddMaterial').classList.remove('hidden')" 
                 class="bg-slate-900 text-white px-8 py-4 rounded-[2rem] text-[10px] font-black uppercase italic tracking-widest shadow-2xl hover:bg-amber-500 transition-all active:scale-95">
                 <i class="fa-solid fa-plus mr-2 text-amber-400"></i> Nouvel Ingrédient
@@ -59,13 +59,13 @@
                         
                         {{-- Menu Options (Permissions M et S) --}}
                         <div class="absolute top-8 right-8 flex gap-2">
-                            @can('M')
+                            @can('provenderie.M')
                             <button onclick="openEditModal({{ json_encode($material) }})" class="w-8 h-8 rounded-full bg-slate-50 text-slate-400 hover:bg-blue-500 hover:text-white transition-all flex items-center justify-center shadow-sm">
                                 <i class="fa-solid fa-pen-to-square text-[10px]"></i>
                             </button>
                             @endcan
                             
-                            @can('S')
+                            @can('provenderie.S')
                             <form action="{{ route('raw-materials.destroy', $material->id) }}" method="POST" onsubmit="return confirm('Supprimer cet ingrédient ? Cela pourrait affecter l\'historique des productions.')">
                                 @csrf @method('DELETE')
                                 <button type="submit" class="w-8 h-8 rounded-full bg-slate-50 text-slate-400 hover:bg-red-500 hover:text-white transition-all flex items-center justify-center shadow-sm">
@@ -104,7 +104,7 @@
 
                         <div class="mt-8 pt-6 border-t border-slate-50 flex flex-wrap justify-between items-center gap-2">
                             {{-- Permission C : Réception (Achat) --}}
-                            @can('C')
+                            @can('provenderie.C')
                             <button onclick="openReorderModal({{ $material->id }}, '{{ $material->name }}')" 
                                 class="flex-1 text-[9px] font-black text-blue-600 uppercase italic tracking-widest hover:text-slate-900 transition-colors">
                                 <i class="fa-solid fa-truck-ramp-box mr-1"></i> Réception
@@ -112,7 +112,7 @@
                             @endcan
                             
                             {{-- Permission M : Analyse Labo --}}
-                            @can('M')
+                            @can('provenderie.M')
                             <button onclick="openLaboModal({{ $material->id }}, '{{ $material->name }}', {{ $material->energy_kcal }}, {{ $material->protein_rate }})" 
                                 class="flex-1 text-[9px] font-black text-amber-600 uppercase italic tracking-widest hover:text-slate-900 transition-colors border-l border-slate-100 pl-2">
                                 <i class="fa-solid fa-flask mr-1"></i> Labo
@@ -120,7 +120,7 @@
                             @endcan
 
                             {{-- Permission S : Correction/Perte --}}
-                            @can('S')
+                            @can('provenderie.S')
                             <button onclick="openLossModal({{ $material->id }}, '{{ $material->name }}')" 
                                 class="w-full mt-2 text-[9px] font-black text-red-400 uppercase italic tracking-widest hover:text-red-600 transition-colors border-t border-slate-50 pt-2">
                                 <i class="fa-solid fa-right-from-bracket mr-1"></i> Ajuster Stock (Perte/Vente)

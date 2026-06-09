@@ -17,7 +17,7 @@
 
             <div class="flex gap-4">
                 {{-- Permission L : Consultation du référentiel --}}
-                @can('L')
+                @can('provenderie.L')
                 <button onclick="document.getElementById('modalNormes').classList.remove('hidden')" 
                     class="bg-white border-2 border-slate-100 text-slate-400 px-6 py-4 rounded-[2rem] text-[10px] font-black uppercase italic tracking-widest hover:border-blue-200 hover:text-blue-500 transition-all shadow-sm">
                     <i class="fa-solid fa-book-open mr-2"></i> Référentiel Normé
@@ -25,7 +25,7 @@
                 @endcan
 
                 {{-- Permission C : Création de nouvelle recette --}}
-                @can('C')
+                @can('provenderie.C')
                 <a href="{{ route('formulas.create') }}" 
                     class="bg-slate-900 text-white px-8 py-4 rounded-[2rem] text-[10px] font-black uppercase italic tracking-widest shadow-2xl hover:bg-blue-600 transition-all active:scale-95 no-underline flex items-center">
                     <i class="fa-solid fa-plus mr-2 text-blue-400"></i> Nouvelle Recette
@@ -143,7 +143,7 @@
                             </div>
 
                             <div class="flex gap-3 mt-auto">
-                                @can('C')
+                                @can('provenderie.C')
                                 <a href="{{ route('production.create', ['formula_id' => $formula->id]) }}" 
                                     class="flex-1 bg-slate-900 text-white text-center py-4 rounded-2xl text-[9px] font-black uppercase italic tracking-widest hover:bg-emerald-500 transition-all shadow-xl active:scale-95 no-underline flex items-center justify-center">
                                     <i class="fa-solid fa-play mr-2 text-emerald-400"></i> Produire
@@ -208,7 +208,7 @@
             </div>
 
             {{-- IMPORT EXCEL : Permission M (Modification du référentiel) --}}
-            @can('M')
+            @can('provenderie.M')
             <div class="bg-blue-50/50 p-6 rounded-[2.5rem] border border-blue-100 flex flex-col md:flex-row items-center justify-between gap-6">
                 <div class="text-left">
                     <h4 class="text-xs font-black uppercase text-blue-600 italic tracking-tighter mb-1">Mettre à jour le Référentiel</h4>

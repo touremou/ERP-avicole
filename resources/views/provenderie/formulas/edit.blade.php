@@ -22,7 +22,7 @@
         <div class="max-w-5xl mx-auto sm:px-6 lg:px-8">
             
             {{-- PROTECTION PERMISSION M (MODIFICATION) --}}
-            @can('M')
+            @can('provenderie.M')
             <form action="{{ route('formulas.update', $formula->id) }}" method="POST" id="formulaForm">
                 @csrf @method('PUT')
 
@@ -101,7 +101,7 @@
             <div class="bg-white p-20 rounded-[4rem] border border-slate-100 shadow-xl text-center">
                 <i class="fas fa-lock text-slate-200 text-6xl mb-6"></i>
                 <h3 class="text-xl font-black text-slate-800 uppercase italic mb-2">Accès Restreint</h3>
-                <p class="text-slate-400 text-[10px] font-black uppercase tracking-widest italic">Vous n'avez pas la permission (M) pour modifier cette recette.</p>
+                <p class="text-slate-400 text-[10px] font-black uppercase tracking-widest italic">La permission <span class="text-orange-500">provenderie.M</span> (Modifier) est requise pour modifier cette recette.</p>
                 <a href="{{ route('formulas.show', $formula->id) }}" class="inline-block mt-8 px-10 py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase italic no-underline">Retour aux Détails</a>
             </div>
             @endcan

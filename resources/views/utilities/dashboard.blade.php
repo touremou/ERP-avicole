@@ -213,7 +213,7 @@
             </div>
 
             {{-- ═══════════ FORMULAIRES RAPIDES ═══════════ --}}
-            @can('C')
+            @can('ressources.C')
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {{-- Relevé eau --}}
                 <div class="bg-cyan-50 p-6 rounded-[2.5rem] border border-cyan-200">

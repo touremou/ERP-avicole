@@ -13,7 +13,7 @@
                 </div>
             </div>
             @if(!$dispatch->reception && in_array($dispatch->status, ['expedie', 'en_route']))
-                @can('C')
+                @can('logistique.C')
                 <a href="{{ route('dispatches.reception.create', $dispatch) }}" class="bg-emerald-500 text-white px-8 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-2xl italic flex items-center gap-2 no-underline">
                     <i class="fa-solid fa-clipboard-check"></i> Saisir la Réception
                 </a>
@@ -199,7 +199,7 @@
                         <p class="text-[8px] text-slate-400 mt-2">Par {{ $report->resolver->name ?? '—' }} — {{ $report->resolved_at?->translatedFormat('d/m/Y H:i') }}</p>
                     </div>
                 @else
-                    @can('S')
+                    @can('logistique.S')
                     <form method="POST" action="{{ route('dispatches.discrepancy.resolve', $report) }}" class="bg-red-50 p-5 rounded-2xl mt-4">
                         @csrf @method('PUT')
                         <p class="text-[9px] font-black text-red-600 uppercase tracking-widest mb-3">Résoudre cet écart</p>

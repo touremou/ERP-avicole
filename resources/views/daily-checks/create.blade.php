@@ -35,7 +35,7 @@
 
     <div class="py-12 italic font-bold">
         <div class="max-w-4xl mx-auto sm:px-6 lg:px-8">
-            @can('C')
+            @can('elevage.C')
                 @if ($errors->any())
                     <div class="mb-8 p-6 bg-red-600 text-white rounded-[2.5rem] shadow-xl animate-pulse text-left">
                         <p class="text-[10px] font-black uppercase italic mb-2">❌ Erreurs de validation détectées :</p>
@@ -220,8 +220,8 @@
                     </div>
 
                     <div class="flex flex-col md:flex-row gap-4 pt-6">
-                        <a href="{{ url()->previous() }}" class="flex-1 bg-white border-2 border-slate-100 text-slate-400 font-black py-6 rounded-[2rem] shadow-sm hover:bg-slate-50 text-center uppercase tracking-widest text-[10px] italic no-underline">
-                            Annuler
+                        <a href="{{ $backUrl }}" class="flex-1 bg-white border-2 border-slate-100 text-slate-400 font-black py-6 rounded-[2rem] shadow-sm hover:bg-slate-50 text-center uppercase tracking-widest text-[10px] italic no-underline flex items-center justify-center">
+                            <i class="fas fa-times mr-2"></i> Annuler
                         </a>
                         <button type="submit" id="submit_btn" class="flex-[2] bg-slate-900 text-white font-black py-6 rounded-[2rem] hover:bg-blue-600 transition-all uppercase tracking-[0.3em] text-[10px] italic shadow-2xl group">
                             Confirmer le pointage
@@ -229,10 +229,16 @@
                     </div>
                 </form>
             @else
-                <div class="bg-white p-20 rounded-[4rem] shadow-xl text-center">
+                <div class="bg-white p-20 rounded-[4rem] border border-slate-100 shadow-xl text-center">
                     <i class="fas fa-lock text-slate-200 text-6xl mb-6"></i>
-                    <h3 class="text-xl font-black text-slate-800 uppercase italic">Accès Verrouillé</h3>
-                    <p class="text-slate-400 text-[10px] font-black uppercase tracking-widest mt-2 italic">Vous n'avez pas la permission (C) pour effectuer des relevés.</p>
+                    <h3 class="text-xl font-black text-slate-800 uppercase italic mb-2 tracking-tighter">Accès Verrouillé</h3>
+                    <p class="text-slate-400 text-[10px] font-black uppercase tracking-widest italic leading-none mb-2">
+                        La permission <span class="text-blue-500">elevage.C</span> (Créer) est requise pour saisir des relevés journaliers.
+                    </p>
+                    <p class="text-slate-300 text-[9px] font-black uppercase tracking-widest italic leading-none">Contactez votre administrateur si vous pensez que c'est une erreur.</p>
+                    <a href="{{ $backUrl }}" class="inline-block mt-8 px-10 py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase italic no-underline hover:bg-blue-600 transition-all">
+                        <i class="fas fa-arrow-left mr-2"></i> Retour au Lot
+                    </a>
                 </div>
             @endcan
         </div>

@@ -229,7 +229,7 @@
                         </div>
 
                         <div class="flex flex-col gap-3">
-                            @can('C')
+                            @can('elevage.C')
                             <button type="submit" id="submitBtn" class="w-full bg-slate-900 text-white font-black py-8 rounded-[2rem] hover:bg-blue-600 transition-all uppercase tracking-[0.3em] text-[10px] italic shadow-2xl">
                                 <i class="fas fa-save mr-2"></i> Initialiser la bande
                             </button>
