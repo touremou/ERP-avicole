@@ -1,0 +1,435 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Batch;
+use App\Models\Building;
+use App\Models\Employee;
+use App\Models\Protocol;
+use App\Models\Provider;
+use App\Models\ProductionNorm;
+use App\Actions\Batch\CreateBatch;
+use App\Actions\Batch\UpdateBatch;
+use App\Actions\Batch\CloseBatch;
+use App\Actions\Batch\ReopenBatch;
+use App\Http\Requests\Batch\StoreBatchRequest;
+use App\Http\Requests\Batch\UpdateBatchRequest;
+use App\Http\Requests\Batch\CloseBatchRequest;
+use App\Services\BatchQuantityService;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\View\View;
+
+/**
+ * Controller des lots (bandes) de production.
+ *
+ * Architecture Phase 4 :
+ * - Validation → Form Requests (app/Http/Requests/Batch/)
+ * - Logique métier → Actions (app/Actions/Batch/)
+ * - Ce controller ne fait QUE le routing HTTP et les réponses
+ *
+ * Bugs corrigés :
+ * - B-01 : scopeCritical SQL au lieu de total_mortalite inexistant
+ * - B-02 : BatchService remplacé par CreateBatch Action
+ * - B-03/B-04 : UpdateBatch ne touche plus current_quantity
+ * - B-07 : CloseBatch calcule la marge complète
+ * - B-08 : update protégé par UpdateBatchRequest::authorize()
+ * - B-09 : syncAllStocks protégé par Gate::denies('S')
+ * - S-02 : prix aliment calculé depuis feedPurchases (plus hardcodé)
+ */
+class BatchController extends Controller
+{
+    /**
+     * Liste des bandes actives avec filtrage.
+     */
+    public function index(Request $request): View
+    {
+        if (Gate::denies('elevage.L')) return redirect()->route('dashboard')->with('error', 'Accès restreint.');
+
+        // 1. On exclut les lots virtuels (œufs) en exigeant des animaux vivants à l'initialisation
+        $query = Batch::with(['building', 'provider', 'employee'])
+            ->active()
+            ->live();
+
+        $allowedTypes = ['chair', 'ponte', 'poussiniere', 'reproducteur'];
+
+        // Filtre surmortalité
+        $isCriticalView = $request->query('view') === 'critical';
+        if ($isCriticalView) {
+            $query->critical(setting('elevage.mortality_alert', 5));
+        }
+
+        // Filtre par type
+        if ($request->filled('type') && in_array($request->type, $allowedTypes)) {
+            $query->byType($request->type);
+        }
+
+        // 2. On applique la même exclusion pour que les compteurs d'onglets soient justes
+       // $baseQuery = Batch::active()->where('initial_quantity', '>', 0);
+        $baseQuery = Batch::active()->live();
+        
+        if ($isCriticalView) {
+            $baseQuery->critical(5.0);
+        }
+
+        $counts = [
+            'all'          => (clone $baseQuery)->count(),
+            'chair'        => (clone $baseQuery)->byType('chair')->count(),
+            'ponte'        => (clone $baseQuery)->byType('ponte')->count(),
+            'reproducteur' => (clone $baseQuery)->byType('reproducteur')->count(),
+            'poussiniere'  => (clone $baseQuery)->byType('poussiniere')->count(),
+        ];
+
+        $batches = $query->orderBy('arrival_date', 'desc')->paginate(10);
+        $batches->appends($request->all());
+
+        return view('batches.index', compact('batches', 'counts'));
+    }
+    /**
+     * Archives des lots clôturés.
+     */
+    public function archives(Request $request): View
+    {
+        if (Gate::denies('elevage.L')) {
+            abort(403, 'Accès restreint.');
+        }
+
+        $query = Batch::with(['building', 'provider'])->archived();
+
+        if ($request->filled('building_id')) {
+            $request->validate(['building_id' => 'integer|exists:buildings,id']);
+            $query->where('building_id', $request->building_id);
+        }
+
+        $archivedBatches = $query->orderBy('closing_date', 'desc')->paginate(15);
+        
+        // 👈 Ajout du scope physical() et d'un tri par nom pour l'UX
+        $buildings = Building::physical()->select('id', 'name')->orderBy('name')->get();
+
+        return view('batches.archives', compact('archivedBatches', 'buildings'));
+    }
+
+    /**
+     * Formulaire de création.
+     */
+    public function create(): View
+    {
+        if (Gate::denies('elevage.C')) {
+            abort(403, 'Privilèges insuffisants.');
+        }
+
+        $buildings = Building::physical()->orderBy('name')->get();
+        $normModels = ProductionNorm::select('model_name', 'batch_type')->distinct()->get();
+        $protocols = Protocol::all();
+        $employees = Employee::where('status', 'Actif')->orderBy('last_name')->get();
+        $providers = Provider::where('status', 'Actif')->orderBy('name')->get();
+
+        return view('batches.create', compact('buildings', 'normModels', 'protocols', 'employees', 'providers'));
+    }
+
+    /**
+     * Enregistrement d'un nouveau lot.
+     *
+     * Validation : StoreBatchRequest (gère Gate, règles conditionnelles repro/standard)
+     * Logique : CreateBatch Action (capacité, coûts, planning sanitaire)
+     */
+    public function store(StoreBatchRequest $request, CreateBatch $action): RedirectResponse
+    {
+        if (Gate::denies('elevage.C')) {
+            abort(403, 'Privilèges insuffisants.');
+        }
+
+        $batch = $action->execute($request->validated());
+
+        return redirect()->route('batches.show', $batch)
+            ->with('success', "Lot {$batch->code} lancé avec succès.");
+    }
+
+    /**
+     * Fiche détaillée d'un lot.
+     */
+    public function show(Batch $batch): View
+    {
+        if (Gate::denies('elevage.L')) {
+            abort(403, 'Accès restreint.');
+        }
+        $batch->load([
+            'building', 'protocol.steps', 'healthChecks',
+            'feedPurchases', 'tasks',
+            'dailyChecks' => fn($q) => $q->orderBy('check_date', 'asc'),
+        ]);
+
+        $buildings = Building::physical()->orderBy('name')->get();
+        $protocols = Protocol::withCount('steps')->get();
+        $providers = Provider::orderBy('name')->get();
+
+        // Calculs de performance (S-02 corrigé : coût réel depuis feedPurchases)
+        $totalFeedKg = $batch->dailyChecks->sum('feed_consumed');
+        $totalFeedCost = (float) $batch->feedPurchases->sum('total_price');
+        $totalHealthCost = (float) $batch->healthChecks->sum('cost');
+
+        $stats = [
+            'total_feed'       => $totalFeedKg,
+            'total_feed_cost'  => $totalFeedCost,
+            'total_health_cost'=> $totalHealthCost,
+            'fcr'              => $batch->fcr,
+            'mortality_rate'   => $batch->mortality_rate,
+            'age'              => $batch->age,
+            'current_phase'    => $batch->current_phase,
+            'net_margin'       => $batch->net_margin,
+        ];
+
+        return view('batches.show', compact('batch', 'buildings', 'protocols', 'providers', 'stats'));
+    }
+
+    /**
+     * Formulaire d'édition.
+     */
+    public function edit(Batch $batch): View
+    {
+        if (Gate::denies('elevage.M')) {
+            abort(403, 'Modification interdite.');
+        }
+
+        $buildings = Building::physical()->orderBy('name')->get();
+        $employees = Employee::where('status', 'Actif')->get();
+        $providers = Provider::where('status', 'Actif')->get();
+        $protocols = Protocol::all();
+        $normModels = ProductionNorm::select('batch_type', 'model_name')->distinct()->get();
+
+        return view('batches.edit', compact('batch', 'buildings', 'providers', 'employees', 'protocols', 'normModels'));
+    }
+
+    /**
+     * Mise à jour d'un lot.
+     *
+     * B-03/B-04 corrigés : UpdateBatch ne touche JAMAIS current_quantity.
+     * B-08 corrigé : autorisation dans UpdateBatchRequest::authorize().
+     */
+    public function update(UpdateBatchRequest $request, Batch $batch, UpdateBatch $action): RedirectResponse
+    {
+        if (Gate::denies('elevage.M')) {
+            abort(403, 'Modification interdite.');
+        }
+        $action->execute($batch, $request->validated());
+
+        return redirect()->route('batches.show', $batch)
+            ->with('success', 'Lot mis à jour.');
+    }
+
+    /**
+     * Formulaire de clôture.
+     */
+    
+
+    public function showCloseForm(Batch $batch)
+    {
+        if (Gate::denies('elevage.M')) return back()->with('error', 'Action non autorisée.');
+
+        $batch->load('building');
+
+        $remainingBirds = (int) $batch->current_quantity;
+        $totalMortality = (int) ($batch->initial_quantity - $batch->current_quantity);
+
+        // ═══ COÛTS DÉTAILLÉS ═══
+
+        // 1. Coût d'acquisition (poussins)
+        $acquisitionCost = (float) $batch->total_acquisition_cost;
+        if ($acquisitionCost <= 0) {
+            $acquisitionCost = (float) $batch->buy_price_per_unit * (int) $batch->initial_quantity;
+        }
+
+        // 2. Coût alimentation (somme des daily_checks.feed_quantity × prix unitaire aliment)
+        $feedData = \App\Models\DailyCheck::where('batch_id', $batch->id)
+            ->selectRaw('SUM(feed_consumed) as total_kg')
+            ->first();
+        $totalFeed = (float) ($feedData->total_kg ?? 0);
+
+        // Prix moyen du kg d'aliment (depuis les stocks de type conso)
+        $avgFeedPrice = \App\Models\Stock::where('category', 'conso')
+            ->where('item_name', 'LIKE', '%' . ($batch->type === 'ponte' ? 'Ponte' : 'Chair') . '%')
+            ->avg('last_unit_price') ?? 0;
+
+        // Si pas de prix moyen, estimer depuis les achats
+        if ($avgFeedPrice <= 0) {
+            $avgFeedPrice = \App\Models\Stock::where('category', 'conso')
+                ->where('last_unit_price', '>', 0)
+                ->avg('last_unit_price') ?? 5000; // Fallback 5000 GNF/kg
+        }
+
+        $feedCost = $totalFeed * $avgFeedPrice;
+
+        // 3. Coût santé / vétérinaire
+        $healthCost = 0;
+        if (\Illuminate\Support\Facades\Schema::hasTable('health_checks')) {
+            $healthCost = (float) \Illuminate\Support\Facades\DB::table('health_checks')
+                ->where('batch_id', $batch->id)
+                ->sum('cost');
+        }
+
+        // 4. Coût énergie (proportionnel au lot si multi-lots)
+        $energyCost = 0;
+        $durationDays = $batch->arrival_date
+            ? \Carbon\Carbon::parse($batch->arrival_date)->diffInDays(now())
+            : 0;
+
+        if ($durationDays > 0 && \Illuminate\Support\Facades\Schema::hasTable('energy_readings')) {
+            $totalDailyEnergyCost = (float) \Illuminate\Support\Facades\DB::table('energy_readings')
+                ->where('reading_date', '>=', $batch->arrival_date)
+                ->avg('cost') ?? 0;
+
+            // Proportion : si 3 lots actifs, ce lot = 1/3 du coût énergie
+            $activeBatchCount = max(1, \App\Models\Batch::where('status', 'Actif')->count());
+            $energyCost = ($totalDailyEnergyCost * $durationDays) / $activeBatchCount;
+        }
+
+        // 5. Total des coûts connus
+        $totalKnownCosts = $acquisitionCost + $feedCost + $healthCost + $energyCost;
+
+        // Données pour la vue
+        $costs = [
+            'acquisition'     => round($acquisitionCost),
+            'feed'            => round($feedCost),
+            'feed_kg'         => round($totalFeed, 1),
+            'feed_price_kg'   => round($avgFeedPrice),
+            'health'          => round($healthCost),
+            'energy'          => round($energyCost),
+            'total_known'     => round($totalKnownCosts),
+            'duration_days'   => $durationDays,
+        ];
+
+        return view('batches.close', compact(
+            'batch', 'remainingBirds', 'totalMortality', 'totalFeed', 'costs'
+        ));
+    }
+
+    /**
+     * Clôture d'un lot.
+     *
+     * B-07 corrigé : CloseBatch calcule revenus + coûts complets.
+     */
+    public function close(CloseBatchRequest $request, Batch $batch, CloseBatch $action): RedirectResponse
+    {
+        if (Gate::denies('elevage.M')) {
+            abort(403, 'Clôture interdite.');
+        }
+        $result = $action->execute($batch, $request->validated());
+
+        return redirect()->route('batches.index')
+            ->with('success',
+                "Lot {$batch->code} clôturé. " .
+                "Revenu : " . number_format($result->total_revenue) . " GNF. " .
+                "Marge : " . number_format($result->margin) . " GNF."
+            );
+    }
+
+    /**
+     * Réouverture d'un lot clôturé.
+     *
+     * S-03 corrigé : recalcul de l'effectif depuis les daily_checks.
+     */
+    public function reopen(Batch $batch, ReopenBatch $action): RedirectResponse
+    {
+        if (Gate::denies('elevage.S')) {
+            return back()->with('error', 'Réouverture réservée aux administrateurs.');
+        }
+
+        $result = $action->execute($batch);
+
+        return redirect()->route('batches.show', $batch)
+            ->with('success', "Lot {$batch->code} réouvert. Effectif recalculé : {$result->current_quantity} sujets.");
+    }
+
+    /**
+     * Synchronisation ERP : recalcul de tous les effectifs.
+     *
+     * B-09 corrigé : protégé par Gate 'S'.
+     */
+    public function syncAllStocks(BatchQuantityService $service): RedirectResponse
+    {
+        if (Gate::denies('elevage.S')) {
+            return back()->with('error', 'Action réservée aux administrateurs.');
+        }
+
+        $report = $service->rebuildAll();
+
+        return back()->with('success',
+            "Synchronisation terminée : {$report['total_checked']} lots vérifiés, " .
+            "{$report['total_corrected']} corrigés."
+        );
+    }
+
+    /**
+     * Suppression (soft-delete).
+     */
+    public function destroy(Batch $batch): RedirectResponse
+    {
+        if (Gate::denies('elevage.S')) {
+            abort(403, 'Privilèges insuffisants.');
+        }
+
+        $building = $batch->building;
+        $code = $batch->code;
+
+        $batch->delete();
+
+        // Mise à jour statut bâtiment si plus de lots actifs
+        if ($building && ! Batch::where('building_id', $building->id)->active()->exists()) {
+            $building->update(['status' => 'Vide']);
+        }
+
+        return redirect()->route('batches.index')
+            ->with('success', "Lot {$code} archivé.");
+    }
+
+    /**
+     * Endpoint JSON pour le miroir IndexedDB (offline).
+     */
+    public function getOfflineBatches(Request $request)
+    {
+        if (Gate::denies('elevage.L')) {
+            return response()->json(['error' => 'Forbidden'], 403);
+        }
+
+        return response()->json(
+            Batch::active()
+                ->when($request->query('since'), function ($q, $since) {
+                    $q->where('updated_at', '>=', $since);
+                })
+                ->get(['uuid', 'code', 'building_id', 'current_quantity', 'type', 'updated_at'])
+        );
+    }
+
+    /**
+     * Endpoint de synchronisation (offline → serveur).
+     */
+    public function sync(Request $request, CreateBatch $action)
+    {
+        $request->validate(['uuid' => 'required|uuid']);
+
+        try {
+            // Vérifier si le lot existe déjà (par UUID)
+            $existing = Batch::where('uuid', $request->uuid)->first();
+
+            if ($existing) {
+                // Mise à jour — on utilise UpdateBatch pour ne pas écraser current_quantity
+                $updateAction = app(UpdateBatch::class);
+                $batch = $updateAction->execute($existing, $request->all());
+            } else {
+                $batch = $action->execute($request->all());
+            }
+
+            return response()->json([
+                'status' => 'success',
+                'uuid'   => $batch->uuid,
+                'message' => 'Données synchronisées.',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+}

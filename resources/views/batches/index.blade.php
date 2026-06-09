@@ -1,0 +1,196 @@
+<x-app-layout>
+    <x-slot name="header">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+                <h2 class="text-3xl font-black text-slate-800 tracking-tighter uppercase italic leading-none">
+                    {{ __('Suivi des Bandes') }}
+                </h2>
+                <p class="text-slate-400 text-[10px] font-black uppercase tracking-widest mt-2 italic">
+                    <i class="fas fa-microchip mr-1 text-blue-500"></i> Gestion des cycles de production en cours
+                </p>
+            </div>
+            
+            <div class="flex items-center gap-3">
+                {{-- PERMISSION L : ACCÈS AUX ARCHIVES ET NORMES --}}
+                @can('elevage.L')
+                <a href="{{ route('daily-checks.index') }}" class="bg-white text-slate-600 border border-slate-200 px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-50 transition-all shadow-sm flex items-center italic">
+                    <i class="fas fa-clock-rotate-left mr-2 text-blue-500"></i> 
+                    Historique Suivi
+                </a>
+                <a href="{{ route('batches.archives') }}" class="bg-white text-slate-600 border border-slate-200 px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-50 transition-all shadow-sm flex items-center italic">
+                    <i class="fas fa-book-open mr-2 text-blue-500"></i> 
+                    Archives
+                </a>
+                @endcan
+
+                {{-- PERMISSION C : CRÉATION D'UN NOUVEAU LOT --}}
+                @can('elevage.C')
+                <a href="{{ route('admin.norms.index') }}" class="bg-white text-slate-600 border border-slate-200 px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-50 transition-all shadow-sm flex items-center italic">
+                    <i class="fas fa-scroll mr-2 text-blue-500"></i> 
+                    Référentiel Normes
+                </a>
+                <a href="{{ route('batches.create') }}" class="group bg-slate-900 text-white px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-600 transition-all shadow-xl shadow-slate-900/20 flex items-center italic">
+                    <i class="fas fa-plus-circle mr-2 group-hover:rotate-90 transition-transform text-sm"></i> 
+                    Nouvel Arrivage
+                </a>
+                @endcan
+            </div>
+        </div>
+    </x-slot>
+
+    <div class="py-12 italic" >
+        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+
+            {{-- FILTRES DE TYPE (Toujours visibles pour la lecture) --}}
+            <div class="flex flex-wrap items-center gap-3 mb-8" id="batchContainer">
+                <a href="{{ route('batches.index') }}" 
+                   @class([
+                       'px-6 py-3 rounded-2xl text-[10px] font-black uppercase italic tracking-widest transition-all shadow-sm border',
+                       'bg-slate-900 text-white border-slate-900' => !request('type'),
+                       'bg-white text-slate-400 border-slate-100 hover:bg-slate-50' => request('type')
+                   ])>
+                    <i class="fa-solid fa-layer-group mr-2"></i> Tous ({{ $counts['all'] ?? 0 }})
+                </a>
+                @foreach(['chair' => 'orange', 'ponte' => 'blue', 'reproducteur' => 'emerald', 'poussiniere' => 'purple'] as $type => $color)
+                    <a href="{{ route('batches.index', ['type' => $type]) }}" 
+                       @class([
+                           "px-6 py-3 rounded-2xl text-[10px] font-black uppercase italic tracking-widest transition-all shadow-sm border",
+                           "bg-{$color}-500 text-white border-{$color}-500 shadow-{$color}-200" => request('type') == $type,
+                           "bg-white text-{$color}-600 border-{$color}-100 hover:bg-{$color}-50" => request('type') != $type
+                       ])>
+                        <i class="fa-solid {{ $type == 'chair' ? 'fa-drumstick-bite' : ($type == 'ponte' ? 'fa-egg' : ($type == 'reproducteur' ? 'fa-dna' : 'fa-baby-carriage')) }} mr-2"></i> 
+                        {{ ucfirst($type) }} ({{ $counts[$type] ?? 0 }})
+                    </a>
+                @endforeach
+            </div>
+
+            <div class="bg-white rounded-[3rem] shadow-sm border border-slate-100 overflow-hidden font-bold text-left">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-50/50 border-b border-slate-100 font-black italic uppercase text-slate-400 text-[9px] tracking-widest">
+                            <th class="px-8 py-5">Identité & Souche</th>
+                            <th class="hidden md:table-cell px-6 py-5">Responsable</th>
+                            <th class="hidden md:table-cell px-6 py-5 text-center">Bâtiment</th>
+                            <th class="px-6 py-5 text-center">Vivant actuel</th>
+                            <th class="hidden lg:table-cell px-6 py-5 text-center">Santé</th>
+                            <th class="px-6 py-5 text-center">Cycle de vie</th>
+                            <th class="px-8 py-5 text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-50">
+                        @forelse($batches as $batch)
+                        @php
+                            $arrival = \Carbon\Carbon::parse($batch->arrival_date)->startOfDay();
+                            $days = (int) $arrival->diffInDays(now()->startOfDay());
+                            $maxDays = match($batch->type) {
+                                'chair' => 45, 'ponte' => 540, 'poussiniere' => 140, 'reproducteur' => 450, default => 45,
+                            };
+                            $percent = min(round(($days / $maxDays) * 100), 100);
+                            $survivalRate = $batch->initial_quantity > 0 ? ($batch->current_quantity / $batch->initial_quantity) * 100 : 100;
+                        @endphp
+
+                        <tr class="group hover:bg-slate-50/50 transition-all relative italic">
+                            <td class="px-8 py-6">
+                                <div class="flex items-start">
+                                    <div @class([
+                                        'w-10 h-10 rounded-xl flex items-center justify-center mr-4 shadow-inner mt-1',
+                                        'bg-blue-50 text-blue-600 font-black' => $batch->status == 'Actif',
+                                        'bg-slate-100 text-slate-400' => $batch->status != 'Actif',
+                                    ])>
+                                        <i class="fas fa-dove"></i>
+                                    </div>
+                                    <div>
+                                        <p class="font-black text-slate-800 uppercase tracking-tighter leading-none mb-1 text-sm">{{ $batch->code }}</p>
+                                        <div class="flex gap-1 items-center">
+                                            <span @class([
+                                                'text-[7px] font-black px-2 py-0.5 rounded uppercase italic border',
+                                                'bg-orange-50 text-orange-600 border-orange-100' => $batch->type == 'chair',
+                                                'bg-blue-50 text-blue-600 border-blue-100' => $batch->type == 'ponte',
+                                                'bg-emerald-50 text-emerald-600 border-emerald-100' => $batch->type == 'reproducteur',
+                                                'bg-purple-50 text-purple-600 border-purple-100' => $batch->type == 'poussiniere',
+                                            ])>{{ $batch->type }}</span>
+                                            <span class="text-[7px] font-black px-2 py-0.5 rounded uppercase italic border bg-slate-800 text-white border-slate-800">
+                                                <i class="fas fa-fingerprint mr-1 text-[6px]"></i> {{ $batch->model_name ?? 'Standard' }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+
+                            <td class="hidden md:table-cell px-6 py-6 font-bold text-xs uppercase text-slate-600">
+                                {{ $batch->employee ? $batch->employee->first_name . ' ' . substr($batch->employee->last_name, 0, 1) . '.' : 'N/A' }}
+                            </td>
+
+                            <td class="hidden md:table-cell px-6 py-6 text-center font-black text-xs uppercase text-slate-400">
+                                <i class="fas fa-warehouse mr-1 opacity-30"></i> {{ $batch->building->name ?? '---' }}
+                            </td>
+
+                            <td class="px-6 py-6 text-center">
+                                <span @class([
+                                    'font-black text-xl tracking-tighter',
+                                    'text-slate-800' => $survivalRate >= 95,
+                                    'text-orange-500' => $survivalRate < 95 && $survivalRate >= 90,
+                                    'text-red-600' => $survivalRate < 90,
+                                ])>
+                                    {{ number_format($batch->current_quantity) }}
+                                </span>
+                                <p class="text-[7px] text-slate-300 font-black uppercase tracking-widest mt-1 italic">Sujets en vie</p>
+                            </td>
+
+                            <td class="hidden lg:table-cell px-6 py-6 text-center uppercase italic">
+                                <div class="inline-flex flex-col items-center">
+                                    <span @class([
+                                        'px-3 py-1 rounded-lg text-[8px] font-black tracking-widest border mb-1',
+                                        'bg-green-50 text-green-600 border-green-100' => $survivalRate >= 95,
+                                        'bg-red-50 text-red-600 border-red-100' => $survivalRate < 95,
+                                    ])>
+                                        {{ number_format($survivalRate, 1) }}% VIABILITÉ
+                                    </span>
+                                    <span class="text-[6px] font-black text-slate-400">LOT {{ $batch->status }}</span>
+                                </div>
+                            </td>
+
+                            <td class="px-6 py-6">
+                                <div class="w-full flex flex-col items-center">
+                                    <div class="w-32 flex justify-between text-[8px] font-black uppercase text-slate-400 mb-1 italic">
+                                        <span>J+{{ $days }}</span>
+                                        <span>{{ (int)$percent }}%</span>
+                                    </div>
+                                    <div class="w-32 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                        <div class="h-full {{ $percent >= 90 ? 'bg-red-500' : ($percent >= 70 ? 'bg-orange-400' : 'bg-blue-500') }}" style="width: {{ $percent }}%"></div>
+                                    </div>
+                                </div>
+                            </td>
+
+                            <td class="px-8 py-6 text-right">
+                                <div class="flex justify-end gap-2">
+                                    {{-- LECTURE TOUJOURS DISPONIBLE SI AUTORISÉE --}}
+                                    @can('elevage.L')
+                                    <a href="{{ route('batches.show', $batch->id) }}" class="p-3 bg-white border border-slate-200 text-slate-400 hover:text-blue-500 hover:border-blue-200 rounded-xl transition-all shadow-sm">
+                                        <i class="fa-solid fa-eye text-xs"></i>
+                                    </a>
+                                    @endcan
+
+                                    {{-- PERMISSION M : MODIFICATION DU LOT --}}
+                                    @can('elevage.M')
+                                    <a href="{{ route('batches.edit', $batch->id) }}" class="p-3 bg-white border border-slate-200 text-slate-400 hover:text-amber-500 hover:border-amber-200 rounded-xl transition-all shadow-sm">
+                                        <i class="fa-solid fa-pen-to-square text-xs"></i>
+                                    </a>
+                                    @endcan
+                                </div>
+                            </td>
+                        </tr>
+                        @empty
+                        <tr>
+                            <td colspan="7" class="px-8 py-24 text-center">
+                                <i class="fas fa-layer-group text-slate-200 text-3xl mb-4"></i>
+                                <p class="text-slate-300 font-black uppercase tracking-[0.3em] text-[10px] italic">Aucun lot actif trouvé</p>
+                            </td>
+                        </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</x-app-layout>

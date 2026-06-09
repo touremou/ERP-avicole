@@ -1,0 +1,136 @@
+<x-app-layout>
+    <x-slot name="header">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-4">
+                <a href="{{ route('employees.index') }}" class="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-500 hover:text-slate-800 rounded-xl transition-all shadow-sm group">
+                    <i class="fas fa-times group-hover:rotate-90 transition-transform text-xs"></i>
+                    <span class="text-[10px] font-black uppercase italic tracking-widest leading-none">Liste des employés</span>
+                </a>
+
+                <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">
+                    🗄️ Archives & Corbeille
+                </h2>
+            </div>
+
+            <div class="flex items-center gap-6">
+                {{-- INDICATEUR D'ÉTAT --}}
+                <span class="hidden lg:block text-[9px] font-black text-slate-400 uppercase italic tracking-[0.2em]">
+                    Mode Restauration Système
+                </span>
+
+                {{-- BOUTON VIDER TOUT --}}
+                @if($employees->count() > 0 || $buildings->count() > 0 || $providers->count() > 0)
+                    <form action="{{ route('trash.clearAll') }}" method="POST" onsubmit="return confirm('⚠️ ACTION IRRÉVERSIBLE : Voulez-vous vraiment supprimer DÉFINITIVEMENT tous les éléments de la corbeille ?');">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="flex items-center gap-2 px-5 py-2.5 bg-red-600 text-white rounded-xl text-[10px] font-black uppercase italic tracking-widest hover:bg-red-700 transition-all shadow-lg shadow-red-600/20 group">
+                            <i class="fas fa-dumpster group-hover:animate-bounce"></i>
+                            Vider la corbeille
+                        </button>
+                    </form>
+                @endif
+            </div>
+        </div>
+    </x-slot>
+
+    <div class="py-12 italic font-bold">
+        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-16">
+            
+            {{-- SECTION EMPLOYÉS (NOUVEAU) --}}
+            <section>
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="h-[1px] w-8 bg-blue-500"></div>
+                    <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Agents & Collaborateurs Archivés</h3>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    @forelse($employees as $e)
+                        <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm flex justify-between items-center group hover:border-blue-300 transition-colors">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center text-yellow-500 text-xs">
+                                    <i class="fas fa-user-ninja"></i>
+                                </div>
+                                <div>
+                                    <p class="text-xs font-black text-slate-800 uppercase leading-none">{{ $e->first_name }} {{ $e->last_name }}</p>
+                                    <p class="text-[8px] text-slate-400 uppercase italic mt-1 leading-none">Supprimé le {{ $e->deleted_at->format('d/m/Y') }}</p>
+                                </div>
+                            </div>
+                            <form action="{{ route('trash.restore', ['employee', $e->id]) }}" method="POST">
+                                @csrf
+                                <button type="submit" class="bg-slate-900 text-white p-3 rounded-xl hover:bg-blue-600 transition-all shadow-lg flex items-center gap-2 group/btn">
+                                    <i class="fas fa-undo-alt text-[10px]"></i>
+                                    <span class="hidden group-hover/btn:block text-[8px] uppercase font-black">Restaurer</span>
+                                </button>
+                            </form>
+                        </div>
+                    @empty
+                        <div class="col-span-full bg-slate-50/50 border-2 border-dashed border-slate-100 rounded-[2.5rem] p-12 text-center">
+                            <i class="fas fa-user-slash text-slate-200 text-2xl mb-3 block"></i>
+                            <p class="text-[10px] text-slate-300 uppercase italic tracking-widest font-black leading-none">Aucun agent en corbeille.</p>
+                        </div>
+                    @endforelse
+                </div>
+            </section>
+
+            {{-- SECTION BÂTIMENTS --}}
+            <section>
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="h-[1px] w-8 bg-emerald-500"></div>
+                    <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Unités désactivées</h3>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    @forelse($buildings as $b)
+                        <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm flex justify-between items-center group hover:border-emerald-300 transition-colors">
+                            <div>
+                                <p class="text-xs font-black text-slate-800 uppercase leading-none">{{ $b->name }}</p>
+                                <p class="text-[8px] text-slate-400 uppercase italic mt-1 leading-none">Supprimé le {{ $b->deleted_at->format('d/m/Y') }}</p>
+                            </div>
+                            <form action="{{ route('trash.restore', ['building', $b->id]) }}" method="POST">
+                                @csrf
+                                <button type="submit" class="bg-slate-900 text-white p-3 rounded-xl hover:bg-emerald-600 transition-all shadow-lg flex items-center gap-2 group/btn">
+                                    <i class="fas fa-undo-alt text-[10px]"></i>
+                                    <span class="hidden group-hover/btn:block text-[8px] uppercase font-black">Restaurer</span>
+                                </button>
+                            </form>
+                        </div>
+                    @empty
+                        <div class="col-span-full bg-slate-50/50 border-2 border-dashed border-slate-100 rounded-[2.5rem] p-12 text-center">
+                            <i class="fas fa-warehouse text-slate-200 text-2xl mb-3 block"></i>
+                            <p class="text-[10px] text-slate-300 uppercase italic tracking-widest font-black leading-none">Aucun bâtiment en corbeille.</p>
+                        </div>
+                    @endforelse
+                </div>
+            </section>
+
+            {{-- SECTION FOURNISSEURS --}}
+            <section>
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="h-[1px] w-8 bg-orange-500"></div>
+                    <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Anciens Fournisseurs</h3>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    @forelse($providers as $p)
+                        <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm flex justify-between items-center group hover:border-orange-300 transition-colors">
+                            <div>
+                                <p class="text-xs font-black text-slate-800 uppercase leading-none">{{ $p->name }}</p>
+                                <p class="text-[8px] text-slate-400 uppercase italic mt-1 leading-none">Inactif depuis {{ $p->deleted_at->diffForHumans() }}</p>
+                            </div>
+                            <form action="{{ route('trash.restore', ['provider', $p->id]) }}" method="POST">
+                                @csrf
+                                <button type="submit" class="bg-slate-900 text-white p-3 rounded-xl hover:bg-orange-600 transition-all shadow-lg flex items-center gap-2 group/btn">
+                                    <i class="fas fa-undo-alt text-[10px]"></i>
+                                    <span class="hidden group-hover/btn:block text-[8px] uppercase font-black">Restaurer</span>
+                                </button>
+                            </form>
+                        </div>
+                    @empty
+                        <div class="col-span-full bg-slate-50/50 border-2 border-dashed border-slate-100 rounded-[2.5rem] p-12 text-center">
+                            <i class="fas fa-truck-loading text-slate-200 text-2xl mb-3 block"></i>
+                            <p class="text-[10px] text-slate-300 uppercase italic tracking-widest font-black leading-none">Aucun fournisseur archivé.</p>
+                        </div>
+                    @endforelse
+                </div>
+            </section>
+
+        </div>
+    </div>
+</x-app-layout>

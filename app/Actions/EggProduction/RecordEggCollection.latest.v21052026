@@ -1,0 +1,43 @@
+<?php
+
+namespace App\Actions\EggProduction;
+
+use App\Models\Batch;
+use App\Models\EggProduction;
+use Illuminate\Support\Facades\DB;
+
+/**
+ * Action : Enregistrement d'une collecte d'œufs brute.
+ *
+ * Calcule le taux de ponte sur l'effectif vivant réel (current_quantity)
+ * et enregistre la production avec is_graded = false.
+ *
+ * Corrige O-08 : laying_rate calculé depuis current_quantity (effectif vivant
+ * réel) et non depuis initial_quantity.
+ */
+class RecordEggCollection
+{
+    public function execute(array $data): EggProduction
+    {
+        $batch = Batch::findOrFail($data['batch_id']);
+
+        // O-08 corrigé : taux de ponte sur effectif VIVANT (current_quantity),
+        // pas initial_quantity qui inclut les mortalités passées
+        $layingRate = $batch->current_quantity > 0
+            ? round(($data['total_eggs_collected'] / $batch->current_quantity) * 100, 2)
+            : 0;
+
+        return DB::transaction(function () use ($data, $layingRate) {
+            return EggProduction::create([
+                'batch_id'             => $data['batch_id'],
+                'production_date'      => $data['production_date'],
+                'total_eggs_collected' => $data['total_eggs_collected'],
+                'broken_eggs'          => $data['broken_eggs'] ?? 0,
+                'small_eggs'           => $data['small_eggs'] ?? 0,
+                'laying_rate'          => $layingRate,
+                'observations'         => $data['observations'] ?? null,
+                'is_graded'            => false,
+            ]);
+        });
+    }
+}

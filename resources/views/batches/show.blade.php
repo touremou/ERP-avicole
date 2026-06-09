@@ -1,0 +1,738 @@
+<x-app-layout>
+    @php
+        $today = now()->format('Y-m-d');
+        $yesterday = now()->subDay()->format('Y-m-d');
+
+        // Accessors du model (PAS de requêtes SQL ici)
+        $batchAge = $batch->age;
+        $currentWeek = ceil($batchAge / 7);
+
+        // Stats de Ponte (une seule requête via collection eager-loaded)
+        $prodToday = $batch->eggProductions->where('production_date', $today)->first();
+        $prodYesterday = $batch->eggProductions->where('production_date', $yesterday)->first();
+        $rateToday = $prodToday ? $prodToday->laying_rate : 0;
+        $rateYesterday = $prodYesterday ? $prodYesterday->laying_rate : 0;
+        $diffPonte = $rateToday - $rateYesterday;
+
+        // Mortalité — utilise les accessors du model (source de vérité)
+        $totalMortality = $batch->total_mortality;
+        $mortalityRate = $batch->mortality_rate;
+        
+        // Mortalité du jour (depuis la collection eager-loaded, PAS une nouvelle requête)
+        $mortToday = $batch->dailyChecks->where('check_date', $today)->sum('mortality');
+        $mortYesterday = $batch->dailyChecks->where('check_date', $yesterday)->sum('mortality');
+        $diffMort = $mortToday - $mortYesterday;
+
+        // Type et indicateurs
+        $type = strtolower($batch->type);
+        $isChair = in_array($type, ['chair', 'poulet de chair']);
+        
+        // Poids (depuis la collection eager-loaded)
+        $sortedChecks = $batch->dailyChecks->sortByDesc('check_date');
+        $lastCheck = $sortedChecks->first();
+        $prevCheck = $sortedChecks->skip(1)->first();
+        $currentWeight = $lastCheck ? ($lastCheck->avg_weight * 1000) : 0; 
+        $prevWeight = $prevCheck ? ($prevCheck->avg_weight * 1000) : 0;
+        $weightGain = ($currentWeight > 0 && $prevWeight > 0) ? ($currentWeight - $prevWeight) : 0;
+
+        // Normes (une seule requête, acceptable)
+        $norm = \App\Models\ProductionNorm::where('batch_type', $batch->type)
+                    ->where('week_number', $currentWeek)
+                    ->where('model_name', $batch->model_name)
+                    ->first();
+
+        $currentPhase = $batch->current_phase;
+        $targetWeight = $norm->target_weight ?? 0;
+        $targetLayingRate = $norm->target_laying_rate ?? 0;
+        $performanceWeight = ($targetWeight > 0 && $currentWeight > 0) ? ($currentWeight / $targetWeight) * 100 : 100;
+
+        // FCR — utilise l'accessor du model
+        $fcr = $batch->fcr;
+
+        // Effectif vivant — SOURCE DE VÉRITÉ = current_quantity
+        // Plus de calcul initial_quantity - totalMortality (qui ignorait quarantaines/tris)
+        $currentEffectif = $batch->current_quantity;
+        
+        // Aliment total (depuis la collection eager-loaded)
+        $totalFeed = $batch->dailyChecks->sum('feed_consumed');
+        
+        $showPonte = in_array($batch->type, ['ponte', 'repro', 'reproducteur']);
+        $colCount = 3 + ($showPonte ? 1 : 0) + ($isChair ? 1 : 0);
+    @endphp
+
+    <x-slot name="header">
+        {{-- ALERTES GLOBALES --}}
+        @if ($errors->any())
+            <div class="mb-6 p-4 bg-red-50 border-l-4 border-red-600 rounded-2xl shadow-sm animate-pulse text-left italic">
+                <p class="text-[10px] font-black text-red-400 uppercase tracking-widest italic leading-none mb-2">Alerte Système</p>
+                <ul class="list-disc pl-5 text-sm font-bold text-red-700">
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
+
+        @if (session('success'))
+            <div class="mb-6 p-4 bg-emerald-50 border-l-4 border-emerald-600 rounded-2xl shadow-sm text-left italic">
+                <p class="text-[10px] font-black text-emerald-400 uppercase tracking-widest italic leading-none mb-1">Opération réussie</p>
+                <p class="text-sm font-bold text-emerald-700">{{ session('success') }}</p>
+            </div>
+        @endif
+
+        <div class="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6">
+            {{-- ZONE 1 : IDENTITÉ & NAVIGATION --}}
+            <div class="flex items-center gap-5 text-left">
+                <a href="{{ route('batches.index') }}" 
+                class="flex items-center justify-center w-12 h-12 bg-white border border-slate-200 text-slate-400 hover:text-blue-600 hover:border-blue-100 rounded-2xl transition-all shadow-sm group">
+                    <i class="fa-solid fa-arrow-left text-sm group-hover:-translate-x-1 transition-transform"></i>
+                </a>
+                
+                <div class="space-y-1">
+                    <div class="flex items-center gap-3">
+                        <h2 class="text-3xl font-black text-slate-900 uppercase italic tracking-tighter leading-none">
+                            {{ $batch->code }}
+                        </h2>
+                        <div @class([
+                            'flex items-center gap-1.5 px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest italic shadow-sm',
+                            'bg-emerald-500 text-white' => $batch->status === 'Actif',
+                            'bg-slate-200 text-slate-600' => $batch->status !== 'Actif'
+                        ])>
+                            <span class="relative flex h-2 w-2">
+                                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                                <span class="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
+                            </span>
+                            {{ $batch->status }}
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest italic text-slate-400">
+                        <span class="text-blue-500"><i class="fa-solid fa-location-dot mr-1"></i> {{ $batch->building->name }}</span>
+                        <span class="text-slate-200">|</span>
+                        <span class="bg-slate-100 px-2 py-0.5 rounded text-slate-500">{{ $batch->type }}</span>
+                        <span class="text-slate-200">|</span>
+                        <span class="text-rose-500"><i class="fa-solid fa-dna mr-1"></i> {{ $batch->production_phase ?? 'Phase Initiale' }}</span>
+                    </div>
+                </div>
+            </div>
+
+            {{-- ZONE 2 & 3 : ACTIONS --}}
+            <div class="flex flex-col sm:flex-row items-center gap-4 w-full xl:w-auto">
+                @if($batch->status === 'Actif')
+                    <div class="flex items-center bg-white p-1.5 rounded-[1.5rem] border border-slate-200 shadow-sm w-full sm:w-auto">
+                        @can('elevage.M')
+                        <a href="{{ route('batches.edit', $batch->id) }}" 
+                        class="p-3 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all" 
+                        title="Modifier les paramètres">
+                            <i class="fa-solid fa-gear"></i>
+                        </a>
+                        
+                        <div class="w-px h-6 bg-slate-200 mx-1"></div>
+
+                        <button onclick="document.getElementById('modal-transfer').classList.remove('hidden')" 
+                                class="flex items-center gap-2 px-5 py-3 bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white rounded-xl font-black text-[10px] uppercase tracking-widest transition-all italic">
+                            <i class="fa-solid fa-right-left"></i>
+                            Mutation
+                        </button>
+
+                        <a href="{{ route('batches.close_form', $batch->id) }}" 
+                        class="flex items-center gap-2 px-5 py-3 text-slate-400 hover:text-orange-600 hover:bg-orange-50 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all italic">
+                            <i class="fa-solid fa-flag-checkered"></i>
+                            Clôture
+                        </a>
+                        @endcan
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+                        @can('elevage.C')
+                        {{-- BOUTON STOCK (AFFECTATION DIRECTE) --}}
+                        <button type="button" onclick="event.stopPropagation(); openFeedModal()" 
+                                class="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase italic hover:bg-orange-500 transition-all shadow-xl border-none cursor-pointer group">
+                            <i class="fa-solid fa-truck-ramp-box text-orange-400 group-hover:text-white transition-colors"></i> Achat direct
+                        </button>
+                        
+                        {{-- BOUTON SUIVI (DAILY CHECK) --}}
+                        <a href="{{ route('daily-checks.create', ['batch_id' => $batch->id]) }}" 
+                        class="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-4 bg-blue-600 text-white rounded-2xl font-black text-[10px] uppercase italic hover:bg-blue-500 transition-all shadow-xl no-underline">
+                            <i class="fa-solid fa-clipboard-check text-blue-200"></i> Suivi Quotidien
+                        </a>
+                        
+                        {{-- BOUTON SANTÉ --}}
+                        <a href="{{ route('health.create', ['batch_id' => $batch->id]) }}" 
+                        class="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-4 bg-rose-600 text-white rounded-2xl font-black text-[10px] uppercase italic hover:bg-rose-500 transition-all shadow-xl no-underline">
+                            <i class="fa-solid fa-heart-pulse text-rose-200"></i> Santé 
+                        </a>
+                        
+                        {{-- BOUTON COLLECTE (SI PONTE) --}}
+                        @if($showPonte)
+                            <a href="{{ route('egg-productions.create', ['batch_id' => $batch->id]) }}" 
+                            class="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-4 bg-emerald-500 text-white rounded-2xl font-black text-[10px] uppercase italic hover:bg-emerald-400 transition-all shadow-xl no-underline">
+                                <i class="fa-solid fa-egg text-emerald-200"></i> Collecte
+                            </a>
+                        @endif
+                        @endcan
+                    </div>
+                @endif
+            </div>
+        </div>
+    </x-slot>
+
+    {{-- INDICATEURS EN HAUT --}}
+    <div class="grid grid-cols-2 md:grid-cols-{{ $colCount }} gap-4 mb-8 -mt-6 relative z-20 px-4 lg:px-0 font-bold italic">
+        @if($showPonte)
+        <div class="bg-white p-5 rounded-[2rem] shadow-xl shadow-emerald-500/5 border border-emerald-50 flex items-center gap-4 group transition-transform hover:scale-[1.02]">
+            <div class="w-12 h-12 bg-emerald-500 rounded-2xl flex items-center justify-center text-white shadow-lg"><i class="fa-solid fa-egg text-lg group-hover:animate-bounce"></i></div>
+            <div class="text-left leading-none">
+                <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1 italic">Ponte</p>
+                <div class="flex items-baseline gap-1">
+                    <h4 class="text-xl font-black text-slate-800 tracking-tighter">{{ number_format($rateToday, 1) }}%</h4>
+                    <span class="text-[9px] font-black {{ $diffPonte >= 0 ? 'text-emerald-500' : 'text-red-500' }}">{{ $diffPonte >= 0 ? '↑' : '↓' }}{{ abs(number_format($diffPonte, 1)) }}</span>
+                </div>
+                @if($targetLayingRate > 0)
+                <p class="text-[7px] font-black text-slate-300 mt-1 uppercase italic tracking-tighter">Cible: {{ $targetLayingRate }}%</p>
+                @endif
+            </div>
+        </div>
+        @endif
+
+        <div class="bg-white p-5 rounded-[2rem] shadow-xl shadow-blue-500/5 border border-blue-50 flex flex-col justify-center group transition-transform hover:scale-[1.02]">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 bg-blue-500 rounded-2xl flex items-center justify-center text-white shadow-lg"><i class="fa-solid fa-weight-scale text-lg"></i></div>
+                <div class="text-left leading-none">
+                    <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1 italic">Poids Moyen</p>
+                    <div class="flex items-baseline gap-1">
+                        <h4 class="text-xl font-black text-slate-800 tracking-tighter">{{ number_format($currentWeight, 0) }}g</h4>
+                        @if($weightGain > 0)<span class="text-[9px] font-black text-emerald-500">+{{ $weightGain }}g</span>@endif
+                    </div>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 mt-3 px-1">
+                <div class="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                    <div @class([
+                        'h-full transition-all duration-1000',
+                        'bg-emerald-500' => $performanceWeight >= 95,
+                        'bg-orange-500' => $performanceWeight < 95 && $performanceWeight >= 85,
+                        'bg-red-500' => $performanceWeight < 85,
+                    ]) style="width: {{ min($performanceWeight, 100) }}%"></div>
+                </div>
+                <span class="text-[7px] font-black uppercase text-slate-400">Norme: {{ number_format($performanceWeight, 0) }}%</span>
+            </div>
+        </div>
+
+        @if($isChair)
+        <div @class(['p-5 rounded-[2rem] shadow-xl border flex items-center gap-4 group transition-transform hover:scale-[1.02]', 'bg-white border-orange-50' => $fcr <= 1.8, 'bg-red-50 border-red-100 animate-pulse' => $fcr > 1.8])>
+            <div @class(['w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg', 'bg-orange-500' => $fcr <= 1.8, 'bg-red-600' => $fcr > 1.8])><i class="fa-solid fa-chart-pie text-lg"></i></div>
+            <div class="text-left leading-none">
+                <p @class(['text-[8px] font-black uppercase tracking-widest mb-1 italic', 'text-slate-400' => $fcr <= 1.8, 'text-red-400' => $fcr > 1.8])>Ratio (IC)</p>
+                <h4 @class(['text-xl font-black tracking-tighter', 'text-slate-800' => $fcr <= 1.8, 'text-red-700' => $fcr > 1.8])>{{ number_format($fcr, 2) }}</h4>
+            </div>
+        </div>
+        @endif
+
+        <div class="bg-white p-5 rounded-[2rem] shadow-xl shadow-red-500/5 border border-red-50 flex items-center gap-4 group transition-transform hover:scale-[1.02]">
+            <div class="w-12 h-12 bg-red-600 rounded-2xl flex items-center justify-center text-white shadow-lg"><i class="fa-solid fa-skull-crossbones text-lg group-hover:rotate-12 transition-transform"></i></div>
+            <div class="text-left leading-none">
+                <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1 italic">Pertes Lot</p>
+                <div class="flex items-baseline gap-1">
+                    <h4 class="text-xl font-black text-slate-800 tracking-tighter">{{ $totalMortality }}</h4>
+                    <span @class(['text-[9px] font-black', 'text-red-500' => $diffMort > 0, 'text-emerald-500' => $diffMort < 0, 'text-slate-300' => $diffMort == 0])>
+                        @if($diffMort != 0){!! $diffMort > 0 ? '↑' : '↓' !!}{{ abs($diffMort) }}@else=@endif
+                    </span>
+                </div>
+                <p class="text-[7px] font-black text-red-400 uppercase mt-1">Taux : {{ number_format($mortalityRate, 1) }}%</p>
+            </div>
+        </div>
+
+        <div class="bg-slate-900 p-5 rounded-[2rem] shadow-xl flex items-center gap-4 group transition-transform hover:scale-[1.02]">
+            <div class="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center text-blue-400 border border-white/5 shadow-inner"><i class="fa-solid fa-calendar-check text-lg"></i></div>
+            <div class="text-left leading-none">
+                <p class="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1 italic">{{ $currentPhase }}</p>
+                <h4 class="text-xl font-black text-white tracking-tighter">J-{{ number_format($batchAge, 0) }} <span class="text-[9px] text-blue-400 font-black ml-1">S-{{ $currentWeek }}</span></h4>
+            </div>
+        </div>
+    </div>
+
+    <div class="py-12 italic font-bold text-left">
+        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+            {{-- BARRE DE CYCLE --}}
+            <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm mb-8 relative overflow-hidden">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest italic flex items-center gap-2 leading-none"><i class="fas fa-arrows-spin text-blue-500"></i> Avancement du Cycle de Vie</h3>
+                    <span class="text-[10px] font-black text-slate-800 uppercase italic">Phase : {{ $currentPhase }}</span>
+                </div>
+                <div class="w-full h-3 bg-slate-100 rounded-full overflow-hidden flex shadow-inner">
+                    @php
+                        $maxDays = $isChair ? 45 : 540;
+                        $progress = min(($batchAge / $maxDays) * 100, 100);
+                    @endphp
+                    <div class="h-full bg-blue-600 transition-all duration-1000 shadow-lg" style="width: {{ $progress }}%"></div>
+                </div>
+                <div class="flex justify-between mt-2 text-[8px] font-black text-slate-400 uppercase">
+                    <span>Arrivée</span>
+                    <span>Sortie Estimée (J-{{ $maxDays }})</span>
+                </div>
+            </div>
+
+            {{-- GRAPHIQUES --}}
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                <div class="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
+                    <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest italic mb-6 leading-none"><i class="fas fa-skull-crossbones text-red-500 mr-2"></i> Courbe de Mortalité (%)</h3>
+                    <div class="h-[300px]"><canvas id="mortalityChart"></canvas></div>
+                </div>
+                <div class="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
+                    <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest italic mb-6 leading-none"><i class="fas fa-tint text-blue-500 mr-2"></i> Ration Aliment (kg) vs Eau (L)</h3>
+                    <div class="h-[300px]"><canvas id="hydrationChart"></canvas></div>
+                </div>
+            </div>
+
+            {{-- CALENDRIER SANITAIRE --}}
+            <div class="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm mb-8">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest italic flex items-center gap-2 leading-none"><i class="fas fa-calendar-check text-purple-500"></i> Calendrier Sanitaire</h3>
+                </div>
+                <div class="flex overflow-x-auto gap-4 pb-4 no-scrollbar">
+                    @if($batch->protocol)
+                        @foreach($batch->protocol->steps as $step)
+                            @php 
+                                $vaxDate = \Carbon\Carbon::parse($batch->transfer_date ?? $batch->start_date ?? $batch->arrival_date)->addDays($step->day_number)->startOfDay();
+                                $isDone = $batch->healthChecks->filter(fn($i) => 
+                                    str_contains(strtolower($i->product_name), strtolower($step->action_name))
+                                )->isNotEmpty();
+                                $isPast = $vaxDate->isPast() && !$isDone;
+                                $isToday = $vaxDate->isToday() && !$isDone;
+                            @endphp
+
+                            <div @class([
+                                'flex-none w-52 p-5 rounded-[2.5rem] border transition-all flex flex-col justify-between min-h-[160px]', 
+                                'bg-emerald-50 border-emerald-100 font-black' => $isDone, 
+                                'bg-red-50 border-red-200 shadow-lg animate-pulse' => $isPast, 
+                                'bg-white border-blue-200 shadow-md' => $isToday,
+                                'bg-white border-slate-100 opacity-60' => !$isDone && !$isPast && !$isToday
+                            ])>
+                                <div>
+                                    <span @class(['text-[9px] font-black px-2 py-1 rounded-lg italic text-white', 'bg-emerald-600' => $isDone, 'bg-red-600 animate-pulse' => $isToday, 'bg-slate-900' => !$isDone && !$isToday])>Jour {{ $step->day_number }}</span>
+                                    <p class="text-[11px] font-black text-slate-800 uppercase leading-tight mt-3">{{ $step->action_name }}</p>
+                                    <p class="text-[9px] font-bold italic text-slate-400">{{ $vaxDate->translatedFormat('d F Y') }}</p>
+                                </div>
+                                @can('elevage.M')
+                                    @if(!$isDone && $batch->status === 'Actif')
+                                        <a href="{{ route('health.create', ['batch_id' => $batch->id, 'product_name' => $step->action_name]) }}" class="block w-full py-2 bg-slate-900 text-white text-center rounded-xl text-[8px] font-black uppercase">Enregistrer</a>
+                                    @endif
+                                @endcan
+                            </div>
+                        @endforeach
+                    @endif
+                </div>
+            </div>
+
+            {{-- STOCKS DYNAMIQUES --}}
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 text-left">
+                @php
+                    $batchType = ucfirst(strtolower($batch->type ?? 'Chair'));
+                    if ($batchType === 'Ponte' or $batchType === 'Reproducteur') {
+                        $feedPhases = [
+                            'Ponte Démarrage (Poussin)', 
+                            'Ponte Croissance (Poulette)', 
+                            'Ponte 1 (Pic de ponte)', 
+                            'Ponte 2 (Entretien)'
+                        ];
+                    } else {
+                        $feedPhases = [
+                            'Chair Démarrage', 
+                            'Chair Croissance', 
+                            'Chair Finition'
+                        ];
+                    }
+                @endphp
+                @foreach($feedPhases as $phaseName)
+                    @php 
+                        $stockItem = \App\Models\Stock::where('item_name', $phaseName)
+                                        ->where('category', 'conso')
+                                        ->first();
+                        
+                        if (!$stockItem) {
+                            $stockItem = \App\Models\Stock::where('item_name', 'LIKE', "%$phaseName%")
+                                            ->where('category', 'conso')
+                                            ->first();
+                        }
+                        $qty = $stockItem ? (float)$stockItem->current_quantity : 0;
+                        $unit = $stockItem ? $stockItem->unit : 'KG';
+                        $isSac = ($unit === 'Sac');
+                        $availableKg = $isSac ? ($qty * 50) : $qty;
+                    @endphp
+
+                    <div @class([
+                        'bg-white p-6 rounded-[2.5rem] border shadow-sm relative overflow-hidden group transition-all',
+                        'border-emerald-200 bg-emerald-50/20' => $stockItem && $stockItem->current_quantity > 0,
+                        'border-slate-100 opacity-60' => !$stockItem || $stockItem->current_quantity <= 0
+                    ])>
+                        <p class="text-[8px] uppercase text-slate-400 mb-2 tracking-widest italic font-black">
+                            {{ str_replace(['Chair ', 'Ponte '], '', $phaseName) }}
+                        </p>
+                        @if($stockItem)
+                            <h4 class="text-xl font-black text-slate-800 leading-none tracking-tighter">
+                                {{ number_format($availableKg, 1) }} <small class="text-[10px] text-slate-400">kg</small>
+                            </h4>
+                            <p class="text-[7px] {{ $isSac ? 'text-emerald-600' : 'text-blue-500' }} mt-2 font-black uppercase italic">
+                                {{ $isSac ? 'Soit ' . number_format($qty, 1) . ' Sacs' : 'Stock en Vrac' }}
+                            </p>
+                        @else
+                            <h4 class="text-sm font-black text-slate-300 italic leading-none">Non créé</h4>
+                            <p class="text-[7px] text-slate-300 mt-2 font-black uppercase italic">Vérifier Inventaire</p>
+                        @endif
+                    </div>
+                @endforeach
+            </div>
+
+            {{-- HISTORIQUE FLUX & APPROVISIONNEMENTS --}}
+            <div class="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden mb-8 text-left italic font-bold">
+                <div class="px-8 py-6 border-b border-slate-50 flex justify-between items-center bg-slate-50/30">
+                    <h3 class="text-[10px] font-black text-slate-800 uppercase italic tracking-widest flex items-center gap-2">
+                        <i class="fa-solid fa-conveyor-belt-arm text-orange-500"></i> Journal des Flux & Approvisionnements
+                    </h3>
+                    <span class="px-3 py-1 bg-slate-100 text-slate-500 rounded-full text-[7px] font-black uppercase">
+                        Secteur {{ $batch->type }}
+                    </span>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="text-[8px] font-black uppercase text-slate-400 border-b border-slate-50 italic">
+                                <th class="px-8 py-4">Date</th>
+                                <th class="px-8 py-4">Article</th>
+                                <th class="px-8 py-4 text-center">Origine</th>
+                                <th class="px-8 py-4 text-center">Quantité</th>
+                                <th class="px-8 py-4 text-right">Montant</th>
+                                <th class="px-8 py-4 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-50 text-[10px]">
+                            @php
+                                $targetSectors = in_array($batch->type, ['Ponte', 'Reproducteur']) ? ['Ponte'] : ['Chair'];
+                                $feedStockIds = \App\Models\Stock::where('category', 'conso')
+                                    ->where(function($q) use ($targetSectors) {
+                                        $q->whereIn('metadata->poultry_type', $targetSectors)
+                                        ->orWhere('item_name', 'LIKE', $targetSectors[0] . '%');
+                                    })
+                                    ->pluck('id');
+
+                                $movements = \App\Models\StockMovement::whereIn('stock_id', $feedStockIds)
+                                                ->where('notes', 'LIKE', "%{$batch->code}%")
+                                                ->latest()
+                                                ->get();
+
+                                $purchases = $batch->feedPurchases;
+                            @endphp
+
+                            @foreach($purchases->sortByDesc('purchase_date') as $purchase)
+                                <tr class="hover:bg-blue-50/30 transition-colors border-l-4 border-l-emerald-500">
+                                    <td class="px-8 py-4 text-slate-500">{{ \Carbon\Carbon::parse($purchase->purchase_date)->format('d/m/Y') }}</td>
+                                    <td class="px-8 py-4">
+                                        <span class="text-slate-800 uppercase font-black">{{ $purchase->feed_type }}</span>
+                                        <br><span class="text-[8px] text-slate-400 italic">Fournisseur : {{ $purchase->supplier ?? '--' }}</span>
+                                    </td>
+                                    <td class="px-8 py-4 text-center">
+                                        <span class="bg-emerald-100 text-emerald-700 text-[7px] px-2 py-1 rounded-md uppercase font-black italic">Achat</span>
+                                    </td>
+                                    <td class="px-8 py-4 text-center text-emerald-600 font-black">+ {{ number_format($purchase->quantity, 1) }} kg</td>
+                                    <td class="px-8 py-4 text-right"><span class="text-slate-900 font-black">{{ number_format($purchase->unit_price, 0) }} GNF</span></td>
+                                    <td class="px-8 py-4 text-right">
+                                        <div class="flex justify-end gap-3">
+                                            @if($batch->status === 'Actif')
+                                                @can('elevage.M')
+                                                <a href="{{ route('feed-purchases.edit', $purchase->id) }}" class="text-slate-300 hover:text-blue-600 transition"><i class="fa-solid fa-pen-to-square"></i></a>
+                                                @endcan
+                                                @can('elevage.S')
+                                                <form action="{{ route('feed-purchases.destroy', $purchase->id) }}" method="POST" onsubmit="return confirm('Annuler cet achat ?')">
+                                                    @csrf @method('DELETE')
+                                                    <button type="submit" class="text-slate-300 hover:text-red-500 transition"><i class="fa-solid fa-trash-can"></i></button>
+                                                </form>
+                                                @endcan
+                                            @else
+                                                <i class="fa-solid fa-lock text-slate-200" title="Lot clôturé"></i>
+                                            @endif
+                                        </div>
+                                    </td>
+                                </tr>
+                            @endforeach
+
+                            @foreach($movements->where('type', 'out')->sortByDesc('created_at') as $m)
+                                <tr class="hover:bg-rose-50/30 transition-colors border-l-4 border-l-rose-500">
+                                    <td class="px-8 py-4 text-slate-400 font-medium">{{ $m->created_at->format('d/m H:i') }}</td>
+                                    <td class="px-8 py-4 text-slate-800 uppercase font-black">{{ $m->stock->item_name ?? 'N/A' }}</td>
+                                    <td class="px-8 py-4 text-center">
+                                        <span class="bg-rose-100 text-rose-700 text-[7px] px-2 py-1 rounded-md uppercase font-black italic">Consommation</span>
+                                    </td>
+                                    <td class="px-8 py-4 text-center text-rose-600 font-black">- {{ number_format($m->quantity, 2) }} {{ $m->stock->unit ?? '' }}</td>
+                                    <td class="px-8 py-4 text-right text-slate-400 italic font-medium leading-tight">{{ $m->notes }}</td>
+                                    <td class="px-8 py-4 text-right">
+                                        <i class="fa-solid fa-circle-check text-emerald-500/30"></i>
+                                    </td>
+                                </tr>
+                            @endforeach
+
+                            @if($purchases->isEmpty() && $movements->isEmpty())
+                                <tr>
+                                    <td colspan="6" class="px-8 py-10 text-center text-slate-300 uppercase text-[9px] tracking-widest">
+                                        Aucun mouvement enregistré
+                                    </td>
+                                </tr>
+                            @endif
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {{-- HISTORIQUE DAILY --}}
+            <div class="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden mb-8 text-left italic font-bold">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="text-[8px] font-black text-slate-400 uppercase bg-slate-50/50 border-b border-slate-50 italic leading-none">
+                            <th class="px-6 py-5">Date / Jour</th>
+                            <th class="px-4 py-5 text-red-500 text-center">Morts</th>
+                            <th class="px-4 py-5 text-blue-600 text-center">Conso. (L/kg)</th>
+                            <th class="px-4 py-5 text-orange-500 text-center">T° Moyenne</th>
+                            <th class="px-4 py-5 text-emerald-600 text-center">Poids (g)</th>
+                            <th class="px-4 py-5 text-purple-600 text-center">Mvts (Inf.)</th>
+                            <th class="px-6 py-5 text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-50 text-[10px]">
+                        @foreach($batch->dailyChecks->sortByDesc('check_date') as $check)
+                            @php $checkAge = \Carbon\Carbon::parse($batch->arrival_date)->diffInDays($check->check_date) + 1; @endphp
+                            <tr class="hover:bg-slate-50/80 transition-all">
+                                <td class="px-6 py-5">
+                                    <p class="font-black text-slate-800 text-sm leading-none">{{ $check->check_date->format('d/m/y') }}</p>
+                                    <p class="text-[8px] font-bold text-blue-400 mt-1 uppercase tracking-widest leading-none">Jour {{ $checkAge }}</p>
+                                </td>
+                                <td class="px-4 py-5 text-center font-black {{ $check->mortality > 0 ? 'text-red-600 text-sm' : 'text-slate-200' }}">{{ $check->mortality }}</td>
+                                <td class="px-4 py-5 text-center leading-tight">
+                                    <p class="font-black text-slate-700">{{ number_format($check->water_consumed, 1) }}L</p>
+                                    <p class="text-blue-500 font-black">{{ number_format($check->feed_consumed, 1) }}kg</p>
+                                </td>
+                                <td class="px-4 py-5 text-center font-black text-slate-700">{{ $check->avg_temperature ? number_format($check->avg_temperature, 1).'°C' : '--' }}</td>
+                                <td class="px-4 py-5 text-center font-black text-emerald-600">{{ $check->avg_weight ? number_format($check->avg_weight * 1000, 0) : '--' }} g</td>
+                                <td class="px-4 py-5 text-center leading-none">
+                                    @if($check->qty_quarantine_in > 0) <span class="text-orange-500 font-black text-[8px] block">+{{ $check->qty_quarantine_in }}</span> @endif
+                                    @if($check->qty_quarantine_out > 0) <span class="text-emerald-500 font-black text-[8px] block">-{{ $check->qty_quarantine_out }}</span> @endif
+                                    @if(!$check->qty_quarantine_in && !$check->qty_quarantine_out) <span class="text-slate-200">-</span> @endif
+                                </td>
+                                <td class="px-8 py-4 text-right flex justify-end gap-3">
+                                    @if($batch->status === 'Actif')
+                                        @can('elevage.M')
+                                        <a href="{{ route('daily-checks.edit', $check->id) }}" class="text-slate-300 hover:text-blue-500 transition"><i class="fa-solid fa-pen-to-square text-[10px]"></i></a>
+                                        @endcan
+                                        @can('elevage.S')
+                                        <form action="{{ route('daily-checks.destroy', $check->id) }}" method="POST" onsubmit="return confirm('Supprimer ?')">
+                                            @csrf @method('DELETE')
+                                            <button type="submit" class="text-slate-300 hover:text-red-500 transition"><i class="fa-solid fa-trash-can text-[10px]"></i></button>
+                                        </form>
+                                        @endcan
+                                    @endif
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+
+            {{-- JOURNAL DES MUTATIONS --}}
+            <div class="mt-12 bg-white rounded-[3rem] p-10 border border-slate-100 shadow-sm text-left font-bold italic">
+                <div class="flex items-center gap-4 mb-10">
+                    <div class="w-12 h-12 bg-rose-50 rounded-2xl flex items-center justify-center text-rose-500 shadow-sm"><i class="fa-solid fa-timeline text-xl"></i></div>
+                    <div>
+                        <h3 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">Journal des Mutations</h3>
+                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-2 italic">Traçabilité inter-bâtiments</p>
+                    </div>
+                </div>
+
+                <div class="relative space-y-8 before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-200 before:to-transparent">
+                    @php $history = is_array($batch->transfer_history) ? array_reverse($batch->transfer_history) : []; @endphp
+                    @forelse($history as $log)
+                        <div class="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group">
+                            <div class="flex items-center justify-center w-10 h-10 rounded-full border border-white bg-slate-900 text-white shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 transition-transform duration-300 group-hover:scale-125 z-10">
+                                <i class="fa-solid fa-check text-[10px]"></i>
+                            </div>
+                            <div class="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] bg-slate-50 p-6 rounded-[2rem] border border-slate-100 shadow-sm hover:border-rose-200 transition-colors">
+                                <div class="flex items-center justify-between mb-4">
+                                    <time class="text-[10px] font-black text-rose-500 uppercase italic leading-none">{{ \Carbon\Carbon::parse($log['date'])->format('d M Y') }}</time>
+                                    <p class="text-[10px] font-black uppercase text-slate-400">
+                                        Opérateur : {{ $log['performed_by'] ?? 'Système' }}
+                                    </p>
+                                </div>
+                                <div class="flex items-center gap-3 mb-4">
+                                    <span class="text-xs font-black text-slate-400 uppercase italic">{{ $log['from_building'] }}</span>
+                                    <i class="fa-solid fa-arrow-right-long text-slate-300"></i>
+                                    <span class="text-xs font-black text-slate-800 uppercase italic">{{ $log['to_building'] }}</span>
+                                </div>
+                                @if(isset($log['quantity_at_transfer']))
+                                    <p class="text-[8px] font-black text-blue-500 uppercase mb-2">Effectif au transfert : {{ $log['quantity_at_transfer'] }} sujets</p>
+                                @endif
+                                <p class="text-[9px] font-bold text-slate-500 leading-relaxed italic border-t border-slate-200 pt-3 uppercase">{{ $log['notes'] ?? '' }}</p>
+                            </div>
+                        </div>
+                    @empty
+                        <div class="text-center py-10"><p class="text-[10px] font-black text-slate-300 uppercase italic tracking-widest">Aucun mouvement.</p></div>
+                    @endforelse
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- MODAL DE MUTATION --}}
+    @can('elevage.M')
+    <div id="modal-transfer" class="hidden fixed inset-0 bg-slate-900/95 backdrop-blur-xl z-[100] flex items-center justify-center p-4 italic font-bold">
+        <div class="bg-white w-full max-w-2xl rounded-[4rem] shadow-2xl overflow-hidden border border-white/20 relative">
+            <form action="{{ route('batches.transfer', $batch->id) }}" method="POST" class="p-12 relative z-10 text-left">
+                @csrf
+                <div class="mb-10">
+                    <h3 class="text-3xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">Mutation de Lot</h3>
+                    <p class="text-[10px] font-black text-rose-500 uppercase tracking-[0.2em] mt-3 italic">Effectif actuel : <span class="text-slate-900">{{ $currentEffectif }} sujets</span></p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div class="space-y-6">
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-3 ml-2 italic">Bâtiment de Destination</label>
+                            <select name="target_building_id" required class="w-full p-5 bg-slate-50 rounded-[2rem] border-none shadow-inner font-black text-slate-700 italic uppercase text-xs appearance-none">
+                                <option value="">-- Sélectionner --</option>
+                                @foreach($buildings as $building)
+                                    @if($building->type === $batch->type || $building->type === 'mixte')
+                                        <option value="{{ $building->id }}" {{ $building->id == $batch->building_id ? 'disabled' : '' }}>
+                                            {{ $building->name }} (Cap: {{ $building->capacity }} | Type: {{ $building->type }})
+                                        </option>
+                                    @endif
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-3 ml-2 italic">Date du Mouvement</label>
+                            <input type="date" name="transfer_date" value="{{ date('Y-m-d') }}" required class="w-full p-5 bg-slate-50 rounded-[2rem] border-none shadow-inner font-black text-blue-600 italic text-xs">
+                        </div>
+                    </div>
+                    <div class="space-y-6">
+                        <div>
+                            <label class="block text-[10px] font-black text-blue-500 uppercase mb-3 ml-2 italic">Nouveau Programme</label>
+                            <select name="new_protocol_id" id="protocol-select" required class="w-full p-5 bg-slate-100 rounded-[2rem] border-none shadow-inner font-black text-blue-600 italic uppercase text-xs appearance-none">
+                                <option value="" data-type="all">-- Appliquer Protocole --</option>
+                                @foreach($protocols as $protocol)
+                                    <option value="{{ $protocol->id }}" data-type="{{ $protocol->type }}">{{ $protocol->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-3 ml-2 italic">Nouvelle Phase</label>
+                            <select name="new_phase" required class="w-full p-5 bg-slate-50 rounded-[2rem] border-none shadow-inner font-black text-slate-700 italic uppercase text-xs appearance-none">
+                                @if(in_array($batch->type, ['ponte', 'reproducteur', 'poussiniere']))
+                                    <option value="poussiniere" {{ $batch->production_phase == 'poussiniere' ? 'selected' : '' }}>Poussinière</option>
+                                    <option value="ponte" {{ $batch->production_phase == 'ponte' ? 'selected' : '' }}>Ponte Active</option>
+                                    <option value="reproducteur" {{ $batch->production_phase == 'reproducteur' ? 'selected' : '' }}>Reproducteurs</option>
+                                @endif
+                                @if($batch->type == 'chair')
+                                    <option value="chair" selected>Poulet de Chair</option>
+                                    <option value="poussiniere">Poussinière</option>
+                                @endif
+                            </select>
+                        </div>
+                    </div>
+                    <div class="md:col-span-2">
+                        <textarea name="notes" placeholder="Notes de traçabilité..." class="w-full p-6 bg-slate-50 rounded-[2.5rem] border-none shadow-inner font-bold text-slate-500 italic text-[10px] uppercase"></textarea>
+                    </div>
+                </div>
+
+                <div class="flex gap-4 mt-10">
+                    <button type="button" onclick="document.getElementById('modal-transfer').classList.add('hidden')" class="flex-1 py-6 text-[10px] font-black uppercase text-slate-400">Annuler</button>
+                    <button type="submit" class="flex-[2] py-6 bg-rose-600 text-white rounded-[2.5rem] text-[10px] font-black uppercase italic shadow-2xl hover:bg-slate-900 transition-all">Exécuter la mutation</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    @endcan
+
+    {{-- MODALE RAVITAILLEMENT (AFFECTATION DIRECTE AU LOT) --}}
+    @can('elevage.C')
+    @include('batches.partials.feed-modal')
+    @endcan
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // GESTION DE LA MODALE STOCK/ALIMENT
+        function openFeedModal() { 
+            document.getElementById('feedModal').classList.remove('hidden'); 
+        }
+        function closeFeedModal() { 
+            document.getElementById('feedModal').classList.add('hidden'); 
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            
+            // 1. GESTION DES ERREURS DE TRANSFERT
+            @if($errors->has('error'))
+                const modalTransfer = document.getElementById('modal-transfer');
+                if (modalTransfer) modalTransfer.classList.remove('hidden');
+            @endif
+
+            // 2. GESTION DES ERREURS D'ACHAT DIRECT (Rouvre la modale si échec de validation)
+            @if($errors->has('unit_price') || $errors->has('quantity'))
+                openFeedModal();
+            @endif
+
+            // 3. FILTRAGE DU PROTOCOLE
+            const batchType = "{{ $batch->type }}";
+            const protocolSelect = document.getElementById('protocol-select');
+            if (protocolSelect) {
+                const options = protocolSelect.options;
+                for (let i = 0; i < options.length; i++) {
+                    const optType = options[i].getAttribute('data-type');
+                    options[i].style.display = (optType === batchType || optType === 'all') ? 'block' : 'none';
+                }
+            }
+
+            // 4. INITIALISATION DES GRAPHIQUES (Correction syntaxe Chart.js)
+            const raw = @json($batch->dailyChecks->sortBy('check_date')->values());
+            
+            if (raw.length > 0) {
+                const labels = raw.map((_, i) => 'J' + (i + 1));
+                const commonOptions = { 
+                    responsive: true, 
+                    maintainAspectRatio: false, 
+                    plugins: { legend: { display: false } } 
+                };
+
+                // GRAPHIQUE MORTALITÉ
+                const ctxMortality = document.getElementById('mortalityChart');
+                if (ctxMortality) {
+                    new Chart(ctxMortality, {
+                        type: 'line', // <-- OBLIGATOIRE À LA RACINE
+                        data: { 
+                            labels: labels, 
+                            datasets: [{ 
+                                data: raw.map((c, i, a) => (a.slice(0, i + 1).reduce((s, x) => s + x.mortality, 0) / {{ $batch->initial_quantity }}) * 100), 
+                                borderColor: '#ef4444', 
+                                borderWidth: 3, 
+                                tension: 0.4 
+                            }] 
+                        },
+                        options: commonOptions
+                    });
+                }
+
+                // GRAPHIQUE HYDRATATION / ALIMENTATION (Graphique Mixte)
+                const ctxHydration = document.getElementById('hydrationChart');
+                if (ctxHydration) {
+                    new Chart(ctxHydration, {
+                        type: 'bar', // <-- OBLIGATOIRE (Définit le type de base du graphique mixte)
+                        data: { 
+                            labels: labels, 
+                            datasets: [
+                                { type: 'line', data: raw.map(c => c.feed_consumed), borderColor: '#1e293b', borderWidth: 2 },
+                                { type: 'bar', data: raw.map(c => c.water_consumed), backgroundColor: 'rgba(59, 130, 246, 0.2)' }
+                            ]
+                        },
+                        options: commonOptions
+                    });
+                }
+            }
+        });
+    </script>
+</x-app-layout>

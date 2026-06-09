@@ -1,0 +1,217 @@
+<x-app-layout>
+    <x-slot name="header">
+        <div class="flex justify-between items-center text-left">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 bg-rose-600 rounded-2xl flex items-center justify-center text-white shadow-lg rotate-3">
+                    <i class="fa-solid fa-microscope text-xl"></i>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">Laboratoire & Diagnostics</h2>
+                    <p class="text-[10px] font-bold text-slate-400 uppercase mt-1 tracking-widest italic leading-none">
+                        Suivi des anomalies sanitaires et autopsies
+                    </p>
+                </div>
+            </div>
+            <a href="{{ route('health.index') }}" class="text-[10px] font-black uppercase italic text-slate-400 hover:text-slate-800 transition-all no-underline">
+                <i class="fa-solid fa-arrow-left mr-1"></i> Retour au Registre
+            </a>
+        </div>
+    </x-slot>
+
+    <div class="py-12 italic font-bold text-left">
+        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                @forelse($incidents as $incident)
+                    <div class="bg-white rounded-[2.5rem] border border-slate-100 shadow-xl overflow-hidden flex flex-col">
+                        
+                        {{-- En-tête de la carte (Statut) --}}
+                        <div @class([
+                            'p-4 flex justify-between items-center border-b',
+                            'bg-rose-50 border-rose-100' => $incident->status === 'en_attente',
+                            'bg-amber-50 border-amber-100' => $incident->status === 'diagnostique',
+                            'bg-emerald-50 border-emerald-100' => $incident->status === 'resolu',
+                        ])>
+                            <span @class([
+                                'px-3 py-1 rounded-xl text-[9px] font-black uppercase tracking-widest border',
+                                'bg-rose-600 text-white border-rose-700 animate-pulse' => $incident->status === 'en_attente',
+                                'bg-amber-100 text-amber-700 border-amber-200' => $incident->status === 'diagnostique',
+                                'bg-emerald-100 text-emerald-700 border-emerald-200' => $incident->status === 'resolu',
+                            ])>
+                                {{ str_replace('_', ' ', $incident->status) }}
+                            </span>
+                            <span class="text-[10px] text-slate-400 font-black">
+                                {{ $incident->created_at->format('d/m/Y H:i') }}
+                            </span>
+                        </div>
+
+                        {{-- Photo d'autopsie --}}
+                        @if($incident->photo_path)
+                            <div class="h-48 w-full bg-slate-900 relative group overflow-hidden">
+                                <img src="{{ asset('storage/' . $incident->photo_path) }}" alt="Autopsie" class="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all duration-500">
+                                <div class="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex items-end p-4">
+                                    <span class="text-white text-[9px] uppercase tracking-widest font-black"><i class="fa-solid fa-camera mr-1"></i> Preuve visuelle jointe</span>
+                                </div>
+                            </div>
+                        @else
+                            <div class="h-20 w-full bg-slate-50 flex items-center justify-center border-b border-slate-100">
+                                <p class="text-[9px] text-slate-400 uppercase tracking-widest font-black"><i class="fa-solid fa-image-slash mr-1"></i> Aucune photo fournie</p>
+                            </div>
+                        @endif
+
+                        {{-- Détails de l'incident --}}
+                        <div class="p-6 flex-grow flex flex-col gap-4">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="text-[9px] uppercase tracking-widest text-slate-400 font-black mb-1">Localisation</p>
+                                    <h3 class="text-lg font-black text-slate-800 tracking-tighter leading-none">{{ $incident->building->name ?? 'Bâtiment Inconnu' }}</h3>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-[9px] uppercase tracking-widest text-slate-400 font-black mb-1">Mortalité</p>
+                                    <h3 class="text-lg font-black text-rose-600 tracking-tighter leading-none">{{ $incident->mortality_count }} <small class="text-[10px]">sujets</small></h3>
+                                </div>
+                            </div>
+
+                            <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                                <p class="text-[9px] uppercase tracking-widest text-slate-400 font-black mb-2">Symptômes observés par {{ $incident->user->name ?? 'l\'agent' }}</p>
+                                <p class="text-xs text-slate-700 font-medium leading-relaxed">{{ $incident->symptoms }}</p>
+                            </div>
+
+                            {{-- Bloc Diagnostic Vétérinaire (Si rempli) --}}
+                            @if($incident->suspected_disease)
+                                <div class="bg-blue-50 p-4 rounded-2xl border border-blue-100 mt-auto">
+                                    <p class="text-[9px] uppercase tracking-widest text-blue-400 font-black mb-1"><i class="fa-solid fa-user-doctor mr-1"></i> Diagnostic Vétérinaire</p>
+                                    <p class="text-xs text-blue-800 font-black uppercase">{{ $incident->suspected_disease }}</p>
+                                    @if($incident->vet_prescription)
+                                        <p class="text-[10px] text-blue-600 font-medium mt-2 leading-tight">{{ $incident->vet_prescription }}</p>
+                                    @endif
+                                </div>
+                            @endif
+                        </div>
+
+                        {{-- Action Dynamique selon le Cycle de Vie --}}
+                        <div class="p-4 border-t border-slate-100 bg-white mt-auto">
+                            
+                            {{-- 🔒 Sécurisation des actions de diagnostic et résolution --}}
+                            @can('elevage.M')
+                                @if($incident->status === 'en_attente')
+                                    <div class="flex gap-2">
+                                        <button type="button" x-data @click="$dispatch('open-diagnosis-modal', {{ $incident->id }})" class="flex-1 py-3 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 transition-colors flex justify-center items-center gap-2 shadow-md">
+                                            <i class="fa-solid fa-stethoscope"></i> Diagnostic
+                                        </button>
+                                        <button type="button" x-data @click="$dispatch('open-fast-close-modal', {{ $incident->id }})" title="Clôturer sans diagnostic (Cause technique/Erreur)" class="w-12 py-3 bg-slate-100 text-slate-400 rounded-xl text-[10px] hover:bg-slate-200 hover:text-slate-800 transition-colors flex justify-center items-center shadow-sm">
+                                            <i class="fa-solid fa-power-off text-sm"></i>
+                                        </button>
+                                    </div>
+                                @elseif($incident->status === 'diagnostique')
+                                    <form action="{{ route('health.incidents.resolve', $incident->id) }}" method="POST" onsubmit="return confirm('Confirmez-vous que l\'état de santé du lot est revenu à la normale ?')">
+                                        @csrf @method('PATCH')
+                                        <button type="submit" class="w-full py-3 bg-emerald-100 text-emerald-700 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-500 hover:text-white transition-colors flex justify-center items-center gap-2 shadow-sm border border-emerald-200">
+                                            <i class="fa-solid fa-check-double"></i> Marquer comme résolu
+                                        </button>
+                                    </form>
+                                @endif
+                            @endcan
+
+                            {{-- Affichage du statut clos (visible par tous) --}}
+                            @if($incident->status === 'resolu' || $incident->status === 'clos')
+                                <div class="w-full py-3 bg-slate-50 text-slate-400 rounded-xl text-[10px] font-black uppercase tracking-widest flex justify-center items-center gap-2 cursor-not-allowed">
+                                    <i class="fa-solid fa-lock"></i> Dossier Médical Clos
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+                @empty
+                    <div class="col-span-full bg-white p-20 rounded-[3rem] text-center shadow-sm border border-slate-100">
+                        <i class="fa-solid fa-shield-virus text-6xl text-emerald-400 mb-6"></i>
+                        <h3 class="text-xl font-black uppercase tracking-tighter text-slate-800 mb-2">Cheptel Sécurisé</h3>
+                        <p class="text-[10px] uppercase tracking-widest text-slate-400 font-black">Aucune alerte sanitaire ou autopsie en cours.</p>
+                    </div>
+                @endforelse
+            </div>
+
+            <div class="mt-8">
+                {{ $incidents->links() }}
+            </div>
+            
+        </div>
+    </div>
+    {{-- MODALE DE DIAGNOSTIC VÉTÉRINAIRE --}}
+    <div x-data="{ showDiagModal: false, incidentId: null, formUrl: '' }" 
+         @open-diagnosis-modal.window="incidentId = $event.detail; formUrl = '/incidents/' + incidentId + '/diagnose'; showDiagModal = true;"
+         x-show="showDiagModal" 
+         class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm px-4" 
+         style="display: none;"
+         x-transition>
+        
+        <div @click.away="showDiagModal = false" class="bg-white rounded-[3rem] shadow-2xl w-full max-w-lg overflow-hidden text-left border border-slate-100">
+            
+            <div class="bg-slate-900 p-8 text-white flex justify-between items-center relative overflow-hidden">
+                <i class="fa-solid fa-user-doctor absolute -right-4 -top-4 text-[6rem] opacity-10"></i>
+                <div class="relative z-10">
+                    <h3 class="text-xl font-black uppercase tracking-tighter italic leading-none">Diagnostic Médical</h3>
+                    <p class="text-[10px] text-blue-400 font-bold uppercase tracking-widest mt-1">Validation Vétérinaire</p>
+                </div>
+                <button @click="showDiagModal = false" class="text-white hover:text-blue-400 relative z-10"><i class="fa-solid fa-xmark text-2xl"></i></button>
+            </div>
+
+            {{-- Le formUrl est généré dynamiquement par Alpine.js --}}
+            <form :action="formUrl" method="POST" class="p-8 space-y-6">
+                @csrf
+                @method('PUT')
+                
+                <div>
+                    <label class="text-[9px] uppercase text-slate-400 block tracking-widest font-black mb-1 italic">Maladie suspectée / Cause *</label>
+                    <input type="text" name="suspected_disease" required placeholder="Ex: Coccidiose, Maladie de Gumboro..." class="w-full bg-slate-50 border-none rounded-xl p-4 font-black text-xs text-slate-800 shadow-inner focus:ring-2 focus:ring-blue-500">
+                </div>
+
+                <div>
+                    <label class="text-[9px] uppercase text-slate-400 block tracking-widest font-black mb-1 italic">Prescription / Marche à suivre</label>
+                    <textarea name="vet_prescription" rows="3" placeholder="Traitement recommandé, isolement, etc." class="w-full bg-slate-50 border-none rounded-xl p-4 text-xs font-bold text-slate-700 focus:ring-2 focus:ring-blue-500 shadow-inner"></textarea>
+                </div>
+
+                <div class="pt-2">
+                    <button type="submit" class="w-full bg-blue-600 text-white py-5 rounded-xl font-black uppercase tracking-widest transition-all hover:bg-slate-900 text-[10px] shadow-lg flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-file-medical"></i> Enregistrer la prescription
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    {{-- MODALE DE CLÔTURE RAPIDE (SANS DIAGNOSTIC) --}}
+    <div x-data="{ showCloseModal: false, incidentId: null, formUrl: '' }" 
+         @open-fast-close-modal.window="incidentId = $event.detail; formUrl = '/incidents/' + incidentId + '/close-fast'; showCloseModal = true;"
+         x-show="showCloseModal" 
+         class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm px-4" 
+         style="display: none;"
+         x-transition>
+        
+        <div @click.away="showCloseModal = false" class="bg-white rounded-[3rem] shadow-2xl w-full max-w-lg overflow-hidden text-left border border-slate-100">
+            
+            <div class="bg-slate-100 p-8 text-slate-800 flex justify-between items-center relative overflow-hidden border-b border-slate-200">
+                <i class="fa-solid fa-triangle-exclamation absolute -right-4 -top-4 text-[6rem] text-slate-200 opacity-50"></i>
+                <div class="relative z-10">
+                    <h3 class="text-xl font-black uppercase tracking-tighter italic leading-none">Clôture Rapide</h3>
+                    <p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">Incident non médical</p>
+                </div>
+                <button @click="showCloseModal = false" class="text-slate-400 hover:text-slate-800 relative z-10"><i class="fa-solid fa-xmark text-2xl"></i></button>
+            </div>
+
+            <form :action="formUrl" method="POST" class="p-8 space-y-6">
+                @csrf
+                @method('PATCH')
+                
+                <div>
+                    <label class="text-[9px] uppercase text-slate-400 block tracking-widest font-black mb-1 italic">Raison technique de la clôture *</label>
+                    <textarea name="justification" required rows="3" placeholder="Ex: Accident matériel (étouffement), fausse alerte, prédateur..." class="w-full bg-slate-50 border-none rounded-xl p-4 font-black text-xs text-slate-800 shadow-inner focus:ring-2 focus:ring-slate-500"></textarea>
+                </div>
+
+                <div class="pt-2">
+                    <button type="submit" class="w-full bg-slate-800 text-white py-5 rounded-xl font-black uppercase tracking-widest transition-all hover:bg-slate-900 text-[10px] shadow-lg flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-power-off"></i> Confirmer la clôture
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</x-app-layout>

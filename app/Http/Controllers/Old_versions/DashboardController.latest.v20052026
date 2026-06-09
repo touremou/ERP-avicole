@@ -1,0 +1,62 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Services\DashboardService;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Http\Request;
+
+class DashboardController extends Controller
+{
+    public function index(DashboardService $dashboardService)
+    {
+        try {
+            // Test de connexion rapide au serveur DB
+            DB::connection()->getPdo();
+            
+            // Si OK, on charge les vraies données
+            $data = $dashboardService->getOnlineData();
+            $data['offline_mode'] = false;
+            
+            return view('dashboard', $data);
+
+        } catch (\Exception $e) {
+            // Si la base WAMP est injoignable, on passe en mode offline
+            return view('dashboard', $dashboardService->getOfflineData());
+        }
+    }
+}
+
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Services\DashboardService;
+use Illuminate\Support\Facades\DB;
+
+/**
+ * Controller Dashboard.
+ *
+ * EXCEPTION ARCHITECTURALE : Le try/catch PDO est conservé UNIQUEMENT ici
+ * car le dashboard est la première page après login — c'est le seul endroit
+ * où détecter "WAMP MySQL éteint" a un sens pour l'expérience utilisateur.
+ *
+ * Tous les autres controllers (BatchController, StockController, etc.)
+ * n'ont plus ce pattern — ils laissent Laravel gérer les erreurs DB normalement.
+ */
+class DashboardController extends Controller
+{
+    public function index(DashboardService $dashboardService)
+    {
+        try {
+            DB::connection()->getPdo();
+
+            $data = $dashboardService->getOnlineData();
+
+            return view('dashboard', $data);
+
+        } catch (\Exception $e) {
+            return view('dashboard', $dashboardService->getOfflineData());
+        }
+    }
+}
