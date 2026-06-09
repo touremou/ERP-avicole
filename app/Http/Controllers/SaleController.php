@@ -39,7 +39,7 @@ class SaleController extends Controller
             $query->whereDate('sale_date', '<=', $request->date_to);
         }
 
-        $sales = $query->latest('sale_date')->paginate(20);
+        $sales = $query->latest('sale_date')->paginate((int) setting('general.items_per_page', 20));
 
         // Stats du jour
         $todaySales = Sale::today()->validated();

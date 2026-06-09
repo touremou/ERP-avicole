@@ -31,7 +31,7 @@ class StockController extends Controller
         $recentMovements = StockMovement::with(['stock', 'user'])
             ->whereHas('stock', fn($q) => $q->where('category', $category))
             ->latest()
-            ->paginate(20);
+            ->paginate((int) setting('general.items_per_page', 20));
 
         return view('stocks.index', compact('stocks', 'recentMovements', 'category'));
     }

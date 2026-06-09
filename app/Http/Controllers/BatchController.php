@@ -35,7 +35,7 @@ use Illuminate\View\View;
  * - B-03/B-04 : UpdateBatch ne touche plus current_quantity
  * - B-07 : CloseBatch calcule la marge complète
  * - B-08 : update protégé par UpdateBatchRequest::authorize()
- * - B-09 : syncAllStocks protégé par Gate::denies('S')
+ * - B-09 : syncAllStocks protégé par Gate::denies('elevage.S')
  * - S-02 : prix aliment calculé depuis feedPurchases (plus hardcodé)
  */
 class BatchController extends Controller
@@ -81,7 +81,7 @@ class BatchController extends Controller
             'poussiniere'  => (clone $baseQuery)->byType('poussiniere')->count(),
         ];
 
-        $batches = $query->orderBy('arrival_date', 'desc')->paginate(10);
+        $batches = $query->orderBy('arrival_date', 'desc')->paginate((int) setting('general.items_per_page', 20));
         $batches->appends($request->all());
 
         return view('batches.index', compact('batches', 'counts'));
@@ -102,7 +102,7 @@ class BatchController extends Controller
             $query->where('building_id', $request->building_id);
         }
 
-        $archivedBatches = $query->orderBy('closing_date', 'desc')->paginate(15);
+        $archivedBatches = $query->orderBy('closing_date', 'desc')->paginate((int) setting('general.items_per_page', 20));
         
         // 👈 Ajout du scope physical() et d'un tri par nom pour l'UX
         $buildings = Building::physical()->select('id', 'name')->orderBy('name')->get();

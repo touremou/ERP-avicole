@@ -124,7 +124,7 @@ class NotificationController extends Controller
             $query->where('type', $request->type);
         }
 
-        $logs = $query->latest()->paginate(30);
+        $logs = $query->latest()->paginate((int) setting('general.items_per_page', 20));
 
         $stats = [
             'today_sent'   => NotificationLog::today()->where('status', 'sent')->count(),

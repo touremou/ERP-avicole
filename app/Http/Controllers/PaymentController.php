@@ -13,7 +13,7 @@ class PaymentController extends Controller
 {
     public function index(Request $request)
     {
-        if (Gate::denies('L')) return redirect()->route('dashboard')->with('error', 'Accès restreint.');
+        if (Gate::denies('commerce.L')) return redirect()->route('dashboard')->with('error', 'Accès restreint.');
 
         $query = Payment::with(['sale.client', 'receiver']);
 
@@ -27,7 +27,7 @@ class PaymentController extends Controller
             $query->whereDate('payment_date', '<=', $request->date_to);
         }
 
-        $payments = $query->latest('payment_date')->paginate(20);
+        $payments = $query->latest('payment_date')->paginate((int) setting('general.items_per_page', 20));
 
         // Caisse du jour
         $todayPayments = Payment::whereDate('payment_date', today());

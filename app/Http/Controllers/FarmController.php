@@ -13,7 +13,7 @@ class FarmController extends Controller
 {
     public function index()
     {
-        if (Gate::denies('S')) return redirect()->route('dashboard')->with('error', 'Accès réservé.');
+        if (Gate::denies('admin.S')) return redirect()->route('dashboard')->with('error', 'Accès réservé.');
 
         $farms = Farm::withoutGlobalScopes()->withCount('users')->get();
         $users = User::orderBy('name')->get();
@@ -23,7 +23,7 @@ class FarmController extends Controller
 
     public function store(Request $request)
     {
-        if (Gate::denies('S')) return back()->with('error', 'Non autorisé.');
+        if (Gate::denies('admin.S')) return back()->with('error', 'Non autorisé.');
 
         $validated = $request->validate([
             'name'         => 'required|string|max:255',
@@ -53,7 +53,7 @@ class FarmController extends Controller
 
     public function update(Request $request, Farm $farm)
     {
-        if (Gate::denies('S')) return back()->with('error', 'Non autorisé.');
+        if (Gate::denies('admin.S')) return back()->with('error', 'Non autorisé.');
 
         $validated = $request->validate([
             'name'         => 'required|string|max:255',
@@ -96,7 +96,7 @@ class FarmController extends Controller
      */
     public function manageUsers(Request $request, Farm $farm)
     {
-        if (Gate::denies('S')) return back()->with('error', 'Non autorisé.');
+        if (Gate::denies('admin.S')) return back()->with('error', 'Non autorisé.');
 
         $validated = $request->validate([
             'user_ids'   => 'required|array',

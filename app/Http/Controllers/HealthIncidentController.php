@@ -19,7 +19,7 @@ class HealthIncidentController extends Controller
         $incidents = \App\Models\HealthIncident::with(['building', 'user'])
             ->orderByRaw("FIELD(status, 'en_attente', 'diagnostique', 'resolu')")
             ->orderBy('created_at', 'desc')
-            ->paginate(12);
+            ->paginate((int) setting('general.items_per_page', 20));
 
         // 3. 💡 N'oubliez pas d'ajouter $pendingIncidentsCount dans le compact !
         return view('health.incidents', compact('incidents', 'pendingIncidentsCount'));

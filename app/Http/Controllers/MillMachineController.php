@@ -15,7 +15,7 @@ class MillMachineController extends Controller
 {
     public function index(): View|RedirectResponse
     {
-        if (Gate::denies('L')) return redirect()->route('dashboard')->with('error', 'Accès restreint.');
+        if (Gate::denies('provenderie.L')) return redirect()->route('dashboard')->with('error', 'Accès restreint.');
 
         $machines = MillMachine::withCount('maintenanceLogs')->get();
         return view('provenderie.machines.index', compact('machines'));
@@ -26,7 +26,7 @@ class MillMachineController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
-        if (Gate::denies('C')) return back()->with('error', 'Action non autorisée.');
+        if (Gate::denies('provenderie.C')) return back()->with('error', 'Action non autorisée.');
 
         $validated = $request->validate([
             'name'                       => 'required|string|max:191|unique:mill_machines,name',
@@ -50,7 +50,7 @@ class MillMachineController extends Controller
 
     public function update(Request $request, $id): RedirectResponse
     {
-        if (Gate::denies('M')) return back()->with('error', 'Modification non autorisée.');
+        if (Gate::denies('provenderie.M')) return back()->with('error', 'Modification non autorisée.');
 
         $machine = MillMachine::findOrFail($id);
 
@@ -77,7 +77,7 @@ class MillMachineController extends Controller
      */
     public function reset(Request $request, $id): RedirectResponse
     {
-        if (Gate::denies('M')) return back()->with('error', 'Privilèges insuffisants.');
+        if (Gate::denies('provenderie.M')) return back()->with('error', 'Privilèges insuffisants.');
 
         $machine = MillMachine::findOrFail($id);
 
@@ -109,7 +109,7 @@ class MillMachineController extends Controller
      */
     public function updateStatus(Request $request, $id): RedirectResponse
     {
-        if (Gate::denies('M')) return back()->with('error', 'Modification non autorisée.');
+        if (Gate::denies('provenderie.M')) return back()->with('error', 'Modification non autorisée.');
 
         $machine = MillMachine::findOrFail($id);
 
@@ -127,7 +127,7 @@ class MillMachineController extends Controller
      */
     public function toggleStatus(Request $request, $id): RedirectResponse
     {
-        if (Gate::denies('C')) return back()->with('error', 'Saisie non autorisée.');
+        if (Gate::denies('provenderie.C')) return back()->with('error', 'Saisie non autorisée.');
 
         $machine = MillMachine::findOrFail($id);
 
@@ -144,7 +144,7 @@ class MillMachineController extends Controller
      */
     public function destroy($id): RedirectResponse
     {
-        if (Gate::denies('S')) return back()->with('error', 'Suppression réservée à l\'administrateur.');
+        if (Gate::denies('provenderie.S')) return back()->with('error', 'Suppression réservée à l\'administrateur.');
 
         $machine = MillMachine::findOrFail($id);
 

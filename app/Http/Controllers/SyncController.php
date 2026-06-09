@@ -24,7 +24,7 @@ use Illuminate\Support\Facades\Log;
  * B-21 (Critique) : reconcile() n'avait aucune validation.
  *   → $request->all() injecté directement dans updateOrCreate = mass assignment total.
  *   → Ajout d'un validate() + whitelist explicite des champs autorisés.
- *   → Ajout Gate::denies('C') pour la création, Gate::denies('M') pour la modification.
+ *   → Ajout Gate::denies('admin.C') pour la création, Gate::denies('admin.M') pour la modification.
  *
  * B-22 (Sérieux) : reconcileDailyCheck() avait plusieurs problèmes :
  *   → `DB` non importé → fatal error "Class 'DB' not found"
@@ -73,7 +73,7 @@ class SyncController extends Controller
 
         if ($serverBatch) {
             // Modification d'un lot existant → vérification permission M
-            if (Gate::denies('M')) {
+            if (Gate::denies('admin.M')) {
                 return response()->json(['status' => 'error', 'message' => 'Permission insuffisante.'], 403);
             }
 
@@ -94,7 +94,7 @@ class SyncController extends Controller
             }
         } else {
             // Création d'un nouveau lot → vérification permission C
-            if (Gate::denies('C')) {
+            if (Gate::denies('admin.C')) {
                 return response()->json(['status' => 'error', 'message' => 'Permission insuffisante.'], 403);
             }
         }
@@ -140,7 +140,7 @@ class SyncController extends Controller
      */
     public function reconcileDailyCheck(Request $request): JsonResponse
     {
-        if (Gate::denies('C')) {
+        if (Gate::denies('admin.C')) {
             return response()->json(['status' => 'error', 'message' => 'Permission insuffisante.'], 403);
         }
 

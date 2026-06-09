@@ -22,9 +22,9 @@ class UserController extends Controller
 
     public function index()
     {
-        if (Gate::denies('S')) return redirect()->route('dashboard')->with('error', 'Accès réservé au Superviseur.');
+        if (Gate::denies('admin.S')) return redirect()->route('dashboard')->with('error', 'Accès réservé au Superviseur.');
 
-        $users = User::with('userRole.permissions')->paginate(20);
+        $users = User::with('userRole.permissions')->paginate((int) setting('general.items_per_page', 20));
         $roles = Role::with('permissions')->withCount('users')->get();
         $allPermissions = Permission::all();
         $modules = Module::active()->get();
@@ -53,7 +53,7 @@ class UserController extends Controller
      */
     public function updateMatrix(Request $request)
     {
-        if (Gate::denies('S')) return back();
+        if (Gate::denies('admin.S')) return back();
 
         $matrix = $request->input('permissions', []);
 
@@ -73,7 +73,7 @@ class UserController extends Controller
      */
     public function updateModuleMatrix(Request $request)
     {
-        if (Gate::denies('S')) return back();
+        if (Gate::denies('admin.S')) return back();
 
         $matrix = $request->input('module_perms', []);
 
@@ -122,7 +122,7 @@ class UserController extends Controller
 
     public function store(Request $request)
     {
-        if (Gate::denies('S')) return back();
+        if (Gate::denies('admin.S')) return back();
 
         $request->validate([
             'name'     => ['required', 'string', 'max:255'],
@@ -143,7 +143,7 @@ class UserController extends Controller
 
     public function storeRole(Request $request)
     {
-        if (Gate::denies('S')) return back();
+        if (Gate::denies('admin.S')) return back();
 
         $request->validate([
             'display_name' => 'required|string|max:255|unique:roles,display_name',
@@ -161,7 +161,7 @@ class UserController extends Controller
 
     public function updateRole(Request $request, User $user)
     {
-        if (Gate::denies('S')) return back();
+        if (Gate::denies('admin.S')) return back();
 
         $validated = $request->validate(['role_id' => 'required|exists:roles,id']);
         $user->update(['role_id' => $validated['role_id']]);
@@ -174,7 +174,7 @@ class UserController extends Controller
 
     public function destroy(User $user)
     {
-        if (Gate::denies('S')) return back();
+        if (Gate::denies('admin.S')) return back();
 
         if (auth()->id() === $user->id) {
             return back()->with('error', 'Impossible de supprimer votre propre accès.');
@@ -189,7 +189,7 @@ class UserController extends Controller
 
     public function destroyRole(Role $role)
     {
-        if (Gate::denies('S')) return back();
+        if (Gate::denies('admin.S')) return back();
 
         if ($role->users()->count() > 0) {
             return back()->with('error', 'Action refusée : ce rôle est assigné à des utilisateurs.');

@@ -16,7 +16,7 @@ class TrashController extends Controller
      */
     public function index()
     {
-        if (Gate::denies('S')) {
+        if (Gate::denies('admin.S')) {
             return redirect()->route('dashboard')->with('error', 'Accès réservé aux administrateurs (Grade S).');
         }
 
@@ -34,7 +34,7 @@ class TrashController extends Controller
      */
     public function restore($type, $id)
     {
-        if (Gate::denies('S')) return back();
+        if (Gate::denies('admin.S')) return back();
 
         $model = $this->getModel($type);
         $item = $model::onlyTrashed()->findOrFail($id);
@@ -50,7 +50,7 @@ class TrashController extends Controller
      */
     public function forceDelete($type, $id)
     {
-        if (Gate::denies('S')) return back();
+        if (Gate::denies('admin.S')) return back();
 
         $model = $this->getModel($type);
         $item = $model::onlyTrashed()->findOrFail($id);
@@ -68,7 +68,7 @@ class TrashController extends Controller
      */
     public function clearAll()
     {
-        if (Gate::denies('S')) return back();
+        if (Gate::denies('admin.S')) return back();
 
         Employee::onlyTrashed()->forceDelete();
         Building::onlyTrashed()->forceDelete();

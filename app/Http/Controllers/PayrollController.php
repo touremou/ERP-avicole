@@ -23,7 +23,7 @@ class PayrollController extends Controller
 
         $periods = PayrollPeriod::withCount('payslips')
             ->orderByDesc('year')->orderByDesc('month')
-            ->paginate(12);
+            ->paginate((int) setting('general.items_per_page', 20));
 
         $currentMonth = now()->format('Y-m');
         $hasCurrent = PayrollPeriod::where('year', now()->year)->where('month', now()->month)->exists();
@@ -162,7 +162,7 @@ class PayrollController extends Controller
 
         $leaves = EmployeeLeave::with('employee')
             ->orderByDesc('start_date')
-            ->paginate(20);
+            ->paginate((int) setting('general.items_per_page', 20));
 
         $employees = Employee::where('status', 'Actif')->orderBy('first_name')->get();
 
@@ -243,7 +243,7 @@ class PayrollController extends Controller
         $payslips = Payslip::where('employee_id', $employee->id)
             ->with(['period', 'lines'])
             ->orderByDesc('created_at')
-            ->paginate(12);
+            ->paginate((int) setting('general.items_per_page', 20));
 
         $leaves = EmployeeLeave::where('employee_id', $employee->id)
             ->orderByDesc('start_date')

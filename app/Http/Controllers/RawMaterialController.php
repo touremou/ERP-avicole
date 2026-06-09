@@ -16,7 +16,7 @@ class RawMaterialController extends Controller
 {
     public function index(): View|RedirectResponse
     {
-        if (Gate::denies('L')) return redirect()->route('dashboard')->with('error', 'Accès non autorisé.');
+        if (Gate::denies('provenderie.L')) return redirect()->route('dashboard')->with('error', 'Accès non autorisé.');
 
         $materials = RawMaterial::withCount('formulaItems')->get();
         $providers = Provider::where('status', 'Actif')->get();
@@ -32,7 +32,7 @@ class RawMaterialController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
-        if (Gate::denies('C')) return back()->with('error', 'Privilèges insuffisants.');
+        if (Gate::denies('provenderie.C')) return back()->with('error', 'Privilèges insuffisants.');
 
         // Normaliser l'unité en minuscule avant validation
         $request->merge([
@@ -71,7 +71,7 @@ class RawMaterialController extends Controller
      */
     public function updateStock(Request $request, $id): RedirectResponse
     {
-        if (Gate::denies('C')) return back()->with('error', 'Saisie non autorisée.');
+        if (Gate::denies('provenderie.C')) return back()->with('error', 'Saisie non autorisée.');
 
         $material = RawMaterial::findOrFail($id);
 
@@ -114,7 +114,7 @@ class RawMaterialController extends Controller
      */
     public function updateNutrition(Request $request, $id): RedirectResponse
     {
-        if (Gate::denies('M')) return back()->with('error', 'Action non autorisée.');
+        if (Gate::denies('provenderie.M')) return back()->with('error', 'Action non autorisée.');
 
         $request->validate([
             'energy_kcal'  => 'required|numeric|min:0',
@@ -134,7 +134,7 @@ class RawMaterialController extends Controller
      */
     public function destroy($id): RedirectResponse
     {
-        if (Gate::denies('S')) return back()->with('error', 'Suppression réservée à la maintenance.');
+        if (Gate::denies('provenderie.S')) return back()->with('error', 'Suppression réservée à la maintenance.');
 
         $material = RawMaterial::findOrFail($id);
 
@@ -155,7 +155,7 @@ class RawMaterialController extends Controller
      */
     public function removeStock(Request $request, $id): RedirectResponse
     {
-        if (Gate::denies('M')) return back()->with('error', 'Ajustement non autorisé.');
+        if (Gate::denies('provenderie.M')) return back()->with('error', 'Ajustement non autorisé.');
 
         $material = RawMaterial::findOrFail($id);
 

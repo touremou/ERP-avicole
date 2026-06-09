@@ -35,7 +35,7 @@ class HealthController extends Controller
         }
 
         // 3. Récupération des données
-        $checks = $query->orderBy('intervention_date', 'desc')->paginate(15)->withQueryString();
+        $checks = $query->orderBy('intervention_date', 'desc')->paginate((int) setting('general.items_per_page', 20))->withQueryString();
         $batches = Batch::active()->live()->get();
         //$batches = Batch::where('status', 'Actif')->get();
 

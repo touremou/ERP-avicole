@@ -29,7 +29,7 @@ class ClientController extends Controller
             $query->where('balance', '>', 0);
         }
 
-        $clients = $query->withCount('sales')->orderBy('name')->paginate(20);
+        $clients = $query->withCount('sales')->orderBy('name')->paginate((int) setting('general.items_per_page', 20));
 
         $stats = [
             'total_clients'   => Client::count(),

@@ -20,7 +20,7 @@ class IncubationController extends Controller
 {
     public function index(Request $request)
     {
-        if (Gate::denies('L')) return redirect()->route('dashboard')->with('error', 'Accès restreint.');
+        if (Gate::denies('couvoir.L')) return redirect()->route('dashboard')->with('error', 'Accès restreint.');
 
         $incubators = Incubator::with(['incubations' => fn($q) => $q->latest()->limit(5)])->get();
         $providers = \App\Models\Provider::orderBy('name')->get();
@@ -113,7 +113,7 @@ class IncubationController extends Controller
     }
     public function destroy(Incubation $incubation, AbortIncubation $action)
     {
-        if (Gate::denies('S')) return back()->with('error', 'Suppression réservée à l\'administrateur.');
+        if (Gate::denies('couvoir.S')) return back()->with('error', 'Suppression réservée à l\'administrateur.');
         $action->execute($incubation);
         return back()->with('success', 'Cycle supprimé et annulé avec succès.');
     }

@@ -22,7 +22,7 @@ class FormulaController extends Controller
 {
     public function index(): View|RedirectResponse
     {
-        if (Gate::denies('L')) return redirect()->route('dashboard')->with('error', 'Accès non autorisé.');
+        if (Gate::denies('provenderie.L')) return redirect()->route('dashboard')->with('error', 'Accès non autorisé.');
 
         $formulas = Formula::with(['items.rawMaterial'])->latest()->get();
         $norms = FoodNorm::where('is_active', true)->get();
@@ -32,7 +32,7 @@ class FormulaController extends Controller
 
     public function create(): View|RedirectResponse
     {
-        if (Gate::denies('C')) return back()->with('error', 'Privilèges insuffisants.');
+        if (Gate::denies('provenderie.C')) return back()->with('error', 'Privilèges insuffisants.');
 
         $materials = RawMaterial::where('is_active', true)->orderBy('name')->get();
         $norms = FoodNorm::where('is_active', true)->orderBy('name')->get();
@@ -80,7 +80,7 @@ class FormulaController extends Controller
 
     public function edit(Formula $formula): View|RedirectResponse
     {
-        if (Gate::denies('M')) return back()->with('error', 'Modification non autorisée.');
+        if (Gate::denies('provenderie.M')) return back()->with('error', 'Modification non autorisée.');
 
         $formula->load('items.rawMaterial');
         $rawMaterials = RawMaterial::orderBy('name')->get();
@@ -102,7 +102,7 @@ class FormulaController extends Controller
      */
     public function importNorms(Request $request): RedirectResponse
     {
-        if (Gate::denies('S')) return back()->with('error', 'Seul un administrateur peut modifier le référentiel.');
+        if (Gate::denies('provenderie.S')) return back()->with('error', 'Seul un administrateur peut modifier le référentiel.');
 
         $request->validate([
             'file' => 'required|mimes:xlsx,xls,csv,txt|max:4096',
@@ -132,7 +132,7 @@ class FormulaController extends Controller
      */
     public function destroy(Formula $formula): RedirectResponse
     {
-        if (Gate::denies('S')) return back()->with('error', 'Suppression interdite.');
+        if (Gate::denies('provenderie.S')) return back()->with('error', 'Suppression interdite.');
 
         if ($formula->productions()->exists()) {
             return back()->with('error', "Archivage requis : cette formule a déjà été produite. La supprimer compromettrait la traçabilité.");

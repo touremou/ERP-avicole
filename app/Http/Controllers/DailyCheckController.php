@@ -35,7 +35,7 @@ class DailyCheckController extends Controller
 
         $dailyChecks = DailyCheck::with('batch.building')
             ->latest('check_date')
-            ->paginate(15);
+            ->paginate((int) setting('general.items_per_page', 20));
 
         return view('daily-checks.index', compact('dailyChecks'));
     }

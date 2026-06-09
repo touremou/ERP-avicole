@@ -146,7 +146,7 @@ class DashboardController extends Controller
             }])
             ->where('status', 'Actif')
             ->where('initial_quantity', '>', 0) // 💡 CORRECTION
-            ->paginate(10);
+            ->paginate((int) setting('general.items_per_page', 20));
 
         return view('dashboard', compact(
             'totalBirds', 'globalMortalityRate', 'hdp', 

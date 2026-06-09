@@ -16,7 +16,7 @@ class IncubatorController extends Controller
      */
     public function index() 
     {
-        if (Gate::denies('L')) return redirect()->route('dashboard')->with('error', 'Accès restreint.');
+        if (Gate::denies('couvoir.L')) return redirect()->route('dashboard')->with('error', 'Accès restreint.');
 
         // On utilise selectRaw pour calculer les stats directement via le moteur SQL (Plus rapide)
         $incubators = Incubator::with(['maintenances'])
@@ -26,7 +26,7 @@ class IncubatorController extends Controller
             ->withSum(['incubations as total_produced' => function($q) {
                 $q->where('status', 'clos');
             }], 'hatched_chicks')
-            ->paginate(10);
+            ->paginate((int) setting('general.items_per_page', 20));
 
         // Injection des moyennes de performance
         $incubators->getCollection()->transform(function($incubator) {
@@ -47,7 +47,7 @@ class IncubatorController extends Controller
      */
     public function store(Request $request) 
     {
-        if (Gate::denies('C')) return back()->with('error', 'Action non autorisée.');
+        if (Gate::denies('couvoir.C')) return back()->with('error', 'Action non autorisée.');
 
         $data = $request->validate([
             'name' => 'required|string|max:255|unique:incubators,name',
@@ -65,7 +65,7 @@ class IncubatorController extends Controller
      */
     public function addMaintenance(Request $request, Incubator $incubator) 
     {
-        if (Gate::denies('M')) return back()->with('error', 'Modification de maintenance interdite.');
+        if (Gate::denies('couvoir.M')) return back()->with('error', 'Modification de maintenance interdite.');
 
         $data = $request->validate([
             'maintenance_date' => 'required|date|before_or_equal:today',
@@ -91,7 +91,7 @@ class IncubatorController extends Controller
     public function edit(Incubator $incubator)
     {
         // Vérification des droits (M pour Modification)
-        if (Gate::denies('M')) {
+        if (Gate::denies('couvoir.M')) {
             return redirect()->route('incubators.index')->with('error', 'Accès refusé.');
         }
 
@@ -103,7 +103,7 @@ class IncubatorController extends Controller
      */
     public function update(Request $request, Incubator $incubator)
     {
-        if (Gate::denies('M')) return back()->with('error', 'Action non autorisée.');
+        if (Gate::denies('couvoir.M')) return back()->with('error', 'Action non autorisée.');
 
         $isBusy = $incubator->incubations()->where('status', '!=', 'clos')->exists();
 
@@ -128,7 +128,7 @@ class IncubatorController extends Controller
      */
     public function destroy(Incubator $incubator) 
     {
-        if (Gate::denies('S')) return back()->with('error', 'Suppression réservée à l\'administrateur.');
+        if (Gate::denies('couvoir.S')) return back()->with('error', 'Suppression réservée à l\'administrateur.');
 
         if ($incubator->incubations()->where('status', '!=', 'clos')->exists()) {
             return back()->with('error', '🛑 ERREUR : Cette machine est actuellement en cycle de production.');

@@ -37,7 +37,7 @@ class FeedPurchaseController extends Controller
 
     public function destroy(FeedPurchase $feedPurchase, DeleteFeedPurchase $deletePurchase)
     {
-        if (Gate::denies('S')) return back()->with('error', 'Seul un superviseur peut annuler un achat validé.');
+        if (Gate::denies('provenderie.S')) return back()->with('error', 'Seul un superviseur peut annuler un achat validé.');
 
         $deletePurchase->execute($feedPurchase);
         

@@ -21,18 +21,18 @@ class MillProductionController extends Controller
 {
     public function index(): View|RedirectResponse
     {
-        if (Gate::denies('L')) return redirect()->route('dashboard')->with('error', 'Accès restreint.');
+        if (Gate::denies('provenderie.L')) return redirect()->route('dashboard')->with('error', 'Accès restreint.');
 
         $productions = MillProduction::with(['formula', 'machine', 'machines', 'supervisor', 'user'])
             ->latest()
-            ->paginate(15);
+            ->paginate((int) setting('general.items_per_page', 20));
 
         return view('provenderie.production.index', compact('productions'));
     }
 
     public function create(): View|RedirectResponse
     {
-        if (Gate::denies('C')) return back()->with('error', 'Privilèges insuffisants.');
+        if (Gate::denies('provenderie.C')) return back()->with('error', 'Privilèges insuffisants.');
 
         $formulas = Formula::where('is_active', true)->orderBy('name')->get();
         $machines = MillMachine::where('status', 'Opérationnel')->get();
@@ -109,7 +109,7 @@ class MillProductionController extends Controller
      */
     public function complete($id, CompleteMillProduction $action): RedirectResponse
     {
-        if (Gate::denies('M')) return back()->with('error', 'Seul un responsable peut clôturer.');
+        if (Gate::denies('provenderie.M')) return back()->with('error', 'Seul un responsable peut clôturer.');
 
         $production = MillProduction::with(['formula.items.rawMaterial', 'machine', 'machines'])->findOrFail($id);
 

@@ -20,7 +20,7 @@ class DispatchController extends Controller
 
     public function index(Request $request)
     {
-        if (Gate::denies('L')) return redirect()->route('dashboard')->with('error', 'Accès restreint.');
+        if (Gate::denies('logistique.L')) return redirect()->route('dashboard')->with('error', 'Accès restreint.');
 
         $query = Dispatch::with(['dispatcher', 'reception']);
 
@@ -28,7 +28,7 @@ class DispatchController extends Controller
             $query->where('status', $request->status);
         }
 
-        $dispatches = $query->latest('dispatch_date')->paginate(20);
+        $dispatches = $query->latest('dispatch_date')->paginate((int) setting('general.items_per_page', 20));
 
         $stats = [
             'pending'   => Dispatch::pending()->count(),
@@ -41,7 +41,7 @@ class DispatchController extends Controller
 
     public function create()
     {
-        if (Gate::denies('C')) return back()->with('error', 'Action non autorisée.');
+        if (Gate::denies('logistique.C')) return back()->with('error', 'Action non autorisée.');
 
         $stocks  = Stock::where('current_quantity', '>', 0)->get();
         $batches = Batch::where('status', 'Actif')->with('building')->get();
@@ -51,7 +51,7 @@ class DispatchController extends Controller
 
     public function store(Request $request, CreateDispatch $action)
     {
-        if (Gate::denies('C')) return back()->with('error', 'Action non autorisée.');
+        if (Gate::denies('logistique.C')) return back()->with('error', 'Action non autorisée.');
 
         $validated = $request->validate([
             'driver_name'             => 'required|string|max:255',
@@ -83,7 +83,7 @@ class DispatchController extends Controller
 
     public function show(Dispatch $dispatch)
     {
-        if (Gate::denies('L')) return back()->with('error', 'Accès restreint.');
+        if (Gate::denies('logistique.L')) return back()->with('error', 'Accès restreint.');
 
         $dispatch->load(['items', 'dispatcher', 'reception.items.dispatchItem', 'reception.receiver', 'discrepancyReport']);
 
@@ -94,7 +94,7 @@ class DispatchController extends Controller
 
     public function showReceptionForm(Dispatch $dispatch)
     {
-        if (Gate::denies('C')) return back()->with('error', 'Action non autorisée.');
+        if (Gate::denies('logistique.C')) return back()->with('error', 'Action non autorisée.');
 
         if ($dispatch->reception()->exists()) {
             return redirect()->route('dispatches.show', $dispatch)
@@ -108,7 +108,7 @@ class DispatchController extends Controller
 
     public function storeReception(Request $request, Dispatch $dispatch, ValidateReception $action)
     {
-        if (Gate::denies('C')) return back()->with('error', 'Action non autorisée.');
+        if (Gate::denies('logistique.C')) return back()->with('error', 'Action non autorisée.');
 
         $validated = $request->validate([
             'reception_date'              => 'required|date',
@@ -142,7 +142,7 @@ class DispatchController extends Controller
 
     public function discrepancies(Request $request)
     {
-        if (Gate::denies('L')) return redirect()->route('dashboard')->with('error', 'Accès restreint.');
+        if (Gate::denies('logistique.L')) return redirect()->route('dashboard')->with('error', 'Accès restreint.');
 
         $query = DiscrepancyReport::with(['dispatch', 'reception', 'reporter']);
 
@@ -153,7 +153,7 @@ class DispatchController extends Controller
             $query->where('resolution', $request->resolution);
         }
 
-        $reports = $query->latest()->paginate(20);
+        $reports = $query->latest()->paginate((int) setting('general.items_per_page', 20));
 
         $stats = [
             'total_open'     => DiscrepancyReport::where('resolution', 'en_cours')->count(),
@@ -166,7 +166,7 @@ class DispatchController extends Controller
 
     public function resolveDiscrepancy(Request $request, DiscrepancyReport $report, ReconciliationService $service)
     {
-        if (Gate::denies('S')) return back()->with('error', 'Résolution réservée aux administrateurs.');
+        if (Gate::denies('logistique.S')) return back()->with('error', 'Résolution réservée aux administrateurs.');
 
         $validated = $request->validate([
             'resolution'       => 'required|in:justifie,injustifie,enquete',

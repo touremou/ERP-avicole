@@ -48,7 +48,7 @@ class SettingsController extends Controller
             $query->where('setting_audits.created_at', '<=', $request->input('to') . ' 23:59:59');
         }
 
-        $audits = $query->latest('setting_audits.created_at')->paginate(30);
+        $audits = $query->latest('setting_audits.created_at')->paginate((int) setting('general.items_per_page', 20));
 
         $groups = Setting::getGroups();
         $users = DB::table('setting_audits')

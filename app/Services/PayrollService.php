@@ -110,7 +110,15 @@ class PayrollService
         $count = 0;
         $current = $start->copy();
         while ($current->lte($end)) {
-            if ($current->isSunday()) $count++;
+            $restDay = setting('rh.rest_day', 'dimanche');
+            $isRest = match($restDay) {
+                'dimanche' => $current->isSunday(),
+                'samedi'   => $current->isSaturday(),
+                'vendredi' => $current->isFriday(),
+                'aucun'    => false,
+                default    => $current->isSunday(),
+            };
+            if ($isRest) $count++;
             $current->addDay();
         }
         return $count;
