@@ -37,19 +37,34 @@ class DailyCheckExtension extends Model
     public function getWaterAlerts(): array
     {
         $alerts = [];
+
         if ($this->water_ph !== null) {
-            $phMin = (float) setting('pisciculture.ph_min', 6.5);
-            $phMax = (float) setting('pisciculture.ph_max', 8.5);
-            if ($this->water_ph < $phMin || $this->water_ph > $phMax) {
-                $alerts[] = "pH hors norme ({$this->water_ph})";
+            $ph = (float) $this->water_ph;
+            if ($ph < 6.0 || $ph > 9.0) {
+                $alerts[] = ['level' => 'critical', 'metric' => 'pH', 'value' => $ph, 'message' => "pH {$ph} critique (hors 6.0–9.0)"];
+            } elseif ($ph < 6.5 || $ph > 8.5) {
+                $alerts[] = ['level' => 'warning', 'metric' => 'pH', 'value' => $ph, 'message' => "pH {$ph} hors plage optimale (6.5–8.5)"];
             }
         }
-        if ($this->water_o2_ppm !== null && $this->water_o2_ppm < (float) setting('pisciculture.o2_alert', 4)) {
-            $alerts[] = "O₂ critique ({$this->water_o2_ppm} mg/L)";
+
+        if ($this->water_o2_ppm !== null) {
+            $o2 = (float) $this->water_o2_ppm;
+            if ($o2 < 3.0) {
+                $alerts[] = ['level' => 'critical', 'metric' => 'O₂', 'value' => $o2, 'message' => "O₂ {$o2} ppm — risque d'asphyxie (< 3 ppm)"];
+            } elseif ($o2 < 5.0) {
+                $alerts[] = ['level' => 'warning', 'metric' => 'O₂', 'value' => $o2, 'message' => "O₂ {$o2} ppm — zone de vigilance (< 5 ppm)"];
+            }
         }
-        if ($this->water_ammonia_ppm !== null && $this->water_ammonia_ppm > (float) setting('pisciculture.ammonia_alert', 0.02)) {
-            $alerts[] = "NH₃ élevé ({$this->water_ammonia_ppm} mg/L)";
+
+        if ($this->water_ammonia_ppm !== null) {
+            $nh3 = (float) $this->water_ammonia_ppm;
+            if ($nh3 > 1.0) {
+                $alerts[] = ['level' => 'critical', 'metric' => 'NH₃', 'value' => $nh3, 'message' => "Ammoniaque {$nh3} ppm — risque d'intoxication (> 1 ppm)"];
+            } elseif ($nh3 > 0.5) {
+                $alerts[] = ['level' => 'warning', 'metric' => 'NH₃', 'value' => $nh3, 'message' => "Ammoniaque {$nh3} ppm — vigilance (> 0.5 ppm)"];
+            }
         }
+
         return $alerts;
     }
 }

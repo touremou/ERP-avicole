@@ -56,6 +56,19 @@
                     <i class="fa-solid fa-coins absolute -right-4 -bottom-4 text-7xl text-slate-50 group-hover:text-orange-50 transition-colors"></i>
                 </a>
                 @endcan
+
+                {{-- GMQ RUMINANTS --}}
+                @can('elevage.L')
+                <a href="{{ route('reports.gmq') }}" class="group bg-white p-8 rounded-2xl border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all no-underline relative overflow-hidden">
+                    <div class="w-12 h-12 bg-emerald-700 text-white rounded-xl flex items-center justify-center mb-5 shadow-lg group-hover:scale-110 transition-transform"><i class="fa-solid fa-chart-line text-lg"></i></div>
+                    <h3 class="text-base font-black text-slate-800 uppercase tracking-tighter mb-2 italic">GMQ Ruminants</h3>
+                    <p class="text-[9px] text-slate-400 uppercase tracking-widest font-black mb-6">Gain moyen quotidien par lot, sparkline pesées</p>
+                    <div class="flex items-center gap-2 text-emerald-700 text-[9px] font-black uppercase tracking-widest border-t border-slate-50 pt-4">
+                        Croissance <i class="fa-solid fa-arrow-right group-hover:translate-x-1 transition-transform text-[8px]"></i>
+                    </div>
+                    <i class="fa-solid fa-sheep absolute -right-4 -bottom-4 text-7xl text-slate-50 group-hover:text-emerald-50 transition-colors"></i>
+                </a>
+                @endcan
             </div>
         </div>
     </div>

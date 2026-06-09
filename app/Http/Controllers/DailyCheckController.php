@@ -98,17 +98,36 @@ class DailyCheckController extends Controller
         }
         $check = $action->execute($request->validated());
 
-        // Save ruminant extension if applicable
-        if ($check->batch->isRuminant() && ($request->has('ext_qty_born') || $request->has('ext_milk_liters'))) {
-            \App\Models\DailyCheckExtension::updateOrCreate(
-                ['daily_check_id' => $check->id],
-                [
+        // Save species-specific extension if applicable
+        if ($check->batch->isRuminant() || $check->batch->isAquaculture()) {
+            $extData = [];
+
+            if ($check->batch->isRuminant()) {
+                $extData = array_merge($extData, [
                     'qty_born'     => $request->integer('ext_qty_born', 0),
                     'qty_weaned'   => $request->integer('ext_qty_weaned', 0),
                     'milk_liters'  => $request->input('ext_milk_liters'),
                     'milk_fat_pct' => $request->input('ext_milk_fat_pct'),
-                ]
-            );
+                ]);
+            }
+
+            if ($check->batch->isAquaculture()) {
+                $extData = array_merge($extData, [
+                    'water_temp'        => $request->input('ext_water_temp'),
+                    'water_ph'          => $request->input('ext_water_ph'),
+                    'water_o2_ppm'      => $request->input('ext_water_o2_ppm'),
+                    'water_ammonia_ppm' => $request->input('ext_water_ammonia_ppm'),
+                    'biomass_kg'        => $request->input('ext_biomass_kg'),
+                    'survival_rate'     => $request->input('ext_survival_rate'),
+                ]);
+            }
+
+            if (!empty(array_filter($extData, fn($v) => $v !== null))) {
+                \App\Models\DailyCheckExtension::updateOrCreate(
+                    ['daily_check_id' => $check->id],
+                    $extData
+                );
+            }
         }
 
         return redirect()->route('batches.show', $check->batch_id)
@@ -233,17 +252,36 @@ class DailyCheckController extends Controller
             // L'observer DailyCheckObserver gère le diff sur current_quantity
             $check->update($validated);
 
-            // Save ruminant extension if applicable
-            if ($check->batch->isRuminant() && ($request->has('ext_qty_born') || $request->has('ext_milk_liters'))) {
-                \App\Models\DailyCheckExtension::updateOrCreate(
-                    ['daily_check_id' => $check->id],
-                    [
+            // Save species-specific extension if applicable
+            if ($check->batch->isRuminant() || $check->batch->isAquaculture()) {
+                $extData = [];
+
+                if ($check->batch->isRuminant()) {
+                    $extData = array_merge($extData, [
                         'qty_born'     => $request->integer('ext_qty_born', 0),
                         'qty_weaned'   => $request->integer('ext_qty_weaned', 0),
                         'milk_liters'  => $request->input('ext_milk_liters'),
                         'milk_fat_pct' => $request->input('ext_milk_fat_pct'),
-                    ]
-                );
+                    ]);
+                }
+
+                if ($check->batch->isAquaculture()) {
+                    $extData = array_merge($extData, [
+                        'water_temp'        => $request->input('ext_water_temp'),
+                        'water_ph'          => $request->input('ext_water_ph'),
+                        'water_o2_ppm'      => $request->input('ext_water_o2_ppm'),
+                        'water_ammonia_ppm' => $request->input('ext_water_ammonia_ppm'),
+                        'biomass_kg'        => $request->input('ext_biomass_kg'),
+                        'survival_rate'     => $request->input('ext_survival_rate'),
+                    ]);
+                }
+
+                if (!empty(array_filter($extData, fn($v) => $v !== null))) {
+                    \App\Models\DailyCheckExtension::updateOrCreate(
+                        ['daily_check_id' => $check->id],
+                        $extData
+                    );
+                }
             }
 
             return redirect()->route('batches.show', $check->batch_id)

@@ -343,4 +343,66 @@ class ReportController extends Controller
             'dateFrom', 'dateTo', 'useDateRange'
         ));
     }
+
+    /**
+     * Rapport GMQ (Gain Moyen Quotidien) pour les lots ruminants.
+     */
+    public function gmqReport(Request $request): View
+    {
+        $farmId = session('current_farm_id');
+
+        $query = \App\Models\Batch::with(['species', 'building', 'dailyChecks' => function($q) {
+                $q->orderBy('check_date');
+            }])
+            ->whereHas('species', function($q) {
+                $q->whereIn('family', ['petit_ruminant', 'grand_ruminant']);
+            })
+            ->when($farmId, fn($q) => $q->where('farm_id', $farmId));
+
+        $statusFilter = $request->input('status', 'Actif');
+        if ($statusFilter !== 'all') {
+            $query->where('status', $statusFilter);
+        }
+
+        $batches = $query->orderByDesc('arrival_date')->get();
+
+        // Compute GMQ per batch
+        $batchStats = $batches->map(function($batch) {
+            $checks = $batch->dailyChecks->filter(fn($c) => $c->avg_weight > 0)->values();
+
+            if ($checks->count() < 2) {
+                return [
+                    'batch'        => $batch,
+                    'gmq'          => null,
+                    'gmq_series'   => [],
+                    'start_weight' => $batch->avg_weight_start,
+                    'last_weight'  => $checks->last()?->avg_weight,
+                    'age_days'     => $batch->age,
+                ];
+            }
+
+            $first = $checks->first();
+            $last  = $checks->last();
+            $days  = max(1, \Carbon\Carbon::parse($first->check_date)->diffInDays($last->check_date));
+            $gmq   = round((($last->avg_weight - $first->avg_weight) * 1000) / $days); // g/jour
+
+            // Series for sparkline: [date => weight]
+            $series = $checks->mapWithKeys(fn($c) => [
+                \Carbon\Carbon::parse($c->check_date)->format('d/m') => round((float)$c->avg_weight, 3)
+            ])->toArray();
+
+            return [
+                'batch'        => $batch,
+                'gmq'          => $gmq,
+                'gmq_series'   => $series,
+                'start_weight' => $first->avg_weight,
+                'last_weight'  => $last->avg_weight,
+                'age_days'     => $batch->age,
+            ];
+        });
+
+        $avgGmq = $batchStats->whereNotNull('gmq')->avg('gmq');
+
+        return view('reports.gmq', compact('batchStats', 'avgGmq', 'statusFilter'));
+    }
 }
