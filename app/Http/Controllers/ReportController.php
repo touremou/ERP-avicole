@@ -405,4 +405,66 @@ class ReportController extends Controller
 
         return view('reports.gmq', compact('batchStats', 'avgGmq', 'statusFilter'));
     }
+
+    /**
+     * Rapport Pisciculture : qualité de l'eau et survie pour les lots aquacoles.
+     */
+    public function aquacultureReport(Request $request): View
+    {
+        $farmId = session('current_farm_id');
+
+        $query = \App\Models\Batch::with(['species', 'building', 'dailyChecks' => function($q) {
+                $q->orderBy('check_date')->with('extension');
+            }])
+            ->whereHas('species', function($q) {
+                $q->where('family', 'aquaculture');
+            })
+            ->when($farmId, fn($q) => $q->where('farm_id', $farmId));
+
+        $statusFilter = $request->input('status', 'Actif');
+        if ($statusFilter !== 'all') {
+            $query->where('status', $statusFilter);
+        }
+
+        $batches = $query->orderByDesc('arrival_date')->get();
+
+        $batchStats = $batches->map(function($batch) {
+            $checks = $batch->dailyChecks->filter(fn($c) => $c->extension !== null)->values();
+
+            $series = [
+                'ph'        => [],
+                'o2'        => [],
+                'temp'      => [],
+                'ammonia'   => [],
+                'biomass'   => [],
+                'survival'  => [],
+            ];
+
+            foreach ($checks as $c) {
+                $date = \Carbon\Carbon::parse($c->check_date)->format('d/m');
+                $ext  = $c->extension;
+                if ($ext->water_ph !== null)       $series['ph'][$date]       = (float) $ext->water_ph;
+                if ($ext->water_o2_ppm !== null)   $series['o2'][$date]       = (float) $ext->water_o2_ppm;
+                if ($ext->water_temp !== null)     $series['temp'][$date]     = (float) $ext->water_temp;
+                if ($ext->water_ammonia_ppm !== null) $series['ammonia'][$date] = (float) $ext->water_ammonia_ppm;
+                if ($ext->biomass_kg !== null)     $series['biomass'][$date]   = (float) $ext->biomass_kg;
+                if ($ext->survival_rate !== null)  $series['survival'][$date]  = (float) $ext->survival_rate;
+            }
+
+            $lastExt = $checks->last()?->extension;
+
+            return [
+                'batch'    => $batch,
+                'series'   => $series,
+                'last_ext' => $lastExt,
+                'alerts'   => $lastExt?->getWaterAlerts() ?? [],
+                'age_days' => $batch->age,
+            ];
+        });
+
+        $totalAlerts = $batchStats->sum(fn($s) => count($s['alerts']));
+        $criticalCount = $batchStats->sum(fn($s) => collect($s['alerts'])->where('level', 'critical')->count());
+
+        return view('reports.aquaculture', compact('batchStats', 'statusFilter', 'totalAlerts', 'criticalCount'));
+    }
 }
