@@ -146,111 +146,200 @@ class ReportController extends Controller
     /**
      * ANALYSE FINANCIÈRE GLOBALE (Coût de production)
      * Gate : admin.L — données financières sensibles
+     *
+     * Filtres disponibles :
+     *  - year       : année (défaut = année courante)
+     *  - status     : all / actif / termine
+     *  - month      : 1-12 / all
+     *  - type       : chair / ponte / poussiniere / reproducteur / all
+     *  - date_from  : plage libre (YYYY-MM-DD), prioritaire sur year+month
+     *  - date_to    : plage libre (YYYY-MM-DD)
      */
     public function monthlyExpenses(Request $request)
     {
         if (Gate::denies('admin.L')) return back()->with('error', 'Accès réservé.');
 
-        $currentYear = (int) $request->get('year', date('Y'));
+        $currentYear  = (int) $request->get('year', date('Y'));
         $statusFilter = $request->get('status', 'all');
-        $monthFilter = $request->get('month', 'all');
-        $bagWeight = (float) setting('general.feed_bag_weight', 50);
+        $monthFilter  = $request->get('month', 'all');
+        $typeFilter   = $request->get('type', 'all');
+        $dateFrom     = $request->get('date_from');
+        $dateTo       = $request->get('date_to');
+        $bagWeight    = (float) setting('general.feed_bag_weight', 50);
 
-        $query = Batch::with(['building', 'feedPurchases']);
+        // Plage libre : si date_from/date_to fournis, ils priment sur year/month
+        $useDateRange = $dateFrom && $dateTo;
+        $rangeStart   = $useDateRange ? Carbon::parse($dateFrom)->startOfDay() : null;
+        $rangeEnd     = $useDateRange ? Carbon::parse($dateTo)->endOfDay()     : null;
+
+        // ─── LISTE DES ANNÉES DISPONIBLES POUR LE SÉLECTEUR ───
+        $availableYears = Batch::selectRaw('YEAR(arrival_date) as yr')
+            ->whereNotNull('arrival_date')
+            ->distinct()->orderByDesc('yr')
+            ->pluck('yr')->filter()->toArray();
+        if (empty($availableYears)) {
+            $availableYears = [date('Y')];
+        }
+
+        $query = Batch::with(['building', 'feedPurchases'])->live();
 
         if ($statusFilter === 'actif') {
             $query->where('status', 'Actif');
-        } elseif ($statusFilter === 'termine' || $statusFilter === 'clos') {
+        } elseif (in_array($statusFilter, ['termine', 'clos'])) {
             $query->whereIn('status', ['Terminé', 'Clôturé']);
         }
 
-        $batches = $query
-        ->live()
-        ->get();
-        $batchIds = $batches->pluck('id');
+        if ($typeFilter !== 'all') {
+            $query->where('type', $typeFilter);
+        }
 
-        // Données santé par mois
-        $healthData = HealthCheck::whereIn('batch_id', $batchIds)
-            ->whereYear('intervention_date', $currentYear)
-            ->when($monthFilter !== 'all', fn($q) => $q->whereMonth('intervention_date', $monthFilter))
+        $batches   = $query->get();
+        $batchIds  = $batches->pluck('id');
+
+        // ─── REQUÊTES SANTÉ & ALIMENT AVEC PLAGE DYNAMIQUE ───
+        $healthQuery = HealthCheck::whereIn('batch_id', $batchIds);
+        $feedQuery   = DailyCheck::whereIn('batch_id', $batchIds);
+
+        if ($useDateRange) {
+            $healthQuery->whereBetween('intervention_date', [$rangeStart, $rangeEnd]);
+            $feedQuery->whereBetween('check_date', [$rangeStart, $rangeEnd]);
+        } else {
+            $healthQuery->whereYear('intervention_date', $currentYear)
+                ->when($monthFilter !== 'all', fn($q) => $q->whereMonth('intervention_date', $monthFilter));
+            $feedQuery->whereYear('check_date', $currentYear)
+                ->when($monthFilter !== 'all', fn($q) => $q->whereMonth('check_date', $monthFilter));
+        }
+
+        $healthData = $healthQuery
             ->select('batch_id', DB::raw('SUM(cost) as total_health'), DB::raw('MONTH(intervention_date) as month'))
             ->groupBy('month', 'batch_id')->get();
 
-        // Consommation aliment par mois
-        $feedConsump = DailyCheck::whereIn('batch_id', $batchIds)
-            ->whereYear('check_date', $currentYear)
-            ->when($monthFilter !== 'all', fn($q) => $q->whereMonth('check_date', $monthFilter))
+        $feedConsump = $feedQuery
             ->select('batch_id', DB::raw('SUM(feed_consumed) as qty'), DB::raw('MONTH(check_date) as month'))
             ->groupBy('month', 'batch_id')->get();
 
         $monthlyData = [];
 
         foreach ($batches as $batch) {
-            // CMUP aliment
-            $totalFeedCost = 0;
-            $totalFeedKg = 0;
+            // CMUP aliment depuis les achats
+            $totalFeedCostAll = 0;
+            $totalFeedKgAll   = 0;
             foreach ($batch->feedPurchases as $purchase) {
-                $totalFeedCost += (float) $purchase->quantity * (float) $purchase->unit_price;
-                $kg = strtolower($purchase->unit) === 'sac' ? (float) $purchase->quantity * $bagWeight : (float) $purchase->quantity;
-                $totalFeedKg += $kg;
+                $totalFeedCostAll += (float) $purchase->quantity * (float) $purchase->unit_price;
+                $kg = strtolower($purchase->unit ?? '') === 'sac'
+                    ? (float) $purchase->quantity * $bagWeight
+                    : (float) $purchase->quantity;
+                $totalFeedKgAll += $kg;
             }
-            $avgPricePerKg = $totalFeedKg > 0 ? ($totalFeedCost / $totalFeedKg) : 0;
+            $avgPricePerKg = $totalFeedKgAll > 0 ? ($totalFeedCostAll / $totalFeedKgAll) : 0;
 
-            // ═══ DÉTERMINER LES MOIS D'ACTIVITÉ DU LOT ═══
+            // Coût acquisition
+            $acquisitionCost = (float) ($batch->total_acquisition_cost
+                ?: ($batch->buy_price_per_unit * $batch->initial_quantity));
+
             $arrivalDate = $batch->arrival_date ? Carbon::parse($batch->arrival_date) : null;
             $closingDate = $batch->closing_date ? Carbon::parse($batch->closing_date) : now();
 
             if (! $arrivalDate) continue;
 
-            // Mois où le lot était actif dans l'année courante
-            $startMonth = $arrivalDate->year < $currentYear ? 1 : $arrivalDate->month;
-            $endMonth = $closingDate->year > $currentYear ? 12 : $closingDate->month;
-
-            if ($arrivalDate->year > $currentYear) continue; // Lot pas encore arrivé cette année
-            if ($closingDate->year < $currentYear) continue; // Lot terminé avant cette année
-
-            // Filtrer par mois si demandé
-            if ($monthFilter !== 'all') {
-                $m = (int) $monthFilter;
-                if ($m < $startMonth || $m > $endMonth) continue;
-                $startMonth = $m;
-                $endMonth = $m;
+            if ($useDateRange) {
+                // En plage libre : on affiche dans un "mois" synthétique = 0
+                $startMonth = 0;
+                $endMonth   = 0;
+                // Vérifier chevauchement avec la plage
+                if ($arrivalDate->gt($rangeEnd) || $closingDate->lt($rangeStart)) continue;
+            } else {
+                $startMonth = $arrivalDate->year < $currentYear ? 1 : $arrivalDate->month;
+                $endMonth   = $closingDate->year > $currentYear ? 12 : $closingDate->month;
+                if ($arrivalDate->year > $currentYear) continue;
+                if ($closingDate->year < $currentYear) continue;
+                if ($monthFilter !== 'all') {
+                    $m = (int) $monthFilter;
+                    if ($m < $startMonth || $m > $endMonth) continue;
+                    $startMonth = $m;
+                    $endMonth   = $m;
+                }
             }
 
-            // Peupler chaque mois d'activité
             for ($m = $startMonth; $m <= $endMonth; $m++) {
                 if (! isset($monthlyData[$m][$batch->id])) {
                     $monthlyData[$m][$batch->id] = [
-                        'batch'     => $batch,
-                        'health'    => 0,
-                        'feed_qty'  => 0,
-                        'feed_cost' => 0,
+                        'batch'            => $batch,
+                        'health'           => 0,
+                        'feed_qty'         => 0,
+                        'feed_cost'        => 0,
+                        'acquisition_cost' => $acquisitionCost,
+                        'avg_price_per_kg' => $avgPricePerKg,
                     ];
                 }
             }
 
-            // Ajouter les données santé
             foreach ($healthData->where('batch_id', $batch->id) as $h) {
-                if (isset($monthlyData[$h->month][$batch->id])) {
-                    $monthlyData[$h->month][$batch->id]['health'] = $h->total_health;
+                $key = $useDateRange ? 0 : $h->month;
+                if (isset($monthlyData[$key][$batch->id])) {
+                    $monthlyData[$key][$batch->id]['health'] += $h->total_health;
                 }
             }
 
-            // Ajouter les données aliment
             foreach ($feedConsump->where('batch_id', $batch->id) as $f) {
-                if (isset($monthlyData[$f->month][$batch->id])) {
-                    $monthlyData[$f->month][$batch->id]['feed_qty'] = $f->qty;
-                    $monthlyData[$f->month][$batch->id]['feed_cost'] = $f->qty * $avgPricePerKg;
+                $key = $useDateRange ? 0 : $f->month;
+                if (isset($monthlyData[$key][$batch->id])) {
+                    $monthlyData[$key][$batch->id]['feed_qty']  += $f->qty;
+                    $monthlyData[$key][$batch->id]['feed_cost'] += $f->qty * $avgPricePerKg;
                 }
             }
         }
 
-        // Trier les mois
         ksort($monthlyData);
+
+        // ─── TOTAUX GLOBAUX (récapitulatif en haut du rapport) ───
+        $globalFeedCost  = 0;
+        $globalHealthCost = 0;
+        $globalAcqCost   = 0;
+        $globalFeedQty   = 0;
+        $globalHeads     = 0;
+
+        foreach ($monthlyData as $mData) {
+            foreach ($mData as $d) {
+                $globalFeedCost   += $d['feed_cost'];
+                $globalHealthCost += $d['health'];
+                $globalFeedQty    += $d['feed_qty'];
+            }
+        }
+        // Acquisition unique par batch (pas multiplié par mois)
+        $seenBatches = [];
+        foreach ($monthlyData as $mData) {
+            foreach ($mData as $bId => $d) {
+                if (! isset($seenBatches[$bId])) {
+                    $seenBatches[$bId] = true;
+                    $globalAcqCost += $d['acquisition_cost'];
+                    $globalHeads   += $d['batch']->initial_quantity;
+                }
+            }
+        }
+        $globalTotalCost  = $globalFeedCost + $globalHealthCost + $globalAcqCost;
+        $globalCostPerHead = $globalHeads > 0 ? $globalTotalCost / $globalHeads : 0;
+
+        $globalStats = [
+            'feed_cost'      => $globalFeedCost,
+            'health_cost'    => $globalHealthCost,
+            'acq_cost'       => $globalAcqCost,
+            'total_cost'     => $globalTotalCost,
+            'feed_qty'       => $globalFeedQty,
+            'heads'          => $globalHeads,
+            'cost_per_head'  => $globalCostPerHead,
+            'feed_pct'       => $globalTotalCost > 0 ? round($globalFeedCost / $globalTotalCost * 100, 1) : 0,
+            'health_pct'     => $globalTotalCost > 0 ? round($globalHealthCost / $globalTotalCost * 100, 1) : 0,
+            'acq_pct'        => $globalTotalCost > 0 ? round($globalAcqCost / $globalTotalCost * 100, 1) : 0,
+        ];
 
         $months = [1 => 'Janvier', 2 => 'Février', 3 => 'Mars', 4 => 'Avril', 5 => 'Mai', 6 => 'Juin',
                    7 => 'Juillet', 8 => 'Août', 9 => 'Septembre', 10 => 'Octobre', 11 => 'Novembre', 12 => 'Décembre'];
 
-        return view('reports.monthly', compact('monthlyData', 'months', 'currentYear', 'statusFilter', 'monthFilter'));
+        return view('reports.monthly', compact(
+            'monthlyData', 'months', 'currentYear', 'statusFilter', 'monthFilter',
+            'typeFilter', 'availableYears', 'globalStats',
+            'dateFrom', 'dateTo', 'useDateRange'
+        ));
     }
 }

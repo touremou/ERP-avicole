@@ -65,9 +65,14 @@
                 <div class="space-y-5 text-left">
                     {{-- PHOTO + NOM --}}
                     <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 text-center">
-                        <div class="w-28 h-28 mx-auto mb-4 rounded-2xl overflow-hidden bg-slate-100 border-4 border-white shadow-xl">
+                        <div class="w-28 h-28 mx-auto mb-4 rounded-2xl overflow-hidden bg-slate-100 border-4 border-white shadow-xl relative">
                             @if($employee->photo_path)
-                                <img src="{{ asset('storage/' . $employee->photo_path) }}" class="w-full h-full object-cover">
+                                <img src="{{ asset('storage/' . $employee->photo_path) }}"
+                                     class="w-full h-full object-cover"
+                                     onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                                <div class="w-full h-full bg-slate-900 items-center justify-center hidden absolute inset-0">
+                                    <span class="text-4xl font-black text-blue-400 uppercase">{{ substr($employee->first_name, 0, 1) }}</span>
+                                </div>
                             @else
                                 <div class="w-full h-full bg-slate-900 flex items-center justify-center">
                                     <span class="text-4xl font-black text-blue-400 uppercase">{{ substr($employee->first_name, 0, 1) }}</span>

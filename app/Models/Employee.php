@@ -85,10 +85,10 @@ class Employee extends Model
             return asset('storage/' . $this->photo_path);
         }
         
-        // Avatar par défaut selon le genre
-        return $this->gender === 'F' 
-            ? asset('images/avatars/female-tech.png') 
-            : asset('images/avatars/male-tech.png');
+        // Avatar par défaut selon le genre (SVG inline, pas de dépendance externe)
+        return $this->gender === 'F'
+            ? asset('images/avatars/female-tech.svg')
+            : asset('images/avatars/male-tech.svg');
     }
 
     /**
