@@ -83,7 +83,7 @@ class ChickDispatchController extends Controller
             if ($dest === 'elevage') {
                 $batch = Batch::create([
                     'uuid'                   => (string) Str::uuid(),
-                    'code'                   => 'POUS-' . now()->format('Ymd-His'),
+                    'code'                   => setting('elevage.batch_prefix_poussiniere', 'POUS') . '-' . now()->format('Ymd-His'),
                     'type'                   => 'poussiniere',
                     'building_id'            => $validated['building_id'],
                     'employee_id'            => $validated['employee_id'] ?? null,

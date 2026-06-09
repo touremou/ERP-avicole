@@ -70,7 +70,7 @@ class BatchController extends Controller
         $baseQuery = Batch::active()->live();
         
         if ($isCriticalView) {
-            $baseQuery->critical(5.0);
+            $baseQuery->critical(setting('elevage.mortality_alert', 5));
         }
 
         $counts = [
