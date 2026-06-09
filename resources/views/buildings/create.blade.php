@@ -46,6 +46,11 @@
                                 <option value="ponte" {{ old('type') == 'ponte' ? 'selected' : '' }}>🥚 Pondeuses</option>
                                 <option value="poussiniere" {{ old('type') == 'poussiniere' ? 'selected' : '' }}>🐣 Poussinière</option>
                                 <option value="reproducteur" {{ old('type') == 'reproducteur' ? 'selected' : '' }}>🧬 Reproducteurs</option>
+                                <option value="bergerie" {{ old('type') == 'bergerie' ? 'selected' : '' }}>🐑 Bergerie (Ovins)</option>
+                                <option value="chevrerie" {{ old('type') == 'chevrerie' ? 'selected' : '' }}>🐐 Chèvrerie (Caprins)</option>
+                                <option value="bassin" {{ old('type') == 'bassin' ? 'selected' : '' }}>🐟 Bassin (Pisciculture)</option>
+                                <option value="lapiniere" {{ old('type') == 'lapiniere' ? 'selected' : '' }}>🐇 Lapinière</option>
+                                <option value="porcherie" {{ old('type') == 'porcherie' ? 'selected' : '' }}>🐷 Porcherie</option>
                             </select>
                         </div>
 

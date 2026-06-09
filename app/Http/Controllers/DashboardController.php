@@ -195,11 +195,41 @@ class DashboardController extends Controller
             }
         }
 
+        // ---------------------------------------------------------
+        // 8. ALERTES QUALITÉ EAU (Pisciculture)
+        // ---------------------------------------------------------
+        $waterAlerts = collect();
+        $aquaBatches = Batch::where('status', 'Actif')
+            ->whereHas('species', function($q) {
+                $q->where('family', 'aquaculture');
+            })->with(['species', 'building'])->get();
+
+        foreach ($aquaBatches as $aquaBatch) {
+            $lastExt = \App\Models\DailyCheck::where('batch_id', $aquaBatch->id)
+                ->whereHas('extension', function($q) {
+                    $q->whereNotNull('water_ph')->orWhereNotNull('water_o2_ppm');
+                })
+                ->with('extension')
+                ->latest('check_date')
+                ->first()?->extension;
+
+            if ($lastExt) {
+                $alerts = $lastExt->getWaterAlerts();
+                if (!empty($alerts)) {
+                    $waterAlerts->push([
+                        'batch'   => $aquaBatch,
+                        'alerts'  => $alerts,
+                        'has_critical' => collect($alerts)->contains('level', 'critical'),
+                    ]);
+                }
+            }
+        }
+
         return view('dashboard', compact(
             'totalBirds', 'globalMortalityRate', 'hdp',
             'totalEggsStock', 'totalBrokenToday', 'rawMaterialsValue', 'safeProfit',
             'criticalTypes', 'emergencyBatches', 'underperformingBatches', 'sanitaryAlertsCount',
-            'activeBatches', 'buildings', 'totalEggsToday', 'tabaskiWidget'
+            'activeBatches', 'buildings', 'totalEggsToday', 'tabaskiWidget', 'waterAlerts'
         ));
     }
 }

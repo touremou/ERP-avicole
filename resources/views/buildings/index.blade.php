@@ -25,6 +25,11 @@
                 <button onclick="filterB('chair')" class="btn-f px-6 py-3 rounded-2xl text-[9px] font-black uppercase text-slate-400 hover:bg-slate-50 transition-all cursor-pointer border-none bg-transparent" id="f-chair">🍗 Chair</button>
                 <button onclick="filterB('ponte')" class="btn-f px-6 py-3 rounded-2xl text-[9px] font-black uppercase text-slate-400 hover:bg-slate-50 transition-all cursor-pointer border-none bg-transparent" id="f-ponte">🥚 Ponte</button>
                 <button onclick="filterB('reproducteur')" class="btn-f px-6 py-3 rounded-2xl text-[9px] font-black uppercase text-slate-400 hover:bg-slate-50 transition-all cursor-pointer border-none bg-transparent" id="f-reproducteur">🧬 Repro</button>
+                <button onclick="filterB('bergerie')" class="btn-f px-6 py-3 rounded-2xl text-[9px] font-black uppercase text-slate-400 hover:bg-slate-50 transition-all cursor-pointer border-none bg-transparent" id="f-bergerie">🐑 Bergerie</button>
+                <button onclick="filterB('chevrerie')" class="btn-f px-6 py-3 rounded-2xl text-[9px] font-black uppercase text-slate-400 hover:bg-slate-50 transition-all cursor-pointer border-none bg-transparent" id="f-chevrerie">🐐 Chèvrerie</button>
+                <button onclick="filterB('bassin')" class="btn-f px-6 py-3 rounded-2xl text-[9px] font-black uppercase text-slate-400 hover:bg-slate-50 transition-all cursor-pointer border-none bg-transparent" id="f-bassin">🐟 Bassin</button>
+                <button onclick="filterB('lapiniere')" class="btn-f px-6 py-3 rounded-2xl text-[9px] font-black uppercase text-slate-400 hover:bg-slate-50 transition-all cursor-pointer border-none bg-transparent" id="f-lapiniere">🐇 Lapinière</button>
+                <button onclick="filterB('porcherie')" class="btn-f px-6 py-3 rounded-2xl text-[9px] font-black uppercase text-slate-400 hover:bg-slate-50 transition-all cursor-pointer border-none bg-transparent" id="f-porcherie">🐷 Porcherie</button>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" id="buildingContainer">

@@ -298,6 +298,70 @@
                 </div>
             </div>
 
+            {{-- AQUACULTURE: QUALITÉ DE L'EAU --}}
+            @if($isAquaculture && (isset($stats['last_water_ph']) || isset($stats['last_water_o2'])))
+            <div class="mb-8 bg-blue-50 border border-blue-200 rounded-[2rem] p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h4 class="text-[10px] font-black uppercase text-blue-800 tracking-widest flex items-center gap-2">
+                        <i class="fa-solid fa-droplet text-blue-500"></i> Qualité de l'Eau — Dernier Relevé
+                    </h4>
+                    @if(count($stats['water_alerts'] ?? []) > 0)
+                    <span class="text-[8px] font-black bg-red-600 text-white px-3 py-1 rounded-xl uppercase animate-pulse">
+                        {{ count($stats['water_alerts']) }} Alerte(s)
+                    </span>
+                    @endif
+                </div>
+
+                {{-- Alerts --}}
+                @foreach($stats['water_alerts'] ?? [] as $alert)
+                <div @class(['mb-3 px-4 py-3 rounded-xl text-[9px] font-black uppercase',
+                    'bg-red-100 text-red-800 border border-red-200' => $alert['level'] === 'critical',
+                    'bg-amber-100 text-amber-800 border border-amber-200' => $alert['level'] === 'warning'])>
+                    <i class="fa-solid fa-triangle-exclamation mr-2"></i>{{ $alert['message'] }}
+                </div>
+                @endforeach
+
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                    @foreach([
+                        ['label' => 'Température', 'value' => $stats['last_water_temp'], 'unit' => '°C', 'icon' => 'fa-thermometer-half', 'color' => 'blue'],
+                        ['label' => 'pH', 'value' => $stats['last_water_ph'], 'unit' => '', 'icon' => 'fa-flask', 'color' => ($stats['last_water_ph'] ?? 7) < 6.5 || ($stats['last_water_ph'] ?? 7) > 8.5 ? 'red' : 'blue'],
+                        ['label' => 'O₂ dissous', 'value' => $stats['last_water_o2'], 'unit' => 'ppm', 'icon' => 'fa-wind', 'color' => ($stats['last_water_o2'] ?? 6) < 3 ? 'red' : (($stats['last_water_o2'] ?? 6) < 5 ? 'amber' : 'blue')],
+                        ['label' => 'NH₃', 'value' => $stats['last_water_ammonia'], 'unit' => 'ppm', 'icon' => 'fa-circle-radiation', 'color' => ($stats['last_water_ammonia'] ?? 0) > 1 ? 'red' : (($stats['last_water_ammonia'] ?? 0) > 0.5 ? 'amber' : 'blue')],
+                        ['label' => 'Biomasse', 'value' => $stats['last_biomass'], 'unit' => 'kg', 'icon' => 'fa-weight-scale', 'color' => 'blue'],
+                        ['label' => 'Survie', 'value' => $stats['last_survival_rate'], 'unit' => '%', 'icon' => 'fa-fish', 'color' => 'blue'],
+                    ] as $metric)
+                    @if($metric['value'] !== null)
+                    <div class="bg-white rounded-2xl p-4 border border-blue-100 text-center">
+                        <i class="fa-solid {{ $metric['icon'] }} text-{{ $metric['color'] }}-500 mb-2 text-base"></i>
+                        <p class="text-lg font-black text-slate-800">{{ number_format((float)$metric['value'], $metric['unit'] === 'ppm' ? 2 : 1) }}</p>
+                        <p class="text-[7px] font-black uppercase text-slate-400 tracking-widest">{{ $metric['label'] }}{{ $metric['unit'] ? ' ('.$metric['unit'].')' : '' }}</p>
+                    </div>
+                    @endif
+                    @endforeach
+                </div>
+            </div>
+            @endif
+
+            {{-- RUMINANTS: NAISSANCES & SEVRAGES --}}
+            @if($isRuminant && (($stats['total_born'] ?? 0) > 0 || ($stats['total_weaned'] ?? 0) > 0))
+            <div class="mb-8 bg-emerald-50 border border-emerald-200 rounded-[2rem] p-6 flex flex-wrap gap-8 items-center">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center text-white text-lg">🐣</div>
+                    <div>
+                        <p class="text-2xl font-black text-emerald-800">{{ number_format($stats['total_born'] ?? 0) }}</p>
+                        <p class="text-[8px] font-black uppercase text-slate-400 tracking-widest">Naissances cumulées</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-teal-600 rounded-xl flex items-center justify-center text-white text-lg">🌿</div>
+                    <div>
+                        <p class="text-2xl font-black text-teal-800">{{ number_format($stats['total_weaned'] ?? 0) }}</p>
+                        <p class="text-[8px] font-black uppercase text-slate-400 tracking-widest">Sevrages cumulés</p>
+                    </div>
+                </div>
+            </div>
+            @endif
+
             {{-- GRAPHIQUES --}}
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
                 <div class="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
@@ -543,7 +607,13 @@
                                     @if($check->qty_quarantine_out > 0) <span class="text-emerald-500 font-black text-[8px] block">-{{ $check->qty_quarantine_out }}</span> @endif
                                     @if(!$check->qty_quarantine_in && !$check->qty_quarantine_out) <span class="text-slate-200">-</span> @endif
                                 </td>
-                                <td class="px-8 py-4 text-right flex justify-end gap-3">
+                                <td class="px-8 py-4 text-right flex justify-end items-center gap-3">
+                                    @if($check->extension && ($check->extension->qty_born > 0 || $check->extension->water_ph !== null))
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-100 text-emerald-700 text-[7px] font-black uppercase ml-2">
+                                        @if($check->extension->water_ph !== null)🐟@else🐑@endif
+                                        Ext.
+                                    </span>
+                                    @endif
                                     @if($batch->status === 'Actif')
                                         @can('elevage.M')
                                         <a href="{{ route('daily-checks.edit', $check->id) }}" class="text-slate-300 hover:text-blue-500 transition"><i class="fa-solid fa-pen-to-square text-[10px]"></i></a>

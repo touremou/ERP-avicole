@@ -167,6 +167,43 @@
                 </div>
             </div>
 
+            {{-- ALERTE QUALITÉ EAU — visible uniquement si alertes actives --}}
+            @if(($waterAlerts ?? collect())->isNotEmpty())
+            <div class="bg-blue-950 rounded-[2.5rem] p-6 border border-blue-800">
+                <div class="flex items-center justify-between mb-4">
+                    <h4 class="text-[10px] font-black uppercase text-blue-300 tracking-wider flex items-center gap-2">
+                        <i class="fa-solid fa-droplet text-blue-400"></i> Alertes Qualité Eau — Pisciculture
+                    </h4>
+                    <span class="text-[8px] bg-blue-800 text-blue-200 px-2 py-1 rounded-md font-black uppercase">
+                        {{ $waterAlerts->count() }} Bassin(s)
+                    </span>
+                </div>
+                <div class="space-y-3">
+                    @foreach($waterAlerts as $wa)
+                    <a href="{{ route('batches.show', $wa['batch']->id) }}" class="block no-underline">
+                        <div @class(['p-4 rounded-2xl border transition-all hover:scale-[1.01]',
+                            'bg-red-900 border-red-700' => $wa['has_critical'],
+                            'bg-amber-900 border-amber-700' => !$wa['has_critical']])>
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-[10px] font-black text-white uppercase">{{ $wa['batch']->code }}</span>
+                                <span class="text-[8px] text-white/60 uppercase font-black">{{ $wa['batch']->building?->name ?? '—' }}</span>
+                            </div>
+                            <div class="flex flex-wrap gap-2">
+                                @foreach($wa['alerts'] as $alert)
+                                <span @class(['text-[8px] font-black uppercase px-2 py-0.5 rounded-lg',
+                                    'bg-red-700 text-white' => $alert['level'] === 'critical',
+                                    'bg-amber-700 text-white' => $alert['level'] === 'warning'])>
+                                    {{ $alert['metric'] }}: {{ $alert['value'] }}
+                                </span>
+                                @endforeach
+                            </div>
+                        </div>
+                    </a>
+                    @endforeach
+                </div>
+            </div>
+            @endif
+
             {{-- WIDGET TABASKI — visible uniquement si lots ovins actifs --}}
             @if($tabaskiWidget ?? false)
             <div @class([
