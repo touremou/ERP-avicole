@@ -106,6 +106,35 @@
                         </div>
                     </div>
 
+                    {{-- Portées (porcins, lapins) --}}
+                    @if(($stat['total_born'] ?? 0) > 0)
+                    <div class="mt-4 pt-4 border-t border-slate-50 flex flex-wrap gap-8">
+                        <div class="text-center">
+                            <p class="text-[8px] font-black uppercase text-slate-400 tracking-widest mb-1">Naissances</p>
+                            <p class="text-lg font-black text-emerald-700">{{ number_format($stat['total_born']) }}</p>
+                        </div>
+                        <div class="text-center">
+                            <p class="text-[8px] font-black uppercase text-slate-400 tracking-widest mb-1">Sevrages</p>
+                            <p class="text-lg font-black text-teal-700">{{ number_format($stat['total_weaned']) }}</p>
+                        </div>
+                        @if($stat['avg_litter_size'])
+                        <div class="text-center">
+                            <p class="text-[8px] font-black uppercase text-slate-400 tracking-widest mb-1">Portée moy.</p>
+                            <p class="text-lg font-black text-indigo-700">{{ number_format($stat['avg_litter_size'], 1) }}</p>
+                        </div>
+                        @endif
+                        @if($stat['weaning_rate'] !== null)
+                        <div class="text-center">
+                            <p class="text-[8px] font-black uppercase text-slate-400 tracking-widest mb-1">Taux sevrage</p>
+                            <p @class(['text-lg font-black',
+                                'text-emerald-700' => $stat['weaning_rate'] >= 90,
+                                'text-amber-700'   => $stat['weaning_rate'] < 90 && $stat['weaning_rate'] >= 75,
+                                'text-rose-700'    => $stat['weaning_rate'] < 75])>{{ number_format($stat['weaning_rate'], 1) }}%</p>
+                        </div>
+                        @endif
+                    </div>
+                    @endif
+
                     {{-- Mini sparkline des pesées --}}
                     @if(count($stat['gmq_series']) >= 2)
                     <div class="mt-4 pt-4 border-t border-slate-50 flex gap-2 overflow-x-auto">

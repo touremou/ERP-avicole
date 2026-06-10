@@ -360,6 +360,34 @@
                         <p class="text-[8px] font-black uppercase text-slate-400 tracking-widest">Sevrages cumulés</p>
                     </div>
                 </div>
+                @if($stats['avg_litter_size'] ?? null)
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white text-lg">📦</div>
+                    <div>
+                        <p class="text-2xl font-black text-indigo-800">{{ number_format($stats['avg_litter_size'], 1) }}</p>
+                        <p class="text-[8px] font-black uppercase text-slate-400 tracking-widest">Taille de portée moy. ({{ $stats['birth_events'] }} mise{{ $stats['birth_events'] > 1 ? 's' : '' }} bas)</p>
+                    </div>
+                </div>
+                @endif
+                @if($stats['weaning_rate'] !== null)
+                <div class="flex items-center gap-3">
+                    <div @class([
+                        'w-10 h-10 rounded-xl flex items-center justify-center text-white text-lg',
+                        'bg-emerald-700' => $stats['weaning_rate'] >= 90,
+                        'bg-amber-600'   => $stats['weaning_rate'] < 90 && $stats['weaning_rate'] >= 75,
+                        'bg-rose-600'    => $stats['weaning_rate'] < 75,
+                    ])>📊</div>
+                    <div>
+                        <p @class([
+                            'text-2xl font-black',
+                            'text-emerald-800' => $stats['weaning_rate'] >= 90,
+                            'text-amber-700'   => $stats['weaning_rate'] < 90 && $stats['weaning_rate'] >= 75,
+                            'text-rose-700'    => $stats['weaning_rate'] < 75,
+                        ])>{{ number_format($stats['weaning_rate'], 1) }}%</p>
+                        <p class="text-[8px] font-black uppercase text-slate-400 tracking-widest">Taux de sevrage</p>
+                    </div>
+                </div>
+                @endif
             </div>
             @endif
 

@@ -234,9 +234,14 @@ class BatchController extends Controller
             }
             $totalBorn   = $batch->dailyChecks->sum(fn($c) => $c->extension?->qty_born ?? 0);
             $totalWeaned = $batch->dailyChecks->sum(fn($c) => $c->extension?->qty_weaned ?? 0);
-            $stats['gmq']          = $gmq;
-            $stats['total_born']   = $totalBorn;
-            $stats['total_weaned'] = $totalWeaned;
+            $birthEvents = $batch->dailyChecks->filter(fn($c) => ($c->extension?->qty_born ?? 0) > 0)->count();
+
+            $stats['gmq']             = $gmq;
+            $stats['total_born']      = $totalBorn;
+            $stats['total_weaned']    = $totalWeaned;
+            $stats['birth_events']    = $birthEvents;
+            $stats['avg_litter_size'] = $birthEvents > 0 ? round($totalBorn / $birthEvents, 1) : null;
+            $stats['weaning_rate']    = $totalBorn > 0 ? round(($totalWeaned / $totalBorn) * 100, 1) : null;
         }
 
         // Aquaculture stats

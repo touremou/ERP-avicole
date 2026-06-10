@@ -373,7 +373,7 @@ class ReportController extends Controller
 
         $query = \App\Models\Batch::with(['species', 'building', 'dailyChecks' => function($q) {
                 $q->orderBy('check_date');
-            }])
+            }, 'dailyChecks.extension'])
             ->whereHas('species', function($q) {
                 $q->whereIn('family', ['petit_ruminant', 'grand_ruminant', 'porcin', 'lagomorphe']);
             })
@@ -390,6 +390,17 @@ class ReportController extends Controller
         $batchStats = $batches->map(function($batch) {
             $checks = $batch->dailyChecks->filter(fn($c) => $c->avg_weight > 0)->values();
 
+            // Portées (porcins, lagomorphes) : taille moyenne et taux de sevrage
+            $totalBorn   = $batch->dailyChecks->sum(fn($c) => $c->extension?->qty_born ?? 0);
+            $totalWeaned = $batch->dailyChecks->sum(fn($c) => $c->extension?->qty_weaned ?? 0);
+            $birthEvents = $batch->dailyChecks->filter(fn($c) => ($c->extension?->qty_born ?? 0) > 0)->count();
+            $litterStats = [
+                'total_born'      => $totalBorn,
+                'total_weaned'    => $totalWeaned,
+                'avg_litter_size' => $birthEvents > 0 ? round($totalBorn / $birthEvents, 1) : null,
+                'weaning_rate'    => $totalBorn > 0 ? round(($totalWeaned / $totalBorn) * 100, 1) : null,
+            ];
+
             if ($checks->count() < 2) {
                 return [
                     'batch'        => $batch,
@@ -398,6 +409,7 @@ class ReportController extends Controller
                     'start_weight' => $batch->avg_weight_start,
                     'last_weight'  => $checks->last()?->avg_weight,
                     'age_days'     => $batch->age,
+                    ...$litterStats,
                 ];
             }
 
@@ -418,6 +430,7 @@ class ReportController extends Controller
                 'start_weight' => $first->avg_weight,
                 'last_weight'  => $last->avg_weight,
                 'age_days'     => $batch->age,
+                ...$litterStats,
             ];
         });
 

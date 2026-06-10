@@ -42,6 +42,10 @@
                 <th>Poids départ</th>
                 <th>Dernier poids</th>
                 <th>GMQ (g/j)</th>
+                <th>Naissances</th>
+                <th>Sevrages</th>
+                <th>Portée moy.</th>
+                <th>Taux sevrage</th>
                 <th>Statut</th>
             </tr>
         </thead>
@@ -62,10 +66,20 @@
                         <span class="muted">N/A</span>
                     @endif
                 </td>
+                <td>{{ ($stat['total_born'] ?? 0) > 0 ? number_format($stat['total_born']) : '—' }}</td>
+                <td>{{ ($stat['total_weaned'] ?? 0) > 0 ? number_format($stat['total_weaned']) : '—' }}</td>
+                <td>{{ $stat['avg_litter_size'] ?? '—' }}</td>
+                <td>
+                    @if(($stat['weaning_rate'] ?? null) !== null)
+                        <span class="{{ $stat['weaning_rate'] >= 90 ? 'gmq-good' : ($stat['weaning_rate'] >= 75 ? 'gmq-mid' : 'gmq-bad') }}">{{ number_format($stat['weaning_rate'], 1) }}%</span>
+                    @else
+                        <span class="muted">—</span>
+                    @endif
+                </td>
                 <td>{{ $batch->status }}</td>
             </tr>
             @empty
-            <tr><td colspan="8" class="muted">Aucun lot trouvé.</td></tr>
+            <tr><td colspan="12" class="muted">Aucun lot trouvé.</td></tr>
             @endforelse
         </tbody>
     </table>
