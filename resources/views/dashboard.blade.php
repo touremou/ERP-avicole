@@ -267,6 +267,7 @@
                     </div>
                 </div>
 
+                @if($showEggKpis ?? true)
                 {{-- ENRICHI : Alerte de donnée manquante si pas d'oeufs aujourd'hui --}}
                 <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm relative overflow-hidden">
                     @if(($totalEggsToday ?? 0) == 0)
@@ -289,6 +290,22 @@
                         {{ $totalBrokenToday ?? 0 }} Cassés <i class="fa-solid fa-heart-crack ml-1"></i>
                     </p>
                 </div>
+                @else
+                {{-- KPI génériques pour les fermes sans suivi de ponte (ovins, poisson, lapins...) --}}
+                <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm">
+                    <p class="text-[9px] font-black text-blue-500 uppercase tracking-widest mb-2 italic">Lots Actifs</p>
+                    <p class="text-4xl font-black text-slate-900 tracking-tighter italic">{{ number_format($activeLotsCount ?? 0) }}</p>
+                    <p class="text-[8px] text-blue-600 mt-3 uppercase italic font-black">Bandes en cours</p>
+                </div>
+
+                <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm">
+                    <p class="text-[9px] font-black text-cyan-500 uppercase tracking-widest mb-2 italic">Bâtiments Occupés</p>
+                    <p class="text-4xl font-black text-slate-900 tracking-tighter italic">
+                        {{ $occupiedBuildingsCount ?? 0 }}<small class="text-base text-slate-300">/{{ $totalBuildingsCount ?? 0 }}</small>
+                    </p>
+                    <p class="text-[8px] text-cyan-600 mt-3 uppercase italic font-black">Occupation des sites</p>
+                </div>
+                @endif
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-10 text-left">

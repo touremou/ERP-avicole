@@ -38,19 +38,51 @@ class SaleItem extends Model
     }
 
     /**
+     * Types de lignes adossées au magasin (déstockage Stock).
+     */
+    public const STOCK_TYPES = ['oeufs', 'aliment', 'materiel'];
+
+    /**
+     * Types de lignes adossées à un lot d'animaux vivants (toute espèce).
+     * `animal_vif`/`carcasse` sont génériques ; `volaille_vivante`/
+     * `volaille_abattue` sont conservés pour la rétrocompatibilité.
+     */
+    public const BATCH_TYPES = ['animal_vif', 'carcasse', 'volaille_vivante', 'volaille_abattue'];
+
+    /**
+     * Unités exprimées en têtes/pièces (et non en poids/volume).
+     * Seules ces unités permettent de décrémenter un effectif de lot.
+     */
+    public const COUNT_UNITS = ['tete', 'piece', 'unite'];
+
+    /**
      * Détermine si cette ligne déstocke un article physique.
      */
     public function requiresDestock(): bool
     {
-        return in_array($this->product_type, ['oeufs', 'aliment', 'materiel']);
+        return in_array($this->product_type, self::STOCK_TYPES);
     }
 
     /**
-     * Détermine si cette ligne impacte un lot (volaille vivante).
+     * Détermine si cette ligne impacte un lot (animal vif, toute espèce).
      */
     public function impactsBatch(): bool
     {
-        return in_array($this->product_type, ['volaille_vivante', 'volaille_abattue'])
+        return in_array($this->product_type, self::BATCH_TYPES)
             && $this->batch_id !== null;
+    }
+
+    /**
+     * Détermine si cette ligne doit décrémenter l'EFFECTIF du lot.
+     *
+     * On ne décrémente le compteur de têtes que pour les ventes exprimées
+     * en têtes/pièces (ex. mouton vendu à la tête). Une vente au poids
+     * (carcasse au kg, poisson au kg vif) ne dit rien du nombre d'animaux
+     * retirés : on l'enregistre sans corrompre l'effectif — la biomasse
+     * relève d'un suivi dédié (module Pisciculture/Biomasse).
+     */
+    public function decrementsBatchCount(): bool
+    {
+        return $this->impactsBatch() && in_array($this->unit, self::COUNT_UNITS);
     }
 }

@@ -73,7 +73,7 @@
                         'bg-red-50 border-red-200' => $data['water']['per_bird_per_day'] < 0.15 || $data['water']['per_bird_per_day'] > 0.5,
                         'bg-white border-slate-100' => $data['water']['per_bird_per_day'] >= 0.15 && $data['water']['per_bird_per_day'] <= 0.5,
                     ])>
-                        <p class="text-[8px] font-black uppercase tracking-widest mb-1 {{ $data['water']['per_bird_per_day'] < 0.15 ? 'text-red-500' : 'text-slate-400' }}">L / volaille / jour</p>
+                        <p class="text-[8px] font-black uppercase tracking-widest mb-1 {{ $data['water']['per_bird_per_day'] < 0.15 ? 'text-red-500' : 'text-slate-400' }}">L / sujet / jour</p>
                         <p class="text-xl font-black {{ $data['water']['per_bird_per_day'] < 0.15 ? 'text-red-600' : 'text-slate-900' }}">{{ number_format($data['water']['per_bird_per_day'], 3) }}</p>
                         <p class="text-[8px] text-slate-400">norme : 0.2-0.4L</p>
                     </div>

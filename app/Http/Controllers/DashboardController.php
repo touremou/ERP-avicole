@@ -25,9 +25,15 @@ class DashboardController extends Controller
         // ---------------------------------------------------------
         $allActiveBatches = Batch::where('status', 'Actif')
             ->where('initial_quantity', '>', 0)
-            ->with('species')
+            ->with(['species', 'productionType'])
             ->get();
-            
+
+        // Les KPI de ponte (HDP, stock calibré) ne sont pertinents que si
+        // au moins un lot actif fait l'objet d'un suivi d'œufs. Sinon (ferme
+        // 100% ovins/poisson/lapins...) on affiche des KPI génériques.
+        $showEggKpis    = $allActiveBatches->contains(fn ($b) => $b->tracksEggs());
+        $activeLotsCount = $allActiveBatches->count();
+
         $totalBirds = $allActiveBatches->sum('current_quantity');
         $totalInitial = $allActiveBatches->sum('initial_quantity');
         
@@ -142,6 +148,9 @@ class DashboardController extends Controller
             ->with(['batches' => function($q) {
                 $q->where('status', 'Actif')->where('initial_quantity', '>', 0);
             }])->get();
+
+        $occupiedBuildingsCount = $buildings->where('batches_count', '>', 0)->count();
+        $totalBuildingsCount    = $buildings->count();
 
         $activeBatches = Batch::with(['building', 'dailyChecks' => function($q) {
                 $q->latest('check_date');
@@ -260,7 +269,8 @@ class DashboardController extends Controller
             'totalEggsStock', 'totalBrokenToday', 'rawMaterialsValue', 'safeProfit',
             'criticalTypes', 'emergencyBatches', 'underperformingBatches', 'sanitaryAlertsCount',
             'activeBatches', 'buildings', 'totalEggsToday', 'tabaskiWidget', 'waterAlerts',
-            'familyBreakdown'
+            'familyBreakdown', 'showEggKpis', 'activeLotsCount',
+            'occupiedBuildingsCount', 'totalBuildingsCount'
         ));
     }
 }

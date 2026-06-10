@@ -34,12 +34,12 @@ class ValidateSale
                     $this->destockItem($item);
                 }
 
-                // Volaille vivante → décrémenter le lot
-                if ($item->impactsBatch()) {
+                // Animal vif vendu à la tête → décrémenter l'effectif du lot
+                if ($item->decrementsBatchCount()) {
                     $this->destockBatch($item);
                 }
 
-                // Fumier et "autre" : pas de déstockage physique
+                // Lait, fumier, "autre", ventes au poids : pas de déstockage physique
             }
 
             // ─── 2. MARQUER COMME VALIDÉ ───
@@ -99,7 +99,7 @@ class ValidateSale
     }
 
     /**
-     * Déstocke de la volaille vivante d'un lot.
+     * Décrémente l'effectif d'un lot (animal vif vendu à la tête, toute espèce).
      */
     private function destockBatch($item): void
     {

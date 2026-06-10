@@ -51,8 +51,9 @@ class CancelSale
                         );
                     }
 
-                    // Restockage volaille → ré-incrémenter le lot
-                    if ($item->impactsBatch() && $item->batch_id) {
+                    // Restockage animal vif → ré-incrémenter l'effectif du lot
+                    // (uniquement si la vente avait décrémenté l'effectif).
+                    if ($item->decrementsBatchCount() && $item->batch_id) {
                         $batch = Batch::find($item->batch_id);
                         if ($batch) {
                             $batch->increment('current_quantity', (int) $item->quantity);

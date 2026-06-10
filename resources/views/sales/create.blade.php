@@ -76,30 +76,33 @@
                                     <label class="text-[8px] font-black uppercase text-slate-400 tracking-widest">Type</label>
                                     <select x-model="line.product_type" @change="onTypeChange(index)" class="w-full bg-white border-none rounded-xl p-3 text-[10px] font-black uppercase shadow-sm outline-none">
                                         <option value="">— Choisir —</option>
+                                        <option value="animal_vif">Animal vivant</option>
+                                        <option value="carcasse">Carcasse / Viande</option>
                                         <option value="oeufs">Œufs</option>
-                                        <option value="volaille_vivante">Volaille Vivante</option>
-                                        <option value="volaille_abattue">Volaille Abattue</option>
+                                        <option value="lait">Lait</option>
                                         <option value="aliment">Aliment</option>
-                                        <option value="litieres">Fumier</option>
+                                        <option value="fumier">Fumier</option>
                                         <option value="materiel">Matériel</option>
+                                        <option value="autre">Autre</option>
                                     </select>
                                 </div>
 
                                 {{-- ARTICLE (dropdown dynamique) --}}
                                 <div class="col-span-4">
                                     <label class="text-[8px] font-black uppercase text-teal-600 tracking-widest">
-                                        <template x-if="['volaille_vivante','volaille_abattue'].includes(line.product_type)">
+                                        <template x-if="isBatchType(line.product_type)">
                                             <span>Lot source</span>
                                         </template>
-                                        <template x-if="line.product_type === 'litieres'">
-                                            <span>Désignation</span>
-                                        </template>
-                                        <template x-if="line.product_type && !['volaille_vivante','volaille_abattue','fumier'].includes(line.product_type)">
+                                        <template x-if="isStockType(line.product_type)">
                                             <span>Article en stock</span>
+                                        </template>
+                                        <template x-if="isManualType(line.product_type)">
+                                            <span>Désignation</span>
                                         </template>
                                     </label>
 
-                                    <template x-if="line.product_type && !['volaille_vivante','volaille_abattue','fumier'].includes(line.product_type)">
+                                    {{-- STOCK : œufs, aliment, matériel --}}
+                                    <template x-if="isStockType(line.product_type)">
                                         <select x-model="line.selected_stock" @change="onStockSelected(index)" class="w-full bg-white border-2 border-teal-200 rounded-xl p-3 text-[10px] font-black shadow-sm outline-none focus:border-teal-500">
                                             <option value="">— Sélectionner —</option>
                                             <template x-for="s in getStocks(line.product_type)" :key="s.id">
@@ -108,17 +111,19 @@
                                         </select>
                                     </template>
 
-                                    <template x-if="['volaille_vivante','volaille_abattue'].includes(line.product_type)">
+                                    {{-- LOT : animal vif / carcasse — toutes espèces --}}
+                                    <template x-if="isBatchType(line.product_type)">
                                         <select x-model="line.batch_id" @change="onBatchSelected(index)" class="w-full bg-amber-50 border-2 border-amber-200 rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
                                             <option value="">— Sélectionner le lot —</option>
                                             <template x-for="b in batches" :key="b.id">
-                                                <option :value="b.id" x-text="b.code + ' — ' + b.building + ' (' + b.qty + ' sujets)'"></option>
+                                                <option :value="b.id" x-text="b.icon + ' ' + b.code + ' — ' + b.species + ' (' + b.qty + ')'"></option>
                                             </template>
                                         </select>
                                     </template>
 
-                                    <template x-if="line.product_type === 'fumier'">
-                                        <input type="text" x-model="line.product_name" value="Fumier volaille" class="w-full bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
+                                    {{-- MANUEL : lait, fumier, autre --}}
+                                    <template x-if="isManualType(line.product_type)">
+                                        <input type="text" x-model="line.product_name" placeholder="Désignation..." class="w-full bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
                                     </template>
                                 </div>
 
@@ -128,7 +133,16 @@
                                 </div>
                                 <div class="col-span-1">
                                     <label class="text-[8px] font-black uppercase text-slate-400 tracking-widest">Unité</label>
-                                    <input type="text" x-model="line.unit" readonly class="w-full bg-slate-100 border-none rounded-xl p-3 text-[10px] font-black text-slate-500 outline-none text-center uppercase">
+                                    <template x-if="unitChoices(line.product_type).length > 1">
+                                        <select x-model="line.unit" @change="onUnitChange(index)" class="w-full bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none text-center uppercase">
+                                            <template x-for="u in unitChoices(line.product_type)" :key="u">
+                                                <option :value="u" x-text="u"></option>
+                                            </template>
+                                        </select>
+                                    </template>
+                                    <template x-if="unitChoices(line.product_type).length <= 1">
+                                        <input type="text" x-model="line.unit" readonly class="w-full bg-slate-100 border-none rounded-xl p-3 text-[10px] font-black text-slate-500 outline-none text-center uppercase">
+                                    </template>
                                 </div>
                                 <div class="col-span-2">
                                     <label class="text-[8px] font-black uppercase text-slate-400 tracking-widest">P.U. (GNF)</label>
@@ -217,6 +231,8 @@
             'id' => $b->id,
             'code' => $b->code,
             'building' => $b->building->name ?? '—',
+            'species' => $b->species?->name_fr ?? 'Animaux',
+            'icon' => $b->species?->icon ?? '🐾',
             'qty' => (int) $b->current_quantity
         ]);
 
@@ -244,13 +260,37 @@
             get totalTTC() { return this.subtotal + this.taxAmount; },
             get hasStockError() { return this.lines.some(l => l.max_qty > 0 && l.quantity > l.max_qty); },
             getStocks(type) { return stocks.filter(s => s.category === (catMap[type]||type) && s.current_quantity > 0); },
+            // ─── Catégories de lignes (multiespèces) ───
+            isStockType(t) { return ['oeufs','aliment','materiel'].includes(t); },
+            isBatchType(t) { return ['animal_vif','carcasse'].includes(t); },
+            isManualType(t) { return ['lait','fumier','autre'].includes(t); },
+            unitChoices(t) {
+                return ({
+                    animal_vif: ['tete','piece','kg'],
+                    carcasse:   ['kg'],
+                    lait:       ['litre'],
+                    fumier:     ['sac','voyage'],
+                    autre:      ['unite','kg','piece','litre','sac'],
+                })[t] || [];
+            },
+            isCountUnit(u) { return ['tete','piece','unite'].includes(u); },
             addLine() { this.lines.push({ product_type:'', product_name:'', quantity:1, unit:'', unit_price:0, product_id:'', batch_id:'', selected_stock:'', max_qty:0 }); },
             removeLine(i) { if(this.lines.length>1) this.lines.splice(i,1); },
             onTypeChange(i) {
                 let l=this.lines[i]; l.product_name=''; l.product_id=''; l.batch_id=''; l.selected_stock=''; l.max_qty=0; l.unit_price=0;
-                if(l.product_type==='fumier'){l.product_name='Fumier volaille';l.unit='voyage';l.max_qty=99999;}
-                else if(['volaille_vivante','volaille_abattue'].includes(l.product_type)){l.unit=l.product_type==='volaille_vivante'?'piece':'kg';}
-                else{l.unit='';}
+                // Unité par défaut selon le type ; les types stock prennent
+                // l'unité de l'article sélectionné (renseignée plus tard).
+                const defaults = { animal_vif:'tete', carcasse:'kg', lait:'litre', fumier:'voyage', autre:'unite' };
+                l.unit = defaults[l.product_type] || '';
+            },
+            onUnitChange(i) {
+                // Pour un animal vif, le plafond (effectif du lot) ne s'applique
+                // qu'aux ventes à la tête ; les ventes au poids ne sont pas capées.
+                let l=this.lines[i];
+                if(this.isBatchType(l.product_type) && l.batch_id){
+                    const b=batchList.find(x=>x.id==l.batch_id);
+                    l.max_qty = this.isCountUnit(l.unit) ? (b?b.qty:0) : 0;
+                }
             },
             /* version initiale avant correction du bug de parser blade sur les prix spécifiques de vente
             onStockSelected(i) {
@@ -277,7 +317,10 @@
             },
             onBatchSelected(i) {
                 let l=this.lines[i]; const b=batchList.find(x=>x.id==l.batch_id); if(!b)return;
-                l.product_name=b.code+' ('+b.building+')'; l.max_qty=b.qty; l.quantity=1;
+                l.product_name=b.code+' — '+b.species+' ('+b.building+')';
+                // Plafond uniquement si vente à la tête (sinon poids → non capé).
+                l.max_qty = this.isCountUnit(l.unit) ? b.qty : 0;
+                l.quantity=1;
                 const p=prices.find(x=>x.product_type===l.product_type); l.unit_price=p?p.unit_price:0;
             },
             formatGNF(v) { return new Intl.NumberFormat('fr-GN',{maximumFractionDigits:0}).format(v||0)+' GNF'; },

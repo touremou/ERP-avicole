@@ -29,14 +29,16 @@ class StoreSaleRequest extends FormRequest
             'delivery_notes'         => 'nullable|string|max:500',
             'notes'                  => 'nullable|string|max:2000',
 
-            // Lignes de vente
+            // Lignes de vente — taxonomie multiespèces.
+            // animal_vif / carcasse / lait sont génériques ; volaille_vivante
+            // et volaille_abattue restent acceptés (rétrocompatibilité).
             'items'                  => 'required|array|min:1',
-            'items.*.product_type'   => 'required|in:oeufs,volaille_vivante,volaille_abattue,fumier,aliment,materiel,autre',
+            'items.*.product_type'   => 'required|in:oeufs,animal_vif,carcasse,lait,fumier,aliment,materiel,autre,volaille_vivante,volaille_abattue',
             'items.*.product_name'   => 'required|string|max:255',
             'items.*.product_id'     => 'nullable|integer',
             'items.*.batch_id'       => 'nullable|integer|exists:batches,id',
             'items.*.quantity'       => 'required|numeric|min:0.01',
-            'items.*.unit'           => 'required|in:alveole,unite,kg,piece,sac,voyage',
+            'items.*.unit'           => 'required|in:alveole,unite,kg,piece,sac,voyage,tete,litre',
             'items.*.unit_price'     => 'required|numeric|min:0',
 
             // Paiement immédiat (optionnel)
