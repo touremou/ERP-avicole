@@ -175,9 +175,9 @@ Route::middleware(['auth'])->group(function () {
     // ─── COUVOIR & REPRO ───
     Route::prefix('repro')->name('incubations.')->controller(IncubationController::class)->group(function () {
         Route::get('/', 'index')->name('index')->middleware('can:L');
-        Route::get('/create', 'create')->name('create')->middleware('can:C');
+        // Création & édition se font via la modale et les actions mirage/éclosion
+        // de la vue index : pas de méthodes create()/edit() dédiées au contrôleur.
         Route::post('/store', 'store')->name('store')->middleware('can:C');
-        Route::get('/{incubation}/edit', 'edit')->name('edit')->middleware('can:M');
         Route::post('/{incubation}/mirage', 'recordMirage')->name('mirage')->middleware('can:M');
         Route::post('/{incubation}/hatch', 'recordHatch')->name('hatch')->middleware('can:M');
         Route::delete('/{incubation}', 'destroy')->name('destroy')->middleware('can:S');

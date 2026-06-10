@@ -371,19 +371,26 @@
     </div>
 
     {{-- 🚀 MODAL DE LANCEMENT GLOBAL --}}
-    <div x-data="{
-            openLaunch: {{ $errors->any() ? 'true' : 'false' }},
-            isExternal: false,
-            selectedProvider: '',
-            duration: 21,
-            incubationDurations: @json($incubationDurations ?? []),
-            updateDuration(event) {
-                const opt = event.target.options[event.target.selectedIndex];
-                const species = opt?.dataset?.species;
-                this.duration = this.incubationDurations[species] ?? 21;
-            }
-         }"
-         @open-launch-modal.window="openLaunch = true" 
+    {{-- Composant défini via fonction : le JSON (@json) vit dans un vrai
+         contexte JS et ne casse plus l'attribut x-data (guillemets doubles). --}}
+    <script>
+        function incubationLaunchModal() {
+            return {
+                openLaunch: {{ $errors->any() ? 'true' : 'false' }},
+                isExternal: false,
+                selectedProvider: '',
+                duration: 21,
+                incubationDurations: @json($incubationDurations ?? []),
+                updateDuration(event) {
+                    const opt = event.target.options[event.target.selectedIndex];
+                    const species = opt?.dataset?.species;
+                    this.duration = this.incubationDurations[species] ?? 21;
+                }
+            };
+        }
+    </script>
+    <div x-data="incubationLaunchModal()"
+         @open-launch-modal.window="openLaunch = true"
          x-show="openLaunch" 
          x-cloak 
          class="fixed inset-0 z-[9999] overflow-y-auto">

@@ -17,7 +17,7 @@ class StartIncubation
             $incubator = Incubator::findOrFail($data['incubator_id']);
             $batchId = $this->resolveBatchId($data);
             
-            $duration = $data['duration'] ?? 21; // Espèce par défaut : Poule
+            $duration = (int) ($data['duration'] ?? 21); // Espèce par défaut : Poule
 
             $incubation = Incubation::create([
                 'batch_id'            => $batchId,
