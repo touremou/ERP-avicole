@@ -49,11 +49,30 @@ class BatchController extends Controller
         if (Gate::denies('elevage.L')) return redirect()->route('dashboard')->with('error', 'Accès restreint.');
 
         // 1. On exclut les lots virtuels (œufs) en exigeant des animaux vivants à l'initialisation
-        $query = Batch::with(['building', 'provider', 'employee'])
+        $query = Batch::with(['building', 'provider', 'employee', 'species', 'productionType'])
             ->active()
             ->live();
 
         $allowedTypes = ['chair', 'ponte', 'poussiniere', 'reproducteur'];
+
+        // Groupes d'espèces pour le filtre multiespèce
+        $familyGroups = [
+            'volaille'    => ['volaille'],
+            'ruminants'   => ['petit_ruminant', 'grand_ruminant'],
+            'aquaculture' => ['aquaculture'],
+            'autres'      => ['porcin', 'lagomorphe', 'autre'],
+        ];
+
+        $applyFamilyFilter = function ($q, array $families, string $group) {
+            if ($group === 'volaille') {
+                $q->where(function ($sub) use ($families) {
+                    $sub->whereNull('species_id')
+                        ->orWhereHas('species', fn($s) => $s->whereIn('family', $families));
+                });
+            } else {
+                $q->whereHas('species', fn($s) => $s->whereIn('family', $families));
+            }
+        };
 
         // Filtre surmortalité
         $isCriticalView = $request->query('view') === 'critical';
@@ -66,12 +85,31 @@ class BatchController extends Controller
             $query->byType($request->type);
         }
 
+        // Filtre par famille d'espèce
+        $familyFilter = $request->input('family');
+        if ($familyFilter && isset($familyGroups[$familyFilter])) {
+            $applyFamilyFilter($query, $familyGroups[$familyFilter], $familyFilter);
+        }
+
         // 2. On applique la même exclusion pour que les compteurs d'onglets soient justes
        // $baseQuery = Batch::active()->where('initial_quantity', '>', 0);
         $baseQuery = Batch::active()->live();
-        
+
         if ($isCriticalView) {
             $baseQuery->critical(setting('elevage.mortality_alert', 5));
+        }
+
+        // Compteurs des onglets "famille" : indépendants du filtre famille en cours
+        $familyCounts = [];
+        foreach ($familyGroups as $group => $families) {
+            $groupQuery = clone $baseQuery;
+            $applyFamilyFilter($groupQuery, $families, $group);
+            $familyCounts[$group] = $groupQuery->count();
+        }
+
+        // Compteurs des onglets "type" : tiennent compte du filtre famille en cours
+        if ($familyFilter && isset($familyGroups[$familyFilter])) {
+            $applyFamilyFilter($baseQuery, $familyGroups[$familyFilter], $familyFilter);
         }
 
         $counts = [
@@ -85,7 +123,7 @@ class BatchController extends Controller
         $batches = $query->orderBy('arrival_date', 'desc')->paginate((int) setting('general.items_per_page', 20));
         $batches->appends($request->all());
 
-        return view('batches.index', compact('batches', 'counts'));
+        return view('batches.index', compact('batches', 'counts', 'familyCounts', 'familyFilter'));
     }
     /**
      * Archives des lots clôturés.
