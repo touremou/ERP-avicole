@@ -160,6 +160,11 @@ class Batch extends Model
         return $this->hasMany(EggProduction::class);
     }
 
+    public function milkProductions(): HasMany
+    {
+        return $this->hasMany(MilkProduction::class);
+    }
+
     public function tasks(): HasMany
     {
         return $this->hasMany(BatchTask::class);
@@ -271,6 +276,18 @@ class Batch extends Model
         return $this->productionType
             ? $this->productionType->tracks('eggs')
             : in_array($this->type, ['ponte', 'repro', 'reproducteur']);
+    }
+
+    /**
+     * Indique si le lot fait l'objet d'une collecte de lait (chèvres
+     * laitières, vaches...). Piloté par le type de production, avec repli
+     * sur le flag tracks_milk de l'espèce.
+     */
+    public function tracksMilk(): bool
+    {
+        return $this->productionType
+            ? $this->productionType->tracks('milk')
+            : ($this->species?->tracks_milk ?? false);
     }
 
     // ═══════════════════════════════════════════════

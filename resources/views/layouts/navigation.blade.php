@@ -103,10 +103,11 @@
                         <a href="{{ route('reports.index') }}" class="{{ $linkClass }} {{ request()->routeIs('reports.*') ? $activeClass : $inactiveClass }}">Rapports</a>
                         @endcan
 
-                    @elseif(request()->routeIs(['egg-productions.*', 'egg-movements.*']))
+                    @elseif(request()->routeIs(['egg-productions.*', 'egg-movements.*', 'milk-productions.*']))
                         <span class="text-[9px] font-black text-slate-800 uppercase tracking-widest mr-1"><i class="fa-solid fa-egg text-amber-500 mr-1"></i> Production</span>
                         @can('production.L')
-                        <a href="{{ route('egg-productions.index') }}" class="{{ $linkClass }} {{ request()->routeIs('egg-productions.*') ? $activeClass : $inactiveClass }}">Collecte</a>
+                        <a href="{{ route('egg-productions.index') }}" class="{{ $linkClass }} {{ request()->routeIs('egg-productions.*') ? $activeClass : $inactiveClass }}">Œufs</a>
+                        <a href="{{ route('milk-productions.index') }}" class="{{ $linkClass }} {{ request()->routeIs('milk-productions.*') ? $activeClass : $inactiveClass }}">Lait</a>
                         @endcan
 
                     @elseif(request()->routeIs(['incubations.*', 'chick-dispatches.*']))

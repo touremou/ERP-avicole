@@ -40,7 +40,8 @@ use App\Http\Controllers\{
     PayrollController,
     TaskController,
     SpeciesController,
-    CampaignController
+    CampaignController,
+    MilkProductionController
 };
 
 Route::redirect('/', '/login');
@@ -208,6 +209,16 @@ Route::middleware(['auth'])->group(function () {
     });
 
     Route::post('/egg-movements/store', [EggMovementController::class, 'store'])->name('egg-movements.store')->middleware('can:C');
+
+    // ─── COLLECTE DE LAIT (laiterie caprine) ───
+    Route::prefix('milk-productions')->name('milk-productions.')->controller(MilkProductionController::class)->group(function () {
+        Route::get('/', 'index')->name('index')->middleware('can:production.L');
+        Route::get('/create', 'create')->name('create')->middleware('can:production.C');
+        Route::post('/', 'store')->name('store')->middleware('can:production.C');
+        Route::get('/{milkProduction}/edit', 'edit')->name('edit')->middleware('can:production.M');
+        Route::put('/{milkProduction}', 'update')->name('update')->middleware('can:production.M');
+        Route::delete('/{milkProduction}', 'destroy')->name('destroy')->middleware('can:production.S');
+    });
 
     // ─── SANTÉ & PROPHYLAXIE ───
     Route::prefix('health')->name('health.')->controller(HealthController::class)->group(function () {
