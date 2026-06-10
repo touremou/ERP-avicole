@@ -26,7 +26,7 @@ class UpdateBatch
      * présent dans $data. C'est la protection contre B-03/B-04.
      */
     private const ALLOWED_FIELDS = [
-        'type', 'model_name',
+        'type', 'model_name', 'production_type_id',
         'building_id', 'employee_id', 'provider_id',
         'protocol_id', 'current_protocol_id',
         'buy_price_per_unit',

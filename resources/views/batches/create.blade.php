@@ -70,7 +70,7 @@
                                         @if(! $multiSpecies)
                                         {{-- Mono-espèce : afficher les types de la première espèce directement --}}
                                         @foreach($activeSpecies->first()?->productionTypes ?? [] as $pt)
-                                        <option value="{{ $pt->slug }}" {{ old('type') == $pt->slug ? 'selected' : '' }}>
+                                        <option value="{{ $pt->slug }}" data-pt-id="{{ $pt->id }}" {{ old('type') == $pt->slug ? 'selected' : '' }}>
                                             {{ $pt->name_fr }}
                                         </option>
                                         @endforeach
@@ -82,6 +82,7 @@
                                         <option value="reproducteur" {{ old('type') == 'reproducteur' ? 'selected' : '' }}>🧬 Reproducteurs</option>
                                         @endif
                                     </select>
+                                    <input type="hidden" name="production_type_id" id="production_type_id_hidden" value="{{ old('production_type_id') }}">
                                 </div>
 
                                 <div>
@@ -287,7 +288,17 @@
 <script>
     function el(id) { return document.getElementById(id); }
 
+    // Met à jour le production_type_id caché selon l'option sélectionnée
+    function syncProductionTypeId() {
+        const typeSelect = el('breeding_type');
+        const hidden = el('production_type_id_hidden');
+        if (!typeSelect || !hidden) return;
+        const opt = typeSelect.options[typeSelect.selectedIndex];
+        hidden.value = opt?.dataset.ptId || '';
+    }
+
     function runFilters() {
+        syncProductionTypeId();
         const selectedType = el('breeding_type').value || "";
         const bSelect = el('building_id');
         const modelSelector = el('model_selector');
@@ -537,8 +548,12 @@
                 opt.value = t.slug;
                 opt.textContent = t.name_fr;
                 opt.dataset.cycleDays = t.cycle_days_default;
+                opt.dataset.ptId = t.id;
+                if ('{{ old('type') }}' === t.slug) opt.selected = true;
                 typeSelect.appendChild(opt);
             });
+            syncProductionTypeId();
+            runFilters();
         } catch (e) {
             console.error('Erreur chargement types:', e);
         }
@@ -549,6 +564,8 @@
         const speciesSel = document.getElementById('species_selector');
         if (speciesSel && speciesSel.value) {
             loadProductionTypes(speciesSel.value);
+        } else {
+            syncProductionTypeId();
         }
     });
     </script>
