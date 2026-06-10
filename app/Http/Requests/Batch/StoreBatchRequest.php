@@ -2,8 +2,10 @@
 
 namespace App\Http\Requests\Batch;
 
+use App\Models\ProductionType;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\Rule;
 
 /**
  * Validation pour la création d'un nouveau lot.
@@ -25,10 +27,18 @@ class StoreBatchRequest extends FormRequest
     {
         $isRepro = in_array($this->input('type'), ['repro', 'reproducteur']);
 
+        // Types valides : référentiel des types de production de toutes les espèces
+        // (+ valeurs historiques 'chair', 'ponte', etc. pour compatibilité ascendante)
+        $validTypes = ProductionType::pluck('slug')
+            ->merge(['chair', 'ponte', 'poussiniere', 'reproducteur', 'engraissement'])
+            ->unique()
+            ->values()
+            ->toArray();
+
         return [
             'code'               => 'required|string|max:50|unique:batches,code',
             'building_id'        => 'required|integer|exists:buildings,id',
-            'type'               => 'required|in:chair,ponte,poussiniere,reproducteur,engraissement',
+            'type'               => ['required', Rule::in($validTypes)],
             'model_name'         => 'required|string|max:100',
             'employee_id'        => 'required|integer|exists:employees,id',
             'provider_id'        => 'required|integer|exists:providers,id',

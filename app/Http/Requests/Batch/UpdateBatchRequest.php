@@ -2,8 +2,10 @@
 
 namespace App\Http\Requests\Batch;
 
+use App\Models\ProductionType;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\Rule;
 
 /**
  * Validation pour la modification d'un lot existant.
@@ -29,8 +31,14 @@ class UpdateBatchRequest extends FormRequest
         $batchId = is_object($batch) ? $batch->id : $batch;
         $isRepro = in_array($this->input('type'), ['repro', 'reproducteur']);
 
+        $validTypes = ProductionType::pluck('slug')
+            ->merge(['chair', 'ponte', 'poussiniere', 'reproducteur', 'engraissement'])
+            ->unique()
+            ->values()
+            ->toArray();
+
         return [
-            'type'               => 'required|in:chair,ponte,poussiniere,reproducteur,engraissement',
+            'type'               => ['required', Rule::in($validTypes)],
             'model_name'         => 'required|string|max:100',
             'building_id'        => 'required|integer|exists:buildings,id',
             'employee_id'        => 'required|integer|exists:employees,id',
