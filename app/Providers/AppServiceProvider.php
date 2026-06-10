@@ -81,12 +81,83 @@ class AppServiceProvider extends ServiceProvider
         //    - Pas de colonne is_active sur module_permissions
         // ════════════════════════════════════════════════════════════════
 
+        // Fallback "legacy" : utilisé UNIQUEMENT pour les rôles qui n'ont
+        // encore AUCUNE ligne dans `module_permissions` (matrice jamais
+        // configurée). Dès qu'un rôle a une matrice (même partielle), elle
+        // devient seule autorité — cf. migration
+        // 2026_06_10_000004_seed_default_module_permissions.
         $globalRoleMap = [
             'L' => ['admin', 'manager', 'operator', 'viewer'],
             'C' => ['admin', 'manager', 'operator'],
             'M' => ['admin', 'manager'],
             'S' => ['admin'],
         ];
+
+        // Table de correspondance "préfixe de nom de route" → slug module.
+        // Permet aux gates génériques L/C/M/S (utilisés par
+        // ->middleware('can:L'|'can:C'|'can:M'|'can:S') dans routes/web.php)
+        // de résoudre le module concerné par la requête en cours, et donc
+        // d'appliquer la matrice Modules × Rôles route par route.
+        $moduleRouteMap = [
+            'buildings.'        => 'elevage',
+            'batches.'          => 'elevage',
+            'health.'           => 'elevage',
+            'daily-checks.'     => 'elevage',
+            'protocols.'        => 'elevage',
+            'reports.'          => 'elevage',
+
+            'stocks.'           => 'logistique',
+            'dispatches.'       => 'logistique',
+
+            'provenderie.'      => 'provenderie',
+            'raw-materials.'    => 'provenderie',
+            'formulas.'         => 'provenderie',
+            'norms.'            => 'provenderie',
+            'production.'       => 'provenderie',
+            'machines.'         => 'provenderie',
+            'feed-purchases.'   => 'provenderie',
+
+            'incubations.'      => 'production',
+            'chick-dispatches.' => 'production',
+            'incubators.'       => 'production',
+            'egg-productions.'  => 'production',
+            'egg-movements.'    => 'production',
+
+            'clients.'          => 'commerce',
+            'sales.'            => 'commerce',
+            'payments.'         => 'commerce',
+
+            'utilities.'        => 'ressources',
+            'notifications.'    => 'notifications',
+
+            'planning.'         => 'planning',
+            'tasks.'            => 'planning',
+
+            'slaughter.'        => 'abattoir',
+
+            'employees.'        => 'annuaire',
+            'providers.'        => 'annuaire',
+            'payroll.'          => 'annuaire',
+
+            'users.'            => 'admin',
+            'roles.'            => 'admin',
+            'admin.'            => 'admin',
+            'settings.'         => 'admin',
+            'farms.'            => 'admin',
+            'trash.'            => 'admin',
+            'api.species.'      => 'admin',
+        ];
+
+        $resolveModuleSlug = function () use ($moduleRouteMap) {
+            $name = request()->route()?->getName();
+            if (! $name) return null;
+
+            foreach ($moduleRouteMap as $prefix => $slug) {
+                if (str_starts_with($name, $prefix)) return $slug;
+            }
+
+            return null;
+        };
 
         /**
          * Helper : charge les permissions modules via role_id.
@@ -144,24 +215,40 @@ class AppServiceProvider extends ServiceProvider
         });
 
         // ─── B. GATES GLOBAUX (L, C, M, S) ───
+        // La matrice Modules × Rôles (`module_permissions`) fait autorité
+        // dès qu'elle est configurée pour le rôle de l'utilisateur — y
+        // compris pour restreindre (ex: opérateur limité à elevage.L).
+        // Le rôle global LCMS (`$globalRoleMap`) ne sert plus que de
+        // compatibilité pour les rôles sans matrice du tout.
         foreach (['L', 'C', 'M', 'S'] as $perm) {
-            Gate::define($perm, function (?User $user) use ($perm, $globalRoleMap, $getModulePerms) {
+            Gate::define($perm, function (?User $user) use ($perm, $globalRoleMap, $getModulePerms, $resolveModuleSlug) {
                 if (! $user) return false;
 
                 // Mode offline : L et C uniquement
                 if (config('app.database_down')) return in_array($perm, ['L', 'C']);
 
                 $roleName = $user->userRole?->name ?? '';
+                $modulePerms = $getModulePerms($user->id);
 
-                // Rôle global autorise ?
-                if (in_array($roleName, $globalRoleMap[$perm])) return true;
+                if (! empty($modulePerms)) {
+                    $slug = $resolveModuleSlug();
 
-                // Fallback : au moins 1 module avec cette permission
-                foreach ($getModulePerms($user->id) as $modulePerms) {
-                    if (! empty($modulePerms[$perm])) return true;
+                    if ($slug !== null) {
+                        // Module identifié : la matrice décide seule.
+                        return ! empty($modulePerms[$slug][$perm]);
+                    }
+
+                    // Route non rattachée à un module précis (ex: dashboard) :
+                    // accès si au moins un module accorde cette permission.
+                    foreach ($modulePerms as $perms) {
+                        if (! empty($perms[$perm])) return true;
+                    }
+
+                    return false;
                 }
 
-                return false;
+                // Rôle sans matrice configurée : ancien comportement global.
+                return in_array($roleName, $globalRoleMap[$perm]);
             });
         }
 
@@ -194,11 +281,15 @@ class AppServiceProvider extends ServiceProvider
                     // Admin bypass (géré par Gate::before, mais sécurité double)
                     if ($roleName === 'admin') return true;
 
-                    // Rôle global = accès universel sur ce niveau
-                    if (in_array($roleName, $globalRoleMap[$perm])) return true;
+                    $modulePerms = $getModulePerms($user->id);
 
-                    // Permission spécifique au module
-                    return ! empty($getModulePerms($user->id)[$slug][$perm]);
+                    if (! empty($modulePerms)) {
+                        // Matrice configurée pour ce rôle : seule autorité.
+                        return ! empty($modulePerms[$slug][$perm]);
+                    }
+
+                    // Rôle sans matrice configurée : ancien comportement global.
+                    return in_array($roleName, $globalRoleMap[$perm]);
                 });
             }
         }
