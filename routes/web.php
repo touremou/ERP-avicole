@@ -38,10 +38,14 @@ use App\Http\Controllers\{
     ChickDispatchController,
     SettingsController,
     PayrollController,
-    TaskController
+    TaskController, setupController
 };
 
 Route::redirect('/', '/login');
+
+// Routes de Setup (accessibles même si non connecté)
+Route::get('/setup', [SetupController::class, 'index'])->name('setup.index');
+Route::post('/setup', [SetupController::class, 'store'])->name('setup.store');
 
 // ──────────────────────────────────────────────
 // PROFIL & DASHBOARD (tout utilisateur connecté)
