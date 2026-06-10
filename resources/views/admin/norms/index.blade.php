@@ -59,25 +59,25 @@
                 @endcan
             </div>
 
-            {{-- 2. TABLEAU DES NORMES (L) --}}
-            <div class="bg-white rounded-[4rem] shadow-2xl border border-slate-100 overflow-hidden font-bold text-left italic">
+            {{-- 2. TABLEAU DES NORMES (L) — vue bureau (≥ lg) --}}
+            <div class="hidden lg:block bg-white rounded-[4rem] shadow-2xl border border-slate-100 overflow-hidden font-bold text-left italic">
                 <table class="w-full text-left border-collapse">
                     <thead>
                         <tr class="bg-slate-900 border-b border-slate-800 font-black uppercase text-slate-400 text-[10px] tracking-[0.2em] italic">
-                            <th class="px-10 py-8">Semaine / Souche</th>
-                            <th class="px-6 py-8">Phase Bio</th>
-                            <th class="px-6 py-8 text-center">Poids Cible</th>
-                            <th class="px-6 py-8 text-center">Taux Ponte</th>
-                            <th class="px-6 py-8 text-center">Ration / Hydrat.</th>
-                            <th class="px-10 py-8 text-right">Contrôle</th>
+                            <th class="px-8 py-8">Semaine / Souche</th>
+                            <th class="px-4 py-8">Phase Bio</th>
+                            <th class="px-4 py-8 text-center">Poids Cible</th>
+                            <th class="px-4 py-8 text-center">Taux Ponte</th>
+                            <th class="px-4 py-8 text-center">Ration / Hydrat.</th>
+                            <th class="px-8 py-8 text-right">Contrôle</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
                         @forelse($norms as $norm)
                         <tr class="group hover:bg-slate-50 transition-all italic font-black">
-                            <td class="px-10 py-8">
+                            <td class="px-8 py-8">
                                 <div class="flex items-center gap-4">
-                                    <div class="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center text-slate-900 group-hover:bg-blue-600 group-hover:text-white transition-colors shadow-inner">
+                                    <div class="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center text-slate-900 group-hover:bg-blue-600 group-hover:text-white transition-colors shadow-inner shrink-0">
                                         <span class="text-sm">S{{ $norm->week_number }}</span>
                                     </div>
                                     <div>
@@ -88,24 +88,24 @@
                                     </div>
                                 </div>
                             </td>
-                            <td class="px-6 py-8">
+                            <td class="px-4 py-8">
                                 <span class="px-3 py-1 bg-slate-100 text-slate-500 rounded-lg text-[9px] font-black uppercase italic border border-slate-200">
                                     {{ $norm->phase_name }}
                                 </span>
                             </td>
-                            <td class="px-6 py-8 text-center">
+                            <td class="px-4 py-8 text-center">
                                 <p class="text-xl font-black text-slate-900 italic tracking-tighter">{{ number_format($norm->target_weight) }}<small class="text-[10px] ml-1 opacity-40">G</small></p>
                             </td>
-                            <td class="px-6 py-8 text-center">
+                            <td class="px-4 py-8 text-center">
                                 <p class="text-xl font-black text-emerald-600 italic tracking-tighter">{{ $norm->target_laying_rate }}<small class="text-[10px] ml-1 opacity-60">%</small></p>
                             </td>
-                            <td class="px-6 py-8 text-center">
+                            <td class="px-4 py-8 text-center">
                                 <div class="inline-flex flex-col gap-1">
                                     <span class="text-orange-600 text-[11px] bg-orange-50 px-2 py-0.5 rounded-md font-black italic border border-orange-100">{{ $norm->target_feed_daily ?? 0 }}g <small class="opacity-50 italic">alim</small></span>
                                     <span class="text-blue-500 text-[11px] bg-blue-50 px-2 py-0.5 rounded-md font-black italic border border-blue-100">{{ $norm->target_water_daily ?? 0 }}ml <small class="opacity-50 italic">eau</small></span>
                                 </div>
                             </td>
-                            <td class="px-10 py-8 text-right">
+                            <td class="px-8 py-8 text-right">
                                 <div class="flex justify-end gap-3">
                                     <button @click="currentNorm = {{ $norm->toJson() }}; openEdit = true" class="w-10 h-10 bg-white border border-slate-200 text-slate-400 hover:text-blue-600 hover:border-blue-600 rounded-xl transition-all shadow-sm cursor-pointer border-none">
                                         <i class="fas fa-pen-nib text-xs"></i>
@@ -129,6 +129,71 @@
                     </tbody>
                 </table>
             </div>
+
+            {{-- 2bis. CARTES DES NORMES — vue mobile / tablette (< lg), sans scroll latéral --}}
+            <div class="lg:hidden space-y-5">
+                @forelse($norms as $norm)
+                <div class="bg-white rounded-[2.5rem] shadow-lg border border-slate-100 p-6 italic font-black">
+                    <div class="flex items-center justify-between gap-4">
+                        <div class="flex items-center gap-4 min-w-0">
+                            <div class="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center text-slate-900 shadow-inner shrink-0">
+                                <span class="text-sm">S{{ $norm->week_number }}</span>
+                            </div>
+                            <div class="min-w-0">
+                                <p class="text-slate-900 font-black text-base leading-none uppercase tracking-tighter italic truncate">Semaine {{ $norm->week_number }}</p>
+                                <p class="text-[9px] text-blue-500 uppercase mt-1.5 tracking-widest font-black italic truncate">
+                                    {{ $norm->model_name ?: 'STANDARD' }}
+                                </p>
+                            </div>
+                        </div>
+                        @can('elevage.C')
+                        <div class="flex gap-2 shrink-0">
+                            <button @click="currentNorm = {{ $norm->toJson() }}; openEdit = true" class="w-10 h-10 bg-white border border-slate-200 text-slate-400 hover:text-blue-600 rounded-xl transition-all shadow-sm cursor-pointer">
+                                <i class="fas fa-pen-nib text-xs"></i>
+                            </button>
+                            @can('elevage.S')
+                            <button @click="currentNorm = {{ $norm->toJson() }}; openDelete = true" class="w-10 h-10 bg-white border border-slate-200 text-slate-400 hover:text-rose-600 rounded-xl transition-all shadow-sm cursor-pointer">
+                                <i class="fas fa-trash-can text-xs"></i>
+                            </button>
+                            @endcan
+                        </div>
+                        @endcan
+                    </div>
+
+                    <div class="mt-5">
+                        <span class="px-3 py-1 bg-slate-100 text-slate-500 rounded-lg text-[9px] font-black uppercase italic border border-slate-200">
+                            {{ $norm->phase_name }}
+                        </span>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3 mt-5">
+                        <div class="bg-slate-50 rounded-2xl p-4 text-center border border-slate-100">
+                            <p class="text-[8px] font-black uppercase text-slate-400 tracking-widest mb-1">Poids cible</p>
+                            <p class="text-lg font-black text-slate-900 italic tracking-tighter">{{ number_format($norm->target_weight) }}<small class="text-[9px] ml-1 opacity-40">G</small></p>
+                        </div>
+                        <div class="bg-slate-50 rounded-2xl p-4 text-center border border-slate-100">
+                            <p class="text-[8px] font-black uppercase text-emerald-500 tracking-widest mb-1">Taux ponte</p>
+                            <p class="text-lg font-black text-emerald-600 italic tracking-tighter">{{ $norm->target_laying_rate }}<small class="text-[9px] ml-1 opacity-60">%</small></p>
+                        </div>
+                        <div class="bg-orange-50 rounded-2xl p-4 text-center border border-orange-100">
+                            <p class="text-[8px] font-black uppercase text-orange-500 tracking-widest mb-1">Ration</p>
+                            <p class="text-base font-black text-orange-600 italic">{{ $norm->target_feed_daily ?? 0 }}<small class="text-[9px] ml-1 opacity-50">g/j</small></p>
+                        </div>
+                        <div class="bg-blue-50 rounded-2xl p-4 text-center border border-blue-100">
+                            <p class="text-[8px] font-black uppercase text-blue-500 tracking-widest mb-1">Hydratation</p>
+                            <p class="text-base font-black text-blue-600 italic">{{ $norm->target_water_daily ?? 0 }}<small class="text-[9px] ml-1 opacity-50">ml/j</small></p>
+                        </div>
+                    </div>
+                </div>
+                @empty
+                <div class="bg-white rounded-[2.5rem] shadow-lg border border-slate-100 px-8 py-20 text-center">
+                    <div class="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
+                        <i class="fas fa-layer-group text-3xl text-slate-200"></i>
+                    </div>
+                    <p class="text-slate-300 font-black uppercase text-[11px] tracking-[0.3em] italic">Référentiel vide pour ce secteur</p>
+                </div>
+                @endforelse
+            </div>
         </div>
 
         {{-- 3. MODALE UNIFIÉE (AJOUT/ÉDITION) --}}
@@ -137,14 +202,14 @@
              x-transition.opacity 
              class="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/90 backdrop-blur-md" x-cloak>
             
-            <div @click.away="openAdd = false; openEdit = false" 
-                 class="bg-white w-full max-w-3xl rounded-[4rem] shadow-2xl overflow-hidden p-12 italic text-left font-bold relative">
-                
-                <button @click="openAdd = false; openEdit = false" class="absolute top-10 right-10 text-slate-200 hover:text-rose-500 border-none bg-transparent cursor-pointer text-2xl">
+            <div @click.away="openAdd = false; openEdit = false"
+                 class="bg-white w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-[2.5rem] md:rounded-[4rem] shadow-2xl p-7 md:p-12 italic text-left font-bold relative">
+
+                <button @click="openAdd = false; openEdit = false" class="absolute top-7 right-7 md:top-10 md:right-10 text-slate-200 hover:text-rose-500 border-none bg-transparent cursor-pointer text-2xl">
                     <i class="fas fa-circle-xmark"></i>
                 </button>
 
-                <h3 class="text-3xl font-black text-slate-900 uppercase italic tracking-tighter mb-10 leading-none" 
+                <h3 class="text-2xl md:text-3xl font-black text-slate-900 uppercase italic tracking-tighter mb-8 md:mb-10 leading-none pr-10"
                     x-text="openEdit ? 'Audit & Mise à jour' : 'Initialiser une Norme'"></h3>
                 
                 <form :action="openEdit ? '{{ url('admin/norms') }}/' + currentNorm.id : '{{ route('admin.norms.store') }}'" method="POST" class="space-y-8">
@@ -204,17 +269,48 @@
         @endcan
 
         @can('elevage.S')
-        {{-- 4. MODALE IMPORT CSV --}}
+        {{-- 4. MODALE SUPPRESSION --}}
+        <div x-show="openDelete"
+             x-transition.opacity
+             class="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/90 backdrop-blur-md" x-cloak>
+
+            <div @click.away="openDelete = false" class="bg-white w-full max-w-md rounded-[2.5rem] md:rounded-[4rem] shadow-2xl p-7 md:p-12 italic text-center font-bold relative">
+                <div class="w-16 h-16 bg-rose-50 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
+                    <i class="fas fa-trash-can text-2xl text-rose-500"></i>
+                </div>
+                <h3 class="text-2xl font-black text-slate-900 uppercase italic tracking-tighter mb-3 leading-none">Supprimer la norme ?</h3>
+                <p class="text-[10px] text-slate-400 uppercase font-black mb-8 tracking-widest leading-relaxed">
+                    Semaine <span x-text="currentNorm.week_number"></span> —
+                    <span x-text="currentNorm.model_name || 'STANDARD'"></span>.
+                    Cette action est irréversible.
+                </p>
+
+                <div class="flex gap-3">
+                    <button @click="openDelete = false" type="button" class="flex-1 bg-slate-100 text-slate-500 py-5 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition border-none cursor-pointer italic">
+                        Annuler
+                    </button>
+                    <form :action="'{{ url('admin/norms') }}/' + currentNorm.id" method="POST" class="flex-1">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="w-full bg-rose-600 text-white py-5 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-700 transition shadow-xl border-none cursor-pointer italic">
+                            Supprimer
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        {{-- 5. MODALE IMPORT CSV --}}
         <div x-show="openImport" 
              x-transition.opacity 
              class="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/90 backdrop-blur-md" x-cloak>
             
-            <div @click.away="openImport = false" class="bg-white w-full max-w-xl rounded-[4rem] shadow-2xl p-12 italic text-left font-bold relative">
-                <button @click="openImport = false" class="absolute top-10 right-10 text-slate-200 hover:text-rose-500 border-none bg-transparent cursor-pointer text-2xl font-black">
+            <div @click.away="openImport = false" class="bg-white w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-[2.5rem] md:rounded-[4rem] shadow-2xl p-7 md:p-12 italic text-left font-bold relative">
+                <button @click="openImport = false" class="absolute top-7 right-7 md:top-10 md:right-10 text-slate-200 hover:text-rose-500 border-none bg-transparent cursor-pointer text-2xl font-black">
                     <i class="fas fa-times"></i>
                 </button>
 
-                <h3 class="text-3xl font-black text-slate-900 uppercase italic tracking-tighter mb-4 leading-none">Importation Massive</h3>
+                <h3 class="text-2xl md:text-3xl font-black text-slate-900 uppercase italic tracking-tighter mb-4 leading-none pr-10">Importation Massive</h3>
                 <p class="text-[10px] text-slate-400 uppercase font-black mb-10 tracking-widest leading-relaxed">
                     Fichier .csv : week_number, phase_name, target_weight, target_laying_rate, target_feed_daily, target_water_daily, model_name
                 </p>

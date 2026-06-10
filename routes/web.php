@@ -467,6 +467,8 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/norms', [ProductionNormController::class, 'index'])->name('norms.index');
             Route::post('/norms/import', [ProductionNormController::class, 'import'])->name('norms.import');
             Route::post('/norms', [ProductionNormController::class, 'store'])->name('norms.store');
+            Route::put('/norms/{norm}', [ProductionNormController::class, 'update'])->name('norms.update');
+            Route::delete('/norms/{norm}', [ProductionNormController::class, 'destroy'])->name('norms.destroy');
 
             // Gestion des espèces (multiespèces)
             Route::get('/species', [SpeciesController::class, 'index'])->name('species.index');
