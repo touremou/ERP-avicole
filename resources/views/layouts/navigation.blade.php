@@ -223,7 +223,7 @@
                 {{-- RÔLE --}}
                 <div class="px-3 py-1.5 bg-slate-50 rounded-xl text-right hidden xl:block">
                     <span class="text-[7px] font-black uppercase text-slate-400 tracking-widest block leading-none">Rôle</span>
-                    <span class="text-[8px] font-black uppercase italic text-blue-500">{{ Auth::user()->userRole?->display_name ?? 'Opérateur' }}</span>
+                    <span class="text-[8px] font-black uppercase italic text-blue-500">{{ Auth::user()->userRole?->display_name ?? Auth::user()->userRole?->label ?? 'Opérateur' }}</span>
                 </div>
 
                 {{-- USER DROPDOWN --}}
