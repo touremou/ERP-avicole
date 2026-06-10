@@ -290,6 +290,7 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('reports')->name('reports.')->controller(ReportController::class)->middleware('can:L')->group(function () {
         Route::get('/', 'index')->name('index');
         Route::get('/technical', 'technicalPerformance')->name('technical');
+        Route::get('/profit-loss', 'profitLoss')->name('profit_loss');
         Route::get('/health-finance', 'healthFinancialReport')->name('health_finance');
         Route::get('/monthly', 'monthlyExpenses')->name('monthly');
         Route::get('/gmq', 'gmqReport')->name('gmq');

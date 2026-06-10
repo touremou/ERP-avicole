@@ -5,6 +5,14 @@ namespace App\Http\Controllers;
 use App\Models\Batch;
 use App\Models\HealthCheck;
 use App\Models\DailyCheck;
+use App\Models\SaleItem;
+use App\Models\MilkProduction;
+use App\Models\FeedPurchase;
+use App\Models\WaterReading;
+use App\Models\EnergyReading;
+use App\Models\FuelPurchase;
+use App\Models\Payslip;
+use App\Models\Species;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -21,6 +29,136 @@ class ReportController extends Controller
     {
         if (Gate::denies('elevage.L')) return redirect()->route('dashboard')->with('error', 'Accès restreint.');
         return view('reports.index');
+    }
+
+    /**
+     * COMPTE DE RÉSULTAT CONSOLIDÉ (P&L)
+     *
+     * Consolide sur une période tous les flux réels déjà saisis dans l'ERP :
+     * produits (ventes validées par catégorie + lait collecté valorisé) et
+     * charges (achats d'animaux, aliment, santé, main d'œuvre, eau, énergie,
+     * gasoil). Donne le résultat net + la marge, et une marge directe par
+     * espèce (hors frais généraux). Requêtes par plage de dates (compatibles
+     * SQLite/MySQL — pas de fonctions YEAR()/MONTH()).
+     *
+     * Gate : admin.L (donnée financière sensible).
+     */
+    public function profitLoss(Request $request): View
+    {
+        if (Gate::denies('admin.L')) {
+            abort(403, 'Accès réservé.');
+        }
+
+        $from = Carbon::parse($request->get('date_from', now()->startOfYear()->toDateString()))->startOfDay();
+        $to   = Carbon::parse($request->get('date_to', now()->toDateString()))->endOfDay();
+
+        // ─── PRODUITS ───
+        // Ventes réellement engagées (validées/livrées) sur la période, par catégorie.
+        $salesByType = SaleItem::query()
+            ->whereHas('sale', fn ($q) => $q->whereIn('status', ['valide', 'livre'])
+                ->whereBetween('sale_date', [$from, $to]))
+            ->selectRaw('product_type, SUM(total) as total')
+            ->groupBy('product_type')
+            ->pluck('total', 'product_type');
+
+        // Lait collecté valorisé (pas de flux de vente dédié à ce stade).
+        $milkRevenue = (float) MilkProduction::whereBetween('production_date', [$from, $to])
+            ->sum(DB::raw('total_liters * unit_price'));
+
+        $revenue = [];
+        foreach ($salesByType as $type => $total) {
+            $revenue[$this->productTypeLabel($type)] = (float) $total;
+        }
+        if ($milkRevenue > 0) {
+            $revenue['Lait (collecte valorisée)'] = ($revenue['Lait (collecte valorisée)'] ?? 0) + $milkRevenue;
+        }
+        $totalRevenue = array_sum($revenue);
+
+        // ─── CHARGES ───
+        $costAcquisition = (float) Batch::whereBetween('arrival_date', [$from, $to])->sum('total_acquisition_cost');
+        $costFeed   = (float) FeedPurchase::whereBetween('purchase_date', [$from, $to])
+            ->sum(DB::raw('COALESCE(total_price, quantity * unit_price)'));
+        $costHealth = (float) HealthCheck::whereBetween('intervention_date', [$from, $to])->sum('cost');
+        $costLabor  = (float) Payslip::whereHas('period', fn ($q) => $q->whereBetween('start_date', [$from, $to]))
+            ->sum('net_salary');
+        $costWater  = (float) WaterReading::whereBetween('reading_date', [$from, $to])->sum('cost');
+        $costEnergy = (float) EnergyReading::whereBetween('reading_date', [$from, $to])->sum('cost');
+        $costFuel   = (float) FuelPurchase::whereBetween('purchase_date', [$from, $to])->sum('total_cost');
+
+        $costs = [
+            'Achats animaux (lots)'   => $costAcquisition,
+            'Aliment'                 => $costFeed,
+            'Santé / prophylaxie'     => $costHealth,
+            'Main d\'œuvre (paie)'    => $costLabor,
+            'Eau'                     => $costWater,
+            'Énergie'                 => $costEnergy,
+            'Gasoil'                  => $costFuel,
+        ];
+        $totalCosts = array_sum($costs);
+        $netResult  = $totalRevenue - $totalCosts;
+        $marginPct  = $totalRevenue > 0 ? round(($netResult / $totalRevenue) * 100, 1) : 0;
+
+        // ─── MARGE DIRECTE PAR ESPÈCE (items traçables uniquement) ───
+        $speciesMargin = $this->speciesDirectMargin($from, $to);
+
+        return view('reports.profit-loss', compact(
+            'from', 'to', 'revenue', 'totalRevenue',
+            'costs', 'totalCosts', 'netResult', 'marginPct', 'speciesMargin'
+        ));
+    }
+
+    /**
+     * Marge directe par espèce (revenus & coûts directement traçables au lot).
+     * Hors frais généraux (paie, eau, énergie) non ventilables par espèce.
+     */
+    private function speciesDirectMargin(Carbon $from, Carbon $to): array
+    {
+        $rows = [];
+
+        foreach (Species::orderBy('sort_order')->get() as $sp) {
+            $batchIds = Batch::where('species_id', $sp->id)->pluck('id');
+            if ($batchIds->isEmpty()) continue;
+
+            $rev = (float) SaleItem::whereIn('batch_id', $batchIds)
+                ->whereHas('sale', fn ($q) => $q->whereIn('status', ['valide', 'livre'])
+                    ->whereBetween('sale_date', [$from, $to]))
+                ->sum('total');
+            $rev += (float) MilkProduction::whereIn('batch_id', $batchIds)
+                ->whereBetween('production_date', [$from, $to])
+                ->sum(DB::raw('total_liters * unit_price'));
+
+            $cost = (float) Batch::whereIn('id', $batchIds)->whereBetween('arrival_date', [$from, $to])->sum('total_acquisition_cost');
+            $cost += (float) FeedPurchase::whereIn('batch_id', $batchIds)->whereBetween('purchase_date', [$from, $to])
+                ->sum(DB::raw('COALESCE(total_price, quantity * unit_price)'));
+            $cost += (float) HealthCheck::whereIn('batch_id', $batchIds)->whereBetween('intervention_date', [$from, $to])->sum('cost');
+
+            if ($rev == 0 && $cost == 0) continue;
+
+            $rows[] = [
+                'species' => $sp->name_fr,
+                'icon'    => $sp->icon,
+                'revenue' => $rev,
+                'cost'    => $cost,
+                'margin'  => $rev - $cost,
+            ];
+        }
+
+        return $rows;
+    }
+
+    private function productTypeLabel(string $type): string
+    {
+        return match ($type) {
+            'animal_vif'        => 'Animaux vifs',
+            'carcasse', 'volaille_abattue' => 'Carcasses / viande',
+            'volaille_vivante'  => 'Animaux vifs (volaille)',
+            'oeufs'             => 'Œufs',
+            'lait'              => 'Lait',
+            'aliment'           => 'Aliment (revente)',
+            'fumier'            => 'Fumier',
+            'materiel'          => 'Matériel',
+            default             => ucfirst($type),
+        };
     }
 
     /**

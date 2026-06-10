@@ -18,6 +18,19 @@
         <div class="max-w-5xl mx-auto sm:px-6 lg:px-8">
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 text-left">
 
+                {{-- COMPTE DE RÉSULTAT (P&L) --}}
+                @can('admin.L')
+                <a href="{{ route('reports.profit_loss') }}" class="group bg-slate-900 p-8 rounded-2xl shadow-lg hover:bg-slate-800 transition-all no-underline relative overflow-hidden border-b-4 border-amber-500">
+                    <div class="w-12 h-12 bg-amber-500 text-white rounded-xl flex items-center justify-center mb-5 shadow-lg group-hover:scale-110 transition-transform"><i class="fa-solid fa-scale-balanced text-lg"></i></div>
+                    <h3 class="text-base font-black text-white uppercase tracking-tighter mb-2 italic">Compte de Résultat</h3>
+                    <p class="text-[9px] text-slate-500 uppercase tracking-widest font-black mb-6">Produits, charges, résultat net — toutes activités</p>
+                    <div class="flex items-center gap-2 text-amber-400 text-[9px] font-black uppercase tracking-widest border-t border-white/10 pt-4">
+                        P&amp;L consolidé <i class="fa-solid fa-arrow-right group-hover:translate-x-1 transition-transform text-[8px]"></i>
+                    </div>
+                    <i class="fa-solid fa-coins absolute -right-4 -bottom-4 text-7xl text-white/5"></i>
+                </a>
+                @endcan
+
                 {{-- PERFORMANCE TECHNIQUE --}}
                 @can('elevage.L')
                 <a href="{{ route('reports.technical') }}" class="group bg-white p-8 rounded-2xl border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all no-underline relative overflow-hidden">
