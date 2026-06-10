@@ -208,7 +208,6 @@ class ReferentialSeeder extends Seeder
             $protocol->steps()->delete();
             foreach ($p['steps'] as [$day, $action, $type, $product, $method]) {
                 $protocol->steps()->create([
-                    'farm_id'           => $this->farmId,
                     'day_number'        => $day,
                     'action_name'       => $action,
                     'type'              => $type,
@@ -257,15 +256,15 @@ class ReferentialSeeder extends Seeder
                 'Maïs jaune' => 55, 'Tourteau de soja' => 18, 'Son de blé' => 12,
                 'Coquilles / Calcaire' => 9, 'Farine de poisson' => 3, 'CMV (compl. minéral vitaminé)' => 2, 'Sel' => 1,
             ]],
-            'CAP-LAIT' => ['Chèvre Laitière — Lactation', 'laitiere', 'chevre', 'laitiere', [
+            'CAP-LAIT' => ['Chèvre Laitière — Lactation', 'caprin_laitiere', 'chevre', 'laitiere', [
                 'Maïs jaune' => 30, 'Son de blé' => 25, 'Tourteau d\'arachide' => 15,
                 'Drêche de brasserie' => 15, 'Fourrage / Foin' => 10, 'CMV (compl. minéral vitaminé)' => 3, 'Sel' => 2,
             ]],
-            'OV-ENG' => ['Ovin — Engraissement', 'engraissement', 'mouton', 'engraissement', [
+            'OV-ENG' => ['Ovin — Engraissement', 'ovin_engraissement', 'mouton', 'engraissement', [
                 'Maïs jaune' => 35, 'Son de blé' => 25, 'Tourteau d\'arachide' => 12,
                 'Drêche de brasserie' => 13, 'Fourrage / Foin' => 12, 'CMV (compl. minéral vitaminé)' => 2, 'Sel' => 1,
             ]],
-            'TIL-GROSS' => ['Tilapia — Grossissement', 'grossissement', 'tilapia', 'grossissement', [
+            'TIL-GROSS' => ['Tilapia — Grossissement', 'tilapia_grossissement', 'tilapia', 'grossissement', [
                 'Farine de poisson' => 30, 'Tourteau de soja' => 25, 'Son de riz' => 20,
                 'Maïs jaune' => 20, 'CMV (compl. minéral vitaminé)' => 3, 'Sel' => 2,
             ]],
