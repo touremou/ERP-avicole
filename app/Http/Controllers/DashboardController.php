@@ -67,14 +67,21 @@ class DashboardController extends Controller
         // ---------------------------------------------------------
         // 4. MARGE NETTE ESTIMÉE DU MOIS (Ventes - Coûts réels)
         // ---------------------------------------------------------
-        // A. Chiffre d'Affaires du mois (Sorties magasin x Prix de vente moyen)
-        // A. Chiffre d'Affaires du mois (Sorties magasin x Prix de vente moyen)
-        $caEstime = DB::table('stock_movements')
-            ->join('stocks', 'stock_movements.stock_id', '=', 'stocks.id') // <-- CORRECTION ICI
-            ->where('stocks.category', 'oeufs')
-            ->where('stock_movements.type', 'out')
-            ->whereMonth('stock_movements.created_at', now()->month)
-            ->sum(DB::raw('stock_movements.quantity * 30 * 1500')); // Ex: 1500 GNF l'oeuf
+        // A. Chiffre d'affaires réel du mois : ventes validées/livrées (toutes
+        //    catégories & espèces) + lait collecté valorisé. Remplace l'ancienne
+        //    estimation œufs-seulement à prix figé, désormais incohérente avec
+        //    la vente d'animaux vifs et le lait.
+        $monthStart = now()->startOfMonth();
+        $monthEnd   = now()->endOfMonth();
+
+        $caVentes = (float) \App\Models\Sale::whereIn('status', ['valide', 'livre'])
+            ->whereBetween('sale_date', [$monthStart, $monthEnd])
+            ->sum('total_amount');
+
+        $caLait = (float) \App\Models\MilkProduction::whereBetween('production_date', [$monthStart, $monthEnd])
+            ->sum(DB::raw('total_liters * unit_price'));
+
+        $caEstime = $caVentes + $caLait;
 
         // B. Coût Alimentaire du mois (Quantité consommée * CMUP)
         $coutAliment = DailyCheck::whereMonth('check_date', now()->month)
