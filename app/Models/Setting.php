@@ -155,6 +155,7 @@ class Setting extends Model
             'general'     => ['label' => 'Général',       'icon' => 'fa-building',        'color' => 'slate'],
             'elevage'     => ['label' => 'Élevage',       'icon' => 'fa-dove',             'color' => 'blue'],
             'production'  => ['label' => 'Production',    'icon' => 'fa-egg',              'color' => 'amber'],
+            'pisciculture'=> ['label' => 'Pisciculture',  'icon' => 'fa-water',            'color' => 'green'],
             'provenderie' => ['label' => 'Provenderie',   'icon' => 'fa-wheat-awn',        'color' => 'lime'],
             'abattoir'    => ['label' => 'Abattoir',      'icon' => 'fa-drumstick-bite',   'color' => 'rose'],
             'couvoir'     => ['label' => 'Couvoir',       'icon' => 'fa-temperature-half', 'color' => 'pink'],
