@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Formula;
 use App\Models\RawMaterial;
 use App\Models\FoodNorm;
+use App\Models\ProductionType;
 use App\Actions\Formula\CreateFormula;
 use App\Actions\Formula\UpdateFormula;
 use App\Http\Requests\Formula\StoreFormulaRequest;
@@ -36,8 +37,10 @@ class FormulaController extends Controller
 
         $materials = RawMaterial::where('is_active', true)->orderBy('name')->get();
         $norms = FoodNorm::where('is_active', true)->orderBy('name')->get();
+        // Types de production de toutes les espèces (cible multiespèces de l'aliment).
+        $productionTypes = ProductionType::active()->with('species')->orderBy('species_id')->get();
 
-        return view('provenderie.formulas.create', compact('materials', 'norms'));
+        return view('provenderie.formulas.create', compact('materials', 'norms', 'productionTypes'));
     }
 
     /**
@@ -84,8 +87,9 @@ class FormulaController extends Controller
 
         $formula->load('items.rawMaterial');
         $rawMaterials = RawMaterial::orderBy('name')->get();
+        $productionTypes = ProductionType::active()->with('species')->orderBy('species_id')->get();
 
-        return view('provenderie.formulas.edit', compact('formula', 'rawMaterials'));
+        return view('provenderie.formulas.edit', compact('formula', 'rawMaterials', 'productionTypes'));
     }
 
     public function update(UpdateFormulaRequest $request, Formula $formula, UpdateFormula $action): RedirectResponse

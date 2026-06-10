@@ -34,12 +34,23 @@
                             <input type="text" name="name" value="{{ $formula->name }}" required class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black uppercase text-slate-800 shadow-inner italic focus:ring-2 focus:ring-blue-500/20">
                         </div>
                         <div>
-                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-2 italic tracking-widest leading-none">Type Animal</label>
-                            <select name="target_type" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic appearance-none cursor-pointer">
-                                <option value="chair" @selected($formula->target_type == 'chair')>CHAIR</option>
-                                <option value="ponte" @selected($formula->target_type == 'ponte')>PONTE</option>
-                                <option value="repro" @selected($formula->target_type == 'repro')>REPRO</option>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-2 italic tracking-widest leading-none">Espèce / Type de production</label>
+                            <select id="pt_selector_edit" onchange="onPtChangeEdit()" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-blue-600 shadow-inner italic appearance-none cursor-pointer">
+                                <option value="">-- Choisir --</option>
+                                @foreach($productionTypes->groupBy(fn($pt) => $pt->species->name_fr ?? 'Autres') as $speciesLabel => $types)
+                                    <optgroup label="{{ strtoupper($speciesLabel) }}">
+                                        @foreach($types as $pt)
+                                            <option value="{{ $pt->id }}" data-slug="{{ $pt->slug }}" data-species-id="{{ $pt->species_id }}"
+                                                    @selected($formula->production_type_id == $pt->id)>
+                                                {{ $pt->species->icon ?? '' }} {{ $pt->name_fr }}
+                                            </option>
+                                        @endforeach
+                                    </optgroup>
+                                @endforeach
                             </select>
+                            <input type="hidden" name="species_id" id="species_id_edit" value="{{ $formula->species_id }}">
+                            <input type="hidden" name="production_type_id" id="production_type_id_edit" value="{{ $formula->production_type_id }}">
+                            <input type="hidden" name="target_type" id="target_type_edit" value="{{ $formula->target_type }}">
                         </div>
                     </div>
 
@@ -111,6 +122,15 @@
     <script>
         function el(id) { return document.getElementById(id); }
         let rowCount = {{ $formula->items->count() }};
+
+        // Espèce / type de production → met à jour species_id, production_type_id
+        // et target_type (slug). Sans sélection, on conserve les valeurs existantes.
+        function onPtChangeEdit() {
+            const s = el('pt_selector_edit'); const o = s.options[s.selectedIndex];
+            el('species_id_edit').value = o.dataset.speciesId || '';
+            el('production_type_id_edit').value = s.value || '';
+            if (o.dataset.slug) el('target_type_edit').value = o.dataset.slug;
+        }
 
         function addRow() {
             const container = el('ingredients-container');

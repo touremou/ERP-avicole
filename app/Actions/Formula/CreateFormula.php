@@ -29,6 +29,8 @@ class CreateFormula
                 'name'               => $data['name'],
                 'code'               => strtoupper($data['code']),
                 'target_type'        => $data['target_type'],
+                'species_id'         => $data['species_id'] ?? null,
+                'production_type_id' => $data['production_type_id'] ?? null,
                 'poultry_type'       => $data['poultry_type'] ?? 'Chair',
                 'total_batch_weight' => $batchWeight,
                 'instructions'       => $data['instructions'] ?? null,

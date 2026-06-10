@@ -39,56 +39,41 @@
                             <h3 class="text-[10px] font-black uppercase text-blue-500 tracking-widest italic">01. Paramètres & Cibles</h3>
                             
                             <div class="space-y-3">
-                                <label class="block text-[10px] font-black text-slate-400 uppercase italic tracking-widest ml-2">Secteur Avicole</label>
-                                <div class="grid grid-cols-2 gap-2">
-                                    <button type="button" @click="poultryType = 'Chair'; updateName()" 
-                                        :class="poultryType === 'Chair' ? 'bg-slate-900 text-white shadow-lg' : 'bg-slate-100 text-slate-400'"
-                                        class="py-3 rounded-xl text-[9px] font-black uppercase italic transition-all">
-                                        <i class="fa-solid fa-feather mr-1"></i> Chair
-                                    </button>
-                                    <button type="button" @click="poultryType = 'Ponte'; updateName()" 
-                                        :class="poultryType === 'Ponte' ? 'bg-emerald-600 text-white shadow-lg' : 'bg-slate-100 text-slate-400'"
-                                        class="py-3 rounded-xl text-[9px] font-black uppercase italic transition-all">
-                                        <i class="fa-solid fa-egg mr-1"></i> Ponte
-                                    </button>
-                                </div>
-                                <input type="hidden" name="poultry_type" :value="poultryType">
+                                <label class="block text-[10px] font-black text-slate-400 uppercase italic tracking-widest ml-2">Espèce / Type de production *</label>
+                                <select id="pt_selector" @change="onPtChange($event)" required
+                                        class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-blue-600 shadow-inner italic appearance-none cursor-pointer">
+                                    <option value="">-- Choisir --</option>
+                                    @foreach($productionTypes->groupBy(fn($pt) => $pt->species->name_fr ?? 'Autres') as $speciesLabel => $types)
+                                        <optgroup label="{{ strtoupper($speciesLabel) }}">
+                                            @foreach($types as $pt)
+                                                <option value="{{ $pt->id }}"
+                                                        data-slug="{{ $pt->slug }}"
+                                                        data-species-id="{{ $pt->species_id }}"
+                                                        data-label="{{ strtoupper($pt->name_fr) }}">
+                                                    {{ $pt->species->icon ?? '' }} {{ $pt->name_fr }}
+                                                </option>
+                                            @endforeach
+                                        </optgroup>
+                                    @endforeach
+                                </select>
+                                <input type="hidden" name="species_id" :value="speciesId">
+                                <input type="hidden" name="production_type_id" :value="productionTypeId">
+                                <input type="hidden" name="target_type" :value="targetType">
                             </div>
 
                             <div>
                                 <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-2 italic tracking-widest">Nom</label>
-                                <input type="text" name="name" x-model="formulaName" readonly
+                                <input type="text" name="name" x-model="formulaName" required
                                     class="w-full bg-blue-50 border-none rounded-2xl p-4 font-black text-blue-900 shadow-inner italic uppercase">
                             </div>
 
                             <div>
-                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-2 italic tracking-widest">Phase d'Élevage</label>
-                                <select x-model="phase" @change="updateName()" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic appearance-none cursor-pointer">
-                                    <template x-if="poultryType === 'Chair'">
-                                        <optgroup label="Aliments Chair">
-                                            <option value="Démarrage">Démarrage</option>
-                                            <option value="Croissance">Croissance</option>
-                                            <option value="Finition">Finition</option>
-                                        </optgroup>
-                                    </template>
-                                    <template x-if="poultryType === 'Ponte'">
-                                        <optgroup label="Aliments Ponte">
-                                            <option value="Poussin">Démarrage (Poussin)</option>
-                                            <option value="Poulette">Croissance (Poulette)</option>
-                                            <option value="Ponte 1">Ponte 1 (Pic)</option>
-                                            <option value="Ponte 2">Ponte 2 (Entretien)</option>
-                                        </optgroup>
-                                    </template>
-                                </select>
-                            </div>
-                            
-                            <div>
-                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-2 italic tracking-widest">Référentiel Normé</label>
-                                <select name="target_type" x-model="selectedNormId" @change="updateTargets()" required class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic appearance-none">
-                                    <option value="">-- CHOISIR UNE NORME --</option>
+                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-2 italic tracking-widest">Référentiel nutritionnel <span class="text-slate-300 normal-case">(optionnel)</span></label>
+                                <select x-model="selectedNormId" @change="updateTargets($event)" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic appearance-none">
+                                    <option value="">-- Aucun (cibles libres) --</option>
                                     @foreach($norms as $norm)
-                                        <option value="{{ $norm->animal_type }}" 
-                                                data-em="{{ $norm->target_em }}" 
+                                        <option value="{{ $norm->animal_type }}"
+                                                data-em="{{ $norm->target_em }}"
                                                 data-pb="{{ $norm->target_pb }}">
                                             {{ strtoupper($norm->name) }}
                                         </option>
@@ -216,9 +201,11 @@
     <script>
         function formulaBuilder() {
             return {
-                poultryType: 'Chair',
-                phase: 'Démarrage',
-                formulaName: 'CHAIR DÉMARRAGE',
+                formulaName: '',
+                speciesId: '',
+                productionTypeId: '',
+                targetType: '',
+                ptSlug: '',
                 batchWeight: 1000,
                 selectedNormId: '',
                 targetEM: 0,
@@ -228,15 +215,26 @@
                 realPB: 0,
                 costPerKg: 0,
 
-                updateName() {
-                    this.formulaName = this.poultryType.toUpperCase() + ' ' + this.phase.toUpperCase();
+                // Sélection espèce / type de production → pilote species_id,
+                // production_type_id, target_type (slug) et le nom proposé.
+                onPtChange(e) {
+                    const opt = e.target.options[e.target.selectedIndex];
+                    this.speciesId = opt?.dataset?.speciesId || '';
+                    this.productionTypeId = e.target.value || '';
+                    this.ptSlug = opt?.dataset?.slug || '';
+                    // target_type = slug du type de production (sauf si une norme est choisie).
+                    if (!this.selectedNormId) this.targetType = this.ptSlug;
+                    if (opt?.dataset?.label) this.formulaName = opt.dataset.label;
                 },
 
-                updateTargets() {
-                    const select = this.$el.querySelector('select[name="target_type"]');
-                    const opt = select?.options[select.selectedIndex];
+                updateTargets(e) {
+                    const opt = e.target.options[e.target.selectedIndex];
                     this.targetEM = parseFloat(opt?.dataset?.em) || 0;
                     this.targetPB = parseFloat(opt?.dataset?.pb) || 0;
+                    // Si une norme est choisie, target_type = sa clé (animal_type)
+                    // pour conserver l'appariement nutritionnel (volaille). Sinon,
+                    // on retombe sur le slug du type de production.
+                    this.targetType = this.selectedNormId || this.ptSlug;
                 },
 
                 recalculate() {
