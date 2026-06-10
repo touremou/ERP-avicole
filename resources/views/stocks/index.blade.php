@@ -237,14 +237,14 @@
                 </button>
 
                 <div x-show="showMove" x-transition class="mt-6">
-                    <form method="POST" action="{{ route('stocks.move') }}" class="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+                    <form method="POST" action="{{ route('stocks.move') }}" id="stock-move-form" class="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
                         @csrf
                         <div class="space-y-1">
                             <label class="text-[8px] font-black uppercase text-slate-400 tracking-widest">Article</label>
                             <select name="stock_id" required class="w-full bg-slate-50 border-none rounded-xl p-3 text-[10px] font-black uppercase shadow-inner outline-none">
                                 <option value="">Sélectionner...</option>
                                 @foreach($stocks ?? [] as $s)
-                                    <option value="{{ $s->id }}">{{ $s->item_name }} ({{ $s->current_quantity }} {{ $s->unit }})</option>
+                                    <option value="{{ $s->id }}" data-qty="{{ $s->current_quantity }}" data-unit="{{ $s->unit }}">{{ $s->item_name }} ({{ $s->current_quantity }} {{ $s->unit }})</option>
                                 @endforeach
                             </select>
                         </div>
@@ -275,4 +275,54 @@
             @endcan
         </div>
     </div>
+
+    <script>
+        // ─── 🛰️ MODE TERRAIN : mouvement de stock hors-ligne ───
+        // Met le mouvement en file d'attente IndexedDB si le réseau est coupé ;
+        // sync-engine.js le pousse (idempotent par UUID) au retour réseau.
+        document.getElementById('stock-move-form')?.addEventListener('submit', async function(e) {
+            if (!navigator.onLine || {{ config('app.database_down', false) ? 'true' : 'false' }}) {
+                e.preventDefault();
+                if (typeof db === 'undefined') {
+                    alert('Erreur : base locale non initialisée.');
+                    return;
+                }
+
+                const formData = new FormData(this);
+                const data = Object.fromEntries(formData.entries());
+
+                data.uuid = self.crypto.randomUUID();
+                data.is_synced = 0;
+                data.stock_id = parseInt(data.stock_id) || data.stock_id;
+                data.quantity = parseFloat(data.quantity) || 0;
+                data.created_at = new Date().toISOString();
+
+                if (!data.stock_id || data.quantity <= 0) {
+                    alert('Veuillez sélectionner un article et une quantité valide.');
+                    return;
+                }
+
+                // Garde-fou local pour une sortie : on alerte si le miroir local
+                // indique un stock insuffisant (le serveur revérifie à la synchro).
+                if (data.type === 'out') {
+                    const opt = this.querySelector(`option[value="${data.stock_id}"]`);
+                    const localQty = parseFloat(opt?.dataset.qty ?? 'NaN');
+                    if (!isNaN(localQty) && localQty < data.quantity) {
+                        if (!confirm(`Stock local insuffisant (${localQty}). Enregistrer quand même ? La sortie sera revérifiée à la synchronisation.`)) {
+                            return;
+                        }
+                    }
+                }
+
+                try {
+                    await db.stock_movements.add(data);
+                    alert("📦 MODE TERRAIN : Mouvement enregistré localement.\nIl sera synchronisé au retour du réseau.");
+                    window.location.reload();
+                } catch (err) {
+                    console.error("Erreur de stockage local :", err);
+                    alert("Erreur critique lors de la sauvegarde locale.");
+                }
+            }
+        });
+    </script>
 </x-app-layout>

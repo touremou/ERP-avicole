@@ -8,9 +8,9 @@ use Illuminate\Support\Facades\DB;
 
 class MoveStockAction
 {
-    public function execute(int $stockId, string $type, float $quantityInput, ?string $notes, int $userId): void
+    public function execute(int $stockId, string $type, float $quantityInput, ?string $notes, int $userId, ?string $uuid = null): void
     {
-        DB::transaction(function () use ($stockId, $type, $quantityInput, $notes, $userId) {
+        DB::transaction(function () use ($stockId, $type, $quantityInput, $notes, $userId, $uuid) {
             $stock = Stock::lockForUpdate()->find($stockId);
             $oldQuantity = (float) $stock->current_quantity;
             $movQty = $quantityInput;
@@ -28,6 +28,7 @@ class MoveStockAction
 
             if ($type !== 'adjustment' || $movQty > 0) {
                 StockMovement::create([
+                    'uuid'     => $uuid,
                     'stock_id' => $stock->id,
                     'user_id'  => $userId,
                     'type'     => $type,

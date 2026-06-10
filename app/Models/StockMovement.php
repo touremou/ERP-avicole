@@ -12,6 +12,7 @@ class StockMovement extends Model
 {
     use HasFactory, BelongsToFarm;
     protected $fillable = [
+        'uuid',
         'farm_id',
         'stock_id',
         'user_id',

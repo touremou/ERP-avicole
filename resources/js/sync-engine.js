@@ -127,6 +127,48 @@ async function syncEggProductions() {
 }
 
 /**
+ * 4. Synchronisation des Mouvements de stock (entrée / sortie / ajustement)
+ */
+async function syncStockMovements() {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+    const unsynced = await db.stock_movements.where('is_synced').equals(0).toArray();
+
+    if (unsynced.length === 0) return;
+
+    console.log(`📤 Moteur de synchro : ${unsynced.length} mouvement(s) de stock en attente...`);
+
+    for (const movement of unsynced) {
+        try {
+            const response = await fetch('/api/sync/stock-movements', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify(movement)
+            });
+
+            if (!response.ok) throw new Error(`Statut HTTP: ${response.status}`);
+
+            const result = await response.json();
+
+            if (result.status === 'success' || result.status === 'already_synced') {
+                await db.stock_movements.update(movement.uuid, { is_synced: 1 });
+                console.log(`📦 Mouvement stock #${movement.stock_id} (${movement.type}) synchronisé (${result.status}).`);
+            } else if (result.status === 'conflict') {
+                // Sortie refusée (stock insuffisant au moment de la synchro) :
+                // on retire le mouvement local pour ne pas boucler indéfiniment.
+                console.warn(`⚠️ Mouvement stock #${movement.stock_id} en conflit : ${result.message}`);
+                await db.stock_movements.update(movement.uuid, { is_synced: 1 });
+            }
+        } catch (error) {
+            console.error(`❌ Erreur synchro mouvement de stock:`, error);
+        }
+    }
+}
+
+/**
  * Orchestrateur Principal de Synchronisation (Exporté globalement)
  */
 export async function syncData() {
@@ -135,6 +177,7 @@ export async function syncData() {
         await syncBatches();
         await syncDailyChecks();
         await syncEggProductions();
+        await syncStockMovements();
     } catch (globalError) {
         console.error("❌ Erreur critique dans le cycle de synchronisation :", globalError);
     }

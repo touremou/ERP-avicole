@@ -8,6 +8,7 @@ use App\Models\EggProduction;
 use App\Models\Stock;
 use App\Models\StockMovement;
 use App\Actions\EggProduction\RecordEggCollection;
+use App\Actions\Stock\MoveStockAction;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -302,6 +303,63 @@ class SyncController extends Controller
             $production->update(['synced_uuids' => array_values(array_unique($applied))]);
 
             Log::info("SyncController: collecte synchronisée (uuid: {$validated['uuid']}, batch: {$validated['batch_id']})");
+
+            return response()->json(['status' => 'success']);
+        });
+    }
+
+    /**
+     * Réconcilie un mouvement de stock (entrée / sortie / ajustement) saisi
+     * hors-ligne.
+     *
+     * Idempotence : le mouvement porte un UUID ; s'il existe déjà côté serveur,
+     * on ne réapplique pas l'incrément/décrément (StockMovement.uuid est unique).
+     * Pour une sortie, on revérifie la disponibilité au moment de la synchro
+     * (le stock a pu bouger entre-temps) et on renvoie un conflit si négatif.
+     */
+    public function reconcileStockMovement(Request $request, MoveStockAction $action): JsonResponse
+    {
+        if (Gate::denies('stocks.M')) {
+            return response()->json(['status' => 'error', 'message' => 'Permission insuffisante.'], 403);
+        }
+
+        $validated = $request->validate([
+            'uuid'     => 'required|uuid',
+            'stock_id' => 'required|integer|exists:stocks,id',
+            'type'     => 'required|in:in,out,adjustment',
+            'quantity' => 'required|numeric|min:0.001',
+            'notes'    => 'nullable|string|max:500',
+        ]);
+
+        return DB::transaction(function () use ($validated, $action) {
+            // ─── IDEMPOTENCE ───
+            if (StockMovement::where('uuid', $validated['uuid'])->exists()) {
+                Log::info("SyncController: mouvement stock uuid={$validated['uuid']} déjà appliqué, ignoré.");
+                return response()->json(['status' => 'already_synced']);
+            }
+
+            $stock = Stock::lockForUpdate()->find($validated['stock_id']);
+
+            // ─── REVÉRIFICATION DISPONIBILITÉ (sortie) ───
+            if ($validated['type'] === 'out' && (float) $stock->current_quantity < (float) $validated['quantity']) {
+                Log::warning("SyncController: sortie stock uuid={$validated['uuid']} refusée (stock insuffisant: {$stock->current_quantity} < {$validated['quantity']}).");
+                return response()->json([
+                    'status'  => 'conflict',
+                    'message' => "Stock insuffisant pour {$stock->item_name} (disponible: {$stock->current_quantity} {$stock->unit}).",
+                ]);
+            }
+
+            // ─── APPLICATION (logique métier partagée + UUID pour idempotence) ───
+            $action->execute(
+                $validated['stock_id'],
+                $validated['type'],
+                (float) $validated['quantity'],
+                $validated['notes'] ?? 'Mouvement saisi hors-ligne',
+                Auth::id(),
+                $validated['uuid']
+            );
+
+            Log::info("SyncController: mouvement stock synchronisé (uuid: {$validated['uuid']}, stock: {$validated['stock_id']}, type: {$validated['type']})");
 
             return response()->json(['status' => 'success']);
         });

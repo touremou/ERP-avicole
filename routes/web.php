@@ -275,6 +275,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/reconcile', 'reconcile')->name('reconcile');
         Route::post('/daily-checks', 'reconcileDailyCheck')->name('daily_checks');
         Route::post('/egg-collections', 'reconcileEggCollection')->name('egg_collections');
+        Route::post('/stock-movements', 'reconcileStockMovement')->name('stock_movements');
     });
 
     // ─── ACHATS ALIMENT ───

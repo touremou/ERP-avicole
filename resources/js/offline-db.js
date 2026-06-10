@@ -29,6 +29,11 @@ db.version(5).stores({
     egg_productions: 'uuid, batch_id, production_date, is_synced',
 });
 
+// v6 : file d'attente des mouvements de stock (entrée / sortie / ajustement).
+db.version(6).stores({
+    stock_movements: 'uuid, stock_id, type, is_synced',
+});
+
 /**
  * Aspire les référentiels du serveur vers le miroir local (IndexedDB).
  * Appelée au chargement (si en ligne) et après chaque synchro réussie.
