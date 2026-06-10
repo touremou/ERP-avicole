@@ -478,7 +478,7 @@ class BatchController extends Controller
                 ->when($request->query('since'), function ($q, $since) {
                     $q->where('updated_at', '>=', $since);
                 })
-                ->get(['uuid', 'code', 'building_id', 'current_quantity', 'type', 'updated_at'])
+                ->get(['id', 'uuid', 'code', 'building_id', 'current_quantity', 'type', 'updated_at'])
         );
     }
 

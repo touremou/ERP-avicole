@@ -104,4 +104,18 @@ class BuildingController extends Controller
             return back()->with('error', $e->getMessage());
         }
     }
+
+    /**
+     * Miroir local (IndexedDB) des bâtiments physiques — mode terrain.
+     */
+    public function getOfflineBuildings(): \Illuminate\Http\JsonResponse
+    {
+        if (Gate::denies('elevage.L')) {
+            return response()->json(['error' => 'Forbidden'], 403);
+        }
+
+        return response()->json(
+            Building::physical()->get(['id', 'name', 'type', 'capacity', 'status'])
+        );
+    }
 }

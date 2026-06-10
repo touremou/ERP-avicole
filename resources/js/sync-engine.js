@@ -1,41 +1,5 @@
-/* version initiale avant modification du 20-04-2026
-
 // resources/js/sync-engine.js
-import { db } from './offline-db';
-
-window.addEventListener('online', async () => {
-    console.log("🌐 Réseau rétabli. Tentative de synchronisation...");
-    syncData();
-});
-
-async function syncData() {
-    const unsynced = await db.batches.where('is_synced').equals(0).toArray();
-
-    for (const data of unsynced) {
-        const response = await fetch('/api/sync/reconcile', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-        });
-
-        const result = await response.json();
-
-        if (result.status === 'success') {
-            await db.batches.update(data.uuid, { is_synced: 1 });
-        } else if (result.status === 'conflict') {
-            // Rigueur industrielle : On prévient l'utilisateur
-            console.warn(`⚠️ Conflit sur le lot ${data.code}. Version serveur conservée.`);
-            // On met à jour le local avec la version "vérité" du serveur
-            await db.batches.put(result.data);
-        }
-    }
-} 
-    
-
-*/
-
-// resources/js/sync-engine.js
-import { db } from './offline-db';
+import { db, refreshLocalData } from './offline-db';
 
 /**
  * Écouteur d'événement réseau
@@ -75,7 +39,7 @@ async function syncBatches() {
             if (result.status === 'success') {
                 await db.batches.update(batch.uuid, { is_synced: 1 });
                 console.log(`✅ Lot ${batch.code} synchronisé avec succès.`);
-            } 
+            }
             else if (result.status === 'conflict') {
                 console.warn(`⚠️ Conflit sur ${batch.code}. Version serveur prioritaire.`);
                 await db.batches.put({ ...result.data, is_synced: 1 });
@@ -127,11 +91,14 @@ async function syncDailyChecks() {
 export async function syncData() {
     try {
         // Ordre strict : d'abord les parents (lots), puis les enfants (pointages)
-        await syncBatches();     
-        await syncDailyChecks();  
+        await syncBatches();
+        await syncDailyChecks();
     } catch (globalError) {
         console.error("❌ Erreur critique dans le cycle de synchronisation :", globalError);
     }
+
+    // Rafraîchit le miroir local (référentiels + lots) une fois la file vidée.
+    await refreshLocalData();
 
     // Rafraîchissement visuel de l'interface si la fonction existe
     if (typeof loadOfflineContent === 'function') {

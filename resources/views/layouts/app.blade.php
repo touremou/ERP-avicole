@@ -220,6 +220,12 @@
                 setTimeout(async () => {
                     await autoFillOfflineData();
 
+                    // Rafraîchit le miroir local (référentiels + lots) si en ligne,
+                    // pour que le mode terrain dispose de données récentes.
+                    if (navigator.onLine && typeof window.refreshLocalData === 'function') {
+                        window.refreshLocalData();
+                    }
+
                     if ('serviceWorker' in navigator) {
                         navigator.serviceWorker.register('/sw.js')
                             .then(() => console.log('🚀 Service Worker opérationnel !'))
