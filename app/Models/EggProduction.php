@@ -25,11 +25,16 @@ class EggProduction extends Model
         'grade_s',
         'laying_rate',
         'observations',
-        'is_graded', 
+        'is_graded',
+        'synced_uuids',
     ];
 
     protected $casts = [
-        'production_date'      => 'date',
+        // 'date:Y-m-d' force un stockage en 'Y-m-d' (sans heure) : indispensable
+        // pour que le cumul journalier (where production_date = 'Y-m-d') matche
+        // la ligne du jour. Sans cela, SQLite stocke 'Y-m-d 00:00:00' et chaque
+        // passage crée une ligne en double au lieu de cumuler.
+        'production_date'      => 'date:Y-m-d',
         'laying_rate'          => 'decimal:2',
         'grade_xl'             => 'decimal:3', // Haute précision pour les alvéoles fractionnées
         'grade_l'              => 'decimal:3',
@@ -40,6 +45,7 @@ class EggProduction extends Model
         'small_eggs'           => 'integer',
         'incubable_eggs'       => 'integer',
         'is_graded'            => 'boolean',
+        'synced_uuids'         => 'array',
     ];
 
     public function batch(): BelongsTo

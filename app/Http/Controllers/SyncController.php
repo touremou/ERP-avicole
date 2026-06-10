@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Batch;
 use App\Models\DailyCheck;
+use App\Models\EggProduction;
 use App\Models\Stock;
 use App\Models\StockMovement;
+use App\Actions\EggProduction\RecordEggCollection;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -232,6 +234,74 @@ class SyncController extends Controller
             }
 
             Log::info("SyncController: DailyCheck synchronisé (uuid: {$validated['uuid']}, batch: {$validated['batch_id']})");
+
+            return response()->json(['status' => 'success']);
+        });
+    }
+
+    /**
+     * Réconcilie une collecte d'œufs (passage) saisie hors-ligne.
+     *
+     * Idempotence : la collecte cumule plusieurs passages dans la ligne du
+     * jour (batch_id + production_date). On mémorise les UUID des passages
+     * déjà appliqués dans egg_productions.synced_uuids ; un rejeu réseau du
+     * même UUID est donc ignoré (pas de double comptage). L'application du
+     * cumul réutilise l'action RecordEggCollection (logique métier unique).
+     */
+    public function reconcileEggCollection(Request $request, RecordEggCollection $action): JsonResponse
+    {
+        if (Gate::denies('production.C')) {
+            return response()->json(['status' => 'error', 'message' => 'Permission insuffisante.'], 403);
+        }
+
+        $validated = $request->validate([
+            'uuid'                 => 'required|uuid',
+            'batch_id'             => 'required|integer|exists:batches,id',
+            'production_date'      => 'required|date|before_or_equal:today',
+            'total_eggs_collected' => 'required|integer|min:0',
+            'broken_eggs'          => 'nullable|integer|min:0',
+            'small_eggs'           => 'nullable|integer|min:0',
+            'observations'         => 'nullable|string|max:500',
+        ]);
+
+        return DB::transaction(function () use ($validated, $action) {
+            // ─── IDEMPOTENCE : passage déjà appliqué ? ───
+            $existing = EggProduction::where('batch_id', $validated['batch_id'])
+                ->where('production_date', $validated['production_date'])
+                ->lockForUpdate()
+                ->first();
+
+            if ($existing) {
+                if ($existing->is_graded) {
+                    Log::warning("SyncController: collecte uuid={$validated['uuid']} refusée, jour déjà trié.");
+                    return response()->json([
+                        'status'  => 'conflict',
+                        'message' => 'Les œufs de ce jour ont déjà été triés et mis en stock.',
+                    ]);
+                }
+
+                if (in_array($validated['uuid'], $existing->synced_uuids ?? [], true)) {
+                    Log::info("SyncController: collecte uuid={$validated['uuid']} déjà appliquée, ignorée.");
+                    return response()->json(['status' => 'already_synced']);
+                }
+            }
+
+            // ─── APPLICATION DU CUMUL (logique métier partagée) ───
+            $production = $action->execute([
+                'batch_id'             => $validated['batch_id'],
+                'production_date'      => $validated['production_date'],
+                'total_eggs_collected' => $validated['total_eggs_collected'],
+                'broken_eggs'          => $validated['broken_eggs'] ?? 0,
+                'small_eggs'           => $validated['small_eggs'] ?? 0,
+                'observations'         => $validated['observations'] ?? null,
+            ]);
+
+            // ─── MARQUAGE DE L'UUID APPLIQUÉ ───
+            $applied = $production->synced_uuids ?? [];
+            $applied[] = $validated['uuid'];
+            $production->update(['synced_uuids' => array_values(array_unique($applied))]);
+
+            Log::info("SyncController: collecte synchronisée (uuid: {$validated['uuid']}, batch: {$validated['batch_id']})");
 
             return response()->json(['status' => 'success']);
         });

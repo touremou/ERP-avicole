@@ -120,18 +120,23 @@
     </div>
 
     <script>
+        // Valeur injectée côté serveur : `setting()` est un helper PHP, pas une
+        // fonction JS. L'appeler en JS levait un ReferenceError → le total ne se
+        // calculait jamais (champ requis + readonly) → collecte impossible.
+        const EGGS_PER_TRAY = {{ (int) setting('general.eggs_per_tray', 30) ?: 30 }};
+
         function calc() {
             const a = parseInt(document.getElementById('alv').value) || 0;
             const u = parseInt(document.getElementById('uni').value) || 0;
             const totalInput = document.getElementById('total');
             const alvDisplay = document.getElementById('alv-display');
-            
+
             if(totalInput) {
-                const total = (a * setting('general.eggs_per_tray', 30)) + u;
+                const total = (a * EGGS_PER_TRAY) + u;
                 totalInput.value = total;
-                
+
                 if(alvDisplay) {
-                    const decimalAlv = (total / setting('general.eggs_per_tray', 30)).toFixed(2);
+                    const decimalAlv = (total / EGGS_PER_TRAY).toFixed(2);
                     alvDisplay.innerText = `${decimalAlv} Alvéoles`;
                     alvDisplay.className = (total > 0) 
                         ? 'px-8 py-3 bg-emerald-600 text-white rounded-2xl text-[11px] font-black uppercase italic tracking-widest shadow-xl'
@@ -143,6 +148,44 @@
         document.querySelectorAll('input[type=number]').forEach(input => {
             input.addEventListener('input', () => { if(parseFloat(input.value) < 0) input.value = 0; });
             input.addEventListener('focus', function() { this.select(); });
+        });
+
+        // ─── 🛰️ MODE TERRAIN : enregistrement hors-ligne de la collecte ───
+        // Si le réseau est coupé (ou la base injoignable), on met la collecte
+        // en file d'attente IndexedDB ; sync-engine.js la pousse au retour réseau.
+        document.getElementById('collect-form')?.addEventListener('submit', async function(e) {
+            if (!navigator.onLine || {{ config('app.database_down', false) ? 'true' : 'false' }}) {
+                e.preventDefault();
+                if (typeof db === 'undefined') {
+                    alert('Erreur : base locale non initialisée.');
+                    return;
+                }
+
+                const formData = new FormData(this);
+                const data = Object.fromEntries(formData.entries());
+
+                data.uuid = self.crypto.randomUUID();
+                data.is_synced = 0;
+                data.batch_id = parseInt(data.batch_id) || data.batch_id;
+                data.total_eggs_collected = parseInt(data.total_eggs_collected) || 0;
+                data.broken_eggs = parseInt(data.broken_eggs) || 0;
+                data.small_eggs = parseInt(data.small_eggs) || 0;
+                data.created_at = new Date().toISOString();
+
+                if (data.total_eggs_collected < 1) {
+                    alert('Veuillez saisir une quantité d\'œufs valide.');
+                    return;
+                }
+
+                try {
+                    await db.egg_productions.add(data);
+                    alert("🥚 MODE TERRAIN : Collecte de " + data.total_eggs_collected + " œufs enregistrée localement.\nElle sera synchronisée au retour du réseau.");
+                    window.location.href = "{{ route('egg-productions.index') }}";
+                } catch (err) {
+                    console.error("Erreur de stockage local :", err);
+                    alert("Erreur critique lors de la sauvegarde locale.");
+                }
+            }
         });
     </script>
 </x-app-layout>

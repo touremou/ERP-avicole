@@ -86,13 +86,55 @@ async function syncDailyChecks() {
 }
 
 /**
+ * 3. Synchronisation des Collectes d'œufs (Egg Productions)
+ */
+async function syncEggProductions() {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+    const unsynced = await db.egg_productions.where('is_synced').equals(0).toArray();
+
+    if (unsynced.length === 0) return;
+
+    console.log(`📤 Moteur de synchro : ${unsynced.length} collecte(s) d'œufs en attente...`);
+
+    for (const collection of unsynced) {
+        try {
+            const response = await fetch('/api/sync/egg-collections', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify(collection)
+            });
+
+            if (!response.ok) throw new Error(`Statut HTTP: ${response.status}`);
+
+            const result = await response.json();
+
+            if (result.status === 'success' || result.status === 'already_synced') {
+                await db.egg_productions.update(collection.uuid, { is_synced: 1 });
+                console.log(`🥚 Collecte du ${collection.production_date} synchronisée (${result.status}).`);
+            } else if (result.status === 'conflict') {
+                // Jour déjà trié côté serveur : on retire la collecte locale obsolète.
+                console.warn(`⚠️ Collecte ${collection.production_date} en conflit : ${result.message}`);
+                await db.egg_productions.update(collection.uuid, { is_synced: 1 });
+            }
+        } catch (error) {
+            console.error(`❌ Erreur synchro collecte d'œufs:`, error);
+        }
+    }
+}
+
+/**
  * Orchestrateur Principal de Synchronisation (Exporté globalement)
  */
 export async function syncData() {
     try {
-        // Ordre strict : d'abord les parents (lots), puis les enfants (pointages)
+        // Ordre strict : d'abord les parents (lots), puis les enfants (pointages, collectes)
         await syncBatches();
         await syncDailyChecks();
+        await syncEggProductions();
     } catch (globalError) {
         console.error("❌ Erreur critique dans le cycle de synchronisation :", globalError);
     }

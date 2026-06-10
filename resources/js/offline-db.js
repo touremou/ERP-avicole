@@ -24,6 +24,11 @@ db.version(4).stores({
     batches: 'uuid, id, code, building_id, is_synced, updated_at',
 });
 
+// v5 : file d'attente des collectes d'œufs (ponte) saisies en mode terrain.
+db.version(5).stores({
+    egg_productions: 'uuid, batch_id, production_date, is_synced',
+});
+
 /**
  * Aspire les référentiels du serveur vers le miroir local (IndexedDB).
  * Appelée au chargement (si en ligne) et après chaque synchro réussie.

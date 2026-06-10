@@ -274,6 +274,7 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware(['auth'])->prefix('api/sync')->name('sync.')->controller(SyncController::class)->group(function () {
         Route::post('/reconcile', 'reconcile')->name('reconcile');
         Route::post('/daily-checks', 'reconcileDailyCheck')->name('daily_checks');
+        Route::post('/egg-collections', 'reconcileEggCollection')->name('egg_collections');
     });
 
     // ─── ACHATS ALIMENT ───
