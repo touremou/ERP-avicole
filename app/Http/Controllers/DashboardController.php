@@ -24,7 +24,8 @@ class DashboardController extends Controller
         // 1. EFFECTIFS & MORTALITÉ GLOBALE
         // ---------------------------------------------------------
         $allActiveBatches = Batch::where('status', 'Actif')
-            ->where('initial_quantity', '>', 0) 
+            ->where('initial_quantity', '>', 0)
+            ->with('species')
             ->get();
             
         $totalBirds = $allActiveBatches->sum('current_quantity');
@@ -225,11 +226,41 @@ class DashboardController extends Controller
             }
         }
 
+        // ---------------------------------------------------------
+        // 9. RÉPARTITION DES EFFECTIFS PAR FAMILLE D'ESPÈCE
+        // ---------------------------------------------------------
+        $familyMeta = [
+            'volaille'        => ['label' => 'Volaille',         'icon' => '🐔', 'color' => 'amber'],
+            'petit_ruminant'  => ['label' => 'Ovins / Caprins',  'icon' => '🐑', 'color' => 'cyan'],
+            'grand_ruminant'  => ['label' => 'Bovins',           'icon' => '🐄', 'color' => 'indigo'],
+            'aquaculture'     => ['label' => 'Pisciculture',     'icon' => '🐟', 'color' => 'blue'],
+            'porcin'          => ['label' => 'Porcins',          'icon' => '🐷', 'color' => 'rose'],
+            'lagomorphe'      => ['label' => 'Lapins',           'icon' => '🐰', 'color' => 'purple'],
+            'autre'           => ['label' => 'Autres',           'icon' => '🐾', 'color' => 'slate'],
+        ];
+
+        $familyBreakdown = $allActiveBatches
+            ->groupBy(fn ($b) => $b->species?->family ?? 'volaille')
+            ->map(function ($batches, $family) use ($familyMeta) {
+                $meta = $familyMeta[$family] ?? ['label' => ucfirst($family), 'icon' => '🐾', 'color' => 'slate'];
+                return [
+                    'family'     => $family,
+                    'label'      => $meta['label'],
+                    'icon'       => $meta['icon'],
+                    'color'      => $meta['color'],
+                    'batches'    => $batches->count(),
+                    'head_count' => $batches->sum('current_quantity'),
+                ];
+            })
+            ->sortByDesc('head_count')
+            ->values();
+
         return view('dashboard', compact(
             'totalBirds', 'globalMortalityRate', 'hdp',
             'totalEggsStock', 'totalBrokenToday', 'rawMaterialsValue', 'safeProfit',
             'criticalTypes', 'emergencyBatches', 'underperformingBatches', 'sanitaryAlertsCount',
-            'activeBatches', 'buildings', 'totalEggsToday', 'tabaskiWidget', 'waterAlerts'
+            'activeBatches', 'buildings', 'totalEggsToday', 'tabaskiWidget', 'waterAlerts',
+            'familyBreakdown'
         ));
     }
 }

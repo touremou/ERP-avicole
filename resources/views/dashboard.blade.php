@@ -345,6 +345,32 @@
 
                 {{-- SIDEBAR --}}
                 <div class="space-y-8">
+                    @if(($familyBreakdown ?? collect())->count() > 1)
+                    <div>
+                        <h3 class="text-[11px] font-black uppercase text-slate-800 tracking-[0.2em] ml-6 mb-5 italic flex items-center">
+                            <span class="w-2 h-6 bg-purple-500 rounded-full mr-3"></span> Cheptel par Famille
+                        </h3>
+                        <div class="bg-white p-8 rounded-[3.5rem] border border-slate-100 shadow-sm space-y-5">
+                            @php $maxHead = $familyBreakdown->max('head_count') ?: 1; @endphp
+                            @foreach($familyBreakdown as $fam)
+                                @php $perc = ($fam['head_count'] / $maxHead) * 100; @endphp
+                                <div class="group">
+                                    <div class="flex justify-between items-center text-[10px] font-black uppercase italic mb-2 tracking-tighter">
+                                        <span class="text-slate-600 flex items-center gap-2">
+                                            <span class="text-base">{{ $fam['icon'] }}</span> {{ $fam['label'] }}
+                                            <span class="text-slate-300 font-bold">({{ $fam['batches'] }} lot{{ $fam['batches'] > 1 ? 's' : '' }})</span>
+                                        </span>
+                                        <span class="text-slate-900">{{ number_format($fam['head_count']) }}</span>
+                                    </div>
+                                    <div class="w-full bg-slate-50 h-2 rounded-full overflow-hidden border border-slate-50 p-0.5">
+                                        <div class="h-full rounded-full transition-all shadow-sm bg-{{ $fam['color'] }}-500" style="width: {{ max($perc, 4) }}%"></div>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                    @endif
+
                     <div>
                         <h3 class="text-[11px] font-black uppercase text-slate-800 tracking-[0.2em] ml-6 mb-5 italic flex items-center">
                             <span class="w-2 h-6 bg-emerald-500 rounded-full mr-3"></span> Densités Bâtiments
