@@ -39,7 +39,8 @@ use App\Http\Controllers\{
     SettingsController,
     PayrollController,
     TaskController,
-    SpeciesController
+    SpeciesController,
+    CampaignController
 };
 
 Route::redirect('/', '/login');
@@ -93,6 +94,19 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/sync-stocks', 'syncAllStocks')->name('sync_stocks')->middleware('can:S');
 
         Route::delete('/{batch}', 'destroy')->name('destroy')->middleware('can:S');
+    });
+
+    // ─── CAMPAGNES SAISONNIÈRES (Tabaski/Eid, Ramadan...) ───
+    Route::prefix('campaigns')->name('campaigns.')->controller(CampaignController::class)->group(function () {
+        Route::get('/', 'index')->name('index')->middleware('can:elevage.L');
+        Route::get('/create', 'create')->name('create')->middleware('can:elevage.C');
+        Route::post('/', 'store')->name('store')->middleware('can:elevage.C');
+        Route::get('/{campaign}', 'show')->name('show')->middleware('can:elevage.L');
+        Route::get('/{campaign}/edit', 'edit')->name('edit')->middleware('can:elevage.M');
+        Route::put('/{campaign}', 'update')->name('update')->middleware('can:elevage.M');
+        Route::post('/{campaign}/attach-batch', 'attachBatch')->name('attachBatch')->middleware('can:elevage.M');
+        Route::delete('/{campaign}/detach-batch/{batch}', 'detachBatch')->name('detachBatch')->middleware('can:elevage.M');
+        Route::delete('/{campaign}', 'destroy')->name('destroy')->middleware('can:elevage.S');
     });
 
     // ─── STOCKS (Inventaire) ───

@@ -87,12 +87,13 @@
                         <a href="{{ route('payroll.index') }}" class="{{ $linkClass }} {{ request()->routeIs('payroll.index') ? $activeClass : $inactiveClass }}">Paie</a>
                         <a href="{{ route('payroll.leaves') }}" class="{{ $linkClass }} {{ request()->routeIs('payroll.leaves') ? $activeClass : $inactiveClass }}">Congés</a>
                         @endcan
-                    @elseif(request()->routeIs(['buildings.*','batches.*', 'daily-checks.*', 'health.*', 'protocols.*', 'reports.*']))
-                        
+                    @elseif(request()->routeIs(['buildings.*','batches.*', 'daily-checks.*', 'health.*', 'protocols.*', 'reports.*', 'campaigns.*']))
+
                         <span class="text-[9px] font-black text-slate-800 uppercase tracking-widest mr-1"><i class="fa-solid fa-dove text-blue-500 mr-1"></i> Élevage</span>
                         @can('elevage.L')
                         <a href="{{ route('buildings.index') }}" class="{{ $linkClass }} {{ request()->routeIs('buildings.*') ? $activeClass : $inactiveClass }}">Bâtiments</a>
                         <a href="{{ route('batches.index') }}" class="{{ $linkClass }} {{ request()->routeIs('batches.*') ? $activeClass : $inactiveClass }}">Lots</a>
+                        <a href="{{ route('campaigns.index') }}" class="{{ $linkClass }} {{ request()->routeIs('campaigns.*') ? $activeClass : $inactiveClass }}">Campagnes</a>
                         <a href="{{ route('health.index') }}" class="{{ $linkClass }} {{ request()->routeIs('health.*') ? $activeClass : $inactiveClass }}">Santé</a>
                         @endcan
                         @can('elevage.M')

@@ -243,8 +243,8 @@
                     </div>
                     <div class="w-px bg-white/20"></div>
                     <div>
-                        <a href="{{ route('batches.index') }}" class="text-[8px] font-black uppercase text-white/60 hover:text-white no-underline tracking-widest">
-                            Voir les lots <i class="fa-solid fa-arrow-right ml-1"></i>
+                        <a href="{{ route('campaigns.index') }}" class="text-[8px] font-black uppercase text-white/60 hover:text-white no-underline tracking-widest">
+                            Piloter la campagne <i class="fa-solid fa-arrow-right ml-1"></i>
                         </a>
                     </div>
                 </div>

@@ -68,6 +68,9 @@ class Batch extends Model
 
         // Scission
         'parent_batch_id',
+
+        // Campagne saisonnière (Tabaski...)
+        'campaign_id',
     ];
 
     // Note : 'qty_alive' est VOLONTAIREMENT absent de $fillable.
@@ -170,6 +173,11 @@ class Batch extends Model
     public function productionType(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(\App\Models\ProductionType::class);
+    }
+
+    public function campaign(): BelongsTo
+    {
+        return $this->belongsTo(Campaign::class);
     }
 
     // ═══════════════════════════════════════════════
