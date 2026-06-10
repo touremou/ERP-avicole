@@ -39,7 +39,7 @@ class StoreBatchRequest extends FormRequest
             'code'               => 'required|string|max:50|unique:batches,code',
             'building_id'        => 'required|integer|exists:buildings,id',
             'type'               => ['required', Rule::in($validTypes)],
-            'model_name'         => 'required|string|max:100',
+            'model_name'         => 'nullable|string|max:100',
             'employee_id'        => 'required|integer|exists:employees,id',
             'provider_id'        => 'required|integer|exists:providers,id',
             'protocol_id'        => 'nullable|integer|exists:protocols,id',

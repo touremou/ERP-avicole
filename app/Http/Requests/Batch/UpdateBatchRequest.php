@@ -39,7 +39,7 @@ class UpdateBatchRequest extends FormRequest
 
         return [
             'type'               => ['required', Rule::in($validTypes)],
-            'model_name'         => 'required|string|max:100',
+            'model_name'         => 'nullable|string|max:100',
             'building_id'        => 'required|integer|exists:buildings,id',
             'employee_id'        => 'required|integer|exists:employees,id',
             'provider_id'        => 'required|integer|exists:providers,id',

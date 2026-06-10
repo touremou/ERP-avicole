@@ -48,6 +48,10 @@ class UpdateBatch
             // ─── Filtrage par liste blanche ───
             $payload = array_intersect_key($data, array_flip(self::ALLOWED_FIELDS));
 
+            if (array_key_exists('model_name', $payload) && ! $payload['model_name']) {
+                $payload['model_name'] = 'Non spécifié';
+            }
+
             // ─── Vérification de capacité si le bâtiment change ───
             if (isset($payload['building_id']) && $payload['building_id'] != $batch->building_id) {
                 $this->checkBuildingCapacity($batch, (int) $payload['building_id']);
