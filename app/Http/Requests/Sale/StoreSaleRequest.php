@@ -78,6 +78,31 @@ class StoreSaleRequest extends FormRequest
                 $validator->errors()->add('items', 'Au moins une ligne doit avoir une quantité et un prix supérieurs à 0.');
             }
 
+            // Cohérence unité ↔ type de produit (défense côté serveur si le JS
+            // est contourné : éviter ex. du lait enregistré en kg).
+            $allowedUnits = [
+                'oeufs'             => ['alveole', 'unite'],
+                'animal_vif'        => ['tete', 'piece', 'kg'],
+                'volaille_vivante'  => ['tete', 'piece', 'kg'],
+                'carcasse'          => ['kg'],
+                'volaille_abattue'  => ['kg'],
+                'lait'              => ['litre'],
+                'aliment'           => ['kg', 'sac'],
+                'fumier'            => ['sac', 'voyage'],
+                'materiel'          => ['unite', 'piece'],
+                // 'autre' : libre, pas de contrainte
+            ];
+            foreach ((array) $this->items as $idx => $item) {
+                $type = $item['product_type'] ?? null;
+                $unit = $item['unit'] ?? null;
+                if ($type && isset($allowedUnits[$type]) && $unit && ! in_array($unit, $allowedUnits[$type], true)) {
+                    $validator->errors()->add(
+                        "items.{$idx}.unit",
+                        "Unité « {$unit} » incohérente avec le type « {$type} »."
+                    );
+                }
+            }
+
             // Facture → TVA obligatoire
             if ($this->type === 'facture' && (float) ($this->tax_rate ?? 0) <= 0) {
                 // 👈 Affichage dynamique du taux dans le message d'erreur

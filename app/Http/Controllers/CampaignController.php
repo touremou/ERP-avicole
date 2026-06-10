@@ -23,7 +23,9 @@ class CampaignController extends Controller
             return redirect()->route('dashboard')->with('error', 'Accès restreint.');
         }
 
-        $campaigns = Campaign::with('batches')
+        // Eager loading des charges pour éviter un N+1 dans les accesseurs KPI
+        // (operating_cost somme feedPurchases/healthChecks par lot).
+        $campaigns = Campaign::with(['batches.feedPurchases', 'batches.healthChecks'])
             ->orderByRaw("CASE WHEN status = 'cloturee' THEN 1 ELSE 0 END")
             ->orderBy('target_date')
             ->get();
@@ -61,7 +63,7 @@ class CampaignController extends Controller
             return back()->with('error', 'Accès restreint.');
         }
 
-        $campaign->load(['batches.species', 'batches.building']);
+        $campaign->load(['batches.species', 'batches.building', 'batches.feedPurchases', 'batches.healthChecks']);
 
         // Lots éligibles à rattacher : actifs, de la famille ciblée, non
         // déjà affectés à une campagne.

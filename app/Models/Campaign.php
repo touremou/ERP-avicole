@@ -129,12 +129,18 @@ class Campaign extends Model
         return (float) $this->batches->sum('total_acquisition_cost');
     }
 
-    /** Coût aliment + santé + coûts additionnels des lots liés. */
+    /**
+     * Coût aliment + santé + coûts additionnels des lots liés.
+     *
+     * Somme sur les relations CHARGÉES (collections) et non via le query
+     * builder, pour profiter de l'eager loading (batches.feedPurchases,
+     * batches.healthChecks) et éviter un N+1 sur la liste des campagnes.
+     */
     public function getOperatingCostAttribute(): float
     {
         return $this->batches->sum(function (Batch $b) {
-            return (float) $b->feedPurchases()->sum('total_price')
-                 + (float) $b->healthChecks()->sum('cost')
+            return (float) $b->feedPurchases->sum('total_price')
+                 + (float) $b->healthChecks->sum('cost')
                  + (float) ($b->additional_costs ?? 0);
         });
     }
