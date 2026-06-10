@@ -206,7 +206,7 @@ class DailyCheckController extends Controller
             'treatment_type'     => 'nullable|string|max:255',
             'treatment_name'     => 'nullable|string|max:255',
             'observations'       => 'nullable|string',
-        ]);
+        ] + \App\Http\Requests\DailyCheck\StoreDailyCheckRequest::extensionRules());
 
         // Vérification effectif
         $oldImpact = $check->calculateNetImpact();
