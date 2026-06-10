@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Module;
 use App\Models\ModulePermission;
-use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -24,9 +23,8 @@ class UserController extends Controller
     {
         if (Gate::denies('admin.S')) return redirect()->route('dashboard')->with('error', 'Accès réservé au Superviseur.');
 
-        $users = User::with('userRole.permissions')->paginate((int) setting('general.items_per_page', 20));
-        $roles = Role::with('permissions')->withCount('users')->get();
-        $allPermissions = Permission::all();
+        $users = User::with('userRole')->paginate((int) setting('general.items_per_page', 20));
+        $roles = Role::withCount('users')->get();
         $modules = Module::active()->get();
 
         $moduleMatrix = [];
@@ -45,7 +43,7 @@ class UserController extends Controller
             }
         }
 
-        return view('users.index', compact('users', 'roles', 'allPermissions', 'modules', 'moduleMatrix'));
+        return view('users.index', compact('users', 'roles', 'modules', 'moduleMatrix'));
     }
 
     /**
@@ -59,10 +57,12 @@ class UserController extends Controller
 
         return DB::transaction(function () use ($matrix) {
             foreach (Role::all() as $role) {
-                $permissionNames = $matrix[$role->id] ?? [];
-                $permissionIds   = Permission::whereIn('name', $permissionNames)->pluck('id');
-                $role->permissions()->sync($permissionIds);
+                $role->permissions = array_values($matrix[$role->id] ?? []);
+                $role->save();
             }
+
+            $this->clearCacheForRoles(Role::pluck('id')->all());
+
             return back()->with('success', 'Matrice globale synchronisée.');
         });
     }
@@ -152,8 +152,10 @@ class UserController extends Controller
 
         Role::create([
             'name'         => Str::slug($request->display_name),
+            'label'        => $request->display_name,
             'display_name' => $request->display_name,
             'icon'         => $request->icon ?? '👤',
+            'permissions'  => [],
         ]);
 
         return back()->with('success', 'Nouveau grade ajouté.');
@@ -198,7 +200,6 @@ class UserController extends Controller
         // Vider le cache de tous les utilisateurs de ce rôle (précaution)
         $this->clearCacheForRoles([$role->id]);
 
-        $role->permissions()->detach();
         ModulePermission::where('role_id', $role->id)->delete();
         $role->delete();
 

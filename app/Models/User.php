@@ -50,11 +50,11 @@ class User extends Authenticatable
     {
         if (! $this->role_id) return false;
 
-        $this->loadMissing('userRole.permissions');
+        $this->loadMissing('userRole');
 
         if (! $this->userRole) return false;
 
-        return $this->userRole->permissions->pluck('name')->contains($permissionName);
+        return $this->userRole->hasPermission($permissionName);
     }
 
     // ─── RBAC PAR MODULE ───
