@@ -39,11 +39,22 @@
                                     <select name="batch_type" id="breeding_type" onchange="runFilters()" required
                                             class="w-full p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-indigo-500 outline-none font-black text-indigo-600 shadow-inner appearance-none italic">
                                         <option value="">-- Sélectionner --</option>
-                                        <option value="chair" {{ old('batch_type') == 'chair' ? 'selected' : '' }}>🍗 Poulet de chair</option>
-                                        <option value="ponte" {{ old('batch_type') == 'ponte' ? 'selected' : '' }}>🥚 Pondeuses</option>
-                                        <option value="poussiniere" {{ old('batch_type') == 'poussiniere' ? 'selected' : '' }}>🐣 Poussinière</option>
-                                        <option value="reproducteur" {{ old('batch_type') == 'reproducteur' ? 'selected' : '' }}>🧬 Reproducteurs</option>
+                                        @foreach($productionTypes->groupBy(fn($pt) => $pt->species->name_fr ?? 'Autres') as $speciesLabel => $types)
+                                            <optgroup label="{{ strtoupper($speciesLabel) }}">
+                                                @foreach($types as $pt)
+                                                    <option value="{{ $pt->slug }}"
+                                                            data-cycle="{{ $pt->cycle_days_default ?? 42 }}"
+                                                            data-species-id="{{ $pt->species_id }}"
+                                                            data-pt-id="{{ $pt->id }}"
+                                                            {{ old('batch_type') == $pt->slug && (string) old('production_type_id') === (string) $pt->id ? 'selected' : '' }}>
+                                                        {{ $pt->species->icon ?? '' }} {{ $pt->name_fr }}
+                                                    </option>
+                                                @endforeach
+                                            </optgroup>
+                                        @endforeach
                                     </select>
+                                    <input type="hidden" name="species_id" id="species_id_hidden" value="{{ old('species_id') }}">
+                                    <input type="hidden" name="production_type_id" id="production_type_id_hidden" value="{{ old('production_type_id') }}">
                                 </div>
 
                                 <div>
@@ -239,8 +250,20 @@ const CYCLE_LABELS = { chair: 'Abattage', ponte: 'Réforme', poussiniere: 'Trans
 
 function el(id) { return document.getElementById(id); }
 
+// Cycle (jours) du type de production sélectionné — piloté par les données
+// (cycle_days_default), plus de table figée volaille.
+function selectedCycle() {
+    const opt = el('breeding_type').selectedOptions[0];
+    return opt && opt.dataset.cycle ? parseInt(opt.dataset.cycle) : 42;
+}
+
 function runFilters() {
     const type = el('breeding_type').value || "";
+
+    // Propage l'espèce / le type de production choisis (champs cachés).
+    const sel = el('breeding_type').selectedOptions[0];
+    el('species_id_hidden').value = sel?.dataset.speciesId || "";
+    el('production_type_id_hidden').value = sel?.dataset.ptId || "";
 
     // Filtrage souches
     document.querySelectorAll('.model-opt').forEach(opt => {
@@ -250,10 +273,14 @@ function runFilters() {
     });
     if (el('model_selector').selectedOptions[0]?.style.display === 'none') el('model_selector').value = "";
 
-    // Filtrage bâtiments par type compatible
-    document.querySelectorAll('.building-opt').forEach(opt => {
+    // Filtrage bâtiments : permissif. Si aucun bâtiment ne correspond au type
+    // (espèces non-volailles → bergerie/chevrerie/bassin...), on les affiche
+    // tous plutôt que de bloquer le formulaire.
+    const bOpts = [...document.querySelectorAll('.building-opt')];
+    const anyMatch = bOpts.some(o => o.dataset.type === type || o.dataset.type === 'mixte');
+    bOpts.forEach(opt => {
         const bType = opt.dataset.type;
-        const compatible = !type || bType === type || bType === 'mixte';
+        const compatible = !type || !anyMatch || bType === type || bType === 'mixte';
         opt.style.display = compatible ? '' : 'none';
         opt.disabled = !compatible;
     });
@@ -314,7 +341,7 @@ function calculateAll() {
     el('sum_building').innerText = bName;
     el('sum_qty').innerText = qty.toLocaleString('fr-FR');
     el('sum_density').innerText = density > 0 ? density + ' S/m²' : '—';
-    el('sum_cycle').innerText = type ? (CYCLES[type] || '?') + ' jours' : '—';
+    el('sum_cycle').innerText = type ? selectedCycle() + ' jours' : '—';
 
     // Validation capacité
     let error = "";
@@ -341,7 +368,7 @@ function calculateDates() {
     panel.style.display = '';
 
     const d = new Date(arrival);
-    const cycle = CYCLES[type] || 42;
+    const cycle = selectedCycle();
     const fmt = dt => dt.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
     const add = (dt, days) => { const r = new Date(dt); r.setDate(r.getDate() + days); return r; };
 

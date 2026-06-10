@@ -14,7 +14,8 @@ class PlannedBatch extends Model
     use HasFactory, SoftDeletes, BelongsToFarm;
 
     protected $fillable = [
-        'farm_id', 'building_id', 'batch_type', 'model_name', 'planned_quantity',
+        'farm_id', 'building_id', 'batch_type', 'species_id', 'production_type_id',
+        'model_name', 'planned_quantity',
         'planned_arrival_date', 'planned_end_date',
         'sanitary_void_start', 'sanitary_void_end',
         'chick_order_deadline', 'provider_id',
@@ -28,6 +29,9 @@ class PlannedBatch extends Model
         'sanitary_void_end'    => 'date',
         'chick_order_deadline' => 'date',
     ];
+
+    public function species(): BelongsTo { return $this->belongsTo(Species::class); }
+    public function productionType(): BelongsTo { return $this->belongsTo(ProductionType::class); }
 
     /**
      * Durées standards par type (en jours).
@@ -63,9 +67,11 @@ class PlannedBatch extends Model
     /**
      * Calcule automatiquement les dates à partir de la date d'arrivée.
      */
-    public static function calculateDates(string $type, Carbon $arrivalDate): array
+    public static function calculateDates(string $type, Carbon $arrivalDate, ?int $cycleOverride = null): array
     {
-        $cycleDays = self::getCycleDays($type);
+        // Priorité au cycle du type de production (multiespèces) ; repli sur
+        // les durées paramétrées/legacy par slug.
+        $cycleDays = $cycleOverride ?? self::getCycleDays($type);
 
         $endDate = $arrivalDate->copy()->addDays($cycleDays);
         $voidStart = $endDate->copy()->addDay();
