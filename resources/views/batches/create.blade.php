@@ -59,6 +59,7 @@
                                 @else
                                 {{-- Ferme mono-espèce : on pré-sélectionne sans afficher --}}
                                 <input type="hidden" name="species_id" value="{{ $activeSpecies->first()?->id }}">
+                                <input type="hidden" id="species_slug_fixed" value="{{ $activeSpecies->first()?->slug }}">
                                 @endif
 
                                 {{-- TYPE DE PRODUCTION --}}
@@ -288,6 +289,43 @@
 <script>
     function el(id) { return document.getElementById(id); }
 
+    // Bâtiments compatibles par espèce (en plus de 'mixte', toujours autorisé)
+    const SPECIES_BUILDING_TYPES = {
+        poulet:  ['chair', 'ponte', 'poussiniere', 'reproducteur'],
+        dinde:   ['chair', 'reproducteur'],
+        pintade: ['chair', 'ponte'],
+        caille:  ['chair', 'ponte'],
+        canard:  ['chair'],
+        pigeon:  ['chair'],
+        mouton:  ['bergerie'],
+        chevre:  ['chevrerie'],
+        lapin:   ['lapiniere'],
+        porc:    ['porcherie'],
+        tilapia: ['bassin'],
+        carpe:   ['bassin'],
+        silure:  ['bassin'],
+    };
+
+    // Espèce actuellement sélectionnée (multispecies) ou fixée (mono-espèce)
+    function getCurrentSpeciesSlug() {
+        const speciesSelect = el('species_selector');
+        if (speciesSelect) {
+            return speciesSelect.options[speciesSelect.selectedIndex]?.dataset.slug || '';
+        }
+        return el('species_slug_fixed')?.value || '';
+    }
+
+    // Un bâtiment est compatible s'il est 'mixte', ou si son type figure dans
+    // la liste des bâtiments adaptés à l'espèce sélectionnée. À défaut
+    // d'espèce connue, on retombe sur la correspondance directe type ↔ type.
+    function isBuildingCompatible(bType, selectedType) {
+        if (bType === 'mixte') return true;
+        const speciesSlug = getCurrentSpeciesSlug();
+        const allowed = SPECIES_BUILDING_TYPES[speciesSlug];
+        if (allowed) return allowed.includes(bType);
+        return selectedType === '' || bType === selectedType;
+    }
+
     // Met à jour le production_type_id caché selon l'option sélectionnée
     function syncProductionTypeId() {
         const typeSelect = el('breeding_type');
@@ -321,7 +359,7 @@
             bSelect.querySelectorAll('.building-opt').forEach(opt => {
                 const bType = opt.dataset.type;
                 const remaining = parseFloat(opt.dataset.remaining) || 0;
-                const isMatch = (selectedType === "" || bType === selectedType || bType === 'mixte');
+                const isMatch = isBuildingCompatible(bType, selectedType);
                 opt.disabled = !isMatch || remaining <= 0;
                 opt.style.display = isMatch ? 'block' : 'none';
             });
@@ -394,7 +432,7 @@
         // --- VALIDATION ---
         let errorMsg = "";
         if (bSelect.value) {
-            if (selectedType && bType !== selectedType && bType !== 'mixte') errorMsg = "BÂTIMENT INCOMPATIBLE";
+            if (selectedType && !isBuildingCompatible(bType, selectedType)) errorMsg = "BÂTIMENT INCOMPATIBLE";
             else if (qtyAlive > remainingQty) errorMsg = `PLACE INSUFFISANTE (MAX: ${remainingQty})`;
             else if (manualSurface > bSurfaceRestante) errorMsg = `SURFACE INDISPONIBLE (MAX: ${bSurfaceRestante.toFixed(1)} m²)`;
         } else if (!selectedType) {
