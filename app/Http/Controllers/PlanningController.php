@@ -52,7 +52,7 @@ class PlanningController extends Controller
             ->withSum(['batches as occupied_qty' => fn($q) => $q->where('status', 'Actif')], 'current_quantity')
             ->orderBy('name')->get();
 
-        $providers = Provider::where('status', 'actif')->orderBy('name')->get();
+        $providers = Provider::active()->orderBy('name')->get();
         $normModels = ProductionNorm::select('model_name', 'batch_type')->distinct()->orderBy('model_name')->get();
         $protocols = Protocol::orderBy('name')->get();
         // Types de production de toutes les espèces actives (planification multiespèces).

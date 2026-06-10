@@ -51,11 +51,14 @@
                             </div>
 
                             <div>
-                                <label class="block text-[10px] font-black uppercase text-slate-400 mb-2 ml-1 italic tracking-widest">Type de Partenaire</label>
+                                <label class="block text-[10px] font-black uppercase text-slate-400 mb-2 ml-1 italic tracking-widest">Catégorie de Fournisseur</label>
                                 <select name="type" class="w-full p-4 bg-slate-50 rounded-2xl font-black outline-none border-2 border-transparent focus:border-blue-500 shadow-inner appearance-none italic cursor-pointer">
-                                    <option value="Fournisseur" @selected(old('type') == 'Fournisseur')>🚚 Fournisseur d'aliments/poussins</option>
-                                    <option value="Prestataire" @selected(old('type') == 'Prestataire')>🛠 Prestataire de services</option>
-                                    <option value="Partenaire" @selected(old('type') == 'Partenaire')>🤝 Partenaire stratégique</option>
+                                    <option value="Poussins" @selected(old('type') == 'Poussins')>🐣 Poussins / Animaux vifs</option>
+                                    <option value="Aliment" @selected(old('type') == 'Aliment')>🌾 Aliment / Provende</option>
+                                    <option value="Santé" @selected(old('type') == 'Santé')>💉 Santé / Vétérinaire</option>
+                                    <option value="Matériel" @selected(old('type') == 'Matériel')>🛠 Matériel / Équipement</option>
+                                    <option value="Services" @selected(old('type') == 'Services')>🤝 Services / Prestataire</option>
+                                    <option value="Autre" @selected(old('type') == 'Autre')>📦 Autre</option>
                                 </select>
                             </div>
 

@@ -17,7 +17,7 @@ class StoreProviderRequest extends FormRequest
         return [
             'name'          => 'required|string|max:255|unique:providers,name',
             'phone'         => 'required|string|max:20',
-            'type'          => 'required|in:Poussins,Aliment,Santé,Matériel,Autre',
+            'type'          => 'required|in:Poussins,Aliment,Santé,Matériel,Services,Autre',
             'domain'        => 'nullable|string|max:255',
             'email'         => 'nullable|email',
             'address'       => 'nullable|string',

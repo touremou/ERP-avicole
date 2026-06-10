@@ -109,6 +109,18 @@
                                     <p class="font-bold text-slate-700 tracking-tighter leading-none">{{ $provider->phone }}</p>
                                 </div>
                             </div>
+
+                            @if($provider->email)
+                            <div class="flex items-center group p-3 bg-slate-50/50 rounded-2xl shadow-inner border border-slate-100">
+                                <div class="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-slate-400 group-hover:text-blue-500 transition shadow-sm border border-slate-100">
+                                    <i class="fas fa-envelope text-xs"></i>
+                                </div>
+                                <div class="ml-4 text-left">
+                                    <p class="text-[9px] font-black uppercase text-slate-400 tracking-widest italic leading-none mb-1">Email</p>
+                                    <p class="font-bold text-slate-700 tracking-tighter leading-none lowercase">{{ $provider->email }}</p>
+                                </div>
+                            </div>
+                            @endif
                         </div>
                     </div>
 

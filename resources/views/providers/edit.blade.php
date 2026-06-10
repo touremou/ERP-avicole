@@ -59,11 +59,14 @@
                             </div>
 
                             <div>
-                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 italic tracking-widest leading-none">Type de partenaire</label>
+                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 italic tracking-widest leading-none">Catégorie de fournisseur</label>
                                 <select name="type" class="w-full p-4 bg-slate-50 rounded-2xl font-black text-xs uppercase outline-none border-2 border-transparent focus:border-blue-500 shadow-inner appearance-none italic cursor-pointer">
-                                    <option value="Fournisseur" {{ old('type', $provider->type) == 'Fournisseur' ? 'selected' : '' }}>🚚 Fournisseur</option>
-                                    <option value="Prestataire" {{ old('type', $provider->type) == 'Prestataire' ? 'selected' : '' }}>🛠 Prestataire</option>
-                                    <option value="Partenaire" {{ old('type', $provider->type) == 'Partenaire' ? 'selected' : '' }}>🤝 Partenaire</option>
+                                    <option value="Poussins" {{ old('type', $provider->type) == 'Poussins' ? 'selected' : '' }}>🐣 Poussins / Animaux vifs</option>
+                                    <option value="Aliment" {{ old('type', $provider->type) == 'Aliment' ? 'selected' : '' }}>🌾 Aliment / Provende</option>
+                                    <option value="Santé" {{ old('type', $provider->type) == 'Santé' ? 'selected' : '' }}>💉 Santé / Vétérinaire</option>
+                                    <option value="Matériel" {{ old('type', $provider->type) == 'Matériel' ? 'selected' : '' }}>🛠 Matériel / Équipement</option>
+                                    <option value="Services" {{ old('type', $provider->type) == 'Services' ? 'selected' : '' }}>🤝 Services / Prestataire</option>
+                                    <option value="Autre" {{ old('type', $provider->type) == 'Autre' ? 'selected' : '' }}>📦 Autre</option>
                                 </select>
                             </div>
 
