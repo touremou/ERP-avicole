@@ -375,7 +375,7 @@ class ReportController extends Controller
                 $q->orderBy('check_date');
             }])
             ->whereHas('species', function($q) {
-                $q->whereIn('family', ['petit_ruminant', 'grand_ruminant']);
+                $q->whereIn('family', ['petit_ruminant', 'grand_ruminant', 'porcin', 'lagomorphe']);
             })
             ->when($farmId, fn($q) => $q->where('farm_id', $farmId));
 

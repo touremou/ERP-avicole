@@ -43,6 +43,12 @@ class Species extends Model
     public function isRuminant(): bool  { return in_array($this->family, ['petit_ruminant','grand_ruminant']); }
     public function isAquaculture(): bool { return $this->family === 'aquaculture'; }
 
+    /** Familles suivies via le GMQ (croissance pondérale + portées) */
+    public function isGmqTracked(): bool
+    {
+        return in_array($this->family, ['petit_ruminant', 'grand_ruminant', 'porcin', 'lagomorphe']);
+    }
+
     public function getFamilyLabelAttribute(): string
     {
         return match($this->family) {

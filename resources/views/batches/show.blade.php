@@ -62,6 +62,7 @@
         // Species-specific
         $isRuminant    = $batch->isRuminant();
         $isAquaculture = $batch->isAquaculture();
+        $isGmqTracked  = $batch->isGmqTracked();
     @endphp
 
     <x-slot name="header">
@@ -254,7 +255,7 @@
             </div>
         </div>
 
-        @if($isRuminant && isset($stats['gmq']))
+        @if($isGmqTracked && isset($stats['gmq']))
         <div class="bg-white p-5 rounded-[2rem] shadow-xl border border-emerald-50 flex items-center gap-4 group transition-transform hover:scale-[1.02]">
             <div class="w-12 h-12 bg-emerald-600 rounded-2xl flex items-center justify-center text-white shadow-lg">
                 <i class="fa-solid fa-arrow-trend-up text-lg"></i>
@@ -342,8 +343,8 @@
             </div>
             @endif
 
-            {{-- RUMINANTS: NAISSANCES & SEVRAGES --}}
-            @if($isRuminant && (($stats['total_born'] ?? 0) > 0 || ($stats['total_weaned'] ?? 0) > 0))
+            {{-- NAISSANCES & SEVRAGES (ruminants, porcins, lapins) --}}
+            @if($isGmqTracked && (($stats['total_born'] ?? 0) > 0 || ($stats['total_weaned'] ?? 0) > 0))
             <div class="mb-8 bg-emerald-50 border border-emerald-200 rounded-[2rem] p-6 flex flex-wrap gap-8 items-center">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center text-white text-lg">🐣</div>

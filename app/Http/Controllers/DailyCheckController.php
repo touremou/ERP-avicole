@@ -99,10 +99,10 @@ class DailyCheckController extends Controller
         $check = $action->execute($request->validated());
 
         // Save species-specific extension if applicable
-        if ($check->batch->isRuminant() || $check->batch->isAquaculture()) {
+        if ($check->batch->isGmqTracked() || $check->batch->isAquaculture()) {
             $extData = [];
 
-            if ($check->batch->isRuminant()) {
+            if ($check->batch->isGmqTracked()) {
                 $extData = array_merge($extData, [
                     'qty_born'     => $request->integer('ext_qty_born', 0),
                     'qty_weaned'   => $request->integer('ext_qty_weaned', 0),
@@ -253,10 +253,10 @@ class DailyCheckController extends Controller
             $check->update($validated);
 
             // Save species-specific extension if applicable
-            if ($check->batch->isRuminant() || $check->batch->isAquaculture()) {
+            if ($check->batch->isGmqTracked() || $check->batch->isAquaculture()) {
                 $extData = [];
 
-                if ($check->batch->isRuminant()) {
+                if ($check->batch->isGmqTracked()) {
                     $extData = array_merge($extData, [
                         'qty_born'     => $request->integer('ext_qty_born', 0),
                         'qty_weaned'   => $request->integer('ext_qty_weaned', 0),

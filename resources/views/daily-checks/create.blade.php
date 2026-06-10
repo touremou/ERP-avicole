@@ -219,12 +219,12 @@
                         <textarea name="observations" rows="2" class="w-full bg-slate-50 rounded-[2rem] p-6 outline-none focus:bg-white border-2 border-transparent focus:border-blue-500 font-black text-slate-600 shadow-inner text-xs uppercase italic" placeholder="OBSERVATIONS OU SYMPTÔMES..."></textarea>
                     </div>
 
-                    {{-- ═══ SECTION RUMINANTS ═══ --}}
-                    @if($batch->isRuminant())
+                    {{-- ═══ SECTION CROISSANCE / NAISSANCES (Ruminants, Porcins, Lapins) ═══ --}}
+                    @if($batch->isGmqTracked())
                     <div class="mt-8 bg-emerald-50 border border-emerald-200 rounded-[2rem] p-6">
                         <h3 class="text-[10px] font-black uppercase text-emerald-800 tracking-widest mb-6 flex items-center gap-2">
-                            <span class="w-8 h-8 bg-emerald-600 rounded-xl flex items-center justify-center text-white text-sm">🐑</span>
-                            Suivi Spécifique Ruminants
+                            <span class="w-8 h-8 bg-emerald-600 rounded-xl flex items-center justify-center text-white text-sm">{{ $batch->species?->icon ?? '🐑' }}</span>
+                            Suivi Naissances & Croissance
                         </h3>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {{-- Naissances --}}

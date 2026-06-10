@@ -184,8 +184,8 @@ class BatchController extends Controller
             'net_margin'       => $batch->net_margin,
         ];
 
-        // Ruminant stats
-        if ($batch->isRuminant()) {
+        // GMQ stats (ruminants, porcins, lapins)
+        if ($batch->isGmqTracked()) {
             $checksWithWeight = $batch->dailyChecks->filter(fn($c) => $c->avg_weight > 0)->values();
             $gmq = null;
             if ($checksWithWeight->count() >= 2) {

@@ -22,8 +22,8 @@
     </style>
 </head>
 <body>
-    <h1>Rapport GMQ — Ruminants</h1>
-    <div class="subtitle">Gain Moyen Quotidien par lot · Statut : {{ $statusFilter === 'all' ? 'Tous' : $statusFilter }} · Généré le {{ now()->format('d/m/Y H:i') }}</div>
+    <h1>Rapport GMQ — Engraissement</h1>
+    <div class="subtitle">Gain Moyen Quotidien par lot (Ruminants, Porcins, Lapins) · Statut : {{ $statusFilter === 'all' ? 'Tous' : $statusFilter }} · Généré le {{ now()->format('d/m/Y H:i') }}</div>
 
     @if($avgGmq)
     <div class="kpi-box">
@@ -65,7 +65,7 @@
                 <td>{{ $batch->status }}</td>
             </tr>
             @empty
-            <tr><td colspan="8" class="muted">Aucun lot ruminant trouvé.</td></tr>
+            <tr><td colspan="8" class="muted">Aucun lot trouvé.</td></tr>
             @endforelse
         </tbody>
     </table>

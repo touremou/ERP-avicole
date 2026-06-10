@@ -246,6 +246,12 @@ class Batch extends Model
         return $this->species === null || $this->species->isVolaille();
     }
 
+    /** Indique si le lot est suivi via le GMQ (ruminants, porcins, lapins) */
+    public function isGmqTracked(): bool
+    {
+        return $this->species?->isGmqTracked() ?? false;
+    }
+
     // ═══════════════════════════════════════════════
     // ACCESSEURS — EFFECTIFS
     // ═══════════════════════════════════════════════

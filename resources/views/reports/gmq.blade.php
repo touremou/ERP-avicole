@@ -7,10 +7,10 @@
                 </div>
                 <div>
                     <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">
-                        Rapport GMQ — Ruminants
+                        Rapport GMQ — Engraissement
                     </h2>
                     <p class="text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em] mt-1 italic">
-                        Gain Moyen Quotidien par lot
+                        Gain Moyen Quotidien par lot — Ruminants, Porcins, Lapins
                     </p>
                 </div>
             </div>
@@ -38,7 +38,7 @@
             {{-- KPI global --}}
             @if($avgGmq)
             <div class="mb-8 bg-emerald-800 text-white p-6 rounded-[2rem] flex items-center gap-6 shadow-xl">
-                <div class="w-14 h-14 bg-emerald-600 rounded-[1.2rem] flex items-center justify-center text-2xl">🐑</div>
+                <div class="w-14 h-14 bg-emerald-600 rounded-[1.2rem] flex items-center justify-center text-2xl">📈</div>
                 <div>
                     <p class="text-[8px] font-black uppercase tracking-[0.3em] opacity-60">GMQ Moyen — Ensemble des lots</p>
                     <p class="text-4xl font-black italic tracking-tighter">{{ number_format($avgGmq, 0) }} <small class="text-lg opacity-60">g/jour</small></p>
@@ -54,7 +54,7 @@
                     <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                         <div class="flex items-center gap-4">
                             <div class="w-12 h-12 bg-emerald-100 rounded-2xl flex items-center justify-center text-xl">
-                                {{ $batch->species?->icon ?? '🐑' }}
+                                {{ $batch->species?->icon ?? '📈' }}
                             </div>
                             <div>
                                 <a href="{{ route('batches.show', $batch->id) }}"
@@ -121,8 +121,8 @@
                 </div>
                 @empty
                 <div class="bg-white rounded-[2rem] border border-dashed border-slate-200 p-12 text-center">
-                    <p class="text-4xl mb-4">🐑</p>
-                    <p class="text-[10px] font-black uppercase text-slate-400 tracking-widest">Aucun lot ruminant {{ $statusFilter === 'Actif' ? 'actif' : '' }} trouvé</p>
+                    <p class="text-4xl mb-4">📈</p>
+                    <p class="text-[10px] font-black uppercase text-slate-400 tracking-widest">Aucun lot en engraissement {{ $statusFilter === 'Actif' ? 'actif' : '' }} trouvé</p>
                 </div>
                 @endforelse
             </div>
