@@ -45,6 +45,7 @@
                                                     <option value="{{ $pt->slug }}"
                                                             data-cycle="{{ $pt->cycle_days_default ?? 42 }}"
                                                             data-species-id="{{ $pt->species_id }}"
+                                                            data-species-slug="{{ $pt->species->slug ?? '' }}"
                                                             data-pt-id="{{ $pt->id }}"
                                                             {{ old('batch_type') == $pt->slug && (string) old('production_type_id') === (string) $pt->id ? 'selected' : '' }}>
                                                         {{ $pt->species->icon ?? '' }} {{ $pt->name_fr }}
@@ -248,6 +249,23 @@ const CYCLES = {
    };
 const CYCLE_LABELS = { chair: 'Abattage', ponte: 'Réforme', poussiniere: 'Transfert', reproducteur: 'Réforme' };
 
+// Types de bâtiments compatibles par espèce (aligné sur le lancement de lot).
+const SPECIES_BUILDING_TYPES = {
+    poulet:  ['chair', 'ponte', 'poussiniere', 'reproducteur'],
+    dinde:   ['chair', 'reproducteur'],
+    pintade: ['chair', 'ponte'],
+    caille:  ['chair', 'ponte'],
+    canard:  ['chair'],
+    pigeon:  ['chair'],
+    mouton:  ['bergerie'],
+    chevre:  ['chevrerie'],
+    lapin:   ['lapiniere'],
+    porc:    ['porcherie'],
+    tilapia: ['bassin'],
+    carpe:   ['bassin'],
+    silure:  ['bassin'],
+};
+
 function el(id) { return document.getElementById(id); }
 
 // Cycle (jours) du type de production sélectionné — piloté par les données
@@ -262,6 +280,7 @@ function runFilters() {
 
     // Propage l'espèce / le type de production choisis (champs cachés).
     const sel = el('breeding_type').selectedOptions[0];
+    const speciesSlug = sel?.dataset.speciesSlug || "";
     el('species_id_hidden').value = sel?.dataset.speciesId || "";
     el('production_type_id_hidden').value = sel?.dataset.ptId || "";
 
@@ -273,14 +292,16 @@ function runFilters() {
     });
     if (el('model_selector').selectedOptions[0]?.style.display === 'none') el('model_selector').value = "";
 
-    // Filtrage bâtiments : permissif. Si aucun bâtiment ne correspond au type
-    // (espèces non-volailles → bergerie/chevrerie/bassin...), on les affiche
-    // tous plutôt que de bloquer le formulaire.
+    // Filtrage bâtiments par espèce (comme au lancement de lot) :
+    // on autorise les types de bâtiment compatibles avec l'espèce + 'mixte'.
+    // Repli de sécurité : si aucun bâtiment ne correspond (ex. pas encore de
+    // bergerie/bassin), on les affiche tous plutôt que de bloquer le formulaire.
+    const allowed = SPECIES_BUILDING_TYPES[speciesSlug] || null;
     const bOpts = [...document.querySelectorAll('.building-opt')];
-    const anyMatch = bOpts.some(o => o.dataset.type === type || o.dataset.type === 'mixte');
+    const matches = (bType) => bType === 'mixte' || (allowed ? allowed.includes(bType) : (!type || bType === type));
+    const anyMatch = bOpts.some(o => matches(o.dataset.type));
     bOpts.forEach(opt => {
-        const bType = opt.dataset.type;
-        const compatible = !type || !anyMatch || bType === type || bType === 'mixte';
+        const compatible = !type || !anyMatch || matches(opt.dataset.type);
         opt.style.display = compatible ? '' : 'none';
         opt.disabled = !compatible;
     });
