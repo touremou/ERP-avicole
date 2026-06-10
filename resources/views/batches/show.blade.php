@@ -56,13 +56,20 @@
         // Aliment total (depuis la collection eager-loaded)
         $totalFeed = $batch->dailyChecks->sum('feed_consumed');
         
-        $showPonte = in_array($batch->type, ['ponte', 'repro', 'reproducteur']);
-        $colCount = 3 + ($showPonte ? 1 : 0) + ($isChair ? 1 : 0);
-
         // Species-specific
         $isRuminant    = $batch->isRuminant();
         $isAquaculture = $batch->isAquaculture();
         $isGmqTracked  = $batch->isGmqTracked();
+        $isVolaille    = $batch->isVolaille();
+
+        // Suivi de la ponte : piloté par le type de production de l'espèce.
+        // Fallback sur l'ancienne logique (type legacy) pour les lots sans
+        // species_id (volailles historiques).
+        $showPonte = $batch->productionType
+            ? $batch->productionType->tracks('eggs')
+            : in_array($batch->type, ['ponte', 'repro', 'reproducteur']);
+
+        $colCount = 3 + ($showPonte ? 1 : 0) + ($isChair ? 1 : 0);
     @endphp
 
     <x-slot name="header">
@@ -288,7 +295,7 @@
                 </div>
                 <div class="w-full h-3 bg-slate-100 rounded-full overflow-hidden flex shadow-inner">
                     @php
-                        $maxDays = $isChair ? 45 : 540;
+                        $maxDays = $batch->productionType?->cycle_days_default ?? ($isChair ? 45 : 540);
                         $progress = min(($batchAge / $maxDays) * 100, 100);
                     @endphp
                     <div class="h-full bg-blue-600 transition-all duration-1000 shadow-lg" style="width: {{ $progress }}%"></div>
@@ -443,7 +450,8 @@
                 </div>
             </div>
 
-            {{-- STOCKS DYNAMIQUES --}}
+            {{-- STOCKS DYNAMIQUES (phases d'aliment volaille uniquement) --}}
+            @if($isVolaille)
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 text-left">
                 @php
                     $batchType = ucfirst(strtolower($batch->type ?? 'Chair'));
@@ -501,6 +509,7 @@
                     </div>
                 @endforeach
             </div>
+            @endif
 
             {{-- HISTORIQUE FLUX & APPROVISIONNEMENTS --}}
             <div class="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden mb-8 text-left italic font-bold">
@@ -509,7 +518,7 @@
                         <i class="fa-solid fa-conveyor-belt-arm text-orange-500"></i> Journal des Flux & Approvisionnements
                     </h3>
                     <span class="px-3 py-1 bg-slate-100 text-slate-500 rounded-full text-[7px] font-black uppercase">
-                        Secteur {{ $batch->type }}
+                        Secteur {{ $batch->productionType?->name_fr ?? $batch->type }}
                     </span>
                 </div>
                 
@@ -527,18 +536,24 @@
                         </thead>
                         <tbody class="divide-y divide-slate-50 text-[10px]">
                             @php
-                                $targetSectors = in_array($batch->type, ['Ponte', 'Reproducteur']) ? ['Ponte'] : ['Chair'];
-                                $feedStockIds = \App\Models\Stock::where('category', 'conso')
-                                    ->where(function($q) use ($targetSectors) {
-                                        $q->whereIn('metadata->poultry_type', $targetSectors)
-                                        ->orWhere('item_name', 'LIKE', $targetSectors[0] . '%');
-                                    })
-                                    ->pluck('id');
+                                // Mouvements de stock "aliment volaille" (phases Chair/Ponte) :
+                                // ne concerne que les lots de volaille.
+                                if ($isVolaille) {
+                                    $targetSectors = in_array($batch->type, ['Ponte', 'Reproducteur']) ? ['Ponte'] : ['Chair'];
+                                    $feedStockIds = \App\Models\Stock::where('category', 'conso')
+                                        ->where(function($q) use ($targetSectors) {
+                                            $q->whereIn('metadata->poultry_type', $targetSectors)
+                                            ->orWhere('item_name', 'LIKE', $targetSectors[0] . '%');
+                                        })
+                                        ->pluck('id');
 
-                                $movements = \App\Models\StockMovement::whereIn('stock_id', $feedStockIds)
-                                                ->where('notes', 'LIKE', "%{$batch->code}%")
-                                                ->latest()
-                                                ->get();
+                                    $movements = \App\Models\StockMovement::whereIn('stock_id', $feedStockIds)
+                                                    ->where('notes', 'LIKE', "%{$batch->code}%")
+                                                    ->latest()
+                                                    ->get();
+                                } else {
+                                    $movements = collect();
+                                }
 
                                 $purchases = $batch->feedPurchases;
                             @endphp
@@ -748,14 +763,22 @@
                         <div>
                             <label class="block text-[10px] font-black text-slate-400 uppercase mb-3 ml-2 italic">Nouvelle Phase</label>
                             <select name="new_phase" required class="w-full p-5 bg-slate-50 rounded-[2rem] border-none shadow-inner font-black text-slate-700 italic uppercase text-xs appearance-none">
-                                @if(in_array($batch->type, ['ponte', 'reproducteur', 'poussiniere']))
-                                    <option value="poussiniere" {{ $batch->production_phase == 'poussiniere' ? 'selected' : '' }}>Poussinière</option>
-                                    <option value="ponte" {{ $batch->production_phase == 'ponte' ? 'selected' : '' }}>Ponte Active</option>
-                                    <option value="reproducteur" {{ $batch->production_phase == 'reproducteur' ? 'selected' : '' }}>Reproducteurs</option>
-                                @endif
-                                @if($batch->type == 'chair')
-                                    <option value="chair" selected>Poulet de Chair</option>
-                                    <option value="poussiniere">Poussinière</option>
+                                @if($isVolaille)
+                                    @if(in_array($batch->type, ['ponte', 'reproducteur', 'poussiniere']))
+                                        <option value="poussiniere" {{ $batch->production_phase == 'poussiniere' ? 'selected' : '' }}>Poussinière</option>
+                                        <option value="ponte" {{ $batch->production_phase == 'ponte' ? 'selected' : '' }}>Ponte Active</option>
+                                        <option value="reproducteur" {{ $batch->production_phase == 'reproducteur' ? 'selected' : '' }}>Reproducteurs</option>
+                                    @endif
+                                    @if($batch->type == 'chair')
+                                        <option value="chair" selected>Poulet de Chair</option>
+                                        <option value="poussiniere">Poussinière</option>
+                                    @endif
+                                @else
+                                    {{-- Espèces non-volailles : la mutation ne change pas la phase
+                                         de production, on conserve la phase/le type courant. --}}
+                                    <option value="{{ $batch->production_phase ?? $batch->type }}" selected>
+                                        {{ $batch->productionType?->name_fr ?? ucfirst($batch->type) }}
+                                    </option>
                                 @endif
                             </select>
                         </div>
@@ -807,9 +830,18 @@
             const protocolSelect = document.getElementById('protocol-select');
             if (protocolSelect) {
                 const options = protocolSelect.options;
+                let matchCount = 0;
                 for (let i = 0; i < options.length; i++) {
                     const optType = options[i].getAttribute('data-type');
-                    options[i].style.display = (optType === batchType || optType === 'all') ? 'block' : 'none';
+                    if (optType !== 'all' && optType === batchType) matchCount++;
+                }
+
+                // Si aucun protocole n'est défini pour ce type (ex: espèces
+                // non-volailles sans protocole dédié), on affiche tous les
+                // protocoles plutôt que de bloquer la mutation.
+                for (let i = 0; i < options.length; i++) {
+                    const optType = options[i].getAttribute('data-type');
+                    options[i].style.display = (matchCount === 0 || optType === batchType || optType === 'all') ? 'block' : 'none';
                 }
             }
 
