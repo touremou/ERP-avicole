@@ -292,16 +292,15 @@ function runFilters() {
     });
     if (el('model_selector').selectedOptions[0]?.style.display === 'none') el('model_selector').value = "";
 
-    // Filtrage bâtiments par espèce (comme au lancement de lot) :
-    // on autorise les types de bâtiment compatibles avec l'espèce + 'mixte'.
-    // Repli de sécurité : si aucun bâtiment ne correspond (ex. pas encore de
-    // bergerie/bassin), on les affiche tous plutôt que de bloquer le formulaire.
+    // Filtrage bâtiments par espèce (strict, comme au lancement de lot) :
+    // on n'autorise QUE les types de bâtiment compatibles avec l'espèce + 'mixte'.
+    // Pas de repli permissif : on ne doit jamais pouvoir affecter un canard à
+    // une bergerie. Si aucun bâtiment compatible n'existe, il faut d'abord en
+    // créer un du bon type.
     const allowed = SPECIES_BUILDING_TYPES[speciesSlug] || null;
-    const bOpts = [...document.querySelectorAll('.building-opt')];
     const matches = (bType) => bType === 'mixte' || (allowed ? allowed.includes(bType) : (!type || bType === type));
-    const anyMatch = bOpts.some(o => matches(o.dataset.type));
-    bOpts.forEach(opt => {
-        const compatible = !type || !anyMatch || matches(opt.dataset.type);
+    document.querySelectorAll('.building-opt').forEach(opt => {
+        const compatible = !type || matches(opt.dataset.type);
         opt.style.display = compatible ? '' : 'none';
         opt.disabled = !compatible;
     });
