@@ -32,6 +32,54 @@ class ReportController extends Controller
     }
 
     /**
+     * NURSERIE / REPRODUCTION
+     *
+     * Suivi des naissances et sevrages (agnelage, chevrotage, lapins...) sur
+     * une période, à partir des métriques born/weaned saisies au pointage.
+     * Donne le taux de sevrage par lot — indicateur clé de productivité
+     * numérique des reproducteurs.
+     *
+     * Gate : elevage.L.
+     */
+    public function nurseryReport(Request $request): View
+    {
+        if (Gate::denies('elevage.L')) {
+            return redirect()->route('dashboard')->with('error', 'Accès restreint.');
+        }
+
+        $from = Carbon::parse($request->get('date_from', now()->startOfYear()->toDateString()))->startOfDay();
+        $to   = Carbon::parse($request->get('date_to', now()->toDateString()))->endOfDay();
+
+        $rows = DailyCheck::whereBetween('check_date', [$from, $to])
+            ->whereHas('extension', fn ($q) => $q->where('qty_born', '>', 0)->orWhere('qty_weaned', '>', 0))
+            ->with(['batch.species', 'batch.building', 'extension'])
+            ->get()
+            ->groupBy('batch_id')
+            ->map(function ($checks) {
+                $batch = $checks->first()->batch;
+                $born   = (int) $checks->sum(fn ($c) => $c->extension->qty_born ?? 0);
+                $weaned = (int) $checks->sum(fn ($c) => $c->extension->qty_weaned ?? 0);
+                return [
+                    'batch'        => $batch,
+                    'species'      => $batch?->species?->name_fr ?? '—',
+                    'icon'         => $batch?->species?->icon ?? '🐾',
+                    'born'         => $born,
+                    'weaned'       => $weaned,
+                    'weaning_rate' => $born > 0 ? round(($weaned / $born) * 100, 1) : null,
+                ];
+            })
+            ->filter(fn ($r) => $r['batch'] !== null)
+            ->sortByDesc('born')
+            ->values();
+
+        $totalBorn   = $rows->sum('born');
+        $totalWeaned = $rows->sum('weaned');
+        $avgWeaningRate = $totalBorn > 0 ? round(($totalWeaned / $totalBorn) * 100, 1) : 0;
+
+        return view('reports.nursery', compact('from', 'to', 'rows', 'totalBorn', 'totalWeaned', 'avgWeaningRate'));
+    }
+
+    /**
      * COMPTE DE RÉSULTAT CONSOLIDÉ (P&L)
      *
      * Consolide sur une période tous les flux réels déjà saisis dans l'ERP :

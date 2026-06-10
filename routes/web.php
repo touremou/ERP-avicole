@@ -291,6 +291,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/', 'index')->name('index');
         Route::get('/technical', 'technicalPerformance')->name('technical');
         Route::get('/profit-loss', 'profitLoss')->name('profit_loss');
+        Route::get('/nursery', 'nurseryReport')->name('nursery');
         Route::get('/health-finance', 'healthFinancialReport')->name('health_finance');
         Route::get('/monthly', 'monthlyExpenses')->name('monthly');
         Route::get('/gmq', 'gmqReport')->name('gmq');

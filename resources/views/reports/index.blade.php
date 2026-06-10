@@ -31,6 +31,19 @@
                 </a>
                 @endcan
 
+                {{-- NURSERIE / REPRODUCTION --}}
+                @can('elevage.L')
+                <a href="{{ route('reports.nursery') }}" class="group bg-white p-8 rounded-2xl border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all no-underline relative overflow-hidden">
+                    <div class="w-12 h-12 bg-pink-500 text-white rounded-xl flex items-center justify-center mb-5 shadow-lg group-hover:scale-110 transition-transform"><i class="fa-solid fa-baby-carriage text-lg"></i></div>
+                    <h3 class="text-base font-black text-slate-800 uppercase tracking-tighter mb-2 italic">Nurserie / Reproduction</h3>
+                    <p class="text-[9px] text-slate-400 uppercase tracking-widest font-black mb-6">Agnelage, chevrotage, sevrage — taux de sevrage</p>
+                    <div class="flex items-center gap-2 text-pink-600 text-[9px] font-black uppercase tracking-widest border-t border-slate-50 pt-4">
+                        Suivi <i class="fa-solid fa-arrow-right group-hover:translate-x-1 transition-transform text-[8px]"></i>
+                    </div>
+                    <i class="fa-solid fa-paw absolute -right-4 -bottom-4 text-7xl text-slate-50 group-hover:text-pink-50 transition-colors"></i>
+                </a>
+                @endcan
+
                 {{-- PERFORMANCE TECHNIQUE --}}
                 @can('elevage.L')
                 <a href="{{ route('reports.technical') }}" class="group bg-white p-8 rounded-2xl border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all no-underline relative overflow-hidden">
