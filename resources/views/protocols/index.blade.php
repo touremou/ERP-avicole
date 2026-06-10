@@ -193,10 +193,8 @@
                     <div>
                         <label class="text-[10px] font-black text-blue-500 uppercase ml-4 tracking-[0.2em] mb-3 block italic leading-none font-black">Type d'élevage</label>
                         <select name="type" class="w-full p-6 bg-slate-50 rounded-[2rem] border-none shadow-inner font-black text-blue-600 appearance-none italic uppercase" required>
-                            <option value="chair">POULET DE CHAIR</option>
-                            <option value="ponte">PONDEUSES</option>
-                            <option value="poussiniere">POUSSINIÈRE</option>
-                            <option value="reproducteur">REPRODUCTEURS</option>
+                            <option value="">-- Sélectionner --</option>
+                            @include('protocols.partials.type-options', ['productionTypes' => $productionTypes, 'selected' => old('type')])
                         </select>
                     </div>
                 </div>

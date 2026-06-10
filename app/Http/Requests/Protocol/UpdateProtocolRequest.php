@@ -2,8 +2,10 @@
 
 namespace App\Http\Requests\Protocol;
 
+use App\Models\ProductionType;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\Rule;
 
 class UpdateProtocolRequest extends FormRequest
 {
@@ -14,9 +16,13 @@ class UpdateProtocolRequest extends FormRequest
 
     public function rules(): array
     {
+        // Types de production de toutes les espèces (volaille et autres),
+        // pour permettre la modification de protocoles non-volailles.
+        $allowedTypes = ProductionType::query()->pluck('slug')->unique()->values()->all();
+
         return [
             'name'                => 'required|string|max:255',
-            'type'                => 'required|in:chair,ponte,poussiniere,reproducteur',
+            'type'                => ['required', Rule::in($allowedTypes)],
             'strain'              => 'nullable|string|max:100',
             'description'         => 'nullable|string',
             'steps'               => 'nullable|array',

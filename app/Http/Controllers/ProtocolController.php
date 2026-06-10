@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Protocol;
 use App\Models\ProtocolStep;
 use App\Models\ProductionNorm;
+use App\Models\ProductionType;
 use App\Http\Requests\Protocol\StoreProtocolRequest;
 use App\Http\Requests\Protocol\UpdateProtocolRequest;
 use App\Http\Requests\Protocol\AddProtocolStepRequest;
@@ -28,8 +29,12 @@ class ProtocolController extends Controller
         $protocols = Protocol::withCount(['steps', 'batches as active_batches_count' => function($query) {
             $query->where('status', 'Actif');
         }])->get();
-        
-        return view('protocols.index', compact('protocols'));
+
+        // Types de production de toutes les espèces, pour le sélecteur
+        // "Type d'élevage" du modal de création (espèces non-volailles incluses).
+        $productionTypes = ProductionType::active()->with('species')->orderBy('species_id')->get();
+
+        return view('protocols.index', compact('protocols', 'productionTypes'));
     }
 
     /**
@@ -71,8 +76,9 @@ class ProtocolController extends Controller
 
         $protocol->load('steps');
         $normModels = ProductionNorm::select('model_name', 'batch_type')->distinct()->get();
+        $productionTypes = ProductionType::active()->with('species')->orderBy('species_id')->get();
 
-        return view('protocols.edit', compact('protocol', 'normModels'));
+        return view('protocols.edit', compact('protocol', 'normModels', 'productionTypes'));
     }
 
     /**

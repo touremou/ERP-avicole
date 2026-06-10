@@ -63,11 +63,7 @@
         $isVolaille    = $batch->isVolaille();
 
         // Suivi de la ponte : piloté par le type de production de l'espèce.
-        // Fallback sur l'ancienne logique (type legacy) pour les lots sans
-        // species_id (volailles historiques).
-        $showPonte = $batch->productionType
-            ? $batch->productionType->tracks('eggs')
-            : in_array($batch->type, ['ponte', 'repro', 'reproducteur']);
+        $showPonte = $batch->tracksEggs();
 
         $colCount = 3 + ($showPonte ? 1 : 0) + ($isChair ? 1 : 0);
     @endphp

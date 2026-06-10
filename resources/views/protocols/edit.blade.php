@@ -49,12 +49,9 @@
                         {{-- Type d'Élevage --}}
                         <div class="space-y-3">
                             <label class="block text-[10px] font-black text-blue-500 uppercase ml-2 italic tracking-widest leading-none">Secteur d'activité</label>
-                            <select name="type" id="type_selector" required onchange="filterStrains()" 
+                            <select name="type" id="type_selector" required onchange="filterStrains()"
                                     class="w-full p-5 bg-slate-50 rounded-2xl border-none shadow-inner font-black text-blue-600 appearance-none italic uppercase cursor-pointer outline-none focus:ring-4 focus:ring-blue-500/10">
-                                <option value="chair" {{ $protocol->type == 'chair' ? 'selected' : '' }}>🍗 Poulet de chair</option>
-                                <option value="ponte" {{ $protocol->type == 'ponte' ? 'selected' : '' }}>🥚 Pondeuses</option>
-                                <option value="poussiniere" {{ $protocol->type == 'poussiniere' ? 'selected' : '' }}>🐣 Poussinière</option>
-                                <option value="reproducteur" {{ $protocol->type == 'reproducteur' ? 'selected' : '' }}>🐓 Reproducteurs</option>
+                                @include('protocols.partials.type-options', ['productionTypes' => $productionTypes, 'selected' => old('type', $protocol->type)])
                             </select>
                         </div>
 
@@ -160,10 +157,16 @@
             const selectedType = document.getElementById('type_selector').value.toLowerCase();
             const strainSelector = document.getElementById('strain_selector');
             const options = strainSelector.querySelectorAll('.strain-opt');
-            
+
+            // Si aucune souche n'est référencée pour ce type (espèces
+            // non-volailles sans référentiel dédié), on les affiche
+            // toutes plutôt que de bloquer le formulaire.
+            const hasMatch = selectedType === "" || Array.from(options)
+                .some(opt => opt.getAttribute('data-type').toLowerCase() === selectedType);
+
             options.forEach(opt => {
                 const optType = opt.getAttribute('data-type').toLowerCase();
-                opt.style.display = (optType === selectedType || selectedType === "") ? "block" : "none";
+                opt.style.display = (!hasMatch || optType === selectedType || selectedType === "") ? "block" : "none";
             });
         }
         document.addEventListener('DOMContentLoaded', filterStrains);

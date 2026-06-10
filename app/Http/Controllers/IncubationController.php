@@ -38,13 +38,15 @@ class IncubationController extends Controller
             default    => $query->orderBy('hatch_date_expected')->get(),
         };
 
+        // Lots éligibles à l'incubation : pondeurs/reproducteurs avicoles
+        // uniquement (le slug "reproducteur" est partagé avec les ruminants,
+        // qui ne pondent pas — on s'appuie donc sur tracksEggs() et l'espèce).
         $activeBatches = Batch::where('status', 'Actif')
-            ->where(function ($q) {
-                $q->whereIn('type', ['reproducteur', 'ponte', 'pondeuse'])
-                  ->orWhereHas('productionType', fn ($pt) => $pt->whereIn('slug', ['reproducteur', 'ponte']));
-            })
-            ->with('species')
-            ->orderBy('code')->get();
+            ->with(['species', 'productionType'])
+            ->get()
+            ->filter(fn (Batch $batch) => $batch->isVolaille() && $batch->tracksEggs())
+            ->sortBy('code')
+            ->values();
 
         // Durées d'incubation par espèce (en jours), pour pré-remplissage du formulaire
         $incubationDurations = [

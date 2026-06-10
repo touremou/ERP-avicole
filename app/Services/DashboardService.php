@@ -40,13 +40,13 @@ class DashboardService
             ->paginate(10);
 
         $allActive = Batch::where('status', 'Actif')
-            ->with(['dailyChecks'])
+            ->with(['dailyChecks', 'productionType'])
             ->get();
 
         // ─── 2. EFFECTIFS ───
         $totalBirds    = $allActive->sum('current_quantity');
         $totalInitial  = $allActive->sum('initial_quantity');
-        $layersCount   = $allActive->whereIn('type', ['ponte', 'Ponte', 'reproducteur', 'Reproducteur', 'repro'])
+        $layersCount   = $allActive->filter(fn (Batch $batch) => $batch->tracksEggs())
                                    ->sum('current_quantity');
 
         $globalMortalityRate = $totalInitial > 0

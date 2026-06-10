@@ -205,7 +205,7 @@ class Batch extends Model
         }
 
         // 1. Depuis le type de production (table production_types) — source de vérité multiespèces
-        if ($this->production_type_id && $this->relationLoaded('productionType') && $this->productionType) {
+        if ($this->production_type_id && $this->productionType?->cycle_days_default) {
             $days = $this->productionType->cycle_days_default;
         } else {
             // 2. Depuis les settings (rétrocompat poulet + nouvelles espèces via settings)
@@ -250,6 +250,19 @@ class Batch extends Model
     public function isGmqTracked(): bool
     {
         return $this->species?->isGmqTracked() ?? false;
+    }
+
+    /**
+     * Indique si le lot fait l'objet d'un suivi de ponte (collecte d'œufs,
+     * couvoir...). Piloté par le type de production de l'espèce, avec
+     * repli sur l'ancienne logique (type legacy) pour les lots volaille
+     * sans species_id.
+     */
+    public function tracksEggs(): bool
+    {
+        return $this->productionType
+            ? $this->productionType->tracks('eggs')
+            : in_array($this->type, ['ponte', 'repro', 'reproducteur']);
     }
 
     // ═══════════════════════════════════════════════

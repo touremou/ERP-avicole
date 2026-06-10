@@ -49,8 +49,9 @@ class SlaughterController extends Controller
     {
         if (Gate::denies('abattoir.C')) return back()->with('error', 'Action non autorisée.');
 
+        // Tous les lots actifs sont éligibles à l'abattage/la transformation,
+        // quelle que soit l'espèce (volaille, ruminants, porcins, lapins...).
         $batches = Batch::where('status', 'Actif')
-            ->whereIn('type', ['chair', 'ponte', 'reproducteur', 'poussiniere'])
             ->where('current_quantity', '>', 0)
             ->with('building')
             ->orderBy('type')

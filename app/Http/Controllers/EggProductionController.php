@@ -44,11 +44,14 @@ class EggProductionController extends Controller
 
         $today = now()->toDateString();
 
-        $activeBatches = Batch::whereIn('type', ['ponte', 'repro', 'reproducteur'])
-            ->where('status', 'Actif')
-            ->where('initial_quantity', '>', 0) 
-            ->with(['building', 'eggProductions' => fn($q) => $q->latest()->take(7)])
-            ->get();
+        // Lots pondeurs : pilotés par le type de production de l'espèce
+        // (avec repli sur l'ancien typage volaille pour les lots sans species_id).
+        $activeBatches = Batch::where('status', 'Actif')
+            ->where('initial_quantity', '>', 0)
+            ->with(['building', 'productionType', 'eggProductions' => fn($q) => $q->latest()->take(7)])
+            ->get()
+            ->filter(fn (Batch $batch) => $batch->tracksEggs())
+            ->values();
 
         $totalsToday = EggProduction::whereDate('production_date', $today)
             ->selectRaw('
@@ -114,9 +117,9 @@ class EggProductionController extends Controller
                 ->with('error', 'Aucun lot spécifié.');
         }
 
-        $batch = Batch::findOrFail($batchId);
+        $batch = Batch::with('productionType')->findOrFail($batchId);
 
-        if (! in_array($batch->type, ['ponte', 'repro', 'reproducteur'])) {
+        if (! $batch->tracksEggs()) {
             return back()->with('error', "Le lot {$batch->code} n'est pas un lot de ponte.");
         }
 
