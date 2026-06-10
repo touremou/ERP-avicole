@@ -144,7 +144,7 @@
                         $now = now()->startOfDay();
                         
                         $daysElapsed = $now->greaterThanOrEqualTo($start) ? (int) $start->diffInDays($now) : 0;
-                        $duration = (int) setting('couvoir.incubation_days', 21);
+                        $duration = (int) ($inc->incubation_duration ?: setting('couvoir.incubation_days', 21));
                         $progress = $duration > 0 ? min(round(($daysElapsed / $duration) * 100), 100) : 0;
                         
                         $statusColor = match($inc->status){ 
@@ -371,7 +371,18 @@
     </div>
 
     {{-- 🚀 MODAL DE LANCEMENT GLOBAL --}}
-    <div x-data="{ openLaunch: {{ $errors->any() ? 'true' : 'false' }}, isExternal: false, selectedProvider: '' }" 
+    <div x-data="{
+            openLaunch: {{ $errors->any() ? 'true' : 'false' }},
+            isExternal: false,
+            selectedProvider: '',
+            duration: 21,
+            incubationDurations: @json($incubationDurations ?? []),
+            updateDuration(event) {
+                const opt = event.target.options[event.target.selectedIndex];
+                const species = opt?.dataset?.species;
+                this.duration = this.incubationDurations[species] ?? 21;
+            }
+         }"
          @open-launch-modal.window="openLaunch = true" 
          x-show="openLaunch" 
          x-cloak 
@@ -447,10 +458,10 @@
                         <div x-show="!isExternal" class="space-y-2">
                             <label class="text-[10px] font-black text-blue-500 uppercase italic ml-2">Lot Reproducteur</label>
                             <div class="relative">
-                                <select name="batch_id" :required="!isExternal" class="w-full bg-blue-50/50 border border-blue-100 rounded-2xl px-5 py-4 font-black text-xs italic shadow-sm outline-none focus:ring-2 focus:ring-blue-500/50 transition-all appearance-none cursor-pointer text-blue-900">
+                                <select name="batch_id" @change="updateDuration($event)" :required="!isExternal" class="w-full bg-blue-50/50 border border-blue-100 rounded-2xl px-5 py-4 font-black text-xs italic shadow-sm outline-none focus:ring-2 focus:ring-blue-500/50 transition-all appearance-none cursor-pointer text-blue-900">
                                     <option value="">-- Sélectionner le lot --</option>
                                     @foreach($activeBatches as $batch)
-                                        <option value="{{ $batch->id }}">{{ $batch->code }}</option>
+                                        <option value="{{ $batch->id }}" data-species="{{ $batch->species->slug ?? 'poulet' }}">{{ $batch->code }}</option>
                                     @endforeach
                                 </select>
                                 <i class="fa-solid fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-blue-300 pointer-events-none"></i>
@@ -496,18 +507,23 @@
                         </div>
                     </div>
 
-                    {{-- Section Critique (Volume et Date) --}}
-                    <div class="grid grid-cols-2 gap-4 sm:gap-6 bg-slate-900 p-6 sm:p-8 rounded-[2.5rem] shadow-xl relative overflow-hidden mt-4">
+                    {{-- Section Critique (Volume, Date et Durée) --}}
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 sm:gap-6 bg-slate-900 p-6 sm:p-8 rounded-[2.5rem] shadow-xl relative overflow-hidden mt-4">
                         <div class="space-y-2 relative z-10">
                             <label class="text-[10px] font-black text-blue-400 uppercase italic ml-2 block text-center tracking-widest">Volume Mis</label>
                             <input type="number" min="1" name="eggs_count" required placeholder="0" class="w-full bg-white/10 border border-white/5 rounded-2xl py-4 sm:py-6 font-black italic shadow-inner text-center text-2xl sm:text-4xl text-white outline-none focus:bg-white/20 focus:border-blue-500/50 transition-all placeholder:text-white/20">
                         </div>
-                        
+
                         <div class="space-y-2 relative z-10">
                             <label class="text-[10px] font-black text-blue-400 uppercase italic ml-2 block text-center tracking-widest">Lancement</label>
                             <input type="date" name="start_date" value="{{ date('Y-m-d') }}" required class="w-full bg-white/10 border border-white/5 rounded-2xl py-4 sm:py-6 px-2 font-black text-sm sm:text-lg italic shadow-inner text-center text-white outline-none focus:bg-white/20 focus:border-blue-500/50 transition-all">
                         </div>
-                        
+
+                        <div class="space-y-2 relative z-10 col-span-2 sm:col-span-1">
+                            <label class="text-[10px] font-black text-blue-400 uppercase italic ml-2 block text-center tracking-widest">Durée (jours)</label>
+                            <input type="number" min="10" max="60" name="duration" x-model="duration" placeholder="21" class="w-full bg-white/10 border border-white/5 rounded-2xl py-4 sm:py-6 font-black italic shadow-inner text-center text-2xl sm:text-4xl text-white outline-none focus:bg-white/20 focus:border-blue-500/50 transition-all placeholder:text-white/20">
+                        </div>
+
                         <i class="fa-solid fa-egg absolute -right-6 -bottom-6 text-white/5 text-[8rem] rotate-12 pointer-events-none"></i>
                     </div>
 

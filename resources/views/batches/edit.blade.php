@@ -32,9 +32,10 @@
                 @csrf 
                 @method('PUT')
 
-                @php 
+                @php
                     $isEditable = ($batch->status === 'Actif');
                     $isRepro = in_array(old('type', $batch->type), ['repro', 'reproducteur']);
+                    $batchSpecies = $batch->species;
                 @endphp
 
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 text-left">
@@ -46,13 +47,34 @@
                         </h3>
                         
                         <div class="space-y-4">
+                            {{-- ESPÈCE — affichage seul (non modifiable après création) --}}
+                            @if($batchSpecies)
+                            <div>
+                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 italic leading-none">Espèce</label>
+                                <div class="w-full p-4 bg-slate-100 rounded-2xl font-black text-slate-500 shadow-inner italic flex items-center gap-2">
+                                    <span>{{ $batchSpecies->icon }}</span> {{ $batchSpecies->name_fr }}
+                                </div>
+                                <p class="text-[8px] text-slate-300 ml-4 uppercase font-bold mt-1">* L'espèce n'est plus modifiable après la création du lot</p>
+                            </div>
+                            @endif
+                            <input type="hidden" name="species_id" value="{{ $batch->species_id }}">
+                            <input type="hidden" name="production_type_id" id="production_type_id" value="{{ $batch->production_type_id }}">
+
                             <div>
                                 <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 italic leading-none">Type d'Élevage</label>
-                                <select name="type" id="type_selector" required 
+                                <select name="type" id="type_selector" required
                                     class="w-full p-4 bg-slate-50 rounded-2xl font-black outline-none border-none text-blue-600 shadow-inner appearance-none italic">
-                                    @foreach(['chair' => 'POULET DE CHAIR', 'ponte' => 'PONDEUSES', 'poussiniere' => 'POUSSINIÈRE', 'reproducteur' => 'REPRODUCTEURS'] as $val => $label)
-                                        <option value="{{ $val }}" {{ old('type', $batch->type) == $val ? 'selected' : '' }}>{{ $label }}</option>
-                                    @endforeach
+                                    @if($batchSpecies && $batchSpecies->productionTypes->isNotEmpty())
+                                        @foreach($batchSpecies->productionTypes as $pt)
+                                            <option value="{{ $pt->slug }}" data-pt-id="{{ $pt->id }}" {{ old('type', $batch->type) == $pt->slug ? 'selected' : '' }}>
+                                                {{ $pt->name_fr }}
+                                            </option>
+                                        @endforeach
+                                    @else
+                                        @foreach(['chair' => 'POULET DE CHAIR', 'ponte' => 'PONDEUSES', 'poussiniere' => 'POUSSINIÈRE', 'reproducteur' => 'REPRODUCTEURS', 'engraissement' => 'ENGRAISSEMENT'] as $val => $label)
+                                            <option value="{{ $val }}" {{ old('type', $batch->type) == $val ? 'selected' : '' }}>{{ $label }}</option>
+                                        @endforeach
+                                    @endif
                                 </select>
                             </div>
 
@@ -250,6 +272,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             const typeSelector = document.getElementById('type_selector');
             const reproFields = document.getElementById('repro_fields');
+            const productionTypeIdInput = document.getElementById('production_type_id');
 
             function toggleRepro() {
                 if (typeSelector.value === 'reproducteur') {
@@ -259,7 +282,15 @@
                 }
             }
 
+            // Met à jour le production_type_id caché selon l'option sélectionnée
+            function syncProductionTypeId() {
+                if (!productionTypeIdInput) return;
+                const selectedOpt = typeSelector.options[typeSelector.selectedIndex];
+                productionTypeIdInput.value = selectedOpt?.dataset.ptId || '';
+            }
+
             typeSelector?.addEventListener('change', toggleRepro);
+            typeSelector?.addEventListener('change', syncProductionTypeId);
 
             // Ratio reproducteurs
             document.querySelectorAll('.repro-input').forEach(input => {

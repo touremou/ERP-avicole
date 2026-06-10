@@ -65,6 +65,11 @@
                                 <option value="chair" {{ old('type', $building->type) == 'chair' ? 'selected' : '' }}>🍗 Poulet de chair</option>
                                 <option value="ponte" {{ old('type', $building->type) == 'ponte' ? 'selected' : '' }}>🥚 Pondeuses</option>
                                 <option value="reproducteur" {{ old('type', $building->type) == 'reproducteur' ? 'selected' : '' }}>🧬 Reproducteurs</option>
+                                <option value="bergerie" {{ old('type', $building->type) == 'bergerie' ? 'selected' : '' }}>🐑 Bergerie (Ovins)</option>
+                                <option value="chevrerie" {{ old('type', $building->type) == 'chevrerie' ? 'selected' : '' }}>🐐 Chèvrerie (Caprins)</option>
+                                <option value="bassin" {{ old('type', $building->type) == 'bassin' ? 'selected' : '' }}>🐟 Bassin (Pisciculture)</option>
+                                <option value="lapiniere" {{ old('type', $building->type) == 'lapiniere' ? 'selected' : '' }}>🐇 Lapinière</option>
+                                <option value="porcherie" {{ old('type', $building->type) == 'porcherie' ? 'selected' : '' }}>🐷 Porcherie</option>
                             </select>
                         @endif
                     </div>

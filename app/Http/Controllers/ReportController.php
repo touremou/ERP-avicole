@@ -8,6 +8,7 @@ use App\Models\DailyCheck;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\View\View;
 use Carbon\Carbon;
 
 class ReportController extends Controller
@@ -341,5 +342,182 @@ class ReportController extends Controller
             'typeFilter', 'availableYears', 'globalStats',
             'dateFrom', 'dateTo', 'useDateRange'
         ));
+    }
+
+    /**
+     * Rapport GMQ (Gain Moyen Quotidien) pour les lots ruminants.
+     */
+    public function gmqReport(Request $request): View
+    {
+        ['batchStats' => $batchStats, 'avgGmq' => $avgGmq, 'statusFilter' => $statusFilter] = $this->buildGmqStats($request);
+
+        return view('reports.gmq', compact('batchStats', 'avgGmq', 'statusFilter'));
+    }
+
+    /**
+     * Export PDF du rapport GMQ.
+     */
+    public function gmqReportPdf(Request $request)
+    {
+        ['batchStats' => $batchStats, 'avgGmq' => $avgGmq, 'statusFilter' => $statusFilter] = $this->buildGmqStats($request);
+
+        $pdf = \Pdf::loadView('reports.pdf.gmq', compact('batchStats', 'avgGmq', 'statusFilter'))
+            ->setPaper('a4', 'portrait');
+
+        return $pdf->download('rapport-gmq-' . now()->format('Y-m-d') . '.pdf');
+    }
+
+    private function buildGmqStats(Request $request): array
+    {
+        $farmId = session('current_farm_id');
+
+        $query = \App\Models\Batch::with(['species', 'building', 'dailyChecks' => function($q) {
+                $q->orderBy('check_date');
+            }, 'dailyChecks.extension'])
+            ->whereHas('species', function($q) {
+                $q->whereIn('family', ['petit_ruminant', 'grand_ruminant', 'porcin', 'lagomorphe']);
+            })
+            ->when($farmId, fn($q) => $q->where('farm_id', $farmId));
+
+        $statusFilter = $request->input('status', 'Actif');
+        if ($statusFilter !== 'all') {
+            $query->where('status', $statusFilter);
+        }
+
+        $batches = $query->orderByDesc('arrival_date')->get();
+
+        // Compute GMQ per batch
+        $batchStats = $batches->map(function($batch) {
+            $checks = $batch->dailyChecks->filter(fn($c) => $c->avg_weight > 0)->values();
+
+            // Portées (porcins, lagomorphes) : taille moyenne et taux de sevrage
+            $totalBorn   = $batch->dailyChecks->sum(fn($c) => $c->extension?->qty_born ?? 0);
+            $totalWeaned = $batch->dailyChecks->sum(fn($c) => $c->extension?->qty_weaned ?? 0);
+            $birthEvents = $batch->dailyChecks->filter(fn($c) => ($c->extension?->qty_born ?? 0) > 0)->count();
+            $litterStats = [
+                'total_born'      => $totalBorn,
+                'total_weaned'    => $totalWeaned,
+                'avg_litter_size' => $birthEvents > 0 ? round($totalBorn / $birthEvents, 1) : null,
+                'weaning_rate'    => $totalBorn > 0 ? round(($totalWeaned / $totalBorn) * 100, 1) : null,
+            ];
+
+            if ($checks->count() < 2) {
+                return [
+                    'batch'        => $batch,
+                    'gmq'          => null,
+                    'gmq_series'   => [],
+                    'start_weight' => $batch->avg_weight_start,
+                    'last_weight'  => $checks->last()?->avg_weight,
+                    'age_days'     => $batch->age,
+                    ...$litterStats,
+                ];
+            }
+
+            $first = $checks->first();
+            $last  = $checks->last();
+            $days  = max(1, \Carbon\Carbon::parse($first->check_date)->diffInDays($last->check_date));
+            $gmq   = round((($last->avg_weight - $first->avg_weight) * 1000) / $days); // g/jour
+
+            // Series for sparkline: [date => weight]
+            $series = $checks->mapWithKeys(fn($c) => [
+                \Carbon\Carbon::parse($c->check_date)->format('d/m') => round((float)$c->avg_weight, 3)
+            ])->toArray();
+
+            return [
+                'batch'        => $batch,
+                'gmq'          => $gmq,
+                'gmq_series'   => $series,
+                'start_weight' => $first->avg_weight,
+                'last_weight'  => $last->avg_weight,
+                'age_days'     => $batch->age,
+                ...$litterStats,
+            ];
+        });
+
+        $avgGmq = $batchStats->whereNotNull('gmq')->avg('gmq');
+
+        return compact('batchStats', 'avgGmq', 'statusFilter');
+    }
+
+    /**
+     * Rapport Pisciculture : qualité de l'eau et survie pour les lots aquacoles.
+     */
+    public function aquacultureReport(Request $request): View
+    {
+        $stats = $this->buildAquacultureStats($request);
+
+        return view('reports.aquaculture', $stats);
+    }
+
+    /**
+     * Export PDF du rapport Pisciculture.
+     */
+    public function aquacultureReportPdf(Request $request)
+    {
+        $stats = $this->buildAquacultureStats($request);
+
+        $pdf = \Pdf::loadView('reports.pdf.aquaculture', $stats)
+            ->setPaper('a4', 'portrait');
+
+        return $pdf->download('rapport-pisciculture-' . now()->format('Y-m-d') . '.pdf');
+    }
+
+    private function buildAquacultureStats(Request $request): array
+    {
+        $farmId = session('current_farm_id');
+
+        $query = \App\Models\Batch::with(['species', 'building', 'dailyChecks' => function($q) {
+                $q->orderBy('check_date')->with('extension');
+            }])
+            ->whereHas('species', function($q) {
+                $q->where('family', 'aquaculture');
+            })
+            ->when($farmId, fn($q) => $q->where('farm_id', $farmId));
+
+        $statusFilter = $request->input('status', 'Actif');
+        if ($statusFilter !== 'all') {
+            $query->where('status', $statusFilter);
+        }
+
+        $batches = $query->orderByDesc('arrival_date')->get();
+
+        $batchStats = $batches->map(function($batch) {
+            $checks = $batch->dailyChecks->filter(fn($c) => $c->extension !== null)->values();
+
+            $series = [
+                'ph'        => [],
+                'o2'        => [],
+                'temp'      => [],
+                'ammonia'   => [],
+                'biomass'   => [],
+                'survival'  => [],
+            ];
+
+            foreach ($checks as $c) {
+                $date = \Carbon\Carbon::parse($c->check_date)->format('d/m');
+                $ext  = $c->extension;
+                if ($ext->water_ph !== null)       $series['ph'][$date]       = (float) $ext->water_ph;
+                if ($ext->water_o2_ppm !== null)   $series['o2'][$date]       = (float) $ext->water_o2_ppm;
+                if ($ext->water_temp !== null)     $series['temp'][$date]     = (float) $ext->water_temp;
+                if ($ext->water_ammonia_ppm !== null) $series['ammonia'][$date] = (float) $ext->water_ammonia_ppm;
+                if ($ext->biomass_kg !== null)     $series['biomass'][$date]   = (float) $ext->biomass_kg;
+                if ($ext->survival_rate !== null)  $series['survival'][$date]  = (float) $ext->survival_rate;
+            }
+
+            $lastExt = $checks->last()?->extension;
+
+            return [
+                'batch'    => $batch,
+                'series'   => $series,
+                'last_ext' => $lastExt,
+                'alerts'   => $lastExt?->getWaterAlerts() ?? [],
+                'age_days' => $batch->age,
+            ];
+        });
+
+        $totalAlerts = $batchStats->sum(fn($s) => count($s['alerts']));
+        $criticalCount = $batchStats->sum(fn($s) => collect($s['alerts'])->where('level', 'critical')->count());
+
+        return compact('batchStats', 'statusFilter', 'totalAlerts', 'criticalCount');
     }
 }

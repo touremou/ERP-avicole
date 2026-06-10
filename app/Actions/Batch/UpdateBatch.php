@@ -26,7 +26,7 @@ class UpdateBatch
      * présent dans $data. C'est la protection contre B-03/B-04.
      */
     private const ALLOWED_FIELDS = [
-        'type', 'model_name',
+        'type', 'model_name', 'production_type_id',
         'building_id', 'employee_id', 'provider_id',
         'protocol_id', 'current_protocol_id',
         'buy_price_per_unit',
@@ -47,6 +47,10 @@ class UpdateBatch
         return DB::transaction(function () use ($batch, $data) {
             // ─── Filtrage par liste blanche ───
             $payload = array_intersect_key($data, array_flip(self::ALLOWED_FIELDS));
+
+            if (array_key_exists('model_name', $payload) && ! $payload['model_name']) {
+                $payload['model_name'] = 'Non spécifié';
+            }
 
             // ─── Vérification de capacité si le bâtiment change ───
             if (isset($payload['building_id']) && $payload['building_id'] != $batch->building_id) {

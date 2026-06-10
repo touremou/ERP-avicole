@@ -8,6 +8,7 @@ use App\Models\Employee;
 use App\Models\Protocol;
 use App\Models\Provider;
 use App\Models\ProductionNorm;
+use App\Models\Species;
 use App\Actions\Batch\CreateBatch;
 use App\Actions\Batch\UpdateBatch;
 use App\Actions\Batch\CloseBatch;
@@ -48,11 +49,30 @@ class BatchController extends Controller
         if (Gate::denies('elevage.L')) return redirect()->route('dashboard')->with('error', 'Accès restreint.');
 
         // 1. On exclut les lots virtuels (œufs) en exigeant des animaux vivants à l'initialisation
-        $query = Batch::with(['building', 'provider', 'employee'])
+        $query = Batch::with(['building', 'provider', 'employee', 'species', 'productionType'])
             ->active()
             ->live();
 
         $allowedTypes = ['chair', 'ponte', 'poussiniere', 'reproducteur'];
+
+        // Groupes d'espèces pour le filtre multiespèce
+        $familyGroups = [
+            'volaille'    => ['volaille'],
+            'ruminants'   => ['petit_ruminant', 'grand_ruminant'],
+            'aquaculture' => ['aquaculture'],
+            'autres'      => ['porcin', 'lagomorphe', 'autre'],
+        ];
+
+        $applyFamilyFilter = function ($q, array $families, string $group) {
+            if ($group === 'volaille') {
+                $q->where(function ($sub) use ($families) {
+                    $sub->whereNull('species_id')
+                        ->orWhereHas('species', fn($s) => $s->whereIn('family', $families));
+                });
+            } else {
+                $q->whereHas('species', fn($s) => $s->whereIn('family', $families));
+            }
+        };
 
         // Filtre surmortalité
         $isCriticalView = $request->query('view') === 'critical';
@@ -65,12 +85,31 @@ class BatchController extends Controller
             $query->byType($request->type);
         }
 
+        // Filtre par famille d'espèce
+        $familyFilter = $request->input('family');
+        if ($familyFilter && isset($familyGroups[$familyFilter])) {
+            $applyFamilyFilter($query, $familyGroups[$familyFilter], $familyFilter);
+        }
+
         // 2. On applique la même exclusion pour que les compteurs d'onglets soient justes
        // $baseQuery = Batch::active()->where('initial_quantity', '>', 0);
         $baseQuery = Batch::active()->live();
-        
+
         if ($isCriticalView) {
             $baseQuery->critical(setting('elevage.mortality_alert', 5));
+        }
+
+        // Compteurs des onglets "famille" : indépendants du filtre famille en cours
+        $familyCounts = [];
+        foreach ($familyGroups as $group => $families) {
+            $groupQuery = clone $baseQuery;
+            $applyFamilyFilter($groupQuery, $families, $group);
+            $familyCounts[$group] = $groupQuery->count();
+        }
+
+        // Compteurs des onglets "type" : tiennent compte du filtre famille en cours
+        if ($familyFilter && isset($familyGroups[$familyFilter])) {
+            $applyFamilyFilter($baseQuery, $familyGroups[$familyFilter], $familyFilter);
         }
 
         $counts = [
@@ -84,7 +123,7 @@ class BatchController extends Controller
         $batches = $query->orderBy('arrival_date', 'desc')->paginate((int) setting('general.items_per_page', 20));
         $batches->appends($request->all());
 
-        return view('batches.index', compact('batches', 'counts'));
+        return view('batches.index', compact('batches', 'counts', 'familyCounts', 'familyFilter'));
     }
     /**
      * Archives des lots clôturés.
@@ -119,13 +158,15 @@ class BatchController extends Controller
             abort(403, 'Privilèges insuffisants.');
         }
 
-        $buildings = Building::physical()->orderBy('name')->get();
-        $normModels = ProductionNorm::select('model_name', 'batch_type')->distinct()->get();
-        $protocols = Protocol::all();
-        $employees = Employee::where('status', 'Actif')->orderBy('last_name')->get();
-        $providers = Provider::where('status', 'Actif')->orderBy('name')->get();
+        $buildings   = Building::physical()->orderBy('name')->get();
+        $normModels  = ProductionNorm::select('model_name', 'batch_type')->distinct()->get();
+        $protocols   = Protocol::all();
+        $employees   = Employee::where('status', 'Actif')->orderBy('last_name')->get();
+        $providers   = Provider::where('status', 'Actif')->orderBy('name')->get();
+        $activeSpecies = Species::active()->with('productionTypes:id,species_id,slug,name_fr,cycle_days_default,kpi_primary')
+            ->orderBy('sort_order')->get();
 
-        return view('batches.create', compact('buildings', 'normModels', 'protocols', 'employees', 'providers'));
+        return view('batches.create', compact('buildings', 'normModels', 'protocols', 'employees', 'providers', 'activeSpecies'));
     }
 
     /**
@@ -156,8 +197,9 @@ class BatchController extends Controller
         }
         $batch->load([
             'building', 'protocol.steps', 'healthChecks',
-            'feedPurchases', 'tasks',
+            'feedPurchases', 'tasks', 'species',
             'dailyChecks' => fn($q) => $q->orderBy('check_date', 'asc'),
+            'dailyChecks.extension',
         ]);
 
         $buildings = Building::physical()->orderBy('name')->get();
@@ -180,6 +222,41 @@ class BatchController extends Controller
             'net_margin'       => $batch->net_margin,
         ];
 
+        // GMQ stats (ruminants, porcins, lapins)
+        if ($batch->isGmqTracked()) {
+            $checksWithWeight = $batch->dailyChecks->filter(fn($c) => $c->avg_weight > 0)->values();
+            $gmq = null;
+            if ($checksWithWeight->count() >= 2) {
+                $first = $checksWithWeight->first();
+                $last  = $checksWithWeight->last();
+                $days  = max(1, \Carbon\Carbon::parse($first->check_date)->diffInDays($last->check_date));
+                $gmq   = round((($last->avg_weight - $first->avg_weight) * 1000) / $days);
+            }
+            $totalBorn   = $batch->dailyChecks->sum(fn($c) => $c->extension?->qty_born ?? 0);
+            $totalWeaned = $batch->dailyChecks->sum(fn($c) => $c->extension?->qty_weaned ?? 0);
+            $birthEvents = $batch->dailyChecks->filter(fn($c) => ($c->extension?->qty_born ?? 0) > 0)->count();
+
+            $stats['gmq']             = $gmq;
+            $stats['total_born']      = $totalBorn;
+            $stats['total_weaned']    = $totalWeaned;
+            $stats['birth_events']    = $birthEvents;
+            $stats['avg_litter_size'] = $birthEvents > 0 ? round($totalBorn / $birthEvents, 1) : null;
+            $stats['weaning_rate']    = $totalBorn > 0 ? round(($totalWeaned / $totalBorn) * 100, 1) : null;
+        }
+
+        // Aquaculture stats
+        if ($batch->isAquaculture()) {
+            $lastExt = $batch->dailyChecks->sortByDesc('check_date')
+                ->firstWhere(fn($c) => $c->extension !== null)?->extension;
+            $stats['last_water_temp']    = $lastExt?->water_temp;
+            $stats['last_water_ph']      = $lastExt?->water_ph;
+            $stats['last_water_o2']      = $lastExt?->water_o2_ppm;
+            $stats['last_water_ammonia'] = $lastExt?->water_ammonia_ppm;
+            $stats['water_alerts']       = $lastExt?->getWaterAlerts() ?? [];
+            $stats['last_biomass']       = $lastExt?->biomass_kg;
+            $stats['last_survival_rate'] = $lastExt?->survival_rate;
+        }
+
         return view('batches.show', compact('batch', 'buildings', 'protocols', 'providers', 'stats'));
     }
 
@@ -192,13 +269,17 @@ class BatchController extends Controller
             abort(403, 'Modification interdite.');
         }
 
-        $buildings = Building::physical()->orderBy('name')->get();
-        $employees = Employee::where('status', 'Actif')->get();
-        $providers = Provider::where('status', 'Actif')->get();
-        $protocols = Protocol::all();
-        $normModels = ProductionNorm::select('batch_type', 'model_name')->distinct()->get();
+        $batch->load('species.productionTypes');
 
-        return view('batches.edit', compact('batch', 'buildings', 'providers', 'employees', 'protocols', 'normModels'));
+        $buildings     = Building::physical()->orderBy('name')->get();
+        $employees     = Employee::where('status', 'Actif')->get();
+        $providers     = Provider::where('status', 'Actif')->get();
+        $protocols     = Protocol::all();
+        $normModels    = ProductionNorm::select('batch_type', 'model_name')->distinct()->get();
+        $activeSpecies = Species::active()->with('productionTypes:id,species_id,slug,name_fr,cycle_days_default,kpi_primary')
+            ->orderBy('sort_order')->get();
+
+        return view('batches.edit', compact('batch', 'buildings', 'providers', 'employees', 'protocols', 'normModels', 'activeSpecies'));
     }
 
     /**

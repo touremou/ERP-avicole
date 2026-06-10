@@ -219,6 +219,195 @@
                         <textarea name="observations" rows="2" class="w-full bg-slate-50 rounded-[2rem] p-6 outline-none focus:bg-white border-2 border-transparent focus:border-blue-500 font-black text-slate-600 shadow-inner text-xs uppercase italic" placeholder="OBSERVATIONS OU SYMPTÔMES..."></textarea>
                     </div>
 
+                    {{-- ═══ SECTION CROISSANCE / NAISSANCES (Ruminants, Porcins, Lapins) ═══ --}}
+                    @if($batch->isGmqTracked())
+                    <div class="mt-8 bg-emerald-50 border border-emerald-200 rounded-[2rem] p-6">
+                        <h3 class="text-[10px] font-black uppercase text-emerald-800 tracking-widest mb-6 flex items-center gap-2">
+                            <span class="w-8 h-8 bg-emerald-600 rounded-xl flex items-center justify-center text-white text-sm">{{ $batch->species?->icon ?? '🐑' }}</span>
+                            Suivi Naissances & Croissance
+                        </h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {{-- Naissances --}}
+                            <div>
+                                <label class="block text-[9px] font-black uppercase text-slate-500 tracking-widest mb-2">
+                                    Naissances du jour
+                                </label>
+                                <input type="number" name="ext_qty_born" value="{{ old('ext_qty_born', 0) }}"
+                                    min="0"
+                                    class="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 text-sm font-black text-slate-800 outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100">
+                            </div>
+                            {{-- Sevrages --}}
+                            <div>
+                                <label class="block text-[9px] font-black uppercase text-slate-500 tracking-widest mb-2">
+                                    Sevrages du jour
+                                </label>
+                                <input type="number" name="ext_qty_weaned" value="{{ old('ext_qty_weaned', 0) }}"
+                                    min="0"
+                                    class="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 text-sm font-black text-slate-800 outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100">
+                            </div>
+                            {{-- Lait (chèvres uniquement) --}}
+                            @if($batch->species?->tracks_milk)
+                            <div>
+                                <label class="block text-[9px] font-black uppercase text-slate-500 tracking-widest mb-2">
+                                    Production lait (litres)
+                                </label>
+                                <input type="number" name="ext_milk_liters" value="{{ old('ext_milk_liters') }}"
+                                    min="0" step="0.1"
+                                    class="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 text-sm font-black text-slate-800 outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100">
+                            </div>
+                            <div>
+                                <label class="block text-[9px] font-black uppercase text-slate-500 tracking-widest mb-2">
+                                    Taux Matière Grasse (%)
+                                </label>
+                                <input type="number" name="ext_milk_fat_pct" value="{{ old('ext_milk_fat_pct') }}"
+                                    min="0" max="10" step="0.1"
+                                    class="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 text-sm font-black text-slate-800 outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100">
+                            </div>
+                            @endif
+                        </div>
+                        {{-- GMQ info (calculated display) --}}
+                        @php
+                            $lastCheck = $batch->dailyChecks()->latest('check_date')->first();
+                            $prevWeight = $lastCheck?->avg_weight ?? $batch->avg_weight_start;
+                            $daysSinceLast = $lastCheck ? now()->diffInDays($lastCheck->check_date) : $batch->age;
+                        @endphp
+                        @if($prevWeight && $daysSinceLast > 0)
+                        <div class="mt-4 p-4 bg-white rounded-2xl border border-emerald-100">
+                            <p class="text-[8px] font-black uppercase text-slate-400 tracking-widest mb-1">Dernier poids enregistré</p>
+                            <p class="text-sm font-black text-slate-800">{{ number_format($prevWeight, 3) }} kg
+                                <span class="text-[8px] text-slate-400 font-normal ml-2">il y a {{ $daysSinceLast }} jour(s)</span>
+                            </p>
+                            <p class="text-[8px] text-emerald-600 mt-1 uppercase font-black">
+                                Saisir le poids moyen aujourd'hui dans le champ "Poids moyen" pour calculer le GMQ automatiquement.
+                            </p>
+                        </div>
+                        @endif
+                    </div>
+                    @endif
+
+                    {{-- ═══ SECTION PISCICULTURE ═══ --}}
+                    @if($batch->isAquaculture())
+                    <div class="mt-8 bg-blue-50 border border-blue-200 rounded-[2rem] p-6">
+                        <h3 class="text-[10px] font-black uppercase text-blue-800 tracking-widest mb-6 flex items-center gap-2">
+                            <span class="w-8 h-8 bg-blue-600 rounded-xl flex items-center justify-center text-white text-sm">🐟</span>
+                            Qualité de l'Eau — Pisciculture
+                        </h3>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            {{-- Température --}}
+                            <div>
+                                <label class="block text-[9px] font-black uppercase text-slate-500 tracking-widest mb-2">
+                                    Température eau (°C)
+                                </label>
+                                <input type="number" name="ext_water_temp" value="{{ old('ext_water_temp') }}"
+                                    min="0" max="40" step="0.1"
+                                    class="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 text-sm font-black text-slate-800 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                                    placeholder="ex: 27.5">
+                            </div>
+                            {{-- pH --}}
+                            <div>
+                                <label class="block text-[9px] font-black uppercase text-slate-500 tracking-widest mb-2">
+                                    pH de l'eau
+                                    <span class="text-blue-400 ml-1 font-normal normal-case">(optimal 6.5 – 8.5)</span>
+                                </label>
+                                <input type="number" name="ext_water_ph" value="{{ old('ext_water_ph') }}"
+                                    min="0" max="14" step="0.1"
+                                    class="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 text-sm font-black text-slate-800 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                                    placeholder="ex: 7.2">
+                            </div>
+                            {{-- O₂ dissous --}}
+                            <div>
+                                <label class="block text-[9px] font-black uppercase text-slate-500 tracking-widest mb-2">
+                                    O₂ dissous (ppm)
+                                    <span class="text-blue-400 ml-1 font-normal normal-case">(optimal > 5)</span>
+                                </label>
+                                <input type="number" name="ext_water_o2_ppm" value="{{ old('ext_water_o2_ppm') }}"
+                                    min="0" max="20" step="0.1"
+                                    class="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 text-sm font-black text-slate-800 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                                    placeholder="ex: 6.0">
+                            </div>
+                            {{-- Ammoniaque --}}
+                            <div>
+                                <label class="block text-[9px] font-black uppercase text-slate-500 tracking-widest mb-2">
+                                    Ammoniaque NH₃ (ppm)
+                                    <span class="text-blue-400 ml-1 font-normal normal-case">(seuil critique > 1)</span>
+                                </label>
+                                <input type="number" name="ext_water_ammonia_ppm" value="{{ old('ext_water_ammonia_ppm') }}"
+                                    min="0" max="5" step="0.01"
+                                    class="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 text-sm font-black text-slate-800 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                                    placeholder="ex: 0.2">
+                            </div>
+                            {{-- Biomasse --}}
+                            <div>
+                                <label class="block text-[9px] font-black uppercase text-slate-500 tracking-widest mb-2">
+                                    Biomasse totale (kg)
+                                </label>
+                                <input type="number" name="ext_biomass_kg" value="{{ old('ext_biomass_kg') }}"
+                                    min="0" step="0.1"
+                                    class="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 text-sm font-black text-slate-800 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                                    placeholder="Pesée échantillon">
+                            </div>
+                            {{-- Survie --}}
+                            <div>
+                                <label class="block text-[9px] font-black uppercase text-slate-500 tracking-widest mb-2">
+                                    Taux de survie (%)
+                                </label>
+                                <input type="number" name="ext_survival_rate" value="{{ old('ext_survival_rate') }}"
+                                    min="0" max="100" step="0.1"
+                                    class="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 text-sm font-black text-slate-800 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                                    placeholder="ex: 95.5">
+                            </div>
+                        </div>
+
+                        {{-- Real-time water quality alerts via JS --}}
+                        <div id="water-quality-alerts" class="mt-4 space-y-2 hidden">
+                            <p class="text-[8px] font-black uppercase text-blue-700 tracking-widest mb-2">⚠ Alertes qualité eau détectées</p>
+                            <div id="water-alert-ph" class="hidden bg-amber-50 border border-amber-200 rounded-xl px-4 py-2 text-[9px] font-black text-amber-800">
+                                pH hors plage optimale (6.5 – 8.5)
+                            </div>
+                            <div id="water-alert-o2" class="hidden bg-red-50 border border-red-200 rounded-xl px-4 py-2 text-[9px] font-black text-red-800">
+                                O₂ dissous critique (< 3 ppm) — risque d'asphyxie
+                            </div>
+                            <div id="water-alert-nh3" class="hidden bg-red-50 border border-red-200 rounded-xl px-4 py-2 text-[9px] font-black text-red-800">
+                                Ammoniaque critique (> 1 ppm) — risque d'intoxication
+                            </div>
+                        </div>
+
+                        <script>
+                        (function() {
+                            const phInput  = document.querySelector('[name="ext_water_ph"]');
+                            const o2Input  = document.querySelector('[name="ext_water_o2_ppm"]');
+                            const nh3Input = document.querySelector('[name="ext_water_ammonia_ppm"]');
+                            const alertBox = document.getElementById('water-quality-alerts');
+
+                            function checkWater() {
+                                const ph  = parseFloat(phInput?.value);
+                                const o2  = parseFloat(o2Input?.value);
+                                const nh3 = parseFloat(nh3Input?.value);
+
+                                const alertPh  = document.getElementById('water-alert-ph');
+                                const alertO2  = document.getElementById('water-alert-o2');
+                                const alertNh3 = document.getElementById('water-alert-nh3');
+
+                                let hasAlert = false;
+
+                                if (!isNaN(ph) && (ph < 6.5 || ph > 8.5)) { alertPh.classList.remove('hidden'); hasAlert = true; }
+                                else alertPh.classList.add('hidden');
+
+                                if (!isNaN(o2) && o2 < 3) { alertO2.classList.remove('hidden'); hasAlert = true; }
+                                else alertO2.classList.add('hidden');
+
+                                if (!isNaN(nh3) && nh3 > 1) { alertNh3.classList.remove('hidden'); hasAlert = true; }
+                                else alertNh3.classList.add('hidden');
+
+                                alertBox.classList.toggle('hidden', !hasAlert);
+                            }
+
+                            [phInput, o2Input, nh3Input].forEach(el => el?.addEventListener('input', checkWater));
+                        })();
+                        </script>
+                    </div>
+                    @endif
+
                     <div class="flex flex-col md:flex-row gap-4 pt-6">
                         <a href="{{ $backUrl }}" class="flex-1 bg-white border-2 border-slate-100 text-slate-400 font-black py-6 rounded-[2rem] shadow-sm hover:bg-slate-50 text-center uppercase tracking-widest text-[10px] italic no-underline flex items-center justify-center">
                             <i class="fas fa-times mr-2"></i> Annuler

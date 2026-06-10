@@ -60,7 +60,9 @@ class CreateBatch
                 // Identité
                 'code'        => $data['code'],
                 'type'        => $data['type'],
-                'model_name'  => $data['model_name'],
+                'model_name'  => $data['model_name'] ?: 'Non spécifié',
+                'species_id'         => $data['species_id'] ?? null,
+                'production_type_id' => $data['production_type_id'] ?? null,
 
                 // Relations
                 'building_id'  => $building->id,

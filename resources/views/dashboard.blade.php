@@ -167,6 +167,90 @@
                 </div>
             </div>
 
+            {{-- ALERTE QUALITÉ EAU — visible uniquement si alertes actives --}}
+            @if(($waterAlerts ?? collect())->isNotEmpty())
+            <div class="bg-blue-950 rounded-[2.5rem] p-6 border border-blue-800">
+                <div class="flex items-center justify-between mb-4">
+                    <h4 class="text-[10px] font-black uppercase text-blue-300 tracking-wider flex items-center gap-2">
+                        <i class="fa-solid fa-droplet text-blue-400"></i> Alertes Qualité Eau — Pisciculture
+                    </h4>
+                    <span class="text-[8px] bg-blue-800 text-blue-200 px-2 py-1 rounded-md font-black uppercase">
+                        {{ $waterAlerts->count() }} Bassin(s)
+                    </span>
+                </div>
+                <div class="space-y-3">
+                    @foreach($waterAlerts as $wa)
+                    <a href="{{ route('batches.show', $wa['batch']->id) }}" class="block no-underline">
+                        <div @class(['p-4 rounded-2xl border transition-all hover:scale-[1.01]',
+                            'bg-red-900 border-red-700' => $wa['has_critical'],
+                            'bg-amber-900 border-amber-700' => !$wa['has_critical']])>
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-[10px] font-black text-white uppercase">{{ $wa['batch']->code }}</span>
+                                <span class="text-[8px] text-white/60 uppercase font-black">{{ $wa['batch']->building?->name ?? '—' }}</span>
+                            </div>
+                            <div class="flex flex-wrap gap-2">
+                                @foreach($wa['alerts'] as $alert)
+                                <span @class(['text-[8px] font-black uppercase px-2 py-0.5 rounded-lg',
+                                    'bg-red-700 text-white' => $alert['level'] === 'critical',
+                                    'bg-amber-700 text-white' => $alert['level'] === 'warning'])>
+                                    {{ $alert['metric'] }}: {{ $alert['value'] }}
+                                </span>
+                                @endforeach
+                            </div>
+                        </div>
+                    </a>
+                    @endforeach
+                </div>
+            </div>
+            @endif
+
+            {{-- WIDGET TABASKI — visible uniquement si lots ovins actifs --}}
+            @if($tabaskiWidget ?? false)
+            <div @class([
+                'mb-8 rounded-[2rem] border-2 p-6 flex flex-col md:flex-row items-center justify-between gap-6 shadow-lg transition-all',
+                'bg-gradient-to-r from-emerald-900 to-emerald-800 border-emerald-600 animate-pulse' => $tabaskiWidget['critical'],
+                'bg-gradient-to-r from-amber-900 to-amber-800 border-amber-500' => !$tabaskiWidget['critical'] && $tabaskiWidget['urgent'],
+                'bg-gradient-to-r from-slate-800 to-slate-900 border-slate-600' => !$tabaskiWidget['urgent'],
+            ])>
+                <div class="flex items-center gap-5">
+                    <div @class([
+                        'w-16 h-16 rounded-[1.5rem] flex items-center justify-center text-3xl shadow-2xl',
+                        'bg-emerald-600' => $tabaskiWidget['critical'],
+                        'bg-amber-600' => !$tabaskiWidget['critical'] && $tabaskiWidget['urgent'],
+                        'bg-slate-700' => !$tabaskiWidget['urgent'],
+                    ])>🐑</div>
+                    <div class="text-white">
+                        <p class="text-[8px] font-black uppercase tracking-[0.3em] opacity-60 mb-1">Compte à rebours Tabaski</p>
+                        <p class="text-3xl font-black italic tracking-tighter leading-none">
+                            @if($tabaskiWidget['days'] == 0)
+                                AUJOURD'HUI !
+                            @else
+                                J — {{ $tabaskiWidget['days'] }}
+                            @endif
+                        </p>
+                        <p class="text-[9px] opacity-50 mt-1 uppercase font-black">Eid al-Adha · {{ $tabaskiWidget['date'] }}</p>
+                    </div>
+                </div>
+                <div class="flex gap-6 text-white text-center">
+                    <div>
+                        <p class="text-2xl font-black italic">{{ number_format($tabaskiWidget['head_count']) }}</p>
+                        <p class="text-[7px] font-black uppercase opacity-50 tracking-widest mt-1">Têtes Prêtes</p>
+                    </div>
+                    <div class="w-px bg-white/20"></div>
+                    <div>
+                        <p class="text-2xl font-black italic">{{ $tabaskiWidget['batches'] }}</p>
+                        <p class="text-[7px] font-black uppercase opacity-50 tracking-widest mt-1">Lots Actifs</p>
+                    </div>
+                    <div class="w-px bg-white/20"></div>
+                    <div>
+                        <a href="{{ route('batches.index') }}" class="text-[8px] font-black uppercase text-white/60 hover:text-white no-underline tracking-widest">
+                            Voir les lots <i class="fa-solid fa-arrow-right ml-1"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            @endif
+
             {{-- KPI ROW --}}
             <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-10">
                 <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm">
@@ -261,6 +345,32 @@
 
                 {{-- SIDEBAR --}}
                 <div class="space-y-8">
+                    @if(($familyBreakdown ?? collect())->count() > 1)
+                    <div>
+                        <h3 class="text-[11px] font-black uppercase text-slate-800 tracking-[0.2em] ml-6 mb-5 italic flex items-center">
+                            <span class="w-2 h-6 bg-purple-500 rounded-full mr-3"></span> Cheptel par Famille
+                        </h3>
+                        <div class="bg-white p-8 rounded-[3.5rem] border border-slate-100 shadow-sm space-y-5">
+                            @php $maxHead = $familyBreakdown->max('head_count') ?: 1; @endphp
+                            @foreach($familyBreakdown as $fam)
+                                @php $perc = ($fam['head_count'] / $maxHead) * 100; @endphp
+                                <div class="group">
+                                    <div class="flex justify-between items-center text-[10px] font-black uppercase italic mb-2 tracking-tighter">
+                                        <span class="text-slate-600 flex items-center gap-2">
+                                            <span class="text-base">{{ $fam['icon'] }}</span> {{ $fam['label'] }}
+                                            <span class="text-slate-300 font-bold">({{ $fam['batches'] }} lot{{ $fam['batches'] > 1 ? 's' : '' }})</span>
+                                        </span>
+                                        <span class="text-slate-900">{{ number_format($fam['head_count']) }}</span>
+                                    </div>
+                                    <div class="w-full bg-slate-50 h-2 rounded-full overflow-hidden border border-slate-50 p-0.5">
+                                        <div class="h-full rounded-full transition-all shadow-sm bg-{{ $fam['color'] }}-500" style="width: {{ max($perc, 4) }}%"></div>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                    @endif
+
                     <div>
                         <h3 class="text-[11px] font-black uppercase text-slate-800 tracking-[0.2em] ml-6 mb-5 italic flex items-center">
                             <span class="w-2 h-6 bg-emerald-500 rounded-full mr-3"></span> Densités Bâtiments

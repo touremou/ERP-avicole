@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Carbon\Carbon;
 use App\Models\Batch;
 use App\Models\Stock;
+use App\Models\Species;
 use App\Models\Building;
 use App\Models\DailyCheck;
 use App\Models\HealthCheck;
@@ -23,7 +24,8 @@ class DashboardController extends Controller
         // 1. EFFECTIFS & MORTALITÉ GLOBALE
         // ---------------------------------------------------------
         $allActiveBatches = Batch::where('status', 'Actif')
-            ->where('initial_quantity', '>', 0) 
+            ->where('initial_quantity', '>', 0)
+            ->with('species')
             ->get();
             
         $totalBirds = $allActiveBatches->sum('current_quantity');
@@ -148,11 +150,117 @@ class DashboardController extends Controller
             ->where('initial_quantity', '>', 0) // 💡 CORRECTION
             ->paginate((int) setting('general.items_per_page', 20));
 
+        // ---------------------------------------------------------
+        // 7. WIDGET TABASKI (Eid al-Adha countdown)
+        // ---------------------------------------------------------
+        $tabaskiWidget = null;
+        $hasOvineBatches = Batch::where('status', 'Actif')
+            ->whereHas('species', function($q) {
+                $q->where('family', 'petit_ruminant');
+            })->exists();
+
+        if ($hasOvineBatches) {
+            // Dates approchées Eid al-Adha (10 Dhu al-Hijja) pour les prochaines années
+            $eidDates = [
+                '2026-06-16',
+                '2027-06-06',
+                '2028-05-26',
+                '2029-05-15',
+                '2030-05-05',
+            ];
+            $today = now()->startOfDay();
+            $nextEid = null;
+            foreach ($eidDates as $date) {
+                $eid = Carbon::parse($date)->startOfDay();
+                if ($eid->gte($today)) {
+                    $nextEid = $eid;
+                    break;
+                }
+            }
+            if ($nextEid) {
+                $daysUntilEid = (int) $today->diffInDays($nextEid, false);
+                $ovineBatchCount = Batch::where('status', 'Actif')
+                    ->whereHas('species', function($q) { $q->where('family', 'petit_ruminant'); })
+                    ->count();
+                $ovineHeadCount = Batch::where('status', 'Actif')
+                    ->whereHas('species', function($q) { $q->where('family', 'petit_ruminant'); })
+                    ->sum('current_quantity');
+                $tabaskiWidget = [
+                    'days'        => $daysUntilEid,
+                    'date'        => $nextEid->translatedFormat('d F Y'),
+                    'batches'     => $ovineBatchCount,
+                    'head_count'  => $ovineHeadCount,
+                    'urgent'      => $daysUntilEid <= 30,
+                    'critical'    => $daysUntilEid <= 7,
+                ];
+            }
+        }
+
+        // ---------------------------------------------------------
+        // 8. ALERTES QUALITÉ EAU (Pisciculture)
+        // ---------------------------------------------------------
+        $waterAlerts = collect();
+        $aquaBatches = Batch::where('status', 'Actif')
+            ->whereHas('species', function($q) {
+                $q->where('family', 'aquaculture');
+            })->with(['species', 'building'])->get();
+
+        foreach ($aquaBatches as $aquaBatch) {
+            $lastExt = \App\Models\DailyCheck::where('batch_id', $aquaBatch->id)
+                ->whereHas('extension', function($q) {
+                    $q->whereNotNull('water_ph')->orWhereNotNull('water_o2_ppm');
+                })
+                ->with('extension')
+                ->latest('check_date')
+                ->first()?->extension;
+
+            if ($lastExt) {
+                $alerts = $lastExt->getWaterAlerts();
+                if (!empty($alerts)) {
+                    $waterAlerts->push([
+                        'batch'   => $aquaBatch,
+                        'alerts'  => $alerts,
+                        'has_critical' => collect($alerts)->contains('level', 'critical'),
+                    ]);
+                }
+            }
+        }
+
+        // ---------------------------------------------------------
+        // 9. RÉPARTITION DES EFFECTIFS PAR FAMILLE D'ESPÈCE
+        // ---------------------------------------------------------
+        $familyMeta = [
+            'volaille'        => ['label' => 'Volaille',         'icon' => '🐔', 'color' => 'amber'],
+            'petit_ruminant'  => ['label' => 'Ovins / Caprins',  'icon' => '🐑', 'color' => 'cyan'],
+            'grand_ruminant'  => ['label' => 'Bovins',           'icon' => '🐄', 'color' => 'indigo'],
+            'aquaculture'     => ['label' => 'Pisciculture',     'icon' => '🐟', 'color' => 'blue'],
+            'porcin'          => ['label' => 'Porcins',          'icon' => '🐷', 'color' => 'rose'],
+            'lagomorphe'      => ['label' => 'Lapins',           'icon' => '🐰', 'color' => 'purple'],
+            'autre'           => ['label' => 'Autres',           'icon' => '🐾', 'color' => 'slate'],
+        ];
+
+        $familyBreakdown = $allActiveBatches
+            ->groupBy(fn ($b) => $b->species?->family ?? 'volaille')
+            ->map(function ($batches, $family) use ($familyMeta) {
+                $meta = $familyMeta[$family] ?? ['label' => ucfirst($family), 'icon' => '🐾', 'color' => 'slate'];
+                return [
+                    'family'     => $family,
+                    'label'      => $meta['label'],
+                    'icon'       => $meta['icon'],
+                    'color'      => $meta['color'],
+                    'batches'    => $batches->count(),
+                    'head_count' => $batches->sum('current_quantity'),
+                ];
+            })
+            ->sortByDesc('head_count')
+            ->values();
+
         return view('dashboard', compact(
-            'totalBirds', 'globalMortalityRate', 'hdp', 
+            'totalBirds', 'globalMortalityRate', 'hdp',
             'totalEggsStock', 'totalBrokenToday', 'rawMaterialsValue', 'safeProfit',
             'criticalTypes', 'emergencyBatches', 'underperformingBatches', 'sanitaryAlertsCount',
-            'activeBatches', 'buildings', 'totalEggsToday'
+            'activeBatches', 'buildings', 'totalEggsToday', 'tabaskiWidget', 'waterAlerts',
+            'familyBreakdown'
         ));
     }
 }

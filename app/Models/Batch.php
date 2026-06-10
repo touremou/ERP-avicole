@@ -162,6 +162,16 @@ class Batch extends Model
         return $this->hasMany(BatchTask::class);
     }
 
+    public function species(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(\App\Models\Species::class);
+    }
+
+    public function productionType(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(\App\Models\ProductionType::class);
+    }
+
     // ═══════════════════════════════════════════════
     // HOOKS DE CYCLE DE VIE
     // ═══════════════════════════════════════════════
@@ -175,7 +185,7 @@ class Batch extends Model
         });
 
         static::updating(function (Batch $batch) {
-            if ($batch->isDirty(['type', 'arrival_date'])) {
+            if ($batch->isDirty(['type', 'arrival_date', 'production_type_id'])) {
                 $batch->calculateExpectedEndDate();
             }
         });
@@ -185,9 +195,8 @@ class Batch extends Model
     }
 
     /**
-     * Calcule la date de fin prévisionnelle selon le type de production.
-     *
-     * TODO (S-14) : remplacer les durées hardcodées par production_norms.
+     * Calcule la date de fin prévisionnelle.
+     * Priorité : production_type.cycle_days_default → type legacy → settings → 45j.
      */
     public function calculateExpectedEndDate(): void
     {
@@ -195,15 +204,52 @@ class Batch extends Model
             return;
         }
 
-        $days = match (strtolower($this->type ?? 'chair')) {
-            'chair' => 45,
-            'ponte' => 540,
-            'poussiniere' => 140,
-            'repro', 'reproducteur' => 450,
-            default => 45,
-        };
+        // 1. Depuis le type de production (table production_types) — source de vérité multiespèces
+        if ($this->production_type_id && $this->relationLoaded('productionType') && $this->productionType) {
+            $days = $this->productionType->cycle_days_default;
+        } else {
+            // 2. Depuis les settings (rétrocompat poulet + nouvelles espèces via settings)
+            $days = match (strtolower($this->type ?? 'chair')) {
+                'chair'                    => (int) setting('elevage.cycle_chair', 45),
+                'ponte'                    => (int) setting('elevage.cycle_ponte', 540),
+                'poussiniere'              => (int) setting('elevage.cycle_poussiniere', 90),
+                'repro', 'reproducteur'    => (int) setting('elevage.cycle_reproducteur', 450),
+                'engraissement'            => (int) setting('elevage.cycle_ovin_engraissement', 90),
+                default                    => 45,
+            };
+        }
 
         $this->expected_end_date = Carbon::parse($this->arrival_date)->addDays($days);
+    }
+
+    /** Retourne le label de l'espèce (avec fallback sur type legacy pour le poulet) */
+    public function getSpeciesLabelAttribute(): string
+    {
+        return $this->species?->name_fr ?? ucfirst($this->type ?? 'Inconnu');
+    }
+
+    /** Indique si le lot suit des ruminants */
+    public function isRuminant(): bool
+    {
+        return $this->species?->isRuminant() ?? false;
+    }
+
+    /** Indique si le lot est piscicole */
+    public function isAquaculture(): bool
+    {
+        return $this->species?->isAquaculture() ?? false;
+    }
+
+    /** Indique si le lot est avicole (poulet ou autre volaille) */
+    public function isVolaille(): bool
+    {
+        return $this->species === null || $this->species->isVolaille();
+    }
+
+    /** Indique si le lot est suivi via le GMQ (ruminants, porcins, lapins) */
+    public function isGmqTracked(): bool
+    {
+        return $this->species?->isGmqTracked() ?? false;
     }
 
     // ═══════════════════════════════════════════════

@@ -175,10 +175,11 @@
                         <a href="{{ route('utilities.fuel.index') }}" class="{{ $linkClass }} {{ request()->routeIs('utilities.fuel.*') ? $activeClass : $inactiveClass }}">Gasoil</a>
                         @endcan
 
-                    @elseif(request()->routeIs(['users.*', 'farms.*', 'trash.*', 'settings.*']))
+                    @elseif(request()->routeIs(['users.*', 'farms.*', 'trash.*', 'settings.*', 'admin.species.*']))
                         <span class="text-[9px] font-black text-slate-800 uppercase tracking-widest mr-1"><i class="fa-solid fa-shield-halved text-purple-500 mr-1"></i> Admin</span>
                         @can('admin.S')
                         <a href="{{ route('users.index') }}" class="{{ $linkClass }} {{ request()->routeIs('users.*') ? $activeClass : $inactiveClass }}">Accès</a>
+                        <a href="{{ route('admin.species.index') }}" class="{{ $linkClass }} {{ request()->routeIs('admin.species.*') ? $activeClass : $inactiveClass }}">Espèces</a>
                         <a href="{{ route('settings.index') }}" class="{{ $linkClass }} {{ request()->routeIs('settings.*') ? $activeClass : $inactiveClass }}">Paramètres</a>
                         <a href="{{ route('farms.index') }}" class="{{ $linkClass }} {{ request()->routeIs('farms.*') ? $activeClass : $inactiveClass }}">Sites</a>
                         @endcan
@@ -242,6 +243,7 @@
                         @can('admin.S')
                         <div class="border-t border-slate-100 my-1.5"></div>
                         <a href="{{ route('farms.index') }}" class="block rounded-lg p-2 text-[9px] font-black uppercase italic tracking-widest hover:bg-violet-50 text-slate-500 no-underline"><i class="fa-solid fa-city text-violet-500 w-4 text-center mr-1"></i> Multi-Sites</a>
+                        <a href="{{ route('admin.species.index') }}" class="block rounded-lg p-2 text-[9px] font-black uppercase italic tracking-widest hover:bg-teal-50 text-slate-500 no-underline"><i class="fa-solid fa-paw text-teal-500 w-4 text-center mr-1"></i> Espèces</a>
                         <a href="{{ route('settings.index') }}" class="block rounded-lg p-2 text-[9px] font-black uppercase italic tracking-widest hover:bg-amber-50 text-slate-500 no-underline"><i class="fa-solid fa-sliders text-amber-500 w-4 text-center mr-1"></i> Paramètres</a>
                         <a href="{{ route('users.index') }}" class="block rounded-lg p-2 text-[9px] font-black uppercase italic tracking-widest hover:bg-purple-50 text-slate-500 no-underline"><i class="fa-solid fa-shield-halved text-purple-500 w-4 text-center mr-1"></i> Administration</a>
                         <a href="{{ route('trash.index') }}" class="block rounded-lg p-2 text-[9px] font-black uppercase italic tracking-widest hover:bg-red-50 text-slate-500 no-underline"><i class="fa-solid fa-trash text-red-400 w-4 text-center mr-1"></i> Corbeille</a>

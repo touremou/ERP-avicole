@@ -38,7 +38,7 @@ use App\Http\Controllers\{
     ChickDispatchController,
     SettingsController,
     PayrollController,
-    TaskController, setupController
+    TaskController
 };
 
 Route::redirect('/', '/login');
@@ -270,6 +270,10 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/technical', 'technicalPerformance')->name('technical');
         Route::get('/health-finance', 'healthFinancialReport')->name('health_finance');
         Route::get('/monthly', 'monthlyExpenses')->name('monthly');
+        Route::get('/gmq', 'gmqReport')->name('gmq');
+        Route::get('/gmq/pdf', 'gmqReportPdf')->name('gmq.pdf');
+        Route::get('/aquaculture', 'aquacultureReport')->name('aquaculture');
+        Route::get('/aquaculture/pdf', 'aquacultureReportPdf')->name('aquaculture.pdf');
     });
 
     // ──────────────────────────────────────────────
@@ -438,7 +442,14 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/norms', [ProductionNormController::class, 'index'])->name('norms.index');
             Route::post('/norms/import', [ProductionNormController::class, 'import'])->name('norms.import');
             Route::post('/norms', [ProductionNormController::class, 'store'])->name('norms.store');
+
+            // Gestion des espèces (multiespèces)
+            Route::get('/species', [SpeciesController::class, 'index'])->name('species.index');
+            Route::patch('/species/{species}/toggle', [SpeciesController::class, 'toggle'])->name('species.toggle');
         });
+
+        // API espèces — endpoint JSON pour sélecteur dynamique
+        Route::get('/api/species/{species}/production-types', [SpeciesController::class, 'productionTypesForSpecies'])->name('api.species.production-types');
     });
 
     // ─── PLANNING TÂCHES OPÉRATIONNELLES ───

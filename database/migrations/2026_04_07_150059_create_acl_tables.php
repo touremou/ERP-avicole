@@ -11,6 +11,10 @@ return new class extends Migration
      */
    public function up()
 {
+    if (Schema::hasTable('roles')) {
+        return; // Superseded by a later ACL migration
+    }
+
     // 1. Table des Rôles (ex: Admin, Chef de production, Magasinier)
     Schema::create('roles', function (Blueprint $table) {
         $table->id();

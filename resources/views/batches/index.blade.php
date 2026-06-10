@@ -41,9 +41,39 @@
     <div class="py-12 italic" >
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
 
-            {{-- FILTRES DE TYPE (Toujours visibles pour la lecture) --}}
+            {{-- FILTRES PAR FAMILLE D'ESPÈCE --}}
+            <div class="flex flex-wrap items-center gap-3 mb-4">
+                <a href="{{ route('batches.index') }}"
+                   @class([
+                       'px-6 py-3 rounded-2xl text-[10px] font-black uppercase italic tracking-widest transition-all shadow-sm border',
+                       'bg-slate-900 text-white border-slate-900' => !$familyFilter,
+                       'bg-white text-slate-400 border-slate-100 hover:bg-slate-50' => $familyFilter,
+                   ])>
+                    <i class="fa-solid fa-globe mr-2"></i> Toutes espèces
+                </a>
+                @foreach([
+                    'volaille'    => ['label' => 'Volaille',          'icon' => '🐔', 'color' => 'amber'],
+                    'ruminants'   => ['label' => 'Ovins / Caprins',   'icon' => '🐑', 'color' => 'sky'],
+                    'aquaculture' => ['label' => 'Pisciculture',      'icon' => '🐟', 'color' => 'blue'],
+                    'autres'      => ['label' => 'Porcins / Lapins',  'icon' => '🐷', 'color' => 'rose'],
+                ] as $group => $meta)
+                    @if(($familyCounts[$group] ?? 0) > 0 || $familyFilter === $group)
+                    <a href="{{ route('batches.index', ['family' => $group]) }}"
+                       @class([
+                           "px-6 py-3 rounded-2xl text-[10px] font-black uppercase italic tracking-widest transition-all shadow-sm border",
+                           "bg-{$meta['color']}-500 text-white border-{$meta['color']}-500" => $familyFilter === $group,
+                           "bg-white text-{$meta['color']}-600 border-{$meta['color']}-100 hover:bg-{$meta['color']}-50" => $familyFilter !== $group,
+                       ])>
+                        <span class="mr-1">{{ $meta['icon'] }}</span> {{ $meta['label'] }} ({{ $familyCounts[$group] ?? 0 }})
+                    </a>
+                    @endif
+                @endforeach
+            </div>
+
+            {{-- FILTRES DE TYPE (Volaille uniquement) --}}
+            @if(!$familyFilter || $familyFilter === 'volaille')
             <div class="flex flex-wrap items-center gap-3 mb-8" id="batchContainer">
-                <a href="{{ route('batches.index') }}" 
+                <a href="{{ route('batches.index', ['family' => $familyFilter]) }}"
                    @class([
                        'px-6 py-3 rounded-2xl text-[10px] font-black uppercase italic tracking-widest transition-all shadow-sm border',
                        'bg-slate-900 text-white border-slate-900' => !request('type'),
@@ -52,17 +82,18 @@
                     <i class="fa-solid fa-layer-group mr-2"></i> Tous ({{ $counts['all'] ?? 0 }})
                 </a>
                 @foreach(['chair' => 'orange', 'ponte' => 'blue', 'reproducteur' => 'emerald', 'poussiniere' => 'purple'] as $type => $color)
-                    <a href="{{ route('batches.index', ['type' => $type]) }}" 
+                    <a href="{{ route('batches.index', ['type' => $type, 'family' => $familyFilter]) }}"
                        @class([
                            "px-6 py-3 rounded-2xl text-[10px] font-black uppercase italic tracking-widest transition-all shadow-sm border",
                            "bg-{$color}-500 text-white border-{$color}-500 shadow-{$color}-200" => request('type') == $type,
                            "bg-white text-{$color}-600 border-{$color}-100 hover:bg-{$color}-50" => request('type') != $type
                        ])>
-                        <i class="fa-solid {{ $type == 'chair' ? 'fa-drumstick-bite' : ($type == 'ponte' ? 'fa-egg' : ($type == 'reproducteur' ? 'fa-dna' : 'fa-baby-carriage')) }} mr-2"></i> 
+                        <i class="fa-solid {{ $type == 'chair' ? 'fa-drumstick-bite' : ($type == 'ponte' ? 'fa-egg' : ($type == 'reproducteur' ? 'fa-dna' : 'fa-baby-carriage')) }} mr-2"></i>
                         {{ ucfirst($type) }} ({{ $counts[$type] ?? 0 }})
                     </a>
                 @endforeach
             </div>
+            @endif
 
             <div class="bg-white rounded-[3rem] shadow-sm border border-slate-100 overflow-hidden font-bold text-left">
                 <table class="w-full text-left border-collapse">
@@ -82,7 +113,7 @@
                         @php
                             $arrival = \Carbon\Carbon::parse($batch->arrival_date)->startOfDay();
                             $days = (int) $arrival->diffInDays(now()->startOfDay());
-                            $maxDays = match($batch->type) {
+                            $maxDays = $batch->productionType?->cycle_days_default ?? match($batch->type) {
                                 'chair' => 45, 'ponte' => 540, 'poussiniere' => 140, 'reproducteur' => 450, default => 45,
                             };
                             $percent = min(round(($days / $maxDays) * 100), 100);
@@ -93,11 +124,15 @@
                             <td class="px-8 py-6">
                                 <div class="flex items-start">
                                     <div @class([
-                                        'w-10 h-10 rounded-xl flex items-center justify-center mr-4 shadow-inner mt-1',
+                                        'w-10 h-10 rounded-xl flex items-center justify-center mr-4 shadow-inner mt-1 text-base',
                                         'bg-blue-50 text-blue-600 font-black' => $batch->status == 'Actif',
                                         'bg-slate-100 text-slate-400' => $batch->status != 'Actif',
                                     ])>
-                                        <i class="fas fa-dove"></i>
+                                        @if($batch->species?->icon)
+                                            {{ $batch->species->icon }}
+                                        @else
+                                            <i class="fas fa-dove"></i>
+                                        @endif
                                     </div>
                                     <div>
                                         <p class="font-black text-slate-800 uppercase tracking-tighter leading-none mb-1 text-sm">{{ $batch->code }}</p>
@@ -108,7 +143,8 @@
                                                 'bg-blue-50 text-blue-600 border-blue-100' => $batch->type == 'ponte',
                                                 'bg-emerald-50 text-emerald-600 border-emerald-100' => $batch->type == 'reproducteur',
                                                 'bg-purple-50 text-purple-600 border-purple-100' => $batch->type == 'poussiniere',
-                                            ])>{{ $batch->type }}</span>
+                                                'bg-slate-50 text-slate-500 border-slate-100' => !in_array($batch->type, ['chair','ponte','reproducteur','poussiniere']),
+                                            ])>{{ $batch->productionType?->name_fr ?? $batch->type }}</span>
                                             <span class="text-[7px] font-black px-2 py-0.5 rounded uppercase italic border bg-slate-800 text-white border-slate-800">
                                                 <i class="fas fa-fingerprint mr-1 text-[6px]"></i> {{ $batch->model_name ?? 'Standard' }}
                                             </span>

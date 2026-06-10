@@ -36,17 +36,54 @@
                         <div class="bg-white p-10 rounded-[3rem] shadow-sm border border-slate-100 relative overflow-hidden text-left">
                             <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-8 italic leading-none">01. Identification & Vocation</h3>
                             
+                            {{-- ════ ESPÈCE + TYPE DE PRODUCTION (multiespèces) ════ --}}
+                            @php $multiSpecies = $activeSpecies->count() > 1; @endphp
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-8 text-left">
+
+                                {{-- ESPÈCE --}}
+                                @if($multiSpecies)
                                 <div>
-                                    <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-1 italic leading-none">Type d'élevage</label>
-                                    <select name="type" id="breeding_type" onchange="runFilters()" required 
+                                    <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-1 italic leading-none">Espèce</label>
+                                    <select name="species_id" id="species_selector" onchange="loadProductionTypes(this.value)"
+                                            class="w-full p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-blue-500 outline-none font-black text-slate-700 shadow-inner appearance-none italic">
+                                        <option value="">-- Espèce --</option>
+                                        @foreach($activeSpecies as $sp)
+                                        <option value="{{ $sp->id }}" data-slug="{{ $sp->slug }}"
+                                            {{ old('species_id') == $sp->id ? 'selected' : '' }}>
+                                            {{ $sp->icon }} {{ $sp->name_fr }}
+                                        </option>
+                                        @endforeach
+                                    </select>
+                                    <input type="hidden" name="species_slug" id="species_slug_hidden">
+                                </div>
+                                @else
+                                {{-- Ferme mono-espèce : on pré-sélectionne sans afficher --}}
+                                <input type="hidden" name="species_id" value="{{ $activeSpecies->first()?->id }}">
+                                <input type="hidden" id="species_slug_fixed" value="{{ $activeSpecies->first()?->slug }}">
+                                @endif
+
+                                {{-- TYPE DE PRODUCTION --}}
+                                <div>
+                                    <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-1 italic leading-none">Type de production</label>
+                                    <select name="type" id="breeding_type" onchange="runFilters()" required
                                             class="w-full p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-blue-500 outline-none font-black text-blue-600 shadow-inner appearance-none italic">
                                         <option value="">-- Sélectionner --</option>
+                                        @if(! $multiSpecies)
+                                        {{-- Mono-espèce : afficher les types de la première espèce directement --}}
+                                        @foreach($activeSpecies->first()?->productionTypes ?? [] as $pt)
+                                        <option value="{{ $pt->slug }}" data-pt-id="{{ $pt->id }}" {{ old('type') == $pt->slug ? 'selected' : '' }}>
+                                            {{ $pt->name_fr }}
+                                        </option>
+                                        @endforeach
+                                        @else
+                                        {{-- Multi-espèces : options chargées dynamiquement via JS --}}
                                         <option value="chair" {{ old('type') == 'chair' ? 'selected' : '' }}>🍗 Poulet de chair</option>
                                         <option value="ponte" {{ old('type') == 'ponte' ? 'selected' : '' }}>🥚 Pondeuses</option>
                                         <option value="poussiniere" {{ old('type') == 'poussiniere' ? 'selected' : '' }}>🐣 Poussinière</option>
                                         <option value="reproducteur" {{ old('type') == 'reproducteur' ? 'selected' : '' }}>🧬 Reproducteurs</option>
+                                        @endif
                                     </select>
+                                    <input type="hidden" name="production_type_id" id="production_type_id_hidden" value="{{ old('production_type_id') }}">
                                 </div>
 
                                 <div>
@@ -252,7 +289,54 @@
 <script>
     function el(id) { return document.getElementById(id); }
 
+    // Bâtiments compatibles par espèce (en plus de 'mixte', toujours autorisé)
+    const SPECIES_BUILDING_TYPES = {
+        poulet:  ['chair', 'ponte', 'poussiniere', 'reproducteur'],
+        dinde:   ['chair', 'reproducteur'],
+        pintade: ['chair', 'ponte'],
+        caille:  ['chair', 'ponte'],
+        canard:  ['chair'],
+        pigeon:  ['chair'],
+        mouton:  ['bergerie'],
+        chevre:  ['chevrerie'],
+        lapin:   ['lapiniere'],
+        porc:    ['porcherie'],
+        tilapia: ['bassin'],
+        carpe:   ['bassin'],
+        silure:  ['bassin'],
+    };
+
+    // Espèce actuellement sélectionnée (multispecies) ou fixée (mono-espèce)
+    function getCurrentSpeciesSlug() {
+        const speciesSelect = el('species_selector');
+        if (speciesSelect) {
+            return speciesSelect.options[speciesSelect.selectedIndex]?.dataset.slug || '';
+        }
+        return el('species_slug_fixed')?.value || '';
+    }
+
+    // Un bâtiment est compatible s'il est 'mixte', ou si son type figure dans
+    // la liste des bâtiments adaptés à l'espèce sélectionnée. À défaut
+    // d'espèce connue, on retombe sur la correspondance directe type ↔ type.
+    function isBuildingCompatible(bType, selectedType) {
+        if (bType === 'mixte') return true;
+        const speciesSlug = getCurrentSpeciesSlug();
+        const allowed = SPECIES_BUILDING_TYPES[speciesSlug];
+        if (allowed) return allowed.includes(bType);
+        return selectedType === '' || bType === selectedType;
+    }
+
+    // Met à jour le production_type_id caché selon l'option sélectionnée
+    function syncProductionTypeId() {
+        const typeSelect = el('breeding_type');
+        const hidden = el('production_type_id_hidden');
+        if (!typeSelect || !hidden) return;
+        const opt = typeSelect.options[typeSelect.selectedIndex];
+        hidden.value = opt?.dataset.ptId || '';
+    }
+
     function runFilters() {
+        syncProductionTypeId();
         const selectedType = el('breeding_type').value || "";
         const bSelect = el('building_id');
         const modelSelector = el('model_selector');
@@ -275,7 +359,7 @@
             bSelect.querySelectorAll('.building-opt').forEach(opt => {
                 const bType = opt.dataset.type;
                 const remaining = parseFloat(opt.dataset.remaining) || 0;
-                const isMatch = (selectedType === "" || bType === selectedType || bType === 'mixte');
+                const isMatch = isBuildingCompatible(bType, selectedType);
                 opt.disabled = !isMatch || remaining <= 0;
                 opt.style.display = isMatch ? 'block' : 'none';
             });
@@ -348,7 +432,7 @@
         // --- VALIDATION ---
         let errorMsg = "";
         if (bSelect.value) {
-            if (selectedType && bType !== selectedType && bType !== 'mixte') errorMsg = "BÂTIMENT INCOMPATIBLE";
+            if (selectedType && !isBuildingCompatible(bType, selectedType)) errorMsg = "BÂTIMENT INCOMPATIBLE";
             else if (qtyAlive > remainingQty) errorMsg = `PLACE INSUFFISANTE (MAX: ${remainingQty})`;
             else if (manualSurface > bSurfaceRestante) errorMsg = `SURFACE INDISPONIBLE (MAX: ${bSurfaceRestante.toFixed(1)} m²)`;
         } else if (!selectedType) {
@@ -475,6 +559,51 @@
                 console.error("Erreur de stockage local :", err);
                 alert("Erreur critique lors de la sauvegarde locale.");
             }
+        }
+    });
+    // ── Chargement dynamique des types de production selon l'espèce ──
+    async function loadProductionTypes(speciesId) {
+        const typeSelect = document.getElementById('breeding_type');
+        const slugHidden = document.getElementById('species_slug_hidden');
+        const speciesSelect = document.getElementById('species_selector');
+
+        if (slugHidden && speciesSelect) {
+            const selectedOpt = speciesSelect.options[speciesSelect.selectedIndex];
+            slugHidden.value = selectedOpt ? (selectedOpt.dataset.slug || '') : '';
+        }
+
+        if (!speciesId) {
+            typeSelect.innerHTML = '<option value="">-- Sélectionner --</option>';
+            return;
+        }
+
+        try {
+            const resp = await fetch(`/api/species/${speciesId}/production-types`);
+            const types = await resp.json();
+            typeSelect.innerHTML = '<option value="">-- Type de production --</option>';
+            types.forEach(t => {
+                const opt = document.createElement('option');
+                opt.value = t.slug;
+                opt.textContent = t.name_fr;
+                opt.dataset.cycleDays = t.cycle_days_default;
+                opt.dataset.ptId = t.id;
+                if ('{{ old('type') }}' === t.slug) opt.selected = true;
+                typeSelect.appendChild(opt);
+            });
+            syncProductionTypeId();
+            runFilters();
+        } catch (e) {
+            console.error('Erreur chargement types:', e);
+        }
+    }
+
+    // Auto-charger si espèce déjà sélectionnée (retour form avec erreurs)
+    document.addEventListener('DOMContentLoaded', () => {
+        const speciesSel = document.getElementById('species_selector');
+        if (speciesSel && speciesSel.value) {
+            loadProductionTypes(speciesSel.value);
+        } else {
+            syncProductionTypeId();
         }
     });
     </script>

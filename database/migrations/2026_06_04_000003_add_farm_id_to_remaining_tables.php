@@ -50,10 +50,17 @@ return new class extends Migration
             return;
         }
 
-        // Récupérer toutes les tables de la base
-        $allTables = collect(DB::select('SHOW TABLES'))
-            ->map(fn($row) => array_values((array) $row)[0])
-            ->toArray();
+        // Récupérer toutes les tables de la base (cross-DB: MySQL and SQLite)
+        $driver = Schema::getConnection()->getDriverName();
+        if ($driver === 'sqlite') {
+            $allTables = collect(DB::select("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"))
+                ->map(fn($row) => $row->name)
+                ->toArray();
+        } else {
+            $allTables = collect(DB::select('SHOW TABLES'))
+                ->map(fn($row) => array_values((array) $row)[0])
+                ->toArray();
+        }
 
         $added = [];
 

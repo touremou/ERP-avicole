@@ -18,10 +18,11 @@ class Incubation extends Model
         
         'uuid',
         'farm_id',
-        'batch_id', 
-        'incubator_id', 
-        'code_incubation', 
-        'start_date', 
+        'batch_id',
+        'incubator_id',
+        'code_incubation',
+        'start_date',
+        'incubation_duration',
         'hatch_date_expected',
         'eggs_count', 
         'fertile_eggs', 
@@ -31,8 +32,9 @@ class Incubation extends Model
     ];
 
     protected $casts = [
-        'start_date'          => 'date', 
+        'start_date'          => 'date',
         'hatch_date_expected' => 'date',
+        'incubation_duration' => 'integer',
         'eggs_count'          => 'integer',
         'fertile_eggs'        => 'integer',
         'hatched_chicks'      => 'integer',

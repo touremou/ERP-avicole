@@ -11,11 +11,15 @@ return new class extends Migration
      */
    public function up(): void
 {
+    if (Schema::hasTable('settings')) {
+        return; // Superseded by 2026_06_05_000001_create_settings_table.php
+    }
+
     Schema::create('settings', function (Blueprint $table) {
         $table->id();
-        $table->string('key')->unique(); // Nom du paramètre (ex: 'currency')
-        $table->text('value');           // Valeur (ex: 'FCFA')
-        $table->string('group');         // Pour classer (ex: 'finance', 'technique')
+        $table->string('key')->unique();
+        $table->text('value');
+        $table->string('group');
         $table->timestamps();
     });
 }

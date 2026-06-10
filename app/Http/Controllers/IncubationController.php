@@ -38,8 +38,23 @@ class IncubationController extends Controller
             default    => $query->orderBy('hatch_date_expected')->get(),
         };
 
-        $activeBatches = Batch::whereIn('type', ['reproducteur', 'ponte'])
-            ->where('status', 'Actif')->orderBy('code')->get();
+        $activeBatches = Batch::where('status', 'Actif')
+            ->where(function ($q) {
+                $q->whereIn('type', ['reproducteur', 'ponte', 'pondeuse'])
+                  ->orWhereHas('productionType', fn ($pt) => $pt->whereIn('slug', ['reproducteur', 'ponte']));
+            })
+            ->with('species')
+            ->orderBy('code')->get();
+
+        // Durées d'incubation par espèce (en jours), pour pré-remplissage du formulaire
+        $incubationDurations = [
+            'poulet'  => 21,
+            'pintade' => 28,
+            'dinde'   => 28,
+            'canard'  => 28,
+            'caille'  => 17,
+            'pigeon'  => 18,
+        ];
 
         // KPI 30 jours
         $statsData = Incubation::where('updated_at', '>=', now()->subDays(30))
@@ -76,7 +91,7 @@ class IncubationController extends Controller
             'historique'          => $historique,
         ];
 
-        return view('repro.index', compact('incubations', 'activeBatches', 'stats', 'incubators', 'sort', 'machineStats', 'providers'));
+        return view('repro.index', compact('incubations', 'activeBatches', 'stats', 'incubators', 'sort', 'machineStats', 'providers', 'incubationDurations'));
     }
 
     public function store(StartIncubationRequest $request, StartIncubation $action)

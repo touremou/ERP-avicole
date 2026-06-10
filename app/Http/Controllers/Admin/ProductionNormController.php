@@ -4,22 +4,45 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\ProductionNorm;
+use App\Models\ProductionType;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class ProductionNormController extends Controller
 {
     /**
+     * Métadonnées d'affichage (icône, couleur, libellé) par type de production.
+     */
+    public const TYPE_META = [
+        'chair'         => ['label' => 'Chair',         'icon' => '🍗', 'color' => 'orange'],
+        'ponte'         => ['label' => 'Ponte',         'icon' => '🥚', 'color' => 'blue'],
+        'reproducteur'  => ['label' => 'Reproducteur',  'icon' => '🧬', 'color' => 'emerald'],
+        'poussiniere'   => ['label' => 'Poussinière',   'icon' => '🐣', 'color' => 'purple'],
+        'engraissement' => ['label' => 'Engraissement', 'icon' => '🐑', 'color' => 'amber'],
+        'laitiere'      => ['label' => 'Laitière',      'icon' => '🥛', 'color' => 'rose'],
+        'grossissement' => ['label' => 'Grossissement', 'icon' => '🐟', 'color' => 'cyan'],
+        'alevinage'     => ['label' => 'Alevinage',     'icon' => '🐠', 'color' => 'indigo'],
+    ];
+
+    /**
      * Liste des normes filtrées par type (chair, ponte, etc.)
      */
     public function index(Request $request)
     {
+        // Onglets : tous les types de production déclarés au référentiel
+        // (+ valeurs historiques volaille pour compatibilité ascendante)
+        $batchTypes = ProductionType::pluck('slug')
+            ->merge(['chair', 'ponte', 'poussiniere', 'reproducteur'])
+            ->unique()
+            ->sortBy(fn ($slug) => array_search($slug, array_keys(self::TYPE_META)) ?: 99)
+            ->values();
+
         $type = $request->get('type', 'chair');
         $norms = ProductionNorm::where('batch_type', $type)
                     ->orderBy('week_number')
                     ->get();
 
-        return view('admin.norms.index', compact('norms', 'type'));
+        return view('admin.norms.index', compact('norms', 'type', 'batchTypes'));
     }
 
     /**

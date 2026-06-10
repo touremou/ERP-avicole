@@ -58,6 +58,11 @@
         
         $showPonte = in_array($batch->type, ['ponte', 'repro', 'reproducteur']);
         $colCount = 3 + ($showPonte ? 1 : 0) + ($isChair ? 1 : 0);
+
+        // Species-specific
+        $isRuminant    = $batch->isRuminant();
+        $isAquaculture = $batch->isAquaculture();
+        $isGmqTracked  = $batch->isGmqTracked();
     @endphp
 
     <x-slot name="header">
@@ -249,6 +254,28 @@
                 <h4 class="text-xl font-black text-white tracking-tighter">J-{{ number_format($batchAge, 0) }} <span class="text-[9px] text-blue-400 font-black ml-1">S-{{ $currentWeek }}</span></h4>
             </div>
         </div>
+
+        @if($isGmqTracked && isset($stats['gmq']))
+        <div class="bg-white p-5 rounded-[2rem] shadow-xl border border-emerald-50 flex items-center gap-4 group transition-transform hover:scale-[1.02]">
+            <div class="w-12 h-12 bg-emerald-600 rounded-2xl flex items-center justify-center text-white shadow-lg">
+                <i class="fa-solid fa-arrow-trend-up text-lg"></i>
+            </div>
+            <div class="text-left leading-none">
+                <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1 italic">GMQ</p>
+                @if($stats['gmq'] !== null)
+                <h4 @class(['text-xl font-black tracking-tighter',
+                    'text-emerald-600' => $stats['gmq'] >= 150,
+                    'text-amber-600'   => $stats['gmq'] >= 80 && $stats['gmq'] < 150,
+                    'text-rose-600'    => $stats['gmq'] < 80])>
+                    {{ number_format($stats['gmq'], 0) }} <small class="text-xs opacity-50">g/j</small>
+                </h4>
+                @else
+                <h4 class="text-sm font-black text-slate-300 uppercase">—</h4>
+                @endif
+                <p class="text-[7px] text-slate-400 mt-1 uppercase font-black">Gain Moyen Quotidien</p>
+            </div>
+        </div>
+        @endif
     </div>
 
     <div class="py-12 italic font-bold text-left">
@@ -271,6 +298,98 @@
                     <span>Sortie Estimée (J-{{ $maxDays }})</span>
                 </div>
             </div>
+
+            {{-- AQUACULTURE: QUALITÉ DE L'EAU --}}
+            @if($isAquaculture && (isset($stats['last_water_ph']) || isset($stats['last_water_o2'])))
+            <div class="mb-8 bg-blue-50 border border-blue-200 rounded-[2rem] p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h4 class="text-[10px] font-black uppercase text-blue-800 tracking-widest flex items-center gap-2">
+                        <i class="fa-solid fa-droplet text-blue-500"></i> Qualité de l'Eau — Dernier Relevé
+                    </h4>
+                    @if(count($stats['water_alerts'] ?? []) > 0)
+                    <span class="text-[8px] font-black bg-red-600 text-white px-3 py-1 rounded-xl uppercase animate-pulse">
+                        {{ count($stats['water_alerts']) }} Alerte(s)
+                    </span>
+                    @endif
+                </div>
+
+                {{-- Alerts --}}
+                @foreach($stats['water_alerts'] ?? [] as $alert)
+                <div @class(['mb-3 px-4 py-3 rounded-xl text-[9px] font-black uppercase',
+                    'bg-red-100 text-red-800 border border-red-200' => $alert['level'] === 'critical',
+                    'bg-amber-100 text-amber-800 border border-amber-200' => $alert['level'] === 'warning'])>
+                    <i class="fa-solid fa-triangle-exclamation mr-2"></i>{{ $alert['message'] }}
+                </div>
+                @endforeach
+
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                    @foreach([
+                        ['label' => 'Température', 'value' => $stats['last_water_temp'], 'unit' => '°C', 'icon' => 'fa-thermometer-half', 'color' => 'blue'],
+                        ['label' => 'pH', 'value' => $stats['last_water_ph'], 'unit' => '', 'icon' => 'fa-flask', 'color' => ($stats['last_water_ph'] ?? 7) < 6.5 || ($stats['last_water_ph'] ?? 7) > 8.5 ? 'red' : 'blue'],
+                        ['label' => 'O₂ dissous', 'value' => $stats['last_water_o2'], 'unit' => 'ppm', 'icon' => 'fa-wind', 'color' => ($stats['last_water_o2'] ?? 6) < 3 ? 'red' : (($stats['last_water_o2'] ?? 6) < 5 ? 'amber' : 'blue')],
+                        ['label' => 'NH₃', 'value' => $stats['last_water_ammonia'], 'unit' => 'ppm', 'icon' => 'fa-circle-radiation', 'color' => ($stats['last_water_ammonia'] ?? 0) > 1 ? 'red' : (($stats['last_water_ammonia'] ?? 0) > 0.5 ? 'amber' : 'blue')],
+                        ['label' => 'Biomasse', 'value' => $stats['last_biomass'], 'unit' => 'kg', 'icon' => 'fa-weight-scale', 'color' => 'blue'],
+                        ['label' => 'Survie', 'value' => $stats['last_survival_rate'], 'unit' => '%', 'icon' => 'fa-fish', 'color' => 'blue'],
+                    ] as $metric)
+                    @if($metric['value'] !== null)
+                    <div class="bg-white rounded-2xl p-4 border border-blue-100 text-center">
+                        <i class="fa-solid {{ $metric['icon'] }} text-{{ $metric['color'] }}-500 mb-2 text-base"></i>
+                        <p class="text-lg font-black text-slate-800">{{ number_format((float)$metric['value'], $metric['unit'] === 'ppm' ? 2 : 1) }}</p>
+                        <p class="text-[7px] font-black uppercase text-slate-400 tracking-widest">{{ $metric['label'] }}{{ $metric['unit'] ? ' ('.$metric['unit'].')' : '' }}</p>
+                    </div>
+                    @endif
+                    @endforeach
+                </div>
+            </div>
+            @endif
+
+            {{-- NAISSANCES & SEVRAGES (ruminants, porcins, lapins) --}}
+            @if($isGmqTracked && (($stats['total_born'] ?? 0) > 0 || ($stats['total_weaned'] ?? 0) > 0))
+            <div class="mb-8 bg-emerald-50 border border-emerald-200 rounded-[2rem] p-6 flex flex-wrap gap-8 items-center">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center text-white text-lg">🐣</div>
+                    <div>
+                        <p class="text-2xl font-black text-emerald-800">{{ number_format($stats['total_born'] ?? 0) }}</p>
+                        <p class="text-[8px] font-black uppercase text-slate-400 tracking-widest">Naissances cumulées</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-teal-600 rounded-xl flex items-center justify-center text-white text-lg">🌿</div>
+                    <div>
+                        <p class="text-2xl font-black text-teal-800">{{ number_format($stats['total_weaned'] ?? 0) }}</p>
+                        <p class="text-[8px] font-black uppercase text-slate-400 tracking-widest">Sevrages cumulés</p>
+                    </div>
+                </div>
+                @if($stats['avg_litter_size'] ?? null)
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white text-lg">📦</div>
+                    <div>
+                        <p class="text-2xl font-black text-indigo-800">{{ number_format($stats['avg_litter_size'], 1) }}</p>
+                        <p class="text-[8px] font-black uppercase text-slate-400 tracking-widest">Taille de portée moy. ({{ $stats['birth_events'] }} mise{{ $stats['birth_events'] > 1 ? 's' : '' }} bas)</p>
+                    </div>
+                </div>
+                @endif
+                @if($stats['weaning_rate'] !== null)
+                <div class="flex items-center gap-3">
+                    <div @class([
+                        'w-10 h-10 rounded-xl flex items-center justify-center text-white text-lg',
+                        'bg-emerald-700' => $stats['weaning_rate'] >= 90,
+                        'bg-amber-600'   => $stats['weaning_rate'] < 90 && $stats['weaning_rate'] >= 75,
+                        'bg-rose-600'    => $stats['weaning_rate'] < 75,
+                    ])>📊</div>
+                    <div>
+                        <p @class([
+                            'text-2xl font-black',
+                            'text-emerald-800' => $stats['weaning_rate'] >= 90,
+                            'text-amber-700'   => $stats['weaning_rate'] < 90 && $stats['weaning_rate'] >= 75,
+                            'text-rose-700'    => $stats['weaning_rate'] < 75,
+                        ])>{{ number_format($stats['weaning_rate'], 1) }}%</p>
+                        <p class="text-[8px] font-black uppercase text-slate-400 tracking-widest">Taux de sevrage</p>
+                    </div>
+                </div>
+                @endif
+            </div>
+            @endif
 
             {{-- GRAPHIQUES --}}
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
@@ -517,7 +636,13 @@
                                     @if($check->qty_quarantine_out > 0) <span class="text-emerald-500 font-black text-[8px] block">-{{ $check->qty_quarantine_out }}</span> @endif
                                     @if(!$check->qty_quarantine_in && !$check->qty_quarantine_out) <span class="text-slate-200">-</span> @endif
                                 </td>
-                                <td class="px-8 py-4 text-right flex justify-end gap-3">
+                                <td class="px-8 py-4 text-right flex justify-end items-center gap-3">
+                                    @if($check->extension && ($check->extension->qty_born > 0 || $check->extension->water_ph !== null))
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-100 text-emerald-700 text-[7px] font-black uppercase ml-2">
+                                        @if($check->extension->water_ph !== null)🐟@else🐑@endif
+                                        Ext.
+                                    </span>
+                                    @endif
                                     @if($batch->status === 'Actif')
                                         @can('elevage.M')
                                         <a href="{{ route('daily-checks.edit', $check->id) }}" class="text-slate-300 hover:text-blue-500 transition"><i class="fa-solid fa-pen-to-square text-[10px]"></i></a>

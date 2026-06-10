@@ -32,14 +32,18 @@
             {{-- 1. SÉLECTEUR DE TYPE & ACTIONS STRATÉGIQUES --}}
             <div class="flex flex-col lg:flex-row items-center gap-6 mb-10 text-left">
                 <div class="bg-slate-100 p-2 rounded-[2.5rem] flex flex-wrap gap-2 shadow-inner border border-slate-200/50">
-                    @foreach(['chair' => 'orange', 'ponte' => 'blue', 'reproducteur' => 'emerald', 'poussiniere' => 'purple'] as $t => $color)
-                        <a href="?type={{ $t }}" 
+                    @foreach($batchTypes as $t)
+                        @php
+                            $meta = \App\Http\Controllers\Admin\ProductionNormController::TYPE_META[$t]
+                                ?? ['label' => ucfirst($t), 'icon' => '📋', 'color' => 'slate'];
+                        @endphp
+                        <a href="?type={{ $t }}"
                            @class([
-                               "px-6 py-3 rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest transition-all no-underline border",
-                               "bg-{$color}-600 text-white border-{$color}-700 shadow-lg shadow-{$color}-200" => $type == $t,
-                               "bg-white text-slate-500 border-transparent hover:text-slate-900" => $type != $t
+                               "px-6 py-3 rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest transition-all no-underline border border-transparent",
+                               "bg-{$meta['color']}-600 text-white shadow-lg" => $type == $t,
+                               "bg-white text-slate-500 hover:text-slate-900" => $type != $t
                            ])>
-                            {{ ucfirst($t) }}
+                            {{ $meta['icon'] }} {{ $meta['label'] }}
                         </a>
                     @endforeach
                 </div>
