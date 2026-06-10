@@ -18,6 +18,8 @@
             poultryType: 'Chair',
             get units() {
                 if (this.cat === 'oeufs') return ['Alvéole', 'Unité'];
+                if (this.cat === 'lait') return ['Litre'];
+                if (this.cat === 'produits_finis') return ['KG', 'Pcs', 'Unité'];
                 if (this.cat === 'litieres') return ['Sac'];
                 if (this.cat === 'materiels' || this.cat === 'matiere_premiere') return ['Pcs', 'Unité', 'Boîte', 'Paquet'];
                 if (this.cat === 'conso') {
@@ -54,6 +56,8 @@
                                 <label class="text-[10px] uppercase text-slate-500 ml-6 mb-2 block tracking-widest italic font-black">00. Catégorie de l'article</label>
                                 <select name="category" x-model="cat" class="w-full bg-white border-none rounded-[1.5rem] p-5 font-black text-xs uppercase shadow-sm focus:ring-2 focus:ring-blue-500 italic cursor-pointer">
                                     <option value="oeufs">🥚 Œufs</option>
+                                    <option value="lait">🥛 Lait</option>
+                                    <option value="produits_finis">🥩 Produits finis (viande / poisson)</option>
                                     <option value="conso">🌾 Aliment & Santé (Conso)</option>
                                     <option value="litieres">🍂 Litières</option>
                                     <option value="materiels">🛠️ Matériels</option>

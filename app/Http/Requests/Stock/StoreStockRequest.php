@@ -17,7 +17,9 @@ class StoreStockRequest extends FormRequest
     {
         return [
             'item_name'        => 'required|string|max:255',
-            'category'         => 'required|in:oeufs,conso,litieres,materiels',
+            // Catégories multiespèces : lait (laiterie) et produits_finis
+            // (viande/carcasse/poisson) en plus des œufs/aliment/litières/matériels.
+            'category'         => 'required|in:oeufs,conso,litieres,materiels,lait,produits_finis',
             'unit'             => 'required|string',
             'alert_threshold'  => 'required|numeric|min:0',
             'current_quantity' => 'nullable|numeric|min:0',

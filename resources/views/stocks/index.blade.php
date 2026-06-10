@@ -46,6 +46,7 @@
             @php
                 $categories = [
                     'oeufs'          => ['label' => 'Œufs',           'icon' => 'fa-egg',                'color' => 'amber'],
+                    'lait'           => ['label' => 'Lait',           'icon' => 'fa-bottle-droplet',     'color' => 'cyan'],
                     'conso'          => ['label' => 'Aliment & Santé','icon' => 'fa-wheat-awn',          'color' => 'emerald'],
                     'produits_finis' => ['label' => 'Produits Finis', 'icon' => 'fa-drumstick-bite',     'color' => 'rose'],
                     'litieres'       => ['label' => 'Litières',       'icon' => 'fa-leaf',               'color' => 'purple'],
