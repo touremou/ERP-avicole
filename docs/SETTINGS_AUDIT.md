@@ -34,6 +34,10 @@ au moment de l'audit.
 - `pisciculture.cycle_tilapia` / `pisciculture.cycle_carpe` — durée de cycle de grossissement par espèce, utilisée pour le badge « Cycle » (jours restants avant récolte) du rapport Pisciculture.
 - `energie.autonomy_alert_hours` — seuil d'autonomie gasoil (en heures de fonctionnement) comparé à la consommation horaire moyenne des groupes électrogènes (`EnergySource::is_fuel_low` / `fuel_autonomy_hours`) ; affiché sur le tableau de bord énergie, la fiche source d'énergie, les alertes (`UtilityService::getAlerts()`) et la notification WhatsApp gasoil critique.
 - `production.peak_laying_week` — semaine de référence du pic de ponte comparée à la semaine d'âge courante de chaque lot pondeuse, affichée sous forme de badge « Montée / Pic / Post-pic » dans le suivi technique (`egg-productions.index`).
+- `elevage.cycle_caille_ponte` / `cycle_caille_chair` / `cycle_dinde_chair` / `cycle_caprin_lait` / `cycle_ovin_reproducteur` — durées de cycle par espèce/type utilisées en repli (`Batch::calculateExpectedEndDate()`) pour calculer `expected_end_date` quand le lot n'a pas de `production_type_id`.
+- `elevage.gmq_cible_caprin` / `gmq_cible_ovin` — cible de Gain Moyen Quotidien (g/j) selon l'espèce, utilisée pour la coloration du badge GMQ sur la fiche lot (`batches.show`).
+- `elevage.lait_cible_chevre` — cible de production laitière par tête (L/j) comparée au rendement du jour sur la liste des lots laitiers (`milk-productions.index`).
+- `elevage.tabaski_target_weight` — poids cible de vente (kg) pour les lots ovins, utilisé comme cible de la barre de progression « Poids Moyen » sur la fiche lot (`batches.show`) en l'absence de norme zootechnique.
 
 ## Restants — en attente de leur fonctionnalité consommatrice
 
@@ -44,7 +48,6 @@ câblées à la construction de chaque module.
 
 | Groupe | Clés | Ce qu'il reste à construire pour les câbler |
 |--------|------|----------------------------------------------|
-| elevage | cycle_caille_*, cycle_dinde_chair, cycle_caprin_lait, cycle_ovin_reproducteur, gmq_cible_*, lait_cible_chevre, tabaski_target_weight | Modules ruminants / volaille secondaire (cycles & cibles) |
 | whatsapp | api_url, admin_phone, daily_summary_hour | Intégration notifications WhatsApp |
 
 > Principe retenu : un paramètre visible doit s'appliquer. Tout réglage disposant

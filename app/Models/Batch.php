@@ -232,10 +232,21 @@ class Batch extends Model
         } else {
             // 2. Depuis les settings (rétrocompat poulet + nouvelles espèces via settings)
             $days = match (strtolower($this->type ?? 'chair')) {
-                'chair'                    => (int) setting('elevage.cycle_chair', 45),
-                'ponte'                    => (int) setting('elevage.cycle_ponte', 540),
+                'chair' => match ($this->species?->slug) {
+                    'dinde'  => (int) setting('elevage.cycle_dinde_chair', 120),
+                    'caille' => (int) setting('elevage.cycle_caille_chair', 42),
+                    default  => (int) setting('elevage.cycle_chair', 45),
+                },
+                'ponte' => match ($this->species?->slug) {
+                    'caille' => (int) setting('elevage.cycle_caille_ponte', 240),
+                    default  => (int) setting('elevage.cycle_ponte', 540),
+                },
                 'poussiniere'              => (int) setting('elevage.cycle_poussiniere', 90),
-                'repro', 'reproducteur'    => (int) setting('elevage.cycle_reproducteur', 450),
+                'repro', 'reproducteur'    => match ($this->species?->slug) {
+                    'mouton' => (int) setting('elevage.cycle_ovin_reproducteur', 180),
+                    default  => (int) setting('elevage.cycle_reproducteur', 450),
+                },
+                'laitiere'                 => (int) setting('elevage.cycle_caprin_lait', 210),
                 'engraissement'            => (int) setting('elevage.cycle_ovin_engraissement', 90),
                 default                    => 45,
             };

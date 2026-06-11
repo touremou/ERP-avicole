@@ -44,6 +44,14 @@
         $currentPhase = $batch->current_phase;
         $targetWeight = $norm->target_weight ?? 0;
         $targetLayingRate = $norm->target_laying_rate ?? 0;
+
+        // Ovins (pas de norme ProductionNorm) : cible de poids = poids de vente Tabaski.
+        $tabaskiTarget = null;
+        if ($targetWeight <= 0 && $batch->species?->slug === 'mouton') {
+            $tabaskiTarget = (float) setting('elevage.tabaski_target_weight', 35) * 1000; // kg -> g
+            $targetWeight = $tabaskiTarget;
+        }
+
         $performanceWeight = ($targetWeight > 0 && $currentWeight > 0) ? ($currentWeight / $targetWeight) * 100 : 100;
 
         // FCR — utilise l'accessor du model + cibles pilotées par les paramètres
@@ -67,6 +75,13 @@
         $isAquaculture = $batch->isAquaculture();
         $isGmqTracked  = $batch->isGmqTracked();
         $isVolaille    = $batch->isVolaille();
+
+        // Cible GMQ (g/j) selon l'espèce.
+        $gmqTarget = match ($batch->species?->slug) {
+            'chevre' => (float) setting('elevage.gmq_cible_caprin', 100),
+            'mouton' => (float) setting('elevage.gmq_cible_ovin', 120),
+            default  => (float) setting('elevage.gmq_cible_ovin', 120),
+        };
 
         // Suivi de la ponte : piloté par le type de production de l'espèce.
         $showPonte = $batch->tracksEggs();
@@ -236,7 +251,13 @@
                         'bg-red-500' => $performanceWeight < 85,
                     ]) style="width: {{ min($performanceWeight, 100) }}%"></div>
                 </div>
-                <span class="text-[7px] font-black uppercase text-slate-400">Norme: {{ number_format($performanceWeight, 0) }}%</span>
+                <span class="text-[7px] font-black uppercase text-slate-400">
+                    @if($tabaskiTarget)
+                        Cible Tabaski ({{ number_format($tabaskiTarget / 1000, 0) }}kg) : {{ number_format($performanceWeight, 0) }}%
+                    @else
+                        Norme: {{ number_format($performanceWeight, 0) }}%
+                    @endif
+                </span>
             </div>
         </div>
 
@@ -281,15 +302,15 @@
                 <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1 italic">GMQ</p>
                 @if($stats['gmq'] !== null)
                 <h4 @class(['text-xl font-black tracking-tighter',
-                    'text-emerald-600' => $stats['gmq'] >= 150,
-                    'text-amber-600'   => $stats['gmq'] >= 80 && $stats['gmq'] < 150,
-                    'text-rose-600'    => $stats['gmq'] < 80])>
+                    'text-emerald-600' => $stats['gmq'] >= $gmqTarget,
+                    'text-amber-600'   => $stats['gmq'] >= $gmqTarget * 0.6 && $stats['gmq'] < $gmqTarget,
+                    'text-rose-600'    => $stats['gmq'] < $gmqTarget * 0.6])>
                     {{ number_format($stats['gmq'], 0) }} <small class="text-xs opacity-50">g/j</small>
                 </h4>
                 @else
                 <h4 class="text-sm font-black text-slate-300 uppercase">—</h4>
                 @endif
-                <p class="text-[7px] text-slate-400 mt-1 uppercase font-black">Gain Moyen Quotidien</p>
+                <p class="text-[7px] text-slate-400 mt-1 uppercase font-black">Gain Moyen Quotidien <span class="opacity-60">/ cible {{ number_format($gmqTarget, 0) }}g</span></p>
             </div>
         </div>
         @endif

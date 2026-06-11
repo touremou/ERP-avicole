@@ -48,6 +48,8 @@
                     @php
                         $todayMilk = $batch->milkProductions->firstWhere('production_date', \Carbon\Carbon::today());
                         $lastMilk = $batch->milkProductions->first();
+                        $milkTarget = (float) setting('elevage.lait_cible_chevre', 1.5);
+                        $yieldPerFemale = $todayMilk?->yield_per_female;
                     @endphp
                     <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm mb-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div class="flex items-center gap-5">
@@ -63,6 +65,13 @@
                                     {{ $todayMilk ? number_format($todayMilk->total_liters, 1).' L' : '—' }}
                                 </p>
                                 <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1">Collecté aujourd'hui</p>
+                                @if($yieldPerFemale !== null)
+                                <p @class(['text-[8px] font-black uppercase tracking-widest mt-1',
+                                    'text-emerald-500' => $yieldPerFemale >= $milkTarget,
+                                    'text-amber-500'   => $yieldPerFemale < $milkTarget])>
+                                    {{ number_format($yieldPerFemale, 2) }} L/tête <span class="opacity-50">/ cible {{ number_format($milkTarget, 1) }}</span>
+                                </p>
+                                @endif
                             </div>
                             @can('production.C')
                             <a href="{{ route('milk-productions.create', ['batch_id' => $batch->id]) }}" class="bg-emerald-600 text-white px-5 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-emerald-700 transition-all no-underline shadow-sm whitespace-nowrap">
