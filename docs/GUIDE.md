@@ -98,6 +98,26 @@ d'adresse). Le service worker existant assure le repli hors-ligne (§1.5).
   servi dynamiquement sur `/manifest.webmanifest`.
 - **HTTPS est obligatoire** pour l'installation PWA (hors `localhost`).
 
+### 1.7 API mobile (v1)
+
+Une API REST authentifiée par **tokens Sanctum** est exposée sous `/api/v1`
+pour la future application mobile native (opérations terrain). Les
+permissions L/C/M/S et la matrice Modules × Rôles s'appliquent exactement
+comme sur le web (FormRequests et Actions métier partagés).
+
+| Méthode | Endpoint | Rôle |
+|---|---|---|
+| `POST` | `/api/v1/auth/login` | Obtenir un token (`email`, `password`, `device_name`) — limité à 10 essais/min |
+| `GET` | `/api/v1/auth/me` | Profil de l'utilisateur connecté |
+| `POST` | `/api/v1/auth/logout` | Révoquer le token de l'appareil courant |
+| `GET` | `/api/v1/batches` | Lots actifs (`?status=all` pour tout) |
+| `GET` | `/api/v1/batches/{id}` | Détail d'un lot + dernier pointage |
+| `POST` | `/api/v1/daily-checks` | Pointage journalier (mortalité, aliment, eau…) |
+| `POST` | `/api/v1/egg-productions` | Collecte d'œufs (cumul par jour, taux de ponte recalculé) |
+
+Toutes les routes (hors login) exigent le header `Authorization: Bearer <token>`.
+Les tokens sont révocables individuellement (table `personal_access_tokens`).
+
 ---
 
 ## 2. Administration
