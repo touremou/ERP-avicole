@@ -23,7 +23,7 @@ class StockController extends Controller
     public function index(Request $request)
     {
 
-        if (Gate::denies('stocks.L')) return redirect()->route('dashboard')->with('error', 'Accès restreint.');
+        if (Gate::denies('logistique.L')) return redirect()->route('dashboard')->with('error', 'Accès restreint.');
 
         $category = $request->get('category', 'oeufs');
         $stocks = Stock::where('category', $category)->get();
@@ -38,7 +38,7 @@ class StockController extends Controller
     
     public function create(Request $request)
     {
-        if (Gate::denies('stocks.C')) return back()->with('error', 'Action non autorisée.'); 
+        if (Gate::denies('logistique.C')) return back()->with('error', 'Action non autorisée.'); 
         
         $category = $request->get('category', 'oeufs');
         $providers = Provider::orderBy('name')->get(); 
@@ -71,7 +71,7 @@ class StockController extends Controller
     
     public function edit($id)
     {
-        if (Gate::denies('stocks.M')) return back()->with('error', 'Modification non autorisée.');
+        if (Gate::denies('logistique.M')) return back()->with('error', 'Modification non autorisée.');
         
         $stock = Stock::findOrFail($id);
         $providers = Provider::orderBy('name')->get(); 
@@ -106,7 +106,7 @@ class StockController extends Controller
     // INJECTION DE L'ACTION DELETE
     public function destroy($id, DeleteStockAction $action)
     {
-        if (Gate::denies('stocks.S')) return back()->with('error', 'Action réservée aux administrateurs.');
+        if (Gate::denies('logistique.S')) return back()->with('error', 'Action réservée aux administrateurs.');
         
         $stock = Stock::findOrFail($id);
         $category = $stock->category;
@@ -123,7 +123,7 @@ class StockController extends Controller
     // INJECTION DE L'ACTION SYNC
     public function syncAll(SyncEggStocksAction $action)
     {
-        if (Gate::denies('stocks.M')) return back()->with('error', 'Action non autorisée.');
+        if (Gate::denies('logistique.M')) return back()->with('error', 'Action non autorisée.');
 
         $action->execute();
 

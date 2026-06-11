@@ -10,7 +10,7 @@ class StoreStockRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return Gate::allows('stocks.C'); // ST-06 corrigé : Sécurité à la création
+        return Gate::allows('logistique.C'); // ST-06 corrigé : Sécurité à la création
     }
 
     public function rules(): array

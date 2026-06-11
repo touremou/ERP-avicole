@@ -12,22 +12,22 @@ use Illuminate\Support\Facades\Gate;
 uses(Tests\TestCase::class, Illuminate\Foundation\Testing\RefreshDatabase::class);
 
 beforeEach(function () {
-    $permL = Permission::firstOrCreate(['name' => 'L'], ['description' => 'Lecture']);
-    $permC = Permission::firstOrCreate(['name' => 'C'], ['description' => 'Création']);
-    $permM = Permission::firstOrCreate(['name' => 'M'], ['description' => 'Modification']);
-    $permS = Permission::firstOrCreate(['name' => 'S'], ['description' => 'Suppression']);
+    // Contexte ferme (trait BelongsToFarm) pour la cohérence farm_id.
+    $farm = App\Models\Farm::firstOrCreate(['code' => 'FT-001'], ['name' => 'Ferme Test', 'is_active' => true]);
+    session(['current_farm_id' => $farm->id]);
 
-    $admin = Role::firstOrCreate(['name' => 'admin'], ['display_name' => 'Administrateur', 'icon' => '👑']);
-    $admin->permissions()->syncWithoutDetaching([$permL->id, $permC->id, $permM->id, $permS->id]);
+    // Permissions portées par la colonne JSON roles.permissions ; les Gates
+    // retombent sur le NOM de rôle (admin/manager/operator/viewer) quand aucune
+    // matrice module_permissions n'existe — d'où ces noms exacts.
+    $makeRole = fn (string $name, array $perms) => Role::firstOrCreate(
+        ['name' => $name],
+        ['label' => ucfirst($name), 'display_name' => ucfirst($name), 'permissions' => $perms]
+    );
 
-    $manager = Role::firstOrCreate(['name' => 'manager'], ['display_name' => 'Manager', 'icon' => '🛠️']);
-    $manager->permissions()->syncWithoutDetaching([$permL->id, $permC->id, $permM->id]);
-
-    $operator = Role::firstOrCreate(['name' => 'operateur'], ['display_name' => 'Opérateur', 'icon' => '📋']);
-    $operator->permissions()->syncWithoutDetaching([$permL->id, $permC->id]);
-
-    $readonly = Role::firstOrCreate(['name' => 'visiteur'], ['display_name' => 'Visiteur', 'icon' => '👁️']);
-    $readonly->permissions()->syncWithoutDetaching([$permL->id]);
+    $admin    = $makeRole('admin',    ['L', 'C', 'M', 'S']);
+    $manager  = $makeRole('manager',  ['L', 'C', 'M']);
+    $operator = $makeRole('operator', ['L', 'C']);
+    $readonly = $makeRole('viewer',   ['L']);
 
     $this->adminUser = User::factory()->create(['role_id' => $admin->id]);
     $this->managerUser = User::factory()->create(['role_id' => $manager->id]);

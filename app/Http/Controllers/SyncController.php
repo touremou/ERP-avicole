@@ -72,6 +72,7 @@ class SyncController extends Controller
             'provider_id'              => 'nullable|integer|exists:providers,id',
             'qty_dead'                 => 'nullable|integer|min:0',
             'arrival_mortality_rate'   => 'nullable|numeric|min:0',
+            'buy_price_per_unit'       => 'nullable|numeric|min:0',
             'updated_at'               => 'required|date',
         ]);
 
@@ -120,6 +121,10 @@ class SyncController extends Controller
             'arrival_date'           => $validated['arrival_date'],
             'employee_id'            => $validated['employee_id'] ?? null,
             'provider_id'            => $validated['provider_id'] ?? null,
+            // total_acquisition_cost est NOT NULL : on le dérive du prix unitaire
+            // (0 par défaut si non transmis) pour éviter un échec d'insertion.
+            'buy_price_per_unit'     => $validated['buy_price_per_unit'] ?? 0,
+            'total_acquisition_cost' => ($validated['buy_price_per_unit'] ?? 0) * $validated['initial_quantity'],
             'is_synced'              => true,
             'last_sync_at'           => now(),
         ];

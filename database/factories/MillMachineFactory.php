@@ -13,6 +13,7 @@ class MillMachineFactory extends Factory
     {
         return [
             'name'                       => 'Broyeur ' . fake()->unique()->numberBetween(1, 20),
+            'type'                       => fake()->randomElement(['Broyeur', 'Mélangeur', 'Granulateur']),
             'status'                     => 'Opérationnel',
             'capacity_per_hour'          => fake()->randomElement([200, 500, 1000]),
             'total_hours_run'            => fake()->numberBetween(0, 500),

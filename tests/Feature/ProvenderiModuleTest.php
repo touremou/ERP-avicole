@@ -10,16 +10,16 @@ use App\Models\User;
 uses(Tests\TestCase::class, Illuminate\Foundation\Testing\RefreshDatabase::class);
 
 beforeEach(function () {
-    $permL = Permission::firstOrCreate(['name' => 'L'], ['description' => 'Lecture']);
-    $permC = Permission::firstOrCreate(['name' => 'C'], ['description' => 'Création']);
-    $permM = Permission::firstOrCreate(['name' => 'M'], ['description' => 'Modification']);
-    $permS = Permission::firstOrCreate(['name' => 'S'], ['description' => 'Suppression']);
+    $farm = App\Models\Farm::firstOrCreate(['code' => 'FT-001'], ['name' => 'Ferme Test', 'is_active' => true]);
+    session(['current_farm_id' => $farm->id]);
 
-    $admin = Role::firstOrCreate(['name' => 'admin'], ['display_name' => 'Administrateur', 'icon' => '👑']);
-    $admin->permissions()->syncWithoutDetaching([$permL->id, $permC->id, $permM->id, $permS->id]);
+    $makeRole = fn (string $name, array $perms) => Role::firstOrCreate(
+        ['name' => $name],
+        ['label' => ucfirst($name), 'display_name' => ucfirst($name), 'permissions' => $perms]
+    );
 
-    $operator = Role::firstOrCreate(['name' => 'operateur'], ['display_name' => 'Opérateur', 'icon' => '📋']);
-    $operator->permissions()->syncWithoutDetaching([$permL->id, $permC->id]);
+    $admin    = $makeRole('admin',    ['L', 'C', 'M', 'S']);
+    $operator = $makeRole('operator', ['L', 'C']);
 
     $this->adminUser = User::factory()->create(['role_id' => $admin->id]);
     $this->operatorUser = User::factory()->create(['role_id' => $operator->id]);

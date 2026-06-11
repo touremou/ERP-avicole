@@ -4,7 +4,7 @@ namespace Tests\Helpers;
 
 use App\Models\Building;
 use App\Models\Employee;
-use App\Models\Permission;
+use App\Models\Farm;
 use App\Models\Provider;
 use App\Models\Role;
 use App\Models\User;
@@ -18,30 +18,39 @@ trait AviSmartTestHelper
     protected Building $building;
     protected Employee $employee;
     protected Provider $provider;
+    protected Farm $farm;
 
+    /**
+     * Met en place les rôles RBAC sur l'architecture courante.
+     *
+     * Les permissions sont portées par la colonne JSON `roles.permissions` et,
+     * pour les rôles sans matrice `module_permissions`, les Gates retombent sur
+     * une correspondance par NOM de rôle (admin/manager/operator/viewer) — d'où
+     * l'usage de ces noms exacts. (L'ancien pivot Permission/permission_role
+     * n'est plus utilisé.)
+     */
     protected function setUpRbac(): void
     {
-        $permL = Permission::firstOrCreate(['name' => 'L'], ['description' => 'Lecture']);
-        $permC = Permission::firstOrCreate(['name' => 'C'], ['description' => 'Création']);
-        $permM = Permission::firstOrCreate(['name' => 'M'], ['description' => 'Modification']);
-        $permS = Permission::firstOrCreate(['name' => 'S'], ['description' => 'Suppression']);
+        $this->farm = Farm::firstOrCreate(
+            ['code' => 'FT-001'],
+            ['name' => 'Ferme Test', 'is_active' => true]
+        );
+        session(['current_farm_id' => $this->farm->id]);
 
-        $admin = Role::firstOrCreate(['name' => 'admin'], ['display_name' => 'Administrateur', 'icon' => '👑']);
-        $admin->permissions()->syncWithoutDetaching([$permL->id, $permC->id, $permM->id, $permS->id]);
+        $make = fn (string $name, array $perms) => Role::firstOrCreate(
+            ['name' => $name],
+            ['label' => ucfirst($name), 'display_name' => ucfirst($name), 'permissions' => $perms]
+        );
 
-        $manager = Role::firstOrCreate(['name' => 'manager'], ['display_name' => 'Manager', 'icon' => '🛠️']);
-        $manager->permissions()->syncWithoutDetaching([$permL->id, $permC->id, $permM->id]);
+        $admin    = $make('admin',    ['L', 'C', 'M', 'S']);
+        $manager  = $make('manager',  ['L', 'C', 'M']);
+        $operator = $make('operator', ['L', 'C']);
+        $viewer   = $make('viewer',   ['L']);
 
-        $operator = Role::firstOrCreate(['name' => 'operateur'], ['display_name' => 'Opérateur', 'icon' => '📋']);
-        $operator->permissions()->syncWithoutDetaching([$permL->id, $permC->id]);
-
-        $readonly = Role::firstOrCreate(['name' => 'visiteur'], ['display_name' => 'Visiteur', 'icon' => '👁️']);
-        $readonly->permissions()->syncWithoutDetaching([$permL->id]);
-
-        $this->adminUser = User::factory()->create(['role_id' => $admin->id]);
-        $this->managerUser = User::factory()->create(['role_id' => $manager->id]);
+        $this->adminUser    = User::factory()->create(['role_id' => $admin->id]);
+        $this->managerUser  = User::factory()->create(['role_id' => $manager->id]);
         $this->operatorUser = User::factory()->create(['role_id' => $operator->id]);
-        $this->readonlyUser = User::factory()->create(['role_id' => $readonly->id]);
+        $this->readonlyUser = User::factory()->create(['role_id' => $viewer->id]);
     }
 
     protected function setUpBaseData(): void
