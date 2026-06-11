@@ -14,6 +14,11 @@ use Illuminate\Support\Facades\Log;
  *   'api_key' => env('WHATSAPP_API_KEY'),
  *   'instance_id' => env('WHATSAPP_INSTANCE_ID'), // UltraMsg
  *
+ * Le paramètre whatsapp.api_url (Paramètres > WhatsApp) permet de
+ * surcharger l'URL de base utilisée par les drivers ultramsg/wati (ex :
+ * instance auto-hébergée), à défaut la valeur par défaut du driver est
+ * utilisée.
+ *
  * Drivers disponibles :
  * - log       : écrit dans storage/logs (développement)
  * - callmebot : gratuit, aucune inscription (test rapide)
@@ -26,12 +31,14 @@ class WhatsAppService
     private string $driver;
     private ?string $apiKey;
     private ?string $instanceId;
+    private ?string $apiUrl;
 
     public function __construct()
     {
         $this->driver = setting('whatsapp.driver', config('services.whatsapp.driver', 'log'));
         $this->apiKey = setting('whatsapp.api_key', config('services.whatsapp.api_key', ''));
         $this->instanceId = setting('whatsapp.instance_id', config('services.whatsapp.instance_id', ''));
+        $this->apiUrl = setting('whatsapp.api_url', '') ?: null;
     }
 
     /**
@@ -146,9 +153,11 @@ class WhatsAppService
      */
     private function sendViaUltraMsg(string $phone, string $message): bool
     {
+        $baseUrl = $this->apiUrl ?: "https://api.ultramsg.com/{$this->instanceId}";
+
         $response = Http::timeout(15)
             ->asForm()
-            ->post("https://api.ultramsg.com/{$this->instanceId}/messages/chat", [
+            ->post(rtrim($baseUrl, '/') . '/messages/chat', [
                 'token' => $this->apiKey,
                 'to'    => $phone,
                 'body'  => $message,
@@ -164,11 +173,11 @@ class WhatsAppService
      */
     private function sendViaWati(string $phone, string $message): bool
     {
-        $baseUrl = config('whatsapp.wati_url', 'https://live-server-1.wati.io');
+        $baseUrl = $this->apiUrl ?: config('whatsapp.wati_url', 'https://live-server-1.wati.io');
 
         $response = Http::timeout(15)
             ->withHeaders(['Authorization' => 'Bearer ' . $this->apiKey])
-            ->post("{$baseUrl}/api/v1/sendSessionMessage/{$phone}", [
+            ->post(rtrim($baseUrl, '/') . "/api/v1/sendSessionMessage/{$phone}", [
                 'messageText' => $message,
             ]);
 

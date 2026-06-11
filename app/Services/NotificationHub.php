@@ -297,6 +297,17 @@ class NotificationHub
                 'title'   => $title,
             ]);
         }
+
+        // Filet de sécurité : les alertes critiques sont aussi envoyées au
+        // numéro admin (whatsapp.admin_phone), même si l'admin n'est pas
+        // explicitement abonné à ce type d'alerte.
+        $adminPhone = (string) setting('whatsapp.admin_phone', '');
+        if ($severity === 'critique' && $adminPhone !== '' && ! $recipients->contains('whatsapp_phone', $adminPhone)) {
+            $this->whatsapp->send($adminPhone, $message, [
+                'type'  => $type,
+                'title' => $title,
+            ]);
+        }
     }
 
     /**

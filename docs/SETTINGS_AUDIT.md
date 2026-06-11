@@ -38,6 +38,9 @@ au moment de l'audit.
 - `elevage.gmq_cible_caprin` / `gmq_cible_ovin` — cible de Gain Moyen Quotidien (g/j) selon l'espèce, utilisée pour la coloration du badge GMQ sur la fiche lot (`batches.show`).
 - `elevage.lait_cible_chevre` — cible de production laitière par tête (L/j) comparée au rendement du jour sur la liste des lots laitiers (`milk-productions.index`).
 - `elevage.tabaski_target_weight` — poids cible de vente (kg) pour les lots ovins, utilisé comme cible de la barre de progression « Poids Moyen » sur la fiche lot (`batches.show`) en l'absence de norme zootechnique.
+- `whatsapp.daily_summary_hour` — heure de planification du résumé quotidien WhatsApp (`avismart:daily-summary` dans `routes/console.php`).
+- `whatsapp.admin_phone` — destinataire de secours pour les alertes critiques (mortalité, stock, gasoil, fraude) même si l'admin n'est pas explicitement abonné (`NotificationHub::broadcast()`).
+- `whatsapp.api_url` — URL de base personnalisée pour les drivers `ultramsg`/`wati` (instance auto-hébergée), utilisée par `WhatsAppService`.
 
 ## Restants — en attente de leur fonctionnalité consommatrice
 
@@ -48,7 +51,7 @@ câblées à la construction de chaque module.
 
 | Groupe | Clés | Ce qu'il reste à construire pour les câbler |
 |--------|------|----------------------------------------------|
-| whatsapp | api_url, admin_phone, daily_summary_hour | Intégration notifications WhatsApp |
+| _(aucune)_ | — | Tous les chantiers recensés dans cet audit ont été câblés. Toute nouvelle clé ajoutée au catalogue `settings` devra suivre le même principe : être référencée par un consommateur réel avant (ou en même temps) que sa publication dans l'UI. |
 
 > Principe retenu : un paramètre visible doit s'appliquer. Tout réglage disposant
 > d'un consommateur a été câblé ; les restants sont câblés au fil de la
