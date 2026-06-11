@@ -108,7 +108,7 @@
 
                     <div class="space-y-2">
                         <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">Plafond crédit ({{ setting('general.currency', 'GNF') }})</label>
-                        <input type="number" name="credit_limit" value="{{ old('credit_limit', 0) }}" min="0" step="100000"
+                        <input type="number" name="credit_limit" value="{{ old('credit_limit', setting('ventes.credit_limit_default', 0)) }}" min="0" step="100000"
                             class="w-full bg-slate-50 border-none rounded-2xl p-4 text-lg font-black text-purple-600 shadow-inner outline-none text-right" placeholder="0">
                         <p class="text-[8px] text-slate-400 ml-2 italic">0 = pas de plafond (crédit illimité). Sinon, le système bloquera les ventes au-delà.</p>
                     </div>

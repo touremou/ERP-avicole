@@ -106,17 +106,27 @@
                     </div>
                 </div>
 
+                @php
+                    $fertilityTarget = (float) setting('couvoir.fertility_target', 0);
+                    $hatchTarget     = (float) setting('couvoir.hatchability_target', 0);
+                @endphp
                 <div class="bg-white p-6 md:p-8 rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-md transition-shadow col-span-2 md:col-span-1">
                     <span class="text-[9px] text-orange-400 uppercase font-black tracking-[0.2em] block mb-3">Taux Fertilité (30j)</span>
                     <div class="flex items-end justify-between">
-                        <span class="text-3xl md:text-4xl font-black text-slate-800 leading-none tracking-tighter">{{ number_format($stats['avg_fertility'], 1) }}%</span>
+                        <span class="text-3xl md:text-4xl font-black leading-none tracking-tighter {{ $fertilityTarget > 0 && $stats['avg_fertility'] < $fertilityTarget ? 'text-red-500' : 'text-slate-800' }}">{{ number_format($stats['avg_fertility'], 1) }}%</span>
+                        @if($fertilityTarget > 0)
+                            <span class="text-[9px] text-slate-400 uppercase font-black italic">Cible {{ (int) $fertilityTarget }}%</span>
+                        @endif
                     </div>
                 </div>
 
                 <div class="bg-white p-6 md:p-8 rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-md transition-shadow col-span-2 md:col-span-1">
                     <span class="text-[9px] text-emerald-400 uppercase font-black tracking-[0.2em] block mb-3">Taux Éclosion (30j)</span>
                     <div class="flex items-end justify-between">
-                        <span class="text-3xl md:text-4xl font-black text-slate-800 leading-none tracking-tighter">{{ number_format($stats['avg_reussite'], 1) }}%</span>
+                        <span class="text-3xl md:text-4xl font-black leading-none tracking-tighter {{ $hatchTarget > 0 && $stats['avg_reussite'] < $hatchTarget ? 'text-red-500' : 'text-slate-800' }}">{{ number_format($stats['avg_reussite'], 1) }}%</span>
+                        @if($hatchTarget > 0)
+                            <span class="text-[9px] text-slate-400 uppercase font-black italic">Cible {{ (int) $hatchTarget }}%</span>
+                        @endif
                     </div>
                 </div>
 

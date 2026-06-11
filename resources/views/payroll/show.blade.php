@@ -195,10 +195,14 @@
                 <p class="text-[9px] text-slate-500 mb-4" x-text="payEmployee + ' — ' + payAmount.toLocaleString('fr-FR') + ' GNF'"></p>
                 <form :action="'/payroll/payslip/' + paySlipId + '/pay'" method="POST" class="space-y-4">
                     @csrf
+                    @php
+                        $methodLabels = ['especes' => '💵 Espèces', 'orange_money' => '📱 Orange Money', 'virement' => '🏦 Virement bancaire'];
+                        $methods = array_filter(array_map('trim', explode(',', setting('rh.payment_methods', 'especes,orange_money,virement'))));
+                    @endphp
                     <select name="payment_method" class="w-full bg-slate-50 border-none rounded-xl p-3 text-xs font-black uppercase shadow-inner outline-none italic">
-                        <option value="especes">💵 Espèces</option>
-                        <option value="orange_money">📱 Orange Money</option>
-                        <option value="virement">🏦 Virement bancaire</option>
+                        @foreach($methods as $method)
+                            <option value="{{ $method }}">{{ $methodLabels[$method] ?? ucfirst(str_replace('_', ' ', $method)) }}</option>
+                        @endforeach
                     </select>
                     <input type="text" name="payment_reference" placeholder="Réf. transaction (optionnel)" class="w-full bg-slate-50 border-none rounded-xl p-3 text-xs font-black shadow-inner outline-none">
                     <div x-show="payOrangeMoney" class="p-3 bg-orange-50 rounded-xl">

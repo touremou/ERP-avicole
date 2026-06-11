@@ -172,7 +172,7 @@
     </div>
 
     <div style="margin-top: 30px; text-align: center; font-size: 8px; color: #cbd5e1; border-top: 1px solid #f1f5f9; padding-top: 10px;">
-        {{ setting('general.company_name', 'AviSmart') }} — Système ERP — Document généré automatiquement
+        {{ setting('rh.payslip_footer', setting('general.company_name', 'AviSmart') . ' — Système ERP — Document généré automatiquement') }}
     </div>
 </body>
 </html>

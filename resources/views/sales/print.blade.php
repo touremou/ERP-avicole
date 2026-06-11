@@ -46,12 +46,16 @@
             @endif
             <h1>{{ setting('general.company_name', 'AviSmart') }}</h1>
             <p>Système de Gestion Avicole Intégré</p>
-            <p style="margin-top: 8px; font-size: 9px; color: #475569;">République de Guinée</p>
+            <p style="margin-top: 8px; font-size: 9px; color: #475569;">{{ setting('general.country', 'Guinée') }}</p>
         </div>
         <div class="doc-info">
             <div class="ref">{{ $sale->reference }}</div>
             <div class="type">{{ $sale->type === 'facture' ? 'Facture' : 'Bon de Livraison' }}</div>
             <div class="date">Date : {{ $sale->sale_date->translatedFormat('d F Y') }}</div>
+            @php($delai = (int) setting('ventes.payment_delay_days', 0))
+            @if($delai > 0)
+                <div class="date">Échéance : {{ $sale->sale_date->copy()->addDays($delai)->translatedFormat('d F Y') }}</div>
+            @endif
         </div>
     </div>
 
@@ -149,6 +153,12 @@
             <p style="margin-top: 8px; font-weight: 700; color: #1e293b;">{{ $sale->client->name }}</p>
         </div>
     </div>
+
+    @if(setting('ventes.invoice_footer'))
+        <div style="margin-top: 30px; padding-top: 12px; border-top: 1px solid #e2e8f0; font-size: 9px; color: #64748b; text-align: center;">
+            {{ setting('ventes.invoice_footer') }}
+        </div>
+    @endif
 
 </body>
 </html>

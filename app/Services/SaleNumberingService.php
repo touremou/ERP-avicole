@@ -14,10 +14,14 @@ class SaleNumberingService
      */
     public static function generate(string $type): string
     {
+        // Préfixes pilotés par les paramètres (Paramètres > Ventes).
+        $blPrefix  = setting('ventes.invoice_prefix_bl', 'BL');
+        $tvaPrefix = setting('ventes.invoice_prefix_tva', 'FAC');
+
         $prefix = match ($type) {
-            'facture'        => 'FAC',
-            'bon_livraison'  => 'BL',
-            default          => 'BL',
+            'facture'        => $tvaPrefix,
+            'bon_livraison'  => $blPrefix,
+            default          => $blPrefix,
         };
 
         $year = now()->format('Y');
