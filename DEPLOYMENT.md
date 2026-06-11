@@ -1,5 +1,7 @@
 # Déploiement & checklist d'industrialisation — AviSmart ERP
 
+> Guide complet (installation, administration, modules) : [`docs/GUIDE.md`](docs/GUIDE.md)
+
 ## 1. Pré-requis serveur
 
 - PHP 8.3+ avec extensions : `pdo_mysql` (ou `pdo_sqlite`), `mbstring`, `gd`, `intl`, `zip`, `curl`, `xml`, `ctype`, `fileinfo`, `tokenizer`, `openssl`
