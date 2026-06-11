@@ -126,7 +126,7 @@
             {{-- ZONE 2 & 3 : ACTIONS --}}
             <div class="flex flex-col sm:flex-row items-center gap-4 w-full xl:w-auto">
                 @if($batch->status === 'Actif')
-                    <div class="flex items-center bg-white p-1.5 rounded-[1.5rem] border border-slate-200 shadow-sm w-full sm:w-auto">
+                    <div class="flex items-center justify-center sm:justify-start bg-white p-1.5 rounded-[1.5rem] border border-slate-200 shadow-sm w-full sm:w-auto">
                         @can('elevage.M')
                         <a href="{{ route('batches.edit', $batch->id) }}" 
                         class="p-3 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all" 
@@ -150,30 +150,30 @@
                         @endcan
                     </div>
 
-                    <div class="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+                    <div class="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
                         @can('elevage.C')
                         {{-- BOUTON STOCK (AFFECTATION DIRECTE) --}}
-                        <button type="button" onclick="event.stopPropagation(); openFeedModal()" 
-                                class="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase italic hover:bg-orange-500 transition-all shadow-xl border-none cursor-pointer group">
+                        <button type="button" onclick="event.stopPropagation(); openFeedModal()"
+                                class="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase italic hover:bg-orange-500 transition-all shadow-xl border-none cursor-pointer group">
                             <i class="fa-solid fa-truck-ramp-box text-orange-400 group-hover:text-white transition-colors"></i> Achat direct
                         </button>
-                        
+
                         {{-- BOUTON SUIVI (DAILY CHECK) --}}
-                        <a href="{{ route('daily-checks.create', ['batch_id' => $batch->id]) }}" 
-                        class="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-4 bg-blue-600 text-white rounded-2xl font-black text-[10px] uppercase italic hover:bg-blue-500 transition-all shadow-xl no-underline">
+                        <a href="{{ route('daily-checks.create', ['batch_id' => $batch->id]) }}"
+                        class="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-4 bg-blue-600 text-white rounded-2xl font-black text-[10px] uppercase italic hover:bg-blue-500 transition-all shadow-xl no-underline">
                             <i class="fa-solid fa-clipboard-check text-blue-200"></i> Suivi Quotidien
                         </a>
-                        
+
                         {{-- BOUTON SANTÉ --}}
-                        <a href="{{ route('health.create', ['batch_id' => $batch->id]) }}" 
-                        class="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-4 bg-rose-600 text-white rounded-2xl font-black text-[10px] uppercase italic hover:bg-rose-500 transition-all shadow-xl no-underline">
-                            <i class="fa-solid fa-heart-pulse text-rose-200"></i> Santé 
+                        <a href="{{ route('health.create', ['batch_id' => $batch->id]) }}"
+                        class="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-4 bg-rose-600 text-white rounded-2xl font-black text-[10px] uppercase italic hover:bg-rose-500 transition-all shadow-xl no-underline">
+                            <i class="fa-solid fa-heart-pulse text-rose-200"></i> Santé
                         </a>
-                        
+
                         {{-- BOUTON COLLECTE (SI PONTE) --}}
                         @if($showPonte)
-                            <a href="{{ route('egg-productions.create', ['batch_id' => $batch->id]) }}" 
-                            class="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-4 bg-emerald-500 text-white rounded-2xl font-black text-[10px] uppercase italic hover:bg-emerald-400 transition-all shadow-xl no-underline">
+                            <a href="{{ route('egg-productions.create', ['batch_id' => $batch->id]) }}"
+                            class="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-4 bg-emerald-500 text-white rounded-2xl font-black text-[10px] uppercase italic hover:bg-emerald-400 transition-all shadow-xl no-underline">
                                 <i class="fa-solid fa-egg text-emerald-200"></i> Collecte
                             </a>
                         @endif

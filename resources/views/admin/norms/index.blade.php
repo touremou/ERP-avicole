@@ -48,11 +48,11 @@
                     @endforeach
                 </div>
                 @can('elevage.C')
-                <div class="lg:ml-auto flex gap-3 w-full lg:w-auto">
-                    <button @click="openImport = true" class="flex-1 lg:flex-none bg-emerald-100 text-emerald-700 px-8 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 hover:text-white transition-all shadow-sm border border-emerald-200 cursor-pointer">
+                <div class="lg:ml-auto flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                    <button @click="openImport = true" class="w-full sm:w-auto bg-emerald-100 text-emerald-700 px-5 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-emerald-600 hover:text-white transition-all shadow-sm border border-emerald-200 cursor-pointer text-left sm:text-center">
                         <i class="fas fa-file-import mr-2"></i> Import CSV
                     </button>
-                    <button @click="resetNorm(); openAdd = true" class="flex-1 lg:flex-none bg-slate-900 text-white px-8 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 transition-all shadow-2xl border-none cursor-pointer">
+                    <button @click="resetNorm(); openAdd = true" class="w-full sm:w-auto bg-slate-900 text-white px-5 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-blue-600 transition-all shadow-md border-none cursor-pointer text-left sm:text-center">
                         <i class="fas fa-plus-circle mr-2"></i> Ajouter Norme
                     </button>
                 </div>
