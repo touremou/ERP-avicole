@@ -38,7 +38,7 @@ class Batch extends Model
         // Relations FK
         'building_id', 'employee_id', 'provider_id',
         'protocol_id', 'current_protocol_id',
-        'responsible', 'species_id', 'production_type_id',
+        'species_id', 'production_type_id',
 
         // Effectifs — current_quantity est la source de vérité
         'initial_quantity', 'current_quantity', 'qty_dead',

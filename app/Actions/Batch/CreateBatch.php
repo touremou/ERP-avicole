@@ -70,7 +70,6 @@ class CreateBatch
                 'provider_id'  => $data['provider_id'],
                 'protocol_id'  => $data['protocol_id'] ?? null,
                 'current_protocol_id' => $data['protocol_id'] ?? null,
-                'responsible'  => $data['responsible'] ?? \App\Models\Employee::find($data['employee_id'])?->first_name ?? 'N/A',
 
                 // Effectifs — current_quantity = qty_alive (au J0, avant tout pointage)
                 'initial_quantity'  => $qtyAlive,

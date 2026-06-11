@@ -69,7 +69,6 @@ class EggProductionTriTest extends TestCase
             'building_id' => $buildingId,
             'provider_id' => $providerId,
             'employee_id' => $employeeId,
-            'responsible' => 'Moussa Kante',
             'type' => 'ponte',
             'model_name' => 'Lohmann Brown',
             'initial_quantity' => 1000,

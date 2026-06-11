@@ -37,7 +37,6 @@ class BatchFactory extends Factory
             'expected_end_date'      => fake()->dateTimeBetween('+30 days', '+180 days'),
             'buy_price_per_unit'     => fake()->numberBetween(2000, 5000),
             'total_acquisition_cost' => $qty * fake()->numberBetween(2000, 5000),
-            'responsible'            => fake()->name(),
             'is_synced'              => true,
             'production_phase'       => 'demarrage',
             'arrival_mortality_rate' => 0,
