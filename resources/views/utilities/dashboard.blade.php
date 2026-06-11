@@ -133,12 +133,19 @@
                 </h3>
 
                 {{-- KPI ÉNERGIE --}}
-                <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+                <div class="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
                     <div class="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm text-center">
                         <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Coût total</p>
                         <p class="text-xl font-black text-slate-900">{{ number_format($data['energy']['total_cost']) }}</p>
                         <p class="text-[8px] text-slate-400">GNF</p>
                     </div>
+                    @if(setting('energie.kwh_price_edg', 0) > 0)
+                    <div class="bg-emerald-50 p-5 rounded-[2rem] border border-emerald-100 shadow-sm text-center">
+                        <p class="text-[8px] font-black text-emerald-500 uppercase tracking-widest mb-1">Valeur produite (éq. EDG)</p>
+                        <p class="text-xl font-black text-emerald-600">{{ number_format($data['energy']['edg_value']) }}</p>
+                        <p class="text-[8px] text-emerald-400">{{ number_format($data['energy']['total_kwh']) }} kWh × {{ number_format(setting('energie.kwh_price_edg')) }}</p>
+                    </div>
+                    @endif
                     <div @class(['p-5 rounded-[2rem] border shadow-sm text-center',
                         'bg-red-50 border-red-200' => $data['energy']['edg_ratio'] < 30,
                         'bg-white border-slate-100' => $data['energy']['edg_ratio'] >= 30,

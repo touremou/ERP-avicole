@@ -46,8 +46,14 @@
         $targetLayingRate = $norm->target_laying_rate ?? 0;
         $performanceWeight = ($targetWeight > 0 && $currentWeight > 0) ? ($currentWeight / $targetWeight) * 100 : 100;
 
-        // FCR — utilise l'accessor du model
+        // FCR — utilise l'accessor du model + cibles pilotées par les paramètres
+        // (provenderie.fc_target_chair/ponte selon le type, fc_alert = seuil rouge).
         $fcr = $batch->fcr;
+        $fcrTarget = (float) (in_array($batch->type, ['ponte', 'reproducteur'])
+            ? setting('provenderie.fc_target_ponte', 2.3)
+            : setting('provenderie.fc_target_chair', 1.8));
+        $fcrAlert  = (float) setting('provenderie.fc_alert', 2.5);
+        $fcrBad    = $fcr > 0 && $fcr > $fcrAlert;
 
         // Effectif vivant — SOURCE DE VÉRITÉ = current_quantity
         // Plus de calcul initial_quantity - totalMortality (qui ignorait quarantaines/tris)
@@ -235,11 +241,11 @@
         </div>
 
         @if($isChair)
-        <div @class(['p-5 rounded-[2rem] shadow-xl border flex items-center gap-4 group transition-transform hover:scale-[1.02]', 'bg-white border-orange-50' => $fcr <= 1.8, 'bg-red-50 border-red-100 animate-pulse' => $fcr > 1.8])>
-            <div @class(['w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg', 'bg-orange-500' => $fcr <= 1.8, 'bg-red-600' => $fcr > 1.8])><i class="fa-solid fa-chart-pie text-lg"></i></div>
+        <div @class(['p-5 rounded-[2rem] shadow-xl border flex items-center gap-4 group transition-transform hover:scale-[1.02]', 'bg-white border-orange-50' => ! $fcrBad, 'bg-red-50 border-red-100 animate-pulse' => $fcrBad])>
+            <div @class(['w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg', 'bg-orange-500' => ! $fcrBad, 'bg-red-600' => $fcrBad])><i class="fa-solid fa-chart-pie text-lg"></i></div>
             <div class="text-left leading-none">
-                <p @class(['text-[8px] font-black uppercase tracking-widest mb-1 italic', 'text-slate-400' => $fcr <= 1.8, 'text-red-400' => $fcr > 1.8])>Ratio (IC)</p>
-                <h4 @class(['text-xl font-black tracking-tighter', 'text-slate-800' => $fcr <= 1.8, 'text-red-700' => $fcr > 1.8])>{{ number_format($fcr, 2) }}</h4>
+                <p @class(['text-[8px] font-black uppercase tracking-widest mb-1 italic', 'text-slate-400' => ! $fcrBad, 'text-red-400' => $fcrBad])>Ratio (IC) <span class="opacity-60">/ cible {{ number_format($fcrTarget, 1) }}</span></p>
+                <h4 @class(['text-xl font-black tracking-tighter', 'text-slate-800' => ! $fcrBad, 'text-red-700' => $fcrBad])>{{ number_format($fcr, 2) }}</h4>
             </div>
         </div>
         @endif

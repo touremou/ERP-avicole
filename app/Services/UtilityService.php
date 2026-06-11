@@ -110,6 +110,11 @@ class UtilityService
 
         $edgRatio = ($totalHours > 0) ? round(($edgHours / $totalHours) * 100, 1) : 0;
 
+        // kWh produits + valeur équivalente au tarif EDG (paramètre énergie) :
+        // estime l'économie réalisée en autoproduisant plutôt qu'en achetant au réseau.
+        $totalKwh = (clone $readings)->sum('kwh_produced');
+        $edgValue = $totalKwh * (float) setting('energie.kwh_price_edg', 0);
+
         // Conso gasoil
         $totalFuel = (clone $readings)->sum('fuel_consumed_liters');
         $fuelCostPerLiter = FuelPurchase::where('purchase_date', '>=', $from)
@@ -130,6 +135,8 @@ class UtilityService
 
         return [
             'total_cost'        => round($totalCost),
+            'total_kwh'         => round($totalKwh, 1),
+            'edg_value'         => round($edgValue),
             'total_fuel_liters' => round($totalFuel, 1),
             'total_outage'      => round($totalOutageHours, 1),
             'daily_outage_avg'  => round($totalOutageHours / $days, 1),
