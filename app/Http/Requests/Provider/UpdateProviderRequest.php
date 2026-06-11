@@ -18,6 +18,7 @@ class UpdateProviderRequest extends FormRequest
 
         return [
             'name'          => 'required|string|max:255|unique:providers,name,' . $providerId,
+            'logo'          => 'nullable|image|mimes:png,jpg,jpeg,webp|max:2048',
             'phone'         => 'required|string|max:20',
             'type'          => 'required|in:Poussins,Aliment,Santé,Matériel,Services,Autre',
             'domain'        => 'nullable|string|max:255',

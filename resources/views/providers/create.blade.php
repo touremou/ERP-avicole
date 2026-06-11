@@ -32,7 +32,7 @@
                     </div>
                 @endif
 
-                <form action="{{ route('providers.store') }}" method="POST" class="space-y-8">
+                <form action="{{ route('providers.store') }}" method="POST" class="space-y-8" enctype="multipart/form-data">
                     @csrf
                     
                     <div class="bg-white p-10 rounded-[2.5rem] shadow-sm border border-slate-100 relative overflow-hidden text-left">
@@ -44,9 +44,19 @@
                         </h3>
                         
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div class="md:col-span-2 flex items-center gap-5">
+                                <div class="w-20 h-20 rounded-2xl bg-slate-50 border border-slate-100 shadow-inner flex items-center justify-center overflow-hidden shrink-0 text-slate-300">
+                                    <i class="fas fa-handshake text-xl"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <label class="block text-[10px] font-black uppercase text-slate-400 mb-2 ml-1 italic tracking-widest">Logo du fournisseur (optionnel)</label>
+                                    <input type="file" name="logo" accept="image/png,image/jpeg,image/webp"
+                                           class="w-full text-[10px] text-slate-500 file:bg-slate-900 file:text-white file:rounded-full file:border-0 file:px-5 file:py-2 file:font-black file:uppercase file:tracking-widest file:mr-4 file:cursor-pointer cursor-pointer">
+                                </div>
+                            </div>
                             <div class="md:col-span-2">
                                 <label class="block text-[10px] font-black uppercase text-slate-400 mb-2 ml-1 italic tracking-widest">Raison Sociale / Nom</label>
-                                <input type="text" name="name" value="{{ old('name') }}" required placeholder="Ex: GNA-PRO Sarl" 
+                                <input type="text" name="name" value="{{ old('name') }}" required placeholder="Ex: GNA-PRO Sarl"
                                        class="w-full p-4 bg-slate-50 rounded-2xl border-2 border-transparent focus:border-blue-500 outline-none font-black text-slate-700 transition-all shadow-inner italic">
                             </div>
 

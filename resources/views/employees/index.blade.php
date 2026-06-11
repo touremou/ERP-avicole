@@ -82,7 +82,7 @@
                                 <div class="flex items-center space-x-5">
                                     <div class="relative">
                                         @if($emp->photo_path)
-                                            <img src="{{ asset('storage/' . $emp->photo_path) }}"
+                                            <img src="{{ media_url($emp->photo_path) }}"
                                                  class="w-14 h-14 rounded-2xl object-cover shadow-sm border-2 border-white ring-1 ring-slate-100"
                                                  onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
                                             <div class="w-14 h-14 bg-slate-900 text-blue-400 rounded-2xl items-center justify-center font-black text-xl border-2 border-white shadow-sm ring-1 ring-slate-100 uppercase italic hidden">

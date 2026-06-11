@@ -41,7 +41,10 @@
 
     <div class="header">
         <div class="logo-area">
-            <h1>AviSmart</h1>
+            @if(setting('general.company_logo'))
+                <img src="{{ media_url(setting('general.company_logo')) }}" alt="Logo" style="max-height: 60px; max-width: 220px; margin-bottom: 6px;">
+            @endif
+            <h1>{{ setting('general.company_name', 'AviSmart') }}</h1>
             <p>Système de Gestion Avicole Intégré</p>
             <p style="margin-top: 8px; font-size: 9px; color: #475569;">République de Guinée</p>
         </div>

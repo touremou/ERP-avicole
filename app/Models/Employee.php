@@ -96,9 +96,9 @@ class Employee extends Model
     public function getPhotoUrlAttribute(): string
     {
         if ($this->photo_path) {
-            return asset('storage/' . $this->photo_path);
+            return media_url($this->photo_path);
         }
-        
+
         // Avatar par défaut selon le genre (SVG inline, pas de dépendance externe)
         return $this->gender === 'F'
             ? asset('images/avatars/female-tech.svg')

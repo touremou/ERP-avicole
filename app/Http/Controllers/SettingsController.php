@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class SettingsController extends Controller
 {
@@ -74,6 +75,23 @@ class SettingsController extends Controller
         $group = $request->input('_group');
         $values = $request->input('settings', []);
 
+        // Paramètres de type "image" : on transforme les fichiers uploadés
+        // (et les demandes de suppression) en valeurs textuelles (chemin sur
+        // le disque public) injectées dans $values, traitées comme le reste.
+        foreach ((array) $request->file('settings_files', []) as $key => $file) {
+            if ($file && $file->isValid()) {
+                $request->validate([
+                    "settings_files.$key" => 'image|mimes:png,jpg,jpeg,webp,svg|max:2048',
+                ]);
+                $values[$key] = $file->store('logos', 'public');
+            }
+        }
+        foreach ((array) $request->input('settings_remove', []) as $key => $flag) {
+            if ($flag) {
+                $values[$key] = '';
+            }
+        }
+
         $updated = 0;
 
         DB::transaction(function () use ($group, $values, &$updated) {
@@ -84,6 +102,13 @@ class SettingsController extends Controller
                     ->first();
 
                 if (! $setting) continue;
+
+                // Pour une image, on supprime l'ancien fichier remplacé/effacé.
+                if ($setting->type === 'image'
+                    && $setting->value
+                    && (string) $setting->value !== (string) $newValue) {
+                    Storage::disk('public')->delete($setting->value);
+                }
 
                 $oldValue = $setting->value;
 

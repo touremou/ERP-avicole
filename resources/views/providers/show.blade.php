@@ -80,8 +80,12 @@
                             <div class="absolute top-0 right-0 bg-red-600 text-white px-10 py-1 rotate-45 translate-x-8 translate-y-4 text-[10px] font-black uppercase tracking-widest shadow-lg">Banni</div>
                         @endif
 
-                        <div class="w-24 h-24 mx-auto mb-6 rounded-3xl bg-slate-900 flex items-center justify-center text-yellow-500 text-3xl shadow-xl shadow-slate-900/20 transition-transform hover:scale-105 duration-500">
-                            <i class="fas fa-industry"></i>
+                        <div class="w-24 h-24 mx-auto mb-6 rounded-3xl bg-slate-900 flex items-center justify-center text-yellow-500 text-3xl shadow-xl shadow-slate-900/20 overflow-hidden transition-transform hover:scale-105 duration-500">
+                            @if($provider->logo_path)
+                                <img src="{{ media_url($provider->logo_path) }}" class="w-full h-full object-cover" alt="{{ $provider->name }}">
+                            @else
+                                <i class="fas fa-industry"></i>
+                            @endif
                         </div>
                         
                         <h2 class="text-2xl font-black text-slate-800 leading-tight tracking-tighter uppercase">{{ $provider->name }}</h2>

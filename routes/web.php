@@ -44,10 +44,17 @@ use App\Http\Controllers\{
     MilkProductionController,
     ExpenseController,
     EmployeeAccessController,
-    EmployeeSelfController
+    EmployeeSelfController,
+    MediaController
 };
 
 Route::redirect('/', '/login');
+
+// Service des fichiers publics (logos, photos…) sans dépendre du symlink storage.
+// Volontairement public : le logo de l'entreprise s'affiche aussi sur la page de connexion.
+Route::get('/media/{path}', [MediaController::class, 'show'])
+    ->where('path', '.*')
+    ->name('media.show');
 
 // ──────────────────────────────────────────────
 // PROFIL & DASHBOARD (tout utilisateur connecté)

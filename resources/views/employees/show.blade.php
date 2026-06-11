@@ -67,7 +67,7 @@
                     <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 text-center">
                         <div class="w-28 h-28 mx-auto mb-4 rounded-2xl overflow-hidden bg-slate-100 border-4 border-white shadow-xl relative">
                             @if($employee->photo_path)
-                                <img src="{{ asset('storage/' . $employee->photo_path) }}"
+                                <img src="{{ media_url($employee->photo_path) }}"
                                      class="w-full h-full object-cover"
                                      onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
                                 <div class="w-full h-full bg-slate-900 items-center justify-center hidden absolute inset-0">
@@ -281,7 +281,7 @@
                         <h3 class="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center mb-4 italic">
                             <span class="w-6 h-[2px] bg-emerald-500 mr-2"></span> Documents
                         </h3>
-                        <a href="{{ asset('storage/' . $employee->cv_path) }}" target="_blank" class="flex items-center p-4 bg-slate-50 border border-slate-100 rounded-xl hover:bg-slate-900 hover:text-white transition-all group no-underline text-slate-700">
+                        <a href="{{ media_url($employee->cv_path) }}" target="_blank" class="flex items-center p-4 bg-slate-50 border border-slate-100 rounded-xl hover:bg-slate-900 hover:text-white transition-all group no-underline text-slate-700">
                             <div class="w-10 h-10 bg-white rounded-lg flex items-center justify-center text-blue-600 mr-4 group-hover:bg-blue-600 group-hover:text-white transition-all shadow-sm">
                                 <i class="fas fa-file-pdf text-lg"></i>
                             </div>

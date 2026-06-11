@@ -55,8 +55,12 @@
                             </div>
 
                             <div class="flex items-center gap-4 mb-8">
-                                <div class="w-16 h-16 rounded-[1.5rem] bg-slate-900 flex items-center justify-center text-yellow-500 text-2xl shadow-lg group-hover:bg-blue-600 group-hover:text-white transition-all duration-500">
-                                    <i class="fas fa-handshake"></i>
+                                <div class="w-16 h-16 rounded-[1.5rem] bg-slate-900 flex items-center justify-center text-yellow-500 text-2xl shadow-lg overflow-hidden group-hover:bg-blue-600 group-hover:text-white transition-all duration-500">
+                                    @if($provider->logo_path)
+                                        <img src="{{ media_url($provider->logo_path) }}" class="w-full h-full object-cover" alt="{{ $provider->name }}">
+                                    @else
+                                        <i class="fas fa-handshake"></i>
+                                    @endif
                                 </div>
                                 <div class="overflow-hidden">
                                     <span class="text-[8px] font-black text-blue-500 uppercase tracking-widest italic">{{ $provider->type }}</span>

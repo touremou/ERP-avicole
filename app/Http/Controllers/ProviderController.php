@@ -42,7 +42,7 @@ class ProviderController extends Controller
     {
         if (Gate::denies('annuaire.C')) return back()->with('error', 'Privilèges insuffisants.');
         try {
-            $provider = $action->execute($request->validated());
+            $provider = $action->execute($request->validated(), $request->file('logo'));
             return redirect()->route('providers.index')->with('success', "Partenaire {$provider->name} enregistré avec succès.");
         } catch (\Exception $e) {
             Log::error("Erreur création fournisseur: " . $e->getMessage());
@@ -80,7 +80,7 @@ class ProviderController extends Controller
     {
         if (Gate::denies('annuaire.M')) return back()->with('error', 'Modification interdite permission actuel.');
         try {
-            $action->execute($provider, $request->validated());
+            $action->execute($provider, $request->validated(), $request->file('logo'));
             return redirect()->route('providers.index')->with('success', 'Fiche fournisseur mise à jour avec succès.');
         } catch (\Exception $e) {
             Log::error("Erreur mise à jour fournisseur: " . $e->getMessage());

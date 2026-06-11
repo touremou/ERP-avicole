@@ -72,7 +72,7 @@
                     </div>
                     @endif
 
-                    <form method="POST" action="{{ route('settings.update') }}">
+                    <form method="POST" action="{{ route('settings.update') }}" enctype="multipart/form-data">
                         @csrf @method('PUT')
                         <input type="hidden" name="_group" value="{{ $activeGroup }}">
 
@@ -136,6 +136,28 @@
                                             @case('textarea')
                                                 <textarea name="settings[{{ $s->key }}]" rows="2"
                                                     class="w-full bg-slate-50 border-none rounded-xl p-3 text-xs font-bold shadow-inner outline-none focus:ring-2 focus:ring-blue-500">{{ $s->value }}</textarea>
+                                                @break
+
+                                            @case('image')
+                                                <div class="flex items-center gap-4 w-full">
+                                                    <div class="w-20 h-20 rounded-2xl bg-slate-50 border border-slate-100 shadow-inner flex items-center justify-center overflow-hidden shrink-0">
+                                                        @if($s->value)
+                                                            <img src="{{ media_url($s->value) }}" class="w-full h-full object-contain" alt="Logo">
+                                                        @else
+                                                            <i class="fa-solid fa-image text-slate-300 text-xl"></i>
+                                                        @endif
+                                                    </div>
+                                                    <div class="flex-1">
+                                                        <input type="file" name="settings_files[{{ $s->key }}]" accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                                                            class="w-full text-[10px] text-slate-500 file:bg-slate-900 file:text-white file:rounded-full file:border-0 file:px-5 file:py-2 file:font-black file:uppercase file:tracking-widest file:mr-4 file:cursor-pointer cursor-pointer">
+                                                        @if($s->value)
+                                                            <label class="flex items-center gap-2 mt-2 text-[9px] font-black uppercase tracking-widest text-red-400 cursor-pointer">
+                                                                <input type="checkbox" name="settings_remove[{{ $s->key }}]" value="1" class="rounded">
+                                                                Supprimer le logo actuel
+                                                            </label>
+                                                        @endif
+                                                    </div>
+                                                </div>
                                                 @break
 
                                             @default

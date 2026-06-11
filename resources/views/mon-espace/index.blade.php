@@ -41,7 +41,7 @@
                     <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm text-center">
                         <div class="w-24 h-24 mx-auto mb-4 rounded-2xl overflow-hidden bg-slate-900 flex items-center justify-center">
                             @if($employee->photo_path)
-                                <img src="{{ asset('storage/' . $employee->photo_path) }}" class="w-full h-full object-cover">
+                                <img src="{{ media_url($employee->photo_path) }}" class="w-full h-full object-cover">
                             @else
                                 <span class="text-3xl font-black text-blue-400 uppercase">{{ substr($employee->first_name, 0, 1) }}</span>
                             @endif

@@ -41,7 +41,7 @@
                     </div>
                 @endif
 
-                <form action="{{ route('providers.update', $provider->id) }}" method="POST" class="space-y-8">
+                <form action="{{ route('providers.update', $provider->id) }}" method="POST" class="space-y-8" enctype="multipart/form-data">
                     @csrf
                     @method('PUT')
                     
@@ -52,9 +52,23 @@
                             <i class="fas fa-id-card mr-3"></i> 01. Identité & Contact
                         </h3>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="md:col-span-2 flex items-center gap-5">
+                                <div class="w-20 h-20 rounded-2xl bg-slate-50 border border-slate-100 shadow-inner flex items-center justify-center overflow-hidden shrink-0 text-slate-300">
+                                    @if($provider->logo_path)
+                                        <img src="{{ media_url($provider->logo_path) }}" class="w-full h-full object-contain" alt="Logo">
+                                    @else
+                                        <i class="fas fa-handshake text-xl"></i>
+                                    @endif
+                                </div>
+                                <div class="flex-1">
+                                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 italic tracking-widest leading-none">Logo du fournisseur (optionnel)</label>
+                                    <input type="file" name="logo" accept="image/png,image/jpeg,image/webp"
+                                           class="w-full text-[10px] text-slate-500 file:bg-slate-900 file:text-white file:rounded-full file:border-0 file:px-5 file:py-2 file:font-black file:uppercase file:tracking-widest file:mr-4 file:cursor-pointer cursor-pointer">
+                                </div>
+                            </div>
                             <div class="md:col-span-2">
                                 <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 italic tracking-widest leading-none">Raison Sociale / Nom Complet</label>
-                                <input type="text" name="name" value="{{ old('name', $provider->name) }}" required 
+                                <input type="text" name="name" value="{{ old('name', $provider->name) }}" required
                                        class="w-full p-4 bg-slate-50 rounded-2xl border-2 border-transparent focus:border-blue-500 outline-none font-black text-slate-700 transition-all shadow-inner italic">
                             </div>
 

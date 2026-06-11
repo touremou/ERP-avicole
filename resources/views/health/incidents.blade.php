@@ -48,7 +48,7 @@
                         {{-- Photo d'autopsie --}}
                         @if($incident->photo_path)
                             <div class="h-48 w-full bg-slate-900 relative group overflow-hidden">
-                                <img src="{{ asset('storage/' . $incident->photo_path) }}" alt="Autopsie" class="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all duration-500">
+                                <img src="{{ media_url($incident->photo_path) }}" alt="Autopsie" class="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all duration-500">
                                 <div class="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex items-end p-4">
                                     <span class="text-white text-[9px] uppercase tracking-widest font-black"><i class="fa-solid fa-camera mr-1"></i> Preuve visuelle jointe</span>
                                 </div>
