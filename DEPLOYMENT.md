@@ -2,8 +2,8 @@
 
 ## 1. Pré-requis serveur
 
-- PHP 8.2+ avec extensions : `pdo_mysql`, `mbstring`, `gd`, `bcmath`, `intl`, `zip`
-- MySQL 8 / MariaDB 10.6+ (ou PostgreSQL)
+- PHP 8.3+ avec extensions : `pdo_mysql` (ou `pdo_sqlite`), `mbstring`, `gd`, `intl`, `zip`, `curl`, `xml`, `ctype`, `fileinfo`, `tokenizer`, `openssl`
+- MySQL 8 / MariaDB 10.6+ (ou SQLite pour une petite installation)
 - Composer 2, Node 18+ (build des assets)
 - HTTPS (certificat valide) + reverse proxy correctement configuré
 
@@ -11,15 +11,31 @@
 
 ```bash
 git clone <repo> && cd ERP-avicole
-cp .env.production.example .env        # puis renseigner les valeurs
+cp .env.production.example .env        # APP_NAME, APP_URL, mail, WhatsApp…
 composer install --no-dev --optimize-autoloader
 npm ci && npm run build
-
-php artisan key:generate               # si APP_KEY vide
-php artisan migrate --force
-php artisan storage:link               # lien public/storage (le service /media reste un filet de sécurité)
-php artisan db:seed --class=SettingsSeeder   # si paramètres non encore créés
+php artisan storage:link                # lien public/storage (le service /media reste un filet de sécurité)
 ```
+
+Démarrer ensuite le serveur web et ouvrir l'application dans un navigateur :
+l'**assistant d'installation** (`/install`) prend le relais automatiquement
+au premier accès tant qu'aucun compte n'existe en base. Il vérifie les
+prérequis serveur, configure la connexion base de données (écrit `DB_*` et
+`APP_KEY` dans `.env`, crée la base MySQL si elle n'existe pas), exécute
+`migrate` + le seed de référence (espèces, normes, modules…), puis crée le
+compte administrateur (remplace `admin@admin.com`) et propose de supprimer le
+compte de démonstration `user@users.com`.
+
+Une fois l'assistant terminé, le marqueur `storage/installed` est posé et
+`/install` redevient inaccessible.
+
+> **Installation 100% en ligne de commande** (sans passer par `/install`) :
+> renseigner `DB_*` dans `.env`, puis `php artisan key:generate`,
+> `php artisan migrate --force` et `php artisan db:seed --force` (les
+> paramètres `settings` sont créés par la migration
+> `2026_06_05_000001_create_settings_table.php`, pas par un seeder dédié).
+> Créer ensuite `storage/installed` manuellement pour empêcher l'accès à
+> `/install`, et changer le mot de passe du compte `admin@admin.com`.
 
 ## 3. Optimisations production (à relancer à chaque déploiement)
 
@@ -44,7 +60,7 @@ php artisan event:cache
 - [ ] Rate-limiting actif sur les routes d'authentification (`throttle`)
 - [ ] Route `/register` désactivée ou réservée aux administrateurs si l'auto-inscription n'est pas souhaitée
 - [ ] Sauvegardes base de données automatisées (quotidiennes minimum)
-- [ ] Comptes par défaut / de démonstration supprimés
+- [ ] Comptes par défaut / de démonstration supprimés (géré par l'assistant `/install` : remplace `admin@admin.com` et propose de supprimer `user@users.com`)
 
 ## 5. Tâches planifiées (cron)
 
