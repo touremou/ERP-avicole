@@ -157,11 +157,16 @@
                         $duration = (int) ($inc->incubation_duration ?: setting('couvoir.incubation_days', 21));
                         $progress = $duration > 0 ? min(round(($daysElapsed / $duration) * 100), 100) : 0;
                         
-                        $statusColor = match($inc->status){ 
-                            'incubation' => 'blue', 
-                            'mirage_fait' => 'orange', 
-                            default => 'emerald' 
+                        $statusColor = match($inc->status){
+                            'incubation' => 'blue',
+                            'mirage_fait' => 'orange',
+                            default => 'emerald'
                         };
+
+                        // Date de mirage (candling) pilotée par le paramètre couvoir.mirage_day.
+                        $mirageDay  = (int) setting('couvoir.mirage_day', 10);
+                        $mirageDate = $start->copy()->addDays($mirageDay);
+                        $mirageDue  = $inc->status === 'incubation' && $now->greaterThanOrEqualTo($mirageDate);
                     @endphp
 
                     <div class="bg-white px-8 py-6 rounded-[2.5rem] border border-slate-100 flex flex-wrap md:flex-nowrap items-center gap-8 transition-all hover:shadow-2xl relative group">
@@ -183,6 +188,11 @@
                                 <div class="h-full rounded-full transition-all duration-1000 ease-out bg-{{ $statusColor }}-500 shadow-sm" style="width: {{ $progress }}%"></div>
                             </div>
                             <p class="text-[8px] text-slate-300 mt-2 uppercase font-black">Éclosion prévue : {{ \Carbon\Carbon::parse($inc->hatch_date_expected)->translatedFormat('d F Y') }}</p>
+                            @if($inc->status === 'incubation')
+                                <p class="text-[8px] mt-1 uppercase font-black {{ $mirageDue ? 'text-orange-500' : 'text-slate-300' }}">
+                                    <i class="fa-solid fa-lightbulb mr-1"></i>Mirage (J{{ $mirageDay }}) : {{ $mirageDate->translatedFormat('d F Y') }}{{ $mirageDue ? ' — à faire' : '' }}
+                                </p>
+                            @endif
                         </div>
 
                         <div class="flex gap-8 px-6 text-center">

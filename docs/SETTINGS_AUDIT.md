@@ -23,6 +23,7 @@ au moment de l'audit.
 - `rh.payslip_footer` — pied de page du bulletin imprimé.
 - `rh.annual_leave_days` — dotation initiale du solde de congés à l'embauche (+ affichage fiche agent).
 - `couvoir.fertility_target` / `couvoir.hatchability_target` — cibles + coloration KPI (repro).
+- `couvoir.mirage_day` — date de mirage prévue (J+n) affichée sur chaque incubation en cours.
 - `abattoir.yield_cutting` — cible de rendement découpe (affichage + coloration en temps réel).
 
 ## Restants — en attente de leur fonctionnalité consommatrice
@@ -38,7 +39,6 @@ câblées à la construction de chaque module.
 | energie | kwh_price_edg, water_price_m3, autonomy_alert_hours | Valorisation des relevés énergie/eau + alerte autonomie groupe |
 | production | peak_laying_week | Courbe de ponte / écart au pic |
 | rh | overtime_rate | Saisie des heures supplémentaires sur le bulletin |
-| couvoir | mirage_day | Planification automatique du mirage |
 | elevage | batch_prefix_chair/ponte/repro | Préfixe auto du code de lot par type (JS sur le formulaire) |
 | elevage | cycle_caille_*, cycle_dinde_chair, cycle_caprin_lait, cycle_ovin_reproducteur, gmq_cible_*, lait_cible_chevre, tabaski_target_weight | Modules ruminants / volaille secondaire (cycles & cibles) |
 | pisciculture | cycle_carpe, cycle_tilapia, fc_cible, taux_survie_cible | Module pisciculture |
