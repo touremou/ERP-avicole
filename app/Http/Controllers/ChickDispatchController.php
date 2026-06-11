@@ -34,7 +34,7 @@ class ChickDispatchController extends Controller
         $clients = Client::orderBy('name')->get();
         $employees = Employee::where('status', 'actif')->orderBy('first_name')->get();
 
-        return view('repro.dispatch', compact(
+        return view('incubations.dispatch', compact(
             'incubation', 'remaining', 'dispatches', 'buildings', 'clients', 'employees'
         ));
     }

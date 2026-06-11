@@ -203,8 +203,8 @@ Route::middleware(['auth'])->group(function () {
         });
     });
 
-    // ─── COUVOIR & REPRO ───
-    Route::prefix('repro')->name('incubations.')->controller(IncubationController::class)->group(function () {
+    // ─── COUVOIR & INCUBATION ───
+    Route::prefix('incubations')->name('incubations.')->controller(IncubationController::class)->group(function () {
         Route::get('/', 'index')->name('index')->middleware('can:L');
         // Création & édition se font via la modale et les actions mirage/éclosion
         // de la vue index : pas de méthodes create()/edit() dédiées au contrôleur.
@@ -215,8 +215,8 @@ Route::middleware(['auth'])->group(function () {
     });
 
     // Dispatch poussins post-éclosion
-    Route::get('/repro/{incubation}/dispatch', [ChickDispatchController::class, 'show'])->name('chick-dispatches.show')->middleware('can:L');
-    Route::post('/repro/{incubation}/dispatch', [ChickDispatchController::class, 'store'])->name('chick-dispatches.store')->middleware('can:C');
+    Route::get('/incubations/{incubation}/dispatch', [ChickDispatchController::class, 'show'])->name('chick-dispatches.show')->middleware('can:L');
+    Route::post('/incubations/{incubation}/dispatch', [ChickDispatchController::class, 'store'])->name('chick-dispatches.store')->middleware('can:C');
 
     Route::prefix('incubators-devices')->name('incubators.')->controller(IncubatorController::class)->group(function () {
         Route::get('/', 'index')->name('index')->middleware('can:L');

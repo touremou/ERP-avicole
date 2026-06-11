@@ -93,7 +93,7 @@ class IncubationController extends Controller
             'historique'          => $historique,
         ];
 
-        return view('repro.index', compact('incubations', 'activeBatches', 'stats', 'incubators', 'sort', 'machineStats', 'providers', 'incubationDurations'));
+        return view('incubations.index', compact('incubations', 'activeBatches', 'stats', 'incubators', 'sort', 'machineStats', 'providers', 'incubationDurations'));
     }
 
     public function store(StartIncubationRequest $request, StartIncubation $action)
