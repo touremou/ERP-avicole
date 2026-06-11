@@ -42,7 +42,9 @@ use App\Http\Controllers\{
     SpeciesController,
     CampaignController,
     MilkProductionController,
-    ExpenseController
+    ExpenseController,
+    EmployeeAccessController,
+    EmployeeSelfController
 };
 
 Route::redirect('/', '/login');
@@ -52,6 +54,9 @@ Route::redirect('/', '/login');
 // ──────────────────────────────────────────────
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+    // Espace personnel de l'utilisateur connecté (lecture seule).
+    Route::get('/mon-espace', [EmployeeSelfController::class, 'index'])->name('mon-espace');
 
     Route::controller(ProfileController::class)->group(function () {
         Route::get('/profile', 'edit')->name('profile.edit');
@@ -467,6 +472,13 @@ Route::middleware(['auth'])->group(function () {
     //   EmployeeController::destroy() → Gate::denies('S')
     Route::resource('employees', EmployeeController::class);
     Route::put('/employees/{id}/status', [EmployeeController::class, 'updateStatus'])->name('employees.status');
+
+    // ─── ESPACE EMPLOYÉ : gestion du compte de connexion (réservé admin.S) ───
+    Route::controller(EmployeeAccessController::class)->group(function () {
+        Route::post('/employees/{employee}/access', 'store')->name('employees.access.store');
+        Route::put('/employees/{employee}/access', 'update')->name('employees.access.update');
+        Route::put('/employees/{employee}/access/password', 'resetPassword')->name('employees.access.password');
+    });
 
     Route::resource('providers', ProviderController::class);
     // S-18 corrigé : une seule route PUT (sémantiquement correct pour changement d'état)

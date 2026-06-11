@@ -13,7 +13,7 @@ class User extends Authenticatable
     use HasFactory, Notifiable;
 
     protected $fillable = [
-        'name', 'email', 'password', 'role_id', 'whatsapp_phone',
+        'name', 'email', 'password', 'role_id', 'whatsapp_phone', 'is_active',
     ];
 
     protected $hidden = [
@@ -25,6 +25,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password'          => 'hashed',
+            'is_active'         => 'boolean',
         ];
     }
 
@@ -33,6 +34,14 @@ class User extends Authenticatable
     public function userRole(): BelongsTo
     {
         return $this->belongsTo(Role::class, 'role_id');
+    }
+
+    /**
+     * Fiche employé (RH) rattachée à ce compte de connexion, le cas échéant.
+     */
+    public function employee(): HasOne
+    {
+        return $this->hasOne(Employee::class);
     }
 
     public function notificationPreference(): HasOne
@@ -153,5 +162,34 @@ class User extends Authenticatable
     public function isSuperAdmin(): bool
     {
         return $this->hasPermission('S');
+    }
+
+    /**
+     * Le compte est-il actif (autorisé à se connecter) ?
+     * Rétrocompatible : un null (colonne absente / ancien compte) = actif.
+     */
+    public function isActive(): bool
+    {
+        return $this->is_active === null ? true : (bool) $this->is_active;
+    }
+
+    /**
+     * Route d'atterrissage après connexion, adaptée au profil.
+     *
+     * - Superviseurs (admin / manager / permission S) → tableau de bord global.
+     * - Employé rattaché à une fiche RH → son espace personnel.
+     * - Sinon → tableau de bord.
+     */
+    public function homeRoute(): string
+    {
+        if ($this->isSuperAdmin() || $this->hasRole('admin') || $this->hasRole('manager')) {
+            return 'dashboard';
+        }
+
+        if ($this->employee()->exists()) {
+            return 'mon-espace';
+        }
+
+        return 'dashboard';
     }
 }

@@ -136,6 +136,104 @@
                         @endif
                     </div>
 
+                    {{-- ACCÈS À L'APPLICATION (espace employé) --}}
+                    @can('admin.S')
+                    @php $account = $employee->user; @endphp
+                    <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+                        <h3 class="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center mb-4 italic">
+                            <span class="w-6 h-[2px] bg-purple-500 mr-2"></span> Accès à l'application
+                        </h3>
+
+                        {{-- Mot de passe temporaire (affiché une seule fois) --}}
+                        @if(session('temp_password'))
+                        <div class="mb-4 p-4 bg-purple-50 border border-purple-200 rounded-xl">
+                            <p class="text-[8px] font-black text-purple-500 uppercase tracking-widest mb-2">Identifiants à transmettre (une seule fois)</p>
+                            <p class="text-[10px] font-black text-slate-700">Email : <span class="font-mono">{{ session('temp_email') }}</span></p>
+                            <p class="text-[10px] font-black text-slate-700">Mot de passe : <span class="font-mono text-purple-700 select-all">{{ session('temp_password') }}</span></p>
+                            <p class="text-[7px] text-slate-400 mt-2 italic normal-case">À communiquer de façon sécurisée. L'employé pourra le changer depuis son profil.</p>
+                        </div>
+                        @endif
+
+                        @if($account)
+                            {{-- COMPTE EXISTANT --}}
+                            <div class="space-y-3">
+                                <div class="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
+                                    <div class="min-w-0">
+                                        <p class="text-[7px] font-black text-slate-400 uppercase tracking-widest">Email de connexion</p>
+                                        <p class="text-[10px] font-black text-slate-700 truncate">{{ $account->email }}</p>
+                                    </div>
+                                    <span @class([
+                                        'text-[8px] font-black uppercase px-3 py-1 rounded-full shrink-0',
+                                        'bg-emerald-100 text-emerald-600' => $account->isActive(),
+                                        'bg-slate-200 text-slate-500'     => ! $account->isActive(),
+                                    ])>{{ $account->isActive() ? 'Actif' : 'Désactivé' }}</span>
+                                </div>
+
+                                {{-- Changement de rôle --}}
+                                <form method="POST" action="{{ route('employees.access.update', $employee) }}" class="flex items-center gap-2">
+                                    @csrf @method('PUT')
+                                    <input type="hidden" name="action" value="role">
+                                    <select name="role_id" class="flex-1 bg-slate-50 border-none rounded-xl p-3 text-[10px] font-black uppercase shadow-inner outline-none appearance-none cursor-pointer">
+                                        @foreach(\App\Models\Role::orderBy('display_name')->get() as $role)
+                                            <option value="{{ $role->id }}" {{ $account->role_id == $role->id ? 'selected' : '' }}>{{ $role->display_name ?? $role->name }}</option>
+                                        @endforeach
+                                    </select>
+                                    <button type="submit" class="bg-slate-900 text-white px-4 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest border-none cursor-pointer hover:bg-purple-600 transition">OK</button>
+                                </form>
+
+                                <div class="flex flex-wrap gap-2">
+                                    @if($account->isActive())
+                                    <form method="POST" action="{{ route('employees.access.update', $employee) }}" class="flex-1">
+                                        @csrf @method('PUT')
+                                        <input type="hidden" name="action" value="deactivate">
+                                        <button type="submit" class="w-full bg-white border border-rose-200 text-rose-600 px-3 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-rose-50 transition cursor-pointer">
+                                            <i class="fa-solid fa-user-lock mr-1"></i> Désactiver
+                                        </button>
+                                    </form>
+                                    @else
+                                    <form method="POST" action="{{ route('employees.access.update', $employee) }}" class="flex-1">
+                                        @csrf @method('PUT')
+                                        <input type="hidden" name="action" value="activate">
+                                        <button type="submit" class="w-full bg-emerald-500 text-white px-3 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-emerald-600 transition border-none cursor-pointer">
+                                            <i class="fa-solid fa-user-check mr-1"></i> Réactiver
+                                        </button>
+                                    </form>
+                                    @endif
+                                    <form method="POST" action="{{ route('employees.access.password', $employee) }}" class="flex-1" onsubmit="return confirm('Réinitialiser le mot de passe ?');">
+                                        @csrf @method('PUT')
+                                        <button type="submit" class="w-full bg-white border border-slate-200 text-slate-600 px-3 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-slate-900 hover:text-white transition cursor-pointer">
+                                            <i class="fa-solid fa-key mr-1"></i> Nouveau mot de passe
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        @else
+                            {{-- AUCUN COMPTE → CRÉATION --}}
+                            <p class="text-[9px] text-slate-400 italic normal-case mb-3">Cet employé n'a pas encore d'accès à l'application. Créez-en un en lui attribuant un rôle.</p>
+                            <form method="POST" action="{{ route('employees.access.store', $employee) }}" class="space-y-3">
+                                @csrf
+                                <div>
+                                    <label class="text-[7px] font-black uppercase text-slate-400 tracking-widest ml-1">Email de connexion</label>
+                                    <input type="email" name="email" value="{{ old('email', $employee->email) }}" required
+                                        class="w-full bg-slate-50 border-none rounded-xl p-3 text-[11px] font-black shadow-inner outline-none" placeholder="email@ferme.com">
+                                </div>
+                                <div>
+                                    <label class="text-[7px] font-black uppercase text-slate-400 tracking-widest ml-1">Rôle</label>
+                                    <select name="role_id" required class="w-full bg-slate-50 border-none rounded-xl p-3 text-[10px] font-black uppercase shadow-inner outline-none appearance-none cursor-pointer">
+                                        <option value="">— Choisir un rôle —</option>
+                                        @foreach(\App\Models\Role::orderBy('display_name')->get() as $role)
+                                            <option value="{{ $role->id }}" {{ old('role_id') == $role->id ? 'selected' : '' }}>{{ $role->display_name ?? $role->name }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <button type="submit" class="w-full bg-purple-600 text-white py-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-purple-700 transition border-none cursor-pointer italic">
+                                    <i class="fa-solid fa-user-plus mr-1"></i> Créer l'accès
+                                </button>
+                            </form>
+                        @endif
+                    </div>
+                    @endcan
+
                     {{-- SOLDE CONGÉS --}}
                     @if(\Illuminate\Support\Facades\Schema::hasColumn('employees', 'annual_leave_balance'))
                     <div class="bg-blue-50 p-5 rounded-2xl border border-blue-100 text-center">
