@@ -85,9 +85,9 @@
                             <div><p class="text-[8px] font-black text-emerald-400 uppercase">Total sortie</p><p class="text-lg font-black" x-text="totalOutput.toFixed(1) + ' kg'"></p></div>
                             <div><p class="text-[8px] font-black text-amber-400 uppercase">Perte</p><p class="text-lg font-black" x-text="loss.toFixed(1) + ' kg (' + lossPercent + '%)'"></p></div>
                             <div>
-                                <p class="text-[8px] font-black text-slate-400 uppercase">Rendement</p>
-                                {{-- ⚙️ PARAMÉTRAGE DYNAMIQUE : lossTolerance --}}
-                                <p class="text-lg font-black" :class="lossPercent > lossTolerance ? 'text-red-400' : 'text-emerald-400'" x-text="(100 - parseFloat(lossPercent)).toFixed(1) + '%'"></p>
+                                <p class="text-[8px] font-black text-slate-400 uppercase">Rendement <span class="text-slate-500">/ cible <span x-text="cuttingYieldTarget"></span>%</span></p>
+                                {{-- ⚙️ PARAMÉTRAGE DYNAMIQUE : cible de rendement découpe (abattoir.yield_cutting) --}}
+                                <p class="text-lg font-black" :class="(100 - parseFloat(lossPercent)) < cuttingYieldTarget ? 'text-red-400' : 'text-emerald-400'" x-text="(100 - parseFloat(lossPercent)).toFixed(1) + '%'"></p>
                             </div>
                         </div>
                     </div>
@@ -113,10 +113,12 @@
         
         // ⚙️ INJECTION DYNAMIQUE DES SETTINGS
         const lossTolerance = {{ setting('abattoir.tolerance_cutting_loss', 10) }};
+        const cuttingYieldTarget = {{ setting('abattoir.yield_cutting', 85) }};
 
         return {
             inputKg: 0,
             lossTolerance: lossTolerance,
+            cuttingYieldTarget: cuttingYieldTarget,
             products: [
                 { type:'cuisse', name:'Cuisses', kg:0, pieces:0, destination:'stock_frais', price:0 },
                 { type:'aile', name:'Ailes', kg:0, pieces:0, destination:'stock_frais', price:0 },

@@ -13,6 +13,11 @@ class CreateEmployee
         return DB::transaction(function () use ($data, $photo, $cv) {
             $data['status'] = 'Actif';
 
+            // Dotation initiale de congés annuels pilotée par les paramètres (RH).
+            if (! isset($data['annual_leave_balance'])) {
+                $data['annual_leave_balance'] = (int) setting('rh.annual_leave_days', 30);
+            }
+
             if ($photo) {
                 $data['photo_path'] = $photo->store('employees/photos', 'public');
             }

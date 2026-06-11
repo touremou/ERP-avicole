@@ -21,7 +21,9 @@ au moment de l'audit.
 - `ventes.credit_limit_default` — plafond crédit pré-rempli à la création client.
 - `rh.payment_methods` — options du mode de paiement (paie).
 - `rh.payslip_footer` — pied de page du bulletin imprimé.
+- `rh.annual_leave_days` — dotation initiale du solde de congés à l'embauche (+ affichage fiche agent).
 - `couvoir.fertility_target` / `couvoir.hatchability_target` — cibles + coloration KPI (repro).
+- `abattoir.yield_cutting` — cible de rendement découpe (affichage + coloration en temps réel).
 
 ## Restants — en attente de leur fonctionnalité consommatrice
 
@@ -34,9 +36,8 @@ câblées à la construction de chaque module.
 |--------|------|----------------------------------------------|
 | provenderie | fc_target_chair, fc_target_ponte, fc_alert | Calcul + affichage de l'indice de consommation (FCR) au tableau de bord provenderie |
 | energie | kwh_price_edg, water_price_m3, autonomy_alert_hours | Valorisation des relevés énergie/eau + alerte autonomie groupe |
-| abattoir | yield_cutting | Comparaison du rendement carcasse réel à la cible |
 | production | peak_laying_week | Courbe de ponte / écart au pic |
-| rh | overtime_rate, annual_leave_days | Saisie des heures sup. + solde de congés (colonne `annual_leave_balance` à créer) |
+| rh | overtime_rate | Saisie des heures supplémentaires sur le bulletin |
 | couvoir | mirage_day | Planification automatique du mirage |
 | elevage | batch_prefix_chair/ponte/repro | Préfixe auto du code de lot par type (JS sur le formulaire) |
 | elevage | cycle_caille_*, cycle_dinde_chair, cycle_caprin_lait, cycle_ovin_reproducteur, gmq_cible_*, lait_cible_chevre, tabaski_target_weight | Modules ruminants / volaille secondaire (cycles & cibles) |

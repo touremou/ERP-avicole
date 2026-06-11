@@ -18,7 +18,7 @@ class Employee extends Model
         'farm_id', 'user_id', 'employee_id', 'last_name', 'first_name', 'gender', 'birth_date',
         'phone', 'email', 'job_title', 'department', 'contract_type',
         'hire_date', 'salary', 'emergency_contact_name', 'emergency_contact_phone',
-        'photo_path', 'cv_path', 'status'
+        'photo_path', 'cv_path', 'status', 'annual_leave_balance', 'orange_money_number'
     ];
 
     protected $casts = [

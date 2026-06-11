@@ -238,7 +238,7 @@
                     @if(\Illuminate\Support\Facades\Schema::hasColumn('employees', 'annual_leave_balance'))
                     <div class="bg-blue-50 p-5 rounded-2xl border border-blue-100 text-center">
                         <p class="text-[8px] font-black text-blue-500 uppercase tracking-widest">Solde congés annuels</p>
-                        <p class="text-3xl font-black text-blue-600 mt-1">{{ $employee->annual_leave_balance ?? 30 }} <small class="text-xs text-blue-400">jours</small></p>
+                        <p class="text-3xl font-black text-blue-600 mt-1">{{ $employee->annual_leave_balance ?? setting('rh.annual_leave_days', 30) }} <small class="text-xs text-blue-400">/ {{ setting('rh.annual_leave_days', 30) }} jours</small></p>
                     </div>
                     @endif
                 </div>
