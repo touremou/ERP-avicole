@@ -118,6 +118,16 @@ comme sur le web (FormRequests et Actions métier partagés).
 Toutes les routes (hors login) exigent le header `Authorization: Bearer <token>`.
 Les tokens sont révocables individuellement (table `personal_access_tokens`).
 
+### 1.8 Langue
+
+L'application est en **français par défaut** (`APP_LOCALE=fr`), y compris les
+messages de validation, d'authentification et de pagination
+(`lang/fr/*.php`, générés depuis [laravel-lang](https://github.com/Laravel-Lang/lang)).
+Les fichiers anglais (`lang/en/*.php`) et `lang/fr.json` (traduction des
+chaînes `__('...')` de l'interface d'authentification Breeze) sont fournis
+pour une éventuelle bascule multilingue future (sélecteur de langue côté
+utilisateur — non implémenté à ce stade).
+
 ---
 
 ## 2. Administration
