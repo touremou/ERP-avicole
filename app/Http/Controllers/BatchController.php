@@ -20,6 +20,7 @@ use App\Services\BatchQuantityService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
 
 /**
@@ -492,7 +493,16 @@ class BatchController extends Controller
      */
     public function sync(Request $request, CreateBatch $action)
     {
+        if (Gate::denies('elevage.C')) {
+            return response()->json(['status' => 'error', 'message' => 'Non autorisé.'], 403);
+        }
+
         $request->validate(['uuid' => 'required|uuid']);
+
+        // SÉCURITÉ : ne jamais accepter farm_id du client (cross-tenant) ni de
+        // jeton CSRF en données métier — le farm_id est posé côté serveur par le
+        // trait BelongsToFarm. On ne propage donc qu'un payload assaini.
+        $payload = $request->except(['_token', 'farm_id', 'id']);
 
         try {
             // Vérifier si le lot existe déjà (par UUID)
@@ -501,9 +511,9 @@ class BatchController extends Controller
             if ($existing) {
                 // Mise à jour — on utilise UpdateBatch pour ne pas écraser current_quantity
                 $updateAction = app(UpdateBatch::class);
-                $batch = $updateAction->execute($existing, $request->all());
+                $batch = $updateAction->execute($existing, $payload);
             } else {
-                $batch = $action->execute($request->all());
+                $batch = $action->execute($payload);
             }
 
             return response()->json([
@@ -511,11 +521,15 @@ class BatchController extends Controller
                 'uuid'   => $batch->uuid,
                 'message' => 'Données synchronisées.',
             ]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            // On journalise le détail côté serveur et on renvoie un message générique
+            // (ne jamais exposer la trace/SQL au client).
+            Log::error("BatchController::sync échec (uuid={$request->uuid}) : " . $e->getMessage());
+
             return response()->json([
                 'status'  => 'error',
-                'message' => $e->getMessage(),
-            ], 500);
+                'message' => 'Synchronisation impossible pour cet enregistrement.',
+            ], 422);
         }
     }
 }
