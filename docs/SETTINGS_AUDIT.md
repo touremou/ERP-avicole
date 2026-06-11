@@ -30,6 +30,8 @@ au moment de l'audit.
 - `energie.water_price_m3` — coût d'un relevé d'eau estimé depuis le volume si non saisi.
 - `energie.kwh_price_edg` — KPI « valeur produite (éq. EDG) » au tableau de bord énergie.
 - `rh.overtime_rate` — calcul des heures supplémentaires (prime majorée) sur le bulletin.
+- `pisciculture.taux_survie_cible` / `pisciculture.fc_cible` — cibles de survie et d'indice de consommation affichées (badges colorés) sur le rapport Pisciculture (`reports.aquaculture`).
+- `pisciculture.cycle_tilapia` / `pisciculture.cycle_carpe` — durée de cycle de grossissement par espèce, utilisée pour le badge « Cycle » (jours restants avant récolte) du rapport Pisciculture.
 
 ## Restants — en attente de leur fonctionnalité consommatrice
 
@@ -43,7 +45,6 @@ câblées à la construction de chaque module.
 | energie | autonomy_alert_hours | Alerte d'autonomie du groupe électrogène (heures restantes) |
 | production | peak_laying_week | Courbe de ponte / écart au pic |
 | elevage | cycle_caille_*, cycle_dinde_chair, cycle_caprin_lait, cycle_ovin_reproducteur, gmq_cible_*, lait_cible_chevre, tabaski_target_weight | Modules ruminants / volaille secondaire (cycles & cibles) |
-| pisciculture | cycle_carpe, cycle_tilapia, fc_cible, taux_survie_cible | Module pisciculture |
 | whatsapp | api_url, admin_phone, daily_summary_hour | Intégration notifications WhatsApp |
 
 > Principe retenu : un paramètre visible doit s'appliquer. Tout réglage disposant

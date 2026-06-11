@@ -67,7 +67,9 @@
                 <th>O₂ (ppm)</th>
                 <th>NH₃ (ppm)</th>
                 <th>Biomasse</th>
-                <th>Survie</th>
+                <th>Survie (cible)</th>
+                <th>IC (cible)</th>
+                <th>Cycle</th>
                 <th>Statut</th>
             </tr>
         </thead>
@@ -86,7 +88,21 @@
                 <td>
                     @php $survival = $ext?->survival_rate; @endphp
                     @if($survival !== null)
-                        <span class="{{ $survival >= 80 ? 'surv-good' : ($survival >= 60 ? 'surv-mid' : 'surv-bad') }}">{{ number_format($survival, 1) }}%</span>
+                        <span class="{{ $survival >= $stat['survival_target'] ? 'surv-good' : ($survival >= $stat['survival_target'] * 0.8 ? 'surv-mid' : 'surv-bad') }}">{{ number_format($survival, 1) }}%</span> ({{ number_format($stat['survival_target'], 0) }}%)
+                    @else
+                        <span class="muted">—</span>
+                    @endif
+                </td>
+                <td>
+                    @if($stat['fc_real'] !== null)
+                        <span class="{{ $stat['fc_real'] <= $stat['fc_target'] ? 'surv-good' : ($stat['fc_real'] <= $stat['fc_target'] * 1.2 ? 'surv-mid' : 'surv-bad') }}">{{ number_format($stat['fc_real'], 2) }}</span> ({{ number_format($stat['fc_target'], 2) }})
+                    @else
+                        <span class="muted">—</span>
+                    @endif
+                </td>
+                <td>
+                    @if($stat['cycle_days'])
+                        J{{ $stat['age_days'] }}/{{ $stat['cycle_days'] }} — {{ $stat['days_remaining'] > 0 ? 'reste ' . $stat['days_remaining'] . ' j' : 'récolte due' }}
                     @else
                         <span class="muted">—</span>
                     @endif
@@ -94,7 +110,7 @@
                 <td>{{ $batch->status }}</td>
             </tr>
             @empty
-            <tr><td colspan="10" class="muted">Aucun lot pisciculture trouvé.</td></tr>
+            <tr><td colspan="12" class="muted">Aucun lot pisciculture trouvé.</td></tr>
             @endforelse
         </tbody>
     </table>

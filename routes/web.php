@@ -308,10 +308,15 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('reports')->name('reports.')->controller(ReportController::class)->middleware('can:L')->group(function () {
         Route::get('/', 'index')->name('index');
         Route::get('/technical', 'technicalPerformance')->name('technical');
+        Route::get('/technical/pdf', 'technicalPerformancePdf')->name('technical.pdf');
         Route::get('/profit-loss', 'profitLoss')->name('profit_loss');
+        Route::get('/profit-loss/pdf', 'profitLossPdf')->name('profit_loss.pdf');
         Route::get('/nursery', 'nurseryReport')->name('nursery');
+        Route::get('/nursery/pdf', 'nurseryReportPdf')->name('nursery.pdf');
         Route::get('/health-finance', 'healthFinancialReport')->name('health_finance');
+        Route::get('/health-finance/pdf', 'healthFinancialReportPdf')->name('health_finance.pdf');
         Route::get('/monthly', 'monthlyExpenses')->name('monthly');
+        Route::get('/monthly/pdf', 'monthlyExpensesPdf')->name('monthly.pdf');
         Route::get('/gmq', 'gmqReport')->name('gmq');
         Route::get('/gmq/pdf', 'gmqReportPdf')->name('gmq.pdf');
         Route::get('/aquaculture', 'aquacultureReport')->name('aquaculture');

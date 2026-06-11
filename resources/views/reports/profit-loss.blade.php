@@ -31,6 +31,7 @@
                 <div class="ml-auto flex gap-2">
                     <a href="{{ route('reports.profit_loss', ['date_from' => now()->startOfMonth()->toDateString(), 'date_to' => now()->toDateString()]) }}" class="px-4 py-3 bg-slate-50 text-slate-500 rounded-2xl text-[9px] font-black uppercase tracking-widest no-underline hover:bg-slate-100">Ce mois</a>
                     <a href="{{ route('reports.profit_loss', ['date_from' => now()->startOfYear()->toDateString(), 'date_to' => now()->toDateString()]) }}" class="px-4 py-3 bg-slate-50 text-slate-500 rounded-2xl text-[9px] font-black uppercase tracking-widest no-underline hover:bg-slate-100">Année</a>
+                    <a href="{{ route('reports.profit_loss.pdf', ['date_from' => $from->toDateString(), 'date_to' => $to->toDateString()]) }}" class="px-4 py-3 bg-amber-600 text-white rounded-2xl text-[9px] font-black uppercase tracking-widest no-underline hover:bg-amber-700"><i class="fa-solid fa-file-pdf mr-1"></i> Export PDF</a>
                 </div>
             </form>
 

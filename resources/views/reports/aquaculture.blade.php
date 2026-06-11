@@ -110,16 +110,17 @@
                                     <p class="text-[8px] font-black uppercase text-slate-400 tracking-widest mb-1">Biomasse</p>
                                     <p class="text-lg font-black text-slate-700">{{ $ext->biomass_kg !== null ? number_format($ext->biomass_kg, 1).' kg' : '—' }}</p>
                                 </div>
-                                <div class="text-center min-w-[80px]">
+                                <div class="text-center min-w-[90px]">
                                     <p class="text-[8px] font-black uppercase text-slate-400 tracking-widest mb-1">Survie</p>
-                                    @php $survival = $ext->survival_rate; @endphp
+                                    @php $survival = $ext->survival_rate; $survivalTarget = $stat['survival_target']; @endphp
                                     @if($survival !== null)
                                     <p @class(['text-2xl font-black italic',
-                                        'text-emerald-600' => $survival >= 80,
-                                        'text-amber-600'   => $survival >= 60 && $survival < 80,
-                                        'text-rose-600'    => $survival < 60])>
+                                        'text-emerald-600' => $survival >= $survivalTarget,
+                                        'text-amber-600'   => $survival >= $survivalTarget * 0.8 && $survival < $survivalTarget,
+                                        'text-rose-600'    => $survival < $survivalTarget * 0.8])>
                                         {{ number_format($survival, 1) }}<small class="text-[10px] opacity-60">%</small>
                                     </p>
+                                    <p class="text-[8px] text-slate-300 font-black uppercase">cible {{ number_format($survivalTarget, 0) }}%</p>
                                     @else
                                     <p class="text-slate-300 text-sm font-black uppercase">—</p>
                                     @endif
@@ -127,6 +128,40 @@
                             @else
                                 <p class="text-slate-300 text-[10px] font-black uppercase tracking-widest">Aucune donnée d'eau enregistrée</p>
                             @endif
+
+                            {{-- IC (indice de consommation) réel vs cible --}}
+                            <div class="text-center min-w-[90px]">
+                                <p class="text-[8px] font-black uppercase text-slate-400 tracking-widest mb-1">IC</p>
+                                @if($stat['fc_real'] !== null)
+                                <p @class(['text-2xl font-black italic',
+                                    'text-emerald-600' => $stat['fc_real'] <= $stat['fc_target'],
+                                    'text-amber-600'   => $stat['fc_real'] > $stat['fc_target'] && $stat['fc_real'] <= $stat['fc_target'] * 1.2,
+                                    'text-rose-600'    => $stat['fc_real'] > $stat['fc_target'] * 1.2])>
+                                    {{ number_format($stat['fc_real'], 2) }}
+                                </p>
+                                <p class="text-[8px] text-slate-300 font-black uppercase">cible {{ number_format($stat['fc_target'], 2) }}</p>
+                                @else
+                                <p class="text-slate-300 text-sm font-black uppercase">—</p>
+                                @endif
+                            </div>
+
+                            {{-- Cycle de grossissement : âge / durée cible --}}
+                            <div class="text-center min-w-[100px]">
+                                <p class="text-[8px] font-black uppercase text-slate-400 tracking-widest mb-1">Cycle</p>
+                                @if($stat['cycle_days'])
+                                <p @class(['text-sm font-black italic',
+                                    'text-rose-600'    => $stat['days_remaining'] !== null && $stat['days_remaining'] <= 0,
+                                    'text-amber-600'   => $stat['days_remaining'] !== null && $stat['days_remaining'] > 0 && $stat['days_remaining'] <= 14,
+                                    'text-slate-700'   => $stat['days_remaining'] === null || $stat['days_remaining'] > 14])>
+                                    J{{ $stat['age_days'] }} / {{ $stat['cycle_days'] }}
+                                </p>
+                                <p class="text-[8px] text-slate-300 font-black uppercase">
+                                    {{ $stat['days_remaining'] > 0 ? 'reste ' . $stat['days_remaining'] . ' j' : 'récolte due' }}
+                                </p>
+                                @else
+                                <p class="text-slate-300 text-sm font-black uppercase">—</p>
+                                @endif
+                            </div>
 
                             <div>
                                 <span @class(['px-3 py-1 rounded-xl text-[8px] font-black uppercase tracking-widest',

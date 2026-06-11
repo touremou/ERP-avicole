@@ -99,9 +99,6 @@
                         @can('elevage.M')
                         <a href="{{ route('protocols.index') }}" class="{{ $linkClass }} {{ request()->routeIs('protocols.*') ? $activeClass : $inactiveClass }}">Protocoles</a>
                         @endcan
-                        @can('elevage.S')
-                        <a href="{{ route('reports.index') }}" class="{{ $linkClass }} {{ request()->routeIs('reports.*') ? $activeClass : $inactiveClass }}">Rapports</a>
-                        @endcan
 
                     @elseif(request()->routeIs(['egg-productions.*', 'egg-movements.*', 'milk-productions.*']))
                         <span class="text-[9px] font-black text-slate-800 uppercase tracking-widest mr-1"><i class="fa-solid fa-egg text-amber-500 mr-1"></i> Production</span>
@@ -245,6 +242,9 @@
                     <div x-show="open" x-transition class="absolute right-0 top-full mt-1 w-52 bg-white rounded-2xl shadow-2xl border border-slate-100 p-2.5 z-50" x-cloak>
                         <a href="{{ route('notifications.preferences') }}" class="block rounded-lg p-2 text-[9px] font-black uppercase italic tracking-widest hover:bg-emerald-50 text-slate-500 no-underline"><i class="fa-brands fa-whatsapp text-emerald-500 w-4 text-center mr-1"></i> Notifications</a>
                         <a href="{{ route('tasks.index') }}" class="block rounded-lg p-2 text-[9px] font-black uppercase italic tracking-widest hover:bg-blue-50 text-slate-500 no-underline"><i class="fa-solid fa-list-check text-blue-500 w-4 text-center mr-1"></i> Planning Tâches</a>
+                        @can('elevage.S')
+                        <a href="{{ route('reports.index') }}" class="block rounded-lg p-2 text-[9px] font-black uppercase italic tracking-widest hover:bg-orange-50 text-slate-500 no-underline {{ request()->routeIs('reports.*') ? 'bg-orange-50 text-orange-600' : '' }}"><i class="fa-solid fa-chart-pie text-orange-500 w-4 text-center mr-1"></i> Rapports</a>
+                        @endcan
                         <a href="{{ route('profile.edit') }}" class="block rounded-lg p-2 text-[9px] font-black uppercase italic tracking-widest hover:bg-blue-50 text-slate-500 no-underline"><i class="fa-solid fa-user-gear text-blue-500 w-4 text-center mr-1"></i> Profil</a>
                         <a href="{{ route('employees.index') }}" class="block rounded-lg p-2 text-[9px] font-black uppercase italic tracking-widest hover:bg-slate-50 text-slate-500 no-underline"><i class="fa-solid fa-users text-slate-400 w-4 text-center mr-1"></i> Employés</a>
                         <a href="{{ route('providers.index') }}" class="block rounded-lg p-2 text-[9px] font-black uppercase italic tracking-widest hover:bg-slate-50 text-slate-500 no-underline"><i class="fa-solid fa-truck-field text-slate-400 w-4 text-center mr-1"></i> Fournisseurs</a>

@@ -27,6 +27,7 @@
                 <button type="submit" class="bg-slate-900 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-pink-600 transition-all border-none cursor-pointer">
                     <i class="fa-solid fa-filter mr-1"></i> Appliquer
                 </button>
+                <a href="{{ route('reports.nursery.pdf', ['date_from' => $from->toDateString(), 'date_to' => $to->toDateString()]) }}" class="ml-auto px-6 py-3 bg-pink-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest no-underline hover:bg-pink-700"><i class="fa-solid fa-file-pdf mr-1"></i> Export PDF</a>
             </form>
 
             {{-- KPI --}}

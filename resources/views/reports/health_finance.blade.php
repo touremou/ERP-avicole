@@ -41,7 +41,7 @@
 
                 <div class="bg-blue-50 p-2 rounded-[2.5rem] flex gap-2 shadow-inner border border-blue-100">
                     @foreach(['all' => 'Tous les lots', 'actif' => 'En cours', 'clos' => 'Archives'] as $key => $label)
-                        <a href="{{ request()->fullUrlWithQuery(['status' => $key]) }}" 
+                        <a href="{{ request()->fullUrlWithQuery(['status' => $key]) }}"
                            @class([
                                'px-8 py-3 rounded-[1.5rem] text-[10px] font-black uppercase italic transition-all no-underline',
                                'bg-blue-600 text-white shadow-lg shadow-blue-200' => $statusFilter == $key,
@@ -51,6 +51,10 @@
                         </a>
                     @endforeach
                 </div>
+
+                <a href="{{ route('reports.health_finance.pdf', ['period' => $period, 'status' => $statusFilter]) }}" class="px-8 py-3 bg-slate-900 text-white rounded-[1.5rem] text-[10px] font-black uppercase italic no-underline hover:bg-blue-600 transition-all shadow-lg">
+                    <i class="fa-solid fa-file-pdf mr-1"></i> Export PDF
+                </a>
             </div>
 
             {{-- 2. DASHBOARD FINANCIER --}}

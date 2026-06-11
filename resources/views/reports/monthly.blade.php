@@ -2,7 +2,6 @@
     @php
         $currency       = setting('general.currency', 'GNF');
         $df             = setting('general.date_format', 'd/m/Y');
-        $batchTypes     = ['chair' => '🍗 Chair', 'ponte' => '🥚 Ponte', 'poussiniere' => '🐥 Poussinière', 'reproducteur' => '🐓 Reproducteur'];
     @endphp
 
     <x-slot name="header">
@@ -51,26 +50,26 @@
                             <input type="hidden" name="status" id="f_status" value="{{ $statusFilter }}">
                         </div>
 
-                        {{-- TYPE --}}
+                        {{-- ESPÈCE --}}
                         <div>
-                            <label class="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 leading-none">Type de Lot</label>
+                            <label class="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 leading-none">Espèce</label>
                             <div class="bg-slate-100 p-1.5 rounded-xl flex flex-wrap gap-1">
-                                <button type="button" onclick="setFilter('type','all')"
+                                <button type="button" onclick="setFilter('species','all')"
                                     @class(['px-4 py-2 rounded-lg text-[9px] font-black uppercase italic transition-all',
-                                        'bg-white shadow text-slate-900' => $typeFilter == 'all',
-                                        'text-slate-400 hover:text-slate-600' => $typeFilter != 'all'])>
-                                    Tous
+                                        'bg-white shadow text-slate-900' => $speciesFilter == 'all',
+                                        'text-slate-400 hover:text-slate-600' => $speciesFilter != 'all'])>
+                                    Toutes
                                 </button>
-                                @foreach($batchTypes as $key => $label)
-                                    <button type="button" onclick="setFilter('type','{{ $key }}')"
+                                @foreach($speciesList as $sp)
+                                    <button type="button" onclick="setFilter('species','{{ $sp->id }}')"
                                         @class(['px-4 py-2 rounded-lg text-[9px] font-black uppercase italic transition-all',
-                                            'bg-white shadow text-slate-900' => $typeFilter == $key,
-                                            'text-slate-400 hover:text-slate-600' => $typeFilter != $key])>
-                                        {{ $label }}
+                                            'bg-white shadow text-slate-900' => (string) $speciesFilter == (string) $sp->id,
+                                            'text-slate-400 hover:text-slate-600' => (string) $speciesFilter != (string) $sp->id])>
+                                        {{ $sp->icon }} {{ $sp->name_fr }}
                                     </button>
                                 @endforeach
                             </div>
-                            <input type="hidden" name="type" id="f_type" value="{{ $typeFilter }}">
+                            <input type="hidden" name="species" id="f_species" value="{{ $speciesFilter }}">
                         </div>
 
                         {{-- ANNÉE --}}
@@ -111,11 +110,14 @@
                         <button type="submit" class="px-8 py-3 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase italic hover:bg-blue-700 transition shadow-lg">
                             <i class="fas fa-filter mr-2"></i> Filtrer
                         </button>
-                        @if($useDateRange || $typeFilter !== 'all' || $statusFilter !== 'all' || $monthFilter !== 'all')
+                        @if($useDateRange || $speciesFilter !== 'all' || $statusFilter !== 'all' || $monthFilter !== 'all')
                         <a href="{{ route('reports.monthly') }}" class="px-8 py-3 bg-slate-100 text-slate-500 rounded-xl text-[10px] font-black uppercase italic hover:bg-red-50 hover:text-red-500 transition no-underline">
                             <i class="fas fa-times mr-2"></i> Réinitialiser
                         </a>
                         @endif
+                        <a href="{{ route('reports.monthly.pdf', request()->query()) }}" class="ml-auto px-8 py-3 bg-orange-600 text-white rounded-xl text-[10px] font-black uppercase italic hover:bg-orange-700 transition no-underline shadow-lg">
+                            <i class="fas fa-file-pdf mr-2"></i> Export PDF
+                        </a>
                     </div>
                 </form>
             </div>
