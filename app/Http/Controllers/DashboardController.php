@@ -53,7 +53,7 @@ class DashboardController extends Controller
         // 3. STOCKS & VALORISATION (CMUP)
         // ---------------------------------------------------------
         $totalEggsStock = Stock::where('category', 'oeufs')
-            ->whereIn('item_name', ['XL', 'L', 'M', 'S'])
+            ->whereIn('item_name', \App\Models\EggProduction::gradeCodes())
             ->sum('current_quantity');
 
         // Valeur des matières premières (calculée sur le dernier prix d'achat connu ou CMUP)

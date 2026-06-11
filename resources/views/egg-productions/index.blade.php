@@ -91,10 +91,10 @@
                     {{-- REPARTITION GRAPHIQUE --}}
                     <div class="min-w-[240px] md:min-w-0 snap-center bg-white p-5 rounded-[1.5rem] md:rounded-[2rem] border border-slate-100 flex flex-col justify-center gap-1.5 md:gap-2 shadow-sm relative overflow-hidden">
                         <div class="absolute -right-4 -top-4 w-12 h-12 bg-slate-50 rounded-full"></div>
-                        @foreach(['XL' => 'blue', 'L' => 'indigo', 'M' => 'slate', 'S' => 'orange'] as $grade => $color)
+                        @foreach(\App\Models\EggProduction::activeGrades() as $grade => $meta)
                             @php $val = $stockVendable[strtolower($grade)] ?? 0; @endphp
                             <div class="flex items-center justify-between group relative z-10">
-                                <span class="text-[9px] font-black uppercase text-{{$color}}-500 italic">{{ $grade }}</span>
+                                <span class="text-[9px] font-black uppercase text-{{ $meta['color'] }}-500 italic">{{ $grade }}</span>
                                 <div class="flex-1 mx-2 h-[1px] bg-slate-100 border-b border-dashed border-slate-200"></div>
                                 <span class="text-[9px] md:text-[10px] font-black text-slate-700 tracking-tighter">{{ number_format($val, 1) }}</span>
                             </div>

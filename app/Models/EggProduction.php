@@ -53,6 +53,52 @@ class EggProduction extends Model
         return $this->belongsTo(Batch::class);
     }
 
+    // -----------------------------------------------------------------
+    // CALIBRES — SOURCE DE VÉRITÉ UNIQUE
+    // -----------------------------------------------------------------
+    //
+    // Les 4 calibres XL/L/M/S sont le standard avicole de calibrage et sont
+    // adossés à des colonnes fixes (grade_xl/l/m/s). Ce catalogue centralise
+    // tout ce qui les caractérise (colonne BDD, couleur UI, poids moyen en g)
+    // pour qu'aucune liste ne soit codée en dur ailleurs dans l'application.
+    //
+    // Le paramètre production.egg_grades pilote, lui, QUELS calibres sont
+    // actifs et DANS QUEL ORDRE — d'où le fait que ce réglage « s'applique »
+    // désormais partout (formulaire de tri, KPI, stock, validations, vues).
+
+    public const GRADE_CATALOG = [
+        'XL' => ['column' => 'grade_xl', 'color' => 'blue',   'weight' => 73],
+        'L'  => ['column' => 'grade_l',  'color' => 'indigo', 'weight' => 68],
+        'M'  => ['column' => 'grade_m',  'color' => 'slate',  'weight' => 58],
+        'S'  => ['column' => 'grade_s',  'color' => 'orange', 'weight' => 48],
+    ];
+
+    /**
+     * Calibres actifs, dans l'ordre défini par le paramètre production.egg_grades.
+     * Retourne [CODE => meta]. Toujours un sous-ensemble validé du catalogue
+     * canonique : une valeur de paramètre erronée est ignorée sans casse.
+     */
+    public static function activeGrades(): array
+    {
+        $configured = collect(explode(',', (string) setting('production.egg_grades', 'XL,L,M,S')))
+            ->map(fn ($g) => strtoupper(trim($g)))
+            ->filter(fn ($g) => isset(self::GRADE_CATALOG[$g]))
+            ->unique()
+            ->values();
+
+        if ($configured->isEmpty()) {
+            $configured = collect(array_keys(self::GRADE_CATALOG));
+        }
+
+        return $configured->mapWithKeys(fn ($g) => [$g => self::GRADE_CATALOG[$g]])->all();
+    }
+
+    /** Codes des calibres actifs (ex: ['XL','L','M','S']). */
+    public static function gradeCodes(): array
+    {
+        return array_keys(self::activeGrades());
+    }
+
     // -----------------------
     // KPIS TECHNIQUES AVICOLES
     // -----------------------
@@ -71,16 +117,16 @@ class EggProduction extends Model
      */
     public function getEstimatedEggMassAttribute(): float
     {
-        $weights = ['xl' => 73, 'l' => 68, 'm' => 58, 's' => 48]; // Grammes standards
-        
         if (!$this->is_graded) return 0.0;
 
-        return (
-            ($this->grade_xl * setting('general.eggs_per_tray', 30) * $weights['xl']) +
-            ($this->grade_l  * setting('general.eggs_per_tray', 30) * $weights['l'])  +
-            ($this->grade_m  * setting('general.eggs_per_tray', 30) * $weights['m'])  +
-            ($this->grade_s  * setting('general.eggs_per_tray', 30) * $weights['s'])
-        ) / 1000;
+        $perTray = setting('general.eggs_per_tray', 30);
+        $grams = 0;
+
+        foreach (self::activeGrades() as $meta) {
+            $grams += (float) $this->{$meta['column']} * $perTray * $meta['weight'];
+        }
+
+        return $grams / 1000;
     }
 
     /**
@@ -89,8 +135,8 @@ class EggProduction extends Model
     public function getTriDeviationAttribute(): int
     {
         if (!$this->is_graded) return 0;
-        
-        $totalGradedUnits = ($this->grade_xl + $this->grade_l + $this->grade_m + $this->grade_s) * setting('general.eggs_per_tray', 30);
+
+        $totalGradedUnits = $this->totalGradedTrays() * setting('general.eggs_per_tray', 30);
         return (int) round($this->grade_a_eggs - $totalGradedUnits);
     }
 
@@ -100,9 +146,19 @@ class EggProduction extends Model
     public function getSaleableTraysAttribute(): float
     {
         if ($this->is_graded) {
-            return (float) ($this->grade_xl + $this->grade_l + $this->grade_m + $this->grade_s);
+            return $this->totalGradedTrays();
         }
         return round($this->grade_a_eggs / setting('general.eggs_per_tray', 30), 2);
+    }
+
+    /** Somme des alvéoles triées sur l'ensemble des calibres actifs. */
+    public function totalGradedTrays(): float
+    {
+        $trays = 0;
+        foreach (self::activeGrades() as $meta) {
+            $trays += (float) $this->{$meta['column']};
+        }
+        return $trays;
     }
 
     // -----------------------
@@ -130,13 +186,15 @@ class EggProduction extends Model
 
     public function getMapForStockSync(): array
     {
-        return [
-            'XL'      => (float) $this->grade_xl,
-            'L'       => (float) $this->grade_l,
-            'M'       => (float) $this->grade_m,
-            'S'       => (float) $this->grade_s,
-            'Cassé'   => (float) ($this->broken_eggs / 30),
-            'Anomalie'=> (float) ($this->small_eggs / 30),
-        ];
+        $map = [];
+        foreach (self::activeGrades() as $code => $meta) {
+            $map[$code] = (float) $this->{$meta['column']};
+        }
+
+        $perTray = setting('general.eggs_per_tray', 30);
+        $map['Cassé']    = (float) ($this->broken_eggs / $perTray);
+        $map['Anomalie'] = (float) ($this->small_eggs / $perTray);
+
+        return $map;
     }
 }

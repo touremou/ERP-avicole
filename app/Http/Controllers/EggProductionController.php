@@ -64,7 +64,7 @@ class EggProductionController extends Controller
         $stockItems = Stock::where('category', 'oeufs')->get();
 
         $stockVendable = [];
-        foreach (['XL', 'L', 'M', 'S'] as $grade) {
+        foreach (EggProduction::gradeCodes() as $grade) {
             $item = $stockItems->where('item_name', $grade)->first();
             $stockVendable[strtolower($grade)] = (float) ($item?->current_quantity ?? 0);
         }
@@ -233,7 +233,7 @@ class EggProductionController extends Controller
 
         // SÉCURITÉ ERP : Si déjà trié, on vérifie que le stock global est suffisant pour absorber l'annulation
         if ($eggProduction->is_graded) {
-            foreach (['xl', 'l', 'm', 's'] as $g) {
+            foreach (array_map('strtolower', EggProduction::gradeCodes()) as $g) {
                 $qty = (float) $eggProduction->{"grade_{$g}"};
                 if ($qty > 0) {
                     $currentStock = \App\Models\Stock::where('item_name', strtoupper($g))

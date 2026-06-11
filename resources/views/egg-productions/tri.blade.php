@@ -73,10 +73,11 @@
                     </div>
                     
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        @foreach(['xl','l','m','s'] as $c)
+                        @foreach(\App\Models\EggProduction::gradeCodes() as $code)
+                        @php($c = strtolower($code))
                         <div id="card_{{ $c }}" class="p-4 bg-slate-50 rounded-[2rem] border-2 border-transparent transition-all duration-300">
                             <label class="block text-[9px] font-black text-slate-400 uppercase mb-3 tracking-[0.2em] italic text-center">
-                                Grade {{ strtoupper($c) }}
+                                Grade {{ $code }}
                             </label>
                             
                             <div class="flex items-center gap-2">
@@ -146,7 +147,7 @@ function updateUI() {
     const brutUnites = parseInt(brutEl.innerText);
     let totalGlobalGradesUnites = 0;
 
-    ['xl', 'l', 'm', 's'].forEach(grade => {
+    @json(array_map('strtolower', \App\Models\EggProduction::gradeCodes())).forEach(grade => {
         const alv = getValue(`${grade}_alv`);
         const uniInput = document.getElementById(`${grade}_uni`);
         const maxUnits = setting('general.eggs_per_tray', 30) - 1;
