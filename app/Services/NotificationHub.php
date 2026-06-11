@@ -209,9 +209,13 @@ class NotificationHub
      */
     public function alertFuelLow(EnergySource $source): void
     {
+        $autonomyLabel = $source->fuel_autonomy_hours !== null
+            ? "{$source->fuel_autonomy_hours}h de fonctionnement"
+            : "{$source->fuel_autonomy_days} jour(s)";
+
         $message = "⛽ *GASOIL CRITIQUE*\n\n"
             . "Groupe : *{$source->name}*\n"
-            . "Autonomie : *{$source->fuel_autonomy_days} jour(s)*\n"
+            . "Autonomie : *{$autonomyLabel}*\n"
             . "Niveau cuve : {$source->current_fuel_level}L / {$source->fuel_tank_capacity}L\n\n"
             . "Commander du gasoil AUJOURD'HUI.";
 

@@ -196,9 +196,13 @@
                             </div>
                             <div class="text-center">
                                 <p class="text-[8px] font-black text-slate-400 uppercase">Autonomie</p>
-                                <p class="text-lg font-black {{ ($groupe->fuel_autonomy_days ?? 99) <= 3 ? 'text-red-600 animate-pulse' : 'text-slate-900' }}">
+                                <p class="text-lg font-black {{ $groupe->is_fuel_low ? 'text-red-600 animate-pulse' : 'text-slate-900' }}">
                                     {{ $groupe->fuel_autonomy_days ?? '—' }}j
+                                    @if($groupe->fuel_autonomy_hours !== null)
+                                        <span class="text-[9px] font-black opacity-50">({{ $groupe->fuel_autonomy_hours }}h)</span>
+                                    @endif
                                 </p>
+                                <p class="text-[7px] text-slate-300 font-black uppercase tracking-widest mt-0.5">Seuil : {{ setting('energie.autonomy_alert_hours', 24) }}h</p>
                             </div>
                             <div class="text-center">
                                 <p class="text-[8px] font-black text-slate-400 uppercase">Avant vidange</p>

@@ -137,6 +137,9 @@
                                     $isGraded = $todayRecord ? $todayRecord->is_graded : false;
                                     $totalDayEggs = $todayRecord ? $todayRecord->total_eggs_collected : 0;
                                     $hdp = $b->current_quantity > 0 ? round(($totalDayEggs / $b->current_quantity) * 100, 1) : 0;
+                                    $currentWeek = ceil($b->age / 7);
+                                    $peakWeek = (int) setting('production.peak_laying_week', 28);
+                                    $weekDiff = $currentWeek - $peakWeek;
                                 @endphp
                                 <tr class="hover:bg-slate-50/80 transition-all font-bold group">
                                     <td class="px-4 md:px-6 py-3 md:py-4">
@@ -146,7 +149,7 @@
                                             </div>
                                             <div>
                                                 <p class="text-xs md:text-sm font-black text-slate-800 uppercase tracking-tighter leading-none m-0">{{ $b->code }}</p>
-                                                <p class="text-[8px] text-blue-500 uppercase mt-1 tracking-widest italic m-0">{{ $b->building->name }} <span class="sm:hidden text-slate-400">• S-{{ ceil($b->age / 7) }}</span></p>
+                                                <p class="text-[8px] text-blue-500 uppercase mt-1 tracking-widest italic m-0">{{ $b->building->name }} <span class="sm:hidden text-slate-400">• S-{{ $currentWeek }}</span></p>
                                             </div>
                                         </div>
                                         <div class="flex items-center gap-1.5 mt-2.5">
@@ -166,7 +169,19 @@
                                             <span class="text-[7px] md:text-[8px] text-slate-400 uppercase ml-1.5 italic font-black hidden sm:inline">{{ $passagesCount }}/{{ setting('production.max_passages', 4) }} Passages</span>
                                         </div>
                                     </td>
-                                    <td class="px-3 py-3 md:py-4 text-center text-[9px] md:text-[10px] text-slate-500 italic hidden sm:table-cell">S-{{ ceil($b->age / 7) }}</td>
+                                    <td class="px-3 py-3 md:py-4 text-center text-[9px] md:text-[10px] text-slate-500 italic hidden sm:table-cell">
+                                        S-{{ $currentWeek }}
+                                        <span @class(['block text-[7px] font-black uppercase tracking-widest mt-0.5 not-italic',
+                                            'text-blue-400' => $weekDiff < -2,
+                                            'text-emerald-500' => abs($weekDiff) <= 2,
+                                            'text-amber-500' => $weekDiff > 2])
+                                            title="Pic de ponte attendu : S-{{ $peakWeek }}">
+                                            @if($weekDiff < -2) Montée
+                                            @elseif(abs($weekDiff) <= 2) Pic
+                                            @else Post-pic
+                                            @endif
+                                        </span>
+                                    </td>
                                     <td class="px-3 py-3 md:py-4 text-center text-[11px] md:text-xs text-slate-900 font-black italic">{{ number_format($totalDayEggs) }} <small class="text-[7px] opacity-40 uppercase hidden sm:inline">Unités</small></td>
                                     <td class="px-3 py-3 md:py-4 text-center">
                                         <div class="flex flex-col items-center gap-1.5">

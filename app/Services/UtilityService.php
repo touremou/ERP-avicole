@@ -201,14 +201,18 @@ class UtilityService
             ];
         }
 
-        // Gasoil bas (< 3 jours)
+        // Gasoil bas (autonomie sous le seuil paramétrable energie.autonomy_alert_hours)
+        $alertHours = (float) setting('energie.autonomy_alert_hours', 24);
         foreach (EnergySource::groupes()->get() as $groupe) {
             if ($groupe->is_fuel_low) {
+                $autonomyLabel = $groupe->fuel_autonomy_hours !== null
+                    ? "{$groupe->fuel_autonomy_hours}h (seuil {$alertHours}h)"
+                    : "{$groupe->fuel_autonomy_days} jour(s)";
                 $alerts[] = [
                     'type'     => 'fuel',
                     'severity' => 'critique',
                     'title'    => "Gasoil {$groupe->name} critique",
-                    'message'  => "Autonomie : {$groupe->fuel_autonomy_days} jour(s). Commander immédiatement.",
+                    'message'  => "Autonomie : {$autonomyLabel}. Commander immédiatement.",
                     'icon'     => 'fa-gas-pump',
                 ];
             }
