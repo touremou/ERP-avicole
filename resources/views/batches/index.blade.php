@@ -70,8 +70,12 @@
                 @endforeach
             </div>
 
-            {{-- FILTRES DE TYPE (Volaille uniquement) --}}
-            @if(!$familyFilter || $familyFilter === 'volaille')
+            {{-- FILTRES DE TYPE (sous-filtre de la famille Volaille uniquement) --}}
+            {{-- Les types chair/ponte/repro/poussinière sont propres à la volaille : --}}
+            {{-- on ne les affiche que dans ce contexte pour que « Tous » et les --}}
+            {{-- compteurs de type s'additionnent (sinon les lots non-volaille --}}
+            {{-- gonflent « Tous » sans onglet correspondant). --}}
+            @if($familyFilter === 'volaille')
             <div class="flex flex-wrap items-center gap-3 mb-8" id="batchContainer">
                 <a href="{{ route('batches.index', ['family' => $familyFilter]) }}"
                    @class([

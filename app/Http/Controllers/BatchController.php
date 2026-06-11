@@ -80,15 +80,20 @@ class BatchController extends Controller
             $query->critical(setting('elevage.mortality_alert', 5));
         }
 
-        // Filtre par type
-        if ($request->filled('type') && in_array($request->type, $allowedTypes)) {
-            $query->byType($request->type);
-        }
-
         // Filtre par famille d'espèce
         $familyFilter = $request->input('family');
         if ($familyFilter && isset($familyGroups[$familyFilter])) {
             $applyFamilyFilter($query, $familyGroups[$familyFilter], $familyFilter);
+        }
+
+        // Filtre par type : sous-filtre de la volaille uniquement (chair/ponte/…).
+        // On ne l'applique que dans le contexte volaille, en cohérence avec
+        // l'affichage des onglets de type (sinon une URL obsolète ?type=chair
+        // sans famille filtrerait toutes les espèces sans onglet actif visible).
+        if ($familyFilter === 'volaille'
+            && $request->filled('type')
+            && in_array($request->type, $allowedTypes)) {
+            $query->byType($request->type);
         }
 
         // 2. On applique la même exclusion pour que les compteurs d'onglets soient justes
