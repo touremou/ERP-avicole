@@ -94,13 +94,13 @@ class Sale extends Model
      */
     public function recalculateTotals(): void
     {
-        $subtotal = $this->items()->sum('total');
-        $taxAmount = $this->tax_rate > 0 ? $subtotal * ($this->tax_rate / 100) : 0;
+        $subtotal = round((float) $this->items()->sum('total'), 2);
+        $taxAmount = $this->tax_rate > 0 ? round($subtotal * ($this->tax_rate / 100), 2) : 0;
 
         $this->update([
             'subtotal'     => $subtotal,
             'tax_amount'   => $taxAmount,
-            'total_amount' => $subtotal + $taxAmount,
+            'total_amount' => round($subtotal + $taxAmount, 2),
         ]);
     }
 

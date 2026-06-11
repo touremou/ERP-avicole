@@ -45,7 +45,7 @@ class CreateSale
 
             // ─── 2. CRÉER LES LIGNES ───
             foreach ($data['items'] as $item) {
-                $total = (float) $item['quantity'] * (float) $item['unit_price'];
+                $total = round((float) $item['quantity'] * (float) $item['unit_price'], 2);
 
                 SaleItem::create([
                     'sale_id'      => $sale->id,
