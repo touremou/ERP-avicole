@@ -51,16 +51,20 @@ class AppServiceProvider extends ServiceProvider
         // ─── 1b. FUSEAU HORAIRE PILOTÉ PAR LES PARAMÈTRES ───
         // Le réglage general.timezone (Paramètres > Général) était éditable mais
         // jamais appliqué. On l'applique ici s'il est valide (sinon on ignore).
-        if (! config('app.database_down') && Schema::hasTable('settings')) {
-            try {
+        //
+        // Schema::hasTable() lui-même peut lever (ex : fichier SQLite encore
+        // inexistant sur une toute première installation), donc il doit être
+        // dans le try/catch, pas seulement la lecture du paramètre.
+        try {
+            if (! config('app.database_down') && Schema::hasTable('settings')) {
                 $tz = setting('general.timezone');
                 if ($tz && in_array($tz, timezone_identifiers_list(), true)) {
                     config(['app.timezone' => $tz]);
                     date_default_timezone_set($tz);
                 }
-            } catch (\Throwable $e) {
-                // Paramètres indisponibles (migration en cours, etc.) : on garde la valeur par défaut.
             }
+        } catch (\Throwable $e) {
+            // Base de données ou paramètres indisponibles (installation en cours, etc.) : on garde la valeur par défaut.
         }
 
         // ─── 2. OBSERVERS ───

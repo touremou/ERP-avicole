@@ -45,10 +45,28 @@ use App\Http\Controllers\{
     ExpenseController,
     EmployeeAccessController,
     EmployeeSelfController,
-    MediaController
+    MediaController,
+    InstallController
 };
 
 Route::redirect('/', '/login');
+
+// ──────────────────────────────────────────────
+// ASSISTANT D'INSTALLATION (premier démarrage)
+// ──────────────────────────────────────────────
+Route::prefix('install')->name('install.')->group(function () {
+    Route::middleware('redirect.if.installed')->group(function () {
+        Route::get('/', [InstallController::class, 'welcome'])->name('welcome');
+        Route::get('/database', [InstallController::class, 'database'])->name('database');
+        Route::post('/database', [InstallController::class, 'storeDatabase'])->name('database.store');
+        Route::get('/migrate', [InstallController::class, 'migrate'])->name('migrate');
+        Route::post('/migrate', [InstallController::class, 'runMigrate'])->name('migrate.run');
+        Route::get('/admin', [InstallController::class, 'admin'])->name('admin');
+        Route::post('/admin', [InstallController::class, 'storeAdmin'])->name('admin.store');
+    });
+
+    Route::get('/finish', [InstallController::class, 'finish'])->name('finish');
+});
 
 // Service des fichiers publics (logos, photos…) sans dépendre du symlink storage.
 // Volontairement public : le logo de l'entreprise s'affiche aussi sur la page de connexion.

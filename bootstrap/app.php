@@ -15,7 +15,21 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'admin' => \App\Http\Middleware\AdminMiddleware::class,
+            'redirect.if.installed' => \App\Http\Middleware\RedirectIfInstalled::class,
         ]);
+
+        // NOTE : un seul appel à ->withMiddleware() doit configurer le
+        // groupe "web" — chaque appel écrase entièrement les groupes définis
+        // par les appels précédents (setMiddlewareGroups remplace, ne fusionne
+        // pas). Prepend et append doivent donc être déclarés ensemble ici.
+        $middleware->web(
+            prepend: [
+                \App\Http\Middleware\EnsureAppIsInstalled::class,
+            ],
+            append: [
+                \App\Http\Middleware\SetCurrentFarm::class,
+            ],
+        );
     })
         ->withExceptions(function (Exceptions $exceptions) {
         // Filet 1 : Intercepte les Gate, Policy et $this->authorize()
@@ -29,11 +43,6 @@ return Application::configure(basePath: dirname(__DIR__))
                 return redirect()->back()->with('error', '🔒 ACCESS RESTREINTE : Votre permission ne permet pas de faire cette opération.');
             }
         });
-    })
-        ->withMiddleware(function (Middleware $middleware) {
-        $middleware->web(append: [
-            \App\Http\Middleware\SetCurrentFarm::class,
-        ]);
     })
     /*
         ->withExceptions(function (Exceptions $exceptions) {
