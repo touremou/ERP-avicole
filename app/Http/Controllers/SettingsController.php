@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Setting;
+use App\Models\Species;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -23,7 +24,13 @@ class SettingsController extends Controller
             ->orderBy('display_order')
             ->get();
 
-        return view('settings.index', compact('groups', 'activeGroup', 'settings'));
+        // Onglet Général : aperçu en direct des espèces actives sur ce site
+        // (source de vérité = table species, gérée depuis /admin/species).
+        $activeSpecies = $activeGroup === 'general'
+            ? Species::where('is_active', true)->orderBy('sort_order')->get(['name_fr', 'family'])
+            : null;
+
+        return view('settings.index', compact('groups', 'activeGroup', 'settings', 'activeSpecies'));
     }
 
     public function logs(Request $request)

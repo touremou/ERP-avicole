@@ -42,6 +42,36 @@
 
                 {{-- FORMULAIRE PARAMÈTRES --}}
                 <div class="flex-1">
+
+                    @if($activeGroup === 'general')
+                    {{-- ESPÈCES ACTIVES — aperçu en direct, géré depuis /admin/species --}}
+                    <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden mb-6">
+                        <div class="px-6 py-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
+                            <h3 class="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
+                                <i class="fa-solid fa-paw text-teal-500"></i>
+                                Espèces actives sur ce site
+                            </h3>
+                            @can('admin.S')
+                            <a href="{{ route('admin.species.index') }}" class="bg-slate-900 text-white px-6 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-emerald-600 transition-all no-underline shadow-lg italic">
+                                <i class="fa-solid fa-sliders mr-1"></i> Gérer les espèces
+                            </a>
+                            @endcan
+                        </div>
+                        <div class="px-6 py-5">
+                            @if($activeSpecies->isEmpty())
+                                <p class="text-[10px] text-slate-400 uppercase tracking-widest">Aucune espèce active sur ce site.</p>
+                            @else
+                                <div class="flex flex-wrap gap-2">
+                                    @foreach($activeSpecies as $sp)
+                                        <span class="px-4 py-2 rounded-xl bg-slate-50 text-slate-600 text-[9px] font-black uppercase tracking-widest border border-slate-100">{{ $sp->name_fr }}</span>
+                                    @endforeach
+                                </div>
+                                <p class="text-[8px] text-slate-400 mt-3 normal-case italic">{{ $activeSpecies->count() }} espèce(s) active(s) · activation/désactivation depuis « Gérer les espèces ».</p>
+                            @endif
+                        </div>
+                    </div>
+                    @endif
+
                     <form method="POST" action="{{ route('settings.update') }}">
                         @csrf @method('PUT')
                         <input type="hidden" name="_group" value="{{ $activeGroup }}">
