@@ -79,10 +79,16 @@ class Setting extends Model
 
     /**
      * Charge tous les paramètres avec cache.
+     *
+     * Robustesse : si le store de cache (table `cache` en driver
+     * "database") n'existe pas encore — ex: tout premier `php artisan
+     * migrate` sur une base vide, avant que la migration du cache ne
+     * passe — Cache::remember() lèverait une QueryException. On retombe
+     * alors sur une lecture directe sans cache.
      */
     public static function getAllCached(): array
     {
-        return Cache::remember(static::$cacheKey, static::$cacheTtl, function () {
+        $resolve = function () {
             try {
                 if (! Schema::hasTable('settings')) return [];
 
@@ -93,7 +99,13 @@ class Setting extends Model
             } catch (\Throwable $e) {
                 return [];
             }
-        });
+        };
+
+        try {
+            return Cache::remember(static::$cacheKey, static::$cacheTtl, $resolve);
+        } catch (\Throwable $e) {
+            return $resolve();
+        }
     }
 
     /**
