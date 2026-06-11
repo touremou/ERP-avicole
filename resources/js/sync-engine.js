@@ -210,6 +210,47 @@ async function syncSales() {
 }
 
 /**
+ * 6. Synchronisation des Dépenses (saisies hors-ligne)
+ */
+async function syncExpenses() {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+    const unsynced = await db.expenses.where('is_synced').equals(0).toArray();
+
+    if (unsynced.length === 0) return;
+
+    console.log(`📤 Moteur de synchro : ${unsynced.length} dépense(s) en attente...`);
+
+    for (const expense of unsynced) {
+        try {
+            const response = await fetch('/api/sync/expenses', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify(expense)
+            });
+
+            if (!response.ok) throw new Error(`Statut HTTP: ${response.status}`);
+
+            const result = await response.json();
+
+            if (result.status === 'success' || result.status === 'already_synced') {
+                await db.expenses.update(expense.uuid, { is_synced: 1 });
+                console.log(`🧾 Dépense ${expense.uuid} synchronisée (${result.status}${result.reference ? ' → ' + result.reference : ''}).`);
+            } else if (result.status === 'conflict') {
+                // Dépense refusée côté serveur : on la marque traitée pour ne pas boucler.
+                console.warn(`⚠️ Dépense ${expense.uuid} en conflit : ${result.message}`);
+                await db.expenses.update(expense.uuid, { is_synced: 1 });
+            }
+        } catch (error) {
+            console.error(`❌ Erreur synchro dépense:`, error);
+        }
+    }
+}
+
+/**
  * Orchestrateur Principal de Synchronisation (Exporté globalement)
  */
 export async function syncData() {
@@ -220,6 +261,7 @@ export async function syncData() {
         await syncEggProductions();
         await syncStockMovements();
         await syncSales();
+        await syncExpenses();
     } catch (globalError) {
         console.error("❌ Erreur critique dans le cycle de synchronisation :", globalError);
     }

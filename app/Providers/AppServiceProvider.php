@@ -127,6 +127,8 @@ class AppServiceProvider extends ServiceProvider
             'sales.'            => 'commerce',
             'payments.'         => 'commerce',
 
+            'expenses.'         => 'depenses',
+
             'utilities.'        => 'ressources',
             'notifications.'    => 'notifications',
 
@@ -257,7 +259,7 @@ class AppServiceProvider extends ServiceProvider
         $fallbackSlugs = [
             'dashboard', 'elevage', 'production', 'provenderie', 'planning',
             'abattoir', 'commerce', 'logistique', 'ressources', 'notifications',
-            'annuaire', 'admin', 'rh', 'couvoir', 'stocks',
+            'annuaire', 'admin', 'rh', 'couvoir', 'stocks', 'depenses',
         ];
 
         try {

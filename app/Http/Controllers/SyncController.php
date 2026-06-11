@@ -8,9 +8,11 @@ use App\Models\EggProduction;
 use App\Models\Stock;
 use App\Models\StockMovement;
 use App\Models\Sale;
+use App\Models\Expense;
 use App\Actions\EggProduction\RecordEggCollection;
 use App\Actions\Stock\MoveStockAction;
 use App\Actions\Sale\CreateSale;
+use App\Actions\Expense\CreateExpense;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -421,6 +423,53 @@ class SyncController extends Controller
             return response()->json([
                 'status'    => 'success',
                 'reference' => $sale->reference,
+            ]);
+        });
+    }
+
+    /**
+     * Réconcilie une dépense saisie hors-ligne.
+     *
+     * La dépense est créée au statut « en_attente » (CreateExpense) : la
+     * validation (qui l'intègre aux résultats financiers) reste une opération
+     * en ligne, contrôlée par un responsable.
+     *
+     * Idempotence : l'uuid (généré côté terrain) est unique sur `expenses` ;
+     * une dépense déjà réconciliée renvoie `already_synced`.
+     */
+    public function reconcileExpense(Request $request, CreateExpense $action): JsonResponse
+    {
+        if (Gate::denies('depenses.C')) {
+            return response()->json(['status' => 'error', 'message' => 'Permission insuffisante.'], 403);
+        }
+
+        $validated = $request->validate([
+            'uuid'           => 'required|uuid',
+            'category'       => 'required|string|max:50',
+            'label'          => 'required|string|max:255',
+            'amount'         => 'required|numeric|min:1',
+            'expense_date'   => 'required|date|before_or_equal:today',
+            'payment_method' => 'nullable|string|max:30',
+            'batch_id'       => 'nullable|integer|exists:batches,id',
+            'supplier_name'  => 'nullable|string|max:255',
+            'notes'          => 'nullable|string|max:2000',
+        ]);
+
+        return DB::transaction(function () use ($validated, $action) {
+            // ─── IDEMPOTENCE ───
+            if (Expense::where('uuid', $validated['uuid'])->exists()) {
+                Log::info("SyncController: dépense uuid={$validated['uuid']} déjà appliquée, ignorée.");
+                return response()->json(['status' => 'already_synced']);
+            }
+
+            $expense = $action->execute(array_merge($validated, ['user_id' => Auth::id()]));
+            $expense->update(['is_synced' => true, 'last_sync_at' => now()]);
+
+            Log::info("SyncController: dépense synchronisée (uuid: {$validated['uuid']}, ref: {$expense->reference}).");
+
+            return response()->json([
+                'status'    => 'success',
+                'reference' => $expense->reference,
             ]);
         });
     }

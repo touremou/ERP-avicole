@@ -41,6 +41,12 @@ db.version(7).stores({
     sales: 'uuid, client_id, sale_date, is_synced',
 });
 
+// v8 : file d'attente des dépenses saisies hors-ligne (synchronisées en
+// « en_attente », validées en ligne par un responsable).
+db.version(8).stores({
+    expenses: 'uuid, category, expense_date, is_synced',
+});
+
 /**
  * Aspire les référentiels du serveur vers le miroir local (IndexedDB).
  * Appelée au chargement (si en ligne) et après chaque synchro réussie.

@@ -148,7 +148,7 @@
                         <a href="{{ route('slaughter.finished') }}" class="{{ $linkClass }} {{ request()->routeIs('slaughter.finished*') ? $activeClass : $inactiveClass }}">Produits Finis</a>
                         @endcan
 
-                    @elseif(request()->routeIs(['sales.*', 'clients.*','providers.*', 'payments.*']))
+                    @elseif(request()->routeIs(['sales.*', 'clients.*','providers.*', 'payments.*', 'expenses.*']))
                         <span class="text-[9px] font-black text-slate-800 uppercase tracking-widest mr-1"><i class="fa-solid fa-cash-register text-teal-500 mr-1"></i> Commerce</span>
                         @can('commerce.L')
                         <a href="{{ route('sales.index') }}" class="{{ $linkClass }} {{ request()->routeIs('sales.*') ? $activeClass : $inactiveClass }}">Ventes</a>
@@ -157,6 +157,9 @@
                         @canany(['commerce.L', 'annuaire.M'])
                         <a href="{{ route('clients.index') }}" class="{{ $linkClass }} {{ request()->routeIs('clients.*') ? $activeClass : $inactiveClass }}">Clients</a>
                         <a href="{{ route('providers.index') }}" class="{{ $linkClass }} {{ request()->routeIs('providers.*') ? $activeClass : $inactiveClass }}">Fournisseurs</a>
+                        @endcan
+                        @can('depenses.L')
+                        <a href="{{ route('expenses.index') }}" class="{{ $linkClass }} {{ request()->routeIs('expenses.*') ? $activeClass : $inactiveClass }}">Dépenses</a>
                         @endcan
 
                     @elseif(request()->routeIs(['stocks.*', 'dispatches.*']))
@@ -285,6 +288,9 @@
             <a href="{{ route('slaughter.finished') }}" class="block px-3 py-2 rounded-lg text-[10px] font-black uppercase italic text-slate-600 hover:bg-rose-50 no-underline">Produits Finis</a>
             <p class="text-[7px] font-black text-teal-500 uppercase tracking-widest px-3 pt-2">Commerce</p>
             <a href="{{ route('sales.index') }}" class="block px-3 py-2 rounded-lg text-[10px] font-black uppercase italic text-slate-600 hover:bg-teal-50 no-underline">Ventes</a>
+            @can('depenses.L')
+            <a href="{{ route('expenses.index') }}" class="block px-3 py-2 rounded-lg text-[10px] font-black uppercase italic text-slate-600 hover:bg-teal-50 no-underline">Dépenses</a>
+            @endcan
             <a href="{{ route('stocks.index') }}" class="block px-3 py-2 rounded-lg text-[10px] font-black uppercase italic text-slate-600 hover:bg-teal-50 no-underline">Stocks</a>
             <p class="text-[7px] font-black text-cyan-500 uppercase tracking-widest px-3 pt-2">Ressources</p>
             <a href="{{ route('utilities.dashboard') }}" class="block px-3 py-2 rounded-lg text-[10px] font-black uppercase italic text-slate-600 hover:bg-cyan-50 no-underline">Eau & Énergie</a>

@@ -41,7 +41,8 @@ use App\Http\Controllers\{
     TaskController,
     SpeciesController,
     CampaignController,
-    MilkProductionController
+    MilkProductionController,
+    ExpenseController
 };
 
 Route::redirect('/', '/login');
@@ -278,6 +279,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/egg-collections', 'reconcileEggCollection')->name('egg_collections');
         Route::post('/stock-movements', 'reconcileStockMovement')->name('stock_movements');
         Route::post('/sales', 'reconcileSale')->name('sales');
+        Route::post('/expenses', 'reconcileExpense')->name('expenses');
     });
 
     // ─── ACHATS ALIMENT ───
@@ -335,6 +337,19 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('payments')->name('payments.')->controller(PaymentController::class)->group(function () {
         Route::get('/', 'index')->name('index')->middleware('can:L');
         Route::post('/', 'store')->name('store')->middleware('can:C');
+    });
+
+    // ─── REGISTRE DES DÉPENSES (module: depenses) ───
+    Route::prefix('expenses')->name('expenses.')->controller(ExpenseController::class)->group(function () {
+        Route::get('/', 'index')->name('index')->middleware('can:L');
+        Route::get('/create', 'create')->name('create')->middleware('can:C');
+        Route::post('/', 'store')->name('store')->middleware('can:C');
+        Route::get('/{expense}', 'show')->name('show')->middleware('can:L');
+        Route::get('/{expense}/edit', 'edit')->name('edit')->middleware('can:M');
+        Route::put('/{expense}', 'update')->name('update')->middleware('can:M');
+        Route::put('/{expense}/approve', 'approve')->name('approve')->middleware('can:M');
+        Route::put('/{expense}/cancel', 'cancel')->name('cancel')->middleware('can:M');
+        Route::delete('/{expense}', 'destroy')->name('destroy')->middleware('can:S');
     });
 
     // ──────────────────────────────────────────────

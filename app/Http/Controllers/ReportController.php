@@ -13,6 +13,7 @@ use App\Models\EnergyReading;
 use App\Models\FuelPurchase;
 use App\Models\Payslip;
 use App\Models\Species;
+use App\Models\Expense;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -133,6 +134,13 @@ class ReportController extends Controller
         $costEnergy = (float) EnergyReading::whereBetween('reading_date', [$from, $to])->sum('cost');
         $costFuel   = (float) FuelPurchase::whereBetween('purchase_date', [$from, $to])->sum('total_cost');
 
+        // Dépenses diverses validées (registre des dépenses), ventilées par catégorie.
+        $expensesByCategory = Expense::validated()
+            ->betweenDates($from, $to)
+            ->selectRaw('category, SUM(amount) as total')
+            ->groupBy('category')
+            ->pluck('total', 'category');
+
         $costs = [
             'Achats animaux (lots)'   => $costAcquisition,
             'Aliment'                 => $costFeed,
@@ -142,6 +150,12 @@ class ReportController extends Controller
             'Énergie'                 => $costEnergy,
             'Gasoil'                  => $costFuel,
         ];
+
+        // Chaque catégorie de dépense devient une ligne de charge dédiée.
+        foreach ($expensesByCategory as $category => $total) {
+            $label = 'Dépenses : ' . (Expense::CATEGORIES[$category] ?? ucfirst((string) $category));
+            $costs[$label] = ($costs[$label] ?? 0) + (float) $total;
+        }
         $totalCosts = array_sum($costs);
         $netResult  = $totalRevenue - $totalCosts;
         $marginPct  = $totalRevenue > 0 ? round(($netResult / $totalRevenue) * 100, 1) : 0;
@@ -179,6 +193,8 @@ class ReportController extends Controller
             $cost += (float) FeedPurchase::whereIn('batch_id', $batchIds)->whereBetween('purchase_date', [$from, $to])
                 ->sum(DB::raw('COALESCE(total_price, quantity * unit_price)'));
             $cost += (float) HealthCheck::whereIn('batch_id', $batchIds)->whereBetween('intervention_date', [$from, $to])->sum('cost');
+            $cost += (float) Expense::validated()->whereIn('batch_id', $batchIds)
+                ->whereBetween('expense_date', [$from, $to])->sum('amount');
 
             if ($rev == 0 && $cost == 0) continue;
 

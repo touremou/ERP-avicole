@@ -1,0 +1,121 @@
+<x-app-layout>
+    <x-slot name="header">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 w-full text-left">
+            <div class="flex items-center gap-5">
+                <a href="{{ route('expenses.index') }}" class="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-900 hover:text-white transition-all no-underline">
+                    <i class="fa-solid fa-arrow-left"></i>
+                </a>
+                <div>
+                    <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter truncate">{{ $expense->label }}</h2>
+                    <p class="text-[10px] font-black text-rose-600 uppercase tracking-[0.2em] mt-2 italic">
+                        {{ $expense->reference }} ·
+                        <span @class([
+                            'px-2 py-0.5 rounded-full',
+                            'bg-amber-100 text-amber-700'   => $expense->status === 'en_attente',
+                            'bg-emerald-100 text-emerald-700' => $expense->status === 'valide',
+                            'bg-slate-200 text-slate-500'   => $expense->status === 'annule',
+                        ])>{{ str_replace('_', ' ', $expense->status) }}</span>
+                    </p>
+                </div>
+            </div>
+
+            @can('depenses.M')
+            <div class="flex flex-wrap gap-3">
+                @if($expense->status === 'en_attente')
+                    <form method="POST" action="{{ route('expenses.approve', $expense) }}">
+                        @csrf @method('PUT')
+                        <button type="submit" class="bg-emerald-500 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-lg italic border-none cursor-pointer">
+                            <i class="fa-solid fa-check-double mr-1"></i> Valider
+                        </button>
+                    </form>
+                    <a href="{{ route('expenses.edit', $expense) }}" class="bg-slate-900 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-700 transition-all shadow-lg italic no-underline flex items-center">
+                        <i class="fa-solid fa-pen mr-1"></i> Modifier
+                    </a>
+                @endif
+                @if($expense->status !== 'annule')
+                    <form method="POST" action="{{ route('expenses.cancel', $expense) }}" onsubmit="return confirm('Annuler cette dépense ? Elle sera exclue des résultats.');">
+                        @csrf @method('PUT')
+                        <button type="submit" class="bg-white text-rose-600 border border-rose-200 px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-rose-50 transition-all shadow-sm italic cursor-pointer">
+                            <i class="fa-solid fa-ban mr-1"></i> Annuler
+                        </button>
+                    </form>
+                @endif
+            </div>
+            @endcan
+        </div>
+    </x-slot>
+
+    <div class="py-10">
+        <div class="max-w-3xl mx-auto sm:px-6 lg:px-8 italic font-bold text-left">
+
+            @if(session('success'))
+                <div class="mb-8 p-5 bg-emerald-500 text-white rounded-[2rem] font-black text-[10px] uppercase tracking-[0.2em] shadow-xl flex items-center italic">
+                    <i class="fa-solid fa-check-double mr-3 text-lg"></i> {{ session('success') }}
+                </div>
+            @endif
+            @if(session('error'))
+                <div class="mb-8 p-5 bg-red-500 text-white rounded-[2rem] font-black text-[10px] uppercase tracking-[0.2em] shadow-xl flex items-center italic">
+                    <i class="fa-solid fa-triangle-exclamation mr-3 text-lg"></i> {{ session('error') }}
+                </div>
+            @endif
+
+            {{-- MONTANT --}}
+            <div class="bg-slate-900 text-white p-8 rounded-[3rem] shadow-2xl mb-6 text-center">
+                <p class="text-[9px] font-black text-rose-300 uppercase tracking-[0.3em] mb-2">Montant</p>
+                <p class="text-4xl font-black leading-none">{{ number_format($expense->amount, 0, ',', ' ') }} <small class="text-sm opacity-50">{{ setting('general.currency', 'GNF') }}</small></p>
+            </div>
+
+            {{-- DÉTAILS --}}
+            <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm mb-6">
+                <dl class="grid grid-cols-2 gap-6">
+                    <div>
+                        <dt class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Catégorie</dt>
+                        <dd class="text-sm font-black text-slate-800">{{ $expense->category_label }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Date</dt>
+                        <dd class="text-sm font-black text-slate-800">{{ $expense->expense_date->format('d/m/Y') }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Mode de paiement</dt>
+                        <dd class="text-sm font-black text-slate-800">{{ $expense->payment_method_label }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Lot rattaché</dt>
+                        <dd class="text-sm font-black text-slate-800">{{ $expense->batch?->code ?? 'Charge générale (ferme)' }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Bénéficiaire</dt>
+                        <dd class="text-sm font-black text-slate-800">{{ $expense->supplier_name ?? '—' }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Saisie par</dt>
+                        <dd class="text-sm font-black text-slate-800">{{ $expense->user?->name ?? '—' }}</dd>
+                    </div>
+                    @if($expense->approved_at)
+                    <div>
+                        <dt class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Validée par</dt>
+                        <dd class="text-sm font-black text-emerald-600">{{ $expense->approver?->name ?? '—' }} · {{ $expense->approved_at->format('d/m/Y H:i') }}</dd>
+                    </div>
+                    @endif
+                </dl>
+
+                @if($expense->notes)
+                <div class="mt-6 pt-6 border-t border-slate-100">
+                    <dt class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-2">Notes</dt>
+                    <dd class="text-xs font-bold text-slate-600 whitespace-pre-line">{{ $expense->notes }}</dd>
+                </div>
+                @endif
+            </div>
+
+            @can('depenses.S')
+            <form method="POST" action="{{ route('expenses.destroy', $expense) }}" onsubmit="return confirm('Supprimer définitivement cette dépense ?');" class="text-right">
+                @csrf @method('DELETE')
+                <button type="submit" class="text-[9px] font-black text-slate-400 uppercase tracking-widest hover:text-rose-600 border-none bg-transparent cursor-pointer italic">
+                    <i class="fa-solid fa-trash mr-1"></i> Supprimer cette dépense
+                </button>
+            </form>
+            @endcan
+        </div>
+    </div>
+</x-app-layout>

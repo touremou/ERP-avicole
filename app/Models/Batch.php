@@ -160,6 +160,15 @@ class Batch extends Model
         return $this->hasMany(EggProduction::class);
     }
 
+    /**
+     * Dépenses directes rattachées au lot (registre des dépenses).
+     * Seules les dépenses validées sont comptées dans la marge nette.
+     */
+    public function expenses(): HasMany
+    {
+        return $this->hasMany(Expense::class);
+    }
+
     public function milkProductions(): HasMany
     {
         return $this->hasMany(MilkProduction::class);
@@ -425,8 +434,10 @@ class Batch extends Model
         $healthCost = (float) $this->healthChecks()->sum('cost');
         $acquisitionCost = (float) ($this->total_acquisition_cost ?? 0);
         $additionalCosts = (float) ($this->additional_costs ?? 0);
+        // Dépenses directes validées rattachées au lot (registre des dépenses).
+        $directExpenses = (float) $this->expenses()->where('status', 'valide')->sum('amount');
 
-        return $sellingRevenue - ($feedCost + $healthCost + $acquisitionCost + $additionalCosts);
+        return $sellingRevenue - ($feedCost + $healthCost + $acquisitionCost + $additionalCosts + $directExpenses);
     }
 
     // ═══════════════════════════════════════════════
