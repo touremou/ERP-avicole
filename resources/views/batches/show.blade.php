@@ -88,100 +88,108 @@
             </div>
         @endif
 
-        <div class="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6">
-            {{-- ZONE 1 : IDENTITÉ & NAVIGATION --}}
-            <div class="flex items-center gap-5 text-left">
-                <a href="{{ route('batches.index') }}" 
-                class="flex items-center justify-center w-12 h-12 bg-white border border-slate-200 text-slate-400 hover:text-blue-600 hover:border-blue-100 rounded-2xl transition-all shadow-sm group">
-                    <i class="fa-solid fa-arrow-left text-sm group-hover:-translate-x-1 transition-transform"></i>
-                </a>
-                
-                <div class="space-y-1">
-                    <div class="flex items-center gap-3">
-                        <h2 class="text-3xl font-black text-slate-900 uppercase italic tracking-tighter leading-none">
-                            {{ $batch->code }}
-                        </h2>
-                        <div @class([
-                            'flex items-center gap-1.5 px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest italic shadow-sm',
-                            'bg-emerald-500 text-white' => $batch->status === 'Actif',
-                            'bg-slate-200 text-slate-600' => $batch->status !== 'Actif'
-                        ])>
-                            <span class="relative flex h-2 w-2">
-                                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
-                                <span class="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
-                            </span>
-                            {{ $batch->status }}
-                        </div>
-                    </div>
-                    <div class="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest italic text-slate-400">
-                        <span class="text-blue-500"><i class="fa-solid fa-location-dot mr-1"></i> {{ $batch->building->name }}</span>
-                        <span class="text-slate-200">|</span>
-                        <span class="bg-slate-100 px-2 py-0.5 rounded text-slate-500">{{ $batch->type }}</span>
-                        <span class="text-slate-200">|</span>
-                        <span class="text-rose-500"><i class="fa-solid fa-dna mr-1"></i> {{ $batch->production_phase ?? 'Phase Initiale' }}</span>
-                    </div>
+        <div class="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 md:gap-8 w-full">
+
+    {{-- ZONE 1 : IDENTITÉ & NAVIGATION --}}
+    <div class="flex items-center gap-4 md:gap-5 text-left w-full xl:w-auto">
+        <a href="{{ route('batches.index') }}"
+           class="flex-shrink-0 flex items-center justify-center w-10 h-10 md:w-12 md:h-12 bg-white border border-slate-200 text-slate-400 hover:text-blue-600 hover:border-blue-100 rounded-xl md:rounded-2xl transition-all shadow-sm group no-underline">
+            <i class="fa-solid fa-arrow-left text-xs md:text-sm group-hover:-translate-x-1 transition-transform"></i>
+        </a>
+
+        <div class="space-y-1 sm:space-y-2 min-w-0 flex-1">
+            <div class="flex flex-wrap items-center gap-2 md:gap-3">
+                <h2 class="text-2xl md:text-3xl font-black text-slate-900 uppercase italic tracking-tighter leading-none truncate">
+                    {{ $batch->code }}
+                </h2>
+                <div @class([
+                    'flex items-center gap-1.5 px-3 py-1 rounded-full text-[8px] md:text-[9px] font-black uppercase tracking-widest italic shadow-sm shrink-0',
+                    'bg-emerald-500 text-white' => $batch->status === 'Actif',
+                    'bg-slate-200 text-slate-600' => $batch->status !== 'Actif'
+                ])>
+                    @if($batch->status === 'Actif')
+                        <span class="relative flex h-2 w-2">
+                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                            <span class="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
+                        </span>
+                    @endif
+                    {{ $batch->status }}
                 </div>
             </div>
 
-            {{-- ZONE 2 & 3 : ACTIONS --}}
-            <div class="flex flex-col sm:flex-row items-center gap-4 w-full xl:w-auto">
-                @if($batch->status === 'Actif')
-                    <div class="flex items-center justify-center sm:justify-start bg-white p-1.5 rounded-[1.5rem] border border-slate-200 shadow-sm w-full sm:w-auto">
-                        @can('elevage.M')
-                        <a href="{{ route('batches.edit', $batch->id) }}" 
-                        class="p-3 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all" 
-                        title="Modifier les paramètres">
-                            <i class="fa-solid fa-gear"></i>
-                        </a>
-                        
-                        <div class="w-px h-6 bg-slate-200 mx-1"></div>
-
-                        <button onclick="document.getElementById('modal-transfer').classList.remove('hidden')" 
-                                class="flex items-center gap-2 px-5 py-3 bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white rounded-xl font-black text-[10px] uppercase tracking-widest transition-all italic">
-                            <i class="fa-solid fa-right-left"></i>
-                            Mutation
-                        </button>
-
-                        <a href="{{ route('batches.close_form', $batch->id) }}" 
-                        class="flex items-center gap-2 px-5 py-3 text-slate-400 hover:text-orange-600 hover:bg-orange-50 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all italic">
-                            <i class="fa-solid fa-flag-checkered"></i>
-                            Clôture
-                        </a>
-                        @endcan
-                    </div>
-
-                    <div class="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
-                        @can('elevage.C')
-                        {{-- BOUTON STOCK (AFFECTATION DIRECTE) --}}
-                        <button type="button" onclick="event.stopPropagation(); openFeedModal()"
-                                class="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase italic hover:bg-orange-500 transition-all shadow-xl border-none cursor-pointer group">
-                            <i class="fa-solid fa-truck-ramp-box text-orange-400 group-hover:text-white transition-colors"></i> Achat direct
-                        </button>
-
-                        {{-- BOUTON SUIVI (DAILY CHECK) --}}
-                        <a href="{{ route('daily-checks.create', ['batch_id' => $batch->id]) }}"
-                        class="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-4 bg-blue-600 text-white rounded-2xl font-black text-[10px] uppercase italic hover:bg-blue-500 transition-all shadow-xl no-underline">
-                            <i class="fa-solid fa-clipboard-check text-blue-200"></i> Suivi Quotidien
-                        </a>
-
-                        {{-- BOUTON SANTÉ --}}
-                        <a href="{{ route('health.create', ['batch_id' => $batch->id]) }}"
-                        class="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-4 bg-rose-600 text-white rounded-2xl font-black text-[10px] uppercase italic hover:bg-rose-500 transition-all shadow-xl no-underline">
-                            <i class="fa-solid fa-heart-pulse text-rose-200"></i> Santé
-                        </a>
-
-                        {{-- BOUTON COLLECTE (SI PONTE) --}}
-                        @if($showPonte)
-                            <a href="{{ route('egg-productions.create', ['batch_id' => $batch->id]) }}"
-                            class="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-4 bg-emerald-500 text-white rounded-2xl font-black text-[10px] uppercase italic hover:bg-emerald-400 transition-all shadow-xl no-underline">
-                                <i class="fa-solid fa-egg text-emerald-200"></i> Collecte
-                            </a>
-                        @endif
-                        @endcan
-                    </div>
-                @endif
+            <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-[9px] md:text-[10px] font-black uppercase tracking-widest italic text-slate-400">
+                <span class="text-blue-500 whitespace-nowrap"><i class="fa-solid fa-location-dot mr-1"></i> {{ $batch->building->name }}</span>
+                <span class="text-slate-200 hidden sm:inline">|</span>
+                <span class="bg-slate-100 px-2 py-0.5 rounded text-slate-500 whitespace-nowrap">{{ $batch->type }}</span>
+                <span class="text-slate-200 hidden sm:inline">|</span>
+                <span class="text-rose-500 whitespace-nowrap"><i class="fa-solid fa-dna mr-1"></i> {{ $batch->production_phase ?? 'Phase Initiale' }}</span>
             </div>
         </div>
+    </div>
+
+    {{-- ZONE 2 & 3 : ACTIONS --}}
+    <div class="flex flex-col lg:flex-row items-stretch lg:items-center gap-4 w-full xl:w-auto">
+        @if($batch->status === 'Actif')
+
+            {{-- Actions Administratives (Grisées) --}}
+            <div class="flex items-center justify-between sm:justify-start bg-white p-1.5 rounded-2xl md:rounded-[1.5rem] border border-slate-200 shadow-sm w-full lg:w-auto overflow-x-auto hide-scrollbar shrink-0">
+                @can('elevage.M')
+                <a href="{{ route('batches.edit', $batch->id) }}"
+                   class="p-3 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all shrink-0"
+                   title="Modifier les paramètres">
+                    <i class="fa-solid fa-gear"></i>
+                </a>
+
+                <div class="w-px h-6 bg-slate-200 mx-1 shrink-0"></div>
+
+                <button onclick="document.getElementById('modal-transfer').classList.remove('hidden')"
+                        class="flex flex-1 sm:flex-none items-center justify-center gap-2 px-4 md:px-5 py-3 bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white rounded-xl font-black text-[9px] md:text-[10px] uppercase tracking-widest transition-all italic border-none cursor-pointer shrink-0">
+                    <i class="fa-solid fa-right-left"></i> Mutation
+                </button>
+
+                <a href="{{ route('batches.close_form', $batch->id) }}"
+                   class="flex flex-1 sm:flex-none items-center justify-center gap-2 px-4 md:px-5 py-3 text-slate-400 hover:text-orange-600 hover:bg-orange-50 rounded-xl font-black text-[9px] md:text-[10px] uppercase tracking-widest transition-all italic no-underline shrink-0">
+                    <i class="fa-solid fa-flag-checkered"></i> Clôture
+                </a>
+                @endcan
+            </div>
+
+            {{-- Actions Quotidiennes (En Grille sur Mobile, Flex sur PC) --}}
+            <div class="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 md:gap-3 w-full lg:w-auto">
+                @can('elevage.C')
+
+                <button type="button" onclick="event.stopPropagation(); openFeedModal()"
+                        class="flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-2 px-3 py-3 md:px-6 md:py-4 bg-slate-900 text-white rounded-xl md:rounded-2xl font-black text-[9px] md:text-[10px] uppercase italic hover:bg-orange-500 transition-all shadow-lg border-none cursor-pointer group text-center sm:text-left">
+                    <i class="fa-solid fa-truck-ramp-box text-orange-400 group-hover:text-white transition-colors text-lg sm:text-base"></i>
+                    <span>Achat direct</span>
+                </button>
+
+                <a href="{{ route('daily-checks.create', ['batch_id' => $batch->id]) }}"
+                   class="flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-2 px-3 py-3 md:px-6 md:py-4 bg-blue-600 text-white rounded-xl md:rounded-2xl font-black text-[9px] md:text-[10px] uppercase italic hover:bg-blue-500 transition-all shadow-lg no-underline text-center sm:text-left">
+                    <i class="fa-solid fa-clipboard-check text-blue-200 text-lg sm:text-base"></i>
+                    <span>Suivi</span>
+                </a>
+
+                <a href="{{ route('health.create', ['batch_id' => $batch->id]) }}"
+                   class="flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-2 px-3 py-3 md:px-6 md:py-4 bg-rose-600 text-white rounded-xl md:rounded-2xl font-black text-[9px] md:text-[10px] uppercase italic hover:bg-rose-500 transition-all shadow-lg no-underline text-center sm:text-left">
+                    <i class="fa-solid fa-heart-pulse text-rose-200 text-lg sm:text-base"></i>
+                    <span>Santé</span>
+                </a>
+
+                @if($showPonte)
+                <a href="{{ route('egg-productions.create', ['batch_id' => $batch->id]) }}"
+                   class="flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-2 px-3 py-3 md:px-6 md:py-4 bg-emerald-500 text-white rounded-xl md:rounded-2xl font-black text-[9px] md:text-[10px] uppercase italic hover:bg-emerald-400 transition-all shadow-lg no-underline text-center sm:text-left">
+                    <i class="fa-solid fa-egg text-emerald-200 text-lg sm:text-base"></i>
+                    <span>Collecte</span>
+                </a>
+                @endif
+
+                @endcan
+            </div>
+
+        @endif
+    </div>
+</div>
     </x-slot>
 
     {{-- INDICATEURS EN HAUT --}}
