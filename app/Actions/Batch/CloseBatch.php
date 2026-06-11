@@ -9,8 +9,9 @@ use Illuminate\Support\Facades\DB;
 /**
  * Action : Clôture d'un lot de production.
  *
- * Calcul de marge complet (corrige B-07) :
- * - Revenus = vente des oiseaux (réforme) + revenus œufs cumulés
+ * Calcul de marge :
+ * - Revenus = vente de réforme (effectif restant × prix de cession).
+ *   Le CA œufs n'est pas rattaché au lot (stock mutualisé) : suivi au niveau ferme.
  * - Coûts = acquisition + alimentation + santé + coûts additionnels
  * - Marge = Revenus - Coûts
  *
@@ -28,16 +29,15 @@ class CloseBatch
     {
         return DB::transaction(function () use ($batch, $data) {
             // ─── REVENUS ───
+            // Vente de réforme : effectif restant valorisé au prix de cession.
             $sellingPrice = (float) $data['actual_sell_price_per_unit'];
             $sellingRevenue = $batch->current_quantity * $sellingPrice;
 
-            // Revenus œufs cumulés (mouvements de vente)
-            // Note : si egg_movements n'a pas de colonne de prix, on utilise 0
-            // et on le corrigera dans le refactoring du module Œufs
-            $eggRevenue = 0;
-            // TODO : $eggRevenue = $batch->eggMovements()->where('type', 'vente')->sum('total_price');
-
-            $totalRevenue = $sellingRevenue + $eggRevenue;
+            // Le revenu des œufs n'est pas inclus ici : les œufs sont vendus
+            // depuis un stock mutualisé (module Stock/Ventes) sans rattachement
+            // au lot d'origine. Le CA œufs est donc suivi globalement au niveau
+            // ferme et non par lot (limite assumée du modèle de données).
+            $totalRevenue = $sellingRevenue;
 
             // ─── COÛTS ───
             $acquisitionCost = (float) ($batch->total_acquisition_cost ?? 0);

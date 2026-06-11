@@ -406,20 +406,19 @@ class Batch extends Model
     // ═══════════════════════════════════════════════
 
     /**
-     * Marge nette consolidée (tous revenus - tous coûts).
+     * Marge nette consolidée (revenus - coûts).
      *
-     * Correction B-07 : inclut les revenus œufs pour les pondeuses.
+     * Limite connue : le revenu des œufs n'est PAS rattaché au lot. Les œufs
+     * collectés alimentent un stock mutualisé (cf. EggProduction::getMapForStockSync)
+     * puis sont vendus via le module Stock/Ventes sans batch_id (les lignes de
+     * vente ne portent un lot que pour les animaux vifs, jamais pour 'oeufs').
+     * La marge d'un lot de ponte reflète donc la vente de réforme (total_revenue),
+     * le chiffre d'affaires des œufs étant suivi globalement au niveau ferme.
      */
     public function getNetMarginAttribute(): float
     {
-        // Revenus
+        // Revenus enregistrés sur le lot (vente de réforme calculée à la clôture).
         $sellingRevenue = (float) ($this->total_revenue ?? 0);
-        $eggRevenue = (float) $this->eggProductions()->sum(
-            \DB::raw('COALESCE(total_eggs_collected * 0, 0)')
-            // NOTE : EggProduction n'a pas de colonne 'total_price'.
-            // À remplacer par la vraie colonne de revenu quand elle existera.
-            // En attendant, on utilise total_revenue du lot qui est calculé à la clôture.
-        );
 
         // Coûts
         $feedCost = (float) $this->feedPurchases()->sum('total_price');
