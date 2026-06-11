@@ -7,7 +7,8 @@
 - PHP 8.3+ avec extensions : `pdo_mysql` (ou `pdo_sqlite`), `mbstring`, `gd`, `intl`, `zip`, `curl`, `xml`, `ctype`, `fileinfo`, `tokenizer`, `openssl`
 - MySQL 8 / MariaDB 10.6+ (ou SQLite pour une petite installation)
 - Composer 2, Node 18+ (build des assets)
-- HTTPS (certificat valide) + reverse proxy correctement configuré
+- HTTPS (certificat valide) + reverse proxy correctement configuré — requis
+  aussi pour l'installation en application mobile (PWA, voir guide §1.6)
 
 ## 2. Installation
 

@@ -84,6 +84,20 @@ offline** : consultation et saisie (L/C) restent possibles côté navigateur
 module de synchronisation (`/sync`). Les opérations de modification et de
 suppression (M/S) sont bloquées tant que la base est indisponible.
 
+### 1.6 Application installable (PWA)
+
+AviSmart est une **Progressive Web App** : depuis un navigateur mobile
+(Chrome/Edge Android, Safari iOS) ou desktop, l'option « Installer
+l'application » / « Ajouter à l'écran d'accueil » crée une véritable
+application avec icône, écran de démarrage et fenêtre autonome (sans barre
+d'adresse). Le service worker existant assure le repli hors-ligne (§1.5).
+
+- Le **nom** et l'**icône** de l'application reprennent les paramètres
+  `Général > Nom de l'entreprise` et `Général > Logo` ; sans logo, l'icône
+  AviSmart par défaut (œuf sur fond vert) est utilisée. Le manifest est
+  servi dynamiquement sur `/manifest.webmanifest`.
+- **HTTPS est obligatoire** pour l'installation PWA (hors `localhost`).
+
 ---
 
 ## 2. Administration

@@ -46,10 +46,14 @@ use App\Http\Controllers\{
     EmployeeAccessController,
     EmployeeSelfController,
     MediaController,
-    InstallController
+    InstallController,
+    PwaController
 };
 
 Route::redirect('/', '/login');
+
+// Manifest PWA dynamique (nom + icône pilotés par les paramètres).
+Route::get('/manifest.webmanifest', [PwaController::class, 'manifest'])->name('pwa.manifest');
 
 // ──────────────────────────────────────────────
 // ASSISTANT D'INSTALLATION (premier démarrage)

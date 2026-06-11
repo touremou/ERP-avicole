@@ -34,7 +34,7 @@ class EnsureAppIsInstalled
             config(['session.driver' => 'file']);
         }
 
-        if ($request->is('install*', 'up')) {
+        if ($request->is('install*', 'up', 'manifest.webmanifest')) {
             return $next($request);
         }
 
