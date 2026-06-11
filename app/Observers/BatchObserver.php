@@ -18,7 +18,10 @@ class BatchObserver
             return;
         }
 
-        $threshold = 10.0; // TODO : Utiliser MortalityThresholdService
+        // Seuil unique d'alerte mortalité : même source que le filtre « surmortalité »
+        // de l'index (BatchController) et le scope Batch::critical(), pour éviter
+        // qu'une alerte se déclenche à un taux différent de celui affiché à l'écran.
+        $threshold = (float) setting('elevage.mortality_alert', 5);
 
         // Calcul du taux de mortalité ACTUEL
         $currentMortality = (($batch->initial_quantity - $batch->current_quantity) / $batch->initial_quantity) * 100;
