@@ -530,7 +530,7 @@
     window.addEventListener('load', fillFormFromIndexedDB);
     document.getElementById('batchForm').addEventListener('submit', async function(e) {
         // Si on est hors-ligne (WAMP éteint ou réseau coupé)
-        if (!navigator.onLine || {{ config('app.database_down') ? 'true' : 'false' }}) {
+        if (!navigator.onLine || {{ config('app.database_down', false) ? 'true' : 'false' }}) {
             e.preventDefault(); // On empêche l'envoi vers le serveur qui ne répondrait pas
 
             // 1. Extraction des données du formulaire
