@@ -19,14 +19,14 @@
                 @endcan
 
                 {{-- MODULE RH : Accès à la Paie (L) --}}
-                @can('rh.L')
+                @can('annuaire.L')
                 <a href="{{ route('payroll.index') }}" class="bg-blue-600 text-white px-6 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-blue-700 transition-all shadow-lg italic no-underline">
                     <i class="fas fa-money-bill-wave mr-2"></i> Paie
                 </a>
                 @endcan
 
                 {{-- MODULE RH : Accès aux Congés (L) --}}
-                @can('rh.L')
+                @can('annuaire.L')
                 <a href="{{ route('payroll.leaves') }}" class="bg-white border border-slate-200 text-slate-600 px-6 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-amber-50 transition-all shadow-sm italic no-underline">
                     <i class="fas fa-calendar-xmark mr-2 text-amber-500"></i> Congés
                 </a>

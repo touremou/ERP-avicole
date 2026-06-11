@@ -14,14 +14,14 @@
             </div>
             <div class="flex gap-3">
                 {{-- Permission M : Édition de la fiche --}}
-                @can('stocks.M')
+                @can('logistique.M')
                 <a href="{{ route('stocks.edit', $stock->id) }}" class="bg-white border border-slate-200 text-slate-600 px-5 py-3 rounded-2xl text-[10px] font-black uppercase italic hover:bg-slate-50 transition-all shadow-sm no-underline">
                     <i class="fa-solid fa-pen mr-2 text-blue-500"></i> Ajuster Fiche
                 </a>
                 @endcan
                 
                 {{-- Permission S : Suppression (Destructive) --}}
-                @can('stocks.S')
+                @can('logistique.S')
                 <form action="{{ route('stocks.destroy', $stock->id) }}" method="POST" onsubmit="return confirm('🚨 Action Irréversible : Supprimer cet article et purger tout son historique ?');">
                     @csrf @method('DELETE')
                     <button type="submit" class="bg-rose-50 text-rose-500 border border-rose-100 px-5 py-3 rounded-2xl text-[10px] font-black uppercase italic hover:bg-rose-500 hover:text-white transition-all shadow-sm">

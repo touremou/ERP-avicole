@@ -153,3 +153,29 @@ test('la matrice RBAC est cohérente', function () {
     expect($this->operatorUser->hasPermission('M'))->toBeFalse();
     expect($this->readonlyUser->hasPermission('C'))->toBeFalse();
 });
+
+test('les Gates module utilisent des slugs réels (régression rh/couvoir/stocks)', function () {
+    // Régression : StockController/PayrollController/IncubationController
+    // utilisaient des slugs inexistants (stocks/rh/couvoir) → Gates non définis
+    // refusant l'accès à tous les non-admins. Les slugs réels sont
+    // logistique (stock), annuaire (RH/paie) et production (couvoir/incubation).
+    foreach (['logistique', 'annuaire', 'production'] as $slug) {
+        expect(Gate::forUser($this->managerUser)->allows("{$slug}.L"))
+            ->toBeTrue("Le manager doit pouvoir lire le module {$slug}.");
+    }
+
+    // Les anciens slugs erronés ne doivent plus être utilisés dans le code.
+    $dirs = [app_path(), resource_path('views')];
+    $offenders = [];
+    foreach ($dirs as $dir) {
+        $rii = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($dir));
+        foreach ($rii as $file) {
+            if ($file->isDir() || ! in_array($file->getExtension(), ['php'])) continue;
+            $code = file_get_contents($file->getPathname());
+            if (preg_match("/'(rh|couvoir|stocks)\\.[LCMS]'/", $code)) {
+                $offenders[] = str_replace(base_path() . '/', '', $file->getPathname());
+            }
+        }
+    }
+    expect($offenders)->toBe([], 'Slugs RBAC invalides encore présents : ' . implode(', ', $offenders));
+});

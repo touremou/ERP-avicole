@@ -39,7 +39,7 @@
         <div class="max-w-3xl mx-auto sm:px-6 lg:px-8">
             
             {{-- PROTECTION PERMISSION MODIFICATION (M) --}}
-            @can('stocks.M')
+            @can('logistique.M')
                 @if ($errors->any())
                     <div class="mb-6 p-6 bg-red-600 text-white rounded-[2.5rem] shadow-lg text-[10px] font-black uppercase italic animate-pulse">
                         <p class="mb-2 border-b border-white/20 pb-2">⚠️ Erreur(s) détectée(s) :</p>

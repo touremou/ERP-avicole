@@ -27,7 +27,7 @@
             @endforeach
 
             {{-- CRÉER UNE PÉRIODE --}}
-            @can('rh.C')
+            @can('annuaire.C')
             @if(!$hasCurrent)
             <form method="POST" action="{{ route('payroll.create-period') }}" class="mb-6 bg-blue-50 p-6 rounded-2xl border border-blue-200 flex items-center gap-4">
                 @csrf

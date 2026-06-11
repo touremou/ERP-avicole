@@ -41,9 +41,9 @@
                                     // On extrait le nom du module de la route ou du label pour déduire la permission (ex: stocks.index -> stock.L)
                                     // Vous pouvez ajuster cette logique selon votre nomenclature exacte
                                     $permMapping = [
-                                        'RH' => 'rh.L', 'Élevage' => 'elevage.L', 'Production' => 'production.L', 
-                                        'Couvoir' => 'couvoir.L', 'Provenderie' => 'provenderie.L', 'Planning' => 'planning.L',
-                                        'Abattoir' => 'abattoir.L', 'Commerce' => 'commerce.L', 'Stocks' => 'stocks.L',
+                                        'RH' => 'annuaire.L', 'Élevage' => 'elevage.L', 'Production' => 'production.L', 
+                                        'Couvoir' => 'production.L', 'Provenderie' => 'provenderie.L', 'Planning' => 'planning.L',
+                                        'Abattoir' => 'abattoir.L', 'Commerce' => 'commerce.L', 'Stocks' => 'logistique.L',
                                         'Ressources' => 'ressources.L', 'Admin' => 'admin.S'
                                     ];
                                     $requiredPerm = $permMapping[$m['label']] ?? null;
@@ -79,10 +79,10 @@
                        
                         <span class="text-[9px] font-black text-slate-800 uppercase tracking-widest mr-1"><i class="fa-solid fa-credit-card text-slate-500 mr-1"></i> RH</span>
                         
-                        @canany(['rh.L', 'annuaire.L'])
+                        @canany(['annuaire.L', 'annuaire.L'])
                         <a href="{{ route('employees.index') }}" class="{{ $linkClass }} {{ request()->routeIs('employees.*') ? $activeClass : $inactiveClass }}">Employés</a>
                         @endcan
-                        @can('rh.L')
+                        @can('annuaire.L')
                         <a href="{{ route('tasks.index') }}" class="{{ $linkClass }} {{ request()->routeIs('tasks.index') ? $activeClass : $inactiveClass }}">Tâches</a>
                         <a href="{{ route('payroll.index') }}" class="{{ $linkClass }} {{ request()->routeIs('payroll.index') ? $activeClass : $inactiveClass }}">Paie</a>
                         <a href="{{ route('payroll.leaves') }}" class="{{ $linkClass }} {{ request()->routeIs('payroll.leaves') ? $activeClass : $inactiveClass }}">Congés</a>
@@ -112,7 +112,7 @@
 
                     @elseif(request()->routeIs(['incubations.*', 'chick-dispatches.*']))
                         <span class="text-[9px] font-black text-slate-800 uppercase tracking-widest mr-1"><i class="fa-solid fa-temperature-half text-pink-500 mr-1"></i> Couvoir</span>
-                        @can('couvoir.L')
+                        @can('production.L')
                         <a href="{{ route('incubations.index') }}" class="{{ $linkClass }} {{ request()->routeIs('incubations.*') ? $activeClass : $inactiveClass }}">Couvoir</a>
                         @endcan
 
@@ -164,7 +164,7 @@
 
                     @elseif(request()->routeIs(['stocks.*', 'dispatches.*']))
                         <span class="text-[9px] font-black text-slate-800 uppercase tracking-widest mr-1"><i class="fa-solid fa-boxes-stacked text-orange-500 mr-1"></i> Logistique</span>
-                        @can('stocks.L')
+                        @can('logistique.L')
                         <a href="{{ route('stocks.index') }}" class="{{ $linkClass }} {{ request()->routeIs('stocks.*') ? $activeClass : $inactiveClass }}">Stocks</a>
                         @endcan
                         @can('logistique.L')

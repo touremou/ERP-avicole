@@ -20,7 +20,7 @@
                 @endcan
 
                 {{-- MODULE RH : Accès à l'historique de paie --}}
-                @can('rh.L')
+                @can('annuaire.L')
                 <a href="{{ route('payroll.employee-history', $employee) }}" class="bg-blue-50 border border-blue-100 px-4 py-2 rounded-xl text-[9px] font-black uppercase text-blue-600 hover:bg-blue-600 hover:text-white transition shadow-sm italic no-underline">
                     <i class="fas fa-money-bill-wave mr-1"></i> Paie
                 </a>

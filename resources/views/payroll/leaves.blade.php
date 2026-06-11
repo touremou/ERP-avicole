@@ -42,7 +42,7 @@
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
                 {{-- FORMULAIRE --}}
-                @can('rh.C')
+                @can('annuaire.C')
                 <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm text-left">
                     <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Enregistrer un congé</h3>
                     <form method="POST" action="{{ route('payroll.leaves.store') }}" class="space-y-3">
@@ -98,7 +98,7 @@
                                         'bg-red-100 text-red-500' => $l->status === 'refuse'])>{{ $l->status }}</span>
                                 </td>
                                 <td class="px-5 py-3 text-right">
-                                    @can('rh.M')
+                                    @can('annuaire.M')
                                     @if(in_array($l->status, ['approuve', 'en_cours']))
                                     <form method="POST" action="{{ route('payroll.leaves.end', $l) }}">@csrf
                                         <button class="text-[8px] font-black text-emerald-500 bg-emerald-50 px-3 py-1.5 rounded-lg hover:bg-emerald-100 border-none cursor-pointer uppercase">Retour</button>

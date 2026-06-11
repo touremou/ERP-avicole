@@ -17,7 +17,7 @@
         <div class="max-w-3xl mx-auto sm:px-6 lg:px-8">
             
             {{-- Permission M : Accès à la modification --}}
-            @can('couvoir.M')
+            @can('production.M')
             <div class="bg-white rounded-[3.5rem] p-12 shadow-2xl border border-slate-100 relative overflow-hidden text-left">
                 {{-- Indicateur visuel de modification --}}
                 <div class="absolute top-0 right-0 p-8 opacity-5">

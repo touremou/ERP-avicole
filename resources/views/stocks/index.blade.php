@@ -13,12 +13,12 @@
                 </div>
             </div>
             <div class="flex gap-3">
-                @can('stocks.M')
+                @can('logistique.M')
                 <a href="{{ route('stocks.export', ['category' => request('category', 'oeufs')]) }}" class="bg-white border border-slate-200 px-5 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest text-slate-600 hover:bg-slate-50 transition-all no-underline flex items-center gap-2">
                     <i class="fa-solid fa-file-excel text-emerald-500"></i> Export
                 </a>
                 @endcan
-                @can('stocks.C')
+                @can('logistique.C')
                 <a href="{{ route('stocks.create') }}" class="bg-slate-900 text-white px-8 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-orange-600 transition-all shadow-xl italic no-underline flex items-center gap-2">
                     <i class="fa-solid fa-plus"></i> Nouvel Article
                 </a>
@@ -198,7 +198,7 @@
                                                 <a href="{{ route('stocks.show', $stock->id) }}" class="text-slate-400 hover:text-orange-600 no-underline" title="Détails & mouvements">
                                                     <i class="fa-solid fa-eye"></i>
                                                 </a>
-                                                @can('stocks.M')
+                                                @can('logistique.M')
                                                 <a href="{{ route('stocks.edit', $stock->id) }}" class="text-slate-400 hover:text-blue-600 no-underline" title="Modifier">
                                                     <i class="fa-solid fa-pen"></i>
                                                 </a>
@@ -211,7 +211,7 @@
                                         <td colspan="7" class="px-8 py-16 text-center">
                                             <i class="fa-solid fa-box-open text-slate-200 text-3xl mb-4 block"></i>
                                             <p class="text-[10px] text-slate-400 uppercase tracking-widest font-black">Aucun article dans cette section</p>
-                                            @can('stocks.C')
+                                            @can('logistique.C')
                                             <a href="{{ route('stocks.create') }}" class="inline-block mt-4 px-6 py-3 bg-slate-900 text-white rounded-2xl text-[9px] font-black uppercase tracking-widest no-underline hover:bg-orange-600 transition-all">
                                                 <i class="fa-solid fa-plus mr-1"></i> Créer un article
                                             </a>
@@ -227,7 +227,7 @@
             @endforeach
 
             {{-- MOUVEMENT RAPIDE --}}
-            @can('stocks.M')
+            @can('logistique.M')
             <div class="mt-8 bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm" x-data="{ showMove: false }">
                 <button @click="showMove = !showMove" class="w-full flex justify-between items-center border-none bg-transparent cursor-pointer outline-none">
                     <h3 class="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">

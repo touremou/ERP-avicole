@@ -341,7 +341,7 @@
                                                             @endif
 
                                                             {{-- SUPPRIMER --}}
-                                                            @can('couvoir.S')
+                                                            @can('production.S')
                                                             <form action="{{ route('incubations.destroy', $item->id) }}" method="POST" onsubmit="return confirm('Supprimer cette archive ?')">
                                                                 @csrf @method('DELETE')
                                                                 <button type="submit" class="text-slate-200 hover:text-rose-500 transition-all border-none bg-transparent cursor-pointer">

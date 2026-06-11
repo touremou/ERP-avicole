@@ -60,7 +60,7 @@
             <a href="{{ route('stocks.show', $item->id) }}" class="w-7 h-7 rounded-lg bg-slate-50 text-slate-400 flex items-center justify-center hover:bg-slate-900 hover:text-white transition-all shadow-sm">
                 <i class="fa-solid fa-eye text-[9px]"></i>
             </a>
-            @can('stocks.M')
+            @can('logistique.M')
             <a href="{{ route('stocks.edit', $item->id) }}" class="w-7 h-7 rounded-lg bg-slate-50 text-slate-400 flex items-center justify-center hover:bg-slate-900 hover:text-white transition-all shadow-sm">
                 <i class="fa-solid fa-pen text-[9px]"></i>
             </a>

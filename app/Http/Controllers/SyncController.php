@@ -328,7 +328,7 @@ class SyncController extends Controller
      */
     public function reconcileStockMovement(Request $request, MoveStockAction $action): JsonResponse
     {
-        if (Gate::denies('stocks.M')) {
+        if (Gate::denies('logistique.M')) {
             return response()->json(['status' => 'error', 'message' => 'Permission insuffisante.'], 403);
         }
 

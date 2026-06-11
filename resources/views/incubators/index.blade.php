@@ -11,7 +11,7 @@
                     <i class="fa-solid fa-arrow-left"></i> Retour
                 </a>
                 {{-- Permission C : Ajout de machine --}}
-                @can('couvoir.C')
+                @can('production.C')
                 <button @click="$dispatch('open-add-modal')" class="bg-blue-600 text-white px-7 py-3 rounded-[1.5rem] text-[10px] font-black uppercase italic shadow-xl shadow-blue-200 hover:bg-blue-500 transition-all border-none cursor-pointer">
                     + Ajouter une Unité
                 </button>
@@ -108,7 +108,7 @@
                         {{-- Footer Card Actions (M/S) --}}
                         <div class="p-5 bg-slate-50 flex items-center justify-between border-t border-slate-100" x-data="{ openMaint: false }">
                             {{-- Permission M : Maintenance --}}
-                            @can('couvoir.M')
+                            @can('production.M')
                             <button @click="openMaint = true" 
                                     @if($isOccupied) disabled @endif
                                     @class([
@@ -122,12 +122,12 @@
 
                             <div class="flex gap-2">
                                 @if(!$isOccupied)
-                                    @can('couvoir.M')
+                                    @can('production.M')
                                     <a href="{{ route('incubators.edit', $incubator->id) }}" class="w-10 h-10 flex items-center justify-center bg-white border border-slate-200 rounded-xl text-slate-400 hover:text-blue-500 transition-all shadow-sm no-underline" title="Modifier">
                                         <i class="fa-solid fa-pen-to-square"></i>
                                     </a>
                                     @endcan
-                                    @can('couvoir.S')
+                                    @can('production.S')
                                     <form action="{{ route('incubators.destroy', $incubator->id) }}" method="POST" onsubmit="return confirm('ALERTE : Supprimer définitivement cette unité de production ? Assurez-vous qu\'elle est bien vide.')">
                                         @csrf @method('DELETE')
                                         <button type="submit" class="w-10 h-10 flex items-center justify-center bg-white border border-slate-200 rounded-xl text-slate-400 hover:text-rose-500 transition-all shadow-sm cursor-pointer" title="Supprimer">
@@ -190,7 +190,7 @@
     </div>
 
     {{-- 🚀 MODAL DE CRÉATION GLOBAL (Permission C) --}}
-    @can('couvoir.C')
+    @can('production.C')
     <div x-data="{ openAdd: false }" 
          @open-add-modal.window="openAdd = true" 
          x-show="openAdd" 
