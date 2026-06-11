@@ -117,7 +117,7 @@
                                 </div>
                                 <div>
                                     <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-1 italic leading-none">Code Unique</label>
-                                    <input type="text" name="code" value="{{ old('code', 'LOT-' . date('Ymd-His')) }}" required 
+                                    <input type="text" name="code" id="batch_code" value="{{ old('code', setting('elevage.batch_prefix_chair', 'LOT') . '-' . date('Ymd-His')) }}" required
                                            class="w-full p-4 bg-slate-50 rounded-2xl border-none font-black text-slate-700 shadow-inner italic uppercase">
                                 </div>
                             </div>
@@ -289,6 +289,31 @@
 <script>
     function el(id) { return document.getElementById(id); }
 
+    // Préfixes de code de lot pilotés par les paramètres (Paramètres > Élevage).
+    const BATCH_PREFIXES = {
+        chair: @json(setting('elevage.batch_prefix_chair', 'LOT')),
+        ponte: @json(setting('elevage.batch_prefix_ponte', 'LOT')),
+        repro: @json(setting('elevage.batch_prefix_repro', 'REP')),
+    };
+
+    // Met à jour le préfixe du code selon le type, sans écraser un code personnalisé
+    // (on n'agit que si le code est encore au format auto PREFIXE-AAAAMMJJ-HHMMSS).
+    function applyBatchPrefix(typeSlug) {
+        const codeInput = el('batch_code');
+        if (! codeInput || ! /^[A-Z]+-\d{8}-\d{6}$/.test(codeInput.value)) return;
+
+        let prefix = BATCH_PREFIXES.chair;
+        const t = (typeSlug || '').toLowerCase();
+        if (t.includes('repro')) prefix = BATCH_PREFIXES.repro;
+        else if (t.includes('ponte')) prefix = BATCH_PREFIXES.ponte;
+        else if (t.includes('chair')) prefix = BATCH_PREFIXES.chair;
+
+        const now = new Date();
+        const p = n => String(n).padStart(2, '0');
+        const stamp = `${now.getFullYear()}${p(now.getMonth() + 1)}${p(now.getDate())}-${p(now.getHours())}${p(now.getMinutes())}${p(now.getSeconds())}`;
+        codeInput.value = `${prefix}-${stamp}`;
+    }
+
     // Bâtiments compatibles par espèce (en plus de 'mixte', toujours autorisé)
     const SPECIES_BUILDING_TYPES = {
         poulet:  ['chair', 'ponte', 'poussiniere', 'reproducteur'],
@@ -338,6 +363,7 @@
     function runFilters() {
         syncProductionTypeId();
         const selectedType = el('breeding_type').value || "";
+        applyBatchPrefix(selectedType);
         const bSelect = el('building_id');
         const modelSelector = el('model_selector');
         const protocolSelector = el('protocol_selector');
