@@ -111,6 +111,42 @@ class PayrollController extends Controller
         return back()->with('success', "{$label} \"{$validated['label']}\" ajoutée : " . number_format($validated['amount']) . " GNF.");
     }
 
+    /**
+     * Enregistre des heures supplémentaires : crée/maj une prime calculée au
+     * taux horaire majoré (paramètre rh.overtime_rate). Base mensuelle de
+     * référence : 26 jours × 8 h = 208 h.
+     */
+    public function recordOvertime(Request $request, Payslip $payslip)
+    {
+        if (Gate::denies('annuaire.M')) return back()->with('error', 'Non autorisé.');
+
+        if ($payslip->period->status === 'paye') {
+            return back()->with('error', 'Période verrouillée.');
+        }
+
+        $validated = $request->validate([
+            'hours' => 'required|numeric|min:0.5|max:300',
+        ]);
+
+        $rate       = (float) setting('rh.overtime_rate', 1.5);
+        $hourlyRate = (float) $payslip->base_salary / 208;
+        $amount     = (int) round($hourlyRate * $validated['hours'] * $rate);
+
+        PayslipLine::updateOrCreate(
+            ['payslip_id' => $payslip->id, 'category' => 'heures_sup'],
+            [
+                'type'   => 'prime',
+                'label'  => "Heures sup. ({$validated['hours']} h × {$rate})",
+                'amount' => $amount,
+            ]
+        );
+
+        $payslip->update(['overtime_hours' => $validated['hours']]);
+        $payslip->recalculate();
+
+        return back()->with('success', "Heures sup. enregistrées : {$validated['hours']} h → +" . number_format($amount) . ' GNF.');
+    }
+
     public function removeLine(PayslipLine $line)
     {
         if (Gate::denies('annuaire.M')) return back()->with('error', 'Non autorisé.');

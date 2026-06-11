@@ -546,6 +546,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/{period}/generate', 'generate')->name('generate')->middleware('can:M');
         Route::post('/{period}/validate', 'validatePeriod')->name('validate')->middleware('can:S');
         Route::post('/payslip/{payslip}/line', 'addLine')->name('add-line')->middleware('can:M');
+        Route::post('/payslip/{payslip}/overtime', 'recordOvertime')->name('overtime')->middleware('can:M');
         Route::delete('/line/{line}', 'removeLine')->name('remove-line')->middleware('can:M');
         Route::post('/payslip/{payslip}/pay', 'markPaid')->name('mark-paid')->middleware('can:M');
         // Congés

@@ -116,6 +116,10 @@
                                                 class="w-7 h-7 rounded-lg bg-slate-50 text-slate-400 hover:bg-blue-50 hover:text-blue-600 flex items-center justify-center border-none cursor-pointer transition-all" title="Ajouter prime/déduction">
                                                 <i class="fa-solid fa-plus text-[9px]"></i>
                                             </button>
+                                            <button @click="openOvertimeModal({{ $slip->id }}, '{{ addslashes($slip->employee->first_name) }}')"
+                                                class="w-7 h-7 rounded-lg bg-slate-50 text-slate-400 hover:bg-amber-50 hover:text-amber-600 flex items-center justify-center border-none cursor-pointer transition-all" title="Heures supplémentaires">
+                                                <i class="fa-solid fa-clock text-[9px]"></i>
+                                            </button>
                                             @endif
                                         @endcan
 
@@ -188,6 +192,19 @@
             </div>
         </div>
 
+        {{-- MODAL HEURES SUPPLÉMENTAIRES --}}
+        <div x-show="overtimeModal" x-transition class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" x-cloak>
+            <div class="bg-white rounded-2xl w-full max-w-md p-8 text-left font-bold italic" @click.outside="overtimeModal = false">
+                <h3 class="text-lg font-black text-amber-600 uppercase tracking-tighter mb-2" x-text="'⏱ Heures sup. — ' + otEmployee"></h3>
+                <p class="text-[9px] text-slate-500 mb-4">Majoration appliquée : ×{{ setting('rh.overtime_rate', 1.5) }} (base mensuelle : 26 j × 8 h).</p>
+                <form :action="'/payroll/payslip/' + otSlipId + '/overtime'" method="POST" class="space-y-4">
+                    @csrf
+                    <input type="number" name="hours" required min="0.5" step="0.5" placeholder="Nombre d'heures" class="w-full bg-slate-50 border-none rounded-xl p-3 text-lg font-black shadow-inner outline-none text-center">
+                    <button type="submit" class="w-full bg-amber-500 text-white py-4 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-amber-600 border-none cursor-pointer italic">Ajouter les heures sup.</button>
+                </form>
+            </div>
+        </div>
+
         {{-- MODAL PAIEMENT --}}
         <div x-show="payModal" x-transition class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" x-cloak>
             <div class="bg-white rounded-2xl w-full max-w-md p-8 text-left font-bold italic" @click.outside="payModal = false">
@@ -219,6 +236,8 @@
         return {
             lineModal: false, lineSlipId: 0, lineEmployee: '',
             openLineModal(id, name) { this.lineSlipId = id; this.lineEmployee = name; this.lineModal = true; },
+            overtimeModal: false, otSlipId: 0, otEmployee: '',
+            openOvertimeModal(id, name) { this.otSlipId = id; this.otEmployee = name; this.overtimeModal = true; },
             payModal: false, paySlipId: 0, payEmployee: '', payAmount: 0, payOrangeMoney: '',
             openPayModal(id, name, amount, om) { this.paySlipId = id; this.payEmployee = name; this.payAmount = amount; this.payOrangeMoney = om; this.payModal = true; },
         }
