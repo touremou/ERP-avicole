@@ -55,6 +55,40 @@
                 </div>
             @endif
 
+            {{-- NOTIFICATION DE SUCCÈS (globale — certaines vues l'affichent aussi localement) --}}
+            @if(session('success'))
+                <div class="fixed top-24 right-6 z-[100] animate-slide-in" x-data x-init="setTimeout(() => $el.remove(), 6000)">
+                    <div class="bg-slate-900 border-l-4 border-emerald-500 p-5 rounded-2xl shadow-2xl flex items-center gap-4 min-w-[300px]">
+                        <div class="w-10 h-10 bg-emerald-500/20 rounded-xl flex items-center justify-center text-emerald-400">
+                            <i class="fas fa-check"></i>
+                        </div>
+                        <div class="text-left">
+                            <p class="text-[8px] font-black text-emerald-400 uppercase tracking-[0.2em] mb-1">Opération Réussie</p>
+                            <p class="text-white text-[10px] font-black uppercase tracking-widest leading-none">{{ session('success') }}</p>
+                        </div>
+                    </div>
+                </div>
+            @endif
+
+            {{-- ERREURS DE VALIDATION (globales — ex. doublon, champ invalide) --}}
+            @if($errors->any())
+                <div class="fixed top-24 right-6 z-[100] animate-slide-in">
+                    <div class="bg-slate-900 border-l-4 border-amber-500 p-5 rounded-2xl shadow-2xl flex items-start gap-4 min-w-[300px] max-w-md">
+                        <div class="w-10 h-10 shrink-0 bg-amber-500/20 rounded-xl flex items-center justify-center text-amber-400">
+                            <i class="fas fa-triangle-exclamation"></i>
+                        </div>
+                        <div class="text-left">
+                            <p class="text-[8px] font-black text-amber-400 uppercase tracking-[0.2em] mb-1">Saisie Refusée</p>
+                            <ul class="space-y-1">
+                                @foreach($errors->all() as $message)
+                                    <li class="text-white text-[10px] font-black uppercase tracking-widest leading-tight">{{ $message }}</li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            @endif
+
             {{-- HEADER STICKY --}}
             @isset($header)
                 <header class="sticky top-16 z-40 bg-white/80 backdrop-blur-md border-b border-slate-200/50 shadow-sm transition-all duration-300">

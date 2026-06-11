@@ -40,6 +40,21 @@ test('un opérateur peut ajouter une matière première', function () {
     expect(RawMaterial::where('name', 'Maïs jaune test')->exists())->toBeTrue();
 });
 
+test('un doublon de matière première est refusé avec un message explicite', function () {
+    RawMaterial::factory()->create(['name' => 'Maïs jaune test']);
+
+    $this->actingAs($this->operatorUser)
+        ->from(route('raw-materials.index'))
+        ->post(route('raw-materials.store'), [
+            'name' => 'Maïs jaune test',
+            'unit' => 'kg',
+        ])
+        ->assertRedirect(route('raw-materials.index'))
+        ->assertSessionHasErrors(['name' => 'Une matière première porte déjà ce nom.']);
+
+    expect(RawMaterial::where('name', 'Maïs jaune test')->count())->toBe(1);
+});
+
 test('suppression formule impossible si déjà produite (P-12)', function () {
     $formula = Formula::factory()->create();
     MillProduction::factory()->create(['formula_id' => $formula->id]);
