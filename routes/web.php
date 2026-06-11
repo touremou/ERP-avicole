@@ -266,6 +266,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/norms', fn() => \App\Models\ProductionNorm::select('id', 'model_name', 'batch_type')
             ->distinct()->get())->name('norms');
         Route::get('/stocks', fn() => \App\Models\Stock::all(['id', 'item_name', 'current_quantity', 'category', 'unit']))->name('stocks');
+        Route::get('/clients', [ClientController::class, 'getOfflineClients'])->name('clients');
     });
 
     // ─── SYNCHRONISATION OFFLINE → SERVEUR ───
@@ -276,6 +277,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/daily-checks', 'reconcileDailyCheck')->name('daily_checks');
         Route::post('/egg-collections', 'reconcileEggCollection')->name('egg_collections');
         Route::post('/stock-movements', 'reconcileStockMovement')->name('stock_movements');
+        Route::post('/sales', 'reconcileSale')->name('sales');
     });
 
     // ─── ACHATS ALIMENT ───

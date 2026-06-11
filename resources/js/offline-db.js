@@ -34,6 +34,13 @@ db.version(6).stores({
     stock_movements: 'uuid, stock_id, type, is_synced',
 });
 
+// v7 : référentiel clients (miroir lecture seule) + file d'attente des
+// ventes rapides saisies hors-ligne (synchronisées en brouillon).
+db.version(7).stores({
+    clients: 'id, name',
+    sales: 'uuid, client_id, sale_date, is_synced',
+});
+
 /**
  * Aspire les référentiels du serveur vers le miroir local (IndexedDB).
  * Appelée au chargement (si en ligne) et après chaque synchro réussie.
@@ -63,6 +70,7 @@ export async function refreshLocalData() {
             { url: '/api/offline/protocols', table: db.protocols },
             { url: '/api/offline/norms', table: db.norms },
             { url: '/api/offline/stocks', table: db.stocks },
+            { url: '/api/offline/clients', table: db.clients },
         ];
 
         for (const item of syncMap) {

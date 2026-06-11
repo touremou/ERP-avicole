@@ -169,6 +169,47 @@ async function syncStockMovements() {
 }
 
 /**
+ * 5. Synchronisation des Ventes rapides (saisies hors-ligne)
+ */
+async function syncSales() {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+    const unsynced = await db.sales.where('is_synced').equals(0).toArray();
+
+    if (unsynced.length === 0) return;
+
+    console.log(`📤 Moteur de synchro : ${unsynced.length} vente(s) rapide(s) en attente...`);
+
+    for (const sale of unsynced) {
+        try {
+            const response = await fetch('/api/sync/sales', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify(sale)
+            });
+
+            if (!response.ok) throw new Error(`Statut HTTP: ${response.status}`);
+
+            const result = await response.json();
+
+            if (result.status === 'success' || result.status === 'already_synced') {
+                await db.sales.update(sale.uuid, { is_synced: 1 });
+                console.log(`🧾 Vente ${sale.uuid} synchronisée (${result.status}${result.reference ? ' → ' + result.reference : ''}).`);
+            } else if (result.status === 'conflict') {
+                // Vente refusée côté serveur : on la marque traitée pour ne pas boucler.
+                console.warn(`⚠️ Vente ${sale.uuid} en conflit : ${result.message}`);
+                await db.sales.update(sale.uuid, { is_synced: 1 });
+            }
+        } catch (error) {
+            console.error(`❌ Erreur synchro vente rapide:`, error);
+        }
+    }
+}
+
+/**
  * Orchestrateur Principal de Synchronisation (Exporté globalement)
  */
 export async function syncData() {
@@ -178,6 +219,7 @@ export async function syncData() {
         await syncDailyChecks();
         await syncEggProductions();
         await syncStockMovements();
+        await syncSales();
     } catch (globalError) {
         console.error("❌ Erreur critique dans le cycle de synchronisation :", globalError);
     }

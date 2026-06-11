@@ -7,8 +7,10 @@ use App\Models\DailyCheck;
 use App\Models\EggProduction;
 use App\Models\Stock;
 use App\Models\StockMovement;
+use App\Models\Sale;
 use App\Actions\EggProduction\RecordEggCollection;
 use App\Actions\Stock\MoveStockAction;
+use App\Actions\Sale\CreateSale;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -362,6 +364,64 @@ class SyncController extends Controller
             Log::info("SyncController: mouvement stock synchronisé (uuid: {$validated['uuid']}, stock: {$validated['stock_id']}, type: {$validated['type']})");
 
             return response()->json(['status' => 'success']);
+        });
+    }
+
+    /**
+     * Réconcilie une vente rapide saisie hors-ligne.
+     *
+     * La vente est créée en BROUILLON (CreateSale ne déstocke pas) : la
+     * validation (déstockage + décrément d'effectif, avec contrôle de
+     * disponibilité) reste une opération en ligne, ce qui évite tout conflit
+     * de stock au moment de la synchro.
+     *
+     * Idempotence : l'uuid (généré côté terrain) est unique sur `sales`. Une
+     * vente déjà réconciliée renvoie `already_synced` sans rien recréer.
+     */
+    public function reconcileSale(Request $request, CreateSale $action): JsonResponse
+    {
+        if (Gate::denies('commerce.C')) {
+            return response()->json(['status' => 'error', 'message' => 'Permission insuffisante.'], 403);
+        }
+
+        $validated = $request->validate([
+            'uuid'                   => 'required|uuid',
+            'client_id'              => 'required|integer|exists:clients,id',
+            'sale_date'              => 'required|date|before_or_equal:today',
+            'type'                   => 'required|in:bon_livraison,facture',
+            'tax_rate'               => 'nullable|numeric|min:0',
+            'notes'                  => 'nullable|string|max:1000',
+            'immediate_payment'      => 'nullable|numeric|min:0',
+            'payment_method'         => 'nullable|string|max:50',
+            'items'                  => 'required|array|min:1',
+            'items.*.product_type'   => 'required|string|max:40',
+            'items.*.product_name'   => 'required|string|max:255',
+            'items.*.product_id'     => 'nullable|integer',
+            'items.*.batch_id'       => 'nullable|integer',
+            'items.*.quantity'       => 'required|numeric|min:0.01',
+            'items.*.unit'           => 'required|string|max:20',
+            'items.*.unit_price'     => 'required|numeric|min:0',
+        ]);
+
+        return DB::transaction(function () use ($validated, $action) {
+            // ─── IDEMPOTENCE ───
+            if (Sale::where('uuid', $validated['uuid'])->exists()) {
+                Log::info("SyncController: vente uuid={$validated['uuid']} déjà appliquée, ignorée.");
+                return response()->json(['status' => 'already_synced']);
+            }
+
+            // ─── APPLICATION (logique métier partagée : brouillon, sans déstockage) ───
+            $sale = $action->execute($validated);
+
+            // Marque la vente comme issue d'une synchro hors-ligne.
+            $sale->update(['is_synced' => true, 'last_sync_at' => now()]);
+
+            Log::info("SyncController: vente synchronisée (uuid: {$validated['uuid']}, ref: {$sale->reference}).");
+
+            return response()->json([
+                'status'    => 'success',
+                'reference' => $sale->reference,
+            ]);
         });
     }
 }

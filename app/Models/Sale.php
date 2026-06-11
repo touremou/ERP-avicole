@@ -7,12 +7,14 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Traits\HasStandardUuid;
 
 class Sale extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, HasStandardUuid;
 
     protected $fillable = [
+        'uuid', 'is_synced', 'last_sync_at',
         'reference', 'client_id', 'user_id', 'sale_date',
         'type', 'status',
         'subtotal', 'tax_rate', 'tax_amount', 'total_amount',
@@ -22,6 +24,8 @@ class Sale extends Model
     ];
 
     protected $casts = [
+        'is_synced'    => 'boolean',
+        'last_sync_at' => 'datetime',
         'sale_date'    => 'date',
         'subtotal'     => 'decimal:2',
         'tax_rate'     => 'decimal:2',

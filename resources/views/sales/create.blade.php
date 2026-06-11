@@ -20,7 +20,7 @@
                 </div>
             @endif
 
-            <form method="POST" action="{{ route('sales.store') }}">
+            <form method="POST" action="{{ route('sales.store') }}" @submit="onSubmit($event)">
                 @csrf
 
                 {{-- ENTÊTE --}}
@@ -324,6 +324,58 @@
                 const p=prices.find(x=>x.product_type===l.product_type); l.unit_price=p?p.unit_price:0;
             },
             formatGNF(v) { return new Intl.NumberFormat('fr-GN',{maximumFractionDigits:0}).format(v||0)+' GNF'; },
+
+            /**
+             * Interception de la soumission : si hors-ligne (ou base injoignable),
+             * on enregistre la vente en file d'attente IndexedDB (synchronisée en
+             * brouillon dès le retour du réseau via sync-engine.js). Sinon, on
+             * laisse le POST serveur classique se faire.
+             */
+            async onSubmit(e) {
+                const offline = !navigator.onLine || {{ config('app.database_down', false) ? 'true' : 'false' }};
+                if (!offline) return; // En ligne : soumission serveur normale.
+
+                e.preventDefault();
+
+                if (!this.clientId) { alert("Veuillez sélectionner un client."); return; }
+
+                const validLines = this.lines.filter(l => l.product_type && l.quantity > 0 && l.unit);
+                if (validLines.length === 0) { alert("Ajoutez au moins une ligne valide."); return; }
+
+                const form = e.target;
+                const saleDate = form.querySelector('[name=sale_date]')?.value || new Date().toISOString().slice(0,10);
+                const notes = form.querySelector('[name=notes]')?.value || null;
+
+                const sale = {
+                    uuid: (crypto.randomUUID ? crypto.randomUUID() : 'sale-' + Date.now() + '-' + Math.random().toString(16).slice(2)),
+                    client_id: parseInt(this.clientId, 10),
+                    sale_date: saleDate,
+                    type: this.saleType,
+                    tax_rate: this.saleType === 'facture' ? {{ (int) setting('general.tva_rate', 18) }} : 0,
+                    notes: notes,
+                    immediate_payment: parseFloat(this.immediatePayment) || 0,
+                    payment_method: 'especes',
+                    items: validLines.map(l => ({
+                        product_type: l.product_type,
+                        product_name: l.product_name || l.product_type,
+                        product_id: l.product_id ? parseInt(l.product_id, 10) : null,
+                        batch_id: l.batch_id ? parseInt(l.batch_id, 10) : null,
+                        quantity: parseFloat(l.quantity),
+                        unit: l.unit,
+                        unit_price: parseFloat(l.unit_price) || 0,
+                    })),
+                    is_synced: 0,
+                };
+
+                try {
+                    await window.db.sales.add(sale);
+                    alert("📴 Hors-ligne : vente enregistrée localement. Elle sera synchronisée (en brouillon) au retour du réseau.");
+                    window.location.href = "{{ route('sales.index') }}";
+                } catch (err) {
+                    console.error("Échec de l'enregistrement hors-ligne de la vente :", err);
+                    alert("Erreur lors de l'enregistrement hors-ligne. Réessayez.");
+                }
+            },
         }
     }
     </script>
