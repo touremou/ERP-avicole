@@ -7,14 +7,14 @@
                 </h2>
                 <div class="flex items-center gap-2 mt-2">
                     <span class="w-8 h-1 bg-blue-600 rounded-full"></span>
-                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] italic">Gestion des Accouveurs & Fournisseurs</p>
+                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] italic">{{ __("Gestion des Accouveurs & Fournisseurs") }}</p>
                 </div>
             </div>
             
             {{-- Permission C : Ajout de partenaire --}}
             @can('annuaire.C')
             <a href="{{ route('providers.create') }}" class="bg-slate-900 text-white px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-600 transition-all shadow-xl shadow-slate-900/20 group italic no-underline">
-                <i class="fas fa-plus-circle mr-2 group-hover:rotate-90 transition-transform text-blue-400"></i> Nouveau Partenaire
+                <i class="fas fa-plus-circle mr-2 group-hover:rotate-90 transition-transform text-blue-400"></i> {{ __("Nouveau Partenaire") }}
             </a>
             @endcan
         </div>
@@ -30,7 +30,7 @@
                         <i class="fas fa-search text-slate-300 group-focus-within:text-blue-500 transition-colors"></i>
                     </div>
                     <input type="text" id="providerSearch" onkeyup="searchProvider()" 
-                           placeholder="Rechercher un partenaire (Nom, Type, Domaine)..." 
+                           placeholder="{{ __('Rechercher un partenaire (Nom, Type, Domaine)...') }}"
                            class="w-full pl-14 pr-20 py-5 bg-white border border-slate-100 rounded-[2.5rem] shadow-sm outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition-all font-black text-[10px] uppercase tracking-widest italic shadow-inner">
                     
                     <div class="absolute inset-y-0 right-0 pr-8 flex items-center">
@@ -48,9 +48,9 @@
                             {{-- Badge de fiabilité visuel --}}
                             <div class="absolute top-6 right-8">
                                 @if($provider->reliability == 'Bon')
-                                    <i class="fas fa-certificate text-emerald-500 text-lg shadow-sm" title="Partenaire de confiance"></i>
+                                    <i class="fas fa-certificate text-emerald-500 text-lg shadow-sm" title="{{ __('Partenaire de confiance') }}"</i>
                                 @elseif($provider->reliability == 'Mauvais')
-                                    <i class="fas fa-exclamation-triangle text-red-500 animate-pulse" title="Partenaire à surveiller"></i>
+                                    <i class="fas fa-exclamation-triangle text-red-500 animate-pulse" title="{{ __('Partenaire à surveiller') }}"</i>
                                 @endif
                             </div>
 
@@ -80,7 +80,7 @@
                                     <div class="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center mr-3 text-slate-300 group-hover/item:text-blue-500 transition-colors">
                                         <i class="fas fa-layer-group text-[10px]"></i>
                                     </div>
-                                    <span class="text-[10px] font-black text-slate-500 uppercase tracking-tight truncate">{{ $provider->domain ?? 'Généraliste' }}</span>
+                                    <span class="text-[10px] font-black text-slate-500 uppercase tracking-tight truncate">{{ $provider->domain ?? __("Généraliste") }}</span>
                                 </div>
 
                                 <div class="flex items-center group/item">
@@ -97,7 +97,7 @@
                                         'text-orange-500' => $provider->reliability == 'Moyen',
                                         'text-red-500' => $provider->reliability == 'Mauvais',
                                     ])>
-                                        Fiabilité : {{ $provider->reliability }}
+                                        {{ __("Fiabilité :") }} {{ $provider->reliability }}
                                     </span>
                                 </div>
                             </div>
@@ -117,7 +117,7 @@
                             @can('annuaire.L')
                             <a href="{{ route('providers.show', $provider->id) }}" 
                                class="px-8 py-3 bg-white border border-slate-200 rounded-xl text-[9px] font-black uppercase tracking-widest text-slate-900 hover:bg-slate-900 hover:text-white transition-all shadow-sm italic no-underline">
-                                Voir Fiche
+                                {{ __("Voir Fiche") }}
                             </a>
                             @endcan
                         </div>
@@ -127,7 +127,7 @@
                         <div class="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
                             <i class="fas fa-address-book text-3xl text-slate-200"></i>
                         </div>
-                        <p class="text-slate-400 font-black uppercase text-[10px] italic tracking-widest">Aucun partenaire actif dans l'annuaire</p>
+                        <p class="text-slate-400 font-black uppercase text-[10px] italic tracking-widest">{{ __("Aucun partenaire actif dans l'annuaire") }}</p>
                     </div>
                 @endforelse
             </div>
@@ -137,8 +137,8 @@
             <div class="mt-24 py-10 border-t border-slate-100 flex justify-center">
                 <a href="{{ route('trash.index') }}" class="group flex items-center gap-4 bg-slate-50 px-6 py-3 rounded-2xl hover:bg-slate-900 transition-all duration-500 border border-dashed border-slate-200 hover:border-slate-800 no-underline">
                     <div class="flex flex-col items-start leading-none text-left">
-                        <span class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1 group-hover:text-slate-500 italic">Maintenance Annuaire</span>
-                        <span class="text-[10px] font-black text-slate-400 uppercase italic group-hover:text-white transition-colors">Relations archivées & Partenaires supprimés</span>
+                        <span class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1 group-hover:text-slate-500 italic">{{ __("Maintenance Annuaire") }}</span>
+                        <span class="text-[10px] font-black text-slate-400 uppercase italic group-hover:text-white transition-colors">{{ __("Relations archivées & Partenaires supprimés") }}</span>
                     </div>
                     <div class="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-slate-400 group-hover:bg-red-600 group-hover:text-white transition-all shadow-sm">
                         <i class="fas fa-trash-restore text-xs"></i>
@@ -174,7 +174,7 @@
                 countSpan.classList.add('hidden');
             } else {
                 countSpan.classList.remove('hidden');
-                countSpan.innerText = visibleCount + " Trouvé(s)";
+                countSpan.innerText = visibleCount + " " + @json(__("Trouvé(s)"));
             }
         }
     </script>

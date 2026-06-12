@@ -34,7 +34,7 @@
         {{-- 🛰️ INDICATEUR DE SYNCHRONISATION/CONNEXION --}}
         <div id="sync-indicator" class="fixed bottom-6 right-6 z-[100] flex items-center gap-3 bg-slate-900 text-white px-5 py-3 rounded-2xl shadow-2xl transform translate-y-24 transition-transform duration-500">
             <div id="connectivity-status" class="w-2 h-2 rounded-full online"></div>
-            <p id="sync-text" class="text-[9px] font-black uppercase tracking-widest italic leading-none">Système Synchronisé</p>
+            <p id="sync-text" class="text-[9px] font-black uppercase tracking-widest italic leading-none">{{ __("Système Synchronisé") }}</p>
         </div>
 
         <div class="min-h-screen">
@@ -48,7 +48,7 @@
                             <i class="fas fa-shield-alt"></i>
                         </div>
                         <div class="text-left">
-                            <p class="text-[8px] font-black text-rose-500 uppercase tracking-[0.2em] mb-1">Alerte Système</p>
+                            <p class="text-[8px] font-black text-rose-500 uppercase tracking-[0.2em] mb-1">{{ __("Alerte Système") }}</p>
                             <p class="text-white text-[10px] font-black uppercase tracking-widest leading-none">{{ session('error') }}</p>
                         </div>
                     </div>
@@ -63,7 +63,7 @@
                             <i class="fas fa-check"></i>
                         </div>
                         <div class="text-left">
-                            <p class="text-[8px] font-black text-emerald-400 uppercase tracking-[0.2em] mb-1">Opération Réussie</p>
+                            <p class="text-[8px] font-black text-emerald-400 uppercase tracking-[0.2em] mb-1">{{ __("Opération Réussie") }}</p>
                             <p class="text-white text-[10px] font-black uppercase tracking-widest leading-none">{{ session('success') }}</p>
                         </div>
                     </div>
@@ -78,7 +78,7 @@
                             <i class="fas fa-triangle-exclamation"></i>
                         </div>
                         <div class="text-left">
-                            <p class="text-[8px] font-black text-amber-400 uppercase tracking-[0.2em] mb-1">Saisie Refusée</p>
+                            <p class="text-[8px] font-black text-amber-400 uppercase tracking-[0.2em] mb-1">{{ __("Saisie Refusée") }}</p>
                             <ul class="space-y-1">
                                 @foreach($errors->all() as $message)
                                     <li class="text-white text-[10px] font-black uppercase tracking-widest leading-tight">{{ $message }}</li>
@@ -116,14 +116,14 @@
                             <div class="absolute right-0 mt-3 w-80 bg-white rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.1)] border border-slate-100 hidden group-hover:block z-50 overflow-hidden">
                                 <div class="p-5 bg-slate-900 text-white flex justify-between items-center">
                                     <p class="text-[10px] font-black uppercase italic tracking-widest">
-                                        {{ config('app.database_down') ? 'Flux Temporairement Indisponible' : 'Flux de Production' }}
+                                        {{ config('app.database_down') ? __("Flux Temporairement Indisponible") : __("Flux de Production") }}
                                     </p>
                                 </div>
                                 <div class="max-h-80 overflow-y-auto no-scrollbar">
                                     @if(config('app.database_down'))
                                         <div class="p-10 text-center">
                                             <i class="fa-solid fa-cloud-slash text-slate-300 text-2xl mb-3"></i>
-                                            <p class="text-[9px] font-black text-slate-400 uppercase italic">Les alertes seront synchronisées au retour du serveur.</p>
+                                            <p class="text-[9px] font-black text-slate-400 uppercase italic">{{ __("Les alertes seront synchronisées au retour du serveur.") }}</p>
                                         </div>
                                     @else
                                         @forelse($unreadNotifications as $notification)
@@ -131,7 +131,7 @@
                                                 <div class="flex items-start gap-3">
                                                     <div class="w-2 h-2 rounded-full bg-blue-500 mt-1"></div>
                                                     <div class="text-left">
-                                                        <p class="text-[10px] font-black text-slate-800 uppercase italic mb-1">{{ $notification->data['title'] ?? 'Alerte' }}</p>
+                                                        <p class="text-[10px] font-black text-slate-800 uppercase italic mb-1">{{ $notification->data['title'] ?? __("Alerte") }}</p>
                                                         <p class="text-[9px] text-slate-400 font-bold uppercase leading-tight">{{ $notification->data['message'] ?? '' }}</p>
                                                     </div>
                                                 </div>
@@ -139,7 +139,7 @@
                                         @empty
                                             <div class="p-10 text-center">
                                                 <i class="fa-solid fa-check-circle text-emerald-500 text-2xl mb-3"></i>
-                                                <p class="text-[10px] font-black text-slate-400 uppercase italic">Aucune alerte en attente</p>
+                                                <p class="text-[10px] font-black text-slate-400 uppercase italic">{{ __("Aucune alerte en attente") }}</p>
                                             </div>
                                         @endforelse
                                     @endif
@@ -169,7 +169,7 @@
                     if (navigator.onLine) {
                         document.body.classList.remove('offline-mode');
                         if (connectivityStatus) connectivityStatus.className = "w-2 h-2 rounded-full online";
-                        if (syncText) syncText.innerText = "Système en ligne";
+                        if (syncText) syncText.innerText = @json(__("Système en ligne"));
                         if (syncIndicator) {
                             syncIndicator.classList.remove('translate-y-24');
                             setTimeout(() => syncIndicator.classList.add('translate-y-24'), 3000);
@@ -177,7 +177,7 @@
                     } else {
                         document.body.classList.add('offline-mode');
                         if (connectivityStatus) connectivityStatus.className = "w-2 h-2 rounded-full offline";
-                        if (syncText) syncText.innerText = "Mode Hors-Ligne Actif";
+                        if (syncText) syncText.innerText = @json(__("Mode Hors-Ligne Actif"));
                         if (syncIndicator) syncIndicator.classList.remove('translate-y-24');
                     }
                 } catch (err) {
@@ -208,11 +208,11 @@
                             buildingContainer.innerHTML = data.map(b => `
                                 <div class="bg-white rounded-[3rem] border-2 border-dashed border-slate-200 p-8 opacity-75">
                                     <div class="flex justify-between mb-4">
-                                        <span class="text-[8px] font-black uppercase px-2 py-1 bg-slate-100 rounded">${b.type || 'BÂTIMENT'}</span>
+                                        <span class="text-[8px] font-black uppercase px-2 py-1 bg-slate-100 rounded">${b.type || @json(__("BÂTIMENT"))}</span>
                                         <span class="text-[8px] font-black uppercase px-2 py-1 bg-blue-50 text-blue-600 rounded">${b.status}</span>
                                     </div>
                                     <h3 class="text-2xl font-black text-slate-800 uppercase tracking-tighter">${b.name}</h3>
-                                    <p class="text-[10px] mt-4 font-black text-slate-400 uppercase italic">Données locales (Lecture seule)</p>
+                                    <p class="text-[10px] mt-4 font-black text-slate-400 uppercase italic">{{ __("Données locales (Lecture seule)") }}</p>
                                 </div>
                             `).join('');
                         }
@@ -235,7 +235,7 @@
                                     </div>
                                     <div class="text-right">
                                         <p class="text-2xl font-black text-slate-900 italic leading-none">${batch.current_quantity}</p>
-                                        <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest">Sujets</p>
+                                        <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest">{{ __("Sujets") }}</p>
                                     </div>
                                 </div>
                             `).join('');

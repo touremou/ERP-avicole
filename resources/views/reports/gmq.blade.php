@@ -7,16 +7,16 @@
                 </div>
                 <div>
                     <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">
-                        Rapport GMQ — Engraissement
+                        {{ __("Rapport GMQ — Engraissement") }}
                     </h2>
                     <p class="text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em] mt-1 italic">
-                        Gain Moyen Quotidien par lot — Ruminants, Porcins, Lapins
+                        {{ __("Gain Moyen Quotidien par lot — Ruminants, Porcins, Lapins") }}
                     </p>
                 </div>
             </div>
             {{-- Status filter --}}
             <div class="flex items-center gap-2">
-                @foreach(['Actif' => 'Actifs', 'all' => 'Tous', 'Terminé' => 'Terminés'] as $val => $label)
+                @foreach(['Actif' => __("Actifs"), 'all' => __("Tous"), 'Terminé' => __("Terminés")] as $val => $label)
                 <a href="{{ route('reports.gmq', ['status' => $val]) }}"
                    @class(['px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all no-underline',
                        'bg-emerald-700 text-white shadow' => $statusFilter === $val,
@@ -40,8 +40,8 @@
             <div class="mb-8 bg-emerald-800 text-white p-6 rounded-[2rem] flex items-center gap-6 shadow-xl">
                 <div class="w-14 h-14 bg-emerald-600 rounded-[1.2rem] flex items-center justify-center text-2xl">📈</div>
                 <div>
-                    <p class="text-[8px] font-black uppercase tracking-[0.3em] opacity-60">GMQ Moyen — Ensemble des lots</p>
-                    <p class="text-4xl font-black italic tracking-tighter">{{ number_format($avgGmq, 0) }} <small class="text-lg opacity-60">g/jour</small></p>
+                    <p class="text-[8px] font-black uppercase tracking-[0.3em] opacity-60">{{ __("GMQ Moyen — Ensemble des lots") }}</p>
+                    <p class="text-4xl font-black italic tracking-tighter">{{ number_format($avgGmq, 0) }} <small class="text-lg opacity-60">{{ __("g/jour") }}</small></p>
                 </div>
             </div>
             @endif
@@ -62,21 +62,21 @@
                                     {{ $batch->code }}
                                 </a>
                                 <p class="text-[9px] text-slate-400 font-black uppercase mt-0.5">
-                                    {{ $batch->species?->name_fr ?? 'Ruminant' }} · {{ $batch->building?->name ?? '—' }} · J{{ $stat['age_days'] }}
+                                    {{ $batch->species?->name_fr ?? __("Ruminant") }} · {{ $batch->building?->name ?? '—' }} · J{{ $stat['age_days'] }}
                                 </p>
                             </div>
                         </div>
                         <div class="flex items-center gap-8">
                             {{-- Poids départ --}}
                             <div class="text-center">
-                                <p class="text-[8px] font-black uppercase text-slate-400 tracking-widest mb-1">Poids départ</p>
+                                <p class="text-[8px] font-black uppercase text-slate-400 tracking-widest mb-1">{{ __("Poids départ") }}</p>
                                 <p class="text-lg font-black text-slate-700">
                                     {{ $stat['start_weight'] ? number_format($stat['start_weight'], 3).' kg' : '—' }}
                                 </p>
                             </div>
                             {{-- Poids actuel --}}
                             <div class="text-center">
-                                <p class="text-[8px] font-black uppercase text-slate-400 tracking-widest mb-1">Dernier poids</p>
+                                <p class="text-[8px] font-black uppercase text-slate-400 tracking-widest mb-1">{{ __("Dernier poids") }}</p>
                                 <p class="text-lg font-black text-slate-700">
                                     {{ $stat['last_weight'] ? number_format($stat['last_weight'], 3).' kg' : '—' }}
                                 </p>
@@ -89,10 +89,10 @@
                                     'text-emerald-600' => $gmq >= 150,
                                     'text-amber-600'   => $gmq >= 80 && $gmq < 150,
                                     'text-rose-600'    => $gmq < 80])>
-                                    {{ number_format($gmq, 0) }} <small class="text-[10px] opacity-60">g/j</small>
+                                    {{ number_format($gmq, 0) }} <small class="text-[10px] opacity-60">{{ __("g/j") }}</small>
                                 </p>
                                 @else
-                                <p class="text-slate-300 text-sm font-black uppercase">Données insuffisantes</p>
+                                <p class="text-slate-300 text-sm font-black uppercase">{{ __("Données insuffisantes") }}</p>
                                 @endif
                             </div>
                             {{-- Statut --}}
@@ -110,22 +110,22 @@
                     @if(($stat['total_born'] ?? 0) > 0)
                     <div class="mt-4 pt-4 border-t border-slate-50 flex flex-wrap gap-8">
                         <div class="text-center">
-                            <p class="text-[8px] font-black uppercase text-slate-400 tracking-widest mb-1">Naissances</p>
+                            <p class="text-[8px] font-black uppercase text-slate-400 tracking-widest mb-1">{{ __("Naissances") }}</p>
                             <p class="text-lg font-black text-emerald-700">{{ number_format($stat['total_born']) }}</p>
                         </div>
                         <div class="text-center">
-                            <p class="text-[8px] font-black uppercase text-slate-400 tracking-widest mb-1">Sevrages</p>
+                            <p class="text-[8px] font-black uppercase text-slate-400 tracking-widest mb-1">{{ __("Sevrages") }}</p>
                             <p class="text-lg font-black text-teal-700">{{ number_format($stat['total_weaned']) }}</p>
                         </div>
                         @if($stat['avg_litter_size'])
                         <div class="text-center">
-                            <p class="text-[8px] font-black uppercase text-slate-400 tracking-widest mb-1">Portée moy.</p>
+                            <p class="text-[8px] font-black uppercase text-slate-400 tracking-widest mb-1">{{ __("Portée moy.") }}</p>
                             <p class="text-lg font-black text-indigo-700">{{ number_format($stat['avg_litter_size'], 1) }}</p>
                         </div>
                         @endif
                         @if($stat['weaning_rate'] !== null)
                         <div class="text-center">
-                            <p class="text-[8px] font-black uppercase text-slate-400 tracking-widest mb-1">Taux sevrage</p>
+                            <p class="text-[8px] font-black uppercase text-slate-400 tracking-widest mb-1">{{ __("Taux sevrage") }}</p>
                             <p @class(['text-lg font-black',
                                 'text-emerald-700' => $stat['weaning_rate'] >= 90,
                                 'text-amber-700'   => $stat['weaning_rate'] < 90 && $stat['weaning_rate'] >= 75,
@@ -151,7 +151,7 @@
                 @empty
                 <div class="bg-white rounded-[2rem] border border-dashed border-slate-200 p-12 text-center">
                     <p class="text-4xl mb-4">📈</p>
-                    <p class="text-[10px] font-black uppercase text-slate-400 tracking-widest">Aucun lot en engraissement {{ $statusFilter === 'Actif' ? 'actif' : '' }} trouvé</p>
+                    <p class="text-[10px] font-black uppercase text-slate-400 tracking-widest">{{ $statusFilter === 'Actif' ? __("Aucun lot en engraissement actif trouvé") : __("Aucun lot en engraissement trouvé") }}</p>
                 </div>
                 @endforelse
             </div>

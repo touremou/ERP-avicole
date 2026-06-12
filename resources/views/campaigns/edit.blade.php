@@ -3,9 +3,9 @@
         <div class="flex items-center gap-4 text-left">
             <a href="{{ route('campaigns.show', $campaign) }}" class="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-500 hover:text-slate-800 rounded-xl transition-all shadow-sm no-underline">
                 <i class="fas fa-chevron-left text-xs"></i>
-                <span class="text-[10px] font-black uppercase italic tracking-widest leading-none">Retour</span>
+                <span class="text-[10px] font-black uppercase italic tracking-widest leading-none">{{ __("Retour") }}</span>
             </a>
-            <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">Modifier — {{ $campaign->name }}</h2>
+            <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">{{ __("Modifier") }} — {{ $campaign->name }}</h2>
         </div>
     </x-slot>
 

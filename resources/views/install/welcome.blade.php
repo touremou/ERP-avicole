@@ -1,6 +1,6 @@
 <x-install-layout :step="1">
-    <h2>Vérification des prérequis</h2>
-    <p class="help">L'assistant vérifie que le serveur dispose de tout le nécessaire avant de continuer.</p>
+    <h2>{{ __("Vérification des prérequis") }}</h2>
+    <p class="help">{{ __("L'assistant vérifie que le serveur dispose de tout le nécessaire avant de continuer.") }}</p>
 
     <ul class="checklist">
         @foreach ($checks as $check)
@@ -12,7 +12,7 @@
                 @if ($check['status'])
                     <span class="badge badge-ok">OK</span>
                 @else
-                    <span class="badge badge-fail">{{ $check['required'] ? 'Requis' : 'Recommandé' }}</span>
+                    <span class="badge badge-fail">{{ $check['required'] ? __("Requis") : __("Recommandé") }}</span>
                 @endif
             </li>
         @endforeach
@@ -21,9 +21,9 @@
     <div class="actions">
         <span></span>
         @if ($canProceed)
-            <a href="{{ route('install.database') }}" class="btn">Continuer</a>
+            <a href="{{ route('install.database') }}" class="btn">{{ __("Continuer") }}</a>
         @else
-            <button class="btn" disabled>Corrigez les éléments requis ci-dessus</button>
+            <button class="btn" disabled>{{ __("Corrigez les éléments requis ci-dessus") }}</button>
         @endif
     </div>
 </x-install-layout>

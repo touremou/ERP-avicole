@@ -7,9 +7,9 @@
                 </a>
                 <div class="text-left">
                     <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">
-                        Bilan de fin de cycle : <span class="text-orange-500">{{ $batch->code }}</span>
+                        {{ __("Bilan de fin de cycle :") }} <span class="text-orange-500">{{ $batch->code }}</span>
                     </h2>
-                    <p class="text-[9px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-2 italic">Compte de résultat & clôture</p>
+                    <p class="text-[9px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-2 italic">{{ __("Compte de résultat & clôture") }}</p>
                 </div>
             </div>
             <span class="hidden md:inline px-4 py-2 bg-orange-50 rounded-xl text-[10px] font-black uppercase text-orange-600 italic tracking-widest border border-orange-100">
@@ -28,7 +28,7 @@
             @endif
 
             @can('elevage.M')
-            <form action="{{ route('batches.close', $batch->id) }}" method="POST" onsubmit="return confirm('Confirmer la clôture ? Le bâtiment passera en désinfection.');">
+            <form action="{{ route('batches.close', $batch->id) }}" method="POST" onsubmit="return confirm('{{ __("Confirmer la clôture ? Le bâtiment passera en désinfection.") }}');">
                 @csrf @method('PUT')
 
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -37,77 +37,77 @@
                         {{-- 01. RÉSUMÉ TECHNIQUE --}}
                         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                             <div class="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm text-center">
-                                <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Initial</p>
+                                <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Initial") }}</p>
                                 <p class="text-2xl font-black text-slate-800">{{ number_format($batch->initial_quantity) }}</p>
                             </div>
                             <div class="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm text-center">
-                                <p class="text-[8px] font-black text-emerald-500 uppercase tracking-widest mb-1">Vendables</p>
+                                <p class="text-[8px] font-black text-emerald-500 uppercase tracking-widest mb-1">{{ __("Vendables") }}</p>
                                 <p class="text-2xl font-black text-emerald-600">{{ number_format($remainingBirds) }}</p>
                             </div>
                             <div class="bg-white p-5 rounded-[2rem] border border-red-100 shadow-sm text-center">
-                                <p class="text-[8px] font-black text-red-400 uppercase tracking-widest mb-1">Pertes</p>
+                                <p class="text-[8px] font-black text-red-400 uppercase tracking-widest mb-1">{{ __("Pertes") }}</p>
                                 <p class="text-2xl font-black text-red-600">{{ number_format($totalMortality) }}</p>
                                 <p class="text-[7px] text-slate-400">{{ number_format($batch->mortality_rate ?? 0, 2) }}%</p>
                             </div>
                             <div class="bg-white p-5 rounded-[2rem] border border-blue-100 shadow-sm text-center">
-                                <p class="text-[8px] font-black text-blue-400 uppercase tracking-widest mb-1">Aliment</p>
+                                <p class="text-[8px] font-black text-blue-400 uppercase tracking-widest mb-1">{{ __("Aliment") }}</p>
                                 <p class="text-2xl font-black text-blue-600">{{ number_format($totalFeed, 0) }}</p>
-                                <p class="text-[7px] text-slate-400">kg consommés</p>
+                                <p class="text-[7px] text-slate-400">{{ __("kg consommés") }}</p>
                             </div>
                         </div>
 
                         {{-- 02. COMPTE DE RÉSULTAT (P&L) --}}
                         <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm text-left">
                             <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-6 italic flex items-center gap-2">
-                                <i class="fa-solid fa-calculator text-orange-500"></i> Compte de résultat
+                                <i class="fa-solid fa-calculator text-orange-500"></i> {{ __("Compte de résultat") }}
                             </h3>
 
                             {{-- CHARGES --}}
                             <div class="mb-6">
                                 <p class="text-[9px] font-black text-red-500 uppercase tracking-widest mb-3 flex items-center gap-2">
-                                    <span class="w-3 h-3 bg-red-500 rounded-full"></span> Charges
+                                    <span class="w-3 h-3 bg-red-500 rounded-full"></span> {{ __("Charges") }}
                                 </p>
                                 <div class="space-y-2 ml-5">
                                     <div class="flex justify-between items-center p-3 bg-red-50/50 rounded-xl">
                                         <div>
-                                            <span class="text-[10px] font-black text-slate-700">🐣 Acquisition poussins</span>
+                                            <span class="text-[10px] font-black text-slate-700">{{ __("🐣 Acquisition poussins") }}</span>
                                             <p class="text-[8px] text-slate-400">{{ number_format($batch->initial_quantity) }} × {{ number_format($batch->buy_price_per_unit ?? 0, 0, ',', '.') }} GNF</p>
                                         </div>
                                         <span class="text-sm font-black text-red-600">{{ number_format($costs['acquisition'], 0, ',', '.') }} GNF</span>
                                     </div>
                                     <div class="flex justify-between items-center p-3 bg-red-50/50 rounded-xl">
                                         <div>
-                                            <span class="text-[10px] font-black text-slate-700">🌾 Alimentation</span>
+                                            <span class="text-[10px] font-black text-slate-700">{{ __("🌾 Alimentation") }}</span>
                                             <p class="text-[8px] text-slate-400">{{ number_format($costs['feed_kg'], 0) }} kg × {{ number_format($costs['feed_price_kg'], 0, ',', '.') }} GNF/kg (moy.)</p>
                                         </div>
                                         <span class="text-sm font-black text-red-600">{{ number_format($costs['feed'], 0, ',', '.') }} GNF</span>
                                     </div>
                                     <div class="flex justify-between items-center p-3 bg-red-50/50 rounded-xl">
                                         <div>
-                                            <span class="text-[10px] font-black text-slate-700">💊 Santé / Vétérinaire</span>
-                                            <p class="text-[8px] text-slate-400">Traitements, vaccins, médicaments</p>
+                                            <span class="text-[10px] font-black text-slate-700">{{ __("💊 Santé / Vétérinaire") }}</span>
+                                            <p class="text-[8px] text-slate-400">{{ __("Traitements, vaccins, médicaments") }}</p>
                                         </div>
                                         <span class="text-sm font-black text-red-600">{{ number_format($costs['health'], 0, ',', '.') }} GNF</span>
                                     </div>
                                     <div class="flex justify-between items-center p-3 bg-red-50/50 rounded-xl">
                                         <div>
-                                            <span class="text-[10px] font-black text-slate-700">⚡ Énergie (prorata)</span>
+                                            <span class="text-[10px] font-black text-slate-700">{{ __("⚡ Énergie (prorata)") }}</span>
                                             {{-- Utilisation de round() pour enlever les décimales --}}
-                                            <p class="text-[8px] text-slate-400">{{ round($costs['duration_days']) }}j × quote-part énergie</p>
+                                            <p class="text-[8px] text-slate-400">{{ __(":daysj × quote-part énergie", ['days' => round($costs['duration_days'])]) }}</p>
                                         </div>
                                         <span class="text-sm font-black text-red-600">{{ number_format($costs['energy'], 0, ',', '.') }} GNF</span>
                                     </div>
                                     <div class="flex justify-between items-center p-3 bg-amber-50 rounded-xl">
                                         <div>
-                                            <span class="text-[10px] font-black text-slate-700">📋 Frais annexes</span>
-                                            <p class="text-[8px] text-slate-400">Main d'œuvre, transport, divers</p>
+                                            <span class="text-[10px] font-black text-slate-700">{{ __("📋 Frais annexes") }}</span>
+                                            <p class="text-[8px] text-slate-400">{{ __("Main d'œuvre, transport, divers") }}</p>
                                         </div>
                                         <input type="number" name="additional_costs" x-model.number="additionalCosts" value="{{ old('additional_costs', 0) }}" min="0"
                                             class="w-40 bg-white border border-amber-200 rounded-xl p-2 text-sm font-black text-red-600 text-right outline-none focus:border-amber-500">
                                     </div>
                                 </div>
                                 <div class="flex justify-between items-center mt-3 p-4 bg-red-100 rounded-2xl ml-5">
-                                    <span class="text-[10px] font-black text-red-700 uppercase tracking-widest">Total Charges</span>
+                                    <span class="text-[10px] font-black text-red-700 uppercase tracking-widest">{{ __("Total Charges") }}</span>
                                     <span class="text-lg font-black text-red-700" x-text="formatGNF(totalCharges)"></span>
                                 </div>
                             </div>
@@ -115,20 +115,20 @@
                             {{-- PRODUITS --}}
                             <div>
                                 <p class="text-[9px] font-black text-emerald-500 uppercase tracking-widest mb-3 flex items-center gap-2">
-                                    <span class="w-3 h-3 bg-emerald-500 rounded-full"></span> Produits (Recettes)
+                                    <span class="w-3 h-3 bg-emerald-500 rounded-full"></span> {{ __("Produits (Recettes)") }}
                                 </p>
                                 <div class="space-y-2 ml-5">
                                     <div class="flex justify-between items-center p-3 bg-emerald-50/50 rounded-xl">
                                         <div>
-                                            <span class="text-[10px] font-black text-slate-700">💰 Vente volaille</span>
-                                            <p class="text-[8px] text-slate-400"><span x-text="remainingBirds"></span> sujets × prix unitaire</p>
+                                            <span class="text-[10px] font-black text-slate-700">{{ __("💰 Vente volaille") }}</span>
+                                            <p class="text-[8px] text-slate-400"><span x-text="remainingBirds"></span> {{ __("sujets × prix unitaire") }}</p>
                                         </div>
-                                        <input type="number" name="actual_sell_price_per_unit" x-model.number="sellPrice" value="{{ old('actual_sell_price_per_unit') }}" min="0" required placeholder="Prix/sujet"
+                                        <input type="number" name="actual_sell_price_per_unit" x-model.number="sellPrice" value="{{ old('actual_sell_price_per_unit') }}" min="0" required placeholder="{{ __("Prix/sujet") }}"
                                             class="w-40 bg-white border border-emerald-200 rounded-xl p-2 text-sm font-black text-emerald-600 text-right outline-none focus:border-emerald-500">
                                     </div>
                                 </div>
                                 <div class="flex justify-between items-center mt-3 p-4 bg-emerald-100 rounded-2xl ml-5">
-                                    <span class="text-[10px] font-black text-emerald-700 uppercase tracking-widest">Chiffre d'Affaires</span>
+                                    <span class="text-[10px] font-black text-emerald-700 uppercase tracking-widest">{{ __("Chiffre d'Affaires") }}</span>
                                     <span class="text-lg font-black text-emerald-700" x-text="formatGNF(revenue)"></span>
                                 </div>
                             </div>
@@ -139,14 +139,14 @@
                     <div class="space-y-6">
                         {{-- RÉSULTAT NET --}}
                         <div class="bg-slate-900 p-8 rounded-[3rem] text-white shadow-2xl border border-slate-800">
-                            <h3 class="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-6">Résultat</h3>
+                            <h3 class="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-6">{{ __("Résultat") }}</h3>
 
                             <div class="space-y-4">
-                                <div class="flex justify-between"><span class="text-[9px] text-slate-500 uppercase font-black">CA Brut</span><span class="text-sm font-black text-white" x-text="formatGNF(revenue)"></span></div>
-                                <div class="flex justify-between"><span class="text-[9px] text-red-400 uppercase font-black">Charges</span><span class="text-sm font-black text-red-400" x-text="'- ' + formatGNF(totalCharges)"></span></div>
+                                <div class="flex justify-between"><span class="text-[9px] text-slate-500 uppercase font-black">{{ __("CA Brut") }}</span><span class="text-sm font-black text-white" x-text="formatGNF(revenue)"></span></div>
+                                <div class="flex justify-between"><span class="text-[9px] text-red-400 uppercase font-black">{{ __("Charges") }}</span><span class="text-sm font-black text-red-400" x-text="'- ' + formatGNF(totalCharges)"></span></div>
                                 <div class="border-t border-slate-700 pt-4 flex justify-between">
                                     <span class="text-[9px] uppercase font-black" :class="netProfit >= 0 ? 'text-emerald-400' : 'text-red-400'">
-                                        <span x-text="netProfit >= 0 ? '✅ BÉNÉFICE' : '🔴 PERTE'"></span>
+                                        <span x-text="netProfit >= 0 ? {{ Js::from(__("✅ BÉNÉFICE")) }} : {{ Js::from(__("🔴 PERTE")) }}"></span>
                                     </span>
                                     <span class="text-2xl font-black tracking-tighter" :class="netProfit >= 0 ? 'text-emerald-400' : 'text-red-400'" x-text="formatGNF(netProfit)"></span>
                                 </div>

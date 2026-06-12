@@ -2,12 +2,12 @@
     <x-slot name="header">
         <div class="flex items-center justify-between">
             <div>
-                <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">Campagnes saisonnières</h2>
-                <p class="text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em] mt-2 italic">Tabaski · Ramadan · Fêtes — pilotage de la marge</p>
+                <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">{{ __("Campagnes saisonnières") }}</h2>
+                <p class="text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em] mt-2 italic">{{ __("Tabaski · Ramadan · Fêtes — pilotage de la marge") }}</p>
             </div>
             @can('elevage.C')
             <a href="{{ route('campaigns.create') }}" class="bg-emerald-600 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-700 transition-all no-underline shadow-lg">
-                <i class="fa-solid fa-plus mr-1"></i> Nouvelle campagne
+                <i class="fa-solid fa-plus mr-1"></i> {{ __("Nouvelle campagne") }}
             </a>
             @endcan
         </div>
@@ -53,7 +53,7 @@
                         <div class="flex gap-8 items-center text-right">
                             <div>
                                 <p class="text-2xl font-black italic tracking-tighter leading-none mb-1 {{ $campaign->is_urgent ? 'text-rose-600' : 'text-slate-900' }}">
-                                    {{ $campaign->days_until_target >= 0 ? 'J-'.$campaign->days_until_target : 'Passé' }}
+                                    {{ $campaign->days_until_target >= 0 ? __("J-:days", ['days' => $campaign->days_until_target]) : __("Passé") }}
                                 </p>
                                 <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest">{{ $campaign->target_date->translatedFormat('d M Y') }}</p>
                             </div>
@@ -61,14 +61,14 @@
                                 <p class="text-2xl font-black text-slate-900 italic tracking-tighter leading-none mb-1">
                                     {{ number_format($campaign->head_count) }}@if($campaign->target_head_count)<small class="text-sm text-slate-300">/{{ number_format($campaign->target_head_count) }}</small>@endif
                                 </p>
-                                <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest">Têtes · {{ $campaign->batches->count() }} lot(s)</p>
+                                <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest">{{ __("Têtes · :count lot(s)", ['count' => $campaign->batches->count()]) }}</p>
                             </div>
                             <div class="border-l border-slate-100 pl-8 hidden md:block">
                                 @php $marge = $campaign->target_sale_price ? $campaign->projected_margin : $campaign->realized_margin; @endphp
                                 <p class="text-xl font-black italic tracking-tighter leading-none mb-1 {{ $marge >= 0 ? 'text-emerald-600' : 'text-rose-600' }}">
                                     {{ number_format($marge) }}
                                 </p>
-                                <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest">Marge {{ $campaign->target_sale_price ? 'projetée' : 'réalisée' }} (GNF)</p>
+                                <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest">{{ $campaign->target_sale_price ? __("Marge projetée (GNF)") : __("Marge réalisée (GNF)") }}</p>
                             </div>
                         </div>
                     </div>
@@ -82,11 +82,11 @@
             @empty
                 <div class="bg-white p-20 rounded-[4rem] border border-slate-100 shadow-sm text-center">
                     <div class="text-6xl mb-6">🐑</div>
-                    <h3 class="text-xl font-black text-slate-800 uppercase italic mb-2 tracking-tighter">Aucune campagne</h3>
-                    <p class="text-slate-400 text-[10px] font-black uppercase tracking-widest italic mb-8">Créez votre première campagne Tabaski pour piloter l'engraissement et la vente groupée.</p>
+                    <h3 class="text-xl font-black text-slate-800 uppercase italic mb-2 tracking-tighter">{{ __("Aucune campagne") }}</h3>
+                    <p class="text-slate-400 text-[10px] font-black uppercase tracking-widest italic mb-8">{{ __("Créez votre première campagne Tabaski pour piloter l'engraissement et la vente groupée.") }}</p>
                     @can('elevage.C')
                     <a href="{{ route('campaigns.create') }}" class="inline-block bg-emerald-600 text-white px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-700 transition-all no-underline shadow-lg">
-                        <i class="fa-solid fa-plus mr-1"></i> Créer une campagne
+                        <i class="fa-solid fa-plus mr-1"></i> {{ __("Créer une campagne") }}
                     </a>
                     @endcan
                 </div>

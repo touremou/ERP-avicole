@@ -4,15 +4,15 @@
             <div class="flex items-center gap-4">
                 <div class="w-12 h-12 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg"><i class="fa-solid fa-clipboard-check text-lg"></i></div>
                 <div>
-                    <h2 class="text-lg font-black text-slate-800 uppercase italic tracking-tighter leading-none">Planning Opérationnel</h2>
+                    <h2 class="text-lg font-black text-slate-800 uppercase italic tracking-tighter leading-none">{{ __("Planning Opérationnel") }}</h2>
                     <p class="text-[9px] font-bold text-slate-400 uppercase mt-1 tracking-widest italic">{{ $date->translatedFormat('l d F Y') }}</p>
                 </div>
             </div>
             <div class="flex gap-2">
-                <a href="{{ route('tasks.templates') }}" class="bg-white border border-slate-200 px-4 py-2 rounded-xl text-[9px] font-black uppercase italic text-slate-600 hover:bg-slate-50 no-underline"><i class="fa-solid fa-gear text-slate-400 mr-1"></i> Templates</a>
+                <a href="{{ route('tasks.templates') }}" class="bg-white border border-slate-200 px-4 py-2 rounded-xl text-[9px] font-black uppercase italic text-slate-600 hover:bg-slate-50 no-underline"><i class="fa-solid fa-gear text-slate-400 mr-1"></i> {{ __("Templates") }}</a>
                 <form method="POST" action="{{ route('tasks.generate') }}">@csrf
                     <input type="hidden" name="date" value="{{ $date->toDateString() }}">
-                    <button class="bg-indigo-600 text-white px-5 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-indigo-700 border-none cursor-pointer shadow-lg italic"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i> Générer</button>
+                    <button class="bg-indigo-600 text-white px-5 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-indigo-700 border-none cursor-pointer shadow-lg italic"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i> {{ __("Générer") }}</button>
                 </form>
             </div>
         </div>
@@ -35,33 +35,33 @@
                 <input type="hidden" name="date" value="{{ $date->toDateString() }}">
 
                 <select name="employee" onchange="document.getElementById('filterForm').submit()" class="bg-white border border-slate-200 rounded-xl px-3 py-2 text-[9px] font-black uppercase text-slate-600 shadow-sm outline-none cursor-pointer">
-                    <option value="">Tous les employés</option>
+                    <option value="">{{ __("Tous les employés") }}</option>
                     @foreach($employees as $e)
                         <option value="{{ $e->id }}" {{ ($activeFilters['employee'] ?? '') == $e->id ? 'selected' : '' }}>{{ $e->first_name }} {{ $e->last_name }}</option>
                     @endforeach
                 </select>
                 <select name="building" onchange="document.getElementById('filterForm').submit()" class="bg-white border border-slate-200 rounded-xl px-3 py-2 text-[9px] font-black uppercase text-slate-600 shadow-sm outline-none cursor-pointer">
-                    <option value="">Tous les bâtiments</option>
+                    <option value="">{{ __("Tous les bâtiments") }}</option>
                     @foreach($buildings as $b)
                         <option value="{{ $b->id }}" {{ ($activeFilters['building'] ?? '') == $b->id ? 'selected' : '' }}>{{ $b->name }}</option>
                     @endforeach
                 </select>
                 <select name="category" onchange="document.getElementById('filterForm').submit()" class="bg-white border border-slate-200 rounded-xl px-3 py-2 text-[9px] font-black uppercase text-slate-600 shadow-sm outline-none cursor-pointer">
-                    <option value="">Toutes catégories</option>
-                    @foreach(['alimentation' => '🌾 Alimentation', 'collecte' => '🥚 Collecte', 'controle' => '📋 Contrôle', 'nettoyage' => '🧹 Nettoyage', 'sante' => '💉 Santé', 'maintenance' => '🔧 Maintenance'] as $k => $v)
+                    <option value="">{{ __("Toutes catégories") }}</option>
+                    @foreach(['alimentation' => __("🌾 Alimentation"), 'collecte' => __("🥚 Collecte"), 'controle' => __("📋 Contrôle"), 'nettoyage' => __("🧹 Nettoyage"), 'sante' => __("💉 Santé"), 'maintenance' => __("🔧 Maintenance")] as $k => $v)
                         <option value="{{ $k }}" {{ ($activeFilters['category'] ?? '') === $k ? 'selected' : '' }}>{{ $v }}</option>
                     @endforeach
                 </select>
                 <select name="priority" onchange="document.getElementById('filterForm').submit()" class="bg-white border border-slate-200 rounded-xl px-3 py-2 text-[9px] font-black uppercase text-slate-600 shadow-sm outline-none cursor-pointer">
-                    <option value="">Toutes priorités</option>
-                    @foreach(['critique' => '🔴 Critique', 'haute' => '🟠 Haute', 'normale' => '⚪ Normale', 'basse' => '🔵 Basse'] as $k => $v)
+                    <option value="">{{ __("Toutes priorités") }}</option>
+                    @foreach(['critique' => __("🔴 Critique"), 'haute' => __("🟠 Haute"), 'normale' => __("⚪ Normale"), 'basse' => __("🔵 Basse")] as $k => $v)
                         <option value="{{ $k }}" {{ ($activeFilters['priority'] ?? '') === $k ? 'selected' : '' }}>{{ $v }}</option>
                     @endforeach
                 </select>
 
                 @if(!empty($activeFilters))
                 <a href="{{ route('tasks.index', ['date' => $date->toDateString()]) }}" class="text-[9px] font-black text-red-400 hover:text-red-600 uppercase tracking-widest no-underline px-2">
-                    <i class="fa-solid fa-xmark mr-0.5"></i> Reset
+                    <i class="fa-solid fa-xmark mr-0.5"></i> {{ __("Reset") }}
                 </a>
                 @endif
             </form>
@@ -78,13 +78,13 @@
                        @class(['px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest no-underline transition-all',
                            'bg-white text-indigo-600 shadow-sm' => $currentView === 'day',
                            'text-slate-400 hover:text-slate-600' => $currentView !== 'day'])>
-                        <i class="fa-solid fa-list mr-1"></i> Jour
+                        <i class="fa-solid fa-list mr-1"></i> {{ __("Jour") }}
                     </a>
                     <a href="{{ route('tasks.index', array_merge(['date' => $date->toDateString(), 'view' => 'month'], $filterParams)) }}"
                        @class(['px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest no-underline transition-all',
                            'bg-white text-indigo-600 shadow-sm' => $currentView === 'month',
                            'text-slate-400 hover:text-slate-600' => $currentView !== 'month'])>
-                        <i class="fa-solid fa-calendar-days mr-1"></i> Mois
+                        <i class="fa-solid fa-calendar-days mr-1"></i> {{ __("Mois") }}
                     </a>
                 </div>
                 <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest">
@@ -105,7 +105,7 @@
                 <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden mb-6">
                     {{-- En-têtes jours --}}
                     <div class="grid grid-cols-7 border-b border-slate-100">
-                        @foreach(['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'] as $dayName)
+                        @foreach([__("Lun"), __("Mar"), __("Mer"), __("Jeu"), __("Ven"), __("Sam"), __("Dim")] as $dayName)
                             <div class="px-2 py-3 text-center text-[8px] font-black text-slate-400 uppercase tracking-widest">{{ $dayName }}</div>
                         @endforeach
                     </div>
@@ -187,7 +187,7 @@
                     <div class="flex items-center gap-1.5"><div class="w-3 h-1.5 rounded-full bg-emerald-500"></div><span class="text-[8px] font-black text-slate-400 uppercase">≥80%</span></div>
                     <div class="flex items-center gap-1.5"><div class="w-3 h-1.5 rounded-full bg-amber-400"></div><span class="text-[8px] font-black text-slate-400 uppercase">40-79%</span></div>
                     <div class="flex items-center gap-1.5"><div class="w-3 h-1.5 rounded-full bg-red-400"></div><span class="text-[8px] font-black text-slate-400 uppercase">&lt;40%</span></div>
-                    <div class="flex items-center gap-1.5"><div class="w-2 h-2 rounded-full bg-red-500"></div><span class="text-[8px] font-black text-slate-400 uppercase">Retards</span></div>
+                    <div class="flex items-center gap-1.5"><div class="w-2 h-2 rounded-full bg-red-500"></div><span class="text-[8px] font-black text-slate-400 uppercase">{{ __("Retards") }}</span></div>
                 </div>
 
             @else

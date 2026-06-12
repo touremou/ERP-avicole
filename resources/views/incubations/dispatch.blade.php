@@ -3,14 +3,14 @@
         <div class="flex items-center gap-4 text-left">
             <a href="{{ route('incubations.index') }}" class="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-500 hover:text-slate-800 rounded-xl transition-all shadow-sm group no-underline">
                 <i class="fas fa-chevron-left group-hover:-translate-x-1 transition-transform text-xs"></i>
-                <span class="text-[10px] font-black uppercase italic tracking-widest">Couvoir</span>
+                <span class="text-[10px] font-black uppercase italic tracking-widest">{{ __("Couvoir") }}</span>
             </a>
             <div>
                 <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">
-                    🐣 Dispatch Poussins — {{ $incubation->code_incubation }}
+                    {{ __("🐣 Dispatch Poussins") }} — {{ $incubation->code_incubation }}
                 </h2>
                 <p class="text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em] mt-2 italic">
-                    {{ $incubation->incubator->name ?? '—' }} | Éclos : {{ $incubation->hatched_chicks ?? 0 }} poussins
+                    {{ $incubation->incubator->name ?? '—' }} | {{ __("Éclos :") }} {{ $incubation->hatched_chicks ?? 0 }} {{ __("poussins") }}
                 </p>
             </div>
         </div>
@@ -34,21 +34,21 @@
                     {{-- BILAN ÉCLOSION --}}
                     <div class="grid grid-cols-4 gap-3">
                         <div class="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm text-center">
-                            <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Mis en couveuse</p>
+                            <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Mis en couveuse") }}</p>
                             <p class="text-2xl font-black text-slate-800">{{ number_format($incubation->eggs_count) }}</p>
                         </div>
                         <div class="bg-white p-5 rounded-[2rem] border border-emerald-100 shadow-sm text-center">
-                            <p class="text-[8px] font-black text-emerald-500 uppercase tracking-widest mb-1">Éclos viables</p>
+                            <p class="text-[8px] font-black text-emerald-500 uppercase tracking-widest mb-1">{{ __("Éclos viables") }}</p>
                             <p class="text-2xl font-black text-emerald-600">{{ number_format($incubation->hatched_chicks ?? 0) }}</p>
                         </div>
                         <div class="bg-white p-5 rounded-[2rem] border border-blue-100 shadow-sm text-center">
-                            <p class="text-[8px] font-black text-blue-500 uppercase tracking-widest mb-1">Dispatchés</p>
+                            <p class="text-[8px] font-black text-blue-500 uppercase tracking-widest mb-1">{{ __("Dispatchés") }}</p>
                             <p class="text-2xl font-black text-blue-600">{{ number_format($incubation->chicks_dispatched ?? 0) }}</p>
                         </div>
                         <div @class(['p-5 rounded-[2rem] border shadow-sm text-center',
                             'bg-amber-50 border-amber-200' => $remaining > 0,
                             'bg-slate-50 border-slate-100' => $remaining === 0])>
-                            <p class="text-[8px] font-black uppercase tracking-widest mb-1 {{ $remaining > 0 ? 'text-amber-500' : 'text-slate-400' }}">Restants</p>
+                            <p class="text-[8px] font-black uppercase tracking-widest mb-1 {{ $remaining > 0 ? 'text-amber-500' : 'text-slate-400' }}">{{ __("Restants") }}</p>
                             <p class="text-2xl font-black {{ $remaining > 0 ? 'text-amber-600 animate-pulse' : 'text-slate-300' }}">{{ number_format($remaining) }}</p>
                         </div>
                     </div>
@@ -58,15 +58,15 @@
                     <form method="POST" action="{{ route('chick-dispatches.store', $incubation) }}" class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm">
                         @csrf
 
-                        <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-6 italic">Dispatcher les poussins</h3>
+                        <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-6 italic">{{ __("Dispatcher les poussins") }}</h3>
 
                         {{-- DESTINATION --}}
                         <div class="grid grid-cols-4 gap-3 mb-6">
                             @foreach([
-                                'elevage' => ['icon' => 'fa-house', 'label' => 'Démarrage', 'color' => 'blue', 'sub' => 'Créer un lot'],
-                                'vente'   => ['icon' => 'fa-coins', 'label' => 'Vente', 'color' => 'emerald', 'sub' => 'Client externe'],
-                                'stock'   => ['icon' => 'fa-boxes-stacked', 'label' => 'Stock', 'color' => 'amber', 'sub' => 'Poussins J1'],
-                                'perte'   => ['icon' => 'fa-skull', 'label' => 'Perte', 'color' => 'red', 'sub' => 'Non-viables'],
+                                'elevage' => ['icon' => 'fa-house', 'label' => __("Démarrage"), 'color' => 'blue', 'sub' => __("Créer un lot")],
+                                'vente'   => ['icon' => 'fa-coins', 'label' => __("Vente"), 'color' => 'emerald', 'sub' => __("Client externe")],
+                                'stock'   => ['icon' => 'fa-boxes-stacked', 'label' => __("Stock"), 'color' => 'amber', 'sub' => __("Poussins J1")],
+                                'perte'   => ['icon' => 'fa-skull', 'label' => __("Perte"), 'color' => 'red', 'sub' => __("Non-viables")],
                             ] as $dest => $cfg)
                             <label class="cursor-pointer">
                                 <input type="radio" name="destination_type" value="{{ $dest }}" x-model="destination" class="hidden peer">

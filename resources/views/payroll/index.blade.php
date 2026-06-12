@@ -4,12 +4,12 @@
             <div class="flex items-center gap-4">
                 <div class="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg"><i class="fa-solid fa-money-bill-wave text-lg"></i></div>
                 <div>
-                    <h2 class="text-lg font-black text-slate-800 uppercase italic tracking-tighter leading-none">Gestion de la Paie</h2>
-                    <p class="text-[9px] font-bold text-slate-400 uppercase mt-1 tracking-widest italic">Périodes, fiches & paiements</p>
+                    <h2 class="text-lg font-black text-slate-800 uppercase italic tracking-tighter leading-none">{{ __("Gestion de la Paie") }}</h2>
+                    <p class="text-[9px] font-bold text-slate-400 uppercase mt-1 tracking-widest italic">{{ __("Périodes, fiches & paiements") }}</p>
                 </div>
             </div>
             <div class="flex gap-3">
-                <a href="{{ route('payroll.leaves') }}" class="bg-white border border-slate-200 px-5 py-2.5 rounded-xl text-[9px] font-black uppercase italic text-slate-600 hover:bg-amber-50 no-underline"><i class="fa-solid fa-calendar-xmark text-amber-500 mr-1"></i> Congés</a>
+                <a href="{{ route('payroll.leaves') }}" class="bg-white border border-slate-200 px-5 py-2.5 rounded-xl text-[9px] font-black uppercase italic text-slate-600 hover:bg-amber-50 no-underline"><i class="fa-solid fa-calendar-xmark text-amber-500 mr-1"></i> {{ __("Congés") }}</a>
             </div>
         </div>
     </x-slot>
@@ -33,12 +33,12 @@
                 @csrf
                 <i class="fa-solid fa-plus-circle text-blue-500 text-xl"></i>
                 <div class="flex-1">
-                    <p class="text-[10px] font-black text-blue-600 uppercase tracking-widest">Créer la paie du mois en cours</p>
+                    <p class="text-[10px] font-black text-blue-600 uppercase tracking-widest">{{ __("Créer la paie du mois en cours") }}</p>
                     <p class="text-[8px] text-blue-400">{{ now()->translatedFormat('F Y') }}</p>
                 </div>
                 <input type="hidden" name="year" value="{{ now()->year }}">
                 <input type="hidden" name="month" value="{{ now()->month }}">
-                <button type="submit" class="bg-blue-600 text-white px-6 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-blue-700 border-none cursor-pointer shadow-lg italic">Créer</button>
+                <button type="submit" class="bg-blue-600 text-white px-6 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-blue-700 border-none cursor-pointer shadow-lg italic">{{ __("Créer") }}</button>
             </form>
             @endif
             @endcan
@@ -48,12 +48,12 @@
                 <table class="w-full border-collapse">
                     <thead>
                         <tr class="bg-slate-50 text-[8px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
-                            <th class="px-6 py-3 text-left">Période</th>
-                            <th class="px-4 py-3 text-center">Employés</th>
-                            <th class="px-4 py-3 text-right">Masse brute</th>
-                            <th class="px-4 py-3 text-right">Net total</th>
-                            <th class="px-4 py-3 text-center">Statut</th>
-                            <th class="px-6 py-3 text-right">Actions</th>
+                            <th class="px-6 py-3 text-left">{{ __("Période") }}</th>
+                            <th class="px-4 py-3 text-center">{{ __("Employés") }}</th>
+                            <th class="px-4 py-3 text-right">{{ __("Masse brute") }}</th>
+                            <th class="px-4 py-3 text-right">{{ __("Net total") }}</th>
+                            <th class="px-4 py-3 text-center">{{ __("Statut") }}</th>
+                            <th class="px-6 py-3 text-right">{{ __("Actions") }}</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-50">
@@ -74,11 +74,11 @@
                                     'bg-slate-800 text-white' => $p->status === 'paye'])>{{ $p->status }}</span>
                             </td>
                             <td class="px-6 py-4 text-right">
-                                <a href="{{ route('payroll.show', $p) }}" class="text-blue-500 hover:text-blue-700 no-underline text-[9px] font-black uppercase"><i class="fa-solid fa-eye mr-1"></i> Détail</a>
+                                <a href="{{ route('payroll.show', $p) }}" class="text-blue-500 hover:text-blue-700 no-underline text-[9px] font-black uppercase"><i class="fa-solid fa-eye mr-1"></i> {{ __("Détail") }}</a>
                             </td>
                         </tr>
                         @empty
-                        <tr><td colspan="6" class="px-8 py-12 text-center text-slate-300 text-[10px] uppercase italic tracking-widest">Aucune période</td></tr>
+                        <tr><td colspan="6" class="px-8 py-12 text-center text-slate-300 text-[10px] uppercase italic tracking-widest">{{ __("Aucune période") }}</td></tr>
                         @endforelse
                     </tbody>
                 </table>

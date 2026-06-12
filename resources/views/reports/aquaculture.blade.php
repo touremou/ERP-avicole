@@ -7,16 +7,16 @@
                 </div>
                 <div>
                     <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">
-                        Rapport Pisciculture
+                        {{ __("Rapport Pisciculture") }}
                     </h2>
                     <p class="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] mt-1 italic">
-                        Qualité de l'eau & survie par bassin
+                        {{ __("Qualité de l'eau & survie par bassin") }}
                     </p>
                 </div>
             </div>
             {{-- Status filter --}}
             <div class="flex items-center gap-2">
-                @foreach(['Actif' => 'Actifs', 'all' => 'Tous', 'Terminé' => 'Terminés'] as $val => $label)
+                @foreach(['Actif' => __("Actifs"), 'all' => __("Tous"), 'Terminé' => __("Terminés")] as $val => $label)
                 <a href="{{ route('reports.aquaculture', ['status' => $val]) }}"
                    @class(['px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all no-underline',
                        'bg-blue-700 text-white shadow' => $statusFilter === $val,
@@ -40,7 +40,7 @@
                 <div class="bg-blue-950 text-white p-6 rounded-[2rem] flex items-center gap-6 shadow-xl col-span-1 md:col-span-1">
                     <div class="w-14 h-14 bg-blue-700 rounded-[1.2rem] flex items-center justify-center text-2xl">🐟</div>
                     <div>
-                        <p class="text-[8px] font-black uppercase tracking-[0.3em] opacity-60">Bassins suivis</p>
+                        <p class="text-[8px] font-black uppercase tracking-[0.3em] opacity-60">{{ __("Bassins suivis") }}</p>
                         <p class="text-4xl font-black italic tracking-tighter">{{ $batchStats->count() }}</p>
                     </div>
                 </div>
@@ -54,15 +54,15 @@
                         @if($criticalCount > 0) ⛔ @elseif($totalAlerts > 0) ⚠️ @else ✅ @endif
                     </div>
                     <div>
-                        <p class="text-[8px] font-black uppercase tracking-[0.3em] opacity-70">Alertes qualité d'eau</p>
+                        <p class="text-[8px] font-black uppercase tracking-[0.3em] opacity-70">{{ __("Alertes qualité d'eau") }}</p>
                         <p class="text-4xl font-black italic tracking-tighter">{{ $totalAlerts }}</p>
                     </div>
                 </div>
                 <div class="bg-white p-6 rounded-[2rem] flex items-center gap-6 shadow-sm border border-slate-100">
                     <div class="w-14 h-14 bg-rose-100 rounded-[1.2rem] flex items-center justify-center text-2xl text-rose-600 font-black">{{ $criticalCount }}</div>
                     <div>
-                        <p class="text-[8px] font-black uppercase tracking-[0.3em] text-slate-400">Alertes critiques</p>
-                        <p class="text-[10px] font-black text-slate-500 uppercase">pH, O₂, NH₃ hors limites strictes</p>
+                        <p class="text-[8px] font-black uppercase tracking-[0.3em] text-slate-400">{{ __("Alertes critiques") }}</p>
+                        <p class="text-[10px] font-black text-slate-500 uppercase">{{ __("pH, O₂, NH₃ hors limites strictes") }}</p>
                     </div>
                 </div>
             </div>
@@ -83,7 +83,7 @@
                                     {{ $batch->code }}
                                 </a>
                                 <p class="text-[9px] text-slate-400 font-black uppercase mt-0.5">
-                                    {{ $batch->species?->name_fr ?? 'Aquaculture' }} · {{ $batch->building?->name ?? '—' }} · J{{ $stat['age_days'] }}
+                                    {{ $batch->species?->name_fr ?? __("Aquaculture") }} · {{ $batch->building?->name ?? '—' }} · J{{ $stat['age_days'] }}
                                 </p>
                             </div>
                         </div>
@@ -91,7 +91,7 @@
                         <div class="flex items-center gap-6 flex-wrap">
                             @if($ext)
                                 <div class="text-center">
-                                    <p class="text-[8px] font-black uppercase text-slate-400 tracking-widest mb-1">Temp.</p>
+                                    <p class="text-[8px] font-black uppercase text-slate-400 tracking-widest mb-1">{{ __("Temp.") }}</p>
                                     <p class="text-lg font-black text-slate-700">{{ $ext->water_temp !== null ? number_format($ext->water_temp, 1).'°C' : '—' }}</p>
                                 </div>
                                 <div class="text-center">
@@ -107,11 +107,11 @@
                                     <p class="text-lg font-black text-slate-700">{{ $ext->water_ammonia_ppm !== null ? number_format($ext->water_ammonia_ppm, 2).' ppm' : '—' }}</p>
                                 </div>
                                 <div class="text-center">
-                                    <p class="text-[8px] font-black uppercase text-slate-400 tracking-widest mb-1">Biomasse</p>
+                                    <p class="text-[8px] font-black uppercase text-slate-400 tracking-widest mb-1">{{ __("Biomasse") }}</p>
                                     <p class="text-lg font-black text-slate-700">{{ $ext->biomass_kg !== null ? number_format($ext->biomass_kg, 1).' kg' : '—' }}</p>
                                 </div>
                                 <div class="text-center min-w-[90px]">
-                                    <p class="text-[8px] font-black uppercase text-slate-400 tracking-widest mb-1">Survie</p>
+                                    <p class="text-[8px] font-black uppercase text-slate-400 tracking-widest mb-1">{{ __("Survie") }}</p>
                                     @php $survival = $ext->survival_rate; $survivalTarget = $stat['survival_target']; @endphp
                                     @if($survival !== null)
                                     <p @class(['text-2xl font-black italic',
@@ -120,13 +120,13 @@
                                         'text-rose-600'    => $survival < $survivalTarget * 0.8])>
                                         {{ number_format($survival, 1) }}<small class="text-[10px] opacity-60">%</small>
                                     </p>
-                                    <p class="text-[8px] text-slate-300 font-black uppercase">cible {{ number_format($survivalTarget, 0) }}%</p>
+                                    <p class="text-[8px] text-slate-300 font-black uppercase">{{ __("cible") }} {{ number_format($survivalTarget, 0) }}%</p>
                                     @else
                                     <p class="text-slate-300 text-sm font-black uppercase">—</p>
                                     @endif
                                 </div>
                             @else
-                                <p class="text-slate-300 text-[10px] font-black uppercase tracking-widest">Aucune donnée d'eau enregistrée</p>
+                                <p class="text-slate-300 text-[10px] font-black uppercase tracking-widest">{{ __("Aucune donnée d'eau enregistrée") }}</p>
                             @endif
 
                             {{-- IC (indice de consommation) réel vs cible --}}
@@ -139,7 +139,7 @@
                                     'text-rose-600'    => $stat['fc_real'] > $stat['fc_target'] * 1.2])>
                                     {{ number_format($stat['fc_real'], 2) }}
                                 </p>
-                                <p class="text-[8px] text-slate-300 font-black uppercase">cible {{ number_format($stat['fc_target'], 2) }}</p>
+                                <p class="text-[8px] text-slate-300 font-black uppercase">{{ __("cible") }} {{ number_format($stat['fc_target'], 2) }}</p>
                                 @else
                                 <p class="text-slate-300 text-sm font-black uppercase">—</p>
                                 @endif
@@ -147,7 +147,7 @@
 
                             {{-- Cycle de grossissement : âge / durée cible --}}
                             <div class="text-center min-w-[100px]">
-                                <p class="text-[8px] font-black uppercase text-slate-400 tracking-widest mb-1">Cycle</p>
+                                <p class="text-[8px] font-black uppercase text-slate-400 tracking-widest mb-1">{{ __("Cycle") }}</p>
                                 @if($stat['cycle_days'])
                                 <p @class(['text-sm font-black italic',
                                     'text-rose-600'    => $stat['days_remaining'] !== null && $stat['days_remaining'] <= 0,
@@ -156,7 +156,7 @@
                                     J{{ $stat['age_days'] }} / {{ $stat['cycle_days'] }}
                                 </p>
                                 <p class="text-[8px] text-slate-300 font-black uppercase">
-                                    {{ $stat['days_remaining'] > 0 ? 'reste ' . $stat['days_remaining'] . ' j' : 'récolte due' }}
+                                    {{ $stat['days_remaining'] > 0 ? __("reste :days j", ['days' => $stat['days_remaining']]) : __("récolte due") }}
                                 </p>
                                 @else
                                 <p class="text-slate-300 text-sm font-black uppercase">—</p>
@@ -189,7 +189,7 @@
                     {{-- Mini sparkline pH --}}
                     @if(count($stat['series']['ph']) >= 2)
                     <div class="mt-4 pt-4 border-t border-slate-50">
-                        <p class="text-[8px] font-black uppercase text-slate-400 tracking-widest mb-2">Évolution pH</p>
+                        <p class="text-[8px] font-black uppercase text-slate-400 tracking-widest mb-2">{{ __("Évolution pH") }}</p>
                         <div class="flex gap-2 overflow-x-auto">
                             @foreach($stat['series']['ph'] as $date => $value)
                             <div class="flex flex-col items-center min-w-[50px]">
@@ -206,7 +206,7 @@
                     {{-- Mini sparkline survie --}}
                     @if(count($stat['series']['survival']) >= 2)
                     <div class="mt-4 pt-4 border-t border-slate-50">
-                        <p class="text-[8px] font-black uppercase text-slate-400 tracking-widest mb-2">Courbe de survie</p>
+                        <p class="text-[8px] font-black uppercase text-slate-400 tracking-widest mb-2">{{ __("Courbe de survie") }}</p>
                         <div class="flex gap-2 overflow-x-auto">
                             @foreach($stat['series']['survival'] as $date => $value)
                             <div class="flex flex-col items-center min-w-[50px]">
@@ -226,7 +226,7 @@
                 @empty
                 <div class="bg-white rounded-[2rem] border border-dashed border-slate-200 p-12 text-center">
                     <p class="text-4xl mb-4">🐟</p>
-                    <p class="text-[10px] font-black uppercase text-slate-400 tracking-widest">Aucun lot pisciculture {{ $statusFilter === 'Actif' ? 'actif' : '' }} trouvé</p>
+                    <p class="text-[10px] font-black uppercase text-slate-400 tracking-widest">{{ $statusFilter === 'Actif' ? __("Aucun lot pisciculture actif trouvé") : __("Aucun lot pisciculture trouvé") }}</p>
                 </div>
                 @endforelse
             </div>
