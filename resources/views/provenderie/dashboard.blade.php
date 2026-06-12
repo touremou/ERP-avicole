@@ -5,8 +5,8 @@
                 <i class="fa-solid fa-gears text-lg"></i>
             </div>
             <div class="text-left">
-                <h2 class="font-black text-2xl text-slate-800 uppercase italic tracking-tighter leading-none">Pilotage Provenderie</h2>
-                <p class="text-[10px] font-bold text-blue-600 uppercase tracking-widest mt-1 italic leading-none">Flux de transformation & Stocks finis</p>
+                <h2 class="font-black text-2xl text-slate-800 uppercase italic tracking-tighter leading-none">{{ __("Pilotage Provenderie") }}</h2>
+                <p class="text-[10px] font-bold text-blue-600 uppercase tracking-widest mt-1 italic leading-none">{{ __("Flux de transformation & Stocks finis") }}</p>
             </div>
         </div>
     </x-slot>
@@ -18,7 +18,7 @@
             <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm relative overflow-hidden group">
                     <div class="absolute -right-2 -top-2 opacity-5 text-slate-900 group-hover:scale-110 transition-transform"><i class="fa-solid fa-vault text-6xl"></i></div>
-                    <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 italic leading-none">Trésorerie Matières</p>
+                    <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 italic leading-none">{{ __("Trésorerie Matières") }}</p>
                     <p class="text-3xl font-black text-slate-900 tracking-tighter italic leading-none">
                         {{ number_format($rawMaterialsValue, 0, ',', ' ') }} <small class="text-[10px] opacity-40">GNF</small>
                     </p>
@@ -33,24 +33,24 @@
                         'text-[9px] font-black uppercase tracking-widest mb-2 italic leading-none',
                         'text-red-500' => $lowStockAlerts->count() > 0,
                         'text-slate-400' => $lowStockAlerts->count() == 0
-                    ])>Alertes Ingrédients</p>
+                    ])>{{ __("Alertes Ingrédients") }}</p>
                     <p class="text-3xl font-black text-slate-900 tracking-tighter italic leading-none">{{ $lowStockAlerts->count() }}</p>
                 </div>
 
                 <div class="bg-slate-900 p-8 rounded-[3rem] shadow-2xl text-white relative overflow-hidden group">
                     <div class="absolute -right-2 -top-2 opacity-10 text-blue-400 group-hover:rotate-12 transition-transform"><i class="fa-solid fa-warehouse text-6xl"></i></div>
-                    <p class="text-[9px] font-black text-blue-400 uppercase tracking-widest mb-2 italic leading-none">Aliment Fini (Total)</p>
+                    <p class="text-[9px] font-black text-blue-400 uppercase tracking-widest mb-2 italic leading-none">{{ __("Aliment Fini (Total)") }}</p>
                     <p class="text-3xl font-black tracking-tighter italic leading-none">
                         {{ number_format($finishedFeeds->sum('current_quantity'), 0, ',', ' ') }} <small class="text-[10px] opacity-40 italic">KG</small>
                     </p>
                 </div>
 
                 <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm relative overflow-hidden group">
-                    <p class="text-[9px] font-black text-emerald-500 uppercase tracking-widest mb-2 italic leading-none">Volume ce mois</p>
+                    <p class="text-[9px] font-black text-emerald-500 uppercase tracking-widest mb-2 italic leading-none">{{ __("Volume ce mois") }}</p>
                     <p class="text-3xl font-black text-slate-900 tracking-tighter italic leading-none">
                         {{ number_format($monthlyVolume, 0, ',', ' ') }} <small class="text-[10px] opacity-40 italic">KG</small>
                     </p>
-                    <p class="text-[8px] text-slate-400 mt-2 uppercase italic font-black">{{ $totalFormulaCount }} formules actives</p>
+                    <p class="text-[8px] text-slate-400 mt-2 uppercase italic font-black">{{ $totalFormulaCount }} {{ __("formules actives") }}</p>
                 </div>
             </div>
 
@@ -58,17 +58,17 @@
                 {{-- SILOS DE CONSOMMATION --}}
                 <div class="lg:col-span-2 space-y-6">
                     <div class="flex items-center justify-between px-6">
-                        <h3 class="text-xs font-black uppercase text-slate-800 tracking-tighter italic leading-none">État des Silos de Consommation</h3>
-                        <span class="text-[8px] text-slate-400 uppercase font-bold italic">Unité : Kilogramme</span>
+                        <h3 class="text-xs font-black uppercase text-slate-800 tracking-tighter italic leading-none">{{ __("État des Silos de Consommation") }}</h3>
+                        <span class="text-[8px] text-slate-400 uppercase font-bold italic">{{ __("Unité : Kilogramme") }}</span>
                     </div>
                     
                     <div class="bg-white rounded-[3.5rem] border border-slate-100 shadow-sm overflow-hidden">
                         <table class="w-full text-left border-collapse">
                             <thead>
                                 <tr class="bg-slate-50 border-b border-slate-100">
-                                    <th class="p-6 text-[10px] font-black uppercase tracking-widest italic text-slate-400 leading-none">Aliment Fini</th>
-                                    <th class="p-6 text-[10px] font-black uppercase tracking-widest italic text-slate-400 leading-none text-center">Sacs (50kg)</th>
-                                    <th class="p-6 text-[10px] font-black uppercase tracking-widest italic text-slate-400 leading-none text-right px-10">Stock (kg)</th>
+                                    <th class="p-6 text-[10px] font-black uppercase tracking-widest italic text-slate-400 leading-none">{{ __("Aliment Fini") }}</th>
+                                    <th class="p-6 text-[10px] font-black uppercase tracking-widest italic text-slate-400 leading-none text-center">{{ __("Sacs (50kg)") }}</th>
+                                    <th class="p-6 text-[10px] font-black uppercase tracking-widest italic text-slate-400 leading-none text-right px-10">{{ __("Stock (kg)") }}</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-slate-50">
@@ -106,7 +106,7 @@
                                 </tr>
                                 @empty
                                 <tr>
-                                    <td colspan="3" class="p-12 text-center text-slate-300 uppercase italic text-[10px] font-black">Aucun aliment fini en stock</td>
+                                    <td colspan="3" class="p-12 text-center text-slate-300 uppercase italic text-[10px] font-black">{{ __("Aucun aliment fini en stock") }}</td>
                                 </tr>
                                 @endforelse
                             </tbody>
@@ -116,7 +116,7 @@
 
                 {{-- ALERTES & NAVIGATION --}}
                 <div class="space-y-8">
-                    <h3 class="text-xs font-black uppercase text-slate-800 tracking-tighter ml-6 italic leading-none">Alertes Matières Premières</h3>
+                    <h3 class="text-xs font-black uppercase text-slate-800 tracking-tighter ml-6 italic leading-none">{{ __("Alertes Matières Premières") }}</h3>
                     
                     <div class="bg-white p-8 rounded-[4rem] border border-slate-100 shadow-sm space-y-4">
                         @forelse($lowStockAlerts as $alert)
@@ -127,9 +127,9 @@
                             <div class="text-left">
                                 <p class="text-[9px] font-black text-slate-800 uppercase italic leading-none tracking-tighter">{{ $alert->name }}</p>
                                 <div class="flex items-center gap-2 mt-1">
-                                    <p class="text-[8px] text-red-500 uppercase font-black italic">Seuil : {{ number_format($alert->alert_threshold, 0) }}kg</p>
+                                    <p class="text-[8px] text-red-500 uppercase font-black italic">{{ __("Seuil") }} : {{ number_format($alert->alert_threshold, 0) }}kg</p>
                                     <span class="w-1 h-1 bg-red-200 rounded-full"></span>
-                                    <p class="text-[8px] text-red-600 font-black italic">Actuel : {{ number_format($alert->stock_qty, 1) }}kg</p>
+                                    <p class="text-[8px] text-red-600 font-black italic">{{ __("Actuel") }} : {{ number_format($alert->stock_qty, 1) }}kg</p>
                                 </div>
                             </div>
                         </div>
@@ -138,7 +138,7 @@
                             <div class="w-12 h-12 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-500 mx-auto mb-4">
                                 <i class="fa-solid fa-check-double"></i>
                             </div>
-                            <p class="text-[9px] text-slate-400 uppercase italic tracking-widest font-black leading-tight">Tous les silos<br>sont remplis</p>
+                            <p class="text-[9px] text-slate-400 uppercase italic tracking-widest font-black leading-tight">{{ __("Tous les silos") }}<br>{{ __("sont remplis") }}</p>
                         </div>
                         @endforelse
                     </div>
@@ -147,8 +147,8 @@
                         @can('provenderie.C')
                         <a href="{{ route('production.create') }}" class="group bg-slate-900 p-8 rounded-[3rem] text-white hover:bg-blue-600 transition-all flex justify-between items-center italic shadow-2xl relative overflow-hidden no-underline">
                             <div class="relative z-10 text-left">
-                                <p class="text-[8px] text-blue-400 uppercase font-black tracking-widest leading-none mb-1">Production</p>
-                                <p class="text-xs font-black uppercase tracking-widest italic">Lancer Mélange</p>
+                                <p class="text-[8px] text-blue-400 uppercase font-black tracking-widest leading-none mb-1">{{ __("Production") }}</p>
+                                <p class="text-xs font-black uppercase tracking-widest italic">{{ __("Lancer Mélange") }}</p>
                             </div>
                             <i class="fa-solid fa-play text-sm group-hover:translate-x-2 transition-transform relative z-10"></i>
                         </a>
@@ -157,16 +157,16 @@
                         @can('provenderie.L')
                         <a href="{{ route('raw-materials.index') }}" class="group bg-white p-8 rounded-[3rem] text-slate-800 border border-slate-100 hover:border-emerald-200 transition-all flex justify-between items-center italic shadow-sm no-underline">
                             <div class="text-left">
-                                <p class="text-[8px] text-emerald-500 uppercase font-black tracking-widest leading-none mb-1">Inventaire</p>
-                                <p class="text-xs font-black uppercase tracking-widest italic">Gestion Ingrédients</p>
+                                <p class="text-[8px] text-emerald-500 uppercase font-black tracking-widest leading-none mb-1">{{ __("Inventaire") }}</p>
+                                <p class="text-xs font-black uppercase tracking-widest italic">{{ __("Gestion Ingrédients") }}</p>
                             </div>
                             <i class="fa-solid fa-list-check text-sm text-slate-300 group-hover:text-emerald-500 transition-colors"></i>
                         </a>
 
                         <a href="{{ route('formulas.index') }}" class="group bg-white p-8 rounded-[3rem] text-slate-800 border border-slate-100 hover:border-blue-200 transition-all flex justify-between items-center italic shadow-sm no-underline">
                             <div class="text-left">
-                                <p class="text-[8px] text-blue-500 uppercase font-black tracking-widest leading-none mb-1">Bibliothèque</p>
-                                <p class="text-xs font-black uppercase tracking-widest italic">Formules & Normes</p>
+                                <p class="text-[8px] text-blue-500 uppercase font-black tracking-widest leading-none mb-1">{{ __("Bibliothèque") }}</p>
+                                <p class="text-xs font-black uppercase tracking-widest italic">{{ __("Formules & Normes") }}</p>
                             </div>
                             <i class="fa-solid fa-flask-vial text-sm text-slate-300 group-hover:text-blue-500 transition-colors"></i>
                         </a>

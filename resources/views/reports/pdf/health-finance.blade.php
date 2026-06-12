@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="utf-8">
-    <title>Analyse Financière Santé</title>
+    <title>{{ __("Analyse Financière Santé") }}</title>
     <style>
         @page { margin: 25px 30px; }
         body { font-family: 'DejaVu Sans', sans-serif; font-size: 11px; color: #1e293b; }
@@ -27,41 +27,41 @@
     </style>
 </head>
 <body>
-    <h1>Analyse Financière Santé</h1>
+    <h1>{{ __("Analyse Financière Santé") }}</h1>
     <div class="subtitle">
-        Performance économique prophylactique ·
-        Période : {{ ['all' => 'Historique global', 'year' => 'Exercice ' . date('Y'), 'month' => 'Mois en cours'][$period] ?? $period }} ·
-        Statut : {{ ['all' => 'Tous les lots', 'actif' => 'En cours', 'clos' => 'Archives'][$statusFilter] ?? $statusFilter }} ·
-        Généré le {{ now()->format('d/m/Y H:i') }}
+        {{ __("Performance économique prophylactique") }} ·
+        {{ __("Période") }} : {{ ['all' => __("Historique global"), 'year' => __("Exercice") . ' ' . date('Y'), 'month' => __("Mois en cours")][$period] ?? $period }} ·
+        {{ __("Statut") }} : {{ ['all' => __("Tous les lots"), 'actif' => __("En cours"), 'clos' => __("Archives")][$statusFilter] ?? $statusFilter }} ·
+        {{ __("Généré le") }} {{ now()->format('d/m/Y H:i') }}
     </div>
 
     <table class="kpi-row">
         <tr>
             <td style="width: 33%;">
                 <div class="kpi-box dark">
-                    <div class="label">Dépense sanitaire totale</div>
+                    <div class="label">{{ __("Dépense sanitaire totale") }}</div>
                     <div class="value">{{ number_format($totalGlobalCost, 0, ',', ' ') }}</div>
                 </div>
             </td>
             <td style="width: 33%;">
                 <div class="kpi-box dark">
-                    <div class="label">Coût moyen / tête</div>
+                    <div class="label">{{ __("Coût moyen / tête") }}</div>
                     <div class="value">{{ number_format($averageCostPerHead, 0, ',', ' ') }}</div>
                 </div>
             </td>
             <td style="width: 33%;">
                 <div class="kpi-box green">
-                    <div class="label">Lot d'excellence</div>
+                    <div class="label">{{ __("Lot d'excellence") }}</div>
                     <div class="value">{{ $bestBatch->code ?? 'N/A' }} — {{ number_format($bestBatchCost, 0) }}/tête</div>
                 </div>
             </td>
         </tr>
     </table>
 
-    <h2 class="section">Structure des coûts</h2>
+    <h2 class="section">{{ __("Structure des coûts") }}</h2>
     <table class="data">
         <thead>
-            <tr><th>Type</th><th class="amount" style="text-align:right;">Montant</th><th class="amount" style="text-align:right;">% du total</th></tr>
+            <tr><th>{{ __("Type") }}</th><th class="amount" style="text-align:right;">{{ __("Montant") }}</th><th class="amount" style="text-align:right;">{{ __("% du total") }}</th></tr>
         </thead>
         <tbody>
             @foreach(['Vaccin', 'Traitement', 'Vitamine', 'Désinfection'] as $type)
@@ -78,16 +78,16 @@
         </tbody>
     </table>
 
-    <h2 class="section">Registre analytique des lots</h2>
+    <h2 class="section">{{ __("Registre analytique des lots") }}</h2>
     <table class="data">
         <thead>
             <tr>
-                <th>Lot</th>
-                <th>Bâtiment</th>
-                <th>Statut</th>
-                <th class="amount" style="text-align:right;">Effectif initial</th>
-                <th class="amount" style="text-align:right;">Total investi</th>
-                <th class="amount" style="text-align:right;">Coût / tête</th>
+                <th>{{ __("Lot") }}</th>
+                <th>{{ __("Bâtiment") }}</th>
+                <th>{{ __("Statut") }}</th>
+                <th class="amount" style="text-align:right;">{{ __("Effectif initial") }}</th>
+                <th class="amount" style="text-align:right;">{{ __("Total investi") }}</th>
+                <th class="amount" style="text-align:right;">{{ __("Coût / tête") }}</th>
             </tr>
         </thead>
         <tbody>
@@ -107,11 +107,11 @@
                 </td>
             </tr>
             @empty
-            <tr><td colspan="6" class="muted">Aucun lot trouvé.</td></tr>
+            <tr><td colspan="6" class="muted">{{ __("Aucun lot trouvé.") }}</td></tr>
             @endforelse
         </tbody>
     </table>
 
-    <div class="footer">AviSmart ERP — Rapport généré automatiquement</div>
+    <div class="footer">{{ __("AviSmart ERP — Rapport généré automatiquement") }}</div>
 </body>
 </html>

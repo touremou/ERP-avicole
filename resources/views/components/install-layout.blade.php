@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Installation — {{ config('app.name', 'AviSmart') }}</title>
+    <title>{{ __("Installation") }} — {{ config('app.name', 'AviSmart') }}</title>
     <style>
         :root {
             --primary: #16a34a;
@@ -122,15 +122,15 @@
 <body>
     <div class="card">
         <div class="card-header">
-            <h1>🐔 Installation — {{ config('app.name', 'AviSmart') }}</h1>
-            <p>Assistant de configuration initiale</p>
+            <h1>🐔 {{ __("Installation") }} — {{ config('app.name', 'AviSmart') }}</h1>
+            <p>{{ __("Assistant de configuration initiale") }}</p>
         </div>
         <div class="steps">
-            <span class="{{ $step === 1 ? 'active' : '' }}">1. Prérequis</span>
-            <span class="{{ $step === 2 ? 'active' : '' }}">2. Base de données</span>
-            <span class="{{ $step === 3 ? 'active' : '' }}">3. Migrations</span>
-            <span class="{{ $step === 4 ? 'active' : '' }}">4. Administrateur</span>
-            <span class="{{ $step === 5 ? 'active' : '' }}">5. Terminé</span>
+            <span class="{{ $step === 1 ? 'active' : '' }}">1. {{ __("Prérequis") }}</span>
+            <span class="{{ $step === 2 ? 'active' : '' }}">2. {{ __("Base de données") }}</span>
+            <span class="{{ $step === 3 ? 'active' : '' }}">3. {{ __("Migrations") }}</span>
+            <span class="{{ $step === 4 ? 'active' : '' }}">4. {{ __("Administrateur") }}</span>
+            <span class="{{ $step === 5 ? 'active' : '' }}">5. {{ __("Terminé") }}</span>
         </div>
         <div class="card-body">
             {{ $slot }}

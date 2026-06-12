@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="utf-8">
-    <title>Flux de Trésorerie</title>
+    <title>{{ __("Flux de Trésorerie") }}</title>
     <style>
         @page { margin: 25px 30px; }
         body { font-family: 'DejaVu Sans', sans-serif; font-size: 11px; color: #1e293b; }
@@ -28,17 +28,17 @@
     </style>
 </head>
 <body>
-    <h1>Analyse Financière — Flux de Trésorerie</h1>
+    <h1>{{ __("Analyse Financière — Flux de Trésorerie") }}</h1>
     <div class="subtitle">
-        Alimentation · Santé · Acquisition · Coût par tête ·
-        Statut : {{ ['all' => 'Tous', 'actif' => 'Actifs', 'termine' => 'Terminés', 'clos' => 'Archives'][$statusFilter] ?? $statusFilter }} ·
-        Espèce : {{ $speciesFilter === 'all' ? 'Toutes' : (optional($speciesList->firstWhere('id', (int) $speciesFilter))->name_fr ?? $speciesFilter) }} ·
+        {{ __("Alimentation · Santé · Acquisition · Coût par tête") }} ·
+        {{ __("Statut") }} : {{ ['all' => __("Tous"), 'actif' => __("Actifs"), 'termine' => __("Terminés"), 'clos' => __("Archives")][$statusFilter] ?? $statusFilter }} ·
+        {{ __("Espèce") }} : {{ $speciesFilter === 'all' ? __("Toutes") : (optional($speciesList->firstWhere('id', (int) $speciesFilter))->name_fr ?? $speciesFilter) }} ·
         @if($useDateRange)
-            Période : {{ \Carbon\Carbon::parse($dateFrom)->format('d/m/Y') }} → {{ \Carbon\Carbon::parse($dateTo)->format('d/m/Y') }}
+            {{ __("Période") }} : {{ \Carbon\Carbon::parse($dateFrom)->format('d/m/Y') }} → {{ \Carbon\Carbon::parse($dateTo)->format('d/m/Y') }}
         @else
-            Année : {{ $currentYear }} {{ $monthFilter !== 'all' ? '· Mois : ' . ($months[$monthFilter] ?? $monthFilter) : '' }}
+            {{ __("Année") }} : {{ $currentYear }} {{ $monthFilter !== 'all' ? '· ' . __("Mois") . ' : ' . ($months[$monthFilter] ?? $monthFilter) : '' }}
         @endif
-        · Généré le {{ now()->format('d/m/Y H:i') }}
+        · {{ __("Généré le") }} {{ now()->format('d/m/Y H:i') }}
     </div>
 
     @if(!empty($monthlyData))
@@ -46,25 +46,25 @@
         <tr>
             <td style="width: 25%;">
                 <div class="kpi-box dark">
-                    <div class="label">Coût total consolidé</div>
+                    <div class="label">{{ __("Coût total consolidé") }}</div>
                     <div class="value">{{ number_format($globalStats['total_cost'], 0, ',', ' ') }}</div>
                 </div>
             </td>
             <td style="width: 25%;">
                 <div class="kpi-box blue">
-                    <div class="label">Coût / tête</div>
+                    <div class="label">{{ __("Coût / tête") }}</div>
                     <div class="value">{{ number_format($globalStats['cost_per_head'], 0, ',', ' ') }}</div>
                 </div>
             </td>
             <td style="width: 25%;">
                 <div class="kpi-box orange">
-                    <div class="label">Charge aliment ({{ $globalStats['feed_pct'] }}%)</div>
+                    <div class="label">{{ __("Charge aliment") }} ({{ $globalStats['feed_pct'] }}%)</div>
                     <div class="value">{{ number_format($globalStats['feed_cost'], 0, ',', ' ') }}</div>
                 </div>
             </td>
             <td style="width: 25%;">
                 <div class="kpi-box rose">
-                    <div class="label">Invest. santé ({{ $globalStats['health_pct'] }}%)</div>
+                    <div class="label">{{ __("Invest. santé") }} ({{ $globalStats['health_pct'] }}%)</div>
                     <div class="value">{{ number_format($globalStats['health_cost'], 0, ',', ' ') }}</div>
                 </div>
             </td>
@@ -72,7 +72,7 @@
     </table>
 
     @php
-        $monthLabels = [0 => 'Plage personnalisée'] + $months;
+        $monthLabels = [0 => __('Plage personnalisée')] + $months;
     @endphp
 
     @foreach($monthLabels as $num => $name)
@@ -84,21 +84,21 @@
         <h2 class="section">
             {{ $name }}
             @if(! $useDateRange) {{ $currentYear }} @endif
-            — {{ count($mRows) }} lot(s) · {{ number_format($mTotal, 0, ',', ' ') }} GNF
+            — {{ count($mRows) }} {{ __("lot(s)") }} · {{ number_format($mTotal, 0, ',', ' ') }} GNF
         </h2>
         <table class="data">
             <thead>
                 <tr>
-                    <th>Lot</th>
-                    <th>Bâtiment</th>
-                    <th>Type</th>
-                    <th>Statut</th>
-                    <th class="amount" style="text-align:right;">Santé</th>
-                    <th class="amount" style="text-align:right;">Aliment</th>
-                    <th class="amount" style="text-align:right;">Conso (kg)</th>
-                    <th class="amount" style="text-align:right;">Acquisition</th>
-                    <th class="amount" style="text-align:right;">Total</th>
-                    <th class="amount" style="text-align:right;">Coût/tête</th>
+                    <th>{{ __("Lot") }}</th>
+                    <th>{{ __("Bâtiment") }}</th>
+                    <th>{{ __("Type") }}</th>
+                    <th>{{ __("Statut") }}</th>
+                    <th class="amount" style="text-align:right;">{{ __("Santé") }}</th>
+                    <th class="amount" style="text-align:right;">{{ __("Aliment") }}</th>
+                    <th class="amount" style="text-align:right;">{{ __("Conso (kg)") }}</th>
+                    <th class="amount" style="text-align:right;">{{ __("Acquisition") }}</th>
+                    <th class="amount" style="text-align:right;">{{ __("Total") }}</th>
+                    <th class="amount" style="text-align:right;">{{ __("Coût/tête") }}</th>
                 </tr>
             </thead>
             <tbody>
@@ -123,7 +123,7 @@
                 </tr>
                 @endforeach
                 <tr class="total-row">
-                    <td colspan="4">Total {{ $name }}</td>
+                    <td colspan="4">{{ __("Total") }} {{ $name }}</td>
                     <td class="amount">{{ number_format(collect($mRows)->sum('health'), 0, ',', ' ') }}</td>
                     <td class="amount">{{ number_format(collect($mRows)->sum('feed_cost'), 0, ',', ' ') }}</td>
                     <td class="amount">{{ number_format(collect($mRows)->sum('feed_qty'), 1) }}</td>
@@ -134,9 +134,9 @@
         @endif
     @endforeach
     @else
-    <p class="muted">Aucun flux financier pour cette période.</p>
+    <p class="muted">{{ __("Aucun flux financier pour cette période.") }}</p>
     @endif
 
-    <div class="footer">AviSmart ERP — Rapport généré automatiquement</div>
+    <div class="footer">{{ __("AviSmart ERP — Rapport généré automatiquement") }}</div>
 </body>
 </html>

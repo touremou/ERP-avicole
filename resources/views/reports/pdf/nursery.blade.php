@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="utf-8">
-    <title>Rapport Nurserie / Reproduction</title>
+    <title>{{ __("Rapport Nurserie / Reproduction") }}</title>
     <style>
         @page { margin: 25px 30px; }
         body { font-family: 'DejaVu Sans', sans-serif; font-size: 11px; color: #1e293b; }
@@ -25,26 +25,26 @@
     </style>
 </head>
 <body>
-    <h1>Rapport Nurserie / Reproduction</h1>
-    <div class="subtitle">Agnelage · chevrotage · sevrage · Période : {{ $from->format('d/m/Y') }} au {{ $to->format('d/m/Y') }} · Généré le {{ now()->format('d/m/Y H:i') }}</div>
+    <h1>{{ __("Rapport Nurserie / Reproduction") }}</h1>
+    <div class="subtitle">{{ __("Agnelage · chevrotage · sevrage") }} · {{ __("Période") }} : {{ $from->format('d/m/Y') }} {{ __("au") }} {{ $to->format('d/m/Y') }} · {{ __("Généré le") }} {{ now()->format('d/m/Y H:i') }}</div>
 
     <table class="kpi-row">
         <tr>
             <td style="width: 33%;">
                 <div class="kpi-box pink">
-                    <div class="label">Naissances</div>
+                    <div class="label">{{ __("Naissances") }}</div>
                     <div class="value">{{ number_format($totalBorn) }}</div>
                 </div>
             </td>
             <td style="width: 33%;">
                 <div class="kpi-box green">
-                    <div class="label">Sevrages</div>
+                    <div class="label">{{ __("Sevrages") }}</div>
                     <div class="value">{{ number_format($totalWeaned) }}</div>
                 </div>
             </td>
             <td style="width: 33%;">
                 <div class="kpi-box dark">
-                    <div class="label">Taux de sevrage moyen</div>
+                    <div class="label">{{ __("Taux de sevrage moyen") }}</div>
                     <div class="value">{{ $avgWeaningRate }}%</div>
                 </div>
             </td>
@@ -54,11 +54,11 @@
     <table class="data">
         <thead>
             <tr>
-                <th>Lot</th>
-                <th>Espèce</th>
-                <th>Naissances</th>
-                <th>Sevrages</th>
-                <th>Taux sevrage</th>
+                <th>{{ __("Lot") }}</th>
+                <th>{{ __("Espèce") }}</th>
+                <th>{{ __("Naissances") }}</th>
+                <th>{{ __("Sevrages") }}</th>
+                <th>{{ __("Taux sevrage") }}</th>
             </tr>
         </thead>
         <tbody>
@@ -77,11 +77,11 @@
                 </td>
             </tr>
             @empty
-            <tr><td colspan="5" class="muted">Aucune naissance ni sevrage saisi sur la période.</td></tr>
+            <tr><td colspan="5" class="muted">{{ __("Aucune naissance ni sevrage saisi sur la période.") }}</td></tr>
             @endforelse
         </tbody>
     </table>
 
-    <div class="footer">AviSmart ERP — Rapport généré automatiquement</div>
+    <div class="footer">{{ __("AviSmart ERP — Rapport généré automatiquement") }}</div>
 </body>
 </html>

@@ -5,9 +5,9 @@
                 <i class="fa-solid fa-user-gear text-xl"></i>
             </div>
             <div>
-                <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">Mon Espace</h2>
+                <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">{{ __("Mon Espace") }}</h2>
                 <p class="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] mt-2 italic">
-                    Bonjour {{ $user->name }} · {{ $user->userRole->display_name ?? $user->userRole->name ?? 'Sans rôle' }}
+                    {{ __("Bonjour") }} {{ $user->name }} · {{ $user->userRole->display_name ?? $user->userRole->name ?? __("Sans rôle") }}
                 </p>
             </div>
         </div>
@@ -19,11 +19,11 @@
             {{-- MODULES ACCESSIBLES --}}
             <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
                 <h3 class="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center mb-5 italic">
-                    <span class="w-6 h-[2px] bg-blue-500 mr-2"></span> Mes accès
+                    <span class="w-6 h-[2px] bg-blue-500 mr-2"></span> {{ __("Mes accès") }}
                 </h3>
                 @php $modules = $user->getAccessibleModules(); @endphp
                 @if($modules->isEmpty())
-                    <p class="text-[10px] text-slate-400 uppercase tracking-widest">Aucun module accessible pour l'instant.</p>
+                    <p class="text-[10px] text-slate-400 uppercase tracking-widest">{{ __("Aucun module accessible pour l'instant.") }}</p>
                 @else
                     <div class="flex flex-wrap gap-3">
                         @foreach($modules as $m)
@@ -53,23 +53,23 @@
 
                     <div class="md:col-span-2 bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
                         <h3 class="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center mb-5 italic">
-                            <span class="w-6 h-[2px] bg-emerald-500 mr-2"></span> Mes informations
+                            <span class="w-6 h-[2px] bg-emerald-500 mr-2"></span> {{ __("Mes informations") }}
                         </h3>
                         <div class="grid grid-cols-2 gap-4">
                             <div class="bg-slate-50 p-4 rounded-xl">
-                                <p class="text-[7px] font-black text-slate-400 uppercase tracking-widest">Département</p>
-                                <p class="text-sm font-black text-slate-800 uppercase mt-1">{{ $employee->department ?? 'Général' }}</p>
+                                <p class="text-[7px] font-black text-slate-400 uppercase tracking-widest">{{ __("Département") }}</p>
+                                <p class="text-sm font-black text-slate-800 uppercase mt-1">{{ $employee->department ?? __("Général") }}</p>
                             </div>
                             <div class="bg-slate-50 p-4 rounded-xl">
-                                <p class="text-[7px] font-black text-slate-400 uppercase tracking-widest">Contrat</p>
+                                <p class="text-[7px] font-black text-slate-400 uppercase tracking-widest">{{ __("Contrat") }}</p>
                                 <p class="text-sm font-black text-slate-800 uppercase mt-1">{{ $employee->contract_type ?? 'CDI' }}</p>
                             </div>
                             <div class="bg-slate-50 p-4 rounded-xl">
-                                <p class="text-[7px] font-black text-slate-400 uppercase tracking-widest">Téléphone</p>
+                                <p class="text-[7px] font-black text-slate-400 uppercase tracking-widest">{{ __("Téléphone") }}</p>
                                 <p class="text-sm font-black text-slate-800 mt-1">{{ $employee->phone ?? '—' }}</p>
                             </div>
                             <div class="bg-slate-50 p-4 rounded-xl">
-                                <p class="text-[7px] font-black text-slate-400 uppercase tracking-widest">Bâtiment assigné</p>
+                                <p class="text-[7px] font-black text-slate-400 uppercase tracking-widest">{{ __("Bâtiment assigné") }}</p>
                                 <p class="text-sm font-black text-blue-600 mt-1">{{ $employee->assignedBuilding?->name ?? '—' }}</p>
                             </div>
                         </div>
@@ -79,10 +79,10 @@
                 {{-- MES LOTS --}}
                 <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
                     <h3 class="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center mb-5 italic">
-                        <span class="w-6 h-[2px] bg-amber-500 mr-2"></span> Mes lots sous responsabilité
+                        <span class="w-6 h-[2px] bg-amber-500 mr-2"></span> {{ __("Mes lots sous responsabilité") }}
                     </h3>
                     @if($batches->isEmpty())
-                        <p class="text-[9px] text-slate-300 text-center py-6 uppercase italic tracking-widest">Aucun lot actif assigné</p>
+                        <p class="text-[9px] text-slate-300 text-center py-6 uppercase italic tracking-widest">{{ __("Aucun lot actif assigné") }}</p>
                     @else
                         <div class="space-y-2">
                             @foreach($batches as $batch)
@@ -91,11 +91,11 @@
                                     <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
                                     <div>
                                         <p class="text-[11px] font-black text-slate-800 uppercase">{{ $batch->code }}</p>
-                                        <p class="text-[7px] text-slate-400 uppercase tracking-widest">{{ $batch->current_quantity }} sujets · {{ $batch->type }}</p>
+                                        <p class="text-[7px] text-slate-400 uppercase tracking-widest">{{ $batch->current_quantity }} {{ __("sujets") }} · {{ $batch->type }}</p>
                                     </div>
                                 </div>
                                 @can('elevage.L')
-                                <a href="{{ route('batches.show', $batch) }}" class="w-7 h-7 rounded-lg bg-white text-blue-400 hover:text-blue-600 flex items-center justify-center no-underline border border-slate-100" title="Voir le lot">
+                                <a href="{{ route('batches.show', $batch) }}" class="w-7 h-7 rounded-lg bg-white text-blue-400 hover:text-blue-600 flex items-center justify-center no-underline border border-slate-100" title="{{ __("Voir le lot") }}">
                                     <i class="fa-solid fa-eye text-[9px]"></i>
                                 </a>
                                 @endcan
@@ -109,7 +109,7 @@
                 @if($payslips->isNotEmpty())
                 <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
                     <h3 class="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center mb-5 italic">
-                        <span class="w-6 h-[2px] bg-emerald-500 mr-2"></span> Mes dernières fiches de paie
+                        <span class="w-6 h-[2px] bg-emerald-500 mr-2"></span> {{ __("Mes dernières fiches de paie") }}
                     </h3>
                     <div class="space-y-2">
                         @foreach($payslips as $slip)
@@ -127,13 +127,13 @@
             @else
                 <div class="bg-white p-8 rounded-[2rem] border border-slate-100 shadow-sm text-center">
                     <i class="fa-solid fa-circle-info text-slate-200 text-3xl mb-4 block"></i>
-                    <p class="text-[10px] text-slate-400 uppercase tracking-widest font-black">Ce compte n'est rattaché à aucune fiche employé.</p>
+                    <p class="text-[10px] text-slate-400 uppercase tracking-widest font-black">{{ __("Ce compte n'est rattaché à aucune fiche employé.") }}</p>
                 </div>
             @endif
 
             <div class="text-center">
                 <a href="{{ route('profile.edit') }}" class="text-[9px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-700 no-underline italic">
-                    <i class="fa-solid fa-gear mr-1"></i> Gérer mon profil & mot de passe
+                    <i class="fa-solid fa-gear mr-1"></i> {{ __("Gérer mon profil & mot de passe") }}
                 </a>
             </div>
         </div>

@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="utf-8">
-    <title>Compte de résultat</title>
+    <title>{{ __("Compte de résultat") }}</title>
     <style>
         @page { margin: 25px 30px; }
         body { font-family: 'DejaVu Sans', sans-serif; font-size: 11px; color: #1e293b; }
@@ -30,68 +30,68 @@
     </style>
 </head>
 <body>
-    <h1>Compte de résultat</h1>
-    <div class="subtitle">P&L consolidé — toutes activités · Période : {{ $from->format('d/m/Y') }} au {{ $to->format('d/m/Y') }} · Généré le {{ now()->format('d/m/Y H:i') }}</div>
+    <h1>{{ __("Compte de résultat") }}</h1>
+    <div class="subtitle">{{ __("P&L consolidé — toutes activités") }} · {{ __("Période") }} : {{ $from->format('d/m/Y') }} {{ __("au") }} {{ $to->format('d/m/Y') }} · {{ __("Généré le") }} {{ now()->format('d/m/Y H:i') }}</div>
 
     <table class="kpi-row">
         <tr>
             <td style="width: 33%;">
                 <div class="kpi-box revenue">
-                    <div class="label">Produits</div>
+                    <div class="label">{{ __("Produits") }}</div>
                     <div class="value">{{ number_format($totalRevenue) }}</div>
                 </div>
             </td>
             <td style="width: 33%;">
                 <div class="kpi-box costs">
-                    <div class="label">Charges</div>
+                    <div class="label">{{ __("Charges") }}</div>
                     <div class="value">{{ number_format($totalCosts) }}</div>
                 </div>
             </td>
             <td style="width: 33%;">
                 <div class="kpi-box {{ $netResult >= 0 ? 'net-pos' : 'net-neg' }}">
-                    <div class="label">Résultat net (marge {{ $marginPct }}%)</div>
+                    <div class="label">{{ __("Résultat net") }} ({{ __("marge") }} {{ $marginPct }}%)</div>
                     <div class="value">{{ number_format($netResult) }}</div>
                 </div>
             </td>
         </tr>
     </table>
 
-    <h2 class="section">Produits</h2>
+    <h2 class="section">{{ __("Produits") }}</h2>
     <table class="data">
         <thead>
-            <tr><th>Source</th><th class="amount" style="text-align:right;">Montant</th></tr>
+            <tr><th>{{ __("Source") }}</th><th class="amount" style="text-align:right;">{{ __("Montant") }}</th></tr>
         </thead>
         <tbody>
             @forelse($revenue as $label => $amount)
             <tr><td>{{ $label }}</td><td class="amount">{{ number_format($amount) }}</td></tr>
             @empty
-            <tr><td colspan="2" class="muted">Aucun produit sur la période.</td></tr>
+            <tr><td colspan="2" class="muted">{{ __("Aucun produit sur la période.") }}</td></tr>
             @endforelse
-            <tr class="total-row"><td>Total produits</td><td class="amount">{{ number_format($totalRevenue) }}</td></tr>
+            <tr class="total-row"><td>{{ __("Total produits") }}</td><td class="amount">{{ number_format($totalRevenue) }}</td></tr>
         </tbody>
     </table>
 
-    <h2 class="section">Charges</h2>
+    <h2 class="section">{{ __("Charges") }}</h2>
     <table class="data">
         <thead>
-            <tr><th>Poste</th><th class="amount" style="text-align:right;">Montant</th></tr>
+            <tr><th>{{ __("Poste") }}</th><th class="amount" style="text-align:right;">{{ __("Montant") }}</th></tr>
         </thead>
         <tbody>
             @foreach($costs as $label => $amount)
             <tr><td>{{ $label }}</td><td class="amount">{{ number_format($amount) }}</td></tr>
             @endforeach
-            <tr class="total-row"><td>Total charges</td><td class="amount">{{ number_format($totalCosts) }}</td></tr>
+            <tr class="total-row"><td>{{ __("Total charges") }}</td><td class="amount">{{ number_format($totalCosts) }}</td></tr>
         </tbody>
     </table>
 
-    <h2 class="section">Marge directe par espèce</h2>
+    <h2 class="section">{{ __("Marge directe par espèce") }}</h2>
     <table class="data">
         <thead>
             <tr>
-                <th>Espèce</th>
-                <th class="amount" style="text-align:right;">Produits</th>
-                <th class="amount" style="text-align:right;">Coûts directs</th>
-                <th class="amount" style="text-align:right;">Marge directe</th>
+                <th>{{ __("Espèce") }}</th>
+                <th class="amount" style="text-align:right;">{{ __("Produits") }}</th>
+                <th class="amount" style="text-align:right;">{{ __("Coûts directs") }}</th>
+                <th class="amount" style="text-align:right;">{{ __("Marge directe") }}</th>
             </tr>
         </thead>
         <tbody>
@@ -103,11 +103,11 @@
                 <td class="amount {{ $row['margin'] >= 0 ? '' : 'text-neg' }}">{{ number_format($row['margin']) }}</td>
             </tr>
             @empty
-            <tr><td colspan="4" class="muted">Aucune activité traçable par espèce sur la période.</td></tr>
+            <tr><td colspan="4" class="muted">{{ __("Aucune activité traçable par espèce sur la période.") }}</td></tr>
             @endforelse
         </tbody>
     </table>
 
-    <div class="footer">AviSmart ERP — Rapport généré automatiquement</div>
+    <div class="footer">{{ __("AviSmart ERP — Rapport généré automatiquement") }}</div>
 </body>
 </html>

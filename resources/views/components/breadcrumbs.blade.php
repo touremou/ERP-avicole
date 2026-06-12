@@ -4,7 +4,7 @@
         <li class="inline-flex items-center">
             <a href="{{ route('dashboard') }}" class="hover:text-slate-900 transition-colors flex items-center group">
                 <i class="fa-solid fa-house-chimney mr-2 text-[9px] opacity-50 group-hover:text-blue-500 transition-colors"></i>
-                Dashboard
+                {{ __("Dashboard") }}
             </a>
         </li>
 

@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="utf-8">
-    <title>Performance Technique</title>
+    <title>{{ __("Performance Technique") }}</title>
     <style>
         @page { margin: 25px 30px; }
         body { font-family: 'DejaVu Sans', sans-serif; font-size: 11px; color: #1e293b; }
@@ -19,23 +19,23 @@
     </style>
 </head>
 <body>
-    <h1>Performance Technique & Viabilité</h1>
-    <div class="subtitle">Analyse des indices de consommation et taux de survie · Généré le {{ now()->format('d/m/Y H:i') }}</div>
+    <h1>{{ __("Performance Technique & Viabilité") }}</h1>
+    <div class="subtitle">{{ __("Analyse des indices de consommation et taux de survie") }} · {{ __("Généré le") }} {{ now()->format('d/m/Y H:i') }}</div>
 
     <table class="data">
         <thead>
             <tr>
-                <th>Lot</th>
-                <th>Bâtiment</th>
-                <th>Âge (j)</th>
-                <th>FCR</th>
-                <th>Poids moyen (g)</th>
-                <th>Gain quotidien (g/j)</th>
-                <th>Stock vivant</th>
-                <th>Initial</th>
-                <th>Mortalité (têtes)</th>
-                <th>Taux mortalité</th>
-                <th>Statut</th>
+                <th>{{ __("Lot") }}</th>
+                <th>{{ __("Bâtiment") }}</th>
+                <th>{{ __("Âge (j)") }}</th>
+                <th>{{ __("FCR") }}</th>
+                <th>{{ __("Poids moyen (g)") }}</th>
+                <th>{{ __("Gain quotidien (g/j)") }}</th>
+                <th>{{ __("Stock vivant") }}</th>
+                <th>{{ __("Initial") }}</th>
+                <th>{{ __("Mortalité (têtes)") }}</th>
+                <th>{{ __("Taux mortalité") }}</th>
+                <th>{{ __("Statut") }}</th>
             </tr>
         </thead>
         <tbody>
@@ -56,11 +56,11 @@
                 <td>{{ $batch['status'] }}</td>
             </tr>
             @empty
-            <tr><td colspan="11" class="muted">Aucun lot actif en cours d'analyse.</td></tr>
+            <tr><td colspan="11" class="muted">{{ __("Aucun lot actif en cours d'analyse.") }}</td></tr>
             @endforelse
         </tbody>
     </table>
 
-    <div class="footer">AviSmart ERP — Rapport généré automatiquement</div>
+    <div class="footer">{{ __("AviSmart ERP — Rapport généré automatiquement") }}</div>
 </body>
 </html>
