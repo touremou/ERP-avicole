@@ -492,21 +492,15 @@ class Batch extends Model
      */
     public function feedSector(): string
     {
-        $slug = strtolower((string) $this->type);
-
-        if ($this->isVolaille()) {
-            return in_array($slug, ['ponte', 'repro', 'reproducteur'], true)
-                ? 'Ponte'
-                : 'Chair';
+        // Source de vérité : le type de production (cf. ProductionType::feedSector()).
+        if ($this->productionType) {
+            return $this->productionType->feedSector();
         }
 
-        return match ($slug) {
-            'laitiere'                => 'Laitière',
-            'grossissement'           => 'Grossissement',
-            'alevinage'               => 'Alevinage',
-            'repro', 'reproducteur'   => 'Reproducteur',
-            default                   => 'Engraissement',
-        };
+        // Repli legacy : lot sans type de production (volaille mono-espèce).
+        return in_array(strtolower((string) $this->type), ['ponte', 'repro', 'reproducteur'], true)
+            ? 'Ponte'
+            : 'Chair';
     }
 
     /**

@@ -75,13 +75,22 @@
                                 @forelse($finishedFeeds as $feed)
                                 <tr class="hover:bg-slate-50/80 transition-colors group">
                                     <td class="p-6">
+                                        @php
+                                            // Couleur du silo selon le secteur d'aliment (multiespèces).
+                                            // Le nom de l'article commence par le mot du secteur
+                                            // (ex: « Laitière Production »), cf. Batch::FEED_PHASES.
+                                            $sectorColors = [
+                                                'Chair' => 'bg-slate-900', 'Ponte' => 'bg-emerald-500',
+                                                'Reproducteur' => 'bg-emerald-500', 'Engraissement' => 'bg-orange-500',
+                                                'Laitière' => 'bg-blue-500', 'Grossissement' => 'bg-cyan-500',
+                                                'Alevinage' => 'bg-cyan-400',
+                                            ];
+                                            $feedSector = collect(array_keys(\App\Models\Batch::FEED_PHASES))
+                                                ->first(fn ($s) => \Illuminate\Support\Str::startsWith($feed->item_name, $s));
+                                            $dotColor = $sectorColors[$feedSector] ?? 'bg-blue-500';
+                                        @endphp
                                         <div class="flex items-center gap-3">
-                                            <div @class([
-                                                'w-2 h-8 rounded-full transition-all group-hover:h-10',
-                                                'bg-slate-900' => Str::contains(strtolower($feed->item_name), 'chair'),
-                                                'bg-emerald-500' => Str::contains(strtolower($feed->item_name), ['ponte', 'repro']),
-                                                'bg-blue-500' => !Str::contains(strtolower($feed->item_name), ['chair', 'ponte', 'repro'])
-                                            ])></div>
+                                            <div class="w-2 h-8 rounded-full transition-all group-hover:h-10 {{ $dotColor }}"></div>
                                             <div>
                                                 <p class="text-sm font-black text-slate-800 uppercase italic leading-none">{{ $feed->item_name }}</p>
                                                 <p class="text-[8px] text-slate-400 uppercase mt-1 italic tracking-widest font-bold">{{ $feed->category }}</p>

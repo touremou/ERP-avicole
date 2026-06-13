@@ -53,6 +53,23 @@ class Formula extends Model
     }
 
     /**
+     * Secteur d'aliment produit par cette formule (cf. Batch::FEED_PHASES),
+     * dérivé du type de production rattaché. À défaut (formules legacy sans
+     * production_type_id), on retombe sur la colonne `poultry_type`
+     * (Chair/Ponte) puis sur « Chair ».
+     */
+    public function feedSector(): string
+    {
+        if ($this->productionType) {
+            return $this->productionType->feedSector();
+        }
+
+        return in_array($this->poultry_type, array_keys(Batch::FEED_PHASES), true)
+            ? $this->poultry_type
+            : 'Chair';
+    }
+
+    /**
      * Liaison avec les ordres de fabrication (Production)
      * Utile pour vérifier si la formule est utilisée avant suppression
      */

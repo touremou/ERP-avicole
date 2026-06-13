@@ -24,7 +24,7 @@ class CompleteMillProduction
             throw new \DomainException("L'OP #{$production->batch_number} est déjà clôturée.");
         }
 
-        $production->load(['formula.items.rawMaterial', 'machine', 'machines']);
+        $production->load(['formula.items.rawMaterial', 'formula.productionType.species', 'machine', 'machines']);
         $quantityProduced = (float) $production->quantity_produced;
 
         // ─── 1. VÉRIFICATION PRÉALABLE DES STOCKS MP ───
@@ -47,7 +47,12 @@ class CompleteMillProduction
         }
 
         // ─── 2. MAPPING NOM DE STOCK FINI (UTILISATION DE LA NOUVELLE ACTION) ───
-        $stockItemName = $this->normalizeName->execute($production->formula->name);
+        // On passe la formule pour cibler le secteur d'aliment de son espèce
+        // (multiespèces : Chair/Ponte mais aussi Engraissement, Laitière...).
+        $stockItemName = $this->normalizeName->execute(
+            $production->formula->name,
+            $production->formula
+        );
 
         return DB::transaction(function () use ($production, $quantityProduced, $stockItemName) {
 
