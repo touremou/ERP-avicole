@@ -66,7 +66,7 @@
                             @endcan
                             
                             @can('provenderie.S')
-                            <form action="{{ route('raw-materials.destroy', $material->id) }}" method="POST" onsubmit="return confirm(@json(__(\"Supprimer cet ingrédient ? Cela pourrait affecter l'historique des productions.\")))">
+                            <form action="{{ route('raw-materials.destroy', $material->id) }}" method="POST" onsubmit="return confirm({{ Js::from(__('Supprimer cet ingrédient ? Cela pourrait affecter l\'historique des productions.')) }})">
                                 @csrf @method('DELETE')
                                 <button type="submit" class="w-8 h-8 rounded-full bg-slate-50 text-slate-400 hover:bg-red-500 hover:text-white transition-all flex items-center justify-center shadow-sm">
                                     <i class="fa-solid fa-trash text-[10px]"></i>

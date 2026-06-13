@@ -128,7 +128,7 @@
                                     </a>
                                     @endcan
                                     @can('production.S')
-                                    <form action="{{ route('incubators.destroy', $incubator->id) }}" method="POST" onsubmit="return confirm(@json(__(\"ALERTE : Supprimer définitivement cette unité de production ? Assurez-vous qu'elle est bien vide.\")))">
+                                    <form action="{{ route('incubators.destroy', $incubator->id) }}" method="POST" onsubmit="return confirm({{ Js::from(__('ALERTE : Supprimer définitivement cette unité de production ? Assurez-vous qu\'elle est bien vide.')) }})">
                                         @csrf @method('DELETE')
                                         <button type="submit" class="w-10 h-10 flex items-center justify-center bg-white border border-slate-200 rounded-xl text-slate-400 hover:text-rose-500 transition-all shadow-sm cursor-pointer" title="{{ __('Supprimer') }}">
                                             <i class="fa-solid fa-trash-can"></i>
