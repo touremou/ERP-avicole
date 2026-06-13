@@ -38,6 +38,53 @@ class Stock extends Model
         'created_at'       => 'datetime',
     ];
 
+    /**
+     * Métadonnées de présentation (libellé, icône, couleur) par catégorie.
+     * Source unique de vérité partagée entre l'index Stocks et le formulaire
+     * de création, et référencée par le paramètre « stocks.categories ».
+     */
+    public const CATEGORY_META = [
+        'oeufs'          => ['label' => 'Œufs',            'icon' => 'fa-egg',                'color' => 'amber'],
+        'lait'           => ['label' => 'Lait',            'icon' => 'fa-bottle-droplet',     'color' => 'cyan'],
+        'conso'          => ['label' => 'Aliment & Santé', 'icon' => 'fa-wheat-awn',          'color' => 'emerald'],
+        'produits_finis' => ['label' => 'Produits Finis',  'icon' => 'fa-drumstick-bite',     'color' => 'rose'],
+        'litieres'       => ['label' => 'Litières',        'icon' => 'fa-leaf',               'color' => 'purple'],
+        'materiels'      => ['label' => 'Matériel',        'icon' => 'fa-screwdriver-wrench', 'color' => 'blue'],
+    ];
+
+    /**
+     * Catégories de stock actives, pilotées par le paramètre
+     * « stocks.categories » (Paramètres > Stocks). Chaque catégorie est
+     * enrichie de ses métadonnées de présentation depuis CATEGORY_META ;
+     * une catégorie inconnue reçoit un rendu générique plutôt que de casser
+     * l'affichage. Si le paramètre est vide, on retombe sur toutes les
+     * catégories connues.
+     *
+     * @return array<string, array{label:string, icon:string, color:string}>
+     */
+    public static function activeCategories(): array
+    {
+        $configured = array_values(array_filter(array_map(
+            'trim',
+            explode(',', (string) setting('stocks.categories', ''))
+        )));
+
+        if (empty($configured)) {
+            $configured = array_keys(self::CATEGORY_META);
+        }
+
+        $categories = [];
+        foreach ($configured as $slug) {
+            $categories[$slug] = self::CATEGORY_META[$slug] ?? [
+                'label' => ucfirst(str_replace('_', ' ', $slug)),
+                'icon'  => 'fa-box',
+                'color' => 'slate',
+            ];
+        }
+
+        return $categories;
+    }
+
     // -----------------------
     // RELATIONS
     // -----------------------

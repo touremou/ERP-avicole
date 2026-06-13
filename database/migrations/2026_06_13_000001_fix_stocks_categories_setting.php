@@ -24,6 +24,13 @@ return new class extends Migration
                 'value'      => 'oeufs,lait,conso,litieres,materiels,produits_finis',
                 'updated_at' => now(),
             ]);
+
+        // L'update DB direct contourne l'invalidation du cache des
+        // paramètres (cf. Setting::getAllCached) : on vide le cache pour
+        // que la nouvelle valeur soit prise en compte immédiatement.
+        if (class_exists(\App\Models\Setting::class)) {
+            \App\Models\Setting::clearCache();
+        }
     }
 
     public function down(): void

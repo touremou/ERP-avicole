@@ -36,9 +36,13 @@
                 @foreach($farms as $farm)
                 @php
                     $isCurrentFarm = ($currentFarmId ?? 0) == $farm->id;
-                    // KPI rapides par ferme (via withoutFarm)
-                    $farmBirds = \App\Models\Batch::withoutGlobalScopes()->where('farm_id', $farm->id)->where('status', 'Actif')->sum('current_quantity');
-                    $farmBatches = \App\Models\Batch::withoutGlobalScopes()->where('farm_id', $farm->id)->where('status', 'Actif')->count();
+                    // KPI rapides par ferme (via withoutFarm). On exige
+                    // initial_quantity > 0 pour exclure les lots virtuels de
+                    // transit (ex. « Zone Fournisseurs Externes »), exactement
+                    // comme le fait le dashboard — sinon le décompte des lots
+                    // actifs diverge entre les deux vues.
+                    $farmBirds = \App\Models\Batch::withoutGlobalScopes()->where('farm_id', $farm->id)->where('status', 'Actif')->where('initial_quantity', '>', 0)->sum('current_quantity');
+                    $farmBatches = \App\Models\Batch::withoutGlobalScopes()->where('farm_id', $farm->id)->where('status', 'Actif')->where('initial_quantity', '>', 0)->count();
                     $farmBuildings = \App\Models\Building::withoutGlobalScopes()->physical()->where('farm_id', $farm->id)->count();
                 @endphp
                 <div @class(['rounded-[2.5rem] border shadow-sm overflow-hidden transition-all',
@@ -141,8 +145,8 @@
                     <i class="fa-solid fa-globe text-violet-400"></i> {{ __("Vue consolidée — Toutes les fermes") }}
                 </h3>
                 @php
-                    $totalBirds = \App\Models\Batch::withoutGlobalScopes()->where('status', 'Actif')->sum('current_quantity');
-                    $totalBatches = \App\Models\Batch::withoutGlobalScopes()->where('status', 'Actif')->count();
+                    $totalBirds = \App\Models\Batch::withoutGlobalScopes()->where('status', 'Actif')->where('initial_quantity', '>', 0)->sum('current_quantity');
+                    $totalBatches = \App\Models\Batch::withoutGlobalScopes()->where('status', 'Actif')->where('initial_quantity', '>', 0)->count();
                     $totalBuildings = \App\Models\Building::withoutGlobalScopes()->physical()->count();
                 @endphp
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4">

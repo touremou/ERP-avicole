@@ -42,16 +42,9 @@
                 @endif
             @endforeach
 
-            {{-- ONGLETS CATÉGORIES --}}
+            {{-- ONGLETS CATÉGORIES — pilotés par le paramètre « stocks.categories » (Paramètres > Stocks) --}}
             @php
-                $categories = [
-                    'oeufs'          => ['label' => __('Œufs'),           'icon' => 'fa-egg',                'color' => 'amber'],
-                    'lait'           => ['label' => __('Lait'),           'icon' => 'fa-bottle-droplet',     'color' => 'cyan'],
-                    'conso'          => ['label' => __('Aliment & Santé'),'icon' => 'fa-wheat-awn',          'color' => 'emerald'],
-                    'produits_finis' => ['label' => __('Produits Finis'), 'icon' => 'fa-drumstick-bite',     'color' => 'rose'],
-                    'litieres'       => ['label' => __('Litières'),       'icon' => 'fa-leaf',               'color' => 'purple'],
-                    'materiels'      => ['label' => __('Matériel'),       'icon' => 'fa-screwdriver-wrench', 'color' => 'blue'],
-                ];
+                $categories = \App\Models\Stock::activeCategories();
             @endphp
 
             <div class="flex gap-3 mb-8 overflow-x-auto pb-2">
@@ -64,7 +57,7 @@
                            "bg-white text-slate-500 border border-slate-100 hover:bg-{$cat['color']}-50 hover:text-{$cat['color']}-600" => request('category', 'oeufs') !== $catKey,
                        ])>
                         <i class="fa-solid {{ $cat['icon'] }}"></i>
-                        {{ $cat['label'] }}
+                        {{ __($cat['label']) }}
                         @php $catCount = \App\Models\Stock::where('category', $catKey)->count(); @endphp
                         <span @class([
                             'text-[8px] px-2 py-0.5 rounded-full font-black',
