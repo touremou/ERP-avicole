@@ -57,20 +57,24 @@
             {{-- GRILLE DES PARTENAIRES --}}
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" id="providers-grid">
                 @forelse($providers as $provider)
-                    <div class="provider-card bg-white rounded-[3rem] border border-slate-100 shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 overflow-hidden group text-left" data-type="{{ $provider->type }}">
-                        
-                        <div class="p-8 pb-4 relative">
-                            {{-- Badge de fiabilité visuel --}}
+                    <div class="provider-card flex flex-col h-full bg-white rounded-[3rem] border shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 overflow-hidden group text-left {{ $provider->status !== 'Actif' ? 'border-red-100' : 'border-slate-100' }}" data-type="{{ $provider->type }}">
+
+                        <div class="flex-1 p-8 pb-4 relative">
+                            {{-- Badge statut (prioritaire) ou fiabilité, en haut à droite --}}
                             <div class="absolute top-6 right-8">
-                                @if($provider->reliability == 'Bon')
-                                    <i class="fas fa-certificate text-emerald-500 text-lg shadow-sm" title="{{ __('Partenaire de confiance') }}"</i>
+                                @if($provider->status !== 'Actif')
+                                    <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-red-50 text-red-600 text-[8px] font-black uppercase tracking-widest italic">
+                                        <i class="fas fa-ban"></i> {{ $provider->status }}
+                                    </span>
+                                @elseif($provider->reliability == 'Bon')
+                                    <i class="fas fa-certificate text-emerald-500 text-lg" title="{{ __('Partenaire de confiance') }}"></i>
                                 @elseif($provider->reliability == 'Mauvais')
-                                    <i class="fas fa-exclamation-triangle text-red-500 animate-pulse" title="{{ __('Partenaire à surveiller') }}"</i>
+                                    <i class="fas fa-exclamation-triangle text-red-500 animate-pulse" title="{{ __('Partenaire à surveiller') }}"></i>
                                 @endif
                             </div>
 
-                            <div class="flex items-center gap-4 mb-8">
-                                <div class="w-16 h-16 rounded-[1.5rem] bg-slate-900 flex items-center justify-center text-yellow-500 text-2xl shadow-lg overflow-hidden group-hover:bg-blue-600 group-hover:text-white transition-all duration-500">
+                            <div class="flex items-center gap-4 mb-8 pr-12">
+                                <div class="w-16 h-16 shrink-0 rounded-[1.5rem] bg-slate-900 flex items-center justify-center text-yellow-500 text-2xl shadow-lg overflow-hidden group-hover:bg-blue-600 group-hover:text-white transition-all duration-500">
                                     @if($provider->logo_path)
                                         <img src="{{ media_url($provider->logo_path) }}" class="w-full h-full object-cover" alt="{{ $provider->name }}">
                                     @else
@@ -79,9 +83,6 @@
                                 </div>
                                 <div class="overflow-hidden">
                                     <span class="text-[8px] font-black text-blue-500 uppercase tracking-widest italic">{{ $provider->type }}</span>
-                                    @if($provider->status !== 'Actif')
-                                        <span class="ml-2 text-[8px] font-black text-red-500 uppercase tracking-widest italic">{{ $provider->status }}</span>
-                                    @endif
                                     <h3 class="text-xl font-black text-slate-800 uppercase tracking-tighter leading-none mt-1 truncate">{{ $provider->name }}</h3>
                                 </div>
                             </div>
@@ -159,6 +160,14 @@
                         <p class="text-slate-400 font-black uppercase text-[10px] italic tracking-widest">{{ __("Aucun partenaire dans cette catégorie") }}</p>
                     </div>
                 @endforelse
+
+                {{-- État « aucun résultat » pour la recherche client (masqué par défaut) --}}
+                <div id="noSearchResult" class="col-span-full py-32 text-center bg-white rounded-[3rem] border border-dashed border-slate-200 hidden">
+                    <div class="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
+                        <i class="fas fa-search-minus text-3xl text-slate-200"></i>
+                    </div>
+                    <p class="text-slate-400 font-black uppercase text-[10px] italic tracking-widest">{{ __("Aucun partenaire ne correspond à la recherche") }}</p>
+                </div>
             </div>
 
             {{-- ZONE DE MAINTENANCE (ACCÈS CORBEILLE - Permission S) --}}
@@ -182,14 +191,15 @@
     <script>
         function searchProvider() {
             const input = document.getElementById('providerSearch');
-            const filter = input.value.toUpperCase();
+            const filter = input.value.trim().toUpperCase();
             const cards = document.getElementsByClassName('provider-card');
             const countSpan = document.getElementById('searchCount');
+            const noResult = document.getElementById('noSearchResult');
             let visibleCount = 0;
 
             for (let i = 0; i < cards.length; i++) {
                 const textContent = cards[i].innerText || cards[i].textContent;
-                
+
                 if (textContent.toUpperCase().indexOf(filter) > -1) {
                     cards[i].style.display = "";
                     cards[i].style.animation = "fadeIn 0.3s ease forwards";
@@ -199,11 +209,17 @@
                 }
             }
 
+            // Compteur de résultats
             if (filter === "") {
                 countSpan.classList.add('hidden');
             } else {
                 countSpan.classList.remove('hidden');
                 countSpan.innerText = visibleCount + " " + @json(__("Trouvé(s)"));
+            }
+
+            // État « aucun résultat » (uniquement en cours de recherche)
+            if (noResult) {
+                noResult.classList.toggle('hidden', !(filter !== "" && visibleCount === 0 && cards.length > 0));
             }
         }
     </script>
