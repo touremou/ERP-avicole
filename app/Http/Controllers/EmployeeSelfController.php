@@ -29,6 +29,7 @@ class EmployeeSelfController extends Controller
         if ($employee) {
             // Lots actifs dont l'employé est responsable.
             $batches = Batch::withoutFarm()
+                ->live()
                 ->where('employee_id', $employee->id)
                 ->where('status', 'Actif')
                 ->latest('arrival_date')

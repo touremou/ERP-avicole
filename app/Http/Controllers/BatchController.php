@@ -368,7 +368,7 @@ class BatchController extends Controller
                 ->avg('cost') ?? 0;
 
             // Proportion : si 3 lots actifs, ce lot = 1/3 du coût énergie
-            $activeBatchCount = max(1, \App\Models\Batch::active()->count());
+            $activeBatchCount = max(1, \App\Models\Batch::active()->live()->count());
             $energyCost = ($totalDailyEnergyCost * $durationDays) / $activeBatchCount;
         }
 

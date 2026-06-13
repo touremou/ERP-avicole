@@ -36,10 +36,12 @@ class DashboardService
         // ─── 1. LOTS ACTIFS ───
         $activeBatches = Batch::with(['building', 'dailyChecks'])
             ->active()
+            ->live()
             ->latest()
             ->paginate(10);
 
         $allActive = Batch::active()
+            ->live()
             ->with(['dailyChecks', 'productionType'])
             ->get();
 

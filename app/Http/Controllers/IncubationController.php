@@ -42,6 +42,7 @@ class IncubationController extends Controller
         // uniquement (le slug "reproducteur" est partagé avec les ruminants,
         // qui ne pondent pas — on s'appuie donc sur tracksEggs() et l'espèce).
         $activeBatches = Batch::active()
+            ->live()
             ->with(['species', 'productionType'])
             ->get()
             ->filter(fn (Batch $batch) => $batch->isVolaille() && $batch->tracksEggs())

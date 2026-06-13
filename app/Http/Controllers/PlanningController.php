@@ -36,8 +36,8 @@ class PlanningController extends Controller
             'arriving_7days'  => PlannedBatch::whereIn('status', ['commande', 'planifie'])
                 ->whereBetween('planned_arrival_date', [now(), now()->addDays(7)])->count(),
             'overdue_orders'  => PlannedBatch::overdue()->count(),
-            'active_batches'  => Batch::active()->count(),
-            'total_birds'     => Batch::active()->sum('current_quantity'),
+            'active_batches'  => Batch::active()->live()->count(),
+            'total_birds'     => Batch::active()->live()->sum('current_quantity'),
         ];
 
         return view('planning.index', compact('plans', 'occupancy', 'alerts', 'buildings', 'from', 'to', 'kpi'));

@@ -724,11 +724,28 @@ class Batch extends Model
     }
     /**
      * Filtre uniquement les lots physiques (animaux vivants).
-     * Exclut les lots virtuels (comme les stocks d'œufs).
+     *
+     * Exclut les lots VIRTUELS de traçabilité (effectif initial nul) :
+     * œufs externes en transit parqués dans le bâtiment virtuel « Zone
+     * Fournisseurs Externes » (cf. StartIncubation), stocks d'œufs, etc.
+     *
+     * À utiliser systématiquement pour toute SÉLECTION (listes déroulantes),
+     * tout COMPTAGE d'effectif et tout RAPPORT : un lot virtuel ne représente
+     * aucun animal réel et ne doit jamais y figurer — au même titre qu'un
+     * bâtiment virtuel (cf. Building::scopePhysical).
      */
     public function scopeLive($query)
     {
         return $query->where('initial_quantity', '>', 0);
+    }
+
+    /**
+     * Lot virtuel de traçabilité (aucun animal réel : effectif initial nul).
+     * Pendant logique de scopeLive() pour les collections déjà chargées.
+     */
+    public function isVirtual(): bool
+    {
+        return (int) $this->initial_quantity === 0;
     }
 
     /**

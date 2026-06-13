@@ -22,7 +22,10 @@ class ProviderController extends Controller
     {
         if (Gate::denies('annuaire.L')) return redirect()->route('dashboard')->with('error', 'Accès restreint.');
 
-        $providers = Provider::orderBy('name', 'asc')->get();
+        // Annuaire opérationnel : uniquement les partenaires actifs.
+        // Les partenaires blacklistés/inactifs et les fiches archivées
+        // (soft-deletes) sont écartés de la liste principale.
+        $providers = Provider::active()->orderBy('name', 'asc')->get();
         return view('providers.index', compact('providers'));
     }
 
@@ -58,7 +61,10 @@ class ProviderController extends Controller
         // AJOUT: La vérification de Gate L manquait dans l'ancien code
         if (Gate::denies('annuaire.L')) return back()->with('error', 'Accès restreint.');
 
-        $provider = Provider::with(['batches'])->findOrFail($id);
+        // On n'expose que les lots RÉELS du partenaire ; les lots virtuels
+        // de traçabilité (œufs externes en transit, effectif nul) ne sont ni
+        // comptés ni listés, et ne doivent pas verrouiller l'archivage.
+        $provider = Provider::with(['batches' => fn ($q) => $q->live()])->findOrFail($id);
         return view('providers.show', compact('provider'));
     }
 

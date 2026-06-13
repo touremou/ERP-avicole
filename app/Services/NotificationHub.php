@@ -63,8 +63,8 @@ class NotificationHub
         $date = now()->translatedFormat('l d F Y');
 
         // Données
-        $totalBirds = Batch::active()->sum('current_quantity');
-        $activeBatches = Batch::active()->count();
+        $totalBirds = Batch::active()->live()->sum('current_quantity');
+        $activeBatches = Batch::active()->live()->count();
 
         // Mortalité dernières 24h
         $mortality24h = DailyCheck::where('check_date', '>=', now()->subDay())

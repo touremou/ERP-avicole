@@ -166,7 +166,7 @@ class ReportController extends Controller
         $totalRevenue = array_sum($revenue);
 
         // ─── CHARGES ───
-        $costAcquisition = (float) Batch::whereBetween('arrival_date', [$from, $to])->sum('total_acquisition_cost');
+        $costAcquisition = (float) Batch::live()->whereBetween('arrival_date', [$from, $to])->sum('total_acquisition_cost');
         $costFeed   = (float) FeedPurchase::whereBetween('purchase_date', [$from, $to])
             ->sum(DB::raw('COALESCE(total_price, quantity * unit_price)'));
         $costHealth = (float) HealthCheck::whereBetween('intervention_date', [$from, $to])->sum('cost');
@@ -306,7 +306,7 @@ class ReportController extends Controller
             }
         };
 
-        $query = Batch::with(['building', 'healthChecks' => $healthCheckQuery]);
+        $query = Batch::with(['building', 'healthChecks' => $healthCheckQuery])->live();
 
         if ($statusFilter === 'actif') {
             $query->active();

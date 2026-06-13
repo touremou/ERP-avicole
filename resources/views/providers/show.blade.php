@@ -42,7 +42,7 @@
 
                 {{-- ACTION : ARCHIVAGE (S) --}}
                 @can('annuaire.S')
-                    @php $isLocked = $provider->batches()->where('status', 'Actif')->exists(); @endphp
+                    @php $isLocked = $provider->batches()->live()->where('status', 'Actif')->exists(); @endphp
 
                     @if($isLocked)
                         <div class="group relative inline-block">
