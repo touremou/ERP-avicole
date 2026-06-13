@@ -82,15 +82,9 @@ class ValidateSale
         }
 
         // Utiliser StockIntegrationService pour la traçabilité
-        $category = match ($item->product_type) {
-            'oeufs'   => 'oeufs',
-            'aliment' => 'conso',
-            default   => 'materiels',
-        };
-
         StockIntegrationService::syncMovement(
             $item->product_name,
-            $category,
+            Stock::categoryForProductType($item->product_type),
             (float) $item->quantity,
             'out',
             "Vente {$item->sale->reference} — Client: {$item->sale->client->name}",

@@ -73,15 +73,9 @@ class CreateDispatch
     {
         // Articles stockés (œufs, aliment, matériel)
         if ($item->requiresDestock()) {
-            $category = match ($item->product_type) {
-                'oeufs'   => 'oeufs',
-                'aliment' => 'conso',
-                default   => 'materiels',
-            };
-
             $result = StockIntegrationService::syncMovement(
                 $item->product_name,
-                $category,
+                Stock::categoryForProductType($item->product_type),
                 (float) $item->quantity_dispatched,
                 'out',
                 "Expédition {$item->dispatch->dispatch_number} → {$item->dispatch->destination}",

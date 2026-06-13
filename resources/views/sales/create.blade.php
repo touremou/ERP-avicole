@@ -249,7 +249,7 @@
         const stocks = @json($formattedStocks);
         const batchList = @json($formattedBatches);
         const prices = @json($formattedPrices);
-        const catMap = { oeufs:'oeufs', aliment:'conso', materiel:'materiels' };
+        const catMap = @json(\App\Models\Stock::PRODUCT_TYPE_TO_CATEGORY);
 
         return {
             clientId: '{{ $selectedClient?->id ?? "" }}', saleType: 'bon_livraison', immediatePayment: 0,

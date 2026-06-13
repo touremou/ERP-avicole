@@ -179,7 +179,7 @@
     function dispatchForm() {
         const stocks = @json($formattedStocks);
         const batchList = @json($formattedBatches);
-        const catMap = { oeufs:'oeufs', aliment:'conso', materiel:'materiels' };
+        const catMap = @json(\App\Models\Stock::PRODUCT_TYPE_TO_CATEGORY);
 
         return {
             lines: [{ product_type:'', product_name:'', quantity:1, unit:'', product_id:'', batch_id:'', selected_stock:'', max_qty:0, condition:'bon' }],

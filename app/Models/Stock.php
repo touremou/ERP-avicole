@@ -86,6 +86,33 @@ class Stock extends Model
         return $categories;
     }
 
+    /**
+     * Correspondance entre la nomenclature « produit vendu/expédié »
+     * (SaleItem::product_type / DispatchItem::product_type, ex: oeufs,
+     * aliment, materiel) et la catégorie de stock (Stock::category, cf.
+     * CATEGORY_META). Seuls les product_type listés dans
+     * SaleItem::STOCK_TYPES / DispatchItem::STOCK_TYPES (oeufs, aliment,
+     * materiel) déstockent réellement un article du magasin — cf.
+     * requiresDestock(). Source unique de vérité utilisée par
+     * ValidateSale, CancelSale, CreateDispatch et les formulaires de
+     * vente/expédition (sélection des stocks disponibles par ligne).
+     */
+    public const PRODUCT_TYPE_TO_CATEGORY = [
+        'oeufs'    => 'oeufs',
+        'aliment'  => 'conso',
+        'materiel' => 'materiels',
+    ];
+
+    /**
+     * Catégorie de stock correspondant à un product_type de ligne de
+     * vente/expédition. Repli sur « materiels » pour tout product_type
+     * inconnu (cohérent avec le comportement historique).
+     */
+    public static function categoryForProductType(string $productType): string
+    {
+        return self::PRODUCT_TYPE_TO_CATEGORY[$productType] ?? 'materiels';
+    }
+
     // -----------------------
     // RELATIONS
     // -----------------------

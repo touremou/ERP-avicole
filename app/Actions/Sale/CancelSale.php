@@ -3,6 +3,7 @@
 namespace App\Actions\Sale;
 
 use App\Models\Sale;
+use App\Models\Stock;
 use App\Models\Batch;
 use App\Services\StockIntegrationService;
 use Illuminate\Support\Facades\DB;
@@ -35,15 +36,9 @@ class CancelSale
 
                     // Restockage articles
                     if ($item->requiresDestock()) {
-                        $category = match ($item->product_type) {
-                            'oeufs'   => 'oeufs',
-                            'aliment' => 'conso',
-                            default   => 'materiels',
-                        };
-
                         StockIntegrationService::syncMovement(
                             $item->product_name,
-                            $category,
+                            Stock::categoryForProductType($item->product_type),
                             (float) $item->quantity,
                             'in',
                             "Annulation vente {$sale->reference} — Restockage",
