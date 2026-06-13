@@ -72,17 +72,21 @@
                             </div>
 
                             {{-- SÉLECTEUR DE SECTEUR (DISSOCIATION SI ALIMENT) --}}
-                            <div x-show="cat === 'conso' && consoType === 'Aliment'" class="grid grid-cols-2 gap-4">
-                                <button type="button" @click="poultryType = 'Chair'" 
-                                    :class="poultryType === 'Chair' ? 'bg-slate-900 text-white shadow-lg' : 'bg-slate-100 text-slate-400'"
-                                    class="py-4 rounded-2xl text-[10px] font-black uppercase italic tracking-widest transition-all">
-                                    <i class="fa-solid fa-feather mr-2"></i> {{ __("Secteur Chair") }}
-                                </button>
-                                <button type="button" @click="poultryType = 'Ponte'"
-                                    :class="poultryType === 'Ponte' ? 'bg-emerald-600 text-white shadow-lg' : 'bg-slate-100 text-slate-400'"
-                                    class="py-4 rounded-2xl text-[10px] font-black uppercase italic tracking-widest transition-all">
-                                    <i class="fa-solid fa-egg mr-2"></i> {{ __("Secteur Ponte") }}
-                                </button>
+                            <div x-show="cat === 'conso' && consoType === 'Aliment'" class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                @php
+                                    $sectorIcons = [
+                                        'Chair' => 'fa-feather', 'Ponte' => 'fa-egg', 'Reproducteur' => 'fa-dna',
+                                        'Engraissement' => 'fa-weight-hanging', 'Laitière' => 'fa-cow',
+                                        'Grossissement' => 'fa-fish', 'Alevinage' => 'fa-water',
+                                    ];
+                                @endphp
+                                @foreach(array_keys(\App\Models\Batch::FEED_PHASES) as $sector)
+                                    <button type="button" @click="poultryType = '{{ $sector }}'"
+                                        :class="poultryType === '{{ $sector }}' ? 'bg-slate-900 text-white shadow-lg' : 'bg-slate-100 text-slate-400'"
+                                        class="py-4 rounded-2xl text-[10px] font-black uppercase italic tracking-widest transition-all">
+                                        <i class="fa-solid {{ $sectorIcons[$sector] ?? 'fa-wheat-awn' }} mr-2"></i> {{ __('Secteur :sector', ['sector' => $sector]) }}
+                                    </button>
+                                @endforeach
                                 <input type="hidden" name="metadata[poultry_type]" :value="poultryType">
                             </div>
 
@@ -103,26 +107,17 @@
                                     </select>
                                 </template>
 
-                                {{-- ALIMENT CHAIR --}}
-                                <template x-if="cat === 'conso' && consoType === 'Aliment' && poultryType === 'Chair'">
-                                    <select name="item_name" required class="w-full bg-slate-50 border-none rounded-[2rem] p-5 font-black uppercase text-sm focus:ring-2 focus:ring-slate-900 shadow-inner italic border-l-8 border-slate-900 appearance-none cursor-pointer">
-                                        <option value="">-- {{ __("Aliments Chair") }} --</option>
-                                        <option value="Chair Démarrage">{{ __("Chair Démarrage") }}</option>
-                                        <option value="Chair Croissance">{{ __("Chair Croissance") }}</option>
-                                        <option value="Chair Finition">{{ __("Chair Finition") }}</option>
-                                    </select>
-                                </template>
-
-                                {{-- ALIMENT PONTE --}}
-                                <template x-if="cat === 'conso' && consoType === 'Aliment' && poultryType === 'Ponte'">
-                                    <select name="item_name" required class="w-full bg-slate-50 border-none rounded-[2rem] p-5 font-black uppercase text-sm focus:ring-2 focus:ring-emerald-500 shadow-inner italic border-l-8 border-emerald-500 appearance-none cursor-pointer">
-                                        <option value="">-- {{ __("Aliments Ponte") }} --</option>
-                                        <option value="Ponte Démarrage (Poussin)">{{ __("Ponte Démarrage (Poussin)") }}</option>
-                                        <option value="Ponte Croissance (Poulette)">{{ __("Ponte Croissance (Poulette)") }}</option>
-                                        <option value="Ponte 1 (Pic de ponte)">{{ __("Ponte 1 (Pic de ponte)") }}</option>
-                                        <option value="Ponte 2 (Entretien)">{{ __("Ponte 2 (Entretien)") }}</option>
-                                    </select>
-                                </template>
+                                {{-- ALIMENTS PAR SECTEUR --}}
+                                @foreach(\App\Models\Batch::FEED_PHASES as $sector => $phases)
+                                    <template x-if="cat === 'conso' && consoType === 'Aliment' && poultryType === '{{ $sector }}'">
+                                        <select name="item_name" required class="w-full bg-slate-50 border-none rounded-[2rem] p-5 font-black uppercase text-sm focus:ring-2 focus:ring-slate-900 shadow-inner italic border-l-8 border-slate-900 appearance-none cursor-pointer">
+                                            <option value="">-- {{ __('Aliments :sector', ['sector' => $sector]) }} --</option>
+                                            @foreach($phases as $phase)
+                                                <option value="{{ $phase }}">{{ __($phase) }}</option>
+                                            @endforeach
+                                        </select>
+                                    </template>
+                                @endforeach
 
                                 {{-- AUTRES (Matériels, Hygiène, Santé, Litières) --}}
                                 <template x-if="cat !== 'oeufs' && !(cat === 'conso' && consoType === 'Aliment')">

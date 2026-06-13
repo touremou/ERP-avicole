@@ -55,24 +55,27 @@
                         @method('PUT')
                         
                         {{-- Logique de synchronisation --}}
-                        @php 
-                            $isSynced = ($stock->category === 'oeufs') || 
-                                        ($stock->category === 'conso' && (Str::contains($stock->item_name, ['Chair', 'Ponte']) || in_array($stock->item_name, ['Démarrage', 'Croissance', 'Ponte', 'Finition'])));
+                        @php
+                            $feedPhaseNames = collect(\App\Models\Batch::FEED_PHASES)->flatten()->all();
+                            $isSynced = ($stock->category === 'oeufs') ||
+                                        ($stock->category === 'conso' && in_array($stock->item_name, $feedPhaseNames, true));
+                            $sectorIcons = [
+                                'Chair' => 'fa-feather', 'Ponte' => 'fa-egg', 'Reproducteur' => 'fa-dna',
+                                'Engraissement' => 'fa-weight-hanging', 'Laitière' => 'fa-cow',
+                                'Grossissement' => 'fa-fish', 'Alevinage' => 'fa-water',
+                            ];
                         @endphp
 
                         {{-- 1. SECTION SECTEUR (ALIMENTS) --}}
                         <template x-if="cat === 'conso' && consoType === 'Aliment'">
-                            <div class="grid grid-cols-2 gap-4 mb-8">
-                                <button type="button" @click="poultryType = 'Chair'" 
-                                    :class="poultryType === 'Chair' ? 'bg-slate-900 text-white shadow-lg' : 'bg-slate-50 text-slate-400'"
-                                    class="py-4 rounded-2xl text-[10px] font-black uppercase italic transition-all">
-                                    <i class="fa-solid fa-feather mr-2"></i> {{ __("Secteur Chair") }}
-                                </button>
-                                <button type="button" @click="poultryType = 'Ponte'"
-                                    :class="poultryType === 'Ponte' ? 'bg-emerald-600 text-white shadow-lg' : 'bg-slate-50 text-slate-400'"
-                                    class="py-4 rounded-2xl text-[10px] font-black uppercase italic transition-all">
-                                    <i class="fa-solid fa-egg mr-2"></i> {{ __("Secteur Ponte") }}
-                                </button>
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                                @foreach(array_keys(\App\Models\Batch::FEED_PHASES) as $sector)
+                                    <button type="button" @click="poultryType = '{{ $sector }}'"
+                                        :class="poultryType === '{{ $sector }}' ? 'bg-slate-900 text-white shadow-lg' : 'bg-slate-50 text-slate-400'"
+                                        class="py-4 rounded-2xl text-[10px] font-black uppercase italic transition-all">
+                                        <i class="fa-solid {{ $sectorIcons[$sector] ?? 'fa-wheat-awn' }} mr-2"></i> {{ __('Secteur :sector', ['sector' => $sector]) }}
+                                    </button>
+                                @endforeach
                                 <input type="hidden" name="metadata[poultry_type]" :value="poultryType">
                                 <input type="hidden" name="metadata[conso_type]" :value="consoType">
                             </div>
