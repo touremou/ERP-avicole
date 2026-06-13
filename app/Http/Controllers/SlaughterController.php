@@ -51,7 +51,7 @@ class SlaughterController extends Controller
 
         // Tous les lots actifs sont éligibles à l'abattage/la transformation,
         // quelle que soit l'espèce (volaille, ruminants, porcins, lapins...).
-        $batches = Batch::where('status', 'Actif')
+        $batches = Batch::active()
             ->where('current_quantity', '>', 0)
             ->with('building')
             ->orderBy('type')

@@ -10,7 +10,7 @@ class ArchiveEmployee
     public function execute(Employee $employee): void
     {
         // VÉRIFICATION CRITIQUE : Un responsable de lot actif ne peut pas être supprimé
-        if ($employee->batches()->where('status', 'Actif')->exists()) {
+        if ($employee->batches()->active()->exists()) {
             throw ValidationException::withMessages([
                 'employee' => "🔒 ARCHIVAGE BLOQUÉ : Cet agent est actuellement responsable d'une bande en production."
             ]);

@@ -26,7 +26,7 @@ class TaskSchedulerService
         $templates = TaskTemplate::withoutGlobalScopes()->where('is_active', true)->get();
 
         // Bâtiments et employés = filtrés par ferme
-        $buildingQuery = Building::whereHas('batches', fn($q) => $q->where('status', 'Actif'));
+        $buildingQuery = Building::whereHas('batches', fn($q) => $q->active());
         $employeeQuery = Employee::where('status', 'Actif');
 
         if ($farmId && Schema::hasColumn('buildings', 'farm_id')) {
@@ -50,7 +50,7 @@ class TaskSchedulerService
                     foreach ($activeBuildings as $building) {
                         if ($tpl->batch_types) {
                             $hasBatchType = Batch::where('building_id', $building->id)
-                                ->where('status', 'Actif')
+                                ->active()
                                 ->whereIn('type', $tpl->batch_types)
                                 ->exists();
                             if (! $hasBatchType) continue;
@@ -133,7 +133,7 @@ class TaskSchedulerService
             if ($assigned) return $assigned;
         }
 
-        $batch = Batch::where('building_id', $building->id)->where('status', 'Actif')->first();
+        $batch = Batch::where('building_id', $building->id)->active()->first();
         if ($batch && $batch->employee_id) {
             $emp = $employees->where('id', $batch->employee_id)->first();
             if ($emp) return $emp;

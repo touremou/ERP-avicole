@@ -125,10 +125,10 @@
                 </h2>
                 <div @class([
                     'flex items-center gap-1.5 px-3 py-1 rounded-full text-[8px] md:text-[9px] font-black uppercase tracking-widest italic shadow-sm shrink-0',
-                    'bg-emerald-500 text-white' => $batch->status === 'Actif',
-                    'bg-slate-200 text-slate-600' => $batch->status !== 'Actif'
+                    'bg-emerald-500 text-white' => $batch->isActive(),
+                    'bg-slate-200 text-slate-600' => ! $batch->isActive()
                 ])>
-                    @if($batch->status === 'Actif')
+                    @if($batch->isActive())
                         <span class="relative flex h-2 w-2">
                             <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
                             <span class="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
@@ -150,7 +150,7 @@
 
     {{-- ZONE 2 & 3 : ACTIONS --}}
     <div class="flex flex-col lg:flex-row items-stretch lg:items-center gap-4 w-full xl:w-auto">
-        @if($batch->status === 'Actif')
+        @if($batch->isActive())
 
             {{-- Actions Administratives (Grisées) --}}
             <div class="flex items-center justify-between sm:justify-start bg-white p-1.5 rounded-2xl md:rounded-[1.5rem] border border-slate-200 shadow-sm w-full lg:w-auto overflow-x-auto hide-scrollbar shrink-0">
@@ -471,7 +471,7 @@
                                     <p class="text-[9px] font-bold italic text-slate-400">{{ $vaxDate->translatedFormat('d F Y') }}</p>
                                 </div>
                                 @can('elevage.M')
-                                    @if(!$isDone && $batch->status === 'Actif')
+                                    @if(!$isDone && $batch->isActive())
                                         <a href="{{ route('health.create', ['batch_id' => $batch->id, 'product_name' => $step->action_name]) }}" class="block w-full py-2 bg-slate-900 text-white text-center rounded-xl text-[8px] font-black uppercase">{{ __("Enregistrer") }}</a>
                                     @endif
                                 @endcan
@@ -603,7 +603,7 @@
                                     <td class="px-8 py-4 text-right"><span class="text-slate-900 font-black">{{ number_format($purchase->unit_price, 0) }} GNF</span></td>
                                     <td class="px-8 py-4 text-right">
                                         <div class="flex justify-end gap-3">
-                                            @if($batch->status === 'Actif')
+                                            @if($batch->isActive())
                                                 @can('elevage.M')
                                                 <a href="{{ route('feed-purchases.edit', $purchase->id) }}" class="text-slate-300 hover:text-blue-600 transition"><i class="fa-solid fa-pen-to-square"></i></a>
                                                 @endcan
@@ -689,7 +689,7 @@
                                         {{ __("Ext.") }}
                                     </span>
                                     @endif
-                                    @if($batch->status === 'Actif')
+                                    @if($batch->isActive())
                                         @can('elevage.M')
                                         <a href="{{ route('daily-checks.edit', $check->id) }}" class="text-slate-300 hover:text-blue-500 transition"><i class="fa-solid fa-pen-to-square text-[10px]"></i></a>
                                         @endcan

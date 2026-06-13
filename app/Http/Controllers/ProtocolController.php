@@ -128,7 +128,7 @@ class ProtocolController extends Controller
         if (Gate::denies('elevage.S')) return back()->with('error', 'Privilèges insuffisants pour supprimer un protocole.');
 
         // Blocage de sécurité : Ne pas supprimer un protocole utilisé par un lot actif
-        if ($protocol->batches()->where('status', 'Actif')->exists()) {
+        if ($protocol->batches()->active()->exists()) {
             return back()->with('error', 'Action annulée : Ce protocole est actuellement appliqué à un ou plusieurs lots actifs.');
         }
 

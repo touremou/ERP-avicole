@@ -36,8 +36,8 @@ class PlanningController extends Controller
             'arriving_7days'  => PlannedBatch::whereIn('status', ['commande', 'planifie'])
                 ->whereBetween('planned_arrival_date', [now(), now()->addDays(7)])->count(),
             'overdue_orders'  => PlannedBatch::overdue()->count(),
-            'active_batches'  => Batch::where('status', 'Actif')->count(),
-            'total_birds'     => Batch::where('status', 'Actif')->sum('current_quantity'),
+            'active_batches'  => Batch::active()->count(),
+            'total_birds'     => Batch::active()->sum('current_quantity'),
         ];
 
         return view('planning.index', compact('plans', 'occupancy', 'alerts', 'buildings', 'from', 'to', 'kpi'));
@@ -48,8 +48,8 @@ class PlanningController extends Controller
         if (Gate::denies('planning.C')) return back()->with('error', 'Action non autorisée.');
 
         $buildings = Building::physical()
-            ->withCount(['batches as active_count' => fn($q) => $q->where('status', 'Actif')])
-            ->withSum(['batches as occupied_qty' => fn($q) => $q->where('status', 'Actif')], 'current_quantity')
+            ->withCount(['batches as active_count' => fn($q) => $q->active()])
+            ->withSum(['batches as occupied_qty' => fn($q) => $q->active()], 'current_quantity')
             ->orderBy('name')->get();
 
         $providers = Provider::active()->orderBy('name')->get();
@@ -88,7 +88,7 @@ class PlanningController extends Controller
         $dates = PlannedBatch::calculateDates($validated['batch_type'], $arrivalDate, $cycleOverride);
 
         $building = Building::find($validated['building_id']);
-        $occupiedQty = $building->batches()->where('status', 'Actif')->sum('current_quantity');
+        $occupiedQty = $building->batches()->active()->sum('current_quantity');
         $available = $building->capacity - $occupiedQty;
 
         if ($validated['planned_quantity'] > $available) {

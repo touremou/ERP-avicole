@@ -23,7 +23,7 @@ class DashboardController extends Controller
         // ---------------------------------------------------------
         // 1. EFFECTIFS & MORTALITÉ GLOBALE
         // ---------------------------------------------------------
-        $allActiveBatches = Batch::where('status', 'Actif')
+        $allActiveBatches = Batch::active()
             ->where('initial_quantity', '>', 0)
             ->with(['species', 'productionType'])
             ->get();
@@ -155,10 +155,10 @@ class DashboardController extends Controller
         // ---------------------------------------------------------
         $buildings = Building::where('name', '!=', 'Zone Fournisseurs Externes')
             ->withCount(['batches' => function($q) {
-                $q->where('status', 'Actif')->where('initial_quantity', '>', 0);
+                $q->active()->where('initial_quantity', '>', 0);
             }])
             ->with(['batches' => function($q) {
-                $q->where('status', 'Actif')->where('initial_quantity', '>', 0);
+                $q->active()->where('initial_quantity', '>', 0);
             }])->get();
 
         $occupiedBuildingsCount = $buildings->where('batches_count', '>', 0)->count();
@@ -167,7 +167,7 @@ class DashboardController extends Controller
         $activeBatches = Batch::with(['building', 'dailyChecks' => function($q) {
                 $q->latest('check_date');
             }])
-            ->where('status', 'Actif')
+            ->active()
             ->where('initial_quantity', '>', 0) // 💡 CORRECTION
             ->paginate((int) setting('general.items_per_page', 20));
 
@@ -205,7 +205,7 @@ class DashboardController extends Controller
         // 8. ALERTES QUALITÉ EAU (Pisciculture)
         // ---------------------------------------------------------
         $waterAlerts = collect();
-        $aquaBatches = Batch::where('status', 'Actif')
+        $aquaBatches = Batch::active()
             ->whereHas('species', function($q) {
                 $q->where('family', 'aquaculture');
             })->with(['species', 'building'])->get();

@@ -35,11 +35,11 @@ class DashboardService
     {
         // ─── 1. LOTS ACTIFS ───
         $activeBatches = Batch::with(['building', 'dailyChecks'])
-            ->where('status', 'Actif')
+            ->active()
             ->latest()
             ->paginate(10);
 
-        $allActive = Batch::where('status', 'Actif')
+        $allActive = Batch::active()
             ->with(['dailyChecks', 'productionType'])
             ->get();
 
@@ -98,7 +98,7 @@ class DashboardService
         $criticalTypes = $this->calculateFeedAutonomy($allActive);
 
         // ─── 6. BÂTIMENTS ───
-        $buildings = Building::withCount(['batches' => fn($q) => $q->where('status', 'Actif')])->get();
+        $buildings = Building::withCount(['batches' => fn($q) => $q->active()])->get();
         $totalBuildings    = $buildings->count();
         $occupiedBuildings = $buildings->where('batches_count', '>', 0)->count();
 

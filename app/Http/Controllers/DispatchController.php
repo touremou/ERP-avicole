@@ -45,7 +45,7 @@ class DispatchController extends Controller
 
         $stocks  = Stock::where('current_quantity', '>', 0)->get();
         // Tous les lots actifs, toutes espèces, sont expédiables sur pied.
-        $batches = Batch::where('status', 'Actif')->with(['building', 'species'])->get();
+        $batches = Batch::active()->with(['building', 'species'])->get();
 
         return view('dispatches.create', compact('stocks', 'batches'));
     }

@@ -73,7 +73,7 @@ class TransferBatchRequest extends FormRequest
             }
 
             // S-09 : Lot doit être actif
-            if ($batch->status !== 'Actif') {
+            if (! $batch->isActive()) {
                 $validator->errors()->add('status', "Le lot {$batch->code} n'est pas actif (statut : {$batch->status}). Transfert impossible.");
                 return;
             }
@@ -93,7 +93,7 @@ class TransferBatchRequest extends FormRequest
 
             // Capacité
             $currentOccupation = Batch::where('building_id', $targetBuilding->id)
-                ->where('status', 'Actif')
+                ->active()
                 ->sum('current_quantity');
 
             $available = $targetBuilding->capacity - $currentOccupation;

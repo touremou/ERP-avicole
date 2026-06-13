@@ -46,7 +46,7 @@ class EggProductionController extends Controller
 
         // Lots pondeurs : pilotés par le type de production de l'espèce
         // (avec repli sur l'ancien typage volaille pour les lots sans species_id).
-        $activeBatches = Batch::where('status', 'Actif')
+        $activeBatches = Batch::active()
             ->where('initial_quantity', '>', 0)
             ->with(['building', 'productionType', 'eggProductions' => fn($q) => $q->latest()->take(7)])
             ->get()
@@ -72,7 +72,7 @@ class EggProductionController extends Controller
         // O-01 corrigé : seulement les lots ACTIFS, pas toute l'historique
         $stockNonTrie = EggProduction::where('is_graded', false)
             ->whereHas('batch', function($q) {
-                $q->where('status', 'Actif')->where('initial_quantity', '>', 0);
+                $q->active()->where('initial_quantity', '>', 0);
             })
             ->sum('total_eggs_collected');
 

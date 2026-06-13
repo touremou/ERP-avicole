@@ -73,7 +73,7 @@ class TransferBatch
             if ($oldBuilding) {
                 $hasOtherActive = Batch::where('building_id', $oldBuilding->id)
                     ->where('id', '!=', $batch->id)
-                    ->where('status', 'Actif')
+                    ->active()
                     ->exists();
 
                 if (! $hasOtherActive) {

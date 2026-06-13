@@ -67,7 +67,7 @@ class CampaignController extends Controller
 
         // Lots éligibles à rattacher : actifs, de la famille ciblée, non
         // déjà affectés à une campagne.
-        $eligibleBatches = Batch::where('status', 'Actif')
+        $eligibleBatches = Batch::active()
             ->whereNull('campaign_id')
             ->whereHas('species', fn ($q) => $q->where('family', $campaign->target_family))
             ->with(['species', 'building'])

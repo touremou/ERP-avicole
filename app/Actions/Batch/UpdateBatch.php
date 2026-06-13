@@ -100,7 +100,7 @@ class UpdateBatch
         $building = Building::findOrFail($newBuildingId);
 
         $currentOccupation = Batch::where('building_id', $newBuildingId)
-            ->where('status', 'Actif')
+            ->active()
             ->where('id', '!=', $batch->id)
             ->sum('current_quantity');
 
@@ -121,7 +121,7 @@ class UpdateBatch
     {
         // Ancien bâtiment : vérifier s'il reste des lots actifs
         $oldHasActive = Batch::where('building_id', $oldBuildingId)
-            ->where('status', 'Actif')
+            ->active()
             ->exists();
 
         Building::where('id', $oldBuildingId)

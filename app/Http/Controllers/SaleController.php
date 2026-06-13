@@ -65,7 +65,7 @@ class SaleController extends Controller
         // 💡 AJOUT : Exclusion des bâtiments virtuels (stockage)
         // Tous les lots actifs, toutes espèces (volaille, ovins/caprins
         // pour Tabaski, poisson, lapins...) sont vendables sur pied.
-        $batches = Batch::where('status', 'Actif')
+        $batches = Batch::active()
                         ->whereHas('building', fn($q) => $q->physical())
                         ->with(['building', 'species'])
                         ->get();

@@ -37,7 +37,7 @@ class HealthController extends Controller
         // 3. Récupération des données
         $checks = $query->orderBy('intervention_date', 'desc')->paginate((int) setting('general.items_per_page', 20))->withQueryString();
         $batches = Batch::active()->live()->get();
-        //$batches = Batch::where('status', 'Actif')->get();
+        //$batches = Batch::active()->get();
 
         // 4. Délégation des alertes au Service dédié
         $alerts = $alertService->getActiveAlerts();
@@ -53,7 +53,7 @@ class HealthController extends Controller
     {
         if (Gate::denies('elevage.C')) return back()->with('error', 'Action non autorisée.');
         return view('health.create', [
-            'batches'           => Batch::where('status', 'Actif')
+            'batches'           => Batch::active()
                                         ->whereHas('building', fn($q) => $q->physical())
                                         ->orderBy('code')
                                         ->get(),
@@ -77,7 +77,7 @@ class HealthController extends Controller
         if (Gate::denies('elevage.M')) return back()->with('error', 'Action non autorisée.');
         return view('health.edit', [
             'health'    => $health,
-            'batches'   => Batch::where('status', 'Actif')
+            'batches'   => Batch::active()
                                 ->whereHas('building', fn($q) => $q->physical())
                                 ->with('building')
                                 ->orderBy('code')

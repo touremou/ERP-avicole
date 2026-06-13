@@ -35,7 +35,7 @@ class PlanningService
 
         // Lots réels actifs
         $activeBatches = Batch::where('building_id', $buildingId)
-            ->where('status', 'Actif')
+            ->active()
             ->get();
 
         foreach ($activeBatches as $batch) {
@@ -111,14 +111,14 @@ class PlanningService
             ->get();
         */
         $buildings = Building::physical()->with(['batches' => function($q) {
-            $q->where('status', 'Actif');
+            $q->active();
             }])->get();
 
         return $buildings->map(function ($building) {
 
             // ═══ 1. EFFECTIF RÉEL dans ce bâtiment ═══
             $activeBatches = Batch::where('building_id', $building->id)
-                ->where('status', 'Actif')
+                ->active()
                 ->get(['id', 'code', 'type', 'current_quantity', 'arrival_date']);
 
             $currentBirds = (int) $activeBatches->sum('current_quantity');
@@ -133,7 +133,7 @@ class PlanningService
             $idleDays = 0;
             if ($currentBirds === 0) {
                 $lastClosed = Batch::where('building_id', $building->id)
-                    ->whereIn('status', ['Terminé', 'Clôturé'])
+                    ->whereIn('status', [Batch::STATUS_TERMINE, Batch::STATUS_CLOTURE])
                     ->whereNotNull('closing_date')
                     ->latest('closing_date')
                     ->value('closing_date');

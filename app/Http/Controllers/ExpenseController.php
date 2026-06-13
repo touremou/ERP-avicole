@@ -76,7 +76,7 @@ class ExpenseController extends Controller
         return view('expenses.create', [
             'categories'     => Expense::CATEGORIES,
             'paymentMethods' => Expense::PAYMENT_METHODS,
-            'batches'        => Batch::where('status', 'Actif')->orderBy('code')->get(['id', 'code']),
+            'batches'        => Batch::active()->orderBy('code')->get(['id', 'code']),
         ]);
     }
 
@@ -113,7 +113,7 @@ class ExpenseController extends Controller
             'expense'        => $expense,
             'categories'     => Expense::CATEGORIES,
             'paymentMethods' => Expense::PAYMENT_METHODS,
-            'batches'        => Batch::where('status', 'Actif')->orderBy('code')->get(['id', 'code']),
+            'batches'        => Batch::active()->orderBy('code')->get(['id', 'code']),
         ]);
     }
 

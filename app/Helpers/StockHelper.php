@@ -36,7 +36,7 @@ class StockHelper
         static $latestChecks = null;
 
         if ($latestChecks === null) {
-            $activeBatchIds = Batch::where('status', 'Actif')->pluck('id');
+            $activeBatchIds = Batch::active()->pluck('id');
             
             $latestChecks = DailyCheck::whereIn('batch_id', $activeBatchIds)
                 ->whereIn('check_date', function ($query) {

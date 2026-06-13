@@ -181,7 +181,7 @@ class EggProduction extends Model
     public function scopeUngradedActive($query)
     {
         return $query->where('is_graded', false)
-                     ->whereHas('batch', fn($q) => $q->where('status', 'Actif'));
+                     ->whereHas('batch', fn($q) => $q->active());
     }
 
     public function getMapForStockSync(): array

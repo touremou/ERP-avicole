@@ -39,7 +39,7 @@ class CreateBatch
 
             // ─── Vérification de capacité ───
             $currentOccupation = Batch::where('building_id', $building->id)
-                ->where('status', 'Actif')
+                ->active()
                 ->sum('current_quantity');
 
             $qtyAlive = (int) ($data['qty_alive'] ?? 0);
@@ -98,7 +98,7 @@ class CreateBatch
                 // expected_end_date est calculé automatiquement par Batch::booted()
 
                 // État
-                'status'      => 'Actif',
+                'status'      => Batch::STATUS_ACTIF,
                 'chick_state' => 'Normal',
                 'production_phase' => 'demarrage',
 

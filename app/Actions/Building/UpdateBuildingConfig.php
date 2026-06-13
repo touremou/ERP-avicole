@@ -11,7 +11,7 @@ class UpdateBuildingConfig
     public function execute(Building $building, array $data): Building
     {
         // Vérification de la présence de cheptel actif
-        $isOccupied = $building->batches()->where('status', 'Actif')->exists();
+        $isOccupied = $building->batches()->active()->exists();
 
         if ($isOccupied) {
             // Verrou 1 : Interdiction de changer la vocation technique pendant une bande

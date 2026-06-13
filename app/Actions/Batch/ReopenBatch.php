@@ -27,7 +27,7 @@ class ReopenBatch
      */
     public function execute(Batch $batch): Batch
     {
-        if ($batch->status === 'Actif') {
+        if ($batch->isActive()) {
             throw new \DomainException("Le lot {$batch->code} est déjà en cours de production.");
         }
 
@@ -43,7 +43,7 @@ class ReopenBatch
 
             // ─── Réouverture ───
             $batch->update([
-                'status'                     => 'Actif',
+                'status'                     => Batch::STATUS_ACTIF,
                 'current_quantity'           => $restoredQuantity,
                 'closing_date'               => null,
                 'actual_sell_price_per_unit'  => 0,

@@ -28,6 +28,44 @@ class Batch extends Model
 {
     use HasFactory, SoftDeletes, HasStandardUuid, BelongsToFarm;
 
+    /**
+     * Statuts du cycle de vie d'un lot (valeurs stockées en base dans la
+     * colonne `status`). Source unique de vérité référencée par les
+     * Actions (CreateBatch, CloseBatch, ReopenBatch, TransferBatch,
+     * UpdateBatch), les Requests de validation et les vues `batches/*`.
+     *
+     * ⚠️ Ces valeurs sont historiques (françaises, avec accents) — un
+     * renommage casserait les enregistrements existants.
+     */
+    public const STATUS_ACTIF   = 'Actif';
+    public const STATUS_TERMINE = 'Terminé';
+    public const STATUS_CLOTURE = 'Clôturé';
+    public const STATUS_VENDU   = 'Vendu';
+    public const STATUS_ANNULE  = 'Annulé';
+
+    /**
+     * Statuts « archivés » : le lot n'est plus en production active.
+     * Référencé par scopeArchived() et les rapports/plannings.
+     */
+    public const STATUS_ARCHIVED = [
+        self::STATUS_TERMINE,
+        self::STATUS_CLOTURE,
+        self::STATUS_VENDU,
+        self::STATUS_ANNULE,
+    ];
+
+    /**
+     * Statuts sélectionnables manuellement depuis le formulaire d'édition
+     * (resources/views/batches/edit.blade.php). « Clôturé » et « Vendu »
+     * sont positionnés exclusivement par des actions dédiées (clôture de
+     * lot, vente de réforme) et ne sont donc pas proposés ici.
+     */
+    public const EDITABLE_STATUSES = [
+        self::STATUS_ACTIF,
+        self::STATUS_TERMINE,
+        self::STATUS_ANNULE,
+    ];
+
     protected $fillable = [
         // Sync offline
         'uuid', 'is_synced', 'last_sync_at',
@@ -201,7 +239,7 @@ class Batch extends Model
     protected static function booted(): void
     {
         static::creating(function (Batch $batch) {
-            $batch->status = $batch->status ?? 'Actif';
+            $batch->status = $batch->status ?? self::STATUS_ACTIF;
             $batch->chick_state = $batch->chick_state ?? 'Normal';
             $batch->calculateExpectedEndDate();
         });
@@ -283,6 +321,18 @@ class Batch extends Model
     public function isGmqTracked(): bool
     {
         return $this->species?->isGmqTracked() ?? false;
+    }
+
+    /** Indique si le lot est actuellement en production (statut Actif). */
+    public function isActive(): bool
+    {
+        return $this->status === self::STATUS_ACTIF;
+    }
+
+    /** Indique si le lot est archivé (terminé, clôturé, vendu ou annulé). */
+    public function isArchived(): bool
+    {
+        return in_array($this->status, self::STATUS_ARCHIVED, true);
     }
 
     /**
@@ -373,7 +423,7 @@ class Batch extends Model
 
         $start = Carbon::parse($this->arrival_date)->startOfDay();
 
-        $end = ($this->status === 'Terminé' && $this->closing_date)
+        $end = ($this->status === self::STATUS_TERMINE && $this->closing_date)
             ? Carbon::parse($this->closing_date)->startOfDay()
             : now()->startOfDay();
 
@@ -460,7 +510,7 @@ class Batch extends Model
      */
     public function scopeActive($query)
     {
-        return $query->where('status', 'Actif');
+        return $query->where('status', self::STATUS_ACTIF);
     }
     /**
      * Filtre uniquement les lots physiques (animaux vivants).
@@ -508,7 +558,7 @@ class Batch extends Model
      */
     public function scopeArchived($query)
     {
-        return $query->whereIn('status', ['Terminé', 'Clôturé', 'Vendu', 'Annulé']);
+        return $query->whereIn('status', self::STATUS_ARCHIVED);
     }
 
     // ═══════════════════════════════════════════════

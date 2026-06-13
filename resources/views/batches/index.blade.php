@@ -129,8 +129,8 @@
                                 <div class="flex items-start">
                                     <div @class([
                                         'w-10 h-10 rounded-xl flex items-center justify-center mr-4 shadow-inner mt-1 text-base',
-                                        'bg-blue-50 text-blue-600 font-black' => $batch->status == 'Actif',
-                                        'bg-slate-100 text-slate-400' => $batch->status != 'Actif',
+                                        'bg-blue-50 text-blue-600 font-black' => $batch->isActive(),
+                                        'bg-slate-100 text-slate-400' => ! $batch->isActive(),
                                     ])>
                                         @if($batch->species?->icon)
                                             {{ $batch->species->icon }}

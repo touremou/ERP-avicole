@@ -24,7 +24,7 @@ class BuildingController extends Controller
 
         $buildings = Building::physical() // 💡 Ton code devient très lisible
             ->with(['batches' => function($query) {
-                $query->where('status', 'Actif')->with('dailyChecks');
+                $query->active()->with('dailyChecks');
             }])
             ->orderBy('name')
             ->get();
@@ -71,7 +71,7 @@ class BuildingController extends Controller
         if (Gate::denies('elevage.M')) return back()->with('error', 'Privilèges insuffisants.');
 
         $building = Building::findOrFail($id);
-        $isOccupied = $building->batches()->where('status', 'Actif')->exists();
+        $isOccupied = $building->batches()->active()->exists();
 
         return view('buildings.edit', compact('building', 'isOccupied'));
     }

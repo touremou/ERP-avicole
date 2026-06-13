@@ -33,7 +33,7 @@
                 @method('PUT')
 
                 @php
-                    $isEditable = ($batch->status === 'Actif');
+                    $isEditable = $batch->isActive();
                     $isRepro = in_array(old('type', $batch->type), ['repro', 'reproducteur']);
                     $batchSpecies = $batch->species;
                 @endphp
@@ -99,7 +99,7 @@
                                     class="w-full p-4 bg-slate-50 rounded-2xl font-bold border-none shadow-inner text-slate-700 italic">
                                     @foreach($buildings as $b)
                                         @php
-                                            $occ = $b->batches->where('status', 'Actif')->where('id', '!=', $batch->id)->sum('current_quantity');
+                                            $occ = $b->batches->where('status', \App\Models\Batch::STATUS_ACTIF)->where('id', '!=', $batch->id)->sum('current_quantity');
                                             $dispo = $b->capacity - $occ;
                                         @endphp
                                         <option value="{{ $b->id }}"
@@ -220,9 +220,9 @@
                                 <div class="col-span-1 md:col-span-2">
                                     <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 italic leading-none">Statut du Lot</label>
                                     <select name="status" required class="w-full p-5 bg-slate-50 rounded-2xl font-black border-none text-slate-700 shadow-inner italic appearance-none">
-                                        <option value="Actif" {{ old('status', $batch->status) == 'Actif' ? 'selected' : '' }}>ACTIF</option>
-                                        <option value="Terminé" {{ old('status', $batch->status) == 'Terminé' ? 'selected' : '' }}>TERMINÉ</option>
-                                        <option value="Annulé" {{ old('status', $batch->status) == 'Annulé' ? 'selected' : '' }}>ANNULÉ</option>
+                                        @foreach(\App\Models\Batch::EDITABLE_STATUSES as $statusOption)
+                                            <option value="{{ $statusOption }}" {{ old('status', $batch->status) == $statusOption ? 'selected' : '' }}>{{ \Illuminate\Support\Str::upper($statusOption) }}</option>
+                                        @endforeach
                                     </select>
                                 </div>
                             </div>

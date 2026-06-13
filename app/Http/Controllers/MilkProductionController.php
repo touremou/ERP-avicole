@@ -26,7 +26,7 @@ class MilkProductionController extends Controller
         $today = now()->toDateString();
 
         // Lots laitiers actifs (pilotés par tracksMilk()).
-        $dairyBatches = Batch::where('status', 'Actif')
+        $dairyBatches = Batch::active()
             ->where('current_quantity', '>', 0)
             ->with(['building', 'species', 'productionType', 'milkProductions' => fn ($q) => $q->latest('production_date')->take(7)])
             ->get()

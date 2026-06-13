@@ -56,7 +56,7 @@ class Building extends Model
      */
     public function canChangeType(): bool
     {
-        return !$this->batches()->where('status', 'Actif')->exists();
+        return !$this->batches()->active()->exists();
     }
 
     /**
@@ -65,7 +65,7 @@ class Building extends Model
     public function isAvailable(): bool
     {
         // Un bâtiment n'est disponible que s'il est marqué comme tel ET qu'il n'y a pas de lot actif
-        return in_array($this->status, ['Vide', 'Disponible']) && !$this->batches()->where('status', 'Actif')->exists();
+        return in_array($this->status, ['Vide', 'Disponible']) && !$this->batches()->active()->exists();
     }
 
     /**
@@ -91,7 +91,7 @@ class Building extends Model
      */
     public function getCurrentDensityAttribute(): float
     {
-        $activeBatch = $this->batches()->where('status', 'Actif')->first();
+        $activeBatch = $this->batches()->active()->first();
         
         if (!$activeBatch || (float)$this->surface <= 0) {
             return 0.0;
@@ -119,7 +119,7 @@ class Building extends Model
      */
     public function getOccupancyRateAttribute(): float
     {
-        $activeBatch = $this->batches()->where('status', 'Actif')->first();
+        $activeBatch = $this->batches()->active()->first();
         
         if (!$activeBatch || $this->capacity <= 0) {
             return 0.0;

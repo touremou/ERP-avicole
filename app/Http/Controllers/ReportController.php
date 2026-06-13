@@ -309,7 +309,7 @@ class ReportController extends Controller
         $query = Batch::with(['building', 'healthChecks' => $healthCheckQuery]);
 
         if ($statusFilter === 'actif') {
-            $query->where('status', 'Actif');
+            $query->active();
         } elseif ($statusFilter === 'clos') {
             $query->where('status', 'Terminé');
         }
@@ -369,7 +369,7 @@ class ReportController extends Controller
     private function buildTechnicalStats(): array
     {
         $activeBatches = Batch::with('building')
-            ->where('status', 'Actif')
+            ->active()
             ->withSum('dailyChecks as total_mortality', 'mortality')
             ->withSum('dailyChecks as total_feed_consumed', 'feed_consumed')
             ->live()
@@ -492,9 +492,9 @@ class ReportController extends Controller
         $query = Batch::with(['building', 'feedPurchases'])->live();
 
         if ($statusFilter === 'actif') {
-            $query->where('status', 'Actif');
+            $query->active();
         } elseif (in_array($statusFilter, ['termine', 'clos'])) {
-            $query->whereIn('status', ['Terminé', 'Clôturé']);
+            $query->whereIn('status', [Batch::STATUS_TERMINE, Batch::STATUS_CLOTURE]);
         }
 
         if ($speciesFilter !== 'all') {

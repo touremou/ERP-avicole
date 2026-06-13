@@ -41,7 +41,7 @@ class IncubationController extends Controller
         // Lots éligibles à l'incubation : pondeurs/reproducteurs avicoles
         // uniquement (le slug "reproducteur" est partagé avec les ruminants,
         // qui ne pondent pas — on s'appuie donc sur tracksEggs() et l'espèce).
-        $activeBatches = Batch::where('status', 'Actif')
+        $activeBatches = Batch::active()
             ->with(['species', 'productionType'])
             ->get()
             ->filter(fn (Batch $batch) => $batch->isVolaille() && $batch->tracksEggs())

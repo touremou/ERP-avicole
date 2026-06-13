@@ -30,7 +30,7 @@ class SyncBatchStocks extends Command
      */
     private function syncSujets()
     {
-        $batches = Batch::where('status', 'Actif')->get();
+        $batches = Batch::active()->get();
         $this->warn("--- Synchronisation des Sujets ---");
 
         foreach ($batches as $batch) {

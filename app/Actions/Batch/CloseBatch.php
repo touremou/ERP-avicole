@@ -51,7 +51,7 @@ class CloseBatch
 
             // ─── MISE À JOUR DU LOT ───
             $batch->update([
-                'status'                     => 'Terminé',
+                'status'                     => Batch::STATUS_TERMINE,
                 'current_quantity'           => 0,
                 'closing_date'               => $data['closing_date'],
                 'actual_sell_price_per_unit'  => $sellingPrice,
@@ -85,7 +85,7 @@ class CloseBatch
 
         $hasOtherActive = Batch::where('building_id', $building->id)
             ->where('id', '!=', $batch->id)
-            ->where('status', 'Actif')
+            ->active()
             ->exists();
 
         if (! $hasOtherActive) {

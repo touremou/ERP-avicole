@@ -24,7 +24,7 @@ class UtilityService
     public function getDashboardData(int $periodDays = 30): array
     {
         $from = now()->subDays($periodDays);
-        $totalBirds = Batch::where('status', 'Actif')->sum('current_quantity');
+        $totalBirds = Batch::active()->sum('current_quantity');
 
         return [
             'water'  => $this->getWaterStats($from, $totalBirds),
