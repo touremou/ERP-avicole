@@ -238,6 +238,15 @@ class Batch extends Model
 
     protected static function booted(): void
     {
+        // Invariant taxonomique : quand un type de production est rattaché, il
+        // est la SOURCE DE VÉRITÉ. On en dérive `type` (slug legacy) et
+        // `species_id` pour que les trois champs ne divergent jamais. S'exécute
+        // avant creating/updating, donc calculateExpectedEndDate voit déjà le
+        // type synchronisé.
+        static::saving(function (Batch $batch) {
+            $batch->syncTaxonomyFromProductionType();
+        });
+
         static::creating(function (Batch $batch) {
             $batch->status = $batch->status ?? self::STATUS_ACTIF;
             $batch->chick_state = $batch->chick_state ?? 'Normal';
@@ -252,6 +261,33 @@ class Batch extends Model
 
         // NOTE : Les hooks d'impact sur current_quantity sont dans DailyCheckObserver
         // Les hooks d'alerte mortalité et cascade soft-delete sont dans BatchObserver
+    }
+
+    /**
+     * Aligne `type` (slug legacy) et `species_id` sur le type de production
+     * rattaché, qui fait foi. Sans effet si aucun production_type_id n'est
+     * défini (lots volaille mono-espèce historiques : `type` reste tel quel).
+     *
+     * Ne requête le référentiel qu'à la création ou lorsque le type de
+     * production change réellement, pour éviter une requête à chaque save.
+     */
+    public function syncTaxonomyFromProductionType(): void
+    {
+        if (! $this->production_type_id) {
+            return;
+        }
+
+        if ($this->exists && ! $this->isDirty('production_type_id')) {
+            return;
+        }
+
+        $productionType = ProductionType::find($this->production_type_id);
+        if (! $productionType) {
+            return;
+        }
+
+        $this->type = $productionType->slug;
+        $this->species_id = $productionType->species_id;
     }
 
     /**
