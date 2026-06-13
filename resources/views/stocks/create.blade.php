@@ -55,12 +55,9 @@
                             <div class="bg-slate-50 p-6 rounded-[2.5rem] border border-slate-100 shadow-inner">
                                 <label class="text-[10px] uppercase text-slate-500 ml-6 mb-2 block tracking-widest italic font-black">00. {{ __("Catégorie de l'article") }}</label>
                                 <select name="category" x-model="cat" class="w-full bg-white border-none rounded-[1.5rem] p-5 font-black text-xs uppercase shadow-sm focus:ring-2 focus:ring-blue-500 italic cursor-pointer">
-                                    <option value="oeufs">🥚 {{ __("Œufs") }}</option>
-                                    <option value="lait">🥛 {{ __("Lait") }}</option>
-                                    <option value="produits_finis">🥩 {{ __("Produits finis (viande / poisson)") }}</option>
-                                    <option value="conso">🌾 {{ __("Aliment & Santé (Conso)") }}</option>
-                                    <option value="litieres">🍂 {{ __("Litières") }}</option>
-                                    <option value="materiels">🛠️ {{ __("Matériels") }}</option>
+                                    @foreach(\App\Models\Stock::activeCategories() as $slug => $meta)
+                                        <option value="{{ $slug }}">{{ $meta['emoji'] }} {{ __($meta['label']) }}</option>
+                                    @endforeach
                                 </select>
                             </div>
 

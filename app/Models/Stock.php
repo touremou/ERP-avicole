@@ -44,12 +44,12 @@ class Stock extends Model
      * de création, et référencée par le paramètre « stocks.categories ».
      */
     public const CATEGORY_META = [
-        'oeufs'          => ['label' => 'Œufs',            'icon' => 'fa-egg',                'color' => 'amber'],
-        'lait'           => ['label' => 'Lait',            'icon' => 'fa-bottle-droplet',     'color' => 'cyan'],
-        'conso'          => ['label' => 'Aliment & Santé', 'icon' => 'fa-wheat-awn',          'color' => 'emerald'],
-        'produits_finis' => ['label' => 'Produits Finis',  'icon' => 'fa-drumstick-bite',     'color' => 'rose'],
-        'litieres'       => ['label' => 'Litières',        'icon' => 'fa-leaf',               'color' => 'purple'],
-        'materiels'      => ['label' => 'Matériel',        'icon' => 'fa-screwdriver-wrench', 'color' => 'blue'],
+        'oeufs'          => ['label' => 'Œufs',            'icon' => 'fa-egg',                'color' => 'amber',   'emoji' => '🥚'],
+        'lait'           => ['label' => 'Lait',            'icon' => 'fa-bottle-droplet',     'color' => 'cyan',    'emoji' => '🥛'],
+        'conso'          => ['label' => 'Aliment & Santé', 'icon' => 'fa-wheat-awn',          'color' => 'emerald', 'emoji' => '🌾'],
+        'produits_finis' => ['label' => 'Produits Finis',  'icon' => 'fa-drumstick-bite',     'color' => 'rose',    'emoji' => '🥩'],
+        'litieres'       => ['label' => 'Litières',        'icon' => 'fa-leaf',               'color' => 'purple',  'emoji' => '🍂'],
+        'materiels'      => ['label' => 'Matériel',        'icon' => 'fa-screwdriver-wrench', 'color' => 'blue',    'emoji' => '🛠️'],
     ];
 
     /**
@@ -79,6 +79,7 @@ class Stock extends Model
                 'label' => ucfirst(str_replace('_', ' ', $slug)),
                 'icon'  => 'fa-box',
                 'color' => 'slate',
+                'emoji' => '📦',
             ];
         }
 

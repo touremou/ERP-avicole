@@ -45,6 +45,30 @@ class Farm extends Model
     }
 
     /**
+     * Identifiant de la ferme « par défaut » utilisée comme repli lorsqu'aucune
+     * ferme courante n'est définie en session (création via seeder, factory,
+     * console, ou tout contexte hors HTTP). On retient la première ferme active
+     * — généralement la « Ferme Principale ». Le résultat est mémoïsé pour la
+     * durée de la requête afin d'éviter des requêtes répétées à la création
+     * en masse de modèles.
+     */
+    public static function defaultId(): ?int
+    {
+        static $cached = false;
+        static $id = null;
+
+        if ($cached === false) {
+            $id = static::query()
+                ->orderByDesc('is_active')
+                ->orderBy('id')
+                ->value('id');
+            $cached = true;
+        }
+
+        return $id ? (int) $id : null;
+    }
+
+    /**
      * Récupère un paramètre spécifique à la ferme.
      */
     public function getSetting(string $key, $default = null)
