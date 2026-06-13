@@ -39,7 +39,7 @@
                     // KPI rapides par ferme (via withoutFarm)
                     $farmBirds = \App\Models\Batch::withoutGlobalScopes()->where('farm_id', $farm->id)->where('status', 'Actif')->sum('current_quantity');
                     $farmBatches = \App\Models\Batch::withoutGlobalScopes()->where('farm_id', $farm->id)->where('status', 'Actif')->count();
-                    $farmBuildings = \App\Models\Building::withoutGlobalScopes()->where('farm_id', $farm->id)->count();
+                    $farmBuildings = \App\Models\Building::withoutGlobalScopes()->physical()->where('farm_id', $farm->id)->count();
                 @endphp
                 <div @class(['rounded-[2.5rem] border shadow-sm overflow-hidden transition-all',
                     'bg-violet-50 border-violet-300 ring-2 ring-violet-400' => $isCurrentFarm,
@@ -143,7 +143,7 @@
                 @php
                     $totalBirds = \App\Models\Batch::withoutGlobalScopes()->where('status', 'Actif')->sum('current_quantity');
                     $totalBatches = \App\Models\Batch::withoutGlobalScopes()->where('status', 'Actif')->count();
-                    $totalBuildings = \App\Models\Building::withoutGlobalScopes()->count();
+                    $totalBuildings = \App\Models\Building::withoutGlobalScopes()->physical()->count();
                 @endphp
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div class="p-5 bg-white/5 rounded-2xl text-center">

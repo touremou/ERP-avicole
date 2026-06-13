@@ -139,11 +139,16 @@ class DashboardController extends Controller
             return $taux > 5;
         });
 
-        // D. Vide Sanitaire
+        // D. Vide Sanitaire dépassé — uniquement les bâtiments toujours "En
+        // désinfection" alors que le délai réglementaire de 14 jours
+        // (cf. Building::getSanitaryBreakRemainingDaysAttribute) est écoulé.
+        // Un bâtiment simplement vide/disponible, ou en désinfection depuis
+        // moins de 14 jours, n'est PAS une alerte.
         $sanitaryAlertsCount = Building::where('name', '!=', 'Zone Fournisseurs Externes')
-            ->whereDoesntHave('batches', function($q) {
-                $q->where('status', 'Actif')->where('initial_quantity', '>', 0);
-            })->count();
+            ->where('status', 'En désinfection')
+            ->whereNotNull('disinfection_started_at')
+            ->where('disinfection_started_at', '<=', now()->subDays(14))
+            ->count();
 
         // ---------------------------------------------------------
         // 6. DONNÉES D'AFFICHAGE (Bâtiments & Pagination)
@@ -167,49 +172,33 @@ class DashboardController extends Controller
             ->paginate((int) setting('general.items_per_page', 20));
 
         // ---------------------------------------------------------
-        // 7. WIDGET TABASKI (Eid al-Adha countdown)
+        // 7. WIDGET CAMPAGNE TABASKI
         // ---------------------------------------------------------
+        // Basé sur une véritable campagne Tabaski active (cf. module
+        // Campagnes), pas seulement sur la présence d'ovins/caprins —
+        // sinon le widget s'affiche même quand aucune campagne n'a été
+        // planifiée (fausse alerte).
         $tabaskiWidget = null;
-        $hasOvineBatches = Batch::where('status', 'Actif')
-            ->whereHas('species', function($q) {
-                $q->where('family', 'petit_ruminant');
-            })->exists();
+        $tabaskiCampaign = \App\Models\Campaign::active()
+            ->where('type', 'tabaski')
+            ->with('batches')
+            ->orderBy('target_date')
+            ->first();
 
-        if ($hasOvineBatches) {
-            // Dates approchées Eid al-Adha (10 Dhu al-Hijja) pour les prochaines années
-            $eidDates = [
-                '2026-06-16',
-                '2027-06-06',
-                '2028-05-26',
-                '2029-05-15',
-                '2030-05-05',
-            ];
+        if ($tabaskiCampaign) {
             $today = now()->startOfDay();
-            $nextEid = null;
-            foreach ($eidDates as $date) {
-                $eid = Carbon::parse($date)->startOfDay();
-                if ($eid->gte($today)) {
-                    $nextEid = $eid;
-                    break;
-                }
-            }
-            if ($nextEid) {
-                $daysUntilEid = (int) $today->diffInDays($nextEid, false);
-                $ovineBatchCount = Batch::where('status', 'Actif')
-                    ->whereHas('species', function($q) { $q->where('family', 'petit_ruminant'); })
-                    ->count();
-                $ovineHeadCount = Batch::where('status', 'Actif')
-                    ->whereHas('species', function($q) { $q->where('family', 'petit_ruminant'); })
-                    ->sum('current_quantity');
-                $tabaskiWidget = [
-                    'days'        => $daysUntilEid,
-                    'date'        => $nextEid->translatedFormat('d F Y'),
-                    'batches'     => $ovineBatchCount,
-                    'head_count'  => $ovineHeadCount,
-                    'urgent'      => $daysUntilEid <= 30,
-                    'critical'    => $daysUntilEid <= 7,
-                ];
-            }
+            $targetDate = Carbon::parse($tabaskiCampaign->target_date)->startOfDay();
+            $daysUntilTarget = (int) $today->diffInDays($targetDate, false);
+
+            $tabaskiWidget = [
+                'campaign_id' => $tabaskiCampaign->id,
+                'days'        => $daysUntilTarget,
+                'date'        => $targetDate->translatedFormat('d F Y'),
+                'batches'     => $tabaskiCampaign->batches->count(),
+                'head_count'  => $tabaskiCampaign->head_count,
+                'urgent'      => $daysUntilTarget >= 0 && $daysUntilTarget <= 30,
+                'critical'    => $daysUntilTarget >= 0 && $daysUntilTarget <= 7,
+            ];
         }
 
         // ---------------------------------------------------------

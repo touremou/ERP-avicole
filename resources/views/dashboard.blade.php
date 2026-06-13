@@ -204,7 +204,7 @@
             </div>
             @endif
 
-            {{-- WIDGET TABASKI — visible uniquement si lots ovins actifs --}}
+            {{-- WIDGET CAMPAGNE TABASKI — visible uniquement si une campagne Tabaski est active --}}
             @if($tabaskiWidget ?? false)
             <div @class([
                 'mb-8 rounded-[2rem] border-2 p-6 flex flex-col md:flex-row items-center justify-between gap-6 shadow-lg transition-all',
@@ -224,6 +224,8 @@
                         <p class="text-3xl font-black italic tracking-tighter leading-none">
                             @if($tabaskiWidget['days'] == 0)
                                 {{ __("AUJOURD'HUI !") }}
+                            @elseif($tabaskiWidget['days'] < 0)
+                                {{ __("J +") }}{{ abs($tabaskiWidget['days']) }}
                             @else
                                 {{ __("J —") }} {{ $tabaskiWidget['days'] }}
                             @endif
@@ -243,7 +245,7 @@
                     </div>
                     <div class="w-px bg-white/20"></div>
                     <div>
-                        <a href="{{ route('campaigns.index') }}" class="text-[8px] font-black uppercase text-white/60 hover:text-white no-underline tracking-widest">
+                        <a href="{{ route('campaigns.show', $tabaskiWidget['campaign_id']) }}" class="text-[8px] font-black uppercase text-white/60 hover:text-white no-underline tracking-widest">
                             {{ __("Piloter la campagne") }} <i class="fa-solid fa-arrow-right ml-1"></i>
                         </a>
                     </div>

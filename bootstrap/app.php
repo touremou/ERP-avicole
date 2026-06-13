@@ -17,6 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'admin' => \App\Http\Middleware\AdminMiddleware::class,
             'redirect.if.installed' => \App\Http\Middleware\RedirectIfInstalled::class,
+            'force.json' => \App\Http\Middleware\ForceJsonResponse::class,
         ]);
 
         // NOTE : un seul appel à ->withMiddleware() doit configurer le
