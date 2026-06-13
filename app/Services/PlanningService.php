@@ -119,7 +119,8 @@ class PlanningService
             // ═══ 1. EFFECTIF RÉEL dans ce bâtiment ═══
             $activeBatches = Batch::where('building_id', $building->id)
                 ->active()
-                ->get(['id', 'code', 'type', 'current_quantity', 'arrival_date']);
+                ->with('productionType:id,slug')
+                ->get(['id', 'code', 'production_type_id', 'current_quantity', 'arrival_date']);
 
             $currentBirds = (int) $activeBatches->sum('current_quantity');
             $capacity = (int) ($building->capacity ?? 0);
