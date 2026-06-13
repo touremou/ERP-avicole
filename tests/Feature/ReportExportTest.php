@@ -5,6 +5,7 @@
  */
 
 use App\Models\Batch;
+use App\Models\ProductionType;
 use App\Models\Role;
 use App\Models\Species;
 use App\Models\User;
@@ -31,7 +32,7 @@ test('le filtre flux de trésorerie propose et applique un filtre par espèce (p
 
     $batchPoulet = Batch::factory()->create([
         'code' => 'LOT-POULET',
-        'type' => 'chair',
+        'production_type_id' => ProductionType::resolveOrCreate('chair', $poulet->id)->id,
         'species_id' => $poulet->id,
         'arrival_date' => now()->subDays(10),
         'status' => 'Actif',
@@ -39,7 +40,7 @@ test('le filtre flux de trésorerie propose et applique un filtre par espèce (p
 
     $batchChevre = Batch::factory()->create([
         'code' => 'LOT-CHEVRE',
-        'type' => 'laitiere',
+        'production_type_id' => ProductionType::resolveOrCreate('laitiere', $chevre->id)->id,
         'species_id' => $chevre->id,
         'arrival_date' => now()->subDays(10),
         'status' => 'Actif',
@@ -65,7 +66,7 @@ test('les rapports sont exportables en PDF avec les filtres courants', function 
 
     Batch::factory()->create([
         'code' => 'LOT-PDF',
-        'type' => 'chair',
+        'production_type_id' => ProductionType::resolveOrCreate('chair', $poulet->id)->id,
         'species_id' => $poulet->id,
         'arrival_date' => now()->subDays(5),
         'status' => 'Actif',

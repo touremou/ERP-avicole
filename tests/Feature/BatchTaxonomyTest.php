@@ -47,12 +47,15 @@ test('changer le type de production resynchronise type et species_id', function 
     expect($batch->fresh()->type)->toBe('chair');
 });
 
-test('sans type de production, le type legacy soumis est conservé', function () {
+test('sans type de production, l\'accessor type renvoie null', function () {
+    // `type` n'est plus une colonne : toute affectation directe (legacy)
+    // est ignorée (setter no-op), l'accessor dépend uniquement de la
+    // relation productionType.
     $batch = Batch::factory()->create([
         'type'               => 'poussiniere',
         'production_type_id' => null,
     ]);
 
-    expect($batch->type)->toBe('poussiniere')
+    expect($batch->type)->toBeNull()
         ->and($batch->production_type_id)->toBeNull();
 });

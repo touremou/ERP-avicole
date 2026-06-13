@@ -4,6 +4,7 @@ namespace App\Actions\Batch;
 
 use App\Models\Batch;
 use App\Models\Building;
+use App\Models\ProductionType;
 use App\Services\SanitarySchedulerService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -56,13 +57,21 @@ class CreateBatch
             $totalOrdered = $qtyAlive + $qtyDead; // Total commandé (vivants reçus + morts transport)
             $price = (float) ($data['buy_price_per_unit'] ?? 0);
 
+            // ─── Résolution du type de production (source de vérité) ───
+            // `type` n'est plus une colonne : le slug soumis par le formulaire
+            // est traduit en production_type_id (créé si besoin). Le champ
+            // caché production_type_id peut arriver vide ("") si le JS n'a
+            // pas (encore) résolu l'option choisie.
+            $productionTypeId = ! empty($data['production_type_id'])
+                ? (int) $data['production_type_id']
+                : ProductionType::resolveOrCreate($data['type'], $data['species_id'] ?? null)->id;
+
             $batch = Batch::create([
                 // Identité
                 'code'        => $data['code'],
-                'type'        => $data['type'],
                 'model_name'  => $data['model_name'] ?: 'Non spécifié',
                 'species_id'         => $data['species_id'] ?? null,
-                'production_type_id' => $data['production_type_id'] ?? null,
+                'production_type_id' => $productionTypeId,
 
                 // Relations
                 'building_id'  => $building->id,

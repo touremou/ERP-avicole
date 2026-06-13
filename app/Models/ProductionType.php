@@ -37,6 +37,25 @@ class ProductionType extends Model
         return (bool) ($this->metrics_enabled[$metric] ?? false);
     }
 
+    /**
+     * Retrouve (ou crée) le type de production correspondant à un slug
+     * legacy (ex. 'chair', 'ponte') pour l'espèce donnée. À défaut d'espèce,
+     * retombe sur « poulet » (rétrocompat lots volaille mono-espèce).
+     *
+     * Utilisé à l'écriture (création/modification de lot) pour traduire le
+     * champ `type` du formulaire en `production_type_id`, désormais source
+     * de vérité.
+     */
+    public static function resolveOrCreate(string $slug, ?int $speciesId): self
+    {
+        $speciesId ??= Species::where('slug', 'poulet')->value('id');
+
+        return static::firstOrCreate(
+            ['species_id' => $speciesId, 'slug' => $slug],
+            ['name_fr' => ucfirst($slug), 'is_active' => true]
+        );
+    }
+
     public function getKpiLabelAttribute(): string
     {
         return match($this->kpi_primary) {

@@ -287,7 +287,7 @@ Route::middleware(['auth'])->group(function () {
     // B-18 corrigé : UN SEUL bloc, pas de doublons closures/controllers
     Route::get('/offline', fn() => view('offline'))->name('offline');
 
-    Route::middleware(['auth', 'force.json'])->prefix('api/offline')->name('offline.')->group(function () {
+    Route::middleware(['force.json', 'auth'])->prefix('api/offline')->name('offline.')->group(function () {
         // Controllers optimisés (colonnes limitées, sync incrémentale)
         Route::get('/batches', [BatchController::class, 'getOfflineBatches'])->name('batches');
         Route::get('/buildings', [BuildingController::class, 'getOfflineBuildings'])->name('buildings');
@@ -307,7 +307,7 @@ Route::middleware(['auth'])->group(function () {
     // ─── SYNCHRONISATION OFFLINE → SERVEUR ───
     // Endpoints appelés par sync-engine.js quand le réseau revient.
     // Auth obligatoire + Gate checks dans le controller.
-    Route::middleware(['auth', 'force.json'])->prefix('api/sync')->name('sync.')->controller(SyncController::class)->group(function () {
+    Route::middleware(['force.json', 'auth'])->prefix('api/sync')->name('sync.')->controller(SyncController::class)->group(function () {
         Route::post('/reconcile', 'reconcile')->name('reconcile');
         Route::post('/daily-checks', 'reconcileDailyCheck')->name('daily_checks');
         Route::post('/egg-collections', 'reconcileEggCollection')->name('egg_collections');

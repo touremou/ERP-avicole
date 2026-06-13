@@ -485,7 +485,17 @@ class BatchController extends Controller
                 ->when($request->query('since'), function ($q, $since) {
                     $q->where('updated_at', '>=', $since);
                 })
-                ->get(['id', 'uuid', 'code', 'building_id', 'current_quantity', 'type', 'updated_at'])
+                ->with('productionType:id,slug')
+                ->get(['id', 'uuid', 'code', 'building_id', 'current_quantity', 'production_type_id', 'updated_at'])
+                ->map(fn (Batch $batch) => [
+                    'id' => $batch->id,
+                    'uuid' => $batch->uuid,
+                    'code' => $batch->code,
+                    'building_id' => $batch->building_id,
+                    'current_quantity' => $batch->current_quantity,
+                    'type' => $batch->type,
+                    'updated_at' => $batch->updated_at,
+                ])
         );
     }
 

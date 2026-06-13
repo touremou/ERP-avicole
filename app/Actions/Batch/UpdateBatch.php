@@ -4,6 +4,7 @@ namespace App\Actions\Batch;
 
 use App\Models\Batch;
 use App\Models\Building;
+use App\Models\ProductionType;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -50,6 +51,23 @@ class UpdateBatch
 
             if (array_key_exists('model_name', $payload) && ! $payload['model_name']) {
                 $payload['model_name'] = 'Non spécifié';
+            }
+
+            // ─── Résolution du type de production (source de vérité) ───
+            // `type` n'est plus une colonne : le slug soumis par le formulaire
+            // est traduit en production_type_id (créé si besoin), sauf si
+            // production_type_id est déjà fourni explicitement.
+            if (isset($payload['type'])) {
+                if (empty($payload['production_type_id'])) {
+                    $payload['production_type_id'] = ProductionType::resolveOrCreate(
+                        $payload['type'],
+                        $batch->species_id
+                    )->id;
+                } else {
+                    $payload['production_type_id'] = (int) $payload['production_type_id'];
+                }
+
+                unset($payload['type']);
             }
 
             // ─── Vérification de capacité si le bâtiment change ───

@@ -71,7 +71,7 @@ class Batch extends Model
         'uuid', 'is_synced', 'last_sync_at',
 
         // Identité
-        'farm_id','code', 'type', 'model_name',
+        'farm_id','code', 'model_name',
 
         // Relations FK
         'building_id', 'employee_id', 'provider_id',
@@ -239,10 +239,9 @@ class Batch extends Model
     protected static function booted(): void
     {
         // Invariant taxonomique : quand un type de production est rattaché, il
-        // est la SOURCE DE VÉRITÉ. On en dérive `type` (slug legacy) et
-        // `species_id` pour que les trois champs ne divergent jamais. S'exécute
-        // avant creating/updating, donc calculateExpectedEndDate voit déjà le
-        // type synchronisé.
+        // est la SOURCE DE VÉRITÉ. On en dérive `species_id` pour que les deux
+        // champs ne divergent jamais. S'exécute avant creating/updating, donc
+        // calculateExpectedEndDate voit déjà la taxonomie synchronisée.
         static::saving(function (Batch $batch) {
             $batch->syncTaxonomyFromProductionType();
         });
@@ -254,7 +253,7 @@ class Batch extends Model
         });
 
         static::updating(function (Batch $batch) {
-            if ($batch->isDirty(['type', 'arrival_date', 'production_type_id'])) {
+            if ($batch->isDirty(['arrival_date', 'production_type_id'])) {
                 $batch->calculateExpectedEndDate();
             }
         });
@@ -264,9 +263,8 @@ class Batch extends Model
     }
 
     /**
-     * Aligne `type` (slug legacy) et `species_id` sur le type de production
-     * rattaché, qui fait foi. Sans effet si aucun production_type_id n'est
-     * défini (lots volaille mono-espèce historiques : `type` reste tel quel).
+     * Aligne `species_id` sur le type de production rattaché, qui fait foi.
+     * Sans effet si aucun production_type_id n'est défini.
      *
      * Ne requête le référentiel qu'à la création ou lorsque le type de
      * production change réellement, pour éviter une requête à chaque save.
@@ -286,8 +284,31 @@ class Batch extends Model
             return;
         }
 
-        $this->type = $productionType->slug;
         $this->species_id = $productionType->species_id;
+    }
+
+    /**
+     * Slug legacy du type de production rattaché (ex. 'chair', 'ponte').
+     *
+     * `type` n'est plus une colonne de `batches` (cf. migration
+     * 2026_06_13_000005_drop_type_column_from_batches) : c'est désormais un
+     * accessor calculé à partir de `productionType`, conservé pour la
+     * compatibilité ascendante avec le code existant (filtres, libellés,
+     * calculs de phase/secteur d'aliment).
+     */
+    public function getTypeAttribute(): ?string
+    {
+        return $this->productionType?->slug;
+    }
+
+    /**
+     * No-op : `type` n'étant plus une colonne, toute affectation directe
+     * (legacy, factories, tests) est silencieusement ignorée. Piloter la
+     * taxonomie via `production_type_id`.
+     */
+    public function setTypeAttribute($value): void
+    {
+        // Intentionnellement vide.
     }
 
     /**
@@ -602,11 +623,11 @@ class Batch extends Model
     }
 
     /**
-     * Filtre par type d'exploitation.
+     * Filtre par type d'exploitation (slug du type de production rattaché).
      */
     public function scopeByType($query, string $type)
     {
-        return $query->where('type', $type);
+        return $query->whereHas('productionType', fn ($q) => $q->where('slug', $type));
     }
 
     /**

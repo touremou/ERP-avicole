@@ -1,20 +1,35 @@
 <?php
 
 use App\Models\Batch;
+use App\Models\ProductionType;
 
-uses(Tests\TestCase::class);
+uses(Tests\TestCase::class, Illuminate\Foundation\Testing\RefreshDatabase::class);
+
+beforeEach(function () {
+    $farm = App\Models\Farm::firstOrCreate(['code' => 'FT-001'], ['name' => 'Ferme Test', 'is_active' => true]);
+    session(['current_farm_id' => $farm->id]);
+});
 
 test('feedSector classe les types volaille dans le bon secteur', function () {
-    expect((new Batch(['type' => 'chair']))->feedSector())->toBe('Chair')
-        ->and((new Batch(['type' => 'poussiniere']))->feedSector())->toBe('Chair')
-        ->and((new Batch(['type' => 'ponte']))->feedSector())->toBe('Ponte')
-        ->and((new Batch(['type' => 'reproducteur']))->feedSector())->toBe('Ponte')
-        ->and((new Batch(['type' => 'repro']))->feedSector())->toBe('Ponte');
+    $chair = Batch::factory()->create(['production_type_id' => ProductionType::resolveOrCreate('chair', null)->id]);
+    $poussiniere = Batch::factory()->create(['production_type_id' => ProductionType::resolveOrCreate('poussiniere', null)->id]);
+    $ponte = Batch::factory()->create(['production_type_id' => ProductionType::resolveOrCreate('ponte', null)->id]);
+    $reproducteur = Batch::factory()->create(['production_type_id' => ProductionType::resolveOrCreate('reproducteur', null)->id]);
+    $repro = Batch::factory()->create(['production_type_id' => ProductionType::resolveOrCreate('repro', null)->id]);
+
+    expect($chair->feedSector())->toBe('Chair')
+        ->and($poussiniere->feedSector())->toBe('Chair')
+        ->and($ponte->feedSector())->toBe('Ponte')
+        ->and($reproducteur->feedSector())->toBe('Ponte')
+        ->and($repro->feedSector())->toBe('Ponte');
 });
 
 test('feedPhases renvoie la liste correspondant au secteur du lot', function () {
-    expect((new Batch(['type' => 'chair']))->feedPhases())->toBe(Batch::FEED_PHASES['Chair'])
-        ->and((new Batch(['type' => 'ponte']))->feedPhases())->toBe(Batch::FEED_PHASES['Ponte']);
+    $chair = Batch::factory()->create(['production_type_id' => ProductionType::resolveOrCreate('chair', null)->id]);
+    $ponte = Batch::factory()->create(['production_type_id' => ProductionType::resolveOrCreate('ponte', null)->id]);
+
+    expect($chair->feedPhases())->toBe(Batch::FEED_PHASES['Chair'])
+        ->and($ponte->feedPhases())->toBe(Batch::FEED_PHASES['Ponte']);
 });
 
 test('FEED_PHASES ne contient que les secteurs Chair et Ponte', function () {

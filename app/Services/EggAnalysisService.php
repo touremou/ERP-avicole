@@ -31,7 +31,7 @@ class EggAnalysisService
 
         // Lots pondeuses actifs
         $layingBatches = Batch::active()
-            ->where('type', 'ponte')
+            ->byType('ponte')
             ->with('building')
             ->get();
 

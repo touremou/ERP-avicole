@@ -5,6 +5,7 @@ namespace App\Actions\Incubation;
 use App\Models\Incubation;
 use App\Models\Batch;
 use App\Models\Incubator;
+use App\Models\ProductionType;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -77,7 +78,7 @@ class StartIncubation
             ['code' => 'EXT-' . strtoupper(\Illuminate\Support\Str::slug($provider->name))],
             [
                 // --- 1. Identifiants et Base ---
-                'type'                   => 'reproducteur',
+                'production_type_id'    => ProductionType::resolveOrCreate('reproducteur', null)->id,
                 'status'                 => 'Actif',
                 'building_id'            => $externalBuilding->id,
                 'provider_id'            => $provider->id,

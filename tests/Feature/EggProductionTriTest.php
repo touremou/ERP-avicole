@@ -70,9 +70,11 @@ class EggProductionTriTest extends TestCase
             ]);
         }
 
+        $productionTypeId = \App\Models\ProductionType::resolveOrCreate('ponte', null)->id;
+
         $batchId = DB::table('batches')->insertGetId([
             'farm_id' => $farm->id, 'code' => 'B-2026-TEST', 'building_id' => $buildingId,
-            'provider_id' => $providerId, 'employee_id' => $employeeId, 'type' => 'ponte',
+            'provider_id' => $providerId, 'employee_id' => $employeeId, 'production_type_id' => $productionTypeId,
             'model_name' => 'Lohmann Brown', 'initial_quantity' => 1000, 'current_quantity' => 1000,
             'qty_males' => 0, 'qty_females' => 1000, 'mating_ratio' => 0, 'qty_dead' => 0,
             'chick_state' => 'Excellent', 'production_phase' => 'ponte',

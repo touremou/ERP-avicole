@@ -4,6 +4,7 @@ use App\Models\Batch;
 use App\Models\Building;
 use App\Models\Employee;
 use App\Models\Permission;
+use App\Models\ProductionType;
 use App\Models\Protocol;
 use App\Models\Provider;
 use App\Models\Role;
@@ -114,10 +115,10 @@ test('transférer un lot change le building_id', function () {
     $building2 = Building::factory()->create(['type' => 'chair']);
 
     $batch = Batch::factory()->create([
-        'building_id'      => $this->building->id,
-        'status'           => 'Actif',
-        'current_quantity' => 500,
-        'type'             => 'chair',
+        'building_id'        => $this->building->id,
+        'status'             => 'Actif',
+        'current_quantity'   => 500,
+        'production_type_id' => ProductionType::resolveOrCreate('chair', null)->id,
     ]);
 
     $this->actingAs($this->managerUser)

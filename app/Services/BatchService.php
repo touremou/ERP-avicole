@@ -3,6 +3,7 @@ namespace App\Services;
 
 use App\Models\Batch;
 use App\Models\Building;
+use App\Models\ProductionType;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
@@ -27,7 +28,7 @@ class BatchService
                 ['uuid' => $data['uuid'] ?? (string) \Illuminate\Support\Str::uuid()],
                 [
                     'code' => $data['code'],
-                    'type' => $data['type'],
+                    'production_type_id' => ProductionType::resolveOrCreate($data['type'], $data['species_id'] ?? null)->id,
                     'building_id' => $data['building_id'],
                     'employee_id' => $data['employee_id'],
                     'provider_id' => $data['provider_id'],
