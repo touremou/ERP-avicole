@@ -4,8 +4,8 @@
             <div class="flex items-center gap-4">
                 <a href="{{ route('tasks.index') }}" class="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-900 hover:text-white transition-all no-underline"><i class="fa-solid fa-arrow-left"></i></a>
                 <div>
-                    <h2 class="text-lg font-black text-slate-800 uppercase italic tracking-tighter leading-none">Templates de Tâches</h2>
-                    <p class="text-[9px] font-bold text-slate-400 uppercase mt-1 tracking-widest italic">Configuration des routines automatisées</p>
+                    <h2 class="text-lg font-black text-slate-800 uppercase italic tracking-tighter leading-none">{{ __("Templates de Tâches") }}</h2>
+                    <p class="text-[9px] font-bold text-slate-400 uppercase mt-1 tracking-widest italic">{{ __("Configuration des routines automatisées") }}</p>
                 </div>
             </div>
         </div>
@@ -23,7 +23,7 @@
             {{-- BOUTON + FORMULAIRE CRÉATION --}}
             <div class="mb-6">
                 <button @click="showForm = !showForm" class="w-full bg-white border-2 border-dashed border-slate-200 hover:border-indigo-400 rounded-2xl p-4 text-[10px] font-black text-slate-400 hover:text-indigo-600 uppercase tracking-widest transition-all cursor-pointer" :class="showForm && 'border-indigo-400 text-indigo-600'">
-                    <i class="fa-solid fa-plus mr-2"></i> <span x-text="showForm ? 'Masquer le formulaire' : 'Créer un nouveau template'"></span>
+                    <i class="fa-solid fa-plus mr-2"></i> <span x-text="showForm ? '{{ __("Masquer le formulaire") }}' : '{{ __("Créer un nouveau template") }}'"></span>
                 </button>
 
                 <div x-show="showForm" x-collapse class="mt-4">
@@ -31,55 +31,55 @@
                         @csrf
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div class="md:col-span-2">
-                                <label class="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Nom de la tâche</label>
-                                <input type="text" name="name" required placeholder="Ex: Alimentation matin, Pesée hebdo..." class="w-full bg-slate-50 border-none rounded-xl p-3 text-xs font-black shadow-inner outline-none">
+                                <label class="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">{{ __("Nom de la tâche") }}</label>
+                                <input type="text" name="name" required placeholder="{{ __("Ex: Alimentation matin, Pesée hebdo...") }}" class="w-full bg-slate-50 border-none rounded-xl p-3 text-xs font-black shadow-inner outline-none">
                             </div>
                             <div>
-                                <label class="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Catégorie</label>
+                                <label class="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">{{ __("Catégorie") }}</label>
                                 <select name="category" required class="w-full bg-slate-50 border-none rounded-xl p-3 text-xs font-black uppercase shadow-inner outline-none">
-                                    <option value="alimentation">🌾 Alimentation</option>
-                                    <option value="collecte">🥚 Collecte</option>
-                                    <option value="controle">📋 Contrôle</option>
-                                    <option value="nettoyage">🧹 Nettoyage</option>
-                                    <option value="sante">💉 Santé</option>
-                                    <option value="maintenance">🔧 Maintenance</option>
+                                    <option value="alimentation">🌾 {{ __("Alimentation") }}</option>
+                                    <option value="collecte">🥚 {{ __("Collecte") }}</option>
+                                    <option value="controle">📋 {{ __("Contrôle") }}</option>
+                                    <option value="nettoyage">🧹 {{ __("Nettoyage") }}</option>
+                                    <option value="sante">💉 {{ __("Santé") }}</option>
+                                    <option value="maintenance">🔧 {{ __("Maintenance") }}</option>
                                 </select>
                             </div>
                         </div>
 
                         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                             <div>
-                                <label class="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Fréquence</label>
+                                <label class="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">{{ __("Fréquence") }}</label>
                                 <select name="frequency" required class="w-full bg-slate-50 border-none rounded-xl p-3 text-xs font-black shadow-inner outline-none">
-                                    <option value="quotidien">Quotidien</option>
-                                    <option value="hebdo">Hebdomadaire</option>
-                                    <option value="mensuel">Mensuel</option>
+                                    <option value="quotidien">{{ __("Quotidien") }}</option>
+                                    <option value="hebdo">{{ __("Hebdomadaire") }}</option>
+                                    <option value="mensuel">{{ __("Mensuel") }}</option>
                                 </select>
                             </div>
                             <div>
-                                <label class="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Heure</label>
+                                <label class="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">{{ __("Heure") }}</label>
                                 <input type="time" name="scheduled_time" class="w-full bg-slate-50 border-none rounded-xl p-3 text-xs font-black shadow-inner outline-none">
                             </div>
                             <div>
-                                <label class="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Durée</label>
+                                <label class="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">{{ __("Durée") }}</label>
                                 <input type="number" name="duration_minutes" value="30" min="5" max="480" class="w-full bg-slate-50 border-none rounded-xl p-3 text-xs font-black shadow-inner outline-none text-center">
                             </div>
                             <div>
-                                <label class="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Priorité</label>
+                                <label class="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">{{ __("Priorité") }}</label>
                                 <select name="priority" class="w-full bg-slate-50 border-none rounded-xl p-3 text-xs font-black shadow-inner outline-none">
-                                    <option value="normale">Normale</option>
-                                    <option value="haute">Haute</option>
-                                    <option value="critique">Critique</option>
-                                    <option value="basse">Basse</option>
+                                    <option value="normale">{{ __("Normale") }}</option>
+                                    <option value="haute">{{ __("Haute") }}</option>
+                                    <option value="critique">{{ __("Critique") }}</option>
+                                    <option value="basse">{{ __("Basse") }}</option>
                                 </select>
                             </div>
                         </div>
 
                         {{-- JOURS --}}
                         <div>
-                            <label class="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-2">Jours d'exécution</label>
+                            <label class="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-2">{{ __("Jours d'exécution") }}</label>
                             <div class="flex gap-2">
-                                @foreach(['1' => 'Lun', '2' => 'Mar', '3' => 'Mer', '4' => 'Jeu', '5' => 'Ven', '6' => 'Sam', '7' => 'Dim'] as $n => $label)
+                                @foreach(['1' => __('Lun'), '2' => __('Mar'), '3' => __('Mer'), '4' => __('Jeu'), '5' => __('Ven'), '6' => __('Sam'), '7' => __('Dim')] as $n => $label)
                                 <label class="cursor-pointer">
                                     <input type="checkbox" name="days_of_week[]" value="{{ $n }}" {{ $n <= 6 ? 'checked' : '' }} class="hidden peer">
                                     <div class="w-10 h-10 rounded-xl flex items-center justify-center text-[9px] font-black uppercase bg-slate-50 text-slate-400 peer-checked:bg-indigo-500 peer-checked:text-white transition-all shadow-inner">{{ $label }}</div>
@@ -91,10 +91,10 @@
                         <div class="grid grid-cols-2 gap-4">
                             <label class="flex items-center gap-3 p-3 bg-slate-50 rounded-xl cursor-pointer">
                                 <input type="checkbox" name="per_building" value="1" checked class="rounded text-indigo-500">
-                                <span class="text-[9px] font-black text-slate-600 uppercase">Générer par bâtiment actif</span>
+                                <span class="text-[9px] font-black text-slate-600 uppercase">{{ __("Générer par bâtiment actif") }}</span>
                             </label>
                             <div>
-                                <label class="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Types de lots (optionnel)</label>
+                                <label class="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">{{ __("Types de lots (optionnel)") }}</label>
                                 <div class="flex gap-2">
                                     @foreach(['ponte', 'chair', 'reproducteur', 'poussiniere'] as $t)
                                     <label class="cursor-pointer">
@@ -106,10 +106,10 @@
                             </div>
                         </div>
 
-                        <textarea name="description" rows="2" placeholder="Description optionnelle..." class="w-full bg-slate-50 border-none rounded-xl p-3 text-xs font-bold shadow-inner outline-none"></textarea>
+                        <textarea name="description" rows="2" placeholder="{{ __("Description optionnelle...") }}" class="w-full bg-slate-50 border-none rounded-xl p-3 text-xs font-bold shadow-inner outline-none"></textarea>
 
                         <button type="submit" class="w-full bg-indigo-600 text-white py-3 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-indigo-700 border-none cursor-pointer shadow-lg italic">
-                            <i class="fa-solid fa-plus mr-1"></i> Créer le template
+                            <i class="fa-solid fa-plus mr-1"></i> {{ __("Créer le template") }}
                         </button>
                     </form>
                 </div>
@@ -119,14 +119,14 @@
             @php
                 $grouped = $templates->groupBy('category');
                 $catMeta = [
-                    'alimentation' => ['label' => 'Alimentation',  'icon' => 'fa-bowl-food',        'color' => 'amber'],
-                    'collecte'     => ['label' => 'Collecte',      'icon' => 'fa-egg',              'color' => 'emerald'],
-                    'controle'     => ['label' => 'Contrôles',     'icon' => 'fa-clipboard-check',  'color' => 'blue'],
-                    'nettoyage'    => ['label' => 'Nettoyage',     'icon' => 'fa-broom',            'color' => 'purple'],
-                    'sante'        => ['label' => 'Santé',         'icon' => 'fa-heart-pulse',      'color' => 'rose'],
-                    'maintenance'  => ['label' => 'Maintenance',   'icon' => 'fa-wrench',           'color' => 'slate'],
+                    'alimentation' => ['label' => __('Alimentation'),  'icon' => 'fa-bowl-food',        'color' => 'amber'],
+                    'collecte'     => ['label' => __('Collecte'),      'icon' => 'fa-egg',              'color' => 'emerald'],
+                    'controle'     => ['label' => __('Contrôles'),     'icon' => 'fa-clipboard-check',  'color' => 'blue'],
+                    'nettoyage'    => ['label' => __('Nettoyage'),     'icon' => 'fa-broom',            'color' => 'purple'],
+                    'sante'        => ['label' => __('Santé'),         'icon' => 'fa-heart-pulse',      'color' => 'rose'],
+                    'maintenance'  => ['label' => __('Maintenance'),   'icon' => 'fa-wrench',           'color' => 'slate'],
                 ];
-                $dayLabels = [1 => 'L', 2 => 'M', 3 => 'Me', 4 => 'J', 5 => 'V', 6 => 'S', 7 => 'D'];
+                $dayLabels = [1 => __('L'), 2 => __('M'), 3 => __('Me'), 4 => __('J'), 5 => __('V'), 6 => __('S'), 7 => __('D')];
             @endphp
 
             <div class="space-y-5 text-left">
@@ -172,15 +172,15 @@
 
                             {{-- ACTIONS --}}
                             <div class="flex items-center gap-1.5 shrink-0">
-                                <a href="{{ route('tasks.templates.edit', $tpl) }}" class="w-7 h-7 rounded-lg bg-slate-50 text-slate-400 hover:bg-blue-50 hover:text-blue-600 flex items-center justify-center no-underline transition-all" title="Modifier"><i class="fa-solid fa-pen text-[8px]"></i></a>
+                                <a href="{{ route('tasks.templates.edit', $tpl) }}" class="w-7 h-7 rounded-lg bg-slate-50 text-slate-400 hover:bg-blue-50 hover:text-blue-600 flex items-center justify-center no-underline transition-all" title="{{ __("Modifier") }}"><i class="fa-solid fa-pen text-[8px]"></i></a>
                                 <form method="POST" action="{{ route('tasks.templates.toggle', $tpl) }}">@csrf
-                                    <button class="w-7 h-7 rounded-lg flex items-center justify-center border-none cursor-pointer transition-all {{ $tpl->is_active ? 'bg-emerald-50 text-emerald-500 hover:bg-red-50 hover:text-red-500' : 'bg-slate-50 text-slate-300 hover:bg-emerald-50 hover:text-emerald-500' }}" title="{{ $tpl->is_active ? 'Désactiver' : 'Activer' }}">
+                                    <button class="w-7 h-7 rounded-lg flex items-center justify-center border-none cursor-pointer transition-all {{ $tpl->is_active ? 'bg-emerald-50 text-emerald-500 hover:bg-red-50 hover:text-red-500' : 'bg-slate-50 text-slate-300 hover:bg-emerald-50 hover:text-emerald-500' }}" title="{{ $tpl->is_active ? __('Désactiver') : __('Activer') }}">
                                         <i class="fa-solid {{ $tpl->is_active ? 'fa-toggle-on' : 'fa-toggle-off' }} text-[10px]"></i>
                                     </button>
                                 </form>
                                 @can('admin.S')
-                                <form method="POST" action="{{ route('tasks.templates.destroy', $tpl) }}" onsubmit="return confirm('Supprimer ce template ?')">@csrf @method('DELETE')
-                                    <button class="w-7 h-7 rounded-lg bg-transparent text-slate-200 hover:text-red-500 flex items-center justify-center border-none cursor-pointer transition-all" title="Supprimer"><i class="fa-solid fa-trash-can text-[8px]"></i></button>
+                                <form method="POST" action="{{ route('tasks.templates.destroy', $tpl) }}" onsubmit="return confirm('{{ __("Supprimer ce template ?") }}')">@csrf @method('DELETE')
+                                    <button class="w-7 h-7 rounded-lg bg-transparent text-slate-200 hover:text-red-500 flex items-center justify-center border-none cursor-pointer transition-all" title="{{ __("Supprimer") }}"><i class="fa-solid fa-trash-can text-[8px]"></i></button>
                                 </form>
                                 @endcan
                             </div>

@@ -8,27 +8,27 @@
 
                 <div>
                     <h2 class="text-2xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">
-                        🗄️ Archives & Corbeille
+                        🗄️ {{ __("Archives & Corbeille") }}
                     </h2>
                     <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-2 italic leading-none">
-                        Restauration des entités système supprimées
+                        {{ __("Restauration des entités système supprimées") }}
                     </p>
                 </div>
             </div>
 
             <div class="flex items-center gap-6">
                 <span class="hidden lg:block text-[9px] font-black text-slate-400 uppercase italic tracking-[0.3em] animate-pulse">
-                    ● Mode Restauration Système Actif
+                    ● {{ __("Mode Restauration Système Actif") }}
                 </span>
 
                 {{-- BOUTON VIDER TOUT --}}
                 @if($employees->count() > 0 || $buildings->count() > 0 || $providers->count() > 0)
-                    <form action="{{ route('trash.clearAll') }}" method="POST" onsubmit="return confirm('⚠️ ACTION IRRÉVERSIBLE : Voulez-vous vraiment supprimer DÉFINITIVEMENT tous les éléments de la corbeille ?');">
+                    <form action="{{ route('trash.clearAll') }}" method="POST" onsubmit="return confirm('{{ __("⚠️ ACTION IRRÉVERSIBLE : Voulez-vous vraiment supprimer DÉFINITIVEMENT tous les éléments de la corbeille ?") }}');">
                         @csrf
                         @method('DELETE')
                         <button type="submit" class="flex items-center gap-3 px-6 py-4 bg-slate-900 text-rose-500 rounded-2xl text-[10px] font-black uppercase italic tracking-widest hover:bg-rose-600 hover:text-white transition-all shadow-2xl group border-none cursor-pointer">
                             <i class="fas fa-dumpster-fire group-hover:animate-bounce"></i>
-                            Purger la corbeille
+                            {{ __("Purger la corbeille") }}
                         </button>
                     </form>
                 @endif
@@ -43,7 +43,7 @@
             <section class="text-left">
                 <div class="flex items-center gap-4 mb-8">
                     <div class="h-8 w-1.5 bg-blue-600 rounded-full"></div>
-                    <h3 class="text-[11px] font-black text-slate-800 uppercase tracking-[0.2em] italic">Ressources Humaines : Agents Archivés</h3>
+                    <h3 class="text-[11px] font-black text-slate-800 uppercase tracking-[0.2em] italic">{{ __("Ressources Humaines : Agents Archivés") }}</h3>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     @forelse($employees as $e)
@@ -54,7 +54,7 @@
                                 </div>
                                 <div>
                                     <p class="text-sm font-black text-slate-800 uppercase leading-none tracking-tighter">{{ $e->first_name }} {{ $e->last_name }}</p>
-                                    <p class="text-[9px] text-slate-400 uppercase italic mt-2 leading-none font-black">Effacé le {{ $e->deleted_at->format('d/m/Y') }}</p>
+                                    <p class="text-[9px] text-slate-400 uppercase italic mt-2 leading-none font-black">{{ __("Effacé le") }} {{ $e->deleted_at->format('d/m/Y') }}</p>
                                 </div>
                             </div>
                             <form action="{{ route('trash.restore', ['employee', $e->id]) }}" method="POST">
@@ -67,7 +67,7 @@
                     @empty
                         <div class="col-span-full bg-slate-50/50 border-2 border-dashed border-slate-100 rounded-[3rem] py-16 text-center">
                             <i class="fas fa-user-slash text-slate-200 text-4xl mb-4 block"></i>
-                            <p class="text-[10px] text-slate-300 uppercase italic tracking-widest font-black">RH : Index Corbeille Vierge</p>
+                            <p class="text-[10px] text-slate-300 uppercase italic tracking-widest font-black">{{ __("RH : Index Corbeille Vierge") }}</p>
                         </div>
                     @endforelse
                 </div>
@@ -77,7 +77,7 @@
             <section class="text-left">
                 <div class="flex items-center gap-4 mb-8">
                     <div class="h-8 w-1.5 bg-emerald-500 rounded-full"></div>
-                    <h3 class="text-[11px] font-black text-slate-800 uppercase tracking-[0.2em] italic">Infrastructure : Bâtiments Déconnectés</h3>
+                    <h3 class="text-[11px] font-black text-slate-800 uppercase tracking-[0.2em] italic">{{ __("Infrastructure : Bâtiments Déconnectés") }}</h3>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     @forelse($buildings as $b)
@@ -88,7 +88,7 @@
                                 </div>
                                 <div>
                                     <p class="text-sm font-black text-slate-800 uppercase leading-none tracking-tighter">{{ $b->name }}</p>
-                                    <p class="text-[9px] text-slate-400 uppercase italic mt-2 leading-none font-black tracking-widest">Zone Hors-ligne</p>
+                                    <p class="text-[9px] text-slate-400 uppercase italic mt-2 leading-none font-black tracking-widest">{{ __("Zone Hors-ligne") }}</p>
                                 </div>
                             </div>
                             <form action="{{ route('trash.restore', ['building', $b->id]) }}" method="POST">
@@ -101,7 +101,7 @@
                     @empty
                         <div class="col-span-full bg-slate-50/50 border-2 border-dashed border-slate-100 rounded-[3rem] py-16 text-center">
                             <i class="fas fa-map-marked-alt text-slate-200 text-4xl mb-4 block"></i>
-                            <p class="text-[10px] text-slate-300 uppercase italic tracking-widest font-black">Logistique : Aucune unité détectée</p>
+                            <p class="text-[10px] text-slate-300 uppercase italic tracking-widest font-black">{{ __("Logistique : Aucune unité détectée") }}</p>
                         </div>
                     @endforelse
                 </div>
@@ -111,7 +111,7 @@
             <section class="text-left">
                 <div class="flex items-center gap-4 mb-8">
                     <div class="h-8 w-1.5 bg-orange-500 rounded-full"></div>
-                    <h3 class="text-[11px] font-black text-slate-800 uppercase tracking-[0.2em] italic">Partenariats : Fournisseurs Suspendus</h3>
+                    <h3 class="text-[11px] font-black text-slate-800 uppercase tracking-[0.2em] italic">{{ __("Partenariats : Fournisseurs Suspendus") }}</h3>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     @forelse($providers as $p)
@@ -122,7 +122,7 @@
                                 </div>
                                 <div>
                                     <p class="text-sm font-black text-slate-800 uppercase leading-none tracking-tighter">{{ $p->name }}</p>
-                                    <p class="text-[9px] text-slate-400 uppercase italic mt-2 leading-none font-black tracking-widest">Rupture : {{ $p->deleted_at->diffForHumans() }}</p>
+                                    <p class="text-[9px] text-slate-400 uppercase italic mt-2 leading-none font-black tracking-widest">{{ __("Rupture") }} : {{ $p->deleted_at->diffForHumans() }}</p>
                                 </div>
                             </div>
                             <form action="{{ route('trash.restore', ['provider', $p->id]) }}" method="POST">
@@ -135,7 +135,7 @@
                     @empty
                         <div class="col-span-full bg-slate-50/50 border-2 border-dashed border-slate-100 rounded-[3rem] py-16 text-center">
                             <i class="fas fa-box-open text-slate-200 text-4xl mb-4 block"></i>
-                            <p class="text-[10px] text-slate-300 uppercase italic tracking-widest font-black">Fournisseurs : Flux archives vide</p>
+                            <p class="text-[10px] text-slate-300 uppercase italic tracking-widest font-black">{{ __("Fournisseurs : Flux archives vide") }}</p>
                         </div>
                     @endforelse
                 </div>

@@ -6,8 +6,8 @@
                     <i class="fa-solid fa-arrow-left"></i>
                 </a>
                 <div>
-                    <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">Sources d'Eau</h2>
-                    <p class="text-[10px] font-black text-cyan-600 uppercase tracking-[0.2em] mt-2 italic">SEEG, forage, citernes — Configuration</p>
+                    <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">{{ __("Sources d'Eau") }}</h2>
+                    <p class="text-[10px] font-black text-cyan-600 uppercase tracking-[0.2em] mt-2 italic">{{ __("SEEG, forage, citernes — Configuration") }}</p>
                 </div>
             </div>
         </div>
@@ -42,7 +42,7 @@
                             </div>
                             <div>
                                 <p class="text-sm font-black text-slate-900 uppercase italic">{{ $source->name }}</p>
-                                <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest">{{ $source->type_label }} — {{ $source->readings_count }} relevé(s)</p>
+                                <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest">{{ $source->type_label }} — {{ __(":count relevé(s)", ['count' => $source->readings_count]) }}</p>
                             </div>
                         </div>
                         
@@ -56,12 +56,12 @@
                             
                             {{-- 💡 ACTIONS : MODIFIER / SUPPRIMER --}}
                             <div class="flex items-center gap-1 border-l border-slate-200/50 pl-2">
-                                <a href="{{ route('utilities.water.sources.edit', $source->id) }}" class="w-6 h-6 rounded-lg bg-slate-100 text-slate-400 hover:bg-blue-500 hover:text-white flex items-center justify-center transition-all shadow-sm" title="Modifier">
+                                <a href="{{ route('utilities.water.sources.edit', $source->id) }}" class="w-6 h-6 rounded-lg bg-slate-100 text-slate-400 hover:bg-blue-500 hover:text-white flex items-center justify-center transition-all shadow-sm" title="{{ __('Modifier') }}">
                                     <i class="fa-solid fa-pen text-[9px]"></i>
                                 </a>
-                                <form method="POST" action="{{ route('utilities.water.sources.destroy', $source->id) }}" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer définitivement cette source d\'eau ?');">
+                                <form method="POST" action="{{ route('utilities.water.sources.destroy', $source->id) }}" onsubmit="return confirm('{{ __("Êtes-vous sûr de vouloir supprimer définitivement cette source d'eau ?") }}');">
                                     @csrf @method('DELETE')
-                                    <button type="submit" class="w-6 h-6 rounded-lg bg-slate-100 text-slate-400 hover:bg-red-500 hover:text-white flex items-center justify-center transition-all shadow-sm border-none cursor-pointer" title="Supprimer">
+                                    <button type="submit" class="w-6 h-6 rounded-lg bg-slate-100 text-slate-400 hover:bg-red-500 hover:text-white flex items-center justify-center transition-all shadow-sm border-none cursor-pointer" title="{{ __('Supprimer') }}">
                                         <i class="fa-solid fa-trash text-[9px]"></i>
                                     </button>
                                 </form>
@@ -84,33 +84,33 @@
             @can('ressources.C')
             <div class="bg-cyan-50 p-8 rounded-[3rem] border border-cyan-200">
                 <h3 class="text-[10px] font-black text-cyan-600 uppercase tracking-widest mb-6 flex items-center gap-2">
-                    <i class="fa-solid fa-plus"></i> Ajouter une source d'eau
+                    <i class="fa-solid fa-plus"></i> {{ __("Ajouter une source d'eau") }}
                 </h3>
                 <form method="POST" action="{{ route('utilities.water.sources.store') }}" class="space-y-4">
                     @csrf
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div class="space-y-2">
-                            <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">Nom *</label>
-                            <input type="text" name="name" required placeholder="Citerne Bât. A, Forage principal..."
+                            <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Nom") }} *</label>
+                            <input type="text" name="name" required placeholder="{{ __('Citerne Bât. A, Forage principal...') }}"
                                 class="w-full bg-white border-none rounded-2xl p-4 text-sm font-black shadow-sm outline-none">
                         </div>
                         <div class="space-y-2">
-                            <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">Type *</label>
+                            <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Type") }} *</label>
                             <select name="type" required class="w-full bg-white border-none rounded-2xl p-4 text-xs font-black uppercase shadow-sm outline-none appearance-none">
-                                <option value="seeg">SEEG (Réseau)</option>
-                                <option value="forage">Forage</option>
-                                <option value="citerne">Citerne</option>
-                                <option value="camion">Camion-citerne</option>
+                                <option value="seeg">{{ __("SEEG (Réseau)") }}</option>
+                                <option value="forage">{{ __("Forage") }}</option>
+                                <option value="citerne">{{ __("Citerne") }}</option>
+                                <option value="camion">{{ __("Camion-citerne") }}</option>
                             </select>
                         </div>
                         <div class="space-y-2">
-                            <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">Capacité (litres)</label>
-                            <input type="number" name="capacity_liters" min="0" placeholder="Ex: 10000"
+                            <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Capacité (litres)") }}</label>
+                            <input type="number" name="capacity_liters" min="0" placeholder="{{ __('Ex: 10000') }}"
                                 class="w-full bg-white border-none rounded-2xl p-4 text-sm font-black shadow-sm outline-none">
                         </div>
                     </div>
                     <button type="submit" class="bg-cyan-500 text-white px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-cyan-600 transition-all border-none cursor-pointer shadow-lg">
-                        <i class="fa-solid fa-faucet-drip mr-2"></i> Enregistrer
+                        <i class="fa-solid fa-faucet-drip mr-2"></i> {{ __("Enregistrer") }}
                     </button>
                 </form>
             </div>
