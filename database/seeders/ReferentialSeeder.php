@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Batch;
 use App\Models\Formula;
 use App\Models\FoodNorm;
 use App\Models\Farm;
@@ -33,6 +34,7 @@ class ReferentialSeeder extends Seeder
         $this->seedProtocols();
         $this->seedGrowthCurves();
         $this->seedSampleFormulas();
+        $this->seedFeedPhaseFormulas();
     }
 
     // ─────────────────────────────────────────────
@@ -128,6 +130,35 @@ class ReferentialSeeder extends Seeder
             ['tilapia_grossissement',  'Tilapia — Grossissement',     'Grossissement', 3000, 30, 0.0, 0.0, 1.50, 1.00, 7000],
             ['silure_alevinage',       'Silure — Alevinage',          'Démarrage', 3300, 45, 0.0,  0.0,  1.60, 1.20, 9500],
             ['silure_grossissement',   'Silure — Grossissement',      'Grossissement', 3200, 35, 0.0, 0.0, 1.50, 1.00, 8000],
+
+            // ── Normes génériques par phase de secteur (cf. Batch::FEED_PHASES) ──
+            // Ponte (phases manquantes ; 'ponte_demarrage' et 'ponte' existent déjà)
+            ['ponte_croissance',       'Ponte — Croissance (Poulette)','Croissance', 2850, 16, 0.75, 0.35, 0.90, 0.55, 4800],
+            ['ponte_entretien',        'Ponte — Entretien (Phase 2)', 'Entretien', 2700, 15.5, 0.70, 0.34, 3.60, 0.42, 4700],
+
+            // Reproducteur (ruminants/porc/lapin reproducteurs)
+            ['reproducteur_entretien', 'Reproducteur — Entretien',    'Entretien', 2400, 12, 0.0,  0.0,  0.50, 0.30, 3000],
+            ['reproducteur_gestation', 'Reproducteur — Gestation',    'Gestation', 2500, 13, 0.0,  0.0,  0.60, 0.35, 3200],
+            ['reproducteur_lactation', 'Reproducteur — Lactation',    'Lactation', 2700, 15, 0.0,  0.0,  0.90, 0.45, 3600],
+
+            // Engraissement (générique multiespèce ruminants/porc/lapin)
+            ['engraissement_demarrage','Engraissement — Démarrage',   'Démarrage', 2700, 16, 0.0,  0.0,  0.70, 0.40, 3800],
+            ['engraissement_croissance','Engraissement — Croissance', 'Croissance', 2650, 15, 0.0,  0.0,  0.65, 0.38, 3600],
+            ['engraissement_finition', 'Engraissement — Finition',    'Finition', 2600, 13, 0.0,  0.0,  0.60, 0.35, 3400],
+
+            // Laitière (générique bovins/caprins)
+            ['laitiere_preparation',   'Laitière — Préparation vêlage','Préparation', 2700, 14, 0.0, 0.0, 0.60, 0.40, 3700],
+            ['laitiere_lactation',     'Laitière — Lactation',        'Lactation', 2850, 17, 0.0,  0.0,  1.00, 0.55, 4200],
+            ['laitiere_tarissement',   'Laitière — Tarissement',      'Tarissement', 2400, 12, 0.0, 0.0, 0.40, 0.30, 3000],
+
+            // Grossissement (générique aquaculture)
+            ['grossissement_pre',      'Grossissement — Pré-grossissement','Pré-grossissement', 3000, 35, 0.0, 0.0, 1.60, 1.10, 7800],
+            ['grossissement',          'Grossissement — Grossissement','Grossissement', 2950, 28, 0.0, 0.0, 1.40, 1.00, 7000],
+            ['grossissement_finition', 'Grossissement — Finition',    'Finition', 2900, 25, 0.0,  0.0,  1.30, 0.90, 6500],
+
+            // Alevinage (générique aquaculture)
+            ['alevinage_1',            'Alevinage — 1er âge',         '1er âge', 3300, 42, 0.0,  0.0,  1.60, 1.20, 9800],
+            ['alevinage_2',            'Alevinage — 2e âge',          '2e âge', 3200, 38, 0.0,  0.0,  1.50, 1.10, 9000],
         ];
 
         foreach ($norms as [$type, $name, $phase, $em, $pb, $lys, $meth, $ca, $p, $price]) {
@@ -402,6 +433,163 @@ class ReferentialSeeder extends Seeder
         $materials = RawMaterial::pluck('id', 'name');
 
         foreach ($recipes as $code => [$name, $targetType, $speciesSlug, $ptSlug, $composition]) {
+            $species = Species::where('slug', $speciesSlug)->first();
+            $pt = $species
+                ? ProductionType::where('species_id', $species->id)->where('slug', $ptSlug)->first()
+                : null;
+
+            $formula = Formula::updateOrCreate(
+                ['code' => $code],
+                [
+                    'farm_id'            => $this->farmId,
+                    'name'               => $name,
+                    'target_type'        => $targetType,
+                    'species_id'         => $species?->id,
+                    'production_type_id' => $pt?->id,
+                    'total_batch_weight' => 1000,
+                    'is_active'          => true,
+                ]
+            );
+
+            $formula->items()->delete();
+            foreach ($composition as $matName => $pct) {
+                if (! isset($materials[$matName])) {
+                    continue;
+                }
+                $formula->items()->create([
+                    'farm_id'         => $this->farmId,
+                    'raw_material_id' => $materials[$matName],
+                    'percentage'      => $pct,
+                    'quantity_kg'     => ($pct / 100) * 1000,
+                ]);
+            }
+        }
+    }
+
+    // ─────────────────────────────────────────────
+    // 6. FORMULES GÉNÉRIQUES PAR PHASE D'ALIMENT
+    //    (1 recette par phase de Batch::FEED_PHASES, cf. target_type
+    //    alignés sur les FoodNorm génériques ajoutées dans seedFoodNorms)
+    // ─────────────────────────────────────────────
+    private function seedFeedPhaseFormulas(): void
+    {
+        // secteur => [species_slug, production_type_slug] représentatifs
+        $sectorPt = [
+            'Chair'         => ['poulet', 'chair'],
+            'Ponte'         => ['poulet', 'ponte'],
+            'Reproducteur'  => ['mouton', 'reproducteur'],
+            'Engraissement' => ['mouton', 'engraissement'],
+            'Laitière'      => ['vache', 'laitiere'],
+            'Grossissement' => ['tilapia', 'grossissement'],
+            'Alevinage'     => ['tilapia', 'alevinage'],
+        ];
+
+        // code => [secteur, nom de phase (Batch::FEED_PHASES), target_type (FoodNorm.animal_type), [matière => %]]
+        $recipes = [
+            // ── Chair ──
+            'FEED-CH-DEM' => ['Chair', 'Chair Démarrage', 'chair', [
+                'Maïs jaune' => 50, 'Tourteau de soja' => 28, 'Son de blé' => 10, 'Farine de poisson' => 5,
+                'Huile de palme' => 1, 'Coquilles / Calcaire' => 2, 'Phosphate bicalcique' => 1, 'CMV (compl. minéral vitaminé)' => 2, 'Sel' => 1,
+            ]],
+            'FEED-CH-CRO' => ['Chair', 'Chair Croissance', 'chair_croissance', [
+                'Maïs jaune' => 55, 'Tourteau de soja' => 24, 'Son de blé' => 10, 'Farine de poisson' => 4,
+                'Huile de palme' => 2, 'Coquilles / Calcaire' => 2, 'Phosphate bicalcique' => 1, 'CMV (compl. minéral vitaminé)' => 1.5, 'Sel' => 0.5,
+            ]],
+            'FEED-CH-FIN' => ['Chair', 'Chair Finition', 'chair_finition', [
+                'Maïs jaune' => 62, 'Tourteau de soja' => 22, 'Son de blé' => 6, 'Huile de palme' => 3,
+                'Coquilles / Calcaire' => 2, 'Phosphate bicalcique' => 2, 'CMV (compl. minéral vitaminé)' => 2, 'Sel' => 1,
+            ]],
+
+            // ── Ponte ──
+            'FEED-PO-DEM' => ['Ponte', 'Ponte Démarrage (Poussin)', 'ponte_demarrage', [
+                'Maïs jaune' => 52, 'Tourteau de soja' => 26, 'Son de blé' => 12, 'Farine de poisson' => 4,
+                'Coquilles / Calcaire' => 3, 'Phosphate bicalcique' => 1, 'CMV (compl. minéral vitaminé)' => 1.5, 'Sel' => 0.5,
+            ]],
+            'FEED-PO-CRO' => ['Ponte', 'Ponte Croissance (Poulette)', 'ponte_croissance', [
+                'Maïs jaune' => 50, 'Son de blé' => 21.5, 'Tourteau de soja' => 16, 'Tourteau de palmiste' => 6,
+                'Coquilles / Calcaire' => 4, 'Phosphate bicalcique' => 1, 'CMV (compl. minéral vitaminé)' => 1, 'Sel' => 0.5,
+            ]],
+            'FEED-PO-PIC' => ['Ponte', 'Ponte 1 (Pic de ponte)', 'ponte', [
+                'Maïs jaune' => 55, 'Tourteau de soja' => 18, 'Son de blé' => 12, 'Coquilles / Calcaire' => 9,
+                'Farine de poisson' => 3, 'CMV (compl. minéral vitaminé)' => 2, 'Sel' => 1,
+            ]],
+            'FEED-PO-ENT' => ['Ponte', 'Ponte 2 (Entretien)', 'ponte_entretien', [
+                'Maïs jaune' => 50, 'Son de blé' => 20, 'Tourteau de soja' => 14, 'Tourteau de palmiste' => 5,
+                'Coquilles / Calcaire' => 9, 'Phosphate bicalcique' => 0.5, 'CMV (compl. minéral vitaminé)' => 1, 'Sel' => 0.5,
+            ]],
+
+            // ── Reproducteur ──
+            'FEED-REP-ENT' => ['Reproducteur', 'Reproducteur Entretien', 'reproducteur_entretien', [
+                'Son de blé' => 35, 'Maïs jaune' => 20, 'Tourteau d\'arachide' => 10, 'Fourrage / Foin' => 28,
+                'Drêche de brasserie' => 5, 'CMV (compl. minéral vitaminé)' => 1, 'Sel' => 1,
+            ]],
+            'FEED-REP-GES' => ['Reproducteur', 'Reproducteur Gestation', 'reproducteur_gestation', [
+                'Maïs jaune' => 25, 'Son de blé' => 30, 'Tourteau d\'arachide' => 12, 'Fourrage / Foin' => 25,
+                'Drêche de brasserie' => 5, 'CMV (compl. minéral vitaminé)' => 2, 'Sel' => 1,
+            ]],
+            'FEED-REP-LAC' => ['Reproducteur', 'Reproducteur Lactation', 'reproducteur_lactation', [
+                'Maïs jaune' => 30, 'Son de blé' => 25, 'Tourteau d\'arachide' => 15, 'Tourteau de soja' => 5,
+                'Fourrage / Foin' => 18, 'Drêche de brasserie' => 4, 'CMV (compl. minéral vitaminé)' => 2, 'Sel' => 1,
+            ]],
+
+            // ── Engraissement ──
+            'FEED-ENG-DEM' => ['Engraissement', 'Engraissement Démarrage', 'engraissement_demarrage', [
+                'Maïs jaune' => 35, 'Son de blé' => 25, 'Tourteau d\'arachide' => 12, 'Drêche de brasserie' => 13,
+                'Fourrage / Foin' => 12, 'CMV (compl. minéral vitaminé)' => 2, 'Sel' => 1,
+            ]],
+            'FEED-ENG-CRO' => ['Engraissement', 'Engraissement Croissance', 'engraissement_croissance', [
+                'Maïs jaune' => 33, 'Son de blé' => 27, 'Tourteau d\'arachide' => 10, 'Drêche de brasserie' => 14,
+                'Fourrage / Foin' => 14, 'CMV (compl. minéral vitaminé)' => 1.5, 'Sel' => 0.5,
+            ]],
+            'FEED-ENG-FIN' => ['Engraissement', 'Engraissement Finition', 'engraissement_finition', [
+                'Maïs jaune' => 30, 'Son de blé' => 28, 'Tourteau d\'arachide' => 7, 'Drêche de brasserie' => 15,
+                'Fourrage / Foin' => 17, 'Mélasse' => 2, 'CMV (compl. minéral vitaminé)' => 1,
+            ]],
+
+            // ── Laitière ──
+            'FEED-LAI-PREP' => ['Laitière', 'Laitière Préparation vêlage', 'laitiere_preparation', [
+                'Son de blé' => 30, 'Maïs jaune' => 22, 'Tourteau d\'arachide' => 10, 'Drêche de brasserie' => 15,
+                'Fourrage / Foin' => 18, 'Mélasse' => 3, 'CMV (compl. minéral vitaminé)' => 1.5, 'Sel' => 0.5,
+            ]],
+            'FEED-LAI-LAC' => ['Laitière', 'Laitière Lactation', 'laitiere_lactation', [
+                'Maïs jaune' => 28, 'Son de blé' => 22, 'Tourteau d\'arachide' => 15, 'Tourteau de soja' => 8,
+                'Drêche de brasserie' => 12, 'Fourrage / Foin' => 10, 'Mélasse' => 3, 'CMV (compl. minéral vitaminé)' => 1.5, 'Sel' => 0.5,
+            ]],
+            'FEED-LAI-TAR' => ['Laitière', 'Laitière Tarissement', 'laitiere_tarissement', [
+                'Son de blé' => 35, 'Maïs jaune' => 15, 'Tourteau d\'arachide' => 8, 'Fourrage / Foin' => 35,
+                'Mélasse' => 5, 'CMV (compl. minéral vitaminé)' => 1.5, 'Sel' => 0.5,
+            ]],
+
+            // ── Grossissement ──
+            'FEED-GRO-PRE' => ['Grossissement', 'Grossissement Pré-grossissement', 'grossissement_pre', [
+                'Farine de poisson' => 30, 'Tourteau de soja' => 28, 'Son de riz' => 18, 'Tourteau d\'arachide' => 10,
+                'Maïs jaune' => 8, 'Huile de palme' => 1, 'CMV (compl. minéral vitaminé)' => 3, 'Sel' => 2,
+            ]],
+            'FEED-GRO-GRO' => ['Grossissement', 'Grossissement Grossissement', 'grossissement', [
+                'Farine de poisson' => 25, 'Tourteau de soja' => 25, 'Son de riz' => 20, 'Tourteau d\'arachide' => 10,
+                'Maïs jaune' => 15, 'CMV (compl. minéral vitaminé)' => 3, 'Sel' => 2,
+            ]],
+            'FEED-GRO-FIN' => ['Grossissement', 'Grossissement Finition', 'grossissement_finition', [
+                'Farine de poisson' => 18, 'Tourteau de soja' => 22, 'Son de riz' => 25, 'Tourteau d\'arachide' => 10,
+                'Maïs jaune' => 20, 'Huile de palme' => 2, 'CMV (compl. minéral vitaminé)' => 2, 'Sel' => 1,
+            ]],
+
+            // ── Alevinage ──
+            'FEED-ALE-1' => ['Alevinage', 'Alevinage 1er âge', 'alevinage_1', [
+                'Farine de poisson' => 38, 'Tourteau de soja' => 30, 'Farine de sang' => 8, 'Son de riz' => 15,
+                'Maïs jaune' => 5, 'Huile de palme' => 1, 'CMV (compl. minéral vitaminé)' => 3,
+            ]],
+            'FEED-ALE-2' => ['Alevinage', 'Alevinage 2e âge', 'alevinage_2', [
+                'Farine de poisson' => 32, 'Tourteau de soja' => 28, 'Farine de sang' => 6, 'Son de riz' => 18,
+                'Maïs jaune' => 10, 'Huile de palme' => 2, 'CMV (compl. minéral vitaminé)' => 2.5, 'Sel' => 1.5,
+            ]],
+        ];
+
+        $materials = RawMaterial::pluck('id', 'name');
+
+        foreach ($recipes as $code => [$sector, $name, $targetType, $composition]) {
+            [$speciesSlug, $ptSlug] = $sectorPt[$sector];
+
             $species = Species::where('slug', $speciesSlug)->first();
             $pt = $species
                 ? ProductionType::where('species_id', $species->id)->where('slug', $ptSlug)->first()
