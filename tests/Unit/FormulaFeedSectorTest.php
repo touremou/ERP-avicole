@@ -49,11 +49,11 @@ test('la normalisation cible la bonne phase pour une espèce non-volaille', func
     $chevreId = Species::where('slug', 'chevre')->value('id');
     $tilapiaId = Species::where('slug', 'tilapia')->value('id');
 
-    $laitiere = makeFormula('CHÈVRE LAITIÈRE PRODUCTION', 'laitiere', $chevreId);
-    $alevinage = makeFormula('TILAPIA ALEVINAGE CROISSANCE', 'alevinage', $tilapiaId);
+    $laitiere = makeFormula('CHÈVRE LAITIÈRE LACTATION', 'laitiere', $chevreId);
+    $alevinage = makeFormula('TILAPIA ALEVINAGE 1ER ÂGE', 'alevinage', $tilapiaId);
 
-    expect($action->execute($laitiere->name, $laitiere))->toBe('Laitière Production')
-        ->and($action->execute($alevinage->name, $alevinage))->toBe('Alevinage Croissance');
+    expect($action->execute($laitiere->name, $laitiere))->toBe('Laitière Lactation')
+        ->and($action->execute($alevinage->name, $alevinage))->toBe('Alevinage 1er âge');
 });
 
 test('une formule non-volaille sans phase reconnue retombe sur la 1re phase de son secteur', function () {

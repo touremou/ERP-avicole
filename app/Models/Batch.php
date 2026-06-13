@@ -450,18 +450,18 @@ class Batch extends Model
             'Engraissement Finition',
         ],
         'Laitière' => [
-            'Laitière Démarrage',
-            'Laitière Production',
-            'Laitière Entretien',
+            'Laitière Préparation vêlage',
+            'Laitière Lactation',
+            'Laitière Tarissement',
         ],
         'Grossissement' => [
-            'Grossissement Démarrage',
-            'Grossissement Croissance',
+            'Grossissement Pré-grossissement',
+            'Grossissement Grossissement',
             'Grossissement Finition',
         ],
         'Alevinage' => [
-            'Alevinage Démarrage',
-            'Alevinage Croissance',
+            'Alevinage 1er âge',
+            'Alevinage 2e âge',
         ],
     ];
 

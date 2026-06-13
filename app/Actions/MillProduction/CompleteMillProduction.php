@@ -2,7 +2,9 @@
 
 namespace App\Actions\MillProduction;
 
+use App\Models\Formula;
 use App\Models\MillProduction;
+use App\Models\Stock;
 // NOUVEAUX IMPORTS
 use App\Actions\Provenderie\RecordProductionConsumptionAction;
 use App\Actions\Provenderie\NormalizeFormulaNameAction;
@@ -53,6 +55,13 @@ class CompleteMillProduction
             $production->formula->name,
             $production->formula
         );
+
+        // ─── 2.bis PROVISION DU SILO D'ALIMENT FINI ───
+        // Multiespèces : le silo cible peut ne pas encore exister (aucun
+        // aliment n'est seedé). On le crée à la volée dans le bon secteur
+        // pour que l'entrée de stock ci-dessous aboutisse quelle que soit
+        // l'espèce, au lieu d'échouer sur « article introuvable ».
+        $this->ensureFinishedFeedStock($stockItemName, $production->formula);
 
         return DB::transaction(function () use ($production, $quantityProduced, $stockItemName) {
 
@@ -113,5 +122,27 @@ class CompleteMillProduction
 
             return $production->fresh();
         });
+    }
+
+    /**
+     * Garantit l'existence du silo d'aliment fini (article de stock « conso »)
+     * correspondant, en le créant à 0 dans le secteur de la formule s'il est
+     * absent. Idempotent (firstOrCreate sur item_name + category).
+     */
+    private function ensureFinishedFeedStock(string $itemName, Formula $formula): void
+    {
+        Stock::firstOrCreate(
+            ['item_name' => $itemName, 'category' => Stock::CAT_CONSO],
+            [
+                'feed_type'        => $itemName,
+                'unit'             => 'KG',
+                'current_quantity' => 0,
+                'alert_threshold'  => 0,
+                'metadata'         => [
+                    'poultry_type' => $formula->feedSector(),
+                    'conso_type'   => 'Aliment',
+                ],
+            ]
+        );
     }
 }
