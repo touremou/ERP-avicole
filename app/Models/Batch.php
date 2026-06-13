@@ -418,12 +418,14 @@ class Batch extends Model
     }
 
     /**
-     * Phases d'aliment volaille (noms d'articles de stock attendus dans la
-     * catégorie « conso »), par secteur Chair / Ponte. Source unique de
-     * vérité partagée par la vue show (cartes de stock par phase), le modal
-     * d'achat direct (feed-modal) et le calcul du prix moyen de l'aliment
-     * (BatchController). Les lots de ponte/reproducteur relèvent du secteur
-     * Ponte.
+     * Phases d'aliment (noms d'articles de stock attendus dans la catégorie
+     * « conso »), par secteur. Source unique de vérité partagée par la vue
+     * show (cartes de stock par phase), le modal d'achat direct (feed-modal),
+     * le Daily Check et le calcul du prix moyen de l'aliment (BatchController).
+     *
+     * Secteurs volaille : Chair / Ponte (cf. feedSector()).
+     * Secteurs ruminants/lapin/porc : Engraissement, Laitière, Reproducteur.
+     * Secteurs aquaculture : Grossissement, Alevinage.
      */
     public const FEED_PHASES = [
         'Chair' => [
@@ -437,28 +439,101 @@ class Batch extends Model
             'Ponte 1 (Pic de ponte)',
             'Ponte 2 (Entretien)',
         ],
+        'Reproducteur' => [
+            'Reproducteur Entretien',
+            'Reproducteur Gestation',
+            'Reproducteur Lactation',
+        ],
+        'Engraissement' => [
+            'Engraissement Démarrage',
+            'Engraissement Croissance',
+            'Engraissement Finition',
+        ],
+        'Laitière' => [
+            'Laitière Démarrage',
+            'Laitière Production',
+            'Laitière Entretien',
+        ],
+        'Grossissement' => [
+            'Grossissement Démarrage',
+            'Grossissement Croissance',
+            'Grossissement Finition',
+        ],
+        'Alevinage' => [
+            'Alevinage Démarrage',
+            'Alevinage Croissance',
+        ],
     ];
 
     /**
-     * Secteur d'aliment volaille du lot : « Chair » ou « Ponte ».
-     * Les types ponte/repro/reproducteur relèvent du secteur Ponte ;
-     * chair et poussinière relèvent du secteur Chair.
+     * Seuils d'âge (en jours) déterminant la phase d'aliment présélectionnée
+     * par défaut dans le Daily Check, par secteur (cf. FEED_PHASES). Chaque
+     * paire [âge max, index de phase] est évaluée dans l'ordre ; la dernière
+     * paire (PHP_INT_MAX) sert de valeur par défaut au-delà des seuils
+     * précédents.
+     */
+    private const FEED_AGE_THRESHOLDS = [
+        'Chair'         => [[14, 0], [28, 1], [PHP_INT_MAX, 2]],
+        'Ponte'         => [[42, 0], [126, 1], [PHP_INT_MAX, 2]],
+        'Reproducteur'  => [[60, 0], [180, 1], [PHP_INT_MAX, 2]],
+        'Engraissement' => [[30, 0], [60, 1], [PHP_INT_MAX, 2]],
+        'Laitière'      => [[60, 0], [180, 1], [PHP_INT_MAX, 2]],
+        'Grossissement' => [[30, 0], [90, 1], [PHP_INT_MAX, 2]],
+        'Alevinage'     => [[15, 0], [PHP_INT_MAX, 1]],
+    ];
+
+    /**
+     * Secteur d'aliment du lot, déterminé par son type de production.
+     *
+     * Volaille : « Chair » ou « Ponte » (ponte/repro/reproducteur relèvent
+     * de Ponte ; chair et poussinière relèvent de Chair).
+     * Autres espèces : Engraissement / Laitière / Reproducteur / Grossissement
+     * / Alevinage selon le slug du type de production.
      */
     public function feedSector(): string
     {
-        return in_array(strtolower((string) $this->type), ['ponte', 'repro', 'reproducteur'], true)
-            ? 'Ponte'
-            : 'Chair';
+        $slug = strtolower((string) $this->type);
+
+        if ($this->isVolaille()) {
+            return in_array($slug, ['ponte', 'repro', 'reproducteur'], true)
+                ? 'Ponte'
+                : 'Chair';
+        }
+
+        return match ($slug) {
+            'laitiere'                => 'Laitière',
+            'grossissement'           => 'Grossissement',
+            'alevinage'               => 'Alevinage',
+            'repro', 'reproducteur'   => 'Reproducteur',
+            default                   => 'Engraissement',
+        };
     }
 
     /**
-     * Liste des phases d'aliment attendues pour ce lot (secteur Chair/Ponte).
+     * Liste des phases d'aliment attendues pour ce lot (cf. feedSector()).
      *
      * @return array<int, string>
      */
     public function feedPhases(): array
     {
         return self::FEED_PHASES[$this->feedSector()];
+    }
+
+    /**
+     * Phase d'aliment à présélectionner dans le Daily Check selon l'âge du
+     * lot (cf. FEED_AGE_THRESHOLDS).
+     */
+    public function feedPreselectPhase(int $ageInDays): ?string
+    {
+        $phases = $this->feedPhases();
+
+        foreach (self::FEED_AGE_THRESHOLDS[$this->feedSector()] ?? [] as [$maxAge, $phaseIndex]) {
+            if ($ageInDays <= $maxAge) {
+                return $phases[$phaseIndex] ?? null;
+            }
+        }
+
+        return $phases[0] ?? null;
     }
 
     // ═══════════════════════════════════════════════

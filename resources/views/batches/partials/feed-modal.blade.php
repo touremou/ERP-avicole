@@ -4,7 +4,6 @@
     x-data="{
         cat: 'conso',
         consoType: 'Aliment',
-        poultryType: '{{ $batch->feedSector() }}',
         unit: 'Sac',
         inputQty: 0,
         unitPrice: 0,
@@ -77,39 +76,15 @@
                     </select>
                 </div>
 
-                {{-- SECTEUR Chair / Ponte (Aliment uniquement) --}}
-                <div x-show="cat === 'conso' && consoType === 'Aliment'" class="grid grid-cols-2 gap-3">
-                    <button type="button" @click="poultryType = 'Chair'"
-                        :class="poultryType === 'Chair' ? 'bg-slate-900 text-white shadow-lg' : 'bg-slate-100 text-slate-400'"
-                        class="py-3 rounded-xl text-[9px] font-black uppercase italic tracking-widest transition-all border-none cursor-pointer">
-                        <i class="fa-solid fa-feather mr-1"></i> {{ __("Chair") }}
-                    </button>
-                    <button type="button" @click="poultryType = 'Ponte'"
-                        :class="poultryType === 'Ponte' ? 'bg-emerald-600 text-white shadow-lg' : 'bg-slate-100 text-slate-400'"
-                        class="py-3 rounded-xl text-[9px] font-black uppercase italic tracking-widest transition-all border-none cursor-pointer">
-                        <i class="fa-solid fa-egg mr-1"></i> {{ __("Ponte") }}
-                    </button>
-                </div>
-
                 {{-- 02. DÉSIGNATION --}}
                 <div>
                     <label class="text-[9px] uppercase text-slate-400 ml-4 mb-2 block tracking-widest font-black">{{ __("Désignation") }}</label>
 
-                    {{-- Aliment Chair --}}
-                    <template x-if="cat === 'conso' && consoType === 'Aliment' && poultryType === 'Chair'">
+                    {{-- Aliment du secteur du lot (Chair, Ponte, Engraissement, Laitière...) --}}
+                    <template x-if="cat === 'conso' && consoType === 'Aliment'">
                         <select name="feed_type" required class="w-full bg-slate-50 border-none rounded-xl p-4 font-black uppercase text-xs shadow-inner italic border-l-4 border-slate-900 outline-none">
-                            <option value="">{{ __("-- Aliments Chair --") }}</option>
-                            @foreach(\App\Models\Batch::FEED_PHASES['Chair'] as $phase)
-                                <option value="{{ $phase }}">{{ __($phase) }}</option>
-                            @endforeach
-                        </select>
-                    </template>
-
-                    {{-- Aliment Ponte --}}
-                    <template x-if="cat === 'conso' && consoType === 'Aliment' && poultryType === 'Ponte'">
-                        <select name="feed_type" required class="w-full bg-slate-50 border-none rounded-xl p-4 font-black uppercase text-xs shadow-inner italic border-l-4 border-emerald-500 outline-none">
-                            <option value="">{{ __("-- Aliments Ponte --") }}</option>
-                            @foreach(\App\Models\Batch::FEED_PHASES['Ponte'] as $phase)
+                            <option value="">{{ __("-- Aliments :sector --", ['sector' => $batch->feedSector()]) }}</option>
+                            @foreach($batch->feedPhases() as $phase)
                                 <option value="{{ $phase }}">{{ __($phase) }}</option>
                             @endforeach
                         </select>

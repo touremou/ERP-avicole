@@ -121,30 +121,21 @@
 
                             <div class="pt-4 border-t border-slate-50">
                                 <label class="block text-[9px] font-black text-slate-400 uppercase mb-3 tracking-widest leading-none italic">
-                                    Type d'Aliment (Silo : {{ $batch->type }})
+                                    Type d'Aliment (Silo : {{ $batch->feedSector() }})
                                 </label>
-                                <select name="feed_type" id="feed_type" required onchange="checkFeedStock()" 
+                                <select name="feed_type" id="feed_type" required onchange="checkFeedStock()"
                                         class="w-full p-4 bg-slate-50 border-none rounded-2xl font-black text-[10px] uppercase focus:ring-2 focus:ring-blue-500 shadow-inner italic outline-none appearance-none cursor-pointer">
                                     <option value="">-- CHOISIR L'ALIMENT --</option>
                                     @foreach($phases as $phaseName)
-                                        @php 
+                                        @php
                                             // Utilisation directe du tableau préparé par le Controller (Aucune requête DB)
                                             $availableKg = $stockData[$phaseName] ?? 0;
-                                            
-                                            // Présélection intelligente
-                                            $isSelected = false;
-                                            if ($isLayerSilo) {
-                                                if ($age <= 42) $isSelected = str_contains($phaseName, 'Démarrage');
-                                                elseif ($age <= 126) $isSelected = str_contains($phaseName, 'Croissance');
-                                                else $isSelected = str_contains($phaseName, 'Ponte 1');
-                                            } else {
-                                                if ($age <= 14) $isSelected = str_contains($phaseName, 'Démarrage');
-                                                elseif ($age <= 28) $isSelected = str_contains($phaseName, 'Croissance');
-                                                else $isSelected = str_contains($phaseName, 'Finition');
-                                            }
+
+                                            // Présélection intelligente selon l'âge et le secteur du lot.
+                                            $isSelected = $batch->feedPreselectPhase($age) === $phaseName;
                                         @endphp
                                         <option value="{{ $phaseName }}" data-stock="{{ $availableKg }}" {{ $isSelected ? 'selected' : '' }}>
-                                            {{ str_replace(['Chair ', 'Ponte '], '', $phaseName) }} • (Stock: {{ number_format($availableKg, 1) }} kg)
+                                            {{ str_replace($batch->feedSector() . ' ', '', $phaseName) }} • (Stock: {{ number_format($availableKg, 1) }} kg)
                                         </option>
                                     @endforeach
                                 </select>

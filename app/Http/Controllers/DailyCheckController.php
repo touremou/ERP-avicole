@@ -57,13 +57,9 @@ class DailyCheckController extends Controller
 
         $batch = Batch::with(['building', 'protocol.steps'])->findOrFail($batchId);
 
-        // Préparation des phases aliment et stocks disponibles
-        $rawType = strtolower($batch->type ?? 'chair');
-        $isLayerSilo = in_array($rawType, ['ponte', 'repro', 'reproducteur']);
-
-        $phases = $isLayerSilo
-            ? ['Ponte Démarrage (Poussin)', 'Ponte Croissance (Poulette)', 'Ponte 1 (Pic de ponte)', 'Ponte 2 (Entretien)']
-            : ['Chair Démarrage', 'Chair Croissance', 'Chair Finition'];
+        // Préparation des phases aliment et stocks disponibles, selon le
+        // secteur du lot (cf. Batch::feedSector()/feedPhases()).
+        $phases = $batch->feedPhases();
 
         $stockData = [];
         foreach ($phases as $phase) {
@@ -82,7 +78,7 @@ class DailyCheckController extends Controller
             }
         }
 
-        return view('daily-checks.create', compact('batch', 'stockData', 'phases', 'isLayerSilo'));
+        return view('daily-checks.create', compact('batch', 'stockData', 'phases'));
     }
 
     /**
@@ -151,12 +147,7 @@ class DailyCheckController extends Controller
         }
 
         // PRÉPARATION DES STOCKS POUR LA VUE (Évite les requêtes DB dans le Blade)
-        $rawType = strtolower($check->batch->type ?? 'chair');
-        $isLayerSilo = in_array($rawType, ['ponte', 'repro', 'reproducteur']);
-
-        $phases = $isLayerSilo
-            ? ['Ponte Démarrage (Poussin)', 'Ponte Croissance (Poulette)', 'Ponte 1 (Pic de ponte)', 'Ponte 2 (Entretien)']
-            : ['Chair Démarrage', 'Chair Croissance', 'Chair Finition'];
+        $phases = $check->batch->feedPhases();
 
         $stockData = [];
         foreach ($phases as $phase) {

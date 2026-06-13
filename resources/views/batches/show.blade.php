@@ -481,8 +481,7 @@
                 </div>
             </div>
 
-            {{-- STOCKS DYNAMIQUES (phases d'aliment volaille uniquement) --}}
-            @if($isVolaille)
+            {{-- STOCKS DYNAMIQUES (phases d'aliment du secteur du lot) --}}
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 text-left">
                 @foreach($batch->feedPhases() as $phaseName)
                     @php
@@ -507,7 +506,7 @@
                         'border-slate-100 opacity-60' => !$stockItem || $stockItem->current_quantity <= 0
                     ])>
                         <p class="text-[8px] uppercase text-slate-400 mb-2 tracking-widest italic font-black">
-                            {{ str_replace(['Chair ', 'Ponte '], '', $phaseName) }}
+                            {{ str_replace($batch->feedSector() . ' ', '', $phaseName) }}
                         </p>
                         @if($stockItem)
                             <h4 class="text-xl font-black text-slate-800 leading-none tracking-tighter">
@@ -523,7 +522,6 @@
                     </div>
                 @endforeach
             </div>
-            @endif
 
             {{-- HISTORIQUE FLUX & APPROVISIONNEMENTS --}}
             <div class="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden mb-8 text-left italic font-bold">
@@ -550,24 +548,19 @@
                         </thead>
                         <tbody class="divide-y divide-slate-50 text-[10px]">
                             @php
-                                // Mouvements de stock "aliment volaille" (phases Chair/Ponte) :
-                                // ne concerne que les lots de volaille.
-                                if ($isVolaille) {
-                                    $targetSectors = in_array($batch->type, ['Ponte', 'Reproducteur']) ? ['Ponte'] : ['Chair'];
-                                    $feedStockIds = \App\Models\Stock::where('category', 'conso')
-                                        ->where(function($q) use ($targetSectors) {
-                                            $q->whereIn('metadata->poultry_type', $targetSectors)
-                                            ->orWhere('item_name', 'LIKE', $targetSectors[0] . '%');
-                                        })
-                                        ->pluck('id');
+                                // Mouvements de stock "aliment" du secteur du lot (cf. Batch::feedSector()).
+                                $targetSector = $batch->feedSector();
+                                $feedStockIds = \App\Models\Stock::where('category', 'conso')
+                                    ->where(function($q) use ($targetSector) {
+                                        $q->where('metadata->poultry_type', $targetSector)
+                                        ->orWhere('item_name', 'LIKE', $targetSector . '%');
+                                    })
+                                    ->pluck('id');
 
-                                    $movements = \App\Models\StockMovement::whereIn('stock_id', $feedStockIds)
-                                                    ->where('notes', 'LIKE', "%{$batch->code}%")
-                                                    ->latest()
-                                                    ->get();
-                                } else {
-                                    $movements = collect();
-                                }
+                                $movements = \App\Models\StockMovement::whereIn('stock_id', $feedStockIds)
+                                                ->where('notes', 'LIKE', "%{$batch->code}%")
+                                                ->latest()
+                                                ->get();
 
                                 $purchases = $batch->feedPurchases;
                             @endphp
