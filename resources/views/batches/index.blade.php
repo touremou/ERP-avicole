@@ -3,10 +3,10 @@
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
                 <h2 class="text-3xl font-black text-slate-800 tracking-tighter uppercase italic leading-none">
-                    {{ __('Suivi des Bandes') }}
+                    {{ __("Suivi des Bandes") }}
                 </h2>
                 <p class="text-slate-400 text-[10px] font-black uppercase tracking-widest mt-2 italic">
-                    <i class="fas fa-microchip mr-1 text-blue-500"></i> Gestion des cycles de production en cours
+                    <i class="fas fa-microchip mr-1 text-blue-500"></i> {{ __("Gestion des cycles de production en cours") }}
                 </p>
             </div>
             
@@ -14,24 +14,24 @@
                 {{-- PERMISSION L : ACCÈS AUX ARCHIVES ET NORMES --}}
                 @can('elevage.L')
                 <a href="{{ route('daily-checks.index') }}" class="bg-white text-slate-600 border border-slate-200 px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-50 transition-all shadow-sm flex items-center italic">
-                    <i class="fas fa-clock-rotate-left mr-2 text-blue-500"></i> 
-                    Historique Suivi
+                    <i class="fas fa-clock-rotate-left mr-2 text-blue-500"></i>
+                    {{ __("Historique Suivi") }}
                 </a>
                 <a href="{{ route('batches.archives') }}" class="bg-white text-slate-600 border border-slate-200 px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-50 transition-all shadow-sm flex items-center italic">
-                    <i class="fas fa-book-open mr-2 text-blue-500"></i> 
-                    Archives
+                    <i class="fas fa-book-open mr-2 text-blue-500"></i>
+                    {{ __("Archives") }}
                 </a>
                 @endcan
 
                 {{-- PERMISSION C : CRÉATION D'UN NOUVEAU LOT --}}
                 @can('elevage.C')
                 <a href="{{ route('admin.norms.index') }}" class="bg-white text-slate-600 border border-slate-200 px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-50 transition-all shadow-sm flex items-center italic">
-                    <i class="fas fa-scroll mr-2 text-blue-500"></i> 
-                    Référentiel Normes
+                    <i class="fas fa-scroll mr-2 text-blue-500"></i>
+                    {{ __("Référentiel Normes") }}
                 </a>
                 <a href="{{ route('batches.create') }}" class="group bg-slate-900 text-white px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-600 transition-all shadow-xl shadow-slate-900/20 flex items-center italic">
-                    <i class="fas fa-plus-circle mr-2 group-hover:rotate-90 transition-transform text-sm"></i> 
-                    Nouvel Arrivage
+                    <i class="fas fa-plus-circle mr-2 group-hover:rotate-90 transition-transform text-sm"></i>
+                    {{ __("Nouvel Arrivage") }}
                 </a>
                 @endcan
             </div>
@@ -49,7 +49,7 @@
                        'bg-slate-900 text-white border-slate-900' => !$familyFilter,
                        'bg-white text-slate-400 border-slate-100 hover:bg-slate-50' => $familyFilter,
                    ])>
-                    <i class="fa-solid fa-globe mr-2"></i> Toutes espèces
+                    <i class="fa-solid fa-globe mr-2"></i> {{ __("Toutes espèces") }}
                 </a>
                 @foreach([
                     'volaille'    => ['label' => 'Volaille',          'icon' => '🐔', 'color' => 'amber'],
@@ -64,7 +64,7 @@
                            "bg-{$meta['color']}-500 text-white border-{$meta['color']}-500" => $familyFilter === $group,
                            "bg-white text-{$meta['color']}-600 border-{$meta['color']}-100 hover:bg-{$meta['color']}-50" => $familyFilter !== $group,
                        ])>
-                        <span class="mr-1">{{ $meta['icon'] }}</span> {{ $meta['label'] }} ({{ $familyCounts[$group] ?? 0 }})
+                        <span class="mr-1">{{ $meta['icon'] }}</span> {{ __($meta['label']) }} ({{ $familyCounts[$group] ?? 0 }})
                     </a>
                     @endif
                 @endforeach
@@ -83,7 +83,7 @@
                        'bg-slate-900 text-white border-slate-900' => !request('type'),
                        'bg-white text-slate-400 border-slate-100 hover:bg-slate-50' => request('type')
                    ])>
-                    <i class="fa-solid fa-layer-group mr-2"></i> Tous ({{ $counts['all'] ?? 0 }})
+                    <i class="fa-solid fa-layer-group mr-2"></i> {{ __("Tous") }} ({{ $counts['all'] ?? 0 }})
                 </a>
                 @foreach(['chair' => 'orange', 'ponte' => 'blue', 'reproducteur' => 'emerald', 'poussiniere' => 'purple'] as $type => $color)
                     <a href="{{ route('batches.index', ['type' => $type, 'family' => $familyFilter]) }}"
@@ -103,13 +103,13 @@
                 <table class="w-full text-left border-collapse">
                     <thead>
                         <tr class="bg-slate-50/50 border-b border-slate-100 font-black italic uppercase text-slate-400 text-[9px] tracking-widest">
-                            <th class="px-8 py-5">Identité & Souche</th>
-                            <th class="hidden md:table-cell px-6 py-5">Responsable</th>
-                            <th class="hidden md:table-cell px-6 py-5 text-center">Bâtiment</th>
-                            <th class="px-6 py-5 text-center">Vivant actuel</th>
-                            <th class="hidden lg:table-cell px-6 py-5 text-center">Santé</th>
-                            <th class="px-6 py-5 text-center">Cycle de vie</th>
-                            <th class="px-8 py-5 text-right">Actions</th>
+                            <th class="px-8 py-5">{{ __("Identité & Souche") }}</th>
+                            <th class="hidden md:table-cell px-6 py-5">{{ __("Responsable") }}</th>
+                            <th class="hidden md:table-cell px-6 py-5 text-center">{{ __("Bâtiment") }}</th>
+                            <th class="px-6 py-5 text-center">{{ __("Vivant actuel") }}</th>
+                            <th class="hidden lg:table-cell px-6 py-5 text-center">{{ __("Santé") }}</th>
+                            <th class="px-6 py-5 text-center">{{ __("Cycle de vie") }}</th>
+                            <th class="px-8 py-5 text-right">{{ __("Actions") }}</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-50">
@@ -150,7 +150,7 @@
                                                 'bg-slate-50 text-slate-500 border-slate-100' => !in_array($batch->type, ['chair','ponte','reproducteur','poussiniere']),
                                             ])>{{ $batch->productionType?->name_fr ?? $batch->type }}</span>
                                             <span class="text-[7px] font-black px-2 py-0.5 rounded uppercase italic border bg-slate-800 text-white border-slate-800">
-                                                <i class="fas fa-fingerprint mr-1 text-[6px]"></i> {{ $batch->model_name ?? 'Standard' }}
+                                                <i class="fas fa-fingerprint mr-1 text-[6px]"></i> {{ $batch->model_name ?? __("Standard") }}
                                             </span>
                                         </div>
                                     </div>
@@ -174,7 +174,7 @@
                                 ])>
                                     {{ number_format($batch->current_quantity) }}
                                 </span>
-                                <p class="text-[7px] text-slate-300 font-black uppercase tracking-widest mt-1 italic">Sujets en vie</p>
+                                <p class="text-[7px] text-slate-300 font-black uppercase tracking-widest mt-1 italic">{{ __("Sujets en vie") }}</p>
                             </td>
 
                             <td class="hidden lg:table-cell px-6 py-6 text-center uppercase italic">
@@ -184,9 +184,9 @@
                                         'bg-green-50 text-green-600 border-green-100' => $survivalRate >= 95,
                                         'bg-red-50 text-red-600 border-red-100' => $survivalRate < 95,
                                     ])>
-                                        {{ number_format($survivalRate, 1) }}% VIABILITÉ
+                                        {{ number_format($survivalRate, 1) }}% {{ __("VIABILITÉ") }}
                                     </span>
-                                    <span class="text-[6px] font-black text-slate-400">LOT {{ $batch->status }}</span>
+                                    <span class="text-[6px] font-black text-slate-400">{{ __("LOT") }} {{ $batch->status }}</span>
                                 </div>
                             </td>
 
@@ -224,7 +224,7 @@
                         <tr>
                             <td colspan="7" class="px-8 py-24 text-center">
                                 <i class="fas fa-layer-group text-slate-200 text-3xl mb-4"></i>
-                                <p class="text-slate-300 font-black uppercase tracking-[0.3em] text-[10px] italic">Aucun lot actif trouvé</p>
+                                <p class="text-slate-300 font-black uppercase tracking-[0.3em] text-[10px] italic">{{ __("Aucun lot actif trouvé") }}</p>
                             </td>
                         </tr>
                         @endforelse

@@ -3,12 +3,12 @@
         <div class="flex items-center justify-between">
             <div class="text-left">
                 <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">
-                    🧪 Architecte de Protocole
+                    🧪 {{ __("Architecte de Protocole") }}
                 </h2>
-                <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-2 italic leading-none">Modélisation des programmes sanitaires standards</p>
+                <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-2 italic leading-none">{{ __("Modélisation des programmes sanitaires standards") }}</p>
             </div>
             <a href="{{ route('protocols.index') }}" class="group flex items-center px-6 py-3 bg-white border border-slate-200 text-slate-500 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-rose-50 hover:text-rose-600 transition-all shadow-sm no-underline italic">
-                <i class="fa-solid fa-xmark mr-2 group-hover:rotate-90 transition-transform"></i> Annuler
+                <i class="fa-solid fa-xmark mr-2 group-hover:rotate-90 transition-transform"></i> {{ __("Annuler") }}
             </a>
         </div>
     </x-slot>
@@ -25,30 +25,30 @@
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-8 relative z-10">
                         {{-- Nom du Modèle --}}
                         <div class="space-y-3">
-                            <label class="block text-[10px] font-black text-slate-400 uppercase ml-2 italic leading-none tracking-widest">Nom du Modèle</label>
-                            <input type="text" name="name" placeholder="EX: CHAIR STANDARD 45J" value="{{ old('name') }}" required 
+                            <label class="block text-[10px] font-black text-slate-400 uppercase ml-2 italic leading-none tracking-widest">{{ __("Nom du Modèle") }}</label>
+                            <input type="text" name="name" placeholder="{{ __('EX: CHAIR STANDARD 45J') }}" value="{{ old('name') }}" required
                                    class="w-full p-5 bg-slate-50 rounded-2xl border-none shadow-inner uppercase font-black text-slate-800 focus:ring-4 focus:ring-blue-500/10 transition-all italic outline-none">
                         </div>
 
                         {{-- Type d'Élevage --}}
                         <div class="space-y-3">
-                            <label class="block text-[10px] font-black text-blue-500 uppercase ml-2 italic leading-none tracking-widest">Type d'Élevage</label>
+                            <label class="block text-[10px] font-black text-blue-500 uppercase ml-2 italic leading-none tracking-widest">{{ __("Type d'Élevage") }}</label>
                             <select name="type" id="type_selector" required onchange="filterStrains()" 
                                     class="w-full p-5 bg-slate-50 rounded-2xl border-none shadow-inner font-black text-blue-600 appearance-none italic uppercase cursor-pointer outline-none focus:ring-4 focus:ring-blue-500/10">
-                                <option value="">-- Sélectionner --</option>
-                                <option value="chair" {{ old('type') == 'chair' ? 'selected' : '' }}>🍗 Poulet de chair</option>
-                                <option value="ponte" {{ old('type') == 'ponte' ? 'selected' : '' }}>🥚 Pondeuses</option>
-                                <option value="poussiniere" {{ old('type') == 'poussiniere' ? 'selected' : '' }}>🐣 Poussinière</option>
-                                <option value="reproducteur" {{ old('type') == 'reproducteur' ? 'selected' : '' }}>🐓 Reproducteurs</option>
+                                <option value="">{{ __("-- Sélectionner --") }}</option>
+                                <option value="chair" {{ old('type') == 'chair' ? 'selected' : '' }}>🍗 {{ __("Poulet de chair") }}</option>
+                                <option value="ponte" {{ old('type') == 'ponte' ? 'selected' : '' }}>🥚 {{ __("Pondeuses") }}</option>
+                                <option value="poussiniere" {{ old('type') == 'poussiniere' ? 'selected' : '' }}>🐣 {{ __("Poussinière") }}</option>
+                                <option value="reproducteur" {{ old('type') == 'reproducteur' ? 'selected' : '' }}>🐓 {{ __("Reproducteurs") }}</option>
                             </select>
                         </div>
 
                         {{-- Souche / Race --}}
                         <div class="space-y-3">
-                            <label class="block text-[10px] font-black text-emerald-600 uppercase ml-2 italic leading-none tracking-widest">Souche / Référentiel</label>
+                            <label class="block text-[10px] font-black text-emerald-600 uppercase ml-2 italic leading-none tracking-widest">{{ __("Souche / Référentiel") }}</label>
                             <select name="strain" id="strain_selector" required
                                     class="w-full p-5 bg-slate-50 rounded-2xl border-none focus:ring-4 focus:ring-emerald-500/10 outline-none font-black text-emerald-600 shadow-inner appearance-none italic uppercase cursor-pointer">
-                                <option value="">-- Choisir le type --</option>
+                                <option value="">{{ __("-- Choisir le type --") }}</option>
                                 @foreach($normModels as $norm)
                                     <option value="{{ $norm->model_name }}" 
                                             data-type="{{ strtolower($norm->batch_type) }}" 
@@ -61,8 +61,8 @@
                         </div>
 
                         <div class="md:col-span-3 space-y-3">
-                            <label class="block text-[10px] font-black text-slate-400 uppercase ml-2 italic leading-none tracking-widest">Description & Objectifs techniques</label>
-                            <textarea name="description" rows="2" placeholder="Détails du programme (Ex: Protocol d'exportation, Norme Cobb500...)" 
+                            <label class="block text-[10px] font-black text-slate-400 uppercase ml-2 italic leading-none tracking-widest">{{ __("Description & Objectifs techniques") }}</label>
+                            <textarea name="description" rows="2" placeholder="{{ __("Détails du programme (Ex: Protocol d'exportation, Norme Cobb500...)") }}"
                                       class="w-full p-6 bg-slate-50 rounded-[2rem] border-none shadow-inner font-bold text-slate-600 focus:bg-white transition italic uppercase text-[10px] outline-none">{{ old('description') }}</textarea>
                         </div>
                     </div>

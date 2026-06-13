@@ -3,7 +3,7 @@
         <div class="flex items-center gap-4 text-left">
             <a href="{{ route('tasks.templates') }}" class="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-900 hover:text-white transition-all no-underline"><i class="fa-solid fa-arrow-left"></i></a>
             <div>
-                <h2 class="text-lg font-black text-slate-800 uppercase italic tracking-tighter leading-none">Modifier le template</h2>
+                <h2 class="text-lg font-black text-slate-800 uppercase italic tracking-tighter leading-none">{{ __("Modifier le template") }}</h2>
                 <p class="text-[9px] font-bold text-slate-400 uppercase mt-1 tracking-widest italic">{{ $template->name }}</p>
             </div>
         </div>
@@ -23,23 +23,23 @@
 
                 <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm text-left space-y-4">
                     <div>
-                        <label class="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Nom</label>
+                        <label class="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">{{ __("Nom") }}</label>
                         <input type="text" name="name" value="{{ old('name', $template->name) }}" required class="w-full bg-slate-50 border-none rounded-xl p-3 text-sm font-black shadow-inner outline-none">
                     </div>
 
                     <div class="grid grid-cols-2 gap-4">
                         <div>
-                            <label class="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Catégorie</label>
+                            <label class="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">{{ __("Catégorie") }}</label>
                             <select name="category" class="w-full bg-slate-50 border-none rounded-xl p-3 text-xs font-black uppercase shadow-inner outline-none">
-                                @foreach(['alimentation' => '🌾 Alimentation', 'collecte' => '🥚 Collecte', 'controle' => '📋 Contrôle', 'nettoyage' => '🧹 Nettoyage', 'sante' => '💉 Santé', 'maintenance' => '🔧 Maintenance'] as $k => $v)
+                                @foreach(['alimentation' => '🌾 '.__("Alimentation"), 'collecte' => '🥚 '.__("Collecte"), 'controle' => '📋 '.__("Contrôle"), 'nettoyage' => '🧹 '.__("Nettoyage"), 'sante' => '💉 '.__("Santé"), 'maintenance' => '🔧 '.__("Maintenance")] as $k => $v)
                                     <option value="{{ $k }}" {{ $template->category === $k ? 'selected' : '' }}>{{ $v }}</option>
                                 @endforeach
                             </select>
                         </div>
                         <div>
-                            <label class="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Fréquence</label>
+                            <label class="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">{{ __("Fréquence") }}</label>
                             <select name="frequency" class="w-full bg-slate-50 border-none rounded-xl p-3 text-xs font-black shadow-inner outline-none">
-                                @foreach(['quotidien' => 'Quotidien', 'hebdo' => 'Hebdomadaire', 'mensuel' => 'Mensuel'] as $k => $v)
+                                @foreach(['quotidien' => __("Quotidien"), 'hebdo' => __("Hebdomadaire"), 'mensuel' => __("Mensuel")] as $k => $v)
                                     <option value="{{ $k }}" {{ $template->frequency === $k ? 'selected' : '' }}>{{ $v }}</option>
                                 @endforeach
                             </select>
@@ -48,18 +48,18 @@
 
                     <div class="grid grid-cols-3 gap-4">
                         <div>
-                            <label class="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Heure</label>
+                            <label class="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">{{ __("Heure") }}</label>
                             <input type="time" name="scheduled_time" value="{{ old('scheduled_time', $template->scheduled_time ? \Carbon\Carbon::parse($template->scheduled_time)->format('H:i') : '') }}" class="w-full bg-slate-50 border-none rounded-xl p-3 text-xs font-black shadow-inner outline-none">
                         </div>
                         <div>
-                            <label class="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Durée (min)</label>
+                            <label class="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">{{ __("Durée (min)") }}</label>
                             <input type="number" name="duration_minutes" value="{{ old('duration_minutes', $template->duration_minutes) }}" min="5" max="480" class="w-full bg-slate-50 border-none rounded-xl p-3 text-xs font-black shadow-inner outline-none text-center">
                         </div>
                         <div>
-                            <label class="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Priorité</label>
+                            <label class="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">{{ __("Priorité") }}</label>
                             <select name="priority" class="w-full bg-slate-50 border-none rounded-xl p-3 text-xs font-black shadow-inner outline-none">
                                 @foreach(['basse', 'normale', 'haute', 'critique'] as $p)
-                                    <option value="{{ $p }}" {{ $template->priority === $p ? 'selected' : '' }}>{{ ucfirst($p) }}</option>
+                                    <option value="{{ $p }}" {{ $template->priority === $p ? 'selected' : '' }}>{{ __(ucfirst($p)) }}</option>
                                 @endforeach
                             </select>
                         </div>
@@ -67,10 +67,10 @@
 
                     {{-- JOURS --}}
                     <div>
-                        <label class="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-2">Jours d'exécution</label>
+                        <label class="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-2">{{ __("Jours d'exécution") }}</label>
                         <div class="flex gap-2">
                             @php $activeDays = $template->days_of_week ?? []; @endphp
-                            @foreach(['1' => 'Lun', '2' => 'Mar', '3' => 'Mer', '4' => 'Jeu', '5' => 'Ven', '6' => 'Sam', '7' => 'Dim'] as $n => $label)
+                            @foreach(['1' => __("Lun"), '2' => __("Mar"), '3' => __("Mer"), '4' => __("Jeu"), '5' => __("Ven"), '6' => __("Sam"), '7' => __("Dim")] as $n => $label)
                             <label class="cursor-pointer">
                                 <input type="checkbox" name="days_of_week[]" value="{{ $n }}" {{ in_array((int)$n, $activeDays) ? 'checked' : '' }} class="hidden peer">
                                 <div class="w-12 h-10 rounded-xl flex items-center justify-center text-[9px] font-black uppercase bg-slate-50 text-slate-400 peer-checked:bg-indigo-500 peer-checked:text-white transition-all shadow-inner">{{ $label }}</div>

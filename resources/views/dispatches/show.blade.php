@@ -15,7 +15,7 @@
             @if(!$dispatch->reception && in_array($dispatch->status, ['expedie', 'en_route']))
                 @can('logistique.C')
                 <a href="{{ route('dispatches.reception.create', $dispatch) }}" class="bg-emerald-500 text-white px-8 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-2xl italic flex items-center gap-2 no-underline">
-                    <i class="fa-solid fa-clipboard-check"></i> Saisir la Réception
+                    <i class="fa-solid fa-clipboard-check"></i> {{ __("Saisir la Réception") }}
                 </a>
                 @endcan
             @endif
@@ -39,20 +39,20 @@
             <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm mb-6">
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
                     <div>
-                        <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Chauffeur</p>
+                        <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Chauffeur") }}</p>
                         <p class="text-sm font-black text-slate-900 uppercase">{{ $dispatch->driver_name }}</p>
                         <p class="text-[9px] text-slate-500">{{ $dispatch->driver_phone ?? '—' }}</p>
                     </div>
                     <div>
-                        <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Véhicule</p>
+                        <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Véhicule") }}</p>
                         <p class="text-sm font-black text-slate-900">{{ $dispatch->vehicle_plate ?? '—' }}</p>
                     </div>
                     <div>
-                        <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Expédié par</p>
+                        <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Expédié par") }}</p>
                         <p class="text-sm font-black text-slate-900">{{ $dispatch->dispatcher->name ?? '—' }}</p>
                     </div>
                     <div>
-                        <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Statut</p>
+                        <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Statut") }}</p>
                         <span @class([
                             'text-[9px] font-black uppercase px-4 py-2 rounded-full inline-block',
                             'bg-blue-50 text-blue-600' => $dispatch->status === 'expedie',
@@ -68,20 +68,20 @@
             <div class="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden mb-6">
                 <div class="px-8 py-5 bg-slate-50 border-b border-slate-100">
                     <h3 class="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
-                        <i class="fa-solid fa-boxes-stacked text-orange-500"></i> Marchandise expédiée
+                        <i class="fa-solid fa-boxes-stacked text-orange-500"></i> {{ __("Marchandise expédiée") }}
                     </h3>
                 </div>
                 <table class="w-full border-collapse">
                     <thead>
                         <tr class="text-[8px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
-                            <th class="px-6 py-3 text-left">Produit</th>
-                            <th class="px-4 py-3 text-center">Qté expédiée</th>
-                            <th class="px-4 py-3 text-center">Unité</th>
-                            <th class="px-4 py-3 text-center">État départ</th>
+                            <th class="px-6 py-3 text-left">{{ __("Produit") }}</th>
+                            <th class="px-4 py-3 text-center">{{ __("Qté expédiée") }}</th>
+                            <th class="px-4 py-3 text-center">{{ __("Unité") }}</th>
+                            <th class="px-4 py-3 text-center">{{ __("État départ") }}</th>
                             @if($dispatch->reception)
-                                <th class="px-4 py-3 text-center text-emerald-600">Qté reçue</th>
-                                <th class="px-4 py-3 text-center text-amber-600">Endommagé</th>
-                                <th class="px-4 py-3 text-center text-red-600">Manquant</th>
+                                <th class="px-4 py-3 text-center text-emerald-600">{{ __("Qté reçue") }}</th>
+                                <th class="px-4 py-3 text-center text-amber-600">{{ __("Endommagé") }}</th>
+                                <th class="px-4 py-3 text-center text-red-600">{{ __("Manquant") }}</th>
                             @endif
                         </tr>
                     </thead>
@@ -130,18 +130,18 @@
                 <div class="flex justify-between items-center">
                     <div>
                         <h3 class="text-[10px] font-black uppercase tracking-widest mb-2 {{ $dispatch->reception->status === 'litige' ? 'text-red-600' : 'text-emerald-600' }}">
-                            <i class="fa-solid fa-clipboard-check mr-1"></i> Réception {{ $dispatch->reception->reception_number }}
+                            <i class="fa-solid fa-clipboard-check mr-1"></i> {{ __("Réception") }} {{ $dispatch->reception->reception_number }}
                         </h3>
                         <p class="text-xs font-black text-slate-700">
-                            Reçu par <strong>{{ $dispatch->reception->receiver->name ?? '—' }}</strong>
-                            le {{ $dispatch->reception->reception_date->translatedFormat('d F Y') }}
+                            {{ __("Reçu par") }} <strong>{{ $dispatch->reception->receiver->name ?? '—' }}</strong>
+                            {{ __("le") }} {{ $dispatch->reception->reception_date->translatedFormat('d F Y') }}
                         </p>
                     </div>
                     <span @class([
                         'text-[10px] font-black uppercase px-5 py-2 rounded-full',
                         'bg-emerald-500 text-white' => $dispatch->reception->status === 'valide',
                         'bg-red-500 text-white animate-pulse' => $dispatch->reception->status === 'litige',
-                    ])>{{ $dispatch->reception->status === 'litige' ? '⚠ LITIGE' : '✓ VALIDÉ' }}</span>
+                    ])>{{ $dispatch->reception->status === 'litige' ? __("⚠ LITIGE") : __("✓ VALIDÉ") }}</span>
                 </div>
             </div>
             @endif
@@ -153,10 +153,10 @@
                 <div class="flex justify-between items-start mb-6">
                     <div>
                         <h3 class="text-lg font-black uppercase italic tracking-tighter {{ $report->severity === 'critique' ? 'text-red-600' : 'text-amber-600' }}">
-                            <i class="fa-solid fa-triangle-exclamation mr-2"></i> Rapport d'Écart
+                            <i class="fa-solid fa-triangle-exclamation mr-2"></i> {{ __("Rapport d'Écart") }}
                         </h3>
                         <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">
-                            Signalé par {{ $report->reporter->name ?? '—' }} — Taux d'écart : {{ $report->discrepancy_rate }}%
+                            {{ __("Signalé par") }} {{ $report->reporter->name ?? '—' }} — {{ __("Taux d'écart") }} : {{ $report->discrepancy_rate }}%
                         </p>
                     </div>
                     <span @class([
@@ -169,19 +169,19 @@
 
                 <div class="grid grid-cols-4 gap-4 mb-6">
                     <div class="bg-slate-50 p-4 rounded-2xl text-center">
-                        <p class="text-[8px] font-black text-slate-400 uppercase mb-1">Expédié</p>
+                        <p class="text-[8px] font-black text-slate-400 uppercase mb-1">{{ __("Expédié") }}</p>
                         <p class="text-lg font-black text-slate-900">{{ $report->total_dispatched }}</p>
                     </div>
                     <div class="bg-emerald-50 p-4 rounded-2xl text-center">
-                        <p class="text-[8px] font-black text-emerald-500 uppercase mb-1">Reçu</p>
+                        <p class="text-[8px] font-black text-emerald-500 uppercase mb-1">{{ __("Reçu") }}</p>
                         <p class="text-lg font-black text-emerald-600">{{ $report->total_received }}</p>
                     </div>
                     <div class="bg-amber-50 p-4 rounded-2xl text-center">
-                        <p class="text-[8px] font-black text-amber-500 uppercase mb-1">Endommagé</p>
+                        <p class="text-[8px] font-black text-amber-500 uppercase mb-1">{{ __("Endommagé") }}</p>
                         <p class="text-lg font-black text-amber-600">{{ $report->total_damaged }}</p>
                     </div>
                     <div class="bg-red-50 p-4 rounded-2xl text-center">
-                        <p class="text-[8px] font-black text-red-500 uppercase mb-1">Manquant</p>
+                        <p class="text-[8px] font-black text-red-500 uppercase mb-1">{{ __("Manquant") }}</p>
                         <p class="text-lg font-black text-red-600">{{ $report->total_missing }}</p>
                     </div>
                 </div>
@@ -189,32 +189,32 @@
                 {{-- Résolution --}}
                 @if($report->is_resolved)
                     <div class="bg-slate-50 p-5 rounded-2xl">
-                        <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-2">Résolution</p>
+                        <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-2">{{ __("Résolution") }}</p>
                         <span @class([
                             'text-[9px] font-black uppercase px-3 py-1 rounded-full',
                             'bg-emerald-50 text-emerald-600' => $report->resolution === 'justifie',
                             'bg-red-50 text-red-600' => $report->resolution === 'injustifie',
                         ])>{{ $report->resolution }}</span>
                         <p class="text-xs text-slate-600 mt-2">{{ $report->resolution_notes }}</p>
-                        <p class="text-[8px] text-slate-400 mt-2">Par {{ $report->resolver->name ?? '—' }} — {{ $report->resolved_at?->translatedFormat('d/m/Y H:i') }}</p>
+                        <p class="text-[8px] text-slate-400 mt-2">{{ __("Par") }} {{ $report->resolver->name ?? '—' }} — {{ $report->resolved_at?->translatedFormat('d/m/Y H:i') }}</p>
                     </div>
                 @else
                     @can('logistique.S')
                     <form method="POST" action="{{ route('dispatches.discrepancy.resolve', $report) }}" class="bg-red-50 p-5 rounded-2xl mt-4">
                         @csrf @method('PUT')
-                        <p class="text-[9px] font-black text-red-600 uppercase tracking-widest mb-3">Résoudre cet écart</p>
+                        <p class="text-[9px] font-black text-red-600 uppercase tracking-widest mb-3">{{ __("Résoudre cet écart") }}</p>
                         <div class="flex gap-3 mb-3">
                             <select name="resolution" required class="bg-white border-none rounded-xl p-3 text-[10px] font-black uppercase shadow-sm outline-none flex-1">
-                                <option value="">Décision...</option>
-                                <option value="justifie">Justifié (casse, décès transport)</option>
-                                <option value="injustifie">Injustifié (vol / fraude)</option>
-                                <option value="enquete">Enquête en cours</option>
+                                <option value="">{{ __("Décision...") }}</option>
+                                <option value="justifie">{{ __("Justifié (casse, décès transport)") }}</option>
+                                <option value="injustifie">{{ __("Injustifié (vol / fraude)") }}</option>
+                                <option value="enquete">{{ __("Enquête en cours") }}</option>
                             </select>
                         </div>
-                        <textarea name="resolution_notes" required placeholder="Détails de la résolution..." rows="2"
+                        <textarea name="resolution_notes" required placeholder="{{ __("Détails de la résolution...") }}" rows="2"
                             class="w-full bg-white border-none rounded-xl p-3 text-xs font-bold shadow-sm outline-none mb-3"></textarea>
                         <button type="submit" class="bg-slate-900 text-white px-6 py-3 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-red-600 transition-all border-none cursor-pointer">
-                            <i class="fa-solid fa-gavel mr-1"></i> Valider la résolution
+                            <i class="fa-solid fa-gavel mr-1"></i> {{ __("Valider la résolution") }}
                         </button>
                     </form>
                     @endcan

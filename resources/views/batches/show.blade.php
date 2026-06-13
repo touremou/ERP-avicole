@@ -93,7 +93,7 @@
         {{-- ALERTES GLOBALES --}}
         @if ($errors->any())
             <div class="mb-6 p-4 bg-red-50 border-l-4 border-red-600 rounded-2xl shadow-sm animate-pulse text-left italic">
-                <p class="text-[10px] font-black text-red-400 uppercase tracking-widest italic leading-none mb-2">Alerte Système</p>
+                <p class="text-[10px] font-black text-red-400 uppercase tracking-widest italic leading-none mb-2">{{ __("Alerte Système") }}</p>
                 <ul class="list-disc pl-5 text-sm font-bold text-red-700">
                     @foreach ($errors->all() as $error)
                         <li>{{ $error }}</li>
@@ -104,7 +104,7 @@
 
         @if (session('success'))
             <div class="mb-6 p-4 bg-emerald-50 border-l-4 border-emerald-600 rounded-2xl shadow-sm text-left italic">
-                <p class="text-[10px] font-black text-emerald-400 uppercase tracking-widest italic leading-none mb-1">Opération réussie</p>
+                <p class="text-[10px] font-black text-emerald-400 uppercase tracking-widest italic leading-none mb-1">{{ __("Opération réussie") }}</p>
                 <p class="text-sm font-bold text-emerald-700">{{ session('success') }}</p>
             </div>
         @endif
@@ -143,7 +143,7 @@
                 <span class="text-slate-200 hidden sm:inline">|</span>
                 <span class="bg-slate-100 px-2 py-0.5 rounded text-slate-500 whitespace-nowrap">{{ $batch->type }}</span>
                 <span class="text-slate-200 hidden sm:inline">|</span>
-                <span class="text-rose-500 whitespace-nowrap"><i class="fa-solid fa-dna mr-1"></i> {{ $batch->production_phase ?? 'Phase Initiale' }}</span>
+                <span class="text-rose-500 whitespace-nowrap"><i class="fa-solid fa-dna mr-1"></i> {{ $batch->production_phase ?? __("Phase Initiale") }}</span>
             </div>
         </div>
     </div>
@@ -157,7 +157,7 @@
                 @can('elevage.M')
                 <a href="{{ route('batches.edit', $batch->id) }}"
                    class="p-3 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all shrink-0"
-                   title="Modifier les paramètres">
+                   title="{{ __("Modifier les paramètres") }}">
                     <i class="fa-solid fa-gear"></i>
                 </a>
 
@@ -165,12 +165,12 @@
 
                 <button onclick="document.getElementById('modal-transfer').classList.remove('hidden')"
                         class="flex flex-1 sm:flex-none items-center justify-center gap-2 px-4 md:px-5 py-3 bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white rounded-xl font-black text-[9px] md:text-[10px] uppercase tracking-widest transition-all italic border-none cursor-pointer shrink-0">
-                    <i class="fa-solid fa-right-left"></i> Mutation
+                    <i class="fa-solid fa-right-left"></i> {{ __("Mutation") }}
                 </button>
 
                 <a href="{{ route('batches.close_form', $batch->id) }}"
                    class="flex flex-1 sm:flex-none items-center justify-center gap-2 px-4 md:px-5 py-3 text-slate-400 hover:text-orange-600 hover:bg-orange-50 rounded-xl font-black text-[9px] md:text-[10px] uppercase tracking-widest transition-all italic no-underline shrink-0">
-                    <i class="fa-solid fa-flag-checkered"></i> Clôture
+                    <i class="fa-solid fa-flag-checkered"></i> {{ __("Clôture") }}
                 </a>
                 @endcan
             </div>
@@ -182,26 +182,26 @@
                 <button type="button" onclick="event.stopPropagation(); openFeedModal()"
                         class="flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-2 px-3 py-3 md:px-6 md:py-4 bg-slate-900 text-white rounded-xl md:rounded-2xl font-black text-[9px] md:text-[10px] uppercase italic hover:bg-orange-500 transition-all shadow-lg border-none cursor-pointer group text-center sm:text-left">
                     <i class="fa-solid fa-truck-ramp-box text-orange-400 group-hover:text-white transition-colors text-lg sm:text-base"></i>
-                    <span>Achat direct</span>
+                    <span>{{ __("Achat direct") }}</span>
                 </button>
 
                 <a href="{{ route('daily-checks.create', ['batch_id' => $batch->id]) }}"
                    class="flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-2 px-3 py-3 md:px-6 md:py-4 bg-blue-600 text-white rounded-xl md:rounded-2xl font-black text-[9px] md:text-[10px] uppercase italic hover:bg-blue-500 transition-all shadow-lg no-underline text-center sm:text-left">
                     <i class="fa-solid fa-clipboard-check text-blue-200 text-lg sm:text-base"></i>
-                    <span>Suivi</span>
+                    <span>{{ __("Suivi") }}</span>
                 </a>
 
                 <a href="{{ route('health.create', ['batch_id' => $batch->id]) }}"
                    class="flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-2 px-3 py-3 md:px-6 md:py-4 bg-rose-600 text-white rounded-xl md:rounded-2xl font-black text-[9px] md:text-[10px] uppercase italic hover:bg-rose-500 transition-all shadow-lg no-underline text-center sm:text-left">
                     <i class="fa-solid fa-heart-pulse text-rose-200 text-lg sm:text-base"></i>
-                    <span>Santé</span>
+                    <span>{{ __("Santé") }}</span>
                 </a>
 
                 @if($showPonte)
                 <a href="{{ route('egg-productions.create', ['batch_id' => $batch->id]) }}"
                    class="flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-2 px-3 py-3 md:px-6 md:py-4 bg-emerald-500 text-white rounded-xl md:rounded-2xl font-black text-[9px] md:text-[10px] uppercase italic hover:bg-emerald-400 transition-all shadow-lg no-underline text-center sm:text-left">
                     <i class="fa-solid fa-egg text-emerald-200 text-lg sm:text-base"></i>
-                    <span>Collecte</span>
+                    <span>{{ __("Collecte") }}</span>
                 </a>
                 @endif
 
@@ -219,13 +219,13 @@
         <div class="bg-white p-5 rounded-[2rem] shadow-xl shadow-emerald-500/5 border border-emerald-50 flex items-center gap-4 group transition-transform hover:scale-[1.02]">
             <div class="w-12 h-12 bg-emerald-500 rounded-2xl flex items-center justify-center text-white shadow-lg"><i class="fa-solid fa-egg text-lg group-hover:animate-bounce"></i></div>
             <div class="text-left leading-none">
-                <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1 italic">Ponte</p>
+                <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1 italic">{{ __("Ponte") }}</p>
                 <div class="flex items-baseline gap-1">
                     <h4 class="text-xl font-black text-slate-800 tracking-tighter">{{ number_format($rateToday, 1) }}%</h4>
                     <span class="text-[9px] font-black {{ $diffPonte >= 0 ? 'text-emerald-500' : 'text-red-500' }}">{{ $diffPonte >= 0 ? '↑' : '↓' }}{{ abs(number_format($diffPonte, 1)) }}</span>
                 </div>
                 @if($targetLayingRate > 0)
-                <p class="text-[7px] font-black text-slate-300 mt-1 uppercase italic tracking-tighter">Cible: {{ $targetLayingRate }}%</p>
+                <p class="text-[7px] font-black text-slate-300 mt-1 uppercase italic tracking-tighter">{{ __("Cible") }}: {{ $targetLayingRate }}%</p>
                 @endif
             </div>
         </div>
@@ -235,7 +235,7 @@
             <div class="flex items-center gap-4">
                 <div class="w-12 h-12 bg-blue-500 rounded-2xl flex items-center justify-center text-white shadow-lg"><i class="fa-solid fa-weight-scale text-lg"></i></div>
                 <div class="text-left leading-none">
-                    <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1 italic">Poids Moyen</p>
+                    <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1 italic">{{ __("Poids Moyen") }}</p>
                     <div class="flex items-baseline gap-1">
                         <h4 class="text-xl font-black text-slate-800 tracking-tighter">{{ number_format($currentWeight, 0) }}g</h4>
                         @if($weightGain > 0)<span class="text-[9px] font-black text-emerald-500">+{{ $weightGain }}g</span>@endif
@@ -253,9 +253,9 @@
                 </div>
                 <span class="text-[7px] font-black uppercase text-slate-400">
                     @if($tabaskiTarget)
-                        Cible Tabaski ({{ number_format($tabaskiTarget / 1000, 0) }}kg) : {{ number_format($performanceWeight, 0) }}%
+                        {{ __("Cible Tabaski") }} ({{ number_format($tabaskiTarget / 1000, 0) }}kg) : {{ number_format($performanceWeight, 0) }}%
                     @else
-                        Norme: {{ number_format($performanceWeight, 0) }}%
+                        {{ __("Norme") }}: {{ number_format($performanceWeight, 0) }}%
                     @endif
                 </span>
             </div>
@@ -265,7 +265,7 @@
         <div @class(['p-5 rounded-[2rem] shadow-xl border flex items-center gap-4 group transition-transform hover:scale-[1.02]', 'bg-white border-orange-50' => ! $fcrBad, 'bg-red-50 border-red-100 animate-pulse' => $fcrBad])>
             <div @class(['w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg', 'bg-orange-500' => ! $fcrBad, 'bg-red-600' => $fcrBad])><i class="fa-solid fa-chart-pie text-lg"></i></div>
             <div class="text-left leading-none">
-                <p @class(['text-[8px] font-black uppercase tracking-widest mb-1 italic', 'text-slate-400' => ! $fcrBad, 'text-red-400' => $fcrBad])>Ratio (IC) <span class="opacity-60">/ cible {{ number_format($fcrTarget, 1) }}</span></p>
+                <p @class(['text-[8px] font-black uppercase tracking-widest mb-1 italic', 'text-slate-400' => ! $fcrBad, 'text-red-400' => $fcrBad])>{{ __("Ratio (IC)") }} <span class="opacity-60">/ {{ __("cible") }} {{ number_format($fcrTarget, 1) }}</span></p>
                 <h4 @class(['text-xl font-black tracking-tighter', 'text-slate-800' => ! $fcrBad, 'text-red-700' => $fcrBad])>{{ number_format($fcr, 2) }}</h4>
             </div>
         </div>
@@ -274,14 +274,14 @@
         <div class="bg-white p-5 rounded-[2rem] shadow-xl shadow-red-500/5 border border-red-50 flex items-center gap-4 group transition-transform hover:scale-[1.02]">
             <div class="w-12 h-12 bg-red-600 rounded-2xl flex items-center justify-center text-white shadow-lg"><i class="fa-solid fa-skull-crossbones text-lg group-hover:rotate-12 transition-transform"></i></div>
             <div class="text-left leading-none">
-                <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1 italic">Pertes Lot</p>
+                <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1 italic">{{ __("Pertes Lot") }}</p>
                 <div class="flex items-baseline gap-1">
                     <h4 class="text-xl font-black text-slate-800 tracking-tighter">{{ $totalMortality }}</h4>
                     <span @class(['text-[9px] font-black', 'text-red-500' => $diffMort > 0, 'text-emerald-500' => $diffMort < 0, 'text-slate-300' => $diffMort == 0])>
                         @if($diffMort != 0){!! $diffMort > 0 ? '↑' : '↓' !!}{{ abs($diffMort) }}@else=@endif
                     </span>
                 </div>
-                <p class="text-[7px] font-black text-red-400 uppercase mt-1">Taux : {{ number_format($mortalityRate, 1) }}%</p>
+                <p class="text-[7px] font-black text-red-400 uppercase mt-1">{{ __("Taux") }} : {{ number_format($mortalityRate, 1) }}%</p>
             </div>
         </div>
 
@@ -299,7 +299,7 @@
                 <i class="fa-solid fa-arrow-trend-up text-lg"></i>
             </div>
             <div class="text-left leading-none">
-                <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1 italic">GMQ</p>
+                <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1 italic">{{ __("GMQ") }}</p>
                 @if($stats['gmq'] !== null)
                 <h4 @class(['text-xl font-black tracking-tighter',
                     'text-emerald-600' => $stats['gmq'] >= $gmqTarget,
@@ -310,7 +310,7 @@
                 @else
                 <h4 class="text-sm font-black text-slate-300 uppercase">—</h4>
                 @endif
-                <p class="text-[7px] text-slate-400 mt-1 uppercase font-black">Gain Moyen Quotidien <span class="opacity-60">/ cible {{ number_format($gmqTarget, 0) }}g</span></p>
+                <p class="text-[7px] text-slate-400 mt-1 uppercase font-black">{{ __("Gain Moyen Quotidien") }} <span class="opacity-60">/ {{ __("cible") }} {{ number_format($gmqTarget, 0) }}g</span></p>
             </div>
         </div>
         @endif
@@ -321,8 +321,8 @@
             {{-- BARRE DE CYCLE --}}
             <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm mb-8 relative overflow-hidden">
                 <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest italic flex items-center gap-2 leading-none"><i class="fas fa-arrows-spin text-blue-500"></i> Avancement du Cycle de Vie</h3>
-                    <span class="text-[10px] font-black text-slate-800 uppercase italic">Phase : {{ $currentPhase }}</span>
+                    <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest italic flex items-center gap-2 leading-none"><i class="fas fa-arrows-spin text-blue-500"></i> {{ __("Avancement du Cycle de Vie") }}</h3>
+                    <span class="text-[10px] font-black text-slate-800 uppercase italic">{{ __("Phase") }} : {{ $currentPhase }}</span>
                 </div>
                 <div class="w-full h-3 bg-slate-100 rounded-full overflow-hidden flex shadow-inner">
                     @php
@@ -332,8 +332,8 @@
                     <div class="h-full bg-blue-600 transition-all duration-1000 shadow-lg" style="width: {{ $progress }}%"></div>
                 </div>
                 <div class="flex justify-between mt-2 text-[8px] font-black text-slate-400 uppercase">
-                    <span>Arrivée</span>
-                    <span>Sortie Estimée (J-{{ $maxDays }})</span>
+                    <span>{{ __("Arrivée") }}</span>
+                    <span>{{ __("Sortie Estimée") }} (J-{{ $maxDays }})</span>
                 </div>
             </div>
 
@@ -342,11 +342,11 @@
             <div class="mb-8 bg-blue-50 border border-blue-200 rounded-[2rem] p-6">
                 <div class="flex items-center justify-between mb-4">
                     <h4 class="text-[10px] font-black uppercase text-blue-800 tracking-widest flex items-center gap-2">
-                        <i class="fa-solid fa-droplet text-blue-500"></i> Qualité de l'Eau — Dernier Relevé
+                        <i class="fa-solid fa-droplet text-blue-500"></i> {{ __("Qualité de l'Eau — Dernier Relevé") }}
                     </h4>
                     @if(count($stats['water_alerts'] ?? []) > 0)
                     <span class="text-[8px] font-black bg-red-600 text-white px-3 py-1 rounded-xl uppercase animate-pulse">
-                        {{ count($stats['water_alerts']) }} Alerte(s)
+                        {{ count($stats['water_alerts']) }} {{ __("Alerte(s)") }}
                     </span>
                     @endif
                 </div>
@@ -373,7 +373,7 @@
                     <div class="bg-white rounded-2xl p-4 border border-blue-100 text-center">
                         <i class="fa-solid {{ $metric['icon'] }} text-{{ $metric['color'] }}-500 mb-2 text-base"></i>
                         <p class="text-lg font-black text-slate-800">{{ number_format((float)$metric['value'], $metric['unit'] === 'ppm' ? 2 : 1) }}</p>
-                        <p class="text-[7px] font-black uppercase text-slate-400 tracking-widest">{{ $metric['label'] }}{{ $metric['unit'] ? ' ('.$metric['unit'].')' : '' }}</p>
+                        <p class="text-[7px] font-black uppercase text-slate-400 tracking-widest">{{ __($metric['label']) }}{{ $metric['unit'] ? ' ('.$metric['unit'].')' : '' }}</p>
                     </div>
                     @endif
                     @endforeach
@@ -388,14 +388,14 @@
                     <div class="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center text-white text-lg">🐣</div>
                     <div>
                         <p class="text-2xl font-black text-emerald-800">{{ number_format($stats['total_born'] ?? 0) }}</p>
-                        <p class="text-[8px] font-black uppercase text-slate-400 tracking-widest">Naissances cumulées</p>
+                        <p class="text-[8px] font-black uppercase text-slate-400 tracking-widest">{{ __("Naissances cumulées") }}</p>
                     </div>
                 </div>
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 bg-teal-600 rounded-xl flex items-center justify-center text-white text-lg">🌿</div>
                     <div>
                         <p class="text-2xl font-black text-teal-800">{{ number_format($stats['total_weaned'] ?? 0) }}</p>
-                        <p class="text-[8px] font-black uppercase text-slate-400 tracking-widest">Sevrages cumulés</p>
+                        <p class="text-[8px] font-black uppercase text-slate-400 tracking-widest">{{ __("Sevrages cumulés") }}</p>
                     </div>
                 </div>
                 @if($stats['avg_litter_size'] ?? null)
@@ -403,7 +403,7 @@
                     <div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white text-lg">📦</div>
                     <div>
                         <p class="text-2xl font-black text-indigo-800">{{ number_format($stats['avg_litter_size'], 1) }}</p>
-                        <p class="text-[8px] font-black uppercase text-slate-400 tracking-widest">Taille de portée moy. ({{ $stats['birth_events'] }} mise{{ $stats['birth_events'] > 1 ? 's' : '' }} bas)</p>
+                        <p class="text-[8px] font-black uppercase text-slate-400 tracking-widest">{{ __("Taille de portée moy.") }} ({{ $stats['birth_events'] }} {{ __("mise") }}{{ $stats['birth_events'] > 1 ? 's' : '' }} {{ __("bas") }})</p>
                     </div>
                 </div>
                 @endif
@@ -422,7 +422,7 @@
                             'text-amber-700'   => $stats['weaning_rate'] < 90 && $stats['weaning_rate'] >= 75,
                             'text-rose-700'    => $stats['weaning_rate'] < 75,
                         ])>{{ number_format($stats['weaning_rate'], 1) }}%</p>
-                        <p class="text-[8px] font-black uppercase text-slate-400 tracking-widest">Taux de sevrage</p>
+                        <p class="text-[8px] font-black uppercase text-slate-400 tracking-widest">{{ __("Taux de sevrage") }}</p>
                     </div>
                 </div>
                 @endif
@@ -432,11 +432,11 @@
             {{-- GRAPHIQUES --}}
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
                 <div class="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
-                    <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest italic mb-6 leading-none"><i class="fas fa-skull-crossbones text-red-500 mr-2"></i> Courbe de Mortalité (%)</h3>
+                    <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest italic mb-6 leading-none"><i class="fas fa-skull-crossbones text-red-500 mr-2"></i> {{ __("Courbe de Mortalité (%)") }}</h3>
                     <div class="h-[300px]"><canvas id="mortalityChart"></canvas></div>
                 </div>
                 <div class="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
-                    <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest italic mb-6 leading-none"><i class="fas fa-tint text-blue-500 mr-2"></i> Ration Aliment (kg) vs Eau (L)</h3>
+                    <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest italic mb-6 leading-none"><i class="fas fa-tint text-blue-500 mr-2"></i> {{ __("Ration Aliment (kg) vs Eau (L)") }}</h3>
                     <div class="h-[300px]"><canvas id="hydrationChart"></canvas></div>
                 </div>
             </div>
@@ -444,7 +444,7 @@
             {{-- CALENDRIER SANITAIRE --}}
             <div class="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm mb-8">
                 <div class="flex justify-between items-center mb-6">
-                    <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest italic flex items-center gap-2 leading-none"><i class="fas fa-calendar-check text-purple-500"></i> Calendrier Sanitaire</h3>
+                    <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest italic flex items-center gap-2 leading-none"><i class="fas fa-calendar-check text-purple-500"></i> {{ __("Calendrier Sanitaire") }}</h3>
                 </div>
                 <div class="flex overflow-x-auto gap-4 pb-4 no-scrollbar">
                     @if($batch->protocol)
@@ -466,13 +466,13 @@
                                 'bg-white border-slate-100 opacity-60' => !$isDone && !$isPast && !$isToday
                             ])>
                                 <div>
-                                    <span @class(['text-[9px] font-black px-2 py-1 rounded-lg italic text-white', 'bg-emerald-600' => $isDone, 'bg-red-600 animate-pulse' => $isToday, 'bg-slate-900' => !$isDone && !$isToday])>Jour {{ $step->day_number }}</span>
+                                    <span @class(['text-[9px] font-black px-2 py-1 rounded-lg italic text-white', 'bg-emerald-600' => $isDone, 'bg-red-600 animate-pulse' => $isToday, 'bg-slate-900' => !$isDone && !$isToday])>{{ __("Jour") }} {{ $step->day_number }}</span>
                                     <p class="text-[11px] font-black text-slate-800 uppercase leading-tight mt-3">{{ $step->action_name }}</p>
                                     <p class="text-[9px] font-bold italic text-slate-400">{{ $vaxDate->translatedFormat('d F Y') }}</p>
                                 </div>
                                 @can('elevage.M')
                                     @if(!$isDone && $batch->status === 'Actif')
-                                        <a href="{{ route('health.create', ['batch_id' => $batch->id, 'product_name' => $step->action_name]) }}" class="block w-full py-2 bg-slate-900 text-white text-center rounded-xl text-[8px] font-black uppercase">Enregistrer</a>
+                                        <a href="{{ route('health.create', ['batch_id' => $batch->id, 'product_name' => $step->action_name]) }}" class="block w-full py-2 bg-slate-900 text-white text-center rounded-xl text-[8px] font-black uppercase">{{ __("Enregistrer") }}</a>
                                     @endif
                                 @endcan
                             </div>
@@ -531,11 +531,11 @@
                                 {{ number_format($availableKg, 1) }} <small class="text-[10px] text-slate-400">kg</small>
                             </h4>
                             <p class="text-[7px] {{ $isSac ? 'text-emerald-600' : 'text-blue-500' }} mt-2 font-black uppercase italic">
-                                {{ $isSac ? 'Soit ' . number_format($qty, 1) . ' Sacs' : 'Stock en Vrac' }}
+                                {{ $isSac ? __('Soit') . ' ' . number_format($qty, 1) . ' ' . __('Sacs') : __('Stock en Vrac') }}
                             </p>
                         @else
-                            <h4 class="text-sm font-black text-slate-300 italic leading-none">Non créé</h4>
-                            <p class="text-[7px] text-slate-300 mt-2 font-black uppercase italic">Vérifier Inventaire</p>
+                            <h4 class="text-sm font-black text-slate-300 italic leading-none">{{ __("Non créé") }}</h4>
+                            <p class="text-[7px] text-slate-300 mt-2 font-black uppercase italic">{{ __("Vérifier Inventaire") }}</p>
                         @endif
                     </div>
                 @endforeach
@@ -546,10 +546,10 @@
             <div class="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden mb-8 text-left italic font-bold">
                 <div class="px-8 py-6 border-b border-slate-50 flex justify-between items-center bg-slate-50/30">
                     <h3 class="text-[10px] font-black text-slate-800 uppercase italic tracking-widest flex items-center gap-2">
-                        <i class="fa-solid fa-conveyor-belt-arm text-orange-500"></i> Journal des Flux & Approvisionnements
+                        <i class="fa-solid fa-conveyor-belt-arm text-orange-500"></i> {{ __("Journal des Flux & Approvisionnements") }}
                     </h3>
                     <span class="px-3 py-1 bg-slate-100 text-slate-500 rounded-full text-[7px] font-black uppercase">
-                        Secteur {{ $batch->productionType?->name_fr ?? $batch->type }}
+                        {{ __("Secteur") }} {{ $batch->productionType?->name_fr ?? $batch->type }}
                     </span>
                 </div>
                 
@@ -557,12 +557,12 @@
                     <table class="w-full text-left border-collapse">
                         <thead>
                             <tr class="text-[8px] font-black uppercase text-slate-400 border-b border-slate-50 italic">
-                                <th class="px-8 py-4">Date</th>
-                                <th class="px-8 py-4">Article</th>
-                                <th class="px-8 py-4 text-center">Origine</th>
-                                <th class="px-8 py-4 text-center">Quantité</th>
-                                <th class="px-8 py-4 text-right">Montant</th>
-                                <th class="px-8 py-4 text-right">Actions</th>
+                                <th class="px-8 py-4">{{ __("Date") }}</th>
+                                <th class="px-8 py-4">{{ __("Article") }}</th>
+                                <th class="px-8 py-4 text-center">{{ __("Origine") }}</th>
+                                <th class="px-8 py-4 text-center">{{ __("Quantité") }}</th>
+                                <th class="px-8 py-4 text-right">{{ __("Montant") }}</th>
+                                <th class="px-8 py-4 text-right">{{ __("Actions") }}</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-50 text-[10px]">
@@ -594,10 +594,10 @@
                                     <td class="px-8 py-4 text-slate-500">{{ \Carbon\Carbon::parse($purchase->purchase_date)->format('d/m/Y') }}</td>
                                     <td class="px-8 py-4">
                                         <span class="text-slate-800 uppercase font-black">{{ $purchase->feed_type }}</span>
-                                        <br><span class="text-[8px] text-slate-400 italic">Fournisseur : {{ $purchase->supplier ?? '--' }}</span>
+                                        <br><span class="text-[8px] text-slate-400 italic">{{ __("Fournisseur") }} : {{ $purchase->supplier ?? '--' }}</span>
                                     </td>
                                     <td class="px-8 py-4 text-center">
-                                        <span class="bg-emerald-100 text-emerald-700 text-[7px] px-2 py-1 rounded-md uppercase font-black italic">Achat</span>
+                                        <span class="bg-emerald-100 text-emerald-700 text-[7px] px-2 py-1 rounded-md uppercase font-black italic">{{ __("Achat") }}</span>
                                     </td>
                                     <td class="px-8 py-4 text-center text-emerald-600 font-black">+ {{ number_format($purchase->quantity, 1) }} kg</td>
                                     <td class="px-8 py-4 text-right"><span class="text-slate-900 font-black">{{ number_format($purchase->unit_price, 0) }} GNF</span></td>
@@ -608,13 +608,13 @@
                                                 <a href="{{ route('feed-purchases.edit', $purchase->id) }}" class="text-slate-300 hover:text-blue-600 transition"><i class="fa-solid fa-pen-to-square"></i></a>
                                                 @endcan
                                                 @can('elevage.S')
-                                                <form action="{{ route('feed-purchases.destroy', $purchase->id) }}" method="POST" onsubmit="return confirm('Annuler cet achat ?')">
+                                                <form action="{{ route('feed-purchases.destroy', $purchase->id) }}" method="POST" onsubmit="return confirm(@json(__('Annuler cet achat ?')))">
                                                     @csrf @method('DELETE')
                                                     <button type="submit" class="text-slate-300 hover:text-red-500 transition"><i class="fa-solid fa-trash-can"></i></button>
                                                 </form>
                                                 @endcan
                                             @else
-                                                <i class="fa-solid fa-lock text-slate-200" title="Lot clôturé"></i>
+                                                <i class="fa-solid fa-lock text-slate-200" title="{{ __("Lot clôturé") }}"></i>
                                             @endif
                                         </div>
                                     </td>
@@ -626,7 +626,7 @@
                                     <td class="px-8 py-4 text-slate-400 font-medium">{{ $m->created_at->format('d/m H:i') }}</td>
                                     <td class="px-8 py-4 text-slate-800 uppercase font-black">{{ $m->stock->item_name ?? 'N/A' }}</td>
                                     <td class="px-8 py-4 text-center">
-                                        <span class="bg-rose-100 text-rose-700 text-[7px] px-2 py-1 rounded-md uppercase font-black italic">Consommation</span>
+                                        <span class="bg-rose-100 text-rose-700 text-[7px] px-2 py-1 rounded-md uppercase font-black italic">{{ __("Consommation") }}</span>
                                     </td>
                                     <td class="px-8 py-4 text-center text-rose-600 font-black">- {{ number_format($m->quantity, 2) }} {{ $m->stock->unit ?? '' }}</td>
                                     <td class="px-8 py-4 text-right text-slate-400 italic font-medium leading-tight">{{ $m->notes }}</td>
@@ -639,7 +639,7 @@
                             @if($purchases->isEmpty() && $movements->isEmpty())
                                 <tr>
                                     <td colspan="6" class="px-8 py-10 text-center text-slate-300 uppercase text-[9px] tracking-widest">
-                                        Aucun mouvement enregistré
+                                        {{ __("Aucun mouvement enregistré") }}
                                     </td>
                                 </tr>
                             @endif
@@ -653,13 +653,13 @@
                 <table class="w-full text-left border-collapse">
                     <thead>
                         <tr class="text-[8px] font-black text-slate-400 uppercase bg-slate-50/50 border-b border-slate-50 italic leading-none">
-                            <th class="px-6 py-5">Date / Jour</th>
-                            <th class="px-4 py-5 text-red-500 text-center">Morts</th>
-                            <th class="px-4 py-5 text-blue-600 text-center">Conso. (L/kg)</th>
-                            <th class="px-4 py-5 text-orange-500 text-center">T° Moyenne</th>
-                            <th class="px-4 py-5 text-emerald-600 text-center">Poids (g)</th>
-                            <th class="px-4 py-5 text-purple-600 text-center">Mvts (Inf.)</th>
-                            <th class="px-6 py-5 text-right">Actions</th>
+                            <th class="px-6 py-5">{{ __("Date / Jour") }}</th>
+                            <th class="px-4 py-5 text-red-500 text-center">{{ __("Morts") }}</th>
+                            <th class="px-4 py-5 text-blue-600 text-center">{{ __("Conso. (L/kg)") }}</th>
+                            <th class="px-4 py-5 text-orange-500 text-center">{{ __("T° Moyenne") }}</th>
+                            <th class="px-4 py-5 text-emerald-600 text-center">{{ __("Poids (g)") }}</th>
+                            <th class="px-4 py-5 text-purple-600 text-center">{{ __("Mvts (Inf.)") }}</th>
+                            <th class="px-6 py-5 text-right">{{ __("Actions") }}</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-50 text-[10px]">
@@ -668,7 +668,7 @@
                             <tr class="hover:bg-slate-50/80 transition-all">
                                 <td class="px-6 py-5">
                                     <p class="font-black text-slate-800 text-sm leading-none">{{ $check->check_date->format('d/m/y') }}</p>
-                                    <p class="text-[8px] font-bold text-blue-400 mt-1 uppercase tracking-widest leading-none">Jour {{ $checkAge }}</p>
+                                    <p class="text-[8px] font-bold text-blue-400 mt-1 uppercase tracking-widest leading-none">{{ __("Jour") }} {{ $checkAge }}</p>
                                 </td>
                                 <td class="px-4 py-5 text-center font-black {{ $check->mortality > 0 ? 'text-red-600 text-sm' : 'text-slate-200' }}">{{ $check->mortality }}</td>
                                 <td class="px-4 py-5 text-center leading-tight">
@@ -686,7 +686,7 @@
                                     @if($check->extension && ($check->extension->qty_born > 0 || $check->extension->water_ph !== null))
                                     <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-100 text-emerald-700 text-[7px] font-black uppercase ml-2">
                                         @if($check->extension->water_ph !== null)🐟@else🐑@endif
-                                        Ext.
+                                        {{ __("Ext.") }}
                                     </span>
                                     @endif
                                     @if($batch->status === 'Actif')
@@ -694,7 +694,7 @@
                                         <a href="{{ route('daily-checks.edit', $check->id) }}" class="text-slate-300 hover:text-blue-500 transition"><i class="fa-solid fa-pen-to-square text-[10px]"></i></a>
                                         @endcan
                                         @can('elevage.S')
-                                        <form action="{{ route('daily-checks.destroy', $check->id) }}" method="POST" onsubmit="return confirm('Supprimer ?')">
+                                        <form action="{{ route('daily-checks.destroy', $check->id) }}" method="POST" onsubmit="return confirm(@json(__('Supprimer ?')))">
                                             @csrf @method('DELETE')
                                             <button type="submit" class="text-slate-300 hover:text-red-500 transition"><i class="fa-solid fa-trash-can text-[10px]"></i></button>
                                         </form>
@@ -712,8 +712,8 @@
                 <div class="flex items-center gap-4 mb-10">
                     <div class="w-12 h-12 bg-rose-50 rounded-2xl flex items-center justify-center text-rose-500 shadow-sm"><i class="fa-solid fa-timeline text-xl"></i></div>
                     <div>
-                        <h3 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">Journal des Mutations</h3>
-                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-2 italic">Traçabilité inter-bâtiments</p>
+                        <h3 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">{{ __("Journal des Mutations") }}</h3>
+                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-2 italic">{{ __("Traçabilité inter-bâtiments") }}</p>
                     </div>
                 </div>
 
@@ -728,7 +728,7 @@
                                 <div class="flex items-center justify-between mb-4">
                                     <time class="text-[10px] font-black text-rose-500 uppercase italic leading-none">{{ \Carbon\Carbon::parse($log['date'])->format('d M Y') }}</time>
                                     <p class="text-[10px] font-black uppercase text-slate-400">
-                                        Opérateur : {{ $log['performed_by'] ?? 'Système' }}
+                                        {{ __("Opérateur") }} : {{ $log['performed_by'] ?? __('Système') }}
                                     </p>
                                 </div>
                                 <div class="flex items-center gap-3 mb-4">
@@ -737,13 +737,13 @@
                                     <span class="text-xs font-black text-slate-800 uppercase italic">{{ $log['to_building'] }}</span>
                                 </div>
                                 @if(isset($log['quantity_at_transfer']))
-                                    <p class="text-[8px] font-black text-blue-500 uppercase mb-2">Effectif au transfert : {{ $log['quantity_at_transfer'] }} sujets</p>
+                                    <p class="text-[8px] font-black text-blue-500 uppercase mb-2">{{ __("Effectif au transfert") }} : {{ $log['quantity_at_transfer'] }} {{ __("sujets") }}</p>
                                 @endif
                                 <p class="text-[9px] font-bold text-slate-500 leading-relaxed italic border-t border-slate-200 pt-3 uppercase">{{ $log['notes'] ?? '' }}</p>
                             </div>
                         </div>
                     @empty
-                        <div class="text-center py-10"><p class="text-[10px] font-black text-slate-300 uppercase italic tracking-widest">Aucun mouvement.</p></div>
+                        <div class="text-center py-10"><p class="text-[10px] font-black text-slate-300 uppercase italic tracking-widest">{{ __("Aucun mouvement.") }}</p></div>
                     @endforelse
                 </div>
             </div>
@@ -757,52 +757,52 @@
             <form action="{{ route('batches.transfer', $batch->id) }}" method="POST" class="p-12 relative z-10 text-left">
                 @csrf
                 <div class="mb-10">
-                    <h3 class="text-3xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">Mutation de Lot</h3>
-                    <p class="text-[10px] font-black text-rose-500 uppercase tracking-[0.2em] mt-3 italic">Effectif actuel : <span class="text-slate-900">{{ $currentEffectif }} sujets</span></p>
+                    <h3 class="text-3xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">{{ __("Mutation de Lot") }}</h3>
+                    <p class="text-[10px] font-black text-rose-500 uppercase tracking-[0.2em] mt-3 italic">{{ __("Effectif actuel") }} : <span class="text-slate-900">{{ $currentEffectif }} {{ __("sujets") }}</span></p>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <div class="space-y-6">
                         <div>
-                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-3 ml-2 italic">Bâtiment de Destination</label>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-3 ml-2 italic">{{ __("Bâtiment de Destination") }}</label>
                             <select name="target_building_id" required class="w-full p-5 bg-slate-50 rounded-[2rem] border-none shadow-inner font-black text-slate-700 italic uppercase text-xs appearance-none">
-                                <option value="">-- Sélectionner --</option>
+                                <option value="">{{ __("-- Sélectionner --") }}</option>
                                 @foreach($buildings as $building)
                                     @if($building->type === $batch->type || $building->type === 'mixte')
                                         <option value="{{ $building->id }}" {{ $building->id == $batch->building_id ? 'disabled' : '' }}>
-                                            {{ $building->name }} (Cap: {{ $building->capacity }} | Type: {{ $building->type }})
+                                            {{ $building->name }} ({{ __("Cap") }}: {{ $building->capacity }} | {{ __("Type") }}: {{ $building->type }})
                                         </option>
                                     @endif
                                 @endforeach
                             </select>
                         </div>
                         <div>
-                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-3 ml-2 italic">Date du Mouvement</label>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-3 ml-2 italic">{{ __("Date du Mouvement") }}</label>
                             <input type="date" name="transfer_date" value="{{ date('Y-m-d') }}" required class="w-full p-5 bg-slate-50 rounded-[2rem] border-none shadow-inner font-black text-blue-600 italic text-xs">
                         </div>
                     </div>
                     <div class="space-y-6">
                         <div>
-                            <label class="block text-[10px] font-black text-blue-500 uppercase mb-3 ml-2 italic">Nouveau Programme</label>
+                            <label class="block text-[10px] font-black text-blue-500 uppercase mb-3 ml-2 italic">{{ __("Nouveau Programme") }}</label>
                             <select name="new_protocol_id" id="protocol-select" required class="w-full p-5 bg-slate-100 rounded-[2rem] border-none shadow-inner font-black text-blue-600 italic uppercase text-xs appearance-none">
-                                <option value="" data-type="all">-- Appliquer Protocole --</option>
+                                <option value="" data-type="all">{{ __("-- Appliquer Protocole --") }}</option>
                                 @foreach($protocols as $protocol)
                                     <option value="{{ $protocol->id }}" data-type="{{ $protocol->type }}">{{ $protocol->name }}</option>
                                 @endforeach
                             </select>
                         </div>
                         <div>
-                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-3 ml-2 italic">Nouvelle Phase</label>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-3 ml-2 italic">{{ __("Nouvelle Phase") }}</label>
                             <select name="new_phase" required class="w-full p-5 bg-slate-50 rounded-[2rem] border-none shadow-inner font-black text-slate-700 italic uppercase text-xs appearance-none">
                                 @if($isVolaille)
                                     @if(in_array($batch->type, ['ponte', 'reproducteur', 'poussiniere']))
-                                        <option value="poussiniere" {{ $batch->production_phase == 'poussiniere' ? 'selected' : '' }}>Poussinière</option>
-                                        <option value="ponte" {{ $batch->production_phase == 'ponte' ? 'selected' : '' }}>Ponte Active</option>
-                                        <option value="reproducteur" {{ $batch->production_phase == 'reproducteur' ? 'selected' : '' }}>Reproducteurs</option>
+                                        <option value="poussiniere" {{ $batch->production_phase == 'poussiniere' ? 'selected' : '' }}>{{ __("Poussinière") }}</option>
+                                        <option value="ponte" {{ $batch->production_phase == 'ponte' ? 'selected' : '' }}>{{ __("Ponte Active") }}</option>
+                                        <option value="reproducteur" {{ $batch->production_phase == 'reproducteur' ? 'selected' : '' }}>{{ __("Reproducteurs") }}</option>
                                     @endif
                                     @if($batch->type == 'chair')
-                                        <option value="chair" selected>Poulet de Chair</option>
-                                        <option value="poussiniere">Poussinière</option>
+                                        <option value="chair" selected>{{ __("Poulet de Chair") }}</option>
+                                        <option value="poussiniere">{{ __("Poussinière") }}</option>
                                     @endif
                                 @else
                                     {{-- Espèces non-volailles : la mutation ne change pas la phase
@@ -815,13 +815,13 @@
                         </div>
                     </div>
                     <div class="md:col-span-2">
-                        <textarea name="notes" placeholder="Notes de traçabilité..." class="w-full p-6 bg-slate-50 rounded-[2.5rem] border-none shadow-inner font-bold text-slate-500 italic text-[10px] uppercase"></textarea>
+                        <textarea name="notes" placeholder="{{ __("Notes de traçabilité...") }}" class="w-full p-6 bg-slate-50 rounded-[2.5rem] border-none shadow-inner font-bold text-slate-500 italic text-[10px] uppercase"></textarea>
                     </div>
                 </div>
 
                 <div class="flex gap-4 mt-10">
-                    <button type="button" onclick="document.getElementById('modal-transfer').classList.add('hidden')" class="flex-1 py-6 text-[10px] font-black uppercase text-slate-400">Annuler</button>
-                    <button type="submit" class="flex-[2] py-6 bg-rose-600 text-white rounded-[2.5rem] text-[10px] font-black uppercase italic shadow-2xl hover:bg-slate-900 transition-all">Exécuter la mutation</button>
+                    <button type="button" onclick="document.getElementById('modal-transfer').classList.add('hidden')" class="flex-1 py-6 text-[10px] font-black uppercase text-slate-400">{{ __("Annuler") }}</button>
+                    <button type="submit" class="flex-[2] py-6 bg-rose-600 text-white rounded-[2.5rem] text-[10px] font-black uppercase italic shadow-2xl hover:bg-slate-900 transition-all">{{ __("Exécuter la mutation") }}</button>
                 </div>
             </form>
         </div>

@@ -40,9 +40,9 @@
         <div class="px-10 py-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
             <div>
                 <h3 class="text-lg font-black text-slate-800 uppercase italic tracking-tighter leading-none flex items-center gap-2">
-                    <i class="fa-solid fa-truck-ramp-box text-orange-500"></i> Achat Direct
+                    <i class="fa-solid fa-truck-ramp-box text-orange-500"></i> {{ __("Achat Direct") }}
                 </h3>
-                <p class="text-[9px] text-slate-400 uppercase mt-1 font-black tracking-widest italic">Lot {{ $batch->code }} — {{ ucfirst($batch->type) }}</p>
+                <p class="text-[9px] text-slate-400 uppercase mt-1 font-black tracking-widest italic">{{ __("Lot") }} {{ $batch->code }} — {{ ucfirst($batch->type) }}</p>
             </div>
             <button type="button" onclick="closeFeedModal()" class="text-slate-300 hover:text-red-500 transition border-none bg-transparent cursor-pointer outline-none"><i class="fa-solid fa-xmark text-2xl"></i></button>
         </div>
@@ -59,21 +59,21 @@
 
                 {{-- 00. CATÉGORIE --}}
                 <div class="bg-slate-50 p-5 rounded-[2rem] border border-slate-100">
-                    <label class="text-[9px] uppercase text-slate-500 ml-4 mb-2 block tracking-widest font-black">Catégorie</label>
+                    <label class="text-[9px] uppercase text-slate-500 ml-4 mb-2 block tracking-widest font-black">{{ __("Catégorie") }}</label>
                     <select x-model="cat" class="w-full bg-white border-none rounded-xl p-4 font-black text-xs uppercase shadow-sm italic cursor-pointer outline-none">
-                        <option value="conso">🌾 Aliment & Santé</option>
-                        <option value="litieres">🍂 Litières</option>
-                        <option value="materiels">🛠️ Matériels</option>
+                        <option value="conso">🌾 {{ __("Aliment & Santé") }}</option>
+                        <option value="litieres">🍂 {{ __("Litières") }}</option>
+                        <option value="materiels">🛠️ {{ __("Matériels") }}</option>
                     </select>
                 </div>
 
                 {{-- 01. NATURE (Conso uniquement) --}}
                 <div x-show="cat === 'conso'" class="bg-orange-50/50 p-5 rounded-[2rem] border border-orange-100">
-                    <label class="text-[9px] uppercase text-orange-500 ml-4 mb-2 block tracking-widest font-black">Nature de l'achat</label>
+                    <label class="text-[9px] uppercase text-orange-500 ml-4 mb-2 block tracking-widest font-black">{{ __("Nature de l'achat") }}</label>
                     <select x-model="consoType" class="w-full bg-white border-none rounded-xl p-4 font-black text-xs uppercase shadow-sm italic cursor-pointer outline-none">
-                        <option value="Aliment">🌾 Alimentation</option>
-                        <option value="Santé">💉 Santé / Médicaments</option>
-                        <option value="Hygiène">🧼 Hygiène & Entretien</option>
+                        <option value="Aliment">🌾 {{ __("Alimentation") }}</option>
+                        <option value="Santé">💉 {{ __("Santé / Médicaments") }}</option>
+                        <option value="Hygiène">🧼 {{ __("Hygiène & Entretien") }}</option>
                     </select>
                 </div>
 
@@ -82,52 +82,52 @@
                     <button type="button" @click="poultryType = 'Chair'"
                         :class="poultryType === 'Chair' ? 'bg-slate-900 text-white shadow-lg' : 'bg-slate-100 text-slate-400'"
                         class="py-3 rounded-xl text-[9px] font-black uppercase italic tracking-widest transition-all border-none cursor-pointer">
-                        <i class="fa-solid fa-feather mr-1"></i> Chair
+                        <i class="fa-solid fa-feather mr-1"></i> {{ __("Chair") }}
                     </button>
                     <button type="button" @click="poultryType = 'Ponte'"
                         :class="poultryType === 'Ponte' ? 'bg-emerald-600 text-white shadow-lg' : 'bg-slate-100 text-slate-400'"
                         class="py-3 rounded-xl text-[9px] font-black uppercase italic tracking-widest transition-all border-none cursor-pointer">
-                        <i class="fa-solid fa-egg mr-1"></i> Ponte
+                        <i class="fa-solid fa-egg mr-1"></i> {{ __("Ponte") }}
                     </button>
                 </div>
 
                 {{-- 02. DÉSIGNATION --}}
                 <div>
-                    <label class="text-[9px] uppercase text-slate-400 ml-4 mb-2 block tracking-widest font-black">Désignation</label>
+                    <label class="text-[9px] uppercase text-slate-400 ml-4 mb-2 block tracking-widest font-black">{{ __("Désignation") }}</label>
 
                     {{-- Aliment Chair --}}
                     <template x-if="cat === 'conso' && consoType === 'Aliment' && poultryType === 'Chair'">
                         <select name="feed_type" required class="w-full bg-slate-50 border-none rounded-xl p-4 font-black uppercase text-xs shadow-inner italic border-l-4 border-slate-900 outline-none">
-                            <option value="">-- Aliments Chair --</option>
-                            <option value="Chair Démarrage">Chair Démarrage</option>
-                            <option value="Chair Croissance">Chair Croissance</option>
-                            <option value="Chair Finition">Chair Finition</option>
+                            <option value="">{{ __("-- Aliments Chair --") }}</option>
+                            <option value="Chair Démarrage">{{ __("Chair Démarrage") }}</option>
+                            <option value="Chair Croissance">{{ __("Chair Croissance") }}</option>
+                            <option value="Chair Finition">{{ __("Chair Finition") }}</option>
                         </select>
                     </template>
 
                     {{-- Aliment Ponte --}}
                     <template x-if="cat === 'conso' && consoType === 'Aliment' && poultryType === 'Ponte'">
                         <select name="feed_type" required class="w-full bg-slate-50 border-none rounded-xl p-4 font-black uppercase text-xs shadow-inner italic border-l-4 border-emerald-500 outline-none">
-                            <option value="">-- Aliments Ponte --</option>
-                            <option value="Ponte Démarrage (Poussin)">Ponte Démarrage (Poussin)</option>
-                            <option value="Ponte Croissance (Poulette)">Ponte Croissance (Poulette)</option>
-                            <option value="Ponte 1 (Pic de ponte)">Ponte 1 (Pic de ponte)</option>
-                            <option value="Ponte 2 (Entretien)">Ponte 2 (Entretien)</option>
+                            <option value="">{{ __("-- Aliments Ponte --") }}</option>
+                            <option value="Ponte Démarrage (Poussin)">{{ __("Ponte Démarrage (Poussin)") }}</option>
+                            <option value="Ponte Croissance (Poulette)">{{ __("Ponte Croissance (Poulette)") }}</option>
+                            <option value="Ponte 1 (Pic de ponte)">{{ __("Ponte 1 (Pic de ponte)") }}</option>
+                            <option value="Ponte 2 (Entretien)">{{ __("Ponte 2 (Entretien)") }}</option>
                         </select>
                     </template>
 
                     {{-- Santé / Hygiène / Litières / Matériel --}}
                     <template x-if="cat !== 'conso' || consoType !== 'Aliment'">
-                        <input type="text" name="feed_type" required placeholder="Ex: VACCIN HB1, LITIÈRE COPEAUX..."
+                        <input type="text" name="feed_type" required placeholder="{{ __("Ex: VACCIN HB1, LITIÈRE COPEAUX...") }}"
                             class="w-full bg-slate-50 border-none rounded-xl p-4 font-black uppercase text-xs shadow-inner italic outline-none">
                     </template>
                 </div>
 
                 {{-- 03. FOURNISSEUR --}}
                 <div>
-                    <label class="text-[9px] uppercase text-slate-400 ml-4 mb-2 block tracking-widest font-black">Fournisseur</label>
+                    <label class="text-[9px] uppercase text-slate-400 ml-4 mb-2 block tracking-widest font-black">{{ __("Fournisseur") }}</label>
                     <select name="supplier" required class="w-full bg-slate-50 border-none rounded-xl p-4 font-black text-xs uppercase shadow-inner italic outline-none">
-                        <option value="">-- Sélectionner --</option>
+                        <option value="">{{ __("-- Sélectionner --") }}</option>
                         @foreach($providers as $provider)
                             <option value="{{ $provider->name }}">{{ $provider->name }}</option>
                         @endforeach
@@ -137,7 +137,7 @@
                 {{-- 04. QUANTITÉ + COÛT --}}
                 <div class="grid grid-cols-2 gap-4">
                     <div class="bg-slate-50 p-5 rounded-[2rem] border border-slate-100">
-                        <label class="text-[8px] uppercase text-slate-400 mb-2 block font-black italic tracking-widest text-center" x-text="'Quantité en ' + unit"></label>
+                        <label class="text-[8px] uppercase text-slate-400 mb-2 block font-black italic tracking-widest text-center" x-text="@json(__('Quantité en ')) + unit"></label>
                         <input type="number" x-model.number="inputQty" step="0.01" min="0.01" required
                             class="w-full bg-white border-none rounded-xl p-3 text-center font-black text-xl text-blue-600 shadow-sm outline-none">
 
@@ -161,7 +161,7 @@
                     </div>
 
                     <div class="bg-slate-900 p-5 rounded-[2rem] shadow-xl text-white flex flex-col justify-center">
-                        <label class="text-[8px] uppercase text-emerald-400 mb-2 block font-black tracking-widest text-center">Coût total (GNF)</label>
+                        <label class="text-[8px] uppercase text-emerald-400 mb-2 block font-black tracking-widest text-center">{{ __("Coût total (GNF)") }}</label>
                         <input type="number" min="0" step="1" name="unit_price" x-model.number="unitPrice" required
                             class="w-full bg-white/10 border-none rounded-xl p-3 text-center font-black text-white text-xl shadow-inner outline-none focus:ring-2 focus:ring-emerald-500" placeholder="0">
                         <template x-if="computedUnitPrice > 0">
@@ -179,12 +179,12 @@
                         <template x-if="unit === 'Sac'"><span> (<span x-text="finalQuantity"></span> KG)</span></template>
                         →
                         <span x-text="unitPrice.toLocaleString('fr-FR')"></span> GNF
-                        → Imputé au lot {{ $batch->code }}
+                        → {{ __("Imputé au lot") }} {{ $batch->code }}
                     </p>
                 </div>
 
                 <button type="submit" class="w-full bg-slate-900 text-white py-5 rounded-[2rem] font-black uppercase italic shadow-2xl hover:bg-emerald-600 transition-all flex items-center justify-center gap-2 tracking-[0.2em] text-[10px] border-none cursor-pointer">
-                    <i class="fa-solid fa-check-circle text-emerald-400"></i> Enregistrer l'achat
+                    <i class="fa-solid fa-check-circle text-emerald-400"></i> {{ __("Enregistrer l'achat") }}
                 </button>
             </form>
         </div>

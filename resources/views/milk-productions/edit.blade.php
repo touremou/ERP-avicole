@@ -3,9 +3,9 @@
         <div class="flex items-center gap-4">
             <a href="{{ route('milk-productions.index') }}" class="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-500 hover:text-slate-800 rounded-xl transition-all shadow-sm no-underline">
                 <i class="fas fa-chevron-left text-xs"></i>
-                <span class="text-[10px] font-black uppercase italic tracking-widest leading-none">Retour</span>
+                <span class="text-[10px] font-black uppercase italic tracking-widest leading-none">{{ __("Retour") }}</span>
             </a>
-            <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">Rectifier collecte — {{ $batch->code }}</h2>
+            <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">{{ __("Rectifier collecte") }} — {{ $batch->code }}</h2>
         </div>
     </x-slot>
 
@@ -25,19 +25,19 @@
 
                 <div class="bg-white p-10 rounded-[3rem] shadow-sm border border-slate-100 space-y-8">
                     <div>
-                        <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-1 italic">Date de collecte *</label>
+                        <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-1 italic">{{ __("Date de collecte *") }}</label>
                         <input type="date" name="production_date" value="{{ old('production_date', $milk->production_date->toDateString()) }}" max="{{ now()->toDateString() }}" required
                                class="w-full p-4 bg-slate-50 rounded-2xl border-none font-black text-slate-700 shadow-inner italic outline-none">
                     </div>
 
                     <div class="grid grid-cols-2 gap-6">
                         <div>
-                            <label class="block text-[10px] font-black text-emerald-500 uppercase mb-2 ml-1 italic">Traite matin (L)</label>
+                            <label class="block text-[10px] font-black text-emerald-500 uppercase mb-2 ml-1 italic">{{ __("Traite matin (L)") }}</label>
                             <input type="number" step="0.1" min="0" name="morning_liters" x-model.number="morning" value="{{ old('morning_liters', $milk->morning_liters) }}"
                                    class="w-full p-4 bg-slate-50 rounded-2xl border-none font-black text-2xl text-slate-800 shadow-inner italic outline-none">
                         </div>
                         <div>
-                            <label class="block text-[10px] font-black text-emerald-500 uppercase mb-2 ml-1 italic">Traite soir (L)</label>
+                            <label class="block text-[10px] font-black text-emerald-500 uppercase mb-2 ml-1 italic">{{ __("Traite soir (L)") }}</label>
                             <input type="number" step="0.1" min="0" name="evening_liters" x-model.number="evening" value="{{ old('evening_liters', $milk->evening_liters) }}"
                                    class="w-full p-4 bg-slate-50 rounded-2xl border-none font-black text-2xl text-slate-800 shadow-inner italic outline-none">
                         </div>
@@ -45,46 +45,46 @@
 
                     <div class="grid grid-cols-2 gap-6">
                         <div>
-                            <label class="block text-[10px] font-black text-amber-500 uppercase mb-2 ml-1 italic">Prix / litre (GNF)</label>
+                            <label class="block text-[10px] font-black text-amber-500 uppercase mb-2 ml-1 italic">{{ __("Prix / litre (GNF)") }}</label>
                             <input type="number" step="1" min="0" name="unit_price" x-model.number="price" value="{{ old('unit_price', $milk->unit_price) }}"
                                    class="w-full p-4 bg-slate-50 rounded-2xl border-none font-black text-slate-700 shadow-inner italic outline-none">
                         </div>
                         <div>
-                            <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-1 italic">Femelles traites</label>
-                            <input type="number" step="1" min="0" name="milking_females" value="{{ old('milking_females', $milk->milking_females) }}" placeholder="Optionnel"
+                            <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-1 italic">{{ __("Femelles traites") }}</label>
+                            <input type="number" step="1" min="0" name="milking_females" value="{{ old('milking_females', $milk->milking_females) }}" placeholder="{{ __('Optionnel') }}"
                                    class="w-full p-4 bg-slate-50 rounded-2xl border-none font-black text-slate-700 shadow-inner italic outline-none">
                         </div>
                     </div>
 
                     <div>
-                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 italic">Notes</label>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 italic">{{ __("Notes") }}</label>
                         <textarea name="notes" rows="2" class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-bold shadow-inner outline-none italic">{{ old('notes', $milk->notes) }}</textarea>
                     </div>
 
                     <div class="bg-slate-900 p-6 rounded-[2rem] text-white flex justify-between items-center">
                         <div>
-                            <p class="text-[9px] font-black text-emerald-400 uppercase tracking-widest">Total collecté</p>
+                            <p class="text-[9px] font-black text-emerald-400 uppercase tracking-widest">{{ __("Total collecté") }}</p>
                             <p class="text-3xl font-black italic" x-text="(morning + evening).toFixed(1) + ' L'"></p>
                         </div>
                         <div class="text-right">
-                            <p class="text-[9px] font-black text-amber-400 uppercase tracking-widest">Valorisation</p>
+                            <p class="text-[9px] font-black text-amber-400 uppercase tracking-widest">{{ __("Valorisation") }}</p>
                             <p class="text-3xl font-black italic" x-text="fmt((morning + evening) * price) + ' GNF'"></p>
                         </div>
                     </div>
 
                     <div class="flex gap-3">
                         <button type="submit" class="flex-1 bg-emerald-600 text-white font-black py-6 rounded-[2rem] hover:bg-emerald-700 transition-all uppercase tracking-[0.3em] text-[10px] italic shadow-2xl border-none cursor-pointer">
-                            <i class="fa-solid fa-floppy-disk mr-2"></i> Mettre à jour
+                            <i class="fa-solid fa-floppy-disk mr-2"></i> {{ __("Mettre à jour") }}
                         </button>
                     </div>
                 </div>
             </form>
 
             @can('production.S')
-            <form method="POST" action="{{ route('milk-productions.destroy', $milk) }}" class="mt-4" onsubmit="return confirm('Supprimer cette collecte ?');">
+            <form method="POST" action="{{ route('milk-productions.destroy', $milk) }}" class="mt-4" onsubmit="return confirm(@json(__('Supprimer cette collecte ?')));">
                 @csrf @method('DELETE')
                 <button type="submit" class="w-full bg-white border border-red-100 text-red-400 font-black py-4 rounded-[2rem] hover:bg-red-500 hover:text-white transition-all uppercase tracking-[0.2em] text-[9px] italic border-none cursor-pointer">
-                    <i class="fa-solid fa-trash mr-1"></i> Supprimer cette collecte
+                    <i class="fa-solid fa-trash mr-1"></i> {{ __("Supprimer cette collecte") }}
                 </button>
             </form>
             @endcan
