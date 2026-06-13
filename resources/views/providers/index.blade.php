@@ -24,19 +24,34 @@
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
 
             {{-- BARRE DE RECHERCHE DYNAMIQUE --}}
-            <div class="mb-10 max-w-2xl mx-auto md:mx-0">
+            <div class="mb-6 max-w-2xl mx-auto md:mx-0">
                 <div class="relative group">
                     <div class="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none text-left">
                         <i class="fas fa-search text-slate-300 group-focus-within:text-blue-500 transition-colors"></i>
                     </div>
-                    <input type="text" id="providerSearch" onkeyup="searchProvider()" 
+                    <input type="text" id="providerSearch" onkeyup="searchProvider()"
                            placeholder="{{ __('Rechercher un partenaire (Nom, Type, Domaine)...') }}"
                            class="w-full pl-14 pr-20 py-5 bg-white border border-slate-100 rounded-[2.5rem] shadow-sm outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition-all font-black text-[10px] uppercase tracking-widest italic shadow-inner">
-                    
+
                     <div class="absolute inset-y-0 right-0 pr-8 flex items-center">
                         <span id="searchCount" class="text-[9px] font-black text-blue-500 uppercase italic bg-blue-50 px-3 py-1 rounded-full hidden"></span>
                     </div>
                 </div>
+            </div>
+
+            {{-- FILTRE DE STATUT --}}
+            <div class="mb-10 flex items-center gap-2 max-w-2xl mx-auto md:mx-0">
+                @foreach([
+                    'Actif'      => __('Actifs'),
+                    'Blacklisté' => __('Blacklistés'),
+                    'all'        => __('Tous'),
+                ] as $value => $label)
+                    <a href="{{ route('providers.index', ['status' => $value]) }}"
+                       class="px-5 py-2 rounded-full text-[9px] font-black uppercase tracking-widest italic transition-all no-underline
+                              {{ $status === $value ? 'bg-slate-900 text-white shadow-md' : 'bg-white border border-slate-100 text-slate-400 hover:text-slate-700' }}">
+                        {{ $label }}
+                    </a>
+                @endforeach
             </div>
 
             {{-- GRILLE DES PARTENAIRES --}}
@@ -64,6 +79,9 @@
                                 </div>
                                 <div class="overflow-hidden">
                                     <span class="text-[8px] font-black text-blue-500 uppercase tracking-widest italic">{{ $provider->type }}</span>
+                                    @if($provider->status !== 'Actif')
+                                        <span class="ml-2 text-[8px] font-black text-red-500 uppercase tracking-widest italic">{{ $provider->status }}</span>
+                                    @endif
                                     <h3 class="text-xl font-black text-slate-800 uppercase tracking-tighter leading-none mt-1 truncate">{{ $provider->name }}</h3>
                                 </div>
                             </div>
@@ -104,18 +122,29 @@
                         </div>
 
                         <div class="bg-slate-50/50 p-6 flex justify-between items-center border-t border-slate-50">
-                            <div class="flex gap-4">
+                            <div class="flex gap-4 items-center">
                                 {{-- Permission M : Édition --}}
                                 @can('annuaire.M')
                                 <a href="{{ route('providers.edit', $provider->id) }}" class="text-slate-300 hover:text-blue-600 transition-colors">
                                     <i class="fas fa-pen-nib text-xs"></i>
                                 </a>
+
+                                {{-- Réactivation rapide d'un partenaire blacklisté --}}
+                                @if($provider->status === 'Blacklisté')
+                                    <form action="{{ route('providers.blacklist', $provider->id) }}" method="POST" class="inline">
+                                        @csrf @method('PUT')
+                                        <input type="hidden" name="status" value="Actif">
+                                        <button type="submit" class="text-[9px] font-black text-emerald-600 uppercase tracking-widest italic hover:text-emerald-700 transition-colors">
+                                            <i class="fas fa-check-circle mr-1"></i> {{ __("Réactiver") }}
+                                        </button>
+                                    </form>
+                                @endif
                                 @endcan
                             </div>
-                            
+
                             {{-- Permission L : Consultation --}}
                             @can('annuaire.L')
-                            <a href="{{ route('providers.show', $provider->id) }}" 
+                            <a href="{{ route('providers.show', $provider->id) }}"
                                class="px-8 py-3 bg-white border border-slate-200 rounded-xl text-[9px] font-black uppercase tracking-widest text-slate-900 hover:bg-slate-900 hover:text-white transition-all shadow-sm italic no-underline">
                                 {{ __("Voir Fiche") }}
                             </a>
@@ -127,7 +156,7 @@
                         <div class="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
                             <i class="fas fa-address-book text-3xl text-slate-200"></i>
                         </div>
-                        <p class="text-slate-400 font-black uppercase text-[10px] italic tracking-widest">{{ __("Aucun partenaire actif dans l'annuaire") }}</p>
+                        <p class="text-slate-400 font-black uppercase text-[10px] italic tracking-widest">{{ __("Aucun partenaire dans cette catégorie") }}</p>
                     </div>
                 @endforelse
             </div>

@@ -18,15 +18,22 @@ class ProviderController extends Controller
     /**
      * Liste des partenaires (Vue L)
      */
-    public function index() 
+    public function index(Request $request)
     {
         if (Gate::denies('annuaire.L')) return redirect()->route('dashboard')->with('error', 'Accès restreint.');
 
-        // Annuaire opérationnel : uniquement les partenaires actifs.
-        // Les partenaires blacklistés/inactifs et les fiches archivées
-        // (soft-deletes) sont écartés de la liste principale.
-        $providers = Provider::active()->orderBy('name', 'asc')->get();
-        return view('providers.index', compact('providers'));
+        // Filtre de statut : par défaut, seuls les partenaires actifs sont
+        // affichés. 'all' liste tout (y compris blacklistés/inactifs), pour
+        // permettre leur gestion/réactivation depuis l'annuaire.
+        $status = $request->query('status', 'Actif');
+
+        $query = Provider::orderBy('name', 'asc');
+        if ($status !== 'all') {
+            $query->where('status', $status);
+        }
+        $providers = $query->get();
+
+        return view('providers.index', compact('providers', 'status'));
     }
 
     /**
