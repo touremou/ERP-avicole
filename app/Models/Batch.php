@@ -466,11 +466,15 @@ class Batch extends Model
     ];
 
     /**
-     * Seuils d'âge (en jours) déterminant la phase d'aliment présélectionnée
-     * par défaut dans le Daily Check, par secteur (cf. FEED_PHASES). Chaque
-     * paire [âge max, index de phase] est évaluée dans l'ordre ; la dernière
-     * paire (PHP_INT_MAX) sert de valeur par défaut au-delà des seuils
-     * précédents.
+     * Seuils d'âge FIXES (en jours) de présélection de la phase d'aliment dans
+     * le Daily Check, par secteur (cf. FEED_PHASES). Chaque paire [âge max,
+     * index de phase] est évaluée dans l'ordre ; PHP_INT_MAX sert de défaut.
+     *
+     * Utilisé tel quel pour les secteurs « physiologiques » (Ponte, Laitière,
+     * Reproducteur), pilotés par un événement (mise en ponte, mise bas) plutôt
+     * que par la durée du cycle ; et comme repli pour les secteurs de
+     * croissance quand la durée de cycle est inconnue (cf.
+     * FEED_GROWOUT_FRACTIONS et feedPreselectPhase()).
      */
     private const FEED_AGE_THRESHOLDS = [
         'Chair'         => [[14, 0], [28, 1], [PHP_INT_MAX, 2]],
@@ -480,6 +484,23 @@ class Batch extends Model
         'Laitière'      => [[60, 0], [180, 1], [PHP_INT_MAX, 2]],
         'Grossissement' => [[30, 0], [90, 1], [PHP_INT_MAX, 2]],
         'Alevinage'     => [[15, 0], [PHP_INT_MAX, 1]],
+    ];
+
+    /**
+     * Fractions cumulées de la durée de cycle (production_types.cycle_days_default)
+     * délimitant les phases d'aliment des secteurs de CROISSANCE — l'aliment y
+     * suit l'âge proportionnellement à la durée de cycle réelle de l'espèce.
+     * Ainsi un poulet de chair (cycle 45 j) et une dinde de chair (cycle 120 j)
+     * basculent de phase à des âges différents mais aux mêmes stades relatifs.
+     *
+     * Chaque valeur est la borne haute (fraction du cycle) de la phase de même
+     * index ; la dernière vaut 1.0 (fin de cycle).
+     */
+    private const FEED_GROWOUT_FRACTIONS = [
+        'Chair'         => [0.30, 0.60, 1.0],
+        'Engraissement' => [0.30, 0.65, 1.0],
+        'Grossissement' => [0.20, 0.60, 1.0],
+        'Alevinage'     => [0.50, 1.0],
     ];
 
     /**
@@ -514,14 +535,33 @@ class Batch extends Model
     }
 
     /**
-     * Phase d'aliment à présélectionner dans le Daily Check selon l'âge du
-     * lot (cf. FEED_AGE_THRESHOLDS).
+     * Phase d'aliment à présélectionner dans le Daily Check selon l'âge du lot.
+     *
+     * Secteurs de croissance (Chair, Engraissement, Grossissement, Alevinage) :
+     * seuils calés sur la durée de cycle réelle de l'espèce
+     * (production_types.cycle_days_default × fractions, cf.
+     * FEED_GROWOUT_FRACTIONS). Secteurs physiologiques ou cycle inconnu : repli
+     * sur les seuils fixes (cf. FEED_AGE_THRESHOLDS).
      */
     public function feedPreselectPhase(int $ageInDays): ?string
     {
+        $sector = $this->feedSector();
         $phases = $this->feedPhases();
 
-        foreach (self::FEED_AGE_THRESHOLDS[$this->feedSector()] ?? [] as [$maxAge, $phaseIndex]) {
+        // Secteurs de croissance : seuils proportionnels au cycle de l'espèce.
+        $cycle = (int) ($this->productionType?->cycle_days_default ?? 0);
+        if ($cycle > 0 && isset(self::FEED_GROWOUT_FRACTIONS[$sector])) {
+            foreach (self::FEED_GROWOUT_FRACTIONS[$sector] as $index => $fraction) {
+                if ($ageInDays <= $fraction * $cycle) {
+                    return $phases[$index] ?? null;
+                }
+            }
+
+            return $phases[count(self::FEED_GROWOUT_FRACTIONS[$sector]) - 1] ?? null;
+        }
+
+        // Secteurs physiologiques (ponte, repro, laitière) ou cycle inconnu.
+        foreach (self::FEED_AGE_THRESHOLDS[$sector] ?? [] as [$maxAge, $phaseIndex]) {
             if ($ageInDays <= $maxAge) {
                 return $phases[$phaseIndex] ?? null;
             }

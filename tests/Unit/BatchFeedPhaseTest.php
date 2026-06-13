@@ -81,3 +81,18 @@ test('feedPreselectPhase choisit la phase selon l\'âge et le secteur', function
         ->and($ponte->feedPreselectPhase(100))->toBe('Ponte Croissance (Poulette)')
         ->and($ponte->feedPreselectPhase(300))->toBe('Ponte 1 (Pic de ponte)');
 });
+
+test('feedPreselectPhase se cale sur la durée de cycle réelle de l\'espèce', function () {
+    $dindeId = Species::where('slug', 'dinde')->value('id');
+
+    // Même secteur (Chair) mais cycles différents : poulet 45 j, dinde 120 j.
+    $poulet = Batch::factory()->create(['production_type_id' => ProductionType::resolveOrCreate('chair', null)->id]);
+    $dinde = Batch::factory()->create(['production_type_id' => ProductionType::resolveOrCreate('chair', $dindeId)->id]);
+
+    // À 30 j : le poulet (cycle 45) est déjà en finition (>0,60×45=27),
+    // la dinde (cycle 120) encore en démarrage (≤0,30×120=36).
+    expect($poulet->feedPreselectPhase(30))->toBe('Chair Finition')
+        ->and($dinde->feedPreselectPhase(30))->toBe('Chair Démarrage')
+        ->and($dinde->feedPreselectPhase(50))->toBe('Chair Croissance')
+        ->and($dinde->feedPreselectPhase(110))->toBe('Chair Finition');
+});
