@@ -69,7 +69,7 @@ class DailyCheckController extends Controller
         foreach ($phases as $phase) {
             // 1. Recherche par la nouvelle clé stricte
             $item = Stock::where('feed_type', $phase)
-                ->where('category', 'conso')
+                ->where('category', Stock::CAT_CONSO)
                 ->first();
                 
             // 2. Conversion automatique en KG
@@ -161,7 +161,7 @@ class DailyCheckController extends Controller
         $stockData = [];
         foreach ($phases as $phase) {
             $item = Stock::where('feed_type', $phase) // Utilisation propre de la façade importée
-                ->where('category', 'conso')
+                ->where('category', Stock::CAT_CONSO)
                 ->first();
                 
             if ($item) {
@@ -325,7 +325,7 @@ class DailyCheckController extends Controller
     {
         // 1. Recherche stricte
         $stock = Stock::where('feed_type', trim($feedType))
-            ->where('category', 'conso')
+            ->where('category', Stock::CAT_CONSO)
             ->first();
 
         if (!$stock) {

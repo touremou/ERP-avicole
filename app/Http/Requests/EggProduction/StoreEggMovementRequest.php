@@ -35,7 +35,7 @@ class StoreEggMovementRequest extends FormRequest
     {
         $validator->after(function ($validator) {
             $stock = Stock::where('item_name', $this->grade)
-                ->where('category', 'oeufs')
+                ->where('category', Stock::CAT_OEUFS)
                 ->first();
 
             if (! $stock) {

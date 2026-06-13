@@ -39,7 +39,7 @@ class EggMovementController extends Controller
         $eggProduction->load('batch.building');
 
         // Stock actuel par calibre
-        $calibreStocks = Stock::where('category', 'oeufs')
+        $calibreStocks = Stock::where('category', Stock::CAT_OEUFS)
             ->whereIn('item_name', ['S', 'M', 'L', 'XL'])
             ->get()
             ->keyBy('item_name');

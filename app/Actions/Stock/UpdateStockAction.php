@@ -16,7 +16,7 @@ class UpdateStockAction
             $unit = $data['unit'];
             $alertThreshold = (float) $data['alert_threshold'];
 
-            if ($unit === 'Sac' && $stock->category === 'conso') {
+            if ($unit === 'Sac' && $stock->category === Stock::CAT_CONSO) {
                 $newQuantity *= 50;
                 $alertThreshold *= 50;
                 $unit = 'KG';

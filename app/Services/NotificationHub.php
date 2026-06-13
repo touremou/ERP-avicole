@@ -71,7 +71,7 @@ class NotificationHub
             ->sum('mortality');
 
         // Stock aliment critique
-        $criticalStocks = Stock::where('category', 'conso')
+        $criticalStocks = Stock::where('category', Stock::CAT_CONSO)
             ->whereRaw('current_quantity <= alert_threshold')
             ->where('alert_threshold', '>', 0)
             ->get(['item_name', 'current_quantity', 'unit']);

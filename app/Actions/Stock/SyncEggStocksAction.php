@@ -22,7 +22,7 @@ class SyncEggStocksAction
             
             foreach ($eggMapping as $stockName => $prodField) {
                 $totalProduit = EggProduction::sum($prodField);
-                $stock = Stock::where('item_name', $stockName)->where('category', 'oeufs')->first();
+                $stock = Stock::where('item_name', $stockName)->where('category', Stock::CAT_OEUFS)->first();
                 if ($stock) {
                     $stock->update(['current_quantity' => max(0, $totalProduit)]);
                 }

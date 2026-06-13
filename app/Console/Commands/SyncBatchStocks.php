@@ -70,7 +70,7 @@ class SyncBatchStocks extends Command
         foreach ($mapping as $stockName => $prodField) {
             // 1. On récupère le stock correspondant
             $stock = Stock::where('item_name', $stockName)
-                          ->where('category', 'oeufs')
+                          ->where('category', Stock::CAT_OEUFS)
                           ->first();
 
             if (!$stock) {

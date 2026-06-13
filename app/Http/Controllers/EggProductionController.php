@@ -61,7 +61,7 @@ class EggProductionController extends Controller
             ')
             ->first();
 
-        $stockItems = Stock::where('category', 'oeufs')->get();
+        $stockItems = Stock::where('category', Stock::CAT_OEUFS)->get();
 
         $stockVendable = [];
         foreach (EggProduction::gradeCodes() as $grade) {
@@ -83,7 +83,7 @@ class EggProductionController extends Controller
         $recentProds      = EggProduction::with('batch')->latest()->take(15)->get();
         // On va chercher les sorties réelles dans le Magasin (StockMovement)
         $recentMovements = \App\Models\StockMovement::with('stock')
-            ->whereHas('stock', fn($q) => $q->where('category', 'oeufs'))
+            ->whereHas('stock', fn($q) => $q->where('category', Stock::CAT_OEUFS))
             ->where('type', 'out') // On ne prend que les sorties
             ->latest()
             ->take(10)
@@ -237,7 +237,7 @@ class EggProductionController extends Controller
                 $qty = (float) $eggProduction->{"grade_{$g}"};
                 if ($qty > 0) {
                     $currentStock = \App\Models\Stock::where('item_name', strtoupper($g))
-                                        ->where('category', 'oeufs')
+                                        ->where('category', Stock::CAT_OEUFS)
                                         ->value('current_quantity') ?? 0;
                     
                     if ($currentStock < $qty) {
@@ -288,7 +288,7 @@ class EggProductionController extends Controller
     {
         if (Gate::denies('production.S')) return back()->with('error', 'Accès maintenance refusé.');
 
-        $stocks = Stock::where('category', 'oeufs')->orderBy('item_name')->get();
+        $stocks = Stock::where('category', Stock::CAT_OEUFS)->orderBy('item_name')->get();
         return view('egg-productions.maintenance', compact('stocks'));
     }
 
@@ -308,7 +308,7 @@ class EggProductionController extends Controller
 
         DB::transaction(function () use ($request, &$updated) {
             foreach ($request->input('stocks') as $id => $newValue) {
-                $stock = Stock::where('category', 'oeufs')->findOrFail($id);
+                $stock = Stock::where('category', Stock::CAT_OEUFS)->findOrFail($id);
                 $oldValue = (float) $stock->current_quantity;
                 $newValue = (float) $newValue;
 

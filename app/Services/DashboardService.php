@@ -57,7 +57,7 @@ class DashboardService
         $rawMaterialsValue = RawMaterial::selectRaw('COALESCE(SUM(stock_qty * unit_cost), 0) as total')
             ->value('total');
 
-        $totalEggsStock = Stock::where('category', 'oeufs')->sum('current_quantity');
+        $totalEggsStock = Stock::where('category', Stock::CAT_OEUFS)->sum('current_quantity');
 
         $eggsToday       = EggProduction::whereDate('production_date', today())->sum('total_eggs_collected');
         $totalBrokenToday = EggProduction::whereDate('production_date', today())->sum('broken_eggs');
@@ -221,7 +221,7 @@ class DashboardService
         ];
 
         foreach ($feedNames as $name) {
-            $stock = Stock::where('item_name', $name)->where('category', 'conso')->first();
+            $stock = Stock::where('item_name', $name)->where('category', Stock::CAT_CONSO)->first();
             if (! $stock) continue;
 
             $currentKg = (float) $stock->current_quantity;

@@ -52,13 +52,13 @@ class DashboardController extends Controller
         // ---------------------------------------------------------
         // 3. STOCKS & VALORISATION (CMUP)
         // ---------------------------------------------------------
-        $totalEggsStock = Stock::where('category', 'oeufs')
+        $totalEggsStock = Stock::where('category', Stock::CAT_OEUFS)
             ->whereIn('item_name', \App\Models\EggProduction::gradeCodes())
             ->sum('current_quantity');
 
         // Valeur des matières premières (calculée sur le dernier prix d'achat connu ou CMUP)
         // On part du principe que tu as une colonne 'unit_price' ou qu'on la récupère du dernier achat
-        $rawMaterialsValue = Stock::where('category', 'conso')->get()->sum(function($item) {
+        $rawMaterialsValue = Stock::where('category', Stock::CAT_CONSO)->get()->sum(function($item) {
             $lastPurchase = DB::table('feed_purchases')->where('feed_type', $item->item_name)->latest('purchase_date')->first();
             $cmup = $lastPurchase ? $lastPurchase->unit_price : 0;
             return $item->current_quantity * $cmup;
@@ -102,9 +102,9 @@ class DashboardController extends Controller
         
         // A. Autonomie Silos (< 3 jours)
         $criticalTypes = [];
-        //$silos = Stock::where('category', 'conso')->get();
+        //$silos = Stock::where('category', Stock::CAT_CONSO)->get();
         //$consoJournaliereMoyenne = DailyCheck::where('check_date', '>=', now()->subDays(3))->sum('feed_consumed') / 3;
-        $silos = Stock::where('category', 'conso')->get()->filter(function($item) {
+        $silos = Stock::where('category', Stock::CAT_CONSO)->get()->filter(function($item) {
             return ($item->metadata['conso_type'] ?? 'Aliment') === 'Aliment';
         });
         

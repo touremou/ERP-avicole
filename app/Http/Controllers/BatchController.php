@@ -334,13 +334,13 @@ class BatchController extends Controller
         $totalFeed = (float) ($feedData->total_kg ?? 0);
 
         // Prix moyen du kg d'aliment (depuis les stocks de type conso)
-        $avgFeedPrice = \App\Models\Stock::where('category', 'conso')
+        $avgFeedPrice = \App\Models\Stock::where('category', \App\Models\Stock::CAT_CONSO)
             ->where('item_name', 'LIKE', '%' . ($batch->type === 'ponte' ? 'Ponte' : 'Chair') . '%')
             ->avg('last_unit_price') ?? 0;
 
         // Si pas de prix moyen, estimer depuis les achats
         if ($avgFeedPrice <= 0) {
-            $avgFeedPrice = \App\Models\Stock::where('category', 'conso')
+            $avgFeedPrice = \App\Models\Stock::where('category', \App\Models\Stock::CAT_CONSO)
                 ->where('last_unit_price', '>', 0)
                 ->avg('last_unit_price') ?? 5000; // Fallback 5000 GNF/kg
         }

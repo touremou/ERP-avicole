@@ -39,17 +39,36 @@ class Stock extends Model
     ];
 
     /**
+     * Slugs canoniques des catégories de stock (valeurs stockées en base
+     * dans la colonne `category`). Source unique de vérité référencée par
+     * toute la logique métier (production d'œufs, consommation d'aliment,
+     * etc.) afin d'éliminer les chaînes magiques « oeufs »/« conso »…
+     * disséminées : un renommage se fait ici, et l'IDE retrouve tous les
+     * usages.
+     *
+     * ⚠️ Ces catégories sont STRUCTURELLES (la production d'œufs opère
+     * toujours sur CAT_OEUFS) — à ne pas confondre avec la liste d'affichage
+     * pilotée par le paramètre « stocks.categories » (cf. activeCategories()).
+     */
+    public const CAT_OEUFS          = 'oeufs';
+    public const CAT_LAIT           = 'lait';
+    public const CAT_CONSO          = 'conso';
+    public const CAT_PRODUITS_FINIS = 'produits_finis';
+    public const CAT_LITIERES       = 'litieres';
+    public const CAT_MATERIELS      = 'materiels';
+
+    /**
      * Métadonnées de présentation (libellé, icône, couleur) par catégorie.
      * Source unique de vérité partagée entre l'index Stocks et le formulaire
      * de création, et référencée par le paramètre « stocks.categories ».
      */
     public const CATEGORY_META = [
-        'oeufs'          => ['label' => 'Œufs',            'icon' => 'fa-egg',                'color' => 'amber',   'emoji' => '🥚'],
-        'lait'           => ['label' => 'Lait',            'icon' => 'fa-bottle-droplet',     'color' => 'cyan',    'emoji' => '🥛'],
-        'conso'          => ['label' => 'Aliment & Santé', 'icon' => 'fa-wheat-awn',          'color' => 'emerald', 'emoji' => '🌾'],
-        'produits_finis' => ['label' => 'Produits Finis',  'icon' => 'fa-drumstick-bite',     'color' => 'rose',    'emoji' => '🥩'],
-        'litieres'       => ['label' => 'Litières',        'icon' => 'fa-leaf',               'color' => 'purple',  'emoji' => '🍂'],
-        'materiels'      => ['label' => 'Matériel',        'icon' => 'fa-screwdriver-wrench', 'color' => 'blue',    'emoji' => '🛠️'],
+        self::CAT_OEUFS          => ['label' => 'Œufs',            'icon' => 'fa-egg',                'color' => 'amber',   'emoji' => '🥚'],
+        self::CAT_LAIT           => ['label' => 'Lait',            'icon' => 'fa-bottle-droplet',     'color' => 'cyan',    'emoji' => '🥛'],
+        self::CAT_CONSO          => ['label' => 'Aliment & Santé', 'icon' => 'fa-wheat-awn',          'color' => 'emerald', 'emoji' => '🌾'],
+        self::CAT_PRODUITS_FINIS => ['label' => 'Produits Finis',  'icon' => 'fa-drumstick-bite',     'color' => 'rose',    'emoji' => '🥩'],
+        self::CAT_LITIERES       => ['label' => 'Litières',        'icon' => 'fa-leaf',               'color' => 'purple',  'emoji' => '🍂'],
+        self::CAT_MATERIELS      => ['label' => 'Matériel',        'icon' => 'fa-screwdriver-wrench', 'color' => 'blue',    'emoji' => '🛠️'],
     ];
 
     /**
@@ -98,9 +117,9 @@ class Stock extends Model
      * vente/expédition (sélection des stocks disponibles par ligne).
      */
     public const PRODUCT_TYPE_TO_CATEGORY = [
-        'oeufs'    => 'oeufs',
-        'aliment'  => 'conso',
-        'materiel' => 'materiels',
+        'oeufs'    => self::CAT_OEUFS,
+        'aliment'  => self::CAT_CONSO,
+        'materiel' => self::CAT_MATERIELS,
     ];
 
     /**
@@ -110,7 +129,7 @@ class Stock extends Model
      */
     public static function categoryForProductType(string $productType): string
     {
-        return self::PRODUCT_TYPE_TO_CATEGORY[$productType] ?? 'materiels';
+        return self::PRODUCT_TYPE_TO_CATEGORY[$productType] ?? self::CAT_MATERIELS;
     }
 
     // -----------------------
@@ -167,7 +186,7 @@ class Stock extends Model
      */
     public function getSacksEstimateAttribute(): float
     {
-        if ($this->unit !== 'KG' || $this->category !== 'conso') return 0;
+        if ($this->unit !== 'KG' || $this->category !== self::CAT_CONSO) return 0;
         
         $bagWeight = $this->metadata['bag_weight'] ?? 50;
         return round((float) $this->current_quantity / $bagWeight, 1);

@@ -44,7 +44,7 @@ class NormalizeFormulaNameAction
 
         // Fallback en base de données
         $stock = Stock::where('item_name', $formulaName)
-            ->where('category', 'conso')
+            ->where('category', Stock::CAT_CONSO)
             ->first();
 
         if ($stock) {

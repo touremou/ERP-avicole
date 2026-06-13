@@ -25,7 +25,7 @@ class StockController extends Controller
 
         if (Gate::denies('logistique.L')) return redirect()->route('dashboard')->with('error', 'Accès restreint.');
 
-        $category = $request->get('category', 'oeufs');
+        $category = $request->get('category', Stock::CAT_OEUFS);
         $stocks = Stock::where('category', $category)->get();
         
         $recentMovements = StockMovement::with(['stock', 'user'])
@@ -40,7 +40,7 @@ class StockController extends Controller
     {
         if (Gate::denies('logistique.C')) return back()->with('error', 'Action non autorisée.'); 
         
-        $category = $request->get('category', 'oeufs');
+        $category = $request->get('category', Stock::CAT_OEUFS);
         $providers = Provider::orderBy('name')->get(); 
         
         return view('stocks.create', compact('category', 'providers'));
