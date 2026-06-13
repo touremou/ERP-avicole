@@ -8,7 +8,7 @@
                 <div>
                     <h2 class="text-2xl font-black text-slate-800 uppercase italic tracking-tighter leading-none italic">{{ __("Analyse Article") }}</h2>
                     <p class="text-[9px] font-bold text-blue-500 uppercase mt-1 tracking-widest italic leading-none">
-                        {{ $stock->item_name }} • {{ strtoupper($stock->category === 'matiere_premiere' ? 'materiels' : $stock->category) }}
+                        {{ $stock->item_name }} • {{ strtoupper($stock->category) }}
                     </p>
                 </div>
             </div>

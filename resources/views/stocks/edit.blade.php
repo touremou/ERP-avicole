@@ -8,7 +8,7 @@
                 <div>
                     <h2 class="text-2xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">{{ __("Ajustement Fiche") }}</h2>
                     <p class="text-[9px] font-bold text-slate-400 uppercase mt-1 tracking-widest italic leading-none">
-                        {{ strtoupper($stock->category === 'matiere_premiere' ? 'materiels' : $stock->category) }} • {{ $stock->item_name }}
+                        {{ strtoupper($stock->category) }} • {{ $stock->item_name }}
                     </p>
                 </div>
             </div>
@@ -27,8 +27,10 @@
         poultryType: '{{ $stock->getMeta('poultry_type', 'Chair') }}',
         get units() {
             if (this.cat === 'oeufs') return ['Alvéole', 'Unité'];
+            if (this.cat === 'lait') return ['Litre'];
+            if (this.cat === 'produits_finis') return ['KG', 'Pcs', 'Unité'];
             if (this.cat === 'litieres') return ['Sac'];
-            if (this.cat === 'materiels' || this.cat === 'matiere_premiere') return ['Pcs', 'Unité', 'Boîte', 'Paquet'];
+            if (this.cat === 'materiels') return ['Pcs', 'Unité', 'Boîte', 'Paquet'];
             if (this.cat === 'conso') {
                 if (this.consoType === 'Aliment') return ['KG', 'Sac'];
                 return ['Unité', 'Litre', 'Boîte', 'Flacon'];

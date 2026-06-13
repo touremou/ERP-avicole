@@ -26,7 +26,7 @@ return new class extends Migration
         } else {
             // Optionnel : Créer le stock s'il n'existe pas
             $newStockId = DB::table('stocks')->insertGetId([
-                'category' => 'matiere_premiere',
+                'category' => 'materiels',
                 'item_name' => $material->name,
                 'unit' => $material->unit ?? 'kg',
                 'current_quantity' => $material->stock_qty,

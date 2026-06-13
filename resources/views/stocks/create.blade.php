@@ -21,7 +21,7 @@
                 if (this.cat === 'lait') return ['Litre'];
                 if (this.cat === 'produits_finis') return ['KG', 'Pcs', 'Unité'];
                 if (this.cat === 'litieres') return ['Sac'];
-                if (this.cat === 'materiels' || this.cat === 'matiere_premiere') return ['Pcs', 'Unité', 'Boîte', 'Paquet'];
+                if (this.cat === 'materiels') return ['Pcs', 'Unité', 'Boîte', 'Paquet'];
                 if (this.cat === 'conso') {
                     if (this.consoType === 'Aliment') return ['KG', 'Sac'];
                     return ['Unité', 'Litre', 'Boîte', 'Flacon'];

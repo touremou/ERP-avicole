@@ -3,8 +3,7 @@
     $consoType = $item->getMeta('conso_type');
     $poultryType = $item->getMeta('poultry_type', 'N/A');
     
-    // Fallback pour l'affichage de la catégorie (Gestion de l'ancienne nomenclature)
-    $categoryLabel = $item->category === 'matiere_premiere' ? 'materiels' : $item->category;
+    $categoryLabel = $item->category;
 
     $displayType = __("Article");
     $themeKey = 'Aliment';
@@ -18,6 +17,12 @@
     } elseif ($categoryLabel === 'litieres') {
         $displayType = __("Litière");
         $themeKey = 'Litieres';
+    } elseif ($categoryLabel === 'lait') {
+        $displayType = __("Laiterie");
+        $themeKey = 'Lait';
+    } elseif ($categoryLabel === 'produits_finis') {
+        $displayType = __("Produit Fini");
+        $themeKey = 'ProduitsFinis';
     } else {
         $displayType = $consoType ?? __("Consommable");
         $themeKey = $consoType ?? 'Aliment';
@@ -30,6 +35,8 @@
         'Oeufs'      => ['bg' => 'bg-emerald-50', 'text' => 'text-emerald-600', 'icon' => 'fa-egg', 'border' => 'border-emerald-200'],
         'Materiels'  => ['bg' => 'bg-purple-50', 'text' => 'text-purple-600', 'icon' => 'fa-screwdriver-wrench', 'border' => 'border-purple-200'],
         'Litieres'   => ['bg' => 'bg-orange-50', 'text' => 'text-orange-600', 'icon' => 'fa-rug', 'border' => 'border-orange-200'],
+        'Lait'       => ['bg' => 'bg-cyan-50', 'text' => 'text-cyan-600', 'icon' => 'fa-bottle-droplet', 'border' => 'border-cyan-200'],
+        'ProduitsFinis' => ['bg' => 'bg-rose-50', 'text' => 'text-rose-600', 'icon' => 'fa-drumstick-bite', 'border' => 'border-rose-200'],
     ];
     
     $theme = $themes[$themeKey] ?? $themes['Aliment'];
