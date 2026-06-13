@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Batch;
 use App\Models\MilkProduction;
+use App\Models\Stock;
+use App\Services\StockIntegrationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -90,10 +92,17 @@ class MilkProductionController extends Controller
         }
 
         // Une seule collecte par lot et par jour (contrainte unique) → upsert.
-        MilkProduction::updateOrCreate(
+        $existing = MilkProduction::where('batch_id', $data['batch_id'])
+            ->where('production_date', $data['production_date'])
+            ->first();
+        $oldLiters = $existing ? (float) $existing->total_liters : 0.0;
+
+        $milk = MilkProduction::updateOrCreate(
             ['batch_id' => $data['batch_id'], 'production_date' => $data['production_date']],
             array_merge($data, ['recorded_by' => auth()->id()])
         );
+
+        $this->syncMilkStock((float) $milk->total_liters - $oldLiters, $batch->code);
 
         return redirect()->route('milk-productions.index')
             ->with('success', 'Collecte de lait enregistrée.');
@@ -116,7 +125,12 @@ class MilkProductionController extends Controller
         }
 
         $data = $this->validateData($request, $milkProduction);
+        $oldLiters = (float) $milkProduction->total_liters;
+        $batchCode = $milkProduction->batch->code;
+
         $milkProduction->update($data);
+
+        $this->syncMilkStock((float) $milkProduction->total_liters - $oldLiters, $batchCode);
 
         return redirect()->route('milk-productions.index')->with('success', 'Collecte rectifiée.');
     }
@@ -127,8 +141,41 @@ class MilkProductionController extends Controller
             return back()->with('error', 'Suppression réservée à la maintenance.');
         }
 
+        $liters = (float) $milkProduction->total_liters;
+        $batchCode = $milkProduction->batch->code;
+
         $milkProduction->delete();
+
+        $this->syncMilkStock(-$liters, $batchCode);
+
         return back()->with('success', 'Collecte supprimée.');
+    }
+
+    /**
+     * Synchronise le stock "Lait" (Stock::CAT_LAIT) avec le delta de litres
+     * collectés (positif = entrée stock, négatif = sortie/correction).
+     * Crée l'article "Lait" au besoin (1ère collecte de la ferme).
+     */
+    private function syncMilkStock(float $delta, string $batchCode): void
+    {
+        if (abs($delta) < 0.001) {
+            return;
+        }
+
+        Stock::firstOrCreate(
+            ['item_name' => 'Lait', 'category' => Stock::CAT_LAIT],
+            [
+                'unit'             => 'Litre',
+                'current_quantity' => 0,
+                'alert_threshold'  => (int) setting('stocks.default_alert_threshold', 0),
+                'last_unit_price'  => 0,
+            ]
+        );
+
+        StockIntegrationService::syncMovement(
+            'Lait', Stock::CAT_LAIT, abs($delta), $delta > 0 ? 'in' : 'out',
+            "Collecte lait — lot {$batchCode}", 'Litre'
+        );
     }
 
     private function validateData(Request $request, ?MilkProduction $existing = null): array
