@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="utf-8">
-    <title>Rapport GMQ</title>
+    <title>{{ __("Rapport GMQ") }}</title>
     <style>
         @page { margin: 25px 30px; }
         body { font-family: 'DejaVu Sans', sans-serif; font-size: 11px; color: #1e293b; }
@@ -22,31 +22,31 @@
     </style>
 </head>
 <body>
-    <h1>Rapport GMQ — Engraissement</h1>
-    <div class="subtitle">Gain Moyen Quotidien par lot (Ruminants, Porcins, Lapins) · Statut : {{ $statusFilter === 'all' ? 'Tous' : $statusFilter }} · Généré le {{ now()->format('d/m/Y H:i') }}</div>
+    <h1>{{ __("Rapport GMQ — Engraissement") }}</h1>
+    <div class="subtitle">{{ __("Gain Moyen Quotidien par lot (Ruminants, Porcins, Lapins)") }} · {{ __("Statut") }} : {{ $statusFilter === 'all' ? __("Tous") : $statusFilter }} · {{ __("Généré le") }} {{ now()->format('d/m/Y H:i') }}</div>
 
     @if($avgGmq)
     <div class="kpi-box">
-        <div class="label">GMQ moyen — ensemble des lots</div>
-        <div class="value">{{ number_format($avgGmq, 0) }} g/jour</div>
+        <div class="label">{{ __("GMQ moyen — ensemble des lots") }}</div>
+        <div class="value">{{ number_format($avgGmq, 0) }} {{ __("g/jour") }}</div>
     </div>
     @endif
 
     <table>
         <thead>
             <tr>
-                <th>Lot</th>
-                <th>Espèce</th>
-                <th>Bâtiment</th>
-                <th>Âge (j)</th>
-                <th>Poids départ</th>
-                <th>Dernier poids</th>
-                <th>GMQ (g/j)</th>
-                <th>Naissances</th>
-                <th>Sevrages</th>
-                <th>Portée moy.</th>
-                <th>Taux sevrage</th>
-                <th>Statut</th>
+                <th>{{ __("Lot") }}</th>
+                <th>{{ __("Espèce") }}</th>
+                <th>{{ __("Bâtiment") }}</th>
+                <th>{{ __("Âge (j)") }}</th>
+                <th>{{ __("Poids départ") }}</th>
+                <th>{{ __("Dernier poids") }}</th>
+                <th>{{ __("GMQ (g/j)") }}</th>
+                <th>{{ __("Naissances") }}</th>
+                <th>{{ __("Sevrages") }}</th>
+                <th>{{ __("Portée moy.") }}</th>
+                <th>{{ __("Taux sevrage") }}</th>
+                <th>{{ __("Statut") }}</th>
             </tr>
         </thead>
         <tbody>
@@ -54,7 +54,7 @@
             @php $batch = $stat['batch']; $gmq = $stat['gmq']; @endphp
             <tr>
                 <td>{{ $batch->code }}</td>
-                <td>{{ $batch->species?->name_fr ?? 'Ruminant' }}</td>
+                <td>{{ $batch->species?->name_fr ?? __("Ruminant") }}</td>
                 <td>{{ $batch->building?->name ?? '—' }}</td>
                 <td>{{ $stat['age_days'] }}</td>
                 <td>{{ $stat['start_weight'] ? number_format($stat['start_weight'], 3).' kg' : '—' }}</td>
@@ -63,7 +63,7 @@
                     @if($gmq !== null)
                         <span class="{{ $gmq >= 150 ? 'gmq-good' : ($gmq >= 80 ? 'gmq-mid' : 'gmq-bad') }}">{{ number_format($gmq, 0) }}</span>
                     @else
-                        <span class="muted">N/A</span>
+                        <span class="muted">{{ __("N/A") }}</span>
                     @endif
                 </td>
                 <td>{{ ($stat['total_born'] ?? 0) > 0 ? number_format($stat['total_born']) : '—' }}</td>
@@ -79,11 +79,11 @@
                 <td>{{ $batch->status }}</td>
             </tr>
             @empty
-            <tr><td colspan="12" class="muted">Aucun lot trouvé.</td></tr>
+            <tr><td colspan="12" class="muted">{{ __("Aucun lot trouvé.") }}</td></tr>
             @endforelse
         </tbody>
     </table>
 
-    <div class="footer">AviSmart ERP — Rapport généré automatiquement</div>
+    <div class="footer">AviSmart ERP — {{ __("Rapport généré automatiquement") }}</div>
 </body>
 </html>

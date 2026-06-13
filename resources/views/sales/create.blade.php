@@ -5,8 +5,8 @@
                 <i class="fa-solid fa-arrow-left"></i>
             </a>
             <div>
-                <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">Nouvelle Vente</h2>
-                <p class="text-[10px] font-black text-teal-600 uppercase tracking-[0.2em] mt-2 italic">Saisie du bon de livraison ou facture</p>
+                <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">{{ __("Nouvelle Vente") }}</h2>
+                <p class="text-[10px] font-black text-teal-600 uppercase tracking-[0.2em] mt-2 italic">{{ __("Saisie du bon de livraison ou facture") }}</p>
             </div>
         </div>
     </x-slot>
@@ -27,33 +27,33 @@
                 <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm mb-6">
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div class="space-y-2">
-                            <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">Client *</label>
+                            <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Client") }} *</label>
                             <select name="client_id" x-model="clientId" required class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black uppercase shadow-inner outline-none">
-                                <option value="">Sélectionner...</option>
+                                <option value="">{{ __("Sélectionner...") }}</option>
                                 @foreach($clients as $client)
                                     <option value="{{ $client->id }}" {{ ($selectedClient?->id ?? old('client_id')) == $client->id ? 'selected' : '' }}>{{ $client->name }} ({{ $client->client_id }})</option>
                                 @endforeach
                             </select>
                         </div>
                         <div class="space-y-2">
-                            <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">Type</label>
+                            <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Type") }}</label>
                             <select name="type" x-model="saleType" required class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black uppercase shadow-inner outline-none">
-                                <option value="bon_livraison">Bon de Livraison</option>
-                                <option value="facture">Facture (TVA {{ setting('general.tva_rate', 18) }}%)</option>
+                                <option value="bon_livraison">{{ __("Bon de Livraison") }}</option>
+                                <option value="facture">{{ __("Facture (TVA :rate%)", ['rate' => setting('general.tva_rate', 18)]) }}</option>
                             </select>
                         </div>
                         <div class="space-y-2">
-                            <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">Date</label>
+                            <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Date") }}</label>
                             <input type="date" name="sale_date" value="{{ old('sale_date', now()->toDateString()) }}" required class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black shadow-inner outline-none">
                         </div>
                     </div>
                     <input type="hidden" name="tax_rate" :value="saleType === 'facture' ? 18 : 0">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
                         <select name="delivery_mode" class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black uppercase shadow-inner outline-none">
-                            <option value="sur_place">Sur place</option>
-                            <option value="livraison">Livraison</option>
+                            <option value="sur_place">{{ __("Sur place") }}</option>
+                            <option value="livraison">{{ __("Livraison") }}</option>
                         </select>
-                        <input type="text" name="notes" placeholder="Observations..." class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black shadow-inner outline-none">
+                        <input type="text" name="notes" placeholder="{{ __('Observations...') }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black shadow-inner outline-none">
                     </div>
                 </div>
 
@@ -61,10 +61,10 @@
                 <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm mb-6">
                     <div class="flex justify-between items-center mb-6">
                         <h3 class="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
-                            <i class="fa-solid fa-list text-teal-500"></i> Produits
+                            <i class="fa-solid fa-list text-teal-500"></i> {{ __("Produits") }}
                         </h3>
                         <button type="button" @click="addLine()" class="bg-slate-900 text-white px-5 py-2 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-teal-600 transition-all border-none cursor-pointer">
-                            <i class="fa-solid fa-plus mr-1"></i> Ajouter
+                            <i class="fa-solid fa-plus mr-1"></i> {{ __("Ajouter") }}
                         </button>
                     </div>
 
@@ -73,17 +73,17 @@
                             <div class="grid grid-cols-12 gap-3 items-end">
                                 {{-- TYPE --}}
                                 <div class="col-span-3">
-                                    <label class="text-[8px] font-black uppercase text-slate-400 tracking-widest">Type</label>
+                                    <label class="text-[8px] font-black uppercase text-slate-400 tracking-widest">{{ __("Type") }}</label>
                                     <select x-model="line.product_type" @change="onTypeChange(index)" class="w-full bg-white border-none rounded-xl p-3 text-[10px] font-black uppercase shadow-sm outline-none">
-                                        <option value="">— Choisir —</option>
-                                        <option value="animal_vif">Animal vivant</option>
-                                        <option value="carcasse">Carcasse / Viande</option>
-                                        <option value="oeufs">Œufs</option>
-                                        <option value="lait">Lait</option>
-                                        <option value="aliment">Aliment</option>
-                                        <option value="fumier">Fumier</option>
-                                        <option value="materiel">Matériel</option>
-                                        <option value="autre">Autre</option>
+                                        <option value="">— {{ __("Choisir") }} —</option>
+                                        <option value="animal_vif">{{ __("Animal vivant") }}</option>
+                                        <option value="carcasse">{{ __("Carcasse / Viande") }}</option>
+                                        <option value="oeufs">{{ __("Œufs") }}</option>
+                                        <option value="lait">{{ __("Lait") }}</option>
+                                        <option value="aliment">{{ __("Aliment") }}</option>
+                                        <option value="fumier">{{ __("Fumier") }}</option>
+                                        <option value="materiel">{{ __("Matériel") }}</option>
+                                        <option value="autre">{{ __("Autre") }}</option>
                                     </select>
                                 </div>
 
@@ -91,20 +91,20 @@
                                 <div class="col-span-4">
                                     <label class="text-[8px] font-black uppercase text-teal-600 tracking-widest">
                                         <template x-if="isBatchType(line.product_type)">
-                                            <span>Lot source</span>
+                                            <span>{{ __("Lot source") }}</span>
                                         </template>
                                         <template x-if="isStockType(line.product_type)">
-                                            <span>Article en stock</span>
+                                            <span>{{ __("Article en stock") }}</span>
                                         </template>
                                         <template x-if="isManualType(line.product_type)">
-                                            <span>Désignation</span>
+                                            <span>{{ __("Désignation") }}</span>
                                         </template>
                                     </label>
 
                                     {{-- STOCK : œufs, aliment, matériel --}}
                                     <template x-if="isStockType(line.product_type)">
                                         <select x-model="line.selected_stock" @change="onStockSelected(index)" class="w-full bg-white border-2 border-teal-200 rounded-xl p-3 text-[10px] font-black shadow-sm outline-none focus:border-teal-500">
-                                            <option value="">— Sélectionner —</option>
+                                            <option value="">— {{ __("Sélectionner") }} —</option>
                                             <template x-for="s in getStocks(line.product_type)" :key="s.id">
                                                 <option :value="s.id" x-text="s.item_name + ' (' + s.current_quantity + ' ' + s.unit + ')'"></option>
                                             </template>
@@ -114,7 +114,7 @@
                                     {{-- LOT : animal vif / carcasse — toutes espèces --}}
                                     <template x-if="isBatchType(line.product_type)">
                                         <select x-model="line.batch_id" @change="onBatchSelected(index)" class="w-full bg-amber-50 border-2 border-amber-200 rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
-                                            <option value="">— Sélectionner le lot —</option>
+                                            <option value="">— {{ __("Sélectionner le lot") }} —</option>
                                             <template x-for="b in batches" :key="b.id">
                                                 <option :value="b.id" x-text="b.icon + ' ' + b.code + ' — ' + b.species + ' (' + b.qty + ')'"></option>
                                             </template>
@@ -123,16 +123,16 @@
 
                                     {{-- MANUEL : lait, fumier, autre --}}
                                     <template x-if="isManualType(line.product_type)">
-                                        <input type="text" x-model="line.product_name" placeholder="Désignation..." class="w-full bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
+                                        <input type="text" x-model="line.product_name" placeholder="{{ __('Désignation...') }}" class="w-full bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
                                     </template>
                                 </div>
 
                                 <div class="col-span-1">
-                                    <label class="text-[8px] font-black uppercase text-slate-400 tracking-widest">Qté</label>
+                                    <label class="text-[8px] font-black uppercase text-slate-400 tracking-widest">{{ __("Qté") }}</label>
                                     <input type="number" x-model.number="line.quantity" step="0.01" min="0.01" :max="line.max_qty || 99999" required class="w-full bg-white border-none rounded-xl p-3 text-sm font-black shadow-sm outline-none text-center">
                                 </div>
                                 <div class="col-span-1">
-                                    <label class="text-[8px] font-black uppercase text-slate-400 tracking-widest">Unité</label>
+                                    <label class="text-[8px] font-black uppercase text-slate-400 tracking-widest">{{ __("Unité") }}</label>
                                     <template x-if="unitChoices(line.product_type).length > 1">
                                         <select x-model="line.unit" @change="onUnitChange(index)" class="w-full bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none text-center uppercase">
                                             <template x-for="u in unitChoices(line.product_type)" :key="u">
@@ -145,7 +145,7 @@
                                     </template>
                                 </div>
                                 <div class="col-span-2">
-                                    <label class="text-[8px] font-black uppercase text-slate-400 tracking-widest">P.U. (GNF)</label>
+                                    <label class="text-[8px] font-black uppercase text-slate-400 tracking-widest">{{ __("P.U. (GNF)") }}</label>
                                     <input type="number" x-model.number="line.unit_price" min="0" required class="w-full bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none text-right">
                                 </div>
                                 <div class="col-span-1 text-center">
@@ -157,7 +157,7 @@
                             <div class="mt-3 flex justify-between items-center" x-show="line.max_qty > 0">
                                 <p class="text-[8px] font-black uppercase tracking-widest" :class="line.quantity > line.max_qty ? 'text-red-600' : 'text-emerald-600'">
                                     <i class="fa-solid" :class="line.quantity > line.max_qty ? 'fa-circle-xmark' : 'fa-circle-check'"></i>
-                                    Disponible : <span x-text="line.max_qty + ' ' + line.unit"></span>
+                                    {{ __("Disponible") }} : <span x-text="line.max_qty + ' ' + line.unit"></span>
                                 </p>
                                 <p class="text-sm font-black text-slate-900" x-text="formatGNF(line.quantity * line.unit_price)"></p>
                             </div>
@@ -177,25 +177,25 @@
                 {{-- TOTAUX & PAIEMENT --}}
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                     <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm">
-                        <h3 class="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-4 flex items-center gap-2"><i class="fa-solid fa-money-bill-wave text-emerald-500"></i> Paiement Immédiat</h3>
+                        <h3 class="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-4 flex items-center gap-2"><i class="fa-solid fa-money-bill-wave text-emerald-500"></i> {{ __("Paiement Immédiat") }}</h3>
                         <input type="number" name="immediate_payment" x-model.number="immediatePayment" min="0" class="w-full bg-slate-50 border-none rounded-2xl p-4 text-lg font-black text-emerald-600 shadow-inner outline-none text-right mb-3" placeholder="0">
                         <select name="payment_method" class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black uppercase shadow-inner outline-none">
-                            <option value="especes">Espèces</option>
-                            <option value="orange_money">Orange Money</option>
-                            <option value="virement">Virement</option>
-                            <option value="cheque">Chèque</option>
+                            <option value="especes">{{ __("Espèces") }}</option>
+                            <option value="orange_money">{{ __("Orange Money") }}</option>
+                            <option value="virement">{{ __("Virement") }}</option>
+                            <option value="cheque">{{ __("Chèque") }}</option>
                         </select>
                     </div>
                     <div class="bg-slate-900 p-8 rounded-[3rem] text-white shadow-2xl">
-                        <h3 class="text-[10px] font-black uppercase text-emerald-400 tracking-widest mb-6">Récapitulatif</h3>
+                        <h3 class="text-[10px] font-black uppercase text-emerald-400 tracking-widest mb-6">{{ __("Récapitulatif") }}</h3>
                         <div class="space-y-3">
-                            <div class="flex justify-between"><span class="text-slate-400 font-black text-[10px] uppercase">HT</span><span class="font-black text-lg" x-text="formatGNF(subtotal)"></span></div>
-                            <div class="flex justify-between" x-show="saleType === 'facture'"><span class="text-slate-400 font-black text-[10px] uppercase">TVA {{ setting('general.tva_rate', 18) }}%</span><span class="font-black" x-text="formatGNF(taxAmount)"></span></div>
-                            <div class="border-t border-slate-700 pt-3 flex justify-between"><span class="text-emerald-400 font-black text-[10px] uppercase">Total TTC</span><span class="font-black text-2xl" x-text="formatGNF(totalTTC)"></span></div>
-                            <div class="border-t border-slate-700 pt-3 flex justify-between" x-show="immediatePayment > 0"><span class="text-amber-400 font-black text-[10px] uppercase">Reste dû</span><span class="font-black text-lg text-amber-400" x-text="formatGNF(Math.max(0, totalTTC - immediatePayment))"></span></div>
+                            <div class="flex justify-between"><span class="text-slate-400 font-black text-[10px] uppercase">{{ __("HT") }}</span><span class="font-black text-lg" x-text="formatGNF(subtotal)"></span></div>
+                            <div class="flex justify-between" x-show="saleType === 'facture'"><span class="text-slate-400 font-black text-[10px] uppercase">{{ __("TVA :rate%", ['rate' => setting('general.tva_rate', 18)]) }}</span><span class="font-black" x-text="formatGNF(taxAmount)"></span></div>
+                            <div class="border-t border-slate-700 pt-3 flex justify-between"><span class="text-emerald-400 font-black text-[10px] uppercase">{{ __("Total TTC") }}</span><span class="font-black text-2xl" x-text="formatGNF(totalTTC)"></span></div>
+                            <div class="border-t border-slate-700 pt-3 flex justify-between" x-show="immediatePayment > 0"><span class="text-amber-400 font-black text-[10px] uppercase">{{ __("Reste dû") }}</span><span class="font-black text-lg text-amber-400" x-text="formatGNF(Math.max(0, totalTTC - immediatePayment))"></span></div>
                         </div>
                         <div x-show="hasStockError" class="mt-4 p-3 bg-red-500/20 rounded-xl">
-                            <p class="text-[9px] font-black text-red-300"><i class="fa-solid fa-ban mr-1"></i> Stock insuffisant sur une ou plusieurs lignes.</p>
+                            <p class="text-[9px] font-black text-red-300"><i class="fa-solid fa-ban mr-1"></i> {{ __("Stock insuffisant sur une ou plusieurs lignes.") }}</p>
                         </div>
                     </div>
                 </div>
@@ -203,14 +203,14 @@
                 <button type="submit" :disabled="hasStockError || lines.every(l => !l.product_name)"
                     :class="(hasStockError || lines.every(l => !l.product_name)) ? 'bg-slate-300 cursor-not-allowed' : 'bg-teal-500 hover:bg-teal-600 cursor-pointer'"
                     class="w-full text-white py-6 rounded-[2rem] font-black text-xs uppercase tracking-[0.3em] transition-all shadow-2xl italic border-none">
-                    <i class="fa-solid fa-file-circle-check mr-2"></i> Enregistrer la Vente
+                    <i class="fa-solid fa-file-circle-check mr-2"></i> {{ __("Enregistrer la Vente") }}
                 </button>
             </form>
             @else
                 <div class="bg-white p-20 rounded-[4rem] border border-slate-100 shadow-xl text-center">
                     <i class="fa-solid fa-lock text-slate-200 text-6xl mb-6"></i>
-                    <h3 class="text-xl font-black text-slate-800 uppercase italic mb-2 tracking-tighter">Accès Restreint</h3>
-                    <p class="text-slate-400 text-[10px] font-black uppercase tracking-widest italic">Vous n'avez pas la permission de créer une vente.</p>
+                    <h3 class="text-xl font-black text-slate-800 uppercase italic mb-2 tracking-tighter">{{ __("Accès Restreint") }}</h3>
+                    <p class="text-slate-400 text-[10px] font-black uppercase tracking-widest italic">{{ __("Vous n'avez pas la permission de créer une vente.") }}</p>
                 </div>
             @endcan
         </div>
@@ -337,10 +337,10 @@
 
                 e.preventDefault();
 
-                if (!this.clientId) { alert("Veuillez sélectionner un client."); return; }
+                if (!this.clientId) { alert(@json(__("Veuillez sélectionner un client."))); return; }
 
                 const validLines = this.lines.filter(l => l.product_type && l.quantity > 0 && l.unit);
-                if (validLines.length === 0) { alert("Ajoutez au moins une ligne valide."); return; }
+                if (validLines.length === 0) { alert(@json(__("Ajoutez au moins une ligne valide."))); return; }
 
                 const form = e.target;
                 const saleDate = form.querySelector('[name=sale_date]')?.value || new Date().toISOString().slice(0,10);
@@ -369,11 +369,11 @@
 
                 try {
                     await window.db.sales.add(sale);
-                    alert("📴 Hors-ligne : vente enregistrée localement. Elle sera synchronisée (en brouillon) au retour du réseau.");
+                    alert("📴 " + @json(__("Hors-ligne : vente enregistrée localement. Elle sera synchronisée (en brouillon) au retour du réseau.")));
                     window.location.href = "{{ route('sales.index') }}";
                 } catch (err) {
                     console.error("Échec de l'enregistrement hors-ligne de la vente :", err);
-                    alert("Erreur lors de l'enregistrement hors-ligne. Réessayez.");
+                    alert(@json(__("Erreur lors de l'enregistrement hors-ligne. Réessayez.")));
                 }
             },
         }

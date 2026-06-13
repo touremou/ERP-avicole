@@ -2,13 +2,13 @@
     <x-slot name="header">
         <div class="flex justify-between items-center text-left">
             <div class="flex flex-col">
-                <h2 class="text-2xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">Parc de Production</h2>
-                <span class="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] mt-1 italic">Surveillance en temps réel des unités</span>
+                <h2 class="text-2xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">{{ __("Parc de Production") }}</h2>
+                <span class="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] mt-1 italic">{{ __("Surveillance en temps réel des unités") }}</span>
             </div>
-            
+
             @can('elevage.C')
             <a href="{{ route('buildings.create') }}" class="bg-slate-900 text-white px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-600 transition-all shadow-xl shadow-slate-900/10 no-underline">
-                <i class="fas fa-plus mr-2"></i> Nouveau Bâtiment
+                <i class="fas fa-plus mr-2"></i> {{ __("Nouveau Bâtiment") }}
             </a>
             @endcan
         </div>
@@ -19,17 +19,17 @@
             
             {{-- SYSTÈME DE FILTRES --}}
             <div class="flex flex-wrap gap-2 mb-10 bg-white p-2 rounded-3xl border border-slate-100 shadow-sm w-fit mx-auto md:mx-0">
-                <button onclick="filterB('all')" class="btn-f px-6 py-3 rounded-2xl text-[9px] font-black uppercase bg-slate-900 text-white transition-all cursor-pointer border-none" id="f-all">Tous</button>
-                <button onclick="filterB('mixte')" class="btn-f px-6 py-3 rounded-2xl text-[9px] font-black uppercase text-blue-600 hover:bg-slate-50 transition-all cursor-pointer border-none bg-transparent" id="f-mixte">🔄 Mixte</button>
-                <button onclick="filterB('poussiniere')" class="btn-f px-6 py-3 rounded-2xl text-[9px] font-black uppercase text-slate-400 hover:bg-slate-50 transition-all cursor-pointer border-none bg-transparent" id="f-poussiniere">🐣 Poussinières</button>
-                <button onclick="filterB('chair')" class="btn-f px-6 py-3 rounded-2xl text-[9px] font-black uppercase text-slate-400 hover:bg-slate-50 transition-all cursor-pointer border-none bg-transparent" id="f-chair">🍗 Chair</button>
-                <button onclick="filterB('ponte')" class="btn-f px-6 py-3 rounded-2xl text-[9px] font-black uppercase text-slate-400 hover:bg-slate-50 transition-all cursor-pointer border-none bg-transparent" id="f-ponte">🥚 Ponte</button>
-                <button onclick="filterB('reproducteur')" class="btn-f px-6 py-3 rounded-2xl text-[9px] font-black uppercase text-slate-400 hover:bg-slate-50 transition-all cursor-pointer border-none bg-transparent" id="f-reproducteur">🧬 Repro</button>
-                <button onclick="filterB('bergerie')" class="btn-f px-6 py-3 rounded-2xl text-[9px] font-black uppercase text-slate-400 hover:bg-slate-50 transition-all cursor-pointer border-none bg-transparent" id="f-bergerie">🐑 Bergerie</button>
-                <button onclick="filterB('chevrerie')" class="btn-f px-6 py-3 rounded-2xl text-[9px] font-black uppercase text-slate-400 hover:bg-slate-50 transition-all cursor-pointer border-none bg-transparent" id="f-chevrerie">🐐 Chèvrerie</button>
-                <button onclick="filterB('bassin')" class="btn-f px-6 py-3 rounded-2xl text-[9px] font-black uppercase text-slate-400 hover:bg-slate-50 transition-all cursor-pointer border-none bg-transparent" id="f-bassin">🐟 Bassin</button>
-                <button onclick="filterB('lapiniere')" class="btn-f px-6 py-3 rounded-2xl text-[9px] font-black uppercase text-slate-400 hover:bg-slate-50 transition-all cursor-pointer border-none bg-transparent" id="f-lapiniere">🐇 Lapinière</button>
-                <button onclick="filterB('porcherie')" class="btn-f px-6 py-3 rounded-2xl text-[9px] font-black uppercase text-slate-400 hover:bg-slate-50 transition-all cursor-pointer border-none bg-transparent" id="f-porcherie">🐷 Porcherie</button>
+                <button onclick="filterB('all')" class="btn-f px-6 py-3 rounded-2xl text-[9px] font-black uppercase bg-slate-900 text-white transition-all cursor-pointer border-none" id="f-all">{{ __("Tous") }}</button>
+                <button onclick="filterB('mixte')" class="btn-f px-6 py-3 rounded-2xl text-[9px] font-black uppercase text-blue-600 hover:bg-slate-50 transition-all cursor-pointer border-none bg-transparent" id="f-mixte">🔄 {{ __("Mixte") }}</button>
+                <button onclick="filterB('poussiniere')" class="btn-f px-6 py-3 rounded-2xl text-[9px] font-black uppercase text-slate-400 hover:bg-slate-50 transition-all cursor-pointer border-none bg-transparent" id="f-poussiniere">🐣 {{ __("Poussinières") }}</button>
+                <button onclick="filterB('chair')" class="btn-f px-6 py-3 rounded-2xl text-[9px] font-black uppercase text-slate-400 hover:bg-slate-50 transition-all cursor-pointer border-none bg-transparent" id="f-chair">🍗 {{ __("Chair") }}</button>
+                <button onclick="filterB('ponte')" class="btn-f px-6 py-3 rounded-2xl text-[9px] font-black uppercase text-slate-400 hover:bg-slate-50 transition-all cursor-pointer border-none bg-transparent" id="f-ponte">🥚 {{ __("Ponte") }}</button>
+                <button onclick="filterB('reproducteur')" class="btn-f px-6 py-3 rounded-2xl text-[9px] font-black uppercase text-slate-400 hover:bg-slate-50 transition-all cursor-pointer border-none bg-transparent" id="f-reproducteur">🧬 {{ __("Repro") }}</button>
+                <button onclick="filterB('bergerie')" class="btn-f px-6 py-3 rounded-2xl text-[9px] font-black uppercase text-slate-400 hover:bg-slate-50 transition-all cursor-pointer border-none bg-transparent" id="f-bergerie">🐑 {{ __("Bergerie") }}</button>
+                <button onclick="filterB('chevrerie')" class="btn-f px-6 py-3 rounded-2xl text-[9px] font-black uppercase text-slate-400 hover:bg-slate-50 transition-all cursor-pointer border-none bg-transparent" id="f-chevrerie">🐐 {{ __("Chèvrerie") }}</button>
+                <button onclick="filterB('bassin')" class="btn-f px-6 py-3 rounded-2xl text-[9px] font-black uppercase text-slate-400 hover:bg-slate-50 transition-all cursor-pointer border-none bg-transparent" id="f-bassin">🐟 {{ __("Bassin") }}</button>
+                <button onclick="filterB('lapiniere')" class="btn-f px-6 py-3 rounded-2xl text-[9px] font-black uppercase text-slate-400 hover:bg-slate-50 transition-all cursor-pointer border-none bg-transparent" id="f-lapiniere">🐇 {{ __("Lapinière") }}</button>
+                <button onclick="filterB('porcherie')" class="btn-f px-6 py-3 rounded-2xl text-[9px] font-black uppercase text-slate-400 hover:bg-slate-50 transition-all cursor-pointer border-none bg-transparent" id="f-porcherie">🐷 {{ __("Porcherie") }}</button>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" id="buildingContainer">
@@ -69,7 +69,7 @@
                                 <div class="flex flex-col items-end gap-2">
                                     @if($occupation > 0)
                                         <span class="text-[8px] font-black uppercase px-3 py-1 rounded-lg border italic {{ $mortalityClass }}">
-                                            <i class="fas fa-heartbeat mr-1"></i> Mort. {{ number_format($tauxMortalite, 1) }}%
+                                            <i class="fas fa-heartbeat mr-1"></i> {{ __("Mort.") }} {{ number_format($tauxMortalite, 1) }}%
                                         </span>
                                     @endif
                                     
@@ -87,18 +87,18 @@
                             {{-- BARRE DE CAPACITÉ --}}
                             <div class="space-y-2 mb-6">
                                 <div class="flex justify-between text-[9px] font-black uppercase italic tracking-widest">
-                                    <span class="text-slate-400">Occupation</span>
+                                    <span class="text-slate-400">{{ __("Occupation") }}</span>
                                     <span class="{{ $percent > 95 ? 'text-red-600' : 'text-slate-800' }}">{{ number_format($occupation) }} / {{ number_format($building->capacity) }}</span>
                                 </div>
                                 <div class="w-full h-3 bg-slate-100 rounded-full overflow-hidden shadow-inner">
                                     <div class="h-full transition-all duration-1000 {{ $percent > 90 ? 'bg-red-500' : 'bg-emerald-500' }}" style="width: {{ min($percent, 100) }}%"></div>
                                 </div>
                                 <div class="flex justify-between text-[8px] font-bold text-slate-400 uppercase tracking-tighter">
-                                    <span>{{ number_format($percent, 1) }}% utilisé</span>
+                                    <span>{{ number_format($percent, 1) }}% {{ __("utilisé") }}</span>
                                     @if($building->status === 'En désinfection')
-                                        <span class="text-purple-600">En quarantaine</span>
+                                        <span class="text-purple-600">{{ __("En quarantaine") }}</span>
                                     @else
-                                        <span class="text-blue-600">{{ number_format($reste) }} places libres</span>
+                                        <span class="text-blue-600">{{ number_format($reste) }} {{ __("places libres") }}</span>
                                     @endif
                                 </div>
                             </div>
@@ -106,13 +106,13 @@
                             {{-- STATS TECHNIQUES --}}
                             <div class="grid grid-cols-2 gap-4 pt-4 border-t border-slate-50">
                                 <div class="flex flex-col">
-                                    <p class="text-[8px] font-black text-slate-400 uppercase italic">Lots Actifs</p>
-                                    <p class="text-xs font-black text-slate-700">{{ $activeBatches->count() }} unité(s)</p>
+                                    <p class="text-[8px] font-black text-slate-400 uppercase italic">{{ __("Lots Actifs") }}</p>
+                                    <p class="text-xs font-black text-slate-700">{{ $activeBatches->count() }} {{ __("unité(s)") }}</p>
                                 </div>
                                 <div class="flex flex-col items-end">
-                                    <p class="text-[8px] font-black text-slate-400 uppercase italic text-right">Age Moyen</p>
+                                    <p class="text-[8px] font-black text-slate-400 uppercase italic text-right">{{ __("Age Moyen") }}</p>
                                     <p class="text-xs font-black text-slate-700">
-                                        {{ $activeBatches->count() > 0 ? round($activeBatches->avg('age')) : 0 }} jours
+                                        {{ $activeBatches->count() > 0 ? round($activeBatches->avg('age')) : 0 }} {{ __("jours") }}
                                     </p>
                                 </div>
                             </div>
@@ -121,13 +121,13 @@
                         <div class="px-8 pb-8 flex gap-3">
                             @can('elevage.L')
                             <a href="{{ route('buildings.show', $building->id) }}" class="flex-1 text-center py-4 bg-slate-50 hover:bg-slate-900 hover:text-white rounded-2xl text-[9px] font-black uppercase transition-all tracking-widest border border-slate-100 shadow-inner group-hover:scale-[1.02] no-underline text-slate-700">
-                                <i class="fas fa-eye mr-2"></i> Details
+                                <i class="fas fa-eye mr-2"></i> {{ __("Details") }}
                             </a>
                             @endcan
 
                             @can('elevage.M')
                             <a href="{{ route('buildings.edit', $building->id) }}" class="flex-1 text-center py-4 bg-slate-50 hover:bg-blue-600 hover:text-white rounded-2xl text-[9px] font-black uppercase transition-all tracking-widest border border-slate-100 shadow-inner group-hover:scale-[1.02] no-underline text-slate-700">
-                                <i class="fas fa-edit mr-2"></i> Modifier
+                                <i class="fas fa-edit mr-2"></i> {{ __("Modifier") }}
                             </a>
                             @endcan
                         </div>
