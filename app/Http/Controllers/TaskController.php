@@ -43,7 +43,7 @@ class TaskController extends Controller
 
         // FarmScope s'applique automatiquement sur ces modèles
         $employees = Employee::where('status', 'Actif')->orderBy('first_name')->get();
-        $buildings = Building::orderBy('name')->get();
+        $buildings = Building::physical()->orderBy('name')->get();
         $filteredEmployee = $employeeId ? Employee::find($employeeId) : null;
 
         // ═══ VUE MENSUELLE ═══
@@ -165,7 +165,7 @@ class TaskController extends Controller
         if ($task->status === 'fait') return back()->with('error', 'Impossible de modifier une tâche terminée.');
 
         $employees = Employee::where('status', 'Actif')->orderBy('first_name')->get();
-        $buildings = Building::orderBy('name')->get();
+        $buildings = Building::physical()->orderBy('name')->get();
 
         return view('tasks.edit', compact('task', 'employees', 'buildings'));
     }
@@ -212,7 +212,7 @@ class TaskController extends Controller
         // Templates = globaux (withoutGlobalScopes)
         $templates = TaskTemplate::withoutGlobalScopes()
             ->orderBy('category')->orderBy('scheduled_time')->get();
-        $buildings = Building::orderBy('name')->get();
+        $buildings = Building::physical()->orderBy('name')->get();
 
         return view('tasks.templates', compact('templates', 'buildings'));
     }

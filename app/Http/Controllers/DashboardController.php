@@ -100,28 +100,41 @@ class DashboardController extends Controller
         // 5. GESTION DES ALERTES (Centre de contrôle)
         // ---------------------------------------------------------
         
-        // A. Autonomie Silos (< 3 jours)
+        // A. Autonomie Silos (< 3 jours) — calcul PAR silo (cohérent multiespèce)
+        //
+        // L'autonomie d'un silo doit se baser sur SA PROPRE consommation
+        // (ses sorties de stock), et non sur la consommation globale de la
+        // ferme : sinon chaque silo paraît se vider au rythme de tous les
+        // autres réunis et déclenche de fausses alertes « épuisé ».
         $criticalTypes = [];
-        //$silos = Stock::where('category', Stock::CAT_CONSO)->get();
-        //$consoJournaliereMoyenne = DailyCheck::where('check_date', '>=', now()->subDays(3))->sum('feed_consumed') / 3;
         $silos = Stock::where('category', Stock::CAT_CONSO)->get()->filter(function($item) {
             return ($item->metadata['conso_type'] ?? 'Aliment') === 'Aliment';
         });
-        
-        $consoJournaliereMoyenne = DailyCheck::where('check_date', '>=', now()->subDays(3))->sum('feed_consumed') / 3;
-        
-        if ($consoJournaliereMoyenne > 0) {
-            foreach($silos as $silo) {
-                // On évite les erreurs sur les stocks désactivés ou à 0
-                if ($silo->current_quantity <= 0) {
-                    $criticalTypes[] = ['type' => $silo->item_name, 'days' => 0];
-                    continue;
-                }
 
-                $joursRestants = floor($silo->current_quantity / $consoJournaliereMoyenne);
-                if ($joursRestants <= 3) {
-                    $criticalTypes[] = ['type' => $silo->item_name, 'days' => $joursRestants];
-                }
+        $periodDays = 30;
+        foreach ($silos as $silo) {
+            // Silo vide → épuisé.
+            if ($silo->current_quantity <= 0) {
+                $criticalTypes[] = ['type' => $silo->item_name, 'days' => 0];
+                continue;
+            }
+
+            // Consommation journalière propre à CE silo : moyenne des sorties
+            // sur les 30 derniers jours (même unité que current_quantity).
+            $totalOut = (float) \App\Models\StockMovement::where('stock_id', $silo->id)
+                ->where('type', 'out')
+                ->where('created_at', '>=', now()->subDays($periodDays))
+                ->sum('quantity');
+            $consoJournaliere = $totalOut / $periodDays;
+
+            // Du stock mais aucune sortie récente → pas d'alerte.
+            if ($consoJournaliere <= 0) {
+                continue;
+            }
+
+            $joursRestants = (int) floor($silo->current_quantity / $consoJournaliere);
+            if ($joursRestants <= 3) {
+                $criticalTypes[] = ['type' => $silo->item_name, 'days' => $joursRestants];
             }
         }
 
