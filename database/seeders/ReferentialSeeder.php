@@ -42,21 +42,33 @@ class ReferentialSeeder extends Seeder
     {
         // [nom, unité, EM kcal/kg, PB %, Lys %, Ca %, coût GNF/kg]
         $materials = [
+            // Céréales et sous-produits
             ['Maïs jaune',            'kg', 3350, 8.0,  0.25, 0.02, 3000],
             ['Son de blé',            'kg', 1300, 15.0, 0.60, 0.10, 2000],
             ['Son de riz',            'kg', 2900, 12.0, 0.50, 0.07, 1500],
+            ['Manioc (cossettes)',    'kg', 3200, 3.0,  0.10, 0.10, 1800],
+
+            // Sources Protéiques (Végétales & Animales)
             ['Tourteau d\'arachide',  'kg', 2600, 45.0, 1.50, 0.20, 4500],
             ['Tourteau de soja',      'kg', 2400, 46.0, 2.90, 0.30, 6000],
+            ['Tourteau de palmiste',  'kg', 2200, 15.0, 0.50, 0.25, 2000], // Très utilisé en AO
+            ['Graines de coton',      'kg', 2800, 22.0, 0.90, 0.15, 2500], // Ruminants
             ['Farine de poisson',     'kg', 2800, 60.0, 4.80, 5.00, 9000],
+            ['Farine de sang',        'kg', 3200, 80.0, 7.00, 0.30, 8000],
+
+            // Minéraux et Additifs
             ['Coquilles / Calcaire',  'kg', 0,    0.0,  0.0,  38.0, 800],
             ['Phosphate bicalcique',  'kg', 0,    0.0,  0.0,  24.0, 5000],
+            ['Poudre d\'os',          'kg', 0,    12.0, 0.0,  28.0, 3000],
+            ['Sel',                   'kg', 0,    0.0,  0.0,  0.0,  500],
+            ['CMV (compl. minéral vitaminé)', 'kg', 0, 0.0, 0.0, 12.0, 8000],
+
+            // Fibres, Énergie liquide et Ruminants
             ['Drêche de brasserie',   'kg', 2000, 25.0, 0.80, 0.30, 1200],
-            ['Manioc (cossettes)',    'kg', 3200, 3.0,  0.10, 0.10, 1800],
             ['Fourrage / Foin',       'kg', 1800, 10.0, 0.40, 0.50, 500],
             ['Luzerne déshydratée',   'kg', 1500, 16.0, 0.70, 1.40, 2500],
             ['Huile de palme',        'kg', 8800, 0.0,  0.0,  0.0,  10000],
-            ['CMV (compl. minéral vitaminé)', 'kg', 0, 0.0, 0.0, 12.0, 8000],
-            ['Sel',                   'kg', 0,    0.0,  0.0,  0.0,  500],
+            ['Mélasse',               'kg', 2500, 3.0,  0.0,  0.80, 1500], // Énergie ruminants/porcs
         ];
 
         foreach ($materials as [$name, $unit, $em, $pb, $lys, $ca, $cost]) {
@@ -70,7 +82,7 @@ class ReferentialSeeder extends Seeder
                     'lysine_rate'     => $lys,
                     'calcium_rate'    => $ca,
                     'unit_cost'       => $cost,
-                    'alert_threshold' => 50,
+                    'alert_threshold' => 100, // Augmenté pour éviter trop d'alertes
                     'is_active'       => true,
                 ]
             );
@@ -84,21 +96,38 @@ class ReferentialSeeder extends Seeder
     {
         // [animal_type (clé), nom, phase, EM kcal/kg, PB %, Lys %, Meth %, Ca %, P %, prix cible GNF/kg]
         $norms = [
+            // Volaille
             ['chair',                  'Poulet de Chair — Démarrage', 'Démarrage', 3000, 22, 1.30, 0.50, 1.00, 0.70, 5500],
+            ['chair_croissance',       'Poulet de Chair — Croissance','Croissance',3100, 20, 1.15, 0.45, 0.95, 0.65, 5300],
             ['chair_finition',         'Poulet de Chair — Finition',  'Finition',  3200, 19, 1.05, 0.42, 0.90, 0.65, 5200],
+            ['ponte_demarrage',        'Poule Pondeuse — Démarrage',  'Démarrage', 2900, 20, 1.00, 0.40, 1.00, 0.70, 5200],
             ['ponte',                  'Poule Pondeuse — Ponte',      'Ponte',     2750, 17, 0.80, 0.38, 3.80, 0.45, 5000],
-            ['dinde_chair',            'Dinde — Chair',               'Croissance',2900, 24, 1.50, 0.55, 1.20, 0.75, 6000],
-            ['caille',                 'Caille — Ponte/Chair',        'Standard',  2900, 24, 1.30, 0.50, 2.50, 0.60, 6500],
+            ['dinde_demarrage',        'Dinde — Démarrage',           'Démarrage', 2800, 28, 1.60, 0.60, 1.20, 0.80, 6500],
+            ['dinde_chair',            'Dinde — Croissance',          'Croissance',2900, 24, 1.50, 0.55, 1.20, 0.75, 6000],
+            ['caille_demarrage',       'Caille — Démarrage',          'Démarrage', 2900, 28, 1.40, 0.55, 1.00, 0.60, 6800],
+            ['caille',                 'Caille — Ponte',              'Ponte',     2800, 22, 1.10, 0.45, 2.80, 0.55, 6200],
+
+            // Ruminants
+            ['bovin_laitier',          'Bovin — Vache Laitière',      'Lactation', 2800, 16, 0.0,  0.0,  0.90, 0.50, 3800],
+            ['bovin_engraissement',    'Bovin — Engraissement',       'Finition',  2700, 13, 0.0,  0.0,  0.60, 0.40, 3200],
             ['ovin_engraissement',     'Ovin — Engraissement',        'Finition',  2600, 14, 0.0,  0.0,  0.60, 0.35, 3500],
+            ['ovin_reproducteur',      'Ovin — Reproducteur',         'Entretien', 2500, 12, 0.0,  0.0,  0.70, 0.38, 3600],
             ['caprin_engraissement',   'Caprin — Engraissement',      'Finition',  2600, 15, 0.0,  0.0,  0.70, 0.35, 3500],
             ['caprin_laitiere',        'Chèvre — Laitière',           'Lactation', 2700, 16, 0.0,  0.0,  0.90, 0.45, 4000],
-            ['tilapia_grossissement',  'Tilapia — Grossissement',     'Grossissement', 3000, 30, 0.0, 0.0, 1.50, 1.00, 7000],
-            ['silure_grossissement',   'Silure — Grossissement',      'Grossissement', 3200, 35, 0.0, 0.0, 1.50, 1.00, 8000],
-            ['lapin_engraissement',    'Lapin — Engraissement',       'Croissance',2500, 16, 0.70, 0.0, 1.10, 0.60, 4000],
-            ['porc_engraissement',     'Porc — Engraissement',        'Croissance',3100, 16, 0.90, 0.0, 0.80, 0.65, 4500],
-            ['tilapia_alevinage',      'Tilapia — Alevinage',         'Démarrage', 3200, 38, 0.0,  0.0,  1.50, 1.10, 8500],
             ['caprin_reproducteur',    'Chèvre — Reproducteur',       'Entretien', 2500, 13, 0.0,  0.0,  0.80, 0.40, 3800],
-            ['ovin_reproducteur',      'Ovin — Reproducteur',         'Entretien', 2500, 12, 0.0,  0.0,  0.70, 0.38, 3600],
+
+            // Porcs & Lapins
+            ['porc_demarrage',         'Porcelet — Démarrage',        'Démarrage', 3200, 20, 1.20, 0.40, 0.90, 0.70, 5500],
+            ['porc_engraissement',     'Porc — Engraissement',        'Croissance',3100, 16, 0.90, 0.0,  0.80, 0.65, 4500],
+            ['porc_maternite',         'Truie — Allaitante',          'Lactation', 3200, 17, 0.95, 0.0,  0.90, 0.75, 4800],
+            ['lapin_engraissement',    'Lapin — Engraissement',       'Croissance',2500, 16, 0.70, 0.0,  1.10, 0.60, 4000],
+            ['lapin_maternite',        'Lapine — Allaitante',         'Lactation', 2600, 18, 0.80, 0.0,  1.20, 0.70, 4200],
+
+            // Aquaculture
+            ['tilapia_alevinage',      'Tilapia — Alevinage',         'Démarrage', 3200, 38, 0.0,  0.0,  1.50, 1.10, 8500],
+            ['tilapia_grossissement',  'Tilapia — Grossissement',     'Grossissement', 3000, 30, 0.0, 0.0, 1.50, 1.00, 7000],
+            ['silure_alevinage',       'Silure — Alevinage',          'Démarrage', 3300, 45, 0.0,  0.0,  1.60, 1.20, 9500],
+            ['silure_grossissement',   'Silure — Grossissement',      'Grossissement', 3200, 35, 0.0, 0.0, 1.50, 1.00, 8000],
         ];
 
         foreach ($norms as [$type, $name, $phase, $em, $pb, $lys, $meth, $ca, $p, $price]) {
@@ -125,8 +154,8 @@ class ReferentialSeeder extends Seeder
     // ─────────────────────────────────────────────
     private function seedProtocols(): void
     {
-        // type = slug du type de production ; steps : [jour, action, type, produit, méthode]
         $protocols = [
+            // VOLAILLE
             [
                 'name' => 'Prophylaxie Poulet de Chair', 'type' => 'chair', 'strain' => 'Ross 308',
                 'description' => 'Programme avicole chair standard (Newcastle, Gumboro, anticoccidien).',
@@ -142,10 +171,43 @@ class ReferentialSeeder extends Seeder
                 'name' => 'Prophylaxie Poule Pondeuse', 'type' => 'ponte', 'strain' => 'ISA Brown',
                 'description' => 'Programme pondeuse (Newcastle, Gumboro, variole, rappels).',
                 'steps' => [
+                    [1,  'Complexe Vitaminé Démarrage', 'Vitamine',  'AD3E + C', 'Eau de boisson'],
                     [7,  'Newcastle + Bronchite', 'Vaccin',   'HB1 + IB', 'Œil / eau'],
                     [14, 'Gumboro', 'Vaccin',                 'Vaccin Gumboro', 'Eau de boisson'],
                     [42, 'Variole aviaire', 'Vaccin',         'Vaccin variole', 'Transfixion aile'],
+                    [56, 'Déparasitage interne', 'Traitement','Levamisole', 'Eau de boisson'],
                     [112,'Newcastle rappel pré-ponte', 'Vaccin', 'Lasota', 'Eau de boisson'],
+                ],
+            ],
+            [
+                'name' => 'Prophylaxie Dinde', 'type' => 'chair', 'strain' => 'B.U.T. 6',
+                'description' => 'Programme dindonneau (sensible à l\'histomonose et mycoplasmes).',
+                'steps' => [
+                    [1,  'Antibiotique démarrage (Mycoplasmes)', 'Traitement', 'Tylosine', 'Eau de boisson'],
+                    [14, 'Newcastle', 'Vaccin',              'Pestis', 'Eau de boisson'],
+                    [28, 'Variole aviaire', 'Vaccin',        'Vaccin Variole', 'Transfixion aile'],
+                    [35, 'Prévention Histomonose (Crise rouge)', 'Traitement', 'Dimétridazole', 'Aliment / Eau'],
+                ],
+            ],
+            [
+                'name' => 'Prophylaxie Caille', 'type' => 'ponte', 'strain' => 'Coturnix',
+                'description' => 'Programme coturniculture (oiseau très rustique, surtout des vitamines).',
+                'steps' => [
+                    [1,  'Vitamines Démarrage', 'Vitamine',  'Complexe B + AD3E', 'Eau de boisson'],
+                    [15, 'Anticoccidien léger', 'Traitement','Amprolium', 'Eau de boisson'],
+                    [35, 'Vitamines Pré-ponte', 'Vitamine',  'Calcium + Vit D3', 'Eau de boisson'],
+                ],
+            ],
+
+            // RUMINANTS
+            [
+                'name' => 'Prophylaxie Bovin Engraissement', 'type' => 'engraissement', 'strain' => 'N\'Dama / Zébu',
+                'description' => 'Programme taurillon : Déparasitage, Charbon, Pasteurellose.',
+                'steps' => [
+                    [0,  'Déparasitage interne/externe', 'Traitement',  'Ivermectine 1%', 'Sous-cutanée'],
+                    [7,  'Pasteurellose bovine', 'Vaccin',              'Vaccin Pasteurellose', 'Sous-cutanée'],
+                    [14, 'Charbon symptomatique/bactéridien', 'Vaccin', 'Vaccin Charbon', 'Sous-cutanée'],
+                    [21, 'Cure de vitamines (Trypanosomiase)', 'Traitement', 'Trypamidium + Vitamines', 'Intramusculaire'],
                 ],
             ],
             [
@@ -171,6 +233,8 @@ class ReferentialSeeder extends Seeder
                     [30, 'CMV lactation', 'Vitamine',          'CMV calcium', 'Aliment'],
                 ],
             ],
+
+            // AUTRES MAMMIFÈRES
             [
                 'name' => 'Prophylaxie Lapin', 'type' => 'engraissement', 'strain' => 'Néo-Zélandais',
                 'description' => 'Cuniculture : myxomatose, VHD, coccidiose.',
@@ -183,22 +247,34 @@ class ReferentialSeeder extends Seeder
             ],
             [
                 'name' => 'Prophylaxie Porc', 'type' => 'engraissement', 'strain' => 'Large White',
-                'description' => 'Porcin : fer (anémie), déparasitage, peste porcine.',
+                'description' => 'Porcin : fer (anémie), déparasitage, rouget/peste.',
                 'steps' => [
                     [3,  'Supplément de fer (anémie)', 'Traitement', 'Fer dextran', 'Intramusculaire'],
                     [7,  'Déparasitage', 'Traitement',         'Ivermectine', 'Sous-cutanée'],
                     [30, 'Peste Porcine Classique', 'Vaccin',  'Vaccin PPC', 'Intramusculaire'],
+                    [45, 'Rouget du porc', 'Vaccin',           'Vaccin Rouget', 'Intramusculaire'],
                     [60, 'Déparasitage rappel', 'Traitement',  'Ivermectine', 'Sous-cutanée'],
                 ],
             ],
+
+            // AQUACULTURE
             [
                 'name' => 'Prophylaxie Pisciculture (Bassin)', 'type' => 'grossissement', 'strain' => 'Tilapia',
-                'description' => 'Aquaculture : désinfection du bassin, bain de sel, vitamine C, suivi qualité d\'eau.',
+                'description' => 'Aquaculture : désinfection du bassin, bain de sel, vitamine C.',
                 'steps' => [
                     [0,  'Désinfection du bassin (chaulage)', 'Désinfection', 'Chaux vive', 'Avant mise en eau'],
                     [1,  'Bain de sel prophylactique', 'Traitement', 'Sel (NaCl) 1-3%', 'Bain à la mise en charge'],
                     [7,  'Vitamine C anti-stress', 'Vitamine',  'Vitamine C', 'Aliment'],
                     [30, 'Contrôle parasitaire externe', 'Traitement', 'Sel / formol vétérinaire', 'Bain court'],
+                ],
+            ],
+            [
+                'name' => 'Gestion Sanitaire Silure', 'type' => 'grossissement', 'strain' => 'Clarias',
+                'description' => 'Silure : Forte densité, tri obligatoire contre le cannibalisme, désinfection plaies.',
+                'steps' => [
+                    [0,  'Désinfection bassin', 'Désinfection', 'Permanganate de potassium', 'Avant mise en eau'],
+                    [14, 'Tri par taille (Anti-cannibalisme)', 'Traitement', 'Filets de tri', 'Bassin'],
+                    [21, 'Désinfection des plaies post-tri', 'Traitement', 'Bleu de méthylène', 'Bain court'],
                 ],
             ],
         ];
@@ -209,7 +285,6 @@ class ReferentialSeeder extends Seeder
                 ['type' => $p['type'], 'strain' => $p['strain'], 'description' => $p['description']]
             );
 
-            // Reconstruction idempotente des étapes.
             $protocol->steps()->delete();
             foreach ($p['steps'] as [$day, $action, $type, $product, $method]) {
                 $protocol->steps()->create([
@@ -224,16 +299,27 @@ class ReferentialSeeder extends Seeder
     }
 
     // ─────────────────────────────────────────────
-    // 4. COURBES DE CROISSANCE (poids cible par semaine) — races locales
+    // 4. COURBES DE CROISSANCE (poids cible par semaine)
     // ─────────────────────────────────────────────
     private function seedGrowthCurves(): void
     {
         // model_name => [batch_type, phase, [semaine => poids cible en grammes]]
         $curves = [
-            'Mouton Djallonké'      => ['engraissement', [1 => 18000, 4 => 21000, 8 => 24500, 13 => 28000]],
-            'Lapin Néo-Zélandais'   => ['engraissement', [1 => 700, 4 => 1500, 8 => 2300, 10 => 2600]],
-            'Porc Large White'      => ['engraissement', [1 => 20000, 8 => 45000, 16 => 90000, 22 => 110000]],
-            'Tilapia du Nil'        => ['grossissement',  [1 => 5, 8 => 80, 16 => 250, 24 => 400]],
+            // Volaille
+            'Poulet Chair (Ross 308)' => ['chair', [1 => 190, 2 => 480, 3 => 960, 4 => 1550, 5 => 2200, 6 => 2800]],
+            'Poule Pondeuse (ISA)'    => ['ponte', [5 => 400, 10 => 850, 15 => 1250, 20 => 1600, 30 => 1900]],
+            'Dinde Chair (BUT 6)'     => ['chair', [4 => 1200, 8 => 4000, 12 => 8000, 16 => 12000, 20 => 16000]],
+            'Caille Japonaise'        => ['ponte', [1 => 30, 2 => 70, 4 => 150, 6 => 200]],
+
+            // Mammifères
+            'Mouton Djallonké'        => ['engraissement', [1 => 18000, 4 => 21000, 8 => 24500, 12 => 28000]],
+            'Chèvre Rousse Maradi'    => ['laitiere',      [1 => 15000, 4 => 17000, 8 => 20000, 12 => 23000]],
+            'Lapin Néo-Zélandais'     => ['engraissement', [1 => 700, 4 => 1500, 8 => 2300, 10 => 2600]],
+            'Porc Large White'        => ['engraissement', [1 => 20000, 8 => 45000, 16 => 90000, 22 => 110000]],
+
+            // Poissons
+            'Tilapia du Nil'          => ['grossissement', [1 => 5, 8 => 80, 16 => 250, 24 => 400]],
+            'Silure (Clarias)'        => ['grossissement', [1 => 10, 4 => 50, 8 => 200, 12 => 500, 20 => 1000]],
         ];
 
         foreach ($curves as $model => [$batchType, $weeks]) {
@@ -253,47 +339,63 @@ class ReferentialSeeder extends Seeder
     {
         // code => [nom, target_type, species_slug, pt_slug, [matière => %]]
         $recipes = [
+            // VOLAILLES
             'CH-DEM' => ['Poulet Chair — Démarrage', 'chair', 'poulet', 'chair', [
                 'Maïs jaune' => 55, 'Tourteau de soja' => 25, 'Son de blé' => 10,
                 'Farine de poisson' => 5, 'Coquilles / Calcaire' => 2, 'CMV (compl. minéral vitaminé)' => 2, 'Sel' => 1,
-            ]],
-            'PO-PONTE' => ['Poule Pondeuse — Ponte', 'ponte', 'poulet', 'ponte', [
-                'Maïs jaune' => 55, 'Tourteau de soja' => 18, 'Son de blé' => 12,
-                'Coquilles / Calcaire' => 9, 'Farine de poisson' => 3, 'CMV (compl. minéral vitaminé)' => 2, 'Sel' => 1,
-            ]],
-            'CAP-LAIT' => ['Chèvre Laitière — Lactation', 'caprin_laitiere', 'chevre', 'laitiere', [
-                'Maïs jaune' => 30, 'Son de blé' => 25, 'Tourteau d\'arachide' => 15,
-                'Drêche de brasserie' => 15, 'Fourrage / Foin' => 10, 'CMV (compl. minéral vitaminé)' => 3, 'Sel' => 2,
-            ]],
-            'OV-ENG' => ['Ovin — Engraissement', 'ovin_engraissement', 'mouton', 'engraissement', [
-                'Maïs jaune' => 35, 'Son de blé' => 25, 'Tourteau d\'arachide' => 12,
-                'Drêche de brasserie' => 13, 'Fourrage / Foin' => 12, 'CMV (compl. minéral vitaminé)' => 2, 'Sel' => 1,
-            ]],
-            'TIL-GROSS' => ['Tilapia — Grossissement', 'tilapia_grossissement', 'tilapia', 'grossissement', [
-                'Farine de poisson' => 30, 'Tourteau de soja' => 25, 'Son de riz' => 20,
-                'Maïs jaune' => 20, 'CMV (compl. minéral vitaminé)' => 3, 'Sel' => 2,
             ]],
             'CH-FIN' => ['Poulet Chair — Finition', 'chair_finition', 'poulet', 'chair', [
                 'Maïs jaune' => 62, 'Tourteau de soja' => 22, 'Son de blé' => 6,
                 'Huile de palme' => 3, 'Coquilles / Calcaire' => 2, 'Phosphate bicalcique' => 2,
                 'CMV (compl. minéral vitaminé)' => 2, 'Sel' => 1,
             ]],
-            'TIL-ALV' => ['Tilapia — Alevinage', 'tilapia_alevinage', 'tilapia', 'alevinage', [
-                'Farine de poisson' => 40, 'Tourteau de soja' => 28, 'Son de riz' => 18,
-                'Maïs jaune' => 8, 'Huile de palme' => 3, 'CMV (compl. minéral vitaminé)' => 2, 'Sel' => 1,
+            'PO-PONTE' => ['Poule Pondeuse — Ponte', 'ponte', 'poulet', 'ponte', [
+                'Maïs jaune' => 55, 'Tourteau de soja' => 18, 'Son de blé' => 12,
+                'Coquilles / Calcaire' => 9, 'Farine de poisson' => 3, 'CMV (compl. minéral vitaminé)' => 2, 'Sel' => 1,
+            ]],
+            'DIN-CROIS' => ['Dinde — Croissance', 'dinde_chair', 'dinde', 'chair', [
+                'Maïs jaune' => 50, 'Tourteau de soja' => 30, 'Farine de poisson' => 8,
+                'Son de blé' => 7, 'Huile de palme' => 2, 'Coquilles / Calcaire' => 1.5, 'CMV (compl. minéral vitaminé)' => 1.5,
+            ]],
+            'CAI-PONTE' => ['Caille — Ponte', 'caille', 'caille', 'ponte', [
+                'Maïs jaune' => 50, 'Tourteau de soja' => 25, 'Son de blé' => 10, 'Farine de poisson' => 5,
+                'Coquilles / Calcaire' => 8, 'CMV (compl. minéral vitaminé)' => 1.5, 'Sel' => 0.5,
+            ]],
+
+            // MAMMIFÈRES
+            'BOV-ENG' => ['Bovin — Engraissement', 'bovin_engraissement', 'vache', 'engraissement', [
+                'Son de blé' => 35, 'Graines de coton' => 25, 'Maïs jaune' => 20,
+                'Mélasse' => 10, 'Fourrage / Foin' => 8, 'CMV (compl. minéral vitaminé)' => 1, 'Sel' => 1,
+            ]],
+            'OV-ENG' => ['Ovin — Engraissement', 'ovin_engraissement', 'mouton', 'engraissement', [
+                'Maïs jaune' => 35, 'Son de blé' => 25, 'Tourteau d\'arachide' => 12,
+                'Drêche de brasserie' => 13, 'Fourrage / Foin' => 12, 'CMV (compl. minéral vitaminé)' => 2, 'Sel' => 1,
+            ]],
+            'CAP-LAIT' => ['Chèvre Laitière — Lactation', 'caprin_laitiere', 'chevre', 'laitiere', [
+                'Maïs jaune' => 30, 'Son de blé' => 25, 'Tourteau d\'arachide' => 15,
+                'Drêche de brasserie' => 15, 'Fourrage / Foin' => 10, 'CMV (compl. minéral vitaminé)' => 3, 'Sel' => 2,
             ]],
             'LAP-ENG' => ['Lapin — Engraissement', 'lapin_engraissement', 'lapin', 'engraissement', [
                 'Luzerne déshydratée' => 35, 'Son de blé' => 25, 'Maïs jaune' => 18,
                 'Tourteau de soja' => 15, 'Coquilles / Calcaire' => 2, 'CMV (compl. minéral vitaminé)' => 3, 'Sel' => 2,
             ]],
             'POR-ENG' => ['Porc — Engraissement', 'porc_engraissement', 'porc', 'engraissement', [
-                'Maïs jaune' => 48, 'Son de blé' => 22, 'Tourteau de soja' => 18,
-                'Farine de poisson' => 5, 'Coquilles / Calcaire' => 2, 'Phosphate bicalcique' => 1,
-                'CMV (compl. minéral vitaminé)' => 3, 'Sel' => 1,
+                'Maïs jaune' => 45, 'Son de blé' => 20, 'Tourteau de palmiste' => 10, 'Tourteau de soja' => 15,
+                'Farine de poisson' => 5, 'Coquilles / Calcaire' => 2, 'CMV (compl. minéral vitaminé)' => 2, 'Sel' => 1,
             ]],
-            'CAP-REP' => ['Chèvre — Reproducteur', 'caprin_reproducteur', 'chevre', 'reproducteur', [
-                'Maïs jaune' => 32, 'Son de blé' => 25, 'Tourteau d\'arachide' => 12,
-                'Fourrage / Foin' => 15, 'Drêche de brasserie' => 11, 'CMV (compl. minéral vitaminé)' => 3, 'Sel' => 2,
+            'POR-TRU' => ['Truie — Lactation', 'porc_maternite', 'porc', 'reproducteur', [
+                'Maïs jaune' => 50, 'Tourteau de soja' => 18, 'Son de blé' => 15, 'Farine de poisson' => 8,
+                'Mélasse' => 5, 'Coquilles / Calcaire' => 2, 'CMV (compl. minéral vitaminé)' => 1.5, 'Sel' => 0.5,
+            ]],
+
+            // AQUACULTURE
+            'TIL-GROSS' => ['Tilapia — Grossissement', 'tilapia_grossissement', 'tilapia', 'grossissement', [
+                'Farine de poisson' => 25, 'Tourteau de soja' => 25, 'Son de riz' => 20,
+                'Tourteau d\'arachide' => 10, 'Maïs jaune' => 15, 'CMV (compl. minéral vitaminé)' => 3, 'Sel' => 2,
+            ]],
+            'SIL-GROSS' => ['Silure — Grossissement', 'silure_grossissement', 'silure', 'grossissement', [
+                'Farine de poisson' => 35, 'Tourteau de soja' => 20, 'Farine de sang' => 10,
+                'Son de blé' => 15, 'Maïs jaune' => 15, 'Huile de palme' => 3, 'CMV (compl. minéral vitaminé)' => 2,
             ]],
         ];
 
