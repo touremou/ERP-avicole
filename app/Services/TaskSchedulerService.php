@@ -51,7 +51,7 @@ class TaskSchedulerService
                         if ($tpl->batch_types) {
                             $hasBatchType = Batch::where('building_id', $building->id)
                                 ->active()
-                                ->whereIn('type', $tpl->batch_types)
+                                ->whereHas('productionType', fn ($q) => $q->whereIn('slug', $tpl->batch_types))
                                 ->exists();
                             if (! $hasBatchType) continue;
                         }

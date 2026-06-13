@@ -53,10 +53,10 @@ class SlaughterController extends Controller
         // quelle que soit l'espèce (volaille, ruminants, porcins, lapins...).
         $batches = Batch::active()
             ->where('current_quantity', '>', 0)
-            ->with('building')
-            ->orderBy('type')
-            ->orderBy('code')
-            ->get();
+            ->with(['building', 'productionType'])
+            ->get()
+            ->sortBy(fn (Batch $batch) => $batch->type . $batch->code)
+            ->values();
 
         $clients = Client::active()->orderBy('name')->get();
 
