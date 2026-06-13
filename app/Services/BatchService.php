@@ -63,7 +63,7 @@ class BatchService
             }
 
             // Mise à jour du statut bâtiment
-            Building::where('id', $data['building_id'])->update(['status' => 'Occupé']);
+            Building::where('id', $data['building_id'])->update(['status' => Building::STATUS_OCCUPE]);
 
             return $batch;
         });

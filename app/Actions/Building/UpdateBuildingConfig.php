@@ -22,7 +22,7 @@ class UpdateBuildingConfig
             }
 
             // Verrou 2 : Interdiction d'enregistrer le statut "Vide" alors que des oiseaux y vivent
-            if ($data['status'] === 'Vide') {
+            if ($data['status'] === Building::STATUS_VIDE) {
                 throw ValidationException::withMessages([
                     'status' => "ERREUR DE FLUX : Le statut ne peut pas être configuré sur 'Vide' tant que le cheptel est présent."
                 ]);

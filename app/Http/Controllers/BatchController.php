@@ -463,7 +463,7 @@ class BatchController extends Controller
 
         // Mise à jour statut bâtiment si plus de lots actifs
         if ($building && ! Batch::where('building_id', $building->id)->active()->exists()) {
-            $building->update(['status' => 'Vide']);
+            $building->update(['status' => Building::STATUS_VIDE]);
         }
 
         return redirect()->route('batches.index')

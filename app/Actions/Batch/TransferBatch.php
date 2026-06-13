@@ -67,7 +67,7 @@ class TransferBatch
 
             // ─── 3. STATUTS BÂTIMENTS ───
             // Nouveau bâtiment → Occupé
-            $newBuilding->update(['status' => 'Occupé']);
+            $newBuilding->markOccupied();
 
             // Ancien bâtiment → Vide sanitaire SEULEMENT si plus aucun lot actif (S-07)
             if ($oldBuilding) {
@@ -77,10 +77,7 @@ class TransferBatch
                     ->exists();
 
                 if (! $hasOtherActive) {
-                    $oldBuilding->update([
-                        'status' => 'En désinfection',
-                        'disinfection_started_at' => now(),
-                    ]);
+                    $oldBuilding->startSanitaryBreak();
                 }
             }
 

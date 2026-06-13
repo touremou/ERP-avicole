@@ -103,7 +103,7 @@ class DashboardService
         $occupiedBuildings = $buildings->where('batches_count', '>', 0)->count();
 
         $sanitaryAlertsCount = $buildings->filter(function ($b) {
-            return $b->status === 'En désinfection'
+            return $b->status === Building::STATUS_DESINFECTION
                 && Carbon::parse($b->updated_at)->diffInDays(now()) > ($b->max_sanitary_days ?? 21);
         })->count();
 

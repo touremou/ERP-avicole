@@ -124,11 +124,11 @@ class UpdateBatch
             ->active()
             ->exists();
 
-        Building::where('id', $oldBuildingId)
-            ->update(['status' => $oldHasActive ? 'Occupé' : 'Disponible']);
+        if ($oldBuilding = Building::find($oldBuildingId)) {
+            $oldHasActive ? $oldBuilding->markOccupied() : $oldBuilding->markAvailable();
+        }
 
         // Nouveau bâtiment : forcément Occupé
-        Building::where('id', $newBuildingId)
-            ->update(['status' => 'Occupé']);
+        Building::find($newBuildingId)?->markOccupied();
     }
 }

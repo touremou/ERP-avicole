@@ -40,10 +40,16 @@ class CloseBatch
             $totalRevenue = $sellingRevenue;
 
             // ─── COÛTS ───
+            // Frais annexes : saisis dans le formulaire de clôture (main d'œuvre,
+            // transport, divers). On retombe sur la valeur déjà enregistrée sur le
+            // lot si le champ n'est pas soumis, pour ne pas l'écraser.
+            $additionalCosts = array_key_exists('additional_costs', $data)
+                ? (float) $data['additional_costs']
+                : (float) ($batch->additional_costs ?? 0);
+
             $acquisitionCost = (float) ($batch->total_acquisition_cost ?? 0);
             $feedCost = (float) $batch->feedPurchases()->sum('total_price');
             $healthCost = (float) $batch->healthChecks()->sum('cost');
-            $additionalCosts = (float) ($batch->additional_costs ?? 0);
             $totalCost = $acquisitionCost + $feedCost + $healthCost + $additionalCosts;
 
             // ─── MARGE ───
@@ -55,6 +61,7 @@ class CloseBatch
                 'current_quantity'           => 0,
                 'closing_date'               => $data['closing_date'],
                 'actual_sell_price_per_unit'  => $sellingPrice,
+                'additional_costs'           => $additionalCosts,
                 'total_revenue'              => $totalRevenue,
                 'margin'                     => $margin,
                 'observations'               => trim(
@@ -89,10 +96,7 @@ class CloseBatch
             ->exists();
 
         if (! $hasOtherActive) {
-            $building->update([
-                'status' => 'En désinfection',
-                'disinfection_started_at' => now(),
-            ]);
+            $building->startSanitaryBreak();
         }
     }
 }

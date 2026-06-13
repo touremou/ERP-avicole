@@ -13,14 +13,43 @@ class Building extends Model
 {
     use HasFactory, SoftDeletes, BelongsToFarm;
 
+    /**
+     * Statuts opérationnels d'un bâtiment (valeurs stockées en base dans la
+     * colonne `status`). Source unique de vérité référencée par les Actions
+     * du module Lots (CreateBatch, CloseBatch, TransferBatch, UpdateBatch),
+     * les services et commandes de vide sanitaire, et les vues `buildings/*`.
+     *
+     * ⚠️ Valeurs historiques (françaises, avec accents) : un renommage
+     * casserait les enregistrements existants.
+     */
+    public const STATUS_VIDE         = 'Vide';
+    public const STATUS_DISPONIBLE   = 'Disponible';
+    public const STATUS_OCCUPE       = 'Occupé';
+    public const STATUS_DESINFECTION = 'En désinfection';
+    public const STATUS_MAINTENANCE  = 'Maintenance';
+
+    /**
+     * Statuts considérés comme « libres » : le bâtiment est prêt à accueillir
+     * un nouveau lot (Vide et Disponible sont synonymes côté disponibilité).
+     */
+    public const STATUS_AVAILABLE = [
+        self::STATUS_VIDE,
+        self::STATUS_DISPONIBLE,
+    ];
+
+    /**
+     * Durée standard du vide sanitaire (jours) avant réutilisation.
+     */
+    public const SANITARY_BREAK_DAYS = 14;
+
     protected $fillable = [
         'farm_id',
-        'name', 
-        'type', 
-        'capacity', 
-        'surface', 
-        'description', 
-        'status', // Vide, Occupé, En désinfection, Disponible, Maintenance
+        'name',
+        'type',
+        'capacity',
+        'surface',
+        'description',
+        'status', // cf. constantes STATUS_* ci-dessus
         'is_active',
         'disinfection_started_at' // Présent dans votre schéma DB
     ];
@@ -49,6 +78,16 @@ class Building extends Model
         return $this->hasMany(Batch::class);
     }
 
+    // --- SCOPES ---
+
+    /**
+     * Bâtiments actuellement en vide sanitaire (désinfection en cours).
+     */
+    public function scopeInSanitaryBreak($query)
+    {
+        return $query->where('status', self::STATUS_DESINFECTION);
+    }
+
     // --- LOGIQUE MÉTIER (METHODS) ---
 
     /**
@@ -65,7 +104,45 @@ class Building extends Model
     public function isAvailable(): bool
     {
         // Un bâtiment n'est disponible que s'il est marqué comme tel ET qu'il n'y a pas de lot actif
-        return in_array($this->status, ['Vide', 'Disponible']) && !$this->batches()->active()->exists();
+        return in_array($this->status, self::STATUS_AVAILABLE, true) && !$this->batches()->active()->exists();
+    }
+
+    /**
+     * Indique si le bâtiment est en vide sanitaire.
+     */
+    public function isInSanitaryBreak(): bool
+    {
+        return $this->status === self::STATUS_DESINFECTION;
+    }
+
+    // --- TRANSITIONS D'ÉTAT (centralise la logique dispersée des Actions) ---
+
+    /**
+     * Marque le bâtiment comme occupé (un lot actif y est présent).
+     */
+    public function markOccupied(): void
+    {
+        $this->update(['status' => self::STATUS_OCCUPE]);
+    }
+
+    /**
+     * Marque le bâtiment comme disponible (libéré, sans vide sanitaire).
+     */
+    public function markAvailable(): void
+    {
+        $this->update(['status' => self::STATUS_DISPONIBLE]);
+    }
+
+    /**
+     * Déclenche le vide sanitaire : statut « En désinfection » et horodatage
+     * du début, utilisé pour calculer le repos restant.
+     */
+    public function startSanitaryBreak(): void
+    {
+        $this->update([
+            'status'                  => self::STATUS_DESINFECTION,
+            'disinfection_started_at' => now(),
+        ]);
     }
 
     /**
@@ -74,11 +151,11 @@ class Building extends Model
      */
     public function getSanitaryBreakRemainingDaysAttribute(): int
     {
-        if ($this->status !== 'En désinfection' || !$this->disinfection_started_at) {
+        if (! $this->isInSanitaryBreak() || !$this->disinfection_started_at) {
             return 0;
         }
 
-        $targetDate = $this->disinfection_started_at->addDays(14);
+        $targetDate = $this->disinfection_started_at->addDays(self::SANITARY_BREAK_DAYS);
         $remaining = now()->diffInDays($targetDate, false);
 
         return $remaining > 0 ? (int)$remaining : 0;
@@ -106,11 +183,11 @@ class Building extends Model
     public function getStatusColorAttribute(): string
     {
         return match($this->status) {
-            'Occupé'          => 'orange',
-            'En désinfection' => 'purple',
-            'Disponible', 'Vide' => 'emerald',
-            'Maintenance'     => 'rose',
-            default           => 'slate',
+            self::STATUS_OCCUPE                       => 'orange',
+            self::STATUS_DESINFECTION                 => 'purple',
+            self::STATUS_DISPONIBLE, self::STATUS_VIDE => 'emerald',
+            self::STATUS_MAINTENANCE                  => 'rose',
+            default                                   => 'slate',
         };
     }
 

@@ -112,7 +112,7 @@ class CreateBatch
             ]);
 
             // ─── Mise à jour du bâtiment ───
-            $building->update(['status' => 'Occupé']);
+            $building->markOccupied();
 
             // ─── Planification sanitaire ───
             if ($batch->protocol_id) {

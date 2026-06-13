@@ -16,7 +16,7 @@ class MonitorIndustrialAlerts extends Command {
         $admin = User::where('role', 'admin')->first();
 
         // 1. Vérification Vide Sanitaire
-        $buildings = Building::where('status', 'En désinfection')->get();
+        $buildings = Building::inSanitaryBreak()->get();
         foreach ($buildings as $b) {
             $daysInSanitation = Carbon::parse($b->updated_at)->diffInDays(now());
             

@@ -145,9 +145,9 @@ class DashboardController extends Controller
         // Un bâtiment simplement vide/disponible, ou en désinfection depuis
         // moins de 14 jours, n'est PAS une alerte.
         $sanitaryAlertsCount = Building::where('name', '!=', 'Zone Fournisseurs Externes')
-            ->where('status', 'En désinfection')
+            ->inSanitaryBreak()
             ->whereNotNull('disinfection_started_at')
-            ->where('disinfection_started_at', '<=', now()->subDays(14))
+            ->where('disinfection_started_at', '<=', now()->subDays(Building::SANITARY_BREAK_DAYS))
             ->count();
 
         // ---------------------------------------------------------

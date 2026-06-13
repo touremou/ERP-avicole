@@ -82,9 +82,9 @@
                         </label>
                         <select name="status" class="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-orange-500 outline-none font-black text-slate-700 appearance-none shadow-inner uppercase text-[10px] italic cursor-pointer">
                             {{-- Si occupé, on désactive l'option Vide pour coller à la règle métier --}}
-                            <option value="Vide" {{ old('status', $building->status) == 'Vide' ? 'selected' : '' }} {{ $isOccupied ? 'disabled' : '' }}>🟢 {{ __("Vide / Désinfecté") }}</option>
-                            <option value="Occupé" {{ old('status', $building->status) == 'Occupé' ? 'selected' : '' }}>🔴 {{ __("Occupé") }}</option>
-                            <option value="En désinfection" {{ old('status', $building->status) == 'En désinfection' ? 'selected' : '' }}>🟠 {{ __("En désinfection") }}</option>
+                            <option value="{{ \App\Models\Building::STATUS_VIDE }}" {{ old('status', $building->status) == \App\Models\Building::STATUS_VIDE ? 'selected' : '' }} {{ $isOccupied ? 'disabled' : '' }}>🟢 {{ __("Vide / Désinfecté") }}</option>
+                            <option value="{{ \App\Models\Building::STATUS_OCCUPE }}" {{ old('status', $building->status) == \App\Models\Building::STATUS_OCCUPE ? 'selected' : '' }}>🔴 {{ __("Occupé") }}</option>
+                            <option value="{{ \App\Models\Building::STATUS_DESINFECTION }}" {{ old('status', $building->status) == \App\Models\Building::STATUS_DESINFECTION ? 'selected' : '' }}>🟠 {{ __("En désinfection") }}</option>
                         </select>
                     </div>
 
