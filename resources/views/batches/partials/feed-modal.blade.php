@@ -4,7 +4,7 @@
     x-data="{
         cat: 'conso',
         consoType: 'Aliment',
-        poultryType: '{{ in_array($batch->type, ['chair', 'poussiniere']) ? 'Chair' : 'Ponte' }}',
+        poultryType: '{{ $batch->feedSector() }}',
         unit: 'Sac',
         inputQty: 0,
         unitPrice: 0,
@@ -99,9 +99,9 @@
                     <template x-if="cat === 'conso' && consoType === 'Aliment' && poultryType === 'Chair'">
                         <select name="feed_type" required class="w-full bg-slate-50 border-none rounded-xl p-4 font-black uppercase text-xs shadow-inner italic border-l-4 border-slate-900 outline-none">
                             <option value="">{{ __("-- Aliments Chair --") }}</option>
-                            <option value="Chair Démarrage">{{ __("Chair Démarrage") }}</option>
-                            <option value="Chair Croissance">{{ __("Chair Croissance") }}</option>
-                            <option value="Chair Finition">{{ __("Chair Finition") }}</option>
+                            @foreach(\App\Models\Batch::FEED_PHASES['Chair'] as $phase)
+                                <option value="{{ $phase }}">{{ __($phase) }}</option>
+                            @endforeach
                         </select>
                     </template>
 
@@ -109,10 +109,9 @@
                     <template x-if="cat === 'conso' && consoType === 'Aliment' && poultryType === 'Ponte'">
                         <select name="feed_type" required class="w-full bg-slate-50 border-none rounded-xl p-4 font-black uppercase text-xs shadow-inner italic border-l-4 border-emerald-500 outline-none">
                             <option value="">{{ __("-- Aliments Ponte --") }}</option>
-                            <option value="Ponte Démarrage (Poussin)">{{ __("Ponte Démarrage (Poussin)") }}</option>
-                            <option value="Ponte Croissance (Poulette)">{{ __("Ponte Croissance (Poulette)") }}</option>
-                            <option value="Ponte 1 (Pic de ponte)">{{ __("Ponte 1 (Pic de ponte)") }}</option>
-                            <option value="Ponte 2 (Entretien)">{{ __("Ponte 2 (Entretien)") }}</option>
+                            @foreach(\App\Models\Batch::FEED_PHASES['Ponte'] as $phase)
+                                <option value="{{ $phase }}">{{ __($phase) }}</option>
+                            @endforeach
                         </select>
                     </template>
 

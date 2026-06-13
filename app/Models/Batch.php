@@ -360,6 +360,50 @@ class Batch extends Model
             : ($this->species?->tracks_milk ?? false);
     }
 
+    /**
+     * Phases d'aliment volaille (noms d'articles de stock attendus dans la
+     * catégorie « conso »), par secteur Chair / Ponte. Source unique de
+     * vérité partagée par la vue show (cartes de stock par phase), le modal
+     * d'achat direct (feed-modal) et le calcul du prix moyen de l'aliment
+     * (BatchController). Les lots de ponte/reproducteur relèvent du secteur
+     * Ponte.
+     */
+    public const FEED_PHASES = [
+        'Chair' => [
+            'Chair Démarrage',
+            'Chair Croissance',
+            'Chair Finition',
+        ],
+        'Ponte' => [
+            'Ponte Démarrage (Poussin)',
+            'Ponte Croissance (Poulette)',
+            'Ponte 1 (Pic de ponte)',
+            'Ponte 2 (Entretien)',
+        ],
+    ];
+
+    /**
+     * Secteur d'aliment volaille du lot : « Chair » ou « Ponte ».
+     * Les types ponte/repro/reproducteur relèvent du secteur Ponte ;
+     * chair et poussinière relèvent du secteur Chair.
+     */
+    public function feedSector(): string
+    {
+        return in_array(strtolower((string) $this->type), ['ponte', 'repro', 'reproducteur'], true)
+            ? 'Ponte'
+            : 'Chair';
+    }
+
+    /**
+     * Liste des phases d'aliment attendues pour ce lot (secteur Chair/Ponte).
+     *
+     * @return array<int, string>
+     */
+    public function feedPhases(): array
+    {
+        return self::FEED_PHASES[$this->feedSector()];
+    }
+
     // ═══════════════════════════════════════════════
     // ACCESSEURS — EFFECTIFS
     // ═══════════════════════════════════════════════

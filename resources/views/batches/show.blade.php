@@ -484,32 +484,15 @@
             {{-- STOCKS DYNAMIQUES (phases d'aliment volaille uniquement) --}}
             @if($isVolaille)
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 text-left">
-                @php
-                    $batchType = ucfirst(strtolower($batch->type ?? 'Chair'));
-                    if ($batchType === 'Ponte' or $batchType === 'Reproducteur') {
-                        $feedPhases = [
-                            'Ponte Démarrage (Poussin)', 
-                            'Ponte Croissance (Poulette)', 
-                            'Ponte 1 (Pic de ponte)', 
-                            'Ponte 2 (Entretien)'
-                        ];
-                    } else {
-                        $feedPhases = [
-                            'Chair Démarrage', 
-                            'Chair Croissance', 
-                            'Chair Finition'
-                        ];
-                    }
-                @endphp
-                @foreach($feedPhases as $phaseName)
-                    @php 
+                @foreach($batch->feedPhases() as $phaseName)
+                    @php
                         $stockItem = \App\Models\Stock::where('item_name', $phaseName)
-                                        ->where('category', 'conso')
+                                        ->where('category', \App\Models\Stock::CAT_CONSO)
                                         ->first();
-                        
+
                         if (!$stockItem) {
                             $stockItem = \App\Models\Stock::where('item_name', 'LIKE', "%$phaseName%")
-                                            ->where('category', 'conso')
+                                            ->where('category', \App\Models\Stock::CAT_CONSO)
                                             ->first();
                         }
                         $qty = $stockItem ? (float)$stockItem->current_quantity : 0;
