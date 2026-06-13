@@ -53,6 +53,8 @@ class ReferentialSeeder extends Seeder
             ['Drêche de brasserie',   'kg', 2000, 25.0, 0.80, 0.30, 1200],
             ['Manioc (cossettes)',    'kg', 3200, 3.0,  0.10, 0.10, 1800],
             ['Fourrage / Foin',       'kg', 1800, 10.0, 0.40, 0.50, 500],
+            ['Luzerne déshydratée',   'kg', 1500, 16.0, 0.70, 1.40, 2500],
+            ['Huile de palme',        'kg', 8800, 0.0,  0.0,  0.0,  10000],
             ['CMV (compl. minéral vitaminé)', 'kg', 0, 0.0, 0.0, 12.0, 8000],
             ['Sel',                   'kg', 0,    0.0,  0.0,  0.0,  500],
         ];
@@ -94,6 +96,9 @@ class ReferentialSeeder extends Seeder
             ['silure_grossissement',   'Silure — Grossissement',      'Grossissement', 3200, 35, 0.0, 0.0, 1.50, 1.00, 8000],
             ['lapin_engraissement',    'Lapin — Engraissement',       'Croissance',2500, 16, 0.70, 0.0, 1.10, 0.60, 4000],
             ['porc_engraissement',     'Porc — Engraissement',        'Croissance',3100, 16, 0.90, 0.0, 0.80, 0.65, 4500],
+            ['tilapia_alevinage',      'Tilapia — Alevinage',         'Démarrage', 3200, 38, 0.0,  0.0,  1.50, 1.10, 8500],
+            ['caprin_reproducteur',    'Chèvre — Reproducteur',       'Entretien', 2500, 13, 0.0,  0.0,  0.80, 0.40, 3800],
+            ['ovin_reproducteur',      'Ovin — Reproducteur',         'Entretien', 2500, 12, 0.0,  0.0,  0.70, 0.38, 3600],
         ];
 
         foreach ($norms as [$type, $name, $phase, $em, $pb, $lys, $meth, $ca, $p, $price]) {
@@ -267,6 +272,28 @@ class ReferentialSeeder extends Seeder
             'TIL-GROSS' => ['Tilapia — Grossissement', 'tilapia_grossissement', 'tilapia', 'grossissement', [
                 'Farine de poisson' => 30, 'Tourteau de soja' => 25, 'Son de riz' => 20,
                 'Maïs jaune' => 20, 'CMV (compl. minéral vitaminé)' => 3, 'Sel' => 2,
+            ]],
+            'CH-FIN' => ['Poulet Chair — Finition', 'chair_finition', 'poulet', 'chair', [
+                'Maïs jaune' => 62, 'Tourteau de soja' => 22, 'Son de blé' => 6,
+                'Huile de palme' => 3, 'Coquilles / Calcaire' => 2, 'Phosphate bicalcique' => 2,
+                'CMV (compl. minéral vitaminé)' => 2, 'Sel' => 1,
+            ]],
+            'TIL-ALV' => ['Tilapia — Alevinage', 'tilapia_alevinage', 'tilapia', 'alevinage', [
+                'Farine de poisson' => 40, 'Tourteau de soja' => 28, 'Son de riz' => 18,
+                'Maïs jaune' => 8, 'Huile de palme' => 3, 'CMV (compl. minéral vitaminé)' => 2, 'Sel' => 1,
+            ]],
+            'LAP-ENG' => ['Lapin — Engraissement', 'lapin_engraissement', 'lapin', 'engraissement', [
+                'Luzerne déshydratée' => 35, 'Son de blé' => 25, 'Maïs jaune' => 18,
+                'Tourteau de soja' => 15, 'Coquilles / Calcaire' => 2, 'CMV (compl. minéral vitaminé)' => 3, 'Sel' => 2,
+            ]],
+            'POR-ENG' => ['Porc — Engraissement', 'porc_engraissement', 'porc', 'engraissement', [
+                'Maïs jaune' => 48, 'Son de blé' => 22, 'Tourteau de soja' => 18,
+                'Farine de poisson' => 5, 'Coquilles / Calcaire' => 2, 'Phosphate bicalcique' => 1,
+                'CMV (compl. minéral vitaminé)' => 3, 'Sel' => 1,
+            ]],
+            'CAP-REP' => ['Chèvre — Reproducteur', 'caprin_reproducteur', 'chevre', 'reproducteur', [
+                'Maïs jaune' => 32, 'Son de blé' => 25, 'Tourteau d\'arachide' => 12,
+                'Fourrage / Foin' => 15, 'Drêche de brasserie' => 11, 'CMV (compl. minéral vitaminé)' => 3, 'Sel' => 2,
             ]],
         ];
 
