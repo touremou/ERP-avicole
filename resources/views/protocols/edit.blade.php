@@ -130,7 +130,7 @@
                                         <option value="Oculaire" {{ ($step['method'] ?? '') == 'Oculaire' ? 'selected' : '' }}>👁️ {{ __("Goutte") }}</option>
                                     </select>
                                 </div>
-                                <div class="opacity-0 group-hover:opacity-100 transition-opacity pb-3">
+                                <div class="opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity pb-3">
                                     <button type="button" onclick="this.closest('.step-row').remove()" class="w-10 h-10 bg-rose-50 text-rose-500 rounded-xl hover:bg-rose-500 hover:text-white transition-all border-none cursor-pointer"><i class="fa-solid fa-trash-can text-xs"></i></button>
                                 </div>
                             </div>
@@ -205,7 +205,7 @@
                         <option value="Oculaire">${@json(__('Goutte'))}</option>
                     </select>
                 </div>
-                <div class="opacity-0 group-hover:opacity-100 transition-opacity pb-3 text-right">
+                <div class="opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity pb-3 text-right">
                     <button type="button" onclick="this.closest('.step-row').remove()" class="w-10 h-10 bg-rose-50 text-rose-500 rounded-xl hover:bg-rose-500 hover:text-white transition-all border-none cursor-pointer"><i class="fa-solid fa-trash-can text-xs"></i></button>
                 </div>
             `;

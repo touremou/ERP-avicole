@@ -62,7 +62,7 @@
                     <div class="protocol-card bg-white p-10 rounded-[4rem] border border-slate-100 shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 group relative overflow-hidden flex flex-col justify-between min-h-[440px]" data-name="{{ strtoupper($protocol->name) }}">
                         
                         {{-- TOOLBAR SECRÈTE (M/S) --}}
-                        <div class="absolute top-8 left-8 flex flex-col gap-3 opacity-0 group-hover:opacity-100 transition-all transform -translate-x-4 group-hover:translate-x-0 z-20">
+                        <div class="absolute top-8 left-8 flex flex-col gap-3 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all transform translate-x-0 md:-translate-x-4 md:group-hover:translate-x-0 z-20">
                             <button onclick="openPreview({{ json_encode($protocol->name) }}, {{ json_encode($protocol->steps) }})" class="w-10 h-10 bg-white text-blue-500 rounded-xl hover:bg-blue-500 hover:text-white transition-all flex items-center justify-center shadow-lg" title="{{ __('Aperçu rapide') }}">
                                 <i class="fa-solid fa-eye text-xs"></i>
                             </button>

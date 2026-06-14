@@ -102,18 +102,18 @@
                             $unreadCount = $unreadNotifications->count();
                         @endphp
 
-                        <div class="relative group ml-4 cursor-pointer">
-                            <div class="relative p-2 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
+                        <div class="relative ml-4" x-data="{ open: false }" @click.outside="open = false">
+                            <div @click="open = !open" class="relative p-2 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer">
                                 <i class="fa-solid fa-bell text-slate-400 text-lg"></i>
-                                
+
                                 @if(!config('app.database_down') && $unreadCount > 0)
                                     <span class="absolute -top-1 -right-1 w-5 h-5 bg-rose-600 text-white text-[9px] font-black rounded-lg flex items-center justify-center shadow-lg animate-bounce">
                                         {{ $unreadCount }}
                                     </span>
                                 @endif
                             </div>
-                            
-                            <div class="absolute right-0 mt-3 w-80 bg-white rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.1)] border border-slate-100 hidden group-hover:block z-50 overflow-hidden">
+
+                            <div x-show="open" x-transition x-cloak class="absolute right-0 mt-3 w-80 bg-white rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.1)] border border-slate-100 z-50 overflow-hidden">
                                 <div class="p-5 bg-slate-900 text-white flex justify-between items-center">
                                     <p class="text-[10px] font-black uppercase italic tracking-widest">
                                         {{ config('app.database_down') ? __("Flux Temporairement Indisponible") : __("Flux de Production") }}
