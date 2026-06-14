@@ -154,6 +154,11 @@ class WhatsAppService
      * Le paramètre whatsapp.verify_ssl permet, en dernier recours et de façon
      * explicite, de désactiver la vérification (déconseillé) pour les
      * environnements où aucun bundle n'est exploitable.
+     *
+     * Si composer/ca-bundle n'est pas présent dans vendor/ (composer
+     * install/update pas encore exécuté côté serveur après mise à jour),
+     * on se replie silencieusement sur la vérification SSL par défaut de
+     * Guzzle/cURL plutôt que de provoquer une erreur fatale "Class not found".
      */
     private function http(): PendingRequest
     {
@@ -164,9 +169,11 @@ class WhatsAppService
             return $client->withoutVerifying();
         }
 
-        $caPath = CaBundle::getSystemCaRootBundlePath();
-        if (is_string($caPath) && is_file($caPath)) {
-            $client = $client->withOptions(['verify' => $caPath]);
+        if (class_exists(CaBundle::class)) {
+            $caPath = CaBundle::getSystemCaRootBundlePath();
+            if (is_string($caPath) && is_file($caPath)) {
+                $client = $client->withOptions(['verify' => $caPath]);
+            }
         }
 
         return $client;
