@@ -1,7 +1,11 @@
 <?php
 
+use App\Actions\Sale\CancelSale;
+use App\Actions\Stock\MoveStockAction;
+use App\Models\Client;
 use App\Models\DiscrepancyReport;
 use App\Models\NotificationLog;
+use App\Models\Sale;
 use App\Models\Setting;
 use App\Models\Stock;
 use App\Services\NotificationHub;
@@ -133,4 +137,72 @@ test('un nouveau mouvement de stock sous le seuil ne ré-alerte pas une seconde 
     );
 
     expect(NotificationLog::where('type', 'alert_stock')->count())->toBe(0);
+});
+
+test('une vente au-delà du seuil est escaladée en alerte critique', function () {
+    Setting::set('whatsapp.admin_phone', '+224633333333');
+    Setting::set('whatsapp.large_sale_threshold', '1000000');
+
+    $client = Client::create([
+        'farm_id' => $this->farm->id, 'client_id' => 'CLI-LARGE',
+        'name' => 'Grossiste', 'type' => 'particulier', 'status' => 'actif',
+        'credit_limit' => 0, 'balance' => 0,
+    ]);
+
+    $sale = Sale::create([
+        'farm_id' => $this->farm->id, 'client_id' => $client->id, 'user_id' => $this->adminUser->id,
+        'reference' => 'BL-LARGE-001', 'sale_date' => now()->toDateString(),
+        'type' => 'bon_livraison', 'status' => 'valide',
+        'subtotal' => 5000000, 'tax_amount' => 0, 'total_amount' => 5000000,
+        'paid_amount' => 0, 'payment_status' => 'impaye',
+    ]);
+
+    app(NotificationHub::class)->notifySaleCreated($sale->fresh(['client']));
+
+    // Escaladée → délivrée au numéro admin de secours (statut sent).
+    expect(NotificationLog::where('type', 'alert_sales')->where('status', 'sent')->exists())->toBeTrue();
+});
+
+test('annuler une vente validée déclenche une alerte anti-fraude critique', function () {
+    Setting::set('whatsapp.admin_phone', '+224644444444');
+
+    $client = Client::create([
+        'farm_id' => $this->farm->id, 'client_id' => 'CLI-CANCEL',
+        'name' => 'Client Annul', 'type' => 'particulier', 'status' => 'actif',
+        'credit_limit' => 0, 'balance' => 0,
+    ]);
+
+    $sale = Sale::create([
+        'farm_id' => $this->farm->id, 'client_id' => $client->id, 'user_id' => $this->adminUser->id,
+        'reference' => 'BL-CANCEL-001', 'sale_date' => now()->toDateString(),
+        'type' => 'bon_livraison', 'status' => 'valide',
+        'subtotal' => 200000, 'tax_amount' => 0, 'total_amount' => 200000,
+        'paid_amount' => 0, 'payment_status' => 'impaye',
+    ]);
+
+    $this->actingAs($this->adminUser);
+    (new CancelSale())->execute($sale, 'Erreur de saisie');
+
+    $log = NotificationLog::where('type', 'alert_fraud')->where('status', 'sent')->latest()->first();
+    expect($log)->not->toBeNull()
+        ->and($log->message)->toContain('VENTE ANNULÉE');
+});
+
+test('un ajustement manuel de stock à la baisse déclenche une alerte anti-fraude', function () {
+    Setting::set('whatsapp.admin_phone', '+224655555555');
+
+    $stock = Stock::factory()->create([
+        'category'        => Stock::CAT_MATERIELS,
+        'item_name'       => 'Sacs vides',
+        'unit'            => 'Unité',
+        'current_quantity'=> 100,
+        'alert_threshold' => 0,
+    ]);
+
+    $this->actingAs($this->adminUser);
+    (new MoveStockAction())->execute($stock->id, 'adjustment', 60, 'Inventaire physique', $this->adminUser->id);
+
+    $log = NotificationLog::where('type', 'alert_fraud')->where('status', 'sent')->latest()->first();
+    expect($log)->not->toBeNull()
+        ->and($log->message)->toContain('AJUSTEMENT STOCK');
 });

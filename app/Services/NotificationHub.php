@@ -224,16 +224,74 @@ class NotificationHub
 
     /**
      * Notification vente créée.
+     *
+     * Une vente dont le montant dépasse le seuil `whatsapp.large_sale_threshold`
+     * est escaladée en CRITIQUE : elle atteint alors aussi le numéro admin de
+     * secours même si personne n'est explicitement abonné aux ventes — garde-fou
+     * contre les ventes inhabituelles passées à l'insu du propriétaire.
      */
     public function notifySaleCreated(Sale $sale): void
     {
-        $message = "💰 *NOUVELLE VENTE*\n\n"
+        $threshold = (float) setting('whatsapp.large_sale_threshold', 0);
+        $isLarge = $threshold > 0 && (float) $sale->total_amount >= $threshold;
+
+        $message = ($isLarge ? "💰🔴 *GROSSE VENTE*" : "💰 *NOUVELLE VENTE*") . "\n\n"
             . "Réf : *{$sale->reference}*\n"
             . "Client : {$sale->client->name}\n"
             . "Total : *" . number_format($sale->total_amount, 0, ',', '.') . " GNF*\n"
             . "Statut : {$sale->payment_status}";
 
-        $this->broadcast('alert_sales', $message, 'Vente ' . $sale->reference);
+        if ($isLarge) {
+            $message .= "\n\n⚠️ Montant au-delà du seuil de " . number_format($threshold, 0, ',', '.') . " GNF.";
+        }
+
+        $this->broadcast('alert_sales', $message, 'Vente ' . $sale->reference, $isLarge ? 'critique' : 'normal');
+    }
+
+    /**
+     * Alerte annulation d'une vente (vecteur de détournement : encaisser puis
+     * annuler la trace). Diffusée via le canal anti-fraude ; escaladée en
+     * critique si la vente avait été validée/livrée (donc déstockée).
+     */
+    public function alertSaleCancelled(Sale $sale, string $reason = '', ?string $previousStatus = null): void
+    {
+        $status = $previousStatus ?? $sale->getOriginal('status');
+        $wasCommitted = in_array($status, ['valide', 'livre'], true);
+        $emoji = $wasCommitted ? '🚨' : '⚠️';
+
+        $message = "{$emoji} *VENTE ANNULÉE*\n\n"
+            . "Réf : *{$sale->reference}*\n"
+            . "Client : " . ($sale->client->name ?? 'N/A') . "\n"
+            . "Montant : *" . number_format($sale->total_amount, 0, ',', '.') . " GNF*\n"
+            . "Statut avant annulation : *{$status}*\n"
+            . "Par : " . (\Illuminate\Support\Facades\Auth::user()?->name ?? 'Système') . "\n"
+            . ($reason !== '' ? "Motif : {$reason}\n" : '')
+            . ($wasCommitted ? "\nLa vente était validée (stock restitué). Vérifier la légitimité." : '');
+
+        $this->broadcast('alert_fraud', $message, 'Annulation ' . $sale->reference, $wasCommitted ? 'critique' : 'normal');
+    }
+
+    /**
+     * Alerte ajustement manuel de stock (vecteur de dissimulation de vol :
+     * « corriger » un stock à la baisse sans flux documenté). Diffusée via le
+     * canal anti-fraude ; critique uniquement pour les baisses.
+     */
+    public function alertStockAdjustment(Stock $stock, float $oldQty, float $newQty, ?string $notes = null): void
+    {
+        $delta = $newQty - $oldQty;
+        $isDecrease = $delta < 0;
+        $emoji = $isDecrease ? '🚨' : 'ℹ️';
+
+        $message = "{$emoji} *AJUSTEMENT STOCK*\n\n"
+            . "Article : *{$stock->item_name}*\n"
+            . "Avant : {$oldQty} {$stock->unit}\n"
+            . "Après : *{$newQty} {$stock->unit}*\n"
+            . "Écart : *" . ($delta > 0 ? '+' : '') . round($delta, 2) . " {$stock->unit}*\n"
+            . "Par : " . (\Illuminate\Support\Facades\Auth::user()?->name ?? 'Système') . "\n"
+            . ($notes ? "Note : {$notes}\n" : '')
+            . ($isDecrease ? "\nDiminution manuelle d'inventaire — vérifier la justification." : '');
+
+        $this->broadcast('alert_fraud', $message, 'Ajustement ' . $stock->item_name, $isDecrease ? 'critique' : 'normal');
     }
 
     /**
