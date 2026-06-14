@@ -4,6 +4,7 @@ namespace App\Http\Requests\Batch;
 
 use App\Models\Batch;
 use App\Models\Building;
+use App\Models\ProductionType;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
@@ -28,10 +29,9 @@ class TransferBatchRequest extends FormRequest
 
     public function rules(): array
     {
-        // Phases historiques (volaille). Pour les espèces non-volailles
-        // (ruminants, aquaculture, ...), la mutation ne change pas la phase
-        // de production : on autorise donc aussi la phase/le type courant
-        // du lot, déjà sélectionné comme seule option dans le formulaire.
+        // Phases cibles autorisées = types de production réels de l'espèce du
+        // lot (source de vérité), + phases volailles historiques, + phase/type
+        // courant. Une poussinière peut ainsi graduer vers chair/ponte/repro.
         $allowedPhases = ['poussiniere', 'chair', 'ponte', 'reproducteur'];
 
         $batch = $this->route('batch');
@@ -40,7 +40,10 @@ class TransferBatchRequest extends FormRequest
         }
 
         if ($batch) {
-            foreach ([$batch->production_phase, $batch->type] as $value) {
+            $speciesSlugs = ProductionType::where('species_id', $batch->species_id)
+                ->pluck('slug')->all();
+
+            foreach (array_merge($speciesSlugs, [$batch->production_phase, $batch->type]) as $value) {
                 if ($value && ! in_array($value, $allowedPhases, true)) {
                     $allowedPhases[] = $value;
                 }
@@ -96,9 +99,12 @@ class TransferBatchRequest extends FormRequest
                 );
             }
 
-            // Capacité
+            // Capacité — on exclut toujours le lot lui-même de l'occupation
+            // (sinon une transformation sur place compterait ses propres
+            // sujets contre la place disponible).
             $currentOccupation = Batch::where('building_id', $targetBuilding->id)
                 ->active()
+                ->where('id', '!=', $batch->id)
                 ->sum('current_quantity');
 
             $available = $targetBuilding->capacity - $currentOccupation;
@@ -109,11 +115,14 @@ class TransferBatchRequest extends FormRequest
                 );
             }
 
-            // Anti auto-transfert
-            if ($batch->building_id == $targetBuilding->id) {
+            // Anti auto-transfert — autorisé SI c'est une transformation sur
+            // place (la phase/type change). Rester dans le même bâtiment sans
+            // changer de phase n'aurait aucun effet.
+            $isGraduation = $targetType && $targetType !== $batch->type;
+            if ($batch->building_id == $targetBuilding->id && ! $isGraduation) {
                 $validator->errors()->add(
                     'target_building_id',
-                    "Le lot {$batch->code} est déjà dans le bâtiment {$targetBuilding->name}."
+                    "Le lot {$batch->code} est déjà dans le bâtiment {$targetBuilding->name} et aucun changement de phase n'est demandé."
                 );
             }
         });

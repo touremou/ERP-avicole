@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use App\Models\ProductionNorm; // Assurez-vous d'importer le modèle
+use App\Models\Species;
 
 // CHANGEZ "class DatabaseSeeder" PAR "class ProductionNormSeeder"
 class ProductionNormSeeder extends Seeder
@@ -52,7 +53,13 @@ class ProductionNormSeeder extends Seeder
             ['batch_type' => 'alevinage', 'week_number' => 1, 'phase_name' => 'Référence', 'model_name' => 'Alevin Tilapia', 'target_weight' => 0, 'target_laying_rate' => 0],
         ];
 
+        $speciesBySlug = Species::pluck('id', 'slug');
+
         foreach ($norms as $norm) {
+            // Rattachement à l'espèce déduite du nom de souche.
+            $slug = ProductionNorm::guessSpeciesSlug($norm['model_name']);
+            $norm['species_id'] = $slug ? ($speciesBySlug[$slug] ?? null) : null;
+
             ProductionNorm::updateOrCreate(
                 [
                     'batch_type'  => $norm['batch_type'],

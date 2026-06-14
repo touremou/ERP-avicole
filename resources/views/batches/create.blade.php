@@ -94,6 +94,7 @@
                                         @foreach($normModels as $norm)
                                             <option value="{{ $norm->model_name }}"
                                                     data-type="{{ $norm->batch_type }}"
+                                                    data-species="{{ $norm->species?->slug ?? '' }}"
                                                     class="model-opt"
                                                     style="display: none;">
                                                 {{ $norm->model_name }}
@@ -370,10 +371,15 @@
         const reproFields = el('repro_fields');
         const qtyAliveInput = el('qty_alive');
 
-        // Filtrage Souches
+        // Filtrage Souches : par type d'élevage ET par espèce.
+        // Une souche sans espèce (data-species vide) est générique (toutes espèces).
         if (modelSelector) {
+            const speciesSlug = getCurrentSpeciesSlug();
             modelSelector.querySelectorAll('.model-opt').forEach(opt => {
-                const isMatch = selectedType === "" || opt.dataset.type === selectedType;
+                const typeMatch = selectedType === "" || opt.dataset.type === selectedType;
+                const optSpecies = opt.dataset.species || "";
+                const speciesMatch = speciesSlug === "" || optSpecies === "" || optSpecies === speciesSlug;
+                const isMatch = typeMatch && speciesMatch;
                 opt.style.display = isMatch ? 'block' : 'none';
                 opt.disabled = !isMatch;
             });

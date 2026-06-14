@@ -89,8 +89,10 @@ class TransferBatch
             // Nouveau bâtiment → Occupé
             $newBuilding->markOccupied();
 
-            // Ancien bâtiment → Vide sanitaire SEULEMENT si plus aucun lot actif (S-07)
-            if ($oldBuilding) {
+            // Ancien bâtiment → Vide sanitaire SEULEMENT si le lot a réellement
+            // changé de bâtiment (pas une transformation sur place) ET qu'il n'y
+            // reste plus aucun lot actif (S-07).
+            if ($oldBuilding && $oldBuilding->id !== $newBuilding->id) {
                 $hasOtherActive = Batch::where('building_id', $oldBuilding->id)
                     ->where('id', '!=', $batch->id)
                     ->active()

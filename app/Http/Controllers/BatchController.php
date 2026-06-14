@@ -165,7 +165,9 @@ class BatchController extends Controller
         }
 
         $buildings   = Building::physical()->orderBy('name')->get();
-        $normModels  = ProductionNorm::select('model_name', 'batch_type')->distinct()->get();
+        // species_id permet de filtrer les souches par espèce côté client.
+        $normModels  = ProductionNorm::with('species:id,slug')
+            ->select('species_id', 'model_name', 'batch_type')->distinct()->get();
         $protocols   = Protocol::all();
         $employees   = Employee::where('status', 'Actif')->orderBy('last_name')->get();
         $providers   = Provider::where('status', 'Actif')->orderBy('name')->get();
@@ -203,7 +205,7 @@ class BatchController extends Controller
         }
         $batch->load([
             'building', 'protocol.steps', 'healthChecks',
-            'feedPurchases', 'tasks', 'species', 'productionType',
+            'feedPurchases', 'tasks', 'species.productionTypes', 'productionType',
             'dailyChecks' => fn($q) => $q->orderBy('check_date', 'asc'),
             'dailyChecks.extension',
         ]);
@@ -281,7 +283,9 @@ class BatchController extends Controller
         $employees     = Employee::where('status', 'Actif')->get();
         $providers     = Provider::where('status', 'Actif')->get();
         $protocols     = Protocol::all();
-        $normModels    = ProductionNorm::select('batch_type', 'model_name')->distinct()->get();
+        // Souches limitées à l'espèce du lot (+ souches génériques sans espèce).
+        $normModels    = ProductionNorm::forSpecies($batch->species_id)
+            ->select('species_id', 'batch_type', 'model_name')->distinct()->get();
         $activeSpecies = Species::active()->with('productionTypes:id,species_id,slug,name_fr,cycle_days_default,kpi_primary')
             ->orderBy('sort_order')->get();
 

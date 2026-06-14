@@ -747,12 +747,12 @@
                                     <option value="{{ $building->id }}"
                                             data-type="{{ $building->type }}"
                                             class="building-opt"
-                                            {{ $building->id == $batch->building_id ? 'disabled' : '' }}>
-                                        {{ $building->name }} ({{ __("Cap") }}: {{ $building->capacity }} | {{ __("Type") }}: {{ $building->type }})
+                                            {{ $building->id == $batch->building_id ? 'selected' : '' }}>
+                                        {{ $building->name }} ({{ __("Cap") }}: {{ $building->capacity }} | {{ __("Type") }}: {{ $building->type }}){{ $building->id == $batch->building_id ? ' — '.__('actuel') : '' }}
                                     </option>
                                 @endforeach
                             </select>
-                            <p class="text-[8px] text-slate-300 ml-4 uppercase font-bold mt-1">{{ __("* La liste s'adapte à la nouvelle phase sélectionnée") }}</p>
+                            <p class="text-[8px] text-slate-300 ml-4 uppercase font-bold mt-1">{{ __("* La liste s'adapte à la phase ; gardez le bâtiment actuel pour une transformation sur place") }}</p>
                         </div>
                         <div>
                             <label class="block text-[10px] font-black text-slate-400 uppercase mb-3 ml-2 italic">{{ __("Date du Mouvement") }}</label>
@@ -771,24 +771,23 @@
                         </div>
                         <div>
                             <label class="block text-[10px] font-black text-slate-400 uppercase mb-3 ml-2 italic">{{ __("Nouvelle Phase") }}</label>
+                            {{-- Phases cibles = types de production réels de l'espèce.
+                                 Une poussinière peut ainsi graduer vers chair, ponte
+                                 OU reproducteur après éclosion (demande métier). --}}
+                            @php
+                                $speciesTypes = $batch->species?->productionTypes ?? collect();
+                                $currentSlug  = $batch->production_phase ?? $batch->type;
+                            @endphp
                             <select name="new_phase" id="new_phase" required class="w-full p-5 bg-slate-50 rounded-[2rem] border-none shadow-inner font-black text-slate-700 italic uppercase text-xs appearance-none">
-                                @if($isVolaille)
-                                    @if(in_array($batch->type, ['ponte', 'reproducteur', 'poussiniere']))
-                                        <option value="poussiniere" {{ $batch->production_phase == 'poussiniere' ? 'selected' : '' }}>{{ __("Poussinière") }}</option>
-                                        <option value="ponte" {{ $batch->production_phase == 'ponte' ? 'selected' : '' }}>{{ __("Ponte Active") }}</option>
-                                        <option value="reproducteur" {{ $batch->production_phase == 'reproducteur' ? 'selected' : '' }}>{{ __("Reproducteurs") }}</option>
-                                    @endif
-                                    @if($batch->type == 'chair')
-                                        <option value="chair" selected>{{ __("Poulet de Chair") }}</option>
-                                        <option value="poussiniere">{{ __("Poussinière") }}</option>
-                                    @endif
-                                @else
-                                    {{-- Espèces non-volailles : la mutation ne change pas la phase
-                                         de production, on conserve la phase/le type courant. --}}
-                                    <option value="{{ $batch->production_phase ?? $batch->type }}" selected>
+                                @forelse($speciesTypes as $pt)
+                                    <option value="{{ $pt->slug }}" {{ $currentSlug == $pt->slug ? 'selected' : '' }}>
+                                        {{ $pt->name_fr }}{{ $batch->type == $pt->slug ? ' ('.__('actuel').')' : '' }}
+                                    </option>
+                                @empty
+                                    <option value="{{ $currentSlug }}" selected>
                                         {{ $batch->productionType?->name_fr ?? ucfirst($batch->type) }}
                                     </option>
-                                @endif
+                                @endforelse
                             </select>
                         </div>
                     </div>
@@ -864,12 +863,17 @@
             // une graduation poussinière -> chair/ponte/reproducteur après
             // éclosion ne propose que les bâtiments du type cible (ou mixtes),
             // comme à la création/édition du lot (batches/create et edit).
+            // Le bâtiment courant reste sélectionnable : il sert à la
+            // transformation SUR PLACE (la poussinière devient ponte/chair/
+            // repro sans déménager). On force son affichage même si son type
+            // ne correspond pas encore à la phase cible.
             function filterMutationBuildings(targetType) {
                 if (! targetBuildingSelect) return;
                 targetBuildingSelect.querySelectorAll('.building-opt').forEach(opt => {
+                    const isCurrent = parseInt(opt.value, 10) === currentBuildingId;
                     const isMatch = opt.dataset.type === targetType || opt.dataset.type === 'mixte';
-                    opt.style.display = isMatch ? 'block' : 'none';
-                    opt.disabled = parseInt(opt.value, 10) === currentBuildingId;
+                    opt.style.display = (isMatch || isCurrent) ? 'block' : 'none';
+                    opt.disabled = false;
                 });
             }
 

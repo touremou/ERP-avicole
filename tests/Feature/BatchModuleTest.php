@@ -233,3 +233,82 @@ test('la mutation refuse un bâtiment incompatible avec la nouvelle phase', func
     expect($batch->building_id)->toBe($poussiniereBuilding->id);
     expect($batch->type)->toBe('poussiniere');
 });
+
+test('une poussinière peut graduer vers la chair (phase demandée par le métier)', function () {
+    $protocol = Protocol::create(['name' => 'Proto Chair', 'type' => 'chair']);
+
+    $poussiniereBuilding = Building::factory()->create(['type' => 'poussiniere']);
+    $chairBuilding       = Building::factory()->create(['type' => 'chair']);
+
+    $batch = Batch::factory()->create([
+        'building_id'        => $poussiniereBuilding->id,
+        'status'             => 'Actif',
+        'current_quantity'   => 800,
+        'production_type_id' => ProductionType::resolveOrCreate('poussiniere', null)->id,
+    ]);
+
+    $this->actingAs($this->managerUser)
+        ->post(route('batches.transfer', $batch), [
+            'target_building_id' => $chairBuilding->id,
+            'new_protocol_id'    => $protocol->id,
+            'new_phase'          => 'chair',
+            'transfer_date'      => now()->toDateString(),
+        ])
+        ->assertSessionDoesntHaveErrors();
+
+    $batch->refresh();
+    expect($batch->type)->toBe('chair');
+    expect($batch->building_id)->toBe($chairBuilding->id);
+});
+
+test('une transformation sur place (même bâtiment mixte) gradue le lot sans le déplacer', function () {
+    $protocol = Protocol::create(['name' => 'Proto Ponte Sur Place', 'type' => 'ponte']);
+
+    // Bâtiment mixte : accueille la poussinière puis la ponte sur place.
+    $mixteBuilding = Building::factory()->create(['type' => 'mixte']);
+
+    $batch = Batch::factory()->create([
+        'building_id'        => $mixteBuilding->id,
+        'status'             => 'Actif',
+        'current_quantity'   => 600,
+        'production_type_id' => ProductionType::resolveOrCreate('poussiniere', null)->id,
+    ]);
+
+    // On garde le MÊME bâtiment : la transformation sur place doit être permise
+    // dès lors que la phase change (graduation).
+    $this->actingAs($this->managerUser)
+        ->post(route('batches.transfer', $batch), [
+            'target_building_id' => $mixteBuilding->id,
+            'new_protocol_id'    => $protocol->id,
+            'new_phase'          => 'ponte',
+            'transfer_date'      => now()->toDateString(),
+        ])
+        ->assertSessionDoesntHaveErrors();
+
+    $batch->refresh();
+    expect($batch->type)->toBe('ponte');
+    expect($batch->building_id)->toBe($mixteBuilding->id);
+    // Le bâtiment courant reste Occupé (pas de vide sanitaire sur place).
+    expect($mixteBuilding->fresh()->status)->toBe(\App\Models\Building::STATUS_OCCUPE);
+});
+
+test('rester dans le même bâtiment sans changer de phase est refusé', function () {
+    $protocol = Protocol::create(['name' => 'Proto No-op', 'type' => 'chair']);
+    $chairBuilding = Building::factory()->create(['type' => 'chair']);
+
+    $batch = Batch::factory()->create([
+        'building_id'        => $chairBuilding->id,
+        'status'             => 'Actif',
+        'current_quantity'   => 400,
+        'production_type_id' => ProductionType::resolveOrCreate('chair', null)->id,
+    ]);
+
+    $this->actingAs($this->managerUser)
+        ->post(route('batches.transfer', $batch), [
+            'target_building_id' => $chairBuilding->id,
+            'new_protocol_id'    => $protocol->id,
+            'new_phase'          => 'chair', // identique → aucun effet
+            'transfer_date'      => now()->toDateString(),
+        ])
+        ->assertSessionHasErrors('target_building_id');
+});
