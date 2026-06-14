@@ -106,7 +106,7 @@
             </form>
 
             {{-- SUPPRIMER --}}
-            @can('admin.S')
+            @can('annuaire.S')
             <div class="mt-6 text-center">
                 <form method="POST" action="{{ route('tasks.destroy', $task) }}" onsubmit="return confirm({{ Js::from(__('Supprimer cette tâche ?')) }})">
                     @csrf @method('DELETE')

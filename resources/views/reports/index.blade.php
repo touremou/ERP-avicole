@@ -19,7 +19,7 @@
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 text-left">
 
                 {{-- COMPTE DE RÉSULTAT (P&L) --}}
-                @can('admin.L')
+                @can('elevage.L')
                 <a href="{{ route('reports.profit_loss') }}" class="group bg-slate-900 p-8 rounded-2xl shadow-lg hover:bg-slate-800 transition-all no-underline relative overflow-hidden border-b-4 border-amber-500">
                     <div class="w-12 h-12 bg-amber-500 text-white rounded-xl flex items-center justify-center mb-5 shadow-lg group-hover:scale-110 transition-transform"><i class="fa-solid fa-scale-balanced text-lg"></i></div>
                     <h3 class="text-base font-black text-white uppercase tracking-tighter mb-2 italic">{{ __("Compte de Résultat") }}</h3>
@@ -71,7 +71,7 @@
                 @endcan
 
                 {{-- FLUX MENSUEL --}}
-                @can('admin.L')
+                @can('elevage.L')
                 <a href="{{ route('reports.monthly') }}" class="group bg-white p-8 rounded-2xl border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all no-underline relative overflow-hidden">
                     <div class="w-12 h-12 bg-orange-500 text-white rounded-xl flex items-center justify-center mb-5 shadow-lg group-hover:scale-110 transition-transform"><i class="fa-solid fa-calendar-check text-lg"></i></div>
                     <h3 class="text-base font-black text-slate-800 uppercase tracking-tighter mb-2 italic">{{ __("Flux de Trésorerie") }}</h3>

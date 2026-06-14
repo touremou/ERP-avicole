@@ -580,10 +580,10 @@
                                     <td class="px-8 py-4 text-right">
                                         <div class="flex justify-end gap-3">
                                             @if($batch->isActive())
-                                                @can('elevage.M')
+                                                @can('provenderie.M')
                                                 <a href="{{ route('feed-purchases.edit', $purchase->id) }}" class="text-slate-300 hover:text-blue-600 transition"><i class="fa-solid fa-pen-to-square"></i></a>
                                                 @endcan
-                                                @can('elevage.S')
+                                                @can('provenderie.S')
                                                 <form action="{{ route('feed-purchases.destroy', $purchase->id) }}" method="POST" onsubmit="return confirm(@json(__('Annuler cet achat ?')))">
                                                     @csrf @method('DELETE')
                                                     <button type="submit" class="text-slate-300 hover:text-red-500 transition"><i class="fa-solid fa-trash-can"></i></button>
