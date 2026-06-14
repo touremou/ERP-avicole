@@ -5,6 +5,7 @@ namespace App\Actions\Sale;
 use App\Models\Sale;
 use App\Models\Stock;
 use App\Models\Batch;
+use App\Services\NotificationHub;
 use App\Services\StockIntegrationService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -52,6 +53,9 @@ class ValidateSale
             $sale->client->recalculateBalance();
 
             Log::info("Vente validée : {$sale->reference} — Déstockage effectué.");
+
+            // Visibilité admin/propriétaire (hors site) sur chaque vente validée
+            app(NotificationHub::class)->notifySaleCreated($sale->fresh(['client']));
 
             return $sale->fresh();
         });

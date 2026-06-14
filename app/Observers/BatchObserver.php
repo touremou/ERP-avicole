@@ -5,6 +5,7 @@ namespace App\Observers;
 use App\Models\Batch;
 use App\Models\User;
 use App\Notifications\IndustrialAlert;
+use App\Services\NotificationHub;
 use Illuminate\Support\Facades\Log;
 
 class BatchObserver
@@ -32,7 +33,13 @@ class BatchObserver
 
         // Condition stricte : on ne notifie QUE si on vient de franchir la ligne rouge
         if ($currentMortality > $threshold && $previousMortality <= $threshold) {
-            $this->notifyAdmins($batch, round($currentMortality, 2));
+            $rate = round($currentMortality, 2);
+            $this->notifyAdmins($batch, $rate);
+
+            // Canal WhatsApp (NotificationHub) : préférences utilisateur +
+            // filet de secours admin, en plus de la notification DB/SMS ci-dessus.
+            $totalDead = max(0, $batch->initial_quantity - $batch->current_quantity);
+            app(NotificationHub::class)->alertMortality($batch, $totalDead, $rate);
         }
     }
 

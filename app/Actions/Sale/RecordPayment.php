@@ -4,6 +4,7 @@ namespace App\Actions\Sale;
 
 use App\Models\Payment;
 use App\Models\Sale;
+use App\Services\NotificationHub;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Exception;
@@ -49,6 +50,10 @@ class RecordPayment
 
             // Recalculer le solde client
             $sale->client->recalculateBalance();
+
+            // Visibilité admin/propriétaire (hors site) sur chaque encaissement —
+            // pièce centrale de la prévention des malversations sur les paiements.
+            app(NotificationHub::class)->notifyPaymentReceived($payment);
 
             return $payment;
         });

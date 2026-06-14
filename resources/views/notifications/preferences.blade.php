@@ -52,10 +52,27 @@
                     <h3 class="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-4 flex items-center gap-2">
                         <i class="fa-brands fa-whatsapp"></i> {{ __("Numéro WhatsApp") }}
                     </h3>
+
+                    @php
+                        $whatsappDriver = (string) setting('whatsapp.driver', 'log');
+                        $adminPhone = (string) setting('whatsapp.admin_phone', '');
+                        $myPhone = Auth::user()->whatsapp_phone;
+                    @endphp
+
+                    @if($whatsappDriver === 'log')
+                        <div class="mb-4 p-4 bg-amber-100 text-amber-700 rounded-2xl text-[9px] font-black uppercase tracking-widest flex items-center gap-2">
+                            <i class="fa-solid fa-triangle-exclamation"></i>
+                            {{ __("Aucun provider WhatsApp actif (mode journal). Configurez-en un dans Paramètres > WhatsApp pour recevoir de vrais messages.") }}
+                            @can('admin.S')
+                                <a href="{{ route('settings.index', ['group' => 'whatsapp']) }}" class="underline ml-auto no-underline text-amber-800">{{ __("Configurer") }} →</a>
+                            @endcan
+                        </div>
+                    @endif
+
                     <div class="flex gap-4 items-end">
                         <div class="flex-1 space-y-2">
                             <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Numéro avec indicatif") }}</label>
-                            <input type="text" name="whatsapp_phone" value="{{ old('whatsapp_phone', Auth::user()->whatsapp_phone) }}"
+                            <input type="text" name="whatsapp_phone" value="{{ old('whatsapp_phone', $myPhone ?: $adminPhone) }}"
                                 placeholder="+224 620 00 00 00"
                                 class="w-full bg-white border-none rounded-2xl p-4 text-lg font-black shadow-sm outline-none focus:ring-4 focus:ring-emerald-500/10">
                         </div>
@@ -67,6 +84,12 @@
                     </div>
                     <p class="text-[8px] text-emerald-600 mt-3 italic">
                         {{ __("Le numéro doit être enregistré sur WhatsApp. Format : +224XXXXXXXXX") }}
+                        @if(! $myPhone && $adminPhone)
+                            — {{ __("Pré-rempli depuis Paramètres > WhatsApp (numéro de secours). Enregistrez pour confirmer.") }}
+                        @endif
+                    </p>
+                    <p class="text-[8px] text-slate-400 mt-2 italic">
+                        {{ __("Ce numéro personnel sert à VOS notifications. La configuration de l'API (driver, clé) se fait séparément dans Paramètres > WhatsApp.") }}
                     </p>
                 </div>
 

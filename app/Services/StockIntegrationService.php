@@ -77,6 +77,7 @@ class StockIntegrationService
             // ─── 4. APPLICATION DU MOUVEMENT ───
             // Verrouillage pour éviter les race conditions
             $stock = Stock::lockForUpdate()->find($stock->id);
+            $wasLow = $stock->is_low;
 
             if ($type === 'in') {
                 $stock->increment('current_quantity', $quantityBase);
@@ -86,6 +87,13 @@ class StockIntegrationService
                 $stock->update(['current_quantity' => $newQty]);
             } elseif ($type === 'adjustment') {
                 $stock->update(['current_quantity' => max(0, $quantityBase)]);
+            }
+
+            // Alerte stock critique : seulement au moment où l'on FRANCHIT le
+            // seuil (pas à chaque mouvement répété sous le seuil), pour éviter
+            // le spam WhatsApp sur un article déjà connu comme bas.
+            if (! $wasLow && $stock->is_low && $stock->alert_threshold > 0) {
+                app(NotificationHub::class)->alertStockCritical($stock);
             }
 
             // ─── 5. ENREGISTREMENT DU MOUVEMENT ───

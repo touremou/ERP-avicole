@@ -39,7 +39,8 @@ au moment de l'audit.
 - `elevage.lait_cible_chevre` — cible de production laitière par tête (L/j) comparée au rendement du jour sur la liste des lots laitiers (`milk-productions.index`).
 - `elevage.tabaski_target_weight` — poids cible de vente (kg) pour les lots ovins, utilisé comme cible de la barre de progression « Poids Moyen » sur la fiche lot (`batches.show`) en l'absence de norme zootechnique.
 - `whatsapp.daily_summary_hour` — heure de planification du résumé quotidien WhatsApp (`avismart:daily-summary` dans `routes/console.php`).
-- `whatsapp.admin_phone` — destinataire de secours pour les alertes critiques (mortalité, stock, gasoil, fraude) même si l'admin n'est pas explicitement abonné (`NotificationHub::broadcast()`).
+- `whatsapp.admin_phone` — destinataire de secours pour les alertes critiques (mortalité, stock, gasoil, fraude) même si l'admin n'est pas explicitement abonné (`NotificationHub::broadcast()`) ; pré-remplit aussi le numéro personnel sur la page Notifications si celui-ci est vide.
+- `whatsapp.driver` — détermine si le bouton « Tester » (Notifications) peut réellement délivrer un message (mode "log" = aucun envoi réel, banni avec message explicite).
 - `whatsapp.api_url` — URL de base personnalisée pour les drivers `ultramsg`/`wati` (instance auto-hébergée), utilisée par `WhatsAppService`.
 
 ## Restants — en attente de leur fonctionnalité consommatrice

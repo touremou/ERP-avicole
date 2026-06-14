@@ -165,6 +165,13 @@ class ReconciliationService
                 "Taux: {$discrepancyRate}%, Manquant: {$totalMissing}, Sévérité: {$severity}"
             );
 
+            // Alerte anti-fraude immédiate (admin/propriétaire hors site) si
+            // l'écart n'est pas anodin — la résolution se fait a posteriori
+            // via DiscrepancyReport::resolution.
+            if ($severity !== 'normal') {
+                app(NotificationHub::class)->alertFraud($report->load(['dispatch']));
+            }
+
             return $report;
         });
     }

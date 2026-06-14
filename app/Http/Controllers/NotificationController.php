@@ -87,7 +87,12 @@ class NotificationController extends Controller
         $phone = Auth::user()->whatsapp_phone;
 
         if (! $phone) {
-            return back()->with('error', 'Aucun numéro WhatsApp configuré. Renseignez votre numéro d\'abord.');
+            return back()->with('error', 'Aucun numéro WhatsApp personnel enregistré. Renseignez votre numéro ci-dessus (champ "Numéro WhatsApp") puis cliquez sur Enregistrer avant de tester — ceci est différent de la configuration de l\'API WhatsApp dans Paramètres.');
+        }
+
+        $driver = (string) setting('whatsapp.driver', 'log');
+        if ($driver === 'log') {
+            return back()->with('error', 'Le canal WhatsApp est en mode "log" (aucun provider actif). Choisissez un driver (CallMeBot, UltraMsg, WATI, Twilio) dans Paramètres > WhatsApp et renseignez la clé API pour envoyer de vrais messages.');
         }
 
         $message = "🧪 *Test AviSmart*\n\n"

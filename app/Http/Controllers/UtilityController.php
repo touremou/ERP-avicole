@@ -7,6 +7,7 @@ use App\Models\WaterReading;
 use App\Models\EnergySource;
 use App\Models\EnergyReading;
 use App\Models\FuelPurchase;
+use App\Services\NotificationHub;
 use App\Services\UtilityService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -187,11 +188,18 @@ class UtilityController extends Controller
         $source = EnergySource::find($validated['energy_source_id']);
         $source->increment('total_hours_run', (float) $validated['hours_run']);
 
+        $wasFuelLow = $source->is_fuel_low;
+
         if (! empty($validated['fuel_consumed_liters']) && $source->current_fuel_level !== null) {
             $source->decrement('current_fuel_level', (float) $validated['fuel_consumed_liters']);
             if ($source->current_fuel_level < 0) {
                 $source->update(['current_fuel_level' => 0]);
             }
+        }
+
+        // Alerte gasoil critique : seulement au moment où l'on franchit le seuil.
+        if (! $wasFuelLow && $source->refresh()->is_fuel_low) {
+            app(NotificationHub::class)->alertFuelLow($source);
         }
 
         // Vérifier si maintenance nécessaire
