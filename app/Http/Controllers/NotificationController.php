@@ -81,13 +81,21 @@ class NotificationController extends Controller
 
     /**
      * Envoie un message de test WhatsApp.
+     *
+     * Priorité du destinataire : numéro personnel de l'utilisateur connecté,
+     * à défaut le « Téléphone admin » global (whatsapp.admin_phone). Ceci évite
+     * la friction « j'ai configuré l'API mais le test refuse » : si l'admin a
+     * renseigné un numéro dans Paramètres, le test l'utilise directement.
      */
     public function sendTest(WhatsAppService $whatsapp)
     {
-        $phone = Auth::user()->whatsapp_phone;
+        $personalPhone = Auth::user()->whatsapp_phone;
+        $adminPhone    = (string) setting('whatsapp.admin_phone', '');
+        $phone         = $personalPhone ?: $adminPhone;
+        $usingFallback = ! $personalPhone && $phone !== '';
 
         if (! $phone) {
-            return back()->with('error', 'Aucun numéro WhatsApp personnel enregistré. Renseignez votre numéro ci-dessus (champ "Numéro WhatsApp") puis cliquez sur Enregistrer avant de tester — ceci est différent de la configuration de l\'API WhatsApp dans Paramètres.');
+            return back()->with('error', 'Aucun numéro WhatsApp disponible. Renseignez votre numéro ci-dessus (champ "Numéro WhatsApp") puis cliquez sur Enregistrer, ou définissez le « Téléphone admin » dans Paramètres > WhatsApp, puis réessayez.');
         }
 
         $driver = (string) setting('whatsapp.driver', 'log');
@@ -107,10 +115,15 @@ class NotificationController extends Controller
             'title'   => 'Test WhatsApp',
         ]);
 
-        return back()->with(
-            $result ? 'success' : 'error',
-            $result ? 'Message de test envoyé ! Vérifiez votre WhatsApp.' : 'Échec de l\'envoi. Vérifiez le numéro et la configuration du provider.'
-        );
+        if (! $result) {
+            return back()->with('error', 'Échec de l\'envoi vers ' . $phone . '. Vérifiez le numéro et la configuration du provider (clé API, instance).');
+        }
+
+        $sentTo = $usingFallback
+            ? "Message de test envoyé au numéro admin ({$phone}) ! Vérifiez ce WhatsApp. Astuce : renseignez votre numéro personnel ci-dessus pour recevoir vos propres alertes."
+            : 'Message de test envoyé ! Vérifiez votre WhatsApp.';
+
+        return back()->with('success', $sentTo);
     }
 
     /**

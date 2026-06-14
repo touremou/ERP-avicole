@@ -10,6 +10,7 @@ use App\Models\Setting;
 use App\Models\Stock;
 use App\Services\NotificationHub;
 use App\Services\StockIntegrationService;
+use Illuminate\Support\Facades\Http;
 use Tests\Helpers\AviSmartTestHelper;
 
 uses(Tests\TestCase::class, Illuminate\Foundation\Testing\RefreshDatabase::class, AviSmartTestHelper::class);
@@ -41,6 +42,26 @@ test('le test whatsapp signale le mode log si aucun provider n\'est actif', func
         ->assertSessionHas('error');
 
     expect(session('error'))->toContain('mode "log"');
+});
+
+test('le test whatsapp se rabat sur le téléphone admin si aucun numéro personnel', function () {
+    // L'admin a configuré le driver + le téléphone admin global, mais pas son
+    // numéro personnel : le test doit utiliser le numéro admin au lieu d'échouer.
+    Setting::set('whatsapp.driver', 'callmebot');
+    Setting::set('whatsapp.api_key', 'fake-key');
+    Setting::set('whatsapp.admin_phone', '+224698888888');
+
+    Http::fake(['api.callmebot.com/*' => Http::response('Message envoyé', 200)]);
+
+    $this->actingAs($this->adminUser)
+        ->post(route('notifications.test'))
+        ->assertSessionHas('success');
+
+    expect(session('success'))->toContain('+224698888888');
+
+    $log = NotificationLog::where('type', 'test')->where('status', 'sent')->latest()->first();
+    expect($log)->not->toBeNull()
+        ->and($log->recipient_phone)->toBe('+224698888888');
 });
 
 test('la page de préférences pré-remplit le numéro depuis whatsapp.admin_phone', function () {

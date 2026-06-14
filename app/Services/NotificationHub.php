@@ -10,6 +10,7 @@ use App\Models\NotificationPreference;
 use App\Models\Payment;
 use App\Models\Sale;
 use App\Models\Stock;
+use App\Models\StockMovement;
 use App\Models\User;
 use App\Models\WaterSource;
 use Illuminate\Support\Facades\Log;
@@ -161,6 +162,147 @@ class NotificationHub
         if ($openDiscrepancies > 0) {
             $lines[] = "🚨 *ANTI-FRAUDE*";
             $lines[] = "  {$openDiscrepancies} écart(s) non résolu(s)";
+            $lines[] = "";
+        }
+
+        $lines[] = "— {$farmName} ERP 🇬🇳";
+
+        return implode("\n", $lines);
+    }
+
+    // ──────────────────────────────────────────────
+    // DIGEST D'ACTIVITÉ PAR EMPLOYÉ (FIN DE JOURNÉE)
+    // ──────────────────────────────────────────────
+
+    /**
+     * Digest d'activité par employé — outil de redevabilité pour le
+     * propriétaire hors site.
+     *
+     * Compile, pour la journée écoulée, QUI a fait QUOI (ventes saisies,
+     * encaissements, mouvements de stock). Envoyé aux abonnés du résumé
+     * quotidien ET systématiquement au numéro admin de secours, afin que le
+     * propriétaire puisse repérer une activité anormale (saisies tardives,
+     * ajustements de stock à répétition, agent inactif…). Aucun envoi si
+     * aucune activité (pas de bruit inutile).
+     *
+     * @return int Nombre d'envois réussis.
+     */
+    public function sendActivityDigest(): int
+    {
+        $message = $this->buildActivityDigest();
+
+        if ($message === null) {
+            return 0;
+        }
+
+        $recipients = $this->getSubscribers('daily_summary');
+        $sent = 0;
+        $servedPhones = [];
+
+        foreach ($recipients as $user) {
+            $servedPhones[] = $user->whatsapp_phone;
+            if ($this->whatsapp->send($user->whatsapp_phone, $message, [
+                'user_id' => $user->id,
+                'type'    => 'activity_digest',
+                'title'   => 'Activité du jour',
+            ])) {
+                $sent++;
+            }
+        }
+
+        // Filet de sécurité : toujours au propriétaire hors site.
+        $adminPhone = (string) setting('whatsapp.admin_phone', '');
+        if ($adminPhone !== '' && ! in_array($adminPhone, $servedPhones, true)) {
+            if ($this->whatsapp->send($adminPhone, $message, [
+                'type'  => 'activity_digest',
+                'title' => 'Activité du jour',
+            ])) {
+                $sent++;
+            }
+        }
+
+        Log::info("NotificationHub: digest d'activité envoyé à {$sent} destinataire(s).");
+
+        return $sent;
+    }
+
+    /**
+     * Compile le digest d'activité du jour, ventilé par employé.
+     * Retourne null si aucune activité attribuable n'a eu lieu.
+     */
+    private function buildActivityDigest(): ?string
+    {
+        $farmName = config('whatsapp.farm_name', 'AviSmart');
+        $date = now()->translatedFormat('l d F Y');
+        $start = now()->copy()->startOfDay();
+        $end = now()->copy()->endOfDay();
+
+        $salesByUser = Sale::whereBetween('created_at', [$start, $end])
+            ->where('status', '!=', 'brouillon')
+            ->selectRaw('user_id, COUNT(*) as cnt, SUM(total_amount) as total')
+            ->groupBy('user_id')->get()->keyBy('user_id');
+
+        $paymentsByUser = Payment::whereBetween('created_at', [$start, $end])
+            ->selectRaw('received_by, COUNT(*) as cnt, SUM(amount) as total')
+            ->groupBy('received_by')->get()->keyBy('received_by');
+
+        $cancelledByUser = Sale::whereBetween('updated_at', [$start, $end])
+            ->where('status', 'annule')
+            ->selectRaw('user_id, COUNT(*) as cnt')
+            ->groupBy('user_id')->get()->keyBy('user_id');
+
+        $movementsByUser = StockMovement::whereBetween('created_at', [$start, $end])
+            ->selectRaw('user_id, type, COUNT(*) as cnt')
+            ->groupBy('user_id', 'type')->get()->groupBy('user_id');
+
+        $userIds = collect()
+            ->merge($salesByUser->keys())
+            ->merge($paymentsByUser->keys())
+            ->merge($cancelledByUser->keys())
+            ->merge($movementsByUser->keys())
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($userIds->isEmpty()) {
+            return null;
+        }
+
+        $users = User::whereIn('id', $userIds)->get()->keyBy('id');
+
+        $lines = [];
+        $lines[] = "📋 *{$farmName} — Activité du {$date}*";
+        $lines[] = "";
+
+        foreach ($userIds as $uid) {
+            $name = $users->get($uid)?->name ?? "Utilisateur #{$uid}";
+            $lines[] = "👤 *{$name}*";
+
+            if ($s = $salesByUser->get($uid)) {
+                $lines[] = "  💰 Ventes : {$s->cnt} (" . number_format((float) $s->total, 0, ',', '.') . " GNF)";
+            }
+            if ($p = $paymentsByUser->get($uid)) {
+                $lines[] = "  💵 Encaissé : {$p->cnt} (" . number_format((float) $p->total, 0, ',', '.') . " GNF)";
+            }
+            if ($movs = $movementsByUser->get($uid)) {
+                $byType = $movs->keyBy('type');
+                $parts = [];
+                if ($in = $byType->get('in')) {
+                    $parts[] = "{$in->cnt} entrée(s)";
+                }
+                if ($out = $byType->get('out')) {
+                    $parts[] = "{$out->cnt} sortie(s)";
+                }
+                if ($adj = $byType->get('adjustment')) {
+                    $parts[] = "⚠️ {$adj->cnt} ajustement(s)";
+                }
+                if ($parts) {
+                    $lines[] = "  📦 Stock : " . implode(', ', $parts);
+                }
+            }
+            if ($c = $cancelledByUser->get($uid)) {
+                $lines[] = "  🚫 Annulations : *{$c->cnt}*";
+            }
             $lines[] = "";
         }
 

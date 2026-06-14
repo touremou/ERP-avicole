@@ -20,3 +20,6 @@ Schedule::command('avismart:daily-summary')->dailyAt(setting('whatsapp.daily_sum
 
 // Réessaie les notifications WhatsApp en échec (coupure réseau, panne API...)
 Schedule::command('avismart:retry-failed-notifications')->everyFifteenMinutes();
+
+// Digest d'activité par employé (fin de journée) — redevabilité hors site
+Schedule::command('avismart:activity-digest')->dailyAt(setting('whatsapp.activity_digest_hour', '20:00'));
