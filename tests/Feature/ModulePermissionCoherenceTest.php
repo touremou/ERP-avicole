@@ -128,3 +128,54 @@ test('chaque contrôleur contrôle le MÊME slug que sa route (anti-dérive)', f
 
     expect($offenders)->toBe([], "Incohérences slug contrôleur/route :\n" . implode("\n", $offenders));
 });
+
+test('aucun module DOUBLON legacy ne subsiste (rh/couvoir/stocks)', function () {
+    // Les slugs canoniques sont annuaire/production/logistique. Les anciens
+    // slugs legacy ne doivent plus exister dans la table modules, sous peine
+    // de matrice incohérente (permissions accordées sur un module jamais lu).
+    $legacy = Module::whereIn('slug', ['rh', 'couvoir', 'stocks'])->pluck('slug')->all();
+
+    expect($legacy)->toBe([], 'Modules doublons encore présents : ' . implode(', ', $legacy));
+});
+
+test('la consolidation transfère les permissions du doublon vers le module canonique', function () {
+    // Reproduit l'état d'une base ayant subi l'ancien ModuleSeeder : un module
+    // doublon « rh » distinct d'« annuaire », avec un opérateur autorisé à
+    // CRÉER (rh.C) — droit jamais vu par le code qui contrôle annuaire.*.
+    $annuaire = Module::where('slug', 'annuaire')->firstOrFail();
+
+    $rh = Module::create([
+        'name' => 'RH', 'slug' => 'rh', 'icon' => 'fa-users',
+        'color' => 'slate', 'display_order' => 99, 'is_active' => true,
+    ]);
+
+    $role = Role::firstOrCreate(
+        ['name' => 'op_legacy'],
+        ['label' => 'Op Legacy', 'display_name' => 'Op Legacy', 'permissions' => []]
+    );
+
+    DB::table('module_permissions')->insert([
+        'role_id' => $role->id, 'module_id' => $rh->id,
+        'can_read' => true, 'can_create' => true, 'can_modify' => false, 'can_delete' => false,
+        'created_at' => now(), 'updated_at' => now(),
+    ]);
+
+    // Rejoue la migration de consolidation.
+    (require database_path('migrations/2026_06_14_000002_consolidate_legacy_module_duplicates.php'))->up();
+
+    // Le doublon a disparu…
+    expect(Module::where('slug', 'rh')->exists())->toBeFalse();
+
+    // …et l'opérateur dispose désormais de annuaire.L ET annuaire.C (création
+    // de tâches), via le module canonique.
+    $perm = DB::table('module_permissions')
+        ->where('role_id', $role->id)
+        ->where('module_id', $annuaire->id)
+        ->first();
+
+    expect((bool) $perm->can_read)->toBeTrue();
+    expect((bool) $perm->can_create)->toBeTrue();
+
+    $user = User::factory()->create(['role_id' => $role->id]);
+    expect(\Illuminate\Support\Facades\Gate::forUser($user)->allows('annuaire.C'))->toBeTrue();
+});
