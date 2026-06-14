@@ -206,3 +206,65 @@ test('un ajustement manuel de stock à la baisse déclenche une alerte anti-frau
     expect($log)->not->toBeNull()
         ->and($log->message)->toContain('AJUSTEMENT STOCK');
 });
+
+// ── (g) ACTIVITÉ HORS HEURES OUVRÉES ──
+
+afterEach(function () {
+    Carbon\Carbon::setTestNow();
+});
+
+test('une vente enregistrée hors heures ouvrées est escaladée en critique', function () {
+    Setting::set('whatsapp.admin_phone', '+224666666666');
+    Setting::set('whatsapp.business_hours_start', '06:00');
+    Setting::set('whatsapp.business_hours_end', '20:00');
+
+    // Vente à 23h00 → hors plage.
+    Carbon\Carbon::setTestNow(Carbon\Carbon::today()->setTime(23, 0));
+
+    $client = Client::create([
+        'farm_id' => $this->farm->id, 'client_id' => 'CLI-NIGHT-1',
+        'name' => 'Client Nuit', 'type' => 'particulier', 'status' => 'actif',
+        'credit_limit' => 0, 'balance' => 0,
+    ]);
+    $sale = Sale::create([
+        'farm_id' => $this->farm->id, 'client_id' => $client->id, 'user_id' => $this->adminUser->id,
+        'reference' => 'BL-NIGHT-1', 'sale_date' => now()->toDateString(),
+        'type' => 'bon_livraison', 'status' => 'valide',
+        'subtotal' => 50000, 'tax_amount' => 0, 'total_amount' => 50000,
+        'paid_amount' => 0, 'payment_status' => 'impaye',
+    ]);
+
+    app(NotificationHub::class)->notifySaleCreated($sale->fresh(['client']));
+
+    $log = NotificationLog::where('type', 'alert_sales')->where('status', 'sent')->latest()->first();
+    expect($log)->not->toBeNull()
+        ->and($log->message)->toContain('HORS heures ouvrées');
+});
+
+test('une vente pendant les heures ouvrées reste normale', function () {
+    Setting::set('whatsapp.admin_phone', '+224666666666');
+    Setting::set('whatsapp.business_hours_start', '06:00');
+    Setting::set('whatsapp.business_hours_end', '20:00');
+
+    // Vente à 14h00 → dans la plage.
+    Carbon\Carbon::setTestNow(Carbon\Carbon::today()->setTime(14, 0));
+
+    $client = Client::create([
+        'farm_id' => $this->farm->id, 'client_id' => 'CLI-DAY-1',
+        'name' => 'Client Jour', 'type' => 'particulier', 'status' => 'actif',
+        'credit_limit' => 0, 'balance' => 0,
+    ]);
+    $sale = Sale::create([
+        'farm_id' => $this->farm->id, 'client_id' => $client->id, 'user_id' => $this->adminUser->id,
+        'reference' => 'BL-DAY-1', 'sale_date' => now()->toDateString(),
+        'type' => 'bon_livraison', 'status' => 'valide',
+        'subtotal' => 50000, 'tax_amount' => 0, 'total_amount' => 50000,
+        'paid_amount' => 0, 'payment_status' => 'impaye',
+    ]);
+
+    app(NotificationHub::class)->notifySaleCreated($sale->fresh(['client']));
+
+    // Severité « normal » + aucun abonné aux ventes → pas d'escalade vers le
+    // numéro admin de secours (réservé au critique). Aucune notification émise.
+    expect(NotificationLog::where('type', 'alert_sales')->count())->toBe(0);
+});

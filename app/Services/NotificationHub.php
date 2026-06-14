@@ -234,6 +234,7 @@ class NotificationHub
     {
         $threshold = (float) setting('whatsapp.large_sale_threshold', 0);
         $isLarge = $threshold > 0 && (float) $sale->total_amount >= $threshold;
+        $afterHours = $this->isAfterHours();
 
         $message = ($isLarge ? "💰🔴 *GROSSE VENTE*" : "💰 *NOUVELLE VENTE*") . "\n\n"
             . "Réf : *{$sale->reference}*\n"
@@ -244,8 +245,11 @@ class NotificationHub
         if ($isLarge) {
             $message .= "\n\n⚠️ Montant au-delà du seuil de " . number_format($threshold, 0, ',', '.') . " GNF.";
         }
+        if ($afterHours) {
+            $message .= "\n\n🌙 Enregistrée HORS heures ouvrées (" . now()->format('H:i') . ").";
+        }
 
-        $this->broadcast('alert_sales', $message, 'Vente ' . $sale->reference, $isLarge ? 'critique' : 'normal');
+        $this->broadcast('alert_sales', $message, 'Vente ' . $sale->reference, ($isLarge || $afterHours) ? 'critique' : 'normal');
     }
 
     /**
@@ -300,14 +304,20 @@ class NotificationHub
     public function notifyPaymentReceived(Payment $payment): void
     {
         $sale = $payment->sale;
-        $message = "✅ *PAIEMENT REÇU*\n\n"
+        $afterHours = $this->isAfterHours();
+
+        $message = ($afterHours ? "🌙 *ENCAISSEMENT HORS HORAIRES*" : "✅ *PAIEMENT REÇU*") . "\n\n"
             . "Montant : *" . number_format($payment->amount, 0, ',', '.') . " GNF*\n"
             . "Mode : {$payment->method_label}\n"
             . "Vente : {$sale->reference}\n"
             . "Client : {$sale->client->name}\n"
             . "Reste dû : " . number_format($sale->remaining_amount, 0, ',', '.') . " GNF";
 
-        $this->broadcast('alert_sales', $message, 'Paiement ' . $sale->reference);
+        if ($afterHours) {
+            $message .= "\n\n⚠️ Enregistré à " . now()->format('H:i') . ", hors heures ouvrées — à vérifier.";
+        }
+
+        $this->broadcast('alert_sales', $message, 'Paiement ' . $sale->reference, $afterHours ? 'critique' : 'normal');
     }
 
     /**
@@ -333,6 +343,38 @@ class NotificationHub
     // ──────────────────────────────────────────────
     // HELPERS
     // ──────────────────────────────────────────────
+
+    /**
+     * Indique si l'instant courant tombe HORS des heures ouvrées de la ferme
+     * (paramètres whatsapp.business_hours_start / business_hours_end). Sert à
+     * escalader en critique une activité financière nocturne (signal de
+     * détournement). Plage vide ou invalide = détection désactivée (false).
+     */
+    private function isAfterHours(): bool
+    {
+        $start = trim((string) setting('whatsapp.business_hours_start', ''));
+        $end   = trim((string) setting('whatsapp.business_hours_end', ''));
+
+        if ($start === '' || $end === '') {
+            return false;
+        }
+
+        try {
+            $now = now();
+            $startAt = $now->copy()->setTimeFromTimeString($start);
+            $endAt   = $now->copy()->setTimeFromTimeString($end);
+        } catch (\Throwable $e) {
+            return false;
+        }
+
+        // Plage normale (ex. 06:00 → 20:00) : hors plage = avant début OU après fin.
+        if ($startAt->lessThanOrEqualTo($endAt)) {
+            return $now->lessThan($startAt) || $now->greaterThan($endAt);
+        }
+
+        // Plage traversant minuit (ex. 20:00 → 06:00) : hors plage = entre fin et début.
+        return $now->lessThan($startAt) && $now->greaterThan($endAt);
+    }
 
     /**
      * Envoie à tous les abonnés d'un type de notification.

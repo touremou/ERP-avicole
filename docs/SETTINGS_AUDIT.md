@@ -42,6 +42,7 @@ au moment de l'audit.
 - `whatsapp.admin_phone` — destinataire de secours pour les alertes critiques (mortalité, stock, gasoil, fraude) même si l'admin n'est pas explicitement abonné (`NotificationHub::broadcast()`) ; pré-remplit aussi le numéro personnel sur la page Notifications si celui-ci est vide.
 - `whatsapp.driver` — détermine si le bouton « Tester » (Notifications) peut réellement délivrer un message (mode "log" = aucun envoi réel, banni avec message explicite).
 - `whatsapp.large_sale_threshold` — montant d'une vente validée au-delà duquel l'alerte est escaladée en critique (donc envoyée au numéro admin de secours même sans abonnement) ; `NotificationHub::notifySaleCreated()`. 0 = désactivé.
+- `whatsapp.business_hours_start` / `whatsapp.business_hours_end` — plage des heures ouvrées ; toute vente validée ou tout encaissement enregistré hors de cette plage est escaladé en alerte critique (`NotificationHub::isAfterHours()`). Plage vide = détection désactivée.
 - `whatsapp.api_url` — URL de base personnalisée pour les drivers `ultramsg`/`wati` (instance auto-hébergée), utilisée par `WhatsAppService`.
 
 ## Restants — en attente de leur fonctionnalité consommatrice
