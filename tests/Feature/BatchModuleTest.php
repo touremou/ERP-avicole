@@ -154,3 +154,82 @@ test('transférer un lot change le building_id', function () {
     $batch->refresh();
     expect($batch->building_id)->toBe($building2->id);
 });
+
+test('la mutation d\'une poussinière vers la phase ponte bascule le type de production (graduation)', function () {
+    $protocol = Protocol::create([
+        'name' => 'Proto Ponte Standard',
+        'type' => 'ponte',
+    ]);
+
+    $poussiniereBuilding = Building::factory()->create(['type' => 'poussiniere']);
+    $ponteBuilding       = Building::factory()->create(['type' => 'ponte']);
+
+    $poussiniereType = ProductionType::resolveOrCreate('poussiniere', null);
+
+    $batch = Batch::factory()->create([
+        'building_id'        => $poussiniereBuilding->id,
+        'status'             => 'Actif',
+        'current_quantity'   => 500,
+        'production_type_id' => $poussiniereType->id,
+    ]);
+
+    expect($batch->type)->toBe('poussiniere');
+
+    $this->actingAs($this->managerUser)
+        ->post(route('batches.transfer', $batch), [
+            'target_building_id' => $ponteBuilding->id,
+            'new_protocol_id'    => $protocol->id,
+            'new_phase'          => 'ponte',
+            'transfer_date'      => now()->toDateString(),
+            'notes'              => 'Démarrage de la ponte après la poussinière',
+        ])
+        ->assertSessionDoesntHaveErrors();
+
+    $batch->refresh();
+
+    // Le lot a basculé vers le type de production "ponte" (même espèce) :
+    // production_type_id est la source de vérité (feedSector, tracksEggs,
+    // calculateExpectedEndDate...), pas seulement production_phase.
+    expect($batch->type)->toBe('ponte');
+    expect($batch->production_phase)->toBe('ponte');
+    expect($batch->building_id)->toBe($ponteBuilding->id);
+
+    $history = $batch->transfer_history;
+    $lastTransfer = end($history);
+    expect($lastTransfer['old_type'])->toBe('poussiniere');
+    expect($lastTransfer['new_type'])->toBe('ponte');
+});
+
+test('la mutation refuse un bâtiment incompatible avec la nouvelle phase', function () {
+    $protocol = Protocol::create([
+        'name' => 'Proto Ponte Standard 2',
+        'type' => 'ponte',
+    ]);
+
+    $poussiniereBuilding = Building::factory()->create(['type' => 'poussiniere']);
+    $chairBuilding       = Building::factory()->create(['type' => 'chair']);
+
+    $poussiniereType = ProductionType::resolveOrCreate('poussiniere', null);
+
+    $batch = Batch::factory()->create([
+        'building_id'        => $poussiniereBuilding->id,
+        'status'             => 'Actif',
+        'current_quantity'   => 500,
+        'production_type_id' => $poussiniereType->id,
+    ]);
+
+    // On vise la phase "ponte" mais on choisit un bâtiment de type "chair" :
+    // incompatible avec le type CIBLE de la mutation.
+    $this->actingAs($this->managerUser)
+        ->post(route('batches.transfer', $batch), [
+            'target_building_id' => $chairBuilding->id,
+            'new_protocol_id'    => $protocol->id,
+            'new_phase'          => 'ponte',
+            'transfer_date'      => now()->toDateString(),
+        ])
+        ->assertSessionHasErrors('target_building_id');
+
+    $batch->refresh();
+    expect($batch->building_id)->toBe($poussiniereBuilding->id);
+    expect($batch->type)->toBe('poussiniere');
+});

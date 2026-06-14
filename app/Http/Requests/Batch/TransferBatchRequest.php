@@ -83,11 +83,16 @@ class TransferBatchRequest extends FormRequest
                 return; // L'erreur 'exists' couvre déjà
             }
 
-            // Compatibilité de type (bâtiment mixte accepte tout)
-            if ($targetBuilding->type !== $batch->type && $targetBuilding->type !== 'mixte') {
+            // Compatibilité de type (bâtiment mixte accepte tout).
+            // On compare au type CIBLE (new_phase) : une mutation peut faire
+            // graduer un lot (ex. poussinière -> ponte/reproducteur après
+            // éclosion), le bâtiment de destination doit alors correspondre
+            // au NOUVEAU type, pas à l'ancien.
+            $targetType = $this->input('new_phase') ?: $batch->type;
+            if ($targetBuilding->type !== $targetType && $targetBuilding->type !== 'mixte') {
                 $validator->errors()->add(
                     'target_building_id',
-                    "Incompatibilité : lot de type '{$batch->type}', bâtiment de type '{$targetBuilding->type}'."
+                    "Incompatibilité : type cible '{$targetType}', bâtiment de type '{$targetBuilding->type}'."
                 );
             }
 

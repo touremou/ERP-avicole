@@ -741,16 +741,18 @@
                     <div class="space-y-6">
                         <div>
                             <label class="block text-[10px] font-black text-slate-400 uppercase mb-3 ml-2 italic">{{ __("Bâtiment de Destination") }}</label>
-                            <select name="target_building_id" required class="w-full p-5 bg-slate-50 rounded-[2rem] border-none shadow-inner font-black text-slate-700 italic uppercase text-xs appearance-none">
+                            <select name="target_building_id" id="target_building_id" required class="w-full p-5 bg-slate-50 rounded-[2rem] border-none shadow-inner font-black text-slate-700 italic uppercase text-xs appearance-none">
                                 <option value="">{{ __("-- Sélectionner --") }}</option>
                                 @foreach($buildings as $building)
-                                    @if($building->type === $batch->type || $building->type === 'mixte')
-                                        <option value="{{ $building->id }}" {{ $building->id == $batch->building_id ? 'disabled' : '' }}>
-                                            {{ $building->name }} ({{ __("Cap") }}: {{ $building->capacity }} | {{ __("Type") }}: {{ $building->type }})
-                                        </option>
-                                    @endif
+                                    <option value="{{ $building->id }}"
+                                            data-type="{{ $building->type }}"
+                                            class="building-opt"
+                                            {{ $building->id == $batch->building_id ? 'disabled' : '' }}>
+                                        {{ $building->name }} ({{ __("Cap") }}: {{ $building->capacity }} | {{ __("Type") }}: {{ $building->type }})
+                                    </option>
                                 @endforeach
                             </select>
+                            <p class="text-[8px] text-slate-300 ml-4 uppercase font-bold mt-1">{{ __("* La liste s'adapte à la nouvelle phase sélectionnée") }}</p>
                         </div>
                         <div>
                             <label class="block text-[10px] font-black text-slate-400 uppercase mb-3 ml-2 italic">{{ __("Date du Mouvement") }}</label>
@@ -769,7 +771,7 @@
                         </div>
                         <div>
                             <label class="block text-[10px] font-black text-slate-400 uppercase mb-3 ml-2 italic">{{ __("Nouvelle Phase") }}</label>
-                            <select name="new_phase" required class="w-full p-5 bg-slate-50 rounded-[2rem] border-none shadow-inner font-black text-slate-700 italic uppercase text-xs appearance-none">
+                            <select name="new_phase" id="new_phase" required class="w-full p-5 bg-slate-50 rounded-[2rem] border-none shadow-inner font-black text-slate-700 italic uppercase text-xs appearance-none">
                                 @if($isVolaille)
                                     @if(in_array($batch->type, ['ponte', 'reproducteur', 'poussiniere']))
                                         <option value="poussiniere" {{ $batch->production_phase == 'poussiniere' ? 'selected' : '' }}>{{ __("Poussinière") }}</option>
@@ -832,25 +834,53 @@
                 openFeedModal();
             @endif
 
-            // 3. FILTRAGE DU PROTOCOLE
+            // 3. FILTRAGE DU PROTOCOLE ET DU BÂTIMENT SELON LA PHASE CIBLE
             const batchType = "{{ $batch->type }}";
             const protocolSelect = document.getElementById('protocol-select');
-            if (protocolSelect) {
+            const newPhaseSelect = document.getElementById('new_phase');
+            const targetBuildingSelect = document.getElementById('target_building_id');
+            const currentBuildingId = {{ $batch->building_id ?? 'null' }};
+
+            function filterProtocols(type) {
+                if (! protocolSelect) return;
                 const options = protocolSelect.options;
                 let matchCount = 0;
                 for (let i = 0; i < options.length; i++) {
                     const optType = options[i].getAttribute('data-type');
-                    if (optType !== 'all' && optType === batchType) matchCount++;
+                    if (optType !== 'all' && optType === type) matchCount++;
                 }
 
                 // Si aucun protocole n'est défini pour ce type (ex: espèces
-                // non-volailles sans protocole dédié), on affiche tous les
-                // protocoles plutôt que de bloquer la mutation.
+                // non-volailles sans protocole dédié, ou phases poussinière/
+                // reproducteur), on affiche tous les protocoles plutôt que de
+                // bloquer la mutation.
                 for (let i = 0; i < options.length; i++) {
                     const optType = options[i].getAttribute('data-type');
-                    options[i].style.display = (matchCount === 0 || optType === batchType || optType === 'all') ? 'block' : 'none';
+                    options[i].style.display = (matchCount === 0 || optType === type || optType === 'all') ? 'block' : 'none';
                 }
             }
+
+            // Filtre le bâtiment de destination selon le type CIBLE (new_phase) :
+            // une graduation poussinière -> chair/ponte/reproducteur après
+            // éclosion ne propose que les bâtiments du type cible (ou mixtes),
+            // comme à la création/édition du lot (batches/create et edit).
+            function filterMutationBuildings(targetType) {
+                if (! targetBuildingSelect) return;
+                targetBuildingSelect.querySelectorAll('.building-opt').forEach(opt => {
+                    const isMatch = opt.dataset.type === targetType || opt.dataset.type === 'mixte';
+                    opt.style.display = isMatch ? 'block' : 'none';
+                    opt.disabled = parseInt(opt.value, 10) === currentBuildingId;
+                });
+            }
+
+            const initialPhase = newPhaseSelect ? newPhaseSelect.value : batchType;
+            filterProtocols(initialPhase);
+            filterMutationBuildings(initialPhase);
+
+            newPhaseSelect?.addEventListener('change', function() {
+                filterProtocols(this.value);
+                filterMutationBuildings(this.value);
+            });
 
             // 4. INITIALISATION DES GRAPHIQUES (Correction syntaxe Chart.js)
             const raw = @json($batch->dailyChecks->sortBy('check_date')->values());
