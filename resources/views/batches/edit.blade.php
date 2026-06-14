@@ -59,6 +59,7 @@
                             @endif
                             <input type="hidden" name="species_id" value="{{ $batch->species_id }}">
                             <input type="hidden" name="production_type_id" id="production_type_id" value="{{ $batch->production_type_id }}">
+                            <input type="hidden" id="species_slug_fixed" value="{{ $batchSpecies->slug ?? '' }}">
 
                             <div>
                                 <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 italic leading-none">{{ __("Type d'Élevage") }}</label>
@@ -83,14 +84,15 @@
                                 <select name="model_name" id="model_selector" required
                                         class="w-full p-4 bg-slate-50 shadow-inner rounded-2xl font-black outline-none border-none text-blue-600 appearance-none italic">
                                     @foreach($normModels as $norm)
-                                        <option value="{{ $norm->model_name }}" 
-                                                data-type="{{ $norm->batch_type }}" 
-                                                class="model-opt" 
+                                        <option value="{{ $norm->model_name }}"
+                                                data-type="{{ $norm->batch_type }}"
+                                                class="model-opt"
                                                 {{ old('model_name', $batch->model_name) == $norm->model_name ? 'selected' : '' }}>
                                             {{ $norm->model_name }}
                                         </option>
                                     @endforeach
                                 </select>
+                                <p class="text-[8px] text-slate-300 ml-4 uppercase font-bold mt-1">{{ __("* Seules les souches adaptées au type d'élevage sélectionné s'affichent") }}</p>
                             </div>
 
                             <div>
@@ -103,9 +105,11 @@
                                             $dispo = $b->capacity - $occ;
                                         @endphp
                                         <option value="{{ $b->id }}"
+                                                data-type="{{ $b->type }}"
                                                 data-remaining="{{ $dispo }}"
+                                                class="building-opt"
                                                 {{ old('building_id', $batch->building_id) == $b->id ? 'selected' : '' }}>
-                                            {{ $b->name }} ({{ __("Libre") }}: {{ $dispo }})
+                                            {{ $b->name }} ({{ __("Libre") }}: {{ $dispo }} — {{ strtoupper($b->type) }})
                                         </option>
                                     @endforeach
                                 </select>
@@ -269,6 +273,32 @@
     </div>
 
     <script>
+        // Bâtiments compatibles par espèce (en plus de 'mixte', toujours autorisé).
+        // Doit rester aligné avec resources/views/batches/create.blade.php.
+        const SPECIES_BUILDING_TYPES = {
+            poulet:  ['chair', 'ponte', 'poussiniere', 'reproducteur'],
+            dinde:   ['chair', 'reproducteur'],
+            pintade: ['chair', 'ponte'],
+            caille:  ['chair', 'ponte'],
+            canard:  ['chair'],
+            pigeon:  ['chair'],
+            mouton:  ['bergerie'],
+            chevre:  ['chevrerie'],
+            lapin:   ['lapiniere'],
+            porc:    ['porcherie'],
+            tilapia: ['bassin'],
+            carpe:   ['bassin'],
+            silure:  ['bassin'],
+        };
+
+        function isBuildingCompatible(bType, selectedType) {
+            if (bType === 'mixte') return true;
+            const speciesSlug = document.getElementById('species_slug_fixed')?.value || '';
+            const allowed = SPECIES_BUILDING_TYPES[speciesSlug];
+            if (allowed) return allowed.includes(bType);
+            return selectedType === '' || bType === selectedType;
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
             const typeSelector = document.getElementById('type_selector');
             const reproFields = document.getElementById('repro_fields');
@@ -289,8 +319,38 @@
                 productionTypeIdInput.value = selectedOpt?.dataset.ptId || '';
             }
 
+            // Filtre la Souche/Race et le Bâtiment selon le type d'élevage
+            // sélectionné — réplique le filtrage déjà appliqué à la création
+            // (batches/create.blade.php), absent jusqu'ici de l'édition, ce
+            // qui permettait de choisir n'importe quelle souche/bâtiment.
+            function runFilters() {
+                const selectedType = typeSelector.value || "";
+
+                const modelSelector = document.getElementById('model_selector');
+                if (modelSelector) {
+                    modelSelector.querySelectorAll('.model-opt').forEach(opt => {
+                        const isMatch = selectedType === "" || opt.dataset.type === selectedType;
+                        const isCurrent = opt.selected;
+                        opt.style.display = (isMatch || isCurrent) ? 'block' : 'none';
+                        opt.disabled = !isMatch && !isCurrent;
+                    });
+                }
+
+                const bSelect = document.getElementById('building_id');
+                if (bSelect) {
+                    bSelect.querySelectorAll('.building-opt').forEach(opt => {
+                        const isCurrent = opt.selected;
+                        const isMatch = isBuildingCompatible(opt.dataset.type, selectedType);
+                        opt.style.display = (isMatch || isCurrent) ? 'block' : 'none';
+                        opt.disabled = !isMatch && !isCurrent;
+                    });
+                }
+            }
+
             typeSelector?.addEventListener('change', toggleRepro);
             typeSelector?.addEventListener('change', syncProductionTypeId);
+            typeSelector?.addEventListener('change', runFilters);
+            runFilters();
 
             // Ratio reproducteurs
             document.querySelectorAll('.repro-input').forEach(input => {

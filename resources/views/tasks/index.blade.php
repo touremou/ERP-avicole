@@ -8,6 +8,7 @@
                     <p class="text-[9px] font-bold text-slate-400 uppercase mt-1 tracking-widest italic">{{ $date->translatedFormat('l d F Y') }}</p>
                 </div>
             </div>
+            @can('annuaire.M')
             <div class="flex gap-2">
                 <a href="{{ route('tasks.templates') }}" class="bg-white border border-slate-200 px-4 py-2 rounded-xl text-[9px] font-black uppercase italic text-slate-600 hover:bg-slate-50 no-underline"><i class="fa-solid fa-gear text-slate-400 mr-1"></i> {{ __("Templates") }}</a>
                 <form method="POST" action="{{ route('tasks.generate') }}">@csrf
@@ -15,6 +16,7 @@
                     <button class="bg-indigo-600 text-white px-5 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-indigo-700 border-none cursor-pointer shadow-lg italic"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i> {{ __("Générer") }}</button>
                 </form>
             </div>
+            @endcan
         </div>
     </x-slot>
 
@@ -327,10 +329,12 @@
                             @empty
                             <div class="px-8 py-12 text-center">
                                 <p class="text-[10px] text-slate-400 uppercase tracking-widest mb-3">Aucune tâche pour cette date</p>
+                                @can('annuaire.M')
                                 <form method="POST" action="{{ route('tasks.generate') }}">@csrf
                                     <input type="hidden" name="date" value="{{ $date->toDateString() }}">
                                     <button class="bg-indigo-600 text-white px-6 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-indigo-700 border-none cursor-pointer italic"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i> Générer automatiquement</button>
                                 </form>
+                                @endcan
                             </div>
                             @endforelse
                         </div>
