@@ -9,9 +9,9 @@
                     <x-application-logo class="block h-8 w-auto fill-current text-blue-600" />
                 </a>
 
-                {{-- APP DRAWER (grille modules, hover) --}}
-                <div x-data="{ open: false }" @mouseenter="open = true" @mouseleave="open = false" class="hidden sm:block relative">
-                    <button class="flex items-center px-3 py-2 bg-slate-900 text-white rounded-xl text-[9px] font-black uppercase tracking-widest transition-all hover:bg-blue-600 shadow-md border-none cursor-pointer outline-none">
+                {{-- APP DRAWER (grille modules) --}}
+                <div x-data="{ open: false }" @click.outside="open = false" class="hidden sm:block relative">
+                    <button @click="open = !open" class="flex items-center px-3 py-2 bg-slate-900 text-white rounded-xl text-[9px] font-black uppercase tracking-widest transition-all hover:bg-blue-600 shadow-md border-none cursor-pointer outline-none">
                         <i class="fa-solid fa-grip text-xs mr-1.5"></i> {{ __("Modules") }} <i class="fa-solid fa-chevron-down ms-1.5 text-[6px] opacity-40"></i>
                     </button>
                     <div x-show="open" x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0 -translate-y-1" x-transition:enter-end="opacity-100"
@@ -197,8 +197,8 @@
 
                 {{-- FARM SWITCHER --}}
                 @if($isMultiFarm ?? false)
-                <div x-data="{ open: false }" @mouseenter="open = true" @mouseleave="open = false" class="relative">
-                    <button class="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl bg-violet-50 text-violet-600 hover:bg-violet-100 transition-all outline-none">
+                <div x-data="{ open: false }" @click.outside="open = false" class="relative">
+                    <button @click="open = !open" class="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl bg-violet-50 text-violet-600 hover:bg-violet-100 transition-all outline-none">
                         <i class="fa-solid fa-building text-[8px]"></i>
                         {{ ($currentFarm->code ?? 'SITE') }}
                         <i class="fa-solid fa-chevron-down text-[5px] opacity-30"></i>
@@ -232,8 +232,8 @@
                 </div>
 
                 {{-- USER DROPDOWN --}}
-                <div x-data="{ open: false }" @mouseenter="open = true" @mouseleave="open = false" class="relative">
-                    <button class="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl hover:bg-slate-200 transition-all outline-none">
+                <div x-data="{ open: false }" @click.outside="open = false" class="relative">
+                    <button @click="open = !open" class="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl hover:bg-slate-200 transition-all outline-none">
                         <div class="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center text-white text-xs font-black shadow">
                             {{ strtoupper(substr(Auth::user()->name ?? 'U', 0, 1)) }}
                         </div>
