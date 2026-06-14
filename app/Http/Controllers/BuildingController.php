@@ -24,7 +24,7 @@ class BuildingController extends Controller
 
         $buildings = Building::physical() // 💡 Ton code devient très lisible
             ->with(['batches' => function($query) {
-                $query->where('status', 'Actif')->with('dailyChecks');
+                $query->active()->with('dailyChecks');
             }])
             ->orderBy('name')
             ->get();
@@ -71,7 +71,7 @@ class BuildingController extends Controller
         if (Gate::denies('elevage.M')) return back()->with('error', 'Privilèges insuffisants.');
 
         $building = Building::findOrFail($id);
-        $isOccupied = $building->batches()->where('status', 'Actif')->exists();
+        $isOccupied = $building->batches()->active()->exists();
 
         return view('buildings.edit', compact('building', 'isOccupied'));
     }
@@ -103,5 +103,19 @@ class BuildingController extends Controller
         } catch (\Exception $e) {
             return back()->with('error', $e->getMessage());
         }
+    }
+
+    /**
+     * Miroir local (IndexedDB) des bâtiments physiques — mode terrain.
+     */
+    public function getOfflineBuildings(): \Illuminate\Http\JsonResponse
+    {
+        if (Gate::denies('elevage.L')) {
+            return response()->json(['error' => 'Forbidden'], 403);
+        }
+
+        return response()->json(
+            Building::physical()->get(['id', 'name', 'type', 'capacity', 'status'])
+        );
     }
 }

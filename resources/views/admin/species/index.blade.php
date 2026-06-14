@@ -3,10 +3,10 @@
         <div class="flex items-center justify-between">
             <div>
                 <h2 class="text-2xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">
-                    🐾 Gestion des Espèces
+                    {{ __("🐾 Gestion des Espèces") }}
                 </h2>
                 <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-2 italic leading-none">
-                    Activer / désactiver les espèces disponibles sur ce site
+                    {{ __("Activer / désactiver les espèces disponibles sur ce site") }}
                 </p>
             </div>
             <a href="{{ route('settings.index') }}" class="flex items-center justify-center w-11 h-11 bg-white border border-slate-200 text-slate-400 hover:text-rose-600 rounded-xl transition-all shadow-sm no-underline">
@@ -31,7 +31,7 @@
                         <span class="text-3xl">{{ $familyMeta['icon'] }}</span>
                         <div>
                             <h3 class="text-lg font-black text-slate-800 uppercase tracking-tighter italic leading-none">{{ $familyMeta['label'] }}</h3>
-                            <p class="text-[9px] font-black text-slate-300 uppercase tracking-widest mt-1">{{ $species[$familyKey]->count() }} espèce(s)</p>
+                            <p class="text-[9px] font-black text-slate-300 uppercase tracking-widest mt-1">{{ __(":count espèce(s)", ['count' => $species[$familyKey]->count()]) }}</p>
                         </div>
                     </div>
 
@@ -88,13 +88,13 @@
                                 {{-- Indicateurs suivis --}}
                                 <div class="flex gap-2 mt-4">
                                     @if($sp->tracks_eggs)
-                                    <span class="px-2 py-1 bg-yellow-50 rounded-lg text-[7px] font-black text-yellow-600 border border-yellow-100">🥚 Œufs</span>
+                                    <span class="px-2 py-1 bg-yellow-50 rounded-lg text-[7px] font-black text-yellow-600 border border-yellow-100">{{ __("🥚 Œufs") }}</span>
                                     @endif
                                     @if($sp->tracks_milk)
-                                    <span class="px-2 py-1 bg-blue-50 rounded-lg text-[7px] font-black text-blue-600 border border-blue-100">🥛 Lait</span>
+                                    <span class="px-2 py-1 bg-blue-50 rounded-lg text-[7px] font-black text-blue-600 border border-blue-100">{{ __("🥛 Lait") }}</span>
                                     @endif
                                     @if($sp->tracks_water_quality)
-                                    <span class="px-2 py-1 bg-cyan-50 rounded-lg text-[7px] font-black text-cyan-600 border border-cyan-100">💧 Eau</span>
+                                    <span class="px-2 py-1 bg-cyan-50 rounded-lg text-[7px] font-black text-cyan-600 border border-cyan-100">{{ __("💧 Eau") }}</span>
                                     @endif
                                 </div>
                             </div>

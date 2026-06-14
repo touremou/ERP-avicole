@@ -5,9 +5,9 @@
                 <i class="fa-solid fa-arrow-left"></i>
             </a>
             <div>
-                <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">Réception</h2>
+                <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">{{ __("Réception") }}</h2>
                 <p class="text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em] mt-2 italic">
-                    Expédition {{ $dispatch->dispatch_number }} — {{ $dispatch->destination }}
+                    {{ __("Expédition") }} {{ $dispatch->dispatch_number }} — {{ $dispatch->destination }}
                 </p>
             </div>
         </div>
@@ -25,10 +25,10 @@
             {{-- INFO EXPÉDITION --}}
             <div class="bg-orange-50 p-6 rounded-[2.5rem] border border-orange-200 mb-6">
                 <p class="text-[9px] font-black text-orange-600 uppercase tracking-widest mb-2">
-                    <i class="fa-solid fa-truck-fast mr-1"></i> Expédié par {{ $dispatch->dispatcher->name ?? '—' }} le {{ $dispatch->dispatch_date->format('d/m/Y') }}
+                    <i class="fa-solid fa-truck-fast mr-1"></i> {{ __("Expédié par") }} {{ $dispatch->dispatcher->name ?? '—' }} {{ __("le") }} {{ $dispatch->dispatch_date->format('d/m/Y') }}
                 </p>
                 <p class="text-xs text-slate-600">
-                    Chauffeur : <strong>{{ $dispatch->driver_name }}</strong> — Véhicule : {{ $dispatch->vehicle_plate ?? '—' }}
+                    {{ __("Chauffeur") }} : <strong>{{ $dispatch->driver_name }}</strong> — {{ __("Véhicule") }} : {{ $dispatch->vehicle_plate ?? '—' }}
                 </p>
             </div>
 
@@ -38,12 +38,12 @@
                 <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm mb-6">
                     <div class="grid grid-cols-2 gap-6 mb-6">
                         <div class="space-y-2">
-                            <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">Date de réception</label>
+                            <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Date de réception") }}</label>
                             <input type="date" name="reception_date" value="{{ now()->toDateString() }}" required
                                 class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black shadow-inner outline-none">
                         </div>
                         <div class="space-y-2">
-                            <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">Heure d'arrivée</label>
+                            <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Heure d'arrivée") }}</label>
                             <input type="time" name="reception_time" value="{{ now()->format('H:i') }}"
                                 class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black shadow-inner outline-none">
                         </div>
@@ -53,7 +53,7 @@
                 {{-- LIGNES À RÉCEPTIONNER --}}
                 <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm mb-6">
                     <h3 class="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-6 flex items-center gap-2">
-                        <i class="fa-solid fa-clipboard-check text-emerald-500"></i> Vérification ligne par ligne
+                        <i class="fa-solid fa-clipboard-check text-emerald-500"></i> {{ __("Vérification ligne par ligne") }}
                     </h3>
 
                     @foreach($dispatch->items as $i => $item)
@@ -66,35 +66,35 @@
                                 <p class="text-[8px] text-slate-400 font-black uppercase tracking-widest">{{ str_replace('_', ' ', $item->product_type) }}</p>
                             </div>
                             <div class="text-right">
-                                <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest">Qté expédiée</p>
+                                <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest">{{ __("Qté expédiée") }}</p>
                                 <p class="text-xl font-black text-slate-900">{{ $item->quantity_dispatched }} <small class="text-[9px] text-slate-400 uppercase">{{ $item->unit }}</small></p>
                             </div>
                         </div>
 
                         <div class="grid grid-cols-3 gap-4">
                             <div class="space-y-1">
-                                <label class="text-[8px] font-black uppercase text-emerald-600 tracking-widest">Qté reçue</label>
+                                <label class="text-[8px] font-black uppercase text-emerald-600 tracking-widest">{{ __("Qté reçue") }}</label>
                                 <input type="number" name="items[{{ $i }}][quantity_received]" step="0.01" min="0" max="{{ $item->quantity_dispatched }}"
                                     value="{{ $item->quantity_dispatched }}" required
                                     class="w-full bg-white border-2 border-emerald-200 rounded-xl p-3 text-sm font-black text-emerald-600 outline-none text-center focus:border-emerald-500">
                             </div>
                             <div class="space-y-1">
-                                <label class="text-[8px] font-black uppercase text-amber-600 tracking-widest">Endommagé</label>
+                                <label class="text-[8px] font-black uppercase text-amber-600 tracking-widest">{{ __("Endommagé") }}</label>
                                 <input type="number" name="items[{{ $i }}][quantity_damaged]" step="0.01" min="0" value="0"
                                     class="w-full bg-white border-2 border-amber-200 rounded-xl p-3 text-sm font-black text-amber-600 outline-none text-center focus:border-amber-500">
                             </div>
                             <div class="space-y-1">
-                                <label class="text-[8px] font-black uppercase text-slate-400 tracking-widest">État arrivée</label>
+                                <label class="text-[8px] font-black uppercase text-slate-400 tracking-widest">{{ __("État arrivée") }}</label>
                                 <select name="items[{{ $i }}][condition]" class="w-full bg-white border border-slate-200 rounded-xl p-3 text-[10px] font-black uppercase outline-none appearance-none">
-                                    <option value="bon">Bon</option>
-                                    <option value="endommage">Endommagé</option>
-                                    <option value="suspect">Suspect</option>
+                                    <option value="bon">{{ __("Bon") }}</option>
+                                    <option value="endommage">{{ __("Endommagé") }}</option>
+                                    <option value="suspect">{{ __("Suspect") }}</option>
                                 </select>
                             </div>
                         </div>
 
                         <div class="mt-3">
-                            <input type="text" name="items[{{ $i }}][notes]" placeholder="Justification si écart..."
+                            <input type="text" name="items[{{ $i }}][notes]" placeholder="{{ __("Justification si écart...") }}"
                                 class="w-full bg-white border border-slate-200 rounded-xl p-3 text-[10px] font-bold text-slate-600 outline-none">
                         </div>
                     </div>
@@ -103,13 +103,13 @@
 
                 {{-- NOTES GÉNÉRALES --}}
                 <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm mb-6">
-                    <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">Observations générales</label>
-                    <textarea name="notes" rows="3" placeholder="État du véhicule à l'arrivée, remarques..."
+                    <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Observations générales") }}</label>
+                    <textarea name="notes" rows="3" placeholder="{{ __("État du véhicule à l'arrivée, remarques...") }}"
                         class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-bold shadow-inner outline-none mt-2"></textarea>
                 </div>
 
                 <button type="submit" class="w-full bg-emerald-500 text-white py-6 rounded-[2rem] font-black text-xs uppercase tracking-[0.3em] hover:bg-emerald-600 transition-all shadow-2xl italic border-none cursor-pointer">
-                    <i class="fa-solid fa-shield-check mr-2"></i> Valider la Réception & Lancer la Réconciliation
+                    <i class="fa-solid fa-shield-check mr-2"></i> {{ __("Valider la Réception & Lancer la Réconciliation") }}
                 </button>
             </form>
         </div>

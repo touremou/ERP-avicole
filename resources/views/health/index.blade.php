@@ -3,10 +3,10 @@
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div class="text-left">
                 <h2 class="font-black text-2xl text-slate-800 uppercase italic tracking-tighter leading-none">
-                    🩺 Registre Sanitaire & Prophylaxie
+                    🩺 {{ __("Registre Sanitaire & Prophylaxie") }}
                 </h2>
                 <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2 italic">
-                    Historique des soins, vaccins et interventions techniques
+                    {{ __("Historique des soins, vaccins et interventions techniques") }}
                 </p>
             </div>
 
@@ -14,22 +14,22 @@
                 {{-- Permission L : Protocoles --}}
                 @can('elevage.M')
                 <a href="{{ route('protocols.index') }}" class="px-5 py-3 bg-white text-slate-600 border border-slate-200 rounded-2xl text-[10px] font-black uppercase italic tracking-widest hover:bg-slate-50 transition-all shadow-sm no-underline">
-                    <i class="fa-solid fa-clipboard-list mr-2 text-purple-500"></i> Protocoles
+                    <i class="fa-solid fa-clipboard-list mr-2 text-purple-500"></i> {{ __("Protocoles") }}
                 </a>
                 @endcan
-                
+
 
                 {{-- NOUVEAU : ALERTE PATHOLOGIE (S'ouvre via Alpine) --}}
                 @can('elevage.C')
                 <button type="button" x-data @click="$dispatch('open-pathology-modal')" class="px-5 py-3 bg-rose-100 text-rose-600 rounded-2xl text-[10px] font-black uppercase italic tracking-widest hover:bg-rose-600 hover:text-white transition-all shadow-sm border border-rose-200">
-                    <i class="fa-solid fa-microscope mr-2"></i> Signaler Anomalie
+                    <i class="fa-solid fa-microscope mr-2"></i> {{ __("Signaler Anomalie") }}
                 </button>
                 @endcan
 
                 {{-- Permission C : Nouvelle Intervention --}}
                 @can('elevage.C')
                 <a href="{{ route('health.create') }}" class="px-6 py-3 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase italic tracking-widest hover:bg-blue-600 transition-all shadow-xl shadow-slate-900/20 no-underline">
-                    <i class="fa-solid fa-plus-circle mr-2 text-blue-400"></i> Nouvelle Intervention
+                    <i class="fa-solid fa-plus-circle mr-2 text-blue-400"></i> {{ __("Nouvelle Intervention") }}
                 </a>
                 @endcan
             </div>
@@ -48,15 +48,15 @@
                                 <i class="fa-solid fa-triangle-exclamation text-xl"></i>
                             </div>
                             <div>
-                                <h3 class="text-xl font-black text-rose-700 uppercase italic tracking-tighter leading-none mb-1">Urgences Sanitaires</h3>
-                                <p class="text-[10px] text-rose-400 font-black uppercase tracking-widest italic leading-none">{{ count($alerts) }} intervention(s) en retard</p>
+                                <h3 class="text-xl font-black text-rose-700 uppercase italic tracking-tighter leading-none mb-1">{{ __("Urgences Sanitaires") }}</h3>
+                                <p class="text-[10px] text-rose-400 font-black uppercase tracking-widest italic leading-none">{{ count($alerts) }} {{ __("intervention(s) en retard") }}</p>
                             </div>
                         </div>
-                        
+
                         {{-- Indicateur de scroll visuel pour desktop --}}
                         <div class="hidden md:flex gap-2 text-rose-300">
                             <i class="fa-solid fa-arrow-left-long"></i>
-                            <span class="text-[9px] uppercase font-black tracking-widest italic">Défiler</span>
+                            <span class="text-[9px] uppercase font-black tracking-widest italic">{{ __("Défiler") }}</span>
                             <i class="fa-solid fa-arrow-right-long"></i>
                         </div>
                     </div>
@@ -67,17 +67,17 @@
                             <div class="min-w-[280px] md:min-w-[320px] flex-shrink-0 bg-white border-b-4 border-rose-500 p-6 rounded-[2rem] shadow-md snap-start transition-all hover:-translate-y-1 flex flex-col justify-between group">
                                 <div class="mb-4">
                                     <div class="flex justify-between items-start mb-3">
-                                        <span class="px-3 py-1 bg-rose-100 text-rose-700 rounded-xl text-[9px] font-black uppercase italic tracking-widest">Lot #{{ $alert['batch_code'] }}</span>
-                                        <span class="text-[10px] font-black text-rose-400 italic">{{ $alert['delay'] }}j de retard</span>
+                                        <span class="px-3 py-1 bg-rose-100 text-rose-700 rounded-xl text-[9px] font-black uppercase italic tracking-widest">{{ __("Lot #") }}{{ $alert['batch_code'] }}</span>
+                                        <span class="text-[10px] font-black text-rose-400 italic">{{ $alert['delay'] }}{{ __("j de retard") }}</span>
                                     </div>
                                     <h4 class="text-sm font-black text-slate-800 uppercase italic leading-tight">{{ $alert['step_name'] }}</h4>
-                                    <p class="text-[10px] text-slate-400 font-bold mt-2">Prévu le : {{ \Carbon\Carbon::parse($alert['due_date'])->format('d/m/Y') }}</p>
+                                    <p class="text-[10px] text-slate-400 font-bold mt-2">{{ __("Prévu le :") }} {{ \Carbon\Carbon::parse($alert['due_date'])->format('d/m/Y') }}</p>
                                 </div>
                                 
                                 @can('elevage.C')
                                 <a href="{{ route('health.create', ['batch_id' => $alert['batch_id'], 'product_name' => $alert['step_name'], 'type' => $alert['step_type'], 'intervention_date' => now()->format('Y-m-d')]) }}" 
                                    class="w-full py-3 bg-rose-50 group-hover:bg-rose-600 text-rose-600 group-hover:text-white rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center transition-all no-underline italic">
-                                    Régulariser <i class="fa-solid fa-arrow-right ml-2"></i>
+                                    {{ __("Régulariser") }} <i class="fa-solid fa-arrow-right ml-2"></i>
                                 </a>
                                 @endcan
                             </div>
@@ -89,32 +89,32 @@
             {{-- DASHBOARD SANTÉ --}}
             <div class="grid grid-cols-1 md:grid-cols-4 gap-6 text-left italic font-black uppercase">
                 <div class="bg-white p-7 rounded-[2.5rem] border border-slate-100 shadow-sm relative overflow-hidden">
-                    <p class="text-[9px] text-slate-400 tracking-widest mb-2 leading-none">Total Interventions</p>
+                    <p class="text-[9px] text-slate-400 tracking-widest mb-2 leading-none">{{ __("Total Interventions") }}</p>
                     <h3 class="text-4xl text-slate-800 leading-none tracking-tighter">{{ $checks->total() }}</h3>
                     <div class="absolute -right-2 -bottom-2 opacity-5 text-5xl">💉</div>
                 </div>
                 <div class="bg-purple-600 p-7 rounded-[2.5rem] text-white shadow-xl shadow-purple-200 relative overflow-hidden border-b-4 border-purple-800">
-                    <p class="text-[9px] text-purple-200 tracking-widest mb-2 leading-none">Dernier Vaccin</p>
+                    <p class="text-[9px] text-purple-200 tracking-widest mb-2 leading-none">{{ __("Dernier Vaccin") }}</p>
                     <h3 class="text-lg leading-tight tracking-tighter italic">
-                        {{ $checks->firstWhere('type', 'Vaccin')->product_name ?? 'NÉANT' }}
+                        {{ $checks->firstWhere('type', 'Vaccin')->product_name ?? __("NÉANT") }}
                     </h3>
                     <i class="fa-solid fa-syringe absolute -right-3 -bottom-3 text-white/10 text-7xl"></i>
                 </div>
                 <div class="bg-blue-600 p-7 rounded-[2.5rem] text-white shadow-xl shadow-blue-200 relative overflow-hidden border-b-4 border-blue-800">
-                    <p class="text-[9px] text-blue-200 tracking-widest mb-2 leading-none">Budget (Page)</p>
+                    <p class="text-[9px] text-blue-200 tracking-widest mb-2 leading-none">{{ __("Budget (Page)") }}</p>
                     <h3 class="text-3xl leading-none tracking-tighter">{{ number_format($checks->sum('cost'), 0, ',', ' ') }} <small class="text-[10px]">GNF</small></h3>
                     <i class="fa-solid fa-vial absolute -right-3 -bottom-3 text-white/10 text-7xl"></i>
                 </div>
 
                 {{-- NOUVEAU : CAS PATHOLOGIQUES EN ATTENTE --}}
                 <div class="bg-rose-600 p-7 rounded-[2.5rem] text-white shadow-xl shadow-rose-200 relative overflow-hidden border-b-4 border-rose-800">
-                    <p class="text-[9px] text-rose-200 tracking-widest mb-2 leading-none">Diagnostics en attente</p>
+                    <p class="text-[9px] text-rose-200 tracking-widest mb-2 leading-none">{{ __("Diagnostics en attente") }}</p>
                     <h3 class="text-3xl leading-none tracking-tighter">
-                        {{ $pendingIncidentsCount ?? 0 }} <small class="text-[10px] uppercase font-black tracking-widest">Cas</small>
+                        {{ $pendingIncidentsCount ?? 0 }} <small class="text-[10px] uppercase font-black tracking-widest">{{ __("Cas") }}</small>
                     </h3>
                     <div class="mt-2">
                         <a href="{{ route('health.incidents.index') }}" class="text-[8px] bg-rose-800 px-3 py-1 rounded-lg hover:bg-white hover:text-rose-600 transition-colors no-underline">
-                            Voir les alertes <i class="fa-solid fa-arrow-right ml-1"></i>
+                            {{ __("Voir les alertes") }} <i class="fa-solid fa-arrow-right ml-1"></i>
                         </a>
                     </div>
                     <i class="fa-solid fa-truck-medical absolute -right-3 -bottom-3 text-white/10 text-7xl"></i>
@@ -125,14 +125,14 @@
             <form action="{{ route('health.index') }}" method="GET" class="flex flex-col md:flex-row items-center justify-between px-6 gap-6 italic">
                 <div class="flex flex-wrap gap-4">
                     <select name="batch_id" onchange="this.form.submit()" class="bg-white border-none rounded-xl text-[10px] font-black uppercase italic focus:ring-4 focus:ring-blue-500/10 py-3 pl-5 pr-10 shadow-sm cursor-pointer appearance-none">
-                        <option value="">Tous les lots</option>
+                        <option value="">{{ __("Tous les lots") }}</option>
                         @foreach($batches as $batch)
-                            <option value="{{ $batch->id }}" {{ request('batch_id') == $batch->id ? 'selected' : '' }}>LOT #{{ $batch->code }}</option>
+                            <option value="{{ $batch->id }}" {{ request('batch_id') == $batch->id ? 'selected' : '' }}>{{ __("LOT #") }}{{ $batch->code }}</option>
                         @endforeach
                     </select>
 
                     <select name="type" onchange="this.form.submit()" class="bg-white border-none rounded-xl text-[10px] font-black uppercase italic focus:ring-4 focus:ring-blue-500/10 py-3 pl-5 pr-10 shadow-sm cursor-pointer appearance-none">
-                        <option value="">Tous les types</option>
+                        <option value="">{{ __("Tous les types") }}</option>
                         @foreach(['Vaccin', 'Traitement', 'Vitamine', 'Désinfection'] as $type)
                             <option value="{{ $type }}" {{ request('type') == $type ? 'selected' : '' }}>{{ $type }}</option>
                         @endforeach
@@ -140,12 +140,12 @@
 
                     @if(request()->anyFilled(['batch_id', 'type']))
                         <a href="{{ route('health.index') }}" class="text-[9px] font-black text-rose-500 uppercase flex items-center hover:underline no-underline italic">
-                            <i class="fa-solid fa-circle-xmark mr-1"></i> Réinitialiser
+                            <i class="fa-solid fa-circle-xmark mr-1"></i> {{ __("Réinitialiser") }}
                         </a>
                     @endif
                 </div>
                 <p class="text-[9px] text-slate-400 uppercase font-black italic tracking-widest">
-                    {{ $checks->total() }} Acte(s) enregistré(s)
+                    {{ $checks->total() }} {{ __("Acte(s) enregistré(s)") }}
                 </p>
             </form>
 
@@ -154,11 +154,11 @@
                 <table class="w-full text-left border-collapse">
                     <thead>
                         <tr class="bg-slate-50/50 border-b border-slate-100 italic">
-                            <th class="px-10 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Chronologie</th>
-                            <th class="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Sujets (Lot)</th>
-                            <th class="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Intervention / Produit</th>
-                            <th class="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Posologie</th>
-                            <th class="px-10 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 text-right">Budget / Action</th>
+                            <th class="px-10 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">{{ __("Chronologie") }}</th>
+                            <th class="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">{{ __("Sujets (Lot)") }}</th>
+                            <th class="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">{{ __("Intervention / Produit") }}</th>
+                            <th class="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">{{ __("Posologie") }}</th>
+                            <th class="px-10 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 text-right">{{ __("Budget / Action") }}</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-50 uppercase font-bold italic">
@@ -178,7 +178,7 @@
                                         #{{ $check->batch->code }}
                                     </span>
                                     <span class="text-[8px] text-slate-400 font-black uppercase tracking-widest mt-1 italic">
-                                        Bât: {{ $check->batch->building->name ?? 'NÉANT' }}
+                                        {{ __("Bât:") }} {{ $check->batch->building->name ?? __("NÉANT") }}
                                     </span>
                                 </div>
                             </td>
@@ -223,12 +223,12 @@
                                     
                                     {{-- Permission M/S : Actions --}}
                                     @can('elevage.M')
-                                    <div class="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <div class="flex items-center gap-2 opacity-100 can-hover:opacity-0 can-hover:group-hover:opacity-100 transition-opacity">
                                         <a href="{{ route('health.edit', $check->id) }}" class="w-10 h-10 flex items-center justify-center rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white transition-all no-underline shadow-sm shadow-blue-100">
                                             <i class="fa-solid fa-pen-nib text-xs"></i>
                                         </a>
                                         @can('elevage.S')
-                                        <form action="{{ route('health.destroy', $check->id) }}" method="POST" onsubmit="return confirm('ALERTE SÉCURITÉ : Supprimer cet acte sanitaire ?')">
+                                        <form action="{{ route('health.destroy', $check->id) }}" method="POST" onsubmit="return confirm(@json(__("ALERTE SÉCURITÉ : Supprimer cet acte sanitaire ?")))">
                                             @csrf @method('DELETE')
                                             <button type="submit" class="w-10 h-10 flex items-center justify-center rounded-xl bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white transition-all border-none outline-none shadow-sm shadow-rose-100 cursor-pointer">
                                                 <i class="fa-solid fa-trash-can text-xs"></i>
@@ -248,7 +248,7 @@
                                         <i class="fa-solid fa-notes-medical text-4xl"></i>
                                     </div>
                                     <p class="text-slate-400 uppercase text-[10px] tracking-[0.4em] font-black italic">
-                                        Registre Sanitaire Vierge
+                                        {{ __("Registre Sanitaire Vierge") }}
                                     </p>
                                 </div>
                             </td>
@@ -277,8 +277,8 @@
             <div class="bg-rose-600 p-8 text-white flex justify-between items-center relative overflow-hidden">
                 <i class="fa-solid fa-virus absolute -left-4 -top-4 text-[6rem] opacity-10"></i>
                 <div class="relative z-10">
-                    <h3 class="text-xl font-black uppercase tracking-tighter italic leading-none">Signalement Sanitaire</h3>
-                    <p class="text-[10px] text-rose-200 font-bold uppercase tracking-widest mt-1">Alerte Vétérinaire & Autopsie</p>
+                    <h3 class="text-xl font-black uppercase tracking-tighter italic leading-none">{{ __("Signalement Sanitaire") }}</h3>
+                    <p class="text-[10px] text-rose-200 font-bold uppercase tracking-widest mt-1">{{ __("Alerte Vétérinaire & Autopsie") }}</p>
                 </div>
                 <button @click="showHealthModal = false" class="text-white hover:text-rose-200 relative z-10"><i class="fa-solid fa-xmark text-2xl"></i></button>
             </div>
@@ -287,34 +287,34 @@
                 @csrf
                 
                 <div>
-                    <label class="text-[9px] uppercase text-slate-400 block tracking-widest font-black mb-1 italic">Lot concerné *</label>
+                    <label class="text-[9px] uppercase text-slate-400 block tracking-widest font-black mb-1 italic">{{ __("Lot concerné *") }}</label>
                     <select name="batch_id" required class="w-full bg-slate-50 border-none rounded-xl p-4 font-black text-xs uppercase shadow-inner cursor-pointer text-slate-700">
-                        <option value="">Sélectionner un lot en cours...</option>
+                        <option value="">{{ __("Sélectionner un lot en cours...") }}</option>
                         @foreach($batches as $batch)
-                            <option value="{{ $batch->id }}">LOT #{{ $batch->code }} (Bât: {{ $batch->building->name ?? 'N/A' }})</option>
+                            <option value="{{ $batch->id }}">{{ __("LOT #") }}{{ $batch->code }} ({{ __("Bât:") }} {{ $batch->building->name ?? __("N/A") }})</option>
                         @endforeach
                     </select>
                 </div>
 
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="text-[9px] uppercase text-slate-400 block tracking-widest font-black mb-1 italic">Cadavres *</label>
-                        <input type="number" name="mortality_count" required min="1" placeholder="Nb." class="w-full bg-slate-50 border-none rounded-xl p-4 font-black text-xs text-rose-600 shadow-inner focus:ring-2 focus:ring-rose-500 text-center">
+                        <label class="text-[9px] uppercase text-slate-400 block tracking-widest font-black mb-1 italic">{{ __("Cadavres *") }}</label>
+                        <input type="number" name="mortality_count" required min="1" placeholder="{{ __('Nb.') }}" class="w-full bg-slate-50 border-none rounded-xl p-4 font-black text-xs text-rose-600 shadow-inner focus:ring-2 focus:ring-rose-500 text-center">
                     </div>
                     <div>
-                        <label class="text-[9px] uppercase text-slate-400 block tracking-widest font-black mb-1 italic">Photo Autopsie</label>
+                        <label class="text-[9px] uppercase text-slate-400 block tracking-widest font-black mb-1 italic">{{ __("Photo Autopsie") }}</label>
                         <input type="file" name="photo" accept="image/jpeg, image/png" capture="environment" class="w-full bg-slate-50 border-none rounded-xl p-3 text-[10px] shadow-inner file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:font-black file:bg-rose-100 file:text-rose-700 hover:file:bg-rose-200 cursor-pointer">
                     </div>
                 </div>
 
                 <div>
-                    <label class="text-[9px] uppercase text-slate-400 block tracking-widest font-black mb-1 italic">Symptômes & Observations *</label>
-                    <textarea name="symptoms" required rows="3" placeholder="Ex: Diarrhée sanguinolente, prostration, râles respiratoires..." class="w-full bg-slate-50 border-none rounded-xl p-4 text-xs font-bold text-slate-700 focus:ring-2 focus:ring-rose-500 shadow-inner"></textarea>
+                    <label class="text-[9px] uppercase text-slate-400 block tracking-widest font-black mb-1 italic">{{ __("Symptômes & Observations *") }}</label>
+                    <textarea name="symptoms" required rows="3" placeholder="{{ __('Ex: Diarrhée sanguinolente, prostration, râles respiratoires...') }}" class="w-full bg-slate-50 border-none rounded-xl p-4 text-xs font-bold text-slate-700 focus:ring-2 focus:ring-rose-500 shadow-inner"></textarea>
                 </div>
 
                 <div class="pt-2">
                     <button type="submit" class="w-full bg-slate-900 text-white py-5 rounded-xl font-black uppercase tracking-widest transition-all hover:bg-rose-600 text-[10px] shadow-lg flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-paper-plane"></i> Transmettre au Vétérinaire
+                        <i class="fa-solid fa-paper-plane"></i> {{ __("Transmettre au Vétérinaire") }}
                     </button>
                 </div>
             </form>

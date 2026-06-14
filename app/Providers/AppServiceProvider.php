@@ -48,6 +48,25 @@ class AppServiceProvider extends ServiceProvider
             }
         }
 
+        // ─── 1b. FUSEAU HORAIRE PILOTÉ PAR LES PARAMÈTRES ───
+        // Le réglage general.timezone (Paramètres > Général) était éditable mais
+        // jamais appliqué. On l'applique ici s'il est valide (sinon on ignore).
+        //
+        // Schema::hasTable() lui-même peut lever (ex : fichier SQLite encore
+        // inexistant sur une toute première installation), donc il doit être
+        // dans le try/catch, pas seulement la lecture du paramètre.
+        try {
+            if (! config('app.database_down') && Schema::hasTable('settings')) {
+                $tz = setting('general.timezone');
+                if ($tz && in_array($tz, timezone_identifiers_list(), true)) {
+                    config(['app.timezone' => $tz]);
+                    date_default_timezone_set($tz);
+                }
+            }
+        } catch (\Throwable $e) {
+            // Base de données ou paramètres indisponibles (installation en cours, etc.) : on garde la valeur par défaut.
+        }
+
         // ─── 2. OBSERVERS ───
         if (! config('app.database_down')) {
             \App\Models\Batch::observe(\App\Observers\BatchObserver::class);
@@ -81,12 +100,73 @@ class AppServiceProvider extends ServiceProvider
         //    - Pas de colonne is_active sur module_permissions
         // ════════════════════════════════════════════════════════════════
 
-        $globalRoleMap = [
-            'L' => ['admin', 'manager', 'operator', 'viewer'],
-            'C' => ['admin', 'manager', 'operator'],
-            'M' => ['admin', 'manager'],
-            'S' => ['admin'],
+        // Table de correspondance "préfixe de nom de route" → slug module.
+        // Permet aux gates génériques L/C/M/S (utilisés par
+        // ->middleware('can:L'|'can:C'|'can:M'|'can:S') dans routes/web.php)
+        // de résoudre le module concerné par la requête en cours, et donc
+        // d'appliquer la matrice Modules × Rôles route par route.
+        $moduleRouteMap = [
+            'buildings.'        => 'elevage',
+            'batches.'          => 'elevage',
+            'health.'           => 'elevage',
+            'daily-checks.'     => 'elevage',
+            'protocols.'        => 'elevage',
+            'reports.'          => 'elevage',
+
+            'stocks.'           => 'logistique',
+            'dispatches.'       => 'logistique',
+
+            'provenderie.'      => 'provenderie',
+            'raw-materials.'    => 'provenderie',
+            'formulas.'         => 'provenderie',
+            'norms.'            => 'provenderie',
+            'production.'       => 'provenderie',
+            'machines.'         => 'provenderie',
+            'feed-purchases.'   => 'provenderie',
+
+            'incubations.'      => 'production',
+            'chick-dispatches.' => 'production',
+            'incubators.'       => 'production',
+            'egg-productions.'  => 'production',
+            'egg-movements.'    => 'production',
+
+            'clients.'          => 'commerce',
+            'sales.'            => 'commerce',
+            'payments.'         => 'commerce',
+
+            'expenses.'         => 'depenses',
+
+            'utilities.'        => 'ressources',
+            'notifications.'    => 'notifications',
+
+            'planning.'         => 'planning',
+            'tasks.'            => 'planning',
+
+            'slaughter.'        => 'abattoir',
+
+            'employees.'        => 'annuaire',
+            'providers.'        => 'annuaire',
+            'payroll.'          => 'annuaire',
+
+            'users.'            => 'admin',
+            'roles.'            => 'admin',
+            'admin.'            => 'admin',
+            'settings.'         => 'admin',
+            'farms.'            => 'admin',
+            'trash.'            => 'admin',
+            'api.species.'      => 'admin',
         ];
+
+        $resolveModuleSlug = function () use ($moduleRouteMap) {
+            $name = request()->route()?->getName();
+            if (! $name) return null;
+
+            foreach ($moduleRouteMap as $prefix => $slug) {
+                if (str_starts_with($name, $prefix)) return $slug;
+            }
+
+            return null;
+        };
 
         /**
          * Helper : charge les permissions modules via role_id.
@@ -144,21 +224,29 @@ class AppServiceProvider extends ServiceProvider
         });
 
         // ─── B. GATES GLOBAUX (L, C, M, S) ───
+        // La matrice Modules × Rôles (`module_permissions`) est la SEULE
+        // source de vérité (chaque rôle possède une ligne par module — cf.
+        // migrations 2026_06_10_000004 et 2026_06_14_000001). Plus aucun
+        // fallback sur un rôle global : un module non coché = aucun accès.
         foreach (['L', 'C', 'M', 'S'] as $perm) {
-            Gate::define($perm, function (?User $user) use ($perm, $globalRoleMap, $getModulePerms) {
+            Gate::define($perm, function (?User $user) use ($perm, $getModulePerms, $resolveModuleSlug) {
                 if (! $user) return false;
 
                 // Mode offline : L et C uniquement
                 if (config('app.database_down')) return in_array($perm, ['L', 'C']);
 
-                $roleName = $user->userRole?->name ?? '';
+                $modulePerms = $getModulePerms($user->id);
+                $slug = $resolveModuleSlug();
 
-                // Rôle global autorise ?
-                if (in_array($roleName, $globalRoleMap[$perm])) return true;
+                if ($slug !== null) {
+                    // Module identifié : la matrice décide seule.
+                    return ! empty($modulePerms[$slug][$perm]);
+                }
 
-                // Fallback : au moins 1 module avec cette permission
-                foreach ($getModulePerms($user->id) as $modulePerms) {
-                    if (! empty($modulePerms[$perm])) return true;
+                // Route non rattachée à un module précis (ex: dashboard) :
+                // accès si au moins un module accorde cette permission.
+                foreach ($modulePerms as $perms) {
+                    if (! empty($perms[$perm])) return true;
                 }
 
                 return false;
@@ -170,7 +258,7 @@ class AppServiceProvider extends ServiceProvider
         $fallbackSlugs = [
             'dashboard', 'elevage', 'production', 'provenderie', 'planning',
             'abattoir', 'commerce', 'logistique', 'ressources', 'notifications',
-            'annuaire', 'admin', 'rh', 'couvoir', 'stocks',
+            'annuaire', 'admin', 'rh', 'couvoir', 'stocks', 'depenses',
         ];
 
         try {
@@ -185,20 +273,16 @@ class AppServiceProvider extends ServiceProvider
 
         foreach ($slugs as $slug) {
             foreach (['L', 'C', 'M', 'S'] as $perm) {
-                Gate::define("{$slug}.{$perm}", function (?User $user) use ($slug, $perm, $globalRoleMap, $getModulePerms) {
+                Gate::define("{$slug}.{$perm}", function (?User $user) use ($slug, $perm, $getModulePerms) {
                     if (! $user) return false;
                     if (config('app.database_down')) return in_array($perm, ['L', 'C']);
 
-                    $roleName = $user->userRole?->name ?? '';
-
                     // Admin bypass (géré par Gate::before, mais sécurité double)
-                    if ($roleName === 'admin') return true;
+                    if (($user->userRole?->name ?? '') === 'admin') return true;
 
-                    // Rôle global = accès universel sur ce niveau
-                    if (in_array($roleName, $globalRoleMap[$perm])) return true;
+                    $modulePerms = $getModulePerms($user->id);
 
-                    // Permission spécifique au module
-                    return ! empty($getModulePerms($user->id)[$slug][$perm]);
+                    return ! empty($modulePerms[$slug][$perm]);
                 });
             }
         }

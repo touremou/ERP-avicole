@@ -6,15 +6,15 @@
                     <i class="fa-solid fa-gears"></i>
                 </div>
                 <div class="text-left">
-                    <h2 class="text-2xl text-slate-800 leading-none">Parc Machines</h2>
-                    <p class="text-[10px] text-slate-400 mt-1 tracking-[0.3em]">Maintenance & Performance</p>
+                    <h2 class="text-2xl text-slate-800 leading-none">{{ __("Parc Machines") }}</h2>
+                    <p class="text-[10px] text-slate-400 mt-1 tracking-[0.3em]">{{ __("Maintenance & Performance") }}</p>
                 </div>
             </div>
 
             {{-- Permission C : Ajout de machine --}}
             @can('provenderie.C')
             <button onclick="openModal('modal-add')" class="bg-slate-900 text-white px-8 py-4 rounded-[2rem] text-[10px] font-black uppercase italic tracking-widest shadow-2xl hover:bg-emerald-500 transition-all active:scale-95">
-                <i class="fa-solid fa-plus mr-2 text-emerald-400"></i> Nouvelle Machine
+                <i class="fa-solid fa-plus mr-2 text-emerald-400"></i> {{ __("Nouvelle Machine") }}
             </button>
             @endcan
         </div>
@@ -39,7 +39,7 @@
                 ])>
                     
                     {{-- MENU OPTIONS --}}
-                    <div class="absolute top-8 left-8 flex gap-2 opacity-0 group-hover:opacity-100 transition-all transform -translate-x-2 group-hover:translate-x-0">
+                    <div class="absolute top-8 left-8 flex gap-2 opacity-100 can-hover:opacity-0 can-hover:group-hover:opacity-100 transition-all transform translate-x-0 can-hover:-translate-x-2 can-hover:group-hover:translate-x-0">
                         @if($machine->status != 'Désactivé')
                             {{-- Permission M : Edition --}}
                             @can('provenderie.M')
@@ -51,12 +51,12 @@
                             {{-- Permission S : Suppression --}}
                             @can('provenderie.S')
                                 @if($machine->hasProductionHistory())
-                                    <div title="Historique existant : Désactivation conseillée" 
+                                    <div title="{{ __('Historique existant : Désactivation conseillée') }}"
                                          class="w-8 h-8 bg-slate-100 text-slate-400 rounded-xl flex items-center justify-center cursor-help border border-slate-200">
                                         <i class="fa-solid fa-lock text-[10px]"></i>
                                     </div>
                                 @else
-                                    <form action="{{ route('machines.destroy', $machine->id) }}" method="POST" onsubmit="return confirm('Supprimer définitivement ?')">
+                                    <form action="{{ route('machines.destroy', $machine->id) }}" method="POST" onsubmit="return confirm({{ Js::from(__('Supprimer définitivement ?')) }})">
                                         @csrf @method('DELETE')
                                         <button type="submit" class="w-8 h-8 bg-white text-red-500 border border-red-100 rounded-xl flex items-center justify-center hover:bg-red-500 hover:text-white transition-colors shadow-lg">
                                             <i class="fa-solid fa-trash text-[10px]"></i>
@@ -66,7 +66,7 @@
                             @endcan
                         @else
                             <div class="px-3 py-1 bg-slate-200 text-slate-500 rounded-lg text-[7px] font-black uppercase italic border border-slate-300 shadow-inner">
-                                <i class="fa-solid fa-lock mr-1"></i> Fiche Archivée
+                                <i class="fa-solid fa-lock mr-1"></i> {{ __("Fiche Archivée") }}
                             </div>
                         @endif
                     </div>
@@ -80,7 +80,7 @@
                             'bg-red-100 text-red-600 border border-red-200' => $machine->status == 'En Panne',
                             'bg-slate-200 text-slate-500' => $machine->status == 'Désactivé'
                         ])>
-                            ● {{ $machine->status }}
+                            ● {{ __($machine->status) }}
                         </span>
                     </div>
 
@@ -101,23 +101,23 @@
                         @php
                             $progress = $machine->maintenance_progress;
                             $barColor = 'bg-slate-900';
-                            $statusLabel = 'SANTÉ : OPTIMALE';
+                            $statusLabel = __('SANTÉ : OPTIMALE');
                             $statusClass = 'text-emerald-500';
 
                             if ($machine->needs_maintenance) {
                                 $barColor = 'bg-red-500 animate-pulse';
-                                $statusLabel = 'CRITIQUE : ARRÊT REQUIS';
+                                $statusLabel = __('CRITIQUE : ARRÊT REQUIS');
                                 $statusClass = 'text-red-600';
                             } elseif ($progress >= 75) {
                                 $barColor = 'bg-amber-500';
-                                $statusLabel = 'PRÉVENTIF : RÉVISION PROCHE';
+                                $statusLabel = __('PRÉVENTIF : RÉVISION PROCHE');
                                 $statusClass = 'text-amber-600';
                             }
                         @endphp
 
                         <div class="flex justify-between items-end">
                             <div class="text-left">
-                                <p class="text-[10px] font-black text-slate-800 uppercase italic leading-none tracking-tighter">Cycle de Vie</p>
+                                <p class="text-[10px] font-black text-slate-800 uppercase italic leading-none tracking-tighter">{{ __("Cycle de Vie") }}</p>
                                 <p class="text-[8px] {{ $statusClass }} font-black uppercase mt-1 italic tracking-widest">{{ $statusLabel }}</p>
                             </div>
                             <p class="text-lg font-black italic leading-none {{ $progress >= 90 ? 'text-red-600' : '' }}">{{ $progress }}%</p>
@@ -128,8 +128,8 @@
                         </div>
 
                         <div class="flex justify-between items-center text-[8px] text-slate-400 uppercase italic">
-                            <p>Utilisation : <strong>{{ number_format($machine->total_hours_run, 2) }}h</strong></p>
-                            <p>Limite : {{ $machine->maintenance_interval_hours }}h</p>
+                            <p>{{ __("Utilisation") }} : <strong>{{ number_format($machine->total_hours_run, 2) }}h</strong></p>
+                            <p>{{ __("Limite") }} : {{ $machine->maintenance_interval_hours }}h</p>
                         </div>
                     </div>
 
@@ -146,7 +146,7 @@
                                         'bg-slate-900 text-white hover:bg-emerald-500' => $machine->status != 'Désactivé',
                                         'bg-slate-100 text-slate-300 cursor-not-allowed shadow-none' => $machine->status == 'Désactivé'
                                     ])>
-                                <i class="fa-solid fa-screwdriver-wrench mr-1"></i> Révision
+                                <i class="fa-solid fa-screwdriver-wrench mr-1"></i> {{ __("Révision") }}
                             </button>
 
                             <form action="{{ route('machines.status', $machine->id) }}" method="POST">
@@ -160,7 +160,7 @@
                                             'bg-slate-50 text-slate-400 hover:bg-red-500 hover:text-white' => $machine->status != 'En Panne' && $machine->status != 'Désactivé',
                                             'bg-slate-100 text-slate-200 cursor-not-allowed shadow-none' => $machine->status == 'Désactivé'
                                         ])>
-                                    {{ $machine->status == 'En Panne' ? 'Réactiver' : 'Signaler Panne' }}
+                                    {{ $machine->status == 'En Panne' ? __('Réactiver') : __('Signaler Panne') }}
                                 </button>
                             </form>
                             @endcan
@@ -177,7 +177,7 @@
                                 'bg-white text-slate-400 border-slate-100 hover:bg-slate-900 hover:text-white' => $machine->status != 'Désactivé'
                             ])>
                                 <i class="fa-solid {{ $machine->status == 'Désactivé' ? 'fa-power-off' : 'fa-ban' }} mr-2"></i>
-                                {{ $machine->status == 'Désactivé' ? 'Réactiver la machine' : 'Mise au rebut (Désactiver)' }}
+                                {{ $machine->status == 'Désactivé' ? __('Réactiver la machine') : __('Mise au rebut (Désactiver)') }}
                             </button>
                         </form>
                         @endcan
@@ -193,30 +193,30 @@
      @can('provenderie.C')
     <div id="modal-add" class="fixed inset-0 bg-slate-900/90 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-[3rem] p-10 max-w-lg w-full shadow-2xl overflow-hidden text-left">
-            <h3 class="text-2xl font-black text-slate-900 uppercase italic tracking-tighter mb-8">Nouvelle Machine</h3>
+            <h3 class="text-2xl font-black text-slate-900 uppercase italic tracking-tighter mb-8">{{ __("Nouvelle Machine") }}</h3>
             <form action="{{ route('machines.store') }}" method="POST" class="space-y-6">
                 @csrf
                 <div class="grid grid-cols-2 gap-4">
                     <div class="col-span-2">
-                        <label class="text-[10px] uppercase tracking-widest text-slate-400 font-black italic">Nom de la machine</label>
+                        <label class="text-[10px] uppercase tracking-widest text-slate-400 font-black italic">{{ __("Nom de la machine") }}</label>
                         <input type="text" name="name" required class="w-full bg-slate-50 border-none rounded-xl p-4 font-bold text-slate-900 focus:ring-2 focus:ring-emerald-500">
                     </div>
                     <div>
-                        <label class="text-[10px] uppercase tracking-widest text-slate-400 font-black italic">Type</label>
+                        <label class="text-[10px] uppercase tracking-widest text-slate-400 font-black italic">{{ __("Type") }}</label>
                         <input type="text" name="type" required class="w-full bg-slate-50 border-none rounded-xl p-4 font-bold text-slate-900 focus:ring-2 focus:ring-emerald-500">
                     </div>
                     <div>
-                        <label class="text-[10px] uppercase tracking-widest text-slate-400 font-black italic">Capacité (kg/h)</label>
+                        <label class="text-[10px] uppercase tracking-widest text-slate-400 font-black italic">{{ __("Capacité (kg/h)") }}</label>
                         <input type="number" step="0.1" min="0" placeholder="0.0" name="capacity_per_hour" required class="w-full bg-slate-50 border-none rounded-xl p-4 font-bold text-slate-900 focus:ring-2 focus:ring-emerald-500">
                     </div>
                     <div class="col-span-2">
-                        <label class="text-[10px] uppercase tracking-widest text-slate-400 font-black italic">Intervalle Maintenance (Heures)</label>
+                        <label class="text-[10px] uppercase tracking-widest text-slate-400 font-black italic">{{ __("Intervalle Maintenance (Heures)") }}</label>
                         <input type="number" name="maintenance_interval_hours" value="500" required class="w-full bg-slate-50 border-none rounded-xl p-4 font-bold text-slate-900 focus:ring-2 focus:ring-emerald-500">
                     </div>
                 </div>
                 <div class="flex gap-4 pt-4">
-                    <button type="button" onclick="closeModal('modal-add')" class="flex-1 py-4 text-[10px] font-black uppercase text-slate-400 hover:text-slate-900 transition-colors">Annuler</button>
-                    <button type="submit" class="flex-1 bg-slate-900 text-white py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-500 shadow-lg transition-all">Enregistrer</button>
+                    <button type="button" onclick="closeModal('modal-add')" class="flex-1 py-4 text-[10px] font-black uppercase text-slate-400 hover:text-slate-900 transition-colors">{{ __("Annuler") }}</button>
+                    <button type="submit" class="flex-1 bg-slate-900 text-white py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-500 shadow-lg transition-all">{{ __("Enregistrer") }}</button>
                 </div>
             </form>
         </div>
@@ -227,30 +227,30 @@
      @can('provenderie.M')
     <div id="modal-edit" class="fixed inset-0 bg-slate-900/90 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-[3rem] p-10 max-w-lg w-full shadow-2xl overflow-hidden text-left">
-            <h3 class="text-2xl font-black text-slate-900 uppercase italic tracking-tighter mb-8">Modifier Machine</h3>
+            <h3 class="text-2xl font-black text-slate-900 uppercase italic tracking-tighter mb-8">{{ __("Modifier Machine") }}</h3>
             <form id="form-edit-machine" method="POST" class="space-y-6">
                 @csrf @method('PUT')
                 <div class="grid grid-cols-2 gap-4">
                     <div class="col-span-2">
-                        <label class="text-[10px] uppercase tracking-widest text-slate-400 font-black italic">Nom de la machine</label>
+                        <label class="text-[10px] uppercase tracking-widest text-slate-400 font-black italic">{{ __("Nom de la machine") }}</label>
                         <input type="text" name="name" id="edit-name" required class="w-full bg-slate-50 border-none rounded-xl p-4 font-bold text-slate-900 focus:ring-2 focus:ring-blue-500">
                     </div>
                     <div>
-                        <label class="text-[10px] uppercase tracking-widest text-slate-400 font-black italic">Type</label>
+                        <label class="text-[10px] uppercase tracking-widest text-slate-400 font-black italic">{{ __("Type") }}</label>
                         <input type="text" name="type" id="edit-type" required class="w-full bg-slate-50 border-none rounded-xl p-4 font-bold text-slate-900 focus:ring-2 focus:ring-blue-500">
                     </div>
                     <div>
-                        <label class="text-[10px] uppercase tracking-widest text-slate-400 font-black italic">Capacité (kg/h)</label>
+                        <label class="text-[10px] uppercase tracking-widest text-slate-400 font-black italic">{{ __("Capacité (kg/h)") }}</label>
                         <input type="number" step="0.1" min="0" placeholder="0.0" name="capacity_per_hour" id="edit-capacity" required class="w-full bg-slate-50 border-none rounded-xl p-4 font-bold text-slate-900 focus:ring-2 focus:ring-blue-500">
                     </div>
                     <div class="col-span-2">
-                        <label class="text-[10px] uppercase tracking-widest text-slate-400 font-black italic">Intervalle Maintenance (Heures)</label>
+                        <label class="text-[10px] uppercase tracking-widest text-slate-400 font-black italic">{{ __("Intervalle Maintenance (Heures)") }}</label>
                         <input type="number" min="0" placeholder="0" name="maintenance_interval_hours" id="edit-interval" required class="w-full bg-slate-50 border-none rounded-xl p-4 font-bold text-slate-900 focus:ring-2 focus:ring-blue-500">
                     </div>
                 </div>
                 <div class="flex gap-4 pt-4">
-                    <button type="button" onclick="closeModal('modal-edit')" class="flex-1 py-4 text-[10px] font-black uppercase text-slate-400">Annuler</button>
-                    <button type="submit" class="flex-1 bg-slate-900 text-white py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-500 shadow-lg transition-all">Mettre à jour</button>
+                    <button type="button" onclick="closeModal('modal-edit')" class="flex-1 py-4 text-[10px] font-black uppercase text-slate-400">{{ __("Annuler") }}</button>
+                    <button type="submit" class="flex-1 bg-slate-900 text-white py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-500 shadow-lg transition-all">{{ __("Mettre à jour") }}</button>
                 </div>
             </form>
         </div>
@@ -261,23 +261,23 @@
      @can('provenderie.M')
     <div id="modal-maintenance" class="fixed inset-0 bg-slate-900/90 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-[3rem] p-10 max-w-lg w-full shadow-2xl text-left">
-            <h3 class="text-2xl font-black text-slate-900 uppercase italic tracking-tighter mb-2">Clôturer Révision</h3>
+            <h3 class="text-2xl font-black text-slate-900 uppercase italic tracking-tighter mb-2">{{ __("Clôturer Révision") }}</h3>
             <p id="maint-machine-name" class="text-[10px] font-bold text-emerald-500 uppercase mb-8 italic tracking-widest"></p>
             <form id="form-maintenance" method="POST" class="space-y-6">
                 @csrf @method('PUT')
                 <div>
-                    <label class="text-[10px] uppercase tracking-widest text-slate-400 font-black italic">Rapport d'intervention</label>
-                    <textarea name="description" required placeholder="Détaillez les travaux effectués..." class="w-full bg-slate-50 border-none rounded-2xl p-4 font-bold text-slate-900 focus:ring-2 focus:ring-emerald-500 min-h-[100px]"></textarea>
+                    <label class="text-[10px] uppercase tracking-widest text-slate-400 font-black italic">{{ __("Rapport d'intervention") }}</label>
+                    <textarea name="description" required placeholder="{{ __("Détaillez les travaux effectués...") }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-bold text-slate-900 focus:ring-2 focus:ring-emerald-500 min-h-[100px]"></textarea>
                 </div>
                 <div class="p-4 bg-emerald-50 rounded-2xl border border-emerald-100 flex items-start gap-3">
                     <i class="fa-solid fa-circle-info text-emerald-500 mt-1"></i>
                     <p class="text-[9px] text-emerald-700 leading-tight italic">
-                        Note : Cette action réinitialise le compteur de <strong id="maint-hours-display">0</strong>h à 0h.
+                        {{ __("Note : Cette action réinitialise le compteur de") }} <strong id="maint-hours-display">0</strong>h {{ __("à 0h.") }}
                     </p>
                 </div>
                 <div class="flex gap-4 pt-4">
-                    <button type="button" onclick="closeModal('modal-maintenance')" class="flex-1 py-4 text-[10px] font-black uppercase text-slate-400">Annuler</button>
-                    <button type="submit" class="flex-1 bg-slate-900 text-white py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-500 shadow-xl">Valider & Reset</button>
+                    <button type="button" onclick="closeModal('modal-maintenance')" class="flex-1 py-4 text-[10px] font-black uppercase text-slate-400">{{ __("Annuler") }}</button>
+                    <button type="submit" class="flex-1 bg-slate-900 text-white py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-500 shadow-xl">{{ __("Valider & Reset") }}</button>
                 </div>
             </form>
         </div>
@@ -316,7 +316,7 @@
             let url = "{{ route('machines.reset', ':id') }}";
             form.action = url.replace(':id', id);
             
-            if(nameDisplay) nameDisplay.innerText = `MACHINE : ${name}`;
+            if(nameDisplay) nameDisplay.innerText = `{{ __("MACHINE") }} : ${name}`;
             if(hoursDisplay) hoursDisplay.innerText = hours;
             
             openModal('modal-maintenance');

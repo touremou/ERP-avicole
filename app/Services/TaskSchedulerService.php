@@ -25,8 +25,12 @@ class TaskSchedulerService
         // Templates = globaux (pas de farm_id)
         $templates = TaskTemplate::withoutGlobalScopes()->where('is_active', true)->get();
 
-        // Bâtiments et employés = filtrés par ferme
-        $buildingQuery = Building::whereHas('batches', fn($q) => $q->where('status', 'Actif'));
+        // Bâtiments et employés = filtrés par ferme.
+        // On exclut les bâtiments virtuels (cf. Building::physical) et on
+        // n'exige que des lots RÉELS actifs (->live), pour qu'aucun bâtiment
+        // ni lot virtuel de traçabilité ne génère de tâches.
+        $buildingQuery = Building::physical()
+            ->whereHas('batches', fn($q) => $q->active()->live());
         $employeeQuery = Employee::where('status', 'Actif');
 
         if ($farmId && Schema::hasColumn('buildings', 'farm_id')) {
@@ -50,8 +54,9 @@ class TaskSchedulerService
                     foreach ($activeBuildings as $building) {
                         if ($tpl->batch_types) {
                             $hasBatchType = Batch::where('building_id', $building->id)
-                                ->where('status', 'Actif')
-                                ->whereIn('type', $tpl->batch_types)
+                                ->active()
+                                ->live()
+                                ->whereHas('productionType', fn ($q) => $q->whereIn('slug', $tpl->batch_types))
                                 ->exists();
                             if (! $hasBatchType) continue;
                         }
@@ -133,7 +138,7 @@ class TaskSchedulerService
             if ($assigned) return $assigned;
         }
 
-        $batch = Batch::where('building_id', $building->id)->where('status', 'Actif')->first();
+        $batch = Batch::where('building_id', $building->id)->active()->live()->first();
         if ($batch && $batch->employee_id) {
             $emp = $employees->where('id', $batch->employee_id)->first();
             if ($emp) return $emp;

@@ -14,3 +14,6 @@ Schedule::command('farm:release-buildings')->daily();
 Schedule::command('stocks:sync')->daily();
 
 Schedule::command('tasks:generate')->dailyAt('05:00');
+
+// Résumé quotidien WhatsApp — heure pilotée par le paramètre whatsapp.daily_summary_hour
+Schedule::command('avismart:daily-summary')->dailyAt(setting('whatsapp.daily_summary_hour', '07:00'));

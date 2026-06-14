@@ -6,6 +6,7 @@ use App\Models\Batch;
 use App\Models\Building;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\Rule;
 
 /**
  * Validation pour le transfert d'un lot vers un autre bâtiment.
@@ -27,10 +28,29 @@ class TransferBatchRequest extends FormRequest
 
     public function rules(): array
     {
+        // Phases historiques (volaille). Pour les espèces non-volailles
+        // (ruminants, aquaculture, ...), la mutation ne change pas la phase
+        // de production : on autorise donc aussi la phase/le type courant
+        // du lot, déjà sélectionné comme seule option dans le formulaire.
+        $allowedPhases = ['poussiniere', 'chair', 'ponte', 'reproducteur'];
+
+        $batch = $this->route('batch');
+        if (! $batch instanceof Batch) {
+            $batch = Batch::find($batch);
+        }
+
+        if ($batch) {
+            foreach ([$batch->production_phase, $batch->type] as $value) {
+                if ($value && ! in_array($value, $allowedPhases, true)) {
+                    $allowedPhases[] = $value;
+                }
+            }
+        }
+
         return [
             'target_building_id' => 'required|integer|exists:buildings,id',
             'new_protocol_id'    => 'required|integer|exists:protocols,id',
-            'new_phase'          => 'required|in:poussiniere,chair,ponte,reproducteur',
+            'new_phase'          => ['required', Rule::in($allowedPhases)],
             'transfer_date'      => 'required|date',
             'notes'              => 'nullable|string|max:1000',
         ];
@@ -53,7 +73,7 @@ class TransferBatchRequest extends FormRequest
             }
 
             // S-09 : Lot doit être actif
-            if ($batch->status !== 'Actif') {
+            if (! $batch->isActive()) {
                 $validator->errors()->add('status', "Le lot {$batch->code} n'est pas actif (statut : {$batch->status}). Transfert impossible.");
                 return;
             }
@@ -73,7 +93,7 @@ class TransferBatchRequest extends FormRequest
 
             // Capacité
             $currentOccupation = Batch::where('building_id', $targetBuilding->id)
-                ->where('status', 'Actif')
+                ->active()
                 ->sum('current_quantity');
 
             $available = $targetBuilding->capacity - $currentOccupation;

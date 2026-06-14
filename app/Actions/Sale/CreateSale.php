@@ -27,6 +27,9 @@ class CreateSale
 
             // ─── 1. CRÉER LA VENTE ───
             $sale = Sale::create([
+                // uuid fourni lors d'une synchro hors-ligne (idempotence) ; sinon
+                // le trait HasStandardUuid en génère un automatiquement.
+                'uuid'             => $data['uuid'] ?? null,
                 'reference'        => SaleNumberingService::generate($data['type'] ?? 'bon_livraison'),
                 'client_id'        => $data['client_id'],
                 'user_id'          => Auth::id(),
@@ -42,7 +45,7 @@ class CreateSale
 
             // ─── 2. CRÉER LES LIGNES ───
             foreach ($data['items'] as $item) {
-                $total = (float) $item['quantity'] * (float) $item['unit_price'];
+                $total = round((float) $item['quantity'] * (float) $item['unit_price'], 2);
 
                 SaleItem::create([
                     'sale_id'      => $sale->id,

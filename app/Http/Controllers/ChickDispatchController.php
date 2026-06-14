@@ -20,6 +20,15 @@ use Illuminate\Support\Str;
 
 class ChickDispatchController extends Controller
 {
+    /**
+     * Vocations de bâtiment aptes à accueillir des poussins (volaille).
+     * Un poussin peut être démarré en poussinière, en bâtiment chair, ou
+     * directement en bâtiment ponte/reproducteur (élevage de poulettes /
+     * futurs reproducteurs), ou en mixte. Les vocations non-volaille
+     * (laiterie, bassins aquacoles…) sont exclues.
+     */
+    private const POULTRY_BUILDING_TYPES = ['poussiniere', 'chair', 'ponte', 'reproducteur', 'mixte'];
+
     public function show(Incubation $incubation)
     {
         if (Gate::denies('elevage.L')) return back()->with('error', 'Accès restreint.');
@@ -29,12 +38,19 @@ class ChickDispatchController extends Controller
         $remaining = $this->getRemaining($incubation);
         $dispatches = $incubation->chickDispatches()->orderBy('created_at', 'desc')->get();
 
-        $buildings = Building::whereIn('type', ['poussiniere', 'chair', 'mixte'])
-            ->orderBy('name')->get();
+        // Bâtiments physiques (hors zone virtuelle de traçabilité) à vocation
+        // volaille, enrichis de leur place restante (capacité − effectif actif).
+        $buildings = Building::physical()
+            ->whereIn('type', self::POULTRY_BUILDING_TYPES)
+            ->withSum(['batches as active_quantity' => fn ($q) => $q->active()], 'current_quantity')
+            ->orderBy('name')->get()
+            ->each(function (Building $b) {
+                $b->remaining_places = max(0, (int) $b->capacity - (int) $b->active_quantity);
+            });
         $clients = Client::orderBy('name')->get();
         $employees = Employee::where('status', 'actif')->orderBy('first_name')->get();
 
-        return view('repro.dispatch', compact(
+        return view('incubations.dispatch', compact(
             'incubation', 'remaining', 'dispatches', 'buildings', 'clients', 'employees'
         ));
     }
@@ -63,6 +79,27 @@ class ChickDispatchController extends Controller
             'unit_price'       => ['nullable', 'required_if:destination_type,vente', 'numeric', 'min:0'],
         ]);
 
+        // ═══ CONTRÔLE BÂTIMENT (type + capacité) pour la mise en élevage ═══
+        // Un lot ne doit pas atterrir dans un bâtiment de vocation incompatible
+        // (ex. zone de ponte/repro) ni au-delà de la capacité disponible.
+        if ($validated['destination_type'] === 'elevage') {
+            $building = Building::findOrFail($validated['building_id']);
+
+            if (! in_array($building->type, self::POULTRY_BUILDING_TYPES, true)) {
+                return back()->withErrors([
+                    'building_id' => "Le bâtiment {$building->name} (type « {$building->type} ») ne peut pas accueillir de poussins. Types autorisés : poussinière, chair, ponte, reproducteur, mixte.",
+                ])->withInput();
+            }
+
+            $occupied  = (int) Batch::where('building_id', $building->id)->active()->sum('current_quantity');
+            $available = (int) $building->capacity - $occupied;
+            if ((int) $validated['quantity'] > $available) {
+                return back()->withErrors([
+                    'building_id' => "Capacité insuffisante dans {$building->name} : {$validated['quantity']} poussins demandés, {$available} places disponibles (capacité {$building->capacity}, occupé {$occupied}).",
+                ])->withInput();
+            }
+        }
+
         return DB::transaction(function () use ($incubation, $validated) {
             $qty = (int) $validated['quantity'];
             $dest = $validated['destination_type'];
@@ -81,20 +118,33 @@ class ChickDispatchController extends Controller
 
             // ═══ ÉLEVAGE → Créer lot poussinière ═══
             if ($dest === 'elevage') {
+                // Héritage depuis le lot source de l'incubation (traçabilité) :
+                // espèce et fournisseur d'origine. Le type de production devient
+                // « poussiniere » de l'espèce héritée. provider_id peut être null
+                // (éclosion à la ferme, sans achat).
+                $sourceBatch = $incubation->batch;
+                $speciesId   = $sourceBatch?->species_id;
+                $productionTypeId = \App\Models\ProductionType::resolveOrCreate('poussiniere', $speciesId)->id;
+
                 $batch = Batch::create([
                     'uuid'                   => (string) Str::uuid(),
                     'code'                   => setting('elevage.batch_prefix_poussiniere', 'POUS') . '-' . now()->format('Ymd-His'),
-                    'type'                   => 'poussiniere',
+                    'species_id'             => $speciesId,
+                    'production_type_id'     => $productionTypeId,
                     'building_id'            => $validated['building_id'],
                     'employee_id'            => $validated['employee_id'] ?? null,
-                    'provider_id'            => $incubation->provider_id ?? null,
-                    'model_name'             => $incubation->batch?->model_name ?? null,
+                    'provider_id'            => $sourceBatch?->provider_id,
+                    'model_name'             => $sourceBatch?->model_name ?? 'Non spécifié',
                     'initial_quantity'        => $qty,
                     'current_quantity'        => $qty,
-                    'qty_alive'              => $qty,
                     'qty_dead'               => 0,
+                    'qty_males'              => 0,
+                    'qty_females'            => 0,
                     'arrival_date'           => now()->toDateString(),
                     'expected_end_date'      => now()->addDays(90),
+                    'avg_weight_start'       => 0,
+                    'planned_density'        => 0,
+                    'arrival_mortality_rate' => 0,
                     'buy_price_per_unit'     => 0,
                     'total_acquisition_cost'  => 0,
                     'status'                 => 'Actif',
@@ -102,6 +152,9 @@ class ChickDispatchController extends Controller
                     'observations'           => "Couvoir — {$incubation->code_incubation}",
                     'is_synced'              => true,
                 ]);
+
+                // Le bâtiment accueille désormais un lot actif.
+                Building::where('id', $validated['building_id'])->update(['status' => Building::STATUS_OCCUPE]);
 
                 $dispatchData['batch_id'] = $batch->id;
                 $message = "{$qty} poussins démarrés en poussinière → Lot {$batch->code}";

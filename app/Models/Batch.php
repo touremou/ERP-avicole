@@ -28,17 +28,55 @@ class Batch extends Model
 {
     use HasFactory, SoftDeletes, HasStandardUuid, BelongsToFarm;
 
+    /**
+     * Statuts du cycle de vie d'un lot (valeurs stockées en base dans la
+     * colonne `status`). Source unique de vérité référencée par les
+     * Actions (CreateBatch, CloseBatch, ReopenBatch, TransferBatch,
+     * UpdateBatch), les Requests de validation et les vues `batches/*`.
+     *
+     * ⚠️ Ces valeurs sont historiques (françaises, avec accents) — un
+     * renommage casserait les enregistrements existants.
+     */
+    public const STATUS_ACTIF   = 'Actif';
+    public const STATUS_TERMINE = 'Terminé';
+    public const STATUS_CLOTURE = 'Clôturé';
+    public const STATUS_VENDU   = 'Vendu';
+    public const STATUS_ANNULE  = 'Annulé';
+
+    /**
+     * Statuts « archivés » : le lot n'est plus en production active.
+     * Référencé par scopeArchived() et les rapports/plannings.
+     */
+    public const STATUS_ARCHIVED = [
+        self::STATUS_TERMINE,
+        self::STATUS_CLOTURE,
+        self::STATUS_VENDU,
+        self::STATUS_ANNULE,
+    ];
+
+    /**
+     * Statuts sélectionnables manuellement depuis le formulaire d'édition
+     * (resources/views/batches/edit.blade.php). « Clôturé » et « Vendu »
+     * sont positionnés exclusivement par des actions dédiées (clôture de
+     * lot, vente de réforme) et ne sont donc pas proposés ici.
+     */
+    public const EDITABLE_STATUSES = [
+        self::STATUS_ACTIF,
+        self::STATUS_TERMINE,
+        self::STATUS_ANNULE,
+    ];
+
     protected $fillable = [
         // Sync offline
         'uuid', 'is_synced', 'last_sync_at',
 
         // Identité
-        'farm_id','code', 'type', 'model_name',
+        'farm_id','code', 'model_name',
 
         // Relations FK
         'building_id', 'employee_id', 'provider_id',
         'protocol_id', 'current_protocol_id',
-        'responsible',
+        'species_id', 'production_type_id',
 
         // Effectifs — current_quantity est la source de vérité
         'initial_quantity', 'current_quantity', 'qty_dead',
@@ -68,6 +106,9 @@ class Batch extends Model
 
         // Scission
         'parent_batch_id',
+
+        // Campagne saisonnière (Tabaski...)
+        'campaign_id',
     ];
 
     // Note : 'qty_alive' est VOLONTAIREMENT absent de $fillable.
@@ -157,6 +198,20 @@ class Batch extends Model
         return $this->hasMany(EggProduction::class);
     }
 
+    /**
+     * Dépenses directes rattachées au lot (registre des dépenses).
+     * Seules les dépenses validées sont comptées dans la marge nette.
+     */
+    public function expenses(): HasMany
+    {
+        return $this->hasMany(Expense::class);
+    }
+
+    public function milkProductions(): HasMany
+    {
+        return $this->hasMany(MilkProduction::class);
+    }
+
     public function tasks(): HasMany
     {
         return $this->hasMany(BatchTask::class);
@@ -172,26 +227,88 @@ class Batch extends Model
         return $this->belongsTo(\App\Models\ProductionType::class);
     }
 
+    public function campaign(): BelongsTo
+    {
+        return $this->belongsTo(Campaign::class);
+    }
+
     // ═══════════════════════════════════════════════
     // HOOKS DE CYCLE DE VIE
     // ═══════════════════════════════════════════════
 
     protected static function booted(): void
     {
+        // Invariant taxonomique : quand un type de production est rattaché, il
+        // est la SOURCE DE VÉRITÉ. On en dérive `species_id` pour que les deux
+        // champs ne divergent jamais. S'exécute avant creating/updating, donc
+        // calculateExpectedEndDate voit déjà la taxonomie synchronisée.
+        static::saving(function (Batch $batch) {
+            $batch->syncTaxonomyFromProductionType();
+        });
+
         static::creating(function (Batch $batch) {
-            $batch->status = $batch->status ?? 'Actif';
+            $batch->status = $batch->status ?? self::STATUS_ACTIF;
             $batch->chick_state = $batch->chick_state ?? 'Normal';
             $batch->calculateExpectedEndDate();
         });
 
         static::updating(function (Batch $batch) {
-            if ($batch->isDirty(['type', 'arrival_date', 'production_type_id'])) {
+            if ($batch->isDirty(['arrival_date', 'production_type_id'])) {
                 $batch->calculateExpectedEndDate();
             }
         });
 
         // NOTE : Les hooks d'impact sur current_quantity sont dans DailyCheckObserver
         // Les hooks d'alerte mortalité et cascade soft-delete sont dans BatchObserver
+    }
+
+    /**
+     * Aligne `species_id` sur le type de production rattaché, qui fait foi.
+     * Sans effet si aucun production_type_id n'est défini.
+     *
+     * Ne requête le référentiel qu'à la création ou lorsque le type de
+     * production change réellement, pour éviter une requête à chaque save.
+     */
+    public function syncTaxonomyFromProductionType(): void
+    {
+        if (! $this->production_type_id) {
+            return;
+        }
+
+        if ($this->exists && ! $this->isDirty('production_type_id')) {
+            return;
+        }
+
+        $productionType = ProductionType::find($this->production_type_id);
+        if (! $productionType) {
+            return;
+        }
+
+        $this->species_id = $productionType->species_id;
+    }
+
+    /**
+     * Slug legacy du type de production rattaché (ex. 'chair', 'ponte').
+     *
+     * `type` n'est plus une colonne de `batches` (cf. migration
+     * 2026_06_13_000005_drop_type_column_from_batches) : c'est désormais un
+     * accessor calculé à partir de `productionType`, conservé pour la
+     * compatibilité ascendante avec le code existant (filtres, libellés,
+     * calculs de phase/secteur d'aliment).
+     */
+    public function getTypeAttribute(): ?string
+    {
+        return $this->productionType?->slug;
+    }
+
+    /**
+     * No-op : `type` n'étant plus une colonne, toute affectation directe
+     * (legacy, factories, tests) est silencieusement ignorée. Piloter la
+     * taxonomie via `production_type_id`.
+     */
+    public function setTypeAttribute($value): void
+    {
+        // Intentionnellement vide.
     }
 
     /**
@@ -205,15 +322,26 @@ class Batch extends Model
         }
 
         // 1. Depuis le type de production (table production_types) — source de vérité multiespèces
-        if ($this->production_type_id && $this->relationLoaded('productionType') && $this->productionType) {
+        if ($this->production_type_id && $this->productionType?->cycle_days_default) {
             $days = $this->productionType->cycle_days_default;
         } else {
             // 2. Depuis les settings (rétrocompat poulet + nouvelles espèces via settings)
             $days = match (strtolower($this->type ?? 'chair')) {
-                'chair'                    => (int) setting('elevage.cycle_chair', 45),
-                'ponte'                    => (int) setting('elevage.cycle_ponte', 540),
+                'chair' => match ($this->species?->slug) {
+                    'dinde'  => (int) setting('elevage.cycle_dinde_chair', 120),
+                    'caille' => (int) setting('elevage.cycle_caille_chair', 42),
+                    default  => (int) setting('elevage.cycle_chair', 45),
+                },
+                'ponte' => match ($this->species?->slug) {
+                    'caille' => (int) setting('elevage.cycle_caille_ponte', 240),
+                    default  => (int) setting('elevage.cycle_ponte', 540),
+                },
                 'poussiniere'              => (int) setting('elevage.cycle_poussiniere', 90),
-                'repro', 'reproducteur'    => (int) setting('elevage.cycle_reproducteur', 450),
+                'repro', 'reproducteur'    => match ($this->species?->slug) {
+                    'mouton' => (int) setting('elevage.cycle_ovin_reproducteur', 180),
+                    default  => (int) setting('elevage.cycle_reproducteur', 450),
+                },
+                'laitiere'                 => (int) setting('elevage.cycle_caprin_lait', 210),
                 'engraissement'            => (int) setting('elevage.cycle_ovin_engraissement', 90),
                 default                    => 45,
             };
@@ -250,6 +378,196 @@ class Batch extends Model
     public function isGmqTracked(): bool
     {
         return $this->species?->isGmqTracked() ?? false;
+    }
+
+    /** Indique si le lot est actuellement en production (statut Actif). */
+    public function isActive(): bool
+    {
+        return $this->status === self::STATUS_ACTIF;
+    }
+
+    /** Indique si le lot est archivé (terminé, clôturé, vendu ou annulé). */
+    public function isArchived(): bool
+    {
+        return in_array($this->status, self::STATUS_ARCHIVED, true);
+    }
+
+    /**
+     * Indique si le lot fait l'objet d'un suivi de ponte (collecte d'œufs,
+     * couvoir...). Piloté par le type de production de l'espèce, avec
+     * repli sur l'ancienne logique (type legacy) pour les lots volaille
+     * sans species_id.
+     */
+    public function tracksEggs(): bool
+    {
+        return $this->productionType
+            ? $this->productionType->tracks('eggs')
+            : in_array($this->type, ['ponte', 'repro', 'reproducteur']);
+    }
+
+    /**
+     * Indique si le lot fait l'objet d'une collecte de lait (chèvres
+     * laitières, vaches...). Piloté par le type de production, avec repli
+     * sur le flag tracks_milk de l'espèce.
+     */
+    public function tracksMilk(): bool
+    {
+        return $this->productionType
+            ? $this->productionType->tracks('milk')
+            : ($this->species?->tracks_milk ?? false);
+    }
+
+    /**
+     * Phases d'aliment (noms d'articles de stock attendus dans la catégorie
+     * « conso »), par secteur. Source unique de vérité partagée par la vue
+     * show (cartes de stock par phase), le modal d'achat direct (feed-modal),
+     * le Daily Check et le calcul du prix moyen de l'aliment (BatchController).
+     *
+     * Secteurs volaille : Chair / Ponte (cf. feedSector()).
+     * Secteurs ruminants/lapin/porc : Engraissement, Laitière, Reproducteur.
+     * Secteurs aquaculture : Grossissement, Alevinage.
+     */
+    public const FEED_PHASES = [
+        'Chair' => [
+            'Chair Démarrage',
+            'Chair Croissance',
+            'Chair Finition',
+        ],
+        'Ponte' => [
+            'Ponte Démarrage (Poussin)',
+            'Ponte Croissance (Poulette)',
+            'Ponte 1 (Pic de ponte)',
+            'Ponte 2 (Entretien)',
+        ],
+        'Reproducteur' => [
+            'Reproducteur Entretien',
+            'Reproducteur Gestation',
+            'Reproducteur Lactation',
+        ],
+        'Engraissement' => [
+            'Engraissement Démarrage',
+            'Engraissement Croissance',
+            'Engraissement Finition',
+        ],
+        'Laitière' => [
+            'Laitière Préparation vêlage',
+            'Laitière Lactation',
+            'Laitière Tarissement',
+        ],
+        'Grossissement' => [
+            'Grossissement Pré-grossissement',
+            'Grossissement Grossissement',
+            'Grossissement Finition',
+        ],
+        'Alevinage' => [
+            'Alevinage 1er âge',
+            'Alevinage 2e âge',
+        ],
+    ];
+
+    /**
+     * Seuils d'âge FIXES (en jours) de présélection de la phase d'aliment dans
+     * le Daily Check, par secteur (cf. FEED_PHASES). Chaque paire [âge max,
+     * index de phase] est évaluée dans l'ordre ; PHP_INT_MAX sert de défaut.
+     *
+     * Utilisé tel quel pour les secteurs « physiologiques » (Ponte, Laitière,
+     * Reproducteur), pilotés par un événement (mise en ponte, mise bas) plutôt
+     * que par la durée du cycle ; et comme repli pour les secteurs de
+     * croissance quand la durée de cycle est inconnue (cf.
+     * FEED_GROWOUT_FRACTIONS et feedPreselectPhase()).
+     */
+    private const FEED_AGE_THRESHOLDS = [
+        'Chair'         => [[14, 0], [28, 1], [PHP_INT_MAX, 2]],
+        'Ponte'         => [[42, 0], [126, 1], [PHP_INT_MAX, 2]],
+        'Reproducteur'  => [[60, 0], [180, 1], [PHP_INT_MAX, 2]],
+        'Engraissement' => [[30, 0], [60, 1], [PHP_INT_MAX, 2]],
+        'Laitière'      => [[60, 0], [180, 1], [PHP_INT_MAX, 2]],
+        'Grossissement' => [[30, 0], [90, 1], [PHP_INT_MAX, 2]],
+        'Alevinage'     => [[15, 0], [PHP_INT_MAX, 1]],
+    ];
+
+    /**
+     * Fractions cumulées de la durée de cycle (production_types.cycle_days_default)
+     * délimitant les phases d'aliment des secteurs de CROISSANCE — l'aliment y
+     * suit l'âge proportionnellement à la durée de cycle réelle de l'espèce.
+     * Ainsi un poulet de chair (cycle 45 j) et une dinde de chair (cycle 120 j)
+     * basculent de phase à des âges différents mais aux mêmes stades relatifs.
+     *
+     * Chaque valeur est la borne haute (fraction du cycle) de la phase de même
+     * index ; la dernière vaut 1.0 (fin de cycle).
+     */
+    private const FEED_GROWOUT_FRACTIONS = [
+        'Chair'         => [0.30, 0.60, 1.0],
+        'Engraissement' => [0.30, 0.65, 1.0],
+        'Grossissement' => [0.20, 0.60, 1.0],
+        'Alevinage'     => [0.50, 1.0],
+    ];
+
+    /**
+     * Secteur d'aliment du lot, déterminé par son type de production.
+     *
+     * Volaille : « Chair » ou « Ponte » (ponte/repro/reproducteur relèvent
+     * de Ponte ; chair et poussinière relèvent de Chair).
+     * Autres espèces : Engraissement / Laitière / Reproducteur / Grossissement
+     * / Alevinage selon le slug du type de production.
+     */
+    public function feedSector(): string
+    {
+        // Source de vérité : le type de production (cf. ProductionType::feedSector()).
+        if ($this->productionType) {
+            return $this->productionType->feedSector();
+        }
+
+        // Repli legacy : lot sans type de production (volaille mono-espèce).
+        return in_array(strtolower((string) $this->type), ['ponte', 'repro', 'reproducteur'], true)
+            ? 'Ponte'
+            : 'Chair';
+    }
+
+    /**
+     * Liste des phases d'aliment attendues pour ce lot (cf. feedSector()).
+     *
+     * @return array<int, string>
+     */
+    public function feedPhases(): array
+    {
+        return self::FEED_PHASES[$this->feedSector()];
+    }
+
+    /**
+     * Phase d'aliment à présélectionner dans le Daily Check selon l'âge du lot.
+     *
+     * Secteurs de croissance (Chair, Engraissement, Grossissement, Alevinage) :
+     * seuils calés sur la durée de cycle réelle de l'espèce
+     * (production_types.cycle_days_default × fractions, cf.
+     * FEED_GROWOUT_FRACTIONS). Secteurs physiologiques ou cycle inconnu : repli
+     * sur les seuils fixes (cf. FEED_AGE_THRESHOLDS).
+     */
+    public function feedPreselectPhase(int $ageInDays): ?string
+    {
+        $sector = $this->feedSector();
+        $phases = $this->feedPhases();
+
+        // Secteurs de croissance : seuils proportionnels au cycle de l'espèce.
+        $cycle = (int) ($this->productionType?->cycle_days_default ?? 0);
+        if ($cycle > 0 && isset(self::FEED_GROWOUT_FRACTIONS[$sector])) {
+            foreach (self::FEED_GROWOUT_FRACTIONS[$sector] as $index => $fraction) {
+                if ($ageInDays <= $fraction * $cycle) {
+                    return $phases[$index] ?? null;
+                }
+            }
+
+            return $phases[count(self::FEED_GROWOUT_FRACTIONS[$sector]) - 1] ?? null;
+        }
+
+        // Secteurs physiologiques (ponte, repro, laitière) ou cycle inconnu.
+        foreach (self::FEED_AGE_THRESHOLDS[$sector] ?? [] as [$maxAge, $phaseIndex]) {
+            if ($ageInDays <= $maxAge) {
+                return $phases[$phaseIndex] ?? null;
+            }
+        }
+
+        return $phases[0] ?? null;
     }
 
     // ═══════════════════════════════════════════════
@@ -315,7 +633,7 @@ class Batch extends Model
 
         $start = Carbon::parse($this->arrival_date)->startOfDay();
 
-        $end = ($this->status === 'Terminé' && $this->closing_date)
+        $end = ($this->status === self::STATUS_TERMINE && $this->closing_date)
             ? Carbon::parse($this->closing_date)->startOfDay()
             : now()->startOfDay();
 
@@ -368,28 +686,29 @@ class Batch extends Model
     // ═══════════════════════════════════════════════
 
     /**
-     * Marge nette consolidée (tous revenus - tous coûts).
+     * Marge nette consolidée (revenus - coûts).
      *
-     * Correction B-07 : inclut les revenus œufs pour les pondeuses.
+     * Limite connue : le revenu des œufs n'est PAS rattaché au lot. Les œufs
+     * collectés alimentent un stock mutualisé (cf. EggProduction::getMapForStockSync)
+     * puis sont vendus via le module Stock/Ventes sans batch_id (les lignes de
+     * vente ne portent un lot que pour les animaux vifs, jamais pour 'oeufs').
+     * La marge d'un lot de ponte reflète donc la vente de réforme (total_revenue),
+     * le chiffre d'affaires des œufs étant suivi globalement au niveau ferme.
      */
     public function getNetMarginAttribute(): float
     {
-        // Revenus
+        // Revenus enregistrés sur le lot (vente de réforme calculée à la clôture).
         $sellingRevenue = (float) ($this->total_revenue ?? 0);
-        $eggRevenue = (float) $this->eggProductions()->sum(
-            \DB::raw('COALESCE(total_eggs_collected * 0, 0)')
-            // NOTE : EggProduction n'a pas de colonne 'total_price'.
-            // À remplacer par la vraie colonne de revenu quand elle existera.
-            // En attendant, on utilise total_revenue du lot qui est calculé à la clôture.
-        );
 
         // Coûts
         $feedCost = (float) $this->feedPurchases()->sum('total_price');
         $healthCost = (float) $this->healthChecks()->sum('cost');
         $acquisitionCost = (float) ($this->total_acquisition_cost ?? 0);
         $additionalCosts = (float) ($this->additional_costs ?? 0);
+        // Dépenses directes validées rattachées au lot (registre des dépenses).
+        $directExpenses = (float) $this->expenses()->where('status', 'valide')->sum('amount');
 
-        return $sellingRevenue - ($feedCost + $healthCost + $acquisitionCost + $additionalCosts);
+        return $sellingRevenue - ($feedCost + $healthCost + $acquisitionCost + $additionalCosts + $directExpenses);
     }
 
     // ═══════════════════════════════════════════════
@@ -401,11 +720,19 @@ class Batch extends Model
      */
     public function scopeActive($query)
     {
-        return $query->where('status', 'Actif');
+        return $query->where('status', self::STATUS_ACTIF);
     }
     /**
      * Filtre uniquement les lots physiques (animaux vivants).
-     * Exclut les lots virtuels (comme les stocks d'œufs).
+     *
+     * Exclut les lots VIRTUELS de traçabilité (effectif initial nul) :
+     * œufs externes en transit parqués dans le bâtiment virtuel « Zone
+     * Fournisseurs Externes » (cf. StartIncubation), stocks d'œufs, etc.
+     *
+     * À utiliser systématiquement pour toute SÉLECTION (listes déroulantes),
+     * tout COMPTAGE d'effectif et tout RAPPORT : un lot virtuel ne représente
+     * aucun animal réel et ne doit jamais y figurer — au même titre qu'un
+     * bâtiment virtuel (cf. Building::scopePhysical).
      */
     public function scopeLive($query)
     {
@@ -413,11 +740,20 @@ class Batch extends Model
     }
 
     /**
-     * Filtre par type d'exploitation.
+     * Lot virtuel de traçabilité (aucun animal réel : effectif initial nul).
+     * Pendant logique de scopeLive() pour les collections déjà chargées.
+     */
+    public function isVirtual(): bool
+    {
+        return (int) $this->initial_quantity === 0;
+    }
+
+    /**
+     * Filtre par type d'exploitation (slug du type de production rattaché).
      */
     public function scopeByType($query, string $type)
     {
-        return $query->where('type', $type);
+        return $query->whereHas('productionType', fn ($q) => $q->where('slug', $type));
     }
 
     /**
@@ -449,7 +785,7 @@ class Batch extends Model
      */
     public function scopeArchived($query)
     {
-        return $query->whereIn('status', ['Terminé', 'Clôturé', 'Vendu', 'Annulé']);
+        return $query->whereIn('status', self::STATUS_ARCHIVED);
     }
 
     // ═══════════════════════════════════════════════

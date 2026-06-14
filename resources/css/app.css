@@ -13,3 +13,13 @@ input::-webkit-inner-spin-button {
 input[type=number] {
   -moz-appearance: textfield;
 }
+
+/* Masque la barre de défilement tout en gardant le scroll actif
+   (utilisé pour les barres d'outils scrollables sur mobile). */
+.hide-scrollbar {
+  -ms-overflow-style: none;  /* IE et Edge */
+  scrollbar-width: none;     /* Firefox */
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;             /* Chrome, Safari, Opera */
+}

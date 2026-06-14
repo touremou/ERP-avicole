@@ -23,11 +23,17 @@ class DashboardController extends Controller
         // ---------------------------------------------------------
         // 1. EFFECTIFS & MORTALITÉ GLOBALE
         // ---------------------------------------------------------
-        $allActiveBatches = Batch::where('status', 'Actif')
+        $allActiveBatches = Batch::active()
             ->where('initial_quantity', '>', 0)
-            ->with('species')
+            ->with(['species', 'productionType'])
             ->get();
-            
+
+        // Les KPI de ponte (HDP, stock calibré) ne sont pertinents que si
+        // au moins un lot actif fait l'objet d'un suivi d'œufs. Sinon (ferme
+        // 100% ovins/poisson/lapins...) on affiche des KPI génériques.
+        $showEggKpis    = $allActiveBatches->contains(fn ($b) => $b->tracksEggs());
+        $activeLotsCount = $allActiveBatches->count();
+
         $totalBirds = $allActiveBatches->sum('current_quantity');
         $totalInitial = $allActiveBatches->sum('initial_quantity');
         
@@ -46,13 +52,13 @@ class DashboardController extends Controller
         // ---------------------------------------------------------
         // 3. STOCKS & VALORISATION (CMUP)
         // ---------------------------------------------------------
-        $totalEggsStock = Stock::where('category', 'oeufs')
-            ->whereIn('item_name', ['XL', 'L', 'M', 'S'])
+        $totalEggsStock = Stock::where('category', Stock::CAT_OEUFS)
+            ->whereIn('item_name', \App\Models\EggProduction::gradeCodes())
             ->sum('current_quantity');
 
         // Valeur des matières premières (calculée sur le dernier prix d'achat connu ou CMUP)
         // On part du principe que tu as une colonne 'unit_price' ou qu'on la récupère du dernier achat
-        $rawMaterialsValue = Stock::where('category', 'conso')->get()->sum(function($item) {
+        $rawMaterialsValue = Stock::where('category', Stock::CAT_CONSO)->get()->sum(function($item) {
             $lastPurchase = DB::table('feed_purchases')->where('feed_type', $item->item_name)->latest('purchase_date')->first();
             $cmup = $lastPurchase ? $lastPurchase->unit_price : 0;
             return $item->current_quantity * $cmup;
@@ -61,14 +67,21 @@ class DashboardController extends Controller
         // ---------------------------------------------------------
         // 4. MARGE NETTE ESTIMÉE DU MOIS (Ventes - Coûts réels)
         // ---------------------------------------------------------
-        // A. Chiffre d'Affaires du mois (Sorties magasin x Prix de vente moyen)
-        // A. Chiffre d'Affaires du mois (Sorties magasin x Prix de vente moyen)
-        $caEstime = DB::table('stock_movements')
-            ->join('stocks', 'stock_movements.stock_id', '=', 'stocks.id') // <-- CORRECTION ICI
-            ->where('stocks.category', 'oeufs')
-            ->where('stock_movements.type', 'out')
-            ->whereMonth('stock_movements.created_at', now()->month)
-            ->sum(DB::raw('stock_movements.quantity * 30 * 1500')); // Ex: 1500 GNF l'oeuf
+        // A. Chiffre d'affaires réel du mois : ventes validées/livrées (toutes
+        //    catégories & espèces) + lait collecté valorisé. Remplace l'ancienne
+        //    estimation œufs-seulement à prix figé, désormais incohérente avec
+        //    la vente d'animaux vifs et le lait.
+        $monthStart = now()->startOfMonth();
+        $monthEnd   = now()->endOfMonth();
+
+        $caVentes = (float) \App\Models\Sale::whereIn('status', ['valide', 'livre'])
+            ->whereBetween('sale_date', [$monthStart, $monthEnd])
+            ->sum('total_amount');
+
+        $caLait = (float) \App\Models\MilkProduction::whereBetween('production_date', [$monthStart, $monthEnd])
+            ->sum(DB::raw('total_liters * unit_price'));
+
+        $caEstime = $caVentes + $caLait;
 
         // B. Coût Alimentaire du mois (Quantité consommée * CMUP)
         $coutAliment = DailyCheck::whereMonth('check_date', now()->month)
@@ -87,28 +100,41 @@ class DashboardController extends Controller
         // 5. GESTION DES ALERTES (Centre de contrôle)
         // ---------------------------------------------------------
         
-        // A. Autonomie Silos (< 3 jours)
+        // A. Autonomie Silos (< 3 jours) — calcul PAR silo (cohérent multiespèce)
+        //
+        // L'autonomie d'un silo doit se baser sur SA PROPRE consommation
+        // (ses sorties de stock), et non sur la consommation globale de la
+        // ferme : sinon chaque silo paraît se vider au rythme de tous les
+        // autres réunis et déclenche de fausses alertes « épuisé ».
         $criticalTypes = [];
-        //$silos = Stock::where('category', 'conso')->get();
-        //$consoJournaliereMoyenne = DailyCheck::where('check_date', '>=', now()->subDays(3))->sum('feed_consumed') / 3;
-        $silos = Stock::where('category', 'conso')->get()->filter(function($item) {
+        $silos = Stock::where('category', Stock::CAT_CONSO)->get()->filter(function($item) {
             return ($item->metadata['conso_type'] ?? 'Aliment') === 'Aliment';
         });
-        
-        $consoJournaliereMoyenne = DailyCheck::where('check_date', '>=', now()->subDays(3))->sum('feed_consumed') / 3;
-        
-        if ($consoJournaliereMoyenne > 0) {
-            foreach($silos as $silo) {
-                // On évite les erreurs sur les stocks désactivés ou à 0
-                if ($silo->current_quantity <= 0) {
-                    $criticalTypes[] = ['type' => $silo->item_name, 'days' => 0];
-                    continue;
-                }
 
-                $joursRestants = floor($silo->current_quantity / $consoJournaliereMoyenne);
-                if ($joursRestants <= 3) {
-                    $criticalTypes[] = ['type' => $silo->item_name, 'days' => $joursRestants];
-                }
+        $periodDays = 30;
+        foreach ($silos as $silo) {
+            // Silo vide → épuisé.
+            if ($silo->current_quantity <= 0) {
+                $criticalTypes[] = ['type' => $silo->item_name, 'days' => 0];
+                continue;
+            }
+
+            // Consommation journalière propre à CE silo : moyenne des sorties
+            // sur les 30 derniers jours (même unité que current_quantity).
+            $totalOut = (float) \App\Models\StockMovement::where('stock_id', $silo->id)
+                ->where('type', 'out')
+                ->where('created_at', '>=', now()->subDays($periodDays))
+                ->sum('quantity');
+            $consoJournaliere = $totalOut / $periodDays;
+
+            // Du stock mais aucune sortie récente → pas d'alerte.
+            if ($consoJournaliere <= 0) {
+                continue;
+            }
+
+            $joursRestants = (int) floor($silo->current_quantity / $consoJournaliere);
+            if ($joursRestants <= 3) {
+                $criticalTypes[] = ['type' => $silo->item_name, 'days' => $joursRestants];
             }
         }
 
@@ -126,81 +152,73 @@ class DashboardController extends Controller
             return $taux > 5;
         });
 
-        // D. Vide Sanitaire
+        // D. Vide Sanitaire dépassé — uniquement les bâtiments toujours "En
+        // désinfection" alors que le délai réglementaire de 14 jours
+        // (cf. Building::getSanitaryBreakRemainingDaysAttribute) est écoulé.
+        // Un bâtiment simplement vide/disponible, ou en désinfection depuis
+        // moins de 14 jours, n'est PAS une alerte.
         $sanitaryAlertsCount = Building::where('name', '!=', 'Zone Fournisseurs Externes')
-            ->whereDoesntHave('batches', function($q) {
-                $q->where('status', 'Actif')->where('initial_quantity', '>', 0);
-            })->count();
+            ->inSanitaryBreak()
+            ->whereNotNull('disinfection_started_at')
+            ->where('disinfection_started_at', '<=', now()->subDays(Building::SANITARY_BREAK_DAYS))
+            ->count();
 
         // ---------------------------------------------------------
         // 6. DONNÉES D'AFFICHAGE (Bâtiments & Pagination)
         // ---------------------------------------------------------
         $buildings = Building::where('name', '!=', 'Zone Fournisseurs Externes')
             ->withCount(['batches' => function($q) {
-                $q->where('status', 'Actif')->where('initial_quantity', '>', 0);
+                $q->active()->where('initial_quantity', '>', 0);
             }])
             ->with(['batches' => function($q) {
-                $q->where('status', 'Actif')->where('initial_quantity', '>', 0);
+                $q->active()->where('initial_quantity', '>', 0);
             }])->get();
+
+        $occupiedBuildingsCount = $buildings->where('batches_count', '>', 0)->count();
+        $totalBuildingsCount    = $buildings->count();
 
         $activeBatches = Batch::with(['building', 'dailyChecks' => function($q) {
                 $q->latest('check_date');
             }])
-            ->where('status', 'Actif')
+            ->active()
             ->where('initial_quantity', '>', 0) // 💡 CORRECTION
             ->paginate((int) setting('general.items_per_page', 20));
 
         // ---------------------------------------------------------
-        // 7. WIDGET TABASKI (Eid al-Adha countdown)
+        // 7. WIDGET CAMPAGNE TABASKI
         // ---------------------------------------------------------
+        // Basé sur une véritable campagne Tabaski active (cf. module
+        // Campagnes), pas seulement sur la présence d'ovins/caprins —
+        // sinon le widget s'affiche même quand aucune campagne n'a été
+        // planifiée (fausse alerte).
         $tabaskiWidget = null;
-        $hasOvineBatches = Batch::where('status', 'Actif')
-            ->whereHas('species', function($q) {
-                $q->where('family', 'petit_ruminant');
-            })->exists();
+        $tabaskiCampaign = \App\Models\Campaign::active()
+            ->where('type', 'tabaski')
+            ->with('batches')
+            ->orderBy('target_date')
+            ->first();
 
-        if ($hasOvineBatches) {
-            // Dates approchées Eid al-Adha (10 Dhu al-Hijja) pour les prochaines années
-            $eidDates = [
-                '2026-06-16',
-                '2027-06-06',
-                '2028-05-26',
-                '2029-05-15',
-                '2030-05-05',
-            ];
+        if ($tabaskiCampaign) {
             $today = now()->startOfDay();
-            $nextEid = null;
-            foreach ($eidDates as $date) {
-                $eid = Carbon::parse($date)->startOfDay();
-                if ($eid->gte($today)) {
-                    $nextEid = $eid;
-                    break;
-                }
-            }
-            if ($nextEid) {
-                $daysUntilEid = (int) $today->diffInDays($nextEid, false);
-                $ovineBatchCount = Batch::where('status', 'Actif')
-                    ->whereHas('species', function($q) { $q->where('family', 'petit_ruminant'); })
-                    ->count();
-                $ovineHeadCount = Batch::where('status', 'Actif')
-                    ->whereHas('species', function($q) { $q->where('family', 'petit_ruminant'); })
-                    ->sum('current_quantity');
-                $tabaskiWidget = [
-                    'days'        => $daysUntilEid,
-                    'date'        => $nextEid->translatedFormat('d F Y'),
-                    'batches'     => $ovineBatchCount,
-                    'head_count'  => $ovineHeadCount,
-                    'urgent'      => $daysUntilEid <= 30,
-                    'critical'    => $daysUntilEid <= 7,
-                ];
-            }
+            $targetDate = Carbon::parse($tabaskiCampaign->target_date)->startOfDay();
+            $daysUntilTarget = (int) $today->diffInDays($targetDate, false);
+
+            $tabaskiWidget = [
+                'campaign_id' => $tabaskiCampaign->id,
+                'days'        => $daysUntilTarget,
+                'date'        => $targetDate->translatedFormat('d F Y'),
+                'batches'     => $tabaskiCampaign->batches->count(),
+                'head_count'  => $tabaskiCampaign->head_count,
+                'urgent'      => $daysUntilTarget >= 0 && $daysUntilTarget <= 30,
+                'critical'    => $daysUntilTarget >= 0 && $daysUntilTarget <= 7,
+            ];
         }
 
         // ---------------------------------------------------------
         // 8. ALERTES QUALITÉ EAU (Pisciculture)
         // ---------------------------------------------------------
         $waterAlerts = collect();
-        $aquaBatches = Batch::where('status', 'Actif')
+        $aquaBatches = Batch::active()
             ->whereHas('species', function($q) {
                 $q->where('family', 'aquaculture');
             })->with(['species', 'building'])->get();
@@ -260,7 +278,8 @@ class DashboardController extends Controller
             'totalEggsStock', 'totalBrokenToday', 'rawMaterialsValue', 'safeProfit',
             'criticalTypes', 'emergencyBatches', 'underperformingBatches', 'sanitaryAlertsCount',
             'activeBatches', 'buildings', 'totalEggsToday', 'tabaskiWidget', 'waterAlerts',
-            'familyBreakdown'
+            'familyBreakdown', 'showEggKpis', 'activeLotsCount',
+            'occupiedBuildingsCount', 'totalBuildingsCount'
         ));
     }
 }

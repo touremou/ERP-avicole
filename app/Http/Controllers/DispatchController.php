@@ -44,7 +44,8 @@ class DispatchController extends Controller
         if (Gate::denies('logistique.C')) return back()->with('error', 'Action non autorisée.');
 
         $stocks  = Stock::where('current_quantity', '>', 0)->get();
-        $batches = Batch::where('status', 'Actif')->with('building')->get();
+        // Tous les lots actifs, toutes espèces, sont expédiables sur pied.
+        $batches = Batch::active()->live()->with(['building', 'species'])->get();
 
         return view('dispatches.create', compact('stocks', 'batches'));
     }
@@ -63,12 +64,13 @@ class DispatchController extends Controller
             'sale_id'                 => 'nullable|exists:sales,id',
             'notes'                   => 'nullable|string|max:1000',
             'items'                   => 'required|array|min:1',
-            'items.*.product_type'    => 'required|in:oeufs,volaille_vivante,volaille_abattue,fumier,aliment,materiel,autre',
+            // Taxonomie multiespèces (alignée sur les ventes).
+            'items.*.product_type'    => 'required|in:oeufs,animal_vif,carcasse,lait,fumier,aliment,materiel,autre,volaille_vivante,volaille_abattue',
             'items.*.product_name'    => 'required|string|max:255',
             'items.*.product_id'      => 'nullable|integer',
             'items.*.batch_id'        => 'nullable|integer|exists:batches,id',
             'items.*.quantity'        => 'required|numeric|min:0.01',
-            'items.*.unit'            => 'required|in:alveole,unite,kg,piece,sac,voyage',
+            'items.*.unit'            => 'required|in:alveole,unite,kg,piece,sac,voyage,tete,litre',
             'items.*.condition'       => 'nullable|in:bon,moyen,fragile',
         ]);
 

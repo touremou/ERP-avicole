@@ -1,10 +1,21 @@
 <?php
 
+use App\Models\Farm;
 use App\Models\Stock;
 use App\Models\StockMovement;
+use App\Models\User;
 use App\Services\StockIntegrationService;
 
 uses(Tests\TestCase::class, Illuminate\Foundation\Testing\RefreshDatabase::class);
+
+beforeEach(function () {
+    // StockMovement référence user_id (Auth::id() ?? 1) et farm_id (session) :
+    // sans utilisateur authentifié ni ferme courante, l'insertion violait les
+    // contraintes. On pose donc le contexte minimal.
+    $farm = Farm::firstOrCreate(['code' => 'FT-001'], ['name' => 'Ferme Test', 'is_active' => true]);
+    session(['current_farm_id' => $farm->id]);
+    test()->actingAs(User::factory()->create());
+});
 
 test('B-16 : recherche exacte trouve le bon article', function () {
     Stock::factory()->create(['item_name' => 'Ponte Démarrage (Poussin)', 'category' => 'conso', 'current_quantity' => 100]);

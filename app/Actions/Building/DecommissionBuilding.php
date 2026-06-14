@@ -11,7 +11,7 @@ class DecommissionBuilding
     public function execute(Building $building): void
     {
         // Empêcher la destruction d'un outil de production en cours d'utilisation
-        if ($building->batches()->where('status', 'Actif')->exists()) {
+        if ($building->batches()->active()->exists()) {
             throw ValidationException::withMessages([
                 'building' => 'DANGER D\'INTÉGRITÉ : Impossible de retirer ce bâtiment du parc industriel car un lot y est actuellement actif.'
             ]);

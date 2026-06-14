@@ -79,12 +79,14 @@ class PayrollService
 
                 // Déduction pour absences non payées
                 if ($unpaidDays > 0 && $workingDays > 0) {
-                    $dailyRate = (int) ($emp->salary / $workingDays);
+                    // On arrondit le MONTANT TOTAL de la déduction (et non le taux
+                    // journalier) pour ne pas accumuler d'erreur de troncature.
+                    $deduction = (int) round($emp->salary / $workingDays * $unpaidDays);
                     PayslipLine::create([
                         'payslip_id' => $payslip->id,
                         'type'       => 'deduction',
                         'label'      => "Absence non payée ({$unpaidDays}j)",
-                        'amount'     => $dailyRate * $unpaidDays,
+                        'amount'     => $deduction,
                         'category'   => 'absence',
                     ]);
                 }

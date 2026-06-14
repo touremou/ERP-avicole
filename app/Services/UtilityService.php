@@ -24,7 +24,7 @@ class UtilityService
     public function getDashboardData(int $periodDays = 30): array
     {
         $from = now()->subDays($periodDays);
-        $totalBirds = Batch::where('status', 'Actif')->sum('current_quantity');
+        $totalBirds = Batch::active()->sum('current_quantity');
 
         return [
             'water'  => $this->getWaterStats($from, $totalBirds),
@@ -110,6 +110,11 @@ class UtilityService
 
         $edgRatio = ($totalHours > 0) ? round(($edgHours / $totalHours) * 100, 1) : 0;
 
+        // kWh produits + valeur équivalente au tarif EDG (paramètre énergie) :
+        // estime l'économie réalisée en autoproduisant plutôt qu'en achetant au réseau.
+        $totalKwh = (clone $readings)->sum('kwh_produced');
+        $edgValue = $totalKwh * (float) setting('energie.kwh_price_edg', 0);
+
         // Conso gasoil
         $totalFuel = (clone $readings)->sum('fuel_consumed_liters');
         $fuelCostPerLiter = FuelPurchase::where('purchase_date', '>=', $from)
@@ -130,6 +135,8 @@ class UtilityService
 
         return [
             'total_cost'        => round($totalCost),
+            'total_kwh'         => round($totalKwh, 1),
+            'edg_value'         => round($edgValue),
             'total_fuel_liters' => round($totalFuel, 1),
             'total_outage'      => round($totalOutageHours, 1),
             'daily_outage_avg'  => round($totalOutageHours / $days, 1),
@@ -194,14 +201,18 @@ class UtilityService
             ];
         }
 
-        // Gasoil bas (< 3 jours)
+        // Gasoil bas (autonomie sous le seuil paramétrable energie.autonomy_alert_hours)
+        $alertHours = (float) setting('energie.autonomy_alert_hours', 24);
         foreach (EnergySource::groupes()->get() as $groupe) {
             if ($groupe->is_fuel_low) {
+                $autonomyLabel = $groupe->fuel_autonomy_hours !== null
+                    ? "{$groupe->fuel_autonomy_hours}h (seuil {$alertHours}h)"
+                    : "{$groupe->fuel_autonomy_days} jour(s)";
                 $alerts[] = [
                     'type'     => 'fuel',
                     'severity' => 'critique',
                     'title'    => "Gasoil {$groupe->name} critique",
-                    'message'  => "Autonomie : {$groupe->fuel_autonomy_days} jour(s). Commander immédiatement.",
+                    'message'  => "Autonomie : {$autonomyLabel}. Commander immédiatement.",
                     'icon'     => 'fa-gas-pump',
                 ];
             }

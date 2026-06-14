@@ -87,7 +87,12 @@ class UtilityController extends Controller
         
         // CORRECTION : Forcer à 0 si la valeur est null
         $validated['volume_added_liters'] = $validated['volume_added_liters'] ?? 0;
-        $validated['cost'] = $validated['cost'] ?? 0;
+
+        // Coût estimé depuis le prix du m³ (paramètre énergie) si non saisi.
+        if (empty($validated['cost'])) {
+            $pricePerM3 = (float) setting('energie.water_price_m3', 0);
+            $validated['cost'] = round(($validated['volume_consumed_liters'] / 1000) * $pricePerM3, 2);
+        }
 
         WaterReading::updateOrCreate(
             ['water_source_id' => $validated['water_source_id'], 'reading_date' => $validated['reading_date']],

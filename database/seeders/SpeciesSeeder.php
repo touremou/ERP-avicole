@@ -20,6 +20,8 @@ class SpeciesSeeder extends Seeder
             // ── PETITS RUMINANTS ──
             ['slug'=>'mouton',  'name_fr'=>'Mouton / Ovin',    'local_name'=>'Bélier Djallonké','family'=>'petit_ruminant',  'unit_label'=>'Tête',   'habitat_label'=>'Bergerie',    'icon'=>'🐑','color'=>'sky',     'tracks_eggs'=>false, 'tracks_milk'=>false,'tracks_water_quality'=>false,'sort_order'=>10],
             ['slug'=>'chevre',  'name_fr'=>'Chèvre / Caprin',  'local_name'=>'Chèvre Djallonké','family'=>'petit_ruminant',  'unit_label'=>'Tête',   'habitat_label'=>'Chèvrerie',   'icon'=>'🐐','color'=>'emerald', 'tracks_eggs'=>false, 'tracks_milk'=>true, 'tracks_water_quality'=>false,'sort_order'=>11],
+            // ── GRANDS RUMINANTS ──
+            ['slug'=>'vache',   'name_fr'=>'Vache / Bovin',    'local_name'=>'Zébu / N\'Dama', 'family'=>'grand_ruminant',  'unit_label'=>'Tête',   'habitat_label'=>'Étable',      'icon'=>'🐄','color'=>'lime',    'tracks_eggs'=>false, 'tracks_milk'=>true, 'tracks_water_quality'=>false,'sort_order'=>15],
             // ── AQUACULTURE ──
             ['slug'=>'tilapia',      'name_fr'=>'Tilapia',         'local_name'=>null,'family'=>'aquaculture','unit_label'=>'Sujet','habitat_label'=>'Bassin','icon'=>'🐟','color'=>'blue',  'tracks_eggs'=>false,'tracks_milk'=>false,'tracks_water_quality'=>true,'sort_order'=>20],
             ['slug'=>'carpe',        'name_fr'=>'Carpe',           'local_name'=>null,'family'=>'aquaculture','unit_label'=>'Sujet','habitat_label'=>'Bassin','icon'=>'🐠','color'=>'indigo','tracks_eggs'=>false,'tracks_milk'=>false,'tracks_water_quality'=>true,'sort_order'=>21],
@@ -69,6 +71,11 @@ class SpeciesSeeder extends Seeder
                 ['slug'=>'laitiere',     'name_fr'=>'Chèvre Laitière',     'metrics_enabled'=>$metricsLait, 'kpi_primary'=>'hdp_lait','cycle_days_default'=>210],
                 ['slug'=>'reproducteur', 'name_fr'=>'Bouc Reproducteur',   'metrics_enabled'=>$metricsRumin,'kpi_primary'=>'gmq','cycle_days_default'=>180],
             ],
+            'vache'   => [
+                ['slug'=>'engraissement','name_fr'=>'Bovin Engraissement', 'metrics_enabled'=>$metricsRumin,'kpi_primary'=>'gmq','cycle_days_default'=>270],
+                ['slug'=>'laitiere',     'name_fr'=>'Vache Laitière',      'metrics_enabled'=>$metricsLait, 'kpi_primary'=>'hdp_lait','cycle_days_default'=>305],
+                ['slug'=>'reproducteur', 'name_fr'=>'Taureau Reproducteur','metrics_enabled'=>$metricsRumin,'kpi_primary'=>'gmq','cycle_days_default'=>365],
+            ],
             'tilapia' => [
                 ['slug'=>'grossissement','name_fr'=>'Tilapia Grossissement','metrics_enabled'=>$metricsAqua,'kpi_primary'=>'survie','cycle_days_default'=>180],
                 ['slug'=>'alevinage',    'name_fr'=>'Alevinage Tilapia',    'metrics_enabled'=>$metricsAqua,'kpi_primary'=>'survie','cycle_days_default'=>30],
@@ -85,6 +92,7 @@ class SpeciesSeeder extends Seeder
             ],
             'porc'    => [
                 ['slug'=>'engraissement','name_fr'=>'Porc Engraissement',  'metrics_enabled'=>$metricsRumin,'kpi_primary'=>'gmq','cycle_days_default'=>150],
+                ['slug'=>'reproducteur', 'name_fr'=>'Truie Reproductrice', 'metrics_enabled'=>$metricsRumin,'kpi_primary'=>'gmq','cycle_days_default'=>365],
             ],
         ];
 

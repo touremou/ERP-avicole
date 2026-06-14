@@ -1,5 +1,6 @@
 import defaultTheme from 'tailwindcss/defaultTheme';
 import forms from '@tailwindcss/forms';
+import plugin from 'tailwindcss/plugin';
 
 /** @type {import('tailwindcss').Config} */
 export default {
@@ -17,5 +18,15 @@ export default {
         },
     },
 
-    plugins: [forms],
+    plugins: [
+        forms,
+        // Variante `can-hover:` — ne s'applique que sur les périphériques
+        // disposant d'un vrai survol (souris/trackpad), jamais sur écran
+        // tactile. On l'utilise pour révéler des actions au survol sans
+        // imposer le double-tap aux utilisateurs sur tablette/mobile (où les
+        // actions restent visibles en permanence).
+        plugin(function ({ addVariant }) {
+            addVariant('can-hover', '@media (hover: hover) and (pointer: fine)');
+        }),
+    ],
 };

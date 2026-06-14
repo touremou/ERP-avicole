@@ -44,11 +44,14 @@ class EggProductionController extends Controller
 
         $today = now()->toDateString();
 
-        $activeBatches = Batch::whereIn('type', ['ponte', 'repro', 'reproducteur'])
-            ->where('status', 'Actif')
-            ->where('initial_quantity', '>', 0) 
-            ->with(['building', 'eggProductions' => fn($q) => $q->latest()->take(7)])
-            ->get();
+        // Lots pondeurs : pilotés par le type de production de l'espèce
+        // (avec repli sur l'ancien typage volaille pour les lots sans species_id).
+        $activeBatches = Batch::active()
+            ->where('initial_quantity', '>', 0)
+            ->with(['building', 'productionType', 'eggProductions' => fn($q) => $q->latest()->take(7)])
+            ->get()
+            ->filter(fn (Batch $batch) => $batch->tracksEggs())
+            ->values();
 
         $totalsToday = EggProduction::whereDate('production_date', $today)
             ->selectRaw('
@@ -58,10 +61,10 @@ class EggProductionController extends Controller
             ')
             ->first();
 
-        $stockItems = Stock::where('category', 'oeufs')->get();
+        $stockItems = Stock::where('category', Stock::CAT_OEUFS)->get();
 
         $stockVendable = [];
-        foreach (['XL', 'L', 'M', 'S'] as $grade) {
+        foreach (EggProduction::gradeCodes() as $grade) {
             $item = $stockItems->where('item_name', $grade)->first();
             $stockVendable[strtolower($grade)] = (float) ($item?->current_quantity ?? 0);
         }
@@ -69,7 +72,7 @@ class EggProductionController extends Controller
         // O-01 corrigé : seulement les lots ACTIFS, pas toute l'historique
         $stockNonTrie = EggProduction::where('is_graded', false)
             ->whereHas('batch', function($q) {
-                $q->where('status', 'Actif')->where('initial_quantity', '>', 0);
+                $q->active()->where('initial_quantity', '>', 0);
             })
             ->sum('total_eggs_collected');
 
@@ -80,7 +83,7 @@ class EggProductionController extends Controller
         $recentProds      = EggProduction::with('batch')->latest()->take(15)->get();
         // On va chercher les sorties réelles dans le Magasin (StockMovement)
         $recentMovements = \App\Models\StockMovement::with('stock')
-            ->whereHas('stock', fn($q) => $q->where('category', 'oeufs'))
+            ->whereHas('stock', fn($q) => $q->where('category', Stock::CAT_OEUFS))
             ->where('type', 'out') // On ne prend que les sorties
             ->latest()
             ->take(10)
@@ -114,9 +117,9 @@ class EggProductionController extends Controller
                 ->with('error', 'Aucun lot spécifié.');
         }
 
-        $batch = Batch::findOrFail($batchId);
+        $batch = Batch::with('productionType')->findOrFail($batchId);
 
-        if (! in_array($batch->type, ['ponte', 'repro', 'reproducteur'])) {
+        if (! $batch->tracksEggs()) {
             return back()->with('error', "Le lot {$batch->code} n'est pas un lot de ponte.");
         }
 
@@ -230,11 +233,11 @@ class EggProductionController extends Controller
 
         // SÉCURITÉ ERP : Si déjà trié, on vérifie que le stock global est suffisant pour absorber l'annulation
         if ($eggProduction->is_graded) {
-            foreach (['xl', 'l', 'm', 's'] as $g) {
+            foreach (array_map('strtolower', EggProduction::gradeCodes()) as $g) {
                 $qty = (float) $eggProduction->{"grade_{$g}"};
                 if ($qty > 0) {
                     $currentStock = \App\Models\Stock::where('item_name', strtoupper($g))
-                                        ->where('category', 'oeufs')
+                                        ->where('category', Stock::CAT_OEUFS)
                                         ->value('current_quantity') ?? 0;
                     
                     if ($currentStock < $qty) {
@@ -285,7 +288,7 @@ class EggProductionController extends Controller
     {
         if (Gate::denies('production.S')) return back()->with('error', 'Accès maintenance refusé.');
 
-        $stocks = Stock::where('category', 'oeufs')->orderBy('item_name')->get();
+        $stocks = Stock::where('category', Stock::CAT_OEUFS)->orderBy('item_name')->get();
         return view('egg-productions.maintenance', compact('stocks'));
     }
 
@@ -305,7 +308,7 @@ class EggProductionController extends Controller
 
         DB::transaction(function () use ($request, &$updated) {
             foreach ($request->input('stocks') as $id => $newValue) {
-                $stock = Stock::where('category', 'oeufs')->findOrFail($id);
+                $stock = Stock::where('category', Stock::CAT_OEUFS)->findOrFail($id);
                 $oldValue = (float) $stock->current_quantity;
                 $newValue = (float) $newValue;
 

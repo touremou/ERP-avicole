@@ -5,9 +5,9 @@
                 <i class="fa-brands fa-whatsapp text-2xl"></i>
             </div>
             <div>
-                <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">Notifications</h2>
+                <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">{{ __("Notifications") }}</h2>
                 <p class="text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em] mt-2 italic">
-                    Configuration des alertes WhatsApp & SMS
+                    {{ __("Configuration des alertes WhatsApp & SMS") }}
                 </p>
             </div>
         </div>
@@ -31,15 +31,15 @@
             {{-- STATS --}}
             <div class="grid grid-cols-3 gap-4 mb-8">
                 <div class="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm text-center">
-                    <p class="text-[8px] font-black text-emerald-500 uppercase tracking-widest mb-1">Envoyés</p>
+                    <p class="text-[8px] font-black text-emerald-500 uppercase tracking-widest mb-1">{{ __("Envoyés") }}</p>
                     <p class="text-2xl font-black text-slate-900">{{ $stats['total_sent'] }}</p>
                 </div>
                 <div class="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm text-center">
-                    <p class="text-[8px] font-black text-red-400 uppercase tracking-widest mb-1">Échoués</p>
+                    <p class="text-[8px] font-black text-red-400 uppercase tracking-widest mb-1">{{ __("Échoués") }}</p>
                     <p class="text-2xl font-black {{ $stats['total_failed'] > 0 ? 'text-red-600' : 'text-slate-300' }}">{{ $stats['total_failed'] }}</p>
                 </div>
                 <div class="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm text-center">
-                    <p class="text-[8px] font-black text-blue-400 uppercase tracking-widest mb-1">Aujourd'hui</p>
+                    <p class="text-[8px] font-black text-blue-400 uppercase tracking-widest mb-1">{{ __("Aujourd'hui") }}</p>
                     <p class="text-2xl font-black text-slate-900">{{ $stats['today_count'] }}</p>
                 </div>
             </div>
@@ -50,11 +50,11 @@
                 {{-- NUMÉRO WHATSAPP --}}
                 <div class="bg-emerald-50 p-8 rounded-[3rem] border border-emerald-200 mb-6">
                     <h3 class="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-4 flex items-center gap-2">
-                        <i class="fa-brands fa-whatsapp"></i> Numéro WhatsApp
+                        <i class="fa-brands fa-whatsapp"></i> {{ __("Numéro WhatsApp") }}
                     </h3>
                     <div class="flex gap-4 items-end">
                         <div class="flex-1 space-y-2">
-                            <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">Numéro avec indicatif</label>
+                            <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Numéro avec indicatif") }}</label>
                             <input type="text" name="whatsapp_phone" value="{{ old('whatsapp_phone', Auth::user()->whatsapp_phone) }}"
                                 placeholder="+224 620 00 00 00"
                                 class="w-full bg-white border-none rounded-2xl p-4 text-lg font-black shadow-sm outline-none focus:ring-4 focus:ring-emerald-500/10">
@@ -62,11 +62,11 @@
                         <a href="{{ route('notifications.test') }}"
                            onclick="event.preventDefault(); document.getElementById('test-form').submit();"
                            class="bg-emerald-500 text-white px-6 py-4 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-lg no-underline flex items-center gap-2 shrink-0">
-                            <i class="fa-solid fa-paper-plane"></i> Tester
+                            <i class="fa-solid fa-paper-plane"></i> {{ __("Tester") }}
                         </a>
                     </div>
                     <p class="text-[8px] text-emerald-600 mt-3 italic">
-                        Le numéro doit être enregistré sur WhatsApp. Format : +224XXXXXXXXX
+                        {{ __("Le numéro doit être enregistré sur WhatsApp. Format : +224XXXXXXXXX") }}
                     </p>
                 </div>
 
@@ -74,8 +74,8 @@
                 <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm mb-6">
                     <div class="flex justify-between items-center">
                         <div>
-                            <h3 class="text-sm font-black text-slate-800 uppercase italic">Notifications activées</h3>
-                            <p class="text-[9px] text-slate-400 mt-1">Désactiver coupe TOUTES les notifications</p>
+                            <h3 class="text-sm font-black text-slate-800 uppercase italic">{{ __("Notifications activées") }}</h3>
+                            <p class="text-[9px] text-slate-400 mt-1">{{ __("Désactiver coupe TOUTES les notifications") }}</p>
                         </div>
                         <label class="relative inline-flex items-center cursor-pointer">
                             <input type="hidden" name="is_active" value="0">
@@ -89,18 +89,18 @@
                 {{-- TYPES DE NOTIFICATIONS --}}
                 <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm mb-6">
                     <h3 class="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-6 flex items-center gap-2">
-                        <i class="fa-solid fa-bell text-amber-500"></i> Types d'alertes
+                        <i class="fa-solid fa-bell text-amber-500"></i> {{ __("Types d'alertes") }}
                     </h3>
 
                     <div class="space-y-4">
                         @php
                             $notifTypes = [
-                                ['name' => 'daily_summary', 'label' => 'Résumé quotidien (7h)', 'desc' => 'Mortalité nuit, stocks, CA veille, tâches du jour', 'icon' => 'fa-sun', 'color' => 'amber'],
-                                ['name' => 'alert_mortality', 'label' => 'Alertes mortalité', 'desc' => 'Pic de mortalité au-delà du seuil normal', 'icon' => 'fa-skull', 'color' => 'red'],
-                                ['name' => 'alert_stock', 'label' => 'Alertes stock', 'desc' => 'Rupture ou stock sous le seuil d\'alerte', 'icon' => 'fa-boxes-stacked', 'color' => 'orange'],
-                                ['name' => 'alert_energy', 'label' => 'Alertes eau & énergie', 'desc' => 'Gasoil bas, citerne basse, maintenance groupe', 'icon' => 'fa-bolt', 'color' => 'cyan'],
-                                ['name' => 'alert_sales', 'label' => 'Notifications ventes', 'desc' => 'Nouvelle vente validée, paiement reçu', 'icon' => 'fa-cash-register', 'color' => 'teal'],
-                                ['name' => 'alert_fraud', 'label' => 'Alertes anti-fraude', 'desc' => 'Écart détecté entre expédition et réception', 'icon' => 'fa-shield-halved', 'color' => 'purple'],
+                                ['name' => 'daily_summary', 'label' => __("Résumé quotidien (7h)"), 'desc' => __("Mortalité nuit, stocks, CA veille, tâches du jour"), 'icon' => 'fa-sun', 'color' => 'amber'],
+                                ['name' => 'alert_mortality', 'label' => __("Alertes mortalité"), 'desc' => __("Pic de mortalité au-delà du seuil normal"), 'icon' => 'fa-skull', 'color' => 'red'],
+                                ['name' => 'alert_stock', 'label' => __("Alertes stock"), 'desc' => __("Rupture ou stock sous le seuil d'alerte"), 'icon' => 'fa-boxes-stacked', 'color' => 'orange'],
+                                ['name' => 'alert_energy', 'label' => __("Alertes eau & énergie"), 'desc' => __("Gasoil bas, citerne basse, maintenance groupe"), 'icon' => 'fa-bolt', 'color' => 'cyan'],
+                                ['name' => 'alert_sales', 'label' => __("Notifications ventes"), 'desc' => __("Nouvelle vente validée, paiement reçu"), 'icon' => 'fa-cash-register', 'color' => 'teal'],
+                                ['name' => 'alert_fraud', 'label' => __("Alertes anti-fraude"), 'desc' => __("Écart détecté entre expédition et réception"), 'icon' => 'fa-shield-halved', 'color' => 'purple'],
                             ];
                         @endphp
 
@@ -129,7 +129,7 @@
                 {{-- CANAUX --}}
                 <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm mb-6">
                     <h3 class="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-6 flex items-center gap-2">
-                        <i class="fa-solid fa-tower-broadcast text-blue-500"></i> Canaux de diffusion
+                        <i class="fa-solid fa-tower-broadcast text-blue-500"></i> {{ __("Canaux de diffusion") }}
                     </h3>
                     <div class="grid grid-cols-3 gap-4">
                         <label class="p-4 bg-slate-50 rounded-2xl cursor-pointer text-center group">
@@ -145,7 +145,7 @@
                                 <i class="fa-solid fa-bell text-xl"></i>
                             </div>
                             <p class="text-[9px] font-black uppercase text-slate-400">In-App</p>
-                            <p class="text-[7px] text-slate-300">Toujours actif</p>
+                            <p class="text-[7px] text-slate-300">{{ __("Toujours actif") }}</p>
                         </label>
                         <label class="p-4 bg-slate-50 rounded-2xl cursor-pointer text-center group">
                             <input type="hidden" name="channel_sms" value="0">
@@ -161,17 +161,17 @@
                 {{-- HEURES SILENCIEUSES --}}
                 <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm mb-6">
                     <h3 class="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-4 flex items-center gap-2">
-                        <i class="fa-solid fa-moon text-indigo-500"></i> Heures silencieuses
+                        <i class="fa-solid fa-moon text-indigo-500"></i> {{ __("Heures silencieuses") }}
                     </h3>
-                    <p class="text-[9px] text-slate-400 mb-4">Pas de WhatsApp entre ces heures (sauf alertes critiques).</p>
+                    <p class="text-[9px] text-slate-400 mb-4">{{ __("Pas de WhatsApp entre ces heures (sauf alertes critiques).") }}</p>
                     <div class="grid grid-cols-2 gap-6">
                         <div class="space-y-2">
-                            <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">Début silence</label>
+                            <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Début silence") }}</label>
                             <input type="time" name="quiet_start" value="{{ $prefs->quiet_start ?? '22:00' }}"
                                 class="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm font-black shadow-inner outline-none">
                         </div>
                         <div class="space-y-2">
-                            <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">Fin silence</label>
+                            <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Fin silence") }}</label>
                             <input type="time" name="quiet_end" value="{{ $prefs->quiet_end ?? '06:00' }}"
                                 class="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm font-black shadow-inner outline-none">
                         </div>
@@ -179,7 +179,7 @@
                 </div>
 
                 <button type="submit" class="w-full bg-emerald-500 text-white py-6 rounded-[2rem] font-black text-xs uppercase tracking-[0.3em] hover:bg-emerald-600 transition-all shadow-2xl italic border-none cursor-pointer">
-                    <i class="fa-solid fa-floppy-disk mr-2"></i> Enregistrer les Préférences
+                    <i class="fa-solid fa-floppy-disk mr-2"></i> {{ __("Enregistrer les Préférences") }}
                 </button>
             </form>
 
@@ -190,7 +190,7 @@
             @if($recentLogs->count() > 0)
             <div class="mt-10 bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
                 <div class="px-8 py-5 bg-slate-50 border-b border-slate-100">
-                    <h3 class="text-[10px] font-black uppercase text-slate-400 tracking-widest">Dernières notifications</h3>
+                    <h3 class="text-[10px] font-black uppercase text-slate-400 tracking-widest">{{ __("Dernières notifications") }}</h3>
                 </div>
                 <div class="divide-y divide-slate-50">
                     @foreach($recentLogs as $log)

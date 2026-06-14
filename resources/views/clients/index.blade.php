@@ -6,20 +6,20 @@
                     <i class="fa-solid fa-users text-xl"></i>
                 </div>
                 <div>
-                    <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">Fichier Clients</h2>
+                    <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">{{ __("Fichier Clients") }}</h2>
                     <p class="text-[10px] font-black text-teal-600 uppercase tracking-[0.2em] mt-2 italic">
-                        {{ $stats['total_clients'] }} clients enregistrés
+                        {{ __(":count clients enregistrés", ['count' => $stats['total_clients']]) }}
                     </p>
                 </div>
             </div>
             <div class="flex gap-4">
                 <div class="bg-white px-6 py-4 rounded-[1.5rem] border border-slate-100 text-right shadow-sm">
-                    <p class="text-[8px] font-black text-rose-400 uppercase italic mb-1">Créances Totales</p>
+                    <p class="text-[8px] font-black text-rose-400 uppercase italic mb-1">{{ __("Créances Totales") }}</p>
                     <p class="text-base font-black text-slate-900 leading-none">{{ number_format($stats['total_debt'], 0, ',', ' ') }} <small class="text-[9px] opacity-40">{{ setting('general.currency', 'GNF') }}</small></p>
                 </div>
                 @can('commerce.C')
                 <a href="{{ route('clients.create') }}" class="bg-slate-900 text-white px-8 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-teal-600 transition-all shadow-2xl italic flex items-center gap-2 no-underline">
-                    <i class="fa-solid fa-user-plus"></i> Nouveau Client
+                    <i class="fa-solid fa-user-plus"></i> {{ __("Nouveau Client") }}
                 </a>
                 @endcan
             </div>
@@ -39,20 +39,20 @@
             <form method="GET" class="mb-8 flex flex-wrap gap-3 items-center">
                 <div class="relative">
                     <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 text-xs"></i>
-                    <input type="text" name="search" value="{{ request('search') }}" placeholder="RECHERCHER..." class="bg-white border border-slate-100 rounded-2xl pl-10 pr-4 py-3 text-[10px] font-black uppercase tracking-widest shadow-sm w-56 outline-none">
+                    <input type="text" name="search" value="{{ request('search') }}" placeholder="{{ __('RECHERCHER...') }}" class="bg-white border border-slate-100 rounded-2xl pl-10 pr-4 py-3 text-[10px] font-black uppercase tracking-widest shadow-sm w-56 outline-none">
                 </div>
                 <select name="category" class="bg-white border border-slate-100 rounded-2xl px-4 py-3 text-[10px] font-black uppercase tracking-widest shadow-sm outline-none appearance-none">
-                    <option value="">Toutes catégories</option>
-                    <option value="grossiste" {{ request('category') === 'grossiste' ? 'selected' : '' }}>Grossiste</option>
-                    <option value="detaillant" {{ request('category') === 'detaillant' ? 'selected' : '' }}>Détaillant</option>
-                    <option value="hotel_restaurant" {{ request('category') === 'hotel_restaurant' ? 'selected' : '' }}>Hôtel/Restaurant</option>
-                    <option value="revendeur" {{ request('category') === 'revendeur' ? 'selected' : '' }}>Revendeur</option>
+                    <option value="">{{ __("Toutes catégories") }}</option>
+                    <option value="grossiste" {{ request('category') === 'grossiste' ? 'selected' : '' }}>{{ __("Grossiste") }}</option>
+                    <option value="detaillant" {{ request('category') === 'detaillant' ? 'selected' : '' }}>{{ __("Détaillant") }}</option>
+                    <option value="hotel_restaurant" {{ request('category') === 'hotel_restaurant' ? 'selected' : '' }}>{{ __("Hôtel/Restaurant") }}</option>
+                    <option value="revendeur" {{ request('category') === 'revendeur' ? 'selected' : '' }}>{{ __("Revendeur") }}</option>
                 </select>
                 <label class="flex items-center gap-2 cursor-pointer">
                     <input type="checkbox" name="with_debt" value="1" {{ request('with_debt') ? 'checked' : '' }} class="rounded border-slate-300">
-                    <span class="text-[9px] font-black uppercase text-rose-500 tracking-widest">Débiteurs uniquement</span>
+                    <span class="text-[9px] font-black uppercase text-rose-500 tracking-widest">{{ __("Débiteurs uniquement") }}</span>
                 </label>
-                <button type="submit" class="bg-slate-900 text-white px-5 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest border-none cursor-pointer">Filtrer</button>
+                <button type="submit" class="bg-slate-900 text-white px-5 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest border-none cursor-pointer">{{ __("Filtrer") }}</button>
             </form>
 
             {{-- TABLEAU --}}
@@ -61,13 +61,13 @@
                     <table class="w-full border-collapse">
                         <thead>
                             <tr class="bg-slate-50 text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 italic">
-                                <th class="px-8 py-6 text-left">Client</th>
-                                <th class="px-6 py-6 text-left">Catégorie</th>
-                                <th class="px-6 py-6 text-left">Téléphone</th>
-                                <th class="px-6 py-6 text-right">Ventes</th>
-                                <th class="px-6 py-6 text-right">Solde Dû</th>
-                                <th class="px-6 py-6 text-center">Statut</th>
-                                <th class="px-8 py-6 text-right">Actions</th>
+                                <th class="px-8 py-6 text-left">{{ __("Client") }}</th>
+                                <th class="px-6 py-6 text-left">{{ __("Catégorie") }}</th>
+                                <th class="px-6 py-6 text-left">{{ __("Téléphone") }}</th>
+                                <th class="px-6 py-6 text-right">{{ __("Ventes") }}</th>
+                                <th class="px-6 py-6 text-right">{{ __("Solde Dû") }}</th>
+                                <th class="px-6 py-6 text-center">{{ __("Statut") }}</th>
+                                <th class="px-8 py-6 text-right">{{ __("Actions") }}</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-50">
@@ -97,7 +97,7 @@
                                             {{ number_format($client->balance, 0, ',', ' ') }}
                                         </span>
                                     @else
-                                        <span class="text-[10px] text-emerald-500 font-black">Soldé</span>
+                                        <span class="text-[10px] text-emerald-500 font-black">{{ __("Soldé") }}</span>
                                     @endif
                                 </td>
                                 <td class="px-6 py-5 text-center">
@@ -110,11 +110,11 @@
                                 </td>
                                 <td class="px-8 py-5 text-right">
                                     @can('commerce.C')
-                                    <a href="{{ route('sales.create', ['client_id' => $client->id]) }}" class="text-teal-500 hover:text-teal-700 mr-3 no-underline" title="Nouvelle vente">
+                                    <a href="{{ route('sales.create', ['client_id' => $client->id]) }}" class="text-teal-500 hover:text-teal-700 mr-3 no-underline" title="{{ __('Nouvelle vente') }}">
                                         <i class="fa-solid fa-cart-plus"></i>
                                     </a>
                                     @endcan
-                                    <a href="{{ route('clients.show', $client) }}" class="text-slate-400 hover:text-slate-700 no-underline" title="Détails">
+                                    <a href="{{ route('clients.show', $client) }}" class="text-slate-400 hover:text-slate-700 no-underline" title="{{ __('Détails') }}">
                                         <i class="fa-solid fa-eye"></i>
                                     </a>
                                 </td>
@@ -123,7 +123,7 @@
                             <tr>
                                 <td colspan="7" class="px-8 py-16 text-center">
                                     <i class="fa-solid fa-users-slash text-slate-200 text-3xl mb-4 block"></i>
-                                    <p class="text-[10px] text-slate-400 uppercase tracking-widest font-black">Aucun client enregistré</p>
+                                    <p class="text-[10px] text-slate-400 uppercase tracking-widest font-black">{{ __("Aucun client enregistré") }}</p>
                                 </td>
                             </tr>
                             @endforelse

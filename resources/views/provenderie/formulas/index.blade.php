@@ -7,10 +7,10 @@
                 </div>
                 <div>
                     <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">
-                        Bibliothèque des Formules
+                        {{ __("Bibliothèque des Formules") }}
                     </h2>
                     <p class="text-[10px] font-bold text-blue-500 uppercase tracking-[0.3em] mt-2 italic leading-none">
-                        Provenderie • Recettes & Référentiels Normés
+                        {{ __("Provenderie • Recettes & Référentiels Normés") }}
                     </p>
                 </div>
             </div>
@@ -20,7 +20,7 @@
                 @can('provenderie.L')
                 <button onclick="document.getElementById('modalNormes').classList.remove('hidden')" 
                     class="bg-white border-2 border-slate-100 text-slate-400 px-6 py-4 rounded-[2rem] text-[10px] font-black uppercase italic tracking-widest hover:border-blue-200 hover:text-blue-500 transition-all shadow-sm">
-                    <i class="fa-solid fa-book-open mr-2"></i> Référentiel Normé
+                    <i class="fa-solid fa-book-open mr-2"></i> {{ __("Référentiel Normé") }}
                 </button>
                 @endcan
 
@@ -28,7 +28,7 @@
                 @can('provenderie.C')
                 <a href="{{ route('formulas.create') }}" 
                     class="bg-slate-900 text-white px-8 py-4 rounded-[2rem] text-[10px] font-black uppercase italic tracking-widest shadow-2xl hover:bg-blue-600 transition-all active:scale-95 no-underline flex items-center">
-                    <i class="fa-solid fa-plus mr-2 text-blue-400"></i> Nouvelle Recette
+                    <i class="fa-solid fa-plus mr-2 text-blue-400"></i> {{ __("Nouvelle Recette") }}
                 </a>
                 @endcan
             </div>
@@ -48,11 +48,11 @@
                         </div>
                         <div class="text-left">
                             <p class="text-[8px] font-black text-blue-400 uppercase leading-none mb-1">{{ $norm->name }}</p>
-                            <p class="text-[10px] font-black text-slate-700 uppercase italic">Cible : {{ number_format($norm->target_price_kg, 0, ',', ' ') }} GNF/kg</p>
+                            <p class="text-[10px] font-black text-slate-700 uppercase italic">{{ __("Cible") }} : {{ number_format($norm->target_price_kg, 0, ',', ' ') }} GNF/kg</p>
                         </div>
                     </div>
                     @empty
-                        <p class="text-[10px] text-slate-300 uppercase italic font-black">Aucune norme active dans le référentiel...</p>
+                        <p class="text-[10px] text-slate-300 uppercase italic font-black">{{ __("Aucune norme active dans le référentiel...") }}</p>
                     @endforelse
                 </div>
             </div>
@@ -102,7 +102,7 @@
                                     {{-- Énergie Métabolisable --}}
                                     <div class="space-y-1">
                                         <div class="flex justify-between text-[8px] font-black uppercase italic">
-                                            <span class="text-slate-400">Énergie (EM)</span>
+                                            <span class="text-slate-400">{{ __("Énergie (EM)") }}</span>
                                             <span class="text-slate-800">{{ number_format($reelEM, 0, ',', ' ') }} / {{ number_format($targetEM, 0, ',', ' ') }} <small>kcal</small></span>
                                         </div>
                                         <div class="h-1.5 bg-slate-200 rounded-full overflow-hidden">
@@ -113,7 +113,7 @@
                                     {{-- Protéine Brute --}}
                                     <div class="space-y-1">
                                         <div class="flex justify-between text-[8px] font-black uppercase italic">
-                                            <span class="text-slate-400">Protéines (PB)</span>
+                                            <span class="text-slate-400">{{ __("Protéines (PB)") }}</span>
                                             <span class="text-slate-800">{{ number_format($reelPB, 1) }}% / {{ number_format($targetPB, 1) }}%</span>
                                         </div>
                                         <div class="h-1.5 bg-slate-200 rounded-full overflow-hidden">
@@ -128,7 +128,7 @@
                                 
                                 {{-- INDICATEUR FINANCIER --}}
                                 <div class="flex justify-between items-end px-2 text-left">
-                                    <span class="text-[9px] font-black text-slate-400 uppercase italic">Coût théorique</span>
+                                    <span class="text-[9px] font-black text-slate-400 uppercase italic">{{ __("Coût théorique") }}</span>
                                     <div class="text-right">
                                         <p class="text-xl font-black text-slate-900 italic tracking-tighter leading-none">{{ number_format($theoreticalCost, 0, ',', ' ') }} <small class="text-[10px]">GNF</small></p>
                                         <p @class([
@@ -136,7 +136,7 @@
                                             'text-emerald-600' => $diffPrice <= 0,
                                             'text-red-500' => $diffPrice > 0
                                         ])>
-                                            {{ $diffPrice <= 0 ? 'Sous la norme (-' : 'Surcoût (+' }}{{ number_format(abs($diffPrice), 0, ',', ' ') }} GNF/kg)
+                                            {{ $diffPrice <= 0 ? __('Sous la norme (-') : __('Surcoût (+') }}{{ number_format(abs($diffPrice), 0, ',', ' ') }} GNF/kg)
                                         </p>
                                     </div>
                                 </div>
@@ -146,12 +146,12 @@
                                 @can('provenderie.C')
                                 <a href="{{ route('production.create', ['formula_id' => $formula->id]) }}" 
                                     class="flex-1 bg-slate-900 text-white text-center py-4 rounded-2xl text-[9px] font-black uppercase italic tracking-widest hover:bg-emerald-500 transition-all shadow-xl active:scale-95 no-underline flex items-center justify-center">
-                                    <i class="fa-solid fa-play mr-2 text-emerald-400"></i> Produire
+                                    <i class="fa-solid fa-play mr-2 text-emerald-400"></i> {{ __("Produire") }}
                                 </a>
                                 @endcan
                                 
                                 <a href="{{ route('formulas.show', $formula->id) }}" class="p-4 bg-slate-50 text-slate-400 rounded-2xl hover:text-blue-600 transition-colors shadow-sm flex items-center justify-center no-underline">
-                                    <i class="fa-solid fa-eye mr-1"></i> Détails
+                                    <i class="fa-solid fa-eye mr-1"></i> {{ __("Détails") }}
                                 </a>
                             </div>
                         </div>
@@ -159,7 +159,7 @@
                 @empty
                     <div class="col-span-full py-24 bg-white rounded-[4rem] border-2 border-dashed border-slate-100 text-center text-slate-400 italic font-black uppercase text-xs">
                         <i class="fa-solid fa-folder-open text-4xl block mb-4 opacity-10"></i>
-                        Aucune formule enregistrée dans la bibliothèque
+                        {{ __("Aucune formule enregistrée dans la bibliothèque") }}
                     </div>
                 @endforelse
             </div>
@@ -170,7 +170,7 @@
     <div id="modalNormes" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-4xl rounded-[3rem] shadow-2xl p-10 animate-in fade-in zoom-in duration-300 italic overflow-hidden relative">
             <div class="flex justify-between items-center mb-8 border-b border-slate-50 pb-6">
-                <h3 class="text-2xl font-black text-slate-900 uppercase italic tracking-tighter leading-none">Normes de Fabrication</h3>
+                <h3 class="text-2xl font-black text-slate-900 uppercase italic tracking-tighter leading-none">{{ __("Normes de Fabrication") }}</h3>
                 <button onclick="document.getElementById('modalNormes').classList.add('hidden')" class="text-slate-300 hover:text-red-500 transition-colors">
                     <i class="fa-solid fa-circle-xmark text-2xl"></i>
                 </button>
@@ -185,25 +185,25 @@
                     </div>
                     <div class="grid grid-cols-2 gap-x-8 gap-y-4">
                         <div class="flex flex-col border-r border-slate-200">
-                            <span class="text-[8px] text-slate-400 uppercase font-black mb-1 italic">EM Cible</span>
+                            <span class="text-[8px] text-slate-400 uppercase font-black mb-1 italic">{{ __("EM Cible") }}</span>
                             <span class="text-sm font-black text-slate-800 italic">{{ number_format($norm->target_em, 0, ',', ' ') }} <small>kcal</small></span>
                         </div>
                         <div class="flex flex-col text-left">
-                            <span class="text-[8px] text-slate-400 uppercase font-black mb-1 italic">PB Cible</span>
+                            <span class="text-[8px] text-slate-400 uppercase font-black mb-1 italic">{{ __("PB Cible") }}</span>
                             <span class="text-sm font-black text-slate-800 italic">{{ number_format($norm->target_pb, 1) }} %</span>
                         </div>
                         <div class="flex flex-col border-r border-slate-200 border-t border-slate-100 pt-2">
-                            <span class="text-[8px] text-slate-400 uppercase font-black mb-1 italic">Lysine (%)</span>
+                            <span class="text-[8px] text-slate-400 uppercase font-black mb-1 italic">{{ __("Lysine (%)") }}</span>
                             <span class="text-sm font-black text-slate-800 italic">{{ number_format($norm->target_lys, 2) }} %</span>
                         </div>
                         <div class="flex flex-col border-t border-slate-100 pt-2 text-left">
-                            <span class="text-[8px] text-blue-500 uppercase font-black mb-1 italic">Prix Cible</span>
+                            <span class="text-[8px] text-blue-500 uppercase font-black mb-1 italic">{{ __("Prix Cible") }}</span>
                             <span class="text-sm font-black text-slate-900 italic">{{ number_format($norm->target_price_kg, 0, ',', ' ') }} GNF/kg</span>
                         </div>
                     </div>
                 </div>
                 @empty
-                    <div class="col-span-2 text-center py-10 text-slate-400 uppercase italic font-black">Aucune norme enregistrée.</div>
+                    <div class="col-span-2 text-center py-10 text-slate-400 uppercase italic font-black">{{ __("Aucune norme enregistrée.") }}</div>
                 @endforelse
             </div>
 
@@ -211,8 +211,8 @@
             @can('provenderie.M')
             <div class="bg-blue-50/50 p-6 rounded-[2.5rem] border border-blue-100 flex flex-col md:flex-row items-center justify-between gap-6">
                 <div class="text-left">
-                    <h4 class="text-xs font-black uppercase text-blue-600 italic tracking-tighter mb-1">Mettre à jour le Référentiel</h4>
-                    <p class="text-[9px] font-bold text-slate-400 uppercase italic leading-none">Importation de masse via fichier Excel (.xlsx)</p>
+                    <h4 class="text-xs font-black uppercase text-blue-600 italic tracking-tighter mb-1">{{ __("Mettre à jour le Référentiel") }}</h4>
+                    <p class="text-[9px] font-bold text-slate-400 uppercase italic leading-none">{{ __("Importation de masse via fichier Excel (.xlsx)") }}</p>
                 </div>
                 
                 <form action="{{ route('norms.import') }}" method="POST" enctype="multipart/form-data" id="importForm" class="flex items-center gap-4">
@@ -220,9 +220,9 @@
                     <input type="file" name="file" id="fileNorms" class="hidden" onchange="document.getElementById('importForm').submit()">
                     <button type="button" onclick="document.getElementById('fileNorms').click()" 
                         class="bg-slate-900 text-white px-8 py-4 rounded-2xl text-[9px] font-black uppercase italic tracking-widest shadow-xl hover:bg-blue-600 transition-all flex items-center">
-                        <i class="fa-solid fa-file-import mr-2"></i> Sélectionner le fichier
+                        <i class="fa-solid fa-file-import mr-2"></i> {{ __("Sélectionner le fichier") }}
                     </button>
-                    <a href="/templates/norms_template.xlsx" title="Télécharger le modèle Excel" class="w-12 h-12 bg-white text-blue-500 rounded-xl flex items-center justify-center border border-blue-100 hover:bg-blue-50 shadow-sm transition-all">
+                    <a href="/templates/norms_template.xlsx" title="{{ __('Télécharger le modèle Excel') }}" class="w-12 h-12 bg-white text-blue-500 rounded-xl flex items-center justify-center border border-blue-100 hover:bg-blue-50 shadow-sm transition-all">
                         <i class="fa-solid fa-download"></i>
                     </a>
                 </form>

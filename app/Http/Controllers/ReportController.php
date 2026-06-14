@@ -5,6 +5,15 @@ namespace App\Http\Controllers;
 use App\Models\Batch;
 use App\Models\HealthCheck;
 use App\Models\DailyCheck;
+use App\Models\SaleItem;
+use App\Models\MilkProduction;
+use App\Models\FeedPurchase;
+use App\Models\WaterReading;
+use App\Models\EnergyReading;
+use App\Models\FuelPurchase;
+use App\Models\Payslip;
+use App\Models\Species;
+use App\Models\Expense;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -24,6 +33,241 @@ class ReportController extends Controller
     }
 
     /**
+     * NURSERIE / REPRODUCTION
+     *
+     * Suivi des naissances et sevrages (agnelage, chevrotage, lapins...) sur
+     * une période, à partir des métriques born/weaned saisies au pointage.
+     * Donne le taux de sevrage par lot — indicateur clé de productivité
+     * numérique des reproducteurs.
+     *
+     * Gate : elevage.L.
+     */
+    public function nurseryReport(Request $request): View
+    {
+        if (Gate::denies('elevage.L')) {
+            return redirect()->route('dashboard')->with('error', 'Accès restreint.');
+        }
+
+        return view('reports.nursery', $this->buildNurseryStats($request));
+    }
+
+    /**
+     * Export PDF du rapport Nurserie/Reproduction (filtres en cours appliqués).
+     */
+    public function nurseryReportPdf(Request $request)
+    {
+        if (Gate::denies('elevage.L')) {
+            return redirect()->route('dashboard')->with('error', 'Accès restreint.');
+        }
+
+        $stats = $this->buildNurseryStats($request);
+
+        $pdf = \Pdf::loadView('reports.pdf.nursery', $stats)->setPaper('a4', 'portrait');
+
+        return $pdf->download('rapport-nurserie-' . now()->format('Y-m-d') . '.pdf');
+    }
+
+    private function buildNurseryStats(Request $request): array
+    {
+        $from = Carbon::parse($request->get('date_from', now()->startOfYear()->toDateString()))->startOfDay();
+        $to   = Carbon::parse($request->get('date_to', now()->toDateString()))->endOfDay();
+
+        $rows = DailyCheck::whereBetween('check_date', [$from, $to])
+            ->whereHas('extension', fn ($q) => $q->where('qty_born', '>', 0)->orWhere('qty_weaned', '>', 0))
+            ->with(['batch.species', 'batch.building', 'extension'])
+            ->get()
+            ->groupBy('batch_id')
+            ->map(function ($checks) {
+                $batch = $checks->first()->batch;
+                $born   = (int) $checks->sum(fn ($c) => $c->extension->qty_born ?? 0);
+                $weaned = (int) $checks->sum(fn ($c) => $c->extension->qty_weaned ?? 0);
+                return [
+                    'batch'        => $batch,
+                    'species'      => $batch?->species?->name_fr ?? '—',
+                    'icon'         => $batch?->species?->icon ?? '🐾',
+                    'born'         => $born,
+                    'weaned'       => $weaned,
+                    'weaning_rate' => $born > 0 ? round(($weaned / $born) * 100, 1) : null,
+                ];
+            })
+            ->filter(fn ($r) => $r['batch'] !== null)
+            ->sortByDesc('born')
+            ->values();
+
+        $totalBorn   = $rows->sum('born');
+        $totalWeaned = $rows->sum('weaned');
+        $avgWeaningRate = $totalBorn > 0 ? round(($totalWeaned / $totalBorn) * 100, 1) : 0;
+
+        return compact('from', 'to', 'rows', 'totalBorn', 'totalWeaned', 'avgWeaningRate');
+    }
+
+    /**
+     * COMPTE DE RÉSULTAT CONSOLIDÉ (P&L)
+     *
+     * Consolide sur une période tous les flux réels déjà saisis dans l'ERP :
+     * produits (ventes validées par catégorie + lait collecté valorisé) et
+     * charges (achats d'animaux, aliment, santé, main d'œuvre, eau, énergie,
+     * gasoil). Donne le résultat net + la marge, et une marge directe par
+     * espèce (hors frais généraux). Requêtes par plage de dates (compatibles
+     * SQLite/MySQL — pas de fonctions YEAR()/MONTH()).
+     *
+     * Gate : admin.L (donnée financière sensible).
+     */
+    public function profitLoss(Request $request): View
+    {
+        if (Gate::denies('admin.L')) {
+            abort(403, 'Accès réservé.');
+        }
+
+        return view('reports.profit-loss', $this->buildProfitLossStats($request));
+    }
+
+    /**
+     * Export PDF du Compte de Résultat (filtres de date en cours appliqués).
+     */
+    public function profitLossPdf(Request $request)
+    {
+        if (Gate::denies('admin.L')) {
+            abort(403, 'Accès réservé.');
+        }
+
+        $stats = $this->buildProfitLossStats($request);
+
+        $pdf = \Pdf::loadView('reports.pdf.profit-loss', $stats)->setPaper('a4', 'portrait');
+
+        return $pdf->download('compte-resultat-' . now()->format('Y-m-d') . '.pdf');
+    }
+
+    private function buildProfitLossStats(Request $request): array
+    {
+        $from = Carbon::parse($request->get('date_from', now()->startOfYear()->toDateString()))->startOfDay();
+        $to   = Carbon::parse($request->get('date_to', now()->toDateString()))->endOfDay();
+
+        // ─── PRODUITS ───
+        // Ventes réellement engagées (validées/livrées) sur la période, par catégorie.
+        $salesByType = SaleItem::query()
+            ->whereHas('sale', fn ($q) => $q->whereIn('status', ['valide', 'livre'])
+                ->whereBetween('sale_date', [$from, $to]))
+            ->selectRaw('product_type, SUM(total) as total')
+            ->groupBy('product_type')
+            ->pluck('total', 'product_type');
+
+        // Lait collecté valorisé (pas de flux de vente dédié à ce stade).
+        $milkRevenue = (float) MilkProduction::whereBetween('production_date', [$from, $to])
+            ->sum(DB::raw('total_liters * unit_price'));
+
+        $revenue = [];
+        foreach ($salesByType as $type => $total) {
+            $revenue[$this->productTypeLabel($type)] = (float) $total;
+        }
+        if ($milkRevenue > 0) {
+            $revenue['Lait (collecte valorisée)'] = ($revenue['Lait (collecte valorisée)'] ?? 0) + $milkRevenue;
+        }
+        $totalRevenue = array_sum($revenue);
+
+        // ─── CHARGES ───
+        $costAcquisition = (float) Batch::live()->whereBetween('arrival_date', [$from, $to])->sum('total_acquisition_cost');
+        $costFeed   = (float) FeedPurchase::whereBetween('purchase_date', [$from, $to])
+            ->sum(DB::raw('COALESCE(total_price, quantity * unit_price)'));
+        $costHealth = (float) HealthCheck::whereBetween('intervention_date', [$from, $to])->sum('cost');
+        $costLabor  = (float) Payslip::whereHas('period', fn ($q) => $q->whereBetween('start_date', [$from, $to]))
+            ->sum('net_salary');
+        $costWater  = (float) WaterReading::whereBetween('reading_date', [$from, $to])->sum('cost');
+        $costEnergy = (float) EnergyReading::whereBetween('reading_date', [$from, $to])->sum('cost');
+        $costFuel   = (float) FuelPurchase::whereBetween('purchase_date', [$from, $to])->sum('total_cost');
+
+        // Dépenses diverses validées (registre des dépenses), ventilées par catégorie.
+        $expensesByCategory = Expense::validated()
+            ->betweenDates($from, $to)
+            ->selectRaw('category, SUM(amount) as total')
+            ->groupBy('category')
+            ->pluck('total', 'category');
+
+        $costs = [
+            'Achats animaux (lots)'   => $costAcquisition,
+            'Aliment'                 => $costFeed,
+            'Santé / prophylaxie'     => $costHealth,
+            'Main d\'œuvre (paie)'    => $costLabor,
+            'Eau'                     => $costWater,
+            'Énergie'                 => $costEnergy,
+            'Gasoil'                  => $costFuel,
+        ];
+
+        // Chaque catégorie de dépense devient une ligne de charge dédiée.
+        foreach ($expensesByCategory as $category => $total) {
+            $label = 'Dépenses : ' . (Expense::CATEGORIES[$category] ?? ucfirst((string) $category));
+            $costs[$label] = ($costs[$label] ?? 0) + (float) $total;
+        }
+        $totalCosts = array_sum($costs);
+        $netResult  = $totalRevenue - $totalCosts;
+        $marginPct  = $totalRevenue > 0 ? round(($netResult / $totalRevenue) * 100, 1) : 0;
+
+        // ─── MARGE DIRECTE PAR ESPÈCE (items traçables uniquement) ───
+        $speciesMargin = $this->speciesDirectMargin($from, $to);
+
+        return compact(
+            'from', 'to', 'revenue', 'totalRevenue',
+            'costs', 'totalCosts', 'netResult', 'marginPct', 'speciesMargin'
+        );
+    }
+
+    /**
+     * Marge directe par espèce (revenus & coûts directement traçables au lot).
+     * Hors frais généraux (paie, eau, énergie) non ventilables par espèce.
+     */
+    private function speciesDirectMargin(Carbon $from, Carbon $to): array
+    {
+        $rows = [];
+
+        foreach (Species::orderBy('sort_order')->get() as $sp) {
+            $batchIds = Batch::where('species_id', $sp->id)->pluck('id');
+            if ($batchIds->isEmpty()) continue;
+
+            $rev = (float) SaleItem::whereIn('batch_id', $batchIds)
+                ->whereHas('sale', fn ($q) => $q->whereIn('status', ['valide', 'livre'])
+                    ->whereBetween('sale_date', [$from, $to]))
+                ->sum('total');
+            $rev += (float) MilkProduction::whereIn('batch_id', $batchIds)
+                ->whereBetween('production_date', [$from, $to])
+                ->sum(DB::raw('total_liters * unit_price'));
+
+            $cost = (float) Batch::whereIn('id', $batchIds)->whereBetween('arrival_date', [$from, $to])->sum('total_acquisition_cost');
+            $cost += (float) FeedPurchase::whereIn('batch_id', $batchIds)->whereBetween('purchase_date', [$from, $to])
+                ->sum(DB::raw('COALESCE(total_price, quantity * unit_price)'));
+            $cost += (float) HealthCheck::whereIn('batch_id', $batchIds)->whereBetween('intervention_date', [$from, $to])->sum('cost');
+            $cost += (float) Expense::validated()->whereIn('batch_id', $batchIds)
+                ->whereBetween('expense_date', [$from, $to])->sum('amount');
+
+            if ($rev == 0 && $cost == 0) continue;
+
+            $rows[] = [
+                'species' => $sp->name_fr,
+                'icon'    => $sp->icon,
+                'revenue' => $rev,
+                'cost'    => $cost,
+                'margin'  => $rev - $cost,
+            ];
+        }
+
+        return $rows;
+    }
+
+    private function productTypeLabel(string $type): string
+    {
+        return match ($type) {
+            'animal_vif'        => 'Animaux vifs',
+            'carcasse', 'volaille_abattue' => 'Carcasses / viande',
+            'volaille_vivante'  => 'Animaux vifs (volaille)',
+            'oeufs'             => 'Œufs',
+            'lait'              => 'Lait',
+            'aliment'           => 'Aliment (revente)',
+            'fumier'            => 'Fumier',
+            'materiel'          => 'Matériel',
+            default             => ucfirst($type),
+        };
+    }
+
+    /**
      * Rapport Financier : Coût de Santé (Prophylaxie)
      * Gate : elevage.L — données de santé par lot
      */
@@ -31,6 +275,25 @@ class ReportController extends Controller
     {
         if (Gate::denies('elevage.L')) return back()->with('error', 'Accès restreint.');
 
+        return view('reports.health_finance', $this->buildHealthFinanceStats($request));
+    }
+
+    /**
+     * Export PDF du rapport Santé & Pharmacie (filtres en cours appliqués).
+     */
+    public function healthFinancialReportPdf(Request $request)
+    {
+        if (Gate::denies('elevage.L')) return back()->with('error', 'Accès restreint.');
+
+        $stats = $this->buildHealthFinanceStats($request);
+
+        $pdf = \Pdf::loadView('reports.pdf.health-finance', $stats)->setPaper('a4', 'portrait');
+
+        return $pdf->download('rapport-sante-' . now()->format('Y-m-d') . '.pdf');
+    }
+
+    private function buildHealthFinanceStats(Request $request): array
+    {
         $period = $request->get('period', 'all');
         $statusFilter = $request->get('status', 'all');
 
@@ -43,10 +306,10 @@ class ReportController extends Controller
             }
         };
 
-        $query = Batch::with(['building', 'healthChecks' => $healthCheckQuery]);
+        $query = Batch::with(['building', 'healthChecks' => $healthCheckQuery])->live();
 
         if ($statusFilter === 'actif') {
-            $query->where('status', 'Actif');
+            $query->active();
         } elseif ($statusFilter === 'clos') {
             $query->where('status', 'Terminé');
         }
@@ -72,10 +335,10 @@ class ReportController extends Controller
 
         $bestBatchCost = $bestBatch ? ($bestBatch->healthChecks->sum('cost') / $bestBatch->initial_quantity) : 0;
 
-        return view('reports.health_finance', compact(
+        return compact(
             'batches', 'totalGlobalCost', 'averageCostPerHead',
             'bestBatch', 'bestBatchCost', 'typeBreakdown', 'period', 'statusFilter'
-        ));
+        );
     }
 
     /**
@@ -86,8 +349,27 @@ class ReportController extends Controller
     {
         if (Gate::denies('elevage.L')) return back()->with('error', 'Accès restreint.');
 
+        return view('reports.technical', $this->buildTechnicalStats());
+    }
+
+    /**
+     * Export PDF de la performance technique (lots actifs).
+     */
+    public function technicalPerformancePdf()
+    {
+        if (Gate::denies('elevage.L')) return back()->with('error', 'Accès restreint.');
+
+        $stats = $this->buildTechnicalStats();
+
+        $pdf = \Pdf::loadView('reports.pdf.technical', $stats)->setPaper('a4', 'landscape');
+
+        return $pdf->download('rapport-technique-' . now()->format('Y-m-d') . '.pdf');
+    }
+
+    private function buildTechnicalStats(): array
+    {
         $activeBatches = Batch::with('building')
-            ->where('status', 'Actif')
+            ->active()
             ->withSum('dailyChecks as total_mortality', 'mortality')
             ->withSum('dailyChecks as total_feed_consumed', 'feed_consumed')
             ->live()
@@ -141,7 +423,7 @@ class ReportController extends Controller
             ];
         });
 
-        return view('reports.technical', compact('stats'));
+        return compact('stats');
     }
 
     /**
@@ -152,7 +434,7 @@ class ReportController extends Controller
      *  - year       : année (défaut = année courante)
      *  - status     : all / actif / termine
      *  - month      : 1-12 / all
-     *  - type       : chair / ponte / poussiniere / reproducteur / all
+     *  - species    : id de l'espèce (table species) / all
      *  - date_from  : plage libre (YYYY-MM-DD), prioritaire sur year+month
      *  - date_to    : plage libre (YYYY-MM-DD)
      */
@@ -160,13 +442,36 @@ class ReportController extends Controller
     {
         if (Gate::denies('admin.L')) return back()->with('error', 'Accès réservé.');
 
-        $currentYear  = (int) $request->get('year', date('Y'));
-        $statusFilter = $request->get('status', 'all');
-        $monthFilter  = $request->get('month', 'all');
-        $typeFilter   = $request->get('type', 'all');
-        $dateFrom     = $request->get('date_from');
-        $dateTo       = $request->get('date_to');
-        $bagWeight    = (float) setting('general.feed_bag_weight', 50);
+        return view('reports.monthly', $this->buildMonthlyExpensesStats($request));
+    }
+
+    /**
+     * Export PDF de l'analyse financière (Flux de Trésorerie) — filtres en cours appliqués.
+     */
+    public function monthlyExpensesPdf(Request $request)
+    {
+        if (Gate::denies('admin.L')) return back()->with('error', 'Accès réservé.');
+
+        $stats = $this->buildMonthlyExpensesStats($request);
+
+        $pdf = \Pdf::loadView('reports.pdf.monthly', $stats)->setPaper('a4', 'landscape');
+
+        return $pdf->download('flux-tresorerie-' . now()->format('Y-m-d') . '.pdf');
+    }
+
+    private function buildMonthlyExpensesStats(Request $request): array
+    {
+        $currentYear   = (int) $request->get('year', date('Y'));
+        $statusFilter  = $request->get('status', 'all');
+        $monthFilter   = $request->get('month', 'all');
+        $speciesFilter = $request->get('species', 'all');
+        $dateFrom      = $request->get('date_from');
+        $dateTo        = $request->get('date_to');
+        $bagWeight     = (float) setting('general.feed_bag_weight', 50);
+
+        // Liste des espèces actives, pour le filtre "Espèce" (couvre toutes les
+        // exploitations, pas seulement la volaille — cf. table species).
+        $speciesList = Species::active()->orderBy('sort_order')->get();
 
         // Plage libre : si date_from/date_to fournis, ils priment sur year/month
         $useDateRange = $dateFrom && $dateTo;
@@ -174,10 +479,12 @@ class ReportController extends Controller
         $rangeEnd     = $useDateRange ? Carbon::parse($dateTo)->endOfDay()     : null;
 
         // ─── LISTE DES ANNÉES DISPONIBLES POUR LE SÉLECTEUR ───
-        $availableYears = Batch::selectRaw('YEAR(arrival_date) as yr')
-            ->whereNotNull('arrival_date')
-            ->distinct()->orderByDesc('yr')
-            ->pluck('yr')->filter()->toArray();
+        // Calcul en PHP (et non via YEAR() en SQL) pour rester compatible
+        // SQLite (dev/test) et MySQL (prod).
+        $availableYears = Batch::whereNotNull('arrival_date')
+            ->pluck('arrival_date')
+            ->map(fn ($d) => Carbon::parse($d)->year)
+            ->unique()->sortDesc()->values()->toArray();
         if (empty($availableYears)) {
             $availableYears = [date('Y')];
         }
@@ -185,13 +492,13 @@ class ReportController extends Controller
         $query = Batch::with(['building', 'feedPurchases'])->live();
 
         if ($statusFilter === 'actif') {
-            $query->where('status', 'Actif');
+            $query->active();
         } elseif (in_array($statusFilter, ['termine', 'clos'])) {
-            $query->whereIn('status', ['Terminé', 'Clôturé']);
+            $query->whereIn('status', [Batch::STATUS_TERMINE, Batch::STATUS_CLOTURE]);
         }
 
-        if ($typeFilter !== 'all') {
-            $query->where('type', $typeFilter);
+        if ($speciesFilter !== 'all') {
+            $query->where('species_id', (int) $speciesFilter);
         }
 
         $batches   = $query->get();
@@ -211,13 +518,18 @@ class ReportController extends Controller
                 ->when($monthFilter !== 'all', fn($q) => $q->whereMonth('check_date', $monthFilter));
         }
 
+        // Le mois est calculé en PHP (et non via MONTH() en SQL) pour rester
+        // compatible SQLite (dev/test) et MySQL (prod). L'agrégation par
+        // batch/mois se fait via les boucles `+=` ci-dessous.
         $healthData = $healthQuery
-            ->select('batch_id', DB::raw('SUM(cost) as total_health'), DB::raw('MONTH(intervention_date) as month'))
-            ->groupBy('month', 'batch_id')->get();
+            ->select('batch_id', 'cost as total_health', 'intervention_date')
+            ->get()
+            ->each(fn ($h) => $h->month = Carbon::parse($h->intervention_date)->month);
 
         $feedConsump = $feedQuery
-            ->select('batch_id', DB::raw('SUM(feed_consumed) as qty'), DB::raw('MONTH(check_date) as month'))
-            ->groupBy('month', 'batch_id')->get();
+            ->select('batch_id', 'feed_consumed as qty', 'check_date')
+            ->get()
+            ->each(fn ($f) => $f->month = Carbon::parse($f->check_date)->month);
 
         $monthlyData = [];
 
@@ -337,11 +649,11 @@ class ReportController extends Controller
         $months = [1 => 'Janvier', 2 => 'Février', 3 => 'Mars', 4 => 'Avril', 5 => 'Mai', 6 => 'Juin',
                    7 => 'Juillet', 8 => 'Août', 9 => 'Septembre', 10 => 'Octobre', 11 => 'Novembre', 12 => 'Décembre'];
 
-        return view('reports.monthly', compact(
+        return compact(
             'monthlyData', 'months', 'currentYear', 'statusFilter', 'monthFilter',
-            'typeFilter', 'availableYears', 'globalStats',
+            'speciesFilter', 'speciesList', 'availableYears', 'globalStats',
             'dateFrom', 'dateTo', 'useDateRange'
-        ));
+        );
     }
 
     /**
@@ -466,7 +778,15 @@ class ReportController extends Controller
     {
         $farmId = session('current_farm_id');
 
-        $query = \App\Models\Batch::with(['species', 'building', 'dailyChecks' => function($q) {
+        // Cibles pisciculture (paramétrables — § Pisciculture des réglages)
+        $survivalTarget = (float) setting('pisciculture.taux_survie_cible', 85);
+        $fcTarget       = (float) setting('pisciculture.fc_cible', 1.5);
+        $cycleDurations = [
+            'tilapia' => (int) setting('pisciculture.cycle_tilapia', 0),
+            'carpe'   => (int) setting('pisciculture.cycle_carpe', 0),
+        ];
+
+        $query = \App\Models\Batch::with(['species', 'building', 'productionType', 'dailyChecks' => function($q) {
                 $q->orderBy('check_date')->with('extension');
             }])
             ->whereHas('species', function($q) {
@@ -481,7 +801,7 @@ class ReportController extends Controller
 
         $batches = $query->orderByDesc('arrival_date')->get();
 
-        $batchStats = $batches->map(function($batch) {
+        $batchStats = $batches->map(function($batch) use ($survivalTarget, $fcTarget, $cycleDurations) {
             $checks = $batch->dailyChecks->filter(fn($c) => $c->extension !== null)->values();
 
             $series = [
@@ -504,20 +824,38 @@ class ReportController extends Controller
                 if ($ext->survival_rate !== null)  $series['survival'][$date]  = (float) $ext->survival_rate;
             }
 
-            $lastExt = $checks->last()?->extension;
+            $lastExt  = $checks->last()?->extension;
+            $firstExt = $checks->first()?->extension;
+
+            // IC réel = aliment total consommé / gain de biomasse sur la période suivie
+            $totalFeed   = (float) $batch->dailyChecks->sum('feed_consumed');
+            $biomassGain = (float) ($lastExt?->biomass_kg ?? 0) - (float) ($firstExt?->biomass_kg ?? 0);
+            $fcReal      = $biomassGain > 0 ? round($totalFeed / $biomassGain, 2) : null;
+
+            // Cycle cible (durée de grossissement) selon l'espèce, repli sur le type de production
+            $cycleDays = $cycleDurations[$batch->species?->slug] ?? 0;
+            if ($cycleDays <= 0) {
+                $cycleDays = (int) ($batch->productionType?->cycle_days_default ?? 0);
+            }
+            $daysRemaining = $cycleDays > 0 ? $cycleDays - $batch->age : null;
 
             return [
-                'batch'    => $batch,
-                'series'   => $series,
-                'last_ext' => $lastExt,
-                'alerts'   => $lastExt?->getWaterAlerts() ?? [],
-                'age_days' => $batch->age,
+                'batch'           => $batch,
+                'series'          => $series,
+                'last_ext'        => $lastExt,
+                'alerts'          => $lastExt?->getWaterAlerts() ?? [],
+                'age_days'        => $batch->age,
+                'fc_real'         => $fcReal,
+                'fc_target'       => $fcTarget,
+                'survival_target' => $survivalTarget,
+                'cycle_days'      => $cycleDays > 0 ? $cycleDays : null,
+                'days_remaining'  => $daysRemaining,
             ];
         });
 
         $totalAlerts = $batchStats->sum(fn($s) => count($s['alerts']));
         $criticalCount = $batchStats->sum(fn($s) => collect($s['alerts'])->where('level', 'critical')->count());
 
-        return compact('batchStats', 'statusFilter', 'totalAlerts', 'criticalCount');
+        return compact('batchStats', 'statusFilter', 'totalAlerts', 'criticalCount', 'survivalTarget', 'fcTarget');
     }
 }

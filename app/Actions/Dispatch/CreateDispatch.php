@@ -72,16 +72,10 @@ class CreateDispatch
     private function destockAtFarm(DispatchItem $item): void
     {
         // Articles stockés (œufs, aliment, matériel)
-        if (in_array($item->product_type, ['oeufs', 'aliment', 'materiel'])) {
-            $category = match ($item->product_type) {
-                'oeufs'   => 'oeufs',
-                'aliment' => 'conso',
-                default   => 'materiels',
-            };
-
+        if ($item->requiresDestock()) {
             $result = StockIntegrationService::syncMovement(
                 $item->product_name,
-                $category,
+                Stock::categoryForProductType($item->product_type),
                 (float) $item->quantity_dispatched,
                 'out',
                 "Expédition {$item->dispatch->dispatch_number} → {$item->dispatch->destination}",
@@ -93,8 +87,10 @@ class CreateDispatch
             }
         }
 
-        // Volaille vivante → décrémenter le lot
-        if (in_array($item->product_type, ['volaille_vivante', 'volaille_abattue']) && $item->batch_id) {
+        // Animal vif expédié à la tête → décrémenter l'effectif du lot (toute
+        // espèce). Les expéditions au poids (carcasse au kg) ne décrémentent
+        // pas l'effectif (le poids ne dit pas le nombre de têtes).
+        if ($item->decrementsBatchCount()) {
             $batch = Batch::findOrFail($item->batch_id);
             $qty = (int) $item->quantity_dispatched;
 

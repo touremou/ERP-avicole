@@ -5,15 +5,16 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class User extends Authenticatable
 {
-    use HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable;
 
     protected $fillable = [
-        'name', 'email', 'password', 'role_id', 'whatsapp_phone',
+        'name', 'email', 'password', 'role_id', 'whatsapp_phone', 'is_active', 'locale',
     ];
 
     protected $hidden = [
@@ -25,6 +26,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password'          => 'hashed',
+            'is_active'         => 'boolean',
         ];
     }
 
@@ -33,6 +35,14 @@ class User extends Authenticatable
     public function userRole(): BelongsTo
     {
         return $this->belongsTo(Role::class, 'role_id');
+    }
+
+    /**
+     * Fiche employé (RH) rattachée à ce compte de connexion, le cas échéant.
+     */
+    public function employee(): HasOne
+    {
+        return $this->hasOne(Employee::class);
     }
 
     public function notificationPreference(): HasOne
@@ -50,11 +60,11 @@ class User extends Authenticatable
     {
         if (! $this->role_id) return false;
 
-        $this->loadMissing('userRole.permissions');
+        $this->loadMissing('userRole');
 
         if (! $this->userRole) return false;
 
-        return $this->userRole->permissions->pluck('name')->contains($permissionName);
+        return $this->userRole->hasPermission($permissionName);
     }
 
     // ─── RBAC PAR MODULE ───
@@ -67,30 +77,22 @@ class User extends Authenticatable
      *   $user->canModule('abattoir', 'L')   // Peut lire le module Abattoir ?
      *   $user->canModule('admin', 'S')      // Peut supprimer dans Administration ?
      *
-     * Logique de résolution :
-     * 1. Si une permission module existe → l'utiliser
-     * 2. Sinon → fallback sur la permission globale (LCMS classique)
-     * 3. Les SuperAdmin (permission globale S) ont accès à tout
+     * La matrice Modules × Rôles (`module_permissions`) est seule autorité :
+     * chaque rôle possède une ligne par module (cf. migrations
+     * 2026_06_10_000004 et 2026_06_14_000001). Le rôle "admin" reste
+     * bypassé partout via Gate::before / AppServiceProvider.
      */
     public function canModule(string $moduleSlug, string $level): bool
     {
         if (! $this->role_id) return false;
 
-        // SuperAdmin bypass : permission S globale = accès total
-        if ($this->hasPermission('S')) return true;
+        if ($this->hasRole('admin')) return true;
 
-        // Chercher la permission spécifique au module
         $modulePerm = ModulePermission::where('role_id', $this->role_id)
             ->whereHas('module', fn($q) => $q->where('slug', $moduleSlug))
             ->first();
 
-        // Si une permission module existe, l'utiliser
-        if ($modulePerm) {
-            return $modulePerm->hasLevel($level);
-        }
-
-        // Fallback : permission globale classique (rétrocompatibilité)
-        return $this->hasPermission($level);
+        return $modulePerm && $modulePerm->hasLevel($level);
     }
 
     /**
@@ -100,23 +102,13 @@ class User extends Authenticatable
     {
         if (! $this->role_id) return collect();
 
-        // SuperAdmin : tous les modules
-        if ($this->hasPermission('S')) {
+        if ($this->hasRole('admin')) {
             return Module::active()->get();
         }
 
-        // Modules avec permission explicite (can_read = true)
         $explicitModuleIds = ModulePermission::where('role_id', $this->role_id)
             ->where('can_read', true)
             ->pluck('module_id');
-
-        // Si aucune permission module n'est configurée → fallback : tous les modules si L global
-        if (ModulePermission::where('role_id', $this->role_id)->count() === 0) {
-            if ($this->hasPermission('L')) {
-                return Module::active()->get();
-            }
-            return collect();
-        }
 
         return Module::active()->whereIn('id', $explicitModuleIds)->get();
     }
@@ -153,5 +145,34 @@ class User extends Authenticatable
     public function isSuperAdmin(): bool
     {
         return $this->hasPermission('S');
+    }
+
+    /**
+     * Le compte est-il actif (autorisé à se connecter) ?
+     * Rétrocompatible : un null (colonne absente / ancien compte) = actif.
+     */
+    public function isActive(): bool
+    {
+        return $this->is_active === null ? true : (bool) $this->is_active;
+    }
+
+    /**
+     * Route d'atterrissage après connexion, adaptée au profil.
+     *
+     * - Superviseurs (admin / manager / permission S) → tableau de bord global.
+     * - Employé rattaché à une fiche RH → son espace personnel.
+     * - Sinon → tableau de bord.
+     */
+    public function homeRoute(): string
+    {
+        if ($this->isSuperAdmin() || $this->hasRole('admin') || $this->hasRole('manager')) {
+            return 'dashboard';
+        }
+
+        if ($this->employee()->exists()) {
+            return 'mon-espace';
+        }
+
+        return 'dashboard';
     }
 }

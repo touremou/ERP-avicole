@@ -49,6 +49,8 @@ class RawMaterialController extends Controller
             'protein_rate'    => 'nullable|numeric|min:0|max:100',
             'lysine_rate'     => 'nullable|numeric|min:0|max:100',
             'calcium_rate'    => 'nullable|numeric|min:0|max:100',
+        ], [
+            'name.unique' => 'Une matière première porte déjà ce nom.',
         ]);
 
         // Valeurs par défaut pour les colonnes NOT NULL

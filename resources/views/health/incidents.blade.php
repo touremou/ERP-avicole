@@ -6,14 +6,14 @@
                     <i class="fa-solid fa-microscope text-xl"></i>
                 </div>
                 <div>
-                    <h2 class="text-2xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">Laboratoire & Diagnostics</h2>
+                    <h2 class="text-2xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">{{ __("Laboratoire & Diagnostics") }}</h2>
                     <p class="text-[10px] font-bold text-slate-400 uppercase mt-1 tracking-widest italic leading-none">
-                        Suivi des anomalies sanitaires et autopsies
+                        {{ __("Suivi des anomalies sanitaires et autopsies") }}
                     </p>
                 </div>
             </div>
             <a href="{{ route('health.index') }}" class="text-[10px] font-black uppercase italic text-slate-400 hover:text-slate-800 transition-all no-underline">
-                <i class="fa-solid fa-arrow-left mr-1"></i> Retour au Registre
+                <i class="fa-solid fa-arrow-left mr-1"></i> {{ __("Retour au Registre") }}
             </a>
         </div>
     </x-slot>
@@ -48,14 +48,14 @@
                         {{-- Photo d'autopsie --}}
                         @if($incident->photo_path)
                             <div class="h-48 w-full bg-slate-900 relative group overflow-hidden">
-                                <img src="{{ asset('storage/' . $incident->photo_path) }}" alt="Autopsie" class="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all duration-500">
+                                <img src="{{ media_url($incident->photo_path) }}" alt="Autopsie" class="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all duration-500">
                                 <div class="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex items-end p-4">
-                                    <span class="text-white text-[9px] uppercase tracking-widest font-black"><i class="fa-solid fa-camera mr-1"></i> Preuve visuelle jointe</span>
+                                    <span class="text-white text-[9px] uppercase tracking-widest font-black"><i class="fa-solid fa-camera mr-1"></i> {{ __("Preuve visuelle jointe") }}</span>
                                 </div>
                             </div>
                         @else
                             <div class="h-20 w-full bg-slate-50 flex items-center justify-center border-b border-slate-100">
-                                <p class="text-[9px] text-slate-400 uppercase tracking-widest font-black"><i class="fa-solid fa-image-slash mr-1"></i> Aucune photo fournie</p>
+                                <p class="text-[9px] text-slate-400 uppercase tracking-widest font-black"><i class="fa-solid fa-image-slash mr-1"></i> {{ __("Aucune photo fournie") }}</p>
                             </div>
                         @endif
 
@@ -63,24 +63,24 @@
                         <div class="p-6 flex-grow flex flex-col gap-4">
                             <div class="flex justify-between items-start">
                                 <div>
-                                    <p class="text-[9px] uppercase tracking-widest text-slate-400 font-black mb-1">Localisation</p>
-                                    <h3 class="text-lg font-black text-slate-800 tracking-tighter leading-none">{{ $incident->building->name ?? 'Bâtiment Inconnu' }}</h3>
+                                    <p class="text-[9px] uppercase tracking-widest text-slate-400 font-black mb-1">{{ __("Localisation") }}</p>
+                                    <h3 class="text-lg font-black text-slate-800 tracking-tighter leading-none">{{ $incident->building->name ?? __("Bâtiment Inconnu") }}</h3>
                                 </div>
                                 <div class="text-right">
-                                    <p class="text-[9px] uppercase tracking-widest text-slate-400 font-black mb-1">Mortalité</p>
-                                    <h3 class="text-lg font-black text-rose-600 tracking-tighter leading-none">{{ $incident->mortality_count }} <small class="text-[10px]">sujets</small></h3>
+                                    <p class="text-[9px] uppercase tracking-widest text-slate-400 font-black mb-1">{{ __("Mortalité") }}</p>
+                                    <h3 class="text-lg font-black text-rose-600 tracking-tighter leading-none">{{ $incident->mortality_count }} <small class="text-[10px]">{{ __("sujets") }}</small></h3>
                                 </div>
                             </div>
 
                             <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                                <p class="text-[9px] uppercase tracking-widest text-slate-400 font-black mb-2">Symptômes observés par {{ $incident->user->name ?? 'l\'agent' }}</p>
+                                <p class="text-[9px] uppercase tracking-widest text-slate-400 font-black mb-2">{{ __("Symptômes observés par") }} {{ $incident->user->name ?? __("l'agent") }}</p>
                                 <p class="text-xs text-slate-700 font-medium leading-relaxed">{{ $incident->symptoms }}</p>
                             </div>
 
                             {{-- Bloc Diagnostic Vétérinaire (Si rempli) --}}
                             @if($incident->suspected_disease)
                                 <div class="bg-blue-50 p-4 rounded-2xl border border-blue-100 mt-auto">
-                                    <p class="text-[9px] uppercase tracking-widest text-blue-400 font-black mb-1"><i class="fa-solid fa-user-doctor mr-1"></i> Diagnostic Vétérinaire</p>
+                                    <p class="text-[9px] uppercase tracking-widest text-blue-400 font-black mb-1"><i class="fa-solid fa-user-doctor mr-1"></i> {{ __("Diagnostic Vétérinaire") }}</p>
                                     <p class="text-xs text-blue-800 font-black uppercase">{{ $incident->suspected_disease }}</p>
                                     @if($incident->vet_prescription)
                                         <p class="text-[10px] text-blue-600 font-medium mt-2 leading-tight">{{ $incident->vet_prescription }}</p>
@@ -97,17 +97,17 @@
                                 @if($incident->status === 'en_attente')
                                     <div class="flex gap-2">
                                         <button type="button" x-data @click="$dispatch('open-diagnosis-modal', {{ $incident->id }})" class="flex-1 py-3 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 transition-colors flex justify-center items-center gap-2 shadow-md">
-                                            <i class="fa-solid fa-stethoscope"></i> Diagnostic
+                                            <i class="fa-solid fa-stethoscope"></i> {{ __("Diagnostic") }}
                                         </button>
-                                        <button type="button" x-data @click="$dispatch('open-fast-close-modal', {{ $incident->id }})" title="Clôturer sans diagnostic (Cause technique/Erreur)" class="w-12 py-3 bg-slate-100 text-slate-400 rounded-xl text-[10px] hover:bg-slate-200 hover:text-slate-800 transition-colors flex justify-center items-center shadow-sm">
+                                        <button type="button" x-data @click="$dispatch('open-fast-close-modal', {{ $incident->id }})" title="{{ __("Clôturer sans diagnostic (Cause technique/Erreur)") }}" class="w-12 py-3 bg-slate-100 text-slate-400 rounded-xl text-[10px] hover:bg-slate-200 hover:text-slate-800 transition-colors flex justify-center items-center shadow-sm">
                                             <i class="fa-solid fa-power-off text-sm"></i>
                                         </button>
                                     </div>
                                 @elseif($incident->status === 'diagnostique')
-                                    <form action="{{ route('health.incidents.resolve', $incident->id) }}" method="POST" onsubmit="return confirm('Confirmez-vous que l\'état de santé du lot est revenu à la normale ?')">
+                                    <form action="{{ route('health.incidents.resolve', $incident->id) }}" method="POST" onsubmit="return confirm('{{ __("Confirmez-vous que l'état de santé du lot est revenu à la normale ?") }}')">
                                         @csrf @method('PATCH')
                                         <button type="submit" class="w-full py-3 bg-emerald-100 text-emerald-700 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-500 hover:text-white transition-colors flex justify-center items-center gap-2 shadow-sm border border-emerald-200">
-                                            <i class="fa-solid fa-check-double"></i> Marquer comme résolu
+                                            <i class="fa-solid fa-check-double"></i> {{ __("Marquer comme résolu") }}
                                         </button>
                                     </form>
                                 @endif
@@ -116,7 +116,7 @@
                             {{-- Affichage du statut clos (visible par tous) --}}
                             @if($incident->status === 'resolu' || $incident->status === 'clos')
                                 <div class="w-full py-3 bg-slate-50 text-slate-400 rounded-xl text-[10px] font-black uppercase tracking-widest flex justify-center items-center gap-2 cursor-not-allowed">
-                                    <i class="fa-solid fa-lock"></i> Dossier Médical Clos
+                                    <i class="fa-solid fa-lock"></i> {{ __("Dossier Médical Clos") }}
                                 </div>
                             @endif
                         </div>

@@ -10,7 +10,7 @@ class UpdateStockRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return Gate::allows('stocks.M');
+        return Gate::allows('logistique.M');
     }
 
     public function rules(): array

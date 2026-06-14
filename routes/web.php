@@ -38,20 +38,54 @@ use App\Http\Controllers\{
     ChickDispatchController,
     SettingsController,
     PayrollController,
-    TaskController
+    TaskController,
+    SpeciesController,
+    CampaignController,
+    MilkProductionController,
+    ExpenseController,
+    EmployeeAccessController,
+    EmployeeSelfController,
+    MediaController,
+    InstallController,
+    PwaController
 };
 
 Route::redirect('/', '/login');
 
-// Routes de Setup (accessibles même si non connecté)
-Route::get('/setup', [SetupController::class, 'index'])->name('setup.index');
-Route::post('/setup', [SetupController::class, 'store'])->name('setup.store');
+// Manifest PWA dynamique (nom + icône pilotés par les paramètres).
+Route::get('/manifest.webmanifest', [PwaController::class, 'manifest'])->name('pwa.manifest');
+
+// ──────────────────────────────────────────────
+// ASSISTANT D'INSTALLATION (premier démarrage)
+// ──────────────────────────────────────────────
+Route::prefix('install')->name('install.')->group(function () {
+    Route::middleware('redirect.if.installed')->group(function () {
+        Route::get('/', [InstallController::class, 'welcome'])->name('welcome');
+        Route::get('/database', [InstallController::class, 'database'])->name('database');
+        Route::post('/database', [InstallController::class, 'storeDatabase'])->name('database.store');
+        Route::get('/migrate', [InstallController::class, 'migrate'])->name('migrate');
+        Route::post('/migrate', [InstallController::class, 'runMigrate'])->name('migrate.run');
+        Route::get('/admin', [InstallController::class, 'admin'])->name('admin');
+        Route::post('/admin', [InstallController::class, 'storeAdmin'])->name('admin.store');
+    });
+
+    Route::get('/finish', [InstallController::class, 'finish'])->name('finish');
+});
+
+// Service des fichiers publics (logos, photos…) sans dépendre du symlink storage.
+// Volontairement public : le logo de l'entreprise s'affiche aussi sur la page de connexion.
+Route::get('/media/{path}', [MediaController::class, 'show'])
+    ->where('path', '.*')
+    ->name('media.show');
 
 // ──────────────────────────────────────────────
 // PROFIL & DASHBOARD (tout utilisateur connecté)
 // ──────────────────────────────────────────────
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+    // Espace personnel de l'utilisateur connecté (lecture seule).
+    Route::get('/mon-espace', [EmployeeSelfController::class, 'index'])->name('mon-espace');
 
     Route::controller(ProfileController::class)->group(function () {
         Route::get('/profile', 'edit')->name('profile.edit');
@@ -96,6 +130,19 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/sync-stocks', 'syncAllStocks')->name('sync_stocks')->middleware('can:S');
 
         Route::delete('/{batch}', 'destroy')->name('destroy')->middleware('can:S');
+    });
+
+    // ─── CAMPAGNES SAISONNIÈRES (Tabaski/Eid, Ramadan...) ───
+    Route::prefix('campaigns')->name('campaigns.')->controller(CampaignController::class)->group(function () {
+        Route::get('/', 'index')->name('index')->middleware('can:elevage.L');
+        Route::get('/create', 'create')->name('create')->middleware('can:elevage.C');
+        Route::post('/', 'store')->name('store')->middleware('can:elevage.C');
+        Route::get('/{campaign}', 'show')->name('show')->middleware('can:elevage.L');
+        Route::get('/{campaign}/edit', 'edit')->name('edit')->middleware('can:elevage.M');
+        Route::put('/{campaign}', 'update')->name('update')->middleware('can:elevage.M');
+        Route::post('/{campaign}/attach-batch', 'attachBatch')->name('attachBatch')->middleware('can:elevage.M');
+        Route::delete('/{campaign}/detach-batch/{batch}', 'detachBatch')->name('detachBatch')->middleware('can:elevage.M');
+        Route::delete('/{campaign}', 'destroy')->name('destroy')->middleware('can:elevage.S');
     });
 
     // ─── STOCKS (Inventaire) ───
@@ -160,20 +207,20 @@ Route::middleware(['auth'])->group(function () {
         });
     });
 
-    // ─── COUVOIR & REPRO ───
-    Route::prefix('repro')->name('incubations.')->controller(IncubationController::class)->group(function () {
+    // ─── COUVOIR & INCUBATION ───
+    Route::prefix('incubations')->name('incubations.')->controller(IncubationController::class)->group(function () {
         Route::get('/', 'index')->name('index')->middleware('can:L');
-        Route::get('/create', 'create')->name('create')->middleware('can:C');
+        // Création & édition se font via la modale et les actions mirage/éclosion
+        // de la vue index : pas de méthodes create()/edit() dédiées au contrôleur.
         Route::post('/store', 'store')->name('store')->middleware('can:C');
-        Route::get('/{incubation}/edit', 'edit')->name('edit')->middleware('can:M');
         Route::post('/{incubation}/mirage', 'recordMirage')->name('mirage')->middleware('can:M');
         Route::post('/{incubation}/hatch', 'recordHatch')->name('hatch')->middleware('can:M');
         Route::delete('/{incubation}', 'destroy')->name('destroy')->middleware('can:S');
     });
 
     // Dispatch poussins post-éclosion
-    Route::get('/repro/{incubation}/dispatch', [ChickDispatchController::class, 'show'])->name('chick-dispatches.show')->middleware('can:L');
-    Route::post('/repro/{incubation}/dispatch', [ChickDispatchController::class, 'store'])->name('chick-dispatches.store')->middleware('can:C');
+    Route::get('/incubations/{incubation}/dispatch', [ChickDispatchController::class, 'show'])->name('chick-dispatches.show')->middleware('can:L');
+    Route::post('/incubations/{incubation}/dispatch', [ChickDispatchController::class, 'store'])->name('chick-dispatches.store')->middleware('can:C');
 
     Route::prefix('incubators-devices')->name('incubators.')->controller(IncubatorController::class)->group(function () {
         Route::get('/', 'index')->name('index')->middleware('can:L');
@@ -197,6 +244,16 @@ Route::middleware(['auth'])->group(function () {
     });
 
     Route::post('/egg-movements/store', [EggMovementController::class, 'store'])->name('egg-movements.store')->middleware('can:C');
+
+    // ─── COLLECTE DE LAIT (laiterie caprine) ───
+    Route::prefix('milk-productions')->name('milk-productions.')->controller(MilkProductionController::class)->group(function () {
+        Route::get('/', 'index')->name('index')->middleware('can:production.L');
+        Route::get('/create', 'create')->name('create')->middleware('can:production.C');
+        Route::post('/', 'store')->name('store')->middleware('can:production.C');
+        Route::get('/{milkProduction}/edit', 'edit')->name('edit')->middleware('can:production.M');
+        Route::put('/{milkProduction}', 'update')->name('update')->middleware('can:production.M');
+        Route::delete('/{milkProduction}', 'destroy')->name('destroy')->middleware('can:production.S');
+    });
 
     // ─── SANTÉ & PROPHYLAXIE ───
     Route::prefix('health')->name('health.')->controller(HealthController::class)->group(function () {
@@ -230,7 +287,7 @@ Route::middleware(['auth'])->group(function () {
     // B-18 corrigé : UN SEUL bloc, pas de doublons closures/controllers
     Route::get('/offline', fn() => view('offline'))->name('offline');
 
-    Route::middleware(['auth'])->prefix('api/offline')->name('offline.')->group(function () {
+    Route::middleware(['force.json', 'auth'])->prefix('api/offline')->name('offline.')->group(function () {
         // Controllers optimisés (colonnes limitées, sync incrémentale)
         Route::get('/batches', [BatchController::class, 'getOfflineBatches'])->name('batches');
         Route::get('/buildings', [BuildingController::class, 'getOfflineBuildings'])->name('buildings');
@@ -244,14 +301,19 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/norms', fn() => \App\Models\ProductionNorm::select('id', 'model_name', 'batch_type')
             ->distinct()->get())->name('norms');
         Route::get('/stocks', fn() => \App\Models\Stock::all(['id', 'item_name', 'current_quantity', 'category', 'unit']))->name('stocks');
+        Route::get('/clients', [ClientController::class, 'getOfflineClients'])->name('clients');
     });
 
     // ─── SYNCHRONISATION OFFLINE → SERVEUR ───
     // Endpoints appelés par sync-engine.js quand le réseau revient.
     // Auth obligatoire + Gate checks dans le controller.
-    Route::middleware(['auth'])->prefix('api/sync')->name('sync.')->controller(SyncController::class)->group(function () {
+    Route::middleware(['force.json', 'auth'])->prefix('api/sync')->name('sync.')->controller(SyncController::class)->group(function () {
         Route::post('/reconcile', 'reconcile')->name('reconcile');
         Route::post('/daily-checks', 'reconcileDailyCheck')->name('daily_checks');
+        Route::post('/egg-collections', 'reconcileEggCollection')->name('egg_collections');
+        Route::post('/stock-movements', 'reconcileStockMovement')->name('stock_movements');
+        Route::post('/sales', 'reconcileSale')->name('sales');
+        Route::post('/expenses', 'reconcileExpense')->name('expenses');
     });
 
     // ─── ACHATS ALIMENT ───
@@ -268,8 +330,15 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('reports')->name('reports.')->controller(ReportController::class)->middleware('can:L')->group(function () {
         Route::get('/', 'index')->name('index');
         Route::get('/technical', 'technicalPerformance')->name('technical');
+        Route::get('/technical/pdf', 'technicalPerformancePdf')->name('technical.pdf');
+        Route::get('/profit-loss', 'profitLoss')->name('profit_loss');
+        Route::get('/profit-loss/pdf', 'profitLossPdf')->name('profit_loss.pdf');
+        Route::get('/nursery', 'nurseryReport')->name('nursery');
+        Route::get('/nursery/pdf', 'nurseryReportPdf')->name('nursery.pdf');
         Route::get('/health-finance', 'healthFinancialReport')->name('health_finance');
+        Route::get('/health-finance/pdf', 'healthFinancialReportPdf')->name('health_finance.pdf');
         Route::get('/monthly', 'monthlyExpenses')->name('monthly');
+        Route::get('/monthly/pdf', 'monthlyExpensesPdf')->name('monthly.pdf');
         Route::get('/gmq', 'gmqReport')->name('gmq');
         Route::get('/gmq/pdf', 'gmqReportPdf')->name('gmq.pdf');
         Route::get('/aquaculture', 'aquacultureReport')->name('aquaculture');
@@ -307,6 +376,19 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('payments')->name('payments.')->controller(PaymentController::class)->group(function () {
         Route::get('/', 'index')->name('index')->middleware('can:L');
         Route::post('/', 'store')->name('store')->middleware('can:C');
+    });
+
+    // ─── REGISTRE DES DÉPENSES (module: depenses) ───
+    Route::prefix('expenses')->name('expenses.')->controller(ExpenseController::class)->group(function () {
+        Route::get('/', 'index')->name('index')->middleware('can:L');
+        Route::get('/create', 'create')->name('create')->middleware('can:C');
+        Route::post('/', 'store')->name('store')->middleware('can:C');
+        Route::get('/{expense}', 'show')->name('show')->middleware('can:L');
+        Route::get('/{expense}/edit', 'edit')->name('edit')->middleware('can:M');
+        Route::put('/{expense}', 'update')->name('update')->middleware('can:M');
+        Route::put('/{expense}/approve', 'approve')->name('approve')->middleware('can:M');
+        Route::put('/{expense}/cancel', 'cancel')->name('cancel')->middleware('can:M');
+        Route::delete('/{expense}', 'destroy')->name('destroy')->middleware('can:S');
     });
 
     // ──────────────────────────────────────────────
@@ -425,6 +507,13 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('employees', EmployeeController::class);
     Route::put('/employees/{id}/status', [EmployeeController::class, 'updateStatus'])->name('employees.status');
 
+    // ─── ESPACE EMPLOYÉ : gestion du compte de connexion (réservé admin.S) ───
+    Route::controller(EmployeeAccessController::class)->group(function () {
+        Route::post('/employees/{employee}/access', 'store')->name('employees.access.store');
+        Route::put('/employees/{employee}/access', 'update')->name('employees.access.update');
+        Route::put('/employees/{employee}/access/password', 'resetPassword')->name('employees.access.password');
+    });
+
     Route::resource('providers', ProviderController::class);
     // S-18 corrigé : une seule route PUT (sémantiquement correct pour changement d'état)
     Route::put('/providers/{provider}/blacklist', [ProviderController::class, 'blacklist'])->name('providers.blacklist');
@@ -434,6 +523,7 @@ Route::middleware(['auth'])->group(function () {
         Route::resource('users', UserController::class)->only(['index', 'store', 'destroy']);
         Route::patch('/users/{user}/role', [UserController::class, 'updateRole'])->name('users.update_role');
         Route::post('/roles', [UserController::class, 'storeRole'])->name('roles.store');
+        Route::delete('/roles/{role}', [UserController::class, 'destroyRole'])->name('roles.destroy');
         Route::post('/roles/matrix', [UserController::class, 'updateMatrix'])->name('roles.update_matrix');
         Route::post('/roles/module-matrix', [UserController::class, 'updateModuleMatrix'])->name('roles.update_module_matrix');
 
@@ -442,6 +532,8 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/norms', [ProductionNormController::class, 'index'])->name('norms.index');
             Route::post('/norms/import', [ProductionNormController::class, 'import'])->name('norms.import');
             Route::post('/norms', [ProductionNormController::class, 'store'])->name('norms.store');
+            Route::put('/norms/{norm}', [ProductionNormController::class, 'update'])->name('norms.update');
+            Route::delete('/norms/{norm}', [ProductionNormController::class, 'destroy'])->name('norms.destroy');
 
             // Gestion des espèces (multiespèces)
             Route::get('/species', [SpeciesController::class, 'index'])->name('species.index');
@@ -481,6 +573,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/{period}/generate', 'generate')->name('generate')->middleware('can:M');
         Route::post('/{period}/validate', 'validatePeriod')->name('validate')->middleware('can:S');
         Route::post('/payslip/{payslip}/line', 'addLine')->name('add-line')->middleware('can:M');
+        Route::post('/payslip/{payslip}/overtime', 'recordOvertime')->name('overtime')->middleware('can:M');
         Route::delete('/line/{line}', 'removeLine')->name('remove-line')->middleware('can:M');
         Route::post('/payslip/{payslip}/pay', 'markPaid')->name('mark-paid')->middleware('can:M');
         // Congés

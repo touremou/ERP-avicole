@@ -15,13 +15,13 @@ class ReleaseBuildingsFromSanitaryVoid extends Command
     public function handle()
     {
         // On cherche les bâtiments "En désinfection" depuis 14 jours ou plus
-        $buildings = Building::where('status', 'En désinfection')
-            ->where('disinfection_started_at', '<=', now()->subDays(14))
+        $buildings = Building::inSanitaryBreak()
+            ->where('disinfection_started_at', '<=', now()->subDays(Building::SANITARY_BREAK_DAYS))
             ->get();
 
         foreach ($buildings as $building) {
             $building->update([
-                'status' => 'Vide',
+                'status' => Building::STATUS_VIDE,
                 'disinfection_started_at' => null // Reset pour le prochain cycle
             ]);
 

@@ -94,7 +94,7 @@ class RecordDailyCheck
     {
         // 1. Utilisation de la nouvelle clé stricte 'feed_type'
         $stock = Stock::where('feed_type', trim($feedType))
-            ->where('category', 'conso')
+            ->where('category', Stock::CAT_CONSO)
             ->first();
 
         // 2. Conversion automatique en KG si le stock est géré en Sacs

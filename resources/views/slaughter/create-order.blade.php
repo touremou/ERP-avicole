@@ -3,8 +3,8 @@
         <div class="flex items-center gap-5 text-left">
             <a href="{{ route('slaughter.dashboard') }}" class="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-900 hover:text-white transition-all no-underline"><i class="fa-solid fa-arrow-left"></i></a>
             <div>
-                <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">Ordre d'Abattage</h2>
-                <p class="text-[10px] font-black text-rose-600 uppercase tracking-[0.2em] mt-2 italic">Chair, Pondeuses Réformées, Reproducteurs</p>
+                <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">{{ __("Ordre d'Abattage") }}</h2>
+                <p class="text-[10px] font-black text-rose-600 uppercase tracking-[0.2em] mt-2 italic">{{ __("Chair, Pondeuses Réformées, Reproducteurs") }}</p>
             </div>
         </div>
     </x-slot>
@@ -25,49 +25,49 @@
 
                             {{-- LOT SOURCE — tous types --}}
                             <div class="space-y-2">
-                                <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">Lot source *</label>
+                                <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Lot source *") }}</label>
                                 <select name="batch_id" x-model="selectedBatch" @change="onBatchChange()" required
                                     class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black uppercase shadow-inner outline-none">
-                                    <option value="">— Sélectionner le lot —</option>
+                                    <option value="">{{ __("— Sélectionner le lot —") }}</option>
 
                                     {{-- Groupé par type --}}
                                     @php $grouped = $batches->groupBy('type'); @endphp
 
                                     @if($grouped->has('chair'))
-                                    <optgroup label="🍗 CHAIR">
+                                    <optgroup label="{{ __("🍗 CHAIR") }}">
                                         @foreach($grouped['chair'] as $b)
                                         <option value="{{ $b->id }}" data-qty="{{ $b->current_quantity }}" data-type="chair" data-building="{{ $b->building->name ?? '—' }}">
-                                            {{ $b->code }} — {{ $b->building->name ?? '' }} ({{ $b->current_quantity }} sujets)
+                                            {{ $b->code }} — {{ $b->building->name ?? '' }} ({{ $b->current_quantity }} {{ __("sujets") }})
                                         </option>
                                         @endforeach
                                     </optgroup>
                                     @endif
 
                                     @if($grouped->has('ponte'))
-                                    <optgroup label="🥚 PONDEUSES (RÉFORME)">
+                                    <optgroup label="{{ __("🥚 PONDEUSES (RÉFORME)") }}">
                                         @foreach($grouped['ponte'] as $b)
                                         <option value="{{ $b->id }}" data-qty="{{ $b->current_quantity }}" data-type="ponte" data-building="{{ $b->building->name ?? '—' }}">
-                                            {{ $b->code }} — {{ $b->building->name ?? '' }} ({{ $b->current_quantity }} sujets) — RÉFORME
+                                            {{ $b->code }} — {{ $b->building->name ?? '' }} ({{ $b->current_quantity }} {{ __("sujets") }}) — {{ __("RÉFORME") }}
                                         </option>
                                         @endforeach
                                     </optgroup>
                                     @endif
 
                                     @if($grouped->has('reproducteur'))
-                                    <optgroup label="🧬 REPRODUCTEURS (RÉFORME)">
+                                    <optgroup label="{{ __("🧬 REPRODUCTEURS (RÉFORME)") }}">
                                         @foreach($grouped['reproducteur'] as $b)
                                         <option value="{{ $b->id }}" data-qty="{{ $b->current_quantity }}" data-type="reproducteur" data-building="{{ $b->building->name ?? '—' }}">
-                                            {{ $b->code }} — {{ $b->building->name ?? '' }} ({{ $b->current_quantity }} sujets) — RÉFORME
+                                            {{ $b->code }} — {{ $b->building->name ?? '' }} ({{ $b->current_quantity }} {{ __("sujets") }}) — {{ __("RÉFORME") }}
                                         </option>
                                         @endforeach
                                     </optgroup>
                                     @endif
 
                                     @if($grouped->has('poussiniere'))
-                                    <optgroup label="🐣 POUSSINIÈRE">
+                                    <optgroup label="{{ __("🐣 POUSSINIÈRE") }}">
                                         @foreach($grouped['poussiniere'] as $b)
                                         <option value="{{ $b->id }}" data-qty="{{ $b->current_quantity }}" data-type="poussiniere" data-building="{{ $b->building->name ?? '—' }}">
-                                            {{ $b->code }} — {{ $b->building->name ?? '' }} ({{ $b->current_quantity }} sujets)
+                                            {{ $b->code }} — {{ $b->building->name ?? '' }} ({{ $b->current_quantity }} {{ __("sujets") }})
                                         </option>
                                         @endforeach
                                     </optgroup>
@@ -80,15 +80,15 @@
                                  :class="batchType === 'chair' ? 'bg-blue-50 border-blue-200' : (batchType === 'ponte' ? 'bg-amber-50 border-amber-200' : 'bg-purple-50 border-purple-200')">
                                 <div class="grid grid-cols-3 gap-4 text-center">
                                     <div>
-                                        <p class="text-[8px] font-black uppercase" :class="batchType === 'chair' ? 'text-blue-500' : 'text-amber-500'">Type</p>
+                                        <p class="text-[8px] font-black uppercase" :class="batchType === 'chair' ? 'text-blue-500' : 'text-amber-500'">{{ __("Type") }}</p>
                                         <p class="text-sm font-black text-slate-900 uppercase" x-text="typeLabel"></p>
                                     </div>
                                     <div>
-                                        <p class="text-[8px] font-black text-slate-400 uppercase">Bâtiment</p>
+                                        <p class="text-[8px] font-black text-slate-400 uppercase">{{ __("Bâtiment") }}</p>
                                         <p class="text-sm font-black text-slate-900" x-text="building"></p>
                                     </div>
                                     <div>
-                                        <p class="text-[8px] font-black uppercase" :class="plannedQty > maxQty ? 'text-red-500' : 'text-emerald-500'">Disponible</p>
+                                        <p class="text-[8px] font-black uppercase" :class="plannedQty > maxQty ? 'text-red-500' : 'text-emerald-500'">{{ __("Disponible") }}</p>
                                         <p class="text-sm font-black" :class="plannedQty > maxQty ? 'text-red-600' : 'text-emerald-600'" x-text="maxQty + ' sujets'"></p>
                                     </div>
                                 </div>
@@ -103,7 +103,7 @@
 
                             <div class="grid grid-cols-2 gap-6">
                                 <div class="space-y-2">
-                                    <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">Quantité à abattre *</label>
+                                    <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Quantité à abattre *") }}</label>
                                     <input type="number" name="planned_quantity" x-model.number="plannedQty" min="1" :max="maxQty || 99999" required
                                         class="w-full rounded-2xl p-4 text-lg font-black shadow-inner outline-none text-center border-2"
                                         :class="plannedQty > maxQty && maxQty > 0 ? 'bg-red-50 border-red-300 text-red-600' : 'bg-slate-50 border-transparent text-slate-800'">
@@ -112,35 +112,35 @@
                                     <div x-show="plannedQty > maxQty && maxQty > 0" class="p-2 bg-red-50 rounded-xl mt-1">
                                         <p class="text-[8px] font-black text-red-600 text-center">
                                             <i class="fa-solid fa-triangle-exclamation mr-1"></i>
-                                            Max : <span x-text="maxQty"></span> sujets disponibles
+                                            {{ __("Max :") }} <span x-text="maxQty"></span> {{ __("sujets disponibles") }}
                                         </p>
                                     </div>
 
                                     {{-- Boutons rapides --}}
                                     <div class="flex gap-2 mt-2" x-show="maxQty > 0">
-                                        <button type="button" @click="plannedQty = maxQty" class="flex-1 bg-slate-100 text-slate-600 py-2 rounded-xl text-[8px] font-black uppercase border-none cursor-pointer hover:bg-slate-200 transition-all">Tout le lot</button>
-                                        <button type="button" @click="plannedQty = Math.ceil(maxQty / 2)" class="flex-1 bg-slate-100 text-slate-600 py-2 rounded-xl text-[8px] font-black uppercase border-none cursor-pointer hover:bg-slate-200 transition-all">Moitié</button>
+                                        <button type="button" @click="plannedQty = maxQty" class="flex-1 bg-slate-100 text-slate-600 py-2 rounded-xl text-[8px] font-black uppercase border-none cursor-pointer hover:bg-slate-200 transition-all">{{ __("Tout le lot") }}</button>
+                                        <button type="button" @click="plannedQty = Math.ceil(maxQty / 2)" class="flex-1 bg-slate-100 text-slate-600 py-2 rounded-xl text-[8px] font-black uppercase border-none cursor-pointer hover:bg-slate-200 transition-all">{{ __("Moitié") }}</button>
                                         <button type="button" @click="plannedQty = Math.min(100, maxQty)" class="flex-1 bg-slate-100 text-slate-600 py-2 rounded-xl text-[8px] font-black uppercase border-none cursor-pointer hover:bg-slate-200 transition-all">100</button>
                                     </div>
                                 </div>
                                 <div class="space-y-2">
                                     {{-- Remarque : Input natif HTML de type 'date', ne prend que YYYY-MM-DD. Le setting() format n'est pas applicable ici --}}
-                                    <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">Date prévue *</label>
+                                    <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Date prévue *") }}</label>
                                     <input type="date" name="planned_date" value="{{ now()->toDateString() }}" required class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black shadow-inner outline-none">
                                 </div>
                             </div>
 
                             <div class="space-y-2">
-                                <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">Client (si sur commande)</label>
+                                <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Client (si sur commande)") }}</label>
                                 <select name="client_id" class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black uppercase shadow-inner outline-none">
-                                    <option value="">Abattage standard (stock)</option>
+                                    <option value="">{{ __("Abattage standard (stock)") }}</option>
                                     @foreach($clients as $c)
                                         <option value="{{ $c->id }}">{{ $c->name }}</option>
                                     @endforeach
                                 </select>
                             </div>
 
-                            <textarea name="notes" rows="2" placeholder="Instructions spéciales..." class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-bold shadow-inner outline-none"></textarea>
+                            <textarea name="notes" rows="2" placeholder="{{ __("Instructions spéciales...") }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-bold shadow-inner outline-none"></textarea>
                         </div>
                     </div>
 

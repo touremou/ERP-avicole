@@ -6,21 +6,21 @@
                     <i class="fa-solid fa-boxes-stacked text-xl"></i>
                 </div>
                 <div>
-                    <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">Inventaire Global</h2>
+                    <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">{{ __("Inventaire Global") }}</h2>
                     <p class="text-[10px] font-black text-orange-600 uppercase tracking-[0.2em] mt-2 italic">
-                        Gestion des stocks multi-catégories
+                        {{ __("Gestion des stocks multi-catégories") }}
                     </p>
                 </div>
             </div>
             <div class="flex gap-3">
-                @can('stocks.M')
+                @can('logistique.M')
                 <a href="{{ route('stocks.export', ['category' => request('category', 'oeufs')]) }}" class="bg-white border border-slate-200 px-5 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest text-slate-600 hover:bg-slate-50 transition-all no-underline flex items-center gap-2">
-                    <i class="fa-solid fa-file-excel text-emerald-500"></i> Export
+                    <i class="fa-solid fa-file-excel text-emerald-500"></i> {{ __("Export") }}
                 </a>
                 @endcan
-                @can('stocks.C')
+                @can('logistique.C')
                 <a href="{{ route('stocks.create') }}" class="bg-slate-900 text-white px-8 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-orange-600 transition-all shadow-xl italic no-underline flex items-center gap-2">
-                    <i class="fa-solid fa-plus"></i> Nouvel Article
+                    <i class="fa-solid fa-plus"></i> {{ __("Nouvel Article") }}
                 </a>
                 @endcan
             </div>
@@ -42,15 +42,9 @@
                 @endif
             @endforeach
 
-            {{-- ONGLETS CATÉGORIES --}}
+            {{-- ONGLETS CATÉGORIES — pilotés par le paramètre « stocks.categories » (Paramètres > Stocks) --}}
             @php
-                $categories = [
-                    'oeufs'          => ['label' => 'Œufs',           'icon' => 'fa-egg',                'color' => 'amber'],
-                    'conso'          => ['label' => 'Aliment & Santé','icon' => 'fa-wheat-awn',          'color' => 'emerald'],
-                    'produits_finis' => ['label' => 'Produits Finis', 'icon' => 'fa-drumstick-bite',     'color' => 'rose'],
-                    'litieres'       => ['label' => 'Litières',       'icon' => 'fa-leaf',               'color' => 'purple'],
-                    'materiels'      => ['label' => 'Matériel',       'icon' => 'fa-screwdriver-wrench', 'color' => 'blue'],
-                ];
+                $categories = \App\Models\Stock::activeCategories();
             @endphp
 
             <div class="flex gap-3 mb-8 overflow-x-auto pb-2">
@@ -63,7 +57,7 @@
                            "bg-white text-slate-500 border border-slate-100 hover:bg-{$cat['color']}-50 hover:text-{$cat['color']}-600" => request('category', 'oeufs') !== $catKey,
                        ])>
                         <i class="fa-solid {{ $cat['icon'] }}"></i>
-                        {{ $cat['label'] }}
+                        {{ __($cat['label']) }}
                         @php $catCount = \App\Models\Stock::where('category', $catKey)->count(); @endphp
                         <span @class([
                             'text-[8px] px-2 py-0.5 rounded-full font-black',
@@ -83,35 +77,35 @@
                     // Découpage intelligent si on est dans les consommables
                     $sections = [
                         [
-                            'title' => 'Alimentation Chair',
+                            'title' => __('Alimentation Chair'),
                             'icon' => 'fa-feather-pointed',
                             'text_color' => 'text-slate-800',
                             'border_color' => 'border-slate-800',
                             'items' => $stocks->filter(fn($s) => ($s->metadata['poultry_type'] ?? '') === 'Chair' && ($s->metadata['conso_type'] ?? '') === 'Aliment')
                         ],
                         [
-                            'title' => 'Alimentation Ponte & Repro',
+                            'title' => __('Alimentation Ponte & Repro'),
                             'icon' => 'fa-egg',
                             'text_color' => 'text-emerald-600',
                             'border_color' => 'border-emerald-500',
                             'items' => $stocks->filter(fn($s) => in_array($s->metadata['poultry_type'] ?? '', ['Ponte', 'Reproducteur']) && ($s->metadata['conso_type'] ?? '') === 'Aliment')
                         ],
                         [
-                            'title' => 'Santé & Pharmacie',
+                            'title' => __('Santé & Pharmacie'),
                             'icon' => 'fa-kit-medical',
                             'text_color' => 'text-blue-600',
                             'border_color' => 'border-blue-500',
                             'items' => $stocks->filter(fn($s) => ($s->metadata['conso_type'] ?? '') === 'Santé')
                         ],
                         [
-                            'title' => 'Hygiène & Entretien',
+                            'title' => __('Hygiène & Entretien'),
                             'icon' => 'fa-soap',
                             'text_color' => 'text-cyan-600',
                             'border_color' => 'border-cyan-500',
                             'items' => $stocks->filter(fn($s) => ($s->metadata['conso_type'] ?? '') === 'Hygiène')
                         ],
                         [
-                            'title' => 'Autres Consommables',
+                            'title' => __('Autres Consommables'),
                             'icon' => 'fa-box-open',
                             'text_color' => 'text-slate-500',
                             'border_color' => 'border-slate-300',
@@ -146,13 +140,13 @@
                             <table class="w-full border-collapse">
                                 <thead>
                                     <tr class="bg-slate-50 text-[8px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 italic">
-                                        <th class="px-6 py-5 text-left">Article</th>
-                                        <th class="px-4 py-5 text-center">Unité</th>
-                                        <th class="px-4 py-5 text-right">Quantité</th>
-                                        <th class="px-4 py-5 text-right">Seuil Alerte</th>
-                                        <th class="px-4 py-5 text-center">État</th>
-                                        <th class="px-4 py-5 text-right">Dernier P.U.</th>
-                                        <th class="px-6 py-5 text-right">Actions</th>
+                                        <th class="px-6 py-5 text-left">{{ __("Article") }}</th>
+                                        <th class="px-4 py-5 text-center">{{ __("Unité") }}</th>
+                                        <th class="px-4 py-5 text-right">{{ __("Quantité") }}</th>
+                                        <th class="px-4 py-5 text-right">{{ __("Seuil Alerte") }}</th>
+                                        <th class="px-4 py-5 text-center">{{ __("État") }}</th>
+                                        <th class="px-4 py-5 text-right">{{ __("Dernier P.U.") }}</th>
+                                        <th class="px-6 py-5 text-right">{{ __("Actions") }}</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-slate-50">
@@ -182,11 +176,11 @@
                                         </td>
                                         <td class="px-4 py-4 text-center">
                                             @if($isEmpty)
-                                                <span class="text-[8px] font-black uppercase px-3 py-1 rounded-full bg-red-100 text-red-600 animate-pulse">Rupture</span>
+                                                <span class="text-[8px] font-black uppercase px-3 py-1 rounded-full bg-red-100 text-red-600 animate-pulse">{{ __("Rupture") }}</span>
                                             @elseif($isLow)
-                                                <span class="text-[8px] font-black uppercase px-3 py-1 rounded-full bg-amber-100 text-amber-600">Bas</span>
+                                                <span class="text-[8px] font-black uppercase px-3 py-1 rounded-full bg-amber-100 text-amber-600">{{ __("Bas") }}</span>
                                             @else
-                                                <span class="text-[8px] font-black uppercase px-3 py-1 rounded-full bg-emerald-50 text-emerald-600">OK</span>
+                                                <span class="text-[8px] font-black uppercase px-3 py-1 rounded-full bg-emerald-50 text-emerald-600">{{ __("OK") }}</span>
                                             @endif
                                         </td>
                                         <td class="px-4 py-4 text-right text-[10px] font-black text-slate-500">
@@ -194,11 +188,11 @@
                                         </td>
                                         <td class="px-6 py-4 text-right">
                                             <div class="flex gap-2 justify-end">
-                                                <a href="{{ route('stocks.show', $stock->id) }}" class="text-slate-400 hover:text-orange-600 no-underline" title="Détails & mouvements">
+                                                <a href="{{ route('stocks.show', $stock->id) }}" class="text-slate-400 hover:text-orange-600 no-underline" title="{{ __('Détails & mouvements') }}">
                                                     <i class="fa-solid fa-eye"></i>
                                                 </a>
-                                                @can('stocks.M')
-                                                <a href="{{ route('stocks.edit', $stock->id) }}" class="text-slate-400 hover:text-blue-600 no-underline" title="Modifier">
+                                                @can('logistique.M')
+                                                <a href="{{ route('stocks.edit', $stock->id) }}" class="text-slate-400 hover:text-blue-600 no-underline" title="{{ __('Modifier') }}">
                                                     <i class="fa-solid fa-pen"></i>
                                                 </a>
                                                 @endcan
@@ -209,10 +203,10 @@
                                     <tr>
                                         <td colspan="7" class="px-8 py-16 text-center">
                                             <i class="fa-solid fa-box-open text-slate-200 text-3xl mb-4 block"></i>
-                                            <p class="text-[10px] text-slate-400 uppercase tracking-widest font-black">Aucun article dans cette section</p>
-                                            @can('stocks.C')
+                                            <p class="text-[10px] text-slate-400 uppercase tracking-widest font-black">{{ __("Aucun article dans cette section") }}</p>
+                                            @can('logistique.C')
                                             <a href="{{ route('stocks.create') }}" class="inline-block mt-4 px-6 py-3 bg-slate-900 text-white rounded-2xl text-[9px] font-black uppercase tracking-widest no-underline hover:bg-orange-600 transition-all">
-                                                <i class="fa-solid fa-plus mr-1"></i> Créer un article
+                                                <i class="fa-solid fa-plus mr-1"></i> {{ __("Créer un article") }}
                                             </a>
                                             @endcan
                                         </td>
@@ -226,47 +220,47 @@
             @endforeach
 
             {{-- MOUVEMENT RAPIDE --}}
-            @can('stocks.M')
+            @can('logistique.M')
             <div class="mt-8 bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm" x-data="{ showMove: false }">
                 <button @click="showMove = !showMove" class="w-full flex justify-between items-center border-none bg-transparent cursor-pointer outline-none">
                     <h3 class="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
-                        <i class="fa-solid fa-arrows-rotate text-blue-500"></i> Mouvement rapide (Entrée / Sortie / Ajustement)
+                        <i class="fa-solid fa-arrows-rotate text-blue-500"></i> {{ __("Mouvement rapide (Entrée / Sortie / Ajustement)") }}
                     </h3>
                     <i class="fa-solid fa-chevron-down text-slate-300 transition-transform" :class="showMove && 'rotate-180'"></i>
                 </button>
 
                 <div x-show="showMove" x-transition class="mt-6">
-                    <form method="POST" action="{{ route('stocks.move') }}" class="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+                    <form method="POST" action="{{ route('stocks.move') }}" id="stock-move-form" class="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
                         @csrf
                         <div class="space-y-1">
-                            <label class="text-[8px] font-black uppercase text-slate-400 tracking-widest">Article</label>
+                            <label class="text-[8px] font-black uppercase text-slate-400 tracking-widest">{{ __("Article") }}</label>
                             <select name="stock_id" required class="w-full bg-slate-50 border-none rounded-xl p-3 text-[10px] font-black uppercase shadow-inner outline-none">
-                                <option value="">Sélectionner...</option>
+                                <option value="">{{ __("Sélectionner...") }}</option>
                                 @foreach($stocks ?? [] as $s)
-                                    <option value="{{ $s->id }}">{{ $s->item_name }} ({{ $s->current_quantity }} {{ $s->unit }})</option>
+                                    <option value="{{ $s->id }}" data-qty="{{ $s->current_quantity }}" data-unit="{{ $s->unit }}">{{ $s->item_name }} ({{ $s->current_quantity }} {{ $s->unit }})</option>
                                 @endforeach
                             </select>
                         </div>
                         <div class="space-y-1">
-                            <label class="text-[8px] font-black uppercase text-slate-400 tracking-widest">Type</label>
+                            <label class="text-[8px] font-black uppercase text-slate-400 tracking-widest">{{ __("Type") }}</label>
                             <select name="type" required class="w-full bg-slate-50 border-none rounded-xl p-3 text-[10px] font-black uppercase shadow-inner outline-none">
-                                <option value="in">Entrée</option>
-                                <option value="out">Sortie</option>
-                                <option value="adjustment">Ajustement</option>
+                                <option value="in">{{ __("Entrée") }}</option>
+                                <option value="out">{{ __("Sortie") }}</option>
+                                <option value="adjustment">{{ __("Ajustement") }}</option>
                             </select>
                         </div>
                         <div class="space-y-1">
-                            <label class="text-[8px] font-black uppercase text-slate-400 tracking-widest">Quantité</label>
+                            <label class="text-[8px] font-black uppercase text-slate-400 tracking-widest">{{ __("Quantité") }}</label>
                             <input type="number" name="quantity" step="0.01" min="0.01" required
                                 class="w-full bg-slate-50 border-none rounded-xl p-3 text-sm font-black shadow-inner outline-none text-center">
                         </div>
                         <div class="space-y-1">
-                            <label class="text-[8px] font-black uppercase text-slate-400 tracking-widest">Motif</label>
-                            <input type="text" name="notes" placeholder="Raison du mouvement..."
+                            <label class="text-[8px] font-black uppercase text-slate-400 tracking-widest">{{ __("Motif") }}</label>
+                            <input type="text" name="notes" placeholder="{{ __('Raison du mouvement...') }}"
                                 class="w-full bg-slate-50 border-none rounded-xl p-3 text-[10px] font-bold shadow-inner outline-none">
                         </div>
                         <button type="submit" class="bg-blue-500 text-white py-3 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-blue-600 transition-all border-none cursor-pointer">
-                            <i class="fa-solid fa-check mr-1"></i> Valider
+                            <i class="fa-solid fa-check mr-1"></i> {{ __("Valider") }}
                         </button>
                     </form>
                 </div>
@@ -274,4 +268,54 @@
             @endcan
         </div>
     </div>
+
+    <script>
+        // ─── 🛰️ MODE TERRAIN : mouvement de stock hors-ligne ───
+        // Met le mouvement en file d'attente IndexedDB si le réseau est coupé ;
+        // sync-engine.js le pousse (idempotent par UUID) au retour réseau.
+        document.getElementById('stock-move-form')?.addEventListener('submit', async function(e) {
+            if (!navigator.onLine || {{ config('app.database_down', false) ? 'true' : 'false' }}) {
+                e.preventDefault();
+                if (typeof db === 'undefined') {
+                    alert('Erreur : base locale non initialisée.');
+                    return;
+                }
+
+                const formData = new FormData(this);
+                const data = Object.fromEntries(formData.entries());
+
+                data.uuid = self.crypto.randomUUID();
+                data.is_synced = 0;
+                data.stock_id = parseInt(data.stock_id) || data.stock_id;
+                data.quantity = parseFloat(data.quantity) || 0;
+                data.created_at = new Date().toISOString();
+
+                if (!data.stock_id || data.quantity <= 0) {
+                    alert('Veuillez sélectionner un article et une quantité valide.');
+                    return;
+                }
+
+                // Garde-fou local pour une sortie : on alerte si le miroir local
+                // indique un stock insuffisant (le serveur revérifie à la synchro).
+                if (data.type === 'out') {
+                    const opt = this.querySelector(`option[value="${data.stock_id}"]`);
+                    const localQty = parseFloat(opt?.dataset.qty ?? 'NaN');
+                    if (!isNaN(localQty) && localQty < data.quantity) {
+                        if (!confirm(`Stock local insuffisant (${localQty}). Enregistrer quand même ? La sortie sera revérifiée à la synchronisation.`)) {
+                            return;
+                        }
+                    }
+                }
+
+                try {
+                    await db.stock_movements.add(data);
+                    alert("📦 MODE TERRAIN : Mouvement enregistré localement.\nIl sera synchronisé au retour du réseau.");
+                    window.location.reload();
+                } catch (err) {
+                    console.error("Erreur de stockage local :", err);
+                    alert("Erreur critique lors de la sauvegarde locale.");
+                }
+            }
+        });
+    </script>
 </x-app-layout>

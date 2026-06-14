@@ -31,3 +31,28 @@ if (! function_exists('setting')) {
         return \App\Models\Setting::get($dotKey, $default);
     }
 }
+
+if (! function_exists('media_url')) {
+    /**
+     * URL d'un fichier stocké sur le disque "public" (logos, photos, etc.).
+     *
+     * On passe par une route applicative (App\Http\Controllers\MediaController)
+     * plutôt que par asset('storage/...'). Avantages :
+     *   - fonctionne même si le lien symbolique `php artisan storage:link` n'a pas
+     *     été créé sur le serveur (cause n°1 des images qui ne s'affichent pas) ;
+     *   - l'URL est relative à la requête courante (bon schéma http/https derrière
+     *     un proxy), ce qui évite les blocages "mixed content".
+     *
+     * @param  string|null $path     Chemin relatif sur le disque public (ex: "employees/photos/x.jpg")
+     * @param  string|null $fallback URL renvoyée si $path est vide
+     * @return string|null
+     */
+    function media_url(?string $path, ?string $fallback = null): ?string
+    {
+        if (empty($path)) {
+            return $fallback;
+        }
+
+        return url('media/' . ltrim($path, '/'));
+    }
+}

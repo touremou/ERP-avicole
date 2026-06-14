@@ -34,6 +34,21 @@ class TaskController extends Controller
         $category = $request->input('category');
         $priority = $request->input('priority');
 
+        // ═══ PORTÉE RBAC : espace perso vs encadrement ═══
+        // Un non-encadrant (sans admin.M) ne voit QUE ses propres tâches : on
+        // verrouille le filtre employé sur sa fiche RH, quels que soient les
+        // paramètres d'URL. Les liens « Mes tâches » du menu profil passent
+        // ?mine=1 pour présélectionner l'utilisateur courant — y compris pour
+        // un encadrant, qui peut ensuite élargir à toute l'équipe.
+        $myEmployeeId = Auth::user()?->employee?->id;
+        $canSeeAll    = Gate::allows('admin.M');
+
+        if (! $canSeeAll) {
+            $employeeId = $myEmployeeId;
+        } elseif ($request->boolean('mine') && $myEmployeeId) {
+            $employeeId = $myEmployeeId;
+        }
+
         $activeFilters = array_filter([
             'employee' => $employeeId,
             'building' => $buildingId,
@@ -43,7 +58,7 @@ class TaskController extends Controller
 
         // FarmScope s'applique automatiquement sur ces modèles
         $employees = Employee::where('status', 'Actif')->orderBy('first_name')->get();
-        $buildings = Building::orderBy('name')->get();
+        $buildings = Building::physical()->orderBy('name')->get();
         $filteredEmployee = $employeeId ? Employee::find($employeeId) : null;
 
         // ═══ VUE MENSUELLE ═══
@@ -97,7 +112,7 @@ class TaskController extends Controller
 
         return view('tasks.index', compact(
             'tasks', 'stats', 'date', 'view', 'filter', 'employees', 'buildings',
-            'overdueTasks', 'filteredEmployee', 'activeFilters', 'calendarData'
+            'overdueTasks', 'filteredEmployee', 'activeFilters', 'calendarData', 'canSeeAll'
         ));
     }
 
@@ -165,7 +180,7 @@ class TaskController extends Controller
         if ($task->status === 'fait') return back()->with('error', 'Impossible de modifier une tâche terminée.');
 
         $employees = Employee::where('status', 'Actif')->orderBy('first_name')->get();
-        $buildings = Building::orderBy('name')->get();
+        $buildings = Building::physical()->orderBy('name')->get();
 
         return view('tasks.edit', compact('task', 'employees', 'buildings'));
     }
@@ -212,9 +227,10 @@ class TaskController extends Controller
         // Templates = globaux (withoutGlobalScopes)
         $templates = TaskTemplate::withoutGlobalScopes()
             ->orderBy('category')->orderBy('scheduled_time')->get();
-        $buildings = Building::orderBy('name')->get();
+        $buildings = Building::physical()->orderBy('name')->get();
+        $batchTypeOptions = TaskTemplate::batchTypeOptions();
 
-        return view('tasks.templates', compact('templates', 'buildings'));
+        return view('tasks.templates', compact('templates', 'buildings', 'batchTypeOptions'));
     }
 
     public function storeTemplate(Request $request)
@@ -264,7 +280,8 @@ class TaskController extends Controller
     public function editTemplate(TaskTemplate $template)
     {
         if (Gate::denies('admin.M')) return back()->with('error', 'Non autorisé.');
-        return view('tasks.edit-template', compact('template'));
+        $batchTypeOptions = TaskTemplate::batchTypeOptions();
+        return view('tasks.edit-template', compact('template', 'batchTypeOptions'));
     }
 
     public function updateTemplate(Request $request, TaskTemplate $template)

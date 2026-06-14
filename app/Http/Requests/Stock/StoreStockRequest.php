@@ -10,14 +10,16 @@ class StoreStockRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return Gate::allows('stocks.C'); // ST-06 corrigé : Sécurité à la création
+        return Gate::allows('logistique.C'); // ST-06 corrigé : Sécurité à la création
     }
 
     public function rules(): array
     {
         return [
             'item_name'        => 'required|string|max:255',
-            'category'         => 'required|in:oeufs,conso,litieres,materiels',
+            // Catégories multiespèces : lait (laiterie) et produits_finis
+            // (viande/carcasse/poisson) en plus des œufs/aliment/litières/matériels.
+            'category'         => 'required|in:oeufs,conso,litieres,materiels,lait,produits_finis',
             'unit'             => 'required|string',
             'alert_threshold'  => 'required|numeric|min:0',
             'current_quantity' => 'nullable|numeric|min:0',

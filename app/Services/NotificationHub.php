@@ -63,15 +63,15 @@ class NotificationHub
         $date = now()->translatedFormat('l d F Y');
 
         // Données
-        $totalBirds = Batch::where('status', 'Actif')->sum('current_quantity');
-        $activeBatches = Batch::where('status', 'Actif')->count();
+        $totalBirds = Batch::active()->live()->sum('current_quantity');
+        $activeBatches = Batch::active()->live()->count();
 
         // Mortalité dernières 24h
         $mortality24h = DailyCheck::where('check_date', '>=', now()->subDay())
             ->sum('mortality');
 
         // Stock aliment critique
-        $criticalStocks = Stock::where('category', 'conso')
+        $criticalStocks = Stock::where('category', Stock::CAT_CONSO)
             ->whereRaw('current_quantity <= alert_threshold')
             ->where('alert_threshold', '>', 0)
             ->get(['item_name', 'current_quantity', 'unit']);
@@ -209,9 +209,13 @@ class NotificationHub
      */
     public function alertFuelLow(EnergySource $source): void
     {
+        $autonomyLabel = $source->fuel_autonomy_hours !== null
+            ? "{$source->fuel_autonomy_hours}h de fonctionnement"
+            : "{$source->fuel_autonomy_days} jour(s)";
+
         $message = "⛽ *GASOIL CRITIQUE*\n\n"
             . "Groupe : *{$source->name}*\n"
-            . "Autonomie : *{$source->fuel_autonomy_days} jour(s)*\n"
+            . "Autonomie : *{$autonomyLabel}*\n"
             . "Niveau cuve : {$source->current_fuel_level}L / {$source->fuel_tank_capacity}L\n\n"
             . "Commander du gasoil AUJOURD'HUI.";
 
@@ -291,6 +295,17 @@ class NotificationHub
                 'user_id' => $user->id,
                 'type'    => $type,
                 'title'   => $title,
+            ]);
+        }
+
+        // Filet de sécurité : les alertes critiques sont aussi envoyées au
+        // numéro admin (whatsapp.admin_phone), même si l'admin n'est pas
+        // explicitement abonné à ce type d'alerte.
+        $adminPhone = (string) setting('whatsapp.admin_phone', '');
+        if ($severity === 'critique' && $adminPhone !== '' && ! $recipients->contains('whatsapp_phone', $adminPhone)) {
+            $this->whatsapp->send($adminPhone, $message, [
+                'type'  => $type,
+                'title' => $title,
             ]);
         }
     }

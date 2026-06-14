@@ -26,6 +26,8 @@ class UpdateFormula
             $formula->update([
                 'name'               => $data['name'],
                 'target_type'        => $data['target_type'],
+                'species_id'         => $data['species_id'] ?? $formula->species_id,
+                'production_type_id' => $data['production_type_id'] ?? $formula->production_type_id,
                 'total_batch_weight' => $batchWeight,
                 'instructions'       => $data['instructions'] ?? $formula->instructions,
             ]);

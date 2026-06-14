@@ -39,4 +39,31 @@ class DispatchItem extends Model
     {
         return $this->belongsTo(Batch::class);
     }
+
+    // Taxonomie alignée sur SaleItem (multiespèces).
+    public const STOCK_TYPES = ['oeufs', 'aliment', 'materiel'];
+    public const BATCH_TYPES = ['animal_vif', 'carcasse', 'volaille_vivante', 'volaille_abattue'];
+    public const COUNT_UNITS = ['tete', 'piece', 'unite'];
+
+    /** Ligne adossée au magasin (déstockage Stock). */
+    public function requiresDestock(): bool
+    {
+        return in_array($this->product_type, self::STOCK_TYPES);
+    }
+
+    /** Ligne adossée à un lot d'animaux vivants (toute espèce). */
+    public function impactsBatch(): bool
+    {
+        return in_array($this->product_type, self::BATCH_TYPES) && $this->batch_id !== null;
+    }
+
+    /**
+     * Décrémente l'EFFECTIF du lot uniquement pour les expéditions exprimées
+     * en têtes/pièces. Une expédition au poids (carcasse au kg) n'indique pas
+     * le nombre d'animaux retirés → on ne corrompt pas l'effectif.
+     */
+    public function decrementsBatchCount(): bool
+    {
+        return $this->impactsBatch() && in_array($this->unit, self::COUNT_UNITS);
+    }
 }

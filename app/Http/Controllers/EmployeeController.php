@@ -43,7 +43,7 @@ class EmployeeController extends Controller
 
     public function show($id) 
     {
-        if (Gate::denies('annuaire.L') && Gate::denies('rh.L')) return back()->with('error', 'Accès restreint.');
+        if (Gate::denies('annuaire.L') && Gate::denies('annuaire.L')) return back()->with('error', 'Accès restreint.');
         // On conserve $id ici car le withTrashed() est requis pour voir les archives
         $employee = Employee::withTrashed()->with('batches')->findOrFail($id);
         return view('employees.show', compact('employee'));

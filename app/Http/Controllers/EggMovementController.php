@@ -39,7 +39,7 @@ class EggMovementController extends Controller
         $eggProduction->load('batch.building');
 
         // Stock actuel par calibre
-        $calibreStocks = Stock::where('category', 'oeufs')
+        $calibreStocks = Stock::where('category', Stock::CAT_OEUFS)
             ->whereIn('item_name', ['S', 'M', 'L', 'XL'])
             ->get()
             ->keyBy('item_name');
@@ -241,7 +241,7 @@ class EggMovementController extends Controller
         if (Gate::denies('production.M')) return back()->with('error', 'Action réservée aux managers.');
 
         $validated = $request->validate([
-            'calibre'   => 'required|in:S,M,L,XL',
+            'calibre'   => 'required|in:' . implode(',', \App\Models\EggProduction::gradeCodes()),
             'type'      => 'required|in:in,out,adjustment',
             'quantity'  => 'required|integer|min:1',
             'unit'      => 'required|in:unite,alveole',

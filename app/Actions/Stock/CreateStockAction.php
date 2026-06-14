@@ -16,7 +16,7 @@ class CreateStockAction
             $alertThreshold = $data['alert_threshold'];
 
             // Règle métier : Conversion Sac -> KG
-            if ($unit === 'Sac' && $data['category'] === 'conso') {
+            if ($unit === 'Sac' && $data['category'] === Stock::CAT_CONSO) {
                 $quantity *= 50;
                 $alertThreshold *= 50;
                 $unit = 'KG'; 

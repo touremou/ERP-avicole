@@ -3,12 +3,12 @@
         <div class="flex items-center gap-4 text-left">
             <a href="{{ route('planning.index') }}" class="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-500 hover:text-slate-800 rounded-xl transition-all shadow-sm group no-underline">
                 <i class="fas fa-chevron-left group-hover:-translate-x-1 transition-transform text-xs"></i>
-                <span class="text-[10px] font-black uppercase italic tracking-widest">Planning</span>
+                <span class="text-[10px] font-black uppercase italic tracking-widest">{{ __("Planning") }}</span>
             </a>
             <div>
                 <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">{{ $plan->building->name ?? '—' }}</h2>
                 <p class="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em] mt-2 italic">
-                    {{ ucfirst($plan->batch_type) }} {{ $plan->model_name ? '— '.$plan->model_name : '' }} — {{ number_format($plan->planned_quantity) }} sujets
+                    {{ ucfirst($plan->batch_type) }} {{ $plan->model_name ? '— '.$plan->model_name : '' }} — {{ number_format($plan->planned_quantity) }} {{ __("sujets") }}
                 </p>
             </div>
         </div>
@@ -28,18 +28,18 @@
 
             {{-- ═══ TIMELINE VISUELLE ═══ --}}
             <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm mb-6">
-                <h3 class="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-6">Cycle de la bande</h3>
+                <h3 class="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-6">{{ __("Cycle de la bande") }}</h3>
                 @php
                     $steps = [
-                        ['date' => $plan->chick_order_deadline, 'label' => 'Commander', 'icon' => 'fa-phone', 'color' => 'red',
+                        ['date' => $plan->chick_order_deadline, 'label' => __("Commander"), 'icon' => 'fa-phone', 'color' => 'red',
                          'done' => in_array($plan->status, ['commande', 'en_cours', 'termine'])],
-                        ['date' => $plan->planned_arrival_date, 'label' => 'Arrivée', 'icon' => 'fa-truck', 'color' => 'blue',
+                        ['date' => $plan->planned_arrival_date, 'label' => __("Arrivée"), 'icon' => 'fa-truck', 'color' => 'blue',
                          'done' => in_array($plan->status, ['commande', 'en_cours', 'termine'])],
-                        ['date' => null, 'label' => 'Activation', 'icon' => 'fa-rocket', 'color' => 'emerald',
+                        ['date' => null, 'label' => __("Activation"), 'icon' => 'fa-rocket', 'color' => 'emerald',
                          'done' => in_array($plan->status, ['en_cours', 'termine'])],
-                        ['date' => $plan->planned_end_date, 'label' => $plan->batch_type === 'chair' ? 'Abattage' : 'Réforme', 'icon' => 'fa-flag-checkered', 'color' => 'amber',
+                        ['date' => $plan->planned_end_date, 'label' => $plan->batch_type === 'chair' ? __("Abattage") : __("Réforme"), 'icon' => 'fa-flag-checkered', 'color' => 'amber',
                          'done' => $plan->status === 'termine'],
-                        ['date' => $plan->sanitary_void_end, 'label' => 'Bât. libre', 'icon' => 'fa-broom', 'color' => 'slate',
+                        ['date' => $plan->sanitary_void_end, 'label' => __("Bât. libre"), 'icon' => 'fa-broom', 'color' => 'slate',
                          'done' => false],
                     ];
                 @endphp
@@ -66,18 +66,18 @@
 
                 {{-- Statut actuel --}}
                 <div class="mt-6 flex items-center gap-3">
-                    <span class="text-[8px] font-black text-slate-400 uppercase">Statut actuel :</span>
+                    <span class="text-[8px] font-black text-slate-400 uppercase">{{ __("Statut actuel :") }}</span>
                     <span @class(['text-[10px] font-black uppercase px-4 py-2 rounded-full',
                         'bg-slate-100 text-slate-500' => $plan->status === 'planifie',
                         'bg-blue-100 text-blue-600' => $plan->status === 'commande',
                         'bg-emerald-100 text-emerald-600' => $plan->status === 'en_cours',
                         'bg-slate-800 text-white' => $plan->status === 'termine',
                         'bg-red-100 text-red-500' => $plan->status === 'annule'])>
-                        @if($plan->status === 'planifie') 📅 Planifié
-                        @elseif($plan->status === 'commande') 📞 Poussins Commandés
-                        @elseif($plan->status === 'en_cours') 🐣 Bande Active
-                        @elseif($plan->status === 'termine') ✅ Terminé
-                        @elseif($plan->status === 'annule') ❌ Annulé
+                        @if($plan->status === 'planifie') 📅 {{ __("Planifié") }}
+                        @elseif($plan->status === 'commande') 📞 {{ __("Poussins Commandés") }}
+                        @elseif($plan->status === 'en_cours') 🐣 {{ __("Bande Active") }}
+                        @elseif($plan->status === 'termine') ✅ {{ __("Terminé") }}
+                        @elseif($plan->status === 'annule') ❌ {{ __("Annulé") }}
                         @endif
                     </span>
                 </div>
@@ -85,30 +85,30 @@
 
             {{-- ═══ INFORMATIONS ═══ --}}
             <div class="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm mb-6">
-                <h3 class="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-4">Informations</h3>
+                <h3 class="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-4">{{ __("Informations") }}</h3>
                 <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
                     <div class="p-4 bg-slate-50 rounded-2xl">
-                        <p class="text-[8px] font-black text-slate-400 uppercase mb-1">Bâtiment</p>
+                        <p class="text-[8px] font-black text-slate-400 uppercase mb-1">{{ __("Bâtiment") }}</p>
                         <p class="text-sm font-black text-slate-900">{{ $plan->building->name ?? '—' }}</p>
                     </div>
                     <div class="p-4 bg-slate-50 rounded-2xl">
-                        <p class="text-[8px] font-black text-slate-400 uppercase mb-1">Type</p>
+                        <p class="text-[8px] font-black text-slate-400 uppercase mb-1">{{ __("Type") }}</p>
                         <p class="text-sm font-black text-slate-900 uppercase">{{ $plan->batch_type }}</p>
                     </div>
                     <div class="p-4 bg-slate-50 rounded-2xl">
-                        <p class="text-[8px] font-black text-slate-400 uppercase mb-1">Souche</p>
+                        <p class="text-[8px] font-black text-slate-400 uppercase mb-1">{{ __("Souche") }}</p>
                         <p class="text-sm font-black text-slate-900">{{ $plan->model_name ?? '—' }}</p>
                     </div>
                     <div class="p-4 bg-slate-50 rounded-2xl">
-                        <p class="text-[8px] font-black text-slate-400 uppercase mb-1">Quantité prévue</p>
+                        <p class="text-[8px] font-black text-slate-400 uppercase mb-1">{{ __("Quantité prévue") }}</p>
                         <p class="text-sm font-black text-emerald-600">{{ number_format($plan->planned_quantity) }}</p>
                     </div>
                     <div class="p-4 bg-slate-50 rounded-2xl">
-                        <p class="text-[8px] font-black text-slate-400 uppercase mb-1">Fournisseur</p>
+                        <p class="text-[8px] font-black text-slate-400 uppercase mb-1">{{ __("Fournisseur") }}</p>
                         <p class="text-sm font-black text-slate-900">{{ $plan->provider->name ?? '—' }}</p>
                     </div>
                     <div class="p-4 bg-slate-50 rounded-2xl">
-                        <p class="text-[8px] font-black text-slate-400 uppercase mb-1">Créé par</p>
+                        <p class="text-[8px] font-black text-slate-400 uppercase mb-1">{{ __("Créé par") }}</p>
                         <p class="text-sm font-black text-slate-900">{{ $plan->creator->name ?? '—' }}</p>
                     </div>
                 </div>
@@ -122,14 +122,14 @@
                 @if($plan->status === 'planifie')
                 <div class="bg-blue-50 p-8 rounded-[2.5rem] border border-blue-200">
                     <h3 class="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-4 flex items-center gap-2">
-                        <i class="fa-solid fa-forward-step"></i> Prochaine étape
+                        <i class="fa-solid fa-forward-step"></i> {{ __("Prochaine étape") }}
                     </h3>
                     <p class="text-[9px] text-blue-700 mb-6 normal-case">
-                        Les poussins doivent être commandés au moins 8 semaines avant l'arrivée prévue.
+                        {{ __("Les poussins doivent être commandés au moins 8 semaines avant l'arrivée prévue.") }}
                         @if($plan->is_overdue)
-                            <span class="text-red-600 font-black"> ⚠ La date de commande est dépassée de {{ $plan->chick_order_deadline->diffInDays(now()) }} jours !</span>
+                            <span class="text-red-600 font-black"> ⚠ {{ __("La date de commande est dépassée de") }} {{ $plan->chick_order_deadline->diffInDays(now()) }} {{ __("jours !") }}</span>
                         @else
-                            Date limite : <span class="font-black">{{ $plan->chick_order_deadline?->format('d/m/Y') ?? '—' }}</span>.
+                            {{ __("Date limite :") }} <span class="font-black">{{ $plan->chick_order_deadline?->format('d/m/Y') ?? '—' }}</span>.
                         @endif
                     </p>
                     <div class="flex gap-3">
@@ -137,14 +137,14 @@
                             @csrf @method('PUT')
                             <input type="hidden" name="status" value="commande">
                             <button type="submit" class="bg-blue-500 text-white px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-600 transition-all border-none cursor-pointer shadow-lg">
-                                <i class="fa-solid fa-phone mr-2"></i> Marquer comme Commandé
+                                <i class="fa-solid fa-phone mr-2"></i> {{ __("Marquer comme Commandé") }}
                             </button>
                         </form>
-                        <form method="POST" action="{{ route('planning.status', $plan) }}" onsubmit="return confirm('Annuler cette planification ?')">
+                        <form method="POST" action="{{ route('planning.status', $plan) }}" onsubmit="return confirm('{{ __("Annuler cette planification ?") }}')">
                             @csrf @method('PUT')
                             <input type="hidden" name="status" value="annule">
                             <button type="submit" class="bg-white text-red-500 px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-red-50 transition-all border border-red-200 cursor-pointer">
-                                <i class="fa-solid fa-xmark mr-1"></i> Annuler
+                                <i class="fa-solid fa-xmark mr-1"></i> {{ __("Annuler") }}
                             </button>
                         </form>
                     </div>
@@ -155,22 +155,22 @@
                 @if($plan->status === 'commande')
                 <div class="bg-emerald-50 p-8 rounded-[2.5rem] border border-emerald-200">
                     <h3 class="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-4 flex items-center gap-2">
-                        <i class="fa-solid fa-rocket"></i> Poussins commandés — Prêt à activer
+                        <i class="fa-solid fa-rocket"></i> {{ __("Poussins commandés — Prêt à activer") }}
                     </h3>
                     <p class="text-[9px] text-emerald-700 mb-6 normal-case">
-                        Quand les poussins arrivent, cliquez sur "Activer la bande" pour saisir les données réelles (quantité reçue, mortalité transport, prix) et créer automatiquement le lot dans le système.
+                        {{ __("Quand les poussins arrivent, cliquez sur \"Activer la bande\" pour saisir les données réelles (quantité reçue, mortalité transport, prix) et créer automatiquement le lot dans le système.") }}
                     </p>
                     <div class="flex gap-3">
                         @can('planning.M')
                             <a href="{{ route('planning.activate', $plan) }}" class="bg-emerald-500 text-white px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-lg no-underline flex items-center gap-2">
-                                <i class="fa-solid fa-rocket"></i> Activer la bande & Créer le lot
+                                <i class="fa-solid fa-rocket"></i> {{ __("Activer la bande & Créer le lot") }}
                             </a>
                         @endcan
-                        <form method="POST" action="{{ route('planning.status', $plan) }}" onsubmit="return confirm('Annuler cette commande ?')">
+                        <form method="POST" action="{{ route('planning.status', $plan) }}" onsubmit="return confirm('{{ __("Annuler cette commande ?") }}')">
                             @csrf @method('PUT')
                             <input type="hidden" name="status" value="annule">
                             <button type="submit" class="bg-white text-red-500 px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-red-50 transition-all border border-red-200 cursor-pointer">
-                                <i class="fa-solid fa-xmark mr-1"></i> Annuler
+                                <i class="fa-solid fa-xmark mr-1"></i> {{ __("Annuler") }}
                             </button>
                         </form>
                     </div>
@@ -181,24 +181,24 @@
                 @if($plan->status === 'en_cours')
                 <div class="bg-amber-50 p-8 rounded-[2.5rem] border border-amber-200">
                     <h3 class="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-4 flex items-center gap-2">
-                        <i class="fa-solid fa-spinner fa-spin-pulse"></i> Bande en cours
+                        <i class="fa-solid fa-spinner fa-spin-pulse"></i> {{ __("Bande en cours") }}
                     </h3>
                     <p class="text-[9px] text-amber-700 mb-4 normal-case">
-                        La bande est active. Fin prévue le <span class="font-black">{{ $plan->planned_end_date->format('d/m/Y') }}</span>
-                        (dans {{ max(0, now()->diffInDays($plan->planned_end_date, false)) }} jours).
+                        {{ __("La bande est active. Fin prévue le") }} <span class="font-black">{{ $plan->planned_end_date->format('d/m/Y') }}</span>
+                        ({{ __("dans") }} {{ max(0, now()->diffInDays($plan->planned_end_date, false)) }} {{ __("jours") }}).
                     </p>
 
                     @if($plan->actual_batch_id)
                     <a href="{{ route('batches.show', $plan->actual_batch_id) }}" class="bg-emerald-500 text-white px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-lg no-underline flex items-center gap-2 mb-4 inline-flex">
-                        <i class="fa-solid fa-arrow-up-right-from-square"></i> Voir le lot {{ $plan->actualBatch->code ?? '' }}
+                        <i class="fa-solid fa-arrow-up-right-from-square"></i> {{ __("Voir le lot") }} {{ $plan->actualBatch->code ?? '' }}
                     </a>
                     @endif
 
-                    <form method="POST" action="{{ route('planning.status', $plan) }}" onsubmit="return confirm('Confirmer la fin de cette bande ? Le lot sera clôturé.')">
+                    <form method="POST" action="{{ route('planning.status', $plan) }}" onsubmit="return confirm('{{ __("Confirmer la fin de cette bande ? Le lot sera clôturé.") }}')">
                         @csrf @method('PUT')
                         <input type="hidden" name="status" value="termine">
                         <button type="submit" class="bg-slate-900 text-white px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-800 transition-all border-none cursor-pointer shadow-lg">
-                            <i class="fa-solid fa-flag-checkered mr-2"></i> Terminer la bande
+                            <i class="fa-solid fa-flag-checkered mr-2"></i> {{ __("Terminer la bande") }}
                         </button>
                     </form>
                 </div>
@@ -208,12 +208,12 @@
                 @if($plan->status === 'termine')
                 <div class="bg-slate-100 p-8 rounded-[2.5rem] border border-slate-200">
                     <h3 class="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2">
-                        <i class="fa-solid fa-check-double"></i> Bande terminée
+                        <i class="fa-solid fa-check-double"></i> {{ __("Bande terminée") }}
                     </h3>
-                    <p class="text-[9px] text-slate-500 normal-case">Cette bande est clôturée. Le bâtiment sera disponible après le vide sanitaire ({{ $plan->sanitary_void_end?->format('d/m/Y') ?? '—' }}).</p>
+                    <p class="text-[9px] text-slate-500 normal-case">{{ __("Cette bande est clôturée. Le bâtiment sera disponible après le vide sanitaire") }} ({{ $plan->sanitary_void_end?->format('d/m/Y') ?? '—' }}).</p>
                     @if($plan->actual_batch_id)
                     <a href="{{ route('batches.show', $plan->actual_batch_id) }}" class="mt-4 bg-white text-slate-600 px-6 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest no-underline inline-flex items-center gap-2 border border-slate-200 hover:bg-slate-50 transition-all">
-                        <i class="fa-solid fa-arrow-up-right-from-square"></i> Consulter le lot clôturé
+                        <i class="fa-solid fa-arrow-up-right-from-square"></i> {{ __("Consulter le lot clôturé") }}
                     </a>
                     @endif
                 </div>
@@ -223,9 +223,9 @@
                 @if($plan->status === 'annule')
                 <div class="bg-red-50 p-8 rounded-[2.5rem] border border-red-200">
                     <h3 class="text-[10px] font-black text-red-500 uppercase tracking-widest mb-2 flex items-center gap-2">
-                        <i class="fa-solid fa-ban"></i> Planification annulée
+                        <i class="fa-solid fa-ban"></i> {{ __("Planification annulée") }}
                     </h3>
-                    <p class="text-[9px] text-red-400 normal-case">Cette planification a été annulée. Le bâtiment est libéré pour une nouvelle planification.</p>
+                    <p class="text-[9px] text-red-400 normal-case">{{ __("Cette planification a été annulée. Le bâtiment est libéré pour une nouvelle planification.") }}</p>
                 </div>
                 @endif
 
@@ -235,7 +235,7 @@
             {{-- ═══ NOTES ═══ --}}
             @if($plan->notes)
                 <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm">
-                    <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-2">Notes</p>
+                    <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-2">{{ __("Notes") }}</p>
                     <p class="text-xs text-slate-600 normal-case">{{ $plan->notes }}</p>
                 </div>
             @endif

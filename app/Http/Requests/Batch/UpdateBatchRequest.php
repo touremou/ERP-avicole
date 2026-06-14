@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Batch;
 
+use App\Models\Batch;
 use App\Models\ProductionType;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Gate;
@@ -47,7 +48,7 @@ class UpdateBatchRequest extends FormRequest
             'allocated_surface'  => 'nullable|numeric|min:0.1',
             'buy_price_per_unit' => 'required|numeric|min:0',
             'arrival_date'       => 'required|date',
-            'status'             => 'required|in:Actif,Terminé,Annulé',
+            'status'             => ['required', Rule::in(Batch::EDITABLE_STATUSES)],
             'observations'       => 'nullable|string|max:2000',
             'species_id'         => 'nullable|integer|exists:species,id',
             'production_type_id' => 'nullable|integer|exists:production_types,id',
@@ -70,7 +71,7 @@ class UpdateBatchRequest extends FormRequest
         return [
             'type.in'            => 'Type de production invalide.',
             'building_id.exists' => 'Bâtiment introuvable.',
-            'status.in'          => 'Statut invalide. Valeurs autorisées : Actif, Terminé, Annulé.',
+            'status.in'          => 'Statut invalide. Valeurs autorisées : ' . implode(', ', Batch::EDITABLE_STATUSES) . '.',
         ];
     }
 }

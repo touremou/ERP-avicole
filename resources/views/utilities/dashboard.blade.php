@@ -6,17 +6,17 @@
                     <i class="fa-solid fa-bolt text-xl"></i>
                 </div>
                 <div>
-                    <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">Eau & Énergie</h2>
+                    <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">{{ __("Eau & Énergie") }}</h2>
                     <p class="text-[10px] font-black text-cyan-600 uppercase tracking-[0.2em] mt-2 italic">
-                        Suivi des ressources — Période : {{ $period }} jours
+                        {{ __("Suivi des ressources — Période :") }} {{ $period }} {{ __("jours") }}
                     </p>
                 </div>
             </div>
             <form method="GET" class="flex gap-2 items-center">
                 <select name="period" onchange="this.form.submit()" class="bg-white border border-slate-100 rounded-2xl px-4 py-3 text-[10px] font-black uppercase tracking-widest shadow-sm outline-none appearance-none">
-                    <option value="7" {{ $period == 7 ? 'selected' : '' }}>7 jours</option>
-                    <option value="30" {{ $period == 30 ? 'selected' : '' }}>30 jours</option>
-                    <option value="90" {{ $period == 90 ? 'selected' : '' }}>90 jours</option>
+                    <option value="7" {{ $period == 7 ? 'selected' : '' }}>{{ __("7 jours") }}</option>
+                    <option value="30" {{ $period == 30 ? 'selected' : '' }}>{{ __("30 jours") }}</option>
+                    <option value="90" {{ $period == 90 ? 'selected' : '' }}>{{ __("90 jours") }}</option>
                 </select>
             </form>
         </div>
@@ -54,31 +54,31 @@
             <div class="mb-10">
                 <h3 class="text-[11px] font-black uppercase text-cyan-600 tracking-widest mb-6 flex items-center gap-3">
                     <div class="w-8 h-8 bg-cyan-500 rounded-lg flex items-center justify-center text-white"><i class="fa-solid fa-droplet text-sm"></i></div>
-                    Eau
+                    {{ __("Eau") }}
                 </h3>
 
                 {{-- KPI EAU --}}
                 <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
                     <div class="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm text-center">
-                        <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Conso période</p>
+                        <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Conso période") }}</p>
                         <p class="text-xl font-black text-slate-900">{{ number_format($data['water']['total_consumed']) }}</p>
-                        <p class="text-[8px] text-slate-400">litres</p>
+                        <p class="text-[8px] text-slate-400">{{ __("litres") }}</p>
                     </div>
                     <div class="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm text-center">
-                        <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Moyenne / jour</p>
+                        <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Moyenne / jour") }}</p>
                         <p class="text-xl font-black text-cyan-600">{{ number_format($data['water']['daily_avg']) }}</p>
-                        <p class="text-[8px] text-slate-400">litres</p>
+                        <p class="text-[8px] text-slate-400">{{ __("litres") }}</p>
                     </div>
                     <div @class(['p-5 rounded-[2rem] border shadow-sm text-center',
                         'bg-red-50 border-red-200' => $data['water']['per_bird_per_day'] < 0.15 || $data['water']['per_bird_per_day'] > 0.5,
                         'bg-white border-slate-100' => $data['water']['per_bird_per_day'] >= 0.15 && $data['water']['per_bird_per_day'] <= 0.5,
                     ])>
-                        <p class="text-[8px] font-black uppercase tracking-widest mb-1 {{ $data['water']['per_bird_per_day'] < 0.15 ? 'text-red-500' : 'text-slate-400' }}">L / volaille / jour</p>
+                        <p class="text-[8px] font-black uppercase tracking-widest mb-1 {{ $data['water']['per_bird_per_day'] < 0.15 ? 'text-red-500' : 'text-slate-400' }}">{{ __("L / sujet / jour") }}</p>
                         <p class="text-xl font-black {{ $data['water']['per_bird_per_day'] < 0.15 ? 'text-red-600' : 'text-slate-900' }}">{{ number_format($data['water']['per_bird_per_day'], 3) }}</p>
-                        <p class="text-[8px] text-slate-400">norme : 0.2-0.4L</p>
+                        <p class="text-[8px] text-slate-400">{{ __("norme : 0.2-0.4L") }}</p>
                     </div>
                     <div class="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm text-center">
-                        <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Coût / 1000 têtes</p>
+                        <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Coût / 1000 têtes") }}</p>
                         <p class="text-xl font-black text-slate-900">{{ number_format($data['water']['cost_per_1000']) }}</p>
                         <p class="text-[8px] text-slate-400">GNF</p>
                     </div>
@@ -87,11 +87,11 @@
                         'bg-emerald-50 border-emerald-200' => $data['water']['ph_status'] === 'optimal',
                         'bg-white border-slate-100' => !in_array($data['water']['ph_status'], ['hors_norme', 'optimal']),
                     ])>
-                        <p class="text-[8px] font-black uppercase tracking-widest mb-1 text-slate-400">Dernier pH</p>
+                        <p class="text-[8px] font-black uppercase tracking-widest mb-1 text-slate-400">{{ __("Dernier pH") }}</p>
                         <p class="text-xl font-black {{ $data['water']['ph_status'] === 'hors_norme' ? 'text-red-600' : 'text-emerald-600' }}">
                             {{ $data['water']['last_ph'] ?? '—' }}
                         </p>
-                        <p class="text-[8px] text-slate-400">norme : 6.5-8.5</p>
+                        <p class="text-[8px] text-slate-400">{{ __("norme : 6.5-8.5") }}</p>
                     </div>
                 </div>
 
@@ -129,37 +129,44 @@
             <div class="mb-10">
                 <h3 class="text-[11px] font-black uppercase text-amber-600 tracking-widest mb-6 flex items-center gap-3">
                     <div class="w-8 h-8 bg-amber-500 rounded-lg flex items-center justify-center text-white"><i class="fa-solid fa-bolt text-sm"></i></div>
-                    Énergie
+                    {{ __("Énergie") }}
                 </h3>
 
                 {{-- KPI ÉNERGIE --}}
-                <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+                <div class="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
                     <div class="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm text-center">
-                        <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Coût total</p>
+                        <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Coût total") }}</p>
                         <p class="text-xl font-black text-slate-900">{{ number_format($data['energy']['total_cost']) }}</p>
                         <p class="text-[8px] text-slate-400">GNF</p>
                     </div>
+                    @if(setting('energie.kwh_price_edg', 0) > 0)
+                    <div class="bg-emerald-50 p-5 rounded-[2rem] border border-emerald-100 shadow-sm text-center">
+                        <p class="text-[8px] font-black text-emerald-500 uppercase tracking-widest mb-1">{{ __("Valeur produite (éq. EDG)") }}</p>
+                        <p class="text-xl font-black text-emerald-600">{{ number_format($data['energy']['edg_value']) }}</p>
+                        <p class="text-[8px] text-emerald-400">{{ number_format($data['energy']['total_kwh']) }} kWh × {{ number_format(setting('energie.kwh_price_edg')) }}</p>
+                    </div>
+                    @endif
                     <div @class(['p-5 rounded-[2rem] border shadow-sm text-center',
                         'bg-red-50 border-red-200' => $data['energy']['edg_ratio'] < 30,
                         'bg-white border-slate-100' => $data['energy']['edg_ratio'] >= 30,
                     ])>
-                        <p class="text-[8px] font-black uppercase tracking-widest mb-1 {{ $data['energy']['edg_ratio'] < 30 ? 'text-red-500' : 'text-slate-400' }}">Ratio EDG</p>
+                        <p class="text-[8px] font-black uppercase tracking-widest mb-1 {{ $data['energy']['edg_ratio'] < 30 ? 'text-red-500' : 'text-slate-400' }}">{{ __("Ratio EDG") }}</p>
                         <p class="text-xl font-black {{ $data['energy']['edg_ratio'] < 30 ? 'text-red-600' : 'text-emerald-600' }}">{{ $data['energy']['edg_ratio'] }}%</p>
-                        <p class="text-[8px] text-slate-400">> 50% = économique</p>
+                        <p class="text-[8px] text-slate-400">{{ __("> 50% = économique") }}</p>
                     </div>
                     <div class="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm text-center">
-                        <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Gasoil consommé</p>
+                        <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Gasoil consommé") }}</p>
                         <p class="text-xl font-black text-amber-600">{{ number_format($data['energy']['total_fuel_liters']) }}</p>
-                        <p class="text-[8px] text-slate-400">litres</p>
+                        <p class="text-[8px] text-slate-400">{{ __("litres") }}</p>
                     </div>
                     <div class="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm text-center">
-                        <p class="text-[8px] font-black text-red-400 uppercase tracking-widest mb-1">Coupures EDG / jour</p>
+                        <p class="text-[8px] font-black text-red-400 uppercase tracking-widest mb-1">{{ __("Coupures EDG / jour") }}</p>
                         <p class="text-xl font-black text-slate-900">{{ $data['energy']['daily_outage_avg'] }}h</p>
                     </div>
                     <div class="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm text-center">
-                        <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Heures groupe</p>
+                        <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Heures groupe") }}</p>
                         <p class="text-xl font-black text-slate-900">{{ number_format($data['energy']['groupe_hours']) }}</p>
-                        <p class="text-[8px] text-slate-400">heures</p>
+                        <p class="text-[8px] text-slate-400">{{ __("heures") }}</p>
                     </div>
                 </div>
 
@@ -182,19 +189,23 @@
 
                         <div class="grid grid-cols-3 gap-3 mb-4">
                             <div class="text-center">
-                                <p class="text-[8px] font-black text-slate-400 uppercase">Gasoil</p>
+                                <p class="text-[8px] font-black text-slate-400 uppercase">{{ __("Gasoil") }}</p>
                                 <p class="text-lg font-black {{ $groupe->is_fuel_low ? 'text-red-600' : 'text-slate-900' }}">
                                     {{ number_format($groupe->current_fuel_level ?? 0) }}L
                                 </p>
                             </div>
                             <div class="text-center">
-                                <p class="text-[8px] font-black text-slate-400 uppercase">Autonomie</p>
-                                <p class="text-lg font-black {{ ($groupe->fuel_autonomy_days ?? 99) <= 3 ? 'text-red-600 animate-pulse' : 'text-slate-900' }}">
+                                <p class="text-[8px] font-black text-slate-400 uppercase">{{ __("Autonomie") }}</p>
+                                <p class="text-lg font-black {{ $groupe->is_fuel_low ? 'text-red-600 animate-pulse' : 'text-slate-900' }}">
                                     {{ $groupe->fuel_autonomy_days ?? '—' }}j
+                                    @if($groupe->fuel_autonomy_hours !== null)
+                                        <span class="text-[9px] font-black opacity-50">({{ $groupe->fuel_autonomy_hours }}h)</span>
+                                    @endif
                                 </p>
+                                <p class="text-[7px] text-slate-300 font-black uppercase tracking-widest mt-0.5">{{ __("Seuil :") }} {{ setting('energie.autonomy_alert_hours', 24) }}h</p>
                             </div>
                             <div class="text-center">
-                                <p class="text-[8px] font-black text-slate-400 uppercase">Avant vidange</p>
+                                <p class="text-[8px] font-black text-slate-400 uppercase">{{ __("Avant vidange") }}</p>
                                 <p class="text-lg font-black {{ $groupe->needs_maintenance ? 'text-amber-600' : 'text-slate-900' }}">
                                     {{ round($groupe->hours_before_maintenance) }}h
                                 </p>
@@ -206,7 +217,7 @@
                         <div class="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
                             <div @class(['h-3 rounded-full transition-all', $fuelPct < 20 ? 'bg-red-500' : ($fuelPct < 40 ? 'bg-amber-500' : 'bg-emerald-500')]) style="width: {{ $fuelPct }}%"></div>
                         </div>
-                        <p class="text-[8px] text-slate-400 mt-1">Cuve : {{ round($fuelPct) }}% — {{ number_format($groupe->current_fuel_level ?? 0) }} / {{ number_format($groupe->fuel_tank_capacity ?? 0) }} L</p>
+                        <p class="text-[8px] text-slate-400 mt-1">{{ __("Cuve :") }} {{ round($fuelPct) }}% — {{ number_format($groupe->current_fuel_level ?? 0) }} / {{ number_format($groupe->fuel_tank_capacity ?? 0) }} L</p>
                     </div>
                     @endforeach
                 </div>
@@ -218,13 +229,13 @@
                 {{-- Relevé eau --}}
                 <div class="bg-cyan-50 p-6 rounded-[2.5rem] border border-cyan-200">
                     <h3 class="text-[10px] font-black text-cyan-600 uppercase tracking-widest mb-4 flex items-center gap-2">
-                        <i class="fa-solid fa-droplet"></i> Nouveau relevé eau
+                        <i class="fa-solid fa-droplet"></i> {{ __("Nouveau relevé eau") }}
                     </h3>
                     <form method="POST" action="{{ route('utilities.water.readings.store') }}" class="space-y-3">
                         @csrf
                         <div class="grid grid-cols-2 gap-3">
                             <select name="water_source_id" required class="bg-white border-none rounded-xl p-3 text-[10px] font-black uppercase shadow-sm outline-none">
-                                <option value="">Source...</option>
+                                <option value="">{{ __("Source...") }}</option>
                                 @foreach($waterSources as $ws)
                                     <option value="{{ $ws->id }}">{{ $ws->name }}</option>
                                 @endforeach
@@ -232,16 +243,16 @@
                             <input type="date" name="reading_date" value="{{ now()->toDateString() }}" required class="bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
                         </div>
                         <div class="grid grid-cols-2 gap-3">
-                            <input type="number" name="volume_consumed_liters" step="0.1" min="0" required placeholder="Conso (L)" class="bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
-                            <input type="number" name="volume_added_liters" step="0.1" min="0" placeholder="Ajout citerne (L)" class="bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
+                            <input type="number" name="volume_consumed_liters" step="0.1" min="0" required placeholder="{{ __('Conso (L)') }}" class="bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
+                            <input type="number" name="volume_added_liters" step="0.1" min="0" placeholder="{{ __('Ajout citerne (L)') }}" class="bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
                         </div>
                         <div class="grid grid-cols-3 gap-3">
-                            <input type="number" name="quality_ph" step="0.1" min="0" max="14" placeholder="pH" class="bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
-                            <input type="number" name="chlorine_level" step="0.01" min="0" placeholder="Chlore mg/L" class="bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
-                            <input type="number" name="cost" step="100" min="0" placeholder="Coût GNF" class="bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
+                            <input type="number" name="quality_ph" step="0.1" min="0" max="14" placeholder="{{ __('pH') }}" class="bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
+                            <input type="number" name="chlorine_level" step="0.01" min="0" placeholder="{{ __('Chlore mg/L') }}" class="bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
+                            <input type="number" name="cost" step="100" min="0" placeholder="{{ __('Coût GNF') }}" class="bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
                         </div>
                         <button type="submit" class="w-full bg-cyan-500 text-white py-3 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-cyan-600 transition-all border-none cursor-pointer">
-                            <i class="fa-solid fa-check mr-1"></i> Enregistrer
+                            <i class="fa-solid fa-check mr-1"></i> {{ __("Enregistrer") }}
                         </button>
                     </form>
                 </div>
@@ -249,13 +260,13 @@
                 {{-- Relevé énergie --}}
                 <div class="bg-amber-50 p-6 rounded-[2.5rem] border border-amber-200">
                     <h3 class="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-4 flex items-center gap-2">
-                        <i class="fa-solid fa-bolt"></i> Nouveau relevé énergie
+                        <i class="fa-solid fa-bolt"></i> {{ __("Nouveau relevé énergie") }}
                     </h3>
                     <form method="POST" action="{{ route('utilities.energy.readings.store') }}" class="space-y-3">
                         @csrf
                         <div class="grid grid-cols-2 gap-3">
                             <select name="energy_source_id" required class="bg-white border-none rounded-xl p-3 text-[10px] font-black uppercase shadow-sm outline-none">
-                                <option value="">Source...</option>
+                                <option value="">{{ __("Source...") }}</option>
                                 @foreach($energySources as $es)
                                     <option value="{{ $es->id }}">{{ $es->name }} ({{ $es->type_label }})</option>
                                 @endforeach
@@ -263,13 +274,13 @@
                             <input type="date" name="reading_date" value="{{ now()->toDateString() }}" required class="bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
                         </div>
                         <div class="grid grid-cols-3 gap-3">
-                            <input type="number" name="hours_run" step="0.5" min="0" max="24" required placeholder="Heures" class="bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
-                            <input type="number" name="fuel_consumed_liters" step="0.1" min="0" placeholder="Gasoil (L)" class="bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
-                            <input type="number" name="outage_hours" step="0.5" min="0" max="24" placeholder="Coupures (h)" class="bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
+                            <input type="number" name="hours_run" step="0.5" min="0" max="24" required placeholder="{{ __('Heures') }}" class="bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
+                            <input type="number" name="fuel_consumed_liters" step="0.1" min="0" placeholder="{{ __('Gasoil (L)') }}" class="bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
+                            <input type="number" name="outage_hours" step="0.5" min="0" max="24" placeholder="{{ __('Coupures (h)') }}" class="bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
                         </div>
-                        <input type="number" name="cost" step="100" min="0" placeholder="Coût journalier GNF" class="w-full bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
+                        <input type="number" name="cost" step="100" min="0" placeholder="{{ __('Coût journalier GNF') }}" class="w-full bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
                         <button type="submit" class="w-full bg-amber-500 text-white py-3 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-amber-600 transition-all border-none cursor-pointer">
-                            <i class="fa-solid fa-check mr-1"></i> Enregistrer
+                            <i class="fa-solid fa-check mr-1"></i> {{ __("Enregistrer") }}
                         </button>
                     </form>
                 </div>
@@ -279,13 +290,13 @@
             {{-- LIENS RAPIDES --}}
             <div class="mt-8 flex flex-wrap gap-3">
                 <a href="{{ route('utilities.water.sources') }}" class="bg-white border border-slate-200 px-5 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest text-slate-600 hover:bg-cyan-50 hover:text-cyan-600 transition-all no-underline">
-                    <i class="fa-solid fa-faucet-drip mr-1"></i> Gérer les sources d'eau
+                    <i class="fa-solid fa-faucet-drip mr-1"></i> {{ __("Gérer les sources d'eau") }}
                 </a>
                 <a href="{{ route('utilities.energy.sources') }}" class="bg-white border border-slate-200 px-5 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest text-slate-600 hover:bg-amber-50 hover:text-amber-600 transition-all no-underline">
-                    <i class="fa-solid fa-plug mr-1"></i> Gérer les sources d'énergie
+                    <i class="fa-solid fa-plug mr-1"></i> {{ __("Gérer les sources d'énergie") }}
                 </a>
                 <a href="{{ route('utilities.fuel.index') }}" class="bg-white border border-slate-200 px-5 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest text-slate-600 hover:bg-orange-50 hover:text-orange-600 transition-all no-underline">
-                    <i class="fa-solid fa-gas-pump mr-1"></i> Achats carburant
+                    <i class="fa-solid fa-gas-pump mr-1"></i> {{ __("Achats carburant") }}
                 </a>
             </div>
         </div>

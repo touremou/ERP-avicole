@@ -8,25 +8,49 @@
 
 use App\Models\Building;
 use App\Models\Employee;
+use App\Models\Module;
 use App\Models\Permission;
 use App\Models\Provider;
 use App\Models\Role;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 
 uses(Tests\TestCase::class, Illuminate\Foundation\Testing\RefreshDatabase::class);
 
 beforeEach(function () {
     // Setup RBAC directement
-    $permL = Permission::firstOrCreate(['name' => 'L'], ['description' => 'Lecture']);
-    $permC = Permission::firstOrCreate(['name' => 'C'], ['description' => 'Création']);
-    $permM = Permission::firstOrCreate(['name' => 'M'], ['description' => 'Modification']);
-    $permS = Permission::firstOrCreate(['name' => 'S'], ['description' => 'Suppression']);
+    $farm = App\Models\Farm::firstOrCreate(['code' => 'FT-001'], ['name' => 'Ferme Test', 'is_active' => true]);
+    session(['current_farm_id' => $farm->id]);
 
-    $admin = Role::firstOrCreate(['name' => 'admin'], ['display_name' => 'Administrateur', 'icon' => '👑']);
-    $admin->permissions()->syncWithoutDetaching([$permL->id, $permC->id, $permM->id, $permS->id]);
+    // La matrice `module_permissions` (Modules × Rôles) est la SEULE source
+    // de vérité des Gates (cf. AppServiceProvider) : on dérive ici une ligne
+    // par module à partir de la matrice LCMS (L/C/M/S) de chaque rôle.
+    $makeRole = function (string $name, array $perms) {
+        $role = Role::firstOrCreate(
+            ['name' => $name],
+            ['label' => ucfirst($name), 'display_name' => ucfirst($name), 'permissions' => $perms]
+        );
 
-    $readonly = Role::firstOrCreate(['name' => 'visiteur'], ['display_name' => 'Visiteur', 'icon' => '👁️']);
-    $readonly->permissions()->syncWithoutDetaching([$permL->id]);
+        $now = now();
+        foreach (Module::pluck('id') as $moduleId) {
+            DB::table('module_permissions')->updateOrInsert(
+                ['role_id' => $role->id, 'module_id' => $moduleId],
+                [
+                    'can_read'   => in_array('L', $perms, true),
+                    'can_create' => in_array('C', $perms, true),
+                    'can_modify' => in_array('M', $perms, true),
+                    'can_delete' => in_array('S', $perms, true),
+                    'updated_at' => $now,
+                    'created_at' => $now,
+                ]
+            );
+        }
+
+        return $role;
+    };
+
+    $admin    = $makeRole('admin',  ['L', 'C', 'M', 'S']);
+    $readonly = $makeRole('viewer', ['L']);
 
     $this->adminUser = User::factory()->create(['role_id' => $admin->id]);
     $this->readonlyUser = User::factory()->create(['role_id' => $readonly->id]);
@@ -49,8 +73,9 @@ test('le dashboard affiche les KPI de base', function () {
     $this->actingAs($this->adminUser)
         ->get(route('dashboard'))
         ->assertOk()
-        ->assertSee('Effectif Actif')
-        ->assertSee('Ponte (HDP)');
+        // KPI de base, toujours rendu (le KPI Ponte/HDP est conditionnel à
+        // l'existence d'un lot de ponte).
+        ->assertSee('Effectif Actif');
 });
 
 test('un utilisateur non connecté est redirigé vers login', function () {

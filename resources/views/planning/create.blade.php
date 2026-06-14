@@ -3,10 +3,10 @@
         <div class="flex items-center gap-4 text-left">
             <a href="{{ route('planning.index') }}" class="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-500 hover:text-slate-800 rounded-xl transition-all shadow-sm group no-underline">
                 <i class="fas fa-chevron-left group-hover:-translate-x-1 transition-transform text-xs"></i>
-                <span class="text-[10px] font-black uppercase italic tracking-widest leading-none">Retour</span>
+                <span class="text-[10px] font-black uppercase italic tracking-widest leading-none">{{ __("Retour") }}</span>
             </a>
             <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">
-                📅 Planifier une nouvelle bande
+                📅 {{ __("Planifier une nouvelle bande") }}
             </h2>
         </div>
     </x-slot>
@@ -16,7 +16,7 @@
 
             @if ($errors->any())
                 <div class="bg-red-600 text-white p-6 rounded-[2rem] mb-8 shadow-xl text-left">
-                    <h3 class="font-black uppercase text-xs mb-2 italic leading-none">⚠️ Erreurs de validation</h3>
+                    <h3 class="font-black uppercase text-xs mb-2 italic leading-none">⚠️ {{ __("Erreurs de validation") }}</h3>
                     <ul class="text-[10px] list-disc ml-8 uppercase font-black tracking-tight mt-2">
                         @foreach ($errors->all() as $error) <li>{{ $error }}</li> @endforeach
                     </ul>
@@ -31,40 +31,52 @@
 
                         {{-- 01. IDENTIFICATION & VOCATION --}}
                         <div class="bg-white p-10 rounded-[3rem] shadow-sm border border-slate-100 text-left">
-                            <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-8 italic leading-none">01. Identification & Vocation</h3>
+                            <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-8 italic leading-none">{{ __("01. Identification & Vocation") }}</h3>
 
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
                                 <div>
-                                    <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-1 italic leading-none">Type d'élevage *</label>
+                                    <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-1 italic leading-none">{{ __("Type d'élevage") }} *</label>
                                     <select name="batch_type" id="breeding_type" onchange="runFilters()" required
                                             class="w-full p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-indigo-500 outline-none font-black text-indigo-600 shadow-inner appearance-none italic">
-                                        <option value="">-- Sélectionner --</option>
-                                        <option value="chair" {{ old('batch_type') == 'chair' ? 'selected' : '' }}>🍗 Poulet de chair</option>
-                                        <option value="ponte" {{ old('batch_type') == 'ponte' ? 'selected' : '' }}>🥚 Pondeuses</option>
-                                        <option value="poussiniere" {{ old('batch_type') == 'poussiniere' ? 'selected' : '' }}>🐣 Poussinière</option>
-                                        <option value="reproducteur" {{ old('batch_type') == 'reproducteur' ? 'selected' : '' }}>🧬 Reproducteurs</option>
+                                        <option value="">{{ __("-- Sélectionner --") }}</option>
+                                        @foreach($productionTypes->groupBy(fn($pt) => $pt->species->name_fr ?? 'Autres') as $speciesLabel => $types)
+                                            <optgroup label="{{ strtoupper($speciesLabel) }}">
+                                                @foreach($types as $pt)
+                                                    <option value="{{ $pt->slug }}"
+                                                            data-cycle="{{ $pt->cycle_days_default ?? 42 }}"
+                                                            data-species-id="{{ $pt->species_id }}"
+                                                            data-species-slug="{{ $pt->species->slug ?? '' }}"
+                                                            data-pt-id="{{ $pt->id }}"
+                                                            {{ old('batch_type') == $pt->slug && (string) old('production_type_id') === (string) $pt->id ? 'selected' : '' }}>
+                                                        {{ $pt->species->icon ?? '' }} {{ $pt->name_fr }}
+                                                    </option>
+                                                @endforeach
+                                            </optgroup>
+                                        @endforeach
                                     </select>
+                                    <input type="hidden" name="species_id" id="species_id_hidden" value="{{ old('species_id') }}">
+                                    <input type="hidden" name="production_type_id" id="production_type_id_hidden" value="{{ old('production_type_id') }}">
                                 </div>
 
                                 <div>
-                                    <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-1 italic leading-none">Souche / Race (Référentiel)</label>
+                                    <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-1 italic leading-none">{{ __("Souche / Race (Référentiel)") }}</label>
                                     <select name="model_name" id="model_selector"
                                             class="w-full p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-indigo-500 outline-none font-black text-indigo-600 shadow-inner appearance-none italic">
-                                        <option value="">-- Sélectionner la souche --</option>
+                                        <option value="">{{ __("-- Sélectionner la souche --") }}</option>
                                         @foreach($normModels as $norm)
                                             <option value="{{ $norm->model_name }}" data-type="{{ $norm->batch_type }}" class="model-opt" style="display: none;">
                                                 {{ $norm->model_name }}
                                             </option>
                                         @endforeach
                                     </select>
-                                    <p class="text-[8px] text-slate-300 ml-4 uppercase font-bold mt-1">* Seules les souches adaptées au type s'affichent</p>
+                                    <p class="text-[8px] text-slate-300 ml-4 uppercase font-bold mt-1">{{ __("* Seules les souches adaptées au type s'affichent") }}</p>
                                 </div>
 
                                 <div>
-                                    <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-1 italic leading-none">Protocole prophylaxie</label>
+                                    <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-1 italic leading-none">{{ __("Protocole prophylaxie") }}</label>
                                     <select name="protocol_id" id="protocol_selector"
                                             class="w-full p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-indigo-500 outline-none font-black text-indigo-600 shadow-inner appearance-none italic">
-                                        <option value="">-- Optionnel --</option>
+                                        <option value="">{{ __("-- Optionnel --") }}</option>
                                         @foreach($protocols as $protocol)
                                             <option value="{{ $protocol->id }}" data-type="{{ $protocol->type }}" class="protocol-option">
                                                 📜 {{ strtoupper($protocol->name) }}
@@ -74,7 +86,7 @@
                                 </div>
 
                                 <div>
-                                    <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-1 italic leading-none">Date d'arrivée prévue *</label>
+                                    <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-1 italic leading-none">{{ __("Date d'arrivée prévue") }} *</label>
                                     <input type="date" name="planned_arrival_date" id="arrival_date" value="{{ old('planned_arrival_date') }}" required onchange="calculateDates()"
                                            class="w-full p-4 bg-slate-50 rounded-2xl border-none font-black text-slate-700 shadow-inner italic">
                                 </div>
@@ -84,9 +96,9 @@
                         {{-- 02. QUANTITÉ & BÂTIMENT --}}
                         <div class="bg-white p-10 rounded-[3rem] shadow-sm border border-slate-100 text-left">
                             <div class="flex justify-between items-center mb-8">
-                                <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] italic leading-none">02. Quantité & Affectation</h3>
+                                <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] italic leading-none">{{ __("02. Quantité & Affectation") }}</h3>
                                 <div id="density_badge" class="px-4 py-2 bg-slate-100 rounded-xl border border-slate-200 hidden">
-                                    <span class="text-[8px] text-slate-400 uppercase block leading-none mb-1 text-center font-black">Densité</span>
+                                    <span class="text-[8px] text-slate-400 uppercase block leading-none mb-1 text-center font-black">{{ __("Densité") }}</span>
                                     <span class="text-xs font-black text-slate-800" id="density_value">0</span> <small class="text-[8px] text-slate-500 uppercase italic">S/m²</small>
                                 </div>
                             </div>
@@ -97,20 +109,20 @@
                                     <div class="flex items-center gap-3">
                                         <div class="p-3 bg-indigo-500 rounded-xl text-white"><i class="fa-solid fa-venus-mars"></i></div>
                                         <div>
-                                            <p class="text-[8px] font-black uppercase text-slate-400 leading-none mb-1">Ratio de Coquage</p>
+                                            <p class="text-[8px] font-black uppercase text-slate-400 leading-none mb-1">{{ __("Ratio de Coquage") }}</p>
                                             <p class="text-xl font-black text-indigo-600 leading-none" id="ratio_display">0%</p>
                                         </div>
                                     </div>
-                                    <div id="ratio_status" class="px-4 py-2 rounded-xl text-[9px] font-black uppercase italic tracking-widest bg-slate-100 text-slate-400">En attente...</div>
+                                    <div id="ratio_status" class="px-4 py-2 rounded-xl text-[9px] font-black uppercase italic tracking-widest bg-slate-100 text-slate-400">{{ __("En attente...") }}</div>
                                 </div>
                                 <div class="grid grid-cols-2 gap-8">
                                     <div>
-                                        <label class="block text-[10px] font-black text-indigo-500 uppercase mb-2 ml-1 italic">Nombre de Mâles</label>
+                                        <label class="block text-[10px] font-black text-indigo-500 uppercase mb-2 ml-1 italic">{{ __("Nombre de Mâles") }}</label>
                                         <input type="number" min="0" id="qty_males" value="0" oninput="updateReproTotal()"
                                                class="w-full p-4 bg-white rounded-2xl border-none font-black text-indigo-600 shadow-inner italic">
                                     </div>
                                     <div>
-                                        <label class="block text-[10px] font-black text-indigo-500 uppercase mb-2 ml-1 italic">Nombre de Femelles</label>
+                                        <label class="block text-[10px] font-black text-indigo-500 uppercase mb-2 ml-1 italic">{{ __("Nombre de Femelles") }}</label>
                                         <input type="number" min="0" id="qty_females" value="0" oninput="updateReproTotal()"
                                                class="w-full p-4 bg-white rounded-2xl border-none font-black text-indigo-600 shadow-inner italic">
                                     </div>
@@ -119,16 +131,16 @@
 
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
                                 <div>
-                                    <label class="block text-[10px] font-black text-emerald-500 uppercase mb-2 ml-1 italic leading-none">Quantité Prévue *</label>
+                                    <label class="block text-[10px] font-black text-emerald-500 uppercase mb-2 ml-1 italic leading-none">{{ __("Quantité Prévue") }} *</label>
                                     <input type="number" name="planned_quantity" id="planned_qty" value="{{ old('planned_quantity', 0) }}" min="1" required oninput="calculateAll()"
                                            class="w-full p-5 bg-slate-50 rounded-3xl border-none font-black text-4xl text-slate-800 shadow-inner italic appearance-none leading-none">
                                 </div>
 
                                 <div>
-                                    <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-1 italic leading-none">Bâtiment *</label>
+                                    <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-1 italic leading-none">{{ __("Bâtiment") }} *</label>
                                     <select name="building_id" id="building_id" onchange="calculateAll()" required
                                             class="w-full p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-indigo-500 outline-none font-black text-indigo-600 shadow-inner appearance-none italic">
-                                        <option value="">-- Sélectionner --</option>
+                                        <option value="">{{ __("-- Sélectionner --") }}</option>
                                         @foreach($buildings as $b)
                                             @php
                                                 $occupation = $b->occupied_qty ?? 0;
@@ -140,7 +152,7 @@
                                                     data-surface="{{ $b->surface ?? 0 }}"
                                                     data-capacity="{{ $b->capacity }}"
                                                     class="building-opt">
-                                                {{ $b->name }} | Libre: {{ $libre }}/{{ $b->capacity }} | {{ strtoupper($b->type) }}
+                                                {{ $b->name }} | {{ __("Libre") }}: {{ $libre }}/{{ $b->capacity }} | {{ strtoupper($b->type) }}
                                             </option>
                                         @endforeach
                                     </select>
@@ -148,9 +160,9 @@
                             </div>
 
                             <div class="mt-6">
-                                <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-1 italic leading-none">Fournisseur poussins</label>
+                                <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-1 italic leading-none">{{ __("Fournisseur poussins") }}</label>
                                 <select name="provider_id" class="w-full p-4 bg-slate-50 rounded-2xl border-none font-black text-slate-600 shadow-inner appearance-none italic outline-none">
-                                    <option value="">-- Optionnel --</option>
+                                    <option value="">{{ __("-- Optionnel --") }}</option>
                                     @foreach($providers as $p)
                                         <option value="{{ $p->id }}">{{ $p->name }}</option>
                                     @endforeach
@@ -158,8 +170,8 @@
                             </div>
 
                             <div class="mt-6">
-                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 italic">Notes</label>
-                                <textarea name="notes" rows="2" placeholder="Informations complémentaires..." class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-bold shadow-inner outline-none italic"></textarea>
+                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 italic">{{ __("Notes") }}</label>
+                                <textarea name="notes" rows="2" placeholder="{{ __("Informations complémentaires...") }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-bold shadow-inner outline-none italic"></textarea>
                             </div>
 
                             {{-- ALERTE CAPACITÉ --}}
@@ -174,27 +186,27 @@
                         {{-- DATES AUTO --}}
                         <div class="bg-indigo-50 p-8 rounded-[3rem] border border-indigo-200" id="dates_panel" style="display:none;">
                             <h3 class="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em] mb-6 italic leading-none flex items-center gap-2">
-                                <i class="fa-solid fa-calculator"></i> Cycle calculé
+                                <i class="fa-solid fa-calculator"></i> {{ __("Cycle calculé") }}
                             </h3>
                             <div class="space-y-3">
                                 <div class="bg-white p-4 rounded-2xl flex justify-between items-center">
-                                    <div><p class="text-[8px] font-black text-red-500 uppercase">Commander avant</p><p class="text-[8px] text-slate-400">J-56</p></div>
+                                    <div><p class="text-[8px] font-black text-red-500 uppercase">{{ __("Commander avant") }}</p><p class="text-[8px] text-slate-400">J-56</p></div>
                                     <p class="text-sm font-black text-slate-900" id="dt_order">—</p>
                                 </div>
                                 <div class="bg-white p-4 rounded-2xl flex justify-between items-center">
-                                    <div><p class="text-[8px] font-black text-emerald-500 uppercase">Arrivée poussins</p><p class="text-[8px] text-slate-400">J0</p></div>
+                                    <div><p class="text-[8px] font-black text-emerald-500 uppercase">{{ __("Arrivée poussins") }}</p><p class="text-[8px] text-slate-400">J0</p></div>
                                     <p class="text-sm font-black text-emerald-600" id="dt_arrival">—</p>
                                 </div>
                                 <div class="bg-white p-4 rounded-2xl flex justify-between items-center">
-                                    <div><p class="text-[8px] font-black text-amber-500 uppercase" id="dt_end_label">Abattage</p><p class="text-[8px] text-slate-400" id="dt_end_j">—</p></div>
+                                    <div><p class="text-[8px] font-black text-amber-500 uppercase" id="dt_end_label">{{ __("Abattage") }}</p><p class="text-[8px] text-slate-400" id="dt_end_j">—</p></div>
                                     <p class="text-sm font-black text-slate-900" id="dt_end">—</p>
                                 </div>
                                 <div class="bg-white p-4 rounded-2xl flex justify-between items-center">
-                                    <div><p class="text-[8px] font-black text-blue-500 uppercase">Vide sanitaire</p><p class="text-[8px] text-slate-400">21 jours</p></div>
+                                    <div><p class="text-[8px] font-black text-blue-500 uppercase">{{ __("Vide sanitaire") }}</p><p class="text-[8px] text-slate-400">{{ __("21 jours") }}</p></div>
                                     <p class="text-sm font-black text-slate-900" id="dt_void">—</p>
                                 </div>
                                 <div class="bg-white p-4 rounded-2xl flex justify-between items-center">
-                                    <div><p class="text-[8px] font-black text-slate-500 uppercase">Bât. disponible</p></div>
+                                    <div><p class="text-[8px] font-black text-slate-500 uppercase">{{ __("Bât. disponible") }}</p></div>
                                     <p class="text-sm font-black text-blue-600" id="dt_free">—</p>
                                 </div>
                             </div>
@@ -202,24 +214,24 @@
 
                         {{-- RÉSUMÉ --}}
                         <div class="bg-slate-900 p-8 rounded-[3rem] text-white shadow-2xl border border-slate-800">
-                            <h3 class="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-6 italic leading-none">Résumé</h3>
+                            <h3 class="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-6 italic leading-none">{{ __("Résumé") }}</h3>
                             <div class="space-y-4">
-                                <div class="flex justify-between"><span class="text-[9px] text-slate-500 uppercase font-black">Type</span><span class="text-xs font-black text-white" id="sum_type">—</span></div>
-                                <div class="flex justify-between"><span class="text-[9px] text-slate-500 uppercase font-black">Bâtiment</span><span class="text-xs font-black text-white" id="sum_building">—</span></div>
-                                <div class="flex justify-between"><span class="text-[9px] text-slate-500 uppercase font-black">Quantité</span><span class="text-xs font-black text-emerald-400" id="sum_qty">0</span></div>
-                                <div class="flex justify-between"><span class="text-[9px] text-slate-500 uppercase font-black">Densité</span><span class="text-xs font-black text-white" id="sum_density">—</span></div>
-                                <div class="flex justify-between"><span class="text-[9px] text-slate-500 uppercase font-black">Durée cycle</span><span class="text-xs font-black text-amber-400" id="sum_cycle">—</span></div>
+                                <div class="flex justify-between"><span class="text-[9px] text-slate-500 uppercase font-black">{{ __("Type") }}</span><span class="text-xs font-black text-white" id="sum_type">—</span></div>
+                                <div class="flex justify-between"><span class="text-[9px] text-slate-500 uppercase font-black">{{ __("Bâtiment") }}</span><span class="text-xs font-black text-white" id="sum_building">—</span></div>
+                                <div class="flex justify-between"><span class="text-[9px] text-slate-500 uppercase font-black">{{ __("Quantité") }}</span><span class="text-xs font-black text-emerald-400" id="sum_qty">0</span></div>
+                                <div class="flex justify-between"><span class="text-[9px] text-slate-500 uppercase font-black">{{ __("Densité") }}</span><span class="text-xs font-black text-white" id="sum_density">—</span></div>
+                                <div class="flex justify-between"><span class="text-[9px] text-slate-500 uppercase font-black">{{ __("Durée cycle") }}</span><span class="text-xs font-black text-amber-400" id="sum_cycle">—</span></div>
                             </div>
                         </div>
 
                         <div class="flex flex-col gap-3">
                             @can('planning.C')
                             <button type="submit" id="submitBtn" class="w-full bg-indigo-600 text-white font-black py-8 rounded-[2rem] hover:bg-indigo-700 transition-all uppercase tracking-[0.3em] text-[10px] italic shadow-2xl border-none cursor-pointer">
-                                <i class="fas fa-calendar-plus mr-2"></i> Enregistrer la planification
+                                <i class="fas fa-calendar-plus mr-2"></i> {{ __("Enregistrer la planification") }}
                             </button>
                             @endcan
                             <a href="{{ route('planning.index') }}" class="w-full bg-white border border-slate-200 text-slate-400 font-black py-6 rounded-[2rem] hover:bg-red-50 hover:text-red-500 transition-all text-center uppercase tracking-[0.2em] text-[9px] italic flex items-center justify-center gap-2 no-underline shadow-sm">
-                                <i class="fas fa-times"></i> Annuler
+                                <i class="fas fa-times"></i> {{ __("Annuler") }}
                             </a>
                         </div>
                     </div>
@@ -237,10 +249,40 @@ const CYCLES = {
    };
 const CYCLE_LABELS = { chair: 'Abattage', ponte: 'Réforme', poussiniere: 'Transfert', reproducteur: 'Réforme' };
 
+// Types de bâtiments compatibles par espèce (aligné sur le lancement de lot).
+const SPECIES_BUILDING_TYPES = {
+    poulet:  ['chair', 'ponte', 'poussiniere', 'reproducteur'],
+    dinde:   ['chair', 'reproducteur'],
+    pintade: ['chair', 'ponte'],
+    caille:  ['chair', 'ponte'],
+    canard:  ['chair'],
+    pigeon:  ['chair'],
+    mouton:  ['bergerie'],
+    chevre:  ['chevrerie'],
+    lapin:   ['lapiniere'],
+    porc:    ['porcherie'],
+    tilapia: ['bassin'],
+    carpe:   ['bassin'],
+    silure:  ['bassin'],
+};
+
 function el(id) { return document.getElementById(id); }
+
+// Cycle (jours) du type de production sélectionné — piloté par les données
+// (cycle_days_default), plus de table figée volaille.
+function selectedCycle() {
+    const opt = el('breeding_type').selectedOptions[0];
+    return opt && opt.dataset.cycle ? parseInt(opt.dataset.cycle) : 42;
+}
 
 function runFilters() {
     const type = el('breeding_type').value || "";
+
+    // Propage l'espèce / le type de production choisis (champs cachés).
+    const sel = el('breeding_type').selectedOptions[0];
+    const speciesSlug = sel?.dataset.speciesSlug || "";
+    el('species_id_hidden').value = sel?.dataset.speciesId || "";
+    el('production_type_id_hidden').value = sel?.dataset.ptId || "";
 
     // Filtrage souches
     document.querySelectorAll('.model-opt').forEach(opt => {
@@ -250,10 +292,15 @@ function runFilters() {
     });
     if (el('model_selector').selectedOptions[0]?.style.display === 'none') el('model_selector').value = "";
 
-    // Filtrage bâtiments par type compatible
+    // Filtrage bâtiments par espèce (strict, comme au lancement de lot) :
+    // on n'autorise QUE les types de bâtiment compatibles avec l'espèce + 'mixte'.
+    // Pas de repli permissif : on ne doit jamais pouvoir affecter un canard à
+    // une bergerie. Si aucun bâtiment compatible n'existe, il faut d'abord en
+    // créer un du bon type.
+    const allowed = SPECIES_BUILDING_TYPES[speciesSlug] || null;
+    const matches = (bType) => bType === 'mixte' || (allowed ? allowed.includes(bType) : (!type || bType === type));
     document.querySelectorAll('.building-opt').forEach(opt => {
-        const bType = opt.dataset.type;
-        const compatible = !type || bType === type || bType === 'mixte';
+        const compatible = !type || matches(opt.dataset.type);
         opt.style.display = compatible ? '' : 'none';
         opt.disabled = !compatible;
     });
@@ -314,7 +361,7 @@ function calculateAll() {
     el('sum_building').innerText = bName;
     el('sum_qty').innerText = qty.toLocaleString('fr-FR');
     el('sum_density').innerText = density > 0 ? density + ' S/m²' : '—';
-    el('sum_cycle').innerText = type ? (CYCLES[type] || '?') + ' jours' : '—';
+    el('sum_cycle').innerText = type ? selectedCycle() + ' jours' : '—';
 
     // Validation capacité
     let error = "";
@@ -341,7 +388,7 @@ function calculateDates() {
     panel.style.display = '';
 
     const d = new Date(arrival);
-    const cycle = CYCLES[type] || 42;
+    const cycle = selectedCycle();
     const fmt = dt => dt.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
     const add = (dt, days) => { const r = new Date(dt); r.setDate(r.getDate() + days); return r; };
 

@@ -39,6 +39,32 @@ class StoreDailyCheckRequest extends FormRequest
             'treatment_name'    => 'nullable|string|max:255',
             'observations'      => 'nullable|string|max:2000',
             'litter_changed'    => 'nullable|boolean',
+        ] + self::extensionRules();
+    }
+
+    /**
+     * Règles des métriques d'extension espèce-spécifiques (ruminants & aquaculture).
+     *
+     * Bornées pour fiabiliser alertes & rapports : un pH > 14, une survie
+     * > 100 % ou une biomasse négative n'ont aucun sens. Toutes nullable
+     * (absentes pour la volaille → sans impact). Partagées entre création
+     * et mise à jour du pointage.
+     */
+    public static function extensionRules(): array
+    {
+        return [
+            // Ruminants
+            'ext_qty_born'          => 'nullable|integer|min:0',
+            'ext_qty_weaned'        => 'nullable|integer|min:0',
+            'ext_milk_liters'       => 'nullable|numeric|min:0',
+            'ext_milk_fat_pct'      => 'nullable|numeric|min:0|max:100',
+            // Aquaculture
+            'ext_water_temp'        => 'nullable|numeric|min:0|max:50',
+            'ext_water_ph'          => 'nullable|numeric|min:0|max:14',
+            'ext_water_o2_ppm'      => 'nullable|numeric|min:0|max:30',
+            'ext_water_ammonia_ppm' => 'nullable|numeric|min:0|max:50',
+            'ext_biomass_kg'        => 'nullable|numeric|min:0',
+            'ext_survival_rate'     => 'nullable|numeric|min:0|max:100',
         ];
     }
 

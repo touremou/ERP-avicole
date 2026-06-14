@@ -162,14 +162,14 @@ class StockIntegrationService
     {
         $inputUnit = trim($inputUnit);
 
-        if (in_array($category, ['conso', 'Aliment'])) {
+        if (in_array($category, [Stock::CAT_CONSO, 'Aliment'])) {
             if (strtolower($inputUnit) === 'sac') {
                 return $quantity * 50; // 1 Sac = 50 KG
             }
             return $quantity; // Déjà en KG
         }
 
-        if ($category === 'oeufs') {
+        if ($category === Stock::CAT_OEUFS) {
             $unit = strtolower($inputUnit);
             if (in_array($unit, ['unité', 'unite', 'piece', 'pièce'])) {
                 return $quantity / 30; // Conversion en alvéoles
@@ -190,7 +190,7 @@ class StockIntegrationService
      */
     private static function guessInputUnit(string $itemName, string $category): string
     {
-        if ($category === 'oeufs') {
+        if ($category === Stock::CAT_OEUFS) {
             $name = strtoupper(trim($itemName));
             // Les calibres sont stockés en alvéoles
             if (in_array($name, ['S', 'M', 'L', 'XL', 'VENDU', 'CASSÉ', 'ANOMALIE'])) {

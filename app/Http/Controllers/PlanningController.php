@@ -6,6 +6,7 @@ use App\Models\Batch;
 use App\Models\Building;
 use App\Models\PlannedBatch;
 use App\Models\ProductionNorm;
+use App\Models\ProductionType;
 use App\Models\Protocol;
 use App\Models\Provider;
 use App\Services\PlanningService;
@@ -35,8 +36,8 @@ class PlanningController extends Controller
             'arriving_7days'  => PlannedBatch::whereIn('status', ['commande', 'planifie'])
                 ->whereBetween('planned_arrival_date', [now(), now()->addDays(7)])->count(),
             'overdue_orders'  => PlannedBatch::overdue()->count(),
-            'active_batches'  => Batch::where('status', 'Actif')->count(),
-            'total_birds'     => Batch::where('status', 'Actif')->sum('current_quantity'),
+            'active_batches'  => Batch::active()->live()->count(),
+            'total_birds'     => Batch::active()->live()->sum('current_quantity'),
         ];
 
         return view('planning.index', compact('plans', 'occupancy', 'alerts', 'buildings', 'from', 'to', 'kpi'));
@@ -47,15 +48,17 @@ class PlanningController extends Controller
         if (Gate::denies('planning.C')) return back()->with('error', 'Action non autorisée.');
 
         $buildings = Building::physical()
-            ->withCount(['batches as active_count' => fn($q) => $q->where('status', 'Actif')])
-            ->withSum(['batches as occupied_qty' => fn($q) => $q->where('status', 'Actif')], 'current_quantity')
+            ->withCount(['batches as active_count' => fn($q) => $q->active()])
+            ->withSum(['batches as occupied_qty' => fn($q) => $q->active()], 'current_quantity')
             ->orderBy('name')->get();
 
-        $providers = Provider::where('status', 'actif')->orderBy('name')->get();
+        $providers = Provider::active()->orderBy('name')->get();
         $normModels = ProductionNorm::select('model_name', 'batch_type')->distinct()->orderBy('model_name')->get();
         $protocols = Protocol::orderBy('name')->get();
+        // Types de production de toutes les espèces actives (planification multiespèces).
+        $productionTypes = ProductionType::active()->with('species')->orderBy('species_id')->get();
 
-        return view('planning.create', compact('buildings', 'providers', 'normModels', 'protocols'));
+        return view('planning.create', compact('buildings', 'providers', 'normModels', 'protocols', 'productionTypes'));
     }
 
     public function store(Request $request)
@@ -64,7 +67,11 @@ class PlanningController extends Controller
 
         $validated = $request->validate([
             'building_id'          => 'required|exists:buildings,id',
-            'batch_type'           => 'required|in:chair,ponte,poussiniere,reproducteur',
+            // batch_type = slug du type de production (multiespèces) ; plus de
+            // liste figée volaille. species_id/production_type_id portent l'espèce.
+            'batch_type'           => 'required|string|max:50',
+            'species_id'           => 'nullable|exists:species,id',
+            'production_type_id'   => 'nullable|exists:production_types,id',
             'model_name'           => 'nullable|string|max:100',
             'planned_quantity'     => 'required|integer|min:1',
             'planned_arrival_date' => 'required|date|after_or_equal:today',
@@ -74,10 +81,14 @@ class PlanningController extends Controller
         ]);
 
         $arrivalDate = Carbon::parse($validated['planned_arrival_date']);
-        $dates = PlannedBatch::calculateDates($validated['batch_type'], $arrivalDate);
+        // Cycle issu du type de production choisi (sinon repli legacy par slug).
+        $cycleOverride = $validated['production_type_id']
+            ? ProductionType::find($validated['production_type_id'])?->cycle_days_default
+            : null;
+        $dates = PlannedBatch::calculateDates($validated['batch_type'], $arrivalDate, $cycleOverride);
 
         $building = Building::find($validated['building_id']);
-        $occupiedQty = $building->batches()->where('status', 'Actif')->sum('current_quantity');
+        $occupiedQty = $building->batches()->active()->sum('current_quantity');
         $available = $building->capacity - $occupiedQty;
 
         if ($validated['planned_quantity'] > $available) {
@@ -152,13 +163,19 @@ class PlanningController extends Controller
                     return back()->withErrors(['employee_id' => 'Responsable obligatoire.'])->withInput();
                 }
 
-                $cycleDays = (int) setting("elevage.cycle_{$plan->batch_type}", 42);
+                // Cycle : priorité au type de production (multiespèces), repli legacy.
+                $cycleDays = (int) ($plan->productionType?->cycle_days_default
+                    ?? setting("elevage.cycle_{$plan->batch_type}", 42));
                 $batchPrefix = setting("elevage.batch_prefix_{$plan->batch_type}", 'LOT');
 
                 $batch = Batch::create([
                     'uuid'                   => (string) Str::uuid(),
                     'code'                   => $batchPrefix . '-' . now()->format('Ymd-His'),
                     'type'                   => $plan->batch_type,
+                    // Propagation de l'espèce : un lot issu du planning est désormais
+                    // pleinement multiespèces (plus de lot « sans espèce »).
+                    'species_id'             => $plan->species_id,
+                    'production_type_id'     => $plan->production_type_id,
                     'model_name'             => $plan->model_name,
                     'building_id'            => $plan->building_id,
                     'provider_id'            => $plan->provider_id,

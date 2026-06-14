@@ -18,12 +18,22 @@ class ProviderController extends Controller
     /**
      * Liste des partenaires (Vue L)
      */
-    public function index() 
+    public function index(Request $request)
     {
         if (Gate::denies('annuaire.L')) return redirect()->route('dashboard')->with('error', 'Accès restreint.');
 
-        $providers = Provider::orderBy('name', 'asc')->get();
-        return view('providers.index', compact('providers'));
+        // Filtre de statut : par défaut, seuls les partenaires actifs sont
+        // affichés. 'all' liste tout (y compris blacklistés/inactifs), pour
+        // permettre leur gestion/réactivation depuis l'annuaire.
+        $status = $request->query('status', 'Actif');
+
+        $query = Provider::orderBy('name', 'asc');
+        if ($status !== 'all') {
+            $query->where('status', $status);
+        }
+        $providers = $query->get();
+
+        return view('providers.index', compact('providers', 'status'));
     }
 
     /**
@@ -42,7 +52,7 @@ class ProviderController extends Controller
     {
         if (Gate::denies('annuaire.C')) return back()->with('error', 'Privilèges insuffisants.');
         try {
-            $provider = $action->execute($request->validated());
+            $provider = $action->execute($request->validated(), $request->file('logo'));
             return redirect()->route('providers.index')->with('success', "Partenaire {$provider->name} enregistré avec succès.");
         } catch (\Exception $e) {
             Log::error("Erreur création fournisseur: " . $e->getMessage());
@@ -58,7 +68,10 @@ class ProviderController extends Controller
         // AJOUT: La vérification de Gate L manquait dans l'ancien code
         if (Gate::denies('annuaire.L')) return back()->with('error', 'Accès restreint.');
 
-        $provider = Provider::with(['batches'])->findOrFail($id);
+        // On n'expose que les lots RÉELS du partenaire ; les lots virtuels
+        // de traçabilité (œufs externes en transit, effectif nul) ne sont ni
+        // comptés ni listés, et ne doivent pas verrouiller l'archivage.
+        $provider = Provider::with(['batches' => fn ($q) => $q->live()])->findOrFail($id);
         return view('providers.show', compact('provider'));
     }
 
@@ -80,7 +93,7 @@ class ProviderController extends Controller
     {
         if (Gate::denies('annuaire.M')) return back()->with('error', 'Modification interdite permission actuel.');
         try {
-            $action->execute($provider, $request->validated());
+            $action->execute($provider, $request->validated(), $request->file('logo'));
             return redirect()->route('providers.index')->with('success', 'Fiche fournisseur mise à jour avec succès.');
         } catch (\Exception $e) {
             Log::error("Erreur mise à jour fournisseur: " . $e->getMessage());

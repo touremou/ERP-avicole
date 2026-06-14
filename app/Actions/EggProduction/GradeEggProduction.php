@@ -26,7 +26,7 @@ class GradeEggProduction
     public function execute(EggProduction $prod, array $data): EggProduction
     {
         return DB::transaction(function () use ($prod, $data) {
-            $grades = ['xl', 'l', 'm', 's'];
+            $grades = array_map('strtolower', EggProduction::gradeCodes());
             $newGrades = [];
 
             // ─── Synchronisation des calibres ───

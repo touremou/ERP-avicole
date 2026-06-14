@@ -12,19 +12,19 @@
                 </a>
                 <div>
                     <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">
-                        📊 Pointage de Précision
+                        📊 {{ __("Pointage de Précision") }}
                     </h2>
                     <p class="text-[10px] font-black text-blue-500 uppercase tracking-widest mt-1 italic leading-none">
-                        Lot : {{ $batch->code ?? 'Chargement...' }} • {{ $batch->building->name ?? 'Mode Terrain' }} 
-                        <span id="offline-qty-display">({{ $batch->current_quantity ?? '...' }} têtes)</span>
+                        {{ __("Lot :") }} {{ $batch->code ?? __("Chargement...") }} • {{ $batch->building->name ?? __("Mode Terrain") }}
+                        <span id="offline-qty-display">({{ $batch->current_quantity ?? '...' }} {{ __("têtes") }})</span>
                     </p>
                 </div>
             </div>
             
             <div id="perf-widget" class="hidden md:flex items-center gap-4 bg-slate-900 p-2 pl-4 rounded-2xl border border-slate-700 shadow-2xl transition-all animate-in slide-in-from-right">
                 <div class="text-right">
-                    <p class="text-[8px] font-black text-slate-500 uppercase leading-none mb-1">Ratio Conso.</p>
-                    <p class="text-xs font-black text-emerald-400 italic leading-none"><span id="ratio-val">0</span> g/sujet</p>
+                    <p class="text-[8px] font-black text-slate-500 uppercase leading-none mb-1">{{ __("Ratio Conso.") }}</p>
+                    <p class="text-xs font-black text-emerald-400 italic leading-none"><span id="ratio-val">0</span> {{ __("g/sujet") }}</p>
                 </div>
                 <div class="w-10 h-10 bg-slate-800 rounded-xl flex items-center justify-center text-emerald-400 shadow-inner">
                     <i class="fa-solid fa-bolt-lightning text-xs"></i>
@@ -38,7 +38,7 @@
             @can('elevage.C')
                 @if ($errors->any())
                     <div class="mb-8 p-6 bg-red-600 text-white rounded-[2.5rem] shadow-xl animate-pulse text-left">
-                        <p class="text-[10px] font-black uppercase italic mb-2">❌ Erreurs de validation détectées :</p>
+                        <p class="text-[10px] font-black uppercase italic mb-2">{{ __("❌ Erreurs de validation détectées :") }}</p>
                         <ul class="list-disc list-inside text-xs font-black uppercase tracking-tight">
                             @foreach ($errors->all() as $error) <li>{{ $error }}</li> @endforeach
                         </ul>
@@ -59,13 +59,13 @@
                             <div class="flex items-center gap-5">
                                 <div class="w-14 h-14 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center text-2xl shadow-inner">💉</div>
                                 <div>
-                                    <p class="text-[10px] font-black uppercase opacity-70 leading-none tracking-widest">Soin Planifié • Jour {{ $age }}</p>
+                                    <p class="text-[10px] font-black uppercase opacity-70 leading-none tracking-widest">{{ __("Soin Planifié • Jour :age", ['age' => $age]) }}</p>
                                     <p class="text-xl font-black uppercase italic mt-1 leading-none tracking-tighter">{{ $todayStep->action_name }}</p>
                                 </div>
                             </div>
                             <button type="button" onclick="fillTreatment('{{ $todayStep->type }}', '{{ $todayStep->action_name }}')" 
                                     class="px-8 py-3 bg-white text-indigo-700 rounded-xl text-[10px] font-black uppercase hover:bg-emerald-400 hover:text-white transition shadow-xl italic tracking-widest leading-none">
-                                Appliquer
+                                {{ __("Appliquer") }}
                             </button>
                         </div>
                     </div>
@@ -121,30 +121,21 @@
 
                             <div class="pt-4 border-t border-slate-50">
                                 <label class="block text-[9px] font-black text-slate-400 uppercase mb-3 tracking-widest leading-none italic">
-                                    Type d'Aliment (Silo : {{ $batch->type }})
+                                    Type d'Aliment (Silo : {{ $batch->feedSector() }})
                                 </label>
-                                <select name="feed_type" id="feed_type" required onchange="checkFeedStock()" 
+                                <select name="feed_type" id="feed_type" required onchange="checkFeedStock()"
                                         class="w-full p-4 bg-slate-50 border-none rounded-2xl font-black text-[10px] uppercase focus:ring-2 focus:ring-blue-500 shadow-inner italic outline-none appearance-none cursor-pointer">
                                     <option value="">-- CHOISIR L'ALIMENT --</option>
                                     @foreach($phases as $phaseName)
-                                        @php 
+                                        @php
                                             // Utilisation directe du tableau préparé par le Controller (Aucune requête DB)
                                             $availableKg = $stockData[$phaseName] ?? 0;
-                                            
-                                            // Présélection intelligente
-                                            $isSelected = false;
-                                            if ($isLayerSilo) {
-                                                if ($age <= 42) $isSelected = str_contains($phaseName, 'Démarrage');
-                                                elseif ($age <= 126) $isSelected = str_contains($phaseName, 'Croissance');
-                                                else $isSelected = str_contains($phaseName, 'Ponte 1');
-                                            } else {
-                                                if ($age <= 14) $isSelected = str_contains($phaseName, 'Démarrage');
-                                                elseif ($age <= 28) $isSelected = str_contains($phaseName, 'Croissance');
-                                                else $isSelected = str_contains($phaseName, 'Finition');
-                                            }
+
+                                            // Présélection intelligente selon l'âge et le secteur du lot.
+                                            $isSelected = $batch->feedPreselectPhase($age) === $phaseName;
                                         @endphp
                                         <option value="{{ $phaseName }}" data-stock="{{ $availableKg }}" {{ $isSelected ? 'selected' : '' }}>
-                                            {{ str_replace(['Chair ', 'Ponte '], '', $phaseName) }} • (Stock: {{ number_format($availableKg, 1) }} kg)
+                                            {{ str_replace($batch->feedSector() . ' ', '', $phaseName) }} • (Stock: {{ number_format($availableKg, 1) }} kg)
                                         </option>
                                     @endforeach
                                 </select>

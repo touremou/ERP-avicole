@@ -6,9 +6,9 @@
                     <i class="fa-solid fa-triangle-exclamation text-xl"></i>
                 </div>
                 <div>
-                    <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">Écarts & Litiges</h2>
+                    <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">{{ __("Écarts & Litiges") }}</h2>
                     <p class="text-[10px] font-black text-red-600 uppercase tracking-[0.2em] mt-2 italic">
-                        Rapports de réconciliation — Three-Way Matching
+                        {{ __("Rapports de réconciliation — Three-Way Matching") }}
                     </p>
                 </div>
             </div>
@@ -27,15 +27,15 @@
             {{-- STATS --}}
             <div class="grid grid-cols-3 gap-4 mb-8">
                 <div @class(['p-5 rounded-[2rem] border text-center', $stats['total_open'] > 0 ? 'bg-red-50 border-red-200' : 'bg-emerald-50 border-emerald-200'])>
-                    <p class="text-[8px] font-black uppercase tracking-widest mb-1 {{ $stats['total_open'] > 0 ? 'text-red-500' : 'text-emerald-500' }}">Écarts non résolus</p>
+                    <p class="text-[8px] font-black uppercase tracking-widest mb-1 {{ $stats['total_open'] > 0 ? 'text-red-500' : 'text-emerald-500' }}">{{ __("Écarts non résolus") }}</p>
                     <p class="text-3xl font-black {{ $stats['total_open'] > 0 ? 'text-red-600' : 'text-emerald-600' }}">{{ $stats['total_open'] }}</p>
                 </div>
                 <div @class(['p-5 rounded-[2rem] border text-center', $stats['total_critical'] > 0 ? 'bg-red-50 border-red-300 animate-pulse' : 'bg-slate-50 border-slate-200'])>
-                    <p class="text-[8px] font-black uppercase tracking-widest mb-1 {{ $stats['total_critical'] > 0 ? 'text-red-600' : 'text-slate-400' }}">Critiques</p>
+                    <p class="text-[8px] font-black uppercase tracking-widest mb-1 {{ $stats['total_critical'] > 0 ? 'text-red-600' : 'text-slate-400' }}">{{ __("Critiques") }}</p>
                     <p class="text-3xl font-black {{ $stats['total_critical'] > 0 ? 'text-red-600' : 'text-slate-300' }}">{{ $stats['total_critical'] }}</p>
                 </div>
                 <div class="bg-amber-50 p-5 rounded-[2rem] border border-amber-200 text-center">
-                    <p class="text-[8px] font-black text-amber-500 uppercase tracking-widest mb-1">Total manquant</p>
+                    <p class="text-[8px] font-black text-amber-500 uppercase tracking-widest mb-1">{{ __("Total manquant") }}</p>
                     <p class="text-3xl font-black text-amber-600">{{ number_format($stats['total_missing'], 0) }}</p>
                 </div>
             </div>
@@ -43,19 +43,19 @@
             {{-- FILTRES --}}
             <form method="GET" class="mb-8 flex flex-wrap gap-3 items-center">
                 <select name="severity" class="bg-white border border-slate-100 rounded-2xl px-4 py-3 text-[10px] font-black uppercase tracking-widest shadow-sm outline-none appearance-none">
-                    <option value="">Toutes sévérités</option>
-                    <option value="critique" {{ request('severity') === 'critique' ? 'selected' : '' }}>Critique</option>
-                    <option value="attention" {{ request('severity') === 'attention' ? 'selected' : '' }}>Attention</option>
-                    <option value="normal" {{ request('severity') === 'normal' ? 'selected' : '' }}>Normal</option>
+                    <option value="">{{ __("Toutes sévérités") }}</option>
+                    <option value="critique" {{ request('severity') === 'critique' ? 'selected' : '' }}>{{ __("Critique") }}</option>
+                    <option value="attention" {{ request('severity') === 'attention' ? 'selected' : '' }}>{{ __("Attention") }}</option>
+                    <option value="normal" {{ request('severity') === 'normal' ? 'selected' : '' }}>{{ __("Normal") }}</option>
                 </select>
                 <select name="resolution" class="bg-white border border-slate-100 rounded-2xl px-4 py-3 text-[10px] font-black uppercase tracking-widest shadow-sm outline-none appearance-none">
-                    <option value="">Toutes résolutions</option>
-                    <option value="en_cours" {{ request('resolution') === 'en_cours' ? 'selected' : '' }}>En cours</option>
-                    <option value="justifie" {{ request('resolution') === 'justifie' ? 'selected' : '' }}>Justifié</option>
-                    <option value="injustifie" {{ request('resolution') === 'injustifie' ? 'selected' : '' }}>Injustifié</option>
-                    <option value="enquete" {{ request('resolution') === 'enquete' ? 'selected' : '' }}>Enquête</option>
+                    <option value="">{{ __("Toutes résolutions") }}</option>
+                    <option value="en_cours" {{ request('resolution') === 'en_cours' ? 'selected' : '' }}>{{ __("En cours") }}</option>
+                    <option value="justifie" {{ request('resolution') === 'justifie' ? 'selected' : '' }}>{{ __("Justifié") }}</option>
+                    <option value="injustifie" {{ request('resolution') === 'injustifie' ? 'selected' : '' }}>{{ __("Injustifié") }}</option>
+                    <option value="enquete" {{ request('resolution') === 'enquete' ? 'selected' : '' }}>{{ __("Enquête") }}</option>
                 </select>
-                <button type="submit" class="bg-slate-900 text-white px-5 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest border-none cursor-pointer">Filtrer</button>
+                <button type="submit" class="bg-slate-900 text-white px-5 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest border-none cursor-pointer">{{ __("Filtrer") }}</button>
             </form>
 
             {{-- LISTE DES RAPPORTS --}}
@@ -90,11 +90,11 @@
 
                         <div class="flex items-center gap-6">
                             <div class="text-center">
-                                <p class="text-[8px] font-black text-slate-400 uppercase">Écart</p>
+                                <p class="text-[8px] font-black text-slate-400 uppercase">{{ __("Écart") }}</p>
                                 <p class="text-lg font-black {{ $report->discrepancy_rate > 5 ? 'text-red-600' : 'text-amber-600' }}">{{ $report->discrepancy_rate }}%</p>
                             </div>
                             <div class="text-center">
-                                <p class="text-[8px] font-black text-red-400 uppercase">Manquant</p>
+                                <p class="text-[8px] font-black text-red-400 uppercase">{{ __("Manquant") }}</p>
                                 <p class="text-lg font-black text-red-600">{{ $report->total_missing }}</p>
                             </div>
                             <span @class([
@@ -113,7 +113,7 @@
                 @empty
                 <div class="bg-emerald-50 p-12 rounded-[3rem] text-center border border-emerald-200">
                     <i class="fa-solid fa-shield-check text-emerald-300 text-4xl mb-4 block"></i>
-                    <p class="text-[10px] text-emerald-600 uppercase tracking-widest font-black">Aucun écart détecté — Chaîne logistique intègre</p>
+                    <p class="text-[10px] text-emerald-600 uppercase tracking-widest font-black">{{ __("Aucun écart détecté — Chaîne logistique intègre") }}</p>
                 </div>
                 @endforelse
             </div>

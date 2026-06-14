@@ -63,9 +63,11 @@ class SaleController extends Controller
         $clients = Client::active()->orderBy('name')->get();
         
         // 💡 AJOUT : Exclusion des bâtiments virtuels (stockage)
-        $batches = Batch::where('status', 'Actif')
+        // Tous les lots actifs, toutes espèces (volaille, ovins/caprins
+        // pour Tabaski, poisson, lapins...) sont vendables sur pied.
+        $batches = Batch::active()
                         ->whereHas('building', fn($q) => $q->physical())
-                        ->with('building')
+                        ->with(['building', 'species'])
                         ->get();
                         
         $stocks  = Stock::where('current_quantity', '>', 0)->get();

@@ -42,7 +42,7 @@ class ProvenderieDashboardController extends Controller
             ->get();
 
         // 4. Inventaire aliments finis
-        $finishedFeeds = Stock::where('category', 'conso')
+        $finishedFeeds = Stock::where('category', Stock::CAT_CONSO)
             ->orderBy('item_name')
             ->get();
 
