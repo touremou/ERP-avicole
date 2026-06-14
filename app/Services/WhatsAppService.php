@@ -104,20 +104,18 @@ class WhatsAppService
     /**
      * Tente la livraison via le driver configuré.
      *
-     * @return array{0: bool, 1: array|null} [succès, réponse provider/erreur]
+     * @return array{0: bool, 1: array|null} [succès, détails (status/body ou erreur) pour diagnostic]
      */
     private function attemptDelivery(string $phone, string $message): array
     {
         try {
-            $result = match ($this->driver) {
+            return match ($this->driver) {
                 'callmebot' => $this->sendViaCallMeBot($phone, $message),
                 'ultramsg'  => $this->sendViaUltraMsg($phone, $message),
                 'wati'      => $this->sendViaWati($phone, $message),
                 'twilio'    => $this->sendViaTwilio($phone, $message),
                 default     => $this->sendViaLog($phone, $message),
             };
-
-            return [$result, null];
         } catch (\Throwable $e) {
             Log::error("WhatsAppService [{$this->driver}]: {$e->getMessage()}");
 
@@ -148,10 +146,10 @@ class WhatsAppService
     /**
      * Driver LOG — développement (écrit dans storage/logs/whatsapp.log)
      */
-    private function sendViaLog(string $phone, string $message): bool
+    private function sendViaLog(string $phone, string $message): array
     {
         Log::channel('single')->info("📱 WhatsApp → {$phone}\n{$message}");
-        return true;
+        return [true, null];
     }
 
     /**
@@ -160,9 +158,14 @@ class WhatsAppService
      * Setup : Envoyer "I allow callmebot to send me messages" au +34 644 51 95 23
      * Récupérer l'apikey dans la réponse, mettre dans WHATSAPP_API_KEY
      *
+     * Particularité : CallMeBot répond souvent en HTTP 200 même en cas
+     * d'erreur (clé invalide, numéro non enregistré, quota dépassé...), avec
+     * un message d'erreur dans le corps de la réponse. On détecte donc aussi
+     * ces erreurs via le contenu de la réponse, pas seulement le code HTTP.
+     *
      * @see https://www.callmebot.com/blog/free-api-whatsapp-messages/
      */
-    private function sendViaCallMeBot(string $phone, string $message): bool
+    private function sendViaCallMeBot(string $phone, string $message): array
     {
         $response = Http::timeout(15)->get('https://api.callmebot.com/whatsapp.php', [
             'phone'  => $phone,
@@ -170,7 +173,10 @@ class WhatsAppService
             'apikey' => $this->apiKey,
         ]);
 
-        return $response->successful();
+        $body = $response->body();
+        $success = $response->successful() && ! str_contains(strtolower($body), 'error');
+
+        return [$success, $this->responseDetails($response)];
     }
 
     /**
@@ -178,7 +184,7 @@ class WhatsAppService
      *
      * @see https://ultramsg.com/
      */
-    private function sendViaUltraMsg(string $phone, string $message): bool
+    private function sendViaUltraMsg(string $phone, string $message): array
     {
         $baseUrl = $this->apiUrl ?: "https://api.ultramsg.com/{$this->instanceId}";
 
@@ -190,7 +196,9 @@ class WhatsAppService
                 'body'  => $message,
             ]);
 
-        return $response->successful() && ($response->json('sent') === 'true' || $response->json('sent') === true);
+        $success = $response->successful() && ($response->json('sent') === 'true' || $response->json('sent') === true);
+
+        return [$success, $this->responseDetails($response)];
     }
 
     /**
@@ -198,7 +206,7 @@ class WhatsAppService
      *
      * @see https://docs.wati.io/
      */
-    private function sendViaWati(string $phone, string $message): bool
+    private function sendViaWati(string $phone, string $message): array
     {
         $baseUrl = $this->apiUrl ?: config('whatsapp.wati_url', 'https://live-server-1.wati.io');
 
@@ -208,7 +216,7 @@ class WhatsAppService
                 'messageText' => $message,
             ]);
 
-        return $response->successful();
+        return [$response->successful(), $this->responseDetails($response)];
     }
 
     /**
@@ -216,7 +224,7 @@ class WhatsAppService
      *
      * @see https://www.twilio.com/docs/whatsapp
      */
-    private function sendViaTwilio(string $phone, string $message): bool
+    private function sendViaTwilio(string $phone, string $message): array
     {
         $sid = config('whatsapp.twilio_sid');
         $token = config('whatsapp.twilio_token');
@@ -231,7 +239,20 @@ class WhatsAppService
                 'Body' => $message,
             ]);
 
-        return $response->successful();
+        return [$response->successful(), $this->responseDetails($response)];
+    }
+
+    /**
+     * Résumé exploitable de la réponse HTTP pour stockage dans
+     * NotificationLog.provider_response (diagnostic depuis Notifications >
+     * Historique).
+     */
+    private function responseDetails(\Illuminate\Http\Client\Response $response): array
+    {
+        return [
+            'status' => $response->status(),
+            'body'   => mb_substr(trim($response->body()), 0, 500),
+        ];
     }
 
     // ─────────────────────────────────────────────

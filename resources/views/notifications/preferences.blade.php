@@ -212,8 +212,13 @@
             {{-- HISTORIQUE RÉCENT --}}
             @if($recentLogs->count() > 0)
             <div class="mt-10 bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
-                <div class="px-8 py-5 bg-slate-50 border-b border-slate-100">
+                <div class="px-8 py-5 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
                     <h3 class="text-[10px] font-black uppercase text-slate-400 tracking-widest">{{ __("Dernières notifications") }}</h3>
+                    @can('notifications.S')
+                        <a href="{{ route('notifications.logs') }}" class="text-[8px] font-black text-blue-500 uppercase tracking-widest no-underline hover:text-blue-700">
+                            {{ __("Historique complet") }} →
+                        </a>
+                    @endcan
                 </div>
                 <div class="divide-y divide-slate-50">
                     @foreach($recentLogs as $log)

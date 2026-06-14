@@ -73,6 +73,51 @@ test('la page de préférences pré-remplit le numéro depuis whatsapp.admin_pho
     $response->assertSee('+224699999999');
 });
 
+// ── (f) DIAGNOSTIC DES ÉCHECS D'ENVOI ──
+
+test('une erreur callmebot renvoyée en HTTP 200 est détectée et détaillée dans le test', function () {
+    // CallMeBot répond parfois en 200 OK avec un message d'erreur dans le
+    // corps (clé invalide, numéro non enregistré...). Le système doit
+    // détecter cela comme un échec et exposer le détail à l'admin.
+    Setting::set('whatsapp.driver', 'callmebot');
+    Setting::set('whatsapp.api_key', 'fake-key');
+    Setting::set('whatsapp.admin_phone', '+224698888888');
+
+    Http::fake([
+        'api.callmebot.com/*' => Http::response('Error: Invalid ApiKey, please verify.', 200),
+    ]);
+
+    $this->actingAs($this->adminUser)
+        ->post(route('notifications.test'))
+        ->assertSessionHas('error');
+
+    expect(session('error'))->toContain('Invalid ApiKey');
+
+    $log = NotificationLog::where('type', 'test')->where('status', 'failed')->latest()->first();
+    expect($log)->not->toBeNull()
+        ->and($log->provider_response['body'])->toContain('Invalid ApiKey');
+});
+
+test('un admin consulte l\'historique des notifications avec le détail de l\'erreur provider', function () {
+    NotificationLog::create([
+        'channel' => 'whatsapp', 'type' => 'alert_stock', 'title' => 'Stock',
+        'message' => 'Test', 'recipient_phone' => '+224620000000',
+        'status' => 'failed', 'attempts' => 2,
+        'provider_response' => ['status' => 200, 'body' => 'Error: quota dépassé'],
+    ]);
+
+    $response = $this->actingAs($this->adminUser)->get(route('notifications.logs'));
+
+    $response->assertOk();
+    $response->assertSee('Error: quota dépassé');
+});
+
+test('un visiteur (L) ne peut pas consulter l\'historique des notifications', function () {
+    $this->actingAs($this->readonlyUser)
+        ->get(route('notifications.logs'))
+        ->assertSessionHas('error');
+});
+
 // ── (g) ALERTES TEMPS RÉEL — VISIBILITÉ ADMIN HORS SITE ──
 
 test('un écart critique déclenche une alerte WhatsApp via le numéro admin de secours', function () {

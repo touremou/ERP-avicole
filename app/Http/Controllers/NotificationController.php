@@ -116,7 +116,20 @@ class NotificationController extends Controller
         ]);
 
         if (! $result) {
-            return back()->with('error', 'Échec de l\'envoi vers ' . $phone . '. Vérifiez le numéro et la configuration du provider (clé API, instance).');
+            $log = NotificationLog::where('recipient_phone', $phone)->where('type', 'test')->latest()->first();
+            $detail = is_array($log?->provider_response)
+                ? ($log->provider_response['error'] ?? $log->provider_response['body'] ?? null)
+                : null;
+
+            $error = 'Échec de l\'envoi vers ' . $phone . '. Vérifiez le numéro et la configuration du provider (clé API, instance).';
+            if ($detail) {
+                $error .= ' Détail : ' . \Illuminate\Support\Str::limit((string) $detail, 150);
+            }
+            if (Gate::allows('notifications.S')) {
+                $error .= ' Voir Notifications > Historique pour le détail complet.';
+            }
+
+            return back()->with('error', $error);
         }
 
         $sentTo = $usingFallback
