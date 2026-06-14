@@ -45,6 +45,7 @@ au moment de l'audit.
 - `whatsapp.business_hours_start` / `whatsapp.business_hours_end` — plage des heures ouvrées ; toute vente validée ou tout encaissement enregistré hors de cette plage est escaladé en alerte critique (`NotificationHub::isAfterHours()`). Plage vide = détection désactivée.
 - `whatsapp.api_url` — URL de base personnalisée pour les drivers `ultramsg`/`wati` (instance auto-hébergée), utilisée par `WhatsAppService`.
 - `whatsapp.activity_digest_hour` — heure d'envoi du digest d'activité par employé (commande `avismart:activity-digest`, planifiée dans `routes/console.php`) : récapitulatif quotidien QUI-a-fait-QUOI (ventes, encaissements, mouvements de stock, annulations) envoyé aux abonnés du résumé et au numéro admin de secours. Défaut 20:00.
+- `whatsapp.verify_ssl` — vérification du certificat SSL des appels providers (`WhatsAppService::http()`). Activée par défaut ; le bundle CA (`composer/ca-bundle`) règle déjà la cause #1 d'échec « cURL error 60 » sur PHP sans `curl.cainfo`. Ne désactiver qu'en dernier recours (non sécurisé).
 
 ## Restants — en attente de leur fonctionnalité consommatrice
 

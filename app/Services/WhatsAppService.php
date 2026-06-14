@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Models\NotificationLog;
+use Composer\CaBundle\CaBundle;
+use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -139,6 +141,37 @@ class WhatsAppService
         return $sent;
     }
 
+    /**
+     * Client HTTP préconfiguré pour les appels providers.
+     *
+     * Résout la cause #1 d'échec en environnement local/mutualisé :
+     * « cURL error 60: SSL certificate problem: unable to get local issuer
+     * certificate ». Sur un PHP sans `curl.cainfo`/`openssl.cafile` (WAMP,
+     * hébergement bas de gamme), toute requête HTTPS échoue. On pointe donc
+     * cURL vers un bundle CA valide fourni par composer/ca-bundle — la
+     * vérification reste ACTIVE (sécurisée) sans dépendre de la config php.ini.
+     *
+     * Le paramètre whatsapp.verify_ssl permet, en dernier recours et de façon
+     * explicite, de désactiver la vérification (déconseillé) pour les
+     * environnements où aucun bundle n'est exploitable.
+     */
+    private function http(): PendingRequest
+    {
+        $client = Http::timeout(15);
+
+        $verify = filter_var(setting('whatsapp.verify_ssl', true), FILTER_VALIDATE_BOOLEAN);
+        if (! $verify) {
+            return $client->withoutVerifying();
+        }
+
+        $caPath = CaBundle::getSystemCaRootBundlePath();
+        if (is_string($caPath) && is_file($caPath)) {
+            $client = $client->withOptions(['verify' => $caPath]);
+        }
+
+        return $client;
+    }
+
     // ─────────────────────────────────────────────
     // DRIVERS
     // ─────────────────────────────────────────────
@@ -167,7 +200,7 @@ class WhatsAppService
      */
     private function sendViaCallMeBot(string $phone, string $message): array
     {
-        $response = Http::timeout(15)->get('https://api.callmebot.com/whatsapp.php', [
+        $response = $this->http()->get('https://api.callmebot.com/whatsapp.php', [
             'phone'  => $phone,
             'text'   => $message,
             'apikey' => $this->apiKey,
@@ -188,7 +221,7 @@ class WhatsAppService
     {
         $baseUrl = $this->apiUrl ?: "https://api.ultramsg.com/{$this->instanceId}";
 
-        $response = Http::timeout(15)
+        $response = $this->http()
             ->asForm()
             ->post(rtrim($baseUrl, '/') . '/messages/chat', [
                 'token' => $this->apiKey,
@@ -210,7 +243,7 @@ class WhatsAppService
     {
         $baseUrl = $this->apiUrl ?: config('whatsapp.wati_url', 'https://live-server-1.wati.io');
 
-        $response = Http::timeout(15)
+        $response = $this->http()
             ->withHeaders(['Authorization' => 'Bearer ' . $this->apiKey])
             ->post(rtrim($baseUrl, '/') . "/api/v1/sendSessionMessage/{$phone}", [
                 'messageText' => $message,
@@ -230,7 +263,7 @@ class WhatsAppService
         $token = config('whatsapp.twilio_token');
         $from = config('whatsapp.twilio_from', 'whatsapp:+14155238886');
 
-        $response = Http::timeout(15)
+        $response = $this->http()
             ->withBasicAuth($sid, $token)
             ->asForm()
             ->post("https://api.twilio.com/2010-04-01/Accounts/{$sid}/Messages.json", [

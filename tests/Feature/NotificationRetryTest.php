@@ -91,3 +91,27 @@ test('une notification en échec trop ancienne n\'est plus retentée', function 
     expect($log->status)->toBe('failed')
         ->and($log->attempts)->toBe(1);
 });
+
+// ── RÉSILIENCE SSL (cURL error 60) ──
+
+test('le bundle CA fourni par composer pointe vers un fichier valide', function () {
+    // Garantit que la parade « cURL error 60 » reste opérationnelle :
+    // composer/ca-bundle doit toujours résoudre un bundle CA exploitable.
+    $path = Composer\CaBundle\CaBundle::getSystemCaRootBundlePath();
+
+    expect(is_string($path))->toBeTrue()
+        ->and(is_file($path))->toBeTrue();
+});
+
+test('l\'envoi fonctionne même avec la vérification SSL désactivée (dernier recours)', function () {
+    Setting::set('whatsapp.verify_ssl', '0');
+
+    Http::fake(['api.callmebot.com/*' => Http::response('Message envoyé', 200)]);
+
+    $result = app(WhatsAppService::class)->send('+224620000000', 'Test sans SSL', [
+        'type' => 'test', 'title' => 'Test',
+    ]);
+
+    expect($result)->toBeTrue();
+    expect(NotificationLog::where('type', 'test')->where('status', 'sent')->exists())->toBeTrue();
+});
