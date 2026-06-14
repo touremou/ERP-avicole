@@ -88,11 +88,17 @@
                         <div>
                             <label class="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Types de lots</label>
                             <div class="flex flex-wrap gap-2">
-                                @php $batchTypes = $template->batch_types ?? []; @endphp
-                                @foreach(['ponte', 'chair', 'reproducteur', 'poussiniere'] as $t)
+                                @php
+                                    $batchTypes = $template->batch_types ?? [];
+                                    // Conserver les slugs déjà cochés même si leur type a été désactivé.
+                                    foreach ($batchTypes as $bt) {
+                                        $batchTypeOptions[$bt] ??= ucfirst(str_replace('_', ' ', $bt));
+                                    }
+                                @endphp
+                                @foreach($batchTypeOptions as $slug => $label)
                                 <label class="cursor-pointer">
-                                    <input type="checkbox" name="batch_types[]" value="{{ $t }}" {{ in_array($t, $batchTypes) ? 'checked' : '' }} class="hidden peer">
-                                    <div class="px-3 py-1.5 rounded-lg text-[8px] font-black uppercase bg-slate-50 text-slate-400 peer-checked:bg-purple-100 peer-checked:text-purple-600 transition-all">{{ $t }}</div>
+                                    <input type="checkbox" name="batch_types[]" value="{{ $slug }}" {{ in_array($slug, $batchTypes) ? 'checked' : '' }} class="hidden peer">
+                                    <div class="px-3 py-1.5 rounded-lg text-[8px] font-black uppercase bg-slate-50 text-slate-400 peer-checked:bg-purple-100 peer-checked:text-purple-600 transition-all">{{ $label }}</div>
                                 </label>
                                 @endforeach
                             </div>

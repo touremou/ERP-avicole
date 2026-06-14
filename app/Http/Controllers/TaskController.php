@@ -213,8 +213,9 @@ class TaskController extends Controller
         $templates = TaskTemplate::withoutGlobalScopes()
             ->orderBy('category')->orderBy('scheduled_time')->get();
         $buildings = Building::physical()->orderBy('name')->get();
+        $batchTypeOptions = TaskTemplate::batchTypeOptions();
 
-        return view('tasks.templates', compact('templates', 'buildings'));
+        return view('tasks.templates', compact('templates', 'buildings', 'batchTypeOptions'));
     }
 
     public function storeTemplate(Request $request)
@@ -264,7 +265,8 @@ class TaskController extends Controller
     public function editTemplate(TaskTemplate $template)
     {
         if (Gate::denies('admin.M')) return back()->with('error', 'Non autorisé.');
-        return view('tasks.edit-template', compact('template'));
+        $batchTypeOptions = TaskTemplate::batchTypeOptions();
+        return view('tasks.edit-template', compact('template', 'batchTypeOptions'));
     }
 
     public function updateTemplate(Request $request, TaskTemplate $template)

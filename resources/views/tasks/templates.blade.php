@@ -95,11 +95,11 @@
                             </label>
                             <div>
                                 <label class="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">{{ __("Types de lots (optionnel)") }}</label>
-                                <div class="flex gap-2">
-                                    @foreach(['ponte', 'chair', 'reproducteur', 'poussiniere'] as $t)
+                                <div class="flex flex-wrap gap-2">
+                                    @foreach($batchTypeOptions as $slug => $label)
                                     <label class="cursor-pointer">
-                                        <input type="checkbox" name="batch_types[]" value="{{ $t }}" class="hidden peer">
-                                        <div class="px-3 py-1.5 rounded-lg text-[8px] font-black uppercase bg-slate-50 text-slate-400 peer-checked:bg-purple-100 peer-checked:text-purple-600 transition-all">{{ $t }}</div>
+                                        <input type="checkbox" name="batch_types[]" value="{{ $slug }}" class="hidden peer">
+                                        <div class="px-3 py-1.5 rounded-lg text-[8px] font-black uppercase bg-slate-50 text-slate-400 peer-checked:bg-purple-100 peer-checked:text-purple-600 transition-all">{{ $label }}</div>
                                     </label>
                                     @endforeach
                                 </div>
