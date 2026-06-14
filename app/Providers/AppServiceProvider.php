@@ -100,62 +100,13 @@ class AppServiceProvider extends ServiceProvider
         //    - Pas de colonne is_active sur module_permissions
         // ════════════════════════════════════════════════════════════════
 
-        // Table de correspondance "préfixe de nom de route" → slug module.
+        // Correspondance "préfixe de nom de route" → slug module.
+        // SOURCE DE VÉRITÉ UNIQUE : App\Models\Module::routePrefixMap().
         // Permet aux gates génériques L/C/M/S (utilisés par
         // ->middleware('can:L'|'can:C'|'can:M'|'can:S') dans routes/web.php)
         // de résoudre le module concerné par la requête en cours, et donc
         // d'appliquer la matrice Modules × Rôles route par route.
-        $moduleRouteMap = [
-            'buildings.'        => 'elevage',
-            'batches.'          => 'elevage',
-            'health.'           => 'elevage',
-            'daily-checks.'     => 'elevage',
-            'protocols.'        => 'elevage',
-            'reports.'          => 'elevage',
-
-            'stocks.'           => 'logistique',
-            'dispatches.'       => 'logistique',
-
-            'provenderie.'      => 'provenderie',
-            'raw-materials.'    => 'provenderie',
-            'formulas.'         => 'provenderie',
-            'norms.'            => 'provenderie',
-            'production.'       => 'provenderie',
-            'machines.'         => 'provenderie',
-            'feed-purchases.'   => 'provenderie',
-
-            'incubations.'      => 'production',
-            'chick-dispatches.' => 'production',
-            'incubators.'       => 'production',
-            'egg-productions.'  => 'production',
-            'egg-movements.'    => 'production',
-
-            'clients.'          => 'commerce',
-            'sales.'            => 'commerce',
-            'payments.'         => 'commerce',
-
-            'expenses.'         => 'depenses',
-
-            'utilities.'        => 'ressources',
-            'notifications.'    => 'notifications',
-
-            'planning.'         => 'planning',
-            'tasks.'            => 'planning',
-
-            'slaughter.'        => 'abattoir',
-
-            'employees.'        => 'annuaire',
-            'providers.'        => 'annuaire',
-            'payroll.'          => 'annuaire',
-
-            'users.'            => 'admin',
-            'roles.'            => 'admin',
-            'admin.'            => 'admin',
-            'settings.'         => 'admin',
-            'farms.'            => 'admin',
-            'trash.'            => 'admin',
-            'api.species.'      => 'admin',
-        ];
+        $moduleRouteMap = \App\Models\Module::routePrefixMap();
 
         $resolveModuleSlug = function () use ($moduleRouteMap) {
             $name = request()->route()?->getName();

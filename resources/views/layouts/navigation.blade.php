@@ -18,45 +18,23 @@
                     </x-slot>
                         <p class="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-3 px-1 border-b border-slate-100 pb-2">{{ __("Accès rapide") }}</p>
                         <div class="grid grid-cols-3 gap-1.5">
-                            @php
-                                $modules = [
-                                    ['route' => 'dashboard',             'icon' => 'fa-gauge-high',       'color' => 'blue',    'label' => 'Dashboard'],
-                                    ['route' => 'employees.index',       'icon' => 'fa-users',            'color' => 'slate',   'label' => 'RH'],
-                                    ['route' => 'buildings.index',       'icon' => 'fa-dove',             'color' => 'blue',    'label' => 'Élevage'],
-                                    ['route' => 'egg-productions.index', 'icon' => 'fa-egg',              'color' => 'amber',   'label' => 'Production'],
-                                    ['route' => 'incubations.index',     'icon' => 'fa-temperature-half', 'color' => 'pink',    'label' => 'Couvoir'],
-                                    ['route' => 'provenderie.dashboard', 'icon' => 'fa-wheat-awn',        'color' => 'lime',    'label' => 'Provenderie'],
-                                    ['route' => 'planning.index',        'icon' => 'fa-calendar-days',    'color' => 'indigo',  'label' => 'Planning'],
-                                    ['route' => 'slaughter.dashboard',   'icon' => 'fa-drumstick-bite',   'color' => 'rose',    'label' => 'Abattoir'],
-                                    ['route' => 'sales.index',           'icon' => 'fa-cash-register',    'color' => 'teal',    'label' => 'Commerce'],
-                                    ['route' => 'stocks.index',          'icon' => 'fa-boxes-stacked',    'color' => 'orange',  'label' => 'Stocks'],
-                                    ['route' => 'utilities.dashboard',   'icon' => 'fa-bolt',             'color' => 'cyan',    'label' => 'Ressources'],
-                                    ['route' => 'users.index',           'icon' => 'fa-shield-halved',    'color' => 'purple',  'label' => 'Admin'],
-                                ];
-                            @endphp
-                            {{-- Dans le bloc App Drawer, remplacez la boucle @foreach par ceci --}}
-                            @foreach($modules as $m)
+                            {{-- Lanceur de modules PILOTÉ PAR LA MATRICE : tout module sur
+                                 lequel l'utilisateur a la lecture (can_read) apparaît ici,
+                                 sans liste codée en dur. Source : getAccessibleModules()
+                                 (matrice module_permissions) + Module::landingRoute(). --}}
+                            @foreach(auth()->user()->getAccessibleModules() as $module)
                                 @php
-                                    // On extrait le nom du module de la route ou du label pour déduire la permission (ex: stocks.index -> stock.L)
-                                    // Vous pouvez ajuster cette logique selon votre nomenclature exacte
-                                    $permMapping = [
-                                        'RH' => 'annuaire.L', 'Élevage' => 'elevage.L', 'Production' => 'production.L', 
-                                        'Couvoir' => 'production.L', 'Provenderie' => 'provenderie.L', 'Planning' => 'planning.L',
-                                        'Abattoir' => 'abattoir.L', 'Commerce' => 'commerce.L', 'Stocks' => 'logistique.L',
-                                        'Ressources' => 'ressources.L', 'Admin' => 'admin.S'
-                                    ];
-                                    $requiredPerm = $permMapping[$m['label']] ?? null;
+                                    $landing = \App\Models\Module::landingRoute($module->slug);
+                                    $color   = $module->color ?: 'slate';
+                                    $icon    = $module->icon ?: 'fa-cube';
                                 @endphp
-
-                                @if(\Illuminate\Support\Facades\Route::has($m['route']))
-                                    @if(!$requiredPerm || auth()->user()->can($requiredPerm))
-                                        <a href="{{ route($m['route']) }}" class="flex flex-col items-center p-2.5 rounded-xl hover:bg-{{ $m['color'] }}-50 transition-all group no-underline">
-                                            <div class="w-9 h-9 rounded-lg bg-{{ $m['color'] }}-50 text-{{ $m['color'] }}-500 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform">
-                                        <i class="fa-solid {{ $m['icon'] }} text-sm"></i>
-                                    </div>
-                                    <span class="text-[7px] font-black uppercase tracking-widest text-slate-500 text-center">{{ __($m['label']) }}</span>
-                                        </a>
-                                    @endif
+                                @if($landing && \Illuminate\Support\Facades\Route::has($landing))
+                                    <a href="{{ route($landing) }}" class="flex flex-col items-center p-2.5 rounded-xl hover:bg-{{ $color }}-50 transition-all group no-underline">
+                                        <div class="w-9 h-9 rounded-lg bg-{{ $color }}-50 text-{{ $color }}-500 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform">
+                                            <i class="fa-solid {{ $icon }} text-sm"></i>
+                                        </div>
+                                        <span class="text-[7px] font-black uppercase tracking-widest text-slate-500 text-center">{{ __($module->name) }}</span>
+                                    </a>
                                 @endif
                             @endforeach
                         </div>
@@ -239,14 +217,20 @@
                             <i class="fa-solid fa-chevron-down text-[6px] text-slate-400 mr-1.5"></i>
                         </span>
                     </x-slot>
+                        @can('notifications.L')
                         <a href="{{ route('notifications.preferences') }}" class="block rounded-lg p-2 text-[9px] font-black uppercase italic tracking-widest hover:bg-emerald-50 text-slate-500 no-underline"><i class="fa-brands fa-whatsapp text-emerald-500 w-4 text-center mr-1"></i> {{ __("Notifications") }}</a>
+                        @endcan
+                        @can('annuaire.L')
                         <a href="{{ route('tasks.index', ['mine' => 1]) }}" class="block rounded-lg p-2 text-[9px] font-black uppercase italic tracking-widest hover:bg-blue-50 text-slate-500 no-underline"><i class="fa-solid fa-list-check text-blue-500 w-4 text-center mr-1"></i> {{ __("Mes Tâches") }}</a>
-                        @can('elevage.S')
+                        @endcan
+                        @can('elevage.L')
                         <a href="{{ route('reports.index') }}" class="block rounded-lg p-2 text-[9px] font-black uppercase italic tracking-widest hover:bg-orange-50 text-slate-500 no-underline {{ request()->routeIs('reports.*') ? 'bg-orange-50 text-orange-600' : '' }}"><i class="fa-solid fa-chart-pie text-orange-500 w-4 text-center mr-1"></i> {{ __("Rapports") }}</a>
                         @endcan
                         <a href="{{ route('profile.edit') }}" class="block rounded-lg p-2 text-[9px] font-black uppercase italic tracking-widest hover:bg-blue-50 text-slate-500 no-underline"><i class="fa-solid fa-user-gear text-blue-500 w-4 text-center mr-1"></i> {{ __("Profil") }}</a>
+                        @can('annuaire.L')
                         <a href="{{ route('employees.index') }}" class="block rounded-lg p-2 text-[9px] font-black uppercase italic tracking-widest hover:bg-slate-50 text-slate-500 no-underline"><i class="fa-solid fa-users text-slate-400 w-4 text-center mr-1"></i> {{ __("Employés") }}</a>
                         <a href="{{ route('providers.index') }}" class="block rounded-lg p-2 text-[9px] font-black uppercase italic tracking-widest hover:bg-slate-50 text-slate-500 no-underline"><i class="fa-solid fa-truck-field text-slate-400 w-4 text-center mr-1"></i> {{ __("Fournisseurs") }}</a>
+                        @endcan
                         @can('admin.S')
                         <div class="border-t border-slate-100 my-1.5"></div>
                         <a href="{{ route('farms.index') }}" class="block rounded-lg p-2 text-[9px] font-black uppercase italic tracking-widest hover:bg-violet-50 text-slate-500 no-underline"><i class="fa-solid fa-city text-violet-500 w-4 text-center mr-1"></i> {{ __("Multi-Sites") }}</a>

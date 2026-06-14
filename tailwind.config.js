@@ -10,6 +10,17 @@ export default {
         './resources/views/**/*.blade.php',
     ],
 
+    // Palette des modules (couleur stockée en base : modules.color) utilisée
+    // dynamiquement dans le lanceur de modules de la navigation. Comme ces
+    // classes sont construites par interpolation (bg-{color}-50), elles ne
+    // sont pas détectables par le scan JIT et doivent être listées ici.
+    safelist: [
+        {
+            pattern: /(bg|text)-(slate|blue|amber|lime|indigo|rose|teal|orange|cyan|emerald|pink|purple|violet|red)-(50|500)/,
+            variants: ['hover'],
+        },
+    ],
+
     theme: {
         extend: {
             fontFamily: {

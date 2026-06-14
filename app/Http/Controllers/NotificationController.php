@@ -113,7 +113,7 @@ class NotificationController extends Controller
      */
     public function logs(Request $request)
     {
-        if (Gate::denies('admin.S')) return back()->with('error', 'Accès réservé aux administrateurs.');
+        if (Gate::denies('notifications.S')) return back()->with('error', 'Accès réservé aux administrateurs.');
 
         $query = NotificationLog::with('user');
 
