@@ -5,9 +5,11 @@ namespace Tests\Helpers;
 use App\Models\Building;
 use App\Models\Employee;
 use App\Models\Farm;
+use App\Models\Module;
 use App\Models\Provider;
 use App\Models\Role;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 
 trait AviSmartTestHelper
 {
@@ -23,11 +25,12 @@ trait AviSmartTestHelper
     /**
      * Met en place les rôles RBAC sur l'architecture courante.
      *
-     * Les permissions sont portées par la colonne JSON `roles.permissions` et,
-     * pour les rôles sans matrice `module_permissions`, les Gates retombent sur
-     * une correspondance par NOM de rôle (admin/manager/operator/viewer) — d'où
-     * l'usage de ces noms exacts. (L'ancien pivot Permission/permission_role
-     * n'est plus utilisé.)
+     * La matrice `module_permissions` (Modules × Rôles) est la SEULE source
+     * de vérité des Gates (cf. AppServiceProvider) : chaque rôle reçoit une
+     * ligne par module, dérivée ici de `roles.permissions` (LCMS), pour
+     * reproduire en test l'état "matrice complète" garanti en production par
+     * les migrations 2026_06_10_000004 et 2026_06_14_000001. Le rôle "admin"
+     * reste bypassé partout via Gate::before.
      */
     protected function setUpRbac(): void
     {
@@ -37,10 +40,16 @@ trait AviSmartTestHelper
         );
         session(['current_farm_id' => $this->farm->id]);
 
-        $make = fn (string $name, array $perms) => Role::firstOrCreate(
-            ['name' => $name],
-            ['label' => ucfirst($name), 'display_name' => ucfirst($name), 'permissions' => $perms]
-        );
+        $make = function (string $name, array $perms) {
+            $role = Role::firstOrCreate(
+                ['name' => $name],
+                ['label' => ucfirst($name), 'display_name' => ucfirst($name), 'permissions' => $perms]
+            );
+
+            $this->seedModuleMatrix($role, $perms);
+
+            return $role;
+        };
 
         $admin    = $make('admin',    ['L', 'C', 'M', 'S']);
         $manager  = $make('manager',  ['L', 'C', 'M']);
@@ -51,6 +60,29 @@ trait AviSmartTestHelper
         $this->managerUser  = User::factory()->create(['role_id' => $manager->id]);
         $this->operatorUser = User::factory()->create(['role_id' => $operator->id]);
         $this->readonlyUser = User::factory()->create(['role_id' => $viewer->id]);
+    }
+
+    /**
+     * Donne au rôle une ligne `module_permissions` par module, à partir
+     * d'une matrice LCMS (L/C/M/S) appliquée uniformément à tous les modules.
+     */
+    protected function seedModuleMatrix(Role $role, array $perms): void
+    {
+        $now = now();
+
+        foreach (Module::pluck('id') as $moduleId) {
+            DB::table('module_permissions')->updateOrInsert(
+                ['role_id' => $role->id, 'module_id' => $moduleId],
+                [
+                    'can_read'   => in_array('L', $perms, true),
+                    'can_create' => in_array('C', $perms, true),
+                    'can_modify' => in_array('M', $perms, true),
+                    'can_delete' => in_array('S', $perms, true),
+                    'updated_at' => $now,
+                    'created_at' => $now,
+                ]
+            );
+        }
     }
 
     protected function setUpBaseData(): void

@@ -77,30 +77,22 @@ class User extends Authenticatable
      *   $user->canModule('abattoir', 'L')   // Peut lire le module Abattoir ?
      *   $user->canModule('admin', 'S')      // Peut supprimer dans Administration ?
      *
-     * Logique de résolution :
-     * 1. Si une permission module existe → l'utiliser
-     * 2. Sinon → fallback sur la permission globale (LCMS classique)
-     * 3. Les SuperAdmin (permission globale S) ont accès à tout
+     * La matrice Modules × Rôles (`module_permissions`) est seule autorité :
+     * chaque rôle possède une ligne par module (cf. migrations
+     * 2026_06_10_000004 et 2026_06_14_000001). Le rôle "admin" reste
+     * bypassé partout via Gate::before / AppServiceProvider.
      */
     public function canModule(string $moduleSlug, string $level): bool
     {
         if (! $this->role_id) return false;
 
-        // SuperAdmin bypass : permission S globale = accès total
-        if ($this->hasPermission('S')) return true;
+        if ($this->hasRole('admin')) return true;
 
-        // Chercher la permission spécifique au module
         $modulePerm = ModulePermission::where('role_id', $this->role_id)
             ->whereHas('module', fn($q) => $q->where('slug', $moduleSlug))
             ->first();
 
-        // Si une permission module existe, l'utiliser
-        if ($modulePerm) {
-            return $modulePerm->hasLevel($level);
-        }
-
-        // Fallback : permission globale classique (rétrocompatibilité)
-        return $this->hasPermission($level);
+        return $modulePerm && $modulePerm->hasLevel($level);
     }
 
     /**
@@ -110,23 +102,13 @@ class User extends Authenticatable
     {
         if (! $this->role_id) return collect();
 
-        // SuperAdmin : tous les modules
-        if ($this->hasPermission('S')) {
+        if ($this->hasRole('admin')) {
             return Module::active()->get();
         }
 
-        // Modules avec permission explicite (can_read = true)
         $explicitModuleIds = ModulePermission::where('role_id', $this->role_id)
             ->where('can_read', true)
             ->pluck('module_id');
-
-        // Si aucune permission module n'est configurée → fallback : tous les modules si L global
-        if (ModulePermission::where('role_id', $this->role_id)->count() === 0) {
-            if ($this->hasPermission('L')) {
-                return Module::active()->get();
-            }
-            return collect();
-        }
 
         return Module::active()->whereIn('id', $explicitModuleIds)->get();
     }

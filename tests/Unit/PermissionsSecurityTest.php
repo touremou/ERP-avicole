@@ -3,10 +3,12 @@
 use App\Models\Batch;
 use App\Models\Building;
 use App\Models\Employee;
+use App\Models\Module;
 use App\Models\Permission;
 use App\Models\Provider;
 use App\Models\Role;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
 uses(Tests\TestCase::class, Illuminate\Foundation\Testing\RefreshDatabase::class);
@@ -16,13 +18,33 @@ beforeEach(function () {
     $farm = App\Models\Farm::firstOrCreate(['code' => 'FT-001'], ['name' => 'Ferme Test', 'is_active' => true]);
     session(['current_farm_id' => $farm->id]);
 
-    // Permissions portées par la colonne JSON roles.permissions ; les Gates
-    // retombent sur le NOM de rôle (admin/manager/operator/viewer) quand aucune
-    // matrice module_permissions n'existe — d'où ces noms exacts.
-    $makeRole = fn (string $name, array $perms) => Role::firstOrCreate(
-        ['name' => $name],
-        ['label' => ucfirst($name), 'display_name' => ucfirst($name), 'permissions' => $perms]
-    );
+    // La matrice `module_permissions` (Modules × Rôles) est la SEULE source
+    // de vérité des Gates (cf. AppServiceProvider) : chaque rôle reçoit ici
+    // une ligne par module, dérivée de `roles.permissions` (LCMS), pour
+    // reproduire l'état "matrice complète" garanti en production.
+    $makeRole = function (string $name, array $perms) {
+        $role = Role::firstOrCreate(
+            ['name' => $name],
+            ['label' => ucfirst($name), 'display_name' => ucfirst($name), 'permissions' => $perms]
+        );
+
+        $now = now();
+        foreach (Module::pluck('id') as $moduleId) {
+            DB::table('module_permissions')->updateOrInsert(
+                ['role_id' => $role->id, 'module_id' => $moduleId],
+                [
+                    'can_read'   => in_array('L', $perms, true),
+                    'can_create' => in_array('C', $perms, true),
+                    'can_modify' => in_array('M', $perms, true),
+                    'can_delete' => in_array('S', $perms, true),
+                    'updated_at' => $now,
+                    'created_at' => $now,
+                ]
+            );
+        }
+
+        return $role;
+    };
 
     $admin    = $makeRole('admin',    ['L', 'C', 'M', 'S']);
     $manager  = $makeRole('manager',  ['L', 'C', 'M']);

@@ -175,32 +175,32 @@
                 @endcan
             </div>
 
-            {{-- Actions Quotidiennes (En Grille sur Mobile, Flex sur PC) --}}
-            <div class="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 md:gap-3 w-full lg:w-auto">
+            {{-- Actions Quotidiennes (ligne unique, défilement horizontal) --}}
+            <div class="flex items-center gap-2 md:gap-3 w-full lg:w-auto overflow-x-auto hide-scrollbar">
                 @can('elevage.C')
 
                 <button type="button" onclick="event.stopPropagation(); openFeedModal()"
-                        class="flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-2 px-3 py-3 md:px-6 md:py-4 bg-slate-900 text-white rounded-xl md:rounded-2xl font-black text-[9px] md:text-[10px] uppercase italic hover:bg-orange-500 transition-all shadow-lg border-none cursor-pointer group text-center sm:text-left">
-                    <i class="fa-solid fa-truck-ramp-box text-orange-400 group-hover:text-white transition-colors text-lg sm:text-base"></i>
+                        class="flex items-center justify-center gap-2 px-3 py-3 md:px-6 md:py-4 bg-slate-900 text-white rounded-xl md:rounded-2xl font-black text-[9px] md:text-[10px] uppercase italic hover:bg-orange-500 transition-all shadow-lg border-none cursor-pointer group whitespace-nowrap shrink-0">
+                    <i class="fa-solid fa-truck-ramp-box text-orange-400 group-hover:text-white transition-colors"></i>
                     <span>{{ __("Achat direct") }}</span>
                 </button>
 
                 <a href="{{ route('daily-checks.create', ['batch_id' => $batch->id]) }}"
-                   class="flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-2 px-3 py-3 md:px-6 md:py-4 bg-blue-600 text-white rounded-xl md:rounded-2xl font-black text-[9px] md:text-[10px] uppercase italic hover:bg-blue-500 transition-all shadow-lg no-underline text-center sm:text-left">
-                    <i class="fa-solid fa-clipboard-check text-blue-200 text-lg sm:text-base"></i>
+                   class="flex items-center justify-center gap-2 px-3 py-3 md:px-6 md:py-4 bg-blue-600 text-white rounded-xl md:rounded-2xl font-black text-[9px] md:text-[10px] uppercase italic hover:bg-blue-500 transition-all shadow-lg no-underline whitespace-nowrap shrink-0">
+                    <i class="fa-solid fa-clipboard-check text-blue-200"></i>
                     <span>{{ __("Suivi") }}</span>
                 </a>
 
                 <a href="{{ route('health.create', ['batch_id' => $batch->id]) }}"
-                   class="flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-2 px-3 py-3 md:px-6 md:py-4 bg-rose-600 text-white rounded-xl md:rounded-2xl font-black text-[9px] md:text-[10px] uppercase italic hover:bg-rose-500 transition-all shadow-lg no-underline text-center sm:text-left">
-                    <i class="fa-solid fa-heart-pulse text-rose-200 text-lg sm:text-base"></i>
+                   class="flex items-center justify-center gap-2 px-3 py-3 md:px-6 md:py-4 bg-rose-600 text-white rounded-xl md:rounded-2xl font-black text-[9px] md:text-[10px] uppercase italic hover:bg-rose-500 transition-all shadow-lg no-underline whitespace-nowrap shrink-0">
+                    <i class="fa-solid fa-heart-pulse text-rose-200"></i>
                     <span>{{ __("Santé") }}</span>
                 </a>
 
                 @if($showPonte)
                 <a href="{{ route('egg-productions.create', ['batch_id' => $batch->id]) }}"
-                   class="flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-2 px-3 py-3 md:px-6 md:py-4 bg-emerald-500 text-white rounded-xl md:rounded-2xl font-black text-[9px] md:text-[10px] uppercase italic hover:bg-emerald-400 transition-all shadow-lg no-underline text-center sm:text-left">
-                    <i class="fa-solid fa-egg text-emerald-200 text-lg sm:text-base"></i>
+                   class="flex items-center justify-center gap-2 px-3 py-3 md:px-6 md:py-4 bg-emerald-500 text-white rounded-xl md:rounded-2xl font-black text-[9px] md:text-[10px] uppercase italic hover:bg-emerald-400 transition-all shadow-lg no-underline whitespace-nowrap shrink-0">
+                    <i class="fa-solid fa-egg text-emerald-200"></i>
                     <span>{{ __("Collecte") }}</span>
                 </a>
                 @endif
