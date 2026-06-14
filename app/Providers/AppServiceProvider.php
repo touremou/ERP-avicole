@@ -204,12 +204,13 @@ class AppServiceProvider extends ServiceProvider
             });
         }
 
-        // ─── C. GATES PAR MODULE (elevage.L, commerce.C, rh.M, ...) ───
-        // Slugs réels de la base (vérifiés via Tinker)
+        // ─── C. GATES PAR MODULE (elevage.L, commerce.C, annuaire.M, ...) ───
+        // Slugs réels de la base (13 modules actifs). Ce tableau ne sert que
+        // de repli si la table `modules` est indisponible (installation/offline).
         $fallbackSlugs = [
             'dashboard', 'elevage', 'production', 'provenderie', 'planning',
             'abattoir', 'commerce', 'logistique', 'ressources', 'notifications',
-            'annuaire', 'admin', 'rh', 'couvoir', 'stocks', 'depenses',
+            'annuaire', 'admin', 'depenses',
         ];
 
         try {
