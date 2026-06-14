@@ -42,7 +42,13 @@ class CancelSale
                             (float) $item->quantity,
                             'in',
                             "Annulation vente {$sale->reference} — Restockage",
-                            $item->unit === 'alveole' ? 'Alvéole' : ($item->unit === 'sac' ? 'Sac' : 'KG')
+                            match ($item->unit) {
+                                'alveole' => 'Alvéole',
+                                'sac'     => 'Sac',
+                                'litre'   => 'Litre',
+                                'tete'    => 'Tête',
+                                default   => 'KG',
+                            }
                         );
                     }
 

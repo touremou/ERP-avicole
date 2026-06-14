@@ -77,6 +77,7 @@
                                         <option value="oeufs">{{ __("Œufs") }}</option>
                                         <option value="lait">{{ __("Lait") }}</option>
                                         <option value="aliment">{{ __("Aliment") }}</option>
+                                        <option value="produits_finis">{{ __("Produits Finis (découpe, poussins...)") }}</option>
                                         <option value="fumier">{{ __("Fumier") }}</option>
                                         <option value="materiel">{{ __("Matériel") }}</option>
                                         <option value="autre">{{ __("Autre") }}</option>
@@ -186,14 +187,16 @@
             batches: batchList.filter(b => b.qty > 0),
             getStocks(type) { return stocks.filter(s => s.category === (catMap[type]||type) && s.current_quantity > 0); },
             // ─── Catégories de lignes (multiespèces) ───
-            isStockType(t) { return ['oeufs','aliment','materiel'].includes(t); },
+            // 'lait' et 'produits_finis' sont des articles physiques réels
+            // (Stock::CAT_LAIT, Stock::CAT_PRODUITS_FINIS) : sélection depuis
+            // le stock, comme oeufs/aliment/materiel (cf. sales/create).
+            isStockType(t) { return ['oeufs','lait','aliment','produits_finis','materiel'].includes(t); },
             isBatchType(t) { return ['animal_vif','carcasse'].includes(t); },
-            isManualType(t) { return ['lait','fumier','autre'].includes(t); },
+            isManualType(t) { return ['fumier','autre'].includes(t); },
             unitChoices(t) {
                 return ({
                     animal_vif: ['tete','piece','kg'],
                     carcasse:   ['kg'],
-                    lait:       ['litre'],
                     fumier:     ['sac','voyage'],
                     autre:      ['unite','kg','piece','litre','sac'],
                 })[t] || [];
@@ -203,7 +206,7 @@
             removeLine(i) { if(this.lines.length>1) this.lines.splice(i,1); },
             onTypeChange(i) {
                 let l=this.lines[i]; l.product_name=''; l.product_id=''; l.batch_id=''; l.selected_stock=''; l.max_qty=0;
-                const defaults = { animal_vif:'tete', carcasse:'kg', lait:'litre', fumier:'voyage', autre:'unite' };
+                const defaults = { animal_vif:'tete', carcasse:'kg', fumier:'voyage', autre:'unite' };
                 l.unit = defaults[l.product_type] || '';
             },
             onUnitChange(i) {

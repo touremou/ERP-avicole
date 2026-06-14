@@ -29,7 +29,7 @@ class ValidateSale
             // ─── 1. VÉRIFIER ET DÉSTOCKER CHAQUE LIGNE ───
             foreach ($sale->items as $item) {
 
-                // Articles stockés (œufs, aliment, matériel)
+                // Articles stockés (œufs, lait, aliment, produits_finis, matériel)
                 if ($item->requiresDestock()) {
                     $this->destockItem($item);
                 }
@@ -39,7 +39,7 @@ class ValidateSale
                     $this->destockBatch($item);
                 }
 
-                // Lait, fumier, "autre", ventes au poids : pas de déstockage physique
+                // Fumier, "autre", ventes au poids (carcasse) : pas de déstockage physique
             }
 
             // ─── 2. MARQUER COMME VALIDÉ ───
@@ -88,7 +88,13 @@ class ValidateSale
             (float) $item->quantity,
             'out',
             "Vente {$item->sale->reference} — Client: {$item->sale->client->name}",
-            $item->unit === 'alveole' ? 'Alvéole' : ($item->unit === 'sac' ? 'Sac' : 'KG')
+            match ($item->unit) {
+                'alveole' => 'Alvéole',
+                'sac'     => 'Sac',
+                'litre'   => 'Litre',
+                'tete'    => 'Tête',
+                default   => 'KG',
+            }
         );
     }
 

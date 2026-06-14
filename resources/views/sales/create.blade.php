@@ -81,6 +81,7 @@
                                         <option value="oeufs">{{ __("Œufs") }}</option>
                                         <option value="lait">{{ __("Lait") }}</option>
                                         <option value="aliment">{{ __("Aliment") }}</option>
+                                        <option value="produits_finis">{{ __("Produits Finis (découpe, poussins...)") }}</option>
                                         <option value="fumier">{{ __("Fumier") }}</option>
                                         <option value="materiel">{{ __("Matériel") }}</option>
                                         <option value="autre">{{ __("Autre") }}</option>
@@ -261,14 +262,18 @@
             get hasStockError() { return this.lines.some(l => l.max_qty > 0 && l.quantity > l.max_qty); },
             getStocks(type) { return stocks.filter(s => s.category === (catMap[type]||type) && s.current_quantity > 0); },
             // ─── Catégories de lignes (multiespèces) ───
-            isStockType(t) { return ['oeufs','aliment','materiel'].includes(t); },
+            // 'lait' et 'produits_finis' sont des articles physiques réels
+            // (Stock::CAT_LAIT alimenté par les collectes de lait,
+            // Stock::CAT_PRODUITS_FINIS par l'abattoir/découpe et les
+            // poussins d'un jour) : ils se sélectionnent depuis le stock,
+            // au même titre que oeufs/aliment/materiel.
+            isStockType(t) { return ['oeufs','lait','aliment','produits_finis','materiel'].includes(t); },
             isBatchType(t) { return ['animal_vif','carcasse'].includes(t); },
-            isManualType(t) { return ['lait','fumier','autre'].includes(t); },
+            isManualType(t) { return ['fumier','autre'].includes(t); },
             unitChoices(t) {
                 return ({
                     animal_vif: ['tete','piece','kg'],
                     carcasse:   ['kg'],
-                    lait:       ['litre'],
                     fumier:     ['sac','voyage'],
                     autre:      ['unite','kg','piece','litre','sac'],
                 })[t] || [];
@@ -280,7 +285,7 @@
                 let l=this.lines[i]; l.product_name=''; l.product_id=''; l.batch_id=''; l.selected_stock=''; l.max_qty=0; l.unit_price=0;
                 // Unité par défaut selon le type ; les types stock prennent
                 // l'unité de l'article sélectionné (renseignée plus tard).
-                const defaults = { animal_vif:'tete', carcasse:'kg', lait:'litre', fumier:'voyage', autre:'unite' };
+                const defaults = { animal_vif:'tete', carcasse:'kg', fumier:'voyage', autre:'unite' };
                 l.unit = defaults[l.product_type] || '';
             },
             onUnitChange(i) {

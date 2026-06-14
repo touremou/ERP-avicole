@@ -39,8 +39,14 @@ class SaleItem extends Model
 
     /**
      * Types de lignes adossées au magasin (déstockage Stock).
+     *
+     * 'lait' (Stock::CAT_LAIT, alimenté par MilkProductionController) et
+     * 'produits_finis' (Stock::CAT_PRODUITS_FINIS, alimenté par
+     * SlaughterController::transferToStock et ChickDispatchController)
+     * sont des articles physiques réels : ils doivent être sélectionnés
+     * depuis le stock et décrémentés à la vente, pas saisis manuellement.
      */
-    public const STOCK_TYPES = ['oeufs', 'aliment', 'materiel'];
+    public const STOCK_TYPES = ['oeufs', 'lait', 'aliment', 'produits_finis', 'materiel'];
 
     /**
      * Types de lignes adossées à un lot d'animaux vivants (toute espèce).

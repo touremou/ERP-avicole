@@ -108,18 +108,27 @@ class Stock extends Model
     /**
      * Correspondance entre la nomenclature « produit vendu/expédié »
      * (SaleItem::product_type / DispatchItem::product_type, ex: oeufs,
-     * aliment, materiel) et la catégorie de stock (Stock::category, cf.
-     * CATEGORY_META). Seuls les product_type listés dans
-     * SaleItem::STOCK_TYPES / DispatchItem::STOCK_TYPES (oeufs, aliment,
-     * materiel) déstockent réellement un article du magasin — cf.
-     * requiresDestock(). Source unique de vérité utilisée par
-     * ValidateSale, CancelSale, CreateDispatch et les formulaires de
+     * lait, aliment, produits_finis, materiel) et la catégorie de stock
+     * (Stock::category, cf. CATEGORY_META). Seuls les product_type listés
+     * dans SaleItem::STOCK_TYPES / DispatchItem::STOCK_TYPES (oeufs, lait,
+     * aliment, produits_finis, materiel) déstockent réellement un article
+     * du magasin — cf. requiresDestock(). Source unique de vérité utilisée
+     * par ValidateSale, CancelSale, CreateDispatch et les formulaires de
      * vente/expédition (sélection des stocks disponibles par ligne).
+     *
+     * 'lait' et 'produits_finis' rejoignent ce mapping pour fiabiliser le
+     * lien stock<->vente : le stock « Lait » est alimenté par
+     * MilkProductionController, et « produits_finis » par
+     * SlaughterController::transferToStock / ChickDispatchController
+     * (poussins d'un jour, découpe...) — ces articles doivent pouvoir être
+     * sélectionnés et décrémentés depuis une vente, comme oeufs/aliment.
      */
     public const PRODUCT_TYPE_TO_CATEGORY = [
-        'oeufs'    => self::CAT_OEUFS,
-        'aliment'  => self::CAT_CONSO,
-        'materiel' => self::CAT_MATERIELS,
+        'oeufs'          => self::CAT_OEUFS,
+        'lait'           => self::CAT_LAIT,
+        'aliment'        => self::CAT_CONSO,
+        'produits_finis' => self::CAT_PRODUITS_FINIS,
+        'materiel'       => self::CAT_MATERIELS,
     ];
 
     /**

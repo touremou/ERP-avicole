@@ -65,7 +65,7 @@ class DispatchController extends Controller
             'notes'                   => 'nullable|string|max:1000',
             'items'                   => 'required|array|min:1',
             // Taxonomie multiespèces (alignée sur les ventes).
-            'items.*.product_type'    => 'required|in:oeufs,animal_vif,carcasse,lait,fumier,aliment,materiel,autre,volaille_vivante,volaille_abattue',
+            'items.*.product_type'    => 'required|in:oeufs,animal_vif,carcasse,lait,fumier,aliment,produits_finis,materiel,autre,volaille_vivante,volaille_abattue',
             'items.*.product_name'    => 'required|string|max:255',
             'items.*.product_id'      => 'nullable|integer',
             'items.*.batch_id'        => 'nullable|integer|exists:batches,id',

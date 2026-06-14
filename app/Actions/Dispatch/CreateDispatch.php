@@ -71,7 +71,7 @@ class CreateDispatch
 
     private function destockAtFarm(DispatchItem $item): void
     {
-        // Articles stockés (œufs, aliment, matériel)
+        // Articles stockés (œufs, lait, aliment, produits_finis, matériel)
         if ($item->requiresDestock()) {
             $result = StockIntegrationService::syncMovement(
                 $item->product_name,
@@ -79,7 +79,13 @@ class CreateDispatch
                 (float) $item->quantity_dispatched,
                 'out',
                 "Expédition {$item->dispatch->dispatch_number} → {$item->dispatch->destination}",
-                $item->unit === 'alveole' ? 'Alvéole' : ($item->unit === 'sac' ? 'Sac' : 'KG')
+                match ($item->unit) {
+                    'alveole' => 'Alvéole',
+                    'sac'     => 'Sac',
+                    'litre'   => 'Litre',
+                    'tete'    => 'Tête',
+                    default   => 'KG',
+                }
             );
 
             if (! $result) {

@@ -41,7 +41,7 @@ class DispatchItem extends Model
     }
 
     // Taxonomie alignée sur SaleItem (multiespèces).
-    public const STOCK_TYPES = ['oeufs', 'aliment', 'materiel'];
+    public const STOCK_TYPES = ['oeufs', 'lait', 'aliment', 'produits_finis', 'materiel'];
     public const BATCH_TYPES = ['animal_vif', 'carcasse', 'volaille_vivante', 'volaille_abattue'];
     public const COUNT_UNITS = ['tete', 'piece', 'unite'];
 

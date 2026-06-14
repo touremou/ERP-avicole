@@ -28,7 +28,9 @@ test('les valeurs des slugs constants restent stables (valeurs stockées en base
 
 test('categoryForProductType mappe les types stockés et retombe sur materiels', function () {
     expect(Stock::categoryForProductType('oeufs'))->toBe(Stock::CAT_OEUFS)
+        ->and(Stock::categoryForProductType('lait'))->toBe(Stock::CAT_LAIT)
         ->and(Stock::categoryForProductType('aliment'))->toBe(Stock::CAT_CONSO)
+        ->and(Stock::categoryForProductType('produits_finis'))->toBe(Stock::CAT_PRODUITS_FINIS)
         ->and(Stock::categoryForProductType('materiel'))->toBe(Stock::CAT_MATERIELS)
         // product_type inconnu / non adossé au magasin → repli historique
         ->and(Stock::categoryForProductType('autre'))->toBe(Stock::CAT_MATERIELS);
