@@ -20,6 +20,15 @@ use Illuminate\Support\Str;
 
 class ChickDispatchController extends Controller
 {
+    /**
+     * Vocations de bâtiment aptes à accueillir des poussins (volaille).
+     * Un poussin peut être démarré en poussinière, en bâtiment chair, ou
+     * directement en bâtiment ponte/reproducteur (élevage de poulettes /
+     * futurs reproducteurs), ou en mixte. Les vocations non-volaille
+     * (laiterie, bassins aquacoles…) sont exclues.
+     */
+    private const POULTRY_BUILDING_TYPES = ['poussiniere', 'chair', 'ponte', 'reproducteur', 'mixte'];
+
     public function show(Incubation $incubation)
     {
         if (Gate::denies('elevage.L')) return back()->with('error', 'Accès restreint.');
@@ -29,7 +38,7 @@ class ChickDispatchController extends Controller
         $remaining = $this->getRemaining($incubation);
         $dispatches = $incubation->chickDispatches()->orderBy('created_at', 'desc')->get();
 
-        $buildings = Building::whereIn('type', ['poussiniere', 'chair', 'mixte'])
+        $buildings = Building::whereIn('type', self::POULTRY_BUILDING_TYPES)
             ->orderBy('name')->get();
         $clients = Client::orderBy('name')->get();
         $employees = Employee::where('status', 'actif')->orderBy('first_name')->get();
@@ -69,10 +78,9 @@ class ChickDispatchController extends Controller
         if ($validated['destination_type'] === 'elevage') {
             $building = Building::findOrFail($validated['building_id']);
 
-            $allowedTypes = ['poussiniere', 'chair', 'mixte'];
-            if (! in_array($building->type, $allowedTypes, true)) {
+            if (! in_array($building->type, self::POULTRY_BUILDING_TYPES, true)) {
                 return back()->withErrors([
-                    'building_id' => "Le bâtiment {$building->name} (type « {$building->type} ») ne peut pas accueillir de poussins. Types autorisés : poussinière, chair, mixte.",
+                    'building_id' => "Le bâtiment {$building->name} (type « {$building->type} ») ne peut pas accueillir de poussins. Types autorisés : poussinière, chair, ponte, reproducteur, mixte.",
                 ])->withInput();
             }
 
