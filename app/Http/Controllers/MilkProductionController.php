@@ -71,6 +71,12 @@ class MilkProductionController extends Controller
         $existingToday = MilkProduction::where('batch_id', $batch->id)
             ->whereDate('production_date', $today)->first();
 
+        // Une collecte du jour existe déjà → on rectifie via l'édition
+        // (flux unique de modification), au lieu de re-proposer la saisie.
+        if ($existingToday && Gate::allows('production.M')) {
+            return redirect()->route('milk-productions.edit', $existingToday);
+        }
+
         // Dernier prix connu pour pré-remplissage (cours volatil).
         $lastPrice = MilkProduction::where('batch_id', $batch->id)
             ->where('unit_price', '>', 0)->latest('production_date')->value('unit_price');
@@ -102,7 +108,7 @@ class MilkProductionController extends Controller
             array_merge($data, ['recorded_by' => auth()->id()])
         );
 
-        $this->syncMilkStock((float) $milk->total_liters - $oldLiters, $batch->code);
+        $this->syncMilkStock((float) $milk->total_liters - $oldLiters, $batch->code, (float) $milk->unit_price);
 
         return redirect()->route('milk-productions.index')
             ->with('success', 'Collecte de lait enregistrée.');
@@ -130,7 +136,7 @@ class MilkProductionController extends Controller
 
         $milkProduction->update($data);
 
-        $this->syncMilkStock((float) $milkProduction->total_liters - $oldLiters, $batchCode);
+        $this->syncMilkStock((float) $milkProduction->total_liters - $oldLiters, $batchCode, (float) $milkProduction->unit_price);
 
         return redirect()->route('milk-productions.index')->with('success', 'Collecte rectifiée.');
     }
@@ -156,21 +162,30 @@ class MilkProductionController extends Controller
      * collectés (positif = entrée stock, négatif = sortie/correction).
      * Crée l'article "Lait" au besoin (1ère collecte de la ferme).
      */
-    private function syncMilkStock(float $delta, string $batchCode): void
+    private function syncMilkStock(float $delta, string $batchCode, ?float $unitPrice = null): void
     {
-        if (abs($delta) < 0.001) {
-            return;
-        }
-
-        Stock::firstOrCreate(
+        $stock = Stock::firstOrCreate(
             ['item_name' => 'Lait', 'category' => Stock::CAT_LAIT],
             [
                 'unit'             => 'Litre',
                 'current_quantity' => 0,
                 'alert_threshold'  => (int) setting('stocks.default_alert_threshold', 0),
-                'last_unit_price'  => 0,
+                'unit_price'       => $unitPrice ?? 0,
+                'last_unit_price'  => $unitPrice ?? 0,
             ]
         );
+
+        // Cohérence de valorisation : le prix du stock « Lait » suit le prix
+        // de la dernière collecte (cours du lait volatil). On ne touche pas au
+        // prix sur une suppression ($unitPrice null).
+        if ($unitPrice !== null && $unitPrice > 0
+            && (float) $stock->unit_price !== $unitPrice) {
+            $stock->update(['unit_price' => $unitPrice, 'last_unit_price' => $unitPrice]);
+        }
+
+        if (abs($delta) < 0.001) {
+            return;
+        }
 
         StockIntegrationService::syncMovement(
             'Lait', Stock::CAT_LAIT, abs($delta), $delta > 0 ? 'in' : 'out',

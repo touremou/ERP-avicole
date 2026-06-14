@@ -73,11 +73,19 @@
                                 </p>
                                 @endif
                             </div>
-                            @can('production.C')
-                            <a href="{{ route('milk-productions.create', ['batch_id' => $batch->id]) }}" class="bg-emerald-600 text-white px-5 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-emerald-700 transition-all no-underline shadow-sm whitespace-nowrap">
-                                <i class="fa-solid fa-droplet mr-1"></i> {{ $todayMilk ? __('Rectifier') : __('Saisir') }}
-                            </a>
-                            @endcan
+                            @if($todayMilk)
+                                @can('production.M')
+                                <a href="{{ route('milk-productions.edit', $todayMilk) }}" class="bg-white border border-emerald-200 text-emerald-700 px-5 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-emerald-50 transition-all no-underline shadow-sm whitespace-nowrap">
+                                    <i class="fa-solid fa-pen mr-1"></i> {{ __('Rectifier') }}
+                                </a>
+                                @endcan
+                            @else
+                                @can('production.C')
+                                <a href="{{ route('milk-productions.create', ['batch_id' => $batch->id]) }}" class="bg-emerald-600 text-white px-5 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-emerald-700 transition-all no-underline shadow-sm whitespace-nowrap">
+                                    <i class="fa-solid fa-droplet mr-1"></i> {{ __('Saisir') }}
+                                </a>
+                                @endcan
+                            @endif
                         </div>
                     </div>
                 @empty
