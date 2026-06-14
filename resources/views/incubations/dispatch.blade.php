@@ -105,7 +105,7 @@
                                     <select name="building_id" class="w-full p-3 bg-white rounded-xl border-none font-black text-xs shadow-inner italic outline-none">
                                         <option value="">Sélectionner...</option>
                                         @foreach($buildings as $b)
-                                            <option value="{{ $b->id }}">{{ $b->name }} ({{ $b->type }}, cap. {{ $b->capacity }})</option>
+                                            <option value="{{ $b->id }}" @disabled($b->remaining_places <= 0)>{{ $b->name }} ({{ $b->type }}, {{ $b->remaining_places }} place{{ $b->remaining_places > 1 ? 's' : '' }} restante{{ $b->remaining_places > 1 ? 's' : '' }}){{ $b->remaining_places <= 0 ? ' — complet' : '' }}</option>
                                         @endforeach
                                     </select>
                                 </div>

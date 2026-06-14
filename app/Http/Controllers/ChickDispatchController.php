@@ -38,8 +38,15 @@ class ChickDispatchController extends Controller
         $remaining = $this->getRemaining($incubation);
         $dispatches = $incubation->chickDispatches()->orderBy('created_at', 'desc')->get();
 
-        $buildings = Building::whereIn('type', self::POULTRY_BUILDING_TYPES)
-            ->orderBy('name')->get();
+        // Bâtiments physiques (hors zone virtuelle de traçabilité) à vocation
+        // volaille, enrichis de leur place restante (capacité − effectif actif).
+        $buildings = Building::physical()
+            ->whereIn('type', self::POULTRY_BUILDING_TYPES)
+            ->withSum(['batches as active_quantity' => fn ($q) => $q->active()], 'current_quantity')
+            ->orderBy('name')->get()
+            ->each(function (Building $b) {
+                $b->remaining_places = max(0, (int) $b->capacity - (int) $b->active_quantity);
+            });
         $clients = Client::orderBy('name')->get();
         $employees = Employee::where('status', 'actif')->orderBy('first_name')->get();
 
