@@ -51,14 +51,13 @@
                     @if(request()->routeIs('dashboard'))
                         <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest"><i class="fa-solid fa-house mr-1 text-blue-500"></i> {{ __("Accueil") }}</span>
                     
-                    @elseif(request()->routeIs(['employees.*', 'payroll.*', 'tasks.*']))
-                       
-                        <span class="text-[9px] font-black text-slate-800 uppercase tracking-widest mr-1"><i class="fa-solid fa-credit-card text-slate-500 mr-1"></i> {{ __("RH") }}</span>
-                        
-                        @canany(['annuaire.L', 'annuaire.L'])
-                        <a href="{{ route('employees.index') }}" class="{{ $linkClass }} {{ request()->routeIs('employees.*') ? $activeClass : $inactiveClass }}">{{ __("Employés") }}</a>
-                        @endcan
+                    @elseif(request()->routeIs(['employees.*', 'payroll.*', 'tasks.*', 'providers.*']))
+
+                        <span class="text-[9px] font-black text-slate-800 uppercase tracking-widest mr-1"><i class="fa-solid fa-users text-slate-500 mr-1"></i> {{ __("Annuaire") }}</span>
+
                         @can('annuaire.L')
+                        <a href="{{ route('employees.index') }}" class="{{ $linkClass }} {{ request()->routeIs('employees.*') ? $activeClass : $inactiveClass }}">{{ __("Employés") }}</a>
+                        <a href="{{ route('providers.index') }}" class="{{ $linkClass }} {{ request()->routeIs('providers.*') ? $activeClass : $inactiveClass }}">{{ __("Fournisseurs") }}</a>
                         <a href="{{ route('tasks.index') }}" class="{{ $linkClass }} {{ request()->routeIs('tasks.index') ? $activeClass : $inactiveClass }}">{{ __("Tâches") }}</a>
                         <a href="{{ route('payroll.index') }}" class="{{ $linkClass }} {{ request()->routeIs('payroll.index') ? $activeClass : $inactiveClass }}">{{ __("Paie") }}</a>
                         <a href="{{ route('payroll.leaves') }}" class="{{ $linkClass }} {{ request()->routeIs('payroll.leaves') ? $activeClass : $inactiveClass }}">{{ __("Congés") }}</a>
@@ -71,21 +70,17 @@
                         <a href="{{ route('batches.index') }}" class="{{ $linkClass }} {{ request()->routeIs('batches.*') ? $activeClass : $inactiveClass }}">{{ __("Lots") }}</a>
                         <a href="{{ route('campaigns.index') }}" class="{{ $linkClass }} {{ request()->routeIs('campaigns.*') ? $activeClass : $inactiveClass }}">{{ __("Campagnes") }}</a>
                         <a href="{{ route('health.index') }}" class="{{ $linkClass }} {{ request()->routeIs('health.*') ? $activeClass : $inactiveClass }}">{{ __("Santé") }}</a>
+                        <a href="{{ route('reports.index') }}" class="{{ $linkClass }} {{ request()->routeIs('reports.*') ? $activeClass : $inactiveClass }}">{{ __("Rapports") }}</a>
                         @endcan
                         @can('elevage.M')
                         <a href="{{ route('protocols.index') }}" class="{{ $linkClass }} {{ request()->routeIs('protocols.*') ? $activeClass : $inactiveClass }}">{{ __("Protocoles") }}</a>
                         @endcan
 
-                    @elseif(request()->routeIs(['egg-productions.*', 'egg-movements.*', 'milk-productions.*']))
+                    @elseif(request()->routeIs(['egg-productions.*', 'egg-movements.*', 'milk-productions.*', 'incubations.*', 'chick-dispatches.*']))
                         <span class="text-[9px] font-black text-slate-800 uppercase tracking-widest mr-1"><i class="fa-solid fa-egg text-amber-500 mr-1"></i> {{ __("Production") }}</span>
                         @can('production.L')
                         <a href="{{ route('egg-productions.index') }}" class="{{ $linkClass }} {{ request()->routeIs('egg-productions.*') ? $activeClass : $inactiveClass }}">{{ __("Œufs") }}</a>
                         <a href="{{ route('milk-productions.index') }}" class="{{ $linkClass }} {{ request()->routeIs('milk-productions.*') ? $activeClass : $inactiveClass }}">{{ __("Lait") }}</a>
-                        @endcan
-
-                    @elseif(request()->routeIs(['incubations.*', 'chick-dispatches.*']))
-                        <span class="text-[9px] font-black text-slate-800 uppercase tracking-widest mr-1"><i class="fa-solid fa-temperature-half text-pink-500 mr-1"></i> {{ __("Couvoir") }}</span>
-                        @can('production.L')
                         <a href="{{ route('incubations.index') }}" class="{{ $linkClass }} {{ request()->routeIs('incubations.*') ? $activeClass : $inactiveClass }}">{{ __("Couvoir") }}</a>
                         @endcan
 
@@ -121,18 +116,21 @@
                         <a href="{{ route('slaughter.finished') }}" class="{{ $linkClass }} {{ request()->routeIs('slaughter.finished*') ? $activeClass : $inactiveClass }}">{{ __("Produits Finis") }}</a>
                         @endcan
 
-                    @elseif(request()->routeIs(['sales.*', 'clients.*','providers.*', 'payments.*', 'expenses.*']))
+                    @elseif(request()->routeIs(['sales.*', 'clients.*', 'payments.*']))
                         <span class="text-[9px] font-black text-slate-800 uppercase tracking-widest mr-1"><i class="fa-solid fa-cash-register text-teal-500 mr-1"></i> {{ __("Commerce") }}</span>
                         @can('commerce.L')
                         <a href="{{ route('sales.index') }}" class="{{ $linkClass }} {{ request()->routeIs('sales.*') ? $activeClass : $inactiveClass }}">{{ __("Ventes") }}</a>
+                        <a href="{{ route('clients.index') }}" class="{{ $linkClass }} {{ request()->routeIs('clients.*') ? $activeClass : $inactiveClass }}">{{ __("Clients") }}</a>
                         <a href="{{ route('payments.index') }}" class="{{ $linkClass }} {{ request()->routeIs('payments.*') ? $activeClass : $inactiveClass }}">{{ __("Paiements") }}</a>
                         @endcan
-                        @canany(['commerce.L', 'annuaire.M'])
-                        <a href="{{ route('clients.index') }}" class="{{ $linkClass }} {{ request()->routeIs('clients.*') ? $activeClass : $inactiveClass }}">{{ __("Clients") }}</a>
-                        <a href="{{ route('providers.index') }}" class="{{ $linkClass }} {{ request()->routeIs('providers.*') ? $activeClass : $inactiveClass }}">{{ __("Fournisseurs") }}</a>
-                        @endcan
-                        @can('depenses.L')
-                        <a href="{{ route('expenses.index') }}" class="{{ $linkClass }} {{ request()->routeIs('expenses.*') ? $activeClass : $inactiveClass }}">{{ __("Dépenses") }}</a>
+
+                    @elseif(request()->routeIs('expenses.*'))
+                        <span class="text-[9px] font-black text-slate-800 uppercase tracking-widest mr-1"><i class="fa-solid fa-receipt text-rose-500 mr-1"></i> {{ __("Dépenses") }}</span>
+
+                    @elseif(request()->routeIs('notifications.*'))
+                        <span class="text-[9px] font-black text-slate-800 uppercase tracking-widest mr-1"><i class="fa-solid fa-bell text-emerald-500 mr-1"></i> {{ __("Notifications") }}</span>
+                        @can('notifications.S')
+                        <a href="{{ route('notifications.logs') }}" class="{{ $linkClass }} {{ request()->routeIs('notifications.logs') ? $activeClass : $inactiveClass }}">{{ __("Historique") }}</a>
                         @endcan
 
                     @elseif(request()->routeIs(['stocks.*', 'dispatches.*']))
@@ -163,6 +161,7 @@
                         <a href="{{ route('admin.species.index') }}" class="{{ $linkClass }} {{ request()->routeIs('admin.species.*') ? $activeClass : $inactiveClass }}">{{ __("Espèces") }}</a>
                         <a href="{{ route('settings.index') }}" class="{{ $linkClass }} {{ request()->routeIs('settings.*') ? $activeClass : $inactiveClass }}">{{ __("Paramètres") }}</a>
                         <a href="{{ route('farms.index') }}" class="{{ $linkClass }} {{ request()->routeIs('farms.*') ? $activeClass : $inactiveClass }}">{{ __("Sites") }}</a>
+                        <a href="{{ route('trash.index') }}" class="{{ $linkClass }} {{ request()->routeIs('trash.*') ? $activeClass : $inactiveClass }}">{{ __("Corbeille") }}</a>
                         @endcan
                     @endif
                 </div>
@@ -217,28 +216,10 @@
                             <i class="fa-solid fa-chevron-down text-[6px] text-slate-400 mr-1.5"></i>
                         </span>
                     </x-slot>
-                        @can('notifications.L')
-                        <a href="{{ route('notifications.preferences') }}" class="block rounded-lg p-2 text-[9px] font-black uppercase italic tracking-widest hover:bg-emerald-50 text-slate-500 no-underline"><i class="fa-brands fa-whatsapp text-emerald-500 w-4 text-center mr-1"></i> {{ __("Notifications") }}</a>
-                        @endcan
                         @can('annuaire.L')
                         <a href="{{ route('tasks.index', ['mine' => 1]) }}" class="block rounded-lg p-2 text-[9px] font-black uppercase italic tracking-widest hover:bg-blue-50 text-slate-500 no-underline"><i class="fa-solid fa-list-check text-blue-500 w-4 text-center mr-1"></i> {{ __("Mes Tâches") }}</a>
                         @endcan
-                        @can('elevage.L')
-                        <a href="{{ route('reports.index') }}" class="block rounded-lg p-2 text-[9px] font-black uppercase italic tracking-widest hover:bg-orange-50 text-slate-500 no-underline {{ request()->routeIs('reports.*') ? 'bg-orange-50 text-orange-600' : '' }}"><i class="fa-solid fa-chart-pie text-orange-500 w-4 text-center mr-1"></i> {{ __("Rapports") }}</a>
-                        @endcan
                         <a href="{{ route('profile.edit') }}" class="block rounded-lg p-2 text-[9px] font-black uppercase italic tracking-widest hover:bg-blue-50 text-slate-500 no-underline"><i class="fa-solid fa-user-gear text-blue-500 w-4 text-center mr-1"></i> {{ __("Profil") }}</a>
-                        @can('annuaire.L')
-                        <a href="{{ route('employees.index') }}" class="block rounded-lg p-2 text-[9px] font-black uppercase italic tracking-widest hover:bg-slate-50 text-slate-500 no-underline"><i class="fa-solid fa-users text-slate-400 w-4 text-center mr-1"></i> {{ __("Employés") }}</a>
-                        <a href="{{ route('providers.index') }}" class="block rounded-lg p-2 text-[9px] font-black uppercase italic tracking-widest hover:bg-slate-50 text-slate-500 no-underline"><i class="fa-solid fa-truck-field text-slate-400 w-4 text-center mr-1"></i> {{ __("Fournisseurs") }}</a>
-                        @endcan
-                        @can('admin.S')
-                        <div class="border-t border-slate-100 my-1.5"></div>
-                        <a href="{{ route('farms.index') }}" class="block rounded-lg p-2 text-[9px] font-black uppercase italic tracking-widest hover:bg-violet-50 text-slate-500 no-underline"><i class="fa-solid fa-city text-violet-500 w-4 text-center mr-1"></i> {{ __("Multi-Sites") }}</a>
-                        <a href="{{ route('admin.species.index') }}" class="block rounded-lg p-2 text-[9px] font-black uppercase italic tracking-widest hover:bg-teal-50 text-slate-500 no-underline"><i class="fa-solid fa-paw text-teal-500 w-4 text-center mr-1"></i> {{ __("Espèces") }}</a>
-                        <a href="{{ route('settings.index') }}" class="block rounded-lg p-2 text-[9px] font-black uppercase italic tracking-widest hover:bg-amber-50 text-slate-500 no-underline"><i class="fa-solid fa-sliders text-amber-500 w-4 text-center mr-1"></i> {{ __("Paramètres") }}</a>
-                        <a href="{{ route('users.index') }}" class="block rounded-lg p-2 text-[9px] font-black uppercase italic tracking-widest hover:bg-purple-50 text-slate-500 no-underline"><i class="fa-solid fa-shield-halved text-purple-500 w-4 text-center mr-1"></i> {{ __("Administration") }}</a>
-                        <a href="{{ route('trash.index') }}" class="block rounded-lg p-2 text-[9px] font-black uppercase italic tracking-widest hover:bg-red-50 text-slate-500 no-underline"><i class="fa-solid fa-trash text-red-400 w-4 text-center mr-1"></i> {{ __("Corbeille") }}</a>
-                        @endcan
                         <div class="border-t border-slate-100 my-1.5"></div>
                         <form method="POST" action="{{ route('logout') }}">@csrf
                             <button type="submit" class="w-full text-left rounded-lg p-2 text-[9px] font-black uppercase italic tracking-widest hover:bg-red-50 text-red-500 border-none bg-transparent cursor-pointer"><i class="fa-solid fa-right-from-bracket w-4 text-center mr-1"></i> {{ __("Déconnexion") }}</button>
@@ -256,26 +237,21 @@
     {{-- MOBILE --}}
     <div x-show="mobileOpen" x-transition class="sm:hidden bg-white border-t border-slate-100 shadow-2xl max-h-[80vh] overflow-y-auto" x-cloak>
         <div class="px-4 py-3 space-y-0.5">
-            <p class="text-[7px] font-black text-blue-500 uppercase tracking-widest px-3 pt-2">{{ __("Élevage") }}</p>
-            <a href="{{ route('buildings.index') }}" class="block px-3 py-2 rounded-lg text-[10px] font-black uppercase italic text-slate-600 hover:bg-blue-50 no-underline">{{ __("Bâtiments") }}</a>
-            <a href="{{ route('batches.index') }}" class="block px-3 py-2 rounded-lg text-[10px] font-black uppercase italic text-slate-600 hover:bg-blue-50 no-underline">{{ __("Lots") }}</a>
-            <a href="{{ route('egg-productions.index') }}" class="block px-3 py-2 rounded-lg text-[10px] font-black uppercase italic text-slate-600 hover:bg-blue-50 no-underline">{{ __("Œufs") }}</a>
-            <a href="{{ route('incubations.index') }}" class="block px-3 py-2 rounded-lg text-[10px] font-black uppercase italic text-slate-600 hover:bg-blue-50 no-underline">{{ __("Couvoir") }}</a>
-            <a href="{{ route('planning.index') }}" class="block px-3 py-2 rounded-lg text-[10px] font-black uppercase italic text-slate-600 hover:bg-indigo-50 no-underline">{{ __("Planning") }}</a>
-            <p class="text-[7px] font-black text-lime-600 uppercase tracking-widest px-3 pt-2">{{ __("Provenderie") }}</p>
-            <a href="{{ route('provenderie.dashboard') }}" class="block px-3 py-2 rounded-lg text-[10px] font-black uppercase italic text-slate-600 hover:bg-lime-50 no-underline">{{ __("Dashboard") }}</a>
-            <a href="{{ route('formulas.index') }}" class="block px-3 py-2 rounded-lg text-[10px] font-black uppercase italic text-slate-600 hover:bg-lime-50 no-underline">{{ __("Formules") }}</a>
-            <p class="text-[7px] font-black text-rose-500 uppercase tracking-widest px-3 pt-2">{{ __("Abattoir") }}</p>
-            <a href="{{ route('slaughter.dashboard') }}" class="block px-3 py-2 rounded-lg text-[10px] font-black uppercase italic text-slate-600 hover:bg-rose-50 no-underline">{{ __("Dashboard") }}</a>
-            <a href="{{ route('slaughter.finished') }}" class="block px-3 py-2 rounded-lg text-[10px] font-black uppercase italic text-slate-600 hover:bg-rose-50 no-underline">{{ __("Produits Finis") }}</a>
-            <p class="text-[7px] font-black text-teal-500 uppercase tracking-widest px-3 pt-2">{{ __("Commerce") }}</p>
-            <a href="{{ route('sales.index') }}" class="block px-3 py-2 rounded-lg text-[10px] font-black uppercase italic text-slate-600 hover:bg-teal-50 no-underline">{{ __("Ventes") }}</a>
-            @can('depenses.L')
-            <a href="{{ route('expenses.index') }}" class="block px-3 py-2 rounded-lg text-[10px] font-black uppercase italic text-slate-600 hover:bg-teal-50 no-underline">{{ __("Dépenses") }}</a>
-            @endcan
-            <a href="{{ route('stocks.index') }}" class="block px-3 py-2 rounded-lg text-[10px] font-black uppercase italic text-slate-600 hover:bg-teal-50 no-underline">{{ __("Stocks") }}</a>
-            <p class="text-[7px] font-black text-cyan-500 uppercase tracking-widest px-3 pt-2">{{ __("Ressources") }}</p>
-            <a href="{{ route('utilities.dashboard') }}" class="block px-3 py-2 rounded-lg text-[10px] font-black uppercase italic text-slate-600 hover:bg-cyan-50 no-underline">{{ __("Eau & Énergie") }}</a>
+            {{-- Lanceur de modules mobile, PILOTÉ PAR LA MATRICE : même source
+                 que le drawer desktop (getAccessibleModules() + landingRoute()),
+                 pour une couverture identique sur mobile et desktop. --}}
+            @foreach(auth()->user()->getAccessibleModules() as $module)
+                @php
+                    $landing = \App\Models\Module::landingRoute($module->slug);
+                    $color   = $module->color ?: 'slate';
+                    $icon    = $module->icon ?: 'fa-cube';
+                @endphp
+                @if($landing && \Illuminate\Support\Facades\Route::has($landing))
+                    <a href="{{ route($landing) }}" class="flex items-center px-3 py-2 rounded-lg text-[10px] font-black uppercase italic text-slate-600 hover:bg-{{ $color }}-50 no-underline">
+                        <i class="fa-solid {{ $icon }} mr-2 text-{{ $color }}-500 w-4 text-center"></i> {{ __($module->name) }}
+                    </a>
+                @endif
+            @endforeach
             <div class="border-t border-slate-100 my-2"></div>
             <a href="{{ route('profile.edit') }}" class="block px-3 py-2 rounded-lg text-[10px] font-black uppercase italic text-slate-600 hover:bg-slate-50 no-underline"><i class="fa-solid fa-user-gear mr-1 text-slate-400"></i> {{ __("Profil") }}</a>
             <form method="POST" action="{{ route('logout') }}">@csrf
