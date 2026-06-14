@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\ProductionNorm;
 use App\Models\ProductionType;
+use App\Models\Species;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -38,11 +39,15 @@ class ProductionNormController extends Controller
             ->values();
 
         $type = $request->get('type', 'chair');
-        $norms = ProductionNorm::where('batch_type', $type)
+        $norms = ProductionNorm::with('species:id,name_fr,icon')
+                    ->where('batch_type', $type)
                     ->orderBy('week_number')
                     ->get();
 
-        return view('admin.norms.index', compact('norms', 'type', 'batchTypes'));
+        // Espèces proposées pour rattacher explicitement une souche.
+        $species = Species::orderBy('sort_order')->orderBy('name_fr')->get();
+
+        return view('admin.norms.index', compact('norms', 'type', 'batchTypes', 'species'));
     }
 
     /**
@@ -52,6 +57,7 @@ class ProductionNormController extends Controller
     {
         $data = $request->validate([
             'batch_type'         => 'required|string',
+            'species_id'         => 'nullable|integer|exists:species,id',
             'week_number'        => 'required|integer|min:1',
             'phase_name'         => 'required|string',
             'model_name'         => 'nullable|string',
@@ -61,11 +67,13 @@ class ProductionNormController extends Controller
             'target_water_daily' => 'nullable|numeric|min:0',
         ]);
 
-        // Utilisation de updateOrCreate pour éviter les doublons sur le couple type/semaine
+        // Clé d'unicité alignée sur l'index DB (batch_type, week_number,
+        // model_name) pour ne pas écraser une souche par une autre.
         ProductionNorm::updateOrCreate(
             [
-                'batch_type'  => $data['batch_type'], 
-                'week_number' => $data['week_number']
+                'batch_type'  => $data['batch_type'],
+                'week_number' => $data['week_number'],
+                'model_name'  => $data['model_name'] ?? null,
             ],
             $data
         );
@@ -80,6 +88,7 @@ class ProductionNormController extends Controller
     {
         $data = $request->validate([
             'batch_type'         => 'required|string',
+            'species_id'         => 'nullable|integer|exists:species,id',
             'week_number'        => 'required|integer|min:1',
             'phase_name'         => 'required|string',
             'model_name'         => 'nullable|string',
@@ -121,8 +130,12 @@ public function import(Request $request)
         
         fgetcsv($handle); // Sauter l'entête
 
+        // Table de correspondance slug d'espèce -> id, pour rattacher
+        // automatiquement les souches importées à leur espèce.
+        $speciesBySlug = Species::pluck('id', 'slug');
+
         DB::beginTransaction();
-        
+
         try {
             $count = 0;
             while (($data = fgetcsv($handle, 1000, ",")) !== FALSE) {
@@ -141,13 +154,18 @@ public function import(Request $request)
                     default => $request->batch_type // Valeur de repli (celle de l'onglet actif)
                 };
 
+                // Rattachement automatique de l'espèce d'après le nom de souche.
+                $detectedSlug = ProductionNorm::guessSpeciesSlug($data[6] ?? null);
+                $detectedSpeciesId = $detectedSlug ? ($speciesBySlug[$detectedSlug] ?? null) : null;
+
                 ProductionNorm::updateOrCreate(
                     [
                         'batch_type'  => $detectedType,
-                        'week_number' => $data[0], 
+                        'week_number' => $data[0],
                         'model_name'  => $data[6] ?? 'Standard', // On ajoute le modèle dans la clé unique pour éviter d'écraser Isa par Cobb
                     ],
                     [
+                        'species_id'         => $detectedSpeciesId,
                         'phase_name'         => $data[1] ?? 'Production',
                         'target_weight'      => $data[2] ?? 0,
                         'target_laying_rate' => $data[3] ?? 0,

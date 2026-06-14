@@ -22,9 +22,9 @@
         openEdit: false, 
         openDelete: false, 
         openImport: false,
-        currentNorm: { id: '', week_number: '', phase_name: 'Démarrage', target_weight: '', target_laying_rate: '', target_feed_daily: '', target_water_daily: '', model_name: '' },
+        currentNorm: { id: '', species_id: '', week_number: '', phase_name: 'Démarrage', target_weight: '', target_laying_rate: '', target_feed_daily: '', target_water_daily: '', model_name: '' },
         resetNorm() {
-            this.currentNorm = { id: '', week_number: '', phase_name: 'Démarrage', target_weight: '', target_laying_rate: '', target_feed_daily: '', target_water_daily: '', model_name: '' };
+            this.currentNorm = { id: '', species_id: '', week_number: '', phase_name: 'Démarrage', target_weight: '', target_laying_rate: '', target_feed_daily: '', target_water_daily: '', model_name: '' };
         }
 
     }">
@@ -48,7 +48,7 @@
                         </a>
                     @endforeach
                 </div>
-                @can('elevage.C')
+                @can('admin.S')
                 <div class="lg:ml-auto flex flex-col gap-2 w-full sm:w-auto">
                     <button @click="openImport = true" class="w-full bg-emerald-100 text-emerald-700 px-5 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-emerald-600 hover:text-white transition-all shadow-sm border border-emerald-200 cursor-pointer text-left sm:text-center">
                         <i class="fas fa-file-import mr-2"></i> {{ __("Import CSV") }}
@@ -85,6 +85,9 @@
                                         <p class="text-slate-900 font-black text-lg leading-none uppercase tracking-tighter italic">{{ __("Semaine") }} {{ $norm->week_number }}</p>
                                         <p class="text-[9px] text-blue-500 uppercase mt-2 tracking-widest font-black italic">
                                             {{ __("Modèle") }}: {{ $norm->model_name ?: 'STANDARD' }}
+                                        </p>
+                                        <p class="text-[9px] uppercase mt-1 tracking-widest font-black italic {{ $norm->species ? 'text-slate-400' : 'text-amber-500' }}">
+                                            {{ $norm->species ? $norm->species->icon.' '.$norm->species->name_fr : '🌐 '.__('Générique') }}
                                         </p>
                                     </div>
                                 </div>
@@ -147,12 +150,12 @@
                                 </p>
                             </div>
                         </div>
-                        @can('elevage.C')
+                        @can('admin.S')
                         <div class="flex gap-2 shrink-0">
                             <button @click="currentNorm = {{ $norm->toJson() }}; openEdit = true" class="w-10 h-10 bg-white border border-slate-200 text-slate-400 hover:text-blue-600 rounded-xl transition-all shadow-sm cursor-pointer">
                                 <i class="fas fa-pen-nib text-xs"></i>
                             </button>
-                            @can('elevage.S')
+                            @can('admin.S')
                             <button @click="currentNorm = {{ $norm->toJson() }}; openDelete = true" class="w-10 h-10 bg-white border border-slate-200 text-slate-400 hover:text-rose-600 rounded-xl transition-all shadow-sm cursor-pointer">
                                 <i class="fas fa-trash-can text-xs"></i>
                             </button>
@@ -198,7 +201,7 @@
         </div>
 
         {{-- 3. MODALE UNIFIÉE (AJOUT/ÉDITION) --}}
-        @can('elevage.C')
+        @can('admin.S')
         <div x-show="openAdd || openEdit" 
              x-transition.opacity 
              class="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/90 backdrop-blur-md" x-cloak>
@@ -221,11 +224,24 @@
                     
                     <input type="hidden" name="batch_type" value="{{ $type }}">
 
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="space-y-2">
+                            <label class="text-[10px] font-black uppercase text-slate-400 ml-4 italic">{{ __("Espèce") }}</label>
+                            <select name="species_id" x-model="currentNorm.species_id" class="w-full bg-slate-50 border-none rounded-2xl p-5 text-xs uppercase font-black shadow-inner outline-none cursor-pointer focus:ring-4 focus:ring-blue-500/10">
+                                <option value="">🌐 {{ __("Générique (toutes espèces)") }}</option>
+                                @foreach($species as $sp)
+                                    <option value="{{ $sp->id }}">{{ $sp->icon }} {{ $sp->name_fr }}</option>
+                                @endforeach
+                            </select>
+                            <p class="text-[8px] text-slate-300 ml-4 uppercase font-bold">{{ __("* Limite la souche à cette espèce dans les lots") }}</p>
+                        </div>
                         <div class="space-y-2">
                             <label class="text-[10px] font-black uppercase text-slate-400 ml-4 italic">{{ __("Souche Génétique") }}</label>
                             <input type="text" name="model_name" x-model="currentNorm.model_name" placeholder="ROSS 308, COBB..." class="w-full bg-slate-50 border-none rounded-2xl p-5 text-xs uppercase font-black shadow-inner outline-none focus:ring-4 focus:ring-blue-500/10">
                         </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div class="space-y-2">
                             <label class="text-[10px] font-black uppercase text-slate-400 ml-4 italic">{{ __("Numéro Semaine") }}</label>
                             <input type="number" min="0" name="week_number" x-model="currentNorm.week_number" required class="w-full bg-slate-50 border-none rounded-2xl p-5 text-base font-black shadow-inner outline-none text-blue-600">
@@ -269,7 +285,7 @@
         </div>
         @endcan
 
-        @can('elevage.S')
+        @can('admin.S')
         {{-- 4. MODALE SUPPRESSION --}}
         <div x-show="openDelete"
              x-transition.opacity

@@ -2,8 +2,9 @@
 
 use App\Models\ProductionNorm;
 use App\Models\Species;
+use Tests\Helpers\AviSmartTestHelper;
 
-uses(Tests\TestCase::class, Illuminate\Foundation\Testing\RefreshDatabase::class);
+uses(Tests\TestCase::class, Illuminate\Foundation\Testing\RefreshDatabase::class, AviSmartTestHelper::class);
 
 test('guessSpeciesSlug rattache chaque souche à la bonne espèce', function () {
     expect(ProductionNorm::guessSpeciesSlug('ISA Brown'))->toBe('poulet')
@@ -40,4 +41,23 @@ test('le scope forSpecies exclut les souches des autres espèces mais garde les 
     expect($names)->toContain('ISA Brown')          // espèce du lot
         ->toContain('Souche Générique')             // générique (toutes espèces)
         ->not->toContain('Caille Japonaise');       // autre espèce → exclue
+});
+
+test('le formulaire admin enregistre la souche avec son espèce explicite', function () {
+    $this->setUpRbac();
+    $caille = Species::firstOrCreate(['slug' => 'caille'], ['name_fr' => 'Caille', 'is_active' => true]);
+
+    $this->actingAs($this->adminUser)
+        ->post(route('admin.norms.store'), [
+            'batch_type'  => 'ponte',
+            'species_id'  => $caille->id,
+            'week_number' => 4,
+            'phase_name'  => 'Ponte',
+            'model_name'  => 'Caille Test',
+        ])
+        ->assertSessionHasNoErrors();
+
+    $norm = ProductionNorm::where('model_name', 'Caille Test')->first();
+    expect($norm)->not->toBeNull()
+        ->and($norm->species_id)->toBe($caille->id);
 });
