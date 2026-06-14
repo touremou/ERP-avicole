@@ -39,14 +39,35 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
         ->withExceptions(function (Exceptions $exceptions) {
+        // Filet 0 : Sessions expirées/absentes sur les routes API (offline,
+        // sync...) → JSON 401, jamais une redirection vers /login. Le
+        // middleware "force.json" ne suffit pas : la priorité globale des
+        // middlewares exécute "auth" AVANT "force.json", donc l'en-tête
+        // Accept n'est pas encore forcé quand Authenticate::class lève
+        // l'exception. On se base ici sur le chemin de la requête, qui est
+        // toujours fiable.
+        $exceptions->render(function (\Illuminate\Auth\AuthenticationException $e, $request) {
+            if ($request->is('api/*')) {
+                return response()->json(['message' => 'Session expirée, veuillez vous reconnecter.'], 401);
+            }
+        });
+
         // Filet 1 : Intercepte les Gate, Policy et $this->authorize()
         $exceptions->render(function (\Illuminate\Auth\Access\AuthorizationException $e, $request) {
+            if ($request->is('api/*')) {
+                return response()->json(['message' => 'Accès refusé.'], 403);
+            }
+
             return redirect()->back()->with('error', '🔒 ACCÈS REFUSÉ : Privilèges insuffisants pour cette opération.');
         });
 
         // Filet 2 : Intercepte les abort(403) et middleware 'can'
         $exceptions->render(function (\Symfony\Component\HttpKernel\Exception\HttpException $e, $request) {
             if ($e->getStatusCode() === 403) {
+                if ($request->is('api/*')) {
+                    return response()->json(['message' => 'Accès refusé.'], 403);
+                }
+
                 return redirect()->back()->with('error', '🔒 ACCESS RESTREINTE : Votre permission ne permet pas de faire cette opération.');
             }
         });
