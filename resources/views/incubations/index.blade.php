@@ -520,7 +520,7 @@
                             </div>
 
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <input type="text" name="new_provider_name" placeholder="{{ __(\"Nom de l'entreprise *\") }}" class="w-full bg-white border border-slate-100 rounded-xl px-4 py-3 font-black text-xs italic shadow-sm outline-none focus:ring-2 focus:ring-orange-500 text-slate-800" :required="selectedProvider === 'new'">
+                                <input type="text" name="new_provider_name" placeholder="{{ __('Nom de l\'entreprise *') }}" class="w-full bg-white border border-slate-100 rounded-xl px-4 py-3 font-black text-xs italic shadow-sm outline-none focus:ring-2 focus:ring-orange-500 text-slate-800" :required="selectedProvider === 'new'">
                                 <input type="text" name="new_provider_phone" placeholder="{{ __('Téléphone *') }}" class="w-full bg-white border border-slate-100 rounded-xl px-4 py-3 font-black text-xs italic shadow-sm outline-none focus:ring-2 focus:ring-orange-500 text-slate-800" :required="selectedProvider === 'new'">
 
                                 <div class="relative">
