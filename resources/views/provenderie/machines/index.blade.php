@@ -39,7 +39,7 @@
                 ])>
                     
                     {{-- MENU OPTIONS --}}
-                    <div class="absolute top-8 left-8 flex gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all transform translate-x-0 md:-translate-x-2 md:group-hover:translate-x-0">
+                    <div class="absolute top-8 left-8 flex gap-2 opacity-100 can-hover:opacity-0 can-hover:group-hover:opacity-100 transition-all transform translate-x-0 can-hover:-translate-x-2 can-hover:group-hover:translate-x-0">
                         @if($machine->status != 'Désactivé')
                             {{-- Permission M : Edition --}}
                             @can('provenderie.M')

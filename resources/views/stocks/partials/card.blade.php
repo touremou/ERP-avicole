@@ -63,7 +63,7 @@
         <span class="text-[9px] font-black text-slate-300 uppercase tracking-widest italic leading-none">
             {{ __("Unité :") }} {{ $item->unit }}
         </span>
-        <div class="flex gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all duration-300">
+        <div class="flex gap-2 opacity-100 can-hover:opacity-0 can-hover:group-hover:opacity-100 transition-all duration-300">
             <a href="{{ route('stocks.show', $item->id) }}" class="w-7 h-7 rounded-lg bg-slate-50 text-slate-400 flex items-center justify-center hover:bg-slate-900 hover:text-white transition-all shadow-sm">
                 <i class="fa-solid fa-eye text-[9px]"></i>
             </a>

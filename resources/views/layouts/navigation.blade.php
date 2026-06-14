@@ -10,13 +10,12 @@
                 </a>
 
                 {{-- APP DRAWER (grille modules) --}}
-                <div x-data="{ open: false }" @click.outside="open = false" class="hidden sm:block relative">
-                    <button @click="open = !open" class="flex items-center px-3 py-2 bg-slate-900 text-white rounded-xl text-[9px] font-black uppercase tracking-widest transition-all hover:bg-blue-600 shadow-md border-none cursor-pointer outline-none">
-                        <i class="fa-solid fa-grip text-xs mr-1.5"></i> {{ __("Modules") }} <i class="fa-solid fa-chevron-down ms-1.5 text-[6px] opacity-40"></i>
-                    </button>
-                    <div x-show="open" x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0 -translate-y-1" x-transition:enter-end="opacity-100"
-                         x-transition:leave="transition ease-in duration-100" x-transition:leave-end="opacity-0"
-                         class="absolute left-0 top-full mt-1 w-[22rem] bg-white rounded-2xl shadow-2xl border border-slate-100 p-4 z-50" x-cloak>
+                <x-menu align="left" width="w-[22rem]" panel="bg-white rounded-2xl shadow-2xl border border-slate-100 p-4" class="hidden sm:block">
+                    <x-slot name="trigger">
+                        <span class="flex items-center px-3 py-2 bg-slate-900 text-white rounded-xl text-[9px] font-black uppercase tracking-widest transition-all hover:bg-blue-600 shadow-md">
+                            <i class="fa-solid fa-grip text-xs mr-1.5"></i> {{ __("Modules") }} <i class="fa-solid fa-chevron-down ms-1.5 text-[6px] opacity-40"></i>
+                        </span>
+                    </x-slot>
                         <p class="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-3 px-1 border-b border-slate-100 pb-2">{{ __("Accès rapide") }}</p>
                         <div class="grid grid-cols-3 gap-1.5">
                             @php
@@ -61,8 +60,7 @@
                                 @endif
                             @endforeach
                         </div>
-                    </div>
-                </div>
+                </x-menu>
 
                 {{-- BREADCRUMB CONTEXTUEL --}}
                 <div class="hidden lg:flex items-center ml-4 pl-4 border-l border-slate-200 h-8 gap-1">
@@ -197,13 +195,14 @@
 
                 {{-- FARM SWITCHER --}}
                 @if($isMultiFarm ?? false)
-                <div x-data="{ open: false }" @click.outside="open = false" class="relative">
-                    <button @click="open = !open" class="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl bg-violet-50 text-violet-600 hover:bg-violet-100 transition-all outline-none">
-                        <i class="fa-solid fa-building text-[8px]"></i>
-                        {{ ($currentFarm->code ?? 'SITE') }}
-                        <i class="fa-solid fa-chevron-down text-[5px] opacity-30"></i>
-                    </button>
-                    <div x-show="open" x-transition class="absolute right-0 top-full mt-1 w-64 bg-white rounded-2xl shadow-2xl border border-slate-100 p-3 z-50" x-cloak>
+                <x-menu align="right" width="w-64" panel="bg-white rounded-2xl shadow-2xl border border-slate-100 p-3">
+                    <x-slot name="trigger">
+                        <span class="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl bg-violet-50 text-violet-600 hover:bg-violet-100 transition-all">
+                            <i class="fa-solid fa-building text-[8px]"></i>
+                            {{ ($currentFarm->code ?? 'SITE') }}
+                            <i class="fa-solid fa-chevron-down text-[5px] opacity-30"></i>
+                        </span>
+                    </x-slot>
                         <p class="text-[7px] font-black text-slate-400 uppercase tracking-widest px-2 mb-2">{{ __("Changer de site") }}</p>
                         @foreach($userFarms ?? [] as $farm)
                         <form method="POST" action="{{ route('farms.switch') }}">
@@ -219,8 +218,7 @@
                             </button>
                         </form>
                         @endforeach
-                    </div>
-                </div>
+                </x-menu>
                 @elseif($currentFarm ?? null)
                 <span class="text-[8px] font-black text-slate-400 uppercase tracking-widest px-2">{{ $currentFarm->name }}</span>
                 @endif
@@ -232,16 +230,17 @@
                 </div>
 
                 {{-- USER DROPDOWN --}}
-                <div x-data="{ open: false }" @click.outside="open = false" class="relative">
-                    <button @click="open = !open" class="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl hover:bg-slate-200 transition-all outline-none">
-                        <div class="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center text-white text-xs font-black shadow">
-                            {{ strtoupper(substr(Auth::user()->name ?? 'U', 0, 1)) }}
-                        </div>
-                        <i class="fa-solid fa-chevron-down text-[6px] text-slate-400 mr-1.5"></i>
-                    </button>
-                    <div x-show="open" x-transition class="absolute right-0 top-full mt-1 w-52 bg-white rounded-2xl shadow-2xl border border-slate-100 p-2.5 z-50" x-cloak>
+                <x-menu align="right" width="w-52" panel="bg-white rounded-2xl shadow-2xl border border-slate-100 p-2.5">
+                    <x-slot name="trigger">
+                        <span class="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl hover:bg-slate-200 transition-all">
+                            <span class="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center text-white text-xs font-black shadow">
+                                {{ strtoupper(substr(Auth::user()->name ?? 'U', 0, 1)) }}
+                            </span>
+                            <i class="fa-solid fa-chevron-down text-[6px] text-slate-400 mr-1.5"></i>
+                        </span>
+                    </x-slot>
                         <a href="{{ route('notifications.preferences') }}" class="block rounded-lg p-2 text-[9px] font-black uppercase italic tracking-widest hover:bg-emerald-50 text-slate-500 no-underline"><i class="fa-brands fa-whatsapp text-emerald-500 w-4 text-center mr-1"></i> {{ __("Notifications") }}</a>
-                        <a href="{{ route('tasks.index') }}" class="block rounded-lg p-2 text-[9px] font-black uppercase italic tracking-widest hover:bg-blue-50 text-slate-500 no-underline"><i class="fa-solid fa-list-check text-blue-500 w-4 text-center mr-1"></i> {{ __("Planning Tâches") }}</a>
+                        <a href="{{ route('tasks.index', ['mine' => 1]) }}" class="block rounded-lg p-2 text-[9px] font-black uppercase italic tracking-widest hover:bg-blue-50 text-slate-500 no-underline"><i class="fa-solid fa-list-check text-blue-500 w-4 text-center mr-1"></i> {{ __("Mes Tâches") }}</a>
                         @can('elevage.S')
                         <a href="{{ route('reports.index') }}" class="block rounded-lg p-2 text-[9px] font-black uppercase italic tracking-widest hover:bg-orange-50 text-slate-500 no-underline {{ request()->routeIs('reports.*') ? 'bg-orange-50 text-orange-600' : '' }}"><i class="fa-solid fa-chart-pie text-orange-500 w-4 text-center mr-1"></i> {{ __("Rapports") }}</a>
                         @endcan
@@ -260,8 +259,7 @@
                         <form method="POST" action="{{ route('logout') }}">@csrf
                             <button type="submit" class="w-full text-left rounded-lg p-2 text-[9px] font-black uppercase italic tracking-widest hover:bg-red-50 text-red-500 border-none bg-transparent cursor-pointer"><i class="fa-solid fa-right-from-bracket w-4 text-center mr-1"></i> {{ __("Déconnexion") }}</button>
                         </form>
-                    </div>
-                </div>
+                </x-menu>
             </div>
 
             {{-- HAMBURGER --}}

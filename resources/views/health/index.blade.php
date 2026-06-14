@@ -223,7 +223,7 @@
                                     
                                     {{-- Permission M/S : Actions --}}
                                     @can('elevage.M')
-                                    <div class="flex items-center gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                                    <div class="flex items-center gap-2 opacity-100 can-hover:opacity-0 can-hover:group-hover:opacity-100 transition-opacity">
                                         <a href="{{ route('health.edit', $check->id) }}" class="w-10 h-10 flex items-center justify-center rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white transition-all no-underline shadow-sm shadow-blue-100">
                                             <i class="fa-solid fa-pen-nib text-xs"></i>
                                         </a>
