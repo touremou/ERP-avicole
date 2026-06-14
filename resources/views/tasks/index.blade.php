@@ -34,12 +34,20 @@
             <form method="GET" action="{{ route('tasks.index') }}" id="filterForm" class="mb-4 flex flex-wrap items-center gap-2">
                 <input type="hidden" name="date" value="{{ $date->toDateString() }}">
 
+                {{-- Filtre employé réservé à l'encadrement : un opérateur est
+                     verrouillé sur ses propres tâches côté serveur. --}}
+                @if($canSeeAll ?? false)
                 <select name="employee" onchange="document.getElementById('filterForm').submit()" class="bg-white border border-slate-200 rounded-xl px-3 py-2 text-[9px] font-black uppercase text-slate-600 shadow-sm outline-none cursor-pointer">
                     <option value="">{{ __("Tous les employés") }}</option>
                     @foreach($employees as $e)
                         <option value="{{ $e->id }}" {{ ($activeFilters['employee'] ?? '') == $e->id ? 'selected' : '' }}>{{ $e->first_name }} {{ $e->last_name }}</option>
                     @endforeach
                 </select>
+                @else
+                <span class="bg-indigo-50 text-indigo-600 border border-indigo-100 rounded-xl px-3 py-2 text-[9px] font-black uppercase shadow-sm">
+                    <i class="fa-solid fa-user-check mr-1"></i>{{ __("Mes tâches") }}
+                </span>
+                @endif
                 <select name="building" onchange="document.getElementById('filterForm').submit()" class="bg-white border border-slate-200 rounded-xl px-3 py-2 text-[9px] font-black uppercase text-slate-600 shadow-sm outline-none cursor-pointer">
                     <option value="">{{ __("Tous les bâtiments") }}</option>
                     @foreach($buildings as $b)

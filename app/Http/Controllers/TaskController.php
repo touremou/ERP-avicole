@@ -34,6 +34,21 @@ class TaskController extends Controller
         $category = $request->input('category');
         $priority = $request->input('priority');
 
+        // ═══ PORTÉE RBAC : espace perso vs encadrement ═══
+        // Un non-encadrant (sans admin.M) ne voit QUE ses propres tâches : on
+        // verrouille le filtre employé sur sa fiche RH, quels que soient les
+        // paramètres d'URL. Les liens « Mes tâches » du menu profil passent
+        // ?mine=1 pour présélectionner l'utilisateur courant — y compris pour
+        // un encadrant, qui peut ensuite élargir à toute l'équipe.
+        $myEmployeeId = Auth::user()?->employee?->id;
+        $canSeeAll    = Gate::allows('admin.M');
+
+        if (! $canSeeAll) {
+            $employeeId = $myEmployeeId;
+        } elseif ($request->boolean('mine') && $myEmployeeId) {
+            $employeeId = $myEmployeeId;
+        }
+
         $activeFilters = array_filter([
             'employee' => $employeeId,
             'building' => $buildingId,
@@ -97,7 +112,7 @@ class TaskController extends Controller
 
         return view('tasks.index', compact(
             'tasks', 'stats', 'date', 'view', 'filter', 'employees', 'buildings',
-            'overdueTasks', 'filteredEmployee', 'activeFilters', 'calendarData'
+            'overdueTasks', 'filteredEmployee', 'activeFilters', 'calendarData', 'canSeeAll'
         ));
     }
 
