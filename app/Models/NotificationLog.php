@@ -9,8 +9,8 @@ class NotificationLog extends Model
 {
     
     protected $fillable = [
-        'user_id', 'channel', 'type', 'title', 'message',
-        'status', 'provider_response', 'sent_at',
+        'user_id', 'channel', 'type', 'title', 'message', 'recipient_phone',
+        'status', 'attempts', 'provider_response', 'sent_at',
     ];
 
     protected $casts = [
@@ -26,6 +26,21 @@ class NotificationLog extends Model
     public function scopeFailed($query)
     {
         return $query->where('status', 'failed');
+    }
+
+    /**
+     * Notifications WhatsApp en échec, rejouables par
+     * avismart:retry-failed-notifications (numéro connu, sous le plafond de
+     * tentatives, pas trop anciennes pour éviter de spammer sur de vieux
+     * incidents).
+     */
+    public function scopeRetryable($query, int $maxAttempts = 5, int $maxAgeHours = 24)
+    {
+        return $query->where('channel', 'whatsapp')
+            ->where('status', 'failed')
+            ->where('attempts', '<', $maxAttempts)
+            ->whereNotNull('recipient_phone')
+            ->where('created_at', '>=', now()->subHours($maxAgeHours));
     }
 
     public function scopeToday($query)

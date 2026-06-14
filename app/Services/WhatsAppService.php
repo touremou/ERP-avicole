@@ -58,6 +58,56 @@ class WhatsAppService
             return false;
         }
 
+        [$result, $response] = $this->attemptDelivery($phone, $message);
+
+        // Logger le résultat (rejouable par avismart:retry-failed-notifications
+        // si échec — coupures réseau fréquentes en zone rurale).
+        NotificationLog::create([
+            'user_id'           => $context['user_id'] ?? null,
+            'channel'           => 'whatsapp',
+            'type'              => $context['type'] ?? 'general',
+            'title'             => $context['title'] ?? 'WhatsApp',
+            'message'           => $message,
+            'recipient_phone'   => $phone,
+            'status'            => $result ? 'sent' : 'failed',
+            'attempts'          => 1,
+            'provider_response' => $response,
+            'sent_at'           => $result ? now() : null,
+        ]);
+
+        return $result;
+    }
+
+    /**
+     * Rejoue l'envoi d'une notification en échec (commande
+     * avismart:retry-failed-notifications). Met à jour le log existant au lieu
+     * d'en créer un nouveau.
+     */
+    public function retry(NotificationLog $log): bool
+    {
+        if (! $log->recipient_phone) {
+            return false;
+        }
+
+        [$result, $response] = $this->attemptDelivery($log->recipient_phone, $log->message);
+
+        $log->update([
+            'status'            => $result ? 'sent' : 'failed',
+            'attempts'          => $log->attempts + 1,
+            'provider_response' => $response,
+            'sent_at'           => $result ? now() : $log->sent_at,
+        ]);
+
+        return $result;
+    }
+
+    /**
+     * Tente la livraison via le driver configuré.
+     *
+     * @return array{0: bool, 1: array|null} [succès, réponse provider/erreur]
+     */
+    private function attemptDelivery(string $phone, string $message): array
+    {
         try {
             $result = match ($this->driver) {
                 'callmebot' => $this->sendViaCallMeBot($phone, $message),
@@ -67,34 +117,11 @@ class WhatsAppService
                 default     => $this->sendViaLog($phone, $message),
             };
 
-            // Logger le résultat
-            NotificationLog::create([
-                'user_id'           => $context['user_id'] ?? null,
-                'channel'           => 'whatsapp',
-                'type'              => $context['type'] ?? 'general',
-                'title'             => $context['title'] ?? 'WhatsApp',
-                'message'           => $message,
-                'status'            => $result ? 'sent' : 'failed',
-                'provider_response' => $context['response'] ?? null,
-                'sent_at'           => $result ? now() : null,
-            ]);
-
-            return $result;
-
+            return [$result, null];
         } catch (\Throwable $e) {
             Log::error("WhatsAppService [{$this->driver}]: {$e->getMessage()}");
 
-            NotificationLog::create([
-                'user_id'           => $context['user_id'] ?? null,
-                'channel'           => 'whatsapp',
-                'type'              => $context['type'] ?? 'general',
-                'title'             => $context['title'] ?? 'WhatsApp',
-                'message'           => $message,
-                'status'            => 'failed',
-                'provider_response' => ['error' => $e->getMessage()],
-            ]);
-
-            return false;
+            return [false, ['error' => $e->getMessage()]];
         }
     }
 
