@@ -6,6 +6,7 @@ use App\Models\Batch;
 use App\Models\DailyCheck;
 use App\Models\Stock;
 use App\Actions\DailyCheck\RecordDailyCheck;
+use App\Actions\DailyCheck\SyncManureCollection;
 use App\Http\Requests\DailyCheck\StoreDailyCheckRequest;
 use App\Http\Requests\DailyCheck\UpdateDailyCheckRequest;
 use App\Services\StockIntegrationService;
@@ -202,7 +203,11 @@ class DailyCheckController extends Controller
             ])->withInput();
         }
 
-        return DB::transaction(function () use ($request, $check, $validated) {
+        // Fumier : quantité avant rectification, pour compensation du stock.
+        $oldManure = (float) $check->manure_collected_kg;
+        $newManure = (float) ($validated['manure_collected_kg'] ?? 0);
+
+        return DB::transaction(function () use ($request, $check, $batch, $validated, $oldManure, $newManure) {
             // Restitution de l'ancien stock
             if ((float) $check->feed_consumed > 0) {
                 StockIntegrationService::syncMovement(
@@ -224,6 +229,10 @@ class DailyCheckController extends Controller
 
             // L'observer DailyCheckObserver gère le diff sur current_quantity
             $check->update($validated);
+
+            // Compensation du stock fumier (restitue l'ancien ramassage,
+            // applique le nouveau) pour ne pas double-compter le fertilisant.
+            app(SyncManureCollection::class)->execute($batch, $oldManure, $newManure);
 
             // Save species-specific extension if applicable
             if ($check->batch->isGmqTracked() || $check->batch->isAquaculture()) {
@@ -281,6 +290,11 @@ class DailyCheckController extends Controller
                     $check->feed_type, 'conso', (float) $check->feed_consumed, 'in',
                     "Suppression pointage - Restitution stock", 'KG'
                 );
+            }
+
+            // Restitution du stock fumier (le ramassage supprimé sort du stock).
+            if ((float) $check->manure_collected_kg > 0 && $check->batch) {
+                app(SyncManureCollection::class)->execute($check->batch, (float) $check->manure_collected_kg, 0);
             }
 
             // L'observer DailyCheckObserver gère la restitution de current_quantity

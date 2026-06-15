@@ -39,6 +39,7 @@ class StoreDailyCheckRequest extends FormRequest
             'treatment_name'    => 'nullable|string|max:255',
             'observations'      => 'nullable|string|max:2000',
             'litter_changed'    => 'nullable|boolean',
+            'manure_collected_kg' => 'nullable|numeric|min:0|max:100000',
         ] + self::extensionRules();
     }
 
@@ -113,11 +114,16 @@ class StoreDailyCheckRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
+        $litterChanged = $this->has('litter_changed') ? 1 : 0;
+
         $this->merge([
-            'litter_changed' => $this->has('litter_changed') ? 1 : 0,
+            'litter_changed' => $litterChanged,
             'qty_quarantine_in'  => $this->input('qty_quarantine_in', 0),
             'qty_quarantine_out' => $this->input('qty_quarantine_out', 0),
             'qty_sorted_out'     => $this->input('qty_sorted_out', 0),
+            // Le fumier n'est ramassé que lors d'un renouvellement de litière :
+            // toute quantité saisie sans litière changée est ignorée.
+            'manure_collected_kg' => $litterChanged ? $this->input('manure_collected_kg') : 0,
         ]);
     }
 }

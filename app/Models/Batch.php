@@ -183,6 +183,31 @@ class Batch extends Model
         return $this->hasMany(DailyCheck::class);
     }
 
+    /**
+     * Date du dernier renouvellement de litière (pointage avec litière changée).
+     * Null si aucune litière n'a encore été renouvelée sur le lot.
+     */
+    public function getLastLitterChangeAtAttribute(): ?\Carbon\Carbon
+    {
+        $date = $this->dailyChecks()
+            ->where('litter_changed', true)
+            ->max('check_date');
+
+        return $date ? \Carbon\Carbon::parse($date) : null;
+    }
+
+    /**
+     * Nombre de jours écoulés depuis le dernier renouvellement de litière.
+     * Indicateur de biosécurité (ammoniac, coccidiose…) affiché au pointage.
+     * Null si la litière n'a jamais été changée sur le lot.
+     */
+    public function getDaysSinceLitterChangeAttribute(): ?int
+    {
+        $last = $this->last_litter_change_at;
+
+        return $last ? (int) $last->startOfDay()->diffInDays(now()->startOfDay()) : null;
+    }
+
     public function healthChecks(): HasMany
     {
         return $this->hasMany(HealthCheck::class);

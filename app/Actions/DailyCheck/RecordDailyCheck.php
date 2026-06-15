@@ -59,6 +59,11 @@ class RecordDailyCheck
                 }
             }
 
+            // Fumier : quantités avant/après pour compensation (ramassage
+            // ressaisi sur un pointage déjà existant à la même date).
+            $oldManure = (float) ($existing->manure_collected_kg ?? 0);
+            $newManure = (float) ($data['manure_collected_kg'] ?? 0);
+
             // ─── Création ou mise à jour du pointage ───
             // Note : l'observer DailyCheckObserver gère l'impact sur current_quantity
             $check = DailyCheck::updateOrCreate(
@@ -80,6 +85,9 @@ class RecordDailyCheck
                     'KG'
                 );
             }
+
+            // ─── Valorisation du fumier ramassé (sous-produit fertilisant) ───
+            app(SyncManureCollection::class)->execute($batch, $oldManure, $newManure);
 
             return $check;
         });

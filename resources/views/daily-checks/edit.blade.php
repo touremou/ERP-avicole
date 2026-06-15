@@ -118,14 +118,21 @@
                     </div>
 
                     {{-- PARAMÈTRES AMBIANCE --}}
-                    <div class="bg-slate-900 p-10 rounded-[4rem] text-white shadow-2xl relative text-left italic">
+                    <div x-data="{ litterChanged: {{ old('litter_changed', $check->litter_changed) ? 'true' : 'false' }} }" class="bg-slate-900 p-10 rounded-[4rem] text-white shadow-2xl relative text-left italic">
                         <div class="absolute right-0 bottom-0 opacity-10 p-8 scale-150 pointer-events-none"><i class="fas fa-wind"></i></div>
-                        <div class="flex justify-between items-center mb-10">
+                        <div class="flex justify-between items-center mb-8">
                             <h3 class="text-[10px] font-black uppercase text-slate-500 tracking-[0.3em] leading-none">{{ __("Correction Ambiance") }}</h3>
                             <label class="flex items-center gap-3 bg-white/5 px-5 py-2.5 rounded-2xl cursor-pointer hover:bg-white/10 transition border border-white/10 group">
-                                <input type="checkbox" name="litter_changed" value="1" {{ old('litter_changed', $check->litter_changed) ? 'checked' : '' }} class="rounded border-none bg-white/20 text-blue-500 focus:ring-0">
+                                <input type="checkbox" name="litter_changed" value="1" x-model="litterChanged" class="rounded border-none bg-white/20 text-blue-500 focus:ring-0">
                                 <span class="text-[9px] font-black uppercase italic tracking-widest text-slate-300 leading-none mt-0.5">{{ __("Litière Changée") }}</span>
                             </label>
+                        </div>
+
+                        {{-- Fumier ramassé : valorisé en stock fertilisant à la coche « Litière changée » --}}
+                        <div x-show="litterChanged" x-cloak class="mb-8 px-5 py-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30">
+                            <label class="block text-[8px] font-black text-emerald-300 uppercase tracking-widest mb-2 leading-none">{{ __("Fumier ramassé (Kg) — vendable comme fertilisant") }}</label>
+                            <input type="number" name="manure_collected_kg" min="0" step="0.1" value="{{ old('manure_collected_kg', $check->manure_collected_kg) }}" placeholder="0"
+                                   class="w-full bg-white/5 border border-white/10 p-4 rounded-2xl text-xl text-emerald-300 text-center outline-none italic font-black">
                         </div>
 
                         <div class="grid grid-cols-2 md:grid-cols-4 gap-6 relative z-10">

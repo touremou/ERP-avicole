@@ -38,7 +38,7 @@ class DailyCheck extends Model
         'avg_weight', 'health_status',
         'treatment_type', 'treatment_name',
         'qty_quarantine_in', 'qty_quarantine_out', 'qty_sorted_out',
-        'observations', 'litter_changed',
+        'observations', 'litter_changed', 'manure_collected_kg',
     ];
 
     protected $casts = [
@@ -50,6 +50,7 @@ class DailyCheck extends Model
         'temp_max'           => 'decimal:1',
         'humidity'           => 'decimal:1',
         'litter_changed'     => 'boolean',
+        'manure_collected_kg' => 'decimal:2',
         'mortality'          => 'integer',
         'qty_quarantine_in'  => 'integer',
         'qty_quarantine_out' => 'integer',

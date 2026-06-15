@@ -7,6 +7,8 @@ use App\Models\Module;
 use App\Models\ProductionType;
 use App\Models\Role;
 use App\Models\Species;
+use App\Models\Stock;
+use App\Models\StockMovement;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
@@ -150,4 +152,132 @@ test('une rectification dont la mortalité dépasse l\'effectif est rejetée', f
             'qty_quarantine_out' => 0,
         ])
         ->assertSessionHasErrors('mortality');
+});
+
+test('un ramassage de fumier au pointage crédite un stock « Fumier » vendable comme fertilisant', function () {
+    $batch = Batch::factory()->create([
+        'building_id'      => $this->building->id,
+        'status'           => 'Actif',
+        'current_quantity' => 500,
+    ]);
+
+    $this->actingAs($this->managerUser)
+        ->post(route('daily-checks.store'), [
+            'batch_id'            => $batch->id,
+            'check_date'          => now()->toDateString(),
+            'mortality'           => 0,
+            'feed_consumed'       => 0,
+            'feed_type'           => 'Chair Démarrage',
+            'litter_changed'      => 1,
+            'manure_collected_kg' => 120,
+        ])
+        ->assertSessionHasNoErrors()
+        ->assertRedirect();
+
+    // Le pointage conserve la quantité ramassée pour la traçabilité.
+    $check = DailyCheck::where('batch_id', $batch->id)->first();
+    expect((float) $check->manure_collected_kg)->toBe(120.0);
+
+    // Un article « Fumier » est créé en produits_finis et crédité de 120 kg.
+    $fumier = Stock::where('item_name', 'Fumier')
+        ->where('category', Stock::CAT_PRODUITS_FINIS)
+        ->first();
+
+    expect($fumier)->not->toBeNull()
+        ->and((float) $fumier->current_quantity)->toBe(120.0)
+        ->and(StockMovement::where('stock_id', $fumier->id)->where('type', 'in')->exists())->toBeTrue();
+
+    // produits_finis est un type vendable : le fumier est mobilisable en vente.
+    expect(Stock::categoryForProductType('produits_finis'))->toBe(Stock::CAT_PRODUITS_FINIS);
+});
+
+test('une quantité de fumier saisie sans litière changée est ignorée', function () {
+    $batch = Batch::factory()->create([
+        'building_id'      => $this->building->id,
+        'status'           => 'Actif',
+        'current_quantity' => 500,
+    ]);
+
+    $this->actingAs($this->managerUser)
+        ->post(route('daily-checks.store'), [
+            'batch_id'            => $batch->id,
+            'check_date'          => now()->toDateString(),
+            'mortality'           => 0,
+            'feed_consumed'       => 0,
+            'feed_type'           => 'Chair Démarrage',
+            // litter_changed non coché
+            'manure_collected_kg' => 80,
+        ])
+        ->assertSessionHasNoErrors();
+
+    $check = DailyCheck::where('batch_id', $batch->id)->first();
+    expect((float) $check->manure_collected_kg)->toBe(0.0);
+
+    expect(Stock::where('item_name', 'Fumier')->exists())->toBeFalse();
+});
+
+test('rectifier la quantité de fumier compense le stock sans double comptage', function () {
+    $batch = Batch::factory()->create([
+        'building_id'      => $this->building->id,
+        'status'           => 'Actif',
+        'current_quantity' => 500,
+    ]);
+
+    $check = DailyCheck::factory()->create([
+        'batch_id'            => $batch->id,
+        'mortality'           => 0,
+        'feed_consumed'       => 0,
+        'feed_type'           => 'Chair Démarrage',
+        'litter_changed'      => true,
+        'manure_collected_kg' => 100,
+    ]);
+
+    // On initialise le stock fumier à 100 kg (état après ramassage initial).
+    $fumier = Stock::create([
+        'item_name'        => 'Fumier',
+        'category'         => Stock::CAT_PRODUITS_FINIS,
+        'unit'             => 'KG',
+        'current_quantity' => 100,
+        'alert_threshold'  => 0,
+    ]);
+
+    // Rectification : le ramassage réel n'était que de 60 kg.
+    $this->actingAs($this->managerUser)
+        ->put(route('daily-checks.update', $check), [
+            'mortality'           => 0,
+            'feed_consumed'       => 0,
+            'feed_type'           => 'Chair Démarrage',
+            'qty_quarantine_in'   => 0,
+            'qty_quarantine_out'  => 0,
+            'litter_changed'      => 1,
+            'manure_collected_kg' => 60,
+        ])
+        ->assertSessionHasNoErrors();
+
+    // 100 (initial) − 100 (restitution) + 60 (nouveau) = 60 kg, pas 160.
+    expect((float) $fumier->fresh()->current_quantity)->toBe(60.0);
+});
+
+test('le lot expose le nombre de jours depuis le dernier renouvellement de litière', function () {
+    $batch = Batch::factory()->create([
+        'building_id'      => $this->building->id,
+        'status'           => 'Actif',
+        'current_quantity' => 500,
+    ]);
+
+    expect($batch->days_since_litter_change)->toBeNull();
+
+    DailyCheck::factory()->create([
+        'batch_id'       => $batch->id,
+        'check_date'     => now()->subDays(5),
+        'litter_changed' => true,
+    ]);
+    // Un pointage plus récent SANS litière changée ne doit pas écraser la date.
+    DailyCheck::factory()->create([
+        'batch_id'       => $batch->id,
+        'check_date'     => now()->subDays(2),
+        'litter_changed' => false,
+    ]);
+
+    expect($batch->fresh()->days_since_litter_change)->toBe(5);
 });
