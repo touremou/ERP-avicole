@@ -162,7 +162,13 @@ class WhatsAppService
      */
     private function http(): PendingRequest
     {
-        $client = Http::timeout(15);
+        // User-Agent explicite : certains providers (CallMeBot notamment)
+        // renvoient un « 403 Forbidden » via leur WAF lorsque le User-Agent
+        // est vide ou identifié comme robot (cas fréquent avec cURL sous
+        // WAMP/hébergement mutualisé). On se présente comme un navigateur.
+        $client = Http::timeout(15)->withHeaders([
+            'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        ]);
 
         $verify = filter_var(setting('whatsapp.verify_ssl', true), FILTER_VALIDATE_BOOLEAN);
         if (! $verify) {
