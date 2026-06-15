@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\EggProduction;
 
+use App\Rules\AfterBatchArrival;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Gate;
 
@@ -16,7 +17,7 @@ class StoreEggProductionRequest extends FormRequest
     {
         return [
             'batch_id'             => 'required|integer|exists:batches,id',
-            'production_date'      => 'required|date|before_or_equal:today',
+            'production_date'      => ['required', 'date', 'before_or_equal:today', new AfterBatchArrival],
             'total_eggs_collected' => 'required|integer|min:0',
             'broken_eggs'          => 'nullable|integer|min:0',
             'small_eggs'           => 'nullable|integer|min:0',

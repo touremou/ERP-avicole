@@ -4,6 +4,7 @@ namespace App\Http\Requests\DailyCheck;
 
 use App\Models\Batch;
 use App\Models\Stock;
+use App\Rules\AfterBatchArrival;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Gate;
 
@@ -23,7 +24,7 @@ class StoreDailyCheckRequest extends FormRequest
     {
         return [
             'batch_id'          => 'required|integer|exists:batches,id',
-            'check_date'        => 'required|date|before_or_equal:today',
+            'check_date'        => ['required', 'date', 'before_or_equal:today', new AfterBatchArrival],
             'mortality'         => 'required|integer|min:0',
             'feed_consumed'     => 'required|numeric|min:0',
             'feed_type'         => 'required|string|max:255',

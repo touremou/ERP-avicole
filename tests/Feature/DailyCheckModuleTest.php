@@ -154,6 +154,40 @@ test('une rectification dont la mortalité dépasse l\'effectif est rejetée', f
         ->assertSessionHasErrors('mortality');
 });
 
+test('un pointage daté avant l\'arrivée du lot est rejeté (âge négatif incohérent)', function () {
+    $batch = Batch::factory()->create([
+        'building_id'      => $this->building->id,
+        'status'           => 'Actif',
+        'current_quantity' => 500,
+        'arrival_date'     => now()->subDays(10)->toDateString(),
+    ]);
+
+    $this->actingAs($this->managerUser)
+        ->post(route('daily-checks.store'), [
+            'batch_id'      => $batch->id,
+            'check_date'    => now()->subDays(15)->toDateString(), // avant l'arrivée
+            'mortality'     => 0,
+            'feed_consumed' => 0,
+            'feed_type'     => 'Chair Démarrage',
+        ])
+        ->assertSessionHasErrors('check_date');
+
+    expect(DailyCheck::where('batch_id', $batch->id)->exists())->toBeFalse();
+
+    // Le même pointage daté le jour de l'arrivée passe.
+    $this->actingAs($this->managerUser)
+        ->post(route('daily-checks.store'), [
+            'batch_id'      => $batch->id,
+            'check_date'    => now()->subDays(10)->toDateString(),
+            'mortality'     => 0,
+            'feed_consumed' => 0,
+            'feed_type'     => 'Chair Démarrage',
+        ])
+        ->assertSessionHasNoErrors();
+
+    expect(DailyCheck::where('batch_id', $batch->id)->exists())->toBeTrue();
+});
+
 test('un ramassage de fumier au pointage crédite un stock « Fumier » vendable comme fertilisant', function () {
     $batch = Batch::factory()->create([
         'building_id'      => $this->building->id,

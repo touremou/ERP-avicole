@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Health;
 
+use App\Rules\AfterBatchArrival;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Gate;
 
@@ -17,7 +18,7 @@ class StoreHealthCheckRequest extends FormRequest
     {
         return [
             'batch_id'            => ['required', 'exists:batches,id'],
-            'intervention_date'   => ['required', 'date', 'before_or_equal:today'], 
+            'intervention_date'   => ['required', 'date', 'before_or_equal:today', new AfterBatchArrival],
             'type'                => ['required', 'in:Vaccin,Traitement,Vitamine,Désinfection'],
             'product_name'        => ['required', 'string', 'max:255'],
             'batch_number'        => ['nullable', 'string', 'max:100'],
