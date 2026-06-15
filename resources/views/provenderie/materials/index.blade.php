@@ -105,7 +105,7 @@
                         <div class="mt-8 pt-6 border-t border-slate-50 flex flex-wrap justify-between items-center gap-2">
                             {{-- Permission C : Réception (Achat) --}}
                             @can('provenderie.C')
-                            <button onclick="openReorderModal({{ $material->id }}, '{{ $material->name }}')" 
+                            <button onclick="openReorderModal({{ $material->id }}, {{ Js::from($material->name) }})"
                                 class="flex-1 text-[9px] font-black text-blue-600 uppercase italic tracking-widest hover:text-slate-900 transition-colors">
                                 <i class="fa-solid fa-truck-ramp-box mr-1"></i> {{ __("Réception") }}
                             </button>
@@ -113,7 +113,7 @@
                             
                             {{-- Permission M : Analyse Labo --}}
                             @can('provenderie.M')
-                            <button onclick="openLaboModal({{ $material->id }}, '{{ $material->name }}', {{ $material->energy_kcal }}, {{ $material->protein_rate }})" 
+                            <button onclick="openLaboModal({{ $material->id }}, {{ Js::from($material->name) }}, {{ $material->energy_kcal ?: 0 }}, {{ $material->protein_rate ?: 0 }})"
                                 class="flex-1 text-[9px] font-black text-amber-600 uppercase italic tracking-widest hover:text-slate-900 transition-colors border-l border-slate-100 pl-2">
                                 <i class="fa-solid fa-flask mr-1"></i> {{ __("Labo") }}
                             </button>
@@ -121,7 +121,7 @@
 
                             {{-- Permission S : Correction/Perte --}}
                             @can('provenderie.S')
-                            <button onclick="openLossModal({{ $material->id }}, '{{ $material->name }}')" 
+                            <button onclick="openLossModal({{ $material->id }}, {{ Js::from($material->name) }})"
                                 class="w-full mt-2 text-[9px] font-black text-red-400 uppercase italic tracking-widest hover:text-red-600 transition-colors border-t border-slate-50 pt-2">
                                 <i class="fa-solid fa-right-from-bracket mr-1"></i> {{ __("Ajuster Stock (Perte/Vente)") }}
                             </button>
