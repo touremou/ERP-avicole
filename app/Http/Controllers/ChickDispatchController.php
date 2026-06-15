@@ -31,7 +31,7 @@ class ChickDispatchController extends Controller
 
     public function show(Incubation $incubation)
     {
-        if (Gate::denies('elevage.L')) return back()->with('error', 'Accès restreint.');
+        if (Gate::denies('production.L')) return back()->with('error', 'Accès restreint.');
 
         $incubation->load(['incubator', 'batch', 'chickDispatches.batch', 'chickDispatches.client']);
 
@@ -57,7 +57,7 @@ class ChickDispatchController extends Controller
 
     public function store(Request $request, Incubation $incubation)
     {
-        if (Gate::denies('elevage.C')) return back()->with('error', 'Action non autorisée.');
+        if (Gate::denies('production.C')) return back()->with('error', 'Action non autorisée.');
 
         $remaining = $this->getRemaining($incubation);
 

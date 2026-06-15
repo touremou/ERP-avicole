@@ -165,8 +165,11 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/{id}', 'destroy')->name('destroy')->middleware('can:S');
     });
 
-    // ─── MAINTENANCE TECHNIQUE STOCKS ───
-    Route::middleware('can:M')->group(function () {
+    // ─── MAINTENANCE TECHNIQUE STOCKS (inventaire physique des œufs) ───
+    // Le contrôleur (EggProductionController) impose production.S : on aligne
+    // explicitement le middleware de route, le nom `stocks.*` résolvant sinon
+    // vers le module logistique et créant une exigence croisée incohérente.
+    Route::middleware('can:production.S')->group(function () {
         Route::get('admin/stock-maintenance', [EggProductionController::class, 'maintenance'])->name('stocks.maintenance');
         Route::post('admin/stock-rebase', [EggProductionController::class, 'rebase'])->name('stocks.rebase');
     });
@@ -186,7 +189,7 @@ Route::middleware(['auth'])->group(function () {
         });
 
         Route::middleware('can:L')->resource('formulas', FormulaController::class);
-        Route::post('/formulas/norms/import', [FormulaController::class, 'importNorms'])->name('norms.import')->middleware('can:C');
+        Route::post('/formulas/norms/import', [FormulaController::class, 'importNorms'])->name('norms.import')->middleware('can:S');
 
         Route::prefix('production')->name('production.')->controller(MillProductionController::class)->group(function () {
             Route::get('/', 'index')->name('index')->middleware('can:L');
@@ -200,7 +203,7 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/', 'index')->name('index')->middleware('can:L');
             Route::post('/', 'store')->name('store')->middleware('can:C');
             Route::put('/{id}', 'update')->name('update')->middleware('can:M');
-            Route::put('/{id}/reset', 'resetMaintenance')->name('reset')->middleware('can:M');
+            Route::put('/{id}/reset', 'reset')->name('reset')->middleware('can:M');
             Route::put('/{id}/status', 'updateStatus')->name('status')->middleware('can:M');
             Route::post('/{id}/toggle', 'toggleStatus')->name('toggle')->middleware('can:M');
             Route::delete('/{id}', 'destroy')->name('destroy')->middleware('can:S');

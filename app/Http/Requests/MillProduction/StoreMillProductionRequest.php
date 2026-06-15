@@ -9,7 +9,7 @@ class StoreMillProductionRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return Gate::allows('C');
+        return Gate::allows('provenderie.C');
     }
 
     public function rules(): array

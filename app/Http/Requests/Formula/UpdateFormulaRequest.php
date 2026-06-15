@@ -9,7 +9,7 @@ class UpdateFormulaRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return Gate::allows('M');
+        return Gate::allows('provenderie.M');
     }
 
     public function rules(): array

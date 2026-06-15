@@ -2,6 +2,7 @@
 
 use App\Actions\MillProduction\CompleteMillProduction;
 use App\Models\Formula;
+use App\Models\MillMachine;
 use App\Models\MillProduction;
 use App\Models\Module;
 use App\Models\Permission;
@@ -174,4 +175,55 @@ test('suppression formule impossible si déjà produite (P-12)', function () {
         ->delete(route('formulas.destroy', $formula))
         ->assertRedirect()
         ->assertSessionHas('error');
+});
+
+test('une machine sans historique de production peut être supprimée', function () {
+    // Garde-fou de non-régression : destroy() s'appuyait sur une relation
+    // pivotProductions() inexistante, ce qui provoquait un crash 500.
+    $machine = MillMachine::factory()->create(['name' => 'Broyeur isolé']);
+
+    $this->actingAs($this->adminUser)
+        ->delete(route('machines.destroy', $machine->id))
+        ->assertRedirect()
+        ->assertSessionHas('success');
+
+    expect(MillMachine::find($machine->id))->toBeNull();
+});
+
+test('une machine avec un historique de production ne peut pas être supprimée', function () {
+    $machine = MillMachine::factory()->create(['name' => 'Broyeur productif']);
+    MillProduction::factory()->create(['machine_id' => $machine->id]);
+
+    $this->actingAs($this->adminUser)
+        ->delete(route('machines.destroy', $machine->id))
+        ->assertRedirect()
+        ->assertSessionHas('error');
+
+    expect(MillMachine::find($machine->id))->not->toBeNull();
+});
+
+test('la réinitialisation de maintenance d\'une machine est accessible et archive le compteur', function () {
+    // Garde-fou : la route pointait vers resetMaintenance() (supprimée) au lieu
+    // de reset(), provoquant un échec d'appel de méthode.
+    $machine = MillMachine::factory()->create(['total_hours_run' => 180, 'status' => 'Maintenance']);
+
+    $this->actingAs($this->adminUser)
+        ->put(route('machines.reset', $machine->id), ['description' => 'Révision test'])
+        ->assertRedirect()
+        ->assertSessionHas('success');
+
+    $machine->refresh();
+    expect((float) $machine->total_hours_run)->toBe(0.0)
+        ->and($machine->status)->toBe('Opérationnel');
+});
+
+test('un opérateur (C, sans M) ne peut pas basculer le statut d\'une machine', function () {
+    $machine = MillMachine::factory()->create(['status' => 'Opérationnel']);
+
+    $this->actingAs($this->operatorUser)
+        ->post(route('machines.toggle', $machine->id))
+        ->assertRedirect()
+        ->assertSessionHas('error');
+
+    expect($machine->fresh()->status)->toBe('Opérationnel');
 });
