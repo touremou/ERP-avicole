@@ -69,6 +69,36 @@ class RawMaterialController extends Controller
     }
 
     /**
+     * Modification des informations générales d'un ingrédient (fiche éditable).
+     */
+    public function update(Request $request, $id): RedirectResponse
+    {
+        if (Gate::denies('provenderie.M')) return back()->with('error', 'Modification non autorisée.');
+
+        $material = RawMaterial::findOrFail($id);
+
+        $request->merge([
+            'unit' => strtolower($request->input('unit', $material->unit)),
+        ]);
+
+        $validated = $request->validate([
+            'name'            => 'required|string|max:100|unique:raw_materials,name,' . $material->id,
+            'unit'            => 'required|string|in:kg,l,unite',
+            'stock_qty'       => 'required|numeric|min:0',
+            'unit_cost'       => 'required|numeric|min:0',
+            'alert_threshold' => 'nullable|numeric|min:0',
+            'energy_kcal'     => 'nullable|numeric|min:0',
+            'protein_rate'    => 'nullable|numeric|min:0|max:100',
+        ], [
+            'name.unique' => 'Une matière première porte déjà ce nom.',
+        ]);
+
+        $material->update($validated);
+
+        return back()->with('success', "Ingrédient '{$material->name}' mis à jour.");
+    }
+
+    /**
      * Réception de commande avec calcul CMP.
      */
     public function updateStock(Request $request, $id): RedirectResponse

@@ -83,6 +83,48 @@ test('un doublon de matière première est refusé avec un message explicite', f
     expect(RawMaterial::where('name', 'Maïs jaune test')->count())->toBe(1);
 });
 
+test('un administrateur peut modifier la fiche d\'une matière première', function () {
+    $material = RawMaterial::factory()->create([
+        'name'      => 'Maïs jaune',
+        'unit'      => 'kg',
+        'stock_qty' => 100,
+        'unit_cost' => 2500,
+    ]);
+
+    $this->actingAs($this->adminUser)
+        ->put(route('raw-materials.update', $material->id), [
+            'name'            => 'Maïs jaune (révisé)',
+            'unit'            => 'KG',
+            'stock_qty'       => 120,
+            'unit_cost'       => 2700,
+            'alert_threshold' => 60,
+            'energy_kcal'     => 3300,
+            'protein_rate'    => 8.5,
+        ])
+        ->assertRedirect()
+        ->assertSessionHas('success');
+
+    $material->refresh();
+    expect($material->name)->toBe('Maïs jaune (révisé)')
+        ->and($material->unit)->toBe('kg')
+        ->and((float) $material->stock_qty)->toBe(120.0)
+        ->and((float) $material->unit_cost)->toBe(2700.0);
+});
+
+test('un opérateur sans droit de modification ne peut pas modifier une matière première', function () {
+    $material = RawMaterial::factory()->create();
+
+    $this->actingAs($this->operatorUser)
+        ->put(route('raw-materials.update', $material->id), [
+            'name'      => 'Tentative',
+            'unit'      => 'kg',
+            'stock_qty' => 0,
+            'unit_cost' => 0,
+        ])
+        ->assertRedirect()
+        ->assertSessionHas('error');
+});
+
 test('la clôture de production crée le silo d\'aliment fini dans le bon secteur (multiespèces)', function () {
     $this->actingAs($this->adminUser);
 
