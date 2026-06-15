@@ -167,6 +167,49 @@ test('la clôture de production crée le silo d\'aliment fini dans le bon secteu
     expect((float) $material->fresh()->stock_qty)->toBe(1500.0);
 });
 
+test('la clôture de production valorise le silo au coût de revient (CMP)', function () {
+    $this->actingAs($this->adminUser);
+
+    $chevreId = Species::where('slug', 'chevre')->value('id');
+    $laitiere = ProductionType::resolveOrCreate('laitiere', $chevreId);
+
+    // Matière première à 200 GNF/kg, 100% de la formule.
+    $material = RawMaterial::factory()->create([
+        'name'      => 'Maïs test CMP',
+        'stock_qty' => 2000,
+        'unit_cost' => 200,
+    ]);
+
+    $formula = Formula::factory()->create([
+        'name'               => 'CHÈVRE LAITIÈRE LACTATION',
+        'species_id'         => $chevreId,
+        'production_type_id' => $laitiere->id,
+        'target_type'        => 'laitiere',
+    ]);
+    $formula->items()->create([
+        'raw_material_id' => $material->id,
+        'percentage'      => 100,
+        'quantity_kg'     => 1000,
+    ]);
+
+    $production = MillProduction::factory()->create([
+        'formula_id'        => $formula->id,
+        'quantity_produced' => 500,
+        'status'            => 'En cours',
+    ]);
+
+    app(CompleteMillProduction::class)->execute($production);
+
+    // 500 kg × 200 GNF de MP ⇒ coût de revient = 200 GNF/kg, reporté en CMP
+    // sur l'article d'aliment fini (silo vide au départ).
+    $silo = Stock::where('item_name', 'Laitière Lactation')
+        ->where('category', Stock::CAT_CONSO)
+        ->first();
+
+    expect((float) $silo->fresh()->last_unit_price)->toBe(200.0);
+    expect((float) $production->fresh()->real_cost_per_kg)->toBe(200.0);
+});
+
 test('suppression formule impossible si déjà produite (P-12)', function () {
     $formula = Formula::factory()->create();
     MillProduction::factory()->create(['formula_id' => $formula->id]);

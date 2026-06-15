@@ -636,6 +636,19 @@
                                 </tr>
                             @endif
                         </tbody>
+                        @if(($stats['feed_cogs'] ?? 0) > 0)
+                        <tfoot>
+                            <tr class="bg-slate-900 text-white">
+                                <td colspan="4" class="px-8 py-4 text-[9px] font-black uppercase tracking-widest italic">
+                                    <i class="fa-solid fa-sack-dollar text-orange-400 mr-2"></i>{{ __("Coût de revient aliment consommé") }}
+                                    <span class="text-slate-400 ml-2 normal-case">{{ __("(achat + production interne, au CMP)") }}</span>
+                                </td>
+                                <td colspan="2" class="px-8 py-4 text-right text-orange-400 font-black text-sm">
+                                    {{ number_format($stats['feed_cogs'], 0) }} GNF
+                                </td>
+                            </tr>
+                        </tfoot>
+                        @endif
                     </table>
                 </div>
             </div>

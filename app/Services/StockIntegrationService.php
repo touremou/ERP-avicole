@@ -38,6 +38,10 @@ class StockIntegrationService
      * @param string      $type      Type de mouvement : 'in', 'out', 'adjustment'
      * @param string      $notes     Description pour l'audit trail
      * @param string|null $inputUnit Unité de saisie (KG, Sac, Alvéole, Unité). OBLIGATOIRE recommandé.
+     * @param float|null  $unitCost  Coût unitaire (par unité PIVOT) de l'entrée. Si fourni
+     *                               sur un mouvement 'in', met à jour le coût moyen pondéré
+     *                               (CMP) de l'article — base de valorisation de l'inventaire
+     *                               et du coût de revient consommé. Ignoré sur 'out'.
      *
      * @return StockMovement|false  Le mouvement créé, ou false si article introuvable
      */
@@ -47,7 +51,8 @@ class StockIntegrationService
         float  $quantity,
         string $type,
         string $notes,
-        ?string $inputUnit = null
+        ?string $inputUnit = null,
+        ?float $unitCost = null
     ): StockMovement|false {
 
         // ─── 1. RECHERCHE DE L'ARTICLE ───
@@ -59,7 +64,7 @@ class StockIntegrationService
             return false;
         }
 
-        return DB::transaction(function () use ($stock, $itemName, $category, $quantity, $type, $notes, $inputUnit) {
+        return DB::transaction(function () use ($stock, $itemName, $category, $quantity, $type, $notes, $inputUnit, $unitCost) {
 
             // ─── 2. DÉTERMINATION DE L'UNITÉ ───
             // B-17 corrigé : si $inputUnit n'est pas fourni, on logge un warning
@@ -80,7 +85,22 @@ class StockIntegrationService
             $wasLow = $stock->is_low;
 
             if ($type === 'in') {
-                $stock->increment('current_quantity', $quantityBase);
+                // Coût moyen pondéré : on mélange l'ancien stock valorisé et la
+                // nouvelle entrée. Les colonnes de prix sont persistées via le
+                // 3e argument d'increment() (les attributs simplement assignés
+                // ne le seraient pas par la requête atomique d'increment).
+                $extra = [];
+                if ($unitCost !== null && $unitCost >= 0) {
+                    $oldQty   = (float) $stock->current_quantity;
+                    $oldPrice = (float) ($stock->last_unit_price ?? 0);
+                    $newQty   = $oldQty + $quantityBase;
+
+                    if ($newQty > 0) {
+                        $wac = round(($oldQty * $oldPrice + $quantityBase * $unitCost) / $newQty, 2);
+                        $extra = ['unit_price' => $wac, 'last_unit_price' => $wac];
+                    }
+                }
+                $stock->increment('current_quantity', $quantityBase, $extra);
             } elseif ($type === 'out') {
                 // Sécurité : ne pas descendre sous zéro
                 $newQty = max(0, (float) $stock->current_quantity - $quantityBase);

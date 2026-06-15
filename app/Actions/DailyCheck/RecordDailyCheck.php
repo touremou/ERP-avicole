@@ -64,6 +64,14 @@ class RecordDailyCheck
             $oldManure = (float) ($existing->manure_collected_kg ?? 0);
             $newManure = (float) ($data['manure_collected_kg'] ?? 0);
 
+            // ─── Coût de revient de l'aliment consommé (snapshot CMP) ───
+            // On fige le coût moyen pondéré courant de l'article aliment afin
+            // de valoriser cette consommation dans la marge du lot, qu'il
+            // s'agisse d'aliment acheté ou produit à la provenderie.
+            if ($feedConsumed > 0) {
+                $data['feed_unit_cost'] = $this->resolveFeedUnitCost($feedType);
+            }
+
             // ─── Création ou mise à jour du pointage ───
             // Note : l'observer DailyCheckObserver gère l'impact sur current_quantity
             $check = DailyCheck::updateOrCreate(
@@ -91,6 +99,19 @@ class RecordDailyCheck
 
             return $check;
         });
+    }
+
+    /**
+     * Coût moyen pondéré courant (par KG) de l'article aliment consommé.
+     * Retourne 0 si l'article n'a pas encore de valorisation.
+     */
+    private function resolveFeedUnitCost(string $feedType): float
+    {
+        $stock = Stock::where('feed_type', trim($feedType))
+            ->where('category', Stock::CAT_CONSO)
+            ->first();
+
+        return (float) ($stock?->last_unit_price ?? $stock?->unit_price ?? 0);
     }
 
     /**

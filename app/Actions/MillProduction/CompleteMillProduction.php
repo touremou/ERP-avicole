@@ -71,14 +71,18 @@ class CompleteMillProduction
                 ? round($totalCost / $quantityProduced, 2)
                 : 0;
 
-            // ─── 4. ENTRÉE STOCK ALIMENT FINI ───
+            // ─── 4. ENTRÉE STOCK ALIMENT FINI (valorisée au coût de revient) ───
+            // Le CMP de l'article aliment fini intègre le coût de revient réel
+            // de cette production : l'inventaire — et donc la consommation des
+            // lots — est valorisé au prix de fabrication, comparable à un achat.
             $synced = StockIntegrationService::syncMovement(
                 $stockItemName,
                 'conso',
                 $quantityProduced,
                 'in',
                 "Production OP #{$production->batch_number}",
-                'KG'
+                'KG',
+                $realCostPerKg
             );
 
             if (! $synced) {

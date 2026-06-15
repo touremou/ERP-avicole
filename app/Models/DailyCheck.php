@@ -33,7 +33,7 @@ class DailyCheck extends Model
 
     protected $fillable = [
         'farm_id', 'batch_id', 'check_date',
-        'mortality', 'feed_consumed', 'feed_type', 'water_consumed',
+        'mortality', 'feed_consumed', 'feed_type', 'feed_unit_cost', 'water_consumed',
         'temp_min', 'temp_max', 'humidity',
         'avg_weight', 'health_status',
         'treatment_type', 'treatment_name',
@@ -44,6 +44,7 @@ class DailyCheck extends Model
     protected $casts = [
         'check_date'         => 'date',
         'feed_consumed'      => 'decimal:2',
+        'feed_unit_cost'     => 'decimal:2',
         'water_consumed'     => 'decimal:2',
         'avg_weight'         => 'decimal:3',
         'temp_min'           => 'decimal:1',

@@ -325,6 +325,50 @@ test('le lot expose le fumier ramassé cumulé et son revenu estimé au prix de 
     expect($batch->estimated_manure_revenue)->toBe(2500.0);
 });
 
+test('la consommation d\'aliment est valorisée au coût de revient et imputée à la marge du lot', function () {
+    $batch = Batch::factory()->create([
+        'building_id'      => $this->building->id,
+        'status'           => 'Actif',
+        'current_quantity' => 500,
+    ]);
+
+    // Article aliment valorisé à 250 GNF/kg (CMP, comme s'il sortait de la
+    // provenderie ou d'un achat), avec assez de stock pour la consommation.
+    Stock::create([
+        'item_name'        => 'Chair Démarrage',
+        'feed_type'        => 'Chair Démarrage',
+        'category'         => Stock::CAT_CONSO,
+        'unit'             => 'KG',
+        'current_quantity' => 1000,
+        'last_unit_price'  => 250,
+        'unit_price'       => 250,
+        'alert_threshold'  => 0,
+    ]);
+
+    // Marge avant consommation (référence : aucun aliment encore imputé).
+    $marginBefore = $batch->net_margin;
+    expect($batch->feed_cogs)->toBe(0.0);
+
+    $this->actingAs($this->managerUser)
+        ->post(route('daily-checks.store'), [
+            'batch_id'      => $batch->id,
+            'check_date'    => now()->toDateString(),
+            'mortality'     => 0,
+            'feed_consumed' => 40,
+            'feed_type'     => 'Chair Démarrage',
+        ])
+        ->assertSessionHasNoErrors();
+
+    // Le coût de revient est figé sur le pointage (40 kg × 250 = snapshot 250).
+    $check = DailyCheck::where('batch_id', $batch->id)->first();
+    expect((float) $check->feed_unit_cost)->toBe(250.0);
+
+    // Le COGS aliment du lot vaut 40 × 250 et la marge baisse d'autant.
+    $batch->refresh();
+    expect($batch->feed_cogs)->toBe(10000.0);
+    expect($batch->net_margin)->toBe($marginBefore - 10000.0);
+});
+
 test('le lot expose le nombre de jours depuis le dernier renouvellement de litière', function () {
     $batch = Batch::factory()->create([
         'building_id'      => $this->building->id,

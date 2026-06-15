@@ -712,7 +712,31 @@ class Batch extends Model
     // ═══════════════════════════════════════════════
 
     /**
+     * Coût de revient de l'aliment réellement CONSOMMÉ par le lot (COGS).
+     *
+     * Approche industrielle : la consommation journalière est valorisée au coût
+     * moyen pondéré figé à la saisie (daily_checks.feed_unit_cost), que l'aliment
+     * ait été acheté à l'extérieur ou produit à la provenderie. Le coût de revient
+     * de la production interne est ainsi imputé au lot exactement comme un achat —
+     * sans dépendre du moment où l'aliment a été acquis.
+     */
+    public function getFeedCogsAttribute(): float
+    {
+        return (float) $this->dailyChecks()
+            ->selectRaw('COALESCE(SUM(feed_consumed * COALESCE(feed_unit_cost, 0)), 0) AS cogs')
+            ->value('cogs');
+    }
+
+    /**
      * Marge nette consolidée (revenus - coûts).
+     *
+     * Coût alimentaire : on retient la CONSOMMATION valorisée au coût de revient
+     * (feed_cogs), et non plus la somme des achats (feedPurchases). C'est la
+     * mesure industrielle correcte — l'aliment produit en interne est désormais
+     * imputé au lot au même titre qu'un aliment acheté, et l'aliment acheté mais
+     * non encore consommé reste un actif de stock plutôt qu'une charge du lot.
+     * Les achats NON-aliment rattachés au lot (médicaments, matériel) restent
+     * comptés au prix d'achat puisqu'ils ne transitent pas par la consommation.
      *
      * Limite connue : le revenu des œufs n'est PAS rattaché au lot. Les œufs
      * collectés alimentent un stock mutualisé (cf. EggProduction::getMapForStockSync)
@@ -727,14 +751,21 @@ class Batch extends Model
         $sellingRevenue = (float) ($this->total_revenue ?? 0);
 
         // Coûts
-        $feedCost = (float) $this->feedPurchases()->sum('total_price');
+        $feedCost = $this->feed_cogs;
+        // Achats NON-aliment (médicaments, matériel…) : non captés par la
+        // consommation, donc comptés au prix d'achat. Le tri s'appuie sur
+        // l'accesseur category (metadata['conso_type'] ?? 'Aliment'), donc un
+        // conso_type absent est traité comme « Aliment » et exclu d'ici.
+        $nonFeedPurchases = (float) $this->feedPurchases
+            ->filter(fn ($p) => $p->category !== 'Aliment')
+            ->sum('total_price');
         $healthCost = (float) $this->healthChecks()->sum('cost');
         $acquisitionCost = (float) ($this->total_acquisition_cost ?? 0);
         $additionalCosts = (float) ($this->additional_costs ?? 0);
         // Dépenses directes validées rattachées au lot (registre des dépenses).
         $directExpenses = (float) $this->expenses()->where('status', 'valide')->sum('amount');
 
-        return $sellingRevenue - ($feedCost + $healthCost + $acquisitionCost + $additionalCosts + $directExpenses);
+        return $sellingRevenue - ($feedCost + $nonFeedPurchases + $healthCost + $acquisitionCost + $additionalCosts + $directExpenses);
     }
 
     /**

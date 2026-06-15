@@ -41,14 +41,25 @@ class CreateFeedPurchase
                 'total_price' => $data['unit_price'],
             ]));
 
-            // 3. SYNCHRONISATION PHYSIQUE DU MAGASIN
+            // 3. SYNCHRONISATION PHYSIQUE DU MAGASIN (valorisée au prix d'achat)
+            // Coût par unité PIVOT (KG) : prix total ÷ quantité normalisée, afin
+            // que le CMP de l'article reflète le coût réel d'acquisition.
+            $bagWeight       = (float) ($metadata['bag_weight'] ?? 50);
+            $normalizedQty   = ($data['unit'] === 'Sac')
+                ? (float) $data['quantity'] * $bagWeight
+                : (float) $data['quantity'];
+            $costPerPivotKg  = $normalizedQty > 0
+                ? (float) $purchase->total_price / $normalizedQty
+                : 0.0;
+
             $synced = StockIntegrationService::syncMovement(
-                $purchase->feed_type, 
-                'conso', 
-                (float)$data['quantity'], 
-                'in', 
+                $purchase->feed_type,
+                'conso',
+                (float)$data['quantity'],
+                'in',
                 "Ravitaillement {$data['unit']} - Lot {$batch->code} ({$consoType})",
-                $data['unit'] 
+                $data['unit'],
+                $costPerPivotKg
             );
 
             if (!$synced) {
