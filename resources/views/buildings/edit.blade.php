@@ -86,6 +86,7 @@
                             <option value="{{ \App\Models\Building::STATUS_VIDE }}" {{ old('status', $building->status) == \App\Models\Building::STATUS_VIDE ? 'selected' : '' }} {{ $isOccupied ? 'disabled' : '' }}>🟢 {{ __("Vide / Désinfecté") }}</option>
                             <option value="{{ \App\Models\Building::STATUS_OCCUPE }}" {{ old('status', $building->status) == \App\Models\Building::STATUS_OCCUPE ? 'selected' : '' }}>🔴 {{ __("Occupé") }}</option>
                             <option value="{{ \App\Models\Building::STATUS_DESINFECTION }}" {{ old('status', $building->status) == \App\Models\Building::STATUS_DESINFECTION ? 'selected' : '' }}>🟠 {{ __("En désinfection") }}</option>
+                            <option value="{{ \App\Models\Building::STATUS_MAINTENANCE }}" {{ old('status', $building->status) == \App\Models\Building::STATUS_MAINTENANCE ? 'selected' : '' }} {{ $isOccupied ? 'disabled' : '' }}>🛠️ {{ __("Maintenance technique") }}</option>
                         </select>
                     </div>
 

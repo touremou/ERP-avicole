@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Batch;
 use App\Models\Campaign;
+use App\Models\Species;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -158,10 +159,19 @@ class CampaignController extends Controller
 
     private function validateData(Request $request): array
     {
+        // Familles cibles valides = familles d'espèces réellement référencées
+        // (repli sur la liste canonique si la table est vide). Évite une
+        // campagne orpheline ciblant une famille inexistante, non rattachable
+        // à un lot.
+        $families = Species::query()->whereNotNull('family')->distinct()->pluck('family')->all();
+        if (empty($families)) {
+            $families = ['volaille', 'petit_ruminant', 'grand_ruminant', 'porcin', 'lagomorphe', 'aquaculture'];
+        }
+
         return $request->validate([
             'name'              => 'required|string|max:255',
             'type'             => 'required|in:' . implode(',', array_keys(Campaign::TYPES)),
-            'target_family'     => 'required|string|max:30',
+            'target_family'     => ['required', 'string', 'max:30', \Illuminate\Validation\Rule::in($families)],
             'status'            => 'required|in:' . implode(',', array_keys(Campaign::STATUSES)),
             'start_date'        => 'nullable|date',
             'target_date'       => 'required|date',

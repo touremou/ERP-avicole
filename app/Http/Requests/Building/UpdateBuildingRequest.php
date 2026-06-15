@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Building;
 
+use App\Models\Building;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
@@ -24,7 +25,8 @@ class UpdateBuildingRequest extends FormRequest
             'type'                    => ['required', 'in:poussiniere,chair,ponte,reproducteur,mixte,bergerie,chevrerie,etable,bassin,lapiniere,porcherie'],
             'surface'                 => ['required', 'numeric', 'min:1'],
             'capacity'                => ['required', 'integer', 'min:1'],
-            'status'                  => ['required', 'in:Vide,Occupé,En désinfection,Disponible'],
+            'status'                  => ['required', Rule::in(Building::STATUSES)],
+            'description'             => ['nullable', 'string'],
             'disinfection_started_at' => ['nullable', 'date'],
         ];
     }

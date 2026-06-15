@@ -29,6 +29,20 @@ class Building extends Model
     public const STATUS_MAINTENANCE  = 'Maintenance';
 
     /**
+     * Ensemble des statuts valides — source unique de vérité partagée par les
+     * validateurs (Store/UpdateBuildingRequest) afin d'éviter toute dérive
+     * entre le modèle et les règles `in:` (le statut Maintenance était défini
+     * ici mais absent des validateurs : impossible à enregistrer).
+     */
+    public const STATUSES = [
+        self::STATUS_VIDE,
+        self::STATUS_DISPONIBLE,
+        self::STATUS_OCCUPE,
+        self::STATUS_DESINFECTION,
+        self::STATUS_MAINTENANCE,
+    ];
+
+    /**
      * Statuts considérés comme « libres » : le bâtiment est prêt à accueillir
      * un nouveau lot (Vide et Disponible sont synonymes côté disponibilité).
      */
