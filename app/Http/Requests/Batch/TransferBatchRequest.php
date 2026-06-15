@@ -5,6 +5,7 @@ namespace App\Http\Requests\Batch;
 use App\Models\Batch;
 use App\Models\Building;
 use App\Models\ProductionType;
+use App\Models\Species;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
@@ -97,14 +98,7 @@ class TransferBatchRequest extends FormRequest
             // chèvrerie), pas à la phase de production (engraissement,
             // laitière...). On compare donc au référentiel d'habitats
             // compatibles (config/livestock.php) plutôt qu'au slug de phase.
-            $compatibleTypes = $batch->species?->compatibleBuildingTypes();
-
-            $isCompatible = $targetBuilding->type === 'mixte'
-                || ($compatibleTypes !== null
-                    ? in_array($targetBuilding->type, $compatibleTypes, true)
-                    : $targetBuilding->type === $targetType);
-
-            if (! $isCompatible) {
+            if (! Species::buildingIsCompatible($targetBuilding, $batch->species, $targetType)) {
                 $validator->errors()->add(
                     'target_building_id',
                     "Incompatibilité : type cible '{$targetType}', bâtiment de type '{$targetBuilding->type}'."

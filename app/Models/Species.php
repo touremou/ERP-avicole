@@ -4,6 +4,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+
 class Species extends Model
 {
     protected $fillable = [
@@ -55,6 +56,30 @@ class Species extends Model
     public function compatibleBuildingTypes(): ?array
     {
         return config('livestock.building_types.' . $this->slug);
+    }
+
+    /**
+     * Vérifie qu'un bâtiment peut accueillir un lot de cette espèce pour le
+     * type/phase de production visé.
+     *
+     * Source unique de vérité partagée par App\Http\Requests\Batch\StoreBatchRequest,
+     * UpdateBatchRequest et TransferBatchRequest. Un bâtiment 'mixte' accepte
+     * toujours. Pour les espèces référencées dans config('livestock.building_types')
+     * (non-volailles), l'habitat est dédié à l'ESPÈCE quelle que soit la phase.
+     * Pour les autres (volaille), on compare le type de bâtiment au slug du
+     * type de production visé.
+     */
+    public static function buildingIsCompatible(Building $building, ?self $species, string $targetType): bool
+    {
+        if ($building->type === 'mixte') {
+            return true;
+        }
+
+        $compatibleTypes = $species?->compatibleBuildingTypes();
+
+        return $compatibleTypes !== null
+            ? in_array($building->type, $compatibleTypes, true)
+            : $building->type === $targetType;
     }
 
     /** Familles suivies via le GMQ (croissance pondérale + portées) */

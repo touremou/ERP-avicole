@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests\Batch;
 
+use App\Models\Building;
 use App\Models\ProductionType;
+use App\Models\Species;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
@@ -62,6 +64,29 @@ class StoreBatchRequest extends FormRequest
             'vaccination_received' => 'nullable|boolean',
             'vaccination_details'  => 'nullable|string|max:1000',
         ];
+    }
+
+    /**
+     * Validations métier après les règles de base.
+     */
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator) {
+            $targetBuilding = Building::find($this->input('building_id'));
+            if (! $targetBuilding) {
+                return; // L'erreur 'exists' couvre déjà
+            }
+
+            $species = $this->filled('species_id') ? Species::find($this->input('species_id')) : null;
+            $targetType = $this->input('type');
+
+            if (! Species::buildingIsCompatible($targetBuilding, $species, $targetType)) {
+                $validator->errors()->add(
+                    'building_id',
+                    "Incompatibilité : type de lot '{$targetType}', bâtiment de type '{$targetBuilding->type}'."
+                );
+            }
+        });
     }
 
     public function messages(): array

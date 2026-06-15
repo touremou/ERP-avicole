@@ -380,6 +380,90 @@ test('une chèvre ne peut pas être transférée dans une bergerie', function ()
     expect($batch->building_id)->toBe($chevrerie->id);
 });
 
+test('la création d\'un lot caprin dans un bâtiment volaille est refusée', function () {
+    $chevre = \App\Models\Species::firstOrCreate(
+        ['slug' => 'chevre'],
+        ['name_fr' => 'Chèvre / Caprin', 'family' => 'petit_ruminant', 'is_active' => true]
+    );
+
+    $chairBuilding = Building::factory()->create(['type' => 'chair']);
+
+    $this->actingAs($this->managerUser)
+        ->post(route('batches.store'), [
+            'code'               => 'CAP-001',
+            'building_id'        => $chairBuilding->id,
+            'type'               => 'engraissement',
+            'species_id'         => $chevre->id,
+            'employee_id'        => $this->employee->id,
+            'provider_id'        => $this->provider->id,
+            'arrival_date'       => now()->toDateString(),
+            'buy_price_per_unit' => 5000,
+            'qty_alive'          => 10,
+        ])
+        ->assertSessionHasErrors('building_id');
+
+    expect(Batch::where('code', 'CAP-001')->exists())->toBeFalse();
+});
+
+test('la création d\'un lot caprin dans une chèvrerie est acceptée', function () {
+    $chevre = \App\Models\Species::firstOrCreate(
+        ['slug' => 'chevre'],
+        ['name_fr' => 'Chèvre / Caprin', 'family' => 'petit_ruminant', 'is_active' => true]
+    );
+
+    $chevrerie = Building::factory()->create(['type' => 'chevrerie']);
+
+    $this->actingAs($this->managerUser)
+        ->post(route('batches.store'), [
+            'code'               => 'CAP-002',
+            'building_id'        => $chevrerie->id,
+            'type'               => 'engraissement',
+            'model_name'         => 'Chèvre Rousse Maradi',
+            'species_id'         => $chevre->id,
+            'employee_id'        => $this->employee->id,
+            'provider_id'        => $this->provider->id,
+            'arrival_date'       => now()->toDateString(),
+            'buy_price_per_unit' => 5000,
+            'qty_alive'          => 10,
+        ])
+        ->assertSessionDoesntHaveErrors();
+
+    expect(Batch::where('code', 'CAP-002')->exists())->toBeTrue();
+});
+
+test('la modification d\'un lot vers un bâtiment incompatible avec son espèce est refusée', function () {
+    $chevre = \App\Models\Species::firstOrCreate(
+        ['slug' => 'chevre'],
+        ['name_fr' => 'Chèvre / Caprin', 'family' => 'petit_ruminant', 'is_active' => true]
+    );
+
+    $chevrerie = Building::factory()->create(['type' => 'chevrerie']);
+    $chairBuilding = Building::factory()->create(['type' => 'chair']);
+
+    $batch = Batch::factory()->create([
+        'species_id'         => $chevre->id,
+        'building_id'        => $chevrerie->id,
+        'status'             => 'Actif',
+        'current_quantity'   => 10,
+        'production_type_id' => ProductionType::resolveOrCreate('engraissement', $chevre->id)->id,
+    ]);
+
+    $this->actingAs($this->managerUser)
+        ->put(route('batches.update', $batch), [
+            'type'               => 'engraissement',
+            'building_id'        => $chairBuilding->id,
+            'employee_id'        => $this->employee->id,
+            'provider_id'        => $this->provider->id,
+            'arrival_date'       => $batch->arrival_date->toDateString(),
+            'buy_price_per_unit' => $batch->buy_price_per_unit,
+            'status'             => $batch->status,
+        ])
+        ->assertSessionHasErrors('building_id');
+
+    $batch->refresh();
+    expect($batch->building_id)->toBe($chevrerie->id);
+});
+
 test('une vache peut être transférée vers une étable', function () {
     $vache = \App\Models\Species::firstOrCreate(
         ['slug' => 'vache'],
