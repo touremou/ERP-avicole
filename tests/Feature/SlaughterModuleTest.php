@@ -116,6 +116,110 @@ test('un abattage valide met en stock un produit nommé selon l\'espèce du lot 
     expect(FinishedProduct::where('product_name', 'Poulet Entier Frais')->exists())->toBeFalse();
 });
 
+test('le rendement carcasse de référence dépend de la famille de l\'espèce', function () {
+    $resolver = \App\Services\ButcheryNomenclature::class;
+
+    $poulet = Species::where('slug', 'poulet')->first();
+    $mouton = Species::where('slug', 'mouton')->first();
+    $vache  = Species::where('slug', 'vache')->first();
+
+    expect($resolver::carcassYieldForSpecies($poulet)['target_min'])->toBe(70)
+        ->and($resolver::carcassYieldForSpecies($mouton)['target_min'])->toBe(45)
+        ->and($resolver::carcassYieldForSpecies($vache)['target_min'])->toBe(52);
+
+    // Repli volaille si espèce absente.
+    expect($resolver::carcassYieldForSpecies(null)['target_min'])->toBe(70);
+});
+
+test('les morceaux de découpe proposés dépendent de la famille de l\'espèce', function () {
+    $resolver = \App\Services\ButcheryNomenclature::class;
+
+    $poulet = Species::where('slug', 'poulet')->first();
+    $mouton = Species::where('slug', 'mouton')->first();
+    $tilapia = Species::where('slug', 'tilapia')->first();
+
+    $pouletCodes = array_column($resolver::cutsForSpecies($poulet), 'code');
+    $moutonCodes = array_column($resolver::cutsForSpecies($mouton), 'code');
+    $poissonCodes = array_column($resolver::cutsForSpecies($tilapia), 'code');
+
+    expect($pouletCodes)->toContain('cuisse', 'aile', 'gesier')
+        ->and($moutonCodes)->toContain('gigot', 'cotelettes', 'collier')
+        ->and($poissonCodes)->toContain('filet', 'darne');
+
+    // Un morceau ovin n'est pas valide pour de la volaille et inversement.
+    expect($resolver::cutCodesForSpecies($poulet))->not->toContain('gigot')
+        ->and($resolver::cutCodesForSpecies($mouton))->toContain('gigot', 'autre');
+});
+
+test('une découpe ovine enregistre des morceaux de boucherie spécifiques (gigot, épaule)', function () {
+    $moutonId = Species::where('slug', 'mouton')->value('id');
+    $type = ProductionType::resolveOrCreate('engraissement', $moutonId);
+    $batch = Batch::factory()->create(['production_type_id' => $type->id, 'current_quantity' => 30]);
+
+    $order = createSlaughterOrder($batch, 5);
+    $order->update(['status' => 'termine']);
+    SlaughterResult::create([
+        'slaughter_order_id'      => $order->id,
+        'total_carcass_weight_kg' => 100,
+        'carcass_yield_percent'   => 48,
+        'condemned_count'         => 0,
+        'avg_live_weight_kg'      => 41.6,
+        'avg_carcass_weight_kg'   => 20,
+        'execution_date'          => now()->toDateString(),
+    ]);
+
+    $this->actingAs($this->adminUser)
+        ->post(route('slaughter.cutting.store', $order), [
+            'total_input_kg' => 100,
+            'session_date'   => now()->toDateString(),
+            'products'       => [
+                ['type' => 'gigot',  'name' => 'Gigot',  'kg' => 30, 'destination' => 'stock_frais'],
+                ['type' => 'epaule', 'name' => 'Épaule', 'kg' => 25, 'destination' => 'stock_frais'],
+            ],
+        ])
+        ->assertRedirect(route('slaughter.dashboard'))
+        ->assertSessionHas('success');
+
+    expect(FinishedProduct::where('product_type', 'gigot')->where('product_name', 'Gigot')->exists())->toBeTrue()
+        ->and(FinishedProduct::where('product_type', 'epaule')->exists())->toBeTrue();
+});
+
+test('un morceau de découpe incompatible avec l\'espèce est rejeté', function () {
+    // Lot volaille : un "gigot" (ovin) ne doit pas être accepté.
+    $batch = Batch::factory()->create(['current_quantity' => 100]);
+    $order = createSlaughterOrder($batch, 10);
+    $order->update(['status' => 'termine']);
+
+    $this->actingAs($this->adminUser)
+        ->post(route('slaughter.cutting.store', $order), [
+            'total_input_kg' => 20,
+            'session_date'   => now()->toDateString(),
+            'products'       => [
+                ['type' => 'gigot', 'name' => 'Gigot', 'kg' => 10],
+            ],
+        ])
+        ->assertRedirect()
+        ->assertSessionHasErrors('products.0.type');
+});
+
+test('une découpe dont les morceaux dépassent l\'entrée est rejetée', function () {
+    $batch = Batch::factory()->create(['current_quantity' => 100]);
+    $order = createSlaughterOrder($batch, 10);
+    $order->update(['status' => 'termine']);
+
+    $this->actingAs($this->adminUser)
+        ->post(route('slaughter.cutting.store', $order), [
+            'total_input_kg' => 10,
+            'session_date'   => now()->toDateString(),
+            'products'       => [
+                ['type' => 'cuisse', 'name' => 'Cuisses', 'kg' => 8],
+                ['type' => 'aile',   'name' => 'Ailes',   'kg' => 5],
+            ],
+        ])
+        ->assertRedirect()
+        ->assertSessionHasErrors('total_input_kg');
+});
+
 test('la page de création d\'ordre d\'abattage propose les lots de toutes les espèces', function () {
     $chevreId = Species::where('slug', 'chevre')->value('id');
     $caprinType = ProductionType::resolveOrCreate('engraissement', $chevreId);

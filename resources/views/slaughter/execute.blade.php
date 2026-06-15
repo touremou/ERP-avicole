@@ -20,8 +20,9 @@
 
                 {{-- RECAP ORDRE --}}
                 <div class="bg-rose-50 p-6 rounded-[2.5rem] border border-rose-200 mb-6">
-                    <div class="grid grid-cols-3 gap-4 text-center">
+                    <div class="grid grid-cols-4 gap-4 text-center">
                         <div><p class="text-[8px] font-black text-rose-400 uppercase">{{ __("Lot") }}</p><p class="text-sm font-black text-slate-900">{{ $order->batch->code ?? '—' }}</p></div>
+                        <div><p class="text-[8px] font-black text-rose-400 uppercase">{{ __("Espèce") }}</p><p class="text-sm font-black text-slate-900">{{ $order->batch->species->name_fr ?? __('Poulet') }}</p></div>
                         <div><p class="text-[8px] font-black text-rose-400 uppercase">{{ __("Prévu") }}</p><p class="text-sm font-black text-slate-900">{{ __(":qty sujets", ['qty' => $order->planned_quantity]) }}</p></div>
                         <div><p class="text-[8px] font-black text-rose-400 uppercase">{{ __("Bâtiment") }}</p><p class="text-sm font-black text-slate-900">{{ $order->batch->building->name ?? '—' }}</p></div>
                     </div>
@@ -59,7 +60,7 @@
                                 <p class="text-[8px] font-black text-slate-400 uppercase">{{ __("Rendement carcasse") }}</p>
                                 {{-- ⚙️ PARAMÉTRAGE DYNAMIQUE (via Alpine) --}}
                                 <p class="text-xl font-black" :class="yieldPercent >= yieldTargetMin ? 'text-emerald-600' : (yieldPercent >= yieldAlertMin ? 'text-amber-600' : 'text-red-600')" x-text="yieldPercent + '%'"></p>
-                                <p class="text-[8px] text-slate-400">{{ __("norme") }} : {{ setting('abattoir.yield_target_min', 70) }}-{{ setting('abattoir.yield_target_max', 75) }}%</p>
+                                <p class="text-[8px] text-slate-400">{{ __("norme") }} {{ $order->batch->species->name_fr ?? __('Poulet') }} : {{ $yield['target_min'] }}-{{ $yield['target_max'] }}%</p>
                             </div>
                             <div class="bg-slate-50 p-4 rounded-2xl text-center">
                                 <p class="text-[8px] font-black text-slate-400 uppercase">{{ __("Poids moyen vif") }}</p>
@@ -105,9 +106,9 @@
 
     <script>
     function slaughterForm() {
-        // ⚙️ INJECTION DYNAMIQUE DES SETTINGS
-        const yieldTargetMin = {{ setting('abattoir.yield_target_min', 70) }};
-        const yieldAlertMin = {{ setting('abattoir.yield_alert_min', 65) }};
+        // ⚙️ BANDES DE RENDEMENT CARCASSE PROPRES À L'ESPÈCE (config/butchery.php)
+        const yieldTargetMin = {{ $yield['target_min'] }};
+        const yieldAlertMin = {{ $yield['alert_min'] }};
 
         return {
             actualQty: {{ $order->planned_quantity }}, 

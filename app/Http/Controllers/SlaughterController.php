@@ -98,8 +98,13 @@ class SlaughterController extends Controller
     public function showExecuteForm(SlaughterOrder $order)
     {
         if (Gate::denies('abattoir.M')) return back()->with('error', 'Action non autorisée.');
-        $order->load('batch.building');
-        return view('slaughter.execute', compact('order'));
+        $order->load('batch.building', 'batch.species');
+
+        // Bandes de rendement carcasse propres à l'espèce du lot (volaille,
+        // ovin, bovin, porcin, lapin, poisson — cf. config/butchery.php).
+        $yield = \App\Services\ButcheryNomenclature::carcassYieldForSpecies($order->batch?->species);
+
+        return view('slaughter.execute', compact('order', 'yield'));
     }
 
     public function executeSlaughter(Request $request, SlaughterOrder $order, SlaughterService $service)
@@ -152,25 +157,41 @@ class SlaughterController extends Controller
     public function showCuttingForm(SlaughterOrder $order)
     {
         if (Gate::denies('abattoir.C')) return back()->with('error', 'Action non autorisée.');
-        $order->load(['result', 'cuttingSessions.products']);
-        return view('slaughter.cutting', compact('order'));
+        $order->load(['result', 'cuttingSessions.products', 'batch.species']);
+
+        // Morceaux de découpe adaptés à l'espèce du lot abattu.
+        $cuts = \App\Services\ButcheryNomenclature::cutsForSpecies($order->batch?->species);
+
+        return view('slaughter.cutting', compact('order', 'cuts'));
     }
 
     public function storeCutting(Request $request, SlaughterOrder $order, SlaughterService $service)
     {
         if (Gate::denies('abattoir.C')) return back()->with('error', 'Action non autorisée.');
 
+        $order->loadMissing('batch.species');
+        $allowedTypes = \App\Services\ButcheryNomenclature::cutCodesForSpecies($order->batch?->species);
+
         $validated = $request->validate([
             'total_input_kg'          => 'required|numeric|min:0.1',
             'session_date'            => 'required|date',
             'products'                => 'required|array|min:1',
-            'products.*.type'         => 'required|in:entier,cuisse,aile,poitrine,dos,abats,foie,gesier,autre',
+            'products.*.type'         => 'required|in:' . implode(',', $allowedTypes),
             'products.*.name'         => 'required|string|max:255',
             'products.*.kg'           => 'required|numeric|min:0',
             'products.*.pieces'       => 'nullable|integer|min:0',
             'products.*.price'        => 'nullable|numeric|min:0',
             'products.*.destination'  => 'nullable|in:stock_frais,stock_congele,transformation,vente_directe',
         ]);
+
+        // Garde-fou cohérence : la somme des morceaux ne peut dépasser l'entrée
+        // (une découpe génère des pertes, jamais un gain de matière).
+        $totalOutput = collect($validated['products'])->sum(fn ($p) => (float) ($p['kg'] ?? 0));
+        if ($totalOutput > (float) $validated['total_input_kg'] + 0.001) {
+            return back()->withErrors([
+                'total_input_kg' => "Alerte Système : le total des morceaux (" . number_format($totalOutput, 1) . " kg) dépasse le poids de carcasses entré (" . number_format((float) $validated['total_input_kg'], 1) . " kg). Une découpe ne peut pas produire plus de matière qu'elle n'en reçoit.",
+            ])->withInput();
+        }
 
         try {
             $session = $service->executeCutting($order, $validated);

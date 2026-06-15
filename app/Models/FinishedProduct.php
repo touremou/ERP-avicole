@@ -52,20 +52,29 @@ class FinishedProduct extends Model
 
     public function getTypeLabelAttribute(): string
     {
-        return match ($this->product_type) {
-            'entier_frais'   => 'Poulet Entier Frais',
-            'entier_congele' => 'Poulet Entier Congelé',
-            'cuisse'         => 'Cuisses',
-            'aile'           => 'Ailes',
-            'poitrine'       => 'Poitrine/Blancs',
-            'dos'            => 'Dos/Carcasse',
-            'abats'          => 'Abats',
-            'foie'           => 'Foies',
-            'gesier'         => 'Gésiers',
+        // Libellés transverses (état/transformation) — indépendants de l'espèce.
+        $common = [
+            'entier_frais'   => 'Entier Frais',
+            'entier_congele' => 'Entier Congelé',
             'fume'           => 'Fumé',
             'grille'         => 'Grillé',
             'marine'         => 'Mariné',
-            default          => ucfirst($this->product_type),
-        };
+        ];
+
+        if (isset($common[$this->product_type])) {
+            return $common[$this->product_type];
+        }
+
+        // Morceaux de découpe multiespèces : libellé issu de la nomenclature
+        // (config/butchery.php), toutes familles confondues.
+        foreach ((array) config('butchery.cuts', []) as $cuts) {
+            foreach ($cuts as $cut) {
+                if (($cut['code'] ?? null) === $this->product_type) {
+                    return $cut['label'];
+                }
+            }
+        }
+
+        return ucfirst((string) $this->product_type);
     }
 }

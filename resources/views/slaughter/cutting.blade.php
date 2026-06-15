@@ -42,14 +42,10 @@
                                 <div class="col-span-3">
                                     <label class="text-[8px] font-black uppercase text-slate-400">{{ __("Type") }}</label>
                                     <select :name="'products['+i+'][type]'" x-model="p.type" @change="onProductTypeChange(i)" class="w-full bg-white border-none rounded-xl p-3 text-[10px] font-black uppercase shadow-sm outline-none">
-                                        <option value="cuisse">{{ __("Cuisses") }}</option>
-                                        <option value="aile">{{ __("Ailes") }}</option>
-                                        <option value="poitrine">{{ __("Poitrine") }}</option>
-                                        <option value="dos">{{ __("Dos/Carcasse") }}</option>
-                                        <option value="abats">{{ __("Abats") }}</option>
-                                        <option value="foie">{{ __("Foies") }}</option>
-                                        <option value="gesier">{{ __("Gésiers") }}</option>
-                                        <option value="entier">{{ __("Entier") }}</option>
+                                        @foreach($cuts as $cut)
+                                        <option value="{{ $cut['code'] }}">{{ $cut['label'] }}</option>
+                                        @endforeach
+                                        <option value="autre">{{ __("Autre") }}</option>
                                     </select>
                                 </div>
                                 <div class="col-span-2">
@@ -109,8 +105,19 @@
 
     <script>
     function cuttingForm() {
-        const names = { cuisse:'Cuisses', aile:'Ailes', poitrine:'Poitrine/Blancs', dos:'Dos/Carcasse', abats:'Abats divers', foie:'Foies', gesier:'Gésiers', entier:{{ Js::from(($order->batch->species?->name_fr ?? 'Poulet') . ' Entier') }} };
-        
+        // ⚙️ NOMENCLATURE DE DÉCOUPE PROPRE À L'ESPÈCE (config/butchery.php)
+        const cuts = {{ Js::from($cuts) }};
+        const speciesEntierName = {{ Js::from(($order->batch->species?->name_fr ?? 'Poulet') . ' Entier') }};
+
+        // Table code → libellé (le morceau "entier" reprend le nom de l'espèce).
+        const names = {};
+        cuts.forEach(c => { names[c.code] = c.code === 'entier' ? speciesEntierName : c.label; });
+
+        // Lignes pré-remplies = morceaux marqués "default" dans la nomenclature.
+        const defaultProducts = cuts
+            .filter(c => c.default)
+            .map(c => ({ type: c.code, name: (c.code === 'entier' ? speciesEntierName : c.label), kg: 0, pieces: 0, destination: c.destination, price: 0 }));
+
         // ⚙️ INJECTION DYNAMIQUE DES SETTINGS
         const lossTolerance = {{ setting('abattoir.tolerance_cutting_loss', 10) }};
         const cuttingYieldTarget = {{ setting('abattoir.yield_cutting', 85) }};
@@ -119,13 +126,7 @@
             inputKg: 0,
             lossTolerance: lossTolerance,
             cuttingYieldTarget: cuttingYieldTarget,
-            products: [
-                { type:'cuisse', name:'Cuisses', kg:0, pieces:0, destination:'stock_frais', price:0 },
-                { type:'aile', name:'Ailes', kg:0, pieces:0, destination:'stock_frais', price:0 },
-                { type:'poitrine', name:'Poitrine/Blancs', kg:0, pieces:0, destination:'stock_frais', price:0 },
-                { type:'dos', name:'Dos/Carcasse', kg:0, pieces:0, destination:'vente_directe', price:0 },
-                { type:'abats', name:'Abats divers', kg:0, pieces:0, destination:'stock_frais', price:0 },
-            ],
+            products: defaultProducts.length ? defaultProducts : [{ type:'autre', name:'', kg:0, pieces:0, destination:'stock_frais', price:0 }],
             get totalOutput() { return this.products.reduce((s,p) => s + (p.kg||0), 0); },
             get loss() { return Math.max(0, this.inputKg - this.totalOutput); },
             get lossPercent() { return this.inputKg > 0 ? (this.loss / this.inputKg * 100).toFixed(1) : '0.0'; },

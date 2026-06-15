@@ -62,3 +62,15 @@ câblées à la construction de chaque module.
 > d'un consommateur a été câblé ; les restants sont câblés au fil de la
 > construction de leur module (jamais masqués ni supprimés, pour ne pas casser
 > la reprise du module).
+
+## Données de référence hors `settings` (config versionnée)
+
+Certaines données métier sont des **références zootechniques** (non réglables
+par ferme) et vivent donc en `config/` plutôt que dans la table `settings` :
+
+- `config/butchery.php` — nomenclature de découpe **par famille d'espèce**
+  (volaille, petit/grand ruminant, porcin, lagomorphe, aquaculture) + bandes de
+  rendement carcasse cible/alerte par famille. Résolu via
+  `App\Services\ButcheryNomenclature`. Rétrocompat : pour la volaille, les bandes
+  de rendement carcasse restent surchargeables par les paramètres
+  `abattoir.yield_target_min/max` / `yield_alert_min` (Paramètres > Abattoir).
