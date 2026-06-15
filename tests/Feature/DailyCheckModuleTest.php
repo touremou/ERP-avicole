@@ -258,6 +258,39 @@ test('rectifier la quantité de fumier compense le stock sans double comptage', 
     expect((float) $fumier->fresh()->current_quantity)->toBe(60.0);
 });
 
+test('le lot expose le fumier ramassé cumulé et son revenu estimé au prix de l\'article « Fumier »', function () {
+    $batch = Batch::factory()->create([
+        'building_id'      => $this->building->id,
+        'status'           => 'Actif',
+        'current_quantity' => 500,
+    ]);
+
+    $this->actingAs($this->managerUser)
+        ->post(route('daily-checks.store'), [
+            'batch_id'            => $batch->id,
+            'check_date'          => now()->toDateString(),
+            'mortality'           => 0,
+            'feed_consumed'       => 0,
+            'feed_type'           => 'Chair Démarrage',
+            'litter_changed'      => 1,
+            'manure_collected_kg' => 50,
+        ])
+        ->assertSessionHasNoErrors();
+
+    $batch->refresh();
+    expect($batch->manure_collected_kg)->toBe(50.0);
+
+    // Sans prix unitaire renseigné sur l'article « Fumier », le revenu est nul.
+    expect($batch->estimated_manure_revenue)->toBe(0.0);
+
+    // Une fois le prix unitaire de l'article fixé (cf. Stocks > Edit), le
+    // revenu estimé est exposé pour le rapport de marge du lot.
+    Stock::where('item_name', 'Fumier')->where('category', Stock::CAT_PRODUITS_FINIS)
+        ->update(['unit_price' => 50]);
+
+    expect($batch->estimated_manure_revenue)->toBe(2500.0);
+});
+
 test('le lot expose le nombre de jours depuis le dernier renouvellement de litière', function () {
     $batch = Batch::factory()->create([
         'building_id'      => $this->building->id,

@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Carbon\Carbon;
 use App\Traits\HasStandardUuid;
 use App\Traits\BelongsToFarm;
+use App\Actions\DailyCheck\SyncManureCollection;
 
 /**
  * Model Batch — Cœur métier de l'ERP AviSmart.
@@ -734,6 +735,40 @@ class Batch extends Model
         $directExpenses = (float) $this->expenses()->where('status', 'valide')->sum('amount');
 
         return $sellingRevenue - ($feedCost + $healthCost + $acquisitionCost + $additionalCosts + $directExpenses);
+    }
+
+    /**
+     * Quantité totale de fumier ramassé sur le lot (kg), tous pointages confondus.
+     */
+    public function getManureCollectedKgAttribute(): float
+    {
+        return (float) $this->dailyChecks()->sum('manure_collected_kg');
+    }
+
+    /**
+     * Revenu estimé du fumier ramassé, au prix unitaire courant de l'article
+     * « Fumier » (stock partagé, cf. SyncManureCollection).
+     *
+     * Informatif uniquement : non inclus dans net_margin, par cohérence avec
+     * l'exclusion du chiffre d'affaires œufs (cf. getNetMarginAttribute) — le
+     * fumier alimente lui aussi un stock mutualisé, vendu sans rattachement
+     * au lot d'origine.
+     */
+    public function getEstimatedManureRevenueAttribute(): float
+    {
+        $kg = $this->manure_collected_kg;
+
+        if ($kg <= 0) {
+            return 0;
+        }
+
+        $fumier = Stock::where('item_name', SyncManureCollection::ITEM_NAME)
+            ->where('category', Stock::CAT_PRODUITS_FINIS)
+            ->first();
+
+        $unitPrice = (float) ($fumier?->unit_price ?? $fumier?->last_unit_price ?? 0);
+
+        return round($kg * $unitPrice, 2);
     }
 
     // ═══════════════════════════════════════════════

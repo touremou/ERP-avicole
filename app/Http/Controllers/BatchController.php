@@ -228,6 +228,8 @@ class BatchController extends Controller
             'age'              => $batch->age,
             'current_phase'    => $batch->current_phase,
             'net_margin'       => $batch->net_margin,
+            'manure_collected_kg'      => $batch->manure_collected_kg,
+            'estimated_manure_revenue' => $batch->estimated_manure_revenue,
         ];
 
         // GMQ stats (ruminants, porcins, lapins)

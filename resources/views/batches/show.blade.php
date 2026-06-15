@@ -86,7 +86,10 @@
         // Suivi de la ponte : piloté par le type de production de l'espèce.
         $showPonte = $batch->tracksEggs();
 
-        $colCount = 3 + ($showPonte ? 1 : 0) + ($isChair ? 1 : 0);
+        // Carte fumier : affichée seulement si un ramassage a été enregistré.
+        $showManure = ($stats['manure_collected_kg'] ?? 0) > 0;
+
+        $colCount = 3 + ($showPonte ? 1 : 0) + ($isChair ? 1 : 0) + ($showManure ? 1 : 0);
     @endphp
 
     <x-slot name="header">
@@ -311,6 +314,19 @@
                 <h4 class="text-sm font-black text-slate-300 uppercase">—</h4>
                 @endif
                 <p class="text-[7px] text-slate-400 mt-1 uppercase font-black">{{ __("Gain Moyen Quotidien") }} <span class="opacity-60">/ {{ __("cible") }} {{ number_format($gmqTarget, 0) }}g</span></p>
+            </div>
+        </div>
+        @endif
+
+        @if($showManure)
+        <div class="bg-white p-5 rounded-[2rem] shadow-xl shadow-amber-500/5 border border-amber-50 flex items-center gap-4 group transition-transform hover:scale-[1.02]">
+            <div class="w-12 h-12 bg-amber-600 rounded-2xl flex items-center justify-center text-white shadow-lg"><i class="fa-solid fa-leaf text-lg group-hover:animate-bounce"></i></div>
+            <div class="text-left leading-none">
+                <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1 italic">{{ __("Fumier Ramassé") }}</p>
+                <h4 class="text-xl font-black text-slate-800 tracking-tighter">{{ number_format($stats['manure_collected_kg'], 0) }} <small class="text-xs opacity-50">kg</small></h4>
+                @if($stats['estimated_manure_revenue'] > 0)
+                <p class="text-[7px] font-black text-amber-500 uppercase mt-1">{{ __("Revenu Estimé") }} : {{ number_format($stats['estimated_manure_revenue'], 0) }} {{ __("GNF") }}</p>
+                @endif
             </div>
         </div>
         @endif
