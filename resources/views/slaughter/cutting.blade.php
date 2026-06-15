@@ -109,7 +109,7 @@
 
     <script>
     function cuttingForm() {
-        const names = { cuisse:'Cuisses', aile:'Ailes', poitrine:'Poitrine/Blancs', dos:'Dos/Carcasse', abats:'Abats divers', foie:'Foies', gesier:'Gésiers', entier:'Poulet Entier' };
+        const names = { cuisse:'Cuisses', aile:'Ailes', poitrine:'Poitrine/Blancs', dos:'Dos/Carcasse', abats:'Abats divers', foie:'Foies', gesier:'Gésiers', entier:{{ Js::from(($order->batch->species?->name_fr ?? 'Poulet') . ' Entier') }} };
         
         // ⚙️ INJECTION DYNAMIQUE DES SETTINGS
         const lossTolerance = {{ setting('abattoir.tolerance_cutting_loss', 10) }};

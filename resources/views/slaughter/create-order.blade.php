@@ -4,7 +4,7 @@
             <a href="{{ route('slaughter.dashboard') }}" class="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-900 hover:text-white transition-all no-underline"><i class="fa-solid fa-arrow-left"></i></a>
             <div>
                 <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">{{ __("Ordre d'Abattage") }}</h2>
-                <p class="text-[10px] font-black text-rose-600 uppercase tracking-[0.2em] mt-2 italic">{{ __("Chair, Pondeuses Réformées, Reproducteurs") }}</p>
+                <p class="text-[10px] font-black text-rose-600 uppercase tracking-[0.2em] mt-2 italic">{{ __("Toutes espèces — Chair, Réformes, Poissons...") }}</p>
             </div>
         </div>
     </x-slot>
@@ -30,58 +30,54 @@
                                     class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black uppercase shadow-inner outline-none">
                                     <option value="">{{ __("— Sélectionner le lot —") }}</option>
 
-                                    {{-- Groupé par type --}}
-                                    @php $grouped = $batches->groupBy('type'); @endphp
+                                    {{-- Groupé par espèce, multiespèces (volailles, ruminants, lapins, porcins, poissons...) --}}
+                                    @php
+                                        $grouped = $batches->groupBy(fn($b) => $b->species?->slug ?? 'poulet');
+                                        $speciesIcons = [
+                                            'poulet' => '🍗', 'dinde' => '🦃', 'caille' => '🐦', 'pigeon' => '🐦',
+                                            'pintade' => '🐓', 'canard' => '🦆',
+                                            'mouton' => '🐑', 'chevre' => '🐐', 'vache' => '🐄',
+                                            'lapin' => '🐇', 'porc' => '🐖',
+                                            'tilapia' => '🐟', 'carpe' => '🐟', 'silure' => '🐟',
+                                        ];
+                                        $reformTypes = ['ponte', 'reproducteur', 'laitiere'];
+                                    @endphp
 
-                                    @if($grouped->has('chair'))
-                                    <optgroup label="{{ __("🍗 CHAIR") }}">
-                                        @foreach($grouped['chair'] as $b)
-                                        <option value="{{ $b->id }}" data-qty="{{ $b->current_quantity }}" data-type="chair" data-building="{{ $b->building->name ?? '—' }}">
-                                            {{ $b->code }} — {{ $b->building->name ?? '' }} ({{ $b->current_quantity }} {{ __("sujets") }})
-                                        </option>
-                                        @endforeach
-                                    </optgroup>
-                                    @endif
-
-                                    @if($grouped->has('ponte'))
-                                    <optgroup label="{{ __("🥚 PONDEUSES (RÉFORME)") }}">
-                                        @foreach($grouped['ponte'] as $b)
-                                        <option value="{{ $b->id }}" data-qty="{{ $b->current_quantity }}" data-type="ponte" data-building="{{ $b->building->name ?? '—' }}">
-                                            {{ $b->code }} — {{ $b->building->name ?? '' }} ({{ $b->current_quantity }} {{ __("sujets") }}) — {{ __("RÉFORME") }}
-                                        </option>
-                                        @endforeach
-                                    </optgroup>
-                                    @endif
-
-                                    @if($grouped->has('reproducteur'))
-                                    <optgroup label="{{ __("🧬 REPRODUCTEURS (RÉFORME)") }}">
-                                        @foreach($grouped['reproducteur'] as $b)
-                                        <option value="{{ $b->id }}" data-qty="{{ $b->current_quantity }}" data-type="reproducteur" data-building="{{ $b->building->name ?? '—' }}">
-                                            {{ $b->code }} — {{ $b->building->name ?? '' }} ({{ $b->current_quantity }} {{ __("sujets") }}) — {{ __("RÉFORME") }}
-                                        </option>
-                                        @endforeach
-                                    </optgroup>
-                                    @endif
-
-                                    @if($grouped->has('poussiniere'))
-                                    <optgroup label="{{ __("🐣 POUSSINIÈRE") }}">
-                                        @foreach($grouped['poussiniere'] as $b)
-                                        <option value="{{ $b->id }}" data-qty="{{ $b->current_quantity }}" data-type="poussiniere" data-building="{{ $b->building->name ?? '—' }}">
-                                            {{ $b->code }} — {{ $b->building->name ?? '' }} ({{ $b->current_quantity }} {{ __("sujets") }})
-                                        </option>
-                                        @endforeach
-                                    </optgroup>
-                                    @endif
+                                    @foreach($grouped as $speciesSlug => $batchesForSpecies)
+                                        @php
+                                            $speciesLabel = $batchesForSpecies->first()->species?->name_fr ?? 'Poulet';
+                                            $unitLabel = $batchesForSpecies->first()->species?->unit_label ?? __('sujets');
+                                            $icon = $speciesIcons[$speciesSlug] ?? '🐾';
+                                        @endphp
+                                        <optgroup label="{{ $icon }} {{ mb_strtoupper($speciesLabel) }}">
+                                            @foreach($batchesForSpecies as $b)
+                                                @php
+                                                    $typeLabel = $b->productionType?->name_fr ?? ucfirst($b->type ?? '');
+                                                    $isReform = in_array($b->type, $reformTypes, true);
+                                                @endphp
+                                                <option value="{{ $b->id }}"
+                                                    data-qty="{{ $b->current_quantity }}"
+                                                    data-type="{{ $b->type }}"
+                                                    data-species="{{ $speciesSlug }}"
+                                                    data-species-label="{{ $speciesLabel }}"
+                                                    data-type-label="{{ $typeLabel }}"
+                                                    data-reform="{{ $isReform ? '1' : '0' }}"
+                                                    data-building="{{ $b->building->name ?? '—' }}">
+                                                    {{ $b->code }} — {{ $b->building->name ?? '' }} ({{ $b->current_quantity }} {{ $unitLabel }}){{ $isReform ? ' — '.__('RÉFORME') : '' }}
+                                                </option>
+                                            @endforeach
+                                        </optgroup>
+                                    @endforeach
                                 </select>
                             </div>
 
                             {{-- INFO LOT SÉLECTIONNÉ --}}
                             <div x-show="maxQty > 0" class="p-5 rounded-2xl border"
-                                 :class="batchType === 'chair' ? 'bg-blue-50 border-blue-200' : (batchType === 'ponte' ? 'bg-amber-50 border-amber-200' : 'bg-purple-50 border-purple-200')">
+                                 :class="isReform ? 'bg-amber-50 border-amber-200' : 'bg-blue-50 border-blue-200'">
                                 <div class="grid grid-cols-3 gap-4 text-center">
                                     <div>
-                                        <p class="text-[8px] font-black uppercase" :class="batchType === 'chair' ? 'text-blue-500' : 'text-amber-500'">{{ __("Type") }}</p>
-                                        <p class="text-sm font-black text-slate-900 uppercase" x-text="typeLabel"></p>
+                                        <p class="text-[8px] font-black uppercase" :class="isReform ? 'text-amber-500' : 'text-blue-500'">{{ __("Espèce / Type") }}</p>
+                                        <p class="text-sm font-black text-slate-900 uppercase" x-text="speciesLabel + ' — ' + typeLabel"></p>
                                     </div>
                                     <div>
                                         <p class="text-[8px] font-black text-slate-400 uppercase">{{ __("Bâtiment") }}</p>
@@ -93,10 +89,21 @@
                                     </div>
                                 </div>
 
-                                <div x-show="batchType !== 'chair'" class="mt-3 p-3 bg-white/50 rounded-xl">
+                                {{-- Estimation de rendement carcasse : disponible uniquement pour les
+                                     volailles en réforme (settings dédiés). Pour les autres espèces en
+                                     réforme, un avertissement générique est affiché sans chiffre. --}}
+                                <div x-show="isReform" class="mt-3 p-3 bg-white/50 rounded-xl">
                                     <p class="text-[8px] font-black text-amber-600 uppercase text-center">
                                         <i class="fa-solid fa-info-circle mr-1"></i>
-                                        <span x-text="batchType === 'ponte' ? `Pondeuses en fin de cycle — Rendement carcasse estimé : ${yieldPonte}%` : `Reproducteurs en réforme — Rendement carcasse estimé : ${yieldRepro}%`"></span>
+                                        <template x-if="batchSpecies === 'poulet' && batchType === 'ponte'">
+                                            <span>{{ __("Pondeuses en fin de cycle — Rendement carcasse estimé :") }} <span x-text="yieldPonte"></span>%</span>
+                                        </template>
+                                        <template x-if="batchSpecies === 'poulet' && batchType === 'reproducteur'">
+                                            <span>{{ __("Reproducteurs en réforme — Rendement carcasse estimé :") }} <span x-text="yieldRepro"></span>%</span>
+                                        </template>
+                                        <template x-if="batchSpecies !== 'poulet'">
+                                            <span x-text="speciesLabel + ' ' + typeLabel.toLowerCase() + ' — {{ __('lot en réforme : rendement carcasse généralement inférieur à un lot standard') }}'"></span>
+                                        </template>
                                     </p>
                                 </div>
                             </div>
@@ -165,26 +172,31 @@
 
     <script>
     function orderForm() {
-        const typeLabels = { chair: 'Chair', ponte: 'Pondeuse (Réforme)', reproducteur: 'Reproducteur (Réforme)', poussiniere: 'Poussinière' };
-        
         // ⚙️ INJECTION DYNAMIQUE DES SETTINGS
         const yieldPonte = "{{ setting('abattoir.yield_ponte_est', '60-65') }}";
         const yieldRepro = "{{ setting('abattoir.yield_repro_est', '55-65') }}";
 
         return {
-            selectedBatch: '', plannedQty: 0, maxQty: 0, batchType: '', building: '',
+            selectedBatch: '', plannedQty: 0, maxQty: 0,
+            batchType: '', batchSpecies: '', speciesLabel: '', typeLabel: '', building: '', isReform: false,
             yieldPonte: yieldPonte,
             yieldRepro: yieldRepro,
-
-            get typeLabel() { return typeLabels[this.batchType] || '—'; },
 
             onBatchChange() {
                 const sel = document.querySelector('select[name="batch_id"]');
                 const opt = sel.options[sel.selectedIndex];
-                if (!opt || !opt.value) { this.maxQty = 0; this.batchType = ''; this.building = ''; return; }
+                if (!opt || !opt.value) {
+                    this.maxQty = 0; this.batchType = ''; this.batchSpecies = '';
+                    this.speciesLabel = ''; this.typeLabel = ''; this.building = ''; this.isReform = false;
+                    return;
+                }
                 this.maxQty = parseInt(opt.dataset.qty) || 0;
                 this.batchType = opt.dataset.type || '';
+                this.batchSpecies = opt.dataset.species || '';
+                this.speciesLabel = opt.dataset.speciesLabel || '—';
+                this.typeLabel = opt.dataset.typeLabel || '—';
                 this.building = opt.dataset.building || '—';
+                this.isReform = opt.dataset.reform === '1';
                 this.plannedQty = 0;
             },
         }

@@ -116,6 +116,25 @@ class SlaughterController extends Controller
             'inspector_notes'         => 'nullable|string|max:1000',
         ]);
 
+        // ── Cohérence des pesées ──
+        // Une carcasse ne peut jamais peser plus que l'animal vivant, quelle
+        // que soit l'espèce (rendement carcasse toujours < 100%). Sans ce
+        // garde-fou, une erreur de saisie (ex : poids vif en kg/sujet au lieu
+        // du total) provoque un rendement aberrant (> 999,99%) qui dépasse la
+        // capacité de la colonne `carcass_yield_percent` et fait échouer
+        // l'enregistrement avec une erreur SQL brute illisible pour l'utilisateur.
+        if ((float) $validated['total_carcass_weight_kg'] > (float) $validated['total_live_weight_kg']) {
+            return back()->withErrors([
+                'total_carcass_weight_kg' => "Alerte Système : le poids carcasse ({$validated['total_carcass_weight_kg']} kg) ne peut pas dépasser le poids vif ({$validated['total_live_weight_kg']} kg). Vérifiez les deux pesées.",
+            ])->withInput();
+        }
+
+        if ((int) ($validated['condemned_count'] ?? 0) > (int) $validated['actual_quantity']) {
+            return back()->withErrors([
+                'condemned_count' => "Le nombre de saisies sanitaires ({$validated['condemned_count']}) ne peut pas dépasser le nombre de sujets abattus ({$validated['actual_quantity']}).",
+            ])->withInput();
+        }
+
         try {
             $result = $service->executeSlaughter($order, $validated);
 
