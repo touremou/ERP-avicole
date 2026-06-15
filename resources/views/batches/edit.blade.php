@@ -272,33 +272,9 @@
         </div>
     </div>
 
+    @include('batches.partials.building-compatibility')
+
     <script>
-        // Bâtiments compatibles par espèce (en plus de 'mixte', toujours autorisé).
-        // Doit rester aligné avec resources/views/batches/create.blade.php.
-        const SPECIES_BUILDING_TYPES = {
-            poulet:  ['chair', 'ponte', 'poussiniere', 'reproducteur'],
-            dinde:   ['chair', 'reproducteur'],
-            pintade: ['chair', 'ponte'],
-            caille:  ['chair', 'ponte'],
-            canard:  ['chair'],
-            pigeon:  ['chair'],
-            mouton:  ['bergerie'],
-            chevre:  ['chevrerie'],
-            lapin:   ['lapiniere'],
-            porc:    ['porcherie'],
-            tilapia: ['bassin'],
-            carpe:   ['bassin'],
-            silure:  ['bassin'],
-        };
-
-        function isBuildingCompatible(bType, selectedType) {
-            if (bType === 'mixte') return true;
-            const speciesSlug = document.getElementById('species_slug_fixed')?.value || '';
-            const allowed = SPECIES_BUILDING_TYPES[speciesSlug];
-            if (allowed) return allowed.includes(bType);
-            return selectedType === '' || bType === selectedType;
-        }
-
         document.addEventListener('DOMContentLoaded', function() {
             const typeSelector = document.getElementById('type_selector');
             const reproFields = document.getElementById('repro_fields');
@@ -340,7 +316,7 @@
                 if (bSelect) {
                     bSelect.querySelectorAll('.building-opt').forEach(opt => {
                         const isCurrent = opt.selected;
-                        const isMatch = isBuildingCompatible(opt.dataset.type, selectedType);
+                        const isMatch = isBuildingCompatible(opt.dataset.type, document.getElementById('species_slug_fixed')?.value || '', selectedType);
                         opt.style.display = (isMatch || isCurrent) ? 'block' : 'none';
                         opt.disabled = !isMatch && !isCurrent;
                     });

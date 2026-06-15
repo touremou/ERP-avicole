@@ -312,3 +312,103 @@ test('rester dans le même bâtiment sans changer de phase est refusé', functio
         ])
         ->assertSessionHasErrors('target_building_id');
 });
+
+// ── COMPATIBILITÉ BÂTIMENT / ESPÈCE (NON-VOLAILLE) ──
+
+test('une chèvre peut graduer de l\'engraissement vers la laitière entre deux chèvreries', function () {
+    $chevre = \App\Models\Species::firstOrCreate(
+        ['slug' => 'chevre'],
+        ['name_fr' => 'Chèvre / Caprin', 'family' => 'petit_ruminant', 'is_active' => true]
+    );
+
+    $protocol = Protocol::create(['name' => 'Proto Caprin Laitière', 'type' => 'laitiere']);
+
+    $chevrerie1 = Building::factory()->create(['type' => 'chevrerie']);
+    $chevrerie2 = Building::factory()->create(['type' => 'chevrerie']);
+
+    $batch = Batch::factory()->create([
+        'species_id'         => $chevre->id,
+        'building_id'        => $chevrerie1->id,
+        'status'             => 'Actif',
+        'current_quantity'   => 30,
+        'production_type_id' => ProductionType::resolveOrCreate('engraissement', $chevre->id)->id,
+    ]);
+
+    $this->actingAs($this->managerUser)
+        ->post(route('batches.transfer', $batch), [
+            'target_building_id' => $chevrerie2->id,
+            'new_protocol_id'    => $protocol->id,
+            'new_phase'          => 'laitiere',
+            'transfer_date'      => now()->toDateString(),
+        ])
+        ->assertSessionDoesntHaveErrors();
+
+    $batch->refresh();
+    expect($batch->type)->toBe('laitiere');
+    expect($batch->building_id)->toBe($chevrerie2->id);
+});
+
+test('une chèvre ne peut pas être transférée dans une bergerie', function () {
+    $chevre = \App\Models\Species::firstOrCreate(
+        ['slug' => 'chevre'],
+        ['name_fr' => 'Chèvre / Caprin', 'family' => 'petit_ruminant', 'is_active' => true]
+    );
+
+    $protocol = Protocol::create(['name' => 'Proto Caprin Engraissement', 'type' => 'engraissement']);
+
+    $chevrerie = Building::factory()->create(['type' => 'chevrerie']);
+    $bergerie  = Building::factory()->create(['type' => 'bergerie']);
+
+    $batch = Batch::factory()->create([
+        'species_id'         => $chevre->id,
+        'building_id'        => $chevrerie->id,
+        'status'             => 'Actif',
+        'current_quantity'   => 20,
+        'production_type_id' => ProductionType::resolveOrCreate('engraissement', $chevre->id)->id,
+    ]);
+
+    $this->actingAs($this->managerUser)
+        ->post(route('batches.transfer', $batch), [
+            'target_building_id' => $bergerie->id,
+            'new_protocol_id'    => $protocol->id,
+            'new_phase'          => 'engraissement',
+            'transfer_date'      => now()->toDateString(),
+        ])
+        ->assertSessionHasErrors('target_building_id');
+
+    $batch->refresh();
+    expect($batch->building_id)->toBe($chevrerie->id);
+});
+
+test('une vache peut être transférée vers une étable', function () {
+    $vache = \App\Models\Species::firstOrCreate(
+        ['slug' => 'vache'],
+        ['name_fr' => 'Vache / Bovin', 'family' => 'grand_ruminant', 'is_active' => true]
+    );
+
+    $protocol = Protocol::create(['name' => 'Proto Bovin Laitière', 'type' => 'laitiere']);
+
+    $etable1 = Building::factory()->create(['type' => 'etable']);
+    $etable2 = Building::factory()->create(['type' => 'etable']);
+
+    $batch = Batch::factory()->create([
+        'species_id'         => $vache->id,
+        'building_id'        => $etable1->id,
+        'status'             => 'Actif',
+        'current_quantity'   => 10,
+        'production_type_id' => ProductionType::resolveOrCreate('engraissement', $vache->id)->id,
+    ]);
+
+    $this->actingAs($this->managerUser)
+        ->post(route('batches.transfer', $batch), [
+            'target_building_id' => $etable2->id,
+            'new_protocol_id'    => $protocol->id,
+            'new_phase'          => 'laitiere',
+            'transfer_date'      => now()->toDateString(),
+        ])
+        ->assertSessionDoesntHaveErrors();
+
+    $batch->refresh();
+    expect($batch->type)->toBe('laitiere');
+    expect($batch->building_id)->toBe($etable2->id);
+});

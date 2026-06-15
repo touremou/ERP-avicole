@@ -287,6 +287,8 @@
         </div>
     </div>
 
+    @include('batches.partials.building-compatibility')
+
 <script>
     function el(id) { return document.getElementById(id); }
 
@@ -315,23 +317,6 @@
         codeInput.value = `${prefix}-${stamp}`;
     }
 
-    // Bâtiments compatibles par espèce (en plus de 'mixte', toujours autorisé)
-    const SPECIES_BUILDING_TYPES = {
-        poulet:  ['chair', 'ponte', 'poussiniere', 'reproducteur'],
-        dinde:   ['chair', 'reproducteur'],
-        pintade: ['chair', 'ponte'],
-        caille:  ['chair', 'ponte'],
-        canard:  ['chair'],
-        pigeon:  ['chair'],
-        mouton:  ['bergerie'],
-        chevre:  ['chevrerie'],
-        lapin:   ['lapiniere'],
-        porc:    ['porcherie'],
-        tilapia: ['bassin'],
-        carpe:   ['bassin'],
-        silure:  ['bassin'],
-    };
-
     // Espèce actuellement sélectionnée (multispecies) ou fixée (mono-espèce)
     function getCurrentSpeciesSlug() {
         const speciesSelect = el('species_selector');
@@ -339,17 +324,6 @@
             return speciesSelect.options[speciesSelect.selectedIndex]?.dataset.slug || '';
         }
         return el('species_slug_fixed')?.value || '';
-    }
-
-    // Un bâtiment est compatible s'il est 'mixte', ou si son type figure dans
-    // la liste des bâtiments adaptés à l'espèce sélectionnée. À défaut
-    // d'espèce connue, on retombe sur la correspondance directe type ↔ type.
-    function isBuildingCompatible(bType, selectedType) {
-        if (bType === 'mixte') return true;
-        const speciesSlug = getCurrentSpeciesSlug();
-        const allowed = SPECIES_BUILDING_TYPES[speciesSlug];
-        if (allowed) return allowed.includes(bType);
-        return selectedType === '' || bType === selectedType;
     }
 
     // Met à jour le production_type_id caché selon l'option sélectionnée
@@ -391,7 +365,7 @@
             bSelect.querySelectorAll('.building-opt').forEach(opt => {
                 const bType = opt.dataset.type;
                 const remaining = parseFloat(opt.dataset.remaining) || 0;
-                const isMatch = isBuildingCompatible(bType, selectedType);
+                const isMatch = isBuildingCompatible(bType, getCurrentSpeciesSlug(), selectedType);
                 opt.disabled = !isMatch || remaining <= 0;
                 opt.style.display = isMatch ? 'block' : 'none';
             });
@@ -464,7 +438,7 @@
         // --- VALIDATION ---
         let errorMsg = "";
         if (bSelect.value) {
-            if (selectedType && !isBuildingCompatible(bType, selectedType)) errorMsg = {{ Js::from(__("BÂTIMENT INCOMPATIBLE")) }};
+            if (selectedType && !isBuildingCompatible(bType, getCurrentSpeciesSlug(), selectedType)) errorMsg = {{ Js::from(__("BÂTIMENT INCOMPATIBLE")) }};
             else if (qtyAlive > remainingQty) errorMsg = {{ Js::from(__("PLACE INSUFFISANTE (MAX:")) }} + ` ${remainingQty})`;
             else if (manualSurface > bSurfaceRestante) errorMsg = {{ Js::from(__("SURFACE INDISPONIBLE (MAX:")) }} + ` ${bSurfaceRestante.toFixed(1)} m²)`;
         } else if (!selectedType) {

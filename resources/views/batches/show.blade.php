@@ -810,6 +810,8 @@
     @include('batches.partials.feed-modal')
     @endcan
 
+    @include('batches.partials.building-compatibility')
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
         // GESTION DE LA MODALE STOCK/ALIMENT
@@ -867,11 +869,13 @@
             // transformation SUR PLACE (la poussinière devient ponte/chair/
             // repro sans déménager). On force son affichage même si son type
             // ne correspond pas encore à la phase cible.
+            const batchSpeciesSlug = {{ Js::from($batch->species?->slug ?? '') }};
+
             function filterMutationBuildings(targetType) {
                 if (! targetBuildingSelect) return;
                 targetBuildingSelect.querySelectorAll('.building-opt').forEach(opt => {
                     const isCurrent = parseInt(opt.value, 10) === currentBuildingId;
-                    const isMatch = opt.dataset.type === targetType || opt.dataset.type === 'mixte';
+                    const isMatch = isBuildingCompatible(opt.dataset.type, batchSpeciesSlug, targetType);
                     opt.style.display = (isMatch || isCurrent) ? 'block' : 'none';
                     opt.disabled = false;
                 });

@@ -43,6 +43,20 @@ class Species extends Model
     public function isRuminant(): bool  { return in_array($this->family, ['petit_ruminant','grand_ruminant']); }
     public function isAquaculture(): bool { return $this->family === 'aquaculture'; }
 
+    /**
+     * Types de bâtiment ('buildings.type') compatibles avec cette espèce, en
+     * plus de 'mixte' (toujours autorisé).
+     *
+     * Retourne `null` pour les espèces avicoles (et toute espèce non
+     * référencée) : la compatibilité se résout alors par égalité directe
+     * entre le type de bâtiment et le slug du type de production visé
+     * (cf. config/livestock.php).
+     */
+    public function compatibleBuildingTypes(): ?array
+    {
+        return config('livestock.building_types.' . $this->slug);
+    }
+
     /** Familles suivies via le GMQ (croissance pondérale + portées) */
     public function isGmqTracked(): bool
     {

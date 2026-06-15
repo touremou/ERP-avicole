@@ -67,6 +67,7 @@
                                 <option value="reproducteur" {{ old('type', $building->type) == 'reproducteur' ? 'selected' : '' }}>🧬 {{ __("Reproducteurs") }}</option>
                                 <option value="bergerie" {{ old('type', $building->type) == 'bergerie' ? 'selected' : '' }}>🐑 {{ __("Bergerie (Ovins)") }}</option>
                                 <option value="chevrerie" {{ old('type', $building->type) == 'chevrerie' ? 'selected' : '' }}>🐐 {{ __("Chèvrerie (Caprins)") }}</option>
+                                <option value="etable" {{ old('type', $building->type) == 'etable' ? 'selected' : '' }}>🐄 {{ __("Étable (Bovins)") }}</option>
                                 <option value="bassin" {{ old('type', $building->type) == 'bassin' ? 'selected' : '' }}>🐟 {{ __("Bassin (Pisciculture)") }}</option>
                                 <option value="lapiniere" {{ old('type', $building->type) == 'lapiniere' ? 'selected' : '' }}>🐇 {{ __("Lapinière") }}</option>
                                 <option value="porcherie" {{ old('type', $building->type) == 'porcherie' ? 'selected' : '' }}>🐷 {{ __("Porcherie") }}</option>

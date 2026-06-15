@@ -92,7 +92,19 @@ class TransferBatchRequest extends FormRequest
             // éclosion), le bâtiment de destination doit alors correspondre
             // au NOUVEAU type, pas à l'ancien.
             $targetType = $this->input('new_phase') ?: $batch->type;
-            if ($targetBuilding->type !== $targetType && $targetBuilding->type !== 'mixte') {
+
+            // Espèces non-avicoles : l'habitat est dédié à l'ESPÈCE (ex.
+            // chèvrerie), pas à la phase de production (engraissement,
+            // laitière...). On compare donc au référentiel d'habitats
+            // compatibles (config/livestock.php) plutôt qu'au slug de phase.
+            $compatibleTypes = $batch->species?->compatibleBuildingTypes();
+
+            $isCompatible = $targetBuilding->type === 'mixte'
+                || ($compatibleTypes !== null
+                    ? in_array($targetBuilding->type, $compatibleTypes, true)
+                    : $targetBuilding->type === $targetType);
+
+            if (! $isCompatible) {
                 $validator->errors()->add(
                     'target_building_id',
                     "Incompatibilité : type cible '{$targetType}', bâtiment de type '{$targetBuilding->type}'."

@@ -16,7 +16,7 @@ class StoreBuildingRequest extends FormRequest
     {
         return [
             'name'        => ['required', 'string', 'max:255', 'unique:buildings,name'],
-            'type'        => ['required', 'in:poussiniere,chair,ponte,reproducteur,mixte,bergerie,chevrerie,bassin,lapiniere,porcherie'],
+            'type'        => ['required', 'in:poussiniere,chair,ponte,reproducteur,mixte,bergerie,chevrerie,etable,bassin,lapiniere,porcherie'],
             'surface'     => ['required', 'numeric', 'min:1'],
             'capacity'    => ['required', 'integer', 'min:1'],
             'description' => ['nullable', 'string']

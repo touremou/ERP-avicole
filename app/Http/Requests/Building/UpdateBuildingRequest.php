@@ -21,7 +21,7 @@ class UpdateBuildingRequest extends FormRequest
         // et corrompt la requête SQL générée).
         return [
             'name'                    => ['required', 'string', 'max:255', Rule::unique('buildings', 'name')->ignore($this->route('building'))],
-            'type'                    => ['required', 'in:poussiniere,chair,ponte,reproducteur,mixte,bergerie,chevrerie,bassin,lapiniere,porcherie'],
+            'type'                    => ['required', 'in:poussiniere,chair,ponte,reproducteur,mixte,bergerie,chevrerie,etable,bassin,lapiniere,porcherie'],
             'surface'                 => ['required', 'numeric', 'min:1'],
             'capacity'                => ['required', 'integer', 'min:1'],
             'status'                  => ['required', 'in:Vide,Occupé,En désinfection,Disponible'],
