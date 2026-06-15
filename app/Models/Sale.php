@@ -8,12 +8,14 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Traits\HasStandardUuid;
+use App\Traits\BelongsToFarm;
 
 class Sale extends Model
 {
-    use HasFactory, SoftDeletes, HasStandardUuid;
+    use HasFactory, SoftDeletes, HasStandardUuid, BelongsToFarm;
 
     protected $fillable = [
+        'farm_id',
         'uuid', 'is_synced', 'last_sync_at',
         'reference', 'client_id', 'user_id', 'sale_date',
         'type', 'status',

@@ -88,6 +88,37 @@ test('un encaissement met à jour le statut de paiement', function () {
     expect($sale->fresh()->payment_status)->toBe('solde');
 });
 
+test('un encaissement sur une vente d\'un client suspendu est refusé', function () {
+    $sale = Sale::create([
+        'farm_id'        => $this->farm->id,
+        'client_id'      => $this->client->id,
+        'user_id'        => $this->adminUser->id,
+        'reference'      => 'BL-2026-000997',
+        'sale_date'      => now()->toDateString(),
+        'type'           => 'bon_livraison',
+        'status'         => 'valide',
+        'subtotal'       => 20000,
+        'tax_amount'     => 0,
+        'total_amount'   => 20000,
+        'paid_amount'    => 0,
+        'payment_status' => 'impaye',
+    ]);
+
+    // Le client est suspendu après la vente : l'encaissement doit être bloqué.
+    $this->client->update(['status' => 'suspendu']);
+
+    $this->actingAs($this->adminUser)
+        ->post(route('payments.store'), [
+            'sale_id'      => $sale->id,
+            'amount'       => 20000,
+            'payment_date' => now()->toDateString(),
+            'method'       => 'especes',
+        ])
+        ->assertSessionHasErrors('sale_id');
+
+    expect(Payment::where('sale_id', $sale->id)->count())->toBe(0);
+});
+
 test('un encaissement supérieur au reste dû est refusé', function () {
     $sale = Sale::create([
         'farm_id'        => $this->farm->id,

@@ -26,7 +26,12 @@ class SaleNumberingService
 
         $year = now()->format('Y');
 
-        $lastNumber = Sale::where('reference', 'LIKE', "{$prefix}-{$year}-%")
+        // La référence porte une contrainte d'unicité globale (toutes fermes
+        // confondues) : la séquence doit donc rester globale, sans le scope
+        // par ferme (Sale::withoutFarm()), pour ne jamais produire deux fois
+        // la même référence sur deux fermes différentes.
+        $lastNumber = Sale::withoutFarm()
+            ->where('reference', 'LIKE', "{$prefix}-{$year}-%")
             ->withTrashed()
             ->orderByDesc('id')
             ->value('reference');
