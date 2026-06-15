@@ -240,6 +240,8 @@
         </div>
     </div>
 
+@include('batches.partials.building-compatibility')
+
 <script>
 const CYCLES = {
     chair: {{ setting('elevage.cycle_chair', 42) }},
@@ -248,23 +250,6 @@ const CYCLES = {
     reproducteur: {{ setting('elevage.cycle_reproducteur', 450) }}
    };
 const CYCLE_LABELS = { chair: 'Abattage', ponte: 'Réforme', poussiniere: 'Transfert', reproducteur: 'Réforme' };
-
-// Types de bâtiments compatibles par espèce (aligné sur le lancement de lot).
-const SPECIES_BUILDING_TYPES = {
-    poulet:  ['chair', 'ponte', 'poussiniere', 'reproducteur'],
-    dinde:   ['chair', 'reproducteur'],
-    pintade: ['chair', 'ponte'],
-    caille:  ['chair', 'ponte'],
-    canard:  ['chair'],
-    pigeon:  ['chair'],
-    mouton:  ['bergerie'],
-    chevre:  ['chevrerie'],
-    lapin:   ['lapiniere'],
-    porc:    ['porcherie'],
-    tilapia: ['bassin'],
-    carpe:   ['bassin'],
-    silure:  ['bassin'],
-};
 
 function el(id) { return document.getElementById(id); }
 
@@ -297,10 +282,8 @@ function runFilters() {
     // Pas de repli permissif : on ne doit jamais pouvoir affecter un canard à
     // une bergerie. Si aucun bâtiment compatible n'existe, il faut d'abord en
     // créer un du bon type.
-    const allowed = SPECIES_BUILDING_TYPES[speciesSlug] || null;
-    const matches = (bType) => bType === 'mixte' || (allowed ? allowed.includes(bType) : (!type || bType === type));
     document.querySelectorAll('.building-opt').forEach(opt => {
-        const compatible = !type || matches(opt.dataset.type);
+        const compatible = !type || isBuildingCompatible(opt.dataset.type, speciesSlug, type);
         opt.style.display = compatible ? '' : 'none';
         opt.disabled = !compatible;
     });

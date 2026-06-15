@@ -9,6 +9,7 @@ use App\Models\ProductionNorm;
 use App\Models\ProductionType;
 use App\Models\Protocol;
 use App\Models\Provider;
+use App\Models\Species;
 use App\Services\PlanningService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -82,12 +83,23 @@ class PlanningController extends Controller
 
         $arrivalDate = Carbon::parse($validated['planned_arrival_date']);
         // Cycle issu du type de production choisi (sinon repli legacy par slug).
-        $cycleOverride = $validated['production_type_id']
+        $cycleOverride = ($validated['production_type_id'] ?? null)
             ? ProductionType::find($validated['production_type_id'])?->cycle_days_default
             : null;
         $dates = PlannedBatch::calculateDates($validated['batch_type'], $arrivalDate, $cycleOverride);
 
         $building = Building::find($validated['building_id']);
+
+        // Compatibilité bâtiment / espèce (cf. Species::buildingIsCompatible,
+        // partagée avec StoreBatchRequest/UpdateBatchRequest/TransferBatchRequest) :
+        // une planification doit cibler un bâtiment adapté à l'espèce visée.
+        $species = ($validated['species_id'] ?? null) ? Species::find($validated['species_id']) : null;
+        if (! Species::buildingIsCompatible($building, $species, $validated['batch_type'])) {
+            return back()->withErrors([
+                'building_id' => "Incompatibilité : type cible '{$validated['batch_type']}', bâtiment de type '{$building->type}'."
+            ])->withInput();
+        }
+
         $occupiedQty = $building->batches()->active()->sum('current_quantity');
         $available = $building->capacity - $occupiedQty;
 
