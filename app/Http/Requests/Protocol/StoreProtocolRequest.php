@@ -11,7 +11,7 @@ class StoreProtocolRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return Gate::allows('C');
+        return Gate::allows('elevage.C');
     }
 
     public function rules(): array

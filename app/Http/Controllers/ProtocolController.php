@@ -215,8 +215,19 @@ class ProtocolController extends Controller
             DB::transaction(function () use ($items, &$importedCount, &$skippedCount) {
                 $allowedStepTypes = ['Vaccin', 'Traitement', 'Vitamine', 'Désinfection'];
 
+                // Types de production valides (toutes espèces) — même source de
+                // vérité que StoreProtocolRequest. Un protocole importé avec un
+                // type inconnu ne serait jamais applicable à un lot (donnée
+                // morte) : on l'ignore plutôt que de polluer le référentiel.
+                $allowedTypes = ProductionType::query()->pluck('slug')->unique()->values()->all();
+
                 foreach ($items as $data) {
                     if (empty($data['name']) || empty($data['type'])) continue;
+
+                    if (! in_array($data['type'], $allowedTypes, true)) {
+                        $skippedCount++;
+                        continue;
+                    }
 
                     if (Protocol::where('name', strip_tags($data['name']))->where('type', $data['type'])->exists()) {
                         $skippedCount++;

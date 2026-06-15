@@ -7,6 +7,7 @@ use App\Models\DailyCheck;
 use App\Models\Stock;
 use App\Actions\DailyCheck\RecordDailyCheck;
 use App\Http\Requests\DailyCheck\StoreDailyCheckRequest;
+use App\Http\Requests\DailyCheck\UpdateDailyCheckRequest;
 use App\Services\StockIntegrationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -173,31 +174,12 @@ class DailyCheckController extends Controller
      * Gère la compensation de stock aliment et le recalcul d'impact sur le lot.
      * Le DailyCheckObserver gère la mise à jour de current_quantity.
      */
-    public function update(Request $request, DailyCheck $daily_check): RedirectResponse
+    public function update(UpdateDailyCheckRequest $request, DailyCheck $daily_check): RedirectResponse
     {
-        if (Gate::denies('elevage.M')) {
-            return back()->with('error', 'Modification interdite.');
-        }
-
         $check = $daily_check;
         $batch = $check->batch;
 
-        $validated = $request->validate([
-            'mortality'          => 'required|integer|min:0',
-            'feed_consumed'      => 'required|numeric|min:0',
-            'feed_type'          => 'required|string',
-            'water_consumed'     => 'nullable|numeric|min:0',
-            'temp_min'           => 'nullable|numeric',
-            'temp_max'           => 'nullable|numeric',
-            'humidity'           => 'nullable|numeric|min:0|max:100',
-            'avg_weight'         => 'nullable|numeric|min:0',
-            'qty_quarantine_in'  => 'required|integer|min:0',
-            'qty_quarantine_out' => 'required|integer|min:0',
-            'qty_sorted_out'     => 'nullable|integer|min:0',
-            'treatment_type'     => 'nullable|string|max:255',
-            'treatment_name'     => 'nullable|string|max:255',
-            'observations'       => 'nullable|string',
-        ] + \App\Http\Requests\DailyCheck\StoreDailyCheckRequest::extensionRules());
+        $validated = $request->validated();
 
         // Vérification effectif
         $oldImpact = $check->calculateNetImpact();
@@ -237,8 +219,8 @@ class DailyCheckController extends Controller
                 );
             }
 
-            $validated['litter_changed'] = $request->has('litter_changed') ? 1 : 0;
-            $validated['qty_sorted_out'] = $validated['qty_sorted_out'] ?? 0;
+            // litter_changed et qty_sorted_out sont déjà normalisés par
+            // UpdateDailyCheckRequest::prepareForValidation().
 
             // L'observer DailyCheckObserver gère le diff sur current_quantity
             $check->update($validated);
