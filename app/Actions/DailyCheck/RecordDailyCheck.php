@@ -107,11 +107,21 @@ class RecordDailyCheck
      */
     private function resolveFeedUnitCost(string $feedType): float
     {
-        $stock = Stock::where('feed_type', trim($feedType))
-            ->where('category', Stock::CAT_CONSO)
-            ->first();
+        $stock = self::findFeedStock($feedType);
 
         return (float) ($stock?->last_unit_price ?? $stock?->unit_price ?? 0);
+    }
+
+    /**
+     * Recherche un article aliment par item_name ou feed_type (les deux colonnes
+     * peuvent porter la valeur selon la voie de création du stock).
+     */
+    private static function findFeedStock(string $feedType): ?Stock
+    {
+        $name = trim($feedType);
+        return Stock::where('category', Stock::CAT_CONSO)
+            ->where(fn ($q) => $q->where('item_name', $name)->orWhere('feed_type', $name))
+            ->first();
     }
 
     /**
@@ -121,10 +131,7 @@ class RecordDailyCheck
      */
     private function checkFeedStock(string $feedType, float $requested, ?DailyCheck $existing): void
     {
-        // 1. Utilisation de la nouvelle clé stricte 'feed_type'
-        $stock = Stock::where('feed_type', trim($feedType))
-            ->where('category', Stock::CAT_CONSO)
-            ->first();
+        $stock = self::findFeedStock($feedType);
 
         // 2. Conversion automatique en KG si le stock est géré en Sacs
         $availableKg = 0;

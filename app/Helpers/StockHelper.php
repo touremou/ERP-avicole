@@ -20,10 +20,9 @@ class StockHelper
             return 0; 
         }
 
-        // 2. RECHERCHE STRICTE (Fini le LIKE '%...%')
-        // Idéalement, utilise une colonne dédiée comme 'feed_category' ou 'reference_code'
-        $stock = Stock::where('feed_type', $type) 
-                      ->where('category', Stock::CAT_CONSO)
+        $name = trim($type);
+        $stock = Stock::where('category', Stock::CAT_CONSO)
+                      ->where(fn ($q) => $q->where('item_name', $name)->orWhere('feed_type', $name))
                       ->first();
 
         if (!$stock || (float)$stock->current_quantity <= 0) {

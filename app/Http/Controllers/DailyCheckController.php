@@ -230,8 +230,9 @@ class DailyCheckController extends Controller
             // Re-snapshot du coût de revient de l'aliment consommé (CMP courant),
             // pour que la rectification revalorise correctement la marge du lot.
             if ((float) $validated['feed_consumed'] > 0) {
-                $stock = Stock::where('feed_type', trim($validated['feed_type']))
-                    ->where('category', Stock::CAT_CONSO)
+                $name = trim($validated['feed_type']);
+                $stock = Stock::where('category', Stock::CAT_CONSO)
+                    ->where(fn ($q) => $q->where('item_name', $name)->orWhere('feed_type', $name))
                     ->first();
                 $validated['feed_unit_cost'] = (float) ($stock?->last_unit_price ?? $stock?->unit_price ?? 0);
             } else {

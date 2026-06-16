@@ -369,6 +369,44 @@ test('la consommation d\'aliment est valorisée au coût de revient et imputée 
     expect($batch->net_margin)->toBe($marginBefore - 10000.0);
 });
 
+test('le feed_unit_cost est résolu même si feed_type est null sur le stock (lookup par item_name)', function () {
+    // Reproduit le bug : un stock créé manuellement ou via firstOrCreate sans
+    // feed_type a feed_type = NULL. resolveFeedUnitCost retournait 0 car il
+    // cherchait par feed_type. Le fix ajoute un OR sur item_name.
+    $batch = Batch::factory()->create([
+        'building_id'      => $this->building->id,
+        'status'           => 'Actif',
+        'current_quantity' => 200,
+    ]);
+
+    Stock::create([
+        'item_name'        => 'Ponte Entretien',
+        'feed_type'        => null, // Volontairement absent — c'est le bug
+        'category'         => Stock::CAT_CONSO,
+        'unit'             => 'KG',
+        'current_quantity' => 500,
+        'last_unit_price'  => 300,
+        'unit_price'       => 300,
+        'alert_threshold'  => 0,
+    ]);
+
+    $this->actingAs($this->managerUser)
+        ->post(route('daily-checks.store'), [
+            'batch_id'      => $batch->id,
+            'check_date'    => now()->toDateString(),
+            'mortality'     => 0,
+            'feed_consumed' => 20,
+            'feed_type'     => 'Ponte Entretien',
+        ])
+        ->assertSessionHasNoErrors();
+
+    $check = DailyCheck::where('batch_id', $batch->id)->first();
+    expect((float) $check->feed_unit_cost)->toBe(300.0);
+
+    $batch->refresh();
+    expect($batch->feed_cogs)->toBe(6000.0); // 20 kg × 300
+});
+
 test('le pointage enregistre les indicateurs de bien-être (boiterie, picage)', function () {
     $batch = Batch::factory()->create([
         'building_id'      => $this->building->id,

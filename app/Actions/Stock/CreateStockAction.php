@@ -28,9 +28,11 @@ class CreateStockAction
             // à 0 jusqu'au premier achat/production.
             $unitPrice = (float) ($data['unit_price'] ?? 0);
 
+            $itemName = trim($data['item_name']);
             $stock = Stock::create([
-                'item_name'        => trim($data['item_name']),
+                'item_name'        => $itemName,
                 'category'         => $data['category'],
+                'feed_type'        => ($data['category'] === Stock::CAT_CONSO) ? $itemName : null,
                 'unit'             => $unit,
                 'alert_threshold'  => $alertThreshold,
                 'current_quantity' => $quantity,
