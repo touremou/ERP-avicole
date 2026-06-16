@@ -76,22 +76,44 @@
                         @if(count($criticalTypes ?? []) > 0)
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 @foreach($criticalTypes as $alert)
+                                    @php
+                                        $alertDays   = $alert['days'];
+                                        $isUncfg     = $alertDays === -1;
+                                        $isNoData    = $alertDays === -2;
+                                        $isExhausted = $alertDays === 0;
+                                        $isCritical  = $alertDays >= 0 && $alertDays <= 1;
+                                    @endphp
                                     <a href="{{ route('stocks.index', ['category' => 'conso']) }}" @class([
                                         'flex items-center justify-between p-4 rounded-2xl border transition-all hover:scale-[1.02] no-underline',
-                                        'bg-rose-50 border-rose-200 text-rose-900 animate-pulse' => $alert['days'] <= 1,
-                                        'bg-amber-50 border-amber-200 text-amber-900' => $alert['days'] > 1
+                                        'bg-purple-50 border-purple-200 text-purple-900' => $isUncfg || $isNoData,
+                                        'bg-rose-50 border-rose-200 text-rose-900 animate-pulse' => !$isUncfg && !$isNoData && $isCritical,
+                                        'bg-amber-50 border-amber-200 text-amber-900' => !$isUncfg && !$isNoData && !$isCritical,
                                     ])>
                                         <div class="flex items-center gap-3">
-                                            <div @class(['w-8 h-8 rounded-xl flex items-center justify-center text-xs text-white', 'bg-rose-600' => $alert['days'] <= 1, 'bg-amber-500' => $alert['days'] > 1])>
-                                                <i class="fa-solid fa-triangle-exclamation"></i>
+                                            <div @class(['w-8 h-8 rounded-xl flex items-center justify-center text-xs text-white',
+                                                'bg-purple-600' => $isUncfg || $isNoData,
+                                                'bg-rose-600' => !$isUncfg && !$isNoData && $isCritical,
+                                                'bg-amber-500' => !$isUncfg && !$isNoData && !$isCritical])>
+                                                <i class="fa-solid {{ ($isUncfg || $isNoData) ? 'fa-question' : 'fa-triangle-exclamation' }}"></i>
                                             </div>
                                             <div>
                                                 <h5 class="text-[11px] font-black uppercase leading-none truncate">{{ str_replace([' (Poussin)',' (Poulette)',' (Pic de ponte)',' (Entretien)'], '', $alert['type']) }}</h5>
-                                                <p class="text-[9px] opacity-70 uppercase font-black mt-1">{{ __("Silo actif") }}</p>
+                                                <p class="text-[9px] opacity-70 uppercase font-black mt-1">
+                                                    @if($isUncfg) {{ __("Article non configuré") }}
+                                                    @elseif($isNoData) {{ __("Sorties non enregistrées") }}
+                                                    @else {{ __("Silo actif") }}
+                                                    @endif
+                                                </p>
                                             </div>
                                         </div>
                                         <div class="text-right">
-                                            <p class="text-xs font-black uppercase tracking-tight leading-none">{{ $alert['days'] == 0 ? __('ÉPUISÉ') : $alert['days'].' '.__('Jours') }}</p>
+                                            <p class="text-xs font-black uppercase tracking-tight leading-none">
+                                                @if($isUncfg) {{ __('MANQUANT') }}
+                                                @elseif($isNoData) {{ __('VÉRIFIER') }}
+                                                @elseif($isExhausted) {{ __('ÉPUISÉ') }}
+                                                @else {{ $alertDays }} {{ __('Jours') }}
+                                                @endif
+                                            </p>
                                         </div>
                                     </a>
                                 @endforeach
@@ -512,26 +534,38 @@
                             <i class="fa-solid fa-plus text-xs"></i>
                         </a>
                         @endcan                        
+                        @canany(['logistique.L', 'provenderie.L'])
                         <div class="grid grid-cols-2 gap-3">
+                            @can('logistique.L')
                             <a href="{{ route('stocks.index', ['category' => 'oeufs']) }}" class="bg-white p-5 rounded-3xl border border-slate-100 hover:border-emerald-500 text-center shadow-sm group transition-all no-underline">
                                 <i class="fa-solid fa-egg text-emerald-500 mb-2 block group-hover:scale-110 transition-transform"></i>
                                 <span class="text-[8px] font-black text-slate-500 uppercase">{{ __("Magasin Oeufs") }}</span>
                             </a>
+                            @endcan
+                            @can('provenderie.L')
                             <a href="{{ route('production.index') }}" class="bg-white p-5 rounded-3xl border border-slate-100 hover:border-blue-500 text-center shadow-sm group transition-all no-underline">
                                 <i class="fa-solid fa-industry text-blue-500 mb-2 block group-hover:rotate-12 transition-transform"></i>
                                 <span class="text-[8px] font-black text-slate-500 uppercase">{{ __("Provenderie") }}</span>
                             </a>
+                            @endcan
                         </div>
+                        @endcanany
+                        @canany(['elevage.L', 'logistique.L'])
                         <div class="grid grid-cols-2 gap-3">
+                            @can('elevage.L')
                             <a href="{{ route('batches.archives') }}" class="bg-white p-5 rounded-[2rem] border border-slate-100 hover:border-slate-400 transition-all text-center italic group shadow-sm no-underline">
                                 <i class="fa-solid fa-box-archive text-slate-500 mb-2 block group-hover:rotate-12 transition-transform"></i>
                                 <span class="text-[8px] font-black text-slate-500 uppercase">{{ __("Archives") }}</span>
                             </a>
+                            @endcan
+                            @can('logistique.L')
                             <a href="{{ route('stocks.index', ['category' => 'conso']) }}" class="bg-white p-5 rounded-[2rem] border border-slate-100 hover:border-amber-500 transition-all text-center italic group shadow-sm no-underline">
                                 <i class="fa-solid fa-boxes-stacked text-amber-500 mb-2 block group-hover:rotate-12 transition-transform"></i>
                                 <span class="text-[8px] font-black text-slate-500 uppercase">{{ __("Stocks") }}</span>
                             </a>
+                            @endcan
                         </div>
+                        @endcanany
                     </div>
                 </div>
             </div>

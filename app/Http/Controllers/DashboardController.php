@@ -157,14 +157,43 @@ class DashboardController extends Controller
                 ->sum('quantity');
             $consoJournaliere = $totalOut / $periodDays;
 
-            // Du stock mais aucune sortie récente → pas d'alerte.
+            // Du stock mais aucune sortie récente : on ne peut pas calculer
+            // l'autonomie. Si des lots actifs consomment cet aliment, c'est
+            // louche (les sorties ne sont peut-être pas enregistrées) — on
+            // l'alerte avec days = -2 (données insuffisantes). Sinon on passe.
             if ($consoJournaliere <= 0) {
+                $isConsumedByActiveBatch = DailyCheck::whereIn('batch_id', $batchIds)
+                    ->where('check_date', '>=', now()->subDays($periodDays))
+                    ->where('feed_type', $silo->item_name)
+                    ->where('feed_consumed', '>', 0)
+                    ->exists();
+
+                if ($isConsumedByActiveBatch) {
+                    $criticalTypes[] = ['type' => $silo->item_name, 'days' => -2];
+                }
                 continue;
             }
 
             $joursRestants = (int) floor($silo->current_quantity / $consoJournaliere);
             if ($joursRestants <= $criticalDaysThreshold) {
                 $criticalTypes[] = ['type' => $silo->item_name, 'days' => $joursRestants];
+            }
+        }
+
+        // Angle mort : lots actifs consommant un aliment sans article de stock
+        // correspondant. Le silo n'existe pas → boucle précédente ne le voit
+        // pas → "tout va bien" affiché à tort. On alerte avec days = -1.
+        $activeFeedTypes = DailyCheck::whereIn('batch_id', $batchIds)
+            ->where('check_date', '>=', now()->subDays($periodDays))
+            ->whereNotNull('feed_type')
+            ->where('feed_consumed', '>', 0)
+            ->distinct()
+            ->pluck('feed_type');
+
+        $configuredFeedNames = $silos->pluck('item_name');
+        foreach ($activeFeedTypes as $feedType) {
+            if (! $configuredFeedNames->contains($feedType)) {
+                $criticalTypes[] = ['type' => $feedType, 'days' => -1];
             }
         }
 

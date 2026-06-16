@@ -223,3 +223,64 @@ test('la marge nette est masquée pour un utilisateur sans droit commerce', func
         ->assertDontSee('Marge Nette Mensuelle')
         ->assertDontSee('Encours Clients');
 });
+
+test('un aliment consommé sans article de stock déclenche une alerte silo MANQUANT', function () {
+    $building = Building::factory()->create(['type' => 'chair', 'capacity' => 2000]);
+
+    $batch = App\Models\Batch::factory()->create([
+        'building_id'      => $building->id,
+        'status'           => 'Actif',
+        'initial_quantity' => 500,
+        'current_quantity' => 500,
+    ]);
+
+    // Pointage avec un aliment dont il n'existe aucun article de stock.
+    App\Models\DailyCheck::factory()->create([
+        'batch_id'       => $batch->id,
+        'check_date'     => now()->subDay(),
+        'feed_type'      => 'Aliment Bergerie Inexistant',
+        'feed_consumed'  => 80,
+        'feed_unit_cost' => 0,
+        'mortality'      => 0,
+    ]);
+
+    // Aucun stock CAT_CONSO portant ce nom n'est créé → angle mort.
+    $this->actingAs($this->adminUser)
+        ->get(route('dashboard'))
+        ->assertOk()
+        ->assertViewHas('criticalTypes', fn ($ct) =>
+            collect($ct)->contains(fn ($c) =>
+                $c['type'] === 'Aliment Bergerie Inexistant' && $c['days'] === -1
+            )
+        )
+        ->assertSee('MANQUANT');
+});
+
+test('les boutons actions rapides sont masqués pour un opérateur sans droits logistique', function () {
+    $this->seed(Database\Seeders\ModuleSeeder::class);
+
+    $role = Role::firstOrCreate(
+        ['name' => 'operateur'],
+        ['label' => 'Opérateur', 'display_name' => 'Opérateur', 'permissions' => ['L']]
+    );
+    $now = now();
+    foreach (App\Models\Module::all() as $module) {
+        DB::table('module_permissions')->updateOrInsert(
+            ['role_id' => $role->id, 'module_id' => $module->id],
+            [
+                'can_read'   => in_array($module->slug, ['elevage', 'dashboard']),
+                'can_create' => false, 'can_modify' => false, 'can_delete' => false,
+                'updated_at' => $now, 'created_at' => $now,
+            ]
+        );
+    }
+    $operateur = User::factory()->create(['role_id' => $role->id]);
+
+    $this->actingAs($operateur)
+        ->get(route('dashboard'))
+        ->assertOk()
+        ->assertDontSee('Magasin Oeufs')
+        ->assertDontSee('Provenderie')
+        ->assertDontSee('Stocks')
+        ->assertDontSee('Nouvelle Bande');
+});
