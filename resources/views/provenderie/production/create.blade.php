@@ -44,8 +44,8 @@
                                         class="w-full bg-slate-50 border-none rounded-2xl p-5 font-black text-slate-800 shadow-inner appearance-none italic focus:ring-2 focus:ring-emerald-500/20">
                                         <option value="">{{ __("-- CHOISIR UNE RECETTE --") }}</option>
                                         @foreach($formulas as $f)
-                                            <option value="{{ $f->id }}" 
-                                                data-items='@json($f->items->map(fn($item) => ["percentage" => (float) $item->percentage, "raw_material" => ["name" => $item->rawMaterial?->name ?? __("MP supprimée"), "stock_qty" => (float) ($item->rawMaterial?->stock_qty ?? 0)]]))'>
+                                            <option value="{{ $f->id }}"
+                                                data-items="{{ json_encode($f->items->map(fn($item) => ['percentage' => (float) $item->percentage, 'raw_material' => ['name' => $item->rawMaterial?->name ?? __('MP supprimée'), 'stock_qty' => (float) ($item->rawMaterial?->stock_qty ?? 0)]])) }}">
                                                 {{ strtoupper($f->name) }} ({{ $f->code }})
                                             </option>
                                         @endforeach

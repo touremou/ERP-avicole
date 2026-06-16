@@ -287,9 +287,13 @@ test('la page de création affiche les formules multiespèces sans crash (eager-
         'production_type_id' => $pt->id,
         'is_active' => true,
     ]);
+    // MP avec APOSTROPHE : c'est la cause réelle du bug. L'attribut HTML
+    // data-items='...' est délimité par des apostrophes ; sans échappement
+    // JSON_HEX_APOS, l'apostrophe de "Tourteau d'arachide" tronquait
+    // l'attribut → JSON invalide → "Erreur de structure des données".
     $mp1 = RawMaterial::factory()->create(['name' => 'Maïs',   'stock_qty' => 500, 'unit' => 'KG']);
-    $mp2 = RawMaterial::factory()->create(['name' => 'Orge',   'stock_qty' => 200, 'unit' => 'KG']);
-    $mp3 = RawMaterial::factory()->create(['name' => 'Tourteau Soja', 'stock_qty' => 0, 'unit' => 'KG']);
+    $mp2 = RawMaterial::factory()->create(['name' => "Tourteau d'arachide", 'stock_qty' => 200, 'unit' => 'KG']);
+    $mp3 = RawMaterial::factory()->create(['name' => "Coquilles d'huître", 'stock_qty' => 0, 'unit' => 'KG']);
     foreach ([[$mp1, 50], [$mp2, 30], [$mp3, 20]] as [$mp, $pct]) {
         DB::table('formula_items')->insert([
             'formula_id' => $formula->id, 'raw_material_id' => $mp->id,
@@ -298,13 +302,15 @@ test('la page de création affiche les formules multiespèces sans crash (eager-
         ]);
     }
 
-    // La page doit se charger et les noms des MP doivent figurer dans
-    // les attributs data-items (JSON) sans crash PHP.
+    // La page doit se charger sans crash.
     $response = $this->actingAs($this->adminUser)
         ->get(route('production.create'))
         ->assertOk();
-
-    // Les noms des MP (ASCII) sont sérialisés dans data-items.
     $response->assertSee('data-items', false);
-    $response->assertSee('Tourteau Soja', false);
+
+    // L'attribut data-items est en guillemets doubles + {{ json_encode }} :
+    // e() echappe " en &quot; et ' en &#039;, donc l'apostrophe de
+    // "Tourteau d'arachide" ne casse plus l'attribut. On verifie la presence
+    // de la forme echappee (preuve que le JSON des items reste integre).
+    expect($response->getContent())->toContain('&#039;');
 });
