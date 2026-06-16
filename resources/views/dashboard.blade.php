@@ -30,6 +30,15 @@
                     <p class="text-base font-black text-slate-900 leading-none">{{ number_format($rawMaterialsValue ?? 0, 0, ',', ' ') }} <small class="text-[9px] opacity-40">GNF</small></p>
                 </div>
                 
+                {{-- ENRICHI : Encours clients (trésorerie) --}}
+                <div class="bg-white px-6 py-4 rounded-[1.5rem] border border-slate-100 text-right shadow-sm group">
+                    <p class="text-[8px] font-black text-slate-400 uppercase italic mb-1 flex items-center justify-end gap-1.5">
+                        {{ __("Encours Clients") }}
+                        <i class="fa-solid fa-circle-info text-slate-300 group-hover:text-rose-500 transition-colors cursor-help" title="{{ __('Montant des ventes non soldées encore dû à la ferme (créances clients)') }}"></i>
+                    </p>
+                    <p @class(['text-base font-black leading-none', 'text-rose-600' => ($encoursClients ?? 0) > 0, 'text-slate-900' => ($encoursClients ?? 0) <= 0])>{{ number_format($encoursClients ?? 0, 0, ',', ' ') }} <small class="text-[9px] opacity-40">GNF</small></p>
+                </div>
+
                 {{-- ENRICHI : Info bulle Marge + Changement de label --}}
                 <div class="bg-slate-900 px-6 py-4 rounded-[1.5rem] text-right shadow-2xl border-l-4 border-emerald-500 group">
                     <p class="text-[8px] font-black text-emerald-400 uppercase italic mb-1 flex items-center justify-end gap-1.5">
@@ -55,7 +64,7 @@
                             <h4 class="text-[10px] font-black uppercase text-slate-400 tracking-wider flex items-center gap-2">
                                 <i class="fa-solid fa-wheat-awn text-amber-500"></i> {{ __("Autonomie des Silos") }}
                             </h4>
-                            <span class="text-[8px] bg-slate-100 text-slate-600 px-2 py-1 rounded-md font-black uppercase">{{ __("Seuil : 3 jours") }}</span>
+                            <span class="text-[8px] bg-slate-100 text-slate-600 px-2 py-1 rounded-md font-black uppercase">{{ __("Seuil") }} : {{ $criticalDaysThreshold ?? 3 }} {{ __("jours") }}</span>
                         </div>
                         
                         @if(count($criticalTypes ?? []) > 0)
@@ -84,7 +93,7 @@
                         @else
                             <div class="p-6 bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-center flex flex-col items-center gap-2">
                                 <i class="fa-solid fa-circle-check text-emerald-500 text-lg"></i>
-                                <p class="text-[9px] text-slate-500 uppercase tracking-wider">{{ __("Tous les silos disposent d'une autonomie > 3 jours.") }}</p>
+                                <p class="text-[9px] text-slate-500 uppercase tracking-wider">{{ __("Tous les silos disposent d'une autonomie supérieure au seuil.") }}</p>
                             </div>
                         @endif
                     </div>
@@ -139,6 +148,27 @@
                                     </div>
                                 @endif
 
+                                {{-- LOGIQUE 3 — PROPHYLAXIE EN RETARD --}}
+                                @if(($vaccineAlerts ?? collect())->count() > 0)
+                                    <div class="bg-violet-50 rounded-2xl border border-violet-200 overflow-hidden">
+                                        <div class="px-4 py-3 bg-violet-100 flex items-center justify-between">
+                                            <span class="text-[9px] font-black text-violet-700 uppercase tracking-widest flex items-center gap-2">
+                                                <i class="fa-solid fa-syringe"></i> {{ __("Prophylaxie en Retard") }}
+                                            </span>
+                                            <span class="text-[8px] font-black bg-violet-600 text-white px-2 py-0.5 rounded">{{ $vaccineAlerts->count() }}</span>
+                                        </div>
+                                        <div class="p-3 space-y-2">
+                                            @foreach($vaccineAlerts->take(3) as $va)
+                                                <a href="{{ route('batches.show', $va['batch']->id) }}"
+                                                   class="flex items-center justify-between p-3 bg-white rounded-xl border border-violet-100 hover:border-violet-300 transition-all no-underline group">
+                                                    <span class="text-[10px] font-black text-slate-800 uppercase">{{ $va['batch']->code }}</span>
+                                                    <span class="text-[8px] font-black text-violet-600 uppercase truncate ml-2">{{ $va['count'] }} {{ __("acte(s)") }} · {{ \Illuminate\Support\Str::limit($va['next'], 18) }}</span>
+                                                </a>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                @endif
+
                                 {{-- ALERTE VIDE SANITAIRE --}}
                                 @if(($sanitaryAlertsCount ?? 0) > 0)
                                     <div class="bg-slate-900 text-white p-4 rounded-2xl flex items-center justify-between border-l-4 border-blue-500">
@@ -153,9 +183,9 @@
                                         </div>
                                     </div>
                                 @endif
-                                
+
                                 {{-- TOUT VA BIEN --}}
-                                @if(($emergencyBatches ?? collect())->isEmpty() && ($underperformingBatches ?? collect())->isEmpty() && ($sanitaryAlertsCount ?? 0) == 0)
+                                @if(($emergencyBatches ?? collect())->isEmpty() && ($underperformingBatches ?? collect())->isEmpty() && ($vaccineAlerts ?? collect())->isEmpty() && ($sanitaryAlertsCount ?? 0) == 0)
                                     <div class="p-6 bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-center flex flex-col items-center gap-2 h-full justify-center">
                                         <i class="fa-solid fa-heart-pulse text-emerald-500 text-lg"></i>
                                         <p class="text-[9px] text-slate-500 uppercase tracking-wider">{{ __("Statut Sanitaire RAS") }}</p>
@@ -166,6 +196,37 @@
                     </div>
                 </div>
             </div>
+
+            {{-- ALERTE STOCK SOUS SEUIL — tout article passé sous alert_threshold --}}
+            @if(($lowStocks ?? collect())->isNotEmpty())
+            <div class="mb-10 bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
+                <div class="flex items-center justify-between mb-4">
+                    <h4 class="text-[10px] font-black uppercase text-slate-400 tracking-wider flex items-center gap-2">
+                        <i class="fa-solid fa-boxes-stacked text-rose-500"></i> {{ __("Stocks Sous le Seuil de Réapprovisionnement") }}
+                    </h4>
+                    <span class="text-[8px] font-black bg-rose-600 text-white px-2 py-1 rounded-md uppercase">{{ $lowStocks->count() }}</span>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    @foreach($lowStocks->take(9) as $s)
+                        @php $ratio = $s->alert_threshold > 0 ? ($s->current_quantity / $s->alert_threshold) * 100 : 0; @endphp
+                        <a href="{{ route('stocks.index', ['category' => $s->category]) }}" @class([
+                            'flex items-center justify-between p-4 rounded-2xl border transition-all hover:scale-[1.02] no-underline',
+                            'bg-rose-50 border-rose-200 text-rose-900 animate-pulse' => $s->current_quantity <= 0,
+                            'bg-amber-50 border-amber-200 text-amber-900' => $s->current_quantity > 0,
+                        ])>
+                            <div class="min-w-0">
+                                <h5 class="text-[11px] font-black uppercase leading-none truncate">{{ $s->item_name }}</h5>
+                                <p class="text-[9px] opacity-70 uppercase font-black mt-1">{{ __("Seuil") }} : {{ number_format($s->alert_threshold, 0) }} {{ $s->unit }}</p>
+                            </div>
+                            <div class="text-right shrink-0 ml-2">
+                                <p class="text-xs font-black uppercase tracking-tight leading-none">{{ number_format($s->current_quantity, 0) }} {{ $s->unit }}</p>
+                                <p class="text-[8px] font-black opacity-60 mt-1">{{ number_format($ratio, 0) }}%</p>
+                            </div>
+                        </a>
+                    @endforeach
+                </div>
+            </div>
+            @endif
 
             {{-- ALERTE QUALITÉ EAU — visible uniquement si alertes actives --}}
             @if(($waterAlerts ?? collect())->isNotEmpty())
@@ -326,7 +387,7 @@
                     <div id="batchContainer" class="space-y-4">
                         @foreach($activeBatches ?? [] as $batch)
                             @php
-                                $lastCheck = $batch->dailyChecks?->sortByDesc('check_date')->first();
+                                $lastCheck = $batch->latestDailyCheck;
                                 $lastWeight = $lastCheck?->avg_weight ?? $batch->avg_weight_start;
                             @endphp
                             <div class="batch-card" data-search="{{ strtolower($batch->code . ' ' . ($batch->building?->name ?? '')) }}">

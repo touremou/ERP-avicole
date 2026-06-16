@@ -82,3 +82,87 @@ test('un utilisateur non connecté est redirigé vers login', function () {
     $this->get(route('dashboard'))
         ->assertRedirect(route('login'));
 });
+
+test('le taux de mortalité global inclut la mortalité d\'arrivage (qty_dead)', function () {
+    $building = Building::factory()->create(['type' => 'chair', 'capacity' => 5000]);
+
+    // 1000 reçus vivants + 20 morts au transport, aucun pointage : l'ancienne
+    // formule (initial − current) donnait 0%. La nouvelle compte qty_dead.
+    App\Models\Batch::factory()->create([
+        'building_id'      => $building->id,
+        'status'           => 'Actif',
+        'initial_quantity' => 1000,
+        'current_quantity' => 1000,
+        'qty_dead'         => 20,
+    ]);
+
+    $this->actingAs($this->adminUser)
+        ->get(route('dashboard'))
+        ->assertOk()
+        // 20 / (1000 + 20) = 1.96 %
+        ->assertViewHas('globalMortalityRate', fn ($v) => round($v, 2) === 1.96);
+});
+
+test('le HDP n\'est pas dilué par les lots qui ne pondent pas', function () {
+    $species = App\Models\Species::firstOrCreate(
+        ['slug' => 'poulet'],
+        ['name_fr' => 'Poulet', 'family' => 'volaille', 'is_active' => true]
+    );
+
+    $ponteType = App\Models\ProductionType::updateOrCreate(
+        ['species_id' => $species->id, 'slug' => 'ponte'],
+        ['name_fr' => 'Ponte', 'metrics_enabled' => ['eggs' => true], 'is_active' => true]
+    );
+    $chairType = App\Models\ProductionType::updateOrCreate(
+        ['species_id' => $species->id, 'slug' => 'chair'],
+        ['name_fr' => 'Chair', 'metrics_enabled' => ['eggs' => false], 'is_active' => true]
+    );
+
+    $building = Building::factory()->create(['type' => 'ponte', 'capacity' => 5000]);
+
+    $layer = App\Models\Batch::factory()->create([
+        'building_id'        => $building->id,
+        'production_type_id' => $ponteType->id,
+        'status'             => 'Actif',
+        'initial_quantity'   => 1000,
+        'current_quantity'   => 950,
+    ]);
+
+    // Lot chair présent mais qui ne pond pas : ne doit PAS diluer le HDP.
+    App\Models\Batch::factory()->create([
+        'building_id'        => $building->id,
+        'production_type_id' => $chairType->id,
+        'status'             => 'Actif',
+        'initial_quantity'   => 500,
+        'current_quantity'   => 480,
+    ]);
+
+    App\Models\EggProduction::create([
+        'batch_id'             => $layer->id,
+        'production_date'      => now()->startOfDay(),
+        'total_eggs_collected' => 900,
+        'broken_eggs'          => 0,
+    ]);
+
+    $this->actingAs($this->adminUser)
+        ->get(route('dashboard'))
+        ->assertOk()
+        // 900 / 950 (pondeuses seules) = 94.7 %, et NON 900 / 1430.
+        ->assertViewHas('hdp', fn ($v) => round($v, 1) === 94.7);
+});
+
+test('un stock sous son seuil déclenche une alerte de réapprovisionnement', function () {
+    App\Models\Stock::create([
+        'item_name'        => 'Vaccin Newcastle',
+        'category'         => App\Models\Stock::CAT_CONSO,
+        'unit'             => 'KG',
+        'current_quantity' => 5,
+        'alert_threshold'  => 50,
+    ]);
+
+    $this->actingAs($this->adminUser)
+        ->get(route('dashboard'))
+        ->assertOk()
+        ->assertViewHas('lowStocks', fn ($s) => $s->isNotEmpty())
+        ->assertSee('Vaccin Newcastle');
+});

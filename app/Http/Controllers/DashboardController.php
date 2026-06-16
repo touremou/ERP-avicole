@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Carbon\Carbon;
 use App\Models\Batch;
+use App\Models\Sale;
 use App\Models\Stock;
 use App\Models\Species;
 use App\Models\Building;
@@ -36,18 +37,33 @@ class DashboardController extends Controller
 
         $totalBirds = $allActiveBatches->sum('current_quantity');
         $totalInitial = $allActiveBatches->sum('initial_quantity');
-        
-        $totalMortaliteCumulee = $totalInitial - $totalBirds;
-        $globalMortalityRate = $totalInitial > 0 ? ($totalMortaliteCumulee / $totalInitial) * 100 : 0;
+
+        // Mortalité réelle = morts d'arrivage (qty_dead) + mortalité d'élevage
+        // (Σ daily_checks.mortality). L'ancien calcul (initial − current) était
+        // FAUX : current_quantity intègre aussi les quarantaines et les tris/
+        // ventes, qui ne sont pas des morts. La base inclut qty_dead, cohérente
+        // avec Batch::getMortalityRateAttribute().
+        $batchIds = $allActiveBatches->pluck('id');
+        $totalQtyDead = (int) $allActiveBatches->sum('qty_dead');
+        $totalElevageMortality = (int) DailyCheck::whereIn('batch_id', $batchIds)->sum('mortality');
+        $totalMortaliteCumulee = $totalQtyDead + $totalElevageMortality;
+        $mortalityBase = $totalInitial + $totalQtyDead;
+        $globalMortalityRate = $mortalityBase > 0 ? ($totalMortaliteCumulee / $mortalityBase) * 100 : 0;
 
         // ---------------------------------------------------------
         // 2. TAUX DE PONTE (HDP) DU JOUR
         // ---------------------------------------------------------
         $totalEggsToday = EggProduction::whereDate('production_date', $today)->sum('total_eggs_collected');
         $totalBrokenToday = EggProduction::whereDate('production_date', $today)->sum('broken_eggs');
-        
-        // HDP calculé uniquement sur les oiseaux encore en vie aujourd'hui
-        $hdp = $totalBirds > 0 ? ($totalEggsToday / $totalBirds) * 100 : 0;
+
+        // HDP (Hen-Day Production) : œufs du jour rapportés au SEUL effectif des
+        // lots en ponte. L'ancien calcul diluait par TOUT le cheptel (chair,
+        // poussinières incluses), écrasant artificiellement le taux d'une ferme
+        // mixte. On se base sur l'effectif des lots assurant un suivi d'œufs.
+        $layingBirds = $allActiveBatches
+            ->filter(fn ($b) => $b->tracksEggs())
+            ->sum('current_quantity');
+        $hdp = $layingBirds > 0 ? ($totalEggsToday / $layingBirds) * 100 : 0;
 
         // ---------------------------------------------------------
         // 3. STOCKS & VALORISATION (CMUP)
@@ -56,13 +72,13 @@ class DashboardController extends Controller
             ->whereIn('item_name', \App\Models\EggProduction::gradeCodes())
             ->sum('current_quantity');
 
-        // Valeur des matières premières (calculée sur le dernier prix d'achat connu ou CMUP)
-        // On part du principe que tu as une colonne 'unit_price' ou qu'on la récupère du dernier achat
-        $rawMaterialsValue = Stock::where('category', Stock::CAT_CONSO)->get()->sum(function($item) {
-            $lastPurchase = DB::table('feed_purchases')->where('feed_type', $item->item_name)->latest('purchase_date')->first();
-            $cmup = $lastPurchase ? $lastPurchase->unit_price : 0;
-            return $item->current_quantity * $cmup;
-        });
+        // Valeur des matières premières au coût moyen pondéré (CMP) porté par
+        // l'article (last_unit_price, mis à jour à chaque achat/production —
+        // cf. StockIntegrationService). Remplace l'ancien calcul N+1 (1 requête
+        // feed_purchases par article) qui valorisait au seul dernier prix d'achat.
+        $rawMaterialsValue = (float) Stock::where('category', Stock::CAT_CONSO)
+            ->selectRaw('COALESCE(SUM(current_quantity * COALESCE(last_unit_price, 0)), 0) AS v')
+            ->value('v');
 
         // ---------------------------------------------------------
         // 4. MARGE NETTE ESTIMÉE DU MOIS (Ventes - Coûts réels)
@@ -74,27 +90,34 @@ class DashboardController extends Controller
         $monthStart = now()->startOfMonth();
         $monthEnd   = now()->endOfMonth();
 
-        $caVentes = (float) \App\Models\Sale::whereIn('status', ['valide', 'livre'])
+        $caVentes = (float) Sale::validated()
             ->whereBetween('sale_date', [$monthStart, $monthEnd])
             ->sum('total_amount');
 
+        // Lait : on écarte les collectes en brouillon (prix unitaire nul).
         $caLait = (float) \App\Models\MilkProduction::whereBetween('production_date', [$monthStart, $monthEnd])
+            ->where('unit_price', '>', 0)
             ->sum(DB::raw('total_liters * unit_price'));
 
         $caEstime = $caVentes + $caLait;
 
-        // B. Coût Alimentaire du mois (Quantité consommée * CMUP)
-        $coutAliment = DailyCheck::whereMonth('check_date', now()->month)
-            ->get()
-            ->sum(function($check) {
-                // Simplification : on applique un CMUP moyen global pour l'estimation rapide du dashboard
-                return $check->feed_consumed * 4500; // Ex: 4500 GNF/kg (à lier à ton vrai CMUP si possible)
-            });
+        // B. Coût alimentaire réel du mois : consommation valorisée au coût de
+        //    revient figé à la saisie (feed_unit_cost, cf. costing provenderie),
+        //    et NON plus un prix forfaitaire de 4500 GNF/kg codé en dur. Le
+        //    filtre est borné au mois courant (whereBetween, pas whereMonth qui
+        //    ignorait l'année).
+        $coutAliment = (float) DailyCheck::whereBetween('check_date', [$monthStart, $monthEnd])
+            ->selectRaw('COALESCE(SUM(feed_consumed * COALESCE(feed_unit_cost, 0)), 0) AS c')
+            ->value('c');
 
-        // C. Coûts Santé du mois
-        $coutSante = HealthCheck::whereMonth('intervention_date', now()->month)->sum('cost');
+        // C. Coûts Santé du mois (borné au mois courant, année comprise).
+        $coutSante = (float) HealthCheck::whereBetween('intervention_date', [$monthStart, $monthEnd])->sum('cost');
 
         $safeProfit = $caEstime - ($coutAliment + $coutSante);
+
+        // Encours clients (trésorerie) : montant des ventes non soldées encore
+        // dû à la ferme — une marge positive ne garantit pas la liquidité.
+        $encoursClients = (float) Sale::unpaid()->get()->sum(fn ($s) => $s->remaining_amount);
 
         // ---------------------------------------------------------
         // 5. GESTION DES ALERTES (Centre de contrôle)
@@ -106,12 +129,19 @@ class DashboardController extends Controller
         // (ses sorties de stock), et non sur la consommation globale de la
         // ferme : sinon chaque silo paraît se vider au rythme de tous les
         // autres réunis et déclenche de fausses alertes « épuisé ».
+        // Seuils paramétrables (Réglages) — valeurs par défaut conservées.
+        $periodDays            = (int) setting('stock.autonomy_period_days', 30);
+        $criticalDaysThreshold = (int) setting('stock.critical_days_threshold', 3);
+        $dailyMortalityPct     = (float) setting('elevage.daily_mortality_alert_pct', 0.5);
+        $cumulMortalityPct     = (float) setting('elevage.cumulative_mortality_alert_pct', 5);
+        $sanitaryDays          = (int) setting('elevage.sanitary_break_days', Building::SANITARY_BREAK_DAYS);
+        $protocolWindowDays    = (int) setting('elevage.protocol_overdue_window_days', 30);
+
         $criticalTypes = [];
         $silos = Stock::where('category', Stock::CAT_CONSO)->get()->filter(function($item) {
             return ($item->metadata['conso_type'] ?? 'Aliment') === 'Aliment';
         });
 
-        $periodDays = 30;
         foreach ($silos as $silo) {
             // Silo vide → épuisé.
             if ($silo->current_quantity <= 0) {
@@ -133,23 +163,28 @@ class DashboardController extends Controller
             }
 
             $joursRestants = (int) floor($silo->current_quantity / $consoJournaliere);
-            if ($joursRestants <= 3) {
+            if ($joursRestants <= $criticalDaysThreshold) {
                 $criticalTypes[] = ['type' => $silo->item_name, 'days' => $joursRestants];
             }
         }
 
-        // B. Urgences Sanitaires (Mortalité soudaine > 0.5% en 1 jour)
-        $emergencyBatches = $allActiveBatches->filter(function($batch) use ($today) {
+        // B. Urgences Sanitaires (pic de mortalité du jour > seuil paramétré).
+        // Base = effectif de DÉBUT de journée (effectif courant + morts du jour,
+        // déjà décomptés par l'observer) pour ne pas surévaluer le taux.
+        $emergencyBatches = $allActiveBatches->filter(function($batch) use ($today, $dailyMortalityPct) {
             $todayCheck = $batch->dailyChecks()->whereDate('check_date', $today)->first();
-            if (!$todayCheck || $batch->current_quantity == 0) return false;
-            $tauxJour = ($todayCheck->mortality / $batch->current_quantity) * 100;
-            return $tauxJour > 0.5; // Alerte si plus de 0.5% du cheptel meurt en 24h
+            if (!$todayCheck || (int) $todayCheck->mortality <= 0) return false;
+            $base = (int) $batch->current_quantity + (int) $todayCheck->mortality;
+            if ($base <= 0) return false;
+            $tauxJour = ((int) $todayCheck->mortality / $base) * 100;
+            return $tauxJour > $dailyMortalityPct;
         });
 
-        // C. Dérive Technique (Mortalité cumulée > 5%)
-        $underperformingBatches = $allActiveBatches->filter(function($batch) {
-            $taux = $batch->initial_quantity > 0 ? (($batch->initial_quantity - $batch->current_quantity) / $batch->initial_quantity) * 100 : 0;
-            return $taux > 5;
+        // C. Dérive Technique (mortalité CUMULÉE réelle > seuil paramétré).
+        // S'appuie sur l'accessor mortality_rate (qty_dead + Σ mortalité / base
+        // initiale), et non sur initial − current qui mêlait tris & quarantaines.
+        $underperformingBatches = $allActiveBatches->filter(function($batch) use ($cumulMortalityPct) {
+            return $batch->mortality_rate > $cumulMortalityPct;
         });
 
         // D. Vide Sanitaire dépassé — uniquement les bâtiments toujours "En
@@ -160,8 +195,58 @@ class DashboardController extends Controller
         $sanitaryAlertsCount = Building::where('name', '!=', 'Zone Fournisseurs Externes')
             ->inSanitaryBreak()
             ->whereNotNull('disinfection_started_at')
-            ->where('disinfection_started_at', '<=', now()->subDays(Building::SANITARY_BREAK_DAYS))
+            ->where('disinfection_started_at', '<=', now()->subDays($sanitaryDays))
             ->count();
+
+        // E. Stock sous le seuil de réapprovisionnement (alert_threshold).
+        // Indépendant de l'autonomie silos (qui ne couvre que l'aliment et la
+        // vitesse de consommation) : ici on alerte sur TOUT article passé sous
+        // son seuil, y compris à consommation lente (vaccins, litière, matériel).
+        $lowStocks = Stock::where('alert_threshold', '>', 0)
+            ->whereColumn('current_quantity', '<=', 'alert_threshold')
+            ->orderByRaw('current_quantity / NULLIF(alert_threshold, 0) ASC')
+            ->get(['id', 'item_name', 'category', 'current_quantity', 'alert_threshold', 'unit']);
+
+        // F. Prophylaxie en retard : étapes de protocole échues mais non tracées.
+        // Réutilise EXACTEMENT la convention de la fiche lot (date prévue =
+        // date de réf. + day_number ; « fait » si un acte sanitaire porte le nom
+        // de l'étape). Bornée aux échéances des $protocolWindowDays derniers
+        // jours pour rester actionnable et éviter le bruit d'anciens lots.
+        $vaccineAlerts = collect();
+        $protocolBatches = Batch::active()->where('initial_quantity', '>', 0)
+            ->whereNotNull('protocol_id')
+            ->with(['protocol.steps', 'healthChecks'])
+            ->get();
+
+        foreach ($protocolBatches as $batch) {
+            if (! $batch->protocol) continue;
+            $refDate = Carbon::parse($batch->transfer_date ?? $batch->start_date ?? $batch->arrival_date)->startOfDay();
+            $overdue = [];
+
+            foreach ($batch->protocol->steps as $step) {
+                $dueDate = $refDate->copy()->addDays((int) $step->day_number);
+                if (! $dueDate->isPast()) continue;                       // pas encore échue
+                if ($dueDate->lt(now()->subDays($protocolWindowDays))) continue; // trop ancienne
+
+                $done = $batch->healthChecks->contains(
+                    fn ($h) => $h->product_name
+                        && str_contains(strtolower($h->product_name), strtolower($step->action_name))
+                );
+
+                if (! $done) {
+                    $overdue[] = ['action' => $step->action_name, 'due' => $dueDate];
+                }
+            }
+
+            if (! empty($overdue)) {
+                $vaccineAlerts->push([
+                    'batch'   => $batch,
+                    'count'   => count($overdue),
+                    'next'    => $overdue[0]['action'],
+                    'overdue' => $overdue,
+                ]);
+            }
+        }
 
         // ---------------------------------------------------------
         // 6. DONNÉES D'AFFICHAGE (Bâtiments & Pagination)
@@ -177,11 +262,12 @@ class DashboardController extends Controller
         $occupiedBuildingsCount = $buildings->where('batches_count', '>', 0)->count();
         $totalBuildingsCount    = $buildings->count();
 
-        $activeBatches = Batch::with(['building', 'dailyChecks' => function($q) {
-                $q->latest('check_date');
-            }])
+        // N'eager-load QUE le dernier pointage (relation latestDailyCheck) au
+        // lieu de tout l'historique : évite de charger des centaines de lignes
+        // par lot alors que la vue n'affiche que le dernier poids.
+        $activeBatches = Batch::with(['building', 'latestDailyCheck'])
             ->active()
-            ->where('initial_quantity', '>', 0) // 💡 CORRECTION
+            ->where('initial_quantity', '>', 0)
             ->paginate((int) setting('general.items_per_page', 20));
 
         // ---------------------------------------------------------
@@ -276,7 +362,9 @@ class DashboardController extends Controller
         return view('dashboard', compact(
             'totalBirds', 'globalMortalityRate', 'hdp',
             'totalEggsStock', 'totalBrokenToday', 'rawMaterialsValue', 'safeProfit',
+            'encoursClients',
             'criticalTypes', 'emergencyBatches', 'underperformingBatches', 'sanitaryAlertsCount',
+            'lowStocks', 'vaccineAlerts', 'criticalDaysThreshold',
             'activeBatches', 'buildings', 'totalEggsToday', 'tabaskiWidget', 'waterAlerts',
             'familyBreakdown', 'showEggKpis', 'activeLotsCount',
             'occupiedBuildingsCount', 'totalBuildingsCount'

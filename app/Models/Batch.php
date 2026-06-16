@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Carbon\Carbon;
 use App\Traits\HasStandardUuid;
@@ -182,6 +183,16 @@ class Batch extends Model
     public function dailyChecks(): HasMany
     {
         return $this->hasMany(DailyCheck::class);
+    }
+
+    /**
+     * Dernier pointage du lot (par date). Permet de charger uniquement le
+     * pointage le plus récent (eager loading) au lieu de tout l'historique —
+     * évite un N+1 / une surcharge mémoire dans les listes (cf. dashboard).
+     */
+    public function latestDailyCheck(): HasOne
+    {
+        return $this->hasOne(DailyCheck::class)->latestOfMany('check_date');
     }
 
     /**
