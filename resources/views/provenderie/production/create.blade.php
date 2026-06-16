@@ -45,15 +45,7 @@
                                         <option value="">{{ __("-- CHOISIR UNE RECETTE --") }}</option>
                                         @foreach($formulas as $f)
                                             <option value="{{ $f->id }}" 
-                                                data-items='@json($f->items->map(function($item){ 
-                                                    return [
-                                                        "percentage" => $item->percentage,
-                                                        "raw_material" => [
-                                                            "name" => $item->rawMaterial->name,
-                                                            "stock_qty" => (float)$item->rawMaterial->stock_qty
-                                                        ]
-                                                    ];
-                                                }))'>
+                                                data-items='@json($f->items->map(fn($item) => ["percentage" => (float) $item->percentage, "raw_material" => ["name" => $item->rawMaterial?->name ?? __("MP supprimée"), "stock_qty" => (float) ($item->rawMaterial?->stock_qty ?? 0)]]))'>
                                                 {{ strtoupper($f->name) }} ({{ $f->code }})
                                             </option>
                                         @endforeach

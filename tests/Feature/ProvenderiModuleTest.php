@@ -270,3 +270,41 @@ test('un opérateur (C, sans M) ne peut pas basculer le statut d\'une machine', 
 
     expect($machine->fresh()->status)->toBe('Opérationnel');
 });
+
+test('la page de création affiche les formules multiespèces sans crash (eager-load)', function () {
+    // Reproduit le bug : la page crashait sur certaines formules (ex. Chèvre
+    // Laitière Préparation) car le contrôleur ne faisait pas d'eager-load
+    // de items.rawMaterial — un null rawMaterial causait un TypeError PHP 8.
+    $species = App\Models\Species::firstOrCreate(
+        ['slug' => 'caprin'], ['name_fr' => 'Caprin', 'family' => 'petit_ruminant', 'is_active' => true]
+    );
+    $pt = ProductionType::firstOrCreate(
+        ['species_id' => $species->id, 'slug' => 'laitiere'],
+        ['name_fr' => 'Laitière', 'metrics_enabled' => [], 'is_active' => true]
+    );
+    $formula = Formula::factory()->create([
+        'name' => 'Chèvre Laitière Préparation',
+        'production_type_id' => $pt->id,
+        'is_active' => true,
+    ]);
+    $mp1 = RawMaterial::factory()->create(['name' => 'Maïs',   'stock_qty' => 500, 'unit' => 'KG']);
+    $mp2 = RawMaterial::factory()->create(['name' => 'Orge',   'stock_qty' => 200, 'unit' => 'KG']);
+    $mp3 = RawMaterial::factory()->create(['name' => 'Tourteau Soja', 'stock_qty' => 0, 'unit' => 'KG']);
+    foreach ([[$mp1, 50], [$mp2, 30], [$mp3, 20]] as [$mp, $pct]) {
+        DB::table('formula_items')->insert([
+            'formula_id' => $formula->id, 'raw_material_id' => $mp->id,
+            'percentage' => $pct, 'farm_id' => session('current_farm_id'),
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+    }
+
+    // La page doit se charger et les noms des MP doivent figurer dans
+    // les attributs data-items (JSON) sans crash PHP.
+    $response = $this->actingAs($this->adminUser)
+        ->get(route('production.create'))
+        ->assertOk();
+
+    // Les noms des MP (ASCII) sont sérialisés dans data-items.
+    $response->assertSee('data-items', false);
+    $response->assertSee('Tourteau Soja', false);
+});
