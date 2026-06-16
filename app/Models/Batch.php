@@ -730,12 +730,53 @@ class Batch extends Model
      * ait été acheté à l'extérieur ou produit à la provenderie. Le coût de revient
      * de la production interne est ainsi imputé au lot exactement comme un achat —
      * sans dépendre du moment où l'aliment a été acquis.
+     *
+     * Robustesse : pour les pointages dont le coût n'a pas été figé (données
+     * antérieures au snapshot, ou aliment non encore valorisé à la saisie),
+     * on retombe sur le CMP COURANT de l'article — au lieu de compter 0, qui
+     * donnait l'illusion que « seul le dernier pointage » portait un coût.
+     * Même règle de valorisation que le rapport mensuel (source unique).
      */
     public function getFeedCogsAttribute(): float
     {
-        return (float) $this->dailyChecks()
-            ->selectRaw('COALESCE(SUM(feed_consumed * COALESCE(feed_unit_cost, 0)), 0) AS cogs')
-            ->value('cogs');
+        $checks = $this->dailyChecks()
+            ->where('feed_consumed', '>', 0)
+            ->get(['feed_consumed', 'feed_unit_cost', 'feed_type']);
+
+        if ($checks->isEmpty()) {
+            return 0.0;
+        }
+
+        // Repli CMP courant, uniquement pour les types réellement sans coût figé.
+        $missingTypes = $checks
+            ->filter(fn ($c) => (float) ($c->feed_unit_cost ?? 0) <= 0)
+            ->pluck('feed_type')->filter()->unique();
+
+        $cmpByName = [];
+        if ($missingTypes->isNotEmpty()) {
+            $rows = \App\Models\Stock::where('category', \App\Models\Stock::CAT_CONSO)
+                ->where(function ($q) use ($missingTypes) {
+                    $q->whereIn('item_name', $missingTypes)
+                      ->orWhereIn('feed_type', $missingTypes);
+                })
+                ->get(['item_name', 'feed_type', 'last_unit_price', 'unit_price']);
+
+            foreach ($rows as $r) {
+                $cmp = (float) ($r->last_unit_price ?? $r->unit_price ?? 0);
+                if ($cmp <= 0) continue;
+                if ($r->item_name) $cmpByName[trim($r->item_name)] = $cmp;
+                if ($r->feed_type) $cmpByName[trim($r->feed_type)] = $cmp;
+            }
+        }
+
+        return (float) $checks->sum(function ($c) use ($cmpByName) {
+            $snapshot = (float) ($c->feed_unit_cost ?? 0);
+            $unit = $snapshot > 0
+                ? $snapshot
+                : ($cmpByName[trim((string) $c->feed_type)] ?? 0);
+
+            return (float) $c->feed_consumed * $unit;
+        });
     }
 
     /**

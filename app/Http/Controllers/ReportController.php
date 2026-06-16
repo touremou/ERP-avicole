@@ -527,9 +527,23 @@ class ReportController extends Controller
             ->each(fn ($h) => $h->month = Carbon::parse($h->intervention_date)->month);
 
         $feedConsump = $feedQuery
-            ->select('batch_id', 'feed_consumed as qty', 'check_date')
+            ->select('batch_id', 'feed_consumed as qty', 'feed_unit_cost', 'feed_type', 'check_date')
             ->get()
             ->each(fn ($f) => $f->month = Carbon::parse($f->check_date)->month);
+
+        // Carte de repli du coût moyen pondéré courant par article aliment
+        // (conso), indexée par nom. Source UNIQUE de valorisation partagée
+        // avec la fiche lot (feed_cogs) : on valorise chaque consommation au
+        // coût figé à la saisie (feed_unit_cost) et, à défaut (données
+        // antérieures au snapshot), au CMP courant de l'article — au lieu de
+        // l'ancien prix d'achat moyen qui ignorait l'aliment produit en interne.
+        $feedCmpByName = [];
+        foreach (\App\Models\Stock::where('category', \App\Models\Stock::CAT_CONSO)->get() as $s) {
+            $cmp = (float) ($s->last_unit_price ?? $s->unit_price ?? 0);
+            if ($cmp <= 0) continue;
+            if ($s->item_name) $feedCmpByName[trim($s->item_name)] = $cmp;
+            if ($s->feed_type) $feedCmpByName[trim($s->feed_type)] = $cmp;
+        }
 
         $monthlyData = [];
 
@@ -596,10 +610,28 @@ class ReportController extends Controller
 
             foreach ($feedConsump->where('batch_id', $batch->id) as $f) {
                 $key = $useDateRange ? 0 : $f->month;
-                if (isset($monthlyData[$key][$batch->id])) {
-                    $monthlyData[$key][$batch->id]['feed_qty']  += $f->qty;
-                    $monthlyData[$key][$batch->id]['feed_cost'] += $f->qty * $avgPricePerKg;
-                }
+                if (! isset($monthlyData[$key][$batch->id])) continue;
+
+                // Valorisation : coût figé à la saisie en priorité (cohérent
+                // avec la fiche lot), repli sur le CMP courant de l'article,
+                // puis sur le prix d'achat moyen du lot en dernier recours.
+                $snapshot = (float) ($f->feed_unit_cost ?? 0);
+                $unitCost = $snapshot > 0
+                    ? $snapshot
+                    : ($feedCmpByName[trim((string) $f->feed_type)] ?? $avgPricePerKg);
+
+                $monthlyData[$key][$batch->id]['feed_qty']  += (float) $f->qty;
+                $monthlyData[$key][$batch->id]['feed_cost'] += (float) $f->qty * $unitCost;
+            }
+        }
+
+        // Prix moyen/kg affiché = coût réel valorisé ÷ quantité consommée, afin
+        // que la carte reste cohérente avec le coût aliment (et non l'ancien
+        // prix d'achat moyen qui pouvait diverger).
+        foreach ($monthlyData as $mKey => $mData) {
+            foreach ($mData as $bId => $d) {
+                $monthlyData[$mKey][$bId]['avg_price_per_kg'] =
+                    ($d['feed_qty'] ?? 0) > 0 ? $d['feed_cost'] / $d['feed_qty'] : 0;
             }
         }
 

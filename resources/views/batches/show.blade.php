@@ -662,7 +662,7 @@
                             <th class="px-4 py-5 text-red-500 text-center">{{ __("Morts") }}</th>
                             <th class="px-4 py-5 text-blue-600 text-center">{{ __("Conso. (L/kg)") }}</th>
                             <th class="px-4 py-5 text-orange-500 text-center">{{ __("T° Moyenne") }}</th>
-                            <th class="px-4 py-5 text-emerald-600 text-center">{{ __("Poids (g)") }}</th>
+                            <th class="px-4 py-5 text-emerald-600 text-center">{{ __("Poids") }} ({{ $batch->isGmqTracked() ? 'kg' : 'g' }})</th>
                             <th class="px-4 py-5 text-purple-600 text-center">{{ __("Mvts (Inf.)") }}</th>
                             <th class="px-6 py-5 text-right">{{ __("Actions") }}</th>
                         </tr>
@@ -681,7 +681,11 @@
                                     <p class="text-blue-500 font-black">{{ number_format($check->feed_consumed, 1) }}kg</p>
                                 </td>
                                 <td class="px-4 py-5 text-center font-black text-slate-700">{{ $check->avg_temperature ? number_format($check->avg_temperature, 1).'°C' : '--' }}</td>
-                                <td class="px-4 py-5 text-center font-black text-emerald-600">{{ $check->avg_weight ? number_format($check->avg_weight * 1000, 0) : '--' }} g</td>
+                                <td class="px-4 py-5 text-center font-black text-emerald-600">
+                                    @if($check->avg_weight)
+                                        {{ $batch->isGmqTracked() ? number_format($check->avg_weight, 2).' kg' : number_format($check->avg_weight * 1000, 0).' g' }}
+                                    @else -- @endif
+                                </td>
                                 <td class="px-4 py-5 text-center leading-none">
                                     @if($check->qty_quarantine_in > 0) <span class="text-orange-500 font-black text-[8px] block">+{{ $check->qty_quarantine_in }}</span> @endif
                                     @if($check->qty_quarantine_out > 0) <span class="text-emerald-500 font-black text-[8px] block">-{{ $check->qty_quarantine_out }}</span> @endif

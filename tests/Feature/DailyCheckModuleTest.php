@@ -407,6 +407,46 @@ test('le feed_unit_cost est résolu même si feed_type est null sur le stock (lo
     expect($batch->feed_cogs)->toBe(6000.0); // 20 kg × 300
 });
 
+test('feed_cogs cumule TOUS les pointages, avec repli CMP pour les coûts non figés', function () {
+    // Reproduit « seul le dernier pointage est valorisé » : des pointages
+    // anciens ont feed_unit_cost = 0 (saisis avant que l'aliment soit valorisé).
+    // Le repli sur le CMP courant doit les revaloriser pour ne plus sous-estimer.
+    $batch = Batch::factory()->create([
+        'building_id'      => $this->building->id,
+        'status'           => 'Actif',
+        'current_quantity' => 500,
+        'arrival_date'     => now()->subDays(5),
+    ]);
+
+    Stock::create([
+        'item_name'        => 'Chair Croissance',
+        'feed_type'        => 'Chair Croissance',
+        'category'         => Stock::CAT_CONSO,
+        'unit'             => 'KG',
+        'current_quantity' => 1000,
+        'last_unit_price'  => 400,
+        'unit_price'       => 400,
+        'alert_threshold'  => 0,
+    ]);
+
+    // 2 pointages sans coût figé (legacy) + 1 avec snapshot.
+    DailyCheck::factory()->create([
+        'batch_id' => $batch->id, 'check_date' => now()->subDays(3),
+        'feed_consumed' => 10, 'feed_type' => 'Chair Croissance', 'feed_unit_cost' => 0, 'mortality' => 0,
+    ]);
+    DailyCheck::factory()->create([
+        'batch_id' => $batch->id, 'check_date' => now()->subDays(2),
+        'feed_consumed' => 10, 'feed_type' => 'Chair Croissance', 'feed_unit_cost' => 0, 'mortality' => 0,
+    ]);
+    DailyCheck::factory()->create([
+        'batch_id' => $batch->id, 'check_date' => now()->subDay(),
+        'feed_consumed' => 10, 'feed_type' => 'Chair Croissance', 'feed_unit_cost' => 400, 'mortality' => 0,
+    ]);
+
+    // 3 × 10 kg × 400 = 12000 (les 2 legacy revalorisés au CMP courant 400).
+    expect($batch->feed_cogs)->toBe(12000.0);
+});
+
 test('le pointage enregistre les indicateurs de bien-être (boiterie, picage)', function () {
     $batch = Batch::factory()->create([
         'building_id'      => $this->building->id,
