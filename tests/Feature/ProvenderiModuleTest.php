@@ -314,3 +314,60 @@ test('la page de création affiche les formules multiespèces sans crash (eager-
     // de la forme echappee (preuve que le JSON des items reste integre).
     expect($response->getContent())->toContain('&#039;');
 });
+
+test('la clôture est bloquée si les MP n\'ont pas de prix (garde-fou coût à 0)', function () {
+    $chevreId = Species::where('slug', 'chevre')->value('id');
+    $laitiere = ProductionType::resolveOrCreate('laitiere', $chevreId);
+
+    $unpricedMp = RawMaterial::factory()->create([
+        'name'      => 'Foin non valorisé',
+        'stock_qty' => 5000,
+        'unit_cost' => 0,
+    ]);
+
+    $formula = Formula::factory()->create([
+        'name'               => 'CHÈVRE ENTRETIEN SANS PRIX',
+        'species_id'         => $chevreId,
+        'production_type_id' => $laitiere->id,
+        'target_type'        => 'laitiere',
+    ]);
+    $formula->items()->create([
+        'raw_material_id' => $unpricedMp->id,
+        'percentage'      => 100,
+        'quantity_kg'     => 1000,
+    ]);
+
+    $production = MillProduction::factory()->create([
+        'formula_id'        => $formula->id,
+        'quantity_produced' => 200,
+        'status'            => 'En cours',
+    ]);
+
+    expect(fn () => app(CompleteMillProduction::class)->execute($production))
+        ->toThrow(\DomainException::class, 'Foin non valorisé');
+});
+
+test('la page de création expose unit_cost dans data-items pour le contrôle JS des prix', function () {
+    $chevreId = Species::where('slug', 'chevre')->value('id');
+    $laitiere = ProductionType::resolveOrCreate('laitiere', $chevreId);
+
+    $formula = Formula::factory()->create([
+        'name'               => 'CHEVRE SANS PRIX JS TEST',
+        'species_id'         => $chevreId,
+        'production_type_id' => $laitiere->id,
+        'target_type'        => 'laitiere',
+        'is_active'          => true,
+    ]);
+    $mp = RawMaterial::factory()->create(['name' => 'Paille', 'stock_qty' => 100, 'unit_cost' => 0]);
+    $formula->items()->create([
+        'raw_material_id' => $mp->id,
+        'percentage'      => 100,
+        'quantity_kg'     => 100,
+        'farm_id'         => session('current_farm_id'),
+    ]);
+
+    $this->actingAs($this->adminUser)
+        ->get(route('production.create'))
+        ->assertOk()
+        ->assertSee('unit_cost');
+});

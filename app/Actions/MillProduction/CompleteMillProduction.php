@@ -71,6 +71,29 @@ class CompleteMillProduction
                 ? round($totalCost / $quantityProduced, 2)
                 : 0;
 
+            // ─── 3.bis GARDE-FOU VALORISATION ───
+            // Un coût de revient à 0 signifie que toutes les matières premières
+            // manquent de prix (unit_cost = 0). Sans ce garde-fou, le silo
+            // d'aliment fini serait crédité à 0 GNF/kg et chaque pointage de
+            // consommation ultérieur afficherait ALIMENT : 0 GNF même si des
+            // MP coûteuses ont bien été consommées.
+            if ($realCostPerKg <= 0) {
+                $unpricedMaterials = $production->formula->items
+                    ->filter(fn ($item) => $item->rawMaterial && (float) $item->rawMaterial->unit_cost <= 0)
+                    ->map(fn ($item) => $item->rawMaterial->name)
+                    ->values()
+                    ->all();
+
+                if (! empty($unpricedMaterials)) {
+                    throw new \DomainException(
+                        "Clôture impossible : le coût de revient de l'aliment produit serait 0 GNF/kg. " .
+                        "Les matières premières suivantes n'ont pas de prix unitaire (unit_cost = 0) : " .
+                        implode(', ', $unpricedMaterials) .
+                        ". Renseignez les prix dans le module Provenderie > Matières Premières avant de relancer."
+                    );
+                }
+            }
+
             // ─── 4. ENTRÉE STOCK ALIMENT FINI (valorisée au coût de revient) ───
             // Le CMP de l'article aliment fini intègre le coût de revient réel
             // de cette production : l'inventaire — et donc la consommation des

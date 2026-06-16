@@ -45,7 +45,7 @@
                                         <option value="">{{ __("-- CHOISIR UNE RECETTE --") }}</option>
                                         @foreach($formulas as $f)
                                             <option value="{{ $f->id }}"
-                                                data-items="{{ json_encode($f->items->map(fn($item) => ['percentage' => (float) $item->percentage, 'raw_material' => ['name' => $item->rawMaterial?->name ?? __('MP supprimée'), 'stock_qty' => (float) ($item->rawMaterial?->stock_qty ?? 0)]])) }}">
+                                                data-items="{{ json_encode($f->items->map(fn($item) => ['percentage' => (float) $item->percentage, 'raw_material' => ['name' => $item->rawMaterial?->name ?? __('MP supprimée'), 'stock_qty' => (float) ($item->rawMaterial?->stock_qty ?? 0), 'unit_cost' => (float) ($item->rawMaterial?->unit_cost ?? 0)]])) }}">
                                                 {{ strtoupper($f->name) }} ({{ $f->code }})
                                             </option>
                                         @endforeach
@@ -212,23 +212,47 @@
             try {
                 const items = JSON.parse(select.options[select.selectedIndex].dataset.items);
                 let isPossible = true;
+                let hasUnpricedMp = false;
                 let html = '';
 
                 items.forEach(item => {
                     const need = (item.percentage / 100) * totalWeight;
                     const stock = item.raw_material ? parseFloat(item.raw_material.stock_qty) : 0;
+                    const unitCost = item.raw_material ? parseFloat(item.raw_material.unit_cost || 0) : 0;
                     const matName = item.raw_material ? item.raw_material.name : @json(__('Inconnu'));
                     const enough = stock >= need;
+                    const priced = unitCost > 0;
                     if (!enough) isPossible = false;
+                    if (!priced) hasUnpricedMp = true;
+
+                    // Priorité rouge (stock) > orange (prix) > blanc (OK)
+                    const cardBg  = !enough ? 'bg-red-50 border border-red-100'
+                                 : !priced ? 'bg-orange-50 border border-orange-200'
+                                 : 'bg-white shadow-sm';
+                    const qtyColor = !enough ? 'text-red-600' : 'text-slate-800';
+                    const statusColor = !enough ? 'text-red-400'
+                                     : !priced ? 'text-orange-500'
+                                     : 'text-emerald-500';
+                    const statusText = !enough
+                        ? @json(__('Manque')) + ': ' + (need - stock).toFixed(1) + 'kg'
+                        : !priced
+                            ? '<i class="fa-solid fa-triangle-exclamation"></i> ' + @json(__('Prix non renseigné'))
+                            : '<i class="fa-solid fa-check"></i> ' + @json(__('Prêt'));
+
+                    // Ligne de prix (visible uniquement si MP a un coût)
+                    const priceRow = priced
+                        ? `<p class="text-[7px] text-slate-400 italic mt-1">${unitCost.toLocaleString(undefined, {minimumFractionDigits: 0})} GNF/kg</p>`
+                        : '';
 
                     html += `
-                        <div class="p-5 rounded-[2rem] ${enough ? 'bg-white shadow-sm' : 'bg-red-50 border border-red-100'} transition-all text-left">
+                        <div class="p-5 rounded-[2rem] ${cardBg} transition-all text-left">
                             <p class="text-[9px] font-black text-slate-400 uppercase leading-none mb-3 tracking-tighter italic">${matName}</p>
                             <div class="flex justify-between items-end">
-                                <span class="text-sm font-black ${enough ? 'text-slate-800' : 'text-red-600'} italic">${need.toLocaleString(undefined, {minimumFractionDigits: 1})} <small class="text-[9px]">kg</small></span>
-                                <span class="text-[8px] font-black uppercase ${enough ? 'text-emerald-500' : 'text-red-400'} italic">
-                                    ${enough ? '<i class="fa-solid fa-check"></i> ' + @json(__('Prêt')) : @json(__('Manque')) + ': ' + (need - stock).toFixed(1) + 'kg'}
-                                </span>
+                                <div>
+                                    <span class="text-sm font-black ${qtyColor} italic">${need.toLocaleString(undefined, {minimumFractionDigits: 1})} <small class="text-[9px]">kg</small></span>
+                                    ${priceRow}
+                                </div>
+                                <span class="text-[8px] font-black uppercase ${statusColor} italic text-right leading-tight">${statusText}</span>
                             </div>
                         </div>
                     `;
@@ -236,20 +260,36 @@
 
                 if(container) container.innerHTML = html;
 
+                // Avertissement consolidé sur les prix manquants
+                if (hasUnpricedMp) {
+                    container.insertAdjacentHTML('beforeend', `
+                        <div class="col-span-3 mt-2 p-4 bg-orange-50 border border-orange-200 rounded-2xl flex items-start gap-3">
+                            <i class="fa-solid fa-triangle-exclamation text-orange-500 mt-0.5"></i>
+                            <p class="text-[9px] font-black text-orange-700 uppercase italic leading-snug">
+                                ${@json(__('Une ou plusieurs MP n\'ont pas de prix renseigné. La clôture de cette production sera bloquée : renseignez le prix dans Provenderie > Matières Premières.'))}
+                            </p>
+                        </div>
+                    `);
+                }
+
                 if (submitBtn && badge) {
                     if (isPossible && machineSelected) {
                         submitBtn.disabled = false;
                         submitBtn.className = "w-full bg-slate-900 text-white font-black py-8 rounded-[2.5rem] shadow-2xl uppercase tracking-[0.4em] text-sm italic hover:bg-emerald-600 border-2 border-emerald-400/20 transition-all active:scale-95 cursor-pointer";
-                        submitBtn.innerHTML = '<i class="fa-solid fa-play-circle mr-2 text-emerald-400"></i> ' + @json(__('Lancer la Production'));
-                        badge.className = "px-4 py-1 bg-emerald-100 text-emerald-600 rounded-full text-[8px] font-black uppercase italic tracking-widest block";
-                        badge.innerText = @json(__("Ligne de Silos : OK"));
+                        submitBtn.innerHTML = hasUnpricedMp
+                            ? '<i class="fa-solid fa-triangle-exclamation mr-2 text-orange-400"></i> ' + @json(__('Planifier (⚠ Prix MP manquants)'))
+                            : '<i class="fa-solid fa-play-circle mr-2 text-emerald-400"></i> ' + @json(__('Lancer la Production'));
+                        badge.className = hasUnpricedMp
+                            ? "px-4 py-1 bg-orange-100 text-orange-600 rounded-full text-[8px] font-black uppercase italic tracking-widest block"
+                            : "px-4 py-1 bg-emerald-100 text-emerald-600 rounded-full text-[8px] font-black uppercase italic tracking-widest block";
+                        badge.innerText = hasUnpricedMp ? @json(__("Silos OK • Prix MP ⚠")) : @json(__("Ligne de Silos : OK"));
                     } else {
                         submitBtn.disabled = true;
                         submitBtn.className = "w-full bg-slate-100 text-slate-300 font-black py-8 rounded-[2.5rem] uppercase tracking-[0.4em] text-sm italic cursor-not-allowed shadow-inner border-2 border-transparent";
-                        
-                        if(!machineSelected) {
+
+                        if (!machineSelected) {
                             submitBtn.innerHTML = '<i class="fa-solid fa-cog fa-spin mr-2"></i> ' + @json(__('Configurer la ligne machine'));
-                            if(document.getElementById('machine_error')) document.getElementById('machine_error').classList.remove('hidden');
+                            if (document.getElementById('machine_error')) document.getElementById('machine_error').classList.remove('hidden');
                         } else {
                             submitBtn.innerHTML = '<i class="fa-solid fa-lock mr-2"></i> ' + @json(__('Rupture de Stock MP'));
                         }
