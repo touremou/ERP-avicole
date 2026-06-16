@@ -564,20 +564,13 @@
                         </thead>
                         <tbody class="divide-y divide-slate-50 text-[10px]">
                             @php
-                                // Mouvements de stock "aliment" du secteur du lot (cf. Batch::feedSector()).
-                                $targetSector = $batch->feedSector();
-                                $feedStockIds = \App\Models\Stock::where('category', 'conso')
-                                    ->where(function($q) use ($targetSector) {
-                                        $q->where('metadata->poultry_type', $targetSector)
-                                        ->orWhere('item_name', 'LIKE', $targetSector . '%');
-                                    })
-                                    ->pluck('id');
-
-                                $movements = \App\Models\StockMovement::whereIn('stock_id', $feedStockIds)
-                                                ->where('notes', 'LIKE', "%{$batch->code}%")
-                                                ->latest()
-                                                ->get();
-
+                                // Consommation : registre dérivé des pointages (source unique,
+                                // cf. Batch::feedConsumptionLedger). Une ligne par pointage,
+                                // valorisée au même coût que le total feed_cogs — donc alignée
+                                // sur l'Historique Daily (une ligne/date) et non plus sur les
+                                // mouvements de stock bruts (qui doublaient l'affichage lors
+                                // d'une correction via une compensation cachée).
+                                $consumptionLedger = $batch->feedConsumptionLedger();
                                 $purchases = $batch->feedPurchases;
                             @endphp
 
@@ -613,22 +606,29 @@
                                 </tr>
                             @endforeach
 
-                            @foreach($movements->where('type', 'out')->sortByDesc('created_at') as $m)
+                            @foreach($consumptionLedger as $line)
                                 <tr class="hover:bg-rose-50/30 transition-colors border-l-4 border-l-rose-500">
-                                    <td class="px-8 py-4 text-slate-400 font-medium">{{ $m->created_at->format('d/m H:i') }}</td>
-                                    <td class="px-8 py-4 text-slate-800 uppercase font-black">{{ $m->stock->item_name ?? 'N/A' }}</td>
+                                    <td class="px-8 py-4 text-slate-400 font-medium">{{ \Carbon\Carbon::parse($line->date)->format('d/m/Y') }}</td>
+                                    <td class="px-8 py-4 text-slate-800 uppercase font-black">{{ $line->feed_type ?? 'N/A' }}</td>
                                     <td class="px-8 py-4 text-center">
                                         <span class="bg-rose-100 text-rose-700 text-[7px] px-2 py-1 rounded-md uppercase font-black italic">{{ __("Consommation") }}</span>
                                     </td>
-                                    <td class="px-8 py-4 text-center text-rose-600 font-black">- {{ number_format($m->quantity, 2) }} {{ $m->stock->unit ?? '' }}</td>
-                                    <td class="px-8 py-4 text-right text-slate-400 italic font-medium leading-tight">{{ $m->notes }}</td>
+                                    <td class="px-8 py-4 text-center text-rose-600 font-black">- {{ number_format($line->qty, 1) }} kg</td>
+                                    <td class="px-8 py-4 text-right">
+                                        @if($line->amount > 0)
+                                            <span class="text-slate-900 font-black">{{ number_format($line->amount, 0) }} GNF</span>
+                                            <br><span class="text-[8px] text-slate-400 italic">{{ number_format($line->unit_cost, 0) }} GNF/kg</span>
+                                        @else
+                                            <span class="text-slate-300 italic text-[8px] uppercase">{{ __("Non valorisé") }}</span>
+                                        @endif
+                                    </td>
                                     <td class="px-8 py-4 text-right">
                                         <i class="fa-solid fa-circle-check text-emerald-500/30"></i>
                                     </td>
                                 </tr>
                             @endforeach
 
-                            @if($purchases->isEmpty() && $movements->isEmpty())
+                            @if($purchases->isEmpty() && $consumptionLedger->isEmpty())
                                 <tr>
                                     <td colspan="6" class="px-8 py-10 text-center text-slate-300 uppercase text-[9px] tracking-widest">
                                         {{ __("Aucun mouvement enregistré") }}

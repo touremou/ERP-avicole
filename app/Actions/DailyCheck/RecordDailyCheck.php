@@ -31,6 +31,17 @@ class RecordDailyCheck
         return DB::transaction(function () use ($data) {
             $batch = Batch::findOrFail($data['batch_id']);
 
+            // ─── Normalisation de la date (cohérence updateOrCreate) ───
+            // La colonne check_date est persistée au format datetime
+            // (« Y-m-d 00:00:00 ») via le cast 'date'. Une comparaison avec la
+            // chaîne brute « Y-m-d » ne matchait jamais la ligne stockée : le
+            // pointage existant n'était pas retrouvé, et updateOrCreate tentait
+            // un INSERT → violation de contrainte UNIQUE (500) à chaque
+            // correction d'un pointage du jour. On fige donc une instance
+            // Carbon en début de journée, utilisée pour la recherche ET pour
+            // le updateOrCreate, afin que les deux formats coïncident.
+            $data['check_date'] = \Illuminate\Support\Carbon::parse($data['check_date'])->startOfDay();
+
             // ─── Chercher un pointage existant pour cette date ───
             $existing = DailyCheck::where('batch_id', $data['batch_id'])
                 ->where('check_date', $data['check_date'])

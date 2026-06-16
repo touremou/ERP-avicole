@@ -723,28 +723,28 @@ class Batch extends Model
     // ═══════════════════════════════════════════════
 
     /**
-     * Coût de revient de l'aliment réellement CONSOMMÉ par le lot (COGS).
+     * Registre de consommation aliment : UNE entrée par pointage avec
+     * consommation > 0, chacune valorisée au coût unitaire résolu (coût figé à
+     * la saisie en priorité, repli sur le CMP courant de l'article).
      *
-     * Approche industrielle : la consommation journalière est valorisée au coût
-     * moyen pondéré figé à la saisie (daily_checks.feed_unit_cost), que l'aliment
-     * ait été acheté à l'extérieur ou produit à la provenderie. Le coût de revient
-     * de la production interne est ainsi imputé au lot exactement comme un achat —
-     * sans dépendre du moment où l'aliment a été acquis.
+     * Source UNIQUE partagée par feed_cogs ET le Journal des Flux de la fiche
+     * lot : garantit que les lignes de consommation affichées correspondent
+     * exactement aux pointages (une ligne par date) et que leur somme égale le
+     * coût de revient total — fini la divergence entre l'historique des
+     * pointages (1 ligne/date) et les mouvements de stock bruts (compensations
+     * de correction comprises, qui doublaient visuellement la consommation).
      *
-     * Robustesse : pour les pointages dont le coût n'a pas été figé (données
-     * antérieures au snapshot, ou aliment non encore valorisé à la saisie),
-     * on retombe sur le CMP COURANT de l'article — au lieu de compter 0, qui
-     * donnait l'illusion que « seul le dernier pointage » portait un coût.
-     * Même règle de valorisation que le rapport mensuel (source unique).
+     * @return \Illuminate\Support\Collection<int, object{date: \Illuminate\Support\Carbon, feed_type: ?string, qty: float, unit_cost: float, amount: float}>
      */
-    public function getFeedCogsAttribute(): float
+    public function feedConsumptionLedger(): \Illuminate\Support\Collection
     {
         $checks = $this->dailyChecks()
             ->where('feed_consumed', '>', 0)
-            ->get(['feed_consumed', 'feed_unit_cost', 'feed_type']);
+            ->orderByDesc('check_date')
+            ->get(['id', 'check_date', 'feed_consumed', 'feed_unit_cost', 'feed_type']);
 
         if ($checks->isEmpty()) {
-            return 0.0;
+            return collect();
         }
 
         // Repli CMP courant, uniquement pour les types réellement sans coût figé.
@@ -769,14 +769,39 @@ class Batch extends Model
             }
         }
 
-        return (float) $checks->sum(function ($c) use ($cmpByName) {
+        return $checks->map(function ($c) use ($cmpByName) {
             $snapshot = (float) ($c->feed_unit_cost ?? 0);
-            $unit = $snapshot > 0
+            $unitCost = $snapshot > 0
                 ? $snapshot
                 : ($cmpByName[trim((string) $c->feed_type)] ?? 0);
+            $qty = (float) $c->feed_consumed;
 
-            return (float) $c->feed_consumed * $unit;
+            return (object) [
+                'date'      => $c->check_date,
+                'feed_type' => $c->feed_type,
+                'qty'       => $qty,
+                'unit_cost' => $unitCost,
+                'amount'    => $qty * $unitCost,
+            ];
         });
+    }
+
+    /**
+     * Coût de revient de l'aliment réellement CONSOMMÉ par le lot (COGS).
+     *
+     * Approche industrielle : la consommation journalière est valorisée au coût
+     * moyen pondéré figé à la saisie (daily_checks.feed_unit_cost), que l'aliment
+     * ait été acheté à l'extérieur ou produit à la provenderie. Le coût de revient
+     * de la production interne est ainsi imputé au lot exactement comme un achat —
+     * sans dépendre du moment où l'aliment a été acquis.
+     *
+     * Délègue au registre de consommation (feedConsumptionLedger) : le total
+     * est par construction la somme des lignes affichées dans le Journal des
+     * Flux de la fiche lot.
+     */
+    public function getFeedCogsAttribute(): float
+    {
+        return (float) $this->feedConsumptionLedger()->sum('amount');
     }
 
     /**

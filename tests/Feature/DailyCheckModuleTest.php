@@ -447,6 +447,57 @@ test('feed_cogs cumule TOUS les pointages, avec repli CMP pour les coûts non fi
     expect($batch->feed_cogs)->toBe(12000.0);
 });
 
+test('le registre de consommation s\'aligne sur les pointages : une ligne par date, somme = feed_cogs', function () {
+    // Cohérence Journal des Flux ↔ Historique Daily : une correction (re-saisie
+    // du même jour) ne doit PAS produire deux lignes de consommation, et le
+    // total du registre doit égaler feed_cogs.
+    $batch = Batch::factory()->create([
+        'building_id'      => $this->building->id,
+        'status'           => 'Actif',
+        'current_quantity' => 500,
+        'arrival_date'     => now()->subDays(5),
+    ]);
+
+    Stock::create([
+        'item_name'        => 'Chair Démarrage',
+        'feed_type'        => 'Chair Démarrage',
+        'category'         => Stock::CAT_CONSO,
+        'unit'             => 'KG',
+        'current_quantity' => 1000,
+        'last_unit_price'  => 250,
+        'unit_price'       => 250,
+        'alert_threshold'  => 0,
+    ]);
+
+    $date = now()->subDay()->toDateString();
+
+    // Saisie initiale puis CORRECTION le même jour (10 → 30 kg).
+    foreach ([10, 30] as $qty) {
+        $this->actingAs($this->managerUser)
+            ->post(route('daily-checks.store'), [
+                'batch_id'      => $batch->id,
+                'check_date'    => $date,
+                'mortality'     => 0,
+                'feed_consumed' => $qty,
+                'feed_type'     => 'Chair Démarrage',
+            ])
+            ->assertSessionHasNoErrors();
+    }
+
+    $batch->refresh();
+    $ledger = $batch->feedConsumptionLedger();
+
+    // Une seule ligne (la correction écrase, ne s'ajoute pas) — alignée sur
+    // l'unique pointage de la date.
+    expect($ledger)->toHaveCount(1);
+    expect((float) $ledger->first()->qty)->toBe(30.0);
+    expect((float) $ledger->first()->amount)->toBe(7500.0); // 30 × 250
+
+    // Le total du registre = feed_cogs (invariant de cohérence).
+    expect((float) $ledger->sum('amount'))->toBe($batch->feed_cogs);
+    expect($batch->feed_cogs)->toBe(7500.0);
+});
+
 test('le pointage enregistre les indicateurs de bien-être (boiterie, picage)', function () {
     $batch = Batch::factory()->create([
         'building_id'      => $this->building->id,
