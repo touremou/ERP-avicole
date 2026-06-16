@@ -88,6 +88,65 @@ test('créer un stock génère un mouvement initial si quantité > 0', function 
     expect(StockMovement::where('stock_id', $stock->id)->where('type', 'in')->exists())->toBeTrue();
 });
 
+test('un aliment non-volaille (Alevinage) reste visible dans l\'index conso', function () {
+    // Reproduit le bug : compteur = N mais la liste en affiche N-1 car les
+    // aliments poisson/ruminant tombaient entre les filtres volaille-centriques.
+    Stock::factory()->create([
+        'item_name' => 'Chair Finition', 'category' => 'conso', 'unit' => 'KG',
+        'current_quantity' => 200,
+        'metadata' => ['conso_type' => 'Aliment', 'poultry_type' => 'Chair'],
+    ]);
+    Stock::factory()->create([
+        'item_name' => 'Ponte 1 (Pic de ponte)', 'category' => 'conso', 'unit' => 'KG',
+        'current_quantity' => 150,
+        'metadata' => ['conso_type' => 'Aliment', 'poultry_type' => 'Ponte'],
+    ]);
+    // L'article qui « disparaissait » : aliment alevinage (pisciculture).
+    Stock::factory()->create([
+        'item_name' => 'Alevinage 1er âge', 'category' => 'conso', 'unit' => 'KG',
+        'current_quantity' => 250,
+        'metadata' => ['conso_type' => 'Aliment', 'poultry_type' => 'Alevinage'],
+    ]);
+
+    $this->actingAs($this->adminUser)
+        ->get(route('stocks.index', ['category' => 'conso']))
+        ->assertOk()
+        ->assertSee('Chair Finition')
+        ->assertSee('Ponte 1 (Pic de ponte)')
+        ->assertSee('Alevinage 1er âge'); // ne doit plus être omis
+});
+
+test('un consommable au type inconnu n\'est jamais perdu (filet Non classé)', function () {
+    Stock::factory()->create([
+        'item_name' => 'Article Mystère', 'category' => 'conso', 'unit' => 'Unité',
+        'current_quantity' => 5,
+        'metadata' => ['conso_type' => 'TypeInexistant'],
+    ]);
+
+    $this->actingAs($this->adminUser)
+        ->get(route('stocks.index', ['category' => 'conso']))
+        ->assertOk()
+        ->assertSee('Article Mystère');
+});
+
+test('la création initialise le coût moyen pondéré (last_unit_price)', function () {
+    $this->actingAs($this->operatorUser)->post(route('stocks.store'), [
+        'item_name'        => 'Maïs Concassé',
+        'category'         => 'conso',
+        'unit'             => 'KG',
+        'alert_threshold'  => 10,
+        'current_quantity' => 100,
+        'unit_price'       => 4500,
+        'metadata'         => ['conso_type' => 'Autre'],
+    ]);
+
+    $stock = Stock::where('item_name', 'Maïs Concassé')->first();
+    expect($stock)->not->toBeNull();
+    // Sans last_unit_price, la valorisation inventaire serait nulle.
+    expect((float) $stock->last_unit_price)->toBe(4500.0);
+    expect((float) $stock->total_value)->toBe(450000.0);
+});
+
 test('anti-doublon : ne peut pas créer 2 stocks même nom+catégorie', function () {
     Stock::factory()->create(['item_name' => 'XL', 'category' => 'oeufs']);
 

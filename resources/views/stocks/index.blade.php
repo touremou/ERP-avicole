@@ -74,44 +74,78 @@
                 $sections = [];
 
                 if ($currentCategory === 'conso') {
-                    // Découpage intelligent si on est dans les consommables
-                    $sections = [
-                        [
-                            'title' => __('Alimentation Chair'),
-                            'icon' => 'fa-feather-pointed',
-                            'text_color' => 'text-slate-800',
-                            'border_color' => 'border-slate-800',
-                            'items' => $stocks->filter(fn($s) => ($s->metadata['poultry_type'] ?? '') === 'Chair' && ($s->metadata['conso_type'] ?? '') === 'Aliment')
-                        ],
-                        [
-                            'title' => __('Alimentation Ponte & Repro'),
-                            'icon' => 'fa-egg',
-                            'text_color' => 'text-emerald-600',
-                            'border_color' => 'border-emerald-500',
-                            'items' => $stocks->filter(fn($s) => in_array($s->metadata['poultry_type'] ?? '', ['Ponte', 'Reproducteur']) && ($s->metadata['conso_type'] ?? '') === 'Aliment')
-                        ],
-                        [
-                            'title' => __('Santé & Pharmacie'),
-                            'icon' => 'fa-kit-medical',
-                            'text_color' => 'text-blue-600',
-                            'border_color' => 'border-blue-500',
-                            'items' => $stocks->filter(fn($s) => ($s->metadata['conso_type'] ?? '') === 'Santé')
-                        ],
-                        [
-                            'title' => __('Hygiène & Entretien'),
-                            'icon' => 'fa-soap',
-                            'text_color' => 'text-cyan-600',
-                            'border_color' => 'border-cyan-500',
-                            'items' => $stocks->filter(fn($s) => ($s->metadata['conso_type'] ?? '') === 'Hygiène')
-                        ],
-                        [
-                            'title' => __('Autres Consommables'),
-                            'icon' => 'fa-box-open',
-                            'text_color' => 'text-slate-500',
-                            'border_color' => 'border-slate-300',
-                            'items' => $stocks->filter(fn($s) => !in_array($s->metadata['conso_type'] ?? '', ['Aliment', 'Santé', 'Hygiène']))
-                        ]
+                    // Présentation par secteur d'aliment (multiespèces). On dérive
+                    // les sections des secteurs CANONIQUES (Batch::FEED_PHASES) au
+                    // lieu de filtres volaille codés en dur : ainsi un aliment
+                    // poisson (Alevinage), ruminant (Laitière…) ou porc
+                    // (Engraissement) n'est plus silencieusement écarté de la liste.
+                    $feedSectorMeta = [
+                        'Chair'         => ['icon' => 'fa-feather-pointed', 'text_color' => 'text-slate-800',   'border_color' => 'border-slate-800'],
+                        'Ponte'         => ['icon' => 'fa-egg',             'text_color' => 'text-emerald-600', 'border_color' => 'border-emerald-500'],
+                        'Reproducteur'  => ['icon' => 'fa-dna',             'text_color' => 'text-purple-600',  'border_color' => 'border-purple-500'],
+                        'Engraissement' => ['icon' => 'fa-weight-hanging',  'text_color' => 'text-rose-600',    'border_color' => 'border-rose-500'],
+                        'Laitière'      => ['icon' => 'fa-cow',             'text_color' => 'text-cyan-600',    'border_color' => 'border-cyan-500'],
+                        'Grossissement' => ['icon' => 'fa-fish',            'text_color' => 'text-blue-600',    'border_color' => 'border-blue-500'],
+                        'Alevinage'     => ['icon' => 'fa-water',           'text_color' => 'text-sky-600',     'border_color' => 'border-sky-500'],
                     ];
+
+                    $isAliment = fn($s) => ($s->metadata['conso_type'] ?? '') === 'Aliment';
+                    $aliments  = $stocks->filter($isAliment);
+
+                    // Un secteur par clé canonique, dans l'ordre métier.
+                    foreach (\App\Models\Batch::FEED_PHASES as $sector => $phases) {
+                        $items = $aliments->filter(fn($s) => ($s->metadata['poultry_type'] ?? '') === $sector);
+                        if ($items->isEmpty()) continue;
+                        $meta = $feedSectorMeta[$sector] ?? ['icon' => 'fa-wheat-awn', 'text_color' => 'text-slate-600', 'border_color' => 'border-slate-300'];
+                        $sections[] = [
+                            'title'        => __('Alimentation :sector', ['sector' => $sector]),
+                            'icon'         => $meta['icon'],
+                            'text_color'   => $meta['text_color'],
+                            'border_color' => $meta['border_color'],
+                            'items'        => $items,
+                        ];
+                    }
+
+                    // Aliments sans secteur reconnu (legacy / import) : on les
+                    // affiche quand même au lieu de les perdre.
+                    $knownSectors = array_keys(\App\Models\Batch::FEED_PHASES);
+                    $orphanFeeds = $aliments->filter(fn($s) => !in_array($s->metadata['poultry_type'] ?? '', $knownSectors, true));
+                    if ($orphanFeeds->isNotEmpty()) {
+                        $sections[] = [
+                            'title' => __('Autres Aliments'), 'icon' => 'fa-wheat-awn',
+                            'text_color' => 'text-amber-600', 'border_color' => 'border-amber-500',
+                            'items' => $orphanFeeds,
+                        ];
+                    }
+
+                    $sections[] = [
+                        'title' => __('Santé & Pharmacie'), 'icon' => 'fa-kit-medical',
+                        'text_color' => 'text-blue-600', 'border_color' => 'border-blue-500',
+                        'items' => $stocks->filter(fn($s) => ($s->metadata['conso_type'] ?? '') === 'Santé'),
+                    ];
+                    $sections[] = [
+                        'title' => __('Hygiène & Entretien'), 'icon' => 'fa-soap',
+                        'text_color' => 'text-cyan-600', 'border_color' => 'border-cyan-500',
+                        'items' => $stocks->filter(fn($s) => ($s->metadata['conso_type'] ?? '') === 'Hygiène'),
+                    ];
+                    $sections[] = [
+                        'title' => __('Autres Consommables'), 'icon' => 'fa-box-open',
+                        'text_color' => 'text-slate-500', 'border_color' => 'border-slate-300',
+                        'items' => $stocks->filter(fn($s) => !in_array($s->metadata['conso_type'] ?? '', ['Aliment', 'Santé', 'Hygiène'], true)),
+                    ];
+
+                    // FILET DE SÉCURITÉ : aucun article ne doit disparaître. On
+                    // recense tout ce qui n'a atterri dans aucune section et on
+                    // l'expose dans un bloc « Non classé » (cohérence compteur/liste).
+                    $shownIds = collect($sections)->flatMap(fn($sec) => $sec['items']->pluck('id'))->unique();
+                    $unclassified = $stocks->reject(fn($s) => $shownIds->contains($s->id));
+                    if ($unclassified->isNotEmpty()) {
+                        $sections[] = [
+                            'title' => __('Non classé'), 'icon' => 'fa-circle-question',
+                            'text_color' => 'text-red-600', 'border_color' => 'border-red-500',
+                            'items' => $unclassified,
+                        ];
+                    }
                 } else {
                     // Un seul grand tableau pour les autres catégories (Œufs, Produits Finis, Litières, Matériels)
                     $sections = [
@@ -122,6 +156,7 @@
                     ];
                 }
             @endphp
+
 
             {{-- AFFICHAGE DES TABLEAUX --}}
             @foreach($sections as $section)

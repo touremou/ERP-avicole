@@ -22,13 +22,20 @@ class CreateStockAction
                 $unit = 'KG'; 
             }
 
+            // Le prix saisi initialise AUSSI le coût moyen pondéré (last_unit_price) :
+            // c'est lui qui porte la valorisation de l'inventaire (tableau de bord,
+            // total_value). Sans cela un article créé avec un prix serait valorisé
+            // à 0 jusqu'au premier achat/production.
+            $unitPrice = (float) ($data['unit_price'] ?? 0);
+
             $stock = Stock::create([
                 'item_name'        => trim($data['item_name']),
                 'category'         => $data['category'],
                 'unit'             => $unit,
                 'alert_threshold'  => $alertThreshold,
                 'current_quantity' => $quantity,
-                'unit_price'       => $data['unit_price'] ?? 0,
+                'unit_price'       => $unitPrice,
+                'last_unit_price'  => $unitPrice,
                 'metadata'         => $data['metadata'] ?? [],
             ]);
 
