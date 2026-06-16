@@ -230,6 +230,18 @@
                                 <input id="t_name" type="text" name="treatment_name" placeholder="NOM PRODUIT" class="p-4 bg-slate-50 border-none rounded-2xl text-[10px] uppercase shadow-inner outline-none italic font-black">
                             </div>
                         </div>
+                        {{-- Bien-être animal : sujets vivants en souffrance (boiterie, picage). --}}
+                        <div class="grid grid-cols-2 gap-4 mb-6">
+                            <div class="p-5 bg-violet-50/60 rounded-3xl border border-violet-100">
+                                <label class="block text-[8px] font-black text-violet-500 uppercase mb-2 text-center tracking-widest">Boiteux (Bien-être)</label>
+                                <input type="number" name="lame_count" value="{{ old('lame_count', 0) }}" min="0" class="w-full bg-transparent text-center text-3xl font-black text-violet-600 border-none outline-none italic">
+                            </div>
+                            <div class="p-5 bg-fuchsia-50/60 rounded-3xl border border-fuchsia-100">
+                                <label class="block text-[8px] font-black text-fuchsia-500 uppercase mb-2 text-center tracking-widest">Picage / Blessés</label>
+                                <input type="number" name="pecking_injury_count" value="{{ old('pecking_injury_count', 0) }}" min="0" class="w-full bg-transparent text-center text-3xl font-black text-fuchsia-600 border-none outline-none italic">
+                            </div>
+                        </div>
+
                         <textarea name="observations" rows="2" class="w-full bg-slate-50 rounded-[2rem] p-6 outline-none focus:bg-white border-2 border-transparent focus:border-blue-500 font-black text-slate-600 shadow-inner text-xs uppercase italic" placeholder="OBSERVATIONS OU SYMPTÔMES..."></textarea>
                     </div>
 

@@ -248,6 +248,38 @@ class DashboardController extends Controller
             }
         }
 
+        // G. Bien-être animal : taux de boiterie / picage du dernier pointage
+        // récent au-delà des seuils paramétrés. Indicateurs préventifs (les
+        // sujets sont vivants) — alerte avant que cela ne dégénère en mortalité.
+        $welfareWindow = (int) setting('elevage.welfare_window_days', 7);
+        $lamenessPct   = (float) setting('elevage.lameness_alert_pct', 5);
+        $peckingPct    = (float) setting('elevage.pecking_alert_pct', 2);
+
+        $welfareAlerts = Batch::active()->where('initial_quantity', '>', 0)
+            ->with('latestDailyCheck')
+            ->get()
+            ->map(function ($batch) use ($welfareWindow, $lamenessPct, $peckingPct) {
+                $check = $batch->latestDailyCheck;
+                if (! $check || (int) $batch->current_quantity <= 0) return null;
+                if (Carbon::parse($check->check_date)->lt(now()->subDays($welfareWindow))) return null;
+
+                $eff   = (int) $batch->current_quantity;
+                $lame  = (int) ($check->lame_count ?? 0);
+                $peck  = (int) ($check->pecking_injury_count ?? 0);
+                $issues = [];
+
+                if ($lame > 0 && ($lame / $eff) * 100 > $lamenessPct) {
+                    $issues[] = ['type' => 'Boiterie', 'pct' => round(($lame / $eff) * 100, 1)];
+                }
+                if ($peck > 0 && ($peck / $eff) * 100 > $peckingPct) {
+                    $issues[] = ['type' => 'Picage', 'pct' => round(($peck / $eff) * 100, 1)];
+                }
+
+                return $issues ? ['batch' => $batch, 'issues' => $issues] : null;
+            })
+            ->filter()
+            ->values();
+
         // ---------------------------------------------------------
         // 6. DONNÉES D'AFFICHAGE (Bâtiments & Pagination)
         // ---------------------------------------------------------
@@ -364,7 +396,7 @@ class DashboardController extends Controller
             'totalEggsStock', 'totalBrokenToday', 'rawMaterialsValue', 'safeProfit',
             'encoursClients',
             'criticalTypes', 'emergencyBatches', 'underperformingBatches', 'sanitaryAlertsCount',
-            'lowStocks', 'vaccineAlerts', 'criticalDaysThreshold',
+            'lowStocks', 'vaccineAlerts', 'welfareAlerts', 'criticalDaysThreshold',
             'activeBatches', 'buildings', 'totalEggsToday', 'tabaskiWidget', 'waterAlerts',
             'familyBreakdown', 'showEggKpis', 'activeLotsCount',
             'occupiedBuildingsCount', 'totalBuildingsCount'

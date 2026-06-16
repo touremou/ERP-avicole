@@ -166,3 +166,60 @@ test('un stock sous son seuil déclenche une alerte de réapprovisionnement', fu
         ->assertViewHas('lowStocks', fn ($s) => $s->isNotEmpty())
         ->assertSee('Vaccin Newcastle');
 });
+
+test('un taux de picage élevé déclenche une alerte bien-être', function () {
+    $building = Building::factory()->create(['type' => 'chair', 'capacity' => 5000]);
+
+    $batch = App\Models\Batch::factory()->create([
+        'building_id'      => $building->id,
+        'status'           => 'Actif',
+        'initial_quantity' => 1000,
+        'current_quantity' => 1000,
+    ]);
+
+    // 50 sujets victimes de picage sur 1000 = 5 % > seuil par défaut (2 %).
+    App\Models\DailyCheck::factory()->create([
+        'batch_id'             => $batch->id,
+        'check_date'           => now()->subDay(),
+        'pecking_injury_count' => 50,
+        'lame_count'           => 0,
+    ]);
+
+    $this->actingAs($this->adminUser)
+        ->get(route('dashboard'))
+        ->assertOk()
+        ->assertViewHas('welfareAlerts', fn ($a) => $a->isNotEmpty()
+            && $a->first()['issues'][0]['type'] === 'Picage');
+});
+
+test('la marge nette est masquée pour un utilisateur sans droit commerce', function () {
+    $this->seed(Database\Seeders\ModuleSeeder::class);
+
+    // Rôle élevage : lecture sur tous les modules SAUF commerce.
+    $role = Role::firstOrCreate(
+        ['name' => 'eleveur'],
+        ['label' => 'Éleveur', 'display_name' => 'Éleveur', 'permissions' => ['L']]
+    );
+    $now = now();
+    foreach (App\Models\Module::all() as $module) {
+        DB::table('module_permissions')->updateOrInsert(
+            ['role_id' => $role->id, 'module_id' => $module->id],
+            [
+                'can_read'   => $module->slug !== 'commerce', // commerce refusé
+                'can_create' => false, 'can_modify' => false, 'can_delete' => false,
+                'updated_at' => $now, 'created_at' => $now,
+            ]
+        );
+    }
+    $eleveur = User::factory()->create(['role_id' => $role->id]);
+
+    // L'admin (bypass) voit bien la marge → le bloc existe.
+    $this->actingAs($this->adminUser)->get(route('dashboard'))->assertSee('Marge Nette Mensuelle');
+
+    // L'éleveur sans commerce.L ne doit PAS voir la marge ni l'encours clients.
+    $this->actingAs($eleveur)
+        ->get(route('dashboard'))
+        ->assertOk()
+        ->assertDontSee('Marge Nette Mensuelle')
+        ->assertDontSee('Encours Clients');
+});

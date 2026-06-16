@@ -43,6 +43,8 @@ class UpdateDailyCheckRequest extends FormRequest
             'observations'       => 'nullable|string|max:2000',
             'litter_changed'     => 'nullable|boolean',
             'manure_collected_kg' => 'nullable|numeric|min:0|max:100000',
+            'lame_count'           => 'nullable|integer|min:0|max:1000000',
+            'pecking_injury_count' => 'nullable|integer|min:0|max:1000000',
         ] + StoreDailyCheckRequest::extensionRules();
     }
 

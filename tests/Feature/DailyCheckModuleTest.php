@@ -369,6 +369,30 @@ test('la consommation d\'aliment est valorisée au coût de revient et imputée 
     expect($batch->net_margin)->toBe($marginBefore - 10000.0);
 });
 
+test('le pointage enregistre les indicateurs de bien-être (boiterie, picage)', function () {
+    $batch = Batch::factory()->create([
+        'building_id'      => $this->building->id,
+        'status'           => 'Actif',
+        'current_quantity' => 500,
+    ]);
+
+    $this->actingAs($this->managerUser)
+        ->post(route('daily-checks.store'), [
+            'batch_id'             => $batch->id,
+            'check_date'           => now()->toDateString(),
+            'mortality'            => 0,
+            'feed_consumed'        => 0,
+            'feed_type'            => 'Chair Démarrage',
+            'lame_count'           => 12,
+            'pecking_injury_count' => 7,
+        ])
+        ->assertSessionHasNoErrors();
+
+    $check = DailyCheck::where('batch_id', $batch->id)->first();
+    expect($check->lame_count)->toBe(12)
+        ->and($check->pecking_injury_count)->toBe(7);
+});
+
 test('le lot expose le nombre de jours depuis le dernier renouvellement de litière', function () {
     $batch = Batch::factory()->create([
         'building_id'      => $this->building->id,

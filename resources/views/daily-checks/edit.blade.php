@@ -187,6 +187,18 @@
                             </div>
                         </div>
 
+                        {{-- Bien-être animal : boiterie & picage (sujets vivants en souffrance). --}}
+                        <div class="grid grid-cols-2 gap-4 mb-4">
+                            <div class="p-4 bg-violet-50/60 rounded-2xl border border-violet-100">
+                                <label class="block text-[8px] font-black text-violet-500 uppercase mb-2 text-center tracking-widest">{{ __('Boiteux') }}</label>
+                                <input type="number" name="lame_count" value="{{ old('lame_count', $check->lame_count) }}" min="0" class="w-full bg-transparent text-center text-2xl font-black text-violet-600 border-none outline-none italic">
+                            </div>
+                            <div class="p-4 bg-fuchsia-50/60 rounded-2xl border border-fuchsia-100">
+                                <label class="block text-[8px] font-black text-fuchsia-500 uppercase mb-2 text-center tracking-widest">{{ __('Picage / Blessés') }}</label>
+                                <input type="number" name="pecking_injury_count" value="{{ old('pecking_injury_count', $check->pecking_injury_count) }}" min="0" class="w-full bg-transparent text-center text-2xl font-black text-fuchsia-600 border-none outline-none italic">
+                            </div>
+                        </div>
+
                         <textarea name="observations" rows="3" class="w-full bg-slate-50 rounded-[2rem] p-6 outline-none focus:bg-white border-2 border-transparent focus:border-blue-500 font-bold text-slate-600 transition shadow-inner text-xs uppercase italic"
                                   placeholder="{{ __('JUSTIFICATION OBLIGATOIRE DE LA RECTIFICATION (qui, pourquoi, source de données...)') }}">{{ old('observations', $check->observations) }}</textarea>
                         <p class="text-[8px] text-slate-300 font-black uppercase tracking-widest mt-2 italic leading-none">

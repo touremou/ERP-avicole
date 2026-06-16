@@ -39,6 +39,7 @@ class DailyCheck extends Model
         'treatment_type', 'treatment_name',
         'qty_quarantine_in', 'qty_quarantine_out', 'qty_sorted_out',
         'observations', 'litter_changed', 'manure_collected_kg',
+        'lame_count', 'pecking_injury_count',
     ];
 
     protected $casts = [
@@ -56,6 +57,8 @@ class DailyCheck extends Model
         'qty_quarantine_in'  => 'integer',
         'qty_quarantine_out' => 'integer',
         'qty_sorted_out'     => 'integer',
+        'lame_count'         => 'integer',
+        'pecking_injury_count' => 'integer',
     ];
 
     public function batch(): BelongsTo

@@ -21,6 +21,9 @@
             </div>
 
             <div class="flex gap-4">
+                {{-- Données financières/stock masquées selon les droits modules :
+                     valorisation stock → logistique.L ; marge & encours → commerce.L. --}}
+                @can('logistique.L')
                 {{-- ENRICHI : Info bulle CMUP --}}
                 <div class="bg-white px-6 py-4 rounded-[1.5rem] border border-slate-100 text-right shadow-sm group">
                     <p class="text-[8px] font-black text-slate-400 uppercase italic mb-1 flex items-center justify-end gap-1.5">
@@ -29,7 +32,9 @@
                     </p>
                     <p class="text-base font-black text-slate-900 leading-none">{{ number_format($rawMaterialsValue ?? 0, 0, ',', ' ') }} <small class="text-[9px] opacity-40">GNF</small></p>
                 </div>
+                @endcan
                 
+                @can('commerce.L')
                 {{-- ENRICHI : Encours clients (trésorerie) --}}
                 <div class="bg-white px-6 py-4 rounded-[1.5rem] border border-slate-100 text-right shadow-sm group">
                     <p class="text-[8px] font-black text-slate-400 uppercase italic mb-1 flex items-center justify-end gap-1.5">
@@ -47,6 +52,7 @@
                     </p>
                     <p class="text-base font-black text-white leading-none">{{ number_format($safeProfit ?? 0, 0, ',', ' ') }} <small class="text-[9px] opacity-40">GNF</small></p>
                 </div>
+                @endcan
             </div>
         </div>
     </x-slot>
@@ -169,6 +175,29 @@
                                     </div>
                                 @endif
 
+                                {{-- LOGIQUE 4 — BIEN-ÊTRE ANIMAL (boiterie / picage) --}}
+                                @if(($welfareAlerts ?? collect())->count() > 0)
+                                    <div class="bg-fuchsia-50 rounded-2xl border border-fuchsia-200 overflow-hidden">
+                                        <div class="px-4 py-3 bg-fuchsia-100 flex items-center justify-between">
+                                            <span class="text-[9px] font-black text-fuchsia-700 uppercase tracking-widest flex items-center gap-2">
+                                                <i class="fa-solid fa-feather"></i> {{ __("Bien-être Animal") }}
+                                            </span>
+                                            <span class="text-[8px] font-black bg-fuchsia-600 text-white px-2 py-0.5 rounded">{{ $welfareAlerts->count() }}</span>
+                                        </div>
+                                        <div class="p-3 space-y-2">
+                                            @foreach($welfareAlerts->take(3) as $wa)
+                                                <a href="{{ route('batches.show', $wa['batch']->id) }}"
+                                                   class="flex items-center justify-between p-3 bg-white rounded-xl border border-fuchsia-100 hover:border-fuchsia-300 transition-all no-underline group">
+                                                    <span class="text-[10px] font-black text-slate-800 uppercase">{{ $wa['batch']->code }}</span>
+                                                    <span class="text-[8px] font-black text-fuchsia-600 uppercase ml-2">
+                                                        @foreach($wa['issues'] as $issue){{ $issue['type'] }} {{ $issue['pct'] }}%@if(!$loop->last) · @endif @endforeach
+                                                    </span>
+                                                </a>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                @endif
+
                                 {{-- ALERTE VIDE SANITAIRE --}}
                                 @if(($sanitaryAlertsCount ?? 0) > 0)
                                     <div class="bg-slate-900 text-white p-4 rounded-2xl flex items-center justify-between border-l-4 border-blue-500">
@@ -185,7 +214,7 @@
                                 @endif
 
                                 {{-- TOUT VA BIEN --}}
-                                @if(($emergencyBatches ?? collect())->isEmpty() && ($underperformingBatches ?? collect())->isEmpty() && ($vaccineAlerts ?? collect())->isEmpty() && ($sanitaryAlertsCount ?? 0) == 0)
+                                @if(($emergencyBatches ?? collect())->isEmpty() && ($underperformingBatches ?? collect())->isEmpty() && ($vaccineAlerts ?? collect())->isEmpty() && ($welfareAlerts ?? collect())->isEmpty() && ($sanitaryAlertsCount ?? 0) == 0)
                                     <div class="p-6 bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-center flex flex-col items-center gap-2 h-full justify-center">
                                         <i class="fa-solid fa-heart-pulse text-emerald-500 text-lg"></i>
                                         <p class="text-[9px] text-slate-500 uppercase tracking-wider">{{ __("Statut Sanitaire RAS") }}</p>
