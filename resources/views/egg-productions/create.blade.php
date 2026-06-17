@@ -87,10 +87,11 @@
                                    placeholder="0" min="1" required readonly
                                    class="w-full bg-emerald-50 text-emerald-600 border-none rounded-[2.5rem] p-8 text-7xl font-black text-center shadow-inner focus:ring-0 transition-all italic leading-none cursor-not-allowed">
                             
-                            <div class="mt-8 flex justify-center gap-3">
+                            <div class="mt-8 flex flex-col items-center gap-3">
                                  <span id="alv-display" class="px-8 py-3 bg-slate-900 text-white rounded-2xl text-[11px] font-black uppercase italic tracking-widest shadow-xl">
                                     {{ __("0.00 Alvéoles") }}
                                  </span>
+                                 <span id="laying-rate-badge" class="hidden px-6 py-2 rounded-2xl text-[10px] font-black uppercase italic tracking-widest transition-all"></span>
                             </div>
                         </div>
                     </div>
@@ -120,27 +121,52 @@
     </div>
 
     <script>
-        // Valeur injectée côté serveur : `setting()` est un helper PHP, pas une
-        // fonction JS. L'appeler en JS levait un ReferenceError → le total ne se
-        // calculait jamais (champ requis + readonly) → collecte impossible.
-        const EGGS_PER_TRAY = {{ (int) setting('general.eggs_per_tray', 30) ?: 30 }};
+        const EGGS_PER_TRAY    = {{ (int) setting('general.eggs_per_tray', 30) ?: 30 }};
+        const BATCH_CURRENT_QTY = {{ (int) $batch->current_quantity }};
+        const EXISTING_DAY_TOTAL = {{ $existingToday ? (int) $existingToday->total_eggs_collected : 0 }};
 
         function calc() {
             const a = parseInt(document.getElementById('alv').value) || 0;
             const u = parseInt(document.getElementById('uni').value) || 0;
-            const totalInput = document.getElementById('total');
-            const alvDisplay = document.getElementById('alv-display');
+            const totalInput  = document.getElementById('total');
+            const alvDisplay  = document.getElementById('alv-display');
+            const rateBadge   = document.getElementById('laying-rate-badge');
+            const submitBtn   = document.getElementById('submit-btn');
 
-            if(totalInput) {
-                const total = (a * EGGS_PER_TRAY) + u;
-                totalInput.value = total;
+            if (!totalInput) return;
 
-                if(alvDisplay) {
-                    const decimalAlv = (total / EGGS_PER_TRAY).toFixed(2);
-                    alvDisplay.innerText = `${decimalAlv} ${@json(__("Alvéoles"))}`;
-                    alvDisplay.className = (total > 0) 
-                        ? 'px-8 py-3 bg-emerald-600 text-white rounded-2xl text-[11px] font-black uppercase italic tracking-widest shadow-xl'
-                        : 'px-8 py-3 bg-slate-900 text-white rounded-2xl text-[11px] font-black uppercase italic tracking-widest shadow-xl';
+            const total = (a * EGGS_PER_TRAY) + u;
+            totalInput.value = total;
+
+            if (alvDisplay) {
+                const decimalAlv = (total / EGGS_PER_TRAY).toFixed(2);
+                alvDisplay.innerText = `${decimalAlv} ${@json(__("Alvéoles"))}`;
+                alvDisplay.className = (total > 0)
+                    ? 'px-8 py-3 bg-emerald-600 text-white rounded-2xl text-[11px] font-black uppercase italic tracking-widest shadow-xl'
+                    : 'px-8 py-3 bg-slate-900 text-white rounded-2xl text-[11px] font-black uppercase italic tracking-widest shadow-xl';
+            }
+
+            // ── Indicateur taux de ponte ──
+            if (rateBadge && BATCH_CURRENT_QTY > 0) {
+                const projected = EXISTING_DAY_TOTAL + total;
+                const rate      = (projected / BATCH_CURRENT_QTY) * 100;
+                rateBadge.classList.remove('hidden');
+
+                if (projected > BATCH_CURRENT_QTY) {
+                    rateBadge.textContent  = `⛔ Taux de ponte : ${rate.toFixed(1)} % — Impossible (max 100 %)`;
+                    rateBadge.className    = 'px-6 py-2 rounded-2xl text-[10px] font-black uppercase italic tracking-widest bg-red-100 text-red-600';
+                    if (submitBtn) { submitBtn.disabled = true; submitBtn.style.opacity = '0.4'; }
+                } else if (rate > 85) {
+                    rateBadge.textContent  = `⚠️ Taux de ponte : ${rate.toFixed(1)} % — Élevé, vérifiez`;
+                    rateBadge.className    = 'px-6 py-2 rounded-2xl text-[10px] font-black uppercase italic tracking-widest bg-amber-100 text-amber-600';
+                    if (submitBtn) { submitBtn.disabled = false; submitBtn.style.opacity = '1'; }
+                } else if (total > 0) {
+                    rateBadge.textContent  = `✅ Taux de ponte : ${rate.toFixed(1)} %`;
+                    rateBadge.className    = 'px-6 py-2 rounded-2xl text-[10px] font-black uppercase italic tracking-widest bg-emerald-100 text-emerald-700';
+                    if (submitBtn) { submitBtn.disabled = false; submitBtn.style.opacity = '1'; }
+                } else {
+                    rateBadge.classList.add('hidden');
+                    if (submitBtn) { submitBtn.disabled = false; submitBtn.style.opacity = '1'; }
                 }
             }
         }

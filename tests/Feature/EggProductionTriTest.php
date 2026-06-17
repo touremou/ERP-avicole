@@ -149,4 +149,106 @@ class EggProductionTriTest extends TestCase
         Setting::set('production.egg_grades', 'foo,bar');
         $this->assertSame(['XL', 'L', 'M', 'S'], EggProduction::gradeCodes());
     }
+
+    /** @test */
+    public function test_collecte_inferieure_ou_egale_a_l_effectif_est_acceptee(): void
+    {
+        // 1000 sujets, 950 œufs = 95 % → valide
+        $response = $this->actingAs($this->user)->post(route('egg-productions.store'), [
+            'batch_id'             => $this->batch->id,
+            'production_date'      => now()->format('Y-m-d'),
+            'total_eggs_collected' => 950,
+            'broken_eggs'          => 0,
+            'small_eggs'           => 0,
+        ]);
+
+        $response->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('egg_productions', [
+            'batch_id'             => $this->batch->id,
+            'total_eggs_collected' => 950,
+        ]);
+    }
+
+    /** @test */
+    public function test_collecte_superieure_a_l_effectif_est_bloquee(): void
+    {
+        // 1000 sujets, 1200 œufs = 120 % → biologiquement impossible
+        $response = $this->actingAs($this->user)->post(route('egg-productions.store'), [
+            'batch_id'             => $this->batch->id,
+            'production_date'      => now()->format('Y-m-d'),
+            'total_eggs_collected' => 1200,
+            'broken_eggs'          => 0,
+            'small_eggs'           => 0,
+        ]);
+
+        $response->assertSessionHasErrors('total_eggs_collected');
+        $this->assertStringContainsString(
+            '100 %',
+            $response->getSession()->get('errors')->first('total_eggs_collected')
+        );
+        $this->assertDatabaseMissing('egg_productions', ['batch_id' => $this->batch->id]);
+    }
+
+    /** @test */
+    public function test_cumul_journalier_bloque_quand_total_depasse_l_effectif(): void
+    {
+        // Premier passage : 900 œufs (90 %) → existant en base
+        EggProduction::create([
+            'farm_id'              => $this->batch->farm_id,
+            'batch_id'             => $this->batch->id,
+            'production_date'      => now()->format('Y-m-d'),
+            'total_eggs_collected' => 900,
+            'broken_eggs'          => 0,
+            'small_eggs'           => 0,
+            'is_graded'            => false,
+            'laying_rate'          => 90,
+        ]);
+
+        // Deuxième passage : +200 → cumulé = 1100 > 1000 → bloqué
+        $response = $this->actingAs($this->user)->post(route('egg-productions.store'), [
+            'batch_id'             => $this->batch->id,
+            'production_date'      => now()->format('Y-m-d'),
+            'total_eggs_collected' => 200,
+            'broken_eggs'          => 0,
+            'small_eggs'           => 0,
+        ]);
+
+        $response->assertSessionHasErrors('total_eggs_collected');
+        // La collecte existante ne doit pas avoir été modifiée
+        $this->assertDatabaseHas('egg_productions', [
+            'batch_id'             => $this->batch->id,
+            'total_eggs_collected' => 900,
+        ]);
+    }
+
+    /** @test */
+    public function test_cumul_journalier_accepte_si_total_reste_dans_l_effectif(): void
+    {
+        // Premier passage : 700 œufs
+        EggProduction::create([
+            'farm_id'              => $this->batch->farm_id,
+            'batch_id'             => $this->batch->id,
+            'production_date'      => now()->format('Y-m-d'),
+            'total_eggs_collected' => 700,
+            'broken_eggs'          => 0,
+            'small_eggs'           => 0,
+            'is_graded'            => false,
+            'laying_rate'          => 70,
+        ]);
+
+        // Deuxième passage : +200 → cumulé = 900 ≤ 1000 → accepté
+        $response = $this->actingAs($this->user)->post(route('egg-productions.store'), [
+            'batch_id'             => $this->batch->id,
+            'production_date'      => now()->format('Y-m-d'),
+            'total_eggs_collected' => 200,
+            'broken_eggs'          => 0,
+            'small_eggs'           => 0,
+        ]);
+
+        $response->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('egg_productions', [
+            'batch_id'             => $this->batch->id,
+            'total_eggs_collected' => 900, // 700 + 200
+        ]);
+    }
 }

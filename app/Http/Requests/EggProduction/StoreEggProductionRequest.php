@@ -51,6 +51,25 @@ class StoreEggProductionRequest extends FormRequest
             if (($broken + $small) > $total) {
                 $validator->errors()->add('broken_eggs', "Cassés + petits ({$broken} + {$small}) > total collecté ({$total}).");
             }
+
+            // Taux de ponte > 100 % = biologiquement impossible (1 œuf/sujet/jour max)
+            if ($total > 0 && $batch->current_quantity > 0) {
+                $existing = \App\Models\EggProduction::where('batch_id', $batch->id)
+                    ->where('production_date', $this->production_date)
+                    ->first();
+                $existingTotal   = $existing ? (int) $existing->total_eggs_collected : 0;
+                $projectedTotal  = $existingTotal + $total;
+
+                if ($projectedTotal > $batch->current_quantity) {
+                    $rate = number_format(($projectedTotal / $batch->current_quantity) * 100, 1);
+                    $validator->errors()->add(
+                        'total_eggs_collected',
+                        "Taux de ponte impossible : {$projectedTotal} œufs pour {$batch->current_quantity} sujets = {$rate} %. "
+                        . "Le maximum biologique est 100 % (1 œuf/sujet/jour). "
+                        . "Vérifiez votre saisie ; si vous saisissez un cumul multi-jours, fractionnez sur les dates réelles."
+                    );
+                }
+            }
         });
     }
 
