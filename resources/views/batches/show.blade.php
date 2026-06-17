@@ -201,11 +201,20 @@
                 </a>
 
                 @if($showPonte)
-                <a href="{{ route('egg-productions.create', ['batch_id' => $batch->id]) }}"
-                   class="flex items-center justify-center gap-2 px-3 py-3 md:px-6 md:py-4 bg-emerald-500 text-white rounded-xl md:rounded-2xl font-black text-[9px] md:text-[10px] uppercase italic hover:bg-emerald-400 transition-all shadow-lg no-underline whitespace-nowrap shrink-0">
-                    <i class="fa-solid fa-egg text-emerald-200"></i>
-                    <span>{{ __("Collecte") }}</span>
-                </a>
+                    @if($batch->canCollectEggs())
+                    <a href="{{ route('egg-productions.create', ['batch_id' => $batch->id]) }}"
+                       class="flex items-center justify-center gap-2 px-3 py-3 md:px-6 md:py-4 bg-emerald-500 text-white rounded-xl md:rounded-2xl font-black text-[9px] md:text-[10px] uppercase italic hover:bg-emerald-400 transition-all shadow-lg no-underline whitespace-nowrap shrink-0">
+                        <i class="fa-solid fa-egg text-emerald-200"></i>
+                        <span>{{ __("Collecte") }}</span>
+                    </a>
+                    @else
+                    {{-- Garde-fou zootechnique : lot pas encore en âge de pondre --}}
+                    <span class="flex items-center justify-center gap-2 px-3 py-3 md:px-6 md:py-4 bg-amber-50 text-amber-600 border border-amber-200 rounded-xl md:rounded-2xl font-black text-[9px] md:text-[10px] uppercase italic shadow-lg whitespace-nowrap shrink-0 cursor-default"
+                          title="{{ __('Phase') }} : {{ $batch->current_phase }} — {{ __('entrée en ponte vers') }} {{ (int) ceil($batch->minLayingAgeDays() / 7) }} {{ __('sem.') }}">
+                        <i class="fa-solid fa-hourglass-half text-amber-400"></i>
+                        <span>{{ __("Pas en âge") }}</span>
+                    </span>
+                    @endif
                 @endif
 
                 @endcan
