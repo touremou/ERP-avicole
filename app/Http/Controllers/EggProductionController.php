@@ -123,6 +123,16 @@ class EggProductionController extends Controller
             return back()->with('error', "Le lot {$batch->code} n'est pas un lot de ponte.");
         }
 
+        // Garde-fou zootechnique : pas de collecte avant l'âge d'entrée en ponte.
+        $minAge = $batch->minLayingAgeDays();
+        if ($batch->age < $minAge) {
+            $minWeeks = (int) ceil($minAge / 7);
+            return back()->with('error',
+                "Lot {$batch->code} trop jeune pour la ponte : {$batch->age} jours, "
+                . "phase « {$batch->current_phase} ». Entrée en ponte attendue vers ~{$minWeeks} semaines."
+            );
+        }
+
         $today = now()->toDateString();
         $existingToday = EggProduction::where('batch_id', $batch->id)
             ->where('production_date', $today)

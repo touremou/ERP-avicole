@@ -40,6 +40,21 @@ class StoreEggProductionRequest extends FormRequest
                 $validator->errors()->add('batch_id', "Seuls les lots de ponte peuvent enregistrer des collectes.");
             }
 
+            // Garde-fou zootechnique : un lot trop jeune n'est pas en âge de
+            // pondre (phase démarrage/croissance/pré-ponte). Collecter des œufs
+            // avant la maturité sexuelle est une aberration.
+            $minAge = $batch->minLayingAgeDays();
+            if ($batch->age < $minAge) {
+                $minWeeks = (int) ceil($minAge / 7);
+                $ageWeeks = (int) floor($batch->age / 7);
+                $validator->errors()->add(
+                    'batch_id',
+                    "Lot trop jeune pour la ponte : {$batch->age} jours (~{$ageWeeks} sem.), "
+                    . "phase « {$batch->current_phase} ». L'entrée en ponte est attendue vers "
+                    . "{$minAge} jours (~{$minWeeks} sem.). Vérifiez le lot ou la date d'arrivée."
+                );
+            }
+
             // ❌ LE BLOC DE VÉRIFICATION DES DOUBLONS A ÉTÉ SUPPRIMÉ ICI ❌
             // Les techniciens peuvent désormais soumettre autant de collectes que nécessaire dans la même journée.
 

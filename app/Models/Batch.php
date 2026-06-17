@@ -443,6 +443,61 @@ class Batch extends Model
     }
 
     /**
+     * Âge minimal (en jours) à partir duquel une collecte d'œufs est
+     * biologiquement plausible pour ce lot — garde-fou zootechnique : une
+     * pondeuse n'entre en ponte qu'à maturité sexuelle (≈ 18 semaines pour
+     * une poule, mais ~6 pour la caille), il est aberrant de collecter des
+     * œufs sur un lot en phase démarrage/croissance.
+     *
+     * Source pilotée par les données : première semaine où la norme de la
+     * souche (production_norms.target_laying_rate > 0) prévoit une ponte, ce
+     * qui gère nativement les espèces à maturité atypique. Repli sur l'entrée
+     * en pré-ponte (cf. getLayerPhase) si aucune norme n'est renseignée.
+     */
+    public const DEFAULT_MIN_LAYING_AGE_DAYS = 126; // 18 semaines : entrée en pré-ponte
+
+    public function minLayingAgeDays(): int
+    {
+        // Type de norme : on retombe sur « ponte » pour tout lot suivi en œufs
+        // dont le type legacy ne serait pas explicitement ponte/repro.
+        $type = strtolower((string) ($this->type ?? ''));
+        if (! in_array($type, ['ponte', 'repro', 'reproducteur'], true)) {
+            $type = $this->tracksEggs() ? 'ponte' : $type;
+        }
+
+        $base = ProductionNorm::where('target_laying_rate', '>', 0);
+        if (in_array($type, ['ponte', 'repro', 'reproducteur'], true)) {
+            $base->where('batch_type', $type);
+        }
+
+        // Priorité à la souche du lot (maturité propre à l'espèce/souche).
+        if ($this->model_name) {
+            $strainWeek = (clone $base)
+                ->where('model_name', 'LIKE', "%{$this->model_name}%")
+                ->min('week_number');
+            if ($strainWeek) {
+                return max(0, ((int) $strainWeek - 1) * 7);
+            }
+        }
+
+        $typeWeek = $base->min('week_number');
+        if ($typeWeek) {
+            return max(0, ((int) $typeWeek - 1) * 7);
+        }
+
+        return self::DEFAULT_MIN_LAYING_AGE_DAYS;
+    }
+
+    /**
+     * Le lot est-il en âge de pondre ? (suivi œufs ET âge ≥ seuil d'entrée
+     * en ponte). Garde-fou partagé par la validation de collecte et la vue.
+     */
+    public function canCollectEggs(): bool
+    {
+        return $this->tracksEggs() && $this->age >= $this->minLayingAgeDays();
+    }
+
+    /**
      * Indique si le lot fait l'objet d'une collecte de lait (chèvres
      * laitières, vaches...). Piloté par le type de production, avec repli
      * sur le flag tracks_milk de l'espèce.

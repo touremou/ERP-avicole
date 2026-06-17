@@ -197,7 +197,12 @@
                                     </td>
                                     <td class="px-4 md:px-6 py-3 md:py-4 text-right">
                                         @can('production.C')
-                                            @if(!$isGraded && $passagesCount < setting('production.max_passages', 4))
+                                            @if(! $b->canCollectEggs())
+                                                {{-- Garde-fou zootechnique : lot pas encore en âge de pondre --}}
+                                                <span class="px-3 py-1.5 md:py-2 bg-amber-50 text-amber-600 border border-amber-100 rounded-lg md:rounded-xl text-[8px] md:text-[9px] font-black uppercase shadow-sm inline-flex items-center gap-1.5 italic cursor-default whitespace-nowrap" title="{{ __('Phase') }} : {{ $b->current_phase }} — {{ __('entrée en ponte vers') }} {{ (int) ceil($b->minLayingAgeDays() / 7) }} {{ __('sem.') }}">
+                                                    <i class="fa-solid fa-hourglass-half text-[10px]"></i> <span class="hidden sm:inline">{{ __("Pas en âge") }}</span>
+                                                </span>
+                                            @elseif(!$isGraded && $passagesCount < setting('production.max_passages', 4))
                                                 <a href="{{ route('egg-productions.create', ['batch_id' => $b->id]) }}" class="px-3 py-1.5 md:py-2 bg-slate-900 text-white rounded-lg md:rounded-xl text-[8px] md:text-[9px] font-black uppercase shadow-lg shadow-slate-200 hover:bg-emerald-600 transition-all inline-flex items-center gap-1.5 italic no-underline whitespace-nowrap">
                                                     <i class="fa-solid fa-plus text-emerald-400 text-[10px]"></i> <span class="hidden sm:inline">{{ __("Nouveau Passage") }}</span><span class="sm:hidden">{{ __("Collecter") }}</span>
                                                 </a>

@@ -79,8 +79,9 @@ class EggProductionTriTest extends TestCase
             'qty_males' => 0, 'qty_females' => 1000, 'mating_ratio' => 0, 'qty_dead' => 0,
             'chick_state' => 'Excellent', 'production_phase' => 'ponte',
             'arrival_mortality_rate' => 0, 'avg_weight_start' => 0.040,
-            'arrival_date' => now()->subMonths(3)->format('Y-m-d'),
-            'start_date' => now()->subMonths(3)->format('Y-m-d'),
+            // Lot en ponte : âge réaliste > 18 semaines (entrée en ponte).
+            'arrival_date' => now()->subMonths(6)->format('Y-m-d'),
+            'start_date' => now()->subMonths(6)->format('Y-m-d'),
             'expected_end_date' => now()->addYear()->format('Y-m-d'),
             'buy_price_per_unit' => 5500, 'total_acquisition_cost' => 5500000, 'status' => 'Actif',
             'created_at' => now(), 'updated_at' => now(),
@@ -250,5 +251,49 @@ class EggProductionTriTest extends TestCase
             'batch_id'             => $this->batch->id,
             'total_eggs_collected' => 900, // 700 + 200
         ]);
+    }
+
+    /** @test */
+    public function test_collecte_sur_lot_trop_jeune_est_bloquee(): void
+    {
+        // Lot de 8 semaines (56 j) : phase croissance, aberration zootechnique.
+        $this->batch->update([
+            'arrival_date' => now()->subWeeks(8)->format('Y-m-d'),
+            'start_date'   => now()->subWeeks(8)->format('Y-m-d'),
+        ]);
+
+        // Repli par défaut (aucune norme seedée) : 126 j = 18 semaines.
+        $this->assertSame(126, $this->batch->fresh()->minLayingAgeDays());
+        $this->assertFalse($this->batch->fresh()->canCollectEggs());
+
+        $response = $this->actingAs($this->user)->post(route('egg-productions.store'), [
+            'batch_id'             => $this->batch->id,
+            'production_date'      => now()->format('Y-m-d'),
+            'total_eggs_collected' => 50,
+            'broken_eggs'          => 0,
+            'small_eggs'           => 0,
+        ]);
+
+        $response->assertSessionHasErrors('batch_id');
+        $this->assertStringContainsString(
+            'trop jeune',
+            $response->getSession()->get('errors')->first('batch_id')
+        );
+        $this->assertDatabaseMissing('egg_productions', ['batch_id' => $this->batch->id]);
+    }
+
+    /** @test */
+    public function test_age_minimal_de_ponte_est_pilote_par_les_normes(): void
+    {
+        // Une norme « caille » prévoit de la ponte dès la semaine 7 → 42 jours.
+        \App\Models\ProductionNorm::create([
+            'batch_type' => 'ponte', 'week_number' => 7, 'model_name' => 'Caille Japonaise',
+            'target_laying_rate' => 50, 'phase_name' => 'Ponte',
+        ]);
+
+        $this->batch->update(['model_name' => 'Caille Japonaise']);
+
+        // (7 - 1) * 7 = 42 jours, contre 126 par défaut.
+        $this->assertSame(42, $this->batch->fresh()->minLayingAgeDays());
     }
 }

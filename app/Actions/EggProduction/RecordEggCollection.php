@@ -33,12 +33,25 @@ class RecordEggCollection
                 ]);
             }
 
+            // 2.bis GARDE-FOU ZOOTECHNIQUE : âge d'entrée en ponte.
+            // Invariant biologique appliqué ici (point d'écriture unique) afin
+            // de couvrir TOUS les chemins — web, API terrain, sync hors-ligne —
+            // y compris ceux qui ne passent pas par StoreEggProductionRequest.
+            $minAge = $batch->minLayingAgeDays();
+            if ($batch->age < $minAge) {
+                $minWeeks = (int) ceil($minAge / 7);
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'batch_id' => "Lot {$batch->code} trop jeune pour la ponte : {$batch->age} jours, "
+                        . "phase « {$batch->current_phase} ». Entrée en ponte attendue vers ~{$minWeeks} semaines.",
+                ]);
+            }
+
             // 3. CUMUL DES DONNÉES
             $newTotal = (int) $data['total_eggs_collected'];
             $newBroken = (int) ($data['broken_eggs'] ?? 0);
             $newSmall = (int) ($data['small_eggs'] ?? 0);
             $newObs = $data['observations'] ?? null;
-            
+
             $finalObservations = $newObs;
 
             if ($production) {
@@ -51,6 +64,16 @@ class RecordEggCollection
                 $baseObs = $production->observations ? $production->observations . " | " : "";
                 $noteText = $newObs ? " : " . $newObs : "";
                 $finalObservations = $baseObs . "[Nouveau passage]" . $noteText;
+            }
+
+            // 3.bis GARDE-FOU : taux de ponte cumulé ≤ 100 % (1 œuf/sujet/jour).
+            if ($batch->current_quantity > 0 && $newTotal > $batch->current_quantity) {
+                $rate = number_format(($newTotal / $batch->current_quantity) * 100, 1);
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'total_eggs_collected' => "Taux de ponte impossible : {$newTotal} œufs pour "
+                        . "{$batch->current_quantity} sujets = {$rate} %. Le maximum biologique est "
+                        . "100 % (1 œuf/sujet/jour). Vérifiez votre saisie.",
+                ]);
             }
 
             // 4. Recalcul du taux de ponte
