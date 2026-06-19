@@ -13,7 +13,9 @@
                 </div>
             </div>
             @if(!$dispatch->reception && in_array($dispatch->status, ['expedie', 'en_route']))
-                @can('logistique.C')
+                {{-- Réception réservée au responsable logistique (droit M) : séparation
+                     des tâches vis-à-vis de l'expéditeur (droit C). --}}
+                @can('logistique.M')
                 <a href="{{ route('dispatches.reception.create', $dispatch) }}" class="bg-emerald-500 text-white px-8 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-2xl italic flex items-center gap-2 no-underline">
                     <i class="fa-solid fa-clipboard-check"></i> {{ __("Saisir la Réception") }}
                 </a>

@@ -411,8 +411,9 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{dispatch}', 'show')->name('show')->middleware('can:L');
 
         // Réception (saisie par le magasin)
-        Route::get('/{dispatch}/reception', 'showReceptionForm')->name('reception.create')->middleware('can:C');
-        Route::post('/{dispatch}/reception', 'storeReception')->name('reception.store')->middleware('can:C');
+        // Séparation des tâches : la réception relève du responsable logistique (M).
+        Route::get('/{dispatch}/reception', 'showReceptionForm')->name('reception.create')->middleware('can:M');
+        Route::post('/{dispatch}/reception', 'storeReception')->name('reception.store')->middleware('can:M');
     });
 
     // ──────────────────────────────────────────────

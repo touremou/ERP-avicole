@@ -96,7 +96,10 @@ class DispatchController extends Controller
 
     public function showReceptionForm(Dispatch $dispatch)
     {
-        if (Gate::denies('logistique.C')) return back()->with('error', 'Action non autorisée.');
+        // Séparation des tâches : valider une réception relève du superviseur
+        // logistique (M), distinct de celui qui prépare/expédie (C). Couplé à
+        // l'anti-fraude (expéditeur ≠ récepteur) dans ValidateReception.
+        if (Gate::denies('logistique.M')) return back()->with('error', "Réception réservée au responsable logistique (droit M).");
 
         if ($dispatch->reception()->exists()) {
             return redirect()->route('dispatches.show', $dispatch)
@@ -110,7 +113,7 @@ class DispatchController extends Controller
 
     public function storeReception(Request $request, Dispatch $dispatch, ValidateReception $action)
     {
-        if (Gate::denies('logistique.C')) return back()->with('error', 'Action non autorisée.');
+        if (Gate::denies('logistique.M')) return back()->with('error', "Réception réservée au responsable logistique (droit M).");
 
         $validated = $request->validate([
             'reception_date'              => 'required|date',
