@@ -229,6 +229,7 @@ class BatchController extends Controller
             'current_phase'    => $batch->current_phase,
             'net_margin'       => $batch->net_margin,
             'feed_cogs'        => $batch->feed_cogs,
+            'utility_cost'     => $batch->utility_cost,
             'manure_collected_kg'      => $batch->manure_collected_kg,
             'estimated_manure_revenue' => $batch->estimated_manure_revenue,
         ];

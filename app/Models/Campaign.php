@@ -130,18 +130,21 @@ class Campaign extends Model
     }
 
     /**
-     * Coût aliment + santé + coûts additionnels des lots liés.
+     * Coût aliment + santé + coûts additionnels + eau/énergie des lots liés.
      *
      * Somme sur les relations CHARGÉES (collections) et non via le query
      * builder, pour profiter de l'eager loading (batches.feedPurchases,
      * batches.healthChecks) et éviter un N+1 sur la liste des campagnes.
+     * Les coûts eau/énergie sont calculés par lot via utility_cost (lazily,
+     * 2 requêtes par lot) — acceptable sur des campagnes avec ≤ 20 lots.
      */
     public function getOperatingCostAttribute(): float
     {
         return $this->batches->sum(function (Batch $b) {
             return (float) $b->feedPurchases->sum('total_price')
                  + (float) $b->healthChecks->sum('cost')
-                 + (float) ($b->additional_costs ?? 0);
+                 + (float) ($b->additional_costs ?? 0)
+                 + (float) $b->utility_cost;
         });
     }
 

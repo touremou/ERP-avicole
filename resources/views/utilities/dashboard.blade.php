@@ -242,6 +242,14 @@
                             </select>
                             <input type="date" name="reading_date" value="{{ now()->toDateString() }}" required class="bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
                         </div>
+                        @if($buildings->count())
+                        <select name="building_id" class="w-full bg-white border-none rounded-xl p-3 text-[10px] font-black uppercase shadow-sm outline-none">
+                            <option value="">{{ __("Bâtiment consommateur (optionnel)") }}</option>
+                            @foreach($buildings as $b)
+                                <option value="{{ $b->id }}">{{ $b->name }}</option>
+                            @endforeach
+                        </select>
+                        @endif
                         <div class="grid grid-cols-2 gap-3">
                             <input type="number" name="volume_consumed_liters" step="0.1" min="0" required placeholder="{{ __('Conso (L)') }}" class="bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
                             <input type="number" name="volume_added_liters" step="0.1" min="0" placeholder="{{ __('Ajout citerne (L)') }}" class="bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
@@ -273,6 +281,14 @@
                             </select>
                             <input type="date" name="reading_date" value="{{ now()->toDateString() }}" required class="bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
                         </div>
+                        @if($buildings->count())
+                        <select name="building_id" class="w-full bg-white border-none rounded-xl p-3 text-[10px] font-black uppercase shadow-sm outline-none">
+                            <option value="">{{ __("Bâtiment desservi (optionnel)") }}</option>
+                            @foreach($buildings as $b)
+                                <option value="{{ $b->id }}">{{ $b->name }}</option>
+                            @endforeach
+                        </select>
+                        @endif
                         <div class="grid grid-cols-3 gap-3">
                             <input type="number" name="hours_run" step="0.5" min="0" max="24" required placeholder="{{ __('Heures') }}" class="bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
                             <input type="number" name="fuel_consumed_liters" step="0.1" min="0" placeholder="{{ __('Gasoil (L)') }}" class="bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">

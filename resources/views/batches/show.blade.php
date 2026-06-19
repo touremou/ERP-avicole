@@ -662,6 +662,22 @@
                 </div>
             </div>
 
+            {{-- COÛTS EAU & ÉNERGIE (si des relevés sont taggés sur ce bâtiment) --}}
+            @if(($stats['utility_cost'] ?? 0) > 0)
+            <div class="bg-cyan-50 border border-cyan-200 rounded-[2rem] p-5 mb-8 flex items-center justify-between text-left italic font-bold">
+                <div class="flex items-center gap-4">
+                    <div class="w-10 h-10 bg-cyan-500 rounded-xl flex items-center justify-center text-white shadow-sm">
+                        <i class="fa-solid fa-bolt text-sm"></i>
+                    </div>
+                    <div>
+                        <p class="text-[9px] font-black text-cyan-700 uppercase tracking-widest">{{ __("Eau & Énergie imputés à ce bâtiment") }}</p>
+                        <p class="text-[8px] font-black text-cyan-400 uppercase tracking-widest mt-0.5 normal-case italic">{{ __("Relevés taggés sur ce bâtiment sur la période d'élevage") }}</p>
+                    </div>
+                </div>
+                <p class="text-xl font-black text-cyan-700">{{ number_format($stats['utility_cost'], 0) }} <span class="text-[9px] opacity-60">GNF</span></p>
+            </div>
+            @endif
+
             {{-- HISTORIQUE DAILY --}}
             <div class="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden mb-8 text-left italic font-bold">
                 <table class="w-full text-left border-collapse">

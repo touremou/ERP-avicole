@@ -12,6 +12,8 @@ use Carbon\Carbon;
 use App\Traits\HasStandardUuid;
 use App\Traits\BelongsToFarm;
 use App\Actions\DailyCheck\SyncManureCollection;
+use App\Models\WaterReading;
+use App\Models\EnergyReading;
 
 /**
  * Model Batch — Cœur métier de l'ERP AviSmart.
@@ -860,6 +862,33 @@ class Batch extends Model
     }
 
     /**
+     * Coût eau + énergie imputé à ce lot via le bâtiment qu'il occupe.
+     *
+     * Seuls les relevés taggés avec building_id = ce lot sont comptabilisés,
+     * sur la période d'élevage (arrival_date → closing_date ou aujourd'hui).
+     * Retourne 0 si le lot n'a pas de bâtiment ou si aucun relevé n'est taggé.
+     */
+    public function getUtilityCostAttribute(): float
+    {
+        if (! $this->building_id) return 0.0;
+
+        $start = $this->arrival_date?->toDateString();
+        $end   = $this->closing_date?->toDateString() ?? now()->toDateString();
+
+        $waterCost = WaterReading::where('building_id', $this->building_id)
+            ->when($start, fn ($q) => $q->whereDate('reading_date', '>=', $start))
+            ->whereDate('reading_date', '<=', $end)
+            ->sum('cost');
+
+        $energyCost = EnergyReading::where('building_id', $this->building_id)
+            ->when($start, fn ($q) => $q->whereDate('reading_date', '>=', $start))
+            ->whereDate('reading_date', '<=', $end)
+            ->sum('cost');
+
+        return (float) ($waterCost + $energyCost);
+    }
+
+    /**
      * Marge nette consolidée (revenus - coûts).
      *
      * Coût alimentaire : on retient la CONSOMMATION valorisée au coût de revient
@@ -896,8 +925,10 @@ class Batch extends Model
         $additionalCosts = (float) ($this->additional_costs ?? 0);
         // Dépenses directes validées rattachées au lot (registre des dépenses).
         $directExpenses = (float) $this->expenses()->where('status', 'valide')->sum('amount');
+        // Eau + énergie imputés au bâtiment sur la période du lot.
+        $utilityCost = $this->utility_cost;
 
-        return $sellingRevenue - ($feedCost + $nonFeedPurchases + $healthCost + $acquisitionCost + $additionalCosts + $directExpenses);
+        return $sellingRevenue - ($feedCost + $nonFeedPurchases + $healthCost + $acquisitionCost + $additionalCosts + $directExpenses + $utilityCost);
     }
 
     /**

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Building;
 use App\Models\WaterSource;
 use App\Models\WaterReading;
 use App\Models\EnergySource;
@@ -28,8 +29,9 @@ class UtilityController extends Controller
 
         $waterSources = WaterSource::active()->get();
         $energySources = EnergySource::active()->get();
+        $buildings = Building::physical()->orderBy('name')->get();
 
-        return view('utilities.dashboard', compact('data', 'waterSources', 'energySources', 'period'));
+        return view('utilities.dashboard', compact('data', 'waterSources', 'energySources', 'buildings', 'period'));
     }
 
     // ──────────────────────────────────────────────
@@ -75,6 +77,7 @@ class UtilityController extends Controller
 
         $validated = $request->validate([
             'water_source_id'        => 'required|exists:water_sources,id',
+            'building_id'            => 'nullable|exists:buildings,id',
             'reading_date'           => 'required|date|before_or_equal:today',
             'volume_consumed_liters' => 'required|numeric|min:0',
             'volume_added_liters'    => 'nullable|numeric|min:0',
@@ -168,6 +171,7 @@ class UtilityController extends Controller
 
         $validated = $request->validate([
             'energy_source_id'    => 'required|exists:energy_sources,id',
+            'building_id'         => 'nullable|exists:buildings,id',
             'reading_date'        => 'required|date|before_or_equal:today',
             'hours_run'           => 'required|numeric|min:0|max:24',
             'fuel_consumed_liters' => 'nullable|numeric|min:0',
@@ -233,6 +237,7 @@ class UtilityController extends Controller
 
         $validated = $request->validate([
             'energy_source_id'  => 'required|exists:energy_sources,id',
+            'building_id'       => 'nullable|exists:buildings,id',
             'purchase_date'     => 'required|date|before_or_equal:today',
             'quantity_liters'   => 'required|numeric|min:1',
             'unit_price'        => 'required|numeric|min:0',
