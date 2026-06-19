@@ -31,6 +31,17 @@ class Payslip extends Model
     public function deductions(): HasMany { return $this->lines()->where('type', 'deduction'); }
 
     /**
+     * Bulletin verrouillé : aucune modification de ligne (prime, déduction,
+     * heures sup.) n'est permise une fois le bulletin payé OU la période
+     * soldée. Garde-fou comptable : un bulletin payé est immuable.
+     */
+    public function isLocked(): bool
+    {
+        return $this->payment_status === 'paye'
+            || $this->period?->status === 'paye';
+    }
+
+    /**
      * Recalcule le net depuis les lignes.
      */
     public function recalculate(): void

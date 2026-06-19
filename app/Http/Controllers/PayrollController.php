@@ -93,8 +93,8 @@ class PayrollController extends Controller
     {
         if (Gate::denies('annuaire.M')) return back()->with('error', 'Non autorisé.');
 
-        if ($payslip->period->status === 'paye') {
-            return back()->with('error', 'Période verrouillée.');
+        if ($payslip->isLocked()) {
+            return back()->with('error', 'Bulletin déjà payé : aucune prime ni déduction ne peut être ajoutée.');
         }
 
         $validated = $request->validate([
@@ -120,8 +120,8 @@ class PayrollController extends Controller
     {
         if (Gate::denies('annuaire.M')) return back()->with('error', 'Non autorisé.');
 
-        if ($payslip->period->status === 'paye') {
-            return back()->with('error', 'Période verrouillée.');
+        if ($payslip->isLocked()) {
+            return back()->with('error', 'Bulletin déjà payé : impossible d\'enregistrer des heures supplémentaires.');
         }
 
         $validated = $request->validate([
@@ -152,6 +152,11 @@ class PayrollController extends Controller
         if (Gate::denies('annuaire.M')) return back()->with('error', 'Non autorisé.');
 
         $payslip = $line->payslip;
+
+        if ($payslip->isLocked()) {
+            return back()->with('error', 'Bulletin déjà payé : ses lignes ne peuvent plus être supprimées.');
+        }
+
         $line->delete();
         $payslip->recalculate();
 

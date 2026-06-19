@@ -60,3 +60,52 @@ test('un nouvel enregistrement d\'heures sup remplace le précédent (pas de cum
     // 1000 × 8 × 2 = 16 000
     expect((int) $this->payslip->lines()->where('category', 'heures_sup')->first()->amount)->toBe(16000);
 });
+
+test('aucune prime ne peut être ajoutée à un bulletin déjà payé', function () {
+    $this->payslip->update(['payment_status' => 'paye', 'paid_at' => now()]);
+
+    $this->actingAs($this->adminUser)
+        ->post(route('payroll.add-line', $this->payslip), [
+            'type'   => 'prime',
+            'label'  => 'Prime de rendement',
+            'amount' => 50000,
+        ])
+        ->assertSessionHas('error');
+
+    expect($this->payslip->lines()->where('type', 'prime')->count())->toBe(0);
+});
+
+test('aucune heure sup ne peut être ajoutée à un bulletin déjà payé', function () {
+    $this->payslip->update(['payment_status' => 'paye', 'paid_at' => now()]);
+
+    $this->actingAs($this->adminUser)
+        ->post(route('payroll.overtime', $this->payslip), ['hours' => 10])
+        ->assertSessionHas('error');
+
+    expect($this->payslip->lines()->where('category', 'heures_sup')->count())->toBe(0);
+});
+
+test('une ligne ne peut pas être supprimée d\'un bulletin déjà payé', function () {
+    $line = $this->payslip->lines()->create([
+        'type' => 'prime', 'label' => 'Prime', 'amount' => 10000,
+    ]);
+    $this->payslip->update(['payment_status' => 'paye', 'paid_at' => now()]);
+
+    $this->actingAs($this->adminUser)
+        ->delete(route('payroll.remove-line', $line))
+        ->assertSessionHas('error');
+
+    expect($this->payslip->lines()->whereKey($line->id)->exists())->toBeTrue();
+});
+
+test('un bulletin non payé reste modifiable', function () {
+    $this->actingAs($this->adminUser)
+        ->post(route('payroll.add-line', $this->payslip), [
+            'type'   => 'prime',
+            'label'  => 'Prime de présence',
+            'amount' => 25000,
+        ])
+        ->assertSessionHas('success');
+
+    expect($this->payslip->lines()->where('type', 'prime')->count())->toBe(1);
+});

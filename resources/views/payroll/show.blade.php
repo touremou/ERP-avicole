@@ -109,9 +109,9 @@
                                             class="w-7 h-7 rounded-lg bg-slate-50 text-slate-400 hover:bg-blue-50 hover:text-blue-600 flex items-center justify-center no-underline transition-all" title="{{ $slip->payment_status === 'paye' ? __("Fiche de paie") : __("Bon de paie") }}">
                                             <i class="fa-solid fa-print text-[9px]"></i>
                                         </a>
-                                        {{-- Ajouter prime/déduction --}}
+                                        {{-- Ajouter prime/déduction (bloqué si bulletin payé ou période soldée) --}}
                                         @can('annuaire.M')
-                                            @if($period->status !== 'paye')
+                                            @if(! $slip->isLocked())
                                             <button @click="openLineModal({{ $slip->id }}, '{{ addslashes($slip->employee->first_name) }}')"
                                                 class="w-7 h-7 rounded-lg bg-slate-50 text-slate-400 hover:bg-blue-50 hover:text-blue-600 flex items-center justify-center border-none cursor-pointer transition-all" title="{{ __("Ajouter prime/déduction") }}">
                                                 <i class="fa-solid fa-plus text-[9px]"></i>
@@ -146,7 +146,7 @@
                                         'bg-red-50 text-red-500' => $line->type === 'deduction'])>
                                         {{ $line->type === 'prime' ? '+' : '-' }}{{ number_format($line->amount, 0, ',', '.') }} {{ $line->label }}
                                         @can('annuaire.M')
-                                            @if($period->status !== 'paye')
+                                            @if(! $slip->isLocked())
                                             <form method="POST" action="{{ route('payroll.remove-line', $line) }}" class="inline">@csrf @method('DELETE')
                                                 <button class="text-slate-300 hover:text-red-500 border-none bg-transparent cursor-pointer ml-1"><i class="fa-solid fa-xmark text-[8px]"></i></button>
                                             </form>

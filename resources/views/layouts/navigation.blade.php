@@ -1,5 +1,11 @@
 {{-- Navigation AviSmart v8 — App Drawer + Breadcrumb Contextuel + Farm Switcher --}}
-<nav x-data="{ mobileOpen: false }" class="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-100 italic">
+{{-- L'état du menu mobile est persisté en sessionStorage : il survit à la
+     navigation au lieu de se réinitialiser à chaque page (ce qui donnait
+     l'impression, sur petit écran, que « la session ne persiste pas »). --}}
+<nav x-data="{ mobileOpen: false }"
+     x-init="mobileOpen = sessionStorage.getItem('navMobileOpen') === '1';
+             $watch('mobileOpen', v => sessionStorage.setItem('navMobileOpen', v ? '1' : '0'))"
+     class="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-100 italic">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between h-14">
             <div class="flex items-center">
@@ -40,8 +46,8 @@
                         </div>
                 </x-menu>
 
-                {{-- BREADCRUMB CONTEXTUEL --}}
-                <div class="hidden lg:flex items-center ml-4 pl-4 border-l border-slate-200 h-8 gap-1">
+                {{-- BREADCRUMB CONTEXTUEL (visible dès tablette : md au lieu de lg) --}}
+                <div class="hidden md:flex items-center ml-4 pl-4 border-l border-slate-200 h-8 gap-1">
                     @php
                         $linkClass = 'text-[9px] font-black uppercase tracking-widest px-2.5 py-1.5 rounded-lg transition-all no-underline';
                         $activeClass = 'bg-slate-100 text-slate-800';
