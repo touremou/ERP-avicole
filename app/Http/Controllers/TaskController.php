@@ -145,6 +145,14 @@ class TaskController extends Controller
         if (Gate::denies('annuaire.M')) return back()->with('error', 'Non autorisé.');
 
         $validated = $request->validate(['employee_id' => 'required|exists:employees,id']);
+
+        // Garde-fou disponibilité : pas d'affectation à un employé en congé à la date prévue.
+        $employee = \App\Models\Employee::find($validated['employee_id']);
+        $date = \Illuminate\Support\Carbon::parse($task->scheduled_date);
+        if ($employee && $employee->isOnLeaveOn($date)) {
+            return back()->with('error', "{$employee->first_name} est en congé le {$date->format('d/m/Y')}. Choisissez un collègue disponible.");
+        }
+
         $task->update($validated);
 
         return back()->with('success', "Tâche assignée à {$task->fresh()->employee->first_name}.");
@@ -164,6 +172,15 @@ class TaskController extends Controller
             'priority'        => 'required|in:basse,normale,haute,critique',
             'description'     => 'nullable|string|max:500',
         ]);
+
+        // Garde-fou disponibilité : pas d'affectation à un employé en congé à la date prévue.
+        if (! empty($validated['employee_id'])) {
+            $employee = \App\Models\Employee::find($validated['employee_id']);
+            $date = \Illuminate\Support\Carbon::parse($validated['scheduled_date']);
+            if ($employee && $employee->isOnLeaveOn($date)) {
+                return back()->with('error', "{$employee->first_name} est en congé le {$date->format('d/m/Y')}. Choisissez un collègue disponible.")->withInput();
+            }
+        }
 
         TaskAssignment::create(array_merge($validated, [
             'farm_id'           => $this->farmId(),

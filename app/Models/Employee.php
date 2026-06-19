@@ -58,6 +58,25 @@ class Employee extends Model
         return $this->belongsTo(\App\Models\Building::class, 'assigned_building_id');
     }
 
+    public function leaves(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(EmployeeLeave::class);
+    }
+
+    /**
+     * L'employé est-il en congé approuvé à la date donnée ? Sert de garde-fou
+     * à l'affectation des tâches (on n'assigne pas un absent) et au calcul de
+     * disponibilité du planning.
+     */
+    public function isOnLeaveOn(\Carbon\Carbon $date): bool
+    {
+        return $this->leaves()
+            ->whereIn('status', ['approuve', 'en_cours'])
+            ->whereDate('start_date', '<=', $date->toDateString())
+            ->whereDate('end_date', '>=', $date->toDateString())
+            ->exists();
+    }
+
     /**
      * Compte de connexion (User) rattaché à cet employé, le cas échéant.
      */

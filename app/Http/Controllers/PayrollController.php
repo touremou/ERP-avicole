@@ -231,24 +231,113 @@ class PayrollController extends Controller
 
         $days = Carbon::parse($validated['start_date'])->diffInDays(Carbon::parse($validated['end_date'])) + 1;
 
-        EmployeeLeave::create(array_merge($validated, [
-            'days_count'  => $days,
-            'status'      => 'approuve',
-            'approved_by' => Auth::id(),
+        // Habilité (RH / Manager / Admin = droit annuaire.S) : la saisie vaut
+        // approbation immédiate. Sinon, c'est une simple demande à valider.
+        $autoApprove = Gate::allows('annuaire.S');
+
+        $leave = EmployeeLeave::create(array_merge($validated, [
+            'days_count'   => $days,
+            'status'       => $autoApprove ? 'approuve' : 'demande',
+            'requested_by' => Auth::id(),
+            'approved_by'  => $autoApprove ? Auth::id() : null,
+            'approved_at'  => $autoApprove ? now() : null,
         ]));
 
-        // Mettre à jour le solde congés si congé annuel
-        if ($validated['type'] === 'conge_annuel') {
-            $emp = Employee::find($validated['employee_id']);
-            if ($emp && \Illuminate\Support\Facades\Schema::hasColumn('employees', 'annual_leave_balance')) {
-                $emp->decrement('annual_leave_balance', $days);
-            }
+        if ($autoApprove) {
+            $this->applyLeaveApproval($leave);
+            return back()->with('success', "Congé approuvé : {$days} jours.");
         }
 
-        // Mettre à jour le statut employé
-        Employee::where('id', $validated['employee_id'])->update(['status' => 'Congé']);
+        return back()->with('success', "Demande de congé enregistrée ({$days} jours) — en attente d'approbation.");
+    }
 
-        return back()->with('success', "Congé enregistré : {$days} jours.");
+    /**
+     * Approuve une demande de congé (réservé aux habilités, droit S).
+     */
+    public function approveLeave(EmployeeLeave $leave)
+    {
+        if (Gate::denies('annuaire.S')) return back()->with('error', "Approbation réservée aux responsables RH (droit S).");
+
+        if ($leave->status !== 'demande') {
+            return back()->with('error', 'Cette demande a déjà été traitée.');
+        }
+
+        $leave->update([
+            'status'      => 'approuve',
+            'approved_by' => Auth::id(),
+            'approved_at' => now(),
+        ]);
+        $this->applyLeaveApproval($leave);
+
+        return back()->with('success', "Congé de {$leave->employee->first_name} approuvé.");
+    }
+
+    /**
+     * Refuse une demande de congé (réservé aux habilités, droit S).
+     */
+    public function rejectLeave(Request $request, EmployeeLeave $leave)
+    {
+        if (Gate::denies('annuaire.S')) return back()->with('error', "Refus réservé aux responsables RH (droit S).");
+
+        if ($leave->status !== 'demande') {
+            return back()->with('error', 'Cette demande a déjà été traitée.');
+        }
+
+        $validated = $request->validate(['rejection_reason' => 'required|string|max:500']);
+
+        $leave->update([
+            'status'           => 'refuse',
+            'approved_by'      => Auth::id(),
+            'rejection_reason' => $validated['rejection_reason'],
+        ]);
+
+        return back()->with('success', "Demande de {$leave->employee->first_name} refusée.");
+    }
+
+    /**
+     * Effets d'un congé approuvé : décompte du solde (congé annuel) et bascule
+     * du statut employé en « Congé » si le congé est actif aujourd'hui.
+     */
+    private function applyLeaveApproval(EmployeeLeave $leave): void
+    {
+        if ($leave->type === 'conge_annuel'
+            && \Illuminate\Support\Facades\Schema::hasColumn('employees', 'annual_leave_balance')) {
+            $leave->employee?->decrement('annual_leave_balance', $leave->days_count);
+        }
+
+        // Le statut « Congé » ne s'applique que si l'absence couvre aujourd'hui.
+        if ($leave->isActiveOn(now())) {
+            $leave->employee?->update(['status' => 'Congé']);
+        }
+    }
+
+    /**
+     * Délègue les tâches en attente d'un employé absent (sur la fenêtre du
+     * congé) vers un collègue disponible. Couvre le cas « un employé en congé
+     * doit pouvoir confier ses tâches à un collègue pendant son absence ».
+     */
+    public function delegateLeaveTasks(Request $request, EmployeeLeave $leave)
+    {
+        if (Gate::denies('annuaire.M')) return back()->with('error', 'Non autorisé.');
+
+        $validated = $request->validate([
+            'delegate_to' => 'required|exists:employees,id',
+        ]);
+
+        $delegate = Employee::findOrFail($validated['delegate_to']);
+        if ($delegate->id === $leave->employee_id) {
+            return back()->with('error', "Impossible de déléguer à l'employé absent lui-même.");
+        }
+
+        $reassigned = \App\Models\TaskAssignment::where('employee_id', $leave->employee_id)
+            ->whereIn('status', ['a_faire', 'en_retard'])
+            ->whereDate('scheduled_date', '>=', $leave->start_date->toDateString())
+            ->whereDate('scheduled_date', '<=', $leave->end_date->toDateString())
+            ->update(['employee_id' => $delegate->id]);
+
+        return back()->with('success',
+            "{$reassigned} tâche(s) de {$leave->employee->first_name} déléguée(s) à {$delegate->first_name} {$delegate->last_name}."
+        );
     }
 
     public function endLeave(EmployeeLeave $leave)

@@ -583,6 +583,9 @@ Route::middleware(['auth'])->group(function () {
         // Congés
         Route::get('/leaves/manage', 'leaves')->name('leaves')->middleware('can:L');
         Route::post('/leaves', 'storeLeave')->name('leaves.store')->middleware('can:C');
+        Route::post('/leaves/{leave}/approve', 'approveLeave')->name('leaves.approve')->middleware('can:S');
+        Route::post('/leaves/{leave}/reject', 'rejectLeave')->name('leaves.reject')->middleware('can:S');
+        Route::post('/leaves/{leave}/delegate', 'delegateLeaveTasks')->name('leaves.delegate')->middleware('can:M');
         Route::post('/leaves/{leave}/end', 'endLeave')->name('leaves.end')->middleware('can:M');
         // Impression & Historique
         Route::get('/payslip/{payslip}/print', 'printPayslip')->name('print')->middleware('can:L');

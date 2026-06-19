@@ -133,18 +133,22 @@ class TaskSchedulerService
 
     private function findBestEmployee(Building $building, $employees, Carbon $date): ?Employee
     {
+        // Garde-fou disponibilité : on écarte d'emblée les employés en congé
+        // approuvé à cette date — on n'auto-assigne jamais une tâche à un absent.
+        $available = $employees->reject(fn ($emp) => $emp->isOnLeaveOn($date))->values();
+
         if (Schema::hasColumn('employees', 'assigned_building_id')) {
-            $assigned = $employees->where('assigned_building_id', $building->id)->first();
+            $assigned = $available->where('assigned_building_id', $building->id)->first();
             if ($assigned) return $assigned;
         }
 
         $batch = Batch::where('building_id', $building->id)->active()->live()->first();
         if ($batch && $batch->employee_id) {
-            $emp = $employees->where('id', $batch->employee_id)->first();
+            $emp = $available->where('id', $batch->employee_id)->first();
             if ($emp) return $emp;
         }
 
-        return $employees->sortBy(fn($emp) =>
+        return $available->sortBy(fn($emp) =>
             TaskAssignment::where('employee_id', $emp->id)
                 ->where('scheduled_date', $date->toDateString())
                 ->count()

@@ -98,10 +98,49 @@
                                         'bg-red-100 text-red-500' => $l->status === 'refuse'])>{{ $l->status }}</span>
                                 </td>
                                 <td class="px-5 py-3 text-right">
+                                    <div class="flex items-center justify-end gap-1.5 flex-wrap">
+                                    {{-- Demande en attente : approuver / refuser (habilités, droit S) --}}
+                                    @can('annuaire.S')
+                                    @if($l->status === 'demande')
+                                        <form method="POST" action="{{ route('payroll.leaves.approve', $l) }}">@csrf
+                                            <button class="text-[8px] font-black text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-lg hover:bg-emerald-100 border-none cursor-pointer uppercase">{{ __("Approuver") }}</button>
+                                        </form>
+                                        <button type="button" onclick="document.getElementById('reject-{{ $l->id }}').classList.toggle('hidden')"
+                                                class="text-[8px] font-black text-red-500 bg-red-50 px-3 py-1.5 rounded-lg hover:bg-red-100 border-none cursor-pointer uppercase">{{ __("Refuser") }}</button>
+                                    @endif
+                                    @endcan
+                                    {{-- Congé actif : déléguer les tâches + signaler le retour --}}
                                     @can('annuaire.M')
                                     @if(in_array($l->status, ['approuve', 'en_cours']))
-                                    <form method="POST" action="{{ route('payroll.leaves.end', $l) }}">@csrf
-                                        <button class="text-[8px] font-black text-emerald-500 bg-emerald-50 px-3 py-1.5 rounded-lg hover:bg-emerald-100 border-none cursor-pointer uppercase">{{ __("Retour") }}</button>
+                                        <button type="button" onclick="document.getElementById('delegate-{{ $l->id }}').classList.toggle('hidden')"
+                                                class="text-[8px] font-black text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100 border-none cursor-pointer uppercase">{{ __("Déléguer tâches") }}</button>
+                                        <form method="POST" action="{{ route('payroll.leaves.end', $l) }}">@csrf
+                                            <button class="text-[8px] font-black text-emerald-500 bg-emerald-50 px-3 py-1.5 rounded-lg hover:bg-emerald-100 border-none cursor-pointer uppercase">{{ __("Retour") }}</button>
+                                        </form>
+                                    @endif
+                                    @endcan
+                                    </div>
+                                    {{-- Formulaire refus (motif obligatoire) --}}
+                                    @can('annuaire.S')
+                                    @if($l->status === 'demande')
+                                    <form id="reject-{{ $l->id }}" method="POST" action="{{ route('payroll.leaves.reject', $l) }}" class="hidden mt-2 flex gap-1">@csrf
+                                        <input type="text" name="rejection_reason" required maxlength="500" placeholder="{{ __('Motif du refus') }}"
+                                               class="flex-1 text-[9px] p-2 bg-slate-50 border-none rounded-lg italic">
+                                        <button class="text-[8px] font-black text-white bg-red-500 px-3 rounded-lg border-none cursor-pointer uppercase">{{ __("OK") }}</button>
+                                    </form>
+                                    @endif
+                                    @endcan
+                                    {{-- Formulaire délégation des tâches vers un collègue --}}
+                                    @can('annuaire.M')
+                                    @if(in_array($l->status, ['approuve', 'en_cours']))
+                                    <form id="delegate-{{ $l->id }}" method="POST" action="{{ route('payroll.leaves.delegate', $l) }}" class="hidden mt-2 flex gap-1">@csrf
+                                        <select name="delegate_to" required class="flex-1 text-[9px] p-2 bg-slate-50 border-none rounded-lg italic">
+                                            <option value="">{{ __('— Collègue —') }}</option>
+                                            @foreach($employees->where('id', '!=', $l->employee_id) as $colleague)
+                                                <option value="{{ $colleague->id }}">{{ $colleague->first_name }} {{ $colleague->last_name }}</option>
+                                            @endforeach
+                                        </select>
+                                        <button class="text-[8px] font-black text-white bg-blue-500 px-3 rounded-lg border-none cursor-pointer uppercase">{{ __("OK") }}</button>
                                     </form>
                                     @endif
                                     @endcan
