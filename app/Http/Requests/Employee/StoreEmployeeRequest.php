@@ -25,7 +25,7 @@ class StoreEmployeeRequest extends FormRequest
             'salary'        => 'nullable|numeric|min:0',
             'gender'        => 'required|in:M,F',
             'photo'         => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
-            'cv'            => 'nullable|mimes:pdf|max:5120',
+            'cv'            => 'nullable|mimes:pdf|max:2048',
             'employee_id'   => 'nullable|string|max:255',
         ];
     }

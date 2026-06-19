@@ -113,7 +113,7 @@
                                 <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 italic tracking-widest">{{ __("Bâtiment assigné") }}</label>
                                 <select name="assigned_building_id" class="w-full p-5 bg-slate-50 rounded-2xl font-black outline-none border-none focus:ring-4 focus:ring-emerald-500/10 shadow-inner appearance-none text-slate-700 italic cursor-pointer">
                                     <option value="">{{ __("Aucun (polyvalent)") }}</option>
-                                    @foreach(\App\Models\Building::orderBy('name')->get() as $b)
+                                    @foreach(\App\Models\Building::physical()->orderBy('name')->get() as $b)
                                         <option value="{{ $b->id }}" {{ old('assigned_building_id', $employee->assigned_building_id) == $b->id ? 'selected' : '' }}>
                                             {{ $b->name }} ({{ $b->type }})
                                         </option>

@@ -412,7 +412,7 @@ class ReportController extends Controller
                 'type'            => $batch->type,
                 'building'        => $batch->building->name ?? 'N/A',
                 'fcr'             => round($fcr, 2),
-                'age'             => $age,
+                'age'             => (int) $age,
                 'initial'         => $initial,
                 'current'         => $current,
                 'mortality_count' => $totalMortalite,

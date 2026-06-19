@@ -267,10 +267,10 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/{health}', 'update')->name('update')->middleware('can:M');
         Route::delete('/{health}', 'destroy')->name('destroy')->middleware('can:S');
 
-        // Incidents sanitaires (alias vers health)
-        Route::get('/incidents', 'index')->name('incidents.index')->middleware('can:L');
-        Route::get('/incidents/create', 'create')->name('incidents.create')->middleware('can:C');
-        Route::post('/incidents', 'store')->name('incidents.store')->middleware('can:C');
+        // Incidents sanitaires → HealthIncidentController dédié
+        Route::get('/incidents', [\App\Http\Controllers\HealthIncidentController::class, 'index'])->name('incidents.index')->middleware('can:L');
+        Route::get('/incidents/create', [\App\Http\Controllers\HealthIncidentController::class, 'index'])->name('incidents.create')->middleware('can:C');
+        Route::post('/incidents', [\App\Http\Controllers\HealthIncidentController::class, 'store'])->name('incidents.store')->middleware('can:C');
     });
 
     Route::middleware('can:L')->resource('daily-checks', DailyCheckController::class);

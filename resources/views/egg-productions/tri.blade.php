@@ -128,10 +128,15 @@
     </div>
 
 <script>
-function getValue(id) { 
+// setting() est un helper PHP — non accessible en JS. On l'injecte une seule
+// fois côté serveur pour éviter les ReferenceError qui bloquaient la barre de
+// progression et tous les calculs de calibrage.
+const EGGS_PER_TRAY = {{ (int) setting('general.eggs_per_tray', 30) ?: 30 }};
+
+function getValue(id) {
     const el = document.getElementById(id);
-    if (el && el.value < 0) el.value = 0; 
-    return el ? Math.max(0, parseFloat(el.value) || 0) : 0; 
+    if (el && el.value < 0) el.value = 0;
+    return el ? Math.max(0, parseFloat(el.value) || 0) : 0;
 }
 
 function updateUI() {
@@ -143,18 +148,18 @@ function updateUI() {
     const brutAlvDisplay = document.getElementById('brut_alv');
 
     if (!brutEl || !feedback || !btn) return;
-    
+
     const brutUnites = parseInt(brutEl.innerText);
     let totalGlobalGradesUnites = 0;
 
     @json(array_map('strtolower', \App\Models\EggProduction::gradeCodes())).forEach(grade => {
         const alv = getValue(`${grade}_alv`);
         const uniInput = document.getElementById(`${grade}_uni`);
-        const maxUnits = setting('general.eggs_per_tray', 30) - 1;
+        const maxUnits = EGGS_PER_TRAY - 1;
         if (uniInput && uniInput.value > maxUnits) uniInput.value = maxUnits;
         const uni = getValue(`${grade}_uni`);
 
-        const totalUnitesGrade = Math.round((alv * setting('general.eggs_per_tray', 30)) + uni);
+        const totalUnitesGrade = Math.round((alv * EGGS_PER_TRAY) + uni);
         totalGlobalGradesUnites += totalUnitesGrade;
 
         const countEl = document.getElementById(`count_${grade}`);
@@ -193,8 +198,8 @@ function updateUI() {
     }
 
     if (brutAlvDisplay) {
-        const plateauxComplets = Math.floor(brutUnites / setting('general.eggs_per_tray', 30));
-        const resteUnites = brutUnites % setting('general.eggs_per_tray', 30);
+        const plateauxComplets = Math.floor(brutUnites / EGGS_PER_TRAY);
+        const resteUnites = brutUnites % EGGS_PER_TRAY;
         brutAlvDisplay.innerText = @json(__("Cible :")) + ` ${plateauxComplets} ` + @json(__("Pl.")) + ` + ${resteUnites} ` + @json(__("Un."));
     }
 

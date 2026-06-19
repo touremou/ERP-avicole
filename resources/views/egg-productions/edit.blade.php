@@ -150,12 +150,14 @@
     </div>
 
     <script>
+        const EGGS_PER_TRAY = {{ (int) setting('general.eggs_per_tray', 30) ?: 30 }};
+
         function calcBrut() {
             const a = parseInt(document.getElementById('alv_assist')?.value) || 0;
             const u = parseInt(document.getElementById('uni_assist')?.value) || 0;
             const totalInput = document.getElementById('total_eggs');
             if(totalInput) {
-                totalInput.value = (a * setting('general.eggs_per_tray', 30)) + u;
+                totalInput.value = (a * EGGS_PER_TRAY) + u;
                 validateFlow();
             }
         }
@@ -168,7 +170,7 @@
             const infoDisplay = document.getElementById('info-display');
             const feedback = document.getElementById('validation_feedback');
 
-            if(infoDisplay) infoDisplay.innerText = `≈ ${(totalEggs / setting('general.eggs_per_tray', 30)).toFixed(2)} Alvéoles`;
+            if(infoDisplay) infoDisplay.innerText = `≈ ${(totalEggs / EGGS_PER_TRAY).toFixed(2)} Alvéoles`;
 
             // Si nous sommes en mode tri (isset eggProduction via présence de feedback)
             if(feedback && submitBtn) {
@@ -176,7 +178,7 @@
                 ['xl', 'l', 'm', 's'].forEach(g => {
                     const alv = parseInt(document.getElementById(g + '_alv')?.value) || 0;
                     const uni = parseInt(document.getElementById(g + '_uni')?.value) || 0;
-                    const totalForGrade = (alv * setting('general.eggs_per_tray', 30)) + uni;
+                    const totalForGrade = (alv * EGGS_PER_TRAY) + uni;
                     document.getElementById('count_' + g).innerText = totalForGrade;
                     totalGraded += totalForGrade;
                 });

@@ -6,6 +6,7 @@ use App\Models\HealthIncident;
 use App\Models\Batch;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 
 class HealthIncidentController extends Controller
 {
