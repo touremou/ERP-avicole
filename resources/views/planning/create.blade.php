@@ -64,7 +64,7 @@
                                             class="w-full p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-indigo-500 outline-none font-black text-indigo-600 shadow-inner appearance-none italic">
                                         <option value="">{{ __("-- Sélectionner la souche --") }}</option>
                                         @foreach($normModels as $norm)
-                                            <option value="{{ $norm->model_name }}" data-type="{{ $norm->batch_type }}" class="model-opt" style="display: none;">
+                                            <option value="{{ $norm->model_name }}" data-type="{{ $norm->batch_type }}" data-species="{{ $norm->species?->slug ?? '' }}" class="model-opt" style="display: none;">
                                                 {{ $norm->model_name }}
                                             </option>
                                         @endforeach
@@ -269,9 +269,13 @@ function runFilters() {
     el('species_id_hidden').value = sel?.dataset.speciesId || "";
     el('production_type_id_hidden').value = sel?.dataset.ptId || "";
 
-    // Filtrage souches
+    // Filtrage souches : par type d'élevage ET par espèce (une souche sans
+    // espèce — data-species vide — est générique, toutes espèces confondues).
     document.querySelectorAll('.model-opt').forEach(opt => {
-        const match = !type || opt.dataset.type === type;
+        const typeMatch = !type || opt.dataset.type === type;
+        const optSpecies = opt.dataset.species || "";
+        const speciesMatch = !speciesSlug || optSpecies === "" || optSpecies === speciesSlug;
+        const match = typeMatch && speciesMatch;
         opt.style.display = match ? '' : 'none';
         opt.disabled = !match;
     });

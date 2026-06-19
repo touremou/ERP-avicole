@@ -164,7 +164,8 @@
                                     <div class="w-24">
                                         <input type="number" step="0.01" min="0" max="100"
                                             name="ingredients[{{ $index }}][percentage]"
-                                            data-cost="{{ $m->unit_cost }}" 
+                                            value="{{ old('ingredients.'.$index.'.percentage') }}"
+                                            data-cost="{{ $m->unit_cost }}"
                                             data-pb="{{ $m->protein_rate }}"
                                             data-em="{{ $m->energy_kcal }}"
                                             placeholder="0.00"
@@ -215,6 +216,14 @@
                 realPB: 0,
                 costPerKg: 0,
 
+                // Amorçage du dashboard au chargement : indispensable pour que les
+                // indicateurs reflètent immédiatement les valeurs pré-remplies
+                // (réaffichage après erreur de validation via old()) plutôt que de
+                // rester figés à 0 jusqu'à la première frappe.
+                init() {
+                    this.$nextTick(() => this.recalculate());
+                },
+
                 // Sélection espèce / type de production → pilote species_id,
                 // production_type_id, target_type (slug) et le nom proposé.
                 onPtChange(e) {
@@ -225,6 +234,7 @@
                     // target_type = slug du type de production (sauf si une norme est choisie).
                     if (!this.selectedNormId) this.targetType = this.ptSlug;
                     if (opt?.dataset?.label) this.formulaName = opt.dataset.label;
+                    this.recalculate();
                 },
 
                 updateTargets(e) {
@@ -235,6 +245,8 @@
                     // pour conserver l'appariement nutritionnel (volaille). Sinon,
                     // on retombe sur le slug du type de production.
                     this.targetType = this.selectedNormId || this.ptSlug;
+                    // Rafraîchit les jauges EM/PB relatives à la nouvelle cible.
+                    this.recalculate();
                 },
 
                 recalculate() {

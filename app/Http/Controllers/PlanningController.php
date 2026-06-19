@@ -54,7 +54,10 @@ class PlanningController extends Controller
             ->orderBy('name')->get();
 
         $providers = Provider::active()->orderBy('name')->get();
-        $normModels = ProductionNorm::select('model_name', 'batch_type')->distinct()->orderBy('model_name')->get();
+        // species_id (+ relation) permet de filtrer les souches par espèce ET
+        // par type côté client, comme au lancement d'un lot (cf. BatchController).
+        $normModels = ProductionNorm::with('species:id,slug')
+            ->select('species_id', 'model_name', 'batch_type')->distinct()->orderBy('model_name')->get();
         $protocols = Protocol::orderBy('name')->get();
         // Types de production de toutes les espèces actives (planification multiespèces).
         $productionTypes = ProductionType::active()->with('species')->orderBy('species_id')->get();

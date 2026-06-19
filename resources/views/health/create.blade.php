@@ -49,7 +49,8 @@
                     {{-- DATE DE L'ACTE --}}
                     <div class="space-y-3">
                         <label class="text-[10px] font-black text-slate-400 uppercase ml-2 italic tracking-widest">{{ __("Date d'intervention") }} <span class="text-red-500">*</span></label>
-                        <input type="date" name="intervention_date" value="{{ old('intervention_date', $prefill_date ?? date('Y-m-d')) }}" 
+                        <input type="date" name="intervention_date" id="intervention_date" value="{{ old('intervention_date', $prefill_date ?? date('Y-m-d')) }}"
+                               oninput="checkExpiry()"
                                class="w-full p-5 bg-slate-50 border-none rounded-2xl font-black text-center shadow-inner focus:ring-4 focus:ring-blue-500/10 transition italic" required>
                     </div>
                 </div>
@@ -83,8 +84,12 @@
                         </div>
                         <div class="space-y-3">
                             <label class="text-[10px] font-black text-slate-400 uppercase ml-2 italic tracking-widest leading-none">{{ __("Date d'expiration") }}</label>
-                            <input type="date" name="expiry_date" value="{{ old('expiry_date') }}"
+                            <input type="date" name="expiry_date" id="expiry_date" value="{{ old('expiry_date') }}"
+                                   oninput="checkExpiry()"
                                    class="w-full p-4 bg-white rounded-2xl border-none shadow-sm font-black text-[10px] italic text-slate-500">
+                            <p id="expiry_warning" class="hidden text-[9px] font-black text-red-600 uppercase italic ml-2 leading-tight">
+                                ⛔ {{ __("Produit périmé : administration interdite") }}
+                            </p>
                         </div>
                         <div class="space-y-3">
                             <label class="text-[10px] font-black text-slate-400 uppercase ml-2 italic tracking-widest leading-none">{{ __("Vétérinaire / Responsable") }}</label>
@@ -128,7 +133,7 @@
                     <a href="{{ route('health.index') }}" class="flex-1 bg-white border-2 border-slate-100 text-slate-400 font-black py-7 rounded-[2.5rem] shadow-sm hover:bg-slate-50 text-center uppercase tracking-widest text-[10px] italic no-underline flex items-center justify-center">
                         {{ __("Annuler") }}
                     </a>
-                    <button type="submit" class="flex-[2] bg-slate-900 text-white font-black py-7 rounded-[2.5rem] hover:bg-blue-600 active:scale-95 transition-all uppercase tracking-[0.3em] text-[10px] italic shadow-2xl group cursor-pointer">
+                    <button type="submit" id="health_submit" class="flex-[2] bg-slate-900 text-white font-black py-7 rounded-[2.5rem] hover:bg-blue-600 active:scale-95 transition-all uppercase tracking-[0.3em] text-[10px] italic shadow-2xl group cursor-pointer">
                         <i class="fas fa-check-circle mr-3 text-blue-400 group-hover:text-white transition-colors"></i> {{ __("Enregistrer l'intervention") }}
                     </button>
                 </div>
@@ -137,7 +142,30 @@
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', showBatchType);
+        document.addEventListener('DOMContentLoaded', () => { showBatchType(); checkExpiry(); });
+
+        // Garde-fou sanitaire côté client : le champ expiration ne peut pas être
+        // antérieur à la date d'intervention (produit périmé). Bloque le bouton
+        // de soumission et affiche une alerte. La validation serveur reste maître.
+        function checkExpiry() {
+            const interv = document.getElementById('intervention_date');
+            const expiry = document.getElementById('expiry_date');
+            const warning = document.getElementById('expiry_warning');
+            const submitBtn = document.getElementById('health_submit');
+            if (!interv || !expiry) return;
+
+            // Le produit ne peut pas expirer avant le jour d'administration.
+            expiry.min = interv.value || '';
+
+            const expired = expiry.value && interv.value && expiry.value < interv.value;
+            if (warning) warning.classList.toggle('hidden', !expired);
+            expiry.classList.toggle('ring-2', expired);
+            expiry.classList.toggle('ring-red-500', expired);
+            if (submitBtn) {
+                submitBtn.disabled = expired;
+                submitBtn.style.opacity = expired ? '0.4' : '1';
+            }
+        }
 
         function showBatchType() {
             const select = document.getElementById('batch_select');

@@ -30,11 +30,20 @@ class UpdateHealthCheckRequest extends FormRequest
             'type'                => ['required', 'in:Vaccin,Traitement,Vitamine,Désinfection'],
             'product_name'        => ['required', 'string', 'max:255'],
             'batch_number'        => ['nullable', 'string', 'max:100'],
-            'expiry_date'         => ['nullable', 'date'],
+            // Garde-fou sanitaire : pas de produit périmé au jour d'intervention.
+            'expiry_date'         => ['nullable', 'date', 'after_or_equal:intervention_date'],
             'mode_administration' => ['required', 'string', 'max:100'],
             'cost'                => ['nullable', 'numeric', 'min:0'],
             'veterinary_name'     => ['nullable', 'string', 'max:255'],
             'observations'        => ['nullable', 'string'],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'expiry_date.after_or_equal' => "Produit périmé : la date de péremption est antérieure à la date d'intervention. "
+                . "L'administration d'un produit expiré est interdite.",
         ];
     }
 }
