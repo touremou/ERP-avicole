@@ -271,6 +271,9 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/incidents', [\App\Http\Controllers\HealthIncidentController::class, 'index'])->name('incidents.index')->middleware('can:L');
         Route::get('/incidents/create', [\App\Http\Controllers\HealthIncidentController::class, 'index'])->name('incidents.create')->middleware('can:C');
         Route::post('/incidents', [\App\Http\Controllers\HealthIncidentController::class, 'store'])->name('incidents.store')->middleware('can:C');
+        Route::put('/incidents/{incident}/diagnose', [\App\Http\Controllers\HealthIncidentController::class, 'diagnose'])->name('incidents.diagnose')->middleware('can:M');
+        Route::patch('/incidents/{incident}/resolve', [\App\Http\Controllers\HealthIncidentController::class, 'resolve'])->name('incidents.resolve')->middleware('can:M');
+        Route::patch('/incidents/{incident}/close-fast', [\App\Http\Controllers\HealthIncidentController::class, 'closeFast'])->name('incidents.closeFast')->middleware('can:M');
     });
 
     Route::middleware('can:L')->resource('daily-checks', DailyCheckController::class);

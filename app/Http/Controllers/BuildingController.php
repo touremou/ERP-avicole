@@ -36,7 +36,13 @@ class BuildingController extends Controller
     {
         if (Gate::denies('elevage.C')) return back()->with('error', 'Privilèges insuffisants.');
 
-        $buildings = Building::select('id', 'name', 'status')->get(); 
+        // Liste du parc réel : on exclut le bâtiment virtuel de traçabilité
+        // (cf. Building::scopePhysical) et on charge type + capacité pour des
+        // indicateurs cohérents — sinon ces colonnes ressortaient à 0/N/A.
+        $buildings = Building::physical()
+            ->select('id', 'name', 'type', 'capacity', 'status')
+            ->orderBy('name')
+            ->get();
 
         return view('buildings.create', compact('buildings'));
     }

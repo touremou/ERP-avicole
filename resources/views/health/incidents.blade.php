@@ -138,7 +138,7 @@
     </div>
     {{-- MODALE DE DIAGNOSTIC VÉTÉRINAIRE --}}
     <div x-data="{ showDiagModal: false, incidentId: null, formUrl: '' }" 
-         @open-diagnosis-modal.window="incidentId = $event.detail; formUrl = '/incidents/' + incidentId + '/diagnose'; showDiagModal = true;"
+         @open-diagnosis-modal.window="incidentId = $event.detail; formUrl = '{{ url('health/incidents') }}/' + incidentId + '/diagnose'; showDiagModal = true;"
          x-show="showDiagModal" 
          class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm px-4" 
          style="display: none;"
@@ -180,7 +180,7 @@
     </div>
     {{-- MODALE DE CLÔTURE RAPIDE (SANS DIAGNOSTIC) --}}
     <div x-data="{ showCloseModal: false, incidentId: null, formUrl: '' }" 
-         @open-fast-close-modal.window="incidentId = $event.detail; formUrl = '/incidents/' + incidentId + '/close-fast'; showCloseModal = true;"
+         @open-fast-close-modal.window="incidentId = $event.detail; formUrl = '{{ url('health/incidents') }}/' + incidentId + '/close-fast'; showCloseModal = true;"
          x-show="showCloseModal" 
          class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm px-4" 
          style="display: none;"

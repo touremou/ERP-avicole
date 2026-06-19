@@ -16,7 +16,7 @@
         </div>
     </x-slot>
 
-    <div class="py-12 italic font-bold" x-data="formulaBuilder()">
+    <div class="py-12 italic font-bold" x-data="formulaBuilder">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             
             @if ($errors->any())
@@ -199,9 +199,14 @@
         </div>
     </div>
 
+    {{-- Enregistrement via alpine:init + Alpine.data : garantit que le composant
+         est défini AVANT qu'Alpine ne parcoure le DOM. Avec une fonction globale
+         + x-data="formulaBuilder()", Alpine (chargé en module Vite différé)
+         pouvait traiter le x-data avant que le script inline n'ait défini la
+         fonction → composant non initialisé, dashboard figé à 0. --}}
     <script>
-        function formulaBuilder() {
-            return {
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('formulaBuilder', () => ({
                 formulaName: '',
                 speciesId: '',
                 productionTypeId: '',
@@ -278,7 +283,7 @@
                     }
                     this.$el.querySelector('#formula_form').submit();
                 }
-            }
-        }
+            }));
+        });
     </script>
 </x-app-layout>
