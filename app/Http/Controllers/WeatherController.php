@@ -70,6 +70,42 @@ class WeatherController extends Controller
         return redirect()->route('cultures.dashboard', ['tab' => 'meteo'])->with('success', 'Relevé météo enregistré.');
     }
 
+    public function edit(WeatherReading $weather)
+    {
+        if (Gate::denies('cultures.M')) {
+            return back()->with('error', 'Action non autorisée.');
+        }
+
+        return view('cultures.weather.edit', [
+            'reading' => $weather,
+            'plots'   => Plot::orderBy('name')->get(['id', 'name']),
+        ]);
+    }
+
+    public function update(Request $request, WeatherReading $weather)
+    {
+        if (Gate::denies('cultures.M')) {
+            return back()->with('error', 'Action non autorisée.');
+        }
+
+        $validated = $request->validate([
+            'plot_id'         => 'nullable|exists:plots,id',
+            'reading_date'    => 'required|date',
+            'temperature_min' => 'nullable|numeric|min:-10|max:60',
+            'temperature_max' => 'nullable|numeric|min:-10|max:60',
+            'humidity_pct'    => 'nullable|numeric|min:0|max:100',
+            'rainfall_mm'     => 'nullable|numeric|min:0',
+            'wind_kmh'        => 'nullable|numeric|min:0',
+            'sunshine_h'      => 'nullable|numeric|min:0|max:24',
+            'notes'           => 'nullable|string|max:500',
+        ]);
+
+        $weather->update($validated);
+
+        return redirect()->route('cultures.dashboard', ['tab' => 'meteo', 'weatherMonth' => $weather->reading_date->format('Y-m')])
+            ->with('success', 'Relevé météo mis à jour.');
+    }
+
     public function destroy(WeatherReading $weather)
     {
         if (Gate::denies('cultures.S')) {

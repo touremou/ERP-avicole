@@ -390,7 +390,7 @@
                                     <th class="p-4 text-right">{{ __("Humidité") }}</th>
                                     <th class="p-4 text-right">{{ __("Vent") }}</th>
                                     <th class="p-4 text-right">{{ __("Soleil") }}</th>
-                                    @can('cultures.S')<th class="p-4"></th>@endcan
+                                    @canany(['cultures.M', 'cultures.S'])<th class="p-4"></th>@endcanany
                                 </tr>
                             </thead>
                             <tbody>
@@ -404,14 +404,21 @@
                                         <td class="p-4 text-right">{{ $r->humidity_pct !== null ? round($r->humidity_pct).'%' : '—' }}</td>
                                         <td class="p-4 text-right">{{ $r->wind_kmh !== null ? round($r->wind_kmh).' km/h' : '—' }}</td>
                                         <td class="p-4 text-right">{{ $r->sunshine_h !== null ? number_format($r->sunshine_h, 1, ',', ' ').'h' : '—' }}</td>
-                                        @can('cultures.S')
+                                        @canany(['cultures.M', 'cultures.S'])
                                         <td class="p-4 text-right">
-                                            <form action="{{ route('weather.destroy', $r) }}" method="POST" onsubmit="return confirm('Supprimer ce relevé ?')">
-                                                @csrf @method('DELETE')
-                                                <button class="text-rose-300 hover:text-rose-600"><i class="fa-solid fa-trash text-xs"></i></button>
-                                            </form>
+                                            <div class="flex items-center justify-end gap-3">
+                                                @can('cultures.M')
+                                                <a href="{{ route('weather.edit', $r) }}" class="text-slate-300 hover:text-sky-600 no-underline"><i class="fa-solid fa-pen-to-square text-xs"></i></a>
+                                                @endcan
+                                                @can('cultures.S')
+                                                <form action="{{ route('weather.destroy', $r) }}" method="POST" onsubmit="return confirm('Supprimer ce relevé ?')">
+                                                    @csrf @method('DELETE')
+                                                    <button class="text-rose-300 hover:text-rose-600"><i class="fa-solid fa-trash text-xs"></i></button>
+                                                </form>
+                                                @endcan
+                                            </div>
                                         </td>
-                                        @endcan
+                                        @endcanany
                                     </tr>
                                 @empty
                                     <tr><td colspan="9" class="p-16 text-center text-slate-300 text-[10px] font-black uppercase italic">{{ __("Aucun relevé pour ce mois") }}</td></tr>

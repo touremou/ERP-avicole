@@ -223,7 +223,10 @@ Route::middleware(['auth'])->group(function () {
 
     Route::prefix('cultures/plots')->name('plots.')->controller(PlotController::class)->group(function () {
         Route::get('/', 'index')->name('index')->middleware('can:L');
+        Route::get('/create', 'create')->name('create')->middleware('can:C');
         Route::post('/', 'store')->name('store')->middleware('can:C');
+        Route::get('/{plot}', 'show')->name('show')->where('plot', '[0-9]+')->middleware('can:L');
+        Route::get('/{plot}/edit', 'edit')->name('edit')->middleware('can:M');
         Route::put('/{plot}', 'update')->name('update')->middleware('can:M');
         Route::delete('/{plot}', 'destroy')->name('destroy')->middleware('can:S');
     });
@@ -233,11 +236,20 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/create', 'create')->name('create')->middleware('can:C');
         Route::post('/', 'store')->name('store')->middleware('can:C');
         Route::get('/{cropCycle}', 'show')->name('show')->where('cropCycle', '[0-9]+')->middleware('can:L');
+        Route::get('/{cropCycle}/edit', 'edit')->name('edit')->where('cropCycle', '[0-9]+')->middleware('can:M');
         Route::put('/{cropCycle}', 'update')->name('update')->middleware('can:M');
-        Route::post('/{cropCycle}/harvests', 'storeHarvest')->name('harvests.store')->middleware('can:C');
-        Route::post('/{cropCycle}/inputs', 'storeInput')->name('inputs.store')->middleware('can:C');
         Route::delete('/{cropCycle}', 'destroy')->name('destroy')->middleware('can:S');
+        // Récoltes (sous-ressource du cycle)
+        Route::get('/{cropCycle}/harvests/create', 'createHarvest')->name('harvests.create')->middleware('can:C');
+        Route::post('/{cropCycle}/harvests', 'storeHarvest')->name('harvests.store')->middleware('can:C');
+        Route::get('/{cropCycle}/harvests/{harvest}/edit', 'editHarvest')->name('harvests.edit')->middleware('can:M');
+        Route::put('/{cropCycle}/harvests/{harvest}', 'updateHarvest')->name('harvests.update')->middleware('can:M');
         Route::delete('/{cropCycle}/harvests/{harvest}', 'destroyHarvest')->name('harvests.destroy')->middleware('can:S');
+        // Intrants (sous-ressource du cycle)
+        Route::get('/{cropCycle}/inputs/create', 'createInput')->name('inputs.create')->middleware('can:C');
+        Route::post('/{cropCycle}/inputs', 'storeInput')->name('inputs.store')->middleware('can:C');
+        Route::get('/{cropCycle}/inputs/{input}/edit', 'editInput')->name('inputs.edit')->middleware('can:M');
+        Route::put('/{cropCycle}/inputs/{input}', 'updateInput')->name('inputs.update')->middleware('can:M');
         Route::delete('/{cropCycle}/inputs/{input}', 'destroyInput')->name('inputs.destroy')->middleware('can:S');
     });
 
@@ -246,6 +258,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/create', 'create')->name('create')->middleware('can:C');
         Route::post('/', 'store')->name('store')->middleware('can:C');
         Route::get('/{cropTransformation}', 'show')->name('show')->where('cropTransformation', '[0-9]+')->middleware('can:L');
+        Route::get('/{cropTransformation}/edit', 'edit')->name('edit')->where('cropTransformation', '[0-9]+')->middleware('can:M');
+        Route::put('/{cropTransformation}', 'update')->name('update')->middleware('can:M');
         Route::delete('/{cropTransformation}', 'destroy')->name('destroy')->middleware('can:S');
     });
 
@@ -255,8 +269,10 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/create', 'create')->name('create')->middleware('can:C');
         Route::post('/', 'store')->name('store')->middleware('can:C');
         Route::get('/{cropCatalogue}', 'show')->name('show')->where('cropCatalogue', '[0-9]+')->middleware('can:L');
+        Route::get('/{cropCatalogue}/edit', 'edit')->name('edit')->where('cropCatalogue', '[0-9]+')->middleware('can:M');
         Route::put('/{cropCatalogue}', 'update')->name('update')->middleware('can:M');
         Route::post('/{cropCatalogue}/varieties', 'storeVariety')->name('varieties.store')->middleware('can:C');
+        Route::put('/varieties/{variety}', 'updateVariety')->name('varieties.update')->middleware('can:M');
         Route::delete('/varieties/{variety}', 'destroyVariety')->name('varieties.destroy')->middleware('can:S');
     });
 
@@ -266,6 +282,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/create', 'create')->name('create')->middleware('can:C');
         Route::post('/', 'store')->name('store')->middleware('can:C');
         Route::get('/{cropCampaign}', 'show')->name('show')->where('cropCampaign', '[0-9]+')->middleware('can:L');
+        Route::get('/{cropCampaign}/edit', 'edit')->name('edit')->where('cropCampaign', '[0-9]+')->middleware('can:M');
         Route::put('/{cropCampaign}', 'update')->name('update')->middleware('can:M');
         Route::delete('/{cropCampaign}', 'destroy')->name('destroy')->middleware('can:S');
     });
@@ -276,15 +293,17 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/create', 'create')->name('create')->middleware('can:C');
         Route::post('/', 'store')->name('store')->middleware('can:C');
         Route::get('/{cropRecipe}', 'show')->name('show')->where('cropRecipe', '[0-9]+')->middleware('can:L');
-        Route::delete('/{cropRecipe}', 'destroy')->name('destroy')->middleware('can:S');
-        Route::get('/{cropRecipe}/edit', 'edit')->name('edit')->middleware('can:M');
+        Route::get('/{cropRecipe}/edit', 'edit')->name('edit')->where('cropRecipe', '[0-9]+')->middleware('can:M');
         Route::put('/{cropRecipe}', 'update')->name('update')->middleware('can:M');
+        Route::delete('/{cropRecipe}', 'destroy')->name('destroy')->middleware('can:S');
     });
 
     // Météo & pluviométrie
     Route::prefix('cultures/weather')->name('weather.')->controller(WeatherController::class)->group(function () {
         Route::get('/', 'index')->name('index')->middleware('can:L');
         Route::post('/', 'store')->name('store')->middleware('can:C');
+        Route::get('/{weather}/edit', 'edit')->name('edit')->where('weather', '[0-9]+')->middleware('can:M');
+        Route::put('/{weather}', 'update')->name('update')->middleware('can:M');
         Route::delete('/{weather}', 'destroy')->name('destroy')->middleware('can:S');
     });
 

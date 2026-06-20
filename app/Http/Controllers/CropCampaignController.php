@@ -84,6 +84,19 @@ class CropCampaignController extends Controller
         ]);
     }
 
+    public function edit(CropCampaign $cropCampaign)
+    {
+        if (Gate::denies('cultures.M')) {
+            return back()->with('error', 'Action non autorisée.');
+        }
+
+        return view('cultures.campaigns.edit', [
+            'campaign' => $cropCampaign,
+            'seasons'  => CropCampaign::SEASONS,
+            'statuses' => CropCampaign::STATUSES,
+        ]);
+    }
+
     public function update(Request $request, CropCampaign $cropCampaign)
     {
         if (Gate::denies('cultures.M')) {
@@ -91,7 +104,9 @@ class CropCampaignController extends Controller
         }
 
         $validated = $request->validate([
+            'code'                => 'nullable|string|max:50',
             'name'                => 'required|string|max:255',
+            'year'                => 'required|integer|min:2020|max:2035',
             'season'              => 'required|in:' . implode(',', array_keys(CropCampaign::SEASONS)),
             'start_date'          => 'required|date',
             'end_date_planned'    => 'nullable|date|after_or_equal:start_date',
@@ -102,7 +117,7 @@ class CropCampaignController extends Controller
 
         $cropCampaign->update($validated);
 
-        return back()->with('success', 'Campagne mise à jour.');
+        return redirect()->route('crop-campaigns.show', $cropCampaign)->with('success', 'Campagne mise à jour.');
     }
 
     public function destroy(CropCampaign $cropCampaign)

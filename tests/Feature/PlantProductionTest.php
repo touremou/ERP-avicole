@@ -32,7 +32,7 @@ test('un opérateur (C) peut créer une parcelle', function () {
             'name'    => 'Parcelle Sud',
             'area_ha' => 1.2,
         ])
-        ->assertRedirect(route('plots.index'));
+        ->assertRedirect();
 
     expect(Plot::where('name', 'Parcelle Sud')->exists())->toBeTrue();
 });

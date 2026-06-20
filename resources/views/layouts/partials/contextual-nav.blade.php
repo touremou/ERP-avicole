@@ -59,7 +59,8 @@
     <a href="{{ route('plots.index') }}" class="{{ $linkClass }} {{ request()->routeIs('plots.*') ? $activeClass : $inactiveClass }}">{{ __("Parcelles") }}</a>
     <a href="{{ route('crop-cycles.index') }}" class="{{ $linkClass }} {{ request()->routeIs('crop-cycles.*') ? $activeClass : $inactiveClass }}">{{ __("Cycles") }}</a>
     <a href="{{ route('crop-campaigns.index') }}" class="{{ $linkClass }} {{ request()->routeIs('crop-campaigns.*') ? $activeClass : $inactiveClass }}">{{ __("Campagnes") }}</a>
-    <a href="{{ route('crop-transformations.index') }}" class="{{ $linkClass }} {{ request()->routeIs('crop-transformations.*') || request()->routeIs('crop-recipes.*') ? $activeClass : $inactiveClass }}">{{ __("Transfo & Recettes") }}</a>
+    <a href="{{ route('crop-transformations.index') }}" class="{{ $linkClass }} {{ request()->routeIs('crop-transformations.*') ? $activeClass : $inactiveClass }}">{{ __("Transformation") }}</a>
+    <a href="{{ route('crop-recipes.index') }}" class="{{ $linkClass }} {{ request()->routeIs('crop-recipes.*') ? $activeClass : $inactiveClass }}">{{ __("Recettes") }}</a>
     @endcan
 
 @elseif(request()->routeIs(['provenderie.*', 'raw-materials.*', 'formulas.*', 'production.*', 'machines.*']))

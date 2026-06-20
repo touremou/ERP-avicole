@@ -171,7 +171,7 @@ class CropCycleController extends Controller
 
         $action->execute($cropCycle, $validated);
 
-        return back()->with('success', 'Récolte enregistrée.');
+        return redirect()->route('crop-cycles.show', $cropCycle)->with('success', 'Récolte enregistrée.');
     }
 
     /**
@@ -199,7 +199,134 @@ class CropCycleController extends Controller
 
         $action->execute($cropCycle, $validated);
 
-        return back()->with('success', 'Intrant enregistré.');
+        return redirect()->route('crop-cycles.show', $cropCycle)->with('success', 'Intrant enregistré.');
+    }
+
+    /**
+     * Édition du cycle (fiche complète) — page dédiée, à l'image de batches.edit.
+     */
+    public function edit(CropCycle $cropCycle)
+    {
+        if (Gate::denies('cultures.M')) {
+            return back()->with('error', 'Action non autorisée.');
+        }
+
+        return view('cultures.cycles.edit', [
+            'cycle'     => $cropCycle,
+            'campaigns' => CropCampaign::orderByDesc('start_date')->get(['id', 'name', 'year']),
+            'employees' => Employee::where('status', 'Actif')->orderBy('first_name')->get(['id', 'first_name', 'last_name']),
+            'statuses'  => CropCycle::EDITABLE_STATUSES,
+        ]);
+    }
+
+    /** Formulaire de saisie d'une récolte (page dédiée). */
+    public function createHarvest(CropCycle $cropCycle)
+    {
+        if (Gate::denies('cultures.C')) {
+            return back()->with('error', 'Action non autorisée.');
+        }
+
+        if ($cropCycle->isArchived()) {
+            return redirect()->route('crop-cycles.show', $cropCycle)
+                ->with('error', 'Ce cycle est clôturé : aucune récolte ne peut y être ajoutée.');
+        }
+
+        return view('cultures.cycles.harvests.create', [
+            'cycle'     => $cropCycle,
+            'qualities' => Harvest::QUALITIES,
+            'employees' => Employee::where('status', 'Actif')->orderBy('first_name')->get(['id', 'first_name', 'last_name']),
+        ]);
+    }
+
+    /** Formulaire d'édition d'une récolte (page dédiée). */
+    public function editHarvest(CropCycle $cropCycle, Harvest $harvest)
+    {
+        if (Gate::denies('cultures.M')) {
+            return back()->with('error', 'Action non autorisée.');
+        }
+
+        return view('cultures.cycles.harvests.edit', [
+            'cycle'     => $cropCycle,
+            'harvest'   => $harvest,
+            'qualities' => Harvest::QUALITIES,
+            'employees' => Employee::where('status', 'Actif')->orderBy('first_name')->get(['id', 'first_name', 'last_name']),
+        ]);
+    }
+
+    /** Mise à jour d'une récolte (champs descriptifs ; pas de re-synchro stock). */
+    public function updateHarvest(Request $request, CropCycle $cropCycle, Harvest $harvest)
+    {
+        if (Gate::denies('cultures.M')) {
+            return back()->with('error', 'Action non autorisée.');
+        }
+
+        $validated = $request->validate([
+            'harvest_date'  => 'required|date',
+            'quantity'      => 'required|numeric|min:0.001',
+            'unit'          => 'nullable|string|max:20',
+            'loss_quantity' => 'nullable|numeric|min:0',
+            'quality'       => 'nullable|in:' . implode(',', Harvest::QUALITIES),
+            'employee_id'   => 'nullable|exists:employees,id',
+            'unit_price'    => 'nullable|numeric|min:0',
+            'notes'         => 'nullable|string|max:500',
+        ]);
+
+        $harvest->update($validated);
+
+        return redirect()->route('crop-cycles.show', $cropCycle)->with('success', 'Récolte mise à jour.');
+    }
+
+    /** Formulaire de saisie d'un intrant (page dédiée). */
+    public function createInput(CropCycle $cropCycle)
+    {
+        if (Gate::denies('cultures.C')) {
+            return back()->with('error', 'Action non autorisée.');
+        }
+
+        return view('cultures.cycles.inputs.create', [
+            'cycle'      => $cropCycle,
+            'inputTypes' => CropInput::TYPES,
+            'providers'  => Provider::orderBy('name')->get(['id', 'name']),
+        ]);
+    }
+
+    /** Formulaire d'édition d'un intrant (page dédiée). */
+    public function editInput(CropCycle $cropCycle, CropInput $input)
+    {
+        if (Gate::denies('cultures.M')) {
+            return back()->with('error', 'Action non autorisée.');
+        }
+
+        return view('cultures.cycles.inputs.edit', [
+            'cycle'      => $cropCycle,
+            'input'      => $input,
+            'inputTypes' => CropInput::TYPES,
+            'providers'  => Provider::orderBy('name')->get(['id', 'name']),
+        ]);
+    }
+
+    /** Mise à jour d'un intrant (champs descriptifs ; pas de re-synchro stock). */
+    public function updateInput(Request $request, CropCycle $cropCycle, CropInput $input)
+    {
+        if (Gate::denies('cultures.M')) {
+            return back()->with('error', 'Action non autorisée.');
+        }
+
+        $validated = $request->validate([
+            'type'        => 'required|in:' . implode(',', array_keys(CropInput::TYPES)),
+            'name'        => 'required|string|max:255',
+            'quantity'    => 'nullable|numeric|min:0',
+            'unit'        => 'nullable|string|max:20',
+            'unit_cost'   => 'nullable|numeric|min:0',
+            'total_cost'  => 'nullable|numeric|min:0',
+            'input_date'  => 'required|date',
+            'provider_id' => 'nullable|exists:providers,id',
+            'notes'       => 'nullable|string|max:500',
+        ]);
+
+        $input->update($validated);
+
+        return redirect()->route('crop-cycles.show', $cropCycle)->with('success', 'Intrant mis à jour.');
     }
 
     public function destroy(CropCycle $cropCycle)

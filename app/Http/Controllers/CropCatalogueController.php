@@ -80,6 +80,20 @@ class CropCatalogueController extends Controller
         return view('cultures.catalogue.show', ['species' => $cropCatalogue]);
     }
 
+    public function edit(CropSpecies $cropCatalogue)
+    {
+        if (Gate::denies('cultures.M')) {
+            return back()->with('error', 'Action non autorisée.');
+        }
+
+        $cropCatalogue->load(['varieties' => fn ($q) => $q->orderBy('name')]);
+
+        return view('cultures.catalogue.edit', [
+            'species' => $cropCatalogue,
+            'types'   => CropSpecies::TYPES,
+        ]);
+    }
+
     public function update(Request $request, CropSpecies $cropCatalogue)
     {
         if (Gate::denies('cultures.M')) {
@@ -101,7 +115,7 @@ class CropCatalogueController extends Controller
 
         $cropCatalogue->update($validated);
 
-        return back()->with('success', 'Culture mise à jour.');
+        return redirect()->route('crop-catalogue.show', $cropCatalogue)->with('success', 'Culture mise à jour.');
     }
 
     public function storeVariety(Request $request, CropSpecies $cropCatalogue)
@@ -121,6 +135,25 @@ class CropCatalogueController extends Controller
         $cropCatalogue->varieties()->create($validated);
 
         return back()->with('success', 'Variété ajoutée.');
+    }
+
+    public function updateVariety(Request $request, CropVariety $variety)
+    {
+        if (Gate::denies('cultures.M')) {
+            return back()->with('error', 'Action non autorisée.');
+        }
+
+        $validated = $request->validate([
+            'name'          => 'required|string|max:255',
+            'cycle_days'    => 'nullable|integer|min:1|max:1000',
+            'avg_yield_tha' => 'nullable|numeric|min:0',
+            'cycle_type'    => 'nullable|string|max:50',
+            'notes'         => 'nullable|string|max:500',
+        ]);
+
+        $variety->update($validated);
+
+        return back()->with('success', 'Variété mise à jour.');
     }
 
     public function destroyVariety(CropVariety $variety)

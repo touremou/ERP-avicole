@@ -10,9 +10,16 @@
                     <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1 italic">{{ $campaign->season_label }} · {{ $campaign->year }}</p>
                 </div>
             </div>
-            <a href="{{ route('crop-campaigns.index') }}" class="text-[10px] font-black uppercase text-slate-400 hover:text-slate-900 transition no-underline">
-                <i class="fa-solid fa-arrow-left mr-2"></i> {{ __("Campagnes") }}
-            </a>
+            <div class="flex items-center gap-3">
+                @can('cultures.M')
+                <a href="{{ route('crop-campaigns.edit', $campaign) }}" class="bg-white border border-slate-100 text-slate-600 px-5 py-2.5 rounded-2xl font-black text-[9px] uppercase tracking-widest italic no-underline flex items-center gap-2 hover:bg-slate-50">
+                    <i class="fa-solid fa-pen text-green-500"></i> {{ __("Modifier") }}
+                </a>
+                @endcan
+                <a href="{{ route('crop-campaigns.index') }}" class="text-[10px] font-black uppercase text-slate-400 hover:text-slate-900 transition no-underline">
+                    <i class="fa-solid fa-arrow-left mr-2"></i> {{ __("Campagnes") }}
+                </a>
+            </div>
         </div>
     </x-slot>
 
@@ -60,28 +67,6 @@
                     <p class="text-center text-slate-300 text-[10px] font-black uppercase italic py-10">{{ __("Aucun cycle rattaché à cette campagne") }}</p>
                 @endforelse
             </div>
-
-            {{-- ÉDITION STATUT --}}
-            @can('cultures.M')
-            <form action="{{ route('crop-campaigns.update', $campaign) }}" method="POST" class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm flex flex-wrap items-end gap-4">
-                @csrf @method('PUT')
-                <input type="hidden" name="name" value="{{ $campaign->name }}">
-                <input type="hidden" name="season" value="{{ $campaign->season }}">
-                <input type="hidden" name="start_date" value="{{ $campaign->start_date?->toDateString() }}">
-                <input type="hidden" name="end_date_planned" value="{{ $campaign->end_date_planned?->toDateString() }}">
-                <input type="hidden" name="target_production_t" value="{{ $campaign->target_production_t }}">
-                <input type="hidden" name="notes" value="{{ $campaign->notes }}">
-                <div>
-                    <label class="block text-[8px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Statut") }}</label>
-                    <select name="status" class="bg-slate-50 border-none rounded-2xl p-3 font-black text-slate-800 shadow-inner italic text-[11px] cursor-pointer">
-                        @foreach($statuses as $key => $label)
-                            <option value="{{ $key }}" @selected($campaign->status == $key)>{{ $label }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <button type="submit" class="bg-slate-900 text-white px-6 py-3 rounded-2xl font-black uppercase italic tracking-widest text-[9px] shadow-lg hover:bg-green-600 transition-all">{{ __("Mettre à jour") }}</button>
-            </form>
-            @endcan
         </div>
     </div>
 </x-app-layout>
