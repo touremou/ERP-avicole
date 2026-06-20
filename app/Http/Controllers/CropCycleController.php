@@ -99,7 +99,7 @@ class CropCycleController extends Controller
         }
 
         $cropCycle->load([
-            'plot', 'employee:id,first_name,last_name',
+            'plot', 'campaign:id,name', 'employee:id,first_name,last_name',
             'harvests.employee:id,first_name,last_name',
             'inputs.provider:id,name',
         ]);

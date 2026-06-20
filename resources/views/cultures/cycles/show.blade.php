@@ -52,6 +52,68 @@
                 </div>
             </div>
 
+            {{-- FICHE TECHNIQUE & ÉCONOMIQUE --}}
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {{-- Fiche technique --}}
+                <div class="lg:col-span-2 bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="text-[10px] font-black uppercase text-slate-400 tracking-widest italic">{{ __("Fiche technique") }}</h3>
+                        @php $stColor = $cycle->status === 'en_cours' ? 'green' : ($cycle->status === 'recolte' ? 'amber' : 'slate'); @endphp
+                        <span class="text-[8px] font-black uppercase bg-{{ $stColor }}-100 text-{{ $stColor }}-700 px-3 py-1 rounded-full italic">{{ ucfirst(str_replace('_', ' ', $cycle->status)) }}</span>
+                    </div>
+                    <div class="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-4">
+                        <div><p class="text-[8px] font-black text-slate-400 uppercase italic">{{ __("Parcelle") }}</p><p class="text-[11px] font-black text-slate-800 italic">{{ $cycle->plot?->name ?? '—' }}</p></div>
+                        <div><p class="text-[8px] font-black text-slate-400 uppercase italic">{{ __("Surface emblavée") }}</p><p class="text-[11px] font-black text-slate-800 italic">{{ number_format($cycle->area_used_ha, 2, ',', ' ') }} ha</p></div>
+                        <div><p class="text-[8px] font-black text-slate-400 uppercase italic">{{ __("Campagne") }}</p>
+                            <p class="text-[11px] font-black text-slate-800 italic">@if($cycle->campaign)<a href="{{ route('crop-campaigns.show', $cycle->campaign) }}" class="text-green-600 no-underline">{{ $cycle->campaign->name }}</a>@else—@endif</p>
+                        </div>
+                        <div><p class="text-[8px] font-black text-slate-400 uppercase italic">{{ __("Semis") }}</p><p class="text-[11px] font-black text-slate-800 italic">{{ $cycle->planting_date?->format('d/m/Y') ?? '—' }}</p></div>
+                        <div><p class="text-[8px] font-black text-slate-400 uppercase italic">{{ __("Récolte prévue") }}</p><p class="text-[11px] font-black text-slate-800 italic">{{ $cycle->expected_harvest_date?->format('d/m/Y') ?? '—' }}</p></div>
+                        <div><p class="text-[8px] font-black text-slate-400 uppercase italic">{{ __("Responsable") }}</p><p class="text-[11px] font-black text-slate-800 italic">{{ $cycle->employee ? $cycle->employee->first_name.' '.$cycle->employee->last_name : '—' }}</p></div>
+                        <div><p class="text-[8px] font-black text-slate-400 uppercase italic">{{ __("Semences") }}</p><p class="text-[11px] font-black text-slate-800 italic">{{ $cycle->seed_quantity ? number_format($cycle->seed_quantity, 2, ',', ' ').' '.$cycle->seed_unit : '—' }}</p></div>
+                        <div><p class="text-[8px] font-black text-slate-400 uppercase italic">{{ __("Variété") }}</p><p class="text-[11px] font-black text-slate-800 italic">{{ $cycle->variety ?: '—' }}</p></div>
+                        <div><p class="text-[8px] font-black text-slate-400 uppercase italic">{{ __("Code") }}</p><p class="text-[11px] font-black text-slate-800 italic">{{ $cycle->code ?: '—' }}</p></div>
+                    </div>
+
+                    {{-- Avancement vers le rendement attendu --}}
+                    @if($cycle->expected_yield_kg > 0)
+                        @php $progress = min(100, round($cycle->total_harvested / $cycle->expected_yield_kg * 100)); @endphp
+                        <div class="mt-6 pt-6 border-t border-slate-50">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-[8px] font-black text-slate-400 uppercase italic">{{ __("Récolté vs attendu") }}</span>
+                                <span class="text-[10px] font-black text-green-600 italic">{{ number_format($cycle->total_harvested, 0, ',', ' ') }} / {{ number_format($cycle->expected_yield_kg, 0, ',', ' ') }} kg ({{ $progress }}%)</span>
+                            </div>
+                            <div class="h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                                <div class="h-full {{ $progress >= 90 ? 'bg-green-500' : 'bg-amber-400' }} rounded-full" style="width: {{ $progress }}%"></div>
+                            </div>
+                        </div>
+                    @endif
+
+                    @if($cycle->notes)
+                        <div class="mt-4 text-[11px] text-slate-600 not-italic bg-slate-50 p-4 rounded-2xl">{{ $cycle->notes }}</div>
+                    @endif
+                </div>
+
+                {{-- Structure de coûts --}}
+                <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm">
+                    <h3 class="text-[10px] font-black uppercase text-slate-400 tracking-widest italic mb-5">{{ __("Structure des coûts") }}</h3>
+                    @php
+                        $acq = (float) $cycle->total_acquisition_cost;
+                        $add = (float) $cycle->additional_costs;
+                        $inp = (float) $cycle->inputs_cost;
+                        $totalCost = $acq + $add + $inp;
+                    @endphp
+                    <div class="space-y-3 text-[11px]">
+                        <div class="flex justify-between"><span class="text-slate-400 uppercase italic">{{ __("Semences/intrants init.") }}</span><span class="font-black text-slate-700">{{ number_format($acq, 0, ',', ' ') }}</span></div>
+                        <div class="flex justify-between"><span class="text-slate-400 uppercase italic">{{ __("Coûts additionnels") }}</span><span class="font-black text-slate-700">{{ number_format($add, 0, ',', ' ') }}</span></div>
+                        <div class="flex justify-between"><span class="text-slate-400 uppercase italic">{{ __("Intrants itémisés") }}</span><span class="font-black text-slate-700">{{ number_format($inp, 0, ',', ' ') }}</span></div>
+                        <div class="flex justify-between pt-3 border-t border-slate-100"><span class="text-slate-500 uppercase italic font-black">{{ __("Total coûts") }}</span><span class="font-black text-rose-500">{{ number_format($totalCost, 0, ',', ' ') }}</span></div>
+                        <div class="flex justify-between"><span class="text-slate-500 uppercase italic font-black">{{ __("Revenus") }}</span><span class="font-black text-green-600">{{ number_format($cycle->total_revenue, 0, ',', ' ') }}</span></div>
+                        <div class="flex justify-between pt-3 border-t border-slate-100"><span class="text-slate-700 uppercase italic font-black">{{ __("Marge nette") }}</span><span class="font-black {{ $cycle->net_margin >= 0 ? 'text-green-600' : 'text-rose-500' }}">{{ number_format($cycle->net_margin, 0, ',', ' ') }}</span></div>
+                    </div>
+                </div>
+            </div>
+
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {{-- RÉCOLTES --}}
                 <div class="lg:col-span-2 bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm">

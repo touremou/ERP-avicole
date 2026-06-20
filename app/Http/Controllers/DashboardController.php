@@ -11,6 +11,10 @@ use App\Models\Building;
 use App\Models\DailyCheck;
 use App\Models\HealthCheck;
 use App\Models\EggProduction;
+use App\Models\Plot;
+use App\Models\CropCycle;
+use App\Models\Harvest;
+use App\Models\CropTransformation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -420,8 +424,24 @@ class DashboardController extends Controller
             ->sortByDesc('head_count')
             ->values();
 
+        // ---------------------------------------------------------
+        // 10. PRODUCTION VÉGÉTALE (ferme intégrée)
+        // ---------------------------------------------------------
+        // Bloc affiché uniquement si l'exploitation gère des parcelles, pour ne
+        // pas encombrer le tableau de bord d'une ferme 100% élevage.
+        $plantProduction = null;
+        if (Plot::exists()) {
+            $plantProduction = [
+                'cycles_active'   => CropCycle::inProgress()->count(),
+                'area_cultivated' => (float) CropCycle::inProgress()->sum('area_used_ha'),
+                'harvest_ytd'     => (float) Harvest::whereYear('harvest_date', now()->year)->sum('quantity'),
+                'transform_30d'   => CropTransformation::where('production_date', '>=', now()->subDays(30))->count(),
+                'due_soon'        => CropCycle::dueForHarvest(7)->count(),
+            ];
+        }
+
         return view('dashboard', compact(
-            'totalBirds', 'globalMortalityRate', 'hdp',
+            'totalBirds', 'globalMortalityRate', 'hdp', 'plantProduction',
             'totalEggsStock', 'totalBrokenToday', 'rawMaterialsValue', 'safeProfit',
             'encoursClients',
             'criticalTypes', 'emergencyBatches', 'underperformingBatches', 'sanitaryAlertsCount',

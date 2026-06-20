@@ -365,6 +365,37 @@
             </div>
             @endif
 
+            {{-- PRODUCTION VÉGÉTALE (ferme intégrée) --}}
+            @if($plantProduction)
+            <a href="{{ route('cultures.dashboard') }}" class="block bg-white border border-slate-100 rounded-[3rem] shadow-sm p-6 mb-10 no-underline hover:border-green-200 transition group">
+                <div class="flex items-center justify-between mb-5">
+                    <span class="text-[10px] font-black uppercase text-slate-400 tracking-widest italic"><i class="fa-solid fa-seedling text-green-600 mr-2"></i>{{ __("Production Végétale") }}</span>
+                    @if($plantProduction['due_soon'] > 0)
+                        <span class="text-[8px] font-black uppercase bg-amber-100 text-amber-700 px-3 py-1 rounded-full italic"><i class="fa-solid fa-calendar-day mr-1"></i>{{ $plantProduction['due_soon'] }} {{ __("récolte(s) sous 7j") }}</span>
+                    @endif
+                    <span class="text-[8px] font-black uppercase text-green-600 group-hover:translate-x-1 transition italic">{{ __("Ouvrir") }} <i class="fa-solid fa-arrow-right ml-1"></i></span>
+                </div>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+                    <div>
+                        <p class="text-[8px] font-black text-green-500 uppercase tracking-widest italic mb-1">{{ __("Cycles actifs") }}</p>
+                        <p class="text-3xl font-black text-slate-900 tracking-tighter italic">{{ $plantProduction['cycles_active'] }}</p>
+                    </div>
+                    <div>
+                        <p class="text-[8px] font-black text-green-500 uppercase tracking-widest italic mb-1">{{ __("Surface cultivée") }}</p>
+                        <p class="text-3xl font-black text-slate-900 tracking-tighter italic">{{ number_format($plantProduction['area_cultivated'], 1, ',', ' ') }}<small class="text-[10px] opacity-40"> ha</small></p>
+                    </div>
+                    <div>
+                        <p class="text-[8px] font-black text-green-500 uppercase tracking-widest italic mb-1">{{ __("Récolté (année)") }}</p>
+                        <p class="text-3xl font-black text-slate-900 tracking-tighter italic">{{ number_format($plantProduction['harvest_ytd'], 0, ',', ' ') }}<small class="text-[10px] opacity-40"> kg</small></p>
+                    </div>
+                    <div>
+                        <p class="text-[8px] font-black text-green-500 uppercase tracking-widest italic mb-1">{{ __("Transfo. (30j)") }}</p>
+                        <p class="text-3xl font-black text-slate-900 tracking-tighter italic">{{ $plantProduction['transform_30d'] }}</p>
+                    </div>
+                </div>
+            </a>
+            @endif
+
             {{-- KPI ROW --}}
             <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-10">
                 <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm">
