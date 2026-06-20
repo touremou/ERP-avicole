@@ -7,6 +7,7 @@ use App\Models\EmployeeLeave;
 use App\Models\PayrollPeriod;
 use App\Models\Payslip;
 use App\Models\PayslipLine;
+use App\Services\NotificationHub;
 use App\Services\PayrollService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -248,6 +249,9 @@ class PayrollController extends Controller
             return back()->with('success', "Congé approuvé : {$days} jours.");
         }
 
+        // Notifier les responsables RH de la nouvelle demande
+        rescue(fn() => app(NotificationHub::class)->notifyLeaveRequested($leave));
+
         return back()->with('success', "Demande de congé enregistrée ({$days} jours) — en attente d'approbation.");
     }
 
@@ -268,6 +272,8 @@ class PayrollController extends Controller
             'approved_at' => now(),
         ]);
         $this->applyLeaveApproval($leave);
+
+        rescue(fn() => app(NotificationHub::class)->notifyLeaveApproved($leave->fresh()));
 
         return back()->with('success', "Congé de {$leave->employee->first_name} approuvé.");
     }
@@ -290,6 +296,8 @@ class PayrollController extends Controller
             'approved_by'      => Auth::id(),
             'rejection_reason' => $validated['rejection_reason'],
         ]);
+
+        rescue(fn() => app(NotificationHub::class)->notifyLeaveRejected($leave->fresh()));
 
         return back()->with('success', "Demande de {$leave->employee->first_name} refusée.");
     }
@@ -318,7 +326,13 @@ class PayrollController extends Controller
      */
     public function delegateLeaveTasks(Request $request, EmployeeLeave $leave)
     {
-        if (Gate::denies('annuaire.M')) return back()->with('error', 'Non autorisé.');
+        // Un gestionnaire (annuaire.M) OU l'employé absent lui-même peut déléguer.
+        $isManager  = Gate::allows('annuaire.M');
+        $isOwnLeave = $leave->employee?->user_id === Auth::id();
+
+        if (! $isManager && ! $isOwnLeave) {
+            return back()->with('error', 'Non autorisé.');
+        }
 
         $validated = $request->validate([
             'delegate_to' => 'required|exists:employees,id',

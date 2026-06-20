@@ -5,7 +5,10 @@ namespace App\Services;
 use App\Models\Batch;
 use App\Models\DailyCheck;
 use App\Models\DiscrepancyReport;
+use App\Models\EmployeeLeave;
 use App\Models\EnergySource;
+use App\Models\Module;
+use App\Models\ModulePermission;
 use App\Models\NotificationPreference;
 use App\Models\Payment;
 use App\Models\Sale;
@@ -460,6 +463,107 @@ class NotificationHub
         }
 
         $this->broadcast('alert_sales', $message, 'Paiement ' . $sale->reference, $afterHours ? 'critique' : 'normal');
+    }
+
+    // ──────────────────────────────────────────────
+    // CONGÉS RH
+    // ──────────────────────────────────────────────
+
+    /**
+     * Notifie les responsables RH qu'une nouvelle demande de congé est en attente.
+     * Cible : tous les utilisateurs ayant le droit annuaire.S (can_delete = true).
+     */
+    public function notifyLeaveRequested(EmployeeLeave $leave): void
+    {
+        $emp   = $leave->employee;
+        $start = $leave->start_date->format('d/m/Y');
+        $end   = $leave->end_date->format('d/m/Y');
+
+        $message = "📋 *DEMANDE DE CONGÉ*\n\n"
+            . "Employé : *{$emp->first_name} {$emp->last_name}*\n"
+            . "Type : {$leave->type_label}\n"
+            . "Période : {$start} → {$end} ({$leave->days_count} j)\n"
+            . ($leave->reason ? "Motif : {$leave->reason}\n" : '')
+            . "\nValidation requise dans l'ERP › Congés & Absences.";
+
+        $annuaireModule = Module::where('slug', 'annuaire')->first();
+        if (! $annuaireModule) {
+            return;
+        }
+
+        $approverRoleIds = ModulePermission::where('module_id', $annuaireModule->id)
+            ->where('can_delete', true)
+            ->pluck('role_id');
+
+        $approvers = User::whereIn('role_id', $approverRoleIds)
+            ->whereNotNull('whatsapp_phone')
+            ->get();
+
+        foreach ($approvers as $approver) {
+            $this->whatsapp->send($approver->whatsapp_phone, $message, [
+                'user_id' => $approver->id,
+                'type'    => 'alert_leave',
+                'title'   => "Congé {$emp->first_name}",
+            ]);
+        }
+
+        Log::info("NotificationHub: demande de congé #{$leave->id} notifiée à {$approvers->count()} responsable(s).");
+    }
+
+    /**
+     * Notifie l'employé que sa demande de congé a été approuvée.
+     */
+    public function notifyLeaveApproved(EmployeeLeave $leave): void
+    {
+        $recipient = $leave->employee->user ?? $leave->requester;
+        if (! $recipient?->whatsapp_phone) {
+            return;
+        }
+
+        $emp   = $leave->employee;
+        $start = $leave->start_date->format('d/m/Y');
+        $end   = $leave->end_date->format('d/m/Y');
+
+        $message = "✅ *CONGÉ APPROUVÉ*\n\n"
+            . "Bonjour {$emp->first_name},\n\n"
+            . "Votre demande de congé a été approuvée.\n"
+            . "Période : *{$start} → {$end}* ({$leave->days_count} j)\n"
+            . "Type : {$leave->type_label}\n\n"
+            . "Si vous avez des tâches à déléguer, connectez-vous à l'ERP avant votre départ.";
+
+        $this->whatsapp->send($recipient->whatsapp_phone, $message, [
+            'user_id' => $recipient->id,
+            'type'    => 'alert_leave',
+            'title'   => 'Congé approuvé',
+        ]);
+    }
+
+    /**
+     * Notifie l'employé que sa demande de congé a été refusée.
+     */
+    public function notifyLeaveRejected(EmployeeLeave $leave): void
+    {
+        $recipient = $leave->employee->user ?? $leave->requester;
+        if (! $recipient?->whatsapp_phone) {
+            return;
+        }
+
+        $emp   = $leave->employee;
+        $start = $leave->start_date->format('d/m/Y');
+        $end   = $leave->end_date->format('d/m/Y');
+
+        $message = "❌ *CONGÉ REFUSÉ*\n\n"
+            . "Bonjour {$emp->first_name},\n\n"
+            . "Votre demande de congé n'a pas été acceptée.\n"
+            . "Période demandée : {$start} → {$end} ({$leave->days_count} j)\n"
+            . ($leave->rejection_reason ? "Motif : *{$leave->rejection_reason}*\n" : '')
+            . "\nContactez votre responsable RH pour plus d'informations.";
+
+        $this->whatsapp->send($recipient->whatsapp_phone, $message, [
+            'user_id' => $recipient->id,
+            'type'    => 'alert_leave',
+            'title'   => 'Congé refusé',
+        ]);
     }
 
     /**
