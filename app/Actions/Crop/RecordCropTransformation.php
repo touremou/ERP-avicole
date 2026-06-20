@@ -69,7 +69,7 @@ class RecordCropTransformation
 
             // ─── Entrée du produit fini en stock ───
             if ($syncToStock && $output > 0) {
-                $this->ensureStockItemExists($outputItem, $data['output_unit'] ?? 'kg', (float) ($data['output_unit_price'] ?? 0));
+                StockIntegrationService::ensureItem(Stock::CAT_PRODUITS_FINIS, $outputItem, $data['output_unit'] ?? 'kg', (float) ($data['output_unit_price'] ?? 0));
 
                 StockIntegrationService::syncMovement(
                     itemName: $outputItem,
@@ -86,26 +86,5 @@ class RecordCropTransformation
 
             return $transformation->fresh();
         });
-    }
-
-    private function ensureStockItemExists(string $itemName, string $unit, float $unitPrice): void
-    {
-        $exists = Stock::where('item_name', $itemName)
-            ->where('category', Stock::CAT_PRODUITS_FINIS)
-            ->exists();
-
-        if ($exists) {
-            return;
-        }
-
-        Stock::create([
-            'category'         => Stock::CAT_PRODUITS_FINIS,
-            'item_name'        => $itemName,
-            'unit'             => $unit,
-            'current_quantity' => 0,
-            'unit_price'       => $unitPrice,
-            'last_unit_price'  => $unitPrice,
-            'alert_threshold'  => 0,
-        ]);
     }
 }

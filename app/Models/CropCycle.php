@@ -33,6 +33,18 @@ class CropCycle extends Model
         self::STATUS_ABANDONNE,
     ];
 
+    /**
+     * Statuts « en cours » : le cycle occupe la parcelle et compte parmi les
+     * cultures actives. RECOLTE en fait partie (cf. RecordHarvest qui y bascule
+     * dès la première récolte, alors que la culture est toujours en place).
+     * Source unique partagée par scopeInProgress, Plot::isOccupied et le
+     * dashboard pour éviter toute divergence de définition d'« actif ».
+     */
+    public const IN_PROGRESS_STATUSES = [
+        self::STATUS_EN_COURS,
+        self::STATUS_RECOLTE,
+    ];
+
     public const EDITABLE_STATUSES = [
         self::STATUS_EN_COURS,
         self::STATUS_RECOLTE,
@@ -100,6 +112,12 @@ class CropCycle extends Model
         return $query->where('status', self::STATUS_EN_COURS);
     }
 
+    /** Cycles en cours (semés OU en récolte) — occupent la parcelle. */
+    public function scopeInProgress($query)
+    {
+        return $query->whereIn('status', self::IN_PROGRESS_STATUSES);
+    }
+
     public function scopeArchived($query)
     {
         return $query->whereIn('status', self::STATUS_ARCHIVED);
@@ -115,7 +133,7 @@ class CropCycle extends Model
      */
     public function scopeDueForHarvest($query, int $daysAhead = 7)
     {
-        return $query->whereIn('status', [self::STATUS_EN_COURS, self::STATUS_RECOLTE])
+        return $query->whereIn('status', self::IN_PROGRESS_STATUSES)
             ->whereNotNull('expected_harvest_date')
             ->whereDate('expected_harvest_date', '<=', now()->addDays($daysAhead)->toDateString());
     }
@@ -149,10 +167,16 @@ class CropCycle extends Model
         return (int) $start->diffInDays($end) + 1;
     }
 
-    /** Quantité totale récoltée (toutes récoltes confondues), dans l'unité des récoltes. */
+    /**
+     * Quantité totale récoltée (toutes récoltes confondues), dans l'unité des
+     * récoltes (kg par convention). Utilise la relation déjà chargée si elle
+     * l'est (listes/dashboard l'eager-loadent) pour éviter un N+1.
+     */
     public function getTotalHarvestedAttribute(): float
     {
-        return (float) $this->harvests()->sum('quantity');
+        return (float) ($this->relationLoaded('harvests')
+            ? $this->harvests->sum('quantity')
+            : $this->harvests()->sum('quantity'));
     }
 
     /**
@@ -174,7 +198,9 @@ class CropCycle extends Model
      */
     public function getInputsCostAttribute(): float
     {
-        return (float) $this->inputs()->sum('total_cost');
+        return (float) ($this->relationLoaded('inputs')
+            ? $this->inputs->sum('total_cost')
+            : $this->inputs()->sum('total_cost'));
     }
 
     /**

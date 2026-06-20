@@ -48,9 +48,9 @@ class RecordCropInput
 
             // ─── Entrée stock optionnelle (achat d'intrant) ───
             if ($syncToStock && $quantity > 0) {
-                $this->ensureStockItemExists($stockItem, $unit, $unitCost);
+                StockIntegrationService::ensureItem(Stock::CAT_INTRANTS, $stockItem, $unit, $unitCost);
 
-                StockIntegrationService::syncMovement(
+                $moved = StockIntegrationService::syncMovement(
                     itemName: $stockItem,
                     category: Stock::CAT_INTRANTS,
                     quantity: $quantity,
@@ -60,31 +60,12 @@ class RecordCropInput
                     unitCost: $unitCost > 0 ? $unitCost : null,
                 );
 
-                $input->update(['synced_to_stock' => true]);
+                if ($moved !== false) {
+                    $input->update(['synced_to_stock' => true]);
+                }
             }
 
             return $input->fresh();
         });
-    }
-
-    private function ensureStockItemExists(string $itemName, string $unit, float $unitPrice): void
-    {
-        $exists = Stock::where('item_name', $itemName)
-            ->where('category', Stock::CAT_INTRANTS)
-            ->exists();
-
-        if ($exists) {
-            return;
-        }
-
-        Stock::create([
-            'category'         => Stock::CAT_INTRANTS,
-            'item_name'        => $itemName,
-            'unit'             => $unit,
-            'current_quantity' => 0,
-            'unit_price'       => $unitPrice,
-            'last_unit_price'  => $unitPrice,
-            'alert_threshold'  => 0,
-        ]);
     }
 }

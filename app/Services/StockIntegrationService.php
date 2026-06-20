@@ -142,6 +142,34 @@ class StockIntegrationService
         return self::syncMovement($itemName, $category, $quantity, $type, $notes, $unit);
     }
 
+    /**
+     * Garantit l'existence d'un article de stock (recherche EXACTE par
+     * nom + catégorie) et le crée à 0 sinon. À appeler avant syncMovement('in')
+     * lorsqu'un flux peut concerner un article encore inexistant (récolte,
+     * intrant, produit transformé) — syncMovement renvoie false sur article
+     * introuvable, ce helper lève cette contrainte au bon endroit (à côté de
+     * findStock), sans dupliquer la logique de création chez les appelants.
+     */
+    public static function ensureItem(string $category, string $itemName, string $unit = 'kg', float $unitPrice = 0): Stock
+    {
+        $itemName = trim($itemName);
+
+        $existing = self::findStock($itemName, $category);
+        if ($existing) {
+            return $existing;
+        }
+
+        return Stock::create([
+            'category'         => $category,
+            'item_name'        => $itemName,
+            'unit'             => $unit,
+            'current_quantity' => 0,
+            'unit_price'       => $unitPrice,
+            'last_unit_price'  => $unitPrice,
+            'alert_threshold'  => 0,
+        ]);
+    }
+
     // ─────────────────────────────────────────────
     // MÉTHODES PRIVÉES
     // ─────────────────────────────────────────────

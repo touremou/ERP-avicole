@@ -56,7 +56,7 @@ class Plot extends Model
     public function activeCycle(): HasMany
     {
         return $this->hasMany(CropCycle::class)
-            ->where('status', CropCycle::STATUS_EN_COURS)
+            ->whereIn('status', CropCycle::IN_PROGRESS_STATUSES)
             ->latest('planting_date');
     }
 
@@ -69,11 +69,16 @@ class Plot extends Model
 
     // ─── ÉTAT ───
 
-    /** La parcelle a-t-elle un cycle de culture en cours ? */
+    /**
+     * La parcelle a-t-elle un cycle de culture en cours ? Inclut la phase de
+     * récolte (RECOLTE) : la culture est toujours en place. Garde-fou contre
+     * la suppression d'une parcelle dont un cycle est encore actif (la FK
+     * plot_id est cascadeOnDelete — sinon perte du cycle et de ses récoltes).
+     */
     public function isOccupied(): bool
     {
         return $this->cropCycles()
-            ->where('status', CropCycle::STATUS_EN_COURS)
+            ->whereIn('status', CropCycle::IN_PROGRESS_STATUSES)
             ->exists();
     }
 }

@@ -117,6 +117,27 @@ test('une récolte synchronisée alimente le stock (catégorie recoltes)', funct
         ->and(Harvest::where('crop_cycle_id', $cycle->id)->first()->synced_to_stock)->toBeTrue();
 });
 
+test('on ne peut pas supprimer une parcelle dont un cycle est en récolte', function () {
+    $plot  = makePlot($this->farm->id);
+    $plot->update(['status' => Plot::STATUS_EN_CULTURE]);
+    // Cycle en phase de récolte (et non « en cours ») : la parcelle reste occupée.
+    CropCycle::create([
+        'farm_id'       => $this->farm->id,
+        'plot_id'       => $plot->id,
+        'crop_name'     => 'Igname',
+        'area_used_ha'  => 2.0,
+        'planting_date' => now()->subMonths(5)->toDateString(),
+        'status'        => CropCycle::STATUS_RECOLTE,
+    ]);
+
+    $this->actingAs($this->adminUser)
+        ->delete(route('plots.destroy', $plot))
+        ->assertSessionHas('error');
+
+    expect(Plot::whereKey($plot->id)->exists())->toBeTrue()
+        ->and(CropCycle::where('plot_id', $plot->id)->exists())->toBeTrue();
+});
+
 test('clôturer un cycle libère la parcelle', function () {
     $plot  = makePlot($this->farm->id);
     $plot->update(['status' => Plot::STATUS_EN_CULTURE]);

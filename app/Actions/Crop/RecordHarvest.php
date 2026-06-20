@@ -53,9 +53,9 @@ class RecordHarvest
 
             // ─── Intégration stock optionnelle ───
             if ($syncToStock && $quantity > 0) {
-                $this->ensureStockItemExists($stockItem, $unit, (float) ($data['unit_price'] ?? 0));
+                StockIntegrationService::ensureItem(Stock::CAT_RECOLTES, $stockItem, $unit, (float) ($data['unit_price'] ?? 0));
 
-                StockIntegrationService::syncMovement(
+                $moved = StockIntegrationService::syncMovement(
                     itemName: $stockItem,
                     category: Stock::CAT_RECOLTES,
                     quantity: $quantity,
@@ -65,35 +65,12 @@ class RecordHarvest
                     unitCost: $data['unit_price'] ?? null,
                 );
 
-                $harvest->update(['synced_to_stock' => true]);
+                if ($moved !== false) {
+                    $harvest->update(['synced_to_stock' => true]);
+                }
             }
 
             return $harvest->fresh();
         });
-    }
-
-    /**
-     * Crée l'article de stock « récolte » s'il n'existe pas déjà, pour que
-     * syncMovement (qui exige un article existant) puisse l'incrémenter.
-     */
-    private function ensureStockItemExists(string $itemName, string $unit, float $unitPrice): void
-    {
-        $exists = Stock::where('item_name', $itemName)
-            ->where('category', Stock::CAT_RECOLTES)
-            ->exists();
-
-        if ($exists) {
-            return;
-        }
-
-        Stock::create([
-            'category'         => Stock::CAT_RECOLTES,
-            'item_name'        => $itemName,
-            'unit'             => $unit,
-            'current_quantity' => 0,
-            'unit_price'       => $unitPrice,
-            'last_unit_price'  => $unitPrice,
-            'alert_threshold'  => 0,
-        ]);
     }
 }

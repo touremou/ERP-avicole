@@ -22,13 +22,13 @@ class CultureDashboardController extends Controller
         $stats = [
             'plots_total'     => Plot::count(),
             'plots_occupied'  => Plot::where('status', Plot::STATUS_EN_CULTURE)->count(),
-            'cycles_active'   => CropCycle::active()->count(),
-            'area_cultivated' => (float) CropCycle::active()->sum('area_used_ha'),
+            'cycles_active'   => CropCycle::inProgress()->count(),
+            'area_cultivated' => (float) CropCycle::inProgress()->sum('area_used_ha'),
             'harvest_30d'     => (float) Harvest::where('harvest_date', '>=', now()->subDays(30))->sum('quantity'),
         ];
 
-        // Cycles en cours, du plus ancien semis au plus récent.
-        $activeCycles = CropCycle::active()
+        // Cycles en cours (semés ou en récolte), du plus ancien semis au plus récent.
+        $activeCycles = CropCycle::inProgress()
             ->with(['plot:id,name', 'harvests:id,crop_cycle_id,quantity'])
             ->orderBy('planting_date')
             ->take(12)

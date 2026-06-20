@@ -275,23 +275,5 @@
                 }
             };
         };
-
-        // Fallback non-Alpine : si Alpine n'est pas chargé, on branche les inputs
-        // en vanilla JS pour que l'indicateur reste fonctionnel.
-        document.addEventListener('DOMContentLoaded', function () {
-            // Si Alpine a déjà pris la main, ne rien faire.
-            if (document.querySelector('[x-data]')?._x_dataStack) return;
-
-            document.querySelectorAll('.pct-input').forEach(function (input) {
-                input.addEventListener('input', function () {
-                    let totalPct = 0;
-                    document.querySelectorAll('.pct-input').forEach(function (i) {
-                        totalPct += parseFloat(i.value) || 0;
-                    });
-                    const el = document.getElementById('total-pct-display');
-                    if (el) el.textContent = totalPct.toFixed(2) + '%';
-                });
-            });
-        });
     </script>
 </x-app-layout>

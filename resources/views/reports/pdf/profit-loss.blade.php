@@ -108,6 +108,30 @@
         </tbody>
     </table>
 
+    @if(count($cropMargin ?? []))
+    <h2 class="section">{{ __("Marge directe par culture") }}</h2>
+    <table class="data">
+        <thead>
+            <tr>
+                <th>{{ __("Culture") }}</th>
+                <th class="amount" style="text-align:right;">{{ __("Produits") }}</th>
+                <th class="amount" style="text-align:right;">{{ __("Coûts directs") }}</th>
+                <th class="amount" style="text-align:right;">{{ __("Marge directe") }}</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach($cropMargin as $row)
+            <tr>
+                <td>🌱 {{ $row['crop'] }}</td>
+                <td class="amount text-pos">{{ number_format($row['revenue']) }}</td>
+                <td class="amount text-neg">{{ number_format($row['cost']) }}</td>
+                <td class="amount {{ $row['margin'] >= 0 ? '' : 'text-neg' }}">{{ number_format($row['margin']) }}</td>
+            </tr>
+            @endforeach
+        </tbody>
+    </table>
+    @endif
+
     <div class="footer">{{ __("AviSmart ERP — Rapport généré automatiquement") }}</div>
 </body>
 </html>
