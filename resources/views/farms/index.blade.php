@@ -8,13 +8,13 @@
                 <div>
                     <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">Multi-Sites</h2>
                     <p class="text-[10px] font-black text-violet-600 uppercase tracking-[0.2em] mt-2 italic">
-                        {{ $farms->count() }} ferme(s) enregistrée(s)
+                        {{ __(":count ferme(s) enregistrée(s)", ['count' => $farms->count()]) }}
                     </p>
                 </div>
             </div>
             <button onclick="document.getElementById('newFarmModal').classList.remove('hidden')"
                     class="bg-slate-900 text-white px-8 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-violet-600 transition-all shadow-2xl italic border-none cursor-pointer flex items-center gap-2">
-                <i class="fa-solid fa-plus"></i> Nouvelle Ferme
+                <i class="fa-solid fa-plus"></i> {{ __("Nouvelle Ferme") }}
             </button>
         </div>
     </x-slot>
@@ -36,10 +36,14 @@
                 @foreach($farms as $farm)
                 @php
                     $isCurrentFarm = ($currentFarmId ?? 0) == $farm->id;
-                    // KPI rapides par ferme (via withoutFarm)
-                    $farmBirds = \App\Models\Batch::withoutGlobalScopes()->where('farm_id', $farm->id)->where('status', 'Actif')->sum('current_quantity');
-                    $farmBatches = \App\Models\Batch::withoutGlobalScopes()->where('farm_id', $farm->id)->where('status', 'Actif')->count();
-                    $farmBuildings = \App\Models\Building::withoutGlobalScopes()->where('farm_id', $farm->id)->count();
+                    // KPI rapides par ferme (via withoutFarm). On exige
+                    // initial_quantity > 0 pour exclure les lots virtuels de
+                    // transit (ex. « Zone Fournisseurs Externes »), exactement
+                    // comme le fait le dashboard — sinon le décompte des lots
+                    // actifs diverge entre les deux vues.
+                    $farmBirds = \App\Models\Batch::withoutGlobalScopes()->where('farm_id', $farm->id)->where('status', 'Actif')->where('initial_quantity', '>', 0)->sum('current_quantity');
+                    $farmBatches = \App\Models\Batch::withoutGlobalScopes()->where('farm_id', $farm->id)->where('status', 'Actif')->where('initial_quantity', '>', 0)->count();
+                    $farmBuildings = \App\Models\Building::withoutGlobalScopes()->physical()->where('farm_id', $farm->id)->count();
                 @endphp
                 <div @class(['rounded-[2.5rem] border shadow-sm overflow-hidden transition-all',
                     'bg-violet-50 border-violet-300 ring-2 ring-violet-400' => $isCurrentFarm,
@@ -61,13 +65,13 @@
                                 </div>
                             </div>
                             @if($isCurrentFarm)
-                                <span class="text-[8px] font-black text-violet-600 bg-violet-100 px-3 py-1 rounded-full uppercase">Active</span>
+                                <span class="text-[8px] font-black text-violet-600 bg-violet-100 px-3 py-1 rounded-full uppercase">{{ __("Active") }}</span>
                             @else
                                 <form method="POST" action="{{ route('farms.switch') }}">
                                     @csrf
                                     <input type="hidden" name="farm_id" value="{{ $farm->id }}">
                                     <button type="submit" class="text-[8px] font-black text-slate-400 bg-slate-100 px-3 py-1 rounded-full uppercase hover:bg-violet-100 hover:text-violet-600 transition-all border-none cursor-pointer">
-                                        Basculer →
+                                        {{ __("Basculer →") }}
                                     </button>
                                 </form>
                             @endif
@@ -77,15 +81,15 @@
                         <div class="grid grid-cols-3 gap-3 mb-4">
                             <div class="bg-slate-50 rounded-xl p-3 text-center">
                                 <p class="text-lg font-black text-slate-900">{{ number_format($farmBirds) }}</p>
-                                <p class="text-[7px] font-black text-slate-400 uppercase">Sujets</p>
+                                <p class="text-[7px] font-black text-slate-400 uppercase">{{ __("Sujets") }}</p>
                             </div>
                             <div class="bg-slate-50 rounded-xl p-3 text-center">
                                 <p class="text-lg font-black text-slate-900">{{ $farmBatches }}</p>
-                                <p class="text-[7px] font-black text-slate-400 uppercase">Lots actifs</p>
+                                <p class="text-[7px] font-black text-slate-400 uppercase">{{ __("Lots actifs") }}</p>
                             </div>
                             <div class="bg-slate-50 rounded-xl p-3 text-center">
                                 <p class="text-lg font-black text-slate-900">{{ $farmBuildings }}</p>
-                                <p class="text-[7px] font-black text-slate-400 uppercase">Bâtiments</p>
+                                <p class="text-[7px] font-black text-slate-400 uppercase">{{ __("Bâtiments") }}</p>
                             </div>
                         </div>
 
@@ -118,7 +122,7 @@
                             </div>
                             <button onclick="openUserModal({{ $farm->id }}, '{{ addslashes($farm->name) }}')"
                                 class="text-[8px] font-black text-violet-500 uppercase tracking-widest hover:text-violet-700 border-none bg-transparent cursor-pointer">
-                                <i class="fa-solid fa-user-gear mr-1"></i> Gérer
+                                <i class="fa-solid fa-user-gear mr-1"></i> {{ __("Gérer") }}
                             </button>
                         </div>
                     </div>
@@ -131,36 +135,36 @@
                     <div class="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-300">
                         <i class="fa-solid fa-plus text-2xl"></i>
                     </div>
-                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Ajouter un site</p>
+                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">{{ __("Ajouter un site") }}</p>
                 </button>
             </div>
 
             {{-- ═══ VUE GLOBALE CROSS-FERMES ═══ --}}
             <div class="bg-slate-900 p-8 rounded-[3rem] text-white shadow-2xl">
                 <h3 class="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-6 flex items-center gap-2">
-                    <i class="fa-solid fa-globe text-violet-400"></i> Vue consolidée — Toutes les fermes
+                    <i class="fa-solid fa-globe text-violet-400"></i> {{ __("Vue consolidée — Toutes les fermes") }}
                 </h3>
                 @php
-                    $totalBirds = \App\Models\Batch::withoutGlobalScopes()->where('status', 'Actif')->sum('current_quantity');
-                    $totalBatches = \App\Models\Batch::withoutGlobalScopes()->where('status', 'Actif')->count();
-                    $totalBuildings = \App\Models\Building::withoutGlobalScopes()->count();
+                    $totalBirds = \App\Models\Batch::withoutGlobalScopes()->where('status', 'Actif')->where('initial_quantity', '>', 0)->sum('current_quantity');
+                    $totalBatches = \App\Models\Batch::withoutGlobalScopes()->where('status', 'Actif')->where('initial_quantity', '>', 0)->count();
+                    $totalBuildings = \App\Models\Building::withoutGlobalScopes()->physical()->count();
                 @endphp
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div class="p-5 bg-white/5 rounded-2xl text-center">
                         <p class="text-2xl font-black text-white">{{ $farms->count() }}</p>
-                        <p class="text-[8px] font-black text-slate-500 uppercase">Fermes</p>
+                        <p class="text-[8px] font-black text-slate-500 uppercase">{{ __("Fermes") }}</p>
                     </div>
                     <div class="p-5 bg-white/5 rounded-2xl text-center">
                         <p class="text-2xl font-black text-emerald-400">{{ number_format($totalBirds) }}</p>
-                        <p class="text-[8px] font-black text-slate-500 uppercase">Sujets total</p>
+                        <p class="text-[8px] font-black text-slate-500 uppercase">{{ __("Sujets total") }}</p>
                     </div>
                     <div class="p-5 bg-white/5 rounded-2xl text-center">
                         <p class="text-2xl font-black text-blue-400">{{ $totalBatches }}</p>
-                        <p class="text-[8px] font-black text-slate-500 uppercase">Lots actifs</p>
+                        <p class="text-[8px] font-black text-slate-500 uppercase">{{ __("Lots actifs") }}</p>
                     </div>
                     <div class="p-5 bg-white/5 rounded-2xl text-center">
                         <p class="text-2xl font-black text-amber-400">{{ $totalBuildings }}</p>
-                        <p class="text-[8px] font-black text-slate-500 uppercase">Bâtiments</p>
+                        <p class="text-[8px] font-black text-slate-500 uppercase">{{ __("Bâtiments") }}</p>
                     </div>
                 </div>
             </div>

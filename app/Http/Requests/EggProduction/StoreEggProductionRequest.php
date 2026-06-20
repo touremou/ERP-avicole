@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\EggProduction;
 
+use App\Rules\AfterBatchArrival;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Gate;
 
@@ -16,7 +17,7 @@ class StoreEggProductionRequest extends FormRequest
     {
         return [
             'batch_id'             => 'required|integer|exists:batches,id',
-            'production_date'      => 'required|date|before_or_equal:today',
+            'production_date'      => ['required', 'date', 'before_or_equal:today', new AfterBatchArrival],
             'total_eggs_collected' => 'required|integer|min:0',
             'broken_eggs'          => 'nullable|integer|min:0',
             'small_eggs'           => 'nullable|integer|min:0',
@@ -39,6 +40,21 @@ class StoreEggProductionRequest extends FormRequest
                 $validator->errors()->add('batch_id', "Seuls les lots de ponte peuvent enregistrer des collectes.");
             }
 
+            // Garde-fou zootechnique : un lot trop jeune n'est pas en âge de
+            // pondre (phase démarrage/croissance/pré-ponte). Collecter des œufs
+            // avant la maturité sexuelle est une aberration.
+            $minAge = $batch->minLayingAgeDays();
+            if ($batch->age < $minAge) {
+                $minWeeks = (int) ceil($minAge / 7);
+                $ageWeeks = (int) floor($batch->age / 7);
+                $validator->errors()->add(
+                    'batch_id',
+                    "Lot trop jeune pour la ponte : {$batch->age} jours (~{$ageWeeks} sem.), "
+                    . "phase « {$batch->current_phase} ». L'entrée en ponte est attendue vers "
+                    . "{$minAge} jours (~{$minWeeks} sem.). Vérifiez le lot ou la date d'arrivée."
+                );
+            }
+
             // ❌ LE BLOC DE VÉRIFICATION DES DOUBLONS A ÉTÉ SUPPRIMÉ ICI ❌
             // Les techniciens peuvent désormais soumettre autant de collectes que nécessaire dans la même journée.
 
@@ -49,6 +65,25 @@ class StoreEggProductionRequest extends FormRequest
 
             if (($broken + $small) > $total) {
                 $validator->errors()->add('broken_eggs', "Cassés + petits ({$broken} + {$small}) > total collecté ({$total}).");
+            }
+
+            // Taux de ponte > 100 % = biologiquement impossible (1 œuf/sujet/jour max)
+            if ($total > 0 && $batch->current_quantity > 0) {
+                $existing = \App\Models\EggProduction::where('batch_id', $batch->id)
+                    ->where('production_date', $this->production_date)
+                    ->first();
+                $existingTotal   = $existing ? (int) $existing->total_eggs_collected : 0;
+                $projectedTotal  = $existingTotal + $total;
+
+                if ($projectedTotal > $batch->current_quantity) {
+                    $rate = number_format(($projectedTotal / $batch->current_quantity) * 100, 1);
+                    $validator->errors()->add(
+                        'total_eggs_collected',
+                        "Taux de ponte impossible : {$projectedTotal} œufs pour {$batch->current_quantity} sujets = {$rate} %. "
+                        . "Le maximum biologique est 100 % (1 œuf/sujet/jour). "
+                        . "Vérifiez votre saisie ; si vous saisissez un cumul multi-jours, fractionnez sur les dates réelles."
+                    );
+                }
             }
         });
     }

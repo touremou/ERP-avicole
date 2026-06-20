@@ -4,10 +4,10 @@
             <div class="flex items-center gap-4 text-left">
                 <a href="{{ route('batches.index') }}" class="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-500 hover:text-slate-800 rounded-xl transition-all shadow-sm group no-underline">
                     <i class="fas fa-chevron-left group-hover:-translate-x-1 transition-transform text-xs"></i>
-                    <span class="text-[10px] font-black uppercase italic tracking-widest leading-none">Retour</span>
+                    <span class="text-[10px] font-black uppercase italic tracking-widest leading-none">{{ __("Retour") }}</span>
                 </a>
                 <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">
-                    🚀 Lancer une nouvelle bande
+                    🚀 {{ __("Lancer une nouvelle bande") }}
                 </h2>
             </div>
         </div>
@@ -19,7 +19,7 @@
             {{-- BLOC ERREURS --}}
             @if ($errors->any())
                 <div class="bg-red-600 text-white p-6 rounded-[2rem] mb-8 shadow-xl text-left">
-                    <h3 class="font-black uppercase text-xs mb-2 italic leading-none">⚠️ Erreurs de validation</h3>
+                    <h3 class="font-black uppercase text-xs mb-2 italic leading-none">⚠️ {{ __("Erreurs de validation") }}</h3>
                     <ul class="text-[10px] list-disc ml-8 uppercase font-black tracking-tight mt-2">
                         @foreach ($errors->all() as $error) <li>{{ $error }}</li> @endforeach
                     </ul>
@@ -34,7 +34,7 @@
                     <div class="lg:col-span-2 space-y-8">
                         {{-- 01. IDENTIFICATION --}}
                         <div class="bg-white p-10 rounded-[3rem] shadow-sm border border-slate-100 relative overflow-hidden text-left">
-                            <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-8 italic leading-none">01. Identification & Vocation</h3>
+                            <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-8 italic leading-none">{{ __("01. Identification & Vocation") }}</h3>
                             
                             {{-- ════ ESPÈCE + TYPE DE PRODUCTION (multiespèces) ════ --}}
                             @php $multiSpecies = $activeSpecies->count() > 1; @endphp
@@ -43,10 +43,10 @@
                                 {{-- ESPÈCE --}}
                                 @if($multiSpecies)
                                 <div>
-                                    <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-1 italic leading-none">Espèce</label>
+                                    <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-1 italic leading-none">{{ __("Espèce") }}</label>
                                     <select name="species_id" id="species_selector" onchange="loadProductionTypes(this.value)"
                                             class="w-full p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-blue-500 outline-none font-black text-slate-700 shadow-inner appearance-none italic">
-                                        <option value="">-- Espèce --</option>
+                                        <option value="">{{ __("-- Espèce --") }}</option>
                                         @foreach($activeSpecies as $sp)
                                         <option value="{{ $sp->id }}" data-slug="{{ $sp->slug }}"
                                             {{ old('species_id') == $sp->id ? 'selected' : '' }}>
@@ -64,10 +64,10 @@
 
                                 {{-- TYPE DE PRODUCTION --}}
                                 <div>
-                                    <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-1 italic leading-none">Type de production</label>
+                                    <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-1 italic leading-none">{{ __("Type de production") }}</label>
                                     <select name="type" id="breeding_type" onchange="runFilters()" required
                                             class="w-full p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-blue-500 outline-none font-black text-blue-600 shadow-inner appearance-none italic">
-                                        <option value="">-- Sélectionner --</option>
+                                        <option value="">{{ __("-- Sélectionner --") }}</option>
                                         @if(! $multiSpecies)
                                         {{-- Mono-espèce : afficher les types de la première espèce directement --}}
                                         @foreach($activeSpecies->first()?->productionTypes ?? [] as $pt)
@@ -77,35 +77,36 @@
                                         @endforeach
                                         @else
                                         {{-- Multi-espèces : options chargées dynamiquement via JS --}}
-                                        <option value="chair" {{ old('type') == 'chair' ? 'selected' : '' }}>🍗 Poulet de chair</option>
-                                        <option value="ponte" {{ old('type') == 'ponte' ? 'selected' : '' }}>🥚 Pondeuses</option>
-                                        <option value="poussiniere" {{ old('type') == 'poussiniere' ? 'selected' : '' }}>🐣 Poussinière</option>
-                                        <option value="reproducteur" {{ old('type') == 'reproducteur' ? 'selected' : '' }}>🧬 Reproducteurs</option>
+                                        <option value="chair" {{ old('type') == 'chair' ? 'selected' : '' }}>🍗 {{ __("Poulet de chair") }}</option>
+                                        <option value="ponte" {{ old('type') == 'ponte' ? 'selected' : '' }}>🥚 {{ __("Pondeuses") }}</option>
+                                        <option value="poussiniere" {{ old('type') == 'poussiniere' ? 'selected' : '' }}>🐣 {{ __("Poussinière") }}</option>
+                                        <option value="reproducteur" {{ old('type') == 'reproducteur' ? 'selected' : '' }}>🧬 {{ __("Reproducteurs") }}</option>
                                         @endif
                                     </select>
                                     <input type="hidden" name="production_type_id" id="production_type_id_hidden" value="{{ old('production_type_id') }}">
                                 </div>
 
                                 <div>
-                                    <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-1 italic leading-none">Souche / Race (Référentiel)</label>
+                                    <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-1 italic leading-none">{{ __("Souche / Race (Référentiel)") }}</label>
                                     <select name="model_name" id="model_selector" required
                                             class="w-full p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-blue-500 outline-none font-black text-blue-600 shadow-inner appearance-none italic">
-                                        <option value="">-- Sélectionner la souche --</option>
+                                        <option value="">{{ __("-- Sélectionner la souche --") }}</option>
                                         @foreach($normModels as $norm)
-                                            <option value="{{ $norm->model_name }}" 
-                                                    data-type="{{ $norm->batch_type }}" 
-                                                    class="model-opt" 
+                                            <option value="{{ $norm->model_name }}"
+                                                    data-type="{{ $norm->batch_type }}"
+                                                    data-species="{{ $norm->species?->slug ?? '' }}"
+                                                    class="model-opt"
                                                     style="display: none;">
                                                 {{ $norm->model_name }}
                                             </option>
                                         @endforeach
                                     </select>
-                                    <p class="text-[8px] text-slate-300 ml-4 uppercase font-bold mt-1">* Seules les souches adaptées s'affichent</p>
+                                    <p class="text-[8px] text-slate-300 ml-4 uppercase font-bold mt-1">{{ __("* Seules les souches adaptées s'affichent") }}</p>
                                 </div>
                                 <div>
-                                    <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-1 italic leading-none">Protocole prophylaxie</label>
+                                    <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-1 italic leading-none">{{ __("Protocole prophylaxie") }}</label>
                                     <select name="protocol_id" id="protocol_selector" class="w-full p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-blue-500 outline-none font-black text-blue-600 shadow-inner appearance-none italic">
-                                        <option value="" selected>-- Selectionner --</option>
+                                        <option value="" selected>{{ __("-- Selectionner --") }}</option>
                                         @foreach($protocols as $protocol)
                                             <option value="{{ $protocol->id }}" 
                                                     data-type="{{ $protocol->type }}" 
@@ -116,8 +117,8 @@
                                     </select>
                                 </div>
                                 <div>
-                                    <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-1 italic leading-none">Code Unique</label>
-                                    <input type="text" name="code" value="{{ old('code', 'LOT-' . date('Ymd-His')) }}" required 
+                                    <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-1 italic leading-none">{{ __("Code Unique") }}</label>
+                                    <input type="text" name="code" id="batch_code" value="{{ old('code', setting('elevage.batch_prefix_chair', 'LOT') . '-' . date('Ymd-His')) }}" required
                                            class="w-full p-4 bg-slate-50 rounded-2xl border-none font-black text-slate-700 shadow-inner italic uppercase">
                                 </div>
                             </div>
@@ -126,9 +127,9 @@
                         {{-- 02. ARRIVÉE --}}
                         <div class="bg-white p-10 rounded-[3rem] shadow-sm border border-slate-100 relative overflow-hidden text-left">
                             <div class="flex justify-between items-center mb-8">
-                                <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] italic leading-none">02. Données d'Arrivée</h3>
+                                <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] italic leading-none">{{ __("02. Données d'Arrivée") }}</h3>
                                 <div id="density_badge" class="px-4 py-2 bg-slate-100 rounded-xl border border-slate-200 hidden">
-                                    <span class="text-[8px] text-slate-400 uppercase block leading-none mb-1 text-center font-black">Densité</span>
+                                    <span class="text-[8px] text-slate-400 uppercase block leading-none mb-1 text-center font-black">{{ __("Densité") }}</span>
                                     <span class="text-xs font-black text-slate-800" id="density_value">0</span> <small class="text-[8px] text-slate-500 uppercase italic">S/m²</small>
                                 </div>
                             </div>
@@ -141,44 +142,44 @@
                                                 <i class="fa-solid fa-venus-mars"></i>
                                             </div>
                                             <div>
-                                                <p class="text-[8px] font-black uppercase text-slate-400 leading-none mb-1">Ratio de Coquage</p>
+                                                <p class="text-[8px] font-black uppercase text-slate-400 leading-none mb-1">{{ __("Ratio de Coquage") }}</p>
                                                 <p class="text-xl font-black text-indigo-600 leading-none" id="ratio_display">0%</p>
                                             </div>
                                         </div>
                                         <div id="ratio_status" class="px-4 py-2 rounded-xl text-[9px] font-black uppercase italic tracking-widest bg-slate-100 text-slate-400">
-                                            En attente...
+                                            {{ __("En attente...") }}
                                         </div>
                                     </div>
                                     <div>
-                                        <label class="block text-[10px] font-black text-indigo-500 uppercase mb-2 ml-1 italic leading-none">Nombre de Mâles</label>
+                                        <label class="block text-[10px] font-black text-indigo-500 uppercase mb-2 ml-1 italic leading-none">{{ __("Nombre de Mâles") }}</label>
                                         <input type="number" min="0" name="qty_males" id="qty_males" value="0" oninput="updateTotalQty()"
                                             class="w-full p-4 bg-white rounded-2xl border-none font-black text-indigo-600 shadow-inner italic">
                                     </div>
                                     <div>
-                                        <label class="block text-[10px] font-black text-indigo-500 uppercase mb-2 ml-1 italic leading-none">Nombre de Femelles</label>
+                                        <label class="block text-[10px] font-black text-indigo-500 uppercase mb-2 ml-1 italic leading-none">{{ __("Nombre de Femelles") }}</label>
                                         <input type="number" min="0" name="qty_females" id="qty_females" value="0" oninput="updateTotalQty()"
                                             class="w-full p-4 bg-white rounded-2xl border-none font-black text-indigo-600 shadow-inner italic">
                                     </div>
                                 </div>
                                 <div>
-                                    <label class="block text-[10px] font-black text-emerald-500 uppercase mb-2 ml-1 italic leading-none">Qté Vivante (Arrivée)</label>
+                                    <label class="block text-[10px] font-black text-emerald-500 uppercase mb-2 ml-1 italic leading-none">{{ __("Qté Vivante (Arrivée)") }}</label>
                                     <input type="number" name="qty_alive" id="qty_alive" value="{{ old('qty_alive', 0) }}" min="1" oninput="calculateAll()" required
                                            class="w-full p-5 bg-slate-50 rounded-3xl border-none font-black text-4xl text-slate-800 shadow-inner italic appearance-none leading-none">
                                 </div>
                                 <div>
-                                    <label class="block text-[10px] font-black text-red-500 uppercase mb-2 ml-1 italic leading-none">Mortalité Transport</label>
+                                    <label class="block text-[10px] font-black text-red-500 uppercase mb-2 ml-1 italic leading-none">{{ __("Mortalité Transport") }}</label>
                                     <input type="number" name="qty_dead" id="qty_dead" value="{{ old('qty_dead', 0) }}" min="0" oninput="calculateAll()" required
                                            class="w-full p-5 bg-slate-50 rounded-3xl border-none font-black text-4xl text-slate-800 shadow-inner italic appearance-none leading-none">
                                 </div>
-                                
+
                                 <div>
-                                    <label class="block text-[10px] font-black text-blue-600 uppercase mb-2 ml-1 italic leading-none">Prix Unitaire (GNF)</label>
+                                    <label class="block text-[10px] font-black text-blue-600 uppercase mb-2 ml-1 italic leading-none">{{ __("Prix Unitaire (GNF)") }}</label>
                                     <input type="number" name="buy_price_per_unit" id="buy_price" value="{{ old('buy_price_per_unit', 0) }}" oninput="calculateAll()" min="0" required
                                            class="w-full p-5 bg-slate-50 rounded-2xl border-none font-black text-2xl text-blue-700 shadow-inner italic leading-none">
                                 </div>
 
                                 <div>
-                                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 italic leading-none">Date d'arrivée</label>
+                                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 italic leading-none">{{ __("Date d'arrivée") }}</label>
                                     <input type="date" name="arrival_date" value="{{ old('arrival_date', date('Y-m-d')) }}" required
                                            class="w-full p-5 bg-slate-50 rounded-2xl border-none font-black text-slate-700 shadow-inner italic leading-none">
                                 </div>
@@ -189,14 +190,14 @@
                     {{-- SIDEBAR --}}
                     <div class="space-y-8 text-left">
                         <div class="bg-slate-900 p-8 rounded-[3rem] text-white shadow-2xl relative overflow-hidden flex flex-col border border-slate-800 text-left">
-                            <h3 class="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-6 italic leading-none">03. Affectation</h3>
-                            
+                            <h3 class="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-6 italic leading-none">{{ __("03. Affectation") }}</h3>
+
                             <div class="space-y-6">
                                 <div>
-                                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 italic leading-none">Bâtiment Disponible</label>
+                                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 italic leading-none">{{ __("Bâtiment Disponible") }}</label>
                                     <select name="building_id" id="building_id" onchange="calculateAll()" required
                                             class="w-full p-4 bg-white/5 rounded-2xl border-none font-black text-blue-400 italic outline-none">
-                                        <option value="">-- Sélectionner --</option>
+                                        <option value="">{{ __("-- Sélectionner --") }}</option>
                                         @foreach($buildings as $b)
                                             @php 
                                                 $occupation = $b->batches->where('status', 'Actif')->sum('current_quantity');
@@ -211,7 +212,7 @@
                                                     data-surface="{{ $b->surface }}"
                                                     data-surface-restante="{{ $surfaceRestante }}"
                                                     class="building-opt">
-                                                {{ $b->name }} | Libre: {{ $libre }} | {{ strtoupper($b->type) }}
+                                                {{ $b->name }} | {{ __("Libre") }}: {{ $libre }} | {{ strtoupper($b->type) }}
                                             </option>
                                         @endforeach
                                     </select>
@@ -220,24 +221,24 @@
                                 <div class="mt-4">
                                     <div class="flex items-center justify-between mb-2 ml-1">
                                         <label class="block text-[10px] font-black text-slate-400 uppercase italic leading-none">
-                                            Surface Allouée (m²)
+                                            {{ __("Surface Allouée (m²)") }}
                                         </label>
                                         {{-- Icône d'info pour la sidebar sombre --}}
                                         <div class="group relative flex items-center">
                                             <i class="fas fa-info-circle text-blue-400 text-[10px] cursor-help"></i>
                                             <span id="surface_info_tooltip" class="absolute bottom-full right-0 mb-2 w-48 p-2 bg-white text-slate-900 text-[8px] font-black uppercase rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-xl z-50">
-                                                Surface totale bâtiment : <span id="total_surface_val">0</span> m²
+                                                {{ __("Surface totale bâtiment") }} : <span id="total_surface_val">0</span> m²
                                             </span>
                                         </div>
                                     </div>
-                                    <input type="number" name="allocated_surface" id="allocated_surface" 
-                                        value="{{ old('allocated_surface') }}" 
+                                    <input type="number" name="allocated_surface" id="allocated_surface"
+                                        value="{{ old('allocated_surface') }}"
                                         step="0.1" min="0.1" oninput="calculateAll()"
-                                        placeholder="Par défaut: surface totale"
+                                        placeholder="{{ __('Par défaut: surface totale') }}"
                                         class="w-full p-4 bg-white/5 border border-white/10 rounded-2xl font-black text-emerald-400 italic outline-none focus:ring-2 focus:ring-emerald-500 shadow-inner">
                                 </div>
                                 <div>
-                                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 italic leading-none">Responsable du Lot</label>
+                                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 italic leading-none">{{ __("Responsable du Lot") }}</label>
                                     <select name="employee_id" required class="w-full p-4 bg-white/5 rounded-2xl border-none font-black text-slate-300 italic outline-none uppercase text-[10px]">
                                         @foreach($employees as $e)
                                             <option value="{{ $e->id }}" class="bg-slate-800 text-white">{{ $e->first_name }} {{ $e->last_name }}</option>
@@ -246,7 +247,7 @@
                                 </div>
 
                                 <div>
-                                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 italic leading-none">Fournisseur</label>
+                                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 italic leading-none">{{ __("Fournisseur") }}</label>
                                     <select name="provider_id" required class="w-full p-4 bg-white/5 rounded-2xl border-none font-black text-slate-300 italic outline-none uppercase text-[10px]">
                                         @foreach($providers as $p)
                                             <option value="{{ $p->id }}" class="bg-slate-800 text-white">{{ $p->name }}</option>
@@ -255,7 +256,7 @@
                                 </div>
 
                                 <div class="p-6 bg-white/5 rounded-3xl border border-white/10 italic text-left">
-                                    <p class="text-[8px] font-black text-slate-500 uppercase mb-2 leading-none tracking-widest">Total Facture</p>
+                                    <p class="text-[8px] font-black text-slate-500 uppercase mb-2 leading-none tracking-widest">{{ __("Total Facture") }}</p>
                                     <p class="text-2xl font-black text-emerald-400 tracking-tighter leading-none" id="total_cost_display">0 GNF</p>
                                 </div>
                             </div>
@@ -268,16 +269,16 @@
                         <div class="flex flex-col gap-3">
                             @can('elevage.C')
                             <button type="submit" id="submitBtn" class="w-full bg-slate-900 text-white font-black py-8 rounded-[2rem] hover:bg-blue-600 transition-all uppercase tracking-[0.3em] text-[10px] italic shadow-2xl">
-                                <i class="fas fa-save mr-2"></i> Initialiser la bande
+                                <i class="fas fa-save mr-2"></i> {{ __("Initialiser la bande") }}
                             </button>
                             @else
                             <button type="button" class="w-full bg-slate-100 text-slate-400 font-black py-8 rounded-[2rem] cursor-not-allowed uppercase tracking-[0.3em] text-[10px] italic">
-                                <i class="fas fa-lock mr-2"></i> Droits de création requis
+                                <i class="fas fa-lock mr-2"></i> {{ __("Droits de création requis") }}
                             </button>
                             @endcan
-                            
+
                             <a href="{{ route('batches.index') }}" class="w-full bg-white border border-slate-200 text-slate-400 font-black py-6 rounded-[2rem] hover:bg-red-50 hover:text-red-500 transition-all text-center uppercase tracking-[0.2em] text-[9px] italic flex items-center justify-center gap-2 no-underline shadow-sm">
-                                <i class="fas fa-times"></i> Annuler
+                                <i class="fas fa-times"></i> {{ __("Annuler") }}
                             </a>
                         </div>
                     </div>
@@ -286,25 +287,35 @@
         </div>
     </div>
 
+    @include('batches.partials.building-compatibility')
+
 <script>
     function el(id) { return document.getElementById(id); }
 
-    // Bâtiments compatibles par espèce (en plus de 'mixte', toujours autorisé)
-    const SPECIES_BUILDING_TYPES = {
-        poulet:  ['chair', 'ponte', 'poussiniere', 'reproducteur'],
-        dinde:   ['chair', 'reproducteur'],
-        pintade: ['chair', 'ponte'],
-        caille:  ['chair', 'ponte'],
-        canard:  ['chair'],
-        pigeon:  ['chair'],
-        mouton:  ['bergerie'],
-        chevre:  ['chevrerie'],
-        lapin:   ['lapiniere'],
-        porc:    ['porcherie'],
-        tilapia: ['bassin'],
-        carpe:   ['bassin'],
-        silure:  ['bassin'],
+    // Préfixes de code de lot pilotés par les paramètres (Paramètres > Élevage).
+    const BATCH_PREFIXES = {
+        chair: @json(setting('elevage.batch_prefix_chair', 'LOT')),
+        ponte: @json(setting('elevage.batch_prefix_ponte', 'LOT')),
+        repro: @json(setting('elevage.batch_prefix_repro', 'REP')),
     };
+
+    // Met à jour le préfixe du code selon le type, sans écraser un code personnalisé
+    // (on n'agit que si le code est encore au format auto PREFIXE-AAAAMMJJ-HHMMSS).
+    function applyBatchPrefix(typeSlug) {
+        const codeInput = el('batch_code');
+        if (! codeInput || ! /^[A-Z]+-\d{8}-\d{6}$/.test(codeInput.value)) return;
+
+        let prefix = BATCH_PREFIXES.chair;
+        const t = (typeSlug || '').toLowerCase();
+        if (t.includes('repro')) prefix = BATCH_PREFIXES.repro;
+        else if (t.includes('ponte')) prefix = BATCH_PREFIXES.ponte;
+        else if (t.includes('chair')) prefix = BATCH_PREFIXES.chair;
+
+        const now = new Date();
+        const p = n => String(n).padStart(2, '0');
+        const stamp = `${now.getFullYear()}${p(now.getMonth() + 1)}${p(now.getDate())}-${p(now.getHours())}${p(now.getMinutes())}${p(now.getSeconds())}`;
+        codeInput.value = `${prefix}-${stamp}`;
+    }
 
     // Espèce actuellement sélectionnée (multispecies) ou fixée (mono-espèce)
     function getCurrentSpeciesSlug() {
@@ -313,17 +324,6 @@
             return speciesSelect.options[speciesSelect.selectedIndex]?.dataset.slug || '';
         }
         return el('species_slug_fixed')?.value || '';
-    }
-
-    // Un bâtiment est compatible s'il est 'mixte', ou si son type figure dans
-    // la liste des bâtiments adaptés à l'espèce sélectionnée. À défaut
-    // d'espèce connue, on retombe sur la correspondance directe type ↔ type.
-    function isBuildingCompatible(bType, selectedType) {
-        if (bType === 'mixte') return true;
-        const speciesSlug = getCurrentSpeciesSlug();
-        const allowed = SPECIES_BUILDING_TYPES[speciesSlug];
-        if (allowed) return allowed.includes(bType);
-        return selectedType === '' || bType === selectedType;
     }
 
     // Met à jour le production_type_id caché selon l'option sélectionnée
@@ -338,16 +338,22 @@
     function runFilters() {
         syncProductionTypeId();
         const selectedType = el('breeding_type').value || "";
+        applyBatchPrefix(selectedType);
         const bSelect = el('building_id');
         const modelSelector = el('model_selector');
         const protocolSelector = el('protocol_selector');
         const reproFields = el('repro_fields');
         const qtyAliveInput = el('qty_alive');
 
-        // Filtrage Souches
+        // Filtrage Souches : par type d'élevage ET par espèce.
+        // Une souche sans espèce (data-species vide) est générique (toutes espèces).
         if (modelSelector) {
+            const speciesSlug = getCurrentSpeciesSlug();
             modelSelector.querySelectorAll('.model-opt').forEach(opt => {
-                const isMatch = selectedType === "" || opt.dataset.type === selectedType;
+                const typeMatch = selectedType === "" || opt.dataset.type === selectedType;
+                const optSpecies = opt.dataset.species || "";
+                const speciesMatch = speciesSlug === "" || optSpecies === "" || optSpecies === speciesSlug;
+                const isMatch = typeMatch && speciesMatch;
                 opt.style.display = isMatch ? 'block' : 'none';
                 opt.disabled = !isMatch;
             });
@@ -359,7 +365,7 @@
             bSelect.querySelectorAll('.building-opt').forEach(opt => {
                 const bType = opt.dataset.type;
                 const remaining = parseFloat(opt.dataset.remaining) || 0;
-                const isMatch = isBuildingCompatible(bType, selectedType);
+                const isMatch = isBuildingCompatible(bType, getCurrentSpeciesSlug(), selectedType);
                 opt.disabled = !isMatch || remaining <= 0;
                 opt.style.display = isMatch ? 'block' : 'none';
             });
@@ -432,11 +438,11 @@
         // --- VALIDATION ---
         let errorMsg = "";
         if (bSelect.value) {
-            if (selectedType && !isBuildingCompatible(bType, selectedType)) errorMsg = "BÂTIMENT INCOMPATIBLE";
-            else if (qtyAlive > remainingQty) errorMsg = `PLACE INSUFFISANTE (MAX: ${remainingQty})`;
-            else if (manualSurface > bSurfaceRestante) errorMsg = `SURFACE INDISPONIBLE (MAX: ${bSurfaceRestante.toFixed(1)} m²)`;
+            if (selectedType && !isBuildingCompatible(bType, getCurrentSpeciesSlug(), selectedType)) errorMsg = {{ Js::from(__("BÂTIMENT INCOMPATIBLE")) }};
+            else if (qtyAlive > remainingQty) errorMsg = {{ Js::from(__("PLACE INSUFFISANTE (MAX:")) }} + ` ${remainingQty})`;
+            else if (manualSurface > bSurfaceRestante) errorMsg = {{ Js::from(__("SURFACE INDISPONIBLE (MAX:")) }} + ` ${bSurfaceRestante.toFixed(1)} m²)`;
         } else if (!selectedType) {
-            errorMsg = "CHOISIR UN TYPE D'ÉLEVAGE";
+            errorMsg = {{ Js::from(__("CHOISIR UN TYPE D'ÉLEVAGE")) }};
         }
 
         if (errorMsg) {
@@ -446,7 +452,7 @@
         } else {
             submitBtn.disabled = false;
             submitBtn.classList.replace('bg-red-600', 'bg-slate-900');
-            submitBtn.innerHTML = `<i class="fas fa-save mr-2"></i> Initialiser la bande`;
+            submitBtn.innerHTML = `<i class="fas fa-save mr-2"></i> {{ __("Initialiser la bande") }}`;
         }
     }
 
@@ -468,7 +474,7 @@
         if (!bSelect || bSelect.options.length > 1) return; 
         
 
-        console.log("🛠️ Mode Terrain : Chargement des référentiels depuis la base locale...");
+        console.log("🛠️ " + {{ Js::from(__("Mode Terrain : Chargement des référentiels depuis la base locale...")) }});
 
         try {
             // 1. Remplissage des Bâtiments
@@ -530,7 +536,7 @@
     window.addEventListener('load', fillFormFromIndexedDB);
     document.getElementById('batchForm').addEventListener('submit', async function(e) {
         // Si on est hors-ligne (WAMP éteint ou réseau coupé)
-        if (!navigator.onLine || {{ config('app.database_down') ? 'true' : 'false' }}) {
+        if (!navigator.onLine || {{ config('app.database_down', false) ? 'true' : 'false' }}) {
             e.preventDefault(); // On empêche l'envoi vers le serveur qui ne répondrait pas
 
             // 1. Extraction des données du formulaire
@@ -551,13 +557,13 @@
                 await db.batches.add(data);
                 
                 // 4. Feedback utilisateur
-                alert("📦 MODE TERRAIN : La bande " + data.code + " a été enregistrée localement.\nElle sera synchronisée automatiquement au retour du serveur.");
-                
+                alert("📦 " + {{ Js::from(__("MODE TERRAIN : La bande")) }} + " " + data.code + " " + {{ Js::from(__("a été enregistrée localement.\nElle sera synchronisée automatiquement au retour du serveur.")) }});
+
                 // 5. Redirection vers la liste
                 window.location.href = "{{ route('batches.index') }}";
             } catch (err) {
-                console.error("Erreur de stockage local :", err);
-                alert("Erreur critique lors de la sauvegarde locale.");
+                console.error({{ Js::from(__("Erreur de stockage local :")) }}, err);
+                alert({{ Js::from(__("Erreur critique lors de la sauvegarde locale.")) }});
             }
         }
     });
@@ -573,14 +579,14 @@
         }
 
         if (!speciesId) {
-            typeSelect.innerHTML = '<option value="">-- Sélectionner --</option>';
+            typeSelect.innerHTML = '<option value="">' + {{ Js::from(__("-- Sélectionner --")) }} + '</option>';
             return;
         }
 
         try {
             const resp = await fetch(`/api/species/${speciesId}/production-types`);
             const types = await resp.json();
-            typeSelect.innerHTML = '<option value="">-- Type de production --</option>';
+            typeSelect.innerHTML = '<option value="">' + {{ Js::from(__("-- Type de production --")) }} + '</option>';
             types.forEach(t => {
                 const opt = document.createElement('option');
                 opt.value = t.slug;

@@ -6,7 +6,9 @@ use App\Models\Batch;
 use App\Models\DailyCheck;
 use App\Models\Stock;
 use App\Actions\DailyCheck\RecordDailyCheck;
+use App\Actions\DailyCheck\SyncManureCollection;
 use App\Http\Requests\DailyCheck\StoreDailyCheckRequest;
+use App\Http\Requests\DailyCheck\UpdateDailyCheckRequest;
 use App\Services\StockIntegrationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -57,19 +59,15 @@ class DailyCheckController extends Controller
 
         $batch = Batch::with(['building', 'protocol.steps'])->findOrFail($batchId);
 
-        // Préparation des phases aliment et stocks disponibles
-        $rawType = strtolower($batch->type ?? 'chair');
-        $isLayerSilo = in_array($rawType, ['ponte', 'repro', 'reproducteur']);
-
-        $phases = $isLayerSilo
-            ? ['Ponte Démarrage (Poussin)', 'Ponte Croissance (Poulette)', 'Ponte 1 (Pic de ponte)', 'Ponte 2 (Entretien)']
-            : ['Chair Démarrage', 'Chair Croissance', 'Chair Finition'];
+        // Préparation des phases aliment et stocks disponibles, selon le
+        // secteur du lot (cf. Batch::feedSector()/feedPhases()).
+        $phases = $batch->feedPhases();
 
         $stockData = [];
         foreach ($phases as $phase) {
             // 1. Recherche par la nouvelle clé stricte
             $item = Stock::where('feed_type', $phase)
-                ->where('category', 'conso')
+                ->where('category', Stock::CAT_CONSO)
                 ->first();
                 
             // 2. Conversion automatique en KG
@@ -82,7 +80,7 @@ class DailyCheckController extends Controller
             }
         }
 
-        return view('daily-checks.create', compact('batch', 'stockData', 'phases', 'isLayerSilo'));
+        return view('daily-checks.create', compact('batch', 'stockData', 'phases'));
     }
 
     /**
@@ -151,17 +149,12 @@ class DailyCheckController extends Controller
         }
 
         // PRÉPARATION DES STOCKS POUR LA VUE (Évite les requêtes DB dans le Blade)
-        $rawType = strtolower($check->batch->type ?? 'chair');
-        $isLayerSilo = in_array($rawType, ['ponte', 'repro', 'reproducteur']);
-
-        $phases = $isLayerSilo
-            ? ['Ponte Démarrage (Poussin)', 'Ponte Croissance (Poulette)', 'Ponte 1 (Pic de ponte)', 'Ponte 2 (Entretien)']
-            : ['Chair Démarrage', 'Chair Croissance', 'Chair Finition'];
+        $phases = $check->batch->feedPhases();
 
         $stockData = [];
         foreach ($phases as $phase) {
             $item = Stock::where('feed_type', $phase) // Utilisation propre de la façade importée
-                ->where('category', 'conso')
+                ->where('category', Stock::CAT_CONSO)
                 ->first();
                 
             if ($item) {
@@ -182,31 +175,12 @@ class DailyCheckController extends Controller
      * Gère la compensation de stock aliment et le recalcul d'impact sur le lot.
      * Le DailyCheckObserver gère la mise à jour de current_quantity.
      */
-    public function update(Request $request, DailyCheck $daily_check): RedirectResponse
+    public function update(UpdateDailyCheckRequest $request, DailyCheck $daily_check): RedirectResponse
     {
-        if (Gate::denies('elevage.M')) {
-            return back()->with('error', 'Modification interdite.');
-        }
-
         $check = $daily_check;
         $batch = $check->batch;
 
-        $validated = $request->validate([
-            'mortality'          => 'required|integer|min:0',
-            'feed_consumed'      => 'required|numeric|min:0',
-            'feed_type'          => 'required|string',
-            'water_consumed'     => 'nullable|numeric|min:0',
-            'temp_min'           => 'nullable|numeric',
-            'temp_max'           => 'nullable|numeric',
-            'humidity'           => 'nullable|numeric|min:0|max:100',
-            'avg_weight'         => 'nullable|numeric|min:0',
-            'qty_quarantine_in'  => 'required|integer|min:0',
-            'qty_quarantine_out' => 'required|integer|min:0',
-            'qty_sorted_out'     => 'nullable|integer|min:0',
-            'treatment_type'     => 'nullable|string|max:255',
-            'treatment_name'     => 'nullable|string|max:255',
-            'observations'       => 'nullable|string',
-        ]);
+        $validated = $request->validated();
 
         // Vérification effectif
         $oldImpact = $check->calculateNetImpact();
@@ -229,7 +203,11 @@ class DailyCheckController extends Controller
             ])->withInput();
         }
 
-        return DB::transaction(function () use ($request, $check, $validated) {
+        // Fumier : quantité avant rectification, pour compensation du stock.
+        $oldManure = (float) $check->manure_collected_kg;
+        $newManure = (float) ($validated['manure_collected_kg'] ?? 0);
+
+        return DB::transaction(function () use ($request, $check, $batch, $validated, $oldManure, $newManure) {
             // Restitution de l'ancien stock
             if ((float) $check->feed_consumed > 0) {
                 StockIntegrationService::syncMovement(
@@ -246,11 +224,27 @@ class DailyCheckController extends Controller
                 );
             }
 
-            $validated['litter_changed'] = $request->has('litter_changed') ? 1 : 0;
-            $validated['qty_sorted_out'] = $validated['qty_sorted_out'] ?? 0;
+            // litter_changed et qty_sorted_out sont déjà normalisés par
+            // UpdateDailyCheckRequest::prepareForValidation().
+
+            // Re-snapshot du coût de revient de l'aliment consommé (CMP courant),
+            // pour que la rectification revalorise correctement la marge du lot.
+            if ((float) $validated['feed_consumed'] > 0) {
+                $name = trim($validated['feed_type']);
+                $stock = Stock::where('category', Stock::CAT_CONSO)
+                    ->where(fn ($q) => $q->where('item_name', $name)->orWhere('feed_type', $name))
+                    ->first();
+                $validated['feed_unit_cost'] = (float) ($stock?->last_unit_price ?? $stock?->unit_price ?? 0);
+            } else {
+                $validated['feed_unit_cost'] = 0;
+            }
 
             // L'observer DailyCheckObserver gère le diff sur current_quantity
             $check->update($validated);
+
+            // Compensation du stock fumier (restitue l'ancien ramassage,
+            // applique le nouveau) pour ne pas double-compter le fertilisant.
+            app(SyncManureCollection::class)->execute($batch, $oldManure, $newManure);
 
             // Save species-specific extension if applicable
             if ($check->batch->isGmqTracked() || $check->batch->isAquaculture()) {
@@ -310,6 +304,11 @@ class DailyCheckController extends Controller
                 );
             }
 
+            // Restitution du stock fumier (le ramassage supprimé sort du stock).
+            if ((float) $check->manure_collected_kg > 0 && $check->batch) {
+                app(SyncManureCollection::class)->execute($check->batch, (float) $check->manure_collected_kg, 0);
+            }
+
             // L'observer DailyCheckObserver gère la restitution de current_quantity
             $check->delete();
 
@@ -325,7 +324,7 @@ class DailyCheckController extends Controller
     {
         // 1. Recherche stricte
         $stock = Stock::where('feed_type', trim($feedType))
-            ->where('category', 'conso')
+            ->where('category', Stock::CAT_CONSO)
             ->first();
 
         if (!$stock) {

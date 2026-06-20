@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Building;
 use App\Models\WaterSource;
 use App\Models\WaterReading;
 use App\Models\EnergySource;
 use App\Models\EnergyReading;
 use App\Models\FuelPurchase;
+use App\Services\NotificationHub;
 use App\Services\UtilityService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -27,8 +29,9 @@ class UtilityController extends Controller
 
         $waterSources = WaterSource::active()->get();
         $energySources = EnergySource::active()->get();
+        $buildings = Building::physical()->orderBy('name')->get();
 
-        return view('utilities.dashboard', compact('data', 'waterSources', 'energySources', 'period'));
+        return view('utilities.dashboard', compact('data', 'waterSources', 'energySources', 'buildings', 'period'));
     }
 
     // ──────────────────────────────────────────────
@@ -74,6 +77,7 @@ class UtilityController extends Controller
 
         $validated = $request->validate([
             'water_source_id'        => 'required|exists:water_sources,id',
+            'building_id'            => 'nullable|exists:buildings,id',
             'reading_date'           => 'required|date|before_or_equal:today',
             'volume_consumed_liters' => 'required|numeric|min:0',
             'volume_added_liters'    => 'nullable|numeric|min:0',
@@ -87,7 +91,12 @@ class UtilityController extends Controller
         
         // CORRECTION : Forcer à 0 si la valeur est null
         $validated['volume_added_liters'] = $validated['volume_added_liters'] ?? 0;
-        $validated['cost'] = $validated['cost'] ?? 0;
+
+        // Coût estimé depuis le prix du m³ (paramètre énergie) si non saisi.
+        if (empty($validated['cost'])) {
+            $pricePerM3 = (float) setting('energie.water_price_m3', 0);
+            $validated['cost'] = round(($validated['volume_consumed_liters'] / 1000) * $pricePerM3, 2);
+        }
 
         WaterReading::updateOrCreate(
             ['water_source_id' => $validated['water_source_id'], 'reading_date' => $validated['reading_date']],
@@ -162,6 +171,7 @@ class UtilityController extends Controller
 
         $validated = $request->validate([
             'energy_source_id'    => 'required|exists:energy_sources,id',
+            'building_id'         => 'nullable|exists:buildings,id',
             'reading_date'        => 'required|date|before_or_equal:today',
             'hours_run'           => 'required|numeric|min:0|max:24',
             'fuel_consumed_liters' => 'nullable|numeric|min:0',
@@ -182,11 +192,18 @@ class UtilityController extends Controller
         $source = EnergySource::find($validated['energy_source_id']);
         $source->increment('total_hours_run', (float) $validated['hours_run']);
 
+        $wasFuelLow = $source->is_fuel_low;
+
         if (! empty($validated['fuel_consumed_liters']) && $source->current_fuel_level !== null) {
             $source->decrement('current_fuel_level', (float) $validated['fuel_consumed_liters']);
             if ($source->current_fuel_level < 0) {
                 $source->update(['current_fuel_level' => 0]);
             }
+        }
+
+        // Alerte gasoil critique : seulement au moment où l'on franchit le seuil.
+        if (! $wasFuelLow && $source->refresh()->is_fuel_low) {
+            app(NotificationHub::class)->alertFuelLow($source);
         }
 
         // Vérifier si maintenance nécessaire
@@ -220,6 +237,7 @@ class UtilityController extends Controller
 
         $validated = $request->validate([
             'energy_source_id'  => 'required|exists:energy_sources,id',
+            'building_id'       => 'nullable|exists:buildings,id',
             'purchase_date'     => 'required|date|before_or_equal:today',
             'quantity_liters'   => 'required|numeric|min:1',
             'unit_price'        => 'required|numeric|min:0',

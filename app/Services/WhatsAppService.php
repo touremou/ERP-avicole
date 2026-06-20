@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Models\NotificationLog;
+use Composer\CaBundle\CaBundle;
+use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -13,6 +15,11 @@ use Illuminate\Support\Facades\Log;
  *   'driver'  => env('WHATSAPP_DRIVER', 'log'),  // log, callmebot, ultramsg, wati, twilio
  *   'api_key' => env('WHATSAPP_API_KEY'),
  *   'instance_id' => env('WHATSAPP_INSTANCE_ID'), // UltraMsg
+ *
+ * Le paramètre whatsapp.api_url (Paramètres > WhatsApp) permet de
+ * surcharger l'URL de base utilisée par les drivers ultramsg/wati (ex :
+ * instance auto-hébergée), à défaut la valeur par défaut du driver est
+ * utilisée.
  *
  * Drivers disponibles :
  * - log       : écrit dans storage/logs (développement)
@@ -26,12 +33,14 @@ class WhatsAppService
     private string $driver;
     private ?string $apiKey;
     private ?string $instanceId;
+    private ?string $apiUrl;
 
     public function __construct()
     {
         $this->driver = setting('whatsapp.driver', config('services.whatsapp.driver', 'log'));
         $this->apiKey = setting('whatsapp.api_key', config('services.whatsapp.api_key', ''));
         $this->instanceId = setting('whatsapp.instance_id', config('services.whatsapp.instance_id', ''));
+        $this->apiUrl = setting('whatsapp.api_url', '') ?: null;
     }
 
     /**
@@ -51,43 +60,68 @@ class WhatsAppService
             return false;
         }
 
+        [$result, $response] = $this->attemptDelivery($phone, $message);
+
+        // Logger le résultat (rejouable par avismart:retry-failed-notifications
+        // si échec — coupures réseau fréquentes en zone rurale).
+        NotificationLog::create([
+            'user_id'           => $context['user_id'] ?? null,
+            'channel'           => 'whatsapp',
+            'type'              => $context['type'] ?? 'general',
+            'title'             => $context['title'] ?? 'WhatsApp',
+            'message'           => $message,
+            'recipient_phone'   => $phone,
+            'status'            => $result ? 'sent' : 'failed',
+            'attempts'          => 1,
+            'provider_response' => $response,
+            'sent_at'           => $result ? now() : null,
+        ]);
+
+        return $result;
+    }
+
+    /**
+     * Rejoue l'envoi d'une notification en échec (commande
+     * avismart:retry-failed-notifications). Met à jour le log existant au lieu
+     * d'en créer un nouveau.
+     */
+    public function retry(NotificationLog $log): bool
+    {
+        if (! $log->recipient_phone) {
+            return false;
+        }
+
+        [$result, $response] = $this->attemptDelivery($log->recipient_phone, $log->message);
+
+        $log->update([
+            'status'            => $result ? 'sent' : 'failed',
+            'attempts'          => $log->attempts + 1,
+            'provider_response' => $response,
+            'sent_at'           => $result ? now() : $log->sent_at,
+        ]);
+
+        return $result;
+    }
+
+    /**
+     * Tente la livraison via le driver configuré.
+     *
+     * @return array{0: bool, 1: array|null} [succès, détails (status/body ou erreur) pour diagnostic]
+     */
+    private function attemptDelivery(string $phone, string $message): array
+    {
         try {
-            $result = match ($this->driver) {
+            return match ($this->driver) {
                 'callmebot' => $this->sendViaCallMeBot($phone, $message),
                 'ultramsg'  => $this->sendViaUltraMsg($phone, $message),
                 'wati'      => $this->sendViaWati($phone, $message),
                 'twilio'    => $this->sendViaTwilio($phone, $message),
                 default     => $this->sendViaLog($phone, $message),
             };
-
-            // Logger le résultat
-            NotificationLog::create([
-                'user_id'           => $context['user_id'] ?? null,
-                'channel'           => 'whatsapp',
-                'type'              => $context['type'] ?? 'general',
-                'title'             => $context['title'] ?? 'WhatsApp',
-                'message'           => $message,
-                'status'            => $result ? 'sent' : 'failed',
-                'provider_response' => $context['response'] ?? null,
-                'sent_at'           => $result ? now() : null,
-            ]);
-
-            return $result;
-
         } catch (\Throwable $e) {
             Log::error("WhatsAppService [{$this->driver}]: {$e->getMessage()}");
 
-            NotificationLog::create([
-                'user_id'           => $context['user_id'] ?? null,
-                'channel'           => 'whatsapp',
-                'type'              => $context['type'] ?? 'general',
-                'title'             => $context['title'] ?? 'WhatsApp',
-                'message'           => $message,
-                'status'            => 'failed',
-                'provider_response' => ['error' => $e->getMessage()],
-            ]);
-
-            return false;
+            return [false, ['error' => $e->getMessage()]];
         }
     }
 
@@ -107,6 +141,50 @@ class WhatsAppService
         return $sent;
     }
 
+    /**
+     * Client HTTP préconfiguré pour les appels providers.
+     *
+     * Résout la cause #1 d'échec en environnement local/mutualisé :
+     * « cURL error 60: SSL certificate problem: unable to get local issuer
+     * certificate ». Sur un PHP sans `curl.cainfo`/`openssl.cafile` (WAMP,
+     * hébergement bas de gamme), toute requête HTTPS échoue. On pointe donc
+     * cURL vers un bundle CA valide fourni par composer/ca-bundle — la
+     * vérification reste ACTIVE (sécurisée) sans dépendre de la config php.ini.
+     *
+     * Le paramètre whatsapp.verify_ssl permet, en dernier recours et de façon
+     * explicite, de désactiver la vérification (déconseillé) pour les
+     * environnements où aucun bundle n'est exploitable.
+     *
+     * Si composer/ca-bundle n'est pas présent dans vendor/ (composer
+     * install/update pas encore exécuté côté serveur après mise à jour),
+     * on se replie silencieusement sur la vérification SSL par défaut de
+     * Guzzle/cURL plutôt que de provoquer une erreur fatale "Class not found".
+     */
+    private function http(): PendingRequest
+    {
+        // User-Agent explicite : certains providers (CallMeBot notamment)
+        // renvoient un « 403 Forbidden » via leur WAF lorsque le User-Agent
+        // est vide ou identifié comme robot (cas fréquent avec cURL sous
+        // WAMP/hébergement mutualisé). On se présente comme un navigateur.
+        $client = Http::timeout(15)->withHeaders([
+            'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        ]);
+
+        $verify = filter_var(setting('whatsapp.verify_ssl', true), FILTER_VALIDATE_BOOLEAN);
+        if (! $verify) {
+            return $client->withoutVerifying();
+        }
+
+        if (class_exists(CaBundle::class)) {
+            $caPath = CaBundle::getSystemCaRootBundlePath();
+            if (is_string($caPath) && is_file($caPath)) {
+                $client = $client->withOptions(['verify' => $caPath]);
+            }
+        }
+
+        return $client;
+    }
+
     // ─────────────────────────────────────────────
     // DRIVERS
     // ─────────────────────────────────────────────
@@ -114,10 +192,10 @@ class WhatsAppService
     /**
      * Driver LOG — développement (écrit dans storage/logs/whatsapp.log)
      */
-    private function sendViaLog(string $phone, string $message): bool
+    private function sendViaLog(string $phone, string $message): array
     {
         Log::channel('single')->info("📱 WhatsApp → {$phone}\n{$message}");
-        return true;
+        return [true, null];
     }
 
     /**
@@ -126,17 +204,25 @@ class WhatsAppService
      * Setup : Envoyer "I allow callmebot to send me messages" au +34 644 51 95 23
      * Récupérer l'apikey dans la réponse, mettre dans WHATSAPP_API_KEY
      *
+     * Particularité : CallMeBot répond souvent en HTTP 200 même en cas
+     * d'erreur (clé invalide, numéro non enregistré, quota dépassé...), avec
+     * un message d'erreur dans le corps de la réponse. On détecte donc aussi
+     * ces erreurs via le contenu de la réponse, pas seulement le code HTTP.
+     *
      * @see https://www.callmebot.com/blog/free-api-whatsapp-messages/
      */
-    private function sendViaCallMeBot(string $phone, string $message): bool
+    private function sendViaCallMeBot(string $phone, string $message): array
     {
-        $response = Http::timeout(15)->get('https://api.callmebot.com/whatsapp.php', [
+        $response = $this->http()->get('https://api.callmebot.com/whatsapp.php', [
             'phone'  => $phone,
             'text'   => $message,
             'apikey' => $this->apiKey,
         ]);
 
-        return $response->successful();
+        $body = $response->body();
+        $success = $response->successful() && ! str_contains(strtolower($body), 'error');
+
+        return [$success, $this->responseDetails($response)];
     }
 
     /**
@@ -144,17 +230,21 @@ class WhatsAppService
      *
      * @see https://ultramsg.com/
      */
-    private function sendViaUltraMsg(string $phone, string $message): bool
+    private function sendViaUltraMsg(string $phone, string $message): array
     {
-        $response = Http::timeout(15)
+        $baseUrl = $this->apiUrl ?: "https://api.ultramsg.com/{$this->instanceId}";
+
+        $response = $this->http()
             ->asForm()
-            ->post("https://api.ultramsg.com/{$this->instanceId}/messages/chat", [
+            ->post(rtrim($baseUrl, '/') . '/messages/chat', [
                 'token' => $this->apiKey,
                 'to'    => $phone,
                 'body'  => $message,
             ]);
 
-        return $response->successful() && ($response->json('sent') === 'true' || $response->json('sent') === true);
+        $success = $response->successful() && ($response->json('sent') === 'true' || $response->json('sent') === true);
+
+        return [$success, $this->responseDetails($response)];
     }
 
     /**
@@ -162,17 +252,17 @@ class WhatsAppService
      *
      * @see https://docs.wati.io/
      */
-    private function sendViaWati(string $phone, string $message): bool
+    private function sendViaWati(string $phone, string $message): array
     {
-        $baseUrl = config('whatsapp.wati_url', 'https://live-server-1.wati.io');
+        $baseUrl = $this->apiUrl ?: config('whatsapp.wati_url', 'https://live-server-1.wati.io');
 
-        $response = Http::timeout(15)
+        $response = $this->http()
             ->withHeaders(['Authorization' => 'Bearer ' . $this->apiKey])
-            ->post("{$baseUrl}/api/v1/sendSessionMessage/{$phone}", [
+            ->post(rtrim($baseUrl, '/') . "/api/v1/sendSessionMessage/{$phone}", [
                 'messageText' => $message,
             ]);
 
-        return $response->successful();
+        return [$response->successful(), $this->responseDetails($response)];
     }
 
     /**
@@ -180,13 +270,13 @@ class WhatsAppService
      *
      * @see https://www.twilio.com/docs/whatsapp
      */
-    private function sendViaTwilio(string $phone, string $message): bool
+    private function sendViaTwilio(string $phone, string $message): array
     {
         $sid = config('whatsapp.twilio_sid');
         $token = config('whatsapp.twilio_token');
         $from = config('whatsapp.twilio_from', 'whatsapp:+14155238886');
 
-        $response = Http::timeout(15)
+        $response = $this->http()
             ->withBasicAuth($sid, $token)
             ->asForm()
             ->post("https://api.twilio.com/2010-04-01/Accounts/{$sid}/Messages.json", [
@@ -195,7 +285,20 @@ class WhatsAppService
                 'Body' => $message,
             ]);
 
-        return $response->successful();
+        return [$response->successful(), $this->responseDetails($response)];
+    }
+
+    /**
+     * Résumé exploitable de la réponse HTTP pour stockage dans
+     * NotificationLog.provider_response (diagnostic depuis Notifications >
+     * Historique).
+     */
+    private function responseDetails(\Illuminate\Http\Client\Response $response): array
+    {
+        return [
+            'status' => $response->status(),
+            'body'   => mb_substr(trim($response->body()), 0, 500),
+        ];
     }
 
     // ─────────────────────────────────────────────

@@ -3,7 +3,9 @@
 namespace App\Actions\Sale;
 
 use App\Models\Sale;
+use App\Models\Stock;
 use App\Models\Batch;
+use App\Services\NotificationHub;
 use App\Services\StockIntegrationService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -27,7 +29,12 @@ class CancelSale
             );
         }
 
-        return DB::transaction(function () use ($sale, $reason) {
+        // Statut AVANT annulation (pour l'alerte anti-fraude : une vente
+        // validée/livrée annulée est un signal fort, à la différence d'un
+        // simple brouillon abandonné).
+        $previousStatus = $sale->status;
+
+        return DB::transaction(function () use ($sale, $reason, $previousStatus) {
 
             // Si la vente était validée, il faut RESTOCKER
             if (in_array($sale->status, ['valide', 'livre'])) {
@@ -35,24 +42,25 @@ class CancelSale
 
                     // Restockage articles
                     if ($item->requiresDestock()) {
-                        $category = match ($item->product_type) {
-                            'oeufs'   => 'oeufs',
-                            'aliment' => 'conso',
-                            default   => 'materiels',
-                        };
-
                         StockIntegrationService::syncMovement(
                             $item->product_name,
-                            $category,
+                            Stock::categoryForProductType($item->product_type),
                             (float) $item->quantity,
                             'in',
                             "Annulation vente {$sale->reference} — Restockage",
-                            $item->unit === 'alveole' ? 'Alvéole' : ($item->unit === 'sac' ? 'Sac' : 'KG')
+                            match ($item->unit) {
+                                'alveole' => 'Alvéole',
+                                'sac'     => 'Sac',
+                                'litre'   => 'Litre',
+                                'tete'    => 'Tête',
+                                default   => 'KG',
+                            }
                         );
                     }
 
-                    // Restockage volaille → ré-incrémenter le lot
-                    if ($item->impactsBatch() && $item->batch_id) {
+                    // Restockage animal vif → ré-incrémenter l'effectif du lot
+                    // (uniquement si la vente avait décrémenté l'effectif).
+                    if ($item->decrementsBatchCount() && $item->batch_id) {
                         $batch = Batch::find($item->batch_id);
                         if ($batch) {
                             $batch->increment('current_quantity', (int) $item->quantity);
@@ -70,6 +78,10 @@ class CancelSale
             $sale->client->recalculateBalance();
 
             Log::info("Vente annulée : {$sale->reference} — Raison: {$reason}");
+
+            // Alerte anti-fraude : visibilité immédiate du propriétaire sur
+            // toute annulation (surtout d'une vente déjà validée/déstockée).
+            app(NotificationHub::class)->alertSaleCancelled($sale->fresh(['client']), $reason, $previousStatus);
 
             return $sale->fresh();
         });

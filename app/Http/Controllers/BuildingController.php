@@ -24,7 +24,7 @@ class BuildingController extends Controller
 
         $buildings = Building::physical() // 💡 Ton code devient très lisible
             ->with(['batches' => function($query) {
-                $query->where('status', 'Actif')->with('dailyChecks');
+                $query->active()->with('dailyChecks');
             }])
             ->orderBy('name')
             ->get();
@@ -36,7 +36,13 @@ class BuildingController extends Controller
     {
         if (Gate::denies('elevage.C')) return back()->with('error', 'Privilèges insuffisants.');
 
-        $buildings = Building::select('id', 'name', 'status')->get(); 
+        // Liste du parc réel : on exclut le bâtiment virtuel de traçabilité
+        // (cf. Building::scopePhysical) et on charge type + capacité pour des
+        // indicateurs cohérents — sinon ces colonnes ressortaient à 0/N/A.
+        $buildings = Building::physical()
+            ->select('id', 'name', 'type', 'capacity', 'status')
+            ->orderBy('name')
+            ->get();
 
         return view('buildings.create', compact('buildings'));
     }
@@ -71,7 +77,7 @@ class BuildingController extends Controller
         if (Gate::denies('elevage.M')) return back()->with('error', 'Privilèges insuffisants.');
 
         $building = Building::findOrFail($id);
-        $isOccupied = $building->batches()->where('status', 'Actif')->exists();
+        $isOccupied = $building->batches()->active()->exists();
 
         return view('buildings.edit', compact('building', 'isOccupied'));
     }
@@ -103,5 +109,19 @@ class BuildingController extends Controller
         } catch (\Exception $e) {
             return back()->with('error', $e->getMessage());
         }
+    }
+
+    /**
+     * Miroir local (IndexedDB) des bâtiments physiques — mode terrain.
+     */
+    public function getOfflineBuildings(): \Illuminate\Http\JsonResponse
+    {
+        if (Gate::denies('elevage.L')) {
+            return response()->json(['error' => 'Forbidden'], 403);
+        }
+
+        return response()->json(
+            Building::physical()->get(['id', 'name', 'type', 'capacity', 'status'])
+        );
     }
 }

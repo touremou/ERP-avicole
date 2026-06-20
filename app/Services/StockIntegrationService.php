@@ -38,6 +38,10 @@ class StockIntegrationService
      * @param string      $type      Type de mouvement : 'in', 'out', 'adjustment'
      * @param string      $notes     Description pour l'audit trail
      * @param string|null $inputUnit Unité de saisie (KG, Sac, Alvéole, Unité). OBLIGATOIRE recommandé.
+     * @param float|null  $unitCost  Coût unitaire (par unité PIVOT) de l'entrée. Si fourni
+     *                               sur un mouvement 'in', met à jour le coût moyen pondéré
+     *                               (CMP) de l'article — base de valorisation de l'inventaire
+     *                               et du coût de revient consommé. Ignoré sur 'out'.
      *
      * @return StockMovement|false  Le mouvement créé, ou false si article introuvable
      */
@@ -47,7 +51,8 @@ class StockIntegrationService
         float  $quantity,
         string $type,
         string $notes,
-        ?string $inputUnit = null
+        ?string $inputUnit = null,
+        ?float $unitCost = null
     ): StockMovement|false {
 
         // ─── 1. RECHERCHE DE L'ARTICLE ───
@@ -59,7 +64,7 @@ class StockIntegrationService
             return false;
         }
 
-        return DB::transaction(function () use ($stock, $itemName, $category, $quantity, $type, $notes, $inputUnit) {
+        return DB::transaction(function () use ($stock, $itemName, $category, $quantity, $type, $notes, $inputUnit, $unitCost) {
 
             // ─── 2. DÉTERMINATION DE L'UNITÉ ───
             // B-17 corrigé : si $inputUnit n'est pas fourni, on logge un warning
@@ -77,15 +82,38 @@ class StockIntegrationService
             // ─── 4. APPLICATION DU MOUVEMENT ───
             // Verrouillage pour éviter les race conditions
             $stock = Stock::lockForUpdate()->find($stock->id);
+            $wasLow = $stock->is_low;
 
             if ($type === 'in') {
-                $stock->increment('current_quantity', $quantityBase);
+                // Coût moyen pondéré : on mélange l'ancien stock valorisé et la
+                // nouvelle entrée. Les colonnes de prix sont persistées via le
+                // 3e argument d'increment() (les attributs simplement assignés
+                // ne le seraient pas par la requête atomique d'increment).
+                $extra = [];
+                if ($unitCost !== null && $unitCost >= 0) {
+                    $oldQty   = (float) $stock->current_quantity;
+                    $oldPrice = (float) ($stock->last_unit_price ?? 0);
+                    $newQty   = $oldQty + $quantityBase;
+
+                    if ($newQty > 0) {
+                        $wac = round(($oldQty * $oldPrice + $quantityBase * $unitCost) / $newQty, 2);
+                        $extra = ['unit_price' => $wac, 'last_unit_price' => $wac];
+                    }
+                }
+                $stock->increment('current_quantity', $quantityBase, $extra);
             } elseif ($type === 'out') {
                 // Sécurité : ne pas descendre sous zéro
                 $newQty = max(0, (float) $stock->current_quantity - $quantityBase);
                 $stock->update(['current_quantity' => $newQty]);
             } elseif ($type === 'adjustment') {
                 $stock->update(['current_quantity' => max(0, $quantityBase)]);
+            }
+
+            // Alerte stock critique : seulement au moment où l'on FRANCHIT le
+            // seuil (pas à chaque mouvement répété sous le seuil), pour éviter
+            // le spam WhatsApp sur un article déjà connu comme bas.
+            if (! $wasLow && $stock->is_low && $stock->alert_threshold > 0) {
+                app(NotificationHub::class)->alertStockCritical($stock);
             }
 
             // ─── 5. ENREGISTREMENT DU MOUVEMENT ───
@@ -112,6 +140,34 @@ class StockIntegrationService
         ?string $unit = null
     ): StockMovement|false {
         return self::syncMovement($itemName, $category, $quantity, $type, $notes, $unit);
+    }
+
+    /**
+     * Garantit l'existence d'un article de stock (recherche EXACTE par
+     * nom + catégorie) et le crée à 0 sinon. À appeler avant syncMovement('in')
+     * lorsqu'un flux peut concerner un article encore inexistant (récolte,
+     * intrant, produit transformé) — syncMovement renvoie false sur article
+     * introuvable, ce helper lève cette contrainte au bon endroit (à côté de
+     * findStock), sans dupliquer la logique de création chez les appelants.
+     */
+    public static function ensureItem(string $category, string $itemName, string $unit = 'kg', float $unitPrice = 0): Stock
+    {
+        $itemName = trim($itemName);
+
+        $existing = self::findStock($itemName, $category);
+        if ($existing) {
+            return $existing;
+        }
+
+        return Stock::create([
+            'category'         => $category,
+            'item_name'        => $itemName,
+            'unit'             => $unit,
+            'current_quantity' => 0,
+            'unit_price'       => $unitPrice,
+            'last_unit_price'  => $unitPrice,
+            'alert_threshold'  => 0,
+        ]);
     }
 
     // ─────────────────────────────────────────────
@@ -162,14 +218,14 @@ class StockIntegrationService
     {
         $inputUnit = trim($inputUnit);
 
-        if (in_array($category, ['conso', 'Aliment'])) {
+        if (in_array($category, [Stock::CAT_CONSO, 'Aliment'])) {
             if (strtolower($inputUnit) === 'sac') {
                 return $quantity * 50; // 1 Sac = 50 KG
             }
             return $quantity; // Déjà en KG
         }
 
-        if ($category === 'oeufs') {
+        if ($category === Stock::CAT_OEUFS) {
             $unit = strtolower($inputUnit);
             if (in_array($unit, ['unité', 'unite', 'piece', 'pièce'])) {
                 return $quantity / 30; // Conversion en alvéoles
@@ -190,7 +246,7 @@ class StockIntegrationService
      */
     private static function guessInputUnit(string $itemName, string $category): string
     {
-        if ($category === 'oeufs') {
+        if ($category === Stock::CAT_OEUFS) {
             $name = strtoupper(trim($itemName));
             // Les calibres sont stockés en alvéoles
             if (in_array($name, ['S', 'M', 'L', 'XL', 'VENDU', 'CASSÉ', 'ANOMALIE'])) {

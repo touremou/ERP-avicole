@@ -5,7 +5,9 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
-        <title>{{ config('app.name', 'Laravel') }}</title>
+        <title>{{ setting('general.company_name', config('app.name', 'AviSmart')) }}</title>
+
+        @include('partials.pwa-head')
 
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">
@@ -26,5 +28,13 @@
                 {{ $slot }}
             </div>
         </div>
+
+        <script>
+            // Enregistre le Service Worker dès la page de connexion pour que
+            // l'application soit installable (PWA) avant même l'authentification.
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('/sw.js').catch(() => {});
+            }
+        </script>
     </body>
 </html>

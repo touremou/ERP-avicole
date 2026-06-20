@@ -12,19 +12,19 @@
                 </a>
                 <div>
                     <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">
-                        📊 Pointage de Précision
+                        📊 {{ __("Pointage de Précision") }}
                     </h2>
                     <p class="text-[10px] font-black text-blue-500 uppercase tracking-widest mt-1 italic leading-none">
-                        Lot : {{ $batch->code ?? 'Chargement...' }} • {{ $batch->building->name ?? 'Mode Terrain' }} 
-                        <span id="offline-qty-display">({{ $batch->current_quantity ?? '...' }} têtes)</span>
+                        {{ __("Lot :") }} {{ $batch->code ?? __("Chargement...") }} • {{ $batch->building->name ?? __("Mode Terrain") }}
+                        <span id="offline-qty-display">({{ $batch->current_quantity ?? '...' }} {{ __("têtes") }})</span>
                     </p>
                 </div>
             </div>
             
             <div id="perf-widget" class="hidden md:flex items-center gap-4 bg-slate-900 p-2 pl-4 rounded-2xl border border-slate-700 shadow-2xl transition-all animate-in slide-in-from-right">
                 <div class="text-right">
-                    <p class="text-[8px] font-black text-slate-500 uppercase leading-none mb-1">Ratio Conso.</p>
-                    <p class="text-xs font-black text-emerald-400 italic leading-none"><span id="ratio-val">0</span> g/sujet</p>
+                    <p class="text-[8px] font-black text-slate-500 uppercase leading-none mb-1">{{ __("Ratio Conso.") }}</p>
+                    <p class="text-xs font-black text-emerald-400 italic leading-none"><span id="ratio-val">0</span> {{ __("g/sujet") }}</p>
                 </div>
                 <div class="w-10 h-10 bg-slate-800 rounded-xl flex items-center justify-center text-emerald-400 shadow-inner">
                     <i class="fa-solid fa-bolt-lightning text-xs"></i>
@@ -38,7 +38,7 @@
             @can('elevage.C')
                 @if ($errors->any())
                     <div class="mb-8 p-6 bg-red-600 text-white rounded-[2.5rem] shadow-xl animate-pulse text-left">
-                        <p class="text-[10px] font-black uppercase italic mb-2">❌ Erreurs de validation détectées :</p>
+                        <p class="text-[10px] font-black uppercase italic mb-2">{{ __("❌ Erreurs de validation détectées :") }}</p>
                         <ul class="list-disc list-inside text-xs font-black uppercase tracking-tight">
                             @foreach ($errors->all() as $error) <li>{{ $error }}</li> @endforeach
                         </ul>
@@ -59,13 +59,13 @@
                             <div class="flex items-center gap-5">
                                 <div class="w-14 h-14 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center text-2xl shadow-inner">💉</div>
                                 <div>
-                                    <p class="text-[10px] font-black uppercase opacity-70 leading-none tracking-widest">Soin Planifié • Jour {{ $age }}</p>
+                                    <p class="text-[10px] font-black uppercase opacity-70 leading-none tracking-widest">{{ __("Soin Planifié • Jour :age", ['age' => $age]) }}</p>
                                     <p class="text-xl font-black uppercase italic mt-1 leading-none tracking-tighter">{{ $todayStep->action_name }}</p>
                                 </div>
                             </div>
                             <button type="button" onclick="fillTreatment('{{ $todayStep->type }}', '{{ $todayStep->action_name }}')" 
                                     class="px-8 py-3 bg-white text-indigo-700 rounded-xl text-[10px] font-black uppercase hover:bg-emerald-400 hover:text-white transition shadow-xl italic tracking-widest leading-none">
-                                Appliquer
+                                {{ __("Appliquer") }}
                             </button>
                         </div>
                     </div>
@@ -121,30 +121,21 @@
 
                             <div class="pt-4 border-t border-slate-50">
                                 <label class="block text-[9px] font-black text-slate-400 uppercase mb-3 tracking-widest leading-none italic">
-                                    Type d'Aliment (Silo : {{ $batch->type }})
+                                    Type d'Aliment (Silo : {{ $batch->feedSector() }})
                                 </label>
-                                <select name="feed_type" id="feed_type" required onchange="checkFeedStock()" 
+                                <select name="feed_type" id="feed_type" required onchange="checkFeedStock()"
                                         class="w-full p-4 bg-slate-50 border-none rounded-2xl font-black text-[10px] uppercase focus:ring-2 focus:ring-blue-500 shadow-inner italic outline-none appearance-none cursor-pointer">
                                     <option value="">-- CHOISIR L'ALIMENT --</option>
                                     @foreach($phases as $phaseName)
-                                        @php 
+                                        @php
                                             // Utilisation directe du tableau préparé par le Controller (Aucune requête DB)
                                             $availableKg = $stockData[$phaseName] ?? 0;
-                                            
-                                            // Présélection intelligente
-                                            $isSelected = false;
-                                            if ($isLayerSilo) {
-                                                if ($age <= 42) $isSelected = str_contains($phaseName, 'Démarrage');
-                                                elseif ($age <= 126) $isSelected = str_contains($phaseName, 'Croissance');
-                                                else $isSelected = str_contains($phaseName, 'Ponte 1');
-                                            } else {
-                                                if ($age <= 14) $isSelected = str_contains($phaseName, 'Démarrage');
-                                                elseif ($age <= 28) $isSelected = str_contains($phaseName, 'Croissance');
-                                                else $isSelected = str_contains($phaseName, 'Finition');
-                                            }
+
+                                            // Présélection intelligente selon l'âge et le secteur du lot.
+                                            $isSelected = $batch->feedPreselectPhase($age) === $phaseName;
                                         @endphp
                                         <option value="{{ $phaseName }}" data-stock="{{ $availableKg }}" {{ $isSelected ? 'selected' : '' }}>
-                                            {{ str_replace(['Chair ', 'Ponte '], '', $phaseName) }} • (Stock: {{ number_format($availableKg, 1) }} kg)
+                                            {{ str_replace($batch->feedSector() . ' ', '', $phaseName) }} • (Stock: {{ number_format($availableKg, 1) }} kg)
                                         </option>
                                     @endforeach
                                 </select>
@@ -158,15 +149,38 @@
                     </div>
 
                     {{-- 03: Ambiance --}}
-                    <div class="bg-slate-900 p-10 rounded-[4rem] shadow-2xl text-white relative overflow-hidden text-left">
+                    @php $daysSinceLitter = $batch->days_since_litter_change; @endphp
+                    <div x-data="{ litterChanged: {{ old('litter_changed') ? 'true' : 'false' }} }" class="bg-slate-900 p-10 rounded-[4rem] shadow-2xl text-white relative overflow-hidden text-left">
                         <div class="absolute right-0 bottom-0 opacity-10 p-8 scale-150 pointer-events-none"><i class="fas fa-wind text-white"></i></div>
-                        <div class="flex justify-between items-center mb-10">
+                        <div class="flex justify-between items-center mb-6">
                             <h3 class="text-[10px] font-black uppercase text-slate-500 tracking-[0.3em] leading-none">Paramètres Ambiance</h3>
                             <label class="flex items-center gap-3 bg-white/5 px-5 py-2.5 rounded-2xl cursor-pointer hover:bg-white/10 transition border border-white/10 group">
-                                <input type="checkbox" name="litter_changed" value="1" class="rounded border-none bg-white/20 text-blue-500 focus:ring-0">
+                                <input type="checkbox" name="litter_changed" value="1" x-model="litterChanged" class="rounded border-none bg-white/20 text-blue-500 focus:ring-0">
                                 <span class="text-[9px] font-black uppercase italic tracking-widest text-slate-300 leading-none mt-0.5">Litière Changée</span>
                             </label>
                         </div>
+
+                        {{-- Rappel biosécurité : ancienneté de la litière en place --}}
+                        <div @class([
+                            'mb-8 px-5 py-3 rounded-2xl border flex items-center gap-3 text-[9px] font-black uppercase tracking-widest leading-none',
+                            'bg-amber-500/10 border-amber-500/30 text-amber-300' => $daysSinceLitter !== null && $daysSinceLitter >= 21,
+                            'bg-white/5 border-white/10 text-slate-400' => $daysSinceLitter === null || $daysSinceLitter < 21,
+                        ])>
+                            <i class="fa-solid fa-leaf"></i>
+                            @if($daysSinceLitter === null)
+                                <span>Aucun renouvellement de litière enregistré sur ce lot</span>
+                            @else
+                                <span>Litière en place depuis <span class="text-white">{{ $daysSinceLitter }} j</span>@if($daysSinceLitter >= 21) — pensez au renouvellement @endif</span>
+                            @endif
+                        </div>
+
+                        {{-- Fumier ramassé : valorisé en stock fertilisant à la coche « Litière changée » --}}
+                        <div x-show="litterChanged" x-cloak class="mb-8 px-5 py-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30">
+                            <label class="block text-[8px] font-black text-emerald-300 uppercase tracking-widest mb-2 leading-none">Fumier ramassé (Kg) — vendable comme fertilisant</label>
+                            <input type="number" name="manure_collected_kg" min="0" step="0.1" value="{{ old('manure_collected_kg') }}" placeholder="0"
+                                   class="w-full bg-white/5 border border-white/10 p-4 rounded-2xl text-xl text-emerald-300 text-center outline-none italic font-black">
+                        </div>
+
                         <div class="grid grid-cols-2 md:grid-cols-4 gap-6 relative z-10 italic font-black">
                             <div class="space-y-2 text-center">
                                 <label class="block text-[8px] font-black text-slate-500 uppercase tracking-widest leading-none">Eau (L)</label>
@@ -216,6 +230,18 @@
                                 <input id="t_name" type="text" name="treatment_name" placeholder="NOM PRODUIT" class="p-4 bg-slate-50 border-none rounded-2xl text-[10px] uppercase shadow-inner outline-none italic font-black">
                             </div>
                         </div>
+                        {{-- Bien-être animal : sujets vivants en souffrance (boiterie, picage). --}}
+                        <div class="grid grid-cols-2 gap-4 mb-6">
+                            <div class="p-5 bg-violet-50/60 rounded-3xl border border-violet-100">
+                                <label class="block text-[8px] font-black text-violet-500 uppercase mb-2 text-center tracking-widest">Boiteux (Bien-être)</label>
+                                <input type="number" name="lame_count" value="{{ old('lame_count', 0) }}" min="0" class="w-full bg-transparent text-center text-3xl font-black text-violet-600 border-none outline-none italic">
+                            </div>
+                            <div class="p-5 bg-fuchsia-50/60 rounded-3xl border border-fuchsia-100">
+                                <label class="block text-[8px] font-black text-fuchsia-500 uppercase mb-2 text-center tracking-widest">Picage / Blessés</label>
+                                <input type="number" name="pecking_injury_count" value="{{ old('pecking_injury_count', 0) }}" min="0" class="w-full bg-transparent text-center text-3xl font-black text-fuchsia-600 border-none outline-none italic">
+                            </div>
+                        </div>
+
                         <textarea name="observations" rows="2" class="w-full bg-slate-50 rounded-[2rem] p-6 outline-none focus:bg-white border-2 border-transparent focus:border-blue-500 font-black text-slate-600 shadow-inner text-xs uppercase italic" placeholder="OBSERVATIONS OU SYMPTÔMES..."></textarea>
                     </div>
 

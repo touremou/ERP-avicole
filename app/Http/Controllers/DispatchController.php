@@ -3,6 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Dispatch;
+use App\Models\Employee;
+use App\Models\Module;
+use App\Models\ModulePermission;
 use App\Models\Reception;
 use App\Models\DiscrepancyReport;
 use App\Models\Client;
@@ -12,6 +15,7 @@ use App\Actions\Dispatch\CreateDispatch;
 use App\Actions\Dispatch\ValidateReception;
 use App\Services\ReconciliationService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 
 class DispatchController extends Controller
@@ -44,9 +48,38 @@ class DispatchController extends Controller
         if (Gate::denies('logistique.C')) return back()->with('error', 'Action non autorisée.');
 
         $stocks  = Stock::where('current_quantity', '>', 0)->get();
-        $batches = Batch::where('status', 'Actif')->with('building')->get();
+        // Tous les lots actifs, toutes espèces, sont expédiables sur pied.
+        $batches = Batch::active()->live()->with(['building', 'species'])->get();
 
-        return view('dispatches.create', compact('stocks', 'batches'));
+        // Récepteurs proposables : employés disposant d'un compte ACTIF avec
+        // accès au module logistique (ils pourront se connecter pour valider).
+        $receivers = $this->candidateReceivers();
+
+        return view('dispatches.create', compact('stocks', 'batches', 'receivers'));
+    }
+
+    /**
+     * Employés rattachés à un compte utilisateur actif ayant l'accès logistique
+     * (lecture au minimum) — candidats au rôle de récepteur désigné. La valeur
+     * retournée pour le <select> est l'id du COMPTE (users.id), car valider une
+     * réception suppose de se connecter (comparaison Auth::id()).
+     */
+    private function candidateReceivers()
+    {
+        $module = Module::where('slug', 'logistique')->first();
+        if (! $module) return collect();
+
+        $roleIds = ModulePermission::where('module_id', $module->id)
+            ->where('can_read', true)
+            ->pluck('role_id');
+
+        return Employee::query()
+            ->whereNotNull('user_id')
+            ->whereHas('user', fn ($q) => $q->whereIn('role_id', $roleIds)
+                ->where(fn ($w) => $w->whereNull('is_active')->orWhere('is_active', true)))
+            ->with('user:id,name')
+            ->orderBy('first_name')
+            ->get();
     }
 
     public function store(Request $request, CreateDispatch $action)
@@ -60,15 +93,17 @@ class DispatchController extends Controller
             'dispatch_date'           => 'required|date',
             'dispatch_time'           => 'nullable|date_format:H:i',
             'destination'             => 'required|string|max:255',
+            'intended_receiver_id'    => 'nullable|exists:users,id',
             'sale_id'                 => 'nullable|exists:sales,id',
             'notes'                   => 'nullable|string|max:1000',
             'items'                   => 'required|array|min:1',
-            'items.*.product_type'    => 'required|in:oeufs,volaille_vivante,volaille_abattue,fumier,aliment,materiel,autre',
+            // Taxonomie multiespèces (alignée sur les ventes).
+            'items.*.product_type'    => 'required|in:oeufs,animal_vif,carcasse,lait,fumier,aliment,produits_finis,materiel,autre,volaille_vivante,volaille_abattue',
             'items.*.product_name'    => 'required|string|max:255',
             'items.*.product_id'      => 'nullable|integer',
             'items.*.batch_id'        => 'nullable|integer|exists:batches,id',
             'items.*.quantity'        => 'required|numeric|min:0.01',
-            'items.*.unit'            => 'required|in:alveole,unite,kg,piece,sac,voyage',
+            'items.*.unit'            => 'required|in:alveole,unite,kg,piece,sac,voyage,tete,litre',
             'items.*.condition'       => 'nullable|in:bon,moyen,fragile',
         ]);
 
@@ -85,16 +120,29 @@ class DispatchController extends Controller
     {
         if (Gate::denies('logistique.L')) return back()->with('error', 'Accès restreint.');
 
-        $dispatch->load(['items', 'dispatcher', 'reception.items.dispatchItem', 'reception.receiver', 'discrepancyReport']);
+        $dispatch->load(['items', 'dispatcher', 'intendedReceiver', 'reception.items.dispatchItem', 'reception.receiver', 'discrepancyReport']);
 
         return view('dispatches.show', compact('dispatch'));
     }
 
     // ─── RÉCEPTION ───
 
+    /**
+     * Peut réceptionner : le récepteur DÉSIGNÉ à l'expédition, OU un responsable
+     * logistique.M en secours. (L'anti-fraude expéditeur ≠ récepteur reste
+     * appliquée dans ValidateReception.)
+     */
+    private function canReceive(Dispatch $dispatch): bool
+    {
+        return Gate::allows('logistique.M')
+            || ($dispatch->intended_receiver_id !== null && $dispatch->intended_receiver_id === Auth::id());
+    }
+
     public function showReceptionForm(Dispatch $dispatch)
     {
-        if (Gate::denies('logistique.C')) return back()->with('error', 'Action non autorisée.');
+        if (! $this->canReceive($dispatch)) {
+            return back()->with('error', "Réception réservée au récepteur désigné ou à un responsable logistique (droit M).");
+        }
 
         if ($dispatch->reception()->exists()) {
             return redirect()->route('dispatches.show', $dispatch)
@@ -108,7 +156,9 @@ class DispatchController extends Controller
 
     public function storeReception(Request $request, Dispatch $dispatch, ValidateReception $action)
     {
-        if (Gate::denies('logistique.C')) return back()->with('error', 'Action non autorisée.');
+        if (! $this->canReceive($dispatch)) {
+            return back()->with('error', "Réception réservée au récepteur désigné ou à un responsable logistique (droit M).");
+        }
 
         $validated = $request->validate([
             'reception_date'              => 'required|date',

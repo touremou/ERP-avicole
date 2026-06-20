@@ -4,6 +4,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+
 class Species extends Model
 {
     protected $fillable = [
@@ -42,6 +43,44 @@ class Species extends Model
     public function isVolaille(): bool  { return $this->family === 'volaille'; }
     public function isRuminant(): bool  { return in_array($this->family, ['petit_ruminant','grand_ruminant']); }
     public function isAquaculture(): bool { return $this->family === 'aquaculture'; }
+
+    /**
+     * Types de bâtiment ('buildings.type') compatibles avec cette espèce, en
+     * plus de 'mixte' (toujours autorisé).
+     *
+     * Retourne `null` pour les espèces avicoles (et toute espèce non
+     * référencée) : la compatibilité se résout alors par égalité directe
+     * entre le type de bâtiment et le slug du type de production visé
+     * (cf. config/livestock.php).
+     */
+    public function compatibleBuildingTypes(): ?array
+    {
+        return config('livestock.building_types.' . $this->slug);
+    }
+
+    /**
+     * Vérifie qu'un bâtiment peut accueillir un lot de cette espèce pour le
+     * type/phase de production visé.
+     *
+     * Source unique de vérité partagée par App\Http\Requests\Batch\StoreBatchRequest,
+     * UpdateBatchRequest et TransferBatchRequest. Un bâtiment 'mixte' accepte
+     * toujours. Pour les espèces référencées dans config('livestock.building_types')
+     * (non-volailles), l'habitat est dédié à l'ESPÈCE quelle que soit la phase.
+     * Pour les autres (volaille), on compare le type de bâtiment au slug du
+     * type de production visé.
+     */
+    public static function buildingIsCompatible(Building $building, ?self $species, string $targetType): bool
+    {
+        if ($building->type === 'mixte') {
+            return true;
+        }
+
+        $compatibleTypes = $species?->compatibleBuildingTypes();
+
+        return $compatibleTypes !== null
+            ? in_array($building->type, $compatibleTypes, true)
+            : $building->type === $targetType;
+    }
 
     /** Familles suivies via le GMQ (croissance pondérale + portées) */
     public function isGmqTracked(): bool

@@ -105,4 +105,21 @@ class ClientController extends Controller
         $client->delete();
         return redirect()->route('clients.index')->with('success', 'Client supprimé.');
     }
+
+    /**
+     * Référentiel clients pour la saisie hors-ligne (IndexedDB).
+     * Colonnes limitées : suffisant pour peupler le sélecteur de la vente rapide.
+     */
+    public function getOfflineClients(): \Illuminate\Http\JsonResponse
+    {
+        if (Gate::denies('commerce.L')) {
+            return response()->json(['error' => 'Forbidden'], 403);
+        }
+
+        return response()->json(
+            Client::active()
+                ->orderBy('name')
+                ->get(['id', 'name', 'phone', 'credit_limit', 'balance'])
+        );
+    }
 }

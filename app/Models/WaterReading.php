@@ -5,12 +5,13 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Traits\BelongsToFarm;
+use App\Models\Building;
 
 class WaterReading extends Model
 {
     use BelongsToFarm;
     protected $fillable = [
-        'farm_id', 'water_source_id', 'reading_date', 'user_id',
+        'farm_id', 'water_source_id', 'building_id', 'reading_date', 'user_id',
         'volume_consumed_liters', 'volume_added_liters',
         'quality_ph', 'chlorine_level', 'cost', 'notes',
     ];
@@ -27,6 +28,11 @@ class WaterReading extends Model
     public function source(): BelongsTo
     {
         return $this->belongsTo(WaterSource::class, 'water_source_id');
+    }
+
+    public function building(): BelongsTo
+    {
+        return $this->belongsTo(Building::class);
     }
 
     public function user(): BelongsTo

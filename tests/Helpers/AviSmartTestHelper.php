@@ -4,10 +4,12 @@ namespace Tests\Helpers;
 
 use App\Models\Building;
 use App\Models\Employee;
-use App\Models\Permission;
+use App\Models\Farm;
+use App\Models\Module;
 use App\Models\Provider;
 use App\Models\Role;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 
 trait AviSmartTestHelper
 {
@@ -18,30 +20,69 @@ trait AviSmartTestHelper
     protected Building $building;
     protected Employee $employee;
     protected Provider $provider;
+    protected Farm $farm;
 
+    /**
+     * Met en place les rôles RBAC sur l'architecture courante.
+     *
+     * La matrice `module_permissions` (Modules × Rôles) est la SEULE source
+     * de vérité des Gates (cf. AppServiceProvider) : chaque rôle reçoit une
+     * ligne par module, dérivée ici de `roles.permissions` (LCMS), pour
+     * reproduire en test l'état "matrice complète" garanti en production par
+     * les migrations 2026_06_10_000004 et 2026_06_14_000001. Le rôle "admin"
+     * reste bypassé partout via Gate::before.
+     */
     protected function setUpRbac(): void
     {
-        $permL = Permission::firstOrCreate(['name' => 'L'], ['description' => 'Lecture']);
-        $permC = Permission::firstOrCreate(['name' => 'C'], ['description' => 'Création']);
-        $permM = Permission::firstOrCreate(['name' => 'M'], ['description' => 'Modification']);
-        $permS = Permission::firstOrCreate(['name' => 'S'], ['description' => 'Suppression']);
+        $this->farm = Farm::firstOrCreate(
+            ['code' => 'FT-001'],
+            ['name' => 'Ferme Test', 'is_active' => true]
+        );
+        session(['current_farm_id' => $this->farm->id]);
 
-        $admin = Role::firstOrCreate(['name' => 'admin'], ['display_name' => 'Administrateur', 'icon' => '👑']);
-        $admin->permissions()->syncWithoutDetaching([$permL->id, $permC->id, $permM->id, $permS->id]);
+        $make = function (string $name, array $perms) {
+            $role = Role::firstOrCreate(
+                ['name' => $name],
+                ['label' => ucfirst($name), 'display_name' => ucfirst($name), 'permissions' => $perms]
+            );
 
-        $manager = Role::firstOrCreate(['name' => 'manager'], ['display_name' => 'Manager', 'icon' => '🛠️']);
-        $manager->permissions()->syncWithoutDetaching([$permL->id, $permC->id, $permM->id]);
+            $this->seedModuleMatrix($role, $perms);
 
-        $operator = Role::firstOrCreate(['name' => 'operateur'], ['display_name' => 'Opérateur', 'icon' => '📋']);
-        $operator->permissions()->syncWithoutDetaching([$permL->id, $permC->id]);
+            return $role;
+        };
 
-        $readonly = Role::firstOrCreate(['name' => 'visiteur'], ['display_name' => 'Visiteur', 'icon' => '👁️']);
-        $readonly->permissions()->syncWithoutDetaching([$permL->id]);
+        $admin    = $make('admin',    ['L', 'C', 'M', 'S']);
+        $manager  = $make('manager',  ['L', 'C', 'M']);
+        $operator = $make('operator', ['L', 'C']);
+        $viewer   = $make('viewer',   ['L']);
 
-        $this->adminUser = User::factory()->create(['role_id' => $admin->id]);
-        $this->managerUser = User::factory()->create(['role_id' => $manager->id]);
+        $this->adminUser    = User::factory()->create(['role_id' => $admin->id]);
+        $this->managerUser  = User::factory()->create(['role_id' => $manager->id]);
         $this->operatorUser = User::factory()->create(['role_id' => $operator->id]);
-        $this->readonlyUser = User::factory()->create(['role_id' => $readonly->id]);
+        $this->readonlyUser = User::factory()->create(['role_id' => $viewer->id]);
+    }
+
+    /**
+     * Donne au rôle une ligne `module_permissions` par module, à partir
+     * d'une matrice LCMS (L/C/M/S) appliquée uniformément à tous les modules.
+     */
+    protected function seedModuleMatrix(Role $role, array $perms): void
+    {
+        $now = now();
+
+        foreach (Module::pluck('id') as $moduleId) {
+            DB::table('module_permissions')->updateOrInsert(
+                ['role_id' => $role->id, 'module_id' => $moduleId],
+                [
+                    'can_read'   => in_array('L', $perms, true),
+                    'can_create' => in_array('C', $perms, true),
+                    'can_modify' => in_array('M', $perms, true),
+                    'can_delete' => in_array('S', $perms, true),
+                    'updated_at' => $now,
+                    'created_at' => $now,
+                ]
+            );
+        }
     }
 
     protected function setUpBaseData(): void

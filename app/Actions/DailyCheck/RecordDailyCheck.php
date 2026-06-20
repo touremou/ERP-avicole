@@ -31,6 +31,17 @@ class RecordDailyCheck
         return DB::transaction(function () use ($data) {
             $batch = Batch::findOrFail($data['batch_id']);
 
+            // ─── Normalisation de la date (cohérence updateOrCreate) ───
+            // La colonne check_date est persistée au format datetime
+            // (« Y-m-d 00:00:00 ») via le cast 'date'. Une comparaison avec la
+            // chaîne brute « Y-m-d » ne matchait jamais la ligne stockée : le
+            // pointage existant n'était pas retrouvé, et updateOrCreate tentait
+            // un INSERT → violation de contrainte UNIQUE (500) à chaque
+            // correction d'un pointage du jour. On fige donc une instance
+            // Carbon en début de journée, utilisée pour la recherche ET pour
+            // le updateOrCreate, afin que les deux formats coïncident.
+            $data['check_date'] = \Illuminate\Support\Carbon::parse($data['check_date'])->startOfDay();
+
             // ─── Chercher un pointage existant pour cette date ───
             $existing = DailyCheck::where('batch_id', $data['batch_id'])
                 ->where('check_date', $data['check_date'])
@@ -59,6 +70,19 @@ class RecordDailyCheck
                 }
             }
 
+            // Fumier : quantités avant/après pour compensation (ramassage
+            // ressaisi sur un pointage déjà existant à la même date).
+            $oldManure = (float) ($existing->manure_collected_kg ?? 0);
+            $newManure = (float) ($data['manure_collected_kg'] ?? 0);
+
+            // ─── Coût de revient de l'aliment consommé (snapshot CMP) ───
+            // On fige le coût moyen pondéré courant de l'article aliment afin
+            // de valoriser cette consommation dans la marge du lot, qu'il
+            // s'agisse d'aliment acheté ou produit à la provenderie.
+            if ($feedConsumed > 0) {
+                $data['feed_unit_cost'] = $this->resolveFeedUnitCost($feedType);
+            }
+
             // ─── Création ou mise à jour du pointage ───
             // Note : l'observer DailyCheckObserver gère l'impact sur current_quantity
             $check = DailyCheck::updateOrCreate(
@@ -81,8 +105,34 @@ class RecordDailyCheck
                 );
             }
 
+            // ─── Valorisation du fumier ramassé (sous-produit fertilisant) ───
+            app(SyncManureCollection::class)->execute($batch, $oldManure, $newManure);
+
             return $check;
         });
+    }
+
+    /**
+     * Coût moyen pondéré courant (par KG) de l'article aliment consommé.
+     * Retourne 0 si l'article n'a pas encore de valorisation.
+     */
+    private function resolveFeedUnitCost(string $feedType): float
+    {
+        $stock = self::findFeedStock($feedType);
+
+        return (float) ($stock?->last_unit_price ?? $stock?->unit_price ?? 0);
+    }
+
+    /**
+     * Recherche un article aliment par item_name ou feed_type (les deux colonnes
+     * peuvent porter la valeur selon la voie de création du stock).
+     */
+    private static function findFeedStock(string $feedType): ?Stock
+    {
+        $name = trim($feedType);
+        return Stock::where('category', Stock::CAT_CONSO)
+            ->where(fn ($q) => $q->where('item_name', $name)->orWhere('feed_type', $name))
+            ->first();
     }
 
     /**
@@ -92,10 +142,7 @@ class RecordDailyCheck
      */
     private function checkFeedStock(string $feedType, float $requested, ?DailyCheck $existing): void
     {
-        // 1. Utilisation de la nouvelle clé stricte 'feed_type'
-        $stock = Stock::where('feed_type', trim($feedType))
-            ->where('category', 'conso')
-            ->first();
+        $stock = self::findFeedStock($feedType);
 
         // 2. Conversion automatique en KG si le stock est géré en Sacs
         $availableKg = 0;

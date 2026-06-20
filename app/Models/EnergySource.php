@@ -95,14 +95,51 @@ class EnergySource extends Model
         return (int) floor($this->current_fuel_level / $avgDaily);
     }
 
+    /**
+     * Autonomie gasoil en heures de fonctionnement (stock / conso horaire
+     * moyenne sur les 7 derniers jours). Sert de comparaison directe au
+     * seuil paramétrable `energie.autonomy_alert_hours`.
+     */
+    public function getFuelAutonomyHoursAttribute(): ?int
+    {
+        if ($this->type !== 'groupe' || ! $this->current_fuel_level) return null;
+
+        $recentReadings = $this->readings()
+            ->where('reading_date', '>=', now()->subDays(7))
+            ->whereNotNull('fuel_consumed_liters')
+            ->where('hours_run', '>', 0)
+            ->get(['fuel_consumed_liters', 'hours_run']);
+
+        $totalFuel  = $recentReadings->sum('fuel_consumed_liters');
+        $totalHours = $recentReadings->sum('hours_run');
+
+        if ($totalFuel <= 0 || $totalHours <= 0) return null;
+
+        $litersPerHour = $totalFuel / $totalHours;
+
+        return $litersPerHour > 0 ? (int) floor($this->current_fuel_level / $litersPerHour) : null;
+    }
+
     public function getNeedsMaintenanceAttribute(): bool
     {
         return $this->hours_before_maintenance <= 20;
     }
 
+    /**
+     * Gasoil critique : autonomie de fonctionnement (en heures) sous le
+     * seuil paramétrable `energie.autonomy_alert_hours` (défaut 24h).
+     * À défaut de conso horaire connue, repli sur l'autonomie en jours.
+     */
     public function getIsFuelLowAttribute(): bool
     {
         if ($this->type !== 'groupe') return false;
-        return ($this->fuel_autonomy_days ?? 99) <= 3;
+
+        $alertHours = (float) setting('energie.autonomy_alert_hours', 24);
+
+        if ($this->fuel_autonomy_hours !== null) {
+            return $this->fuel_autonomy_hours <= $alertHours;
+        }
+
+        return ($this->fuel_autonomy_days ?? 99) <= ceil($alertHours / 24);
     }
 }

@@ -13,7 +13,7 @@ class StoreFormulaRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return Gate::allows('C');
+        return Gate::allows('provenderie.C');
     }
 
     public function rules(): array
@@ -22,7 +22,9 @@ class StoreFormulaRequest extends FormRequest
             'name'                     => 'required|string|max:255',
             'code'                     => 'required|string|max:50|unique:formulas,code',
             'target_type'              => 'required|string|max:100',
-            'poultry_type'             => 'nullable|string|in:Chair,Ponte',
+            'species_id'               => 'nullable|exists:species,id',
+            'production_type_id'       => 'nullable|exists:production_types,id',
+            'poultry_type'             => 'nullable|string|max:50',
             'total_batch_weight'       => 'required|numeric|min:1',
             'instructions'             => 'nullable|string|max:2000',
             'ingredients'              => 'required|array|min:1',

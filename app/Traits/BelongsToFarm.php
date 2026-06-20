@@ -37,9 +37,14 @@ trait BelongsToFarm
         static::addGlobalScope(new FarmScope());
 
         // ─── AUTO-FILL : assigner farm_id à la création ───
+        // On privilégie la ferme courante (session) ; en son absence (seeder,
+        // factory, console, ou tout contexte hors HTTP) on retombe sur la ferme
+        // par défaut afin de ne JAMAIS créer d'enregistrement orphelin
+        // (farm_id NULL) — sinon le décompte par ferme (cf. Multi-Sites) ignore
+        // ces enregistrements puisqu'il filtre strictement sur farm_id.
         static::creating(function ($model) {
             if (empty($model->farm_id) && \Illuminate\Support\Facades\Schema::hasColumn($model->getTable(), 'farm_id')) {
-                $model->farm_id = session('current_farm_id');
+                $model->farm_id = session('current_farm_id') ?: Farm::defaultId();
             }
         });
     }

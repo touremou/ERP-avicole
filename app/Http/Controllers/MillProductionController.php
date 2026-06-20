@@ -34,7 +34,13 @@ class MillProductionController extends Controller
     {
         if (Gate::denies('provenderie.C')) return back()->with('error', 'Privilèges insuffisants.');
 
-        $formulas = Formula::where('is_active', true)->orderBy('name')->get();
+        // Eager-load items + rawMaterial pour éviter le N+1 et garantir que
+        // les matières premières sont disponibles dans la vue sans requête
+        // supplémentaire (une MP supprimée vaudra null, géré dans la vue).
+        $formulas = Formula::where('is_active', true)
+            ->with('items.rawMaterial')
+            ->orderBy('name')
+            ->get();
         $machines = MillMachine::where('status', 'Opérationnel')->get();
         $employees = Employee::where('status', 'Actif')->orderBy('last_name')->get();
 

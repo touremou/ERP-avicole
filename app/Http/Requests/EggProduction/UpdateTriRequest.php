@@ -19,18 +19,21 @@ class UpdateTriRequest extends FormRequest
 
     public function rules(): array
     {
-        return [
-            'broken_eggs'  => 'required|integer|min:0',
-            'small_eggs'   => 'required|integer|min:0',
-            'grade_xl_alv' => 'nullable|integer|min:0',
-            'grade_xl_uni' => 'nullable|integer|min:0|max:' . (setting('general.eggs_per_tray', 30) - 1),
-            'grade_l_alv'  => 'nullable|integer|min:0',
-            'grade_l_uni'  => 'nullable|integer|min:0|max:' . (setting('general.eggs_per_tray', 30) - 1),
-            'grade_m_alv'  => 'nullable|integer|min:0',
-            'grade_m_uni'  => 'nullable|integer|min:0|max:' . (setting('general.eggs_per_tray', 30) - 1),
-            'grade_s_alv'  => 'nullable|integer|min:0',
-            'grade_s_uni'  => 'nullable|integer|min:0|max:' . (setting('general.eggs_per_tray', 30) - 1),
+        $maxUni = setting('general.eggs_per_tray', 30) - 1;
+
+        $rules = [
+            'broken_eggs' => 'required|integer|min:0',
+            'small_eggs'  => 'required|integer|min:0',
         ];
+
+        // Règles générées pour les seuls calibres actifs (paramètre egg_grades).
+        foreach (EggProduction::gradeCodes() as $code) {
+            $g = strtolower($code);
+            $rules["grade_{$g}_alv"] = 'nullable|integer|min:0';
+            $rules["grade_{$g}_uni"] = 'nullable|integer|min:0|max:' . $maxUni;
+        }
+
+        return $rules;
     }
 
     /**
@@ -46,7 +49,8 @@ class UpdateTriRequest extends FormRequest
             if (! $prod) return;
 
             $totalTriUnites = 0;
-            foreach (['xl', 'l', 'm', 's'] as $g) {
+            foreach (EggProduction::gradeCodes() as $code) {
+                $g = strtolower($code);
                 $totalTriUnites += ((int) $this->input("grade_{$g}_alv", 0) * setting('general.eggs_per_tray', 30))
                                  + (int) $this->input("grade_{$g}_uni", 0);
             }

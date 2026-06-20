@@ -19,12 +19,14 @@ class CreateFeedPurchase
             $consoType = $metadata['conso_type'] ?? 'Aliment';
 
             // 1. GESTION DYNAMIQUE DU RÉFÉRENTIEL STOCK
-            Stock::firstOrCreate(
-                ['item_name' => trim($data['feed_type']), 'category' => 'conso'],
+            $stockRef = trim($data['feed_type']);
+            $stockItem = Stock::firstOrCreate(
+                ['item_name' => $stockRef, 'category' => 'conso'],
                 [
+                    'feed_type'        => $stockRef,
                     'unit'             => ($data['unit'] === 'Sac') ? 'KG' : $data['unit'],
                     'current_quantity' => 0,
-                    'alert_threshold'  => 100, // Seuil de sécurité par défaut
+                    'alert_threshold'  => 100,
                     'metadata'         => [
                         'poultry_type' => $metadata['poultry_type'] ?? $batch->type,
                         'conso_type'   => $consoType,
@@ -32,6 +34,10 @@ class CreateFeedPurchase
                     ]
                 ]
             );
+            // Backfill pour les enregistrements antérieurs sans feed_type
+            if (! $stockItem->feed_type) {
+                $stockItem->update(['feed_type' => $stockRef]);
+            }
 
             // 2. ENREGISTREMENT DE LA TRANSACTION FINANCIÈRE
             $realUnitPrice = $data['unit_price'] / max($data['quantity'], 1);
@@ -41,14 +47,25 @@ class CreateFeedPurchase
                 'total_price' => $data['unit_price'],
             ]));
 
-            // 3. SYNCHRONISATION PHYSIQUE DU MAGASIN
+            // 3. SYNCHRONISATION PHYSIQUE DU MAGASIN (valorisée au prix d'achat)
+            // Coût par unité PIVOT (KG) : prix total ÷ quantité normalisée, afin
+            // que le CMP de l'article reflète le coût réel d'acquisition.
+            $bagWeight       = (float) ($metadata['bag_weight'] ?? 50);
+            $normalizedQty   = ($data['unit'] === 'Sac')
+                ? (float) $data['quantity'] * $bagWeight
+                : (float) $data['quantity'];
+            $costPerPivotKg  = $normalizedQty > 0
+                ? (float) $purchase->total_price / $normalizedQty
+                : 0.0;
+
             $synced = StockIntegrationService::syncMovement(
-                $purchase->feed_type, 
-                'conso', 
-                (float)$data['quantity'], 
-                'in', 
+                $purchase->feed_type,
+                'conso',
+                (float)$data['quantity'],
+                'in',
                 "Ravitaillement {$data['unit']} - Lot {$batch->code} ({$consoType})",
-                $data['unit'] 
+                $data['unit'],
+                $costPerPivotKg
             );
 
             if (!$synced) {

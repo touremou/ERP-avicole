@@ -4,13 +4,13 @@
             <div class="flex items-center gap-4">
                 <a href="{{ route('buildings.index') }}" class="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-500 hover:text-slate-800 rounded-xl transition-all shadow-sm group no-underline">
                     <i class="fas fa-chevron-left group-hover:-translate-x-1 transition-transform"></i>
-                    <span class="text-[10px] font-black uppercase italic tracking-widest">Retour au parc</span>
+                    <span class="text-[10px] font-black uppercase italic tracking-widest">{{ __("Retour au parc") }}</span>
                 </a>
                 <div>
                     <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">
                         {{ __('Configuration :') }} {{ $building->name }}
                     </h2>
-                    <p class="text-[9px] font-bold text-orange-500 uppercase mt-1 tracking-[0.2em] italic">Maintenance technique</p>
+                    <p class="text-[9px] font-bold text-orange-500 uppercase mt-1 tracking-[0.2em] italic">{{ __("Maintenance technique") }}</p>
                 </div>
             </div>
             <div class="hidden md:block">
@@ -40,7 +40,7 @@
                 
                 {{-- NOM DU BÂTIMENT --}}
                 <div class="relative z-10">
-                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-3 ml-1 tracking-widest italic">Désignation Officielle</label>
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-3 ml-1 tracking-widest italic">{{ __("Désignation Officielle") }}</label>
                     <input type="text" name="name" value="{{ old('name', $building->name) }}" required 
                            class="w-full px-6 py-4 bg-slate-50 rounded-2xl font-black text-slate-700 outline-none border-2 border-transparent focus:border-orange-500 transition shadow-inner italic">
                 </div>
@@ -49,27 +49,28 @@
                     {{-- TYPE DE PRODUCTION (VERROUILLÉ SI OCCUPÉ) --}}
                     <div>
                         <label class="block text-[10px] font-black text-slate-400 uppercase mb-3 ml-1 tracking-widest italic leading-none">
-                            Vocation / Type 
+                            {{ __("Vocation / Type") }}
                             @if($isOccupied) <i class="fas fa-lock ml-1 text-orange-500"></i> @endif
                         </label>
                         
                         @if($isOccupied)
                             <input type="hidden" name="type" value="{{ $building->type }}">
                             <div class="w-full px-6 py-4 rounded-2xl bg-orange-50 border border-orange-100 font-black text-orange-600 text-[10px] uppercase italic flex items-center gap-2">
-                                <i class="fas fa-info-circle"></i> Verrouillé : Bande active en cours
+                                <i class="fas fa-info-circle"></i> {{ __("Verrouillé : Bande active en cours") }}
                             </div>
                         @else
                             <select name="type" class="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-orange-500 outline-none font-black text-slate-700 appearance-none shadow-inner uppercase text-[10px] italic cursor-pointer">
-                                <option value="mixte" {{ old('type', $building->type) == 'mixte' ? 'selected' : '' }}>🔄 Mixte (TOUT TYPE)</option>
-                                <option value="poussiniere" {{ old('type', $building->type) == 'poussiniere' ? 'selected' : '' }}>🐣 Poussinière</option>
-                                <option value="chair" {{ old('type', $building->type) == 'chair' ? 'selected' : '' }}>🍗 Poulet de chair</option>
-                                <option value="ponte" {{ old('type', $building->type) == 'ponte' ? 'selected' : '' }}>🥚 Pondeuses</option>
-                                <option value="reproducteur" {{ old('type', $building->type) == 'reproducteur' ? 'selected' : '' }}>🧬 Reproducteurs</option>
-                                <option value="bergerie" {{ old('type', $building->type) == 'bergerie' ? 'selected' : '' }}>🐑 Bergerie (Ovins)</option>
-                                <option value="chevrerie" {{ old('type', $building->type) == 'chevrerie' ? 'selected' : '' }}>🐐 Chèvrerie (Caprins)</option>
-                                <option value="bassin" {{ old('type', $building->type) == 'bassin' ? 'selected' : '' }}>🐟 Bassin (Pisciculture)</option>
-                                <option value="lapiniere" {{ old('type', $building->type) == 'lapiniere' ? 'selected' : '' }}>🐇 Lapinière</option>
-                                <option value="porcherie" {{ old('type', $building->type) == 'porcherie' ? 'selected' : '' }}>🐷 Porcherie</option>
+                                <option value="mixte" {{ old('type', $building->type) == 'mixte' ? 'selected' : '' }}>🔄 {{ __("Mixte (TOUT TYPE)") }}</option>
+                                <option value="poussiniere" {{ old('type', $building->type) == 'poussiniere' ? 'selected' : '' }}>🐣 {{ __("Poussinière") }}</option>
+                                <option value="chair" {{ old('type', $building->type) == 'chair' ? 'selected' : '' }}>🍗 {{ __("Poulet de chair") }}</option>
+                                <option value="ponte" {{ old('type', $building->type) == 'ponte' ? 'selected' : '' }}>🥚 {{ __("Pondeuses") }}</option>
+                                <option value="reproducteur" {{ old('type', $building->type) == 'reproducteur' ? 'selected' : '' }}>🧬 {{ __("Reproducteurs") }}</option>
+                                <option value="bergerie" {{ old('type', $building->type) == 'bergerie' ? 'selected' : '' }}>🐑 {{ __("Bergerie (Ovins)") }}</option>
+                                <option value="chevrerie" {{ old('type', $building->type) == 'chevrerie' ? 'selected' : '' }}>🐐 {{ __("Chèvrerie (Caprins)") }}</option>
+                                <option value="etable" {{ old('type', $building->type) == 'etable' ? 'selected' : '' }}>🐄 {{ __("Étable (Bovins)") }}</option>
+                                <option value="bassin" {{ old('type', $building->type) == 'bassin' ? 'selected' : '' }}>🐟 {{ __("Bassin (Pisciculture)") }}</option>
+                                <option value="lapiniere" {{ old('type', $building->type) == 'lapiniere' ? 'selected' : '' }}>🐇 {{ __("Lapinière") }}</option>
+                                <option value="porcherie" {{ old('type', $building->type) == 'porcherie' ? 'selected' : '' }}>🐷 {{ __("Porcherie") }}</option>
                             </select>
                         @endif
                     </div>
@@ -77,20 +78,21 @@
                     {{-- ÉTAT SANITAIRE --}}
                     <div>
                         <label class="block text-[10px] font-black text-slate-400 uppercase mb-3 ml-1 tracking-widest italic leading-none">
-                            Statut Opérationnel
+                            {{ __("Statut Opérationnel") }}
                             @if($isOccupied) <i class="fas fa-lock ml-1 text-orange-500"></i> @endif
                         </label>
                         <select name="status" class="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-orange-500 outline-none font-black text-slate-700 appearance-none shadow-inner uppercase text-[10px] italic cursor-pointer">
                             {{-- Si occupé, on désactive l'option Vide pour coller à la règle métier --}}
-                            <option value="Vide" {{ old('status', $building->status) == 'Vide' ? 'selected' : '' }} {{ $isOccupied ? 'disabled' : '' }}>🟢 Vide / Désinfecté</option>
-                            <option value="Occupé" {{ old('status', $building->status) == 'Occupé' ? 'selected' : '' }}>🔴 Occupé</option>
-                            <option value="En désinfection" {{ old('status', $building->status) == 'En désinfection' ? 'selected' : '' }}>🟠 En désinfection</option>
+                            <option value="{{ \App\Models\Building::STATUS_VIDE }}" {{ old('status', $building->status) == \App\Models\Building::STATUS_VIDE ? 'selected' : '' }} {{ $isOccupied ? 'disabled' : '' }}>🟢 {{ __("Vide / Désinfecté") }}</option>
+                            <option value="{{ \App\Models\Building::STATUS_OCCUPE }}" {{ old('status', $building->status) == \App\Models\Building::STATUS_OCCUPE ? 'selected' : '' }}>🔴 {{ __("Occupé") }}</option>
+                            <option value="{{ \App\Models\Building::STATUS_DESINFECTION }}" {{ old('status', $building->status) == \App\Models\Building::STATUS_DESINFECTION ? 'selected' : '' }}>🟠 {{ __("En désinfection") }}</option>
+                            <option value="{{ \App\Models\Building::STATUS_MAINTENANCE }}" {{ old('status', $building->status) == \App\Models\Building::STATUS_MAINTENANCE ? 'selected' : '' }} {{ $isOccupied ? 'disabled' : '' }}>🛠️ {{ __("Maintenance technique") }}</option>
                         </select>
                     </div>
 
                     {{-- SURFACE --}}
                     <div class="bg-blue-50 p-6 rounded-[2.5rem] border border-blue-100 shadow-sm">
-                        <label class="block text-[10px] font-black text-blue-400 uppercase mb-2 ml-1 italic">Surface (m²)</label>
+                        <label class="block text-[10px] font-black text-blue-400 uppercase mb-2 ml-1 italic">{{ __("Surface (m²)") }}</label>
                         <div class="flex items-end gap-2">
                             <input type="number" min="0" name="surface" value="{{ old('surface', $building->surface) }}" step="0.1" required 
                                    class="w-full bg-transparent text-4xl font-black text-blue-700 outline-none border-none p-0 focus:ring-0">
@@ -100,11 +102,11 @@
 
                     {{-- CAPACITÉ --}}
                     <div class="bg-yellow-50 p-6 rounded-[2.5rem] border border-yellow-100 shadow-sm">
-                        <label class="block text-[10px] font-black text-yellow-600 uppercase mb-2 ml-1 italic">Capacité (Sujets)</label>
+                        <label class="block text-[10px] font-black text-yellow-600 uppercase mb-2 ml-1 italic">{{ __("Capacité (Sujets)") }}</label>
                         <div class="flex items-end gap-2">
                             <input type="number" min="0" name="capacity" value="{{ old('capacity', $building->capacity) }}" required 
                                    class="w-full bg-transparent text-4xl font-black text-yellow-700 outline-none border-none p-0 focus:ring-0">
-                            <span class="text-yellow-400 font-black text-xs mb-1 italic uppercase">Têtes</span>
+                            <span class="text-yellow-400 font-black text-xs mb-1 italic uppercase">{{ __("Têtes") }}</span>
                         </div>
                     </div>
                 </div>
@@ -112,17 +114,17 @@
                 {{-- ACTIONS --}}
                 <div class="flex flex-col md:flex-row gap-4 pt-6">
                     <a href="{{ route('buildings.index') }}" class="flex-1 bg-white border-2 border-slate-100 text-slate-400 font-black py-6 rounded-[2rem] shadow-sm hover:bg-slate-50 transition-all text-center uppercase tracking-widest text-[10px] italic flex items-center justify-center gap-2 no-underline">
-                        <i class="fas fa-times"></i> Annuler
+                        <i class="fas fa-times"></i> {{ __("Annuler") }}
                     </a>
                     
                     @can('elevage.M')
                     <button type="submit" class="flex-[2] bg-slate-900 text-white font-black py-6 rounded-[2rem] hover:bg-orange-600 transition-all uppercase tracking-[0.2em] text-[10px] italic shadow-xl group cursor-pointer border-none">
                         <i class="fas fa-sync-alt mr-2 group-hover:rotate-180 transition-transform duration-700"></i>
-                        Enregistrer les modifications
+                        {{ __("Enregistrer les modifications") }}
                     </button>
                     @else
                     <div class="flex-[2] bg-slate-100 text-slate-400 font-black py-6 rounded-[2rem] text-center uppercase tracking-widest text-[10px] italic flex items-center justify-center gap-2 cursor-not-allowed">
-                        <i class="fas fa-lock"></i> Modification restreinte
+                        <i class="fas fa-lock"></i> {{ __("Modification restreinte") }}
                     </div>
                     @endcan
                 </div>

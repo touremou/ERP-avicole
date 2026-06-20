@@ -33,35 +33,56 @@ class DailyCheckExtension extends Model
         return $this->belongsTo(DailyCheck::class);
     }
 
-    /** Vérifie les alertes qualité eau (pisciculture) */
+    /**
+     * Vérifie les alertes qualité eau (pisciculture).
+     *
+     * Les seuils sont pilotés par Paramètres > Pisciculture, ce qui permet
+     * d'adapter les niveaux d'alerte aux espèces et conditions locales.
+     * Les seuils "critique" sont dérivés des seuils configurés (qui
+     * représentent le niveau "vigilance"), avec une marge de sécurité fixe.
+     */
     public function getWaterAlerts(): array
     {
         $alerts = [];
 
+        $phMin = (float) Setting::get('pisciculture.ph_min', 6.5);
+        $phMax = (float) Setting::get('pisciculture.ph_max', 8.5);
+        $o2Alert = (float) Setting::get('pisciculture.o2_alert', 4);
+        $nh3Alert = (float) Setting::get('pisciculture.ammonia_alert', 1);
+        $tempMin = (float) Setting::get('pisciculture.temp_min', 25);
+        $tempMax = (float) Setting::get('pisciculture.temp_max', 32);
+
         if ($this->water_ph !== null) {
             $ph = (float) $this->water_ph;
-            if ($ph < 6.0 || $ph > 9.0) {
-                $alerts[] = ['level' => 'critical', 'metric' => 'pH', 'value' => $ph, 'message' => "pH {$ph} critique (hors 6.0–9.0)"];
-            } elseif ($ph < 6.5 || $ph > 8.5) {
-                $alerts[] = ['level' => 'warning', 'metric' => 'pH', 'value' => $ph, 'message' => "pH {$ph} hors plage optimale (6.5–8.5)"];
+            if ($ph < $phMin - 0.5 || $ph > $phMax + 0.5) {
+                $alerts[] = ['level' => 'critical', 'metric' => 'pH', 'value' => $ph, 'message' => "pH {$ph} critique (hors {$phMin}–{$phMax})"];
+            } elseif ($ph < $phMin || $ph > $phMax) {
+                $alerts[] = ['level' => 'warning', 'metric' => 'pH', 'value' => $ph, 'message' => "pH {$ph} hors plage optimale ({$phMin}–{$phMax})"];
             }
         }
 
         if ($this->water_o2_ppm !== null) {
             $o2 = (float) $this->water_o2_ppm;
-            if ($o2 < 3.0) {
-                $alerts[] = ['level' => 'critical', 'metric' => 'O₂', 'value' => $o2, 'message' => "O₂ {$o2} ppm — risque d'asphyxie (< 3 ppm)"];
-            } elseif ($o2 < 5.0) {
-                $alerts[] = ['level' => 'warning', 'metric' => 'O₂', 'value' => $o2, 'message' => "O₂ {$o2} ppm — zone de vigilance (< 5 ppm)"];
+            if ($o2 < $o2Alert) {
+                $alerts[] = ['level' => 'critical', 'metric' => 'O₂', 'value' => $o2, 'message' => "O₂ {$o2} mg/L — risque d'asphyxie (< {$o2Alert} mg/L)"];
+            } elseif ($o2 < $o2Alert + 1) {
+                $alerts[] = ['level' => 'warning', 'metric' => 'O₂', 'value' => $o2, 'message' => "O₂ {$o2} mg/L — zone de vigilance (< " . ($o2Alert + 1) . " mg/L)"];
             }
         }
 
         if ($this->water_ammonia_ppm !== null) {
             $nh3 = (float) $this->water_ammonia_ppm;
-            if ($nh3 > 1.0) {
-                $alerts[] = ['level' => 'critical', 'metric' => 'NH₃', 'value' => $nh3, 'message' => "Ammoniaque {$nh3} ppm — risque d'intoxication (> 1 ppm)"];
-            } elseif ($nh3 > 0.5) {
-                $alerts[] = ['level' => 'warning', 'metric' => 'NH₃', 'value' => $nh3, 'message' => "Ammoniaque {$nh3} ppm — vigilance (> 0.5 ppm)"];
+            if ($nh3 > $nh3Alert) {
+                $alerts[] = ['level' => 'critical', 'metric' => 'NH₃', 'value' => $nh3, 'message' => "Ammoniaque {$nh3} mg/L — risque d'intoxication (> {$nh3Alert} mg/L)"];
+            } elseif ($nh3 > $nh3Alert / 2) {
+                $alerts[] = ['level' => 'warning', 'metric' => 'NH₃', 'value' => $nh3, 'message' => "Ammoniaque {$nh3} mg/L — vigilance (> " . ($nh3Alert / 2) . " mg/L)"];
+            }
+        }
+
+        if ($this->water_temp !== null) {
+            $temp = (float) $this->water_temp;
+            if ($temp < $tempMin || $temp > $tempMax) {
+                $alerts[] = ['level' => 'warning', 'metric' => 'Température', 'value' => $temp, 'message' => "Température {$temp}°C hors plage optimale ({$tempMin}–{$tempMax}°C)"];
             }
         }
 

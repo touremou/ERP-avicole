@@ -7,6 +7,7 @@ use App\Models\EmployeeLeave;
 use App\Models\PayrollPeriod;
 use App\Models\Payslip;
 use App\Models\PayslipLine;
+use App\Services\NotificationHub;
 use App\Services\PayrollService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -19,7 +20,7 @@ class PayrollController extends Controller
 
     public function index()
     {
-        if (Gate::denies('rh.L')) return redirect()->route('dashboard')->with('error', 'Accès restreint.');
+        if (Gate::denies('annuaire.L')) return redirect()->route('dashboard')->with('error', 'Accès restreint.');
 
         $periods = PayrollPeriod::withCount('payslips')
             ->orderByDesc('year')->orderByDesc('month')
@@ -33,7 +34,7 @@ class PayrollController extends Controller
 
     public function createPeriod(Request $request)
     {
-        if (Gate::denies('rh.C')) return back()->with('error', 'Non autorisé.');
+        if (Gate::denies('annuaire.C')) return back()->with('error', 'Non autorisé.');
 
         $validated = $request->validate([
             'year'  => 'required|integer|min:2024|max:2030',
@@ -59,7 +60,7 @@ class PayrollController extends Controller
 
     public function show(PayrollPeriod $period)
     {
-        if (Gate::denies('rh.L')) return back()->with('error', 'Accès restreint.');
+        if (Gate::denies('annuaire.L')) return back()->with('error', 'Accès restreint.');
 
         $period->load(['payslips.employee', 'payslips.lines']);
 
@@ -78,7 +79,7 @@ class PayrollController extends Controller
 
     public function generate(PayrollPeriod $period, PayrollService $service)
     {
-        if (Gate::denies('rh.M')) return back()->with('error', 'Non autorisé.');
+        if (Gate::denies('annuaire.M')) return back()->with('error', 'Non autorisé.');
 
         if ($period->status === 'paye') {
             return back()->with('error', 'Cette période est déjà payée et verrouillée.');
@@ -91,10 +92,10 @@ class PayrollController extends Controller
 
     public function addLine(Request $request, Payslip $payslip)
     {
-        if (Gate::denies('rh.M')) return back()->with('error', 'Non autorisé.');
+        if (Gate::denies('annuaire.M')) return back()->with('error', 'Non autorisé.');
 
-        if ($payslip->period->status === 'paye') {
-            return back()->with('error', 'Période verrouillée.');
+        if ($payslip->isLocked()) {
+            return back()->with('error', 'Bulletin déjà payé : aucune prime ni déduction ne peut être ajoutée.');
         }
 
         $validated = $request->validate([
@@ -111,11 +112,52 @@ class PayrollController extends Controller
         return back()->with('success', "{$label} \"{$validated['label']}\" ajoutée : " . number_format($validated['amount']) . " GNF.");
     }
 
+    /**
+     * Enregistre des heures supplémentaires : crée/maj une prime calculée au
+     * taux horaire majoré (paramètre rh.overtime_rate). Base mensuelle de
+     * référence : 26 jours × 8 h = 208 h.
+     */
+    public function recordOvertime(Request $request, Payslip $payslip)
+    {
+        if (Gate::denies('annuaire.M')) return back()->with('error', 'Non autorisé.');
+
+        if ($payslip->isLocked()) {
+            return back()->with('error', 'Bulletin déjà payé : impossible d\'enregistrer des heures supplémentaires.');
+        }
+
+        $validated = $request->validate([
+            'hours' => 'required|numeric|min:0.5|max:300',
+        ]);
+
+        $rate       = (float) setting('rh.overtime_rate', 1.5);
+        $hourlyRate = (float) $payslip->base_salary / 208;
+        $amount     = (int) round($hourlyRate * $validated['hours'] * $rate);
+
+        PayslipLine::updateOrCreate(
+            ['payslip_id' => $payslip->id, 'category' => 'heures_sup'],
+            [
+                'type'   => 'prime',
+                'label'  => "Heures sup. ({$validated['hours']} h × {$rate})",
+                'amount' => $amount,
+            ]
+        );
+
+        $payslip->update(['overtime_hours' => $validated['hours']]);
+        $payslip->recalculate();
+
+        return back()->with('success', "Heures sup. enregistrées : {$validated['hours']} h → +" . number_format($amount) . ' GNF.');
+    }
+
     public function removeLine(PayslipLine $line)
     {
-        if (Gate::denies('rh.M')) return back()->with('error', 'Non autorisé.');
+        if (Gate::denies('annuaire.M')) return back()->with('error', 'Non autorisé.');
 
         $payslip = $line->payslip;
+
+        if ($payslip->isLocked()) {
+            return back()->with('error', 'Bulletin déjà payé : ses lignes ne peuvent plus être supprimées.');
+        }
+
         $line->delete();
         $payslip->recalculate();
 
@@ -124,7 +166,7 @@ class PayrollController extends Controller
 
     public function markPaid(Request $request, Payslip $payslip)
     {
-        if (Gate::denies('rh.M')) return back()->with('error', 'Non autorisé.');
+        if (Gate::denies('annuaire.M')) return back()->with('error', 'Non autorisé.');
 
         $validated = $request->validate([
             'payment_method'    => 'required|in:especes,orange_money,virement',
@@ -143,7 +185,7 @@ class PayrollController extends Controller
 
     public function validatePeriod(PayrollPeriod $period)
     {
-        if (Gate::denies('rh.S')) return back()->with('error', 'Validation réservée aux administrateurs.');
+        if (Gate::denies('annuaire.S')) return back()->with('error', 'Validation réservée aux administrateurs.');
 
         $period->update([
             'status'       => 'valide',
@@ -158,7 +200,7 @@ class PayrollController extends Controller
 
     public function leaves()
     {
-        if (Gate::denies('rh.L')) return back()->with('error', 'Accès restreint.');
+        if (Gate::denies('annuaire.L')) return back()->with('error', 'Accès restreint.');
 
         $leaves = EmployeeLeave::with('employee')
             ->orderByDesc('start_date')
@@ -178,7 +220,7 @@ class PayrollController extends Controller
 
     public function storeLeave(Request $request)
     {
-        if (Gate::denies('rh.C')) return back()->with('error', 'Non autorisé.');
+        if (Gate::denies('annuaire.C')) return back()->with('error', 'Non autorisé.');
 
         $validated = $request->validate([
             'employee_id' => 'required|exists:employees,id',
@@ -190,29 +232,131 @@ class PayrollController extends Controller
 
         $days = Carbon::parse($validated['start_date'])->diffInDays(Carbon::parse($validated['end_date'])) + 1;
 
-        EmployeeLeave::create(array_merge($validated, [
-            'days_count'  => $days,
-            'status'      => 'approuve',
-            'approved_by' => Auth::id(),
+        // Habilité (RH / Manager / Admin = droit annuaire.S) : la saisie vaut
+        // approbation immédiate. Sinon, c'est une simple demande à valider.
+        $autoApprove = Gate::allows('annuaire.S');
+
+        $leave = EmployeeLeave::create(array_merge($validated, [
+            'days_count'   => $days,
+            'status'       => $autoApprove ? 'approuve' : 'demande',
+            'requested_by' => Auth::id(),
+            'approved_by'  => $autoApprove ? Auth::id() : null,
+            'approved_at'  => $autoApprove ? now() : null,
         ]));
 
-        // Mettre à jour le solde congés si congé annuel
-        if ($validated['type'] === 'conge_annuel') {
-            $emp = Employee::find($validated['employee_id']);
-            if ($emp && \Illuminate\Support\Facades\Schema::hasColumn('employees', 'annual_leave_balance')) {
-                $emp->decrement('annual_leave_balance', $days);
-            }
+        if ($autoApprove) {
+            $this->applyLeaveApproval($leave);
+            return back()->with('success', "Congé approuvé : {$days} jours.");
         }
 
-        // Mettre à jour le statut employé
-        Employee::where('id', $validated['employee_id'])->update(['status' => 'Congé']);
+        // Notifier les responsables RH de la nouvelle demande
+        rescue(fn() => app(NotificationHub::class)->notifyLeaveRequested($leave));
 
-        return back()->with('success', "Congé enregistré : {$days} jours.");
+        return back()->with('success', "Demande de congé enregistrée ({$days} jours) — en attente d'approbation.");
+    }
+
+    /**
+     * Approuve une demande de congé (réservé aux habilités, droit S).
+     */
+    public function approveLeave(EmployeeLeave $leave)
+    {
+        if (Gate::denies('annuaire.S')) return back()->with('error', "Approbation réservée aux responsables RH (droit S).");
+
+        if ($leave->status !== 'demande') {
+            return back()->with('error', 'Cette demande a déjà été traitée.');
+        }
+
+        $leave->update([
+            'status'      => 'approuve',
+            'approved_by' => Auth::id(),
+            'approved_at' => now(),
+        ]);
+        $this->applyLeaveApproval($leave);
+
+        rescue(fn() => app(NotificationHub::class)->notifyLeaveApproved($leave->fresh()));
+
+        return back()->with('success', "Congé de {$leave->employee->first_name} approuvé.");
+    }
+
+    /**
+     * Refuse une demande de congé (réservé aux habilités, droit S).
+     */
+    public function rejectLeave(Request $request, EmployeeLeave $leave)
+    {
+        if (Gate::denies('annuaire.S')) return back()->with('error', "Refus réservé aux responsables RH (droit S).");
+
+        if ($leave->status !== 'demande') {
+            return back()->with('error', 'Cette demande a déjà été traitée.');
+        }
+
+        $validated = $request->validate(['rejection_reason' => 'required|string|max:500']);
+
+        $leave->update([
+            'status'           => 'refuse',
+            'approved_by'      => Auth::id(),
+            'rejection_reason' => $validated['rejection_reason'],
+        ]);
+
+        rescue(fn() => app(NotificationHub::class)->notifyLeaveRejected($leave->fresh()));
+
+        return back()->with('success', "Demande de {$leave->employee->first_name} refusée.");
+    }
+
+    /**
+     * Effets d'un congé approuvé : décompte du solde (congé annuel) et bascule
+     * du statut employé en « Congé » si le congé est actif aujourd'hui.
+     */
+    private function applyLeaveApproval(EmployeeLeave $leave): void
+    {
+        if ($leave->type === 'conge_annuel'
+            && \Illuminate\Support\Facades\Schema::hasColumn('employees', 'annual_leave_balance')) {
+            $leave->employee?->decrement('annual_leave_balance', $leave->days_count);
+        }
+
+        // Le statut « Congé » ne s'applique que si l'absence couvre aujourd'hui.
+        if ($leave->isActiveOn(now())) {
+            $leave->employee?->update(['status' => 'Congé']);
+        }
+    }
+
+    /**
+     * Délègue les tâches en attente d'un employé absent (sur la fenêtre du
+     * congé) vers un collègue disponible. Couvre le cas « un employé en congé
+     * doit pouvoir confier ses tâches à un collègue pendant son absence ».
+     */
+    public function delegateLeaveTasks(Request $request, EmployeeLeave $leave)
+    {
+        // Un gestionnaire (annuaire.M) OU l'employé absent lui-même peut déléguer.
+        $isManager  = Gate::allows('annuaire.M');
+        $isOwnLeave = $leave->employee?->user_id === Auth::id();
+
+        if (! $isManager && ! $isOwnLeave) {
+            return back()->with('error', 'Non autorisé.');
+        }
+
+        $validated = $request->validate([
+            'delegate_to' => 'required|exists:employees,id',
+        ]);
+
+        $delegate = Employee::findOrFail($validated['delegate_to']);
+        if ($delegate->id === $leave->employee_id) {
+            return back()->with('error', "Impossible de déléguer à l'employé absent lui-même.");
+        }
+
+        $reassigned = \App\Models\TaskAssignment::where('employee_id', $leave->employee_id)
+            ->whereIn('status', ['a_faire', 'en_retard'])
+            ->whereDate('scheduled_date', '>=', $leave->start_date->toDateString())
+            ->whereDate('scheduled_date', '<=', $leave->end_date->toDateString())
+            ->update(['employee_id' => $delegate->id]);
+
+        return back()->with('success',
+            "{$reassigned} tâche(s) de {$leave->employee->first_name} déléguée(s) à {$delegate->first_name} {$delegate->last_name}."
+        );
     }
 
     public function endLeave(EmployeeLeave $leave)
     {
-        if (Gate::denies('rh.M')) return back()->with('error', 'Non autorisé.');
+        if (Gate::denies('annuaire.M')) return back()->with('error', 'Non autorisé.');
 
         $leave->update(['status' => 'termine']);
         $leave->employee->update(['status' => 'Actif']);
@@ -225,7 +369,7 @@ class PayrollController extends Controller
      */
     public function printPayslip(Payslip $payslip, Request $request)
     {
-        if (Gate::denies('rh.L')) return back()->with('error', 'Accès restreint.');
+        if (Gate::denies('annuaire.L')) return back()->with('error', 'Accès restreint.');
 
         $payslip->load(['employee', 'period', 'lines']);
         $type = $request->input('type', $payslip->payment_status === 'paye' ? 'fiche' : 'bon');
@@ -238,7 +382,7 @@ class PayrollController extends Controller
      */
     public function employeeHistory(Employee $employee)
     {
-        if (Gate::denies('rh.L')) return back()->with('error', 'Accès restreint.');
+        if (Gate::denies('annuaire.L')) return back()->with('error', 'Accès restreint.');
 
         $payslips = Payslip::where('employee_id', $employee->id)
             ->with(['period', 'lines'])

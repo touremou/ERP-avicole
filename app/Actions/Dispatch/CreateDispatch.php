@@ -33,17 +33,18 @@ class CreateDispatch
 
             // ─── 2. CRÉER L'EXPÉDITION ───
             $dispatch = Dispatch::create([
-                'dispatch_number' => sprintf('EXP-%s-%06d', $year, $seq),
-                'sale_id'         => $data['sale_id'] ?? null,
-                'dispatched_by'   => Auth::id(),
-                'vehicle_plate'   => $data['vehicle_plate'] ?? null,
-                'driver_name'     => $data['driver_name'],
-                'driver_phone'    => $data['driver_phone'] ?? null,
-                'dispatch_date'   => $data['dispatch_date'],
-                'dispatch_time'   => $data['dispatch_time'] ?? null,
-                'destination'     => $data['destination'],
-                'status'          => 'expedie',
-                'notes'           => $data['notes'] ?? null,
+                'dispatch_number'      => sprintf('EXP-%s-%06d', $year, $seq),
+                'sale_id'              => $data['sale_id'] ?? null,
+                'dispatched_by'        => Auth::id(),
+                'intended_receiver_id' => $data['intended_receiver_id'] ?? null,
+                'vehicle_plate'        => $data['vehicle_plate'] ?? null,
+                'driver_name'          => $data['driver_name'],
+                'driver_phone'         => $data['driver_phone'] ?? null,
+                'dispatch_date'        => $data['dispatch_date'],
+                'dispatch_time'        => $data['dispatch_time'] ?? null,
+                'destination'          => $data['destination'],
+                'status'               => 'expedie',
+                'notes'                => $data['notes'] ?? null,
             ]);
 
             // ─── 3. CRÉER LES LIGNES ET DÉSTOCKER ───
@@ -65,27 +66,33 @@ class CreateDispatch
 
             Log::info("Expédition {$dispatch->dispatch_number} créée — {$dispatch->destination} — Chauffeur: {$dispatch->driver_name}");
 
+            // Notifier le récepteur désigné qu'une expédition l'attend.
+            if ($dispatch->intended_receiver_id) {
+                rescue(fn () => app(\App\Services\NotificationHub::class)
+                    ->notifyDispatchReceiver($dispatch->fresh('intendedReceiver')));
+            }
+
             return $dispatch->fresh('items');
         });
     }
 
     private function destockAtFarm(DispatchItem $item): void
     {
-        // Articles stockés (œufs, aliment, matériel)
-        if (in_array($item->product_type, ['oeufs', 'aliment', 'materiel'])) {
-            $category = match ($item->product_type) {
-                'oeufs'   => 'oeufs',
-                'aliment' => 'conso',
-                default   => 'materiels',
-            };
-
+        // Articles stockés (œufs, lait, aliment, produits_finis, matériel)
+        if ($item->requiresDestock()) {
             $result = StockIntegrationService::syncMovement(
                 $item->product_name,
-                $category,
+                Stock::categoryForProductType($item->product_type),
                 (float) $item->quantity_dispatched,
                 'out',
                 "Expédition {$item->dispatch->dispatch_number} → {$item->dispatch->destination}",
-                $item->unit === 'alveole' ? 'Alvéole' : ($item->unit === 'sac' ? 'Sac' : 'KG')
+                match ($item->unit) {
+                    'alveole' => 'Alvéole',
+                    'sac'     => 'Sac',
+                    'litre'   => 'Litre',
+                    'tete'    => 'Tête',
+                    default   => 'KG',
+                }
             );
 
             if (! $result) {
@@ -93,8 +100,10 @@ class CreateDispatch
             }
         }
 
-        // Volaille vivante → décrémenter le lot
-        if (in_array($item->product_type, ['volaille_vivante', 'volaille_abattue']) && $item->batch_id) {
+        // Animal vif expédié à la tête → décrémenter l'effectif du lot (toute
+        // espèce). Les expéditions au poids (carcasse au kg) ne décrémentent
+        // pas l'effectif (le poids ne dit pas le nombre de têtes).
+        if ($item->decrementsBatchCount()) {
             $batch = Batch::findOrFail($item->batch_id);
             $qty = (int) $item->quantity_dispatched;
 

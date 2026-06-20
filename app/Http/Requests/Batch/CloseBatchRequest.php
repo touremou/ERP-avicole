@@ -19,6 +19,7 @@ class CloseBatchRequest extends FormRequest
     {
         return [
             'actual_sell_price_per_unit' => 'required|numeric|min:0',
+            'additional_costs'          => 'nullable|numeric|min:0',
             'closing_date'              => 'required|date|before_or_equal:today',
             'observations'              => 'nullable|string|max:2000',
         ];

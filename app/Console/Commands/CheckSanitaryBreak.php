@@ -14,8 +14,8 @@ class CheckSanitaryBreak extends Command
     public function handle()
     {
         // On récupère les bâtiments en désinfection depuis plus de 14 jours
-        $buildings = Building::where('status', 'En désinfection')
-            ->where('updated_at', '<', now()->subDays(14))
+        $buildings = Building::inSanitaryBreak()
+            ->where('updated_at', '<', now()->subDays(Building::SANITARY_BREAK_DAYS))
             ->get();
 
         foreach ($buildings as $building) {

@@ -8,7 +8,7 @@
                 <div>
                     <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">{{ $sale->reference }}</h2>
                     <p class="text-[10px] font-black uppercase tracking-[0.2em] mt-2 italic {{ $sale->type === 'facture' ? 'text-purple-600' : 'text-teal-600' }}">
-                        {{ $sale->type === 'facture' ? 'Facture TVA' : 'Bon de Livraison' }} — {{ $sale->sale_date->translatedFormat('d F Y') }}
+                        {{ $sale->type === 'facture' ? __("Facture TVA") : __("Bon de Livraison") }} — {{ $sale->sale_date->translatedFormat('d F Y') }}
                     </p>
                 </div>
             </div>
@@ -17,7 +17,7 @@
                     <form method="POST" action="{{ route('sales.validate', $sale) }}">
                         @csrf @method('PUT')
                         <button class="bg-emerald-500 text-white px-6 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-lg italic border-none cursor-pointer">
-                            <i class="fa-solid fa-check-double mr-1"></i> Valider & Déstocker
+                            <i class="fa-solid fa-check-double mr-1"></i> {{ __("Valider & Déstocker") }}
                         </button>
                     </form>
                 @endif
@@ -25,12 +25,12 @@
                     <form method="POST" action="{{ route('sales.deliver', $sale) }}">
                         @csrf @method('PUT')
                         <button class="bg-blue-500 text-white px-6 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-blue-600 transition-all shadow-lg italic border-none cursor-pointer">
-                            <i class="fa-solid fa-truck mr-1"></i> Marquer Livré
+                            <i class="fa-solid fa-truck mr-1"></i> {{ __("Marquer Livré") }}
                         </button>
                     </form>
                 @endif
                 <a href="{{ route('sales.print', $sale) }}" target="_blank" class="bg-white border border-slate-200 px-6 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest text-slate-600 hover:bg-slate-50 transition-all no-underline flex items-center gap-2">
-                    <i class="fa-solid fa-print"></i> Imprimer
+                    <i class="fa-solid fa-print"></i> {{ __("Imprimer") }}
                 </a>
             </div>
         </div>
@@ -60,13 +60,13 @@
                     'bg-blue-50 border-blue-200' => $sale->status === 'livre',
                     'bg-red-50 border-red-200' => $sale->status === 'annule',
                 ])>
-                    <p class="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-2">Statut</p>
+                    <p class="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-2">{{ __("Statut") }}</p>
                     <p class="text-xl font-black uppercase italic">{{ ucfirst($sale->status) }}</p>
                 </div>
 
                 {{-- TOTAL --}}
                 <div class="bg-slate-900 p-6 rounded-[2.5rem] text-white text-center shadow-2xl">
-                    <p class="text-[8px] font-black uppercase tracking-widest text-emerald-400 mb-2">Total TTC</p>
+                    <p class="text-[8px] font-black uppercase tracking-widest text-emerald-400 mb-2">{{ __("Total TTC") }}</p>
                     <p class="text-2xl font-black italic tracking-tighter">{{ number_format($sale->total_amount, 0, ',', ' ') }} <small class="text-xs opacity-40">{{ setting('general.currency', 'GNF') }}</small></p>
                 </div>
 
@@ -76,9 +76,9 @@
                     'bg-amber-50 border-amber-200' => $sale->payment_status === 'partiel',
                     'bg-emerald-50 border-emerald-200' => $sale->payment_status === 'solde',
                 ])>
-                    <p class="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-2">Paiement</p>
+                    <p class="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-2">{{ __("Paiement") }}</p>
                     <p class="text-xl font-black uppercase italic">
-                        {{ $sale->payment_status === 'solde' ? 'Soldé' : number_format($sale->remaining_amount, 0, ',', ' ') . ' ' . setting('general.currency', 'GNF') . ' dû' }}
+                        {{ $sale->payment_status === 'solde' ? __("Soldé") : number_format($sale->remaining_amount, 0, ',', ' ') . ' ' . setting('general.currency', 'GNF') . ' ' . __("dû") }}
                     </p>
                 </div>
             </div>
@@ -91,11 +91,11 @@
                     </div>
                     <div>
                         <p class="font-black text-lg text-slate-900 uppercase italic leading-none">{{ $sale->client->name }}</p>
-                        <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">{{ $sale->client->client_id }} — {{ $sale->client->phone ?? 'Pas de tél.' }}</p>
+                        <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">{{ $sale->client->client_id }} — {{ $sale->client->phone ?? __("Pas de tél.") }}</p>
                     </div>
                 </div>
                 <a href="{{ route('clients.show', $sale->client) }}" class="text-[9px] font-black text-teal-500 uppercase tracking-widest no-underline hover:text-teal-700">
-                    Voir fiche <i class="fa-solid fa-arrow-right ml-1"></i>
+                    {{ __("Voir fiche") }} <i class="fa-solid fa-arrow-right ml-1"></i>
                 </a>
             </div>
 
@@ -104,11 +104,11 @@
                 <table class="w-full border-collapse">
                     <thead>
                         <tr class="bg-slate-50 text-[8px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
-                            <th class="px-6 py-4 text-left">Produit</th>
-                            <th class="px-4 py-4 text-center">Qté</th>
-                            <th class="px-4 py-4 text-center">Unité</th>
-                            <th class="px-4 py-4 text-right">P.U.</th>
-                            <th class="px-6 py-4 text-right">Total</th>
+                            <th class="px-6 py-4 text-left">{{ __("Produit") }}</th>
+                            <th class="px-4 py-4 text-center">{{ __("Qté") }}</th>
+                            <th class="px-4 py-4 text-center">{{ __("Unité") }}</th>
+                            <th class="px-4 py-4 text-right">{{ __("P.U.") }}</th>
+                            <th class="px-6 py-4 text-right">{{ __("Total") }}</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-50">
@@ -127,17 +127,17 @@
                     </tbody>
                     <tfoot class="bg-slate-50 border-t border-slate-100">
                         <tr>
-                            <td colspan="4" class="px-6 py-3 text-right text-[9px] font-black text-slate-400 uppercase tracking-widest">Sous-total HT</td>
+                            <td colspan="4" class="px-6 py-3 text-right text-[9px] font-black text-slate-400 uppercase tracking-widest">{{ __("Sous-total HT") }}</td>
                             <td class="px-6 py-3 text-right font-black text-slate-900">{{ number_format($sale->subtotal, 0, ',', ' ') }} {{ setting('general.currency', 'GNF') }}</td>
                         </tr>
                         @if($sale->tax_rate > 0)
                         <tr>
-                            <td colspan="4" class="px-6 py-3 text-right text-[9px] font-black text-slate-400 uppercase tracking-widest">TVA ({{ $sale->tax_rate }}%)</td>
+                            <td colspan="4" class="px-6 py-3 text-right text-[9px] font-black text-slate-400 uppercase tracking-widest">{{ __("TVA (:rate%)", ['rate' => $sale->tax_rate]) }}</td>
                             <td class="px-6 py-3 text-right font-black text-slate-900">{{ number_format($sale->tax_amount, 0, ',', ' ') }} {{ setting('general.currency', 'GNF') }}</td>
                         </tr>
                         @endif
                         <tr class="bg-slate-900 text-white">
-                            <td colspan="4" class="px-6 py-4 text-right text-[9px] font-black uppercase tracking-widest">Total TTC</td>
+                            <td colspan="4" class="px-6 py-4 text-right text-[9px] font-black uppercase tracking-widest">{{ __("Total TTC") }}</td>
                             <td class="px-6 py-4 text-right text-lg font-black">{{ number_format($sale->total_amount, 0, ',', ' ') }} {{ setting('general.currency', 'GNF') }}</td>
                         </tr>
                     </tfoot>
@@ -149,7 +149,7 @@
                 {{-- Historique paiements --}}
                 <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm">
                     <h3 class="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-4 flex items-center gap-2">
-                        <i class="fa-solid fa-money-bill-wave text-emerald-500"></i> Encaissements
+                        <i class="fa-solid fa-money-bill-wave text-emerald-500"></i> {{ __("Encaissements") }}
                     </h3>
                     @forelse($sale->payments as $payment)
                         <div class="flex items-center justify-between p-3 bg-slate-50 rounded-xl mb-2">
@@ -160,31 +160,31 @@
                             <span class="text-[8px] font-black text-slate-400 italic">{{ $payment->receiver->name ?? '' }}</span>
                         </div>
                     @empty
-                        <p class="text-[9px] text-slate-400 uppercase tracking-widest text-center py-4">Aucun paiement enregistré</p>
+                        <p class="text-[9px] text-slate-400 uppercase tracking-widest text-center py-4">{{ __("Aucun paiement enregistré") }}</p>
                     @endforelse
                 </div>
 
                 {{-- Formulaire nouveau paiement --}}
                 @if($sale->payment_status !== 'solde' && !in_array($sale->status, ['brouillon', 'annule']))
                 <div class="bg-emerald-50 p-6 rounded-[2.5rem] border border-emerald-200">
-                    <h3 class="text-[10px] font-black uppercase text-emerald-600 tracking-widest mb-4">Enregistrer un paiement</h3>
+                    <h3 class="text-[10px] font-black uppercase text-emerald-600 tracking-widest mb-4">{{ __("Enregistrer un paiement") }}</h3>
                     <form method="POST" action="{{ route('payments.store') }}" class="space-y-4">
                         @csrf
                         <input type="hidden" name="sale_id" value="{{ $sale->id }}">
-                        <input type="number" name="amount" required min="1" max="{{ $sale->remaining_amount }}" placeholder="Montant ({{ setting('general.currency', 'GNF') }})"
+                        <input type="number" name="amount" required min="1" max="{{ $sale->remaining_amount }}" placeholder="{{ __('Montant') }} ({{ setting('general.currency', 'GNF') }})"
                             class="w-full bg-white border-none rounded-2xl p-4 text-lg font-black text-emerald-600 shadow-sm outline-none text-right">
                         <div class="grid grid-cols-2 gap-3">
                             <select name="method" required class="bg-white border-none rounded-2xl p-3 text-[10px] font-black uppercase shadow-sm outline-none">
-                                <option value="especes">Espèces</option>
-                                <option value="orange_money">Orange Money</option>
-                                <option value="virement">Virement</option>
-                                <option value="cheque">Chèque</option>
+                                <option value="especes">{{ __("Espèces") }}</option>
+                                <option value="orange_money">{{ __("Orange Money") }}</option>
+                                <option value="virement">{{ __("Virement") }}</option>
+                                <option value="cheque">{{ __("Chèque") }}</option>
                             </select>
                             <input type="date" name="payment_date" value="{{ now()->toDateString() }}" required
                                 class="bg-white border-none rounded-2xl p-3 text-[10px] font-black shadow-sm outline-none">
                         </div>
                         <button type="submit" class="w-full bg-emerald-500 text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-600 transition-all border-none cursor-pointer">
-                            <i class="fa-solid fa-check mr-1"></i> Encaisser
+                            <i class="fa-solid fa-check mr-1"></i> {{ __("Encaisser") }}
                         </button>
                     </form>
                 </div>
@@ -195,12 +195,12 @@
             @can('commerce.S')
             @if(!in_array($sale->status, ['annule']))
                 <div class="mt-8 text-center">
-                    <form method="POST" action="{{ route('sales.cancel', $sale) }}" onsubmit="return confirm('Annuler cette vente ? Les stocks seront restaurés.')">
+                    <form method="POST" action="{{ route('sales.cancel', $sale) }}" onsubmit="return confirm({{ Js::from(__('Annuler cette vente ? Les stocks seront restaurés.')) }})">
                         @csrf @method('PUT')
-                        <input type="text" name="reason" placeholder="Motif d'annulation..." required
+                        <input type="text" name="reason" placeholder="{{ __("Motif d'annulation...") }}" required
                             class="bg-white border border-red-200 rounded-2xl px-6 py-3 text-[10px] font-black w-80 mr-3 outline-none">
                         <button class="text-red-500 hover:text-red-700 text-[10px] font-black uppercase tracking-widest border-none bg-transparent cursor-pointer">
-                            <i class="fa-solid fa-ban mr-1"></i> Annuler cette vente
+                            <i class="fa-solid fa-ban mr-1"></i> {{ __("Annuler cette vente") }}
                         </button>
                     </form>
                 </div>

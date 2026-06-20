@@ -4,8 +4,15 @@ namespace App\Http\Controllers;
 
 use App\Models\Batch;
 use App\Models\DailyCheck;
+use App\Models\EggProduction;
 use App\Models\Stock;
 use App\Models\StockMovement;
+use App\Models\Sale;
+use App\Models\Expense;
+use App\Actions\EggProduction\RecordEggCollection;
+use App\Actions\Stock\MoveStockAction;
+use App\Actions\Sale\CreateSale;
+use App\Actions\Expense\CreateExpense;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -65,6 +72,7 @@ class SyncController extends Controller
             'provider_id'              => 'nullable|integer|exists:providers,id',
             'qty_dead'                 => 'nullable|integer|min:0',
             'arrival_mortality_rate'   => 'nullable|numeric|min:0',
+            'buy_price_per_unit'       => 'nullable|numeric|min:0',
             'updated_at'               => 'required|date',
         ]);
 
@@ -113,6 +121,10 @@ class SyncController extends Controller
             'arrival_date'           => $validated['arrival_date'],
             'employee_id'            => $validated['employee_id'] ?? null,
             'provider_id'            => $validated['provider_id'] ?? null,
+            // total_acquisition_cost est NOT NULL : on le dérive du prix unitaire
+            // (0 par défaut si non transmis) pour éviter un échec d'insertion.
+            'buy_price_per_unit'     => $validated['buy_price_per_unit'] ?? 0,
+            'total_acquisition_cost' => ($validated['buy_price_per_unit'] ?? 0) * $validated['initial_quantity'],
             'is_synced'              => true,
             'last_sync_at'           => now(),
         ];
@@ -234,6 +246,236 @@ class SyncController extends Controller
             Log::info("SyncController: DailyCheck synchronisé (uuid: {$validated['uuid']}, batch: {$validated['batch_id']})");
 
             return response()->json(['status' => 'success']);
+        });
+    }
+
+    /**
+     * Réconcilie une collecte d'œufs (passage) saisie hors-ligne.
+     *
+     * Idempotence : la collecte cumule plusieurs passages dans la ligne du
+     * jour (batch_id + production_date). On mémorise les UUID des passages
+     * déjà appliqués dans egg_productions.synced_uuids ; un rejeu réseau du
+     * même UUID est donc ignoré (pas de double comptage). L'application du
+     * cumul réutilise l'action RecordEggCollection (logique métier unique).
+     */
+    public function reconcileEggCollection(Request $request, RecordEggCollection $action): JsonResponse
+    {
+        if (Gate::denies('production.C')) {
+            return response()->json(['status' => 'error', 'message' => 'Permission insuffisante.'], 403);
+        }
+
+        $validated = $request->validate([
+            'uuid'                 => 'required|uuid',
+            'batch_id'             => 'required|integer|exists:batches,id',
+            'production_date'      => 'required|date|before_or_equal:today',
+            'total_eggs_collected' => 'required|integer|min:0',
+            'broken_eggs'          => 'nullable|integer|min:0',
+            'small_eggs'           => 'nullable|integer|min:0',
+            'observations'         => 'nullable|string|max:500',
+        ]);
+
+        return DB::transaction(function () use ($validated, $action) {
+            // ─── IDEMPOTENCE : passage déjà appliqué ? ───
+            $existing = EggProduction::where('batch_id', $validated['batch_id'])
+                ->where('production_date', $validated['production_date'])
+                ->lockForUpdate()
+                ->first();
+
+            if ($existing) {
+                if ($existing->is_graded) {
+                    Log::warning("SyncController: collecte uuid={$validated['uuid']} refusée, jour déjà trié.");
+                    return response()->json([
+                        'status'  => 'conflict',
+                        'message' => 'Les œufs de ce jour ont déjà été triés et mis en stock.',
+                    ]);
+                }
+
+                if (in_array($validated['uuid'], $existing->synced_uuids ?? [], true)) {
+                    Log::info("SyncController: collecte uuid={$validated['uuid']} déjà appliquée, ignorée.");
+                    return response()->json(['status' => 'already_synced']);
+                }
+            }
+
+            // ─── APPLICATION DU CUMUL (logique métier partagée) ───
+            $production = $action->execute([
+                'batch_id'             => $validated['batch_id'],
+                'production_date'      => $validated['production_date'],
+                'total_eggs_collected' => $validated['total_eggs_collected'],
+                'broken_eggs'          => $validated['broken_eggs'] ?? 0,
+                'small_eggs'           => $validated['small_eggs'] ?? 0,
+                'observations'         => $validated['observations'] ?? null,
+            ]);
+
+            // ─── MARQUAGE DE L'UUID APPLIQUÉ ───
+            $applied = $production->synced_uuids ?? [];
+            $applied[] = $validated['uuid'];
+            $production->update(['synced_uuids' => array_values(array_unique($applied))]);
+
+            Log::info("SyncController: collecte synchronisée (uuid: {$validated['uuid']}, batch: {$validated['batch_id']})");
+
+            return response()->json(['status' => 'success']);
+        });
+    }
+
+    /**
+     * Réconcilie un mouvement de stock (entrée / sortie / ajustement) saisi
+     * hors-ligne.
+     *
+     * Idempotence : le mouvement porte un UUID ; s'il existe déjà côté serveur,
+     * on ne réapplique pas l'incrément/décrément (StockMovement.uuid est unique).
+     * Pour une sortie, on revérifie la disponibilité au moment de la synchro
+     * (le stock a pu bouger entre-temps) et on renvoie un conflit si négatif.
+     */
+    public function reconcileStockMovement(Request $request, MoveStockAction $action): JsonResponse
+    {
+        if (Gate::denies('logistique.M')) {
+            return response()->json(['status' => 'error', 'message' => 'Permission insuffisante.'], 403);
+        }
+
+        $validated = $request->validate([
+            'uuid'     => 'required|uuid',
+            'stock_id' => 'required|integer|exists:stocks,id',
+            'type'     => 'required|in:in,out,adjustment',
+            'quantity' => 'required|numeric|min:0.001',
+            'notes'    => 'nullable|string|max:500',
+        ]);
+
+        return DB::transaction(function () use ($validated, $action) {
+            // ─── IDEMPOTENCE ───
+            if (StockMovement::where('uuid', $validated['uuid'])->exists()) {
+                Log::info("SyncController: mouvement stock uuid={$validated['uuid']} déjà appliqué, ignoré.");
+                return response()->json(['status' => 'already_synced']);
+            }
+
+            $stock = Stock::lockForUpdate()->find($validated['stock_id']);
+
+            // ─── REVÉRIFICATION DISPONIBILITÉ (sortie) ───
+            if ($validated['type'] === 'out' && (float) $stock->current_quantity < (float) $validated['quantity']) {
+                Log::warning("SyncController: sortie stock uuid={$validated['uuid']} refusée (stock insuffisant: {$stock->current_quantity} < {$validated['quantity']}).");
+                return response()->json([
+                    'status'  => 'conflict',
+                    'message' => "Stock insuffisant pour {$stock->item_name} (disponible: {$stock->current_quantity} {$stock->unit}).",
+                ]);
+            }
+
+            // ─── APPLICATION (logique métier partagée + UUID pour idempotence) ───
+            $action->execute(
+                $validated['stock_id'],
+                $validated['type'],
+                (float) $validated['quantity'],
+                $validated['notes'] ?? 'Mouvement saisi hors-ligne',
+                Auth::id(),
+                $validated['uuid']
+            );
+
+            Log::info("SyncController: mouvement stock synchronisé (uuid: {$validated['uuid']}, stock: {$validated['stock_id']}, type: {$validated['type']})");
+
+            return response()->json(['status' => 'success']);
+        });
+    }
+
+    /**
+     * Réconcilie une vente rapide saisie hors-ligne.
+     *
+     * La vente est créée en BROUILLON (CreateSale ne déstocke pas) : la
+     * validation (déstockage + décrément d'effectif, avec contrôle de
+     * disponibilité) reste une opération en ligne, ce qui évite tout conflit
+     * de stock au moment de la synchro.
+     *
+     * Idempotence : l'uuid (généré côté terrain) est unique sur `sales`. Une
+     * vente déjà réconciliée renvoie `already_synced` sans rien recréer.
+     */
+    public function reconcileSale(Request $request, CreateSale $action): JsonResponse
+    {
+        if (Gate::denies('commerce.C')) {
+            return response()->json(['status' => 'error', 'message' => 'Permission insuffisante.'], 403);
+        }
+
+        $validated = $request->validate([
+            'uuid'                   => 'required|uuid',
+            'client_id'              => 'required|integer|exists:clients,id',
+            'sale_date'              => 'required|date|before_or_equal:today',
+            'type'                   => 'required|in:bon_livraison,facture',
+            'tax_rate'               => 'nullable|numeric|min:0',
+            'notes'                  => 'nullable|string|max:1000',
+            'immediate_payment'      => 'nullable|numeric|min:0',
+            'payment_method'         => 'nullable|string|max:50',
+            'items'                  => 'required|array|min:1',
+            'items.*.product_type'   => 'required|string|max:40',
+            'items.*.product_name'   => 'required|string|max:255',
+            'items.*.product_id'     => 'nullable|integer',
+            'items.*.batch_id'       => 'nullable|integer',
+            'items.*.quantity'       => 'required|numeric|min:0.01',
+            'items.*.unit'           => 'required|string|max:20',
+            'items.*.unit_price'     => 'required|numeric|min:0',
+        ]);
+
+        return DB::transaction(function () use ($validated, $action) {
+            // ─── IDEMPOTENCE ───
+            if (Sale::where('uuid', $validated['uuid'])->exists()) {
+                Log::info("SyncController: vente uuid={$validated['uuid']} déjà appliquée, ignorée.");
+                return response()->json(['status' => 'already_synced']);
+            }
+
+            // ─── APPLICATION (logique métier partagée : brouillon, sans déstockage) ───
+            $sale = $action->execute($validated);
+
+            // Marque la vente comme issue d'une synchro hors-ligne.
+            $sale->update(['is_synced' => true, 'last_sync_at' => now()]);
+
+            Log::info("SyncController: vente synchronisée (uuid: {$validated['uuid']}, ref: {$sale->reference}).");
+
+            return response()->json([
+                'status'    => 'success',
+                'reference' => $sale->reference,
+            ]);
+        });
+    }
+
+    /**
+     * Réconcilie une dépense saisie hors-ligne.
+     *
+     * La dépense est créée au statut « en_attente » (CreateExpense) : la
+     * validation (qui l'intègre aux résultats financiers) reste une opération
+     * en ligne, contrôlée par un responsable.
+     *
+     * Idempotence : l'uuid (généré côté terrain) est unique sur `expenses` ;
+     * une dépense déjà réconciliée renvoie `already_synced`.
+     */
+    public function reconcileExpense(Request $request, CreateExpense $action): JsonResponse
+    {
+        if (Gate::denies('depenses.C')) {
+            return response()->json(['status' => 'error', 'message' => 'Permission insuffisante.'], 403);
+        }
+
+        $validated = $request->validate([
+            'uuid'           => 'required|uuid',
+            'category'       => 'required|string|max:50',
+            'label'          => 'required|string|max:255',
+            'amount'         => 'required|numeric|min:1',
+            'expense_date'   => 'required|date|before_or_equal:today',
+            'payment_method' => 'nullable|string|max:30',
+            'batch_id'       => 'nullable|integer|exists:batches,id',
+            'supplier_name'  => 'nullable|string|max:255',
+            'notes'          => 'nullable|string|max:2000',
+        ]);
+
+        return DB::transaction(function () use ($validated, $action) {
+            // ─── IDEMPOTENCE ───
+            if (Expense::where('uuid', $validated['uuid'])->exists()) {
+                Log::info("SyncController: dépense uuid={$validated['uuid']} déjà appliquée, ignorée.");
+                return response()->json(['status' => 'already_synced']);
+            }
+
+            $expense = $action->execute(array_merge($validated, ['user_id' => Auth::id()]));
+            $expense->update(['is_synced' => true, 'last_sync_at' => now()]);
+
+            Log::info("SyncController: dépense synchronisée (uuid: {$validated['uuid']}, ref: {$expense->reference}).");
+
+            return response()->json([
+                'status'    => 'success',
+                'reference' => $expense->reference,
+            ]);
         });
     }
 }

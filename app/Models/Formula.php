@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Traits\BelongsToFarm;
 
@@ -16,6 +17,8 @@ class Formula extends Model
         'name',
         'code',
         'target_type',
+        'species_id',
+        'production_type_id',
         'total_batch_weight',
         'description',
         'is_active'
@@ -37,6 +40,33 @@ class Formula extends Model
     public function items(): HasMany
     {
         return $this->hasMany(FormulaItem::class);
+    }
+
+    public function species(): BelongsTo
+    {
+        return $this->belongsTo(Species::class);
+    }
+
+    public function productionType(): BelongsTo
+    {
+        return $this->belongsTo(ProductionType::class);
+    }
+
+    /**
+     * Secteur d'aliment produit par cette formule (cf. Batch::FEED_PHASES),
+     * dérivé du type de production rattaché. À défaut (formules legacy sans
+     * production_type_id), on retombe sur la colonne `poultry_type`
+     * (Chair/Ponte) puis sur « Chair ».
+     */
+    public function feedSector(): string
+    {
+        if ($this->productionType) {
+            return $this->productionType->feedSector();
+        }
+
+        return in_array($this->poultry_type, array_keys(Batch::FEED_PHASES), true)
+            ? $this->poultry_type
+            : 'Chair';
     }
 
     /**

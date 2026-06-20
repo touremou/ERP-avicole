@@ -11,7 +11,7 @@ class CreateBuilding
     {
         return DB::transaction(function () use ($data) {
             // Un nouveau bâtiment industriel démarre toujours à l'état à vide
-            $data['status'] = 'Vide';
+            $data['status'] = Building::STATUS_VIDE;
 
             return Building::create($data);
         });

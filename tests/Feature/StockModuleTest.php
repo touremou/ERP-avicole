@@ -1,30 +1,51 @@
 <?php
 
+use App\Models\Module;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Models\Stock;
 use App\Models\StockMovement;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 
 uses(Tests\TestCase::class, Illuminate\Foundation\Testing\RefreshDatabase::class);
 
 beforeEach(function () {
-    $permL = Permission::firstOrCreate(['name' => 'L'], ['description' => 'Lecture']);
-    $permC = Permission::firstOrCreate(['name' => 'C'], ['description' => 'Création']);
-    $permM = Permission::firstOrCreate(['name' => 'M'], ['description' => 'Modification']);
-    $permS = Permission::firstOrCreate(['name' => 'S'], ['description' => 'Suppression']);
+    // Contexte ferme (trait BelongsToFarm) pour la cohérence farm_id.
+    $farm = App\Models\Farm::firstOrCreate(['code' => 'FT-001'], ['name' => 'Ferme Test', 'is_active' => true]);
+    session(['current_farm_id' => $farm->id]);
 
-    $admin = Role::firstOrCreate(['name' => 'admin'], ['display_name' => 'Administrateur', 'icon' => '👑']);
-    $admin->permissions()->syncWithoutDetaching([$permL->id, $permC->id, $permM->id, $permS->id]);
+    // La matrice `module_permissions` (Modules × Rôles) est la SEULE source
+    // de vérité des Gates (cf. AppServiceProvider) : on dérive ici une ligne
+    // par module à partir de la matrice LCMS (L/C/M/S) de chaque rôle.
+    $makeRole = function (string $name, array $perms) {
+        $role = Role::firstOrCreate(
+            ['name' => $name],
+            ['label' => ucfirst($name), 'display_name' => ucfirst($name), 'permissions' => $perms]
+        );
 
-    $manager = Role::firstOrCreate(['name' => 'manager'], ['display_name' => 'Manager', 'icon' => '🛠️']);
-    $manager->permissions()->syncWithoutDetaching([$permL->id, $permC->id, $permM->id]);
+        $now = now();
+        foreach (Module::pluck('id') as $moduleId) {
+            DB::table('module_permissions')->updateOrInsert(
+                ['role_id' => $role->id, 'module_id' => $moduleId],
+                [
+                    'can_read'   => in_array('L', $perms, true),
+                    'can_create' => in_array('C', $perms, true),
+                    'can_modify' => in_array('M', $perms, true),
+                    'can_delete' => in_array('S', $perms, true),
+                    'updated_at' => $now,
+                    'created_at' => $now,
+                ]
+            );
+        }
 
-    $operator = Role::firstOrCreate(['name' => 'operateur'], ['display_name' => 'Opérateur', 'icon' => '📋']);
-    $operator->permissions()->syncWithoutDetaching([$permL->id, $permC->id]);
+        return $role;
+    };
 
-    $readonly = Role::firstOrCreate(['name' => 'visiteur'], ['display_name' => 'Visiteur', 'icon' => '👁️']);
-    $readonly->permissions()->syncWithoutDetaching([$permL->id]);
+    $admin    = $makeRole('admin',    ['L', 'C', 'M', 'S']);
+    $manager  = $makeRole('manager',  ['L', 'C', 'M']);
+    $operator = $makeRole('operator', ['L', 'C']);
+    $readonly = $makeRole('viewer',   ['L']);
 
     $this->adminUser = User::factory()->create(['role_id' => $admin->id]);
     $this->managerUser = User::factory()->create(['role_id' => $manager->id]);
@@ -65,6 +86,65 @@ test('créer un stock génère un mouvement initial si quantité > 0', function 
     $stock = Stock::where('item_name', 'TestS')->first();
     expect($stock)->not->toBeNull();
     expect(StockMovement::where('stock_id', $stock->id)->where('type', 'in')->exists())->toBeTrue();
+});
+
+test('un aliment non-volaille (Alevinage) reste visible dans l\'index conso', function () {
+    // Reproduit le bug : compteur = N mais la liste en affiche N-1 car les
+    // aliments poisson/ruminant tombaient entre les filtres volaille-centriques.
+    Stock::factory()->create([
+        'item_name' => 'Chair Finition', 'category' => 'conso', 'unit' => 'KG',
+        'current_quantity' => 200,
+        'metadata' => ['conso_type' => 'Aliment', 'poultry_type' => 'Chair'],
+    ]);
+    Stock::factory()->create([
+        'item_name' => 'Ponte 1 (Pic de ponte)', 'category' => 'conso', 'unit' => 'KG',
+        'current_quantity' => 150,
+        'metadata' => ['conso_type' => 'Aliment', 'poultry_type' => 'Ponte'],
+    ]);
+    // L'article qui « disparaissait » : aliment alevinage (pisciculture).
+    Stock::factory()->create([
+        'item_name' => 'Alevinage 1er âge', 'category' => 'conso', 'unit' => 'KG',
+        'current_quantity' => 250,
+        'metadata' => ['conso_type' => 'Aliment', 'poultry_type' => 'Alevinage'],
+    ]);
+
+    $this->actingAs($this->adminUser)
+        ->get(route('stocks.index', ['category' => 'conso']))
+        ->assertOk()
+        ->assertSee('Chair Finition')
+        ->assertSee('Ponte 1 (Pic de ponte)')
+        ->assertSee('Alevinage 1er âge'); // ne doit plus être omis
+});
+
+test('un consommable au type inconnu n\'est jamais perdu (filet Non classé)', function () {
+    Stock::factory()->create([
+        'item_name' => 'Article Mystère', 'category' => 'conso', 'unit' => 'Unité',
+        'current_quantity' => 5,
+        'metadata' => ['conso_type' => 'TypeInexistant'],
+    ]);
+
+    $this->actingAs($this->adminUser)
+        ->get(route('stocks.index', ['category' => 'conso']))
+        ->assertOk()
+        ->assertSee('Article Mystère');
+});
+
+test('la création initialise le coût moyen pondéré (last_unit_price)', function () {
+    $this->actingAs($this->operatorUser)->post(route('stocks.store'), [
+        'item_name'        => 'Maïs Concassé',
+        'category'         => 'conso',
+        'unit'             => 'KG',
+        'alert_threshold'  => 10,
+        'current_quantity' => 100,
+        'unit_price'       => 4500,
+        'metadata'         => ['conso_type' => 'Autre'],
+    ]);
+
+    $stock = Stock::where('item_name', 'Maïs Concassé')->first();
+    expect($stock)->not->toBeNull();
+    // Sans last_unit_price, la valorisation inventaire serait nulle.
+    expect((float) $stock->last_unit_price)->toBe(4500.0);
+    expect((float) $stock->total_value)->toBe(450000.0);
 });
 
 test('anti-doublon : ne peut pas créer 2 stocks même nom+catégorie', function () {

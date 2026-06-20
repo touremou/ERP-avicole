@@ -2,17 +2,16 @@
     @php
         $currency       = setting('general.currency', 'GNF');
         $df             = setting('general.date_format', 'd/m/Y');
-        $batchTypes     = ['chair' => '🍗 Chair', 'ponte' => '🥚 Ponte', 'poussiniere' => '🐥 Poussinière', 'reproducteur' => '🐓 Reproducteur'];
     @endphp
 
     <x-slot name="header">
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 text-left">
             <div>
                 <h2 class="text-2xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">
-                    📊 Analyse Financière — Coûts de Production
+                    {{ __("📊 Analyse Financière — Coûts de Production") }}
                 </h2>
                 <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-3 italic leading-none">
-                    Alimentation · Santé · Acquisition · Coût par tête
+                    {{ __("Alimentation · Santé · Acquisition · Coût par tête") }}
                 </p>
             </div>
             <div class="flex items-center gap-3">
@@ -37,9 +36,9 @@
 
                         {{-- STATUT --}}
                         <div>
-                            <label class="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 leading-none">Statut</label>
+                            <label class="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 leading-none">{{ __("Statut") }}</label>
                             <div class="bg-slate-100 p-1.5 rounded-xl flex gap-1">
-                                @foreach(['all' => 'Tous', 'actif' => '🟢 Actifs', 'termine' => '🔵 Terminés'] as $key => $label)
+                                @foreach(['all' => __('Tous'), 'actif' => __('🟢 Actifs'), 'termine' => __('🔵 Terminés')] as $key => $label)
                                     <button type="button" onclick="setFilter('status','{{ $key }}')"
                                         @class(['px-4 py-2 rounded-lg text-[9px] font-black uppercase italic transition-all',
                                             'bg-white shadow text-slate-900' => $statusFilter == $key,
@@ -51,32 +50,32 @@
                             <input type="hidden" name="status" id="f_status" value="{{ $statusFilter }}">
                         </div>
 
-                        {{-- TYPE --}}
+                        {{-- ESPÈCE --}}
                         <div>
-                            <label class="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 leading-none">Type de Lot</label>
+                            <label class="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 leading-none">{{ __("Espèce") }}</label>
                             <div class="bg-slate-100 p-1.5 rounded-xl flex flex-wrap gap-1">
-                                <button type="button" onclick="setFilter('type','all')"
+                                <button type="button" onclick="setFilter('species','all')"
                                     @class(['px-4 py-2 rounded-lg text-[9px] font-black uppercase italic transition-all',
-                                        'bg-white shadow text-slate-900' => $typeFilter == 'all',
-                                        'text-slate-400 hover:text-slate-600' => $typeFilter != 'all'])>
-                                    Tous
+                                        'bg-white shadow text-slate-900' => $speciesFilter == 'all',
+                                        'text-slate-400 hover:text-slate-600' => $speciesFilter != 'all'])>
+                                    {{ __("Toutes") }}
                                 </button>
-                                @foreach($batchTypes as $key => $label)
-                                    <button type="button" onclick="setFilter('type','{{ $key }}')"
+                                @foreach($speciesList as $sp)
+                                    <button type="button" onclick="setFilter('species','{{ $sp->id }}')"
                                         @class(['px-4 py-2 rounded-lg text-[9px] font-black uppercase italic transition-all',
-                                            'bg-white shadow text-slate-900' => $typeFilter == $key,
-                                            'text-slate-400 hover:text-slate-600' => $typeFilter != $key])>
-                                        {{ $label }}
+                                            'bg-white shadow text-slate-900' => (string) $speciesFilter == (string) $sp->id,
+                                            'text-slate-400 hover:text-slate-600' => (string) $speciesFilter != (string) $sp->id])>
+                                        {{ $sp->icon }} {{ $sp->name_fr }}
                                     </button>
                                 @endforeach
                             </div>
-                            <input type="hidden" name="type" id="f_type" value="{{ $typeFilter }}">
+                            <input type="hidden" name="species" id="f_species" value="{{ $speciesFilter }}">
                         </div>
 
                         {{-- ANNÉE --}}
                         @if(! $useDateRange)
                         <div>
-                            <label class="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 leading-none">Année</label>
+                            <label class="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 leading-none">{{ __("Année") }}</label>
                             <select name="year" onchange="this.form.submit()" class="appearance-none pl-4 pr-10 py-3 bg-slate-900 text-white border-none rounded-xl text-[10px] font-black uppercase italic shadow-lg cursor-pointer">
                                 @foreach($availableYears as $yr)
                                     <option value="{{ $yr }}" {{ $currentYear == $yr ? 'selected' : '' }}>{{ $yr }}</option>
@@ -86,10 +85,10 @@
 
                         {{-- MOIS --}}
                         <div>
-                            <label class="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 leading-none">Mois</label>
+                            <label class="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 leading-none">{{ __("Mois") }}</label>
                             <select name="month" onchange="this.form.submit()" class="appearance-none pl-4 pr-10 py-3 bg-slate-900 text-white border-none rounded-xl text-[10px] font-black uppercase italic shadow-lg cursor-pointer">
-                                <option value="all" {{ $monthFilter == 'all' ? 'selected' : '' }}>Toute l'année</option>
-                                @foreach([1=>'Janvier',2=>'Février',3=>'Mars',4=>'Avril',5=>'Mai',6=>'Juin',7=>'Juillet',8=>'Août',9=>'Septembre',10=>'Octobre',11=>'Novembre',12=>'Décembre'] as $num => $name)
+                                <option value="all" {{ $monthFilter == 'all' ? 'selected' : '' }}>{{ __("Toute l'année") }}</option>
+                                @foreach([1=>__('Janvier'),2=>__('Février'),3=>__('Mars'),4=>__('Avril'),5=>__('Mai'),6=>__('Juin'),7=>__('Juillet'),8=>__('Août'),9=>__('Septembre'),10=>__('Octobre'),11=>__('Novembre'),12=>__('Décembre')] as $num => $name)
                                     <option value="{{ $num }}" {{ $monthFilter == $num ? 'selected' : '' }}>{{ strtoupper($name) }}</option>
                                 @endforeach
                             </select>
@@ -99,23 +98,26 @@
 
                     {{-- Ligne 2 : Plage personnalisée --}}
                     <div class="flex flex-wrap gap-4 items-end pt-2 border-t border-slate-50">
-                        <p class="text-[9px] font-black text-slate-300 uppercase tracking-widest w-full leading-none">— ou plage de dates personnalisée (prioritaire sur année / mois) —</p>
+                        <p class="text-[9px] font-black text-slate-300 uppercase tracking-widest w-full leading-none">{{ __("— ou plage de dates personnalisée (prioritaire sur année / mois) —") }}</p>
                         <div>
-                            <label class="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 leading-none">Du</label>
+                            <label class="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 leading-none">{{ __("Du") }}</label>
                             <input type="date" name="date_from" value="{{ $dateFrom }}" class="px-4 py-3 bg-blue-50 border border-blue-100 rounded-xl text-[10px] font-black text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none">
                         </div>
                         <div>
-                            <label class="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 leading-none">Au</label>
+                            <label class="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 leading-none">{{ __("Au") }}</label>
                             <input type="date" name="date_to" value="{{ $dateTo }}" class="px-4 py-3 bg-blue-50 border border-blue-100 rounded-xl text-[10px] font-black text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none">
                         </div>
                         <button type="submit" class="px-8 py-3 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase italic hover:bg-blue-700 transition shadow-lg">
-                            <i class="fas fa-filter mr-2"></i> Filtrer
+                            <i class="fas fa-filter mr-2"></i> {{ __("Filtrer") }}
                         </button>
-                        @if($useDateRange || $typeFilter !== 'all' || $statusFilter !== 'all' || $monthFilter !== 'all')
+                        @if($useDateRange || $speciesFilter !== 'all' || $statusFilter !== 'all' || $monthFilter !== 'all')
                         <a href="{{ route('reports.monthly') }}" class="px-8 py-3 bg-slate-100 text-slate-500 rounded-xl text-[10px] font-black uppercase italic hover:bg-red-50 hover:text-red-500 transition no-underline">
-                            <i class="fas fa-times mr-2"></i> Réinitialiser
+                            <i class="fas fa-times mr-2"></i> {{ __("Réinitialiser") }}
                         </a>
                         @endif
+                        <a href="{{ route('reports.monthly.pdf', request()->query()) }}" class="ml-auto px-8 py-3 bg-orange-600 text-white rounded-xl text-[10px] font-black uppercase italic hover:bg-orange-700 transition no-underline shadow-lg">
+                            <i class="fas fa-file-pdf mr-2"></i> {{ __("Export PDF") }}
+                        </a>
                     </div>
                 </form>
             </div>
@@ -127,52 +129,52 @@
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {{-- Coût Total --}}
                 <div class="bg-slate-900 text-white p-6 rounded-[2rem] shadow-xl text-left col-span-2 md:col-span-1">
-                    <p class="text-[8px] font-black uppercase text-slate-400 tracking-[0.2em] leading-none mb-3">Coût Total Consolidé</p>
+                    <p class="text-[8px] font-black uppercase text-slate-400 tracking-[0.2em] leading-none mb-3">{{ __("Coût Total Consolidé") }}</p>
                     <p class="text-2xl font-black italic tracking-tighter leading-none">
                         {{ number_format($globalStats['total_cost'], 0, ',', ' ') }}
                         <small class="text-[10px] opacity-40 font-black">{{ $currency }}</small>
                     </p>
-                    <p class="text-[8px] text-slate-400 font-black uppercase italic mt-2">{{ number_format($globalStats['heads']) }} têtes suivies</p>
+                    <p class="text-[8px] text-slate-400 font-black uppercase italic mt-2">{{ number_format($globalStats['heads']) }} {{ __("têtes suivies") }}</p>
                 </div>
 
                 {{-- Coût / Tête --}}
                 <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm text-left">
-                    <p class="text-[8px] font-black uppercase text-slate-400 tracking-[0.2em] leading-none mb-3">Coût / Tête</p>
+                    <p class="text-[8px] font-black uppercase text-slate-400 tracking-[0.2em] leading-none mb-3">{{ __("Coût / Tête") }}</p>
                     <p class="text-2xl font-black text-slate-800 italic tracking-tighter leading-none">
                         {{ number_format($globalStats['cost_per_head'], 0, ',', ' ') }}
                         <small class="text-[10px] opacity-40">{{ $currency }}</small>
                     </p>
-                    <p class="text-[8px] text-slate-300 font-black uppercase italic mt-2">Coût moyen production</p>
+                    <p class="text-[8px] text-slate-300 font-black uppercase italic mt-2">{{ __("Coût moyen production") }}</p>
                 </div>
 
                 {{-- Consommation Aliment --}}
                 <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm text-left">
-                    <p class="text-[8px] font-black uppercase text-orange-400 tracking-[0.2em] leading-none mb-3">Charge Aliment</p>
+                    <p class="text-[8px] font-black uppercase text-orange-400 tracking-[0.2em] leading-none mb-3">{{ __("Charge Aliment") }}</p>
                     <p class="text-2xl font-black text-orange-600 italic tracking-tighter leading-none">
                         {{ number_format($globalStats['feed_cost'], 0, ',', ' ') }}
                         <small class="text-[10px] opacity-40">{{ $currency }}</small>
                     </p>
                     <p class="text-[8px] text-slate-300 font-black uppercase italic mt-2">
-                        {{ number_format($globalStats['feed_qty'], 0) }} kg · {{ $globalStats['feed_pct'] }}% du total
+                        {{ number_format($globalStats['feed_qty'], 0) }} kg · {{ $globalStats['feed_pct'] }}% {{ __("du total") }}
                     </p>
                 </div>
 
                 {{-- Santé --}}
                 <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm text-left">
-                    <p class="text-[8px] font-black uppercase text-rose-400 tracking-[0.2em] leading-none mb-3">Invest. Santé</p>
+                    <p class="text-[8px] font-black uppercase text-rose-400 tracking-[0.2em] leading-none mb-3">{{ __("Invest. Santé") }}</p>
                     <p class="text-2xl font-black text-rose-600 italic tracking-tighter leading-none">
                         {{ number_format($globalStats['health_cost'], 0, ',', ' ') }}
                         <small class="text-[10px] opacity-40">{{ $currency }}</small>
                     </p>
                     <p class="text-[8px] text-slate-300 font-black uppercase italic mt-2">
-                        {{ $globalStats['health_pct'] }}% du coût total
+                        {{ $globalStats['health_pct'] }}% {{ __("du coût total") }}
                     </p>
                 </div>
             </div>
 
             {{-- Barre de répartition --}}
             <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm text-left">
-                <p class="text-[9px] font-black uppercase text-slate-400 tracking-[0.2em] leading-none mb-4">Répartition des Charges</p>
+                <p class="text-[9px] font-black uppercase text-slate-400 tracking-[0.2em] leading-none mb-4">{{ __("Répartition des Charges") }}</p>
                 <div class="flex rounded-xl overflow-hidden h-5 w-full">
                     @if($globalStats['acq_pct'] > 0)
                     <div class="bg-blue-500 flex items-center justify-center text-[8px] text-white font-black transition-all" style="width: {{ $globalStats['acq_pct'] }}%">
@@ -191,9 +193,9 @@
                     @endif
                 </div>
                 <div class="flex gap-6 mt-3">
-                    <span class="flex items-center gap-2 text-[8px] font-black uppercase text-slate-400"><span class="w-3 h-3 bg-blue-500 rounded-sm"></span>Acquisition {{ $globalStats['acq_pct'] }}%</span>
-                    <span class="flex items-center gap-2 text-[8px] font-black uppercase text-slate-400"><span class="w-3 h-3 bg-orange-400 rounded-sm"></span>Aliment {{ $globalStats['feed_pct'] }}%</span>
-                    <span class="flex items-center gap-2 text-[8px] font-black uppercase text-slate-400"><span class="w-3 h-3 bg-rose-400 rounded-sm"></span>Santé {{ $globalStats['health_pct'] }}%</span>
+                    <span class="flex items-center gap-2 text-[8px] font-black uppercase text-slate-400"><span class="w-3 h-3 bg-blue-500 rounded-sm"></span>{{ __("Acquisition") }} {{ $globalStats['acq_pct'] }}%</span>
+                    <span class="flex items-center gap-2 text-[8px] font-black uppercase text-slate-400"><span class="w-3 h-3 bg-orange-400 rounded-sm"></span>{{ __("Aliment") }} {{ $globalStats['feed_pct'] }}%</span>
+                    <span class="flex items-center gap-2 text-[8px] font-black uppercase text-slate-400"><span class="w-3 h-3 bg-rose-400 rounded-sm"></span>{{ __("Santé") }} {{ $globalStats['health_pct'] }}%</span>
                 </div>
             </div>
             @endif
@@ -206,16 +208,16 @@
                     <div class="w-20 h-20 bg-slate-50 rounded-[2.5rem] flex items-center justify-center text-slate-200 mb-6">
                         <i class="fa-solid fa-chart-pie text-4xl"></i>
                     </div>
-                    <p class="text-slate-400 uppercase text-xs font-black tracking-[0.3em] italic">Aucun flux financier pour cette période</p>
+                    <p class="text-slate-400 uppercase text-xs font-black tracking-[0.3em] italic">{{ __("Aucun flux financier pour cette période") }}</p>
                     <a href="{{ route('reports.monthly') }}" class="mt-6 px-8 py-3 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase italic no-underline hover:bg-blue-600 transition">
-                        Réinitialiser les filtres
+                        {{ __("Réinitialiser les filtres") }}
                     </a>
                 </div>
             @else
                 @php
-                    $monthLabels = [0 => 'Plage personnalisée', 1 => 'Janvier', 2 => 'Février', 3 => 'Mars', 4 => 'Avril',
-                                    5 => 'Mai', 6 => 'Juin', 7 => 'Juillet', 8 => 'Août', 9 => 'Septembre',
-                                    10 => 'Octobre', 11 => 'Novembre', 12 => 'Décembre'];
+                    $monthLabels = [0 => __('Plage personnalisée'), 1 => __('Janvier'), 2 => __('Février'), 3 => __('Mars'), 4 => __('Avril'),
+                                    5 => __('Mai'), 6 => __('Juin'), 7 => __('Juillet'), 8 => __('Août'), 9 => __('Septembre'),
+                                    10 => __('Octobre'), 11 => __('Novembre'), 12 => __('Décembre')];
                 @endphp
                 @foreach($monthLabels as $num => $name)
                     @if(isset($monthlyData[$num]))
@@ -238,11 +240,11 @@
                                     @endif
                                 </h3>
                                 <p class="text-[10px] text-blue-500 uppercase mt-2 font-black tracking-widest italic leading-none">
-                                    {{ count($mRows) }} lot(s) · {{ number_format($mFeedQty, 0) }} kg aliment consommés
+                                    {{ count($mRows) }} {{ __("lot(s) ·") }} {{ number_format($mFeedQty, 0) }} {{ __("kg aliment consommés") }}
                                 </p>
                             </div>
                             <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-xl text-right">
-                                <p class="text-[9px] text-slate-400 uppercase mb-2 tracking-[0.2em] font-black italic">Charges Consolidées</p>
+                                <p class="text-[9px] text-slate-400 uppercase mb-2 tracking-[0.2em] font-black italic">{{ __("Charges Consolidées") }}</p>
                                 <p class="text-3xl font-black text-slate-900 tracking-tighter italic">
                                     {{ number_format($mTotal, 0, ',', ' ') }} <small class="text-xs uppercase opacity-40">{{ $currency }}</small>
                                 </p>
@@ -266,7 +268,7 @@
                                         <div>
                                             <p class="text-xl font-black text-slate-800 leading-none uppercase tracking-tighter italic">{{ $data['batch']->code }}</p>
                                             <p class="text-[9px] text-slate-400 mt-1.5 uppercase font-black tracking-widest italic">
-                                                {{ $data['batch']->building->name ?? 'ZONE LIBRE' }}
+                                                {{ $data['batch']->building->name ?? __('ZONE LIBRE') }}
                                                 · {{ strtoupper($data['batch']->type) }}
                                             </p>
                                         </div>
@@ -282,7 +284,7 @@
                                         <div class="flex justify-between items-center bg-slate-50 p-4 rounded-[1.5rem] border border-slate-100 group-hover:bg-white transition-colors">
                                             <div class="flex items-center gap-3">
                                                 <i class="fa-solid fa-pills text-rose-400 text-sm"></i>
-                                                <span class="text-[9px] font-black uppercase text-slate-400 italic">Santé</span>
+                                                <span class="text-[9px] font-black uppercase text-slate-400 italic">{{ __("Santé") }}</span>
                                             </div>
                                             <span class="text-sm font-black text-rose-600 italic">
                                                 {{ number_format($data['health'] ?? 0, 0, ',', ' ') }}
@@ -295,7 +297,7 @@
                                             <div class="flex justify-between items-center">
                                                 <div class="flex items-center gap-3">
                                                     <i class="fa-solid fa-wheat-awn text-orange-400 text-sm"></i>
-                                                    <span class="text-[9px] font-black uppercase text-slate-400 italic">Aliment</span>
+                                                    <span class="text-[9px] font-black uppercase text-slate-400 italic">{{ __("Aliment") }}</span>
                                                 </div>
                                                 <span class="text-sm font-black text-orange-600 italic">
                                                     {{ number_format($data['feed_cost'] ?? 0, 0, ',', ' ') }}
@@ -303,12 +305,12 @@
                                                 </span>
                                             </div>
                                             <div class="flex justify-between items-center px-2 py-1.5 bg-white/60 rounded-lg">
-                                                <span class="text-[8px] text-slate-400 italic uppercase font-black">Conso brute</span>
+                                                <span class="text-[8px] text-slate-400 italic uppercase font-black">{{ __("Conso brute") }}</span>
                                                 <span class="text-[8px] font-black text-slate-600 uppercase">{{ number_format($data['feed_qty'] ?? 0, 1) }} kg</span>
                                             </div>
                                             @if(($data['avg_price_per_kg'] ?? 0) > 0)
                                             <div class="flex justify-between items-center px-2 py-1.5 bg-white/60 rounded-lg">
-                                                <span class="text-[8px] text-slate-400 italic uppercase font-black">Prix moyen/kg</span>
+                                                <span class="text-[8px] text-slate-400 italic uppercase font-black">{{ __("Prix moyen/kg") }}</span>
                                                 <span class="text-[8px] font-black text-slate-600 uppercase">{{ number_format($data['avg_price_per_kg'], 0, ',', ' ') }} {{ $currency }}</span>
                                             </div>
                                             @endif
@@ -319,7 +321,7 @@
                                         <div class="flex justify-between items-center bg-slate-50 p-4 rounded-[1.5rem] border border-slate-100 group-hover:bg-white transition-colors">
                                             <div class="flex items-center gap-3">
                                                 <i class="fa-solid fa-tag text-blue-400 text-sm"></i>
-                                                <span class="text-[9px] font-black uppercase text-slate-400 italic">Acquisition</span>
+                                                <span class="text-[9px] font-black uppercase text-slate-400 italic">{{ __("Acquisition") }}</span>
                                             </div>
                                             <span class="text-sm font-black text-blue-600 italic">
                                                 {{ number_format($data['acquisition_cost'], 0, ',', ' ') }}
@@ -340,10 +342,10 @@
                                     {{-- TOTAL + COÛT/TÊTE --}}
                                     <div class="mt-6 pt-6 border-t-2 border-dashed border-slate-100 flex justify-between items-end">
                                         <div>
-                                            <p class="text-[9px] uppercase text-slate-500 font-black italic leading-none mb-1">Total Décaissement</p>
+                                            <p class="text-[9px] uppercase text-slate-500 font-black italic leading-none mb-1">{{ __("Total Décaissement") }}</p>
                                             <p class="text-[8px] text-slate-300 font-black uppercase italic">
-                                                <i class="fas fa-user text-[7px] mr-1"></i> {{ number_format($costPerHead, 0, ',', ' ') }} {{ $currency }}/tête
-                                                ({{ number_format($data['batch']->initial_quantity) }} sujets)
+                                                <i class="fas fa-user text-[7px] mr-1"></i> {{ number_format($costPerHead, 0, ',', ' ') }} {{ $currency }}{{ __("/tête") }}
+                                                ({{ number_format($data['batch']->initial_quantity) }} {{ __("sujets") }})
                                             </p>
                                         </div>
                                         <p class="text-2xl font-black text-slate-900 tracking-tighter italic">
@@ -354,7 +356,7 @@
                                 </div>
 
                                 <a href="{{ route('batches.show', $data['batch']->id) }}" class="block w-full py-4 bg-slate-900 text-white text-center text-[9px] font-black uppercase tracking-[0.3em] italic hover:bg-blue-600 transition-all no-underline">
-                                    <i class="fas fa-arrow-right mr-2"></i> Analyser le lot
+                                    <i class="fas fa-arrow-right mr-2"></i> {{ __("Analyser le lot") }}
                                 </a>
                             </div>
                             @endforeach

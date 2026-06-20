@@ -1,0 +1,336 @@
+<?php
+
+use App\Actions\Sale\CancelSale;
+use App\Actions\Stock\MoveStockAction;
+use App\Models\Client;
+use App\Models\DiscrepancyReport;
+use App\Models\NotificationLog;
+use App\Models\Sale;
+use App\Models\Setting;
+use App\Models\Stock;
+use App\Services\NotificationHub;
+use App\Services\StockIntegrationService;
+use Illuminate\Support\Facades\Http;
+use Tests\Helpers\AviSmartTestHelper;
+
+uses(Tests\TestCase::class, Illuminate\Foundation\Testing\RefreshDatabase::class, AviSmartTestHelper::class);
+
+beforeEach(function () {
+    $this->setUpRbac();
+    Setting::set('whatsapp.driver', 'log');
+});
+
+// ── (f) TEST WHATSAPP ──
+
+test('le test whatsapp demande le numéro personnel même si l\'API est configurée', function () {
+    // L'admin a configuré l'API (driver/clé) mais n'a pas encore enregistré
+    // son numéro personnel dans Notifications > Préférences.
+    Setting::set('whatsapp.api_key', 'fake-key');
+
+    $this->actingAs($this->adminUser)
+        ->post(route('notifications.test'))
+        ->assertSessionHas('error');
+
+    expect(session('error'))->toContain('Renseignez votre numéro');
+});
+
+test('le test whatsapp signale le mode log si aucun provider n\'est actif', function () {
+    $this->adminUser->update(['whatsapp_phone' => '+224620000000']);
+
+    $this->actingAs($this->adminUser)
+        ->post(route('notifications.test'))
+        ->assertSessionHas('error');
+
+    expect(session('error'))->toContain('mode "log"');
+});
+
+test('le test whatsapp se rabat sur le téléphone admin si aucun numéro personnel', function () {
+    // L'admin a configuré le driver + le téléphone admin global, mais pas son
+    // numéro personnel : le test doit utiliser le numéro admin au lieu d'échouer.
+    Setting::set('whatsapp.driver', 'callmebot');
+    Setting::set('whatsapp.api_key', 'fake-key');
+    Setting::set('whatsapp.admin_phone', '+224698888888');
+
+    Http::fake(['api.callmebot.com/*' => Http::response('Message envoyé', 200)]);
+
+    $this->actingAs($this->adminUser)
+        ->post(route('notifications.test'))
+        ->assertSessionHas('success');
+
+    expect(session('success'))->toContain('+224698888888');
+
+    $log = NotificationLog::where('type', 'test')->where('status', 'sent')->latest()->first();
+    expect($log)->not->toBeNull()
+        ->and($log->recipient_phone)->toBe('+224698888888');
+});
+
+test('la page de préférences pré-remplit le numéro depuis whatsapp.admin_phone', function () {
+    Setting::set('whatsapp.admin_phone', '+224699999999');
+
+    $response = $this->actingAs($this->adminUser)->get(route('notifications.preferences'));
+
+    $response->assertOk();
+    $response->assertSee('+224699999999');
+});
+
+// ── (f) DIAGNOSTIC DES ÉCHECS D'ENVOI ──
+
+test('une erreur callmebot renvoyée en HTTP 200 est détectée et détaillée dans le test', function () {
+    // CallMeBot répond parfois en 200 OK avec un message d'erreur dans le
+    // corps (clé invalide, numéro non enregistré...). Le système doit
+    // détecter cela comme un échec et exposer le détail à l'admin.
+    Setting::set('whatsapp.driver', 'callmebot');
+    Setting::set('whatsapp.api_key', 'fake-key');
+    Setting::set('whatsapp.admin_phone', '+224698888888');
+
+    Http::fake([
+        'api.callmebot.com/*' => Http::response('Error: Invalid ApiKey, please verify.', 200),
+    ]);
+
+    $this->actingAs($this->adminUser)
+        ->post(route('notifications.test'))
+        ->assertSessionHas('error');
+
+    expect(session('error'))->toContain('Invalid ApiKey');
+
+    $log = NotificationLog::where('type', 'test')->where('status', 'failed')->latest()->first();
+    expect($log)->not->toBeNull()
+        ->and($log->provider_response['body'])->toContain('Invalid ApiKey');
+});
+
+test('un admin consulte l\'historique des notifications avec le détail de l\'erreur provider', function () {
+    NotificationLog::create([
+        'channel' => 'whatsapp', 'type' => 'alert_stock', 'title' => 'Stock',
+        'message' => 'Test', 'recipient_phone' => '+224620000000',
+        'status' => 'failed', 'attempts' => 2,
+        'provider_response' => ['status' => 200, 'body' => 'Error: quota dépassé'],
+    ]);
+
+    $response = $this->actingAs($this->adminUser)->get(route('notifications.logs'));
+
+    $response->assertOk();
+    $response->assertSee('Error: quota dépassé');
+});
+
+test('un visiteur (L) ne peut pas consulter l\'historique des notifications', function () {
+    $this->actingAs($this->readonlyUser)
+        ->get(route('notifications.logs'))
+        ->assertSessionHas('error');
+});
+
+// ── (g) ALERTES TEMPS RÉEL — VISIBILITÉ ADMIN HORS SITE ──
+
+test('un écart critique déclenche une alerte WhatsApp via le numéro admin de secours', function () {
+    Setting::set('whatsapp.admin_phone', '+224611111111');
+
+    $dispatch = App\Models\Dispatch::create([
+        'dispatch_number' => 'EXP-TEST-001',
+        'dispatched_by'   => $this->adminUser->id,
+        'driver_name'     => 'Chauffeur Test',
+        'dispatch_date'   => now()->toDateString(),
+        'destination'     => 'Marché Central',
+        'status'          => 'expedie',
+    ]);
+
+    $reception = App\Models\Reception::create([
+        'dispatch_id'      => $dispatch->id,
+        'reception_number' => 'REC-TEST-001',
+        'received_by'      => $this->adminUser->id,
+        'reception_date'   => now()->toDateString(),
+        'status'           => 'litige',
+    ]);
+
+    $report = DiscrepancyReport::create([
+        'dispatch_id'      => $dispatch->id,
+        'reception_id'     => $reception->id,
+        'reported_by'      => $this->adminUser->id,
+        'total_dispatched' => 100,
+        'total_received'   => 80,
+        'total_damaged'    => 0,
+        'total_missing'    => 20,
+        'discrepancy_rate' => 20,
+        'severity'         => 'critique',
+        'resolution'       => 'en_cours',
+    ]);
+
+    app(NotificationHub::class)->alertFraud($report);
+
+    expect(NotificationLog::where('type', 'alert_fraud')->where('status', 'sent')->exists())->toBeTrue();
+});
+
+test('le franchissement du seuil de stock déclenche une alerte au numéro admin de secours', function () {
+    Setting::set('whatsapp.admin_phone', '+224622222222');
+
+    $stock = Stock::factory()->create([
+        'category'        => Stock::CAT_CONSO,
+        'item_name'       => 'Aliment Démarrage',
+        'unit'            => 'KG',
+        'current_quantity'=> 100,
+        'alert_threshold' => 50,
+    ]);
+
+    StockIntegrationService::syncMovement(
+        'Aliment Démarrage',
+        Stock::CAT_CONSO,
+        60,
+        'out',
+        'Test consommation',
+        'KG'
+    );
+
+    expect($stock->refresh()->current_quantity)->toBe('40.000');
+    expect(NotificationLog::where('type', 'alert_stock')->where('status', 'sent')->exists())->toBeTrue();
+});
+
+test('un nouveau mouvement de stock sous le seuil ne ré-alerte pas une seconde fois', function () {
+    Setting::set('whatsapp.admin_phone', '+224622222222');
+
+    $stock = Stock::factory()->create([
+        'category'        => Stock::CAT_CONSO,
+        'item_name'       => 'Aliment Finition',
+        'unit'            => 'KG',
+        'current_quantity'=> 40,
+        'alert_threshold' => 50,
+    ]);
+
+    StockIntegrationService::syncMovement(
+        'Aliment Finition',
+        Stock::CAT_CONSO,
+        5,
+        'out',
+        'Test consommation 2',
+        'KG'
+    );
+
+    expect(NotificationLog::where('type', 'alert_stock')->count())->toBe(0);
+});
+
+test('une vente au-delà du seuil est escaladée en alerte critique', function () {
+    Setting::set('whatsapp.admin_phone', '+224633333333');
+    Setting::set('whatsapp.large_sale_threshold', '1000000');
+
+    $client = Client::create([
+        'farm_id' => $this->farm->id, 'client_id' => 'CLI-LARGE',
+        'name' => 'Grossiste', 'type' => 'particulier', 'status' => 'actif',
+        'credit_limit' => 0, 'balance' => 0,
+    ]);
+
+    $sale = Sale::create([
+        'farm_id' => $this->farm->id, 'client_id' => $client->id, 'user_id' => $this->adminUser->id,
+        'reference' => 'BL-LARGE-001', 'sale_date' => now()->toDateString(),
+        'type' => 'bon_livraison', 'status' => 'valide',
+        'subtotal' => 5000000, 'tax_amount' => 0, 'total_amount' => 5000000,
+        'paid_amount' => 0, 'payment_status' => 'impaye',
+    ]);
+
+    app(NotificationHub::class)->notifySaleCreated($sale->fresh(['client']));
+
+    // Escaladée → délivrée au numéro admin de secours (statut sent).
+    expect(NotificationLog::where('type', 'alert_sales')->where('status', 'sent')->exists())->toBeTrue();
+});
+
+test('annuler une vente validée déclenche une alerte anti-fraude critique', function () {
+    Setting::set('whatsapp.admin_phone', '+224644444444');
+
+    $client = Client::create([
+        'farm_id' => $this->farm->id, 'client_id' => 'CLI-CANCEL',
+        'name' => 'Client Annul', 'type' => 'particulier', 'status' => 'actif',
+        'credit_limit' => 0, 'balance' => 0,
+    ]);
+
+    $sale = Sale::create([
+        'farm_id' => $this->farm->id, 'client_id' => $client->id, 'user_id' => $this->adminUser->id,
+        'reference' => 'BL-CANCEL-001', 'sale_date' => now()->toDateString(),
+        'type' => 'bon_livraison', 'status' => 'valide',
+        'subtotal' => 200000, 'tax_amount' => 0, 'total_amount' => 200000,
+        'paid_amount' => 0, 'payment_status' => 'impaye',
+    ]);
+
+    $this->actingAs($this->adminUser);
+    (new CancelSale())->execute($sale, 'Erreur de saisie');
+
+    $log = NotificationLog::where('type', 'alert_fraud')->where('status', 'sent')->latest()->first();
+    expect($log)->not->toBeNull()
+        ->and($log->message)->toContain('VENTE ANNULÉE');
+});
+
+test('un ajustement manuel de stock à la baisse déclenche une alerte anti-fraude', function () {
+    Setting::set('whatsapp.admin_phone', '+224655555555');
+
+    $stock = Stock::factory()->create([
+        'category'        => Stock::CAT_MATERIELS,
+        'item_name'       => 'Sacs vides',
+        'unit'            => 'Unité',
+        'current_quantity'=> 100,
+        'alert_threshold' => 0,
+    ]);
+
+    $this->actingAs($this->adminUser);
+    (new MoveStockAction())->execute($stock->id, 'adjustment', 60, 'Inventaire physique', $this->adminUser->id);
+
+    $log = NotificationLog::where('type', 'alert_fraud')->where('status', 'sent')->latest()->first();
+    expect($log)->not->toBeNull()
+        ->and($log->message)->toContain('AJUSTEMENT STOCK');
+});
+
+// ── (g) ACTIVITÉ HORS HEURES OUVRÉES ──
+
+afterEach(function () {
+    Carbon\Carbon::setTestNow();
+});
+
+test('une vente enregistrée hors heures ouvrées est escaladée en critique', function () {
+    Setting::set('whatsapp.admin_phone', '+224666666666');
+    Setting::set('whatsapp.business_hours_start', '06:00');
+    Setting::set('whatsapp.business_hours_end', '20:00');
+
+    // Vente à 23h00 → hors plage.
+    Carbon\Carbon::setTestNow(Carbon\Carbon::today()->setTime(23, 0));
+
+    $client = Client::create([
+        'farm_id' => $this->farm->id, 'client_id' => 'CLI-NIGHT-1',
+        'name' => 'Client Nuit', 'type' => 'particulier', 'status' => 'actif',
+        'credit_limit' => 0, 'balance' => 0,
+    ]);
+    $sale = Sale::create([
+        'farm_id' => $this->farm->id, 'client_id' => $client->id, 'user_id' => $this->adminUser->id,
+        'reference' => 'BL-NIGHT-1', 'sale_date' => now()->toDateString(),
+        'type' => 'bon_livraison', 'status' => 'valide',
+        'subtotal' => 50000, 'tax_amount' => 0, 'total_amount' => 50000,
+        'paid_amount' => 0, 'payment_status' => 'impaye',
+    ]);
+
+    app(NotificationHub::class)->notifySaleCreated($sale->fresh(['client']));
+
+    $log = NotificationLog::where('type', 'alert_sales')->where('status', 'sent')->latest()->first();
+    expect($log)->not->toBeNull()
+        ->and($log->message)->toContain('HORS heures ouvrées');
+});
+
+test('une vente pendant les heures ouvrées reste normale', function () {
+    Setting::set('whatsapp.admin_phone', '+224666666666');
+    Setting::set('whatsapp.business_hours_start', '06:00');
+    Setting::set('whatsapp.business_hours_end', '20:00');
+
+    // Vente à 14h00 → dans la plage.
+    Carbon\Carbon::setTestNow(Carbon\Carbon::today()->setTime(14, 0));
+
+    $client = Client::create([
+        'farm_id' => $this->farm->id, 'client_id' => 'CLI-DAY-1',
+        'name' => 'Client Jour', 'type' => 'particulier', 'status' => 'actif',
+        'credit_limit' => 0, 'balance' => 0,
+    ]);
+    $sale = Sale::create([
+        'farm_id' => $this->farm->id, 'client_id' => $client->id, 'user_id' => $this->adminUser->id,
+        'reference' => 'BL-DAY-1', 'sale_date' => now()->toDateString(),
+        'type' => 'bon_livraison', 'status' => 'valide',
+        'subtotal' => 50000, 'tax_amount' => 0, 'total_amount' => 50000,
+        'paid_amount' => 0, 'payment_status' => 'impaye',
+    ]);
+
+    app(NotificationHub::class)->notifySaleCreated($sale->fresh(['client']));
+
+    // Severité « normal » + aucun abonné aux ventes → pas d'escalade vers le
+    // numéro admin de secours (réservé au critique). Aucune notification émise.
+    expect(NotificationLog::where('type', 'alert_sales')->count())->toBe(0);
+});

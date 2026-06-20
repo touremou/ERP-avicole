@@ -81,13 +81,26 @@ class NotificationController extends Controller
 
     /**
      * Envoie un message de test WhatsApp.
+     *
+     * Priorité du destinataire : numéro personnel de l'utilisateur connecté,
+     * à défaut le « Téléphone admin » global (whatsapp.admin_phone). Ceci évite
+     * la friction « j'ai configuré l'API mais le test refuse » : si l'admin a
+     * renseigné un numéro dans Paramètres, le test l'utilise directement.
      */
     public function sendTest(WhatsAppService $whatsapp)
     {
-        $phone = Auth::user()->whatsapp_phone;
+        $personalPhone = Auth::user()->whatsapp_phone;
+        $adminPhone    = (string) setting('whatsapp.admin_phone', '');
+        $phone         = $personalPhone ?: $adminPhone;
+        $usingFallback = ! $personalPhone && $phone !== '';
 
         if (! $phone) {
-            return back()->with('error', 'Aucun numéro WhatsApp configuré. Renseignez votre numéro d\'abord.');
+            return back()->with('error', 'Aucun numéro WhatsApp disponible. Renseignez votre numéro ci-dessus (champ "Numéro WhatsApp") puis cliquez sur Enregistrer, ou définissez le « Téléphone admin » dans Paramètres > WhatsApp, puis réessayez.');
+        }
+
+        $driver = (string) setting('whatsapp.driver', 'log');
+        if ($driver === 'log') {
+            return back()->with('error', 'Le canal WhatsApp est en mode "log" (aucun provider actif). Choisissez un driver (CallMeBot, UltraMsg, WATI, Twilio) dans Paramètres > WhatsApp et renseignez la clé API pour envoyer de vrais messages.');
         }
 
         $message = "🧪 *Test AviSmart*\n\n"
@@ -102,10 +115,28 @@ class NotificationController extends Controller
             'title'   => 'Test WhatsApp',
         ]);
 
-        return back()->with(
-            $result ? 'success' : 'error',
-            $result ? 'Message de test envoyé ! Vérifiez votre WhatsApp.' : 'Échec de l\'envoi. Vérifiez le numéro et la configuration du provider.'
-        );
+        if (! $result) {
+            $log = NotificationLog::where('recipient_phone', $phone)->where('type', 'test')->latest()->first();
+            $detail = is_array($log?->provider_response)
+                ? ($log->provider_response['error'] ?? $log->provider_response['body'] ?? null)
+                : null;
+
+            $error = 'Échec de l\'envoi vers ' . $phone . '. Vérifiez le numéro et la configuration du provider (clé API, instance).';
+            if ($detail) {
+                $error .= ' Détail : ' . \Illuminate\Support\Str::limit((string) $detail, 150);
+            }
+            if (Gate::allows('notifications.S')) {
+                $error .= ' Voir Notifications > Historique pour le détail complet.';
+            }
+
+            return back()->with('error', $error);
+        }
+
+        $sentTo = $usingFallback
+            ? "Message de test envoyé au numéro admin ({$phone}) ! Vérifiez ce WhatsApp. Astuce : renseignez votre numéro personnel ci-dessus pour recevoir vos propres alertes."
+            : 'Message de test envoyé ! Vérifiez votre WhatsApp.';
+
+        return back()->with('success', $sentTo);
     }
 
     /**
@@ -113,7 +144,7 @@ class NotificationController extends Controller
      */
     public function logs(Request $request)
     {
-        if (Gate::denies('admin.S')) return back()->with('error', 'Accès réservé aux administrateurs.');
+        if (Gate::denies('notifications.S')) return back()->with('error', 'Accès réservé aux administrateurs.');
 
         $query = NotificationLog::with('user');
 

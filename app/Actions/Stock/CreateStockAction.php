@@ -16,19 +16,28 @@ class CreateStockAction
             $alertThreshold = $data['alert_threshold'];
 
             // Règle métier : Conversion Sac -> KG
-            if ($unit === 'Sac' && $data['category'] === 'conso') {
+            if ($unit === 'Sac' && $data['category'] === Stock::CAT_CONSO) {
                 $quantity *= 50;
                 $alertThreshold *= 50;
                 $unit = 'KG'; 
             }
 
+            // Le prix saisi initialise AUSSI le coût moyen pondéré (last_unit_price) :
+            // c'est lui qui porte la valorisation de l'inventaire (tableau de bord,
+            // total_value). Sans cela un article créé avec un prix serait valorisé
+            // à 0 jusqu'au premier achat/production.
+            $unitPrice = (float) ($data['unit_price'] ?? 0);
+
+            $itemName = trim($data['item_name']);
             $stock = Stock::create([
-                'item_name'        => trim($data['item_name']),
+                'item_name'        => $itemName,
                 'category'         => $data['category'],
+                'feed_type'        => ($data['category'] === Stock::CAT_CONSO) ? $itemName : null,
                 'unit'             => $unit,
                 'alert_threshold'  => $alertThreshold,
                 'current_quantity' => $quantity,
-                'unit_price'       => $data['unit_price'] ?? 0,
+                'unit_price'       => $unitPrice,
+                'last_unit_price'  => $unitPrice,
                 'metadata'         => $data['metadata'] ?? [],
             ]);
 

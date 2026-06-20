@@ -11,7 +11,7 @@ class DeleteProvider
     public function execute(Provider $provider): void
     {
         // Sécurité critique : blocage si lié à une production en cours
-        if ($provider->batches()->where('status', 'Actif')->exists()) {
+        if ($provider->batches()->active()->exists()) {
             throw new Exception("Ce partenaire est lié à une production en cours.");
         }
 

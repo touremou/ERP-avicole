@@ -38,6 +38,10 @@ class StorePaymentRequest extends FormRequest
                 $validator->errors()->add('sale_id', "Impossible d'encaisser sur une vente {$sale->status}.");
             }
 
+            if ($sale && $sale->client && $sale->client->status !== 'actif') {
+                $validator->errors()->add('sale_id', "Le client {$sale->client->name} est {$sale->client->status} : encaissement bloqué.");
+            }
+
             if ($sale && $this->amount > $sale->remaining_amount) {
                 $validator->errors()->add('amount',
                     "Montant trop élevé. Reste dû : " . number_format($sale->remaining_amount) . " GNF."

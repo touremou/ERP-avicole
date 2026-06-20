@@ -3,31 +3,53 @@
 use App\Models\Batch;
 use App\Models\Building;
 use App\Models\Employee;
+use App\Models\Module;
 use App\Models\Permission;
+use App\Models\ProductionType;
 use App\Models\Protocol;
 use App\Models\Provider;
 use App\Models\Role;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 
 uses(Tests\TestCase::class, Illuminate\Foundation\Testing\RefreshDatabase::class);
 
 beforeEach(function () {
-    $permL = Permission::firstOrCreate(['name' => 'L'], ['description' => 'Lecture']);
-    $permC = Permission::firstOrCreate(['name' => 'C'], ['description' => 'Création']);
-    $permM = Permission::firstOrCreate(['name' => 'M'], ['description' => 'Modification']);
-    $permS = Permission::firstOrCreate(['name' => 'S'], ['description' => 'Suppression']);
+    // Contexte ferme (trait BelongsToFarm) pour la cohérence farm_id.
+    $farm = App\Models\Farm::firstOrCreate(['code' => 'FT-001'], ['name' => 'Ferme Test', 'is_active' => true]);
+    session(['current_farm_id' => $farm->id]);
 
-    $admin = Role::firstOrCreate(['name' => 'admin'], ['display_name' => 'Administrateur', 'icon' => '👑']);
-    $admin->permissions()->syncWithoutDetaching([$permL->id, $permC->id, $permM->id, $permS->id]);
+    // La matrice `module_permissions` (Modules × Rôles) est la SEULE source
+    // de vérité des Gates (cf. AppServiceProvider) : on dérive ici une ligne
+    // par module à partir de la matrice LCMS (L/C/M/S) de chaque rôle.
+    $makeRole = function (string $name, array $perms) {
+        $role = Role::firstOrCreate(
+            ['name' => $name],
+            ['label' => ucfirst($name), 'display_name' => ucfirst($name), 'permissions' => $perms]
+        );
 
-    $manager = Role::firstOrCreate(['name' => 'manager'], ['display_name' => 'Manager', 'icon' => '🛠️']);
-    $manager->permissions()->syncWithoutDetaching([$permL->id, $permC->id, $permM->id]);
+        $now = now();
+        foreach (Module::pluck('id') as $moduleId) {
+            DB::table('module_permissions')->updateOrInsert(
+                ['role_id' => $role->id, 'module_id' => $moduleId],
+                [
+                    'can_read'   => in_array('L', $perms, true),
+                    'can_create' => in_array('C', $perms, true),
+                    'can_modify' => in_array('M', $perms, true),
+                    'can_delete' => in_array('S', $perms, true),
+                    'updated_at' => $now,
+                    'created_at' => $now,
+                ]
+            );
+        }
 
-    $operator = Role::firstOrCreate(['name' => 'operateur'], ['display_name' => 'Opérateur', 'icon' => '📋']);
-    $operator->permissions()->syncWithoutDetaching([$permL->id, $permC->id]);
+        return $role;
+    };
 
-    $readonly = Role::firstOrCreate(['name' => 'visiteur'], ['display_name' => 'Visiteur', 'icon' => '👁️']);
-    $readonly->permissions()->syncWithoutDetaching([$permL->id]);
+    $admin    = $makeRole('admin',    ['L', 'C', 'M', 'S']);
+    $manager  = $makeRole('manager',  ['L', 'C', 'M']);
+    $operator = $makeRole('operator', ['L', 'C']);
+    $readonly = $makeRole('viewer',   ['L']);
 
     $this->adminUser = User::factory()->create(['role_id' => $admin->id]);
     $this->managerUser = User::factory()->create(['role_id' => $manager->id]);
@@ -114,10 +136,10 @@ test('transférer un lot change le building_id', function () {
     $building2 = Building::factory()->create(['type' => 'chair']);
 
     $batch = Batch::factory()->create([
-        'building_id'      => $this->building->id,
-        'status'           => 'Actif',
-        'current_quantity' => 500,
-        'type'             => 'chair',
+        'building_id'        => $this->building->id,
+        'status'             => 'Actif',
+        'current_quantity'   => 500,
+        'production_type_id' => ProductionType::resolveOrCreate('chair', null)->id,
     ]);
 
     $this->actingAs($this->managerUser)
@@ -131,4 +153,346 @@ test('transférer un lot change le building_id', function () {
 
     $batch->refresh();
     expect($batch->building_id)->toBe($building2->id);
+});
+
+test('la mutation d\'une poussinière vers la phase ponte bascule le type de production (graduation)', function () {
+    $protocol = Protocol::create([
+        'name' => 'Proto Ponte Standard',
+        'type' => 'ponte',
+    ]);
+
+    $poussiniereBuilding = Building::factory()->create(['type' => 'poussiniere']);
+    $ponteBuilding       = Building::factory()->create(['type' => 'ponte']);
+
+    $poussiniereType = ProductionType::resolveOrCreate('poussiniere', null);
+
+    $batch = Batch::factory()->create([
+        'building_id'        => $poussiniereBuilding->id,
+        'status'             => 'Actif',
+        'current_quantity'   => 500,
+        'production_type_id' => $poussiniereType->id,
+    ]);
+
+    expect($batch->type)->toBe('poussiniere');
+
+    $this->actingAs($this->managerUser)
+        ->post(route('batches.transfer', $batch), [
+            'target_building_id' => $ponteBuilding->id,
+            'new_protocol_id'    => $protocol->id,
+            'new_phase'          => 'ponte',
+            'transfer_date'      => now()->toDateString(),
+            'notes'              => 'Démarrage de la ponte après la poussinière',
+        ])
+        ->assertSessionDoesntHaveErrors();
+
+    $batch->refresh();
+
+    // Le lot a basculé vers le type de production "ponte" (même espèce) :
+    // production_type_id est la source de vérité (feedSector, tracksEggs,
+    // calculateExpectedEndDate...), pas seulement production_phase.
+    expect($batch->type)->toBe('ponte');
+    expect($batch->production_phase)->toBe('ponte');
+    expect($batch->building_id)->toBe($ponteBuilding->id);
+
+    $history = $batch->transfer_history;
+    $lastTransfer = end($history);
+    expect($lastTransfer['old_type'])->toBe('poussiniere');
+    expect($lastTransfer['new_type'])->toBe('ponte');
+});
+
+test('la mutation refuse un bâtiment incompatible avec la nouvelle phase', function () {
+    $protocol = Protocol::create([
+        'name' => 'Proto Ponte Standard 2',
+        'type' => 'ponte',
+    ]);
+
+    $poussiniereBuilding = Building::factory()->create(['type' => 'poussiniere']);
+    $chairBuilding       = Building::factory()->create(['type' => 'chair']);
+
+    $poussiniereType = ProductionType::resolveOrCreate('poussiniere', null);
+
+    $batch = Batch::factory()->create([
+        'building_id'        => $poussiniereBuilding->id,
+        'status'             => 'Actif',
+        'current_quantity'   => 500,
+        'production_type_id' => $poussiniereType->id,
+    ]);
+
+    // On vise la phase "ponte" mais on choisit un bâtiment de type "chair" :
+    // incompatible avec le type CIBLE de la mutation.
+    $this->actingAs($this->managerUser)
+        ->post(route('batches.transfer', $batch), [
+            'target_building_id' => $chairBuilding->id,
+            'new_protocol_id'    => $protocol->id,
+            'new_phase'          => 'ponte',
+            'transfer_date'      => now()->toDateString(),
+        ])
+        ->assertSessionHasErrors('target_building_id');
+
+    $batch->refresh();
+    expect($batch->building_id)->toBe($poussiniereBuilding->id);
+    expect($batch->type)->toBe('poussiniere');
+});
+
+test('une poussinière peut graduer vers la chair (phase demandée par le métier)', function () {
+    $protocol = Protocol::create(['name' => 'Proto Chair', 'type' => 'chair']);
+
+    $poussiniereBuilding = Building::factory()->create(['type' => 'poussiniere']);
+    $chairBuilding       = Building::factory()->create(['type' => 'chair']);
+
+    $batch = Batch::factory()->create([
+        'building_id'        => $poussiniereBuilding->id,
+        'status'             => 'Actif',
+        'current_quantity'   => 800,
+        'production_type_id' => ProductionType::resolveOrCreate('poussiniere', null)->id,
+    ]);
+
+    $this->actingAs($this->managerUser)
+        ->post(route('batches.transfer', $batch), [
+            'target_building_id' => $chairBuilding->id,
+            'new_protocol_id'    => $protocol->id,
+            'new_phase'          => 'chair',
+            'transfer_date'      => now()->toDateString(),
+        ])
+        ->assertSessionDoesntHaveErrors();
+
+    $batch->refresh();
+    expect($batch->type)->toBe('chair');
+    expect($batch->building_id)->toBe($chairBuilding->id);
+});
+
+test('une transformation sur place (même bâtiment mixte) gradue le lot sans le déplacer', function () {
+    $protocol = Protocol::create(['name' => 'Proto Ponte Sur Place', 'type' => 'ponte']);
+
+    // Bâtiment mixte : accueille la poussinière puis la ponte sur place.
+    $mixteBuilding = Building::factory()->create(['type' => 'mixte']);
+
+    $batch = Batch::factory()->create([
+        'building_id'        => $mixteBuilding->id,
+        'status'             => 'Actif',
+        'current_quantity'   => 600,
+        'production_type_id' => ProductionType::resolveOrCreate('poussiniere', null)->id,
+    ]);
+
+    // On garde le MÊME bâtiment : la transformation sur place doit être permise
+    // dès lors que la phase change (graduation).
+    $this->actingAs($this->managerUser)
+        ->post(route('batches.transfer', $batch), [
+            'target_building_id' => $mixteBuilding->id,
+            'new_protocol_id'    => $protocol->id,
+            'new_phase'          => 'ponte',
+            'transfer_date'      => now()->toDateString(),
+        ])
+        ->assertSessionDoesntHaveErrors();
+
+    $batch->refresh();
+    expect($batch->type)->toBe('ponte');
+    expect($batch->building_id)->toBe($mixteBuilding->id);
+    // Le bâtiment courant reste Occupé (pas de vide sanitaire sur place).
+    expect($mixteBuilding->fresh()->status)->toBe(\App\Models\Building::STATUS_OCCUPE);
+});
+
+test('rester dans le même bâtiment sans changer de phase est refusé', function () {
+    $protocol = Protocol::create(['name' => 'Proto No-op', 'type' => 'chair']);
+    $chairBuilding = Building::factory()->create(['type' => 'chair']);
+
+    $batch = Batch::factory()->create([
+        'building_id'        => $chairBuilding->id,
+        'status'             => 'Actif',
+        'current_quantity'   => 400,
+        'production_type_id' => ProductionType::resolveOrCreate('chair', null)->id,
+    ]);
+
+    $this->actingAs($this->managerUser)
+        ->post(route('batches.transfer', $batch), [
+            'target_building_id' => $chairBuilding->id,
+            'new_protocol_id'    => $protocol->id,
+            'new_phase'          => 'chair', // identique → aucun effet
+            'transfer_date'      => now()->toDateString(),
+        ])
+        ->assertSessionHasErrors('target_building_id');
+});
+
+// ── COMPATIBILITÉ BÂTIMENT / ESPÈCE (NON-VOLAILLE) ──
+
+test('une chèvre peut graduer de l\'engraissement vers la laitière entre deux chèvreries', function () {
+    $chevre = \App\Models\Species::firstOrCreate(
+        ['slug' => 'chevre'],
+        ['name_fr' => 'Chèvre / Caprin', 'family' => 'petit_ruminant', 'is_active' => true]
+    );
+
+    $protocol = Protocol::create(['name' => 'Proto Caprin Laitière', 'type' => 'laitiere']);
+
+    $chevrerie1 = Building::factory()->create(['type' => 'chevrerie']);
+    $chevrerie2 = Building::factory()->create(['type' => 'chevrerie']);
+
+    $batch = Batch::factory()->create([
+        'species_id'         => $chevre->id,
+        'building_id'        => $chevrerie1->id,
+        'status'             => 'Actif',
+        'current_quantity'   => 30,
+        'production_type_id' => ProductionType::resolveOrCreate('engraissement', $chevre->id)->id,
+    ]);
+
+    $this->actingAs($this->managerUser)
+        ->post(route('batches.transfer', $batch), [
+            'target_building_id' => $chevrerie2->id,
+            'new_protocol_id'    => $protocol->id,
+            'new_phase'          => 'laitiere',
+            'transfer_date'      => now()->toDateString(),
+        ])
+        ->assertSessionDoesntHaveErrors();
+
+    $batch->refresh();
+    expect($batch->type)->toBe('laitiere');
+    expect($batch->building_id)->toBe($chevrerie2->id);
+});
+
+test('une chèvre ne peut pas être transférée dans une bergerie', function () {
+    $chevre = \App\Models\Species::firstOrCreate(
+        ['slug' => 'chevre'],
+        ['name_fr' => 'Chèvre / Caprin', 'family' => 'petit_ruminant', 'is_active' => true]
+    );
+
+    $protocol = Protocol::create(['name' => 'Proto Caprin Engraissement', 'type' => 'engraissement']);
+
+    $chevrerie = Building::factory()->create(['type' => 'chevrerie']);
+    $bergerie  = Building::factory()->create(['type' => 'bergerie']);
+
+    $batch = Batch::factory()->create([
+        'species_id'         => $chevre->id,
+        'building_id'        => $chevrerie->id,
+        'status'             => 'Actif',
+        'current_quantity'   => 20,
+        'production_type_id' => ProductionType::resolveOrCreate('engraissement', $chevre->id)->id,
+    ]);
+
+    $this->actingAs($this->managerUser)
+        ->post(route('batches.transfer', $batch), [
+            'target_building_id' => $bergerie->id,
+            'new_protocol_id'    => $protocol->id,
+            'new_phase'          => 'engraissement',
+            'transfer_date'      => now()->toDateString(),
+        ])
+        ->assertSessionHasErrors('target_building_id');
+
+    $batch->refresh();
+    expect($batch->building_id)->toBe($chevrerie->id);
+});
+
+test('la création d\'un lot caprin dans un bâtiment volaille est refusée', function () {
+    $chevre = \App\Models\Species::firstOrCreate(
+        ['slug' => 'chevre'],
+        ['name_fr' => 'Chèvre / Caprin', 'family' => 'petit_ruminant', 'is_active' => true]
+    );
+
+    $chairBuilding = Building::factory()->create(['type' => 'chair']);
+
+    $this->actingAs($this->managerUser)
+        ->post(route('batches.store'), [
+            'code'               => 'CAP-001',
+            'building_id'        => $chairBuilding->id,
+            'type'               => 'engraissement',
+            'species_id'         => $chevre->id,
+            'employee_id'        => $this->employee->id,
+            'provider_id'        => $this->provider->id,
+            'arrival_date'       => now()->toDateString(),
+            'buy_price_per_unit' => 5000,
+            'qty_alive'          => 10,
+        ])
+        ->assertSessionHasErrors('building_id');
+
+    expect(Batch::where('code', 'CAP-001')->exists())->toBeFalse();
+});
+
+test('la création d\'un lot caprin dans une chèvrerie est acceptée', function () {
+    $chevre = \App\Models\Species::firstOrCreate(
+        ['slug' => 'chevre'],
+        ['name_fr' => 'Chèvre / Caprin', 'family' => 'petit_ruminant', 'is_active' => true]
+    );
+
+    $chevrerie = Building::factory()->create(['type' => 'chevrerie']);
+
+    $this->actingAs($this->managerUser)
+        ->post(route('batches.store'), [
+            'code'               => 'CAP-002',
+            'building_id'        => $chevrerie->id,
+            'type'               => 'engraissement',
+            'model_name'         => 'Chèvre Rousse Maradi',
+            'species_id'         => $chevre->id,
+            'employee_id'        => $this->employee->id,
+            'provider_id'        => $this->provider->id,
+            'arrival_date'       => now()->toDateString(),
+            'buy_price_per_unit' => 5000,
+            'qty_alive'          => 10,
+        ])
+        ->assertSessionDoesntHaveErrors();
+
+    expect(Batch::where('code', 'CAP-002')->exists())->toBeTrue();
+});
+
+test('la modification d\'un lot vers un bâtiment incompatible avec son espèce est refusée', function () {
+    $chevre = \App\Models\Species::firstOrCreate(
+        ['slug' => 'chevre'],
+        ['name_fr' => 'Chèvre / Caprin', 'family' => 'petit_ruminant', 'is_active' => true]
+    );
+
+    $chevrerie = Building::factory()->create(['type' => 'chevrerie']);
+    $chairBuilding = Building::factory()->create(['type' => 'chair']);
+
+    $batch = Batch::factory()->create([
+        'species_id'         => $chevre->id,
+        'building_id'        => $chevrerie->id,
+        'status'             => 'Actif',
+        'current_quantity'   => 10,
+        'production_type_id' => ProductionType::resolveOrCreate('engraissement', $chevre->id)->id,
+    ]);
+
+    $this->actingAs($this->managerUser)
+        ->put(route('batches.update', $batch), [
+            'type'               => 'engraissement',
+            'building_id'        => $chairBuilding->id,
+            'employee_id'        => $this->employee->id,
+            'provider_id'        => $this->provider->id,
+            'arrival_date'       => $batch->arrival_date->toDateString(),
+            'buy_price_per_unit' => $batch->buy_price_per_unit,
+            'status'             => $batch->status,
+        ])
+        ->assertSessionHasErrors('building_id');
+
+    $batch->refresh();
+    expect($batch->building_id)->toBe($chevrerie->id);
+});
+
+test('une vache peut être transférée vers une étable', function () {
+    $vache = \App\Models\Species::firstOrCreate(
+        ['slug' => 'vache'],
+        ['name_fr' => 'Vache / Bovin', 'family' => 'grand_ruminant', 'is_active' => true]
+    );
+
+    $protocol = Protocol::create(['name' => 'Proto Bovin Laitière', 'type' => 'laitiere']);
+
+    $etable1 = Building::factory()->create(['type' => 'etable']);
+    $etable2 = Building::factory()->create(['type' => 'etable']);
+
+    $batch = Batch::factory()->create([
+        'species_id'         => $vache->id,
+        'building_id'        => $etable1->id,
+        'status'             => 'Actif',
+        'current_quantity'   => 10,
+        'production_type_id' => ProductionType::resolveOrCreate('engraissement', $vache->id)->id,
+    ]);
+
+    $this->actingAs($this->managerUser)
+        ->post(route('batches.transfer', $batch), [
+            'target_building_id' => $etable2->id,
+            'new_protocol_id'    => $protocol->id,
+            'new_phase'          => 'laitiere',
+            'transfer_date'      => now()->toDateString(),
+        ])
+        ->assertSessionDoesntHaveErrors();
+
+    $batch->refresh();
+    expect($batch->type)->toBe('laitiere');
+    expect($batch->building_id)->toBe($etable2->id);
 });

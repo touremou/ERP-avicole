@@ -21,7 +21,7 @@ class StoreEggMovementRequest extends FormRequest
     {
         return [
             'type'     => 'required|in:vente,don,ajustement,casse_magasin',
-            'grade'    => 'required|in:XL,L,M,S',
+            'grade'    => 'required|in:' . implode(',', \App\Models\EggProduction::gradeCodes()),
             'quantity' => 'required|integer|min:1',
             'notes'    => 'nullable|string|max:500',
         ];
@@ -35,7 +35,7 @@ class StoreEggMovementRequest extends FormRequest
     {
         $validator->after(function ($validator) {
             $stock = Stock::where('item_name', $this->grade)
-                ->where('category', 'oeufs')
+                ->where('category', Stock::CAT_OEUFS)
                 ->first();
 
             if (! $stock) {
@@ -60,7 +60,7 @@ class StoreEggMovementRequest extends FormRequest
     {
         return [
             'type.in'      => 'Type invalide. Valeurs acceptées : vente, don, ajustement, casse_magasin.',
-            'grade.in'     => 'Calibre invalide. Valeurs acceptées : XL, L, M, S.',
+            'grade.in'     => 'Calibre invalide. Valeurs acceptées : ' . implode(', ', \App\Models\EggProduction::gradeCodes()) . '.',
             'quantity.min' => 'La quantité doit être d\'au moins 1 unité.',
         ];
     }

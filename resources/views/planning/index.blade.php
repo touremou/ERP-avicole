@@ -6,7 +6,7 @@
                     <i class="fa-solid fa-calendar-days text-xl"></i>
                 </div>
                 <div>
-                    <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">Planification des Bandes</h2>
+                    <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">{{ __("Planification des Bandes") }}</h2>
                     <p class="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em] mt-2 italic">
                         {{ $from->translatedFormat('M Y') }} → {{ $to->translatedFormat('M Y') }}
                     </p>
@@ -14,7 +14,7 @@
             </div>
             @can('planning.C')
             <a href="{{ route('planning.create') }}" class="bg-slate-900 text-white px-8 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-indigo-600 transition-all shadow-2xl italic no-underline flex items-center gap-2">
-                <i class="fa-solid fa-plus"></i> Planifier une Bande
+                <i class="fa-solid fa-plus"></i> {{ __("Planifier une Bande") }}
             </a>
             @endcan
         </div>
@@ -34,27 +34,27 @@
             {{-- ═══ KPI CARDS ═══ --}}
             <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
                 <div class="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm text-center">
-                    <p class="text-[8px] font-black text-indigo-500 uppercase tracking-widest mb-1">Bandes planifiées</p>
+                    <p class="text-[8px] font-black text-indigo-500 uppercase tracking-widest mb-1">{{ __("Bandes planifiées") }}</p>
                     <p class="text-3xl font-black text-slate-900">{{ $kpi['total_planned'] }}</p>
                 </div>
                 <div @class(['p-5 rounded-[2rem] border shadow-sm text-center',
                     'bg-amber-50 border-amber-200' => $kpi['arriving_7days'] > 0,
                     'bg-white border-slate-100' => $kpi['arriving_7days'] === 0])>
-                    <p class="text-[8px] font-black text-amber-500 uppercase tracking-widest mb-1">Arrivées 7j</p>
+                    <p class="text-[8px] font-black text-amber-500 uppercase tracking-widest mb-1">{{ __("Arrivées 7j") }}</p>
                     <p class="text-3xl font-black {{ $kpi['arriving_7days'] > 0 ? 'text-amber-600' : 'text-slate-300' }}">{{ $kpi['arriving_7days'] }}</p>
                 </div>
                 <div @class(['p-5 rounded-[2rem] border shadow-sm text-center',
                     'bg-red-50 border-red-200 animate-pulse' => $kpi['overdue_orders'] > 0,
                     'bg-white border-slate-100' => $kpi['overdue_orders'] === 0])>
-                    <p class="text-[8px] font-black text-red-500 uppercase tracking-widest mb-1">Commandes retard</p>
+                    <p class="text-[8px] font-black text-red-500 uppercase tracking-widest mb-1">{{ __("Commandes retard") }}</p>
                     <p class="text-3xl font-black {{ $kpi['overdue_orders'] > 0 ? 'text-red-600' : 'text-slate-300' }}">{{ $kpi['overdue_orders'] }}</p>
                 </div>
                 <div class="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm text-center">
-                    <p class="text-[8px] font-black text-emerald-500 uppercase tracking-widest mb-1">Lots actifs</p>
+                    <p class="text-[8px] font-black text-emerald-500 uppercase tracking-widest mb-1">{{ __("Lots actifs") }}</p>
                     <p class="text-3xl font-black text-emerald-600">{{ $kpi['active_batches'] }}</p>
                 </div>
                 <div class="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm text-center">
-                    <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Effectif total</p>
+                    <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Effectif total") }}</p>
                     <p class="text-3xl font-black text-slate-900">{{ number_format($kpi['total_birds']) }}</p>
                 </div>
             </div>
@@ -77,7 +77,7 @@
             {{-- ═══ OCCUPATION BÂTIMENTS ═══ --}}
             <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm mb-6">
                 <h3 class="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-5 flex items-center gap-2">
-                    <i class="fa-solid fa-chart-bar text-indigo-500"></i> Occupation des bâtiments
+                    <i class="fa-solid fa-chart-bar text-indigo-500"></i> {{ __("Occupation des bâtiments") }}
                 </h3>
                 <div class="space-y-3">
                     @foreach($occupancy as $occ)
@@ -109,15 +109,15 @@
                         <div class="w-28 shrink-0 text-right">
                             @if($occ['is_empty'])
                                 <span @class(['text-[8px] font-black', 'text-red-500 animate-pulse' => $occ['idle_days'] > 30, 'text-slate-400' => $occ['idle_days'] <= 30])>
-                                    Vide {{ $occ['idle_days'] }}j
+                                    {{ __("Vide :countj", ['count' => $occ['idle_days']]) }}
                                 </span>
                             @elseif($occ['is_full'])
-                                <span class="text-[8px] font-black text-red-500">Plein</span>
+                                <span class="text-[8px] font-black text-red-500">{{ __("Plein") }}</span>
                             @else
-                                <span class="text-[8px] font-black text-emerald-500">Actif</span>
+                                <span class="text-[8px] font-black text-emerald-500">{{ __("Actif") }}</span>
                             @endif
                             @if($occ['planned_days'] > 0)
-                                <span class="text-[7px] text-blue-400 block">{{ $occ['planned_days'] }}j planif.</span>
+                                <span class="text-[7px] text-blue-400 block">{{ __(":countj planif.", ['count' => $occ['planned_days']]) }}</span>
                             @endif
                         </div>
                     </div>
@@ -128,13 +128,13 @@
             {{-- ═══ FILTRE DATES ═══ --}}
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
-                    <i class="fa-solid fa-list text-indigo-500"></i> Planning des bandes ({{ $plans->count() }})
+                    <i class="fa-solid fa-list text-indigo-500"></i> {{ __("Planning des bandes") }} ({{ $plans->count() }})
                 </h3>
                 <form method="GET" class="flex gap-2 items-center">
                     <input type="date" name="from" value="{{ $from->toDateString() }}" class="bg-white border border-slate-200 rounded-xl px-3 py-2 text-[10px] font-black outline-none">
                     <span class="text-[8px] text-slate-300">→</span>
                     <input type="date" name="to" value="{{ $to->toDateString() }}" class="bg-white border border-slate-200 rounded-xl px-3 py-2 text-[10px] font-black outline-none">
-                    <button class="bg-slate-900 text-white px-4 py-2 rounded-xl font-black text-[9px] uppercase border-none cursor-pointer hover:bg-indigo-600 transition-all">Filtrer</button>
+                    <button class="bg-slate-900 text-white px-4 py-2 rounded-xl font-black text-[9px] uppercase border-none cursor-pointer hover:bg-indigo-600 transition-all">{{ __("Filtrer") }}</button>
                 </form>
             </div>
 
@@ -144,15 +144,15 @@
                     <table class="w-full border-collapse">
                         <thead>
                             <tr class="text-[8px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 bg-slate-50">
-                                <th class="px-5 py-4 text-left">Bâtiment</th>
-                                <th class="px-3 py-4 text-left">Type / Souche</th>
-                                <th class="px-3 py-4 text-center">Qté</th>
-                                <th class="px-3 py-4 text-center">Arrivée</th>
-                                <th class="px-3 py-4 text-center">Fin</th>
-                                <th class="px-3 py-4 text-center">Vide sanitaire</th>
-                                <th class="px-3 py-4 text-center">Commander</th>
-                                <th class="px-3 py-4 text-center">Statut</th>
-                                <th class="px-5 py-4 text-center">Actions</th>
+                                <th class="px-5 py-4 text-left">{{ __("Bâtiment") }}</th>
+                                <th class="px-3 py-4 text-left">{{ __("Type / Souche") }}</th>
+                                <th class="px-3 py-4 text-center">{{ __("Qté") }}</th>
+                                <th class="px-3 py-4 text-center">{{ __("Arrivée") }}</th>
+                                <th class="px-3 py-4 text-center">{{ __("Fin") }}</th>
+                                <th class="px-3 py-4 text-center">{{ __("Vide sanitaire") }}</th>
+                                <th class="px-3 py-4 text-center">{{ __("Commander") }}</th>
+                                <th class="px-3 py-4 text-center">{{ __("Statut") }}</th>
+                                <th class="px-5 py-4 text-center">{{ __("Actions") }}</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-50">
@@ -163,7 +163,7 @@
 
                                 <td class="px-5 py-4">
                                     <p class="text-xs font-black text-slate-900 uppercase">{{ $plan->building->name ?? '—' }}</p>
-                                    <p class="text-[8px] text-slate-400">{{ $plan->building->type ?? '' }} — {{ $plan->building->capacity ?? '' }} places</p>
+                                    <p class="text-[8px] text-slate-400">{{ $plan->building->type ?? '' }} — {{ $plan->building->capacity ?? '' }} {{ __("places") }}</p>
                                 </td>
 
                                 <td class="px-3 py-4">
@@ -186,7 +186,7 @@
                                         {{ $plan->planned_arrival_date->format('d/m/Y') }}
                                     </p>
                                     @if($plan->days_until_arrival > 0 && !in_array($plan->status, ['termine', 'annule', 'en_cours']))
-                                        <p class="text-[8px] {{ $plan->days_until_arrival <= 3 ? 'text-red-500 font-black' : 'text-slate-400' }}">dans {{ $plan->days_until_arrival }}j</p>
+                                        <p class="text-[8px] {{ $plan->days_until_arrival <= 3 ? 'text-red-500 font-black' : 'text-slate-400' }}">{{ __("dans :countj", ['count' => $plan->days_until_arrival]) }}</p>
                                     @endif
                                 </td>
 
@@ -204,7 +204,7 @@
                                             {{ $plan->chick_order_deadline->format('d/m/Y') }}
                                         </p>
                                         @if($plan->is_overdue)
-                                            <p class="text-[8px] text-red-500 font-black animate-pulse">⚠ EN RETARD</p>
+                                            <p class="text-[8px] text-red-500 font-black animate-pulse">{{ __("⚠ EN RETARD") }}</p>
                                         @endif
                                     @endif
                                 </td>
@@ -219,7 +219,7 @@
                                         {{ $plan->status }}
                                     </span>
                                     @if($plan->actual_batch_id)
-                                        <p class="text-[7px] text-emerald-500 mt-0.5">LOT LIÉ</p>
+                                        <p class="text-[7px] text-emerald-500 mt-0.5">{{ __("LOT LIÉ") }}</p>
                                     @endif
                                 </td>
 
@@ -227,7 +227,7 @@
                                 <td class="px-5 py-4 text-center">
                                     <div class="flex items-center justify-center gap-2">
                                         {{-- Voir --}}
-                                        <a href="{{ route('planning.show', $plan) }}" class="text-slate-300 hover:text-indigo-600 no-underline" title="Détail"><i class="fa-solid fa-eye"></i></a>
+                                        <a href="{{ route('planning.show', $plan) }}" class="text-slate-300 hover:text-indigo-600 no-underline" title="{{ __("Détail") }}"><i class="fa-solid fa-eye"></i></a>
 
                                         @can('planning.M')
                                         {{-- Marquer commandé --}}
@@ -235,20 +235,20 @@
                                             <form method="POST" action="{{ route('planning.status', $plan) }}" class="inline">
                                                 @csrf @method('PUT')
                                                 <input type="hidden" name="status" value="commande">
-                                                <button type="submit" class="text-blue-400 hover:text-blue-600 border-none bg-transparent cursor-pointer" title="Marquer Commandé"><i class="fa-solid fa-phone"></i></button>
+                                                <button type="submit" class="text-blue-400 hover:text-blue-600 border-none bg-transparent cursor-pointer" title="{{ __("Marquer Commandé") }}"><i class="fa-solid fa-phone"></i></button>
                                             </form>
                                         @endif
 
                                         {{-- Activer (lancer la bande) --}}
                                         @if(in_array($plan->status, ['planifie', 'commande']) && !$plan->actual_batch_id)
-                                            <a href="{{ route('planning.activate', $plan) }}" class="text-emerald-400 hover:text-emerald-600 no-underline" title="Activer → Créer le lot">
+                                            <a href="{{ route('planning.activate', $plan) }}" class="text-emerald-400 hover:text-emerald-600 no-underline" title="{{ __("Activer → Créer le lot") }}">
                                                 <i class="fa-solid fa-rocket"></i>
                                             </a>
                                         @endif
 
                                         {{-- Voir le lot lié --}}
                                         @if($plan->actual_batch_id)
-                                            <a href="{{ route('batches.show', $plan->actual_batch_id) }}" class="text-emerald-500 hover:text-emerald-700 no-underline" title="Voir le lot">
+                                            <a href="{{ route('batches.show', $plan->actual_batch_id) }}" class="text-emerald-500 hover:text-emerald-700 no-underline" title="{{ __("Voir le lot") }}">
                                                 <i class="fa-solid fa-arrow-up-right-from-square"></i>
                                             </a>
                                         @endif
@@ -260,10 +260,10 @@
                             <tr>
                                 <td colspan="9" class="px-8 py-16 text-center">
                                     <i class="fa-solid fa-calendar-xmark text-slate-200 text-3xl mb-4 block"></i>
-                                    <p class="text-[10px] text-slate-400 uppercase tracking-widest font-black mb-3">Aucune bande planifiée sur cette période</p>
+                                    <p class="text-[10px] text-slate-400 uppercase tracking-widest font-black mb-3">{{ __("Aucune bande planifiée sur cette période") }}</p>
                                     @can('planning.C')
                                     <a href="{{ route('planning.create') }}" class="bg-indigo-500 text-white px-6 py-3 rounded-xl font-black text-[9px] uppercase tracking-widest no-underline hover:bg-indigo-600 transition-all">
-                                        <i class="fa-solid fa-plus mr-1"></i> Planifier la première bande
+                                        <i class="fa-solid fa-plus mr-1"></i> {{ __("Planifier la première bande") }}
                                     </a>
                                     @endcan
                                 </td>
@@ -276,10 +276,10 @@
 
             {{-- LÉGENDE --}}
             <div class="mt-6 flex flex-wrap gap-4 justify-center">
-                <span class="text-[8px] font-black text-slate-400 uppercase flex items-center gap-1"><i class="fa-solid fa-eye text-slate-300"></i> Détail</span>
-                <span class="text-[8px] font-black text-slate-400 uppercase flex items-center gap-1"><i class="fa-solid fa-phone text-blue-400"></i> Marquer commandé</span>
-                <span class="text-[8px] font-black text-slate-400 uppercase flex items-center gap-1"><i class="fa-solid fa-rocket text-emerald-400"></i> Activer & Créer le lot</span>
-                <span class="text-[8px] font-black text-slate-400 uppercase flex items-center gap-1"><i class="fa-solid fa-arrow-up-right-from-square text-emerald-500"></i> Voir le lot lié</span>
+                <span class="text-[8px] font-black text-slate-400 uppercase flex items-center gap-1"><i class="fa-solid fa-eye text-slate-300"></i> {{ __("Détail") }}</span>
+                <span class="text-[8px] font-black text-slate-400 uppercase flex items-center gap-1"><i class="fa-solid fa-phone text-blue-400"></i> {{ __("Marquer commandé") }}</span>
+                <span class="text-[8px] font-black text-slate-400 uppercase flex items-center gap-1"><i class="fa-solid fa-rocket text-emerald-400"></i> {{ __("Activer & Créer le lot") }}</span>
+                <span class="text-[8px] font-black text-slate-400 uppercase flex items-center gap-1"><i class="fa-solid fa-arrow-up-right-from-square text-emerald-500"></i> {{ __("Voir le lot lié") }}</span>
             </div>
         </div>
     </div>

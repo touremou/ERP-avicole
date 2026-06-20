@@ -59,4 +59,17 @@ return [
     */
     'farm_name' => env('WHATSAPP_FARM_NAME', 'AviSmart'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Vérification SSL des appels providers
+    |--------------------------------------------------------------------------
+    |
+    | Doit rester activée (true). Le bundle CA (composer/ca-bundle) gère déjà
+    | les PHP sans curl.cainfo configuré (cause de « cURL error 60 »).
+    | Le réglage Paramètres > WhatsApp > verify_ssl peut le désactiver en
+    | dernier recours (déconseillé, non sécurisé).
+    |
+    */
+    'verify_ssl' => env('WHATSAPP_VERIFY_SSL', true),
+
 ];

@@ -127,7 +127,7 @@ class MillMachineController extends Controller
      */
     public function toggleStatus(Request $request, $id): RedirectResponse
     {
-        if (Gate::denies('provenderie.C')) return back()->with('error', 'Saisie non autorisée.');
+        if (Gate::denies('provenderie.M')) return back()->with('error', 'Modification non autorisée.');
 
         $machine = MillMachine::findOrFail($id);
 
@@ -148,11 +148,10 @@ class MillMachineController extends Controller
 
         $machine = MillMachine::findOrFail($id);
 
-        // P-11 : utilise la relation au lieu d'une méthode potentiellement inexistante
-        $hasHistory = $machine->productions()->exists()
-                   || $machine->pivotProductions()->exists();
-
-        if ($hasHistory) {
+        // P-11 : la relation pivotProductions() n'existe pas sur le modèle ;
+        // on délègue au helper hasProductionHistory() qui couvre la machine
+        // principale (productions) ET les lignes multi-machines (millProductions).
+        if ($machine->hasProductionHistory()) {
             return back()->with('error', "Impossible : {$machine->name} a un historique de production. Utilisez le statut 'Désactivé'.");
         }
 

@@ -30,8 +30,8 @@ class EggAnalysisService
         $dayBefore = Carbon::yesterday()->subDay();
 
         // Lots pondeuses actifs
-        $layingBatches = Batch::where('status', 'Actif')
-            ->where('type', 'ponte')
+        $layingBatches = Batch::active()
+            ->byType('ponte')
             ->with('building')
             ->get();
 

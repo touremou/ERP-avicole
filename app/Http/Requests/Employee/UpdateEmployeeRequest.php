@@ -27,7 +27,7 @@ class UpdateEmployeeRequest extends FormRequest
             'status'        => 'required|in:Actif,Suspendu,Congé',
             'salary'        => 'nullable|numeric|min:0',
             'photo'         => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
-            'cv'            => 'nullable|mimes:pdf|max:5120',
+            'cv'            => 'nullable|mimes:pdf|max:2048',
         ];
     }
 }

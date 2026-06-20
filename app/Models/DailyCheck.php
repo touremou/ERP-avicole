@@ -33,27 +33,32 @@ class DailyCheck extends Model
 
     protected $fillable = [
         'farm_id', 'batch_id', 'check_date',
-        'mortality', 'feed_consumed', 'feed_type', 'water_consumed',
+        'mortality', 'feed_consumed', 'feed_type', 'feed_unit_cost', 'water_consumed',
         'temp_min', 'temp_max', 'humidity',
         'avg_weight', 'health_status',
         'treatment_type', 'treatment_name',
         'qty_quarantine_in', 'qty_quarantine_out', 'qty_sorted_out',
-        'observations', 'litter_changed',
+        'observations', 'litter_changed', 'manure_collected_kg',
+        'lame_count', 'pecking_injury_count',
     ];
 
     protected $casts = [
         'check_date'         => 'date',
         'feed_consumed'      => 'decimal:2',
+        'feed_unit_cost'     => 'decimal:2',
         'water_consumed'     => 'decimal:2',
         'avg_weight'         => 'decimal:3',
         'temp_min'           => 'decimal:1',
         'temp_max'           => 'decimal:1',
         'humidity'           => 'decimal:1',
         'litter_changed'     => 'boolean',
+        'manure_collected_kg' => 'decimal:2',
         'mortality'          => 'integer',
         'qty_quarantine_in'  => 'integer',
         'qty_quarantine_out' => 'integer',
         'qty_sorted_out'     => 'integer',
+        'lame_count'         => 'integer',
+        'pecking_injury_count' => 'integer',
     ];
 
     public function batch(): BelongsTo
@@ -83,6 +88,7 @@ class DailyCheck extends Model
             if ($impact !== 0) {
                 static::applyBatchImpact($check->batch_id, -$impact);
             }
+            static::autoCompleteTasks($check);
         });
 
         // Avant update → calculer le diff et le stocker dans le tableau statique
@@ -147,6 +153,32 @@ class DailyCheck extends Model
                 ->where('id', $batchId)
                 ->update(['current_quantity' => $newQty, 'updated_at' => now()]);
         });
+    }
+
+    /**
+     * Auto-complète les tâches générées de catégorie "controle" (relevé
+     * mortalité, contrôle eau, relevé température...) planifiées le même
+     * jour pour le bâtiment du lot : le pointage journalier couvre déjà
+     * ces relevés, inutile de les saisir deux fois.
+     */
+    private static function autoCompleteTasks(DailyCheck $check): void
+    {
+        $buildingId = $check->batch?->building_id;
+        if (! $buildingId) return;
+
+        \App\Models\TaskAssignment::where('building_id', $buildingId)
+            ->where('scheduled_date', $check->check_date->toDateString())
+            ->where('category', 'controle')
+            ->whereIn('status', ['a_faire', 'en_retard'])
+            ->get()
+            ->each(function (\App\Models\TaskAssignment $task) use ($check) {
+                $task->update([
+                    'status'           => 'fait',
+                    'completed_at'     => now(),
+                    'completed_by'     => \Illuminate\Support\Facades\Auth::id(),
+                    'completion_notes' => "Auto-complétée via le pointage journalier #{$check->id}.",
+                ]);
+            });
     }
 
     public function getWaterFeedRatioAttribute(): float

@@ -56,6 +56,11 @@ class ReconciliationService
             'volaille_abattue' => (float) setting('abattoir.tolerance_slaughtered_poultry', 0),
             'materiel'         => (float) setting('abattoir.tolerance_equipment', 0),
             'autre'            => (float) setting('abattoir.tolerance_other', 1),
+
+            // Multiespèces : animaux vifs (tête = exact), carcasses/lait (poids/volume = légère variance)
+            'animal_vif'       => (float) setting('abattoir.tolerance_live_animals', 0),
+            'carcasse'         => (float) setting('abattoir.tolerance_carcass', 1),
+            'lait'             => (float) setting('abattoir.tolerance_milk', 1),
         ];
     }
 
@@ -159,6 +164,13 @@ class ReconciliationService
                 "ReconciliationService: ÉCART DÉTECTÉ sur {$dispatch->dispatch_number} — " .
                 "Taux: {$discrepancyRate}%, Manquant: {$totalMissing}, Sévérité: {$severity}"
             );
+
+            // Alerte anti-fraude immédiate (admin/propriétaire hors site) si
+            // l'écart n'est pas anodin — la résolution se fait a posteriori
+            // via DiscrepancyReport::resolution.
+            if ($severity !== 'normal') {
+                app(NotificationHub::class)->alertFraud($report->load(['dispatch']));
+            }
 
             return $report;
         });

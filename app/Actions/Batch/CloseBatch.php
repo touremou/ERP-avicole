@@ -9,8 +9,9 @@ use Illuminate\Support\Facades\DB;
 /**
  * Action : Clôture d'un lot de production.
  *
- * Calcul de marge complet (corrige B-07) :
- * - Revenus = vente des oiseaux (réforme) + revenus œufs cumulés
+ * Calcul de marge :
+ * - Revenus = vente de réforme (effectif restant × prix de cession).
+ *   Le CA œufs n'est pas rattaché au lot (stock mutualisé) : suivi au niveau ferme.
  * - Coûts = acquisition + alimentation + santé + coûts additionnels
  * - Marge = Revenus - Coûts
  *
@@ -28,22 +29,27 @@ class CloseBatch
     {
         return DB::transaction(function () use ($batch, $data) {
             // ─── REVENUS ───
+            // Vente de réforme : effectif restant valorisé au prix de cession.
             $sellingPrice = (float) $data['actual_sell_price_per_unit'];
             $sellingRevenue = $batch->current_quantity * $sellingPrice;
 
-            // Revenus œufs cumulés (mouvements de vente)
-            // Note : si egg_movements n'a pas de colonne de prix, on utilise 0
-            // et on le corrigera dans le refactoring du module Œufs
-            $eggRevenue = 0;
-            // TODO : $eggRevenue = $batch->eggMovements()->where('type', 'vente')->sum('total_price');
-
-            $totalRevenue = $sellingRevenue + $eggRevenue;
+            // Le revenu des œufs n'est pas inclus ici : les œufs sont vendus
+            // depuis un stock mutualisé (module Stock/Ventes) sans rattachement
+            // au lot d'origine. Le CA œufs est donc suivi globalement au niveau
+            // ferme et non par lot (limite assumée du modèle de données).
+            $totalRevenue = $sellingRevenue;
 
             // ─── COÛTS ───
+            // Frais annexes : saisis dans le formulaire de clôture (main d'œuvre,
+            // transport, divers). On retombe sur la valeur déjà enregistrée sur le
+            // lot si le champ n'est pas soumis, pour ne pas l'écraser.
+            $additionalCosts = array_key_exists('additional_costs', $data)
+                ? (float) $data['additional_costs']
+                : (float) ($batch->additional_costs ?? 0);
+
             $acquisitionCost = (float) ($batch->total_acquisition_cost ?? 0);
             $feedCost = (float) $batch->feedPurchases()->sum('total_price');
             $healthCost = (float) $batch->healthChecks()->sum('cost');
-            $additionalCosts = (float) ($batch->additional_costs ?? 0);
             $totalCost = $acquisitionCost + $feedCost + $healthCost + $additionalCosts;
 
             // ─── MARGE ───
@@ -51,10 +57,11 @@ class CloseBatch
 
             // ─── MISE À JOUR DU LOT ───
             $batch->update([
-                'status'                     => 'Terminé',
+                'status'                     => Batch::STATUS_TERMINE,
                 'current_quantity'           => 0,
                 'closing_date'               => $data['closing_date'],
                 'actual_sell_price_per_unit'  => $sellingPrice,
+                'additional_costs'           => $additionalCosts,
                 'total_revenue'              => $totalRevenue,
                 'margin'                     => $margin,
                 'observations'               => trim(
@@ -85,14 +92,11 @@ class CloseBatch
 
         $hasOtherActive = Batch::where('building_id', $building->id)
             ->where('id', '!=', $batch->id)
-            ->where('status', 'Actif')
+            ->active()
             ->exists();
 
         if (! $hasOtherActive) {
-            $building->update([
-                'status' => 'En désinfection',
-                'disinfection_started_at' => now(),
-            ]);
+            $building->startSanitaryBreak();
         }
     }
 }

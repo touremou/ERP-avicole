@@ -5,6 +5,7 @@ namespace App\Actions\Sale;
 use App\Models\Sale;
 use App\Models\Stock;
 use App\Models\Batch;
+use App\Services\NotificationHub;
 use App\Services\StockIntegrationService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -29,17 +30,17 @@ class ValidateSale
             // ─── 1. VÉRIFIER ET DÉSTOCKER CHAQUE LIGNE ───
             foreach ($sale->items as $item) {
 
-                // Articles stockés (œufs, aliment, matériel)
+                // Articles stockés (œufs, lait, aliment, produits_finis, matériel)
                 if ($item->requiresDestock()) {
                     $this->destockItem($item);
                 }
 
-                // Volaille vivante → décrémenter le lot
-                if ($item->impactsBatch()) {
+                // Animal vif vendu à la tête → décrémenter l'effectif du lot
+                if ($item->decrementsBatchCount()) {
                     $this->destockBatch($item);
                 }
 
-                // Fumier et "autre" : pas de déstockage physique
+                // Fumier, "autre", ventes au poids (carcasse) : pas de déstockage physique
             }
 
             // ─── 2. MARQUER COMME VALIDÉ ───
@@ -52,6 +53,9 @@ class ValidateSale
             $sale->client->recalculateBalance();
 
             Log::info("Vente validée : {$sale->reference} — Déstockage effectué.");
+
+            // Visibilité admin/propriétaire (hors site) sur chaque vente validée
+            app(NotificationHub::class)->notifySaleCreated($sale->fresh(['client']));
 
             return $sale->fresh();
         });
@@ -82,24 +86,24 @@ class ValidateSale
         }
 
         // Utiliser StockIntegrationService pour la traçabilité
-        $category = match ($item->product_type) {
-            'oeufs'   => 'oeufs',
-            'aliment' => 'conso',
-            default   => 'materiels',
-        };
-
         StockIntegrationService::syncMovement(
             $item->product_name,
-            $category,
+            Stock::categoryForProductType($item->product_type),
             (float) $item->quantity,
             'out',
             "Vente {$item->sale->reference} — Client: {$item->sale->client->name}",
-            $item->unit === 'alveole' ? 'Alvéole' : ($item->unit === 'sac' ? 'Sac' : 'KG')
+            match ($item->unit) {
+                'alveole' => 'Alvéole',
+                'sac'     => 'Sac',
+                'litre'   => 'Litre',
+                'tete'    => 'Tête',
+                default   => 'KG',
+            }
         );
     }
 
     /**
-     * Déstocke de la volaille vivante d'un lot.
+     * Décrémente l'effectif d'un lot (animal vif vendu à la tête, toute espèce).
      */
     private function destockBatch($item): void
     {

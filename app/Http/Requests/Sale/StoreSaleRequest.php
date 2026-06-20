@@ -29,14 +29,16 @@ class StoreSaleRequest extends FormRequest
             'delivery_notes'         => 'nullable|string|max:500',
             'notes'                  => 'nullable|string|max:2000',
 
-            // Lignes de vente
+            // Lignes de vente — taxonomie multiespèces.
+            // animal_vif / carcasse / lait sont génériques ; volaille_vivante
+            // et volaille_abattue restent acceptés (rétrocompatibilité).
             'items'                  => 'required|array|min:1',
-            'items.*.product_type'   => 'required|in:oeufs,volaille_vivante,volaille_abattue,fumier,aliment,materiel,autre',
+            'items.*.product_type'   => 'required|in:oeufs,animal_vif,carcasse,lait,fumier,aliment,produits_finis,materiel,autre,volaille_vivante,volaille_abattue',
             'items.*.product_name'   => 'required|string|max:255',
             'items.*.product_id'     => 'nullable|integer',
             'items.*.batch_id'       => 'nullable|integer|exists:batches,id',
             'items.*.quantity'       => 'required|numeric|min:0.01',
-            'items.*.unit'           => 'required|in:alveole,unite,kg,piece,sac,voyage',
+            'items.*.unit'           => 'required|in:alveole,unite,kg,piece,sac,voyage,tete,litre',
             'items.*.unit_price'     => 'required|numeric|min:0',
 
             // Paiement immédiat (optionnel)
@@ -74,6 +76,32 @@ class StoreSaleRequest extends FormRequest
             $hasValidLine = collect($this->items)->contains(fn($i) => ($i['quantity'] ?? 0) > 0 && ($i['unit_price'] ?? 0) > 0);
             if (! $hasValidLine) {
                 $validator->errors()->add('items', 'Au moins une ligne doit avoir une quantité et un prix supérieurs à 0.');
+            }
+
+            // Cohérence unité ↔ type de produit (défense côté serveur si le JS
+            // est contourné : éviter ex. du lait enregistré en kg).
+            $allowedUnits = [
+                'oeufs'             => ['alveole', 'unite'],
+                'animal_vif'        => ['tete', 'piece', 'kg'],
+                'volaille_vivante'  => ['tete', 'piece', 'kg'],
+                'carcasse'          => ['kg'],
+                'volaille_abattue'  => ['kg'],
+                'lait'              => ['litre'],
+                'aliment'           => ['kg', 'sac'],
+                'fumier'            => ['sac', 'voyage'],
+                'produits_finis'    => ['kg', 'tete', 'piece', 'unite'],
+                'materiel'          => ['unite', 'piece'],
+                // 'autre' : libre, pas de contrainte
+            ];
+            foreach ((array) $this->items as $idx => $item) {
+                $type = $item['product_type'] ?? null;
+                $unit = $item['unit'] ?? null;
+                if ($type && isset($allowedUnits[$type]) && $unit && ! in_array($unit, $allowedUnits[$type], true)) {
+                    $validator->errors()->add(
+                        "items.{$idx}.unit",
+                        "Unité « {$unit} » incohérente avec le type « {$type} »."
+                    );
+                }
             }
 
             // Facture → TVA obligatoire

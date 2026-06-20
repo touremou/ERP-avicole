@@ -5,6 +5,7 @@ namespace Database\Factories;
 use App\Models\Batch;
 use App\Models\Building;
 use App\Models\Employee;
+use App\Models\ProductionType;
 use App\Models\Provider;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
@@ -20,7 +21,10 @@ class BatchFactory extends Factory
         return [
             'uuid'                   => (string) Str::uuid(),
             'code'                   => 'LOT-' . fake()->unique()->numerify('####'),
-            'type'                   => fake()->randomElement(['chair', 'ponte', 'reproducteur']),
+            'production_type_id'     => fn () => ProductionType::resolveOrCreate(
+                fake()->randomElement(['chair', 'ponte', 'reproducteur']),
+                null
+            )->id,
             'model_name'             => fake()->randomElement(['Cobb500', 'Ross308', 'ISA Brown', 'Lohmann']),
             'building_id'            => Building::factory(),
             'employee_id'            => Employee::factory(),
@@ -37,7 +41,6 @@ class BatchFactory extends Factory
             'expected_end_date'      => fake()->dateTimeBetween('+30 days', '+180 days'),
             'buy_price_per_unit'     => fake()->numberBetween(2000, 5000),
             'total_acquisition_cost' => $qty * fake()->numberBetween(2000, 5000),
-            'responsible'            => fake()->name(),
             'is_synced'              => true,
             'production_phase'       => 'demarrage',
             'arrival_mortality_rate' => 0,

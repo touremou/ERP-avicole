@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>{{ $type === 'bon' ? 'Bon de Paie' : 'Fiche de Paie' }} — {{ $payslip->employee->first_name }} {{ $payslip->employee->last_name }}</title>
+    <title>{{ $type === 'bon' ? __("Bon de Paie") : __("Fiche de Paie") }} — {{ $payslip->employee->first_name }} {{ $payslip->employee->last_name }}</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 11px; color: #1e293b; padding: 30px; }
@@ -40,9 +40,9 @@
     {{-- BOUTON IMPRIMER --}}
     <div class="no-print" style="margin-bottom: 20px; text-align: right;">
         <button onclick="window.print()" style="background: #1e293b; color: white; padding: 10px 25px; border: none; border-radius: 8px; font-weight: 700; font-size: 11px; cursor: pointer; text-transform: uppercase; letter-spacing: 2px;">
-            🖨️ Imprimer
+            🖨️ {{ __("Imprimer") }}
         </button>
-        <a href="{{ url()->previous() }}" style="margin-left: 10px; color: #64748b; text-decoration: none; font-size: 11px; font-weight: 700;">← Retour</a>
+        <a href="{{ url()->previous() }}" style="margin-left: 10px; color: #64748b; text-decoration: none; font-size: 11px; font-weight: 700;">← {{ __("Retour") }}</a>
     </div>
 
     {{-- EN-TÊTE --}}
@@ -51,17 +51,17 @@
             <div class="company">
                 {{ setting('general.company_name', 'AviSmart') }}
                 <small>{{ setting('general.company_address', 'République de Guinée') }}</small>
-                <small>Tél : {{ setting('general.company_phone', '') }}</small>
+                <small>{{ __("Tél") }} : {{ setting('general.company_phone', '') }}</small>
             </div>
         </div>
         <div class="doc-type">
-            <h2>{{ $type === 'bon' ? '📋 Bon de Paie' : '✅ Fiche de Paie' }}</h2>
+            <h2>{{ $type === 'bon' ? '📋 ' . __("Bon de Paie") : '✅ ' . __("Fiche de Paie") }}</h2>
             <p>{{ $payslip->period->label }} — N° {{ str_pad($payslip->id, 5, '0', STR_PAD_LEFT) }}</p>
-            <p>Édité le {{ now()->format('d/m/Y à H:i') }}</p>
+            <p>{{ __("Édité le") }} {{ now()->format('d/m/Y à H:i') }}</p>
             @if($payslip->payment_status === 'paye')
-                <div class="stamp paid">PAYÉ le {{ $payslip->paid_at?->format('d/m/Y') }}</div>
+                <div class="stamp paid">{{ __("PAYÉ le") }} {{ $payslip->paid_at?->format('d/m/Y') }}</div>
             @else
-                <div class="stamp pending">À PAYER</div>
+                <div class="stamp pending">{{ __("À PAYER") }}</div>
             @endif
         </div>
     </div>
@@ -69,19 +69,19 @@
     {{-- INFOS EMPLOYÉ --}}
     <div class="info-grid">
         <div class="info-box">
-            <label>Employé</label>
+            <label>{{ __("Employé") }}</label>
             <span>{{ $payslip->employee->first_name }} {{ $payslip->employee->last_name }}</span>
         </div>
         <div class="info-box">
-            <label>Matricule</label>
+            <label>{{ __("Matricule") }}</label>
             <span>{{ $payslip->employee->employee_id }}</span>
         </div>
         <div class="info-box">
-            <label>Poste / Département</label>
-            <span>{{ $payslip->employee->job_title }} — {{ $payslip->employee->department ?? 'Général' }}</span>
+            <label>{{ __("Poste / Département") }}</label>
+            <span>{{ $payslip->employee->job_title }} — {{ $payslip->employee->department ?? __("Général") }}</span>
         </div>
         <div class="info-box">
-            <label>Période</label>
+            <label>{{ __("Période") }}</label>
             <span>{{ $payslip->period->start_date->format('d/m/Y') }} → {{ $payslip->period->end_date->format('d/m/Y') }}</span>
         </div>
     </div>
@@ -89,12 +89,12 @@
     {{-- PRÉSENCE --}}
     <div class="info-grid">
         <div class="info-box">
-            <label>Jours travaillés</label>
-            <span>{{ $payslip->days_worked }} jours</span>
+            <label>{{ __("Jours travaillés") }}</label>
+            <span>{{ $payslip->days_worked }} {{ __("jours") }}</span>
         </div>
         <div class="info-box">
-            <label>Absences / Congés</label>
-            <span>{{ $payslip->days_absent }} abs. + {{ $payslip->days_leave }} congés</span>
+            <label>{{ __("Absences / Congés") }}</label>
+            <span>{{ $payslip->days_absent }} {{ __("abs.") }} + {{ $payslip->days_leave }} {{ __("congés") }}</span>
         </div>
     </div>
 
@@ -102,14 +102,14 @@
     <table>
         <thead>
             <tr>
-                <th style="width: 60%;">Désignation</th>
-                <th style="width: 20%;">Type</th>
-                <th style="width: 20%; text-align: right;">Montant ({{ setting('general.currency', 'GNF') }})</th>
+                <th style="width: 60%;">{{ __("Désignation") }}</th>
+                <th style="width: 20%;">{{ __("Type") }}</th>
+                <th style="width: 20%; text-align: right;">{{ __("Montant") }} ({{ setting('general.currency', 'GNF') }})</th>
             </tr>
         </thead>
         <tbody>
             <tr>
-                <td><strong>Salaire de base</strong></td>
+                <td><strong>{{ __("Salaire de base") }}</strong></td>
                 <td>—</td>
                 <td class="amount">{{ number_format($payslip->base_salary, 0, ',', '.') }}</td>
             </tr>
@@ -117,7 +117,7 @@
             @foreach($payslip->lines->where('type', 'prime') as $line)
             <tr>
                 <td>{{ $line->label }}</td>
-                <td><span class="prime">+ Prime</span></td>
+                <td><span class="prime">+ {{ __("Prime") }}</span></td>
                 <td class="amount prime">+{{ number_format($line->amount, 0, ',', '.') }}</td>
             </tr>
             @endforeach
@@ -125,21 +125,21 @@
             @foreach($payslip->lines->where('type', 'deduction') as $line)
             <tr>
                 <td>{{ $line->label }}</td>
-                <td><span class="deduction">− Déduction</span></td>
+                <td><span class="deduction">− {{ __("Déduction") }}</span></td>
                 <td class="amount deduction">−{{ number_format($line->amount, 0, ',', '.') }}</td>
             </tr>
             @endforeach
 
             <tr class="total-row">
-                <td colspan="2"><strong>Total Primes</strong></td>
+                <td colspan="2"><strong>{{ __("Total Primes") }}</strong></td>
                 <td class="amount prime">+{{ number_format($payslip->total_primes, 0, ',', '.') }}</td>
             </tr>
             <tr class="total-row">
-                <td colspan="2"><strong>Total Déductions</strong></td>
+                <td colspan="2"><strong>{{ __("Total Déductions") }}</strong></td>
                 <td class="amount deduction">−{{ number_format($payslip->total_deductions, 0, ',', '.') }}</td>
             </tr>
             <tr class="total-row net">
-                <td colspan="2"><strong>NET À PAYER</strong></td>
+                <td colspan="2"><strong>{{ __("NET À PAYER") }}</strong></td>
                 <td class="amount">{{ number_format($payslip->net_salary, 0, ',', '.') }} {{ setting('general.currency', 'GNF') }}</td>
             </tr>
         </tbody>
@@ -149,11 +149,11 @@
     @if($payslip->payment_status === 'paye')
     <div class="info-grid">
         <div class="info-box">
-            <label>Mode de paiement</label>
-            <span>{{ match($payslip->payment_method) { 'especes' => '💵 Espèces', 'orange_money' => '📱 Orange Money', 'virement' => '🏦 Virement', default => $payslip->payment_method } }}</span>
+            <label>{{ __("Mode de paiement") }}</label>
+            <span>{{ match($payslip->payment_method) { 'especes' => '💵 ' . __("Espèces"), 'orange_money' => '📱 Orange Money', 'virement' => '🏦 ' . __("Virement"), default => $payslip->payment_method } }}</span>
         </div>
         <div class="info-box">
-            <label>Référence</label>
+            <label>{{ __("Référence") }}</label>
             <span>{{ $payslip->payment_reference ?? '—' }}</span>
         </div>
     </div>
@@ -162,17 +162,17 @@
     {{-- SIGNATURES --}}
     <div class="footer">
         <div class="signature-box">
-            <p>L'Employeur</p>
-            <p style="margin-top: 5px; font-size: 8px; color: #94a3b8;">Cachet et signature</p>
+            <p>{{ __("L'Employeur") }}</p>
+            <p style="margin-top: 5px; font-size: 8px; color: #94a3b8;">{{ __("Cachet et signature") }}</p>
         </div>
         <div class="signature-box">
-            <p>L'Employé</p>
-            <p style="margin-top: 5px; font-size: 8px; color: #94a3b8;">Lu et approuvé</p>
+            <p>{{ __("L'Employé") }}</p>
+            <p style="margin-top: 5px; font-size: 8px; color: #94a3b8;">{{ __("Lu et approuvé") }}</p>
         </div>
     </div>
 
     <div style="margin-top: 30px; text-align: center; font-size: 8px; color: #cbd5e1; border-top: 1px solid #f1f5f9; padding-top: 10px;">
-        {{ setting('general.company_name', 'AviSmart') }} — Système ERP — Document généré automatiquement
+        {{ setting('rh.payslip_footer', setting('general.company_name', 'AviSmart') . ' — Système ERP — Document généré automatiquement') }}
     </div>
 </body>
 </html>

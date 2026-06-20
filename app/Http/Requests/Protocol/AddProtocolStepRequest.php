@@ -9,7 +9,7 @@ class AddProtocolStepRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return Gate::allows('M');
+        return Gate::allows('elevage.M');
     }
 
     public function rules(): array

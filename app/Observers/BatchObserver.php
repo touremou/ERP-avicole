@@ -5,6 +5,7 @@ namespace App\Observers;
 use App\Models\Batch;
 use App\Models\User;
 use App\Notifications\IndustrialAlert;
+use App\Services\NotificationHub;
 use Illuminate\Support\Facades\Log;
 
 class BatchObserver
@@ -18,7 +19,10 @@ class BatchObserver
             return;
         }
 
-        $threshold = 10.0; // TODO : Utiliser MortalityThresholdService
+        // Seuil unique d'alerte mortalité : même source que le filtre « surmortalité »
+        // de l'index (BatchController) et le scope Batch::critical(), pour éviter
+        // qu'une alerte se déclenche à un taux différent de celui affiché à l'écran.
+        $threshold = (float) setting('elevage.mortality_alert', 5);
 
         // Calcul du taux de mortalité ACTUEL
         $currentMortality = (($batch->initial_quantity - $batch->current_quantity) / $batch->initial_quantity) * 100;
@@ -29,7 +33,13 @@ class BatchObserver
 
         // Condition stricte : on ne notifie QUE si on vient de franchir la ligne rouge
         if ($currentMortality > $threshold && $previousMortality <= $threshold) {
-            $this->notifyAdmins($batch, round($currentMortality, 2));
+            $rate = round($currentMortality, 2);
+            $this->notifyAdmins($batch, $rate);
+
+            // Canal WhatsApp (NotificationHub) : préférences utilisateur +
+            // filet de secours admin, en plus de la notification DB/SMS ci-dessus.
+            $totalDead = max(0, $batch->initial_quantity - $batch->current_quantity);
+            app(NotificationHub::class)->alertMortality($batch, $totalDead, $rate);
         }
     }
 

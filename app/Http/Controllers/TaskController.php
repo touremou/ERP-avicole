@@ -24,7 +24,7 @@ class TaskController extends Controller
 
     public function index(Request $request, TaskSchedulerService $service)
     {
-        if (Gate::denies('admin.L')) return redirect()->route('dashboard')->with('error', 'Accès restreint.');
+        if (Gate::denies('annuaire.L')) return redirect()->route('dashboard')->with('error', 'Accès restreint.');
 
         $date = Carbon::parse($request->input('date', now()->toDateString()));
         $view = $request->input('view', 'day');
@@ -33,6 +33,21 @@ class TaskController extends Controller
         $buildingId = $request->input('building');
         $category = $request->input('category');
         $priority = $request->input('priority');
+
+        // ═══ PORTÉE RBAC : espace perso vs encadrement ═══
+        // Un non-encadrant (sans admin.M) ne voit QUE ses propres tâches : on
+        // verrouille le filtre employé sur sa fiche RH, quels que soient les
+        // paramètres d'URL. Les liens « Mes tâches » du menu profil passent
+        // ?mine=1 pour présélectionner l'utilisateur courant — y compris pour
+        // un encadrant, qui peut ensuite élargir à toute l'équipe.
+        $myEmployeeId = Auth::user()?->employee?->id;
+        $canSeeAll    = Gate::allows('annuaire.M');
+
+        if (! $canSeeAll) {
+            $employeeId = $myEmployeeId;
+        } elseif ($request->boolean('mine') && $myEmployeeId) {
+            $employeeId = $myEmployeeId;
+        }
 
         $activeFilters = array_filter([
             'employee' => $employeeId,
@@ -43,7 +58,7 @@ class TaskController extends Controller
 
         // FarmScope s'applique automatiquement sur ces modèles
         $employees = Employee::where('status', 'Actif')->orderBy('first_name')->get();
-        $buildings = Building::orderBy('name')->get();
+        $buildings = Building::physical()->orderBy('name')->get();
         $filteredEmployee = $employeeId ? Employee::find($employeeId) : null;
 
         // ═══ VUE MENSUELLE ═══
@@ -97,13 +112,13 @@ class TaskController extends Controller
 
         return view('tasks.index', compact(
             'tasks', 'stats', 'date', 'view', 'filter', 'employees', 'buildings',
-            'overdueTasks', 'filteredEmployee', 'activeFilters', 'calendarData'
+            'overdueTasks', 'filteredEmployee', 'activeFilters', 'calendarData', 'canSeeAll'
         ));
     }
 
     public function generate(Request $request, TaskSchedulerService $service)
     {
-        if (Gate::denies('admin.M')) return back()->with('error', 'Non autorisé.');
+        if (Gate::denies('annuaire.M')) return back()->with('error', 'Non autorisé.');
 
         $date = Carbon::parse($request->input('date', now()->toDateString()));
         $result = $service->generateForDate($date, $this->farmId());
@@ -113,7 +128,7 @@ class TaskController extends Controller
 
     public function complete(Request $request, TaskAssignment $task)
     {
-        if (Gate::denies('admin.M')) return back()->with('error', 'Non autorisé.');
+        if (Gate::denies('annuaire.M')) return back()->with('error', 'Non autorisé.');
 
         $task->update([
             'status'           => 'fait',
@@ -127,9 +142,17 @@ class TaskController extends Controller
 
     public function assign(Request $request, TaskAssignment $task)
     {
-        if (Gate::denies('admin.M')) return back()->with('error', 'Non autorisé.');
+        if (Gate::denies('annuaire.M')) return back()->with('error', 'Non autorisé.');
 
         $validated = $request->validate(['employee_id' => 'required|exists:employees,id']);
+
+        // Garde-fou disponibilité : pas d'affectation à un employé en congé à la date prévue.
+        $employee = \App\Models\Employee::find($validated['employee_id']);
+        $date = \Illuminate\Support\Carbon::parse($task->scheduled_date);
+        if ($employee && $employee->isOnLeaveOn($date)) {
+            return back()->with('error', "{$employee->first_name} est en congé le {$date->format('d/m/Y')}. Choisissez un collègue disponible.");
+        }
+
         $task->update($validated);
 
         return back()->with('success', "Tâche assignée à {$task->fresh()->employee->first_name}.");
@@ -137,7 +160,7 @@ class TaskController extends Controller
 
     public function storeManual(Request $request)
     {
-        if (Gate::denies('admin.C')) return back()->with('error', 'Non autorisé.');
+        if (Gate::denies('annuaire.C')) return back()->with('error', 'Non autorisé.');
 
         $validated = $request->validate([
             'title'           => 'required|string|max:255',
@@ -150,6 +173,15 @@ class TaskController extends Controller
             'description'     => 'nullable|string|max:500',
         ]);
 
+        // Garde-fou disponibilité : pas d'affectation à un employé en congé à la date prévue.
+        if (! empty($validated['employee_id'])) {
+            $employee = \App\Models\Employee::find($validated['employee_id']);
+            $date = \Illuminate\Support\Carbon::parse($validated['scheduled_date']);
+            if ($employee && $employee->isOnLeaveOn($date)) {
+                return back()->with('error', "{$employee->first_name} est en congé le {$date->format('d/m/Y')}. Choisissez un collègue disponible.")->withInput();
+            }
+        }
+
         TaskAssignment::create(array_merge($validated, [
             'farm_id'           => $this->farmId(),
             'status'            => 'a_faire',
@@ -161,18 +193,18 @@ class TaskController extends Controller
 
     public function edit(TaskAssignment $task)
     {
-        if (Gate::denies('admin.M')) return back()->with('error', 'Non autorisé.');
+        if (Gate::denies('annuaire.M')) return back()->with('error', 'Non autorisé.');
         if ($task->status === 'fait') return back()->with('error', 'Impossible de modifier une tâche terminée.');
 
         $employees = Employee::where('status', 'Actif')->orderBy('first_name')->get();
-        $buildings = Building::orderBy('name')->get();
+        $buildings = Building::physical()->orderBy('name')->get();
 
         return view('tasks.edit', compact('task', 'employees', 'buildings'));
     }
 
     public function update(Request $request, TaskAssignment $task)
     {
-        if (Gate::denies('admin.M')) return back()->with('error', 'Non autorisé.');
+        if (Gate::denies('annuaire.M')) return back()->with('error', 'Non autorisé.');
         if ($task->status === 'fait') return back()->with('error', 'Impossible de modifier une tâche terminée.');
 
         $validated = $request->validate([
@@ -195,7 +227,7 @@ class TaskController extends Controller
 
     public function destroy(TaskAssignment $task)
     {
-        if (Gate::denies('admin.S')) return back()->with('error', 'Non autorisé.');
+        if (Gate::denies('annuaire.S')) return back()->with('error', 'Non autorisé.');
 
         $date = $task->scheduled_date->toDateString();
         $task->delete();
@@ -207,19 +239,20 @@ class TaskController extends Controller
 
     public function templates()
     {
-        if (Gate::denies('admin.M')) return back()->with('error', 'Non autorisé.');
+        if (Gate::denies('annuaire.M')) return back()->with('error', 'Non autorisé.');
 
         // Templates = globaux (withoutGlobalScopes)
         $templates = TaskTemplate::withoutGlobalScopes()
             ->orderBy('category')->orderBy('scheduled_time')->get();
-        $buildings = Building::orderBy('name')->get();
+        $buildings = Building::physical()->orderBy('name')->get();
+        $batchTypeOptions = TaskTemplate::batchTypeOptions();
 
-        return view('tasks.templates', compact('templates', 'buildings'));
+        return view('tasks.templates', compact('templates', 'buildings', 'batchTypeOptions'));
     }
 
     public function storeTemplate(Request $request)
     {
-        if (Gate::denies('admin.M')) return back()->with('error', 'Non autorisé.');
+        if (Gate::denies('annuaire.M')) return back()->with('error', 'Non autorisé.');
 
         $validated = $request->validate([
             'name'             => 'required|string|max:255',
@@ -263,13 +296,14 @@ class TaskController extends Controller
 
     public function editTemplate(TaskTemplate $template)
     {
-        if (Gate::denies('admin.M')) return back()->with('error', 'Non autorisé.');
-        return view('tasks.edit-template', compact('template'));
+        if (Gate::denies('annuaire.M')) return back()->with('error', 'Non autorisé.');
+        $batchTypeOptions = TaskTemplate::batchTypeOptions();
+        return view('tasks.edit-template', compact('template', 'batchTypeOptions'));
     }
 
     public function updateTemplate(Request $request, TaskTemplate $template)
     {
-        if (Gate::denies('admin.M')) return back()->with('error', 'Non autorisé.');
+        if (Gate::denies('annuaire.M')) return back()->with('error', 'Non autorisé.');
 
         $validated = $request->validate([
             'name'             => 'required|string|max:255',
@@ -304,7 +338,7 @@ class TaskController extends Controller
 
     public function destroyTemplate(TaskTemplate $template)
     {
-        if (Gate::denies('admin.S')) return back()->with('error', 'Non autorisé.');
+        if (Gate::denies('annuaire.S')) return back()->with('error', 'Non autorisé.');
 
         $name = $template->name;
         $template->delete();
@@ -314,7 +348,7 @@ class TaskController extends Controller
 
     public function toggleTemplate(TaskTemplate $template)
     {
-        if (Gate::denies('admin.M')) return back()->with('error', 'Non autorisé.');
+        if (Gate::denies('annuaire.M')) return back()->with('error', 'Non autorisé.');
 
         $template->update(['is_active' => ! $template->is_active]);
         $state = $template->is_active ? 'activé' : 'désactivé';

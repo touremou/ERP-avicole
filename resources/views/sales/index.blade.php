@@ -6,20 +6,20 @@
                     <i class="fa-solid fa-file-invoice text-xl"></i>
                 </div>
                 <div>
-                    <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">Registre des Ventes</h2>
+                    <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">{{ __("Registre des Ventes") }}</h2>
                     <p class="text-[10px] font-black text-teal-600 uppercase tracking-[0.2em] mt-2 italic">
-                        {{ $stats['today_count'] }} vente(s) aujourd'hui — {{ number_format($stats['today_total'], 0, ',', ' ') }} GNF
+                        {{ $stats['today_count'] }} {{ __("vente(s) aujourd'hui") }} — {{ number_format($stats['today_total'], 0, ',', ' ') }} GNF
                     </p>
                 </div>
             </div>
             <div class="flex gap-4">
                 <div class="bg-white px-5 py-3 rounded-[1.5rem] border border-slate-100 text-right shadow-sm">
-                    <p class="text-[8px] font-black text-rose-400 uppercase italic mb-1">Impayés</p>
+                    <p class="text-[8px] font-black text-rose-400 uppercase italic mb-1">{{ __("Impayés") }}</p>
                     <p class="text-sm font-black text-slate-900">{{ number_format($stats['unpaid_total'], 0, ',', ' ') }} <small class="text-[8px] opacity-40">GNF</small></p>
                 </div>
                 @can('commerce.C')
                 <a href="{{ route('sales.create') }}" class="bg-slate-900 text-white px-8 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-teal-600 transition-all shadow-2xl italic flex items-center gap-2 no-underline">
-                    <i class="fa-solid fa-plus"></i> Nouvelle Vente
+                    <i class="fa-solid fa-plus"></i> {{ __("Nouvelle Vente") }}
                 </a>
                 @endcan
             </div>
@@ -38,27 +38,27 @@
             {{-- FILTRES --}}
             <form method="GET" class="mb-8 flex flex-wrap gap-3 items-center">
                 <select name="status" class="bg-white border border-slate-100 rounded-2xl px-4 py-3 text-[10px] font-black uppercase tracking-widest shadow-sm outline-none appearance-none">
-                    <option value="">Tous statuts</option>
-                    <option value="brouillon" {{ request('status') === 'brouillon' ? 'selected' : '' }}>Brouillon</option>
-                    <option value="valide" {{ request('status') === 'valide' ? 'selected' : '' }}>Validé</option>
-                    <option value="livre" {{ request('status') === 'livre' ? 'selected' : '' }}>Livré</option>
-                    <option value="annule" {{ request('status') === 'annule' ? 'selected' : '' }}>Annulé</option>
+                    <option value="">{{ __("Tous statuts") }}</option>
+                    <option value="brouillon" {{ request('status') === 'brouillon' ? 'selected' : '' }}>{{ __("Brouillon") }}</option>
+                    <option value="valide" {{ request('status') === 'valide' ? 'selected' : '' }}>{{ __("Validé") }}</option>
+                    <option value="livre" {{ request('status') === 'livre' ? 'selected' : '' }}>{{ __("Livré") }}</option>
+                    <option value="annule" {{ request('status') === 'annule' ? 'selected' : '' }}>{{ __("Annulé") }}</option>
                 </select>
                 <select name="payment_status" class="bg-white border border-slate-100 rounded-2xl px-4 py-3 text-[10px] font-black uppercase tracking-widest shadow-sm outline-none appearance-none">
-                    <option value="">Tous paiements</option>
-                    <option value="impaye" {{ request('payment_status') === 'impaye' ? 'selected' : '' }}>Impayé</option>
-                    <option value="partiel" {{ request('payment_status') === 'partiel' ? 'selected' : '' }}>Partiel</option>
-                    <option value="solde" {{ request('payment_status') === 'solde' ? 'selected' : '' }}>Soldé</option>
+                    <option value="">{{ __("Tous paiements") }}</option>
+                    <option value="impaye" {{ request('payment_status') === 'impaye' ? 'selected' : '' }}>{{ __("Impayé") }}</option>
+                    <option value="partiel" {{ request('payment_status') === 'partiel' ? 'selected' : '' }}>{{ __("Partiel") }}</option>
+                    <option value="solde" {{ request('payment_status') === 'solde' ? 'selected' : '' }}>{{ __("Soldé") }}</option>
                 </select>
                 <select name="client_id" class="bg-white border border-slate-100 rounded-2xl px-4 py-3 text-[10px] font-black uppercase tracking-widest shadow-sm outline-none appearance-none">
-                    <option value="">Tous clients</option>
+                    <option value="">{{ __("Tous clients") }}</option>
                     @foreach($clients as $c)
                         <option value="{{ $c->id }}" {{ request('client_id') == $c->id ? 'selected' : '' }}>{{ $c->name }}</option>
                     @endforeach
                 </select>
                 <input type="date" name="date_from" value="{{ request('date_from') }}" class="bg-white border border-slate-100 rounded-2xl px-4 py-3 text-[10px] font-black shadow-sm outline-none">
                 <input type="date" name="date_to" value="{{ request('date_to') }}" class="bg-white border border-slate-100 rounded-2xl px-4 py-3 text-[10px] font-black shadow-sm outline-none">
-                <button type="submit" class="bg-slate-900 text-white px-5 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest border-none cursor-pointer">Filtrer</button>
+                <button type="submit" class="bg-slate-900 text-white px-5 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest border-none cursor-pointer">{{ __("Filtrer") }}</button>
             </form>
 
             {{-- TABLEAU --}}
@@ -67,13 +67,13 @@
                     <table class="w-full border-collapse">
                         <thead>
                             <tr class="bg-slate-50 text-[8px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 italic">
-                                <th class="px-6 py-5 text-left">Référence</th>
-                                <th class="px-4 py-5 text-left">Client</th>
-                                <th class="px-4 py-5 text-center">Date</th>
-                                <th class="px-4 py-5 text-right">Total TTC</th>
-                                <th class="px-4 py-5 text-center">Statut</th>
-                                <th class="px-4 py-5 text-center">Paiement</th>
-                                <th class="px-6 py-5 text-right">Actions</th>
+                                <th class="px-6 py-5 text-left">{{ __("Référence") }}</th>
+                                <th class="px-4 py-5 text-left">{{ __("Client") }}</th>
+                                <th class="px-4 py-5 text-center">{{ __("Date") }}</th>
+                                <th class="px-4 py-5 text-right">{{ __("Total TTC") }}</th>
+                                <th class="px-4 py-5 text-center">{{ __("Statut") }}</th>
+                                <th class="px-4 py-5 text-center">{{ __("Paiement") }}</th>
+                                <th class="px-6 py-5 text-right">{{ __("Actions") }}</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-50">
@@ -82,7 +82,7 @@
                                 <td class="px-6 py-4">
                                     <a href="{{ route('sales.show', $sale) }}" class="no-underline">
                                         <p class="text-xs font-black text-slate-900 uppercase">{{ $sale->reference }}</p>
-                                        <p class="text-[8px] text-slate-400 font-black uppercase">{{ $sale->type === 'facture' ? 'Facture TVA' : 'BL' }}</p>
+                                        <p class="text-[8px] text-slate-400 font-black uppercase">{{ $sale->type === 'facture' ? __("Facture TVA") : __("BL") }}</p>
                                     </a>
                                 </td>
                                 <td class="px-4 py-4 text-[10px] font-black text-slate-700 uppercase">{{ $sale->client->name }}</td>
@@ -103,7 +103,7 @@
                                         'bg-red-50 text-red-600' => $sale->payment_status === 'impaye',
                                         'bg-amber-50 text-amber-600' => $sale->payment_status === 'partiel',
                                         'bg-emerald-50 text-emerald-600' => $sale->payment_status === 'solde',
-                                    ])>{{ $sale->payment_status === 'solde' ? 'Soldé' : ($sale->payment_status === 'partiel' ? 'Partiel' : 'Impayé') }}</span>
+                                    ])>{{ $sale->payment_status === 'solde' ? __("Soldé") : ($sale->payment_status === 'partiel' ? __("Partiel") : __("Impayé")) }}</span>
                                 </td>
                                 <td class="px-6 py-4 text-right">
                                     <a href="{{ route('sales.show', $sale) }}" class="text-slate-400 hover:text-teal-600 no-underline"><i class="fa-solid fa-eye"></i></a>
@@ -113,7 +113,7 @@
                             <tr>
                                 <td colspan="7" class="px-8 py-16 text-center">
                                     <i class="fa-solid fa-file-circle-xmark text-slate-200 text-3xl mb-4 block"></i>
-                                    <p class="text-[10px] text-slate-400 uppercase tracking-widest font-black">Aucune vente enregistrée</p>
+                                    <p class="text-[10px] text-slate-400 uppercase tracking-widest font-black">{{ __("Aucune vente enregistrée") }}</p>
                                 </td>
                             </tr>
                             @endforelse

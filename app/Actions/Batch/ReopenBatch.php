@@ -27,7 +27,7 @@ class ReopenBatch
      */
     public function execute(Batch $batch): Batch
     {
-        if ($batch->status === 'Actif') {
+        if ($batch->isActive()) {
             throw new \DomainException("Le lot {$batch->code} est déjà en cours de production.");
         }
 
@@ -36,14 +36,12 @@ class ReopenBatch
             $result = $this->quantityService->rebuildForBatch($batch, dryRun: true);
             $restoredQuantity = $result['new_quantity'];
 
-            // ─── Conservation des revenus œufs ───
-            // On annule uniquement la vente finale (réforme), pas les revenus cumulés
-            $eggRevenue = (float) $batch->eggProductions()->sum('total_eggs_collected'); // TODO: vraie colonne revenu
-            // Pour l'instant, on conserve 0 en attendant le module Œufs
-
             // ─── Réouverture ───
+            // Note : le CA œufs n'est pas rattaché au lot (stock mutualisé, cf.
+            // Batch::getNetMarginAttribute). On réinitialise donc uniquement la
+            // vente de réforme (total_revenue), recalculée à la prochaine clôture.
             $batch->update([
-                'status'                     => 'Actif',
+                'status'                     => Batch::STATUS_ACTIF,
                 'current_quantity'           => $restoredQuantity,
                 'closing_date'               => null,
                 'actual_sell_price_per_unit'  => 0,
@@ -53,7 +51,7 @@ class ReopenBatch
 
             // ─── Bâtiment → Occupé ───
             if ($batch->building) {
-                $batch->building->update(['status' => 'Occupé']);
+                $batch->building->markOccupied();
             }
 
             return $batch->fresh();

@@ -28,7 +28,12 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        return redirect()->intended(route('dashboard', absolute: false));
+        // Atterrissage adapté au profil (espace personnel pour les employés,
+        // tableau de bord pour les superviseurs) — sauf si une page précise
+        // était demandée avant la redirection vers le login.
+        $home = route(Auth::user()->homeRoute(), absolute: false);
+
+        return redirect()->intended($home);
     }
 
     /**

@@ -3,13 +3,18 @@
 namespace App\Services;
 
 use App\Models\Batch;
+use App\Models\CropCycle;
 use App\Models\DailyCheck;
 use App\Models\DiscrepancyReport;
+use App\Models\EmployeeLeave;
 use App\Models\EnergySource;
+use App\Models\Module;
+use App\Models\ModulePermission;
 use App\Models\NotificationPreference;
 use App\Models\Payment;
 use App\Models\Sale;
 use App\Models\Stock;
+use App\Models\StockMovement;
 use App\Models\User;
 use App\Models\WaterSource;
 use Illuminate\Support\Facades\Log;
@@ -63,15 +68,15 @@ class NotificationHub
         $date = now()->translatedFormat('l d F Y');
 
         // Données
-        $totalBirds = Batch::where('status', 'Actif')->sum('current_quantity');
-        $activeBatches = Batch::where('status', 'Actif')->count();
+        $totalBirds = Batch::active()->live()->sum('current_quantity');
+        $activeBatches = Batch::active()->live()->count();
 
         // Mortalité dernières 24h
         $mortality24h = DailyCheck::where('check_date', '>=', now()->subDay())
             ->sum('mortality');
 
         // Stock aliment critique
-        $criticalStocks = Stock::where('category', 'conso')
+        $criticalStocks = Stock::where('category', Stock::CAT_CONSO)
             ->whereRaw('current_quantity <= alert_threshold')
             ->where('alert_threshold', '>', 0)
             ->get(['item_name', 'current_quantity', 'unit']);
@@ -170,6 +175,147 @@ class NotificationHub
     }
 
     // ──────────────────────────────────────────────
+    // DIGEST D'ACTIVITÉ PAR EMPLOYÉ (FIN DE JOURNÉE)
+    // ──────────────────────────────────────────────
+
+    /**
+     * Digest d'activité par employé — outil de redevabilité pour le
+     * propriétaire hors site.
+     *
+     * Compile, pour la journée écoulée, QUI a fait QUOI (ventes saisies,
+     * encaissements, mouvements de stock). Envoyé aux abonnés du résumé
+     * quotidien ET systématiquement au numéro admin de secours, afin que le
+     * propriétaire puisse repérer une activité anormale (saisies tardives,
+     * ajustements de stock à répétition, agent inactif…). Aucun envoi si
+     * aucune activité (pas de bruit inutile).
+     *
+     * @return int Nombre d'envois réussis.
+     */
+    public function sendActivityDigest(): int
+    {
+        $message = $this->buildActivityDigest();
+
+        if ($message === null) {
+            return 0;
+        }
+
+        $recipients = $this->getSubscribers('daily_summary');
+        $sent = 0;
+        $servedPhones = [];
+
+        foreach ($recipients as $user) {
+            $servedPhones[] = $user->whatsapp_phone;
+            if ($this->whatsapp->send($user->whatsapp_phone, $message, [
+                'user_id' => $user->id,
+                'type'    => 'activity_digest',
+                'title'   => 'Activité du jour',
+            ])) {
+                $sent++;
+            }
+        }
+
+        // Filet de sécurité : toujours au propriétaire hors site.
+        $adminPhone = (string) setting('whatsapp.admin_phone', '');
+        if ($adminPhone !== '' && ! in_array($adminPhone, $servedPhones, true)) {
+            if ($this->whatsapp->send($adminPhone, $message, [
+                'type'  => 'activity_digest',
+                'title' => 'Activité du jour',
+            ])) {
+                $sent++;
+            }
+        }
+
+        Log::info("NotificationHub: digest d'activité envoyé à {$sent} destinataire(s).");
+
+        return $sent;
+    }
+
+    /**
+     * Compile le digest d'activité du jour, ventilé par employé.
+     * Retourne null si aucune activité attribuable n'a eu lieu.
+     */
+    private function buildActivityDigest(): ?string
+    {
+        $farmName = config('whatsapp.farm_name', 'AviSmart');
+        $date = now()->translatedFormat('l d F Y');
+        $start = now()->copy()->startOfDay();
+        $end = now()->copy()->endOfDay();
+
+        $salesByUser = Sale::whereBetween('created_at', [$start, $end])
+            ->where('status', '!=', 'brouillon')
+            ->selectRaw('user_id, COUNT(*) as cnt, SUM(total_amount) as total')
+            ->groupBy('user_id')->get()->keyBy('user_id');
+
+        $paymentsByUser = Payment::whereBetween('created_at', [$start, $end])
+            ->selectRaw('received_by, COUNT(*) as cnt, SUM(amount) as total')
+            ->groupBy('received_by')->get()->keyBy('received_by');
+
+        $cancelledByUser = Sale::whereBetween('updated_at', [$start, $end])
+            ->where('status', 'annule')
+            ->selectRaw('user_id, COUNT(*) as cnt')
+            ->groupBy('user_id')->get()->keyBy('user_id');
+
+        $movementsByUser = StockMovement::whereBetween('created_at', [$start, $end])
+            ->selectRaw('user_id, type, COUNT(*) as cnt')
+            ->groupBy('user_id', 'type')->get()->groupBy('user_id');
+
+        $userIds = collect()
+            ->merge($salesByUser->keys())
+            ->merge($paymentsByUser->keys())
+            ->merge($cancelledByUser->keys())
+            ->merge($movementsByUser->keys())
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($userIds->isEmpty()) {
+            return null;
+        }
+
+        $users = User::whereIn('id', $userIds)->get()->keyBy('id');
+
+        $lines = [];
+        $lines[] = "📋 *{$farmName} — Activité du {$date}*";
+        $lines[] = "";
+
+        foreach ($userIds as $uid) {
+            $name = $users->get($uid)?->name ?? "Utilisateur #{$uid}";
+            $lines[] = "👤 *{$name}*";
+
+            if ($s = $salesByUser->get($uid)) {
+                $lines[] = "  💰 Ventes : {$s->cnt} (" . number_format((float) $s->total, 0, ',', '.') . " GNF)";
+            }
+            if ($p = $paymentsByUser->get($uid)) {
+                $lines[] = "  💵 Encaissé : {$p->cnt} (" . number_format((float) $p->total, 0, ',', '.') . " GNF)";
+            }
+            if ($movs = $movementsByUser->get($uid)) {
+                $byType = $movs->keyBy('type');
+                $parts = [];
+                if ($in = $byType->get('in')) {
+                    $parts[] = "{$in->cnt} entrée(s)";
+                }
+                if ($out = $byType->get('out')) {
+                    $parts[] = "{$out->cnt} sortie(s)";
+                }
+                if ($adj = $byType->get('adjustment')) {
+                    $parts[] = "⚠️ {$adj->cnt} ajustement(s)";
+                }
+                if ($parts) {
+                    $lines[] = "  📦 Stock : " . implode(', ', $parts);
+                }
+            }
+            if ($c = $cancelledByUser->get($uid)) {
+                $lines[] = "  🚫 Annulations : *{$c->cnt}*";
+            }
+            $lines[] = "";
+        }
+
+        $lines[] = "— {$farmName} ERP 🇬🇳";
+
+        return implode("\n", $lines);
+    }
+
+    // ──────────────────────────────────────────────
     // ALERTES TEMPS RÉEL
     // ──────────────────────────────────────────────
 
@@ -209,9 +355,13 @@ class NotificationHub
      */
     public function alertFuelLow(EnergySource $source): void
     {
+        $autonomyLabel = $source->fuel_autonomy_hours !== null
+            ? "{$source->fuel_autonomy_hours}h de fonctionnement"
+            : "{$source->fuel_autonomy_days} jour(s)";
+
         $message = "⛽ *GASOIL CRITIQUE*\n\n"
             . "Groupe : *{$source->name}*\n"
-            . "Autonomie : *{$source->fuel_autonomy_days} jour(s)*\n"
+            . "Autonomie : *{$autonomyLabel}*\n"
             . "Niveau cuve : {$source->current_fuel_level}L / {$source->fuel_tank_capacity}L\n\n"
             . "Commander du gasoil AUJOURD'HUI.";
 
@@ -220,16 +370,78 @@ class NotificationHub
 
     /**
      * Notification vente créée.
+     *
+     * Une vente dont le montant dépasse le seuil `whatsapp.large_sale_threshold`
+     * est escaladée en CRITIQUE : elle atteint alors aussi le numéro admin de
+     * secours même si personne n'est explicitement abonné aux ventes — garde-fou
+     * contre les ventes inhabituelles passées à l'insu du propriétaire.
      */
     public function notifySaleCreated(Sale $sale): void
     {
-        $message = "💰 *NOUVELLE VENTE*\n\n"
+        $threshold = (float) setting('whatsapp.large_sale_threshold', 0);
+        $isLarge = $threshold > 0 && (float) $sale->total_amount >= $threshold;
+        $afterHours = $this->isAfterHours();
+
+        $message = ($isLarge ? "💰🔴 *GROSSE VENTE*" : "💰 *NOUVELLE VENTE*") . "\n\n"
             . "Réf : *{$sale->reference}*\n"
             . "Client : {$sale->client->name}\n"
             . "Total : *" . number_format($sale->total_amount, 0, ',', '.') . " GNF*\n"
             . "Statut : {$sale->payment_status}";
 
-        $this->broadcast('alert_sales', $message, 'Vente ' . $sale->reference);
+        if ($isLarge) {
+            $message .= "\n\n⚠️ Montant au-delà du seuil de " . number_format($threshold, 0, ',', '.') . " GNF.";
+        }
+        if ($afterHours) {
+            $message .= "\n\n🌙 Enregistrée HORS heures ouvrées (" . now()->format('H:i') . ").";
+        }
+
+        $this->broadcast('alert_sales', $message, 'Vente ' . $sale->reference, ($isLarge || $afterHours) ? 'critique' : 'normal');
+    }
+
+    /**
+     * Alerte annulation d'une vente (vecteur de détournement : encaisser puis
+     * annuler la trace). Diffusée via le canal anti-fraude ; escaladée en
+     * critique si la vente avait été validée/livrée (donc déstockée).
+     */
+    public function alertSaleCancelled(Sale $sale, string $reason = '', ?string $previousStatus = null): void
+    {
+        $status = $previousStatus ?? $sale->getOriginal('status');
+        $wasCommitted = in_array($status, ['valide', 'livre'], true);
+        $emoji = $wasCommitted ? '🚨' : '⚠️';
+
+        $message = "{$emoji} *VENTE ANNULÉE*\n\n"
+            . "Réf : *{$sale->reference}*\n"
+            . "Client : " . ($sale->client->name ?? 'N/A') . "\n"
+            . "Montant : *" . number_format($sale->total_amount, 0, ',', '.') . " GNF*\n"
+            . "Statut avant annulation : *{$status}*\n"
+            . "Par : " . (\Illuminate\Support\Facades\Auth::user()?->name ?? 'Système') . "\n"
+            . ($reason !== '' ? "Motif : {$reason}\n" : '')
+            . ($wasCommitted ? "\nLa vente était validée (stock restitué). Vérifier la légitimité." : '');
+
+        $this->broadcast('alert_fraud', $message, 'Annulation ' . $sale->reference, $wasCommitted ? 'critique' : 'normal');
+    }
+
+    /**
+     * Alerte ajustement manuel de stock (vecteur de dissimulation de vol :
+     * « corriger » un stock à la baisse sans flux documenté). Diffusée via le
+     * canal anti-fraude ; critique uniquement pour les baisses.
+     */
+    public function alertStockAdjustment(Stock $stock, float $oldQty, float $newQty, ?string $notes = null): void
+    {
+        $delta = $newQty - $oldQty;
+        $isDecrease = $delta < 0;
+        $emoji = $isDecrease ? '🚨' : 'ℹ️';
+
+        $message = "{$emoji} *AJUSTEMENT STOCK*\n\n"
+            . "Article : *{$stock->item_name}*\n"
+            . "Avant : {$oldQty} {$stock->unit}\n"
+            . "Après : *{$newQty} {$stock->unit}*\n"
+            . "Écart : *" . ($delta > 0 ? '+' : '') . round($delta, 2) . " {$stock->unit}*\n"
+            . "Par : " . (\Illuminate\Support\Facades\Auth::user()?->name ?? 'Système') . "\n"
+            . ($notes ? "Note : {$notes}\n" : '')
+            . ($isDecrease ? "\nDiminution manuelle d'inventaire — vérifier la justification." : '');
+
+        $this->broadcast('alert_fraud', $message, 'Ajustement ' . $stock->item_name, $isDecrease ? 'critique' : 'normal');
     }
 
     /**
@@ -238,14 +450,197 @@ class NotificationHub
     public function notifyPaymentReceived(Payment $payment): void
     {
         $sale = $payment->sale;
-        $message = "✅ *PAIEMENT REÇU*\n\n"
+        $afterHours = $this->isAfterHours();
+
+        $message = ($afterHours ? "🌙 *ENCAISSEMENT HORS HORAIRES*" : "✅ *PAIEMENT REÇU*") . "\n\n"
             . "Montant : *" . number_format($payment->amount, 0, ',', '.') . " GNF*\n"
             . "Mode : {$payment->method_label}\n"
             . "Vente : {$sale->reference}\n"
             . "Client : {$sale->client->name}\n"
             . "Reste dû : " . number_format($sale->remaining_amount, 0, ',', '.') . " GNF";
 
-        $this->broadcast('alert_sales', $message, 'Paiement ' . $sale->reference);
+        if ($afterHours) {
+            $message .= "\n\n⚠️ Enregistré à " . now()->format('H:i') . ", hors heures ouvrées — à vérifier.";
+        }
+
+        $this->broadcast('alert_sales', $message, 'Paiement ' . $sale->reference, $afterHours ? 'critique' : 'normal');
+    }
+
+    // ──────────────────────────────────────────────
+    // CONGÉS RH
+    // ──────────────────────────────────────────────
+
+    /**
+     * Notifie les responsables RH qu'une nouvelle demande de congé est en attente.
+     * Cible : tous les utilisateurs ayant le droit annuaire.S (can_delete = true).
+     */
+    public function notifyLeaveRequested(EmployeeLeave $leave): void
+    {
+        $emp   = $leave->employee;
+        $start = $leave->start_date->format('d/m/Y');
+        $end   = $leave->end_date->format('d/m/Y');
+
+        $message = "📋 *DEMANDE DE CONGÉ*\n\n"
+            . "Employé : *{$emp->first_name} {$emp->last_name}*\n"
+            . "Type : {$leave->type_label}\n"
+            . "Période : {$start} → {$end} ({$leave->days_count} j)\n"
+            . ($leave->reason ? "Motif : {$leave->reason}\n" : '')
+            . "\nValidation requise dans l'ERP › Congés & Absences.";
+
+        $annuaireModule = Module::where('slug', 'annuaire')->first();
+        if (! $annuaireModule) {
+            return;
+        }
+
+        $approverRoleIds = ModulePermission::where('module_id', $annuaireModule->id)
+            ->where('can_delete', true)
+            ->pluck('role_id');
+
+        $approvers = User::whereIn('role_id', $approverRoleIds)
+            ->whereNotNull('whatsapp_phone')
+            ->get();
+
+        foreach ($approvers as $approver) {
+            $this->whatsapp->send($approver->whatsapp_phone, $message, [
+                'user_id' => $approver->id,
+                'type'    => 'alert_leave',
+                'title'   => "Congé {$emp->first_name}",
+            ]);
+        }
+
+        Log::info("NotificationHub: demande de congé #{$leave->id} notifiée à {$approvers->count()} responsable(s).");
+    }
+
+    /**
+     * Notifie l'employé que sa demande de congé a été approuvée.
+     */
+    public function notifyLeaveApproved(EmployeeLeave $leave): void
+    {
+        $recipient = $leave->employee->user ?? $leave->requester;
+        if (! $recipient?->whatsapp_phone) {
+            return;
+        }
+
+        $emp   = $leave->employee;
+        $start = $leave->start_date->format('d/m/Y');
+        $end   = $leave->end_date->format('d/m/Y');
+
+        $message = "✅ *CONGÉ APPROUVÉ*\n\n"
+            . "Bonjour {$emp->first_name},\n\n"
+            . "Votre demande de congé a été approuvée.\n"
+            . "Période : *{$start} → {$end}* ({$leave->days_count} j)\n"
+            . "Type : {$leave->type_label}\n\n"
+            . "Si vous avez des tâches à déléguer, connectez-vous à l'ERP avant votre départ.";
+
+        $this->whatsapp->send($recipient->whatsapp_phone, $message, [
+            'user_id' => $recipient->id,
+            'type'    => 'alert_leave',
+            'title'   => 'Congé approuvé',
+        ]);
+    }
+
+    /**
+     * Notifie l'employé que sa demande de congé a été refusée.
+     */
+    public function notifyLeaveRejected(EmployeeLeave $leave): void
+    {
+        $recipient = $leave->employee->user ?? $leave->requester;
+        if (! $recipient?->whatsapp_phone) {
+            return;
+        }
+
+        $emp   = $leave->employee;
+        $start = $leave->start_date->format('d/m/Y');
+        $end   = $leave->end_date->format('d/m/Y');
+
+        $message = "❌ *CONGÉ REFUSÉ*\n\n"
+            . "Bonjour {$emp->first_name},\n\n"
+            . "Votre demande de congé n'a pas été acceptée.\n"
+            . "Période demandée : {$start} → {$end} ({$leave->days_count} j)\n"
+            . ($leave->rejection_reason ? "Motif : *{$leave->rejection_reason}*\n" : '')
+            . "\nContactez votre responsable RH pour plus d'informations.";
+
+        $this->whatsapp->send($recipient->whatsapp_phone, $message, [
+            'user_id' => $recipient->id,
+            'type'    => 'alert_leave',
+            'title'   => 'Congé refusé',
+        ]);
+    }
+
+    /**
+     * Notifie le récepteur désigné d'une expédition qu'une marchandise arrive
+     * et qu'il devra en valider la réception dans l'ERP.
+     */
+    public function notifyDispatchReceiver(\App\Models\Dispatch $dispatch): void
+    {
+        $receiver = $dispatch->intendedReceiver;
+        if (! $receiver?->whatsapp_phone) {
+            return;
+        }
+
+        $date = $dispatch->dispatch_date?->format('d/m/Y') ?? '';
+
+        $message = "📦 *EXPÉDITION À RÉCEPTIONNER*\n\n"
+            . "Réf : *{$dispatch->dispatch_number}*\n"
+            . "Destination : {$dispatch->destination}\n"
+            . "Chauffeur : {$dispatch->driver_name}"
+            . ($dispatch->driver_phone ? " ({$dispatch->driver_phone})" : '') . "\n"
+            . "Départ : {$date}" . ($dispatch->dispatch_time ? " {$dispatch->dispatch_time}" : '') . "\n\n"
+            . "Vous êtes le récepteur désigné. À l'arrivée, validez la réception dans l'ERP "
+            . "(Logistique › Expéditions) pour déclencher le contrôle des écarts.";
+
+        $this->whatsapp->send($receiver->whatsapp_phone, $message, [
+            'user_id' => $receiver->id,
+            'type'    => 'alert_dispatch',
+            'title'   => "Réception {$dispatch->dispatch_number}",
+        ]);
+    }
+
+    /**
+     * Rappel du calendrier cultural : cycles de culture arrivant à maturité
+     * (récolte prévue dans les `$daysAhead` jours, retards compris).
+     *
+     * Diffusé aux abonnés du résumé quotidien (réutilise l'opt-in existant,
+     * pas de nouvelle préférence à gérer). Renvoie le nombre de cycles signalés.
+     */
+    public function notifyHarvestsDue(int $daysAhead = 7): int
+    {
+        $cycles = CropCycle::query()
+            ->dueForHarvest($daysAhead)
+            ->with('plot:id,name')
+            ->orderBy('expected_harvest_date')
+            ->get();
+
+        if ($cycles->isEmpty()) {
+            return 0;
+        }
+
+        $farmName = config('whatsapp.farm_name', 'AviSmart');
+        $lines = ["🌾 *{$farmName} — Calendrier cultural*", ''];
+
+        foreach ($cycles as $cycle) {
+            $date = $cycle->expected_harvest_date;
+            $today = now()->startOfDay();
+            $diff = (int) $today->diffInDays($date->copy()->startOfDay(), false);
+
+            if ($diff < 0) {
+                $when = "⚠️ en retard de " . abs($diff) . " j";
+            } elseif ($diff === 0) {
+                $when = "📍 aujourd'hui";
+            } else {
+                $when = "dans {$diff} j";
+            }
+
+            $plot = $cycle->plot?->name ? " ({$cycle->plot->name})" : '';
+            $lines[] = "• *{$cycle->crop_name}*{$plot} — récolte prévue {$cycle->expected_harvest_date->format('d/m')} — {$when}";
+        }
+
+        $lines[] = '';
+        $lines[] = "Préparez la main d'œuvre et la logistique de récolte.";
+
+        $this->broadcast('daily_summary', implode("\n", $lines), 'Calendrier cultural');
+
+        return $cycles->count();
     }
 
     /**
@@ -273,6 +668,38 @@ class NotificationHub
     // ──────────────────────────────────────────────
 
     /**
+     * Indique si l'instant courant tombe HORS des heures ouvrées de la ferme
+     * (paramètres whatsapp.business_hours_start / business_hours_end). Sert à
+     * escalader en critique une activité financière nocturne (signal de
+     * détournement). Plage vide ou invalide = détection désactivée (false).
+     */
+    private function isAfterHours(): bool
+    {
+        $start = trim((string) setting('whatsapp.business_hours_start', ''));
+        $end   = trim((string) setting('whatsapp.business_hours_end', ''));
+
+        if ($start === '' || $end === '') {
+            return false;
+        }
+
+        try {
+            $now = now();
+            $startAt = $now->copy()->setTimeFromTimeString($start);
+            $endAt   = $now->copy()->setTimeFromTimeString($end);
+        } catch (\Throwable $e) {
+            return false;
+        }
+
+        // Plage normale (ex. 06:00 → 20:00) : hors plage = avant début OU après fin.
+        if ($startAt->lessThanOrEqualTo($endAt)) {
+            return $now->lessThan($startAt) || $now->greaterThan($endAt);
+        }
+
+        // Plage traversant minuit (ex. 20:00 → 06:00) : hors plage = entre fin et début.
+        return $now->lessThan($startAt) && $now->greaterThan($endAt);
+    }
+
+    /**
      * Envoie à tous les abonnés d'un type de notification.
      */
     private function broadcast(string $type, string $message, string $title, string $severity = 'normal'): void
@@ -291,6 +718,17 @@ class NotificationHub
                 'user_id' => $user->id,
                 'type'    => $type,
                 'title'   => $title,
+            ]);
+        }
+
+        // Filet de sécurité : les alertes critiques sont aussi envoyées au
+        // numéro admin (whatsapp.admin_phone), même si l'admin n'est pas
+        // explicitement abonné à ce type d'alerte.
+        $adminPhone = (string) setting('whatsapp.admin_phone', '');
+        if ($severity === 'critique' && $adminPhone !== '' && ! $recipients->contains('whatsapp_phone', $adminPhone)) {
+            $this->whatsapp->send($adminPhone, $message, [
+                'type'  => $type,
+                'title' => $title,
             ]);
         }
     }

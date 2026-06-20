@@ -15,7 +15,7 @@ class Dispatch extends Model
     use HasFactory, SoftDeletes, BelongsToFarm;
 
     protected $fillable = [
-        'farm_id', 'dispatch_number', 'sale_id', 'dispatched_by',
+        'farm_id', 'dispatch_number', 'sale_id', 'dispatched_by', 'intended_receiver_id',
         'vehicle_plate', 'driver_name', 'driver_phone',
         'dispatch_date', 'dispatch_time', 'destination',
         'status', 'notes', 'photo_path',
@@ -35,6 +35,16 @@ class Dispatch extends Model
     public function dispatcher(): BelongsTo
     {
         return $this->belongsTo(User::class, 'dispatched_by');
+    }
+
+    /**
+     * Récepteur désigné à la création (compte utilisateur). Notifié à
+     * l'expédition, il est habilité à valider la réception (à défaut, un
+     * responsable logistique.M le fait en secours).
+     */
+    public function intendedReceiver(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'intended_receiver_id');
     }
 
     public function items(): HasMany

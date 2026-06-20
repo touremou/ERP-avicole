@@ -35,18 +35,20 @@ class DashboardService
     {
         // ─── 1. LOTS ACTIFS ───
         $activeBatches = Batch::with(['building', 'dailyChecks'])
-            ->where('status', 'Actif')
+            ->active()
+            ->live()
             ->latest()
             ->paginate(10);
 
-        $allActive = Batch::where('status', 'Actif')
-            ->with(['dailyChecks'])
+        $allActive = Batch::active()
+            ->live()
+            ->with(['dailyChecks', 'productionType'])
             ->get();
 
         // ─── 2. EFFECTIFS ───
         $totalBirds    = $allActive->sum('current_quantity');
         $totalInitial  = $allActive->sum('initial_quantity');
-        $layersCount   = $allActive->whereIn('type', ['ponte', 'Ponte', 'reproducteur', 'Reproducteur', 'repro'])
+        $layersCount   = $allActive->filter(fn (Batch $batch) => $batch->tracksEggs())
                                    ->sum('current_quantity');
 
         $globalMortalityRate = $totalInitial > 0
@@ -57,7 +59,7 @@ class DashboardService
         $rawMaterialsValue = RawMaterial::selectRaw('COALESCE(SUM(stock_qty * unit_cost), 0) as total')
             ->value('total');
 
-        $totalEggsStock = Stock::where('category', 'oeufs')->sum('current_quantity');
+        $totalEggsStock = Stock::where('category', Stock::CAT_OEUFS)->sum('current_quantity');
 
         $eggsToday       = EggProduction::whereDate('production_date', today())->sum('total_eggs_collected');
         $totalBrokenToday = EggProduction::whereDate('production_date', today())->sum('broken_eggs');
@@ -98,12 +100,12 @@ class DashboardService
         $criticalTypes = $this->calculateFeedAutonomy($allActive);
 
         // ─── 6. BÂTIMENTS ───
-        $buildings = Building::withCount(['batches' => fn($q) => $q->where('status', 'Actif')])->get();
+        $buildings = Building::withCount(['batches' => fn($q) => $q->active()])->get();
         $totalBuildings    = $buildings->count();
         $occupiedBuildings = $buildings->where('batches_count', '>', 0)->count();
 
         $sanitaryAlertsCount = $buildings->filter(function ($b) {
-            return $b->status === 'En désinfection'
+            return $b->status === Building::STATUS_DESINFECTION
                 && Carbon::parse($b->updated_at)->diffInDays(now()) > ($b->max_sanitary_days ?? 21);
         })->count();
 
@@ -221,7 +223,7 @@ class DashboardService
         ];
 
         foreach ($feedNames as $name) {
-            $stock = Stock::where('item_name', $name)->where('category', 'conso')->first();
+            $stock = Stock::where('item_name', $name)->where('category', Stock::CAT_CONSO)->first();
             if (! $stock) continue;
 
             $currentKg = (float) $stock->current_quantity;

@@ -40,6 +40,48 @@ class TaskTemplate extends Model
 
     public function scopeActive($q) { return $q->where('is_active', true); }
 
+    /**
+     * Options de « types de lots » proposées dans les formulaires de
+     * template (filtre batch_types). Multi-espèces : on dérive la liste des
+     * slugs DISTINCTS réellement présents dans production_types (ovins,
+     * caprins, bovins, poissons, lapins, porcins… et pas seulement la
+     * volaille), pour que le filtre du planificateur (qui matche sur
+     * productionType.slug) couvre tout le cheptel.
+     *
+     * Retourne [slug => libellé lisible]. Un libellé canonique est fourni
+     * pour les slugs connus ; tout nouveau slug reçoit un repli générique.
+     *
+     * @return array<string,string>
+     */
+    public static function batchTypeOptions(): array
+    {
+        $labels = [
+            'chair'         => '🍗 Chair',
+            'ponte'         => '🥚 Ponte',
+            'reproducteur'  => '🧬 Reproducteur',
+            'poussiniere'   => '🐣 Poussinière',
+            'engraissement' => '🥩 Engraissement',
+            'laitiere'      => '🥛 Laitière',
+            'grossissement' => '🐟 Grossissement',
+            'alevinage'     => '🐠 Alevinage',
+        ];
+
+        $slugs = ProductionType::query()
+            ->withoutGlobalScopes()
+            ->where('is_active', true)
+            ->distinct()
+            ->orderBy('slug')
+            ->pluck('slug')
+            ->all();
+
+        $options = [];
+        foreach ($slugs as $slug) {
+            $options[$slug] = $labels[$slug] ?? ucfirst(str_replace('_', ' ', $slug));
+        }
+
+        return $options;
+    }
+
     public function getCategoryLabelAttribute(): string
     {
         return match($this->category) {

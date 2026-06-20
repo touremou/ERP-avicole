@@ -14,8 +14,9 @@ class Provider extends Model
 
     protected $fillable = [
         'farm_id',
-        'provider_id', 
-        'name', 
+        'provider_id',
+        'name',
+        'logo_path',
         'type',          // Poussins, Aliment, Santé, Matériel, Autre
         'domain', 
         'phone', 

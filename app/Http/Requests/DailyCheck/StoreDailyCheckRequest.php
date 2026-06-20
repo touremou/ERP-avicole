@@ -4,6 +4,7 @@ namespace App\Http\Requests\DailyCheck;
 
 use App\Models\Batch;
 use App\Models\Stock;
+use App\Rules\AfterBatchArrival;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Gate;
 
@@ -16,14 +17,14 @@ class StoreDailyCheckRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return Gate::allows('C');
+        return Gate::allows('elevage.C');
     }
 
     public function rules(): array
     {
         return [
             'batch_id'          => 'required|integer|exists:batches,id',
-            'check_date'        => 'required|date|before_or_equal:today',
+            'check_date'        => ['required', 'date', 'before_or_equal:today', new AfterBatchArrival],
             'mortality'         => 'required|integer|min:0',
             'feed_consumed'     => 'required|numeric|min:0',
             'feed_type'         => 'required|string|max:255',
@@ -39,6 +40,35 @@ class StoreDailyCheckRequest extends FormRequest
             'treatment_name'    => 'nullable|string|max:255',
             'observations'      => 'nullable|string|max:2000',
             'litter_changed'    => 'nullable|boolean',
+            'manure_collected_kg' => 'nullable|numeric|min:0|max:100000',
+            'lame_count'           => 'nullable|integer|min:0|max:1000000',
+            'pecking_injury_count' => 'nullable|integer|min:0|max:1000000',
+        ] + self::extensionRules();
+    }
+
+    /**
+     * Règles des métriques d'extension espèce-spécifiques (ruminants & aquaculture).
+     *
+     * Bornées pour fiabiliser alertes & rapports : un pH > 14, une survie
+     * > 100 % ou une biomasse négative n'ont aucun sens. Toutes nullable
+     * (absentes pour la volaille → sans impact). Partagées entre création
+     * et mise à jour du pointage.
+     */
+    public static function extensionRules(): array
+    {
+        return [
+            // Ruminants
+            'ext_qty_born'          => 'nullable|integer|min:0',
+            'ext_qty_weaned'        => 'nullable|integer|min:0',
+            'ext_milk_liters'       => 'nullable|numeric|min:0',
+            'ext_milk_fat_pct'      => 'nullable|numeric|min:0|max:100',
+            // Aquaculture
+            'ext_water_temp'        => 'nullable|numeric|min:0|max:50',
+            'ext_water_ph'          => 'nullable|numeric|min:0|max:14',
+            'ext_water_o2_ppm'      => 'nullable|numeric|min:0|max:30',
+            'ext_water_ammonia_ppm' => 'nullable|numeric|min:0|max:50',
+            'ext_biomass_kg'        => 'nullable|numeric|min:0',
+            'ext_survival_rate'     => 'nullable|numeric|min:0|max:100',
         ];
     }
 
@@ -87,11 +117,16 @@ class StoreDailyCheckRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
+        $litterChanged = $this->has('litter_changed') ? 1 : 0;
+
         $this->merge([
-            'litter_changed' => $this->has('litter_changed') ? 1 : 0,
+            'litter_changed' => $litterChanged,
             'qty_quarantine_in'  => $this->input('qty_quarantine_in', 0),
             'qty_quarantine_out' => $this->input('qty_quarantine_out', 0),
             'qty_sorted_out'     => $this->input('qty_sorted_out', 0),
+            // Le fumier n'est ramassé que lors d'un renouvellement de litière :
+            // toute quantité saisie sans litière changée est ignorée.
+            'manure_collected_kg' => $litterChanged ? $this->input('manure_collected_kg') : 0,
         ]);
     }
 }

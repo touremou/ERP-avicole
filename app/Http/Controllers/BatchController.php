@@ -20,6 +20,7 @@ use App\Services\BatchQuantityService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
 
 /**
@@ -80,15 +81,20 @@ class BatchController extends Controller
             $query->critical(setting('elevage.mortality_alert', 5));
         }
 
-        // Filtre par type
-        if ($request->filled('type') && in_array($request->type, $allowedTypes)) {
-            $query->byType($request->type);
-        }
-
         // Filtre par famille d'espèce
         $familyFilter = $request->input('family');
         if ($familyFilter && isset($familyGroups[$familyFilter])) {
             $applyFamilyFilter($query, $familyGroups[$familyFilter], $familyFilter);
+        }
+
+        // Filtre par type : sous-filtre de la volaille uniquement (chair/ponte/…).
+        // On ne l'applique que dans le contexte volaille, en cohérence avec
+        // l'affichage des onglets de type (sinon une URL obsolète ?type=chair
+        // sans famille filtrerait toutes les espèces sans onglet actif visible).
+        if ($familyFilter === 'volaille'
+            && $request->filled('type')
+            && in_array($request->type, $allowedTypes)) {
+            $query->byType($request->type);
         }
 
         // 2. On applique la même exclusion pour que les compteurs d'onglets soient justes
@@ -159,7 +165,9 @@ class BatchController extends Controller
         }
 
         $buildings   = Building::physical()->orderBy('name')->get();
-        $normModels  = ProductionNorm::select('model_name', 'batch_type')->distinct()->get();
+        // species_id permet de filtrer les souches par espèce côté client.
+        $normModels  = ProductionNorm::with('species:id,slug')
+            ->select('species_id', 'model_name', 'batch_type')->distinct()->get();
         $protocols   = Protocol::all();
         $employees   = Employee::where('status', 'Actif')->orderBy('last_name')->get();
         $providers   = Provider::where('status', 'Actif')->orderBy('name')->get();
@@ -197,7 +205,7 @@ class BatchController extends Controller
         }
         $batch->load([
             'building', 'protocol.steps', 'healthChecks',
-            'feedPurchases', 'tasks', 'species',
+            'feedPurchases', 'tasks', 'species.productionTypes', 'productionType',
             'dailyChecks' => fn($q) => $q->orderBy('check_date', 'asc'),
             'dailyChecks.extension',
         ]);
@@ -220,6 +228,10 @@ class BatchController extends Controller
             'age'              => $batch->age,
             'current_phase'    => $batch->current_phase,
             'net_margin'       => $batch->net_margin,
+            'feed_cogs'        => $batch->feed_cogs,
+            'utility_cost'     => $batch->utility_cost,
+            'manure_collected_kg'      => $batch->manure_collected_kg,
+            'estimated_manure_revenue' => $batch->estimated_manure_revenue,
         ];
 
         // GMQ stats (ruminants, porcins, lapins)
@@ -275,7 +287,9 @@ class BatchController extends Controller
         $employees     = Employee::where('status', 'Actif')->get();
         $providers     = Provider::where('status', 'Actif')->get();
         $protocols     = Protocol::all();
-        $normModels    = ProductionNorm::select('batch_type', 'model_name')->distinct()->get();
+        // Souches limitées à l'espèce du lot (+ souches génériques sans espèce).
+        $normModels    = ProductionNorm::forSpecies($batch->species_id)
+            ->select('species_id', 'batch_type', 'model_name')->distinct()->get();
         $activeSpecies = Species::active()->with('productionTypes:id,species_id,slug,name_fr,cycle_days_default,kpi_primary')
             ->orderBy('sort_order')->get();
 
@@ -327,14 +341,15 @@ class BatchController extends Controller
             ->first();
         $totalFeed = (float) ($feedData->total_kg ?? 0);
 
-        // Prix moyen du kg d'aliment (depuis les stocks de type conso)
-        $avgFeedPrice = \App\Models\Stock::where('category', 'conso')
-            ->where('item_name', 'LIKE', '%' . ($batch->type === 'ponte' ? 'Ponte' : 'Chair') . '%')
+        // Prix moyen du kg d'aliment (depuis les stocks de type conso),
+        // filtré sur le secteur d'aliment du lot (Chair/Ponte) via feedSector().
+        $avgFeedPrice = \App\Models\Stock::where('category', \App\Models\Stock::CAT_CONSO)
+            ->where('item_name', 'LIKE', '%' . $batch->feedSector() . '%')
             ->avg('last_unit_price') ?? 0;
 
         // Si pas de prix moyen, estimer depuis les achats
         if ($avgFeedPrice <= 0) {
-            $avgFeedPrice = \App\Models\Stock::where('category', 'conso')
+            $avgFeedPrice = \App\Models\Stock::where('category', \App\Models\Stock::CAT_CONSO)
                 ->where('last_unit_price', '>', 0)
                 ->avg('last_unit_price') ?? 5000; // Fallback 5000 GNF/kg
         }
@@ -361,7 +376,7 @@ class BatchController extends Controller
                 ->avg('cost') ?? 0;
 
             // Proportion : si 3 lots actifs, ce lot = 1/3 du coût énergie
-            $activeBatchCount = max(1, \App\Models\Batch::where('status', 'Actif')->count());
+            $activeBatchCount = max(1, \App\Models\Batch::active()->live()->count());
             $energyCost = ($totalDailyEnergyCost * $durationDays) / $activeBatchCount;
         }
 
@@ -457,7 +472,7 @@ class BatchController extends Controller
 
         // Mise à jour statut bâtiment si plus de lots actifs
         if ($building && ! Batch::where('building_id', $building->id)->active()->exists()) {
-            $building->update(['status' => 'Vide']);
+            $building->update(['status' => Building::STATUS_VIDE]);
         }
 
         return redirect()->route('batches.index')
@@ -478,7 +493,17 @@ class BatchController extends Controller
                 ->when($request->query('since'), function ($q, $since) {
                     $q->where('updated_at', '>=', $since);
                 })
-                ->get(['uuid', 'code', 'building_id', 'current_quantity', 'type', 'updated_at'])
+                ->with('productionType:id,slug')
+                ->get(['id', 'uuid', 'code', 'building_id', 'current_quantity', 'production_type_id', 'updated_at'])
+                ->map(fn (Batch $batch) => [
+                    'id' => $batch->id,
+                    'uuid' => $batch->uuid,
+                    'code' => $batch->code,
+                    'building_id' => $batch->building_id,
+                    'current_quantity' => $batch->current_quantity,
+                    'type' => $batch->type,
+                    'updated_at' => $batch->updated_at,
+                ])
         );
     }
 
@@ -487,7 +512,16 @@ class BatchController extends Controller
      */
     public function sync(Request $request, CreateBatch $action)
     {
+        if (Gate::denies('elevage.C')) {
+            return response()->json(['status' => 'error', 'message' => 'Non autorisé.'], 403);
+        }
+
         $request->validate(['uuid' => 'required|uuid']);
+
+        // SÉCURITÉ : ne jamais accepter farm_id du client (cross-tenant) ni de
+        // jeton CSRF en données métier — le farm_id est posé côté serveur par le
+        // trait BelongsToFarm. On ne propage donc qu'un payload assaini.
+        $payload = $request->except(['_token', 'farm_id', 'id']);
 
         try {
             // Vérifier si le lot existe déjà (par UUID)
@@ -496,9 +530,9 @@ class BatchController extends Controller
             if ($existing) {
                 // Mise à jour — on utilise UpdateBatch pour ne pas écraser current_quantity
                 $updateAction = app(UpdateBatch::class);
-                $batch = $updateAction->execute($existing, $request->all());
+                $batch = $updateAction->execute($existing, $payload);
             } else {
-                $batch = $action->execute($request->all());
+                $batch = $action->execute($payload);
             }
 
             return response()->json([
@@ -506,11 +540,15 @@ class BatchController extends Controller
                 'uuid'   => $batch->uuid,
                 'message' => 'Données synchronisées.',
             ]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            // On journalise le détail côté serveur et on renvoie un message générique
+            // (ne jamais exposer la trace/SQL au client).
+            Log::error("BatchController::sync échec (uuid={$request->uuid}) : " . $e->getMessage());
+
             return response()->json([
                 'status'  => 'error',
-                'message' => $e->getMessage(),
-            ], 500);
+                'message' => 'Synchronisation impossible pour cet enregistrement.',
+            ], 422);
         }
     }
 }

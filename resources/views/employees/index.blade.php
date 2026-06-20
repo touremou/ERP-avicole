@@ -5,7 +5,7 @@
                 <h2 class="text-3xl font-black text-slate-800 tracking-tighter uppercase italic leading-none">
                     {{ __('Personnel') }}
                 </h2>
-                <span class="text-slate-400 text-[9px] font-black uppercase tracking-[0.3em] mt-3 block italic leading-none">Gestion des collaborateurs & Effectifs</span>
+                <span class="text-slate-400 text-[9px] font-black uppercase tracking-[0.3em] mt-3 block italic leading-none">{{ __("Gestion des collaborateurs & Effectifs") }}</span>
             </div>
             
             {{-- Permission C : Recrutement --}}
@@ -14,21 +14,21 @@
                 {{-- MODULE ANNUAIRE : Recrutement (C) --}}
                 @can('annuaire.C')
                 <a href="{{ route('employees.create') }}" class="group bg-slate-900 text-white px-8 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-blue-600 transition-all shadow-xl shadow-slate-900/10 italic no-underline">
-                    <i class="fas fa-user-plus mr-2 group-hover:rotate-12 transition-transform"></i> Recruter
+                    <i class="fas fa-user-plus mr-2 group-hover:rotate-12 transition-transform"></i> {{ __("Recruter") }}
                 </a>
                 @endcan
 
                 {{-- MODULE RH : Accès à la Paie (L) --}}
-                @can('rh.L')
+                @can('annuaire.L')
                 <a href="{{ route('payroll.index') }}" class="bg-blue-600 text-white px-6 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-blue-700 transition-all shadow-lg italic no-underline">
-                    <i class="fas fa-money-bill-wave mr-2"></i> Paie
+                    <i class="fas fa-money-bill-wave mr-2"></i> {{ __("Paie") }}
                 </a>
                 @endcan
 
                 {{-- MODULE RH : Accès aux Congés (L) --}}
-                @can('rh.L')
+                @can('annuaire.L')
                 <a href="{{ route('payroll.leaves') }}" class="bg-white border border-slate-200 text-slate-600 px-6 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-amber-50 transition-all shadow-sm italic no-underline">
-                    <i class="fas fa-calendar-xmark mr-2 text-amber-500"></i> Congés
+                    <i class="fas fa-calendar-xmark mr-2 text-amber-500"></i> {{ __("Congés") }}
                 </a>
                 @endcan
 
@@ -42,22 +42,22 @@
             {{-- MINI DASHBOARD RH (L) --}}
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10 uppercase text-left">
                 <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm relative overflow-hidden">
-                    <p class="text-[8px] text-slate-400 tracking-widest mb-2 font-black italic">Total Effectif</p>
+                    <p class="text-[8px] text-slate-400 tracking-widest mb-2 font-black italic">{{ __("Total Effectif") }}</p>
                     <p class="text-3xl font-black text-slate-800 tracking-tighter leading-none">{{ $employees->count() }}</p>
                     <div class="absolute -right-2 -bottom-2 opacity-5 text-4xl italic font-black">ALL</div>
                 </div>
                 <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm relative overflow-hidden">
-                    <p class="text-[8px] text-emerald-500 tracking-widest mb-2 font-black italic">Présents</p>
+                    <p class="text-[8px] text-emerald-500 tracking-widest mb-2 font-black italic">{{ __("Présents") }}</p>
                     <p class="text-3xl font-black text-emerald-600 tracking-tighter leading-none">{{ $employees->where('status', 'Actif')->count() }}</p>
                     <div class="absolute -right-2 -bottom-2 opacity-5 text-emerald-500 text-4xl italic font-black">OK</div>
                 </div>
                 <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm relative overflow-hidden">
-                    <p class="text-[8px] text-blue-500 tracking-widest mb-2 font-black italic">Masse Salariale</p>
+                    <p class="text-[8px] text-blue-500 tracking-widest mb-2 font-black italic">{{ __("Masse Salariale") }}</p>
                     <p class="text-2xl font-black text-blue-600 tracking-tighter leading-none">{{ number_format($employees->sum('salary'), 0, ',', ' ') }} <span class="text-[10px]">{{ setting('general.currency', 'GNF') }}</span></p>
                     <div class="absolute -right-2 -bottom-2 opacity-5 text-blue-500 text-4xl italic font-black">{{ setting('general.currency', 'GNF') }}</div>
                 </div>
                 <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm relative overflow-hidden">
-                    <p class="text-[8px] text-orange-500 tracking-widest mb-2 font-black italic">En Congé</p>
+                    <p class="text-[8px] text-orange-500 tracking-widest mb-2 font-black italic">{{ __("En Congé") }}</p>
                     <p class="text-3xl font-black text-orange-600 tracking-tighter leading-none">{{ $employees->where('status', 'Congé')->count() }}</p>
                     <div class="absolute -right-2 -bottom-2 opacity-5 text-orange-500 text-4xl italic font-black">OFF</div>
                 </div>
@@ -82,7 +82,7 @@
                                 <div class="flex items-center space-x-5">
                                     <div class="relative">
                                         @if($emp->photo_path)
-                                            <img src="{{ asset('storage/' . $emp->photo_path) }}"
+                                            <img src="{{ media_url($emp->photo_path) }}"
                                                  class="w-14 h-14 rounded-2xl object-cover shadow-sm border-2 border-white ring-1 ring-slate-100"
                                                  onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
                                             <div class="w-14 h-14 bg-slate-900 text-blue-400 rounded-2xl items-center justify-center font-black text-xl border-2 border-white shadow-sm ring-1 ring-slate-100 uppercase italic hidden">

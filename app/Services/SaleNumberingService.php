@@ -14,15 +14,24 @@ class SaleNumberingService
      */
     public static function generate(string $type): string
     {
+        // Préfixes pilotés par les paramètres (Paramètres > Ventes).
+        $blPrefix  = setting('ventes.invoice_prefix_bl', 'BL');
+        $tvaPrefix = setting('ventes.invoice_prefix_tva', 'FAC');
+
         $prefix = match ($type) {
-            'facture'        => 'FAC',
-            'bon_livraison'  => 'BL',
-            default          => 'BL',
+            'facture'        => $tvaPrefix,
+            'bon_livraison'  => $blPrefix,
+            default          => $blPrefix,
         };
 
         $year = now()->format('Y');
 
-        $lastNumber = Sale::where('reference', 'LIKE', "{$prefix}-{$year}-%")
+        // La référence porte une contrainte d'unicité globale (toutes fermes
+        // confondues) : la séquence doit donc rester globale, sans le scope
+        // par ferme (Sale::withoutFarm()), pour ne jamais produire deux fois
+        // la même référence sur deux fermes différentes.
+        $lastNumber = Sale::withoutFarm()
+            ->where('reference', 'LIKE', "{$prefix}-{$year}-%")
             ->withTrashed()
             ->orderByDesc('id')
             ->value('reference');

@@ -7,10 +7,10 @@
                 </div>
                 <div>
                     <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">
-                        Journal de Production
+                        {{ __("Journal de Production") }}
                     </h2>
                     <p class="text-[10px] font-bold text-emerald-600 uppercase tracking-[0.3em] mt-2 italic leading-none">
-                        Provenderie • Historique & Ordres de Production
+                        {{ __("Provenderie • Historique & Ordres de Production") }}
                     </p>
                 </div>
             </div>
@@ -20,7 +20,7 @@
                 @can('provenderie.L')
                 <a href="{{ route('machines.index') }}" 
                     class="bg-slate-50 text-slate-600 border border-slate-200 px-8 py-4 rounded-[2rem] text-[10px] font-black uppercase italic tracking-widest shadow-sm hover:bg-slate-100 transition-all active:scale-95">
-                    <i class="fa-solid fa-gears mr-2"></i> Parc Machines
+                    <i class="fa-solid fa-gears mr-2"></i> {{ __("Parc Machines") }}
                 </a>
                 @endcan
 
@@ -28,7 +28,7 @@
                 @can('provenderie.C')
                 <a href="{{ route('production.create') }}" 
                     class="bg-slate-900 text-white px-8 py-4 rounded-[2rem] text-[10px] font-black uppercase italic tracking-widest shadow-2xl hover:bg-emerald-500 transition-all active:scale-95">
-                    <i class="fa-solid fa-plus mr-2 text-emerald-400"></i> Nouvel Ordre (OP)
+                    <i class="fa-solid fa-plus mr-2 text-emerald-400"></i> {{ __("Nouvel Ordre (OP)") }}
                 </a>
                 @endcan
             </div>
@@ -42,10 +42,10 @@
                 <table class="w-full border-collapse">
                     <thead>
                         <tr class="bg-slate-50 border-b border-slate-100">
-                            <th class="p-6 text-[10px] font-black uppercase tracking-widest italic text-slate-400 leading-none">Date & Lot</th>
-                            <th class="p-6 text-[10px] font-black uppercase tracking-widest italic text-slate-400 leading-none text-left">Formulation & Détails</th>
-                            <th class="p-6 text-[10px] font-black uppercase tracking-widest italic text-slate-400 leading-none text-center">Volume Produit</th>
-                            <th class="p-6 text-[10px] font-black uppercase tracking-widest italic text-slate-400 leading-none text-center">Statut / Action</th>
+                            <th class="p-6 text-[10px] font-black uppercase tracking-widest italic text-slate-400 leading-none">{{ __("Date & Lot") }}</th>
+                            <th class="p-6 text-[10px] font-black uppercase tracking-widest italic text-slate-400 leading-none text-left">{{ __("Formulation & Détails") }}</th>
+                            <th class="p-6 text-[10px] font-black uppercase tracking-widest italic text-slate-400 leading-none text-center">{{ __("Volume Produit") }}</th>
+                            <th class="p-6 text-[10px] font-black uppercase tracking-widest italic text-slate-400 leading-none text-center">{{ __("Statut / Action") }}</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-50">
@@ -74,7 +74,7 @@
                                         <i class="fa-solid fa-flask-vial"></i>
                                     </div>
                                     <div>
-                                        <p class="text-xs font-black text-slate-800 uppercase italic leading-none">{{ $prod->formula->name ?? 'Formule Inconnue' }}</p>
+                                        <p class="text-xs font-black text-slate-800 uppercase italic leading-none">{{ $prod->formula->name ?? __("Formule Inconnue") }}</p>
                                         <div class="flex flex-wrap items-center gap-1 mt-1">
                                             
                                             {{-- Liste des machines utilisées --}}
@@ -92,12 +92,12 @@
                                             
                                             {{-- Responsable Production --}}
                                             <span class="text-[7px] text-emerald-600 uppercase italic leading-none ml-2 border-l border-slate-200 pl-2 flex items-center gap-1">
-                                                <i class="fa-solid fa-user-check text-[6px]"></i> 
-                                                Resp : 
+                                                <i class="fa-solid fa-user-check text-[6px]"></i>
+                                                {{ __("Resp") }} :
                                                 @if($prod->supervisor)
                                                     {{ strtoupper($prod->supervisor->first_name) }} {{ strtoupper($prod->supervisor->last_name) }}
                                                 @else
-                                                    {{ $prod->user->name ?? 'SYSTÈME' }}
+                                                    {{ $prod->user->name ?? __("SYSTÈME") }}
                                                 @endif
                                             </span>
                                         </div>
@@ -107,27 +107,27 @@
                             <td class="p-6 text-center">
                                 <p class="text-xl font-black text-slate-900 italic tracking-tighter leading-none">
                                     {{ number_format($prod->quantity_produced / 50, 1) }} 
-                                    <small class="text-[8px] text-slate-400 uppercase ml-1 italic font-black">Sacs (50kg)</small>
+                                    <small class="text-[8px] text-slate-400 uppercase ml-1 italic font-black">{{ __("Sacs (50kg)") }}</small>
                                 </p>
-                                <p class="text-[8px] text-blue-500 uppercase font-black leading-none mt-2">Masse : {{ number_format($prod->quantity_produced, 0) }} kg</p>
+                                <p class="text-[8px] text-blue-500 uppercase font-black leading-none mt-2">{{ __("Masse") }} : {{ number_format($prod->quantity_produced, 0) }} kg</p>
                             </td>
                             <td class="p-6 text-center">
                                 @if($prod->status === 'Terminé')
                                     <div class="flex flex-col items-center gap-1">
                                         <span class="px-4 py-1.5 bg-emerald-50 text-emerald-600 rounded-full text-[8px] font-black uppercase italic tracking-widest border border-emerald-100">
-                                            <i class="fa-solid fa-circle-check mr-1"></i> Stocké
+                                            <i class="fa-solid fa-circle-check mr-1"></i> {{ __("Stocké") }}
                                         </span>
-                                        <p class="text-[7px] text-slate-300 italic uppercase">Fini le {{ $prod->finished_at ? $prod->finished_at->format('d/m H:i') : $prod->updated_at->format('d/m H:i') }}</p>
+                                        <p class="text-[7px] text-slate-300 italic uppercase">{{ __("Fini le") }} {{ $prod->finished_at ? $prod->finished_at->format('d/m H:i') : $prod->updated_at->format('d/m H:i') }}</p>
                                     </div>
                                 @else
                                     <div class="flex flex-col items-center gap-3">
                                         <div class="flex gap-2">
                                             <span class="px-4 py-1.5 bg-amber-50 text-amber-600 rounded-full text-[8px] font-black uppercase italic tracking-widest border border-amber-100 animate-pulse">
-                                                <i class="fa-solid fa-spinner fa-spin mr-1"></i> En cours
+                                                <i class="fa-solid fa-spinner fa-spin mr-1"></i> {{ __("En cours") }}
                                             </span>
                                             {{-- Accès L pour voir le bon de pesée --}}
                                             @can('provenderie.L')
-                                            <a href="{{ route('production.show', $prod->id) }}" class="p-1.5 bg-slate-900 text-white rounded-lg hover:bg-emerald-500 transition-all shadow-lg" title="Imprimer Bon de Pesée">
+                                            <a href="{{ route('production.show', $prod->id) }}" class="p-1.5 bg-slate-900 text-white rounded-lg hover:bg-emerald-500 transition-all shadow-lg" title="{{ __('Imprimer Bon de Pesée') }}">
                                                 <i class="fa-solid fa-print text-[10px]"></i>
                                             </a>
                                             @endcan
@@ -135,11 +135,11 @@
                                         
                                         {{-- Permission M : Finalisation de la production --}}
                                         @can('provenderie.M')
-                                        <form action="{{ route('production.complete', $prod->id) }}" method="POST" onsubmit="return confirm('Confirmer la fin de production ? Le stock sera mis à jour.')">
+                                        <form action="{{ route('production.complete', $prod->id) }}" method="POST" onsubmit="return confirm(@json(__('Confirmer la fin de production ? Le stock sera mis à jour.')))">
                                             @csrf
                                             @method('PUT')
                                             <button type="submit" class="text-[9px] font-black text-white uppercase italic tracking-widest bg-emerald-500 px-5 py-2 rounded-xl hover:bg-emerald-600 transition-all shadow-xl active:scale-95">
-                                                Terminer l'ordre <i class="fa-solid fa-arrow-right ml-1"></i>
+                                                {{ __("Terminer l'ordre") }} <i class="fa-solid fa-arrow-right ml-1"></i>
                                             </button>
                                         </form>
                                         @endcan
@@ -153,7 +153,7 @@
                                 <div class="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6">
                                     <i class="fa-solid fa-industry text-2xl text-slate-200"></i>
                                 </div>
-                                <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] italic leading-none">Aucun historique de production</p>
+                                <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] italic leading-none">{{ __("Aucun historique de production") }}</p>
                             </td>
                         </tr>
                         @endforelse

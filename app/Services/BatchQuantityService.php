@@ -98,7 +98,7 @@ class BatchQuantityService
      */
     public function rebuildAll(bool $dryRun = false): array
     {
-        $batches = Batch::where('status', 'Actif')
+        $batches = Batch::active()
             ->orderBy('code')
             ->get();
 

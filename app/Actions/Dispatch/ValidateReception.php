@@ -8,6 +8,7 @@ use App\Models\ReceptionItem;
 use App\Services\ReconciliationService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Exception;
 
 class ValidateReception
@@ -35,6 +36,17 @@ class ValidateReception
             throw new Exception(
                 "Anti-fraude : le réceptionnaire ne peut pas être la même personne que l'expéditeur. " .
                 "Demandez à un autre collaborateur de valider la réception."
+            );
+        }
+
+        // HABILITATION : seul le récepteur DÉSIGNÉ ou un responsable logistique.M
+        // (secours) peut valider — défense en profondeur, en plus du contrôle
+        // d'accès du contrôleur.
+        $isDesignated = $dispatch->intended_receiver_id !== null
+            && $dispatch->intended_receiver_id === Auth::id();
+        if (! $isDesignated && Gate::denies('logistique.M')) {
+            throw new Exception(
+                "Seul le récepteur désigné ou un responsable logistique (droit M) peut valider cette réception."
             );
         }
 

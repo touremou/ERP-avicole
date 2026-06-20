@@ -20,10 +20,9 @@ class StockHelper
             return 0; 
         }
 
-        // 2. RECHERCHE STRICTE (Fini le LIKE '%...%')
-        // Idéalement, utilise une colonne dédiée comme 'feed_category' ou 'reference_code'
-        $stock = Stock::where('feed_type', $type) 
-                      ->where('category', 'conso')
+        $name = trim($type);
+        $stock = Stock::where('category', Stock::CAT_CONSO)
+                      ->where(fn ($q) => $q->where('item_name', $name)->orWhere('feed_type', $name))
                       ->first();
 
         if (!$stock || (float)$stock->current_quantity <= 0) {
@@ -36,7 +35,7 @@ class StockHelper
         static $latestChecks = null;
 
         if ($latestChecks === null) {
-            $activeBatchIds = Batch::where('status', 'Actif')->pluck('id');
+            $activeBatchIds = Batch::active()->pluck('id');
             
             $latestChecks = DailyCheck::whereIn('batch_id', $activeBatchIds)
                 ->whereIn('check_date', function ($query) {

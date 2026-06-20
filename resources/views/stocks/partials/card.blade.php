@@ -3,23 +3,28 @@
     $consoType = $item->getMeta('conso_type');
     $poultryType = $item->getMeta('poultry_type', 'N/A');
     
-    // Fallback pour l'affichage de la catégorie (Gestion de l'ancienne nomenclature)
-    $categoryLabel = $item->category === 'matiere_premiere' ? 'materiels' : $item->category;
+    $categoryLabel = $item->category;
 
-    $displayType = 'Article';
-    $themeKey = 'Aliment'; 
+    $displayType = __("Article");
+    $themeKey = 'Aliment';
 
     if ($categoryLabel === 'oeufs') {
-        $displayType = 'Production';
+        $displayType = __("Production");
         $themeKey = 'Oeufs';
     } elseif ($categoryLabel === 'materiels') {
-        $displayType = 'Équipement';
+        $displayType = __("Équipement");
         $themeKey = 'Materiels';
     } elseif ($categoryLabel === 'litieres') {
-        $displayType = 'Litière';
+        $displayType = __("Litière");
         $themeKey = 'Litieres';
+    } elseif ($categoryLabel === 'lait') {
+        $displayType = __("Laiterie");
+        $themeKey = 'Lait';
+    } elseif ($categoryLabel === 'produits_finis') {
+        $displayType = __("Produit Fini");
+        $themeKey = 'ProduitsFinis';
     } else {
-        $displayType = $consoType ?? 'Consommable';
+        $displayType = $consoType ?? __("Consommable");
         $themeKey = $consoType ?? 'Aliment';
     }
 
@@ -30,6 +35,8 @@
         'Oeufs'      => ['bg' => 'bg-emerald-50', 'text' => 'text-emerald-600', 'icon' => 'fa-egg', 'border' => 'border-emerald-200'],
         'Materiels'  => ['bg' => 'bg-purple-50', 'text' => 'text-purple-600', 'icon' => 'fa-screwdriver-wrench', 'border' => 'border-purple-200'],
         'Litieres'   => ['bg' => 'bg-orange-50', 'text' => 'text-orange-600', 'icon' => 'fa-rug', 'border' => 'border-orange-200'],
+        'Lait'       => ['bg' => 'bg-cyan-50', 'text' => 'text-cyan-600', 'icon' => 'fa-bottle-droplet', 'border' => 'border-cyan-200'],
+        'ProduitsFinis' => ['bg' => 'bg-rose-50', 'text' => 'text-rose-600', 'icon' => 'fa-drumstick-bite', 'border' => 'border-rose-200'],
     ];
     
     $theme = $themes[$themeKey] ?? $themes['Aliment'];
@@ -54,13 +61,13 @@
     {{-- Header : Unité & Actions --}}
     <div class="flex justify-between items-start mb-2">
         <span class="text-[9px] font-black text-slate-300 uppercase tracking-widest italic leading-none">
-            Unité : {{ $item->unit }}
+            {{ __("Unité :") }} {{ $item->unit }}
         </span>
-        <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300">
+        <div class="flex gap-2 opacity-100 can-hover:opacity-0 can-hover:group-hover:opacity-100 transition-all duration-300">
             <a href="{{ route('stocks.show', $item->id) }}" class="w-7 h-7 rounded-lg bg-slate-50 text-slate-400 flex items-center justify-center hover:bg-slate-900 hover:text-white transition-all shadow-sm">
                 <i class="fa-solid fa-eye text-[9px]"></i>
             </a>
-            @can('stocks.M')
+            @can('logistique.M')
             <a href="{{ route('stocks.edit', $item->id) }}" class="w-7 h-7 rounded-lg bg-slate-50 text-slate-400 flex items-center justify-center hover:bg-slate-900 hover:text-white transition-all shadow-sm">
                 <i class="fa-solid fa-pen text-[9px]"></i>
             </a>
@@ -74,9 +81,9 @@
             {{ str_replace(['Chair ', 'Ponte '], '', $item->item_name) }}
         </h4>
         @if($item->category === 'conso' && $themeKey === 'Aliment')
-            <p class="text-[8px] font-bold text-slate-400 uppercase italic leading-none mt-1">Secteur : {{ $poultryType }}</p>
+            <p class="text-[8px] font-bold text-slate-400 uppercase italic leading-none mt-1">{{ __("Secteur :") }} {{ $poultryType }}</p>
         @elseif($categoryLabel === 'materiels')
-             <p class="text-[8px] font-bold text-purple-400 uppercase italic leading-none mt-1">Équipement Technique</p>
+             <p class="text-[8px] font-bold text-purple-400 uppercase italic leading-none mt-1">{{ __("Équipement Technique") }}</p>
         @endif
     </div>
     
@@ -96,7 +103,7 @@
             {{-- Conversion visuelle pour les aliments en KG --}}
             @if($item->category === 'conso' && $themeKey === 'Aliment' && $item->unit === 'KG')
                 <span class="text-[8px] font-black text-emerald-500 uppercase italic tracking-tighter mt-1">
-                    ≈ {{ number_format($item->current_quantity / 50, 1) }} Sacs
+                    ≈ {{ number_format($item->current_quantity / 50, 1) }} {{ __("Sacs") }}
                 </span>
             @endif
         </div>
@@ -105,7 +112,7 @@
     {{-- Indicateur Alvéoles (Spécifique) --}}
     @if($item->unit === 'Alvéole' && $item->current_quantity > 0)
         <div class="mt-2 text-[7px] text-blue-500 font-black uppercase italic">
-            Soit {{ floor($item->current_quantity) }} plateaux + {{ round(($item->current_quantity - floor($item->current_quantity)) * 30) }} œufs
+            {{ __("Soit") }} {{ floor($item->current_quantity) }} {{ __("plateaux") }} + {{ round(($item->current_quantity - floor($item->current_quantity)) * 30) }} {{ __("œufs") }}
         </div>
     @endif
 
@@ -121,7 +128,7 @@
 
     {{-- Footer --}}
     <div class="mt-4 pt-3 border-t border-slate-50 flex justify-between items-center text-[7px] font-black uppercase italic tracking-widest">
-        <span class="text-slate-300">Cat : {{ strtoupper($categoryLabel) }}</span>
-        <span class="text-slate-500">Prov : {{ $item->getMeta('supplier', 'Standard') }}</span>
+        <span class="text-slate-300">{{ __("Cat :") }} {{ strtoupper($categoryLabel) }}</span>
+        <span class="text-slate-500">{{ __("Prov :") }} {{ $item->getMeta('supplier', 'Standard') }}</span>
     </div>
 </div>

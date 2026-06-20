@@ -7,21 +7,21 @@
                 </div>
                 <div>
                     <h2 class="font-black text-2xl text-slate-800 uppercase italic tracking-tighter leading-none">
-                        Analyse : {{ $formula->name }}
+                        {{ __("Analyse") }} : {{ $formula->name }}
                     </h2>
-                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1 italic">Code : {{ $formula->code }} • {{ strtoupper($formula->target_type) }}</p>
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1 italic">{{ __("Code") }} : {{ $formula->code }} • {{ strtoupper($formula->target_type) }}</p>
                 </div>
             </div>
             
             <div class="flex gap-3">
                 <a href="{{ route('formulas.index') }}" class="bg-white border border-slate-200 text-slate-400 px-6 py-3 rounded-2xl text-[10px] font-black uppercase italic tracking-widest hover:bg-slate-50 transition-all no-underline">
-                    <i class="fa-solid fa-arrow-left mr-2"></i> Retour
+                    <i class="fa-solid fa-arrow-left mr-2"></i> {{ __("Retour") }}
                 </a>
                 
                 {{-- Permission C : Lancer une production basée sur cette formule --}}
                 @can('provenderie.C')
                 <a href="{{ route('production.create', ['formula_id' => $formula->id]) }}" class="bg-emerald-500 text-white px-6 py-3 rounded-2xl text-[10px] font-black uppercase italic tracking-widest shadow-lg shadow-emerald-200 hover:bg-emerald-600 transition-all no-underline">
-                    <i class="fa-solid fa-play mr-2"></i> Produire ce lot
+                    <i class="fa-solid fa-play mr-2"></i> {{ __("Produire ce lot") }}
                 </a>
                 @endcan
             </div>
@@ -34,7 +34,7 @@
             {{-- COLONNE GAUCHE : COMPOSITION & ACTIONS --}}
             <div class="space-y-6">
                 <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm text-left">
-                    <h3 class="text-xs font-black uppercase text-slate-400 mb-6 italic tracking-widest">Répartition Ingrédients</h3>
+                    <h3 class="text-xs font-black uppercase text-slate-400 mb-6 italic tracking-widest">{{ __("Répartition Ingrédients") }}</h3>
                     <div class="space-y-4">
                         @foreach($formula->items as $item)
                         <div class="flex justify-between items-center p-4 bg-slate-50 rounded-2xl border border-slate-100/50 group hover:bg-white hover:border-blue-200 transition-all">
@@ -46,21 +46,21 @@
 
                     {{-- ZONE D'ACTIONS CRITIQUES (SÉCURISÉE) --}}
                     <div class="mt-10 pt-8 border-t border-slate-100 space-y-3">
-                        <p class="text-[9px] font-black text-slate-300 uppercase text-center mb-4 italic tracking-widest">Administration de la fiche</p>
+                        <p class="text-[9px] font-black text-slate-300 uppercase text-center mb-4 italic tracking-widest">{{ __("Administration de la fiche") }}</p>
                         <div class="grid grid-cols-1 gap-3">
                             {{-- Permission M : Édition --}}
                             @can('provenderie.M')
                             <a href="{{ route('formulas.edit', $formula->id) }}" class="flex items-center justify-center gap-2 p-4 bg-slate-900 text-white rounded-2xl hover:bg-blue-600 transition-all text-[10px] uppercase tracking-widest no-underline">
-                                <i class="fa-solid fa-pen-to-square text-amber-400"></i> Optimiser la Recette
+                                <i class="fa-solid fa-pen-to-square text-amber-400"></i> {{ __("Optimiser la Recette") }}
                             </a>
                             @endcan
                             
                             {{-- Permission S : Suppression --}}
                             @can('provenderie.S')
-                            <form action="{{ route('formulas.destroy', $formula->id) }}" method="POST" onsubmit="return confirm('Attention : Cette action est irréversible. Supprimer cette formulation ?')">
+                            <form action="{{ route('formulas.destroy', $formula->id) }}" method="POST" onsubmit="return confirm({{ Js::from(__('Attention : Cette action est irréversible. Supprimer cette formulation ?')) }})">
                                 @csrf @method('DELETE')
                                 <button type="submit" class="w-full flex items-center justify-center gap-2 p-4 bg-red-50 text-red-500 rounded-2xl hover:bg-red-500 hover:text-white transition-all text-[10px] uppercase tracking-widest border border-red-100 italic font-black">
-                                    <i class="fa-solid fa-trash"></i> Retirer du Catalogue
+                                    <i class="fa-solid fa-trash"></i> {{ __("Retirer du Catalogue") }}
                                 </button>
                             </form>
                             @endcan
@@ -75,7 +75,7 @@
                     <div class="absolute right-0 top-0 p-10 opacity-5 group-hover:rotate-12 transition-transform pointer-events-none">
                         <i class="fa-solid fa-chart-pie text-9xl"></i>
                     </div>
-                    <h3 class="text-xs font-black uppercase text-blue-400 mb-8 italic tracking-widest relative leading-none">Équilibre Nutritionnel vs Norme</h3>
+                    <h3 class="text-xs font-black uppercase text-blue-400 mb-8 italic tracking-widest relative leading-none">{{ __("Équilibre Nutritionnel vs Norme") }}</h3>
                     
                     <div class="h-64 relative">
                         <canvas id="nutritionChart"></canvas>
@@ -85,7 +85,7 @@
                 {{-- RÉSUMÉ FINANCIER --}}
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm group hover:border-blue-200 transition-all text-left">
-                        <p class="text-[9px] font-black text-slate-400 uppercase italic mb-1 leading-none">Coût de Revient Théorique</p>
+                        <p class="text-[9px] font-black text-slate-400 uppercase italic mb-1 leading-none">{{ __("Coût de Revient Théorique") }}</p>
                         <p class="text-4xl font-black text-slate-900 italic tracking-tighter leading-none">
                             {{ number_format($stats['cost'], 0, ',', ' ') }} 
                             <small class="text-xs opacity-30 italic">GNF/kg</small>
@@ -93,9 +93,9 @@
                     </div>
                     <div class="bg-emerald-50 p-8 rounded-[3rem] border border-emerald-100 shadow-sm relative overflow-hidden text-left">
                         <div class="absolute right-0 bottom-0 p-4 opacity-10"><i class="fa-solid fa-piggy-bank text-4xl"></i></div>
-                        <p class="text-[9px] font-black text-emerald-600 uppercase italic mb-1 leading-none">Performance Économique</p>
+                        <p class="text-[9px] font-black text-emerald-600 uppercase italic mb-1 leading-none">{{ __("Performance Économique") }}</p>
                         <p class="text-4xl font-black text-emerald-600 italic tracking-tighter leading-none">
-                            {{ $stats['cost'] < 5000 ? 'Optimum' : 'À Réviser' }}
+                            {{ $stats['cost'] < 5000 ? __('Optimum') : __('À Réviser') }}
                         </p>
                     </div>
                 </div>
@@ -112,13 +112,13 @@
                 labels: {!! json_encode($chartData['labels']) !!},
                 datasets: [
                     {
-                        label: 'Réel (Formule)',
+                        label: {{ Js::from(__('Réel (Formule)')) }},
                         data: {!! json_encode($chartData['real']) !!},
                         backgroundColor: '#3b82f6',
                         borderRadius: 12,
                     },
                     {
-                        label: 'Cible (Norme)',
+                        label: {{ Js::from(__('Cible (Norme)')) }},
                         data: {!! json_encode($chartData['target']) !!},
                         backgroundColor: 'rgba(255, 255, 255, 0.1)',
                         borderColor: 'white',

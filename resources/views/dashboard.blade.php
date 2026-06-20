@@ -13,7 +13,7 @@
                     <i class="fa-solid fa-house-signal text-xl"></i>
                 </div>
                 <div>
-                    <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">Console de Commande</h2>
+                    <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">{{ __("Console de Commande") }}</h2>
                     <p class="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] mt-2 italic animate-pulse">
                         {{ now()->translatedFormat('d F Y') }} — LIVE
                     </p>
@@ -21,23 +21,38 @@
             </div>
 
             <div class="flex gap-4">
+                {{-- Données financières/stock masquées selon les droits modules :
+                     valorisation stock → logistique.L ; marge & encours → commerce.L. --}}
+                @can('logistique.L')
                 {{-- ENRICHI : Info bulle CMUP --}}
                 <div class="bg-white px-6 py-4 rounded-[1.5rem] border border-slate-100 text-right shadow-sm group">
                     <p class="text-[8px] font-black text-slate-400 uppercase italic mb-1 flex items-center justify-end gap-1.5">
-                        Valeur Mat. Premières 
-                        <i class="fa-solid fa-circle-info text-slate-300 group-hover:text-blue-500 transition-colors cursor-help" title="Valorisation basée sur le Coût Moyen Unitaire Pondéré (CMUP) des derniers achats"></i>
+                        {{ __("Valeur Mat. Premières") }}
+                        <i class="fa-solid fa-circle-info text-slate-300 group-hover:text-blue-500 transition-colors cursor-help" title="{{ __('Valorisation basée sur le Coût Moyen Unitaire Pondéré (CMUP) des derniers achats') }}"></i>
                     </p>
                     <p class="text-base font-black text-slate-900 leading-none">{{ number_format($rawMaterialsValue ?? 0, 0, ',', ' ') }} <small class="text-[9px] opacity-40">GNF</small></p>
                 </div>
+                @endcan
                 
+                @can('commerce.L')
+                {{-- ENRICHI : Encours clients (trésorerie) --}}
+                <div class="bg-white px-6 py-4 rounded-[1.5rem] border border-slate-100 text-right shadow-sm group">
+                    <p class="text-[8px] font-black text-slate-400 uppercase italic mb-1 flex items-center justify-end gap-1.5">
+                        {{ __("Encours Clients") }}
+                        <i class="fa-solid fa-circle-info text-slate-300 group-hover:text-rose-500 transition-colors cursor-help" title="{{ __('Montant des ventes non soldées encore dû à la ferme (créances clients)') }}"></i>
+                    </p>
+                    <p @class(['text-base font-black leading-none', 'text-rose-600' => ($encoursClients ?? 0) > 0, 'text-slate-900' => ($encoursClients ?? 0) <= 0])>{{ number_format($encoursClients ?? 0, 0, ',', ' ') }} <small class="text-[9px] opacity-40">GNF</small></p>
+                </div>
+
                 {{-- ENRICHI : Info bulle Marge + Changement de label --}}
                 <div class="bg-slate-900 px-6 py-4 rounded-[1.5rem] text-right shadow-2xl border-l-4 border-emerald-500 group">
                     <p class="text-[8px] font-black text-emerald-400 uppercase italic mb-1 flex items-center justify-end gap-1.5">
-                        Marge Nette Mensuelle 
-                        <i class="fa-solid fa-circle-info text-slate-600 group-hover:text-emerald-300 transition-colors cursor-help" title="CA du mois en cours (sorties magasin) - Coûts réels (Aliment + Santé)"></i>
+                        {{ __("Marge Nette Mensuelle") }}
+                        <i class="fa-solid fa-circle-info text-slate-600 group-hover:text-emerald-300 transition-colors cursor-help" title="{{ __('CA du mois en cours (sorties magasin) - Coûts réels (Aliment + Santé)') }}"></i>
                     </p>
                     <p class="text-base font-black text-white leading-none">{{ number_format($safeProfit ?? 0, 0, ',', ' ') }} <small class="text-[9px] opacity-40">GNF</small></p>
                 </div>
+                @endcan
             </div>
         </div>
     </x-slot>
@@ -53,30 +68,52 @@
                     <div class="lg:col-span-2 bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm">
                         <div class="flex justify-between items-center mb-4">
                             <h4 class="text-[10px] font-black uppercase text-slate-400 tracking-wider flex items-center gap-2">
-                                <i class="fa-solid fa-wheat-awn text-amber-500"></i> Autonomie des Silos
+                                <i class="fa-solid fa-wheat-awn text-amber-500"></i> {{ __("Autonomie des Silos") }}
                             </h4>
-                            <span class="text-[8px] bg-slate-100 text-slate-600 px-2 py-1 rounded-md font-black uppercase">Seuil : 3 jours</span>
+                            <span class="text-[8px] bg-slate-100 text-slate-600 px-2 py-1 rounded-md font-black uppercase">{{ __("Seuil") }} : {{ $criticalDaysThreshold ?? 3 }} {{ __("jours") }}</span>
                         </div>
                         
                         @if(count($criticalTypes ?? []) > 0)
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 @foreach($criticalTypes as $alert)
+                                    @php
+                                        $alertDays   = $alert['days'];
+                                        $isUncfg     = $alertDays === -1;
+                                        $isNoData    = $alertDays === -2;
+                                        $isExhausted = $alertDays === 0;
+                                        $isCritical  = $alertDays >= 0 && $alertDays <= 1;
+                                    @endphp
                                     <a href="{{ route('stocks.index', ['category' => 'conso']) }}" @class([
                                         'flex items-center justify-between p-4 rounded-2xl border transition-all hover:scale-[1.02] no-underline',
-                                        'bg-rose-50 border-rose-200 text-rose-900 animate-pulse' => $alert['days'] <= 1,
-                                        'bg-amber-50 border-amber-200 text-amber-900' => $alert['days'] > 1
+                                        'bg-purple-50 border-purple-200 text-purple-900' => $isUncfg || $isNoData,
+                                        'bg-rose-50 border-rose-200 text-rose-900 animate-pulse' => !$isUncfg && !$isNoData && $isCritical,
+                                        'bg-amber-50 border-amber-200 text-amber-900' => !$isUncfg && !$isNoData && !$isCritical,
                                     ])>
                                         <div class="flex items-center gap-3">
-                                            <div @class(['w-8 h-8 rounded-xl flex items-center justify-center text-xs text-white', 'bg-rose-600' => $alert['days'] <= 1, 'bg-amber-500' => $alert['days'] > 1])>
-                                                <i class="fa-solid fa-triangle-exclamation"></i>
+                                            <div @class(['w-8 h-8 rounded-xl flex items-center justify-center text-xs text-white',
+                                                'bg-purple-600' => $isUncfg || $isNoData,
+                                                'bg-rose-600' => !$isUncfg && !$isNoData && $isCritical,
+                                                'bg-amber-500' => !$isUncfg && !$isNoData && !$isCritical])>
+                                                <i class="fa-solid {{ ($isUncfg || $isNoData) ? 'fa-question' : 'fa-triangle-exclamation' }}"></i>
                                             </div>
                                             <div>
                                                 <h5 class="text-[11px] font-black uppercase leading-none truncate">{{ str_replace([' (Poussin)',' (Poulette)',' (Pic de ponte)',' (Entretien)'], '', $alert['type']) }}</h5>
-                                                <p class="text-[9px] opacity-70 uppercase font-black mt-1">Silo actif</p>
+                                                <p class="text-[9px] opacity-70 uppercase font-black mt-1">
+                                                    @if($isUncfg) {{ __("Article non configuré") }}
+                                                    @elseif($isNoData) {{ __("Sorties non enregistrées") }}
+                                                    @else {{ __("Silo actif") }}
+                                                    @endif
+                                                </p>
                                             </div>
                                         </div>
                                         <div class="text-right">
-                                            <p class="text-xs font-black uppercase tracking-tight leading-none">{{ $alert['days'] == 0 ? 'ÉPUISÉ' : $alert['days'].' Jours' }}</p>
+                                            <p class="text-xs font-black uppercase tracking-tight leading-none">
+                                                @if($isUncfg) {{ __('MANQUANT') }}
+                                                @elseif($isNoData) {{ __('VÉRIFIER') }}
+                                                @elseif($isExhausted) {{ __('ÉPUISÉ') }}
+                                                @else {{ $alertDays }} {{ __('Jours') }}
+                                                @endif
+                                            </p>
                                         </div>
                                     </a>
                                 @endforeach
@@ -84,7 +121,7 @@
                         @else
                             <div class="p-6 bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-center flex flex-col items-center gap-2">
                                 <i class="fa-solid fa-circle-check text-emerald-500 text-lg"></i>
-                                <p class="text-[9px] text-slate-500 uppercase tracking-wider">Tous les silos disposent d'une autonomie > 3 jours.</p>
+                                <p class="text-[9px] text-slate-500 uppercase tracking-wider">{{ __("Tous les silos disposent d'une autonomie supérieure au seuil.") }}</p>
                             </div>
                         @endif
                     </div>
@@ -93,7 +130,7 @@
                     <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm flex flex-col justify-between">
                         <div>
                             <h4 class="text-[10px] font-black uppercase text-slate-400 tracking-wider flex items-center gap-2 mb-4">
-                                <i class="fa-solid fa-shield-virus text-blue-500"></i> Protocoles de Biossécurité
+                                <i class="fa-solid fa-shield-virus text-blue-500"></i> {{ __("Protocoles de Biossécurité") }}
                             </h4>
                             
                             <div class="space-y-3">
@@ -102,7 +139,7 @@
                                     <div class="bg-red-50 rounded-2xl border border-red-200 overflow-hidden">
                                         <div class="px-4 py-3 bg-red-100 flex items-center justify-between">
                                             <span class="text-[9px] font-black text-red-700 uppercase tracking-widest flex items-center gap-2">
-                                                <i class="fa-solid fa-exclamation-triangle"></i> Pic de Mortalité (24h)
+                                                <i class="fa-solid fa-exclamation-triangle"></i> {{ __("Pic de Mortalité (24h)") }}
                                             </span>
                                             <span class="text-[8px] font-black bg-red-600 text-white px-2 py-0.5 rounded">{{ $emergencyBatches->count() }}</span>
                                         </div>
@@ -111,7 +148,7 @@
                                                 <a href="{{ route('batches.show', $batch->id) }}" 
                                                    class="flex items-center justify-between p-3 bg-white rounded-xl border border-red-100 hover:border-red-300 transition-all no-underline group">
                                                     <span class="text-[10px] font-black text-slate-800 uppercase">{{ $batch->code }}</span>
-                                                    <span class="text-[8px] font-black text-red-500 uppercase group-hover:text-red-700">Inspecter <i class="fa-solid fa-arrow-right ml-1"></i></span>
+                                                    <span class="text-[8px] font-black text-red-500 uppercase group-hover:text-red-700">{{ __("Inspecter") }} <i class="fa-solid fa-arrow-right ml-1"></i></span>
                                                 </a>
                                             @endforeach
                                         </div>
@@ -123,7 +160,7 @@
                                     <div class="bg-amber-50 rounded-2xl border border-amber-200 overflow-hidden">
                                         <div class="px-4 py-3 bg-amber-100 flex items-center justify-between">
                                             <span class="text-[9px] font-black text-amber-700 uppercase tracking-widest flex items-center gap-2">
-                                                <i class="fa-solid fa-chart-line"></i> Dérive Technique
+                                                <i class="fa-solid fa-chart-line"></i> {{ __("Dérive Technique") }}
                                             </span>
                                             <span class="text-[8px] font-black bg-amber-600 text-white px-2 py-0.5 rounded">{{ $underperformingBatches->count() }}</span>
                                         </div>
@@ -132,7 +169,51 @@
                                                 <a href="{{ route('batches.show', $batch->id) }}" 
                                                    class="flex items-center justify-between p-3 bg-white rounded-xl border border-amber-100 hover:border-amber-300 transition-all no-underline group">
                                                     <span class="text-[10px] font-black text-slate-800 uppercase">{{ $batch->code }}</span>
-                                                    <span class="text-[8px] font-black text-amber-600 uppercase">Cumul > 5%</span>
+                                                    <span class="text-[8px] font-black text-amber-600 uppercase">{{ __("Cumul > 5%") }}</span>
+                                                </a>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                @endif
+
+                                {{-- LOGIQUE 3 — PROPHYLAXIE EN RETARD --}}
+                                @if(($vaccineAlerts ?? collect())->count() > 0)
+                                    <div class="bg-violet-50 rounded-2xl border border-violet-200 overflow-hidden">
+                                        <div class="px-4 py-3 bg-violet-100 flex items-center justify-between">
+                                            <span class="text-[9px] font-black text-violet-700 uppercase tracking-widest flex items-center gap-2">
+                                                <i class="fa-solid fa-syringe"></i> {{ __("Prophylaxie en Retard") }}
+                                            </span>
+                                            <span class="text-[8px] font-black bg-violet-600 text-white px-2 py-0.5 rounded">{{ $vaccineAlerts->count() }}</span>
+                                        </div>
+                                        <div class="p-3 space-y-2">
+                                            @foreach($vaccineAlerts->take(3) as $va)
+                                                <a href="{{ route('batches.show', $va['batch']->id) }}"
+                                                   class="flex items-center justify-between p-3 bg-white rounded-xl border border-violet-100 hover:border-violet-300 transition-all no-underline group">
+                                                    <span class="text-[10px] font-black text-slate-800 uppercase">{{ $va['batch']->code }}</span>
+                                                    <span class="text-[8px] font-black text-violet-600 uppercase truncate ml-2">{{ $va['count'] }} {{ __("acte(s)") }} · {{ \Illuminate\Support\Str::limit($va['next'], 18) }}</span>
+                                                </a>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                @endif
+
+                                {{-- LOGIQUE 4 — BIEN-ÊTRE ANIMAL (boiterie / picage) --}}
+                                @if(($welfareAlerts ?? collect())->count() > 0)
+                                    <div class="bg-fuchsia-50 rounded-2xl border border-fuchsia-200 overflow-hidden">
+                                        <div class="px-4 py-3 bg-fuchsia-100 flex items-center justify-between">
+                                            <span class="text-[9px] font-black text-fuchsia-700 uppercase tracking-widest flex items-center gap-2">
+                                                <i class="fa-solid fa-feather"></i> {{ __("Bien-être Animal") }}
+                                            </span>
+                                            <span class="text-[8px] font-black bg-fuchsia-600 text-white px-2 py-0.5 rounded">{{ $welfareAlerts->count() }}</span>
+                                        </div>
+                                        <div class="p-3 space-y-2">
+                                            @foreach($welfareAlerts->take(3) as $wa)
+                                                <a href="{{ route('batches.show', $wa['batch']->id) }}"
+                                                   class="flex items-center justify-between p-3 bg-white rounded-xl border border-fuchsia-100 hover:border-fuchsia-300 transition-all no-underline group">
+                                                    <span class="text-[10px] font-black text-slate-800 uppercase">{{ $wa['batch']->code }}</span>
+                                                    <span class="text-[8px] font-black text-fuchsia-600 uppercase ml-2">
+                                                        @foreach($wa['issues'] as $issue){{ $issue['type'] }} {{ $issue['pct'] }}%@if(!$loop->last) · @endif @endforeach
+                                                    </span>
                                                 </a>
                                             @endforeach
                                         </div>
@@ -147,18 +228,18 @@
                                                 <i class="fa-solid fa-soap"></i>
                                             </div>
                                             <div>
-                                                <p class="text-xs font-black leading-none">{{ $sanitaryAlertsCount }} Bâtiment(s)</p>
-                                                <p class="text-[8px] text-blue-400 mt-1 uppercase">Vide sanitaire dépassé</p>
+                                                <p class="text-xs font-black leading-none">{{ $sanitaryAlertsCount }} {{ __("Bâtiment(s)") }}</p>
+                                                <p class="text-[8px] text-blue-400 mt-1 uppercase">{{ __("Vide sanitaire dépassé") }}</p>
                                             </div>
                                         </div>
                                     </div>
                                 @endif
-                                
+
                                 {{-- TOUT VA BIEN --}}
-                                @if(($emergencyBatches ?? collect())->isEmpty() && ($underperformingBatches ?? collect())->isEmpty() && ($sanitaryAlertsCount ?? 0) == 0)
+                                @if(($emergencyBatches ?? collect())->isEmpty() && ($underperformingBatches ?? collect())->isEmpty() && ($vaccineAlerts ?? collect())->isEmpty() && ($welfareAlerts ?? collect())->isEmpty() && ($sanitaryAlertsCount ?? 0) == 0)
                                     <div class="p-6 bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-center flex flex-col items-center gap-2 h-full justify-center">
                                         <i class="fa-solid fa-heart-pulse text-emerald-500 text-lg"></i>
-                                        <p class="text-[9px] text-slate-500 uppercase tracking-wider">Statut Sanitaire RAS</p>
+                                        <p class="text-[9px] text-slate-500 uppercase tracking-wider">{{ __("Statut Sanitaire RAS") }}</p>
                                     </div>
                                 @endif
                             </div>
@@ -167,15 +248,46 @@
                 </div>
             </div>
 
+            {{-- ALERTE STOCK SOUS SEUIL — tout article passé sous alert_threshold --}}
+            @if(($lowStocks ?? collect())->isNotEmpty())
+            <div class="mb-10 bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
+                <div class="flex items-center justify-between mb-4">
+                    <h4 class="text-[10px] font-black uppercase text-slate-400 tracking-wider flex items-center gap-2">
+                        <i class="fa-solid fa-boxes-stacked text-rose-500"></i> {{ __("Stocks Sous le Seuil de Réapprovisionnement") }}
+                    </h4>
+                    <span class="text-[8px] font-black bg-rose-600 text-white px-2 py-1 rounded-md uppercase">{{ $lowStocks->count() }}</span>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    @foreach($lowStocks->take(9) as $s)
+                        @php $ratio = $s->alert_threshold > 0 ? ($s->current_quantity / $s->alert_threshold) * 100 : 0; @endphp
+                        <a href="{{ route('stocks.index', ['category' => $s->category]) }}" @class([
+                            'flex items-center justify-between p-4 rounded-2xl border transition-all hover:scale-[1.02] no-underline',
+                            'bg-rose-50 border-rose-200 text-rose-900 animate-pulse' => $s->current_quantity <= 0,
+                            'bg-amber-50 border-amber-200 text-amber-900' => $s->current_quantity > 0,
+                        ])>
+                            <div class="min-w-0">
+                                <h5 class="text-[11px] font-black uppercase leading-none truncate">{{ $s->item_name }}</h5>
+                                <p class="text-[9px] opacity-70 uppercase font-black mt-1">{{ __("Seuil") }} : {{ number_format($s->alert_threshold, 0) }} {{ $s->unit }}</p>
+                            </div>
+                            <div class="text-right shrink-0 ml-2">
+                                <p class="text-xs font-black uppercase tracking-tight leading-none">{{ number_format($s->current_quantity, 0) }} {{ $s->unit }}</p>
+                                <p class="text-[8px] font-black opacity-60 mt-1">{{ number_format($ratio, 0) }}%</p>
+                            </div>
+                        </a>
+                    @endforeach
+                </div>
+            </div>
+            @endif
+
             {{-- ALERTE QUALITÉ EAU — visible uniquement si alertes actives --}}
             @if(($waterAlerts ?? collect())->isNotEmpty())
             <div class="bg-blue-950 rounded-[2.5rem] p-6 border border-blue-800">
                 <div class="flex items-center justify-between mb-4">
                     <h4 class="text-[10px] font-black uppercase text-blue-300 tracking-wider flex items-center gap-2">
-                        <i class="fa-solid fa-droplet text-blue-400"></i> Alertes Qualité Eau — Pisciculture
+                        <i class="fa-solid fa-droplet text-blue-400"></i> {{ __("Alertes Qualité Eau — Pisciculture") }}
                     </h4>
                     <span class="text-[8px] bg-blue-800 text-blue-200 px-2 py-1 rounded-md font-black uppercase">
-                        {{ $waterAlerts->count() }} Bassin(s)
+                        {{ $waterAlerts->count() }} {{ __("Bassin(s)") }}
                     </span>
                 </div>
                 <div class="space-y-3">
@@ -204,7 +316,7 @@
             </div>
             @endif
 
-            {{-- WIDGET TABASKI — visible uniquement si lots ovins actifs --}}
+            {{-- WIDGET CAMPAGNE TABASKI — visible uniquement si une campagne Tabaski est active --}}
             @if($tabaskiWidget ?? false)
             <div @class([
                 'mb-8 rounded-[2rem] border-2 p-6 flex flex-col md:flex-row items-center justify-between gap-6 shadow-lg transition-all',
@@ -220,31 +332,33 @@
                         'bg-slate-700' => !$tabaskiWidget['urgent'],
                     ])>🐑</div>
                     <div class="text-white">
-                        <p class="text-[8px] font-black uppercase tracking-[0.3em] opacity-60 mb-1">Compte à rebours Tabaski</p>
+                        <p class="text-[8px] font-black uppercase tracking-[0.3em] opacity-60 mb-1">{{ __("Compte à rebours Tabaski") }}</p>
                         <p class="text-3xl font-black italic tracking-tighter leading-none">
                             @if($tabaskiWidget['days'] == 0)
-                                AUJOURD'HUI !
+                                {{ __("AUJOURD'HUI !") }}
+                            @elseif($tabaskiWidget['days'] < 0)
+                                {{ __("J +") }}{{ abs($tabaskiWidget['days']) }}
                             @else
-                                J — {{ $tabaskiWidget['days'] }}
+                                {{ __("J —") }} {{ $tabaskiWidget['days'] }}
                             @endif
                         </p>
-                        <p class="text-[9px] opacity-50 mt-1 uppercase font-black">Eid al-Adha · {{ $tabaskiWidget['date'] }}</p>
+                        <p class="text-[9px] opacity-50 mt-1 uppercase font-black">{{ __("Eid al-Adha") }} · {{ $tabaskiWidget['date'] }}</p>
                     </div>
                 </div>
                 <div class="flex gap-6 text-white text-center">
                     <div>
                         <p class="text-2xl font-black italic">{{ number_format($tabaskiWidget['head_count']) }}</p>
-                        <p class="text-[7px] font-black uppercase opacity-50 tracking-widest mt-1">Têtes Prêtes</p>
+                        <p class="text-[7px] font-black uppercase opacity-50 tracking-widest mt-1">{{ __("Têtes Prêtes") }}</p>
                     </div>
                     <div class="w-px bg-white/20"></div>
                     <div>
                         <p class="text-2xl font-black italic">{{ $tabaskiWidget['batches'] }}</p>
-                        <p class="text-[7px] font-black uppercase opacity-50 tracking-widest mt-1">Lots Actifs</p>
+                        <p class="text-[7px] font-black uppercase opacity-50 tracking-widest mt-1">{{ __("Lots Actifs") }}</p>
                     </div>
                     <div class="w-px bg-white/20"></div>
                     <div>
-                        <a href="{{ route('batches.index') }}" class="text-[8px] font-black uppercase text-white/60 hover:text-white no-underline tracking-widest">
-                            Voir les lots <i class="fa-solid fa-arrow-right ml-1"></i>
+                        <a href="{{ route('campaigns.show', $tabaskiWidget['campaign_id']) }}" class="text-[8px] font-black uppercase text-white/60 hover:text-white no-underline tracking-widest">
+                            {{ __("Piloter la campagne") }} <i class="fa-solid fa-arrow-right ml-1"></i>
                         </a>
                     </div>
                 </div>
@@ -254,41 +368,58 @@
             {{-- KPI ROW --}}
             <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-10">
                 <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm">
-                    <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 italic">Effectif Actif</p>
+                    <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 italic">{{ __("Effectif Actif") }}</p>
                     <p class="text-4xl font-black text-slate-900 tracking-tighter italic">{{ number_format($totalBirdsCount) }}</p>
-                    <p class="text-[8px] text-blue-600 mt-3 uppercase font-black">Sujets en bâtiment</p>
+                    <p class="text-[8px] text-blue-600 mt-3 uppercase font-black">{{ __("Sujets en bâtiment") }}</p>
                 </div>
 
                 <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm">
-                    <p class="text-[9px] font-black text-rose-500 uppercase tracking-widest mb-2 italic">Mortalité Période</p>
+                    <p class="text-[9px] font-black text-rose-500 uppercase tracking-widest mb-2 italic">{{ __("Mortalité Période") }}</p>
                     <p class="text-4xl font-black text-slate-900 tracking-tighter italic">{{ $mortalityRateDisplay }}%</p>
                     <div class="w-full bg-slate-50 h-2 rounded-full mt-4 overflow-hidden border border-slate-100">
                         <div class="bg-rose-600 h-full rounded-full" style="width: {{ min($globalMortalityRate ?? 0, 100) }}%"></div>
                     </div>
                 </div>
 
+                @if($showEggKpis ?? true)
                 {{-- ENRICHI : Alerte de donnée manquante si pas d'oeufs aujourd'hui --}}
                 <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm relative overflow-hidden">
                     @if(($totalEggsToday ?? 0) == 0)
                         <div class="absolute top-6 right-6 flex items-center gap-2 text-rose-500">
-                            <span class="text-[7px] uppercase font-black tracking-widest hidden md:inline-block">En attente de ramassage</span>
+                            <span class="text-[7px] uppercase font-black tracking-widest hidden md:inline-block">{{ __("En attente de ramassage") }}</span>
                             <div class="w-3 h-3 bg-rose-500 rounded-full animate-ping shadow-lg shadow-rose-500/50"></div>
                         </div>
                     @endif
-                    <p class="text-[9px] font-black text-emerald-500 uppercase tracking-widest mb-2 italic">Ponte (HDP)</p>
+                    <p class="text-[9px] font-black text-emerald-500 uppercase tracking-widest mb-2 italic">{{ __("Ponte (HDP)") }}</p>
                     <p class="text-4xl font-black text-slate-900 tracking-tighter italic">{{ number_format($hdp, 1) }}%</p>
-                    <p class="text-[8px] text-slate-400 mt-3 uppercase italic font-black">Taux de ponte du jour</p>
+                    <p class="text-[8px] text-slate-400 mt-3 uppercase italic font-black">{{ __("Taux de ponte du jour") }}</p>
                 </div>
 
                 <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm relative">
-                    <p class="text-[9px] font-black text-amber-500 uppercase tracking-widest mb-2 italic">Stock Calibré</p>
+                    <p class="text-[9px] font-black text-amber-500 uppercase tracking-widest mb-2 italic">{{ __("Stock Calibré") }}</p>
                     <p class="text-4xl font-black text-slate-900 tracking-tighter italic">
-                        {{ number_format($totalEggsStock ?? 0, 1) }} <small class="text-xs">Alv.</small>
+                        {{ number_format($totalEggsStock ?? 0, 1) }} <small class="text-xs">{{ __("Alv.") }}</small>
                     </p>
                     <p class="text-[8px] text-amber-600 mt-3 uppercase italic font-black">
-                        {{ $totalBrokenToday ?? 0 }} Cassés <i class="fa-solid fa-heart-crack ml-1"></i>
+                        {{ $totalBrokenToday ?? 0 }} {{ __("Cassés") }} <i class="fa-solid fa-heart-crack ml-1"></i>
                     </p>
                 </div>
+                @else
+                {{-- KPI génériques pour les fermes sans suivi de ponte (ovins, poisson, lapins...) --}}
+                <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm">
+                    <p class="text-[9px] font-black text-blue-500 uppercase tracking-widest mb-2 italic">{{ __("Lots Actifs") }}</p>
+                    <p class="text-4xl font-black text-slate-900 tracking-tighter italic">{{ number_format($activeLotsCount ?? 0) }}</p>
+                    <p class="text-[8px] text-blue-600 mt-3 uppercase italic font-black">{{ __("Bandes en cours") }}</p>
+                </div>
+
+                <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm">
+                    <p class="text-[9px] font-black text-cyan-500 uppercase tracking-widest mb-2 italic">{{ __("Bâtiments Occupés") }}</p>
+                    <p class="text-4xl font-black text-slate-900 tracking-tighter italic">
+                        {{ $occupiedBuildingsCount ?? 0 }}<small class="text-base text-slate-300">/{{ $totalBuildingsCount ?? 0 }}</small>
+                    </p>
+                    <p class="text-[8px] text-cyan-600 mt-3 uppercase italic font-black">{{ __("Occupation des sites") }}</p>
+                </div>
+                @endif
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-10 text-left">
@@ -296,18 +427,18 @@
                 <div class="lg:col-span-2 space-y-6">
                     <div class="flex justify-between items-center px-6">
                         <h3 class="text-[11px] font-black uppercase text-slate-800 tracking-[0.2em] italic flex items-center">
-                            <span class="w-2 h-6 bg-blue-600 rounded-full mr-3"></span> Bandes Actives
+                            <span class="w-2 h-6 bg-blue-600 rounded-full mr-3"></span> {{ __("Bandes Actives") }}
                         </h3>
                         <div class="relative">
                             <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 text-xs"></i>
-                            <input type="text" id="batchSearch" placeholder="RECHERCHE..." class="bg-slate-100 border-none rounded-2xl pl-10 pr-4 py-3 text-[10px] font-black uppercase tracking-widest shadow-inner w-56 outline-none">
+                            <input type="text" id="batchSearch" placeholder="{{ __('RECHERCHE...') }}" class="bg-slate-100 border-none rounded-2xl pl-10 pr-4 py-3 text-[10px] font-black uppercase tracking-widest shadow-inner w-56 outline-none">
                         </div>
                     </div>
                     
                     <div id="batchContainer" class="space-y-4">
                         @foreach($activeBatches ?? [] as $batch)
                             @php
-                                $lastCheck = $batch->dailyChecks?->sortByDesc('check_date')->first();
+                                $lastCheck = $batch->latestDailyCheck;
                                 $lastWeight = $lastCheck?->avg_weight ?? $batch->avg_weight_start;
                             @endphp
                             <div class="batch-card" data-search="{{ strtolower($batch->code . ' ' . ($batch->building?->name ?? '')) }}">
@@ -326,7 +457,7 @@
                                     <div class="flex gap-10 items-center pr-6 text-right">
                                         <div>
                                             <p class="text-2xl font-black text-slate-900 italic tracking-tighter leading-none mb-1">{{ number_format($batch->current_quantity) }}</p>
-                                            <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest italic">Sujets</p>
+                                            <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest italic">{{ __("Sujets") }}</p>
                                         </div>
                                         <div class="border-l border-slate-50 pl-10">
                                             <p class="text-2xl font-black text-emerald-600 italic tracking-tighter leading-none mb-1">{{ number_format($lastWeight, 3) }}</p>
@@ -348,7 +479,7 @@
                     @if(($familyBreakdown ?? collect())->count() > 1)
                     <div>
                         <h3 class="text-[11px] font-black uppercase text-slate-800 tracking-[0.2em] ml-6 mb-5 italic flex items-center">
-                            <span class="w-2 h-6 bg-purple-500 rounded-full mr-3"></span> Cheptel par Famille
+                            <span class="w-2 h-6 bg-purple-500 rounded-full mr-3"></span> {{ __("Cheptel par Famille") }}
                         </h3>
                         <div class="bg-white p-8 rounded-[3.5rem] border border-slate-100 shadow-sm space-y-5">
                             @php $maxHead = $familyBreakdown->max('head_count') ?: 1; @endphp
@@ -358,7 +489,7 @@
                                     <div class="flex justify-between items-center text-[10px] font-black uppercase italic mb-2 tracking-tighter">
                                         <span class="text-slate-600 flex items-center gap-2">
                                             <span class="text-base">{{ $fam['icon'] }}</span> {{ $fam['label'] }}
-                                            <span class="text-slate-300 font-bold">({{ $fam['batches'] }} lot{{ $fam['batches'] > 1 ? 's' : '' }})</span>
+                                            <span class="text-slate-300 font-bold">({{ $fam['batches'] }} {{ $fam['batches'] > 1 ? __('lots') : __('lot') }})</span>
                                         </span>
                                         <span class="text-slate-900">{{ number_format($fam['head_count']) }}</span>
                                     </div>
@@ -373,7 +504,7 @@
 
                     <div>
                         <h3 class="text-[11px] font-black uppercase text-slate-800 tracking-[0.2em] ml-6 mb-5 italic flex items-center">
-                            <span class="w-2 h-6 bg-emerald-500 rounded-full mr-3"></span> Densités Bâtiments
+                            <span class="w-2 h-6 bg-emerald-500 rounded-full mr-3"></span> {{ __("Densités Bâtiments") }}
                         </h3>
                         <div class="bg-white p-8 rounded-[3.5rem] border border-slate-100 shadow-sm space-y-6">
                             @foreach($buildings ?? [] as $b)
@@ -399,30 +530,42 @@
                     <div class="grid grid-cols-1 gap-3">
                         @can('elevage.C')
                         <a href="{{ route('batches.create') }}" class="bg-slate-900 p-5 rounded-3xl text-white hover:bg-blue-600 transition-all flex justify-between items-center italic shadow-lg no-underline">
-                            <span class="text-[10px] font-black uppercase tracking-widest">Nouvelle Bande</span>
+                            <span class="text-[10px] font-black uppercase tracking-widest">{{ __("Nouvelle Bande") }}</span>
                             <i class="fa-solid fa-plus text-xs"></i>
                         </a>
                         @endcan                        
+                        @canany(['logistique.L', 'provenderie.L'])
                         <div class="grid grid-cols-2 gap-3">
+                            @can('logistique.L')
                             <a href="{{ route('stocks.index', ['category' => 'oeufs']) }}" class="bg-white p-5 rounded-3xl border border-slate-100 hover:border-emerald-500 text-center shadow-sm group transition-all no-underline">
                                 <i class="fa-solid fa-egg text-emerald-500 mb-2 block group-hover:scale-110 transition-transform"></i>
-                                <span class="text-[8px] font-black text-slate-500 uppercase">Magasin Oeufs</span>
+                                <span class="text-[8px] font-black text-slate-500 uppercase">{{ __("Magasin Oeufs") }}</span>
                             </a>
+                            @endcan
+                            @can('provenderie.L')
                             <a href="{{ route('production.index') }}" class="bg-white p-5 rounded-3xl border border-slate-100 hover:border-blue-500 text-center shadow-sm group transition-all no-underline">
                                 <i class="fa-solid fa-industry text-blue-500 mb-2 block group-hover:rotate-12 transition-transform"></i>
-                                <span class="text-[8px] font-black text-slate-500 uppercase">Provenderie</span>
+                                <span class="text-[8px] font-black text-slate-500 uppercase">{{ __("Provenderie") }}</span>
                             </a>
+                            @endcan
                         </div>
+                        @endcanany
+                        @canany(['elevage.L', 'logistique.L'])
                         <div class="grid grid-cols-2 gap-3">
+                            @can('elevage.L')
                             <a href="{{ route('batches.archives') }}" class="bg-white p-5 rounded-[2rem] border border-slate-100 hover:border-slate-400 transition-all text-center italic group shadow-sm no-underline">
                                 <i class="fa-solid fa-box-archive text-slate-500 mb-2 block group-hover:rotate-12 transition-transform"></i>
-                                <span class="text-[8px] font-black text-slate-500 uppercase">Archives</span>
+                                <span class="text-[8px] font-black text-slate-500 uppercase">{{ __("Archives") }}</span>
                             </a>
+                            @endcan
+                            @can('logistique.L')
                             <a href="{{ route('stocks.index', ['category' => 'conso']) }}" class="bg-white p-5 rounded-[2rem] border border-slate-100 hover:border-amber-500 transition-all text-center italic group shadow-sm no-underline">
                                 <i class="fa-solid fa-boxes-stacked text-amber-500 mb-2 block group-hover:rotate-12 transition-transform"></i>
-                                <span class="text-[8px] font-black text-slate-500 uppercase">Stocks</span>
+                                <span class="text-[8px] font-black text-slate-500 uppercase">{{ __("Stocks") }}</span>
                             </a>
+                            @endcan
                         </div>
+                        @endcanany
                     </div>
                 </div>
             </div>
@@ -445,7 +588,7 @@
 
         const localBatches = await db.batches.toArray();
         if (localBatches.length === 0) {
-            container.innerHTML = '<p class="p-10 text-center text-slate-400 text-[10px] uppercase italic font-black">Aucune donnée locale hors-ligne.</p>';
+            container.innerHTML = '<p class="p-10 text-center text-slate-400 text-[10px] uppercase italic font-black">{{ __("Aucune donnée locale hors-ligne.") }}</p>';
             return;
         }
 
@@ -458,12 +601,12 @@
                         </div>
                         <div>
                             <h4 class="font-black text-slate-900 text-xl uppercase italic leading-none tracking-tighter">${batch.code}</h4>
-                            <p class="text-[9px] font-black text-blue-600 uppercase mt-2 italic">MODE TERRAIN</p>
+                            <p class="text-[9px] font-black text-blue-600 uppercase mt-2 italic">{{ __("MODE TERRAIN") }}</p>
                         </div>
                     </div>
                     <div class="text-right">
                         <p class="text-2xl font-black text-slate-900 italic leading-none">${batch.current_quantity}</p>
-                        <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest">Sujets</p>
+                        <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest">{{ __("Sujets") }}</p>
                     </div>
                 </div>
             </div>

@@ -73,8 +73,10 @@ class SlaughterService
                 }
             }
 
-            // 4. Entrer les carcasses en stock produits finis
-            $this->addToFinishedStock('Poulet Entier Frais', 'entier_frais', $carcassWeight, $effectiveQty, 'frais');
+            // 4. Entrer les carcasses en stock produits finis (nom selon
+            //    l'espèce du lot — multiespèces : "Poulet", "Chèvre", "Mouton"...)
+            $productName = $this->carcassProductName($batch);
+            $this->addToFinishedStock($productName, 'entier_frais', $carcassWeight, $effectiveQty, 'frais');
 
             Log::info("Abattage {$order->order_number} : {$actualQty} sujets, {$liveWeight}kg vif → {$carcassWeight}kg carcasse (rendement {$yieldPercent}%)");
 
@@ -95,8 +97,10 @@ class SlaughterService
                 'total_input_kg'     => $data['total_input_kg'],
             ]);
 
-            // Retirer du stock "entier frais" le poids découpé
-            $this->removeFromFinishedStock('Poulet Entier Frais', 'entier_frais', (float) $data['total_input_kg']);
+            // Retirer du stock "entier frais" le poids découpé (nom selon
+            // l'espèce du lot abattu — cf. carcassProductName())
+            $sourceProductName = $this->carcassProductName($order->batch);
+            $this->removeFromFinishedStock($sourceProductName, 'entier_frais', (float) $data['total_input_kg']);
 
             // Enregistrer chaque produit de découpe
             foreach ($data['products'] as $product) {
@@ -216,6 +220,18 @@ class SlaughterService
 
             return $transformation;
         });
+    }
+
+    /**
+     * Nom du produit "carcasse entière fraîche" selon l'espèce du lot abattu
+     * (multiespèces : "Poulet Entier Frais", "Chèvre Entier Frais"...).
+     * Repli sur "Poulet" si le lot n'a pas d'espèce renseignée (rétrocompat).
+     */
+    private function carcassProductName(?Batch $batch): string
+    {
+        $speciesName = $batch?->species?->name_fr ?? 'Poulet';
+
+        return "{$speciesName} Entier Frais";
     }
 
     /**

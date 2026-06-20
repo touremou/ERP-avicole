@@ -2,7 +2,9 @@
 
 namespace App\Actions\MillProduction;
 
+use App\Models\Formula;
 use App\Models\MillProduction;
+use App\Models\Stock;
 // NOUVEAUX IMPORTS
 use App\Actions\Provenderie\RecordProductionConsumptionAction;
 use App\Actions\Provenderie\NormalizeFormulaNameAction;
@@ -24,7 +26,7 @@ class CompleteMillProduction
             throw new \DomainException("L'OP #{$production->batch_number} est déjà clôturée.");
         }
 
-        $production->load(['formula.items.rawMaterial', 'machine', 'machines']);
+        $production->load(['formula.items.rawMaterial', 'formula.productionType.species', 'machine', 'machines']);
         $quantityProduced = (float) $production->quantity_produced;
 
         // ─── 1. VÉRIFICATION PRÉALABLE DES STOCKS MP ───
@@ -47,7 +49,19 @@ class CompleteMillProduction
         }
 
         // ─── 2. MAPPING NOM DE STOCK FINI (UTILISATION DE LA NOUVELLE ACTION) ───
-        $stockItemName = $this->normalizeName->execute($production->formula->name);
+        // On passe la formule pour cibler le secteur d'aliment de son espèce
+        // (multiespèces : Chair/Ponte mais aussi Engraissement, Laitière...).
+        $stockItemName = $this->normalizeName->execute(
+            $production->formula->name,
+            $production->formula
+        );
+
+        // ─── 2.bis PROVISION DU SILO D'ALIMENT FINI ───
+        // Multiespèces : le silo cible peut ne pas encore exister (aucun
+        // aliment n'est seedé). On le crée à la volée dans le bon secteur
+        // pour que l'entrée de stock ci-dessous aboutisse quelle que soit
+        // l'espèce, au lieu d'échouer sur « article introuvable ».
+        $this->ensureFinishedFeedStock($stockItemName, $production->formula);
 
         return DB::transaction(function () use ($production, $quantityProduced, $stockItemName) {
 
@@ -57,14 +71,41 @@ class CompleteMillProduction
                 ? round($totalCost / $quantityProduced, 2)
                 : 0;
 
-            // ─── 4. ENTRÉE STOCK ALIMENT FINI ───
+            // ─── 3.bis GARDE-FOU VALORISATION ───
+            // Un coût de revient à 0 signifie que toutes les matières premières
+            // manquent de prix (unit_cost = 0). Sans ce garde-fou, le silo
+            // d'aliment fini serait crédité à 0 GNF/kg et chaque pointage de
+            // consommation ultérieur afficherait ALIMENT : 0 GNF même si des
+            // MP coûteuses ont bien été consommées.
+            if ($realCostPerKg <= 0) {
+                $unpricedMaterials = $production->formula->items
+                    ->filter(fn ($item) => $item->rawMaterial && (float) $item->rawMaterial->unit_cost <= 0)
+                    ->map(fn ($item) => $item->rawMaterial->name)
+                    ->values()
+                    ->all();
+
+                if (! empty($unpricedMaterials)) {
+                    throw new \DomainException(
+                        "Clôture impossible : le coût de revient de l'aliment produit serait 0 GNF/kg. " .
+                        "Les matières premières suivantes n'ont pas de prix unitaire (unit_cost = 0) : " .
+                        implode(', ', $unpricedMaterials) .
+                        ". Renseignez les prix dans le module Provenderie > Matières Premières avant de relancer."
+                    );
+                }
+            }
+
+            // ─── 4. ENTRÉE STOCK ALIMENT FINI (valorisée au coût de revient) ───
+            // Le CMP de l'article aliment fini intègre le coût de revient réel
+            // de cette production : l'inventaire — et donc la consommation des
+            // lots — est valorisé au prix de fabrication, comparable à un achat.
             $synced = StockIntegrationService::syncMovement(
                 $stockItemName,
                 'conso',
                 $quantityProduced,
                 'in',
                 "Production OP #{$production->batch_number}",
-                'KG'
+                'KG',
+                $realCostPerKg
             );
 
             if (! $synced) {
@@ -108,5 +149,27 @@ class CompleteMillProduction
 
             return $production->fresh();
         });
+    }
+
+    /**
+     * Garantit l'existence du silo d'aliment fini (article de stock « conso »)
+     * correspondant, en le créant à 0 dans le secteur de la formule s'il est
+     * absent. Idempotent (firstOrCreate sur item_name + category).
+     */
+    private function ensureFinishedFeedStock(string $itemName, Formula $formula): void
+    {
+        Stock::firstOrCreate(
+            ['item_name' => $itemName, 'category' => Stock::CAT_CONSO],
+            [
+                'feed_type'        => $itemName,
+                'unit'             => 'KG',
+                'current_quantity' => 0,
+                'alert_threshold'  => 0,
+                'metadata'         => [
+                    'poultry_type' => $formula->feedSector(),
+                    'conso_type'   => 'Aliment',
+                ],
+            ]
+        );
     }
 }

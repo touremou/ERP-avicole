@@ -11,7 +11,7 @@
                 </div>
                 
                 {{-- Permission C : Ajout d'article --}}
-                @can('stocks.C')
+                @can('logistique.C')
                 <a href="{{ route('stocks.create', ['category' => $category]) }}" class="bg-emerald-500 text-white p-3 rounded-xl shadow-lg shadow-emerald-500/20 hover:scale-110 transition-all ml-2 group no-underline">
                     <i class="fa-solid fa-plus group-hover:rotate-90 transition-transform duration-300"></i>
                 </a>
@@ -20,7 +20,7 @@
             
             <div class="flex items-center gap-4">
                 {{-- Permission M : Synchronisation ERP --}}
-                @can('stocks.M')
+                @can('logistique.M')
                 <form action="{{ route('stocks.syncAll') }}" method="POST">
                     @csrf
                     <button type="submit" class="p-3 bg-white border border-slate-200 text-slate-400 rounded-xl hover:text-emerald-500 hover:border-emerald-200 transition-all group shadow-sm flex items-center gap-2 italic">
@@ -166,7 +166,7 @@
 
                 {{-- FORMULAIRE EXPRESS (C) --}}
                 <div class="lg:col-span-1">
-                    @can('stocks.C')
+                    @can('logistique.C')
                     <div class="bg-slate-900 p-10 rounded-[4rem] shadow-2xl sticky top-24 relative overflow-hidden group"
                         x-data="{ 
                             selectedUnit: '', 

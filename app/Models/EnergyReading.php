@@ -5,12 +5,13 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Traits\BelongsToFarm;
+use App\Models\Building;
 
 class EnergyReading extends Model
 {
     use BelongsToFarm;
     protected $fillable = [
-        'farm_id', 'energy_source_id', 'reading_date', 'user_id',
+        'farm_id', 'energy_source_id', 'building_id', 'reading_date', 'user_id',
         'hours_run', 'fuel_consumed_liters', 'kwh_produced',
         'cost', 'outage_hours', 'notes',
     ];
@@ -27,6 +28,11 @@ class EnergyReading extends Model
     public function source(): BelongsTo
     {
         return $this->belongsTo(EnergySource::class, 'energy_source_id');
+    }
+
+    public function building(): BelongsTo
+    {
+        return $this->belongsTo(Building::class);
     }
 
     public function user(): BelongsTo
