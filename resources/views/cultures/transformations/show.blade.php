@@ -10,9 +10,17 @@
                     <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1 italic">{{ $transformation->batch_number }} · {{ $transformation->type_label }}</p>
                 </div>
             </div>
-            <a href="{{ route('crop-transformations.index') }}" class="text-[10px] font-black uppercase text-slate-400 hover:text-slate-900 transition no-underline">
-                <i class="fa-solid fa-arrow-left mr-2"></i> {{ __("Retour") }}
-            </a>
+            <div class="flex items-center gap-3">
+                <a href="{{ route('crop-transformations.index') }}" class="text-[10px] font-black uppercase text-slate-400 hover:text-slate-900 transition no-underline">
+                    <i class="fa-solid fa-arrow-left mr-2"></i> {{ __("Retour") }}
+                </a>
+                @can('cultures.S')
+                <form action="{{ route('crop-transformations.destroy', $transformation) }}" method="POST" onsubmit="return confirm('Supprimer cette transformation ?')">
+                    @csrf @method('DELETE')
+                    <button class="text-rose-400 hover:text-rose-600 text-[10px] font-black uppercase italic"><i class="fa-solid fa-trash mr-1"></i>{{ __("Supprimer") }}</button>
+                </form>
+                @endcan
+            </div>
         </div>
     </x-slot>
 

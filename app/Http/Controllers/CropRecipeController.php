@@ -103,4 +103,42 @@ class CropRecipeController extends Controller
 
         return redirect()->route('crop-recipes.index')->with('success', 'Recette supprimée.');
     }
+
+    public function edit(CropRecipe $cropRecipe)
+    {
+        if (Gate::denies('cultures.M')) {
+            return back()->with('error', 'Action non autorisée.');
+        }
+
+        $cropRecipe->load('items');
+
+        return view('cultures.recipes.edit', [
+            'recipe' => $cropRecipe,
+            'types'  => CropTransformation::TYPES,
+        ]);
+    }
+
+    public function update(Request $request, CropRecipe $cropRecipe)
+    {
+        if (Gate::denies('cultures.M')) {
+            return back()->with('error', 'Action non autorisée.');
+        }
+
+        $validated = $request->validate([
+            'name'                   => 'required|string|max:255',
+            'transformation_type'    => 'required|in:' . implode(',', array_keys(CropTransformation::TYPES)),
+            'output_product'         => 'required|string|max:255',
+            'output_unit'            => 'nullable|string|max:20',
+            'expected_yield_percent' => 'nullable|numeric|min:0|max:1000',
+            'shelf_life_days'        => 'nullable|integer|min:0|max:3650',
+            'estimated_cost'         => 'nullable|numeric|min:0',
+            'notes'                  => 'nullable|string|max:1000',
+            'is_active'              => 'nullable|boolean',
+        ]);
+        $validated['is_active'] = $request->boolean('is_active', true);
+
+        $cropRecipe->update($validated);
+
+        return back()->with('success', 'Recette mise à jour.');
+    }
 }

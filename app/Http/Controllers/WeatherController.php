@@ -67,7 +67,7 @@ class WeatherController extends Controller
 
         WeatherReading::create($validated);
 
-        return back()->with('success', 'Relevé météo enregistré.');
+        return redirect()->route('cultures.dashboard', ['tab' => 'meteo'])->with('success', 'Relevé météo enregistré.');
     }
 
     public function destroy(WeatherReading $weather)
@@ -78,6 +78,6 @@ class WeatherController extends Controller
 
         $weather->delete();
 
-        return back()->with('success', 'Relevé supprimé.');
+        return redirect()->route('cultures.dashboard', ['tab' => 'meteo'])->with('success', 'Relevé supprimé.');
     }
 }

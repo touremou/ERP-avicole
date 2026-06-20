@@ -55,15 +55,11 @@
 @elseif(request()->routeIs(['cultures.*', 'plots.*', 'crop-cycles.*', 'crop-transformations.*', 'crop-catalogue.*', 'crop-campaigns.*', 'crop-recipes.*', 'weather.*']))
     <span class="{{ $sectionClass }}"><i class="fa-solid fa-seedling text-green-600 mr-1"></i> {{ __("Production Végétale") }}</span>
     @can('cultures.L')
-    <a href="{{ route('cultures.dashboard') }}" class="{{ $linkClass }} {{ request()->routeIs('cultures.dashboard') ? $activeClass : $inactiveClass }}">{{ __("Pilotage") }}</a>
-    <a href="{{ route('cultures.calendar') }}" class="{{ $linkClass }} {{ request()->routeIs('cultures.calendar') ? $activeClass : $inactiveClass }}">{{ __("Calendrier") }}</a>
-    <a href="{{ route('crop-campaigns.index') }}" class="{{ $linkClass }} {{ request()->routeIs('crop-campaigns.*') ? $activeClass : $inactiveClass }}">{{ __("Campagnes") }}</a>
+    <a href="{{ route('cultures.dashboard') }}" class="{{ $linkClass }} {{ request()->routeIs('cultures.dashboard') || request()->routeIs('cultures.calendar') || request()->routeIs('crop-catalogue.*') || request()->routeIs('weather.*') ? $activeClass : $inactiveClass }}">{{ __("Pilotage") }}</a>
     <a href="{{ route('plots.index') }}" class="{{ $linkClass }} {{ request()->routeIs('plots.*') ? $activeClass : $inactiveClass }}">{{ __("Parcelles") }}</a>
     <a href="{{ route('crop-cycles.index') }}" class="{{ $linkClass }} {{ request()->routeIs('crop-cycles.*') ? $activeClass : $inactiveClass }}">{{ __("Cycles") }}</a>
-    <a href="{{ route('crop-catalogue.index') }}" class="{{ $linkClass }} {{ request()->routeIs('crop-catalogue.*') ? $activeClass : $inactiveClass }}">{{ __("Catalogue") }}</a>
-    <a href="{{ route('crop-transformations.index') }}" class="{{ $linkClass }} {{ request()->routeIs('crop-transformations.*') ? $activeClass : $inactiveClass }}">{{ __("Transformation") }}</a>
-    <a href="{{ route('crop-recipes.index') }}" class="{{ $linkClass }} {{ request()->routeIs('crop-recipes.*') ? $activeClass : $inactiveClass }}">{{ __("Recettes") }}</a>
-    <a href="{{ route('weather.index') }}" class="{{ $linkClass }} {{ request()->routeIs('weather.*') ? $activeClass : $inactiveClass }}">{{ __("Météo") }}</a>
+    <a href="{{ route('crop-campaigns.index') }}" class="{{ $linkClass }} {{ request()->routeIs('crop-campaigns.*') ? $activeClass : $inactiveClass }}">{{ __("Campagnes") }}</a>
+    <a href="{{ route('crop-transformations.index') }}" class="{{ $linkClass }} {{ request()->routeIs('crop-transformations.*') || request()->routeIs('crop-recipes.*') ? $activeClass : $inactiveClass }}">{{ __("Transfo & Recettes") }}</a>
     @endcan
 
 @elseif(request()->routeIs(['provenderie.*', 'raw-materials.*', 'formulas.*', 'production.*', 'machines.*']))

@@ -12,9 +12,19 @@
                     </p>
                 </div>
             </div>
-            <a href="{{ route('crop-cycles.index') }}" class="text-[10px] font-black uppercase text-slate-400 hover:text-slate-900 transition no-underline">
-                <i class="fa-solid fa-arrow-left mr-2"></i> {{ __("Retour") }}
-            </a>
+            <div class="flex items-center gap-3">
+                <a href="{{ route('crop-cycles.index') }}" class="text-[10px] font-black uppercase text-slate-400 hover:text-slate-900 transition no-underline">
+                    <i class="fa-solid fa-arrow-left mr-2"></i> {{ __("Retour") }}
+                </a>
+                @can('cultures.S')
+                @if(!$cycle->harvests->count())
+                <form action="{{ route('crop-cycles.destroy', $cycle) }}" method="POST" onsubmit="return confirm('Supprimer ce cycle définitivement ?')">
+                    @csrf @method('DELETE')
+                    <button class="text-rose-400 hover:text-rose-600 text-[10px] font-black uppercase italic"><i class="fa-solid fa-trash mr-1"></i>{{ __("Supprimer") }}</button>
+                </form>
+                @endif
+                @endcan
+            </div>
         </div>
     </x-slot>
 
@@ -130,7 +140,15 @@
                                     @if($h->loss_quantity > 0) · {{ __("pertes") }} {{ number_format($h->loss_quantity, 0, ',', ' ') }}@endif
                                 </p>
                             </div>
-                            @if($h->unit_price)<p class="text-[10px] font-black text-slate-500">{{ number_format($h->estimated_value, 0, ',', ' ') }} GNF</p>@endif
+                            <div class="flex items-center gap-3">
+                                @if($h->unit_price)<p class="text-[10px] font-black text-slate-500">{{ number_format($h->estimated_value, 0, ',', ' ') }} GNF</p>@endif
+                                @can('cultures.S')
+                                <form action="{{ route('crop-cycles.harvests.destroy', [$cycle, $h]) }}" method="POST" onsubmit="return confirm('Supprimer cette récolte ?')">
+                                    @csrf @method('DELETE')
+                                    <button class="text-rose-300 hover:text-rose-600 text-xs"><i class="fa-solid fa-trash"></i></button>
+                                </form>
+                                @endcan
+                            </div>
                         </div>
                     @empty
                         <p class="text-center text-slate-300 text-[10px] font-black uppercase italic py-10">{{ __("Aucune récolte enregistrée") }}</p>
@@ -251,7 +269,15 @@
                                     @if($in->provider) · {{ $in->provider->name }}@endif
                                 </p>
                             </div>
-                            <p class="text-[10px] font-black text-slate-700">{{ number_format($in->total_cost, 0, ',', ' ') }} GNF</p>
+                            <div class="flex items-center gap-3">
+                                <p class="text-[10px] font-black text-slate-700">{{ number_format($in->total_cost, 0, ',', ' ') }} GNF</p>
+                                @can('cultures.S')
+                                <form action="{{ route('crop-cycles.inputs.destroy', [$cycle, $in]) }}" method="POST" onsubmit="return confirm('Supprimer cet intrant ?')">
+                                    @csrf @method('DELETE')
+                                    <button class="text-rose-300 hover:text-rose-600 text-xs"><i class="fa-solid fa-trash"></i></button>
+                                </form>
+                                @endcan
+                            </div>
                         </div>
                     @empty
                         <p class="text-center text-slate-300 text-[10px] font-black uppercase italic py-10">{{ __("Aucun intrant enregistré") }}</p>

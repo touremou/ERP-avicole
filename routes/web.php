@@ -236,6 +236,9 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/{cropCycle}', 'update')->name('update')->middleware('can:M');
         Route::post('/{cropCycle}/harvests', 'storeHarvest')->name('harvests.store')->middleware('can:C');
         Route::post('/{cropCycle}/inputs', 'storeInput')->name('inputs.store')->middleware('can:C');
+        Route::delete('/{cropCycle}', 'destroy')->name('destroy')->middleware('can:S');
+        Route::delete('/{cropCycle}/harvests/{harvest}', 'destroyHarvest')->name('harvests.destroy')->middleware('can:S');
+        Route::delete('/{cropCycle}/inputs/{input}', 'destroyInput')->name('inputs.destroy')->middleware('can:S');
     });
 
     Route::prefix('cultures/transformations')->name('crop-transformations.')->controller(CropTransformationController::class)->group(function () {
@@ -243,6 +246,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/create', 'create')->name('create')->middleware('can:C');
         Route::post('/', 'store')->name('store')->middleware('can:C');
         Route::get('/{cropTransformation}', 'show')->name('show')->where('cropTransformation', '[0-9]+')->middleware('can:L');
+        Route::delete('/{cropTransformation}', 'destroy')->name('destroy')->middleware('can:S');
     });
 
     // Catalogue des cultures (espèces & variétés)
@@ -273,6 +277,8 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/', 'store')->name('store')->middleware('can:C');
         Route::get('/{cropRecipe}', 'show')->name('show')->where('cropRecipe', '[0-9]+')->middleware('can:L');
         Route::delete('/{cropRecipe}', 'destroy')->name('destroy')->middleware('can:S');
+        Route::get('/{cropRecipe}/edit', 'edit')->name('edit')->middleware('can:M');
+        Route::put('/{cropRecipe}', 'update')->name('update')->middleware('can:M');
     });
 
     // Météo & pluviométrie

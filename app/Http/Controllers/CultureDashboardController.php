@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\CropCampaign;
 use App\Models\CropCycle;
+use App\Models\CropSpecies;
 use App\Models\CropTransformation;
 use App\Models\Harvest;
 use App\Models\Plot;
@@ -16,14 +17,25 @@ use Illuminate\Support\Facades\Gate;
  * Pilotage du module Production Végétale : vue d'ensemble parcelles / cycles /
  * récoltes / campagnes / transformation / météo (équivalent du dashboard
  * Provenderie côté aliment).
+ *
+ * Toutes les données (Overview, Calendar, Catalogue, Weather) sont chargées
+ * dans index() et passées à la vue cultures.dashboard via l'onglet actif.
  */
 class CultureDashboardController extends Controller
 {
-    public function index()
+    /**
+     * Hub principal – charge les données des 4 onglets en une seule requête
+     * et passe l'onglet actif à la vue.
+     */
+    public function index(Request $request)
     {
         if (Gate::denies('cultures.L')) {
             return redirect()->route('dashboard')->with('error', 'Accès restreint.');
         }
+
+        $activeTab = $request->get('tab', 'overview');
+
+        // ── ONGLET OVERVIEW ──────────────────────────────────────────────────
 
         $stats = [
             'plots_total'     => Plot::count(),
@@ -49,7 +61,7 @@ class CultureDashboardController extends Controller
             ->take(8)
             ->get();
 
-        // Calendrier cultural : récoltes prévues sous 14 jours (retards compris).
+        // Cycles avec récolte prévue sous 14 jours (retards inclus).
         $dueCycles = CropCycle::dueForHarvest(14)
             ->with('plot:id,name')
             ->orderBy('expected_harvest_date')
@@ -69,21 +81,7 @@ class CultureDashboardController extends Controller
             ->take(6)
             ->get();
 
-        return view('cultures.dashboard', compact(
-            'stats', 'activeCycles', 'recentHarvests', 'dueCycles', 'activeCampaign', 'cropMix'
-        ));
-    }
-
-    /**
-     * Calendrier cultural : matrice cultures × mois pour une année donnée. Une
-     * cellule est « occupée » si le cycle court sur ce mois (du semis à la
-     * récolte prévue/clôture), avec marquage des mois de semis et de récolte.
-     */
-    public function calendar(Request $request)
-    {
-        if (Gate::denies('cultures.L')) {
-            return back()->with('error', 'Accès restreint.');
-        }
+        // ── ONGLET CALENDAR ──────────────────────────────────────────────────
 
         $year = (int) $request->get('year', now()->year);
 
@@ -97,8 +95,8 @@ class CultureDashboardController extends Controller
             ->orderBy('planting_date')
             ->get();
 
-        // Construction d'une ligne par cycle : 12 booléens (mois occupé) + flags.
-        $rows = $cycles->map(function (CropCycle $c) use ($year) {
+        // Construction d'une ligne par cycle : 12 booléens (mois occupé) + flags semis/récolte.
+        $calendarRows = $cycles->map(function (CropCycle $c) use ($year) {
             $start = $c->planting_date ? Carbon::parse($c->planting_date) : null;
             $end   = $c->closing_date
                 ? Carbon::parse($c->closing_date)
@@ -108,7 +106,7 @@ class CultureDashboardController extends Controller
             for ($m = 1; $m <= 12; $m++) {
                 $monthStart = Carbon::create($year, $m, 1)->startOfMonth();
                 $monthEnd   = $monthStart->copy()->endOfMonth();
-                $occupied = $start
+                $occupied   = $start
                     && $start->lte($monthEnd)
                     && (! $end || $end->gte($monthStart));
                 $months[$m] = [
@@ -124,8 +122,83 @@ class CultureDashboardController extends Controller
             ];
         });
 
-        $years = range(now()->year + 1, now()->year - 3);
+        $calendarYears = range(now()->year + 1, now()->year - 3);
 
-        return view('cultures.calendar', compact('rows', 'year', 'years'));
+        // ── ONGLET CATALOGUE ─────────────────────────────────────────────────
+
+        // Espèces actives avec leurs variétés, regroupées dans l'ordre défini par TYPES.
+        $allSpecies = CropSpecies::active()
+            ->withCount('varieties')
+            ->orderBy('name')
+            ->get();
+
+        $catalogueGrouped = collect(array_keys(CropSpecies::TYPES))
+            ->mapWithKeys(fn (string $type) => [
+                $type => $allSpecies->where('type', $type)->values(),
+            ])
+            ->filter(fn ($group) => $group->isNotEmpty());
+
+        $catalogueStats = [
+            'species_count'  => $allSpecies->count(),
+            'varieties_count' => $allSpecies->sum('varieties_count'),
+            'families_count' => $allSpecies->pluck('family')->filter()->unique()->count(),
+        ];
+
+        // ── ONGLET WEATHER ───────────────────────────────────────────────────
+
+        $weatherMonth  = $request->get('weatherMonth', now()->format('Y-m'));
+        $weatherPlotId = $request->get('weatherPlotId');
+
+        $weatherQuery = WeatherReading::forMonth($weatherMonth)
+            ->orderBy('reading_date');
+
+        if ($weatherPlotId) {
+            $weatherQuery->where('plot_id', $weatherPlotId);
+        }
+
+        $weatherReadings = $weatherQuery->get();
+
+        $weatherStats = [
+            'rainfall_total' => (float) $weatherReadings->sum('rainfall_mm'),
+            'rainfall_avg'   => $weatherReadings->avg('rainfall_mm') ? round((float) $weatherReadings->avg('rainfall_mm'), 1) : 0.0,
+            't_max_avg'      => $weatherReadings->avg('temperature_max') ? round((float) $weatherReadings->avg('temperature_max'), 1) : 0.0,
+            'count'          => $weatherReadings->count(),
+        ];
+
+        $plots = Plot::orderBy('name')->get(['id', 'name']);
+
+        // ── VUE ──────────────────────────────────────────────────────────────
+
+        return view('cultures.dashboard', compact(
+            // meta
+            'activeTab',
+            // overview
+            'stats', 'activeCycles', 'recentHarvests', 'dueCycles', 'activeCampaign', 'cropMix',
+            // calendar
+            'calendarRows', 'year', 'calendarYears',
+            // catalogue
+            'catalogueGrouped', 'catalogueStats',
+            // weather
+            'weatherReadings', 'weatherStats', 'weatherMonth', 'weatherPlotId', 'plots',
+        ));
+    }
+
+    /**
+     * Redirige vers le hub dashboard sur l'onglet calendrier, en conservant
+     * le paramètre d'année si présent.
+     */
+    public function calendar(Request $request)
+    {
+        if (Gate::denies('cultures.L')) {
+            return back()->with('error', 'Accès restreint.');
+        }
+
+        $params = ['tab' => 'calendar'];
+
+        if ($request->has('year')) {
+            $params['year'] = $request->get('year');
+        }
+
+        return redirect()->route('cultures.dashboard', $params);
     }
 }

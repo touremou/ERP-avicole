@@ -186,7 +186,7 @@ test('le calendrier cultural répond et affiche les cycles de l\'année', functi
     ]);
 
     $this->actingAs($this->readonlyUser)
-        ->get(route('cultures.calendar', ['year' => now()->year]))
+        ->get(route('cultures.dashboard', ['tab' => 'calendar', 'year' => now()->year]))
         ->assertOk()
         ->assertSee('Riz');
 });

@@ -201,4 +201,42 @@ class CropCycleController extends Controller
 
         return back()->with('success', 'Intrant enregistré.');
     }
+
+    public function destroy(CropCycle $cropCycle)
+    {
+        if (Gate::denies('cultures.S')) {
+            return back()->with('error', 'Action non autorisée.');
+        }
+
+        if ($cropCycle->harvests()->exists()) {
+            return back()->with('error', 'Impossible de supprimer un cycle ayant des récoltes enregistrées.');
+        }
+
+        $cropCycle->plot()->update(['status' => Plot::STATUS_DISPONIBLE]);
+        $cropCycle->delete();
+
+        return redirect()->route('crop-cycles.index')->with('success', 'Cycle supprimé.');
+    }
+
+    public function destroyHarvest(CropCycle $cropCycle, Harvest $harvest)
+    {
+        if (Gate::denies('cultures.S')) {
+            return back()->with('error', 'Action non autorisée.');
+        }
+
+        $harvest->delete();
+
+        return back()->with('success', 'Récolte supprimée.');
+    }
+
+    public function destroyInput(CropCycle $cropCycle, CropInput $input)
+    {
+        if (Gate::denies('cultures.S')) {
+            return back()->with('error', 'Action non autorisée.');
+        }
+
+        $input->delete();
+
+        return back()->with('success', 'Intrant supprimé.');
+    }
 }

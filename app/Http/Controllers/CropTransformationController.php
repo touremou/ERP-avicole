@@ -94,4 +94,15 @@ class CropTransformationController extends Controller
 
         return view('cultures.transformations.show', ['transformation' => $cropTransformation]);
     }
+
+    public function destroy(CropTransformation $cropTransformation)
+    {
+        if (Gate::denies('cultures.S')) {
+            return back()->with('error', 'Action non autorisée.');
+        }
+
+        $cropTransformation->delete();
+
+        return redirect()->route('crop-transformations.index')->with('success', 'Transformation supprimée.');
+    }
 }
