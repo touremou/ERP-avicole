@@ -12,6 +12,8 @@ test('les clés de CATEGORY_META correspondent exactement aux slugs constants', 
         Stock::CAT_PRODUITS_FINIS,
         Stock::CAT_LITIERES,
         Stock::CAT_MATERIELS,
+        Stock::CAT_RECOLTES,
+        Stock::CAT_INTRANTS,
     ]);
 });
 
@@ -23,7 +25,9 @@ test('les valeurs des slugs constants restent stables (valeurs stockées en base
         ->and(Stock::CAT_CONSO)->toBe('conso')
         ->and(Stock::CAT_PRODUITS_FINIS)->toBe('produits_finis')
         ->and(Stock::CAT_LITIERES)->toBe('litieres')
-        ->and(Stock::CAT_MATERIELS)->toBe('materiels');
+        ->and(Stock::CAT_MATERIELS)->toBe('materiels')
+        ->and(Stock::CAT_RECOLTES)->toBe('recoltes')
+        ->and(Stock::CAT_INTRANTS)->toBe('intrants');
 });
 
 test('categoryForProductType mappe les types stockés et retombe sur materiels', function () {

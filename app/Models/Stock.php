@@ -56,6 +56,8 @@ class Stock extends Model
     public const CAT_PRODUITS_FINIS = 'produits_finis';
     public const CAT_LITIERES       = 'litieres';
     public const CAT_MATERIELS      = 'materiels';
+    public const CAT_RECOLTES       = 'recoltes';  // production végétale : récoltes
+    public const CAT_INTRANTS       = 'intrants';  // production végétale : semences, engrais, phyto
 
     /**
      * Métadonnées de présentation (libellé, icône, couleur) par catégorie.
@@ -69,6 +71,8 @@ class Stock extends Model
         self::CAT_PRODUITS_FINIS => ['label' => 'Produits Finis',  'icon' => 'fa-drumstick-bite',     'color' => 'rose',    'emoji' => '🥩'],
         self::CAT_LITIERES       => ['label' => 'Litières',        'icon' => 'fa-leaf',               'color' => 'purple',  'emoji' => '🍂'],
         self::CAT_MATERIELS      => ['label' => 'Matériel',        'icon' => 'fa-screwdriver-wrench', 'color' => 'blue',    'emoji' => '🛠️'],
+        self::CAT_RECOLTES       => ['label' => 'Récoltes',        'icon' => 'fa-wheat-awn',          'color' => 'green',   'emoji' => '🌽'],
+        self::CAT_INTRANTS       => ['label' => 'Intrants',        'icon' => 'fa-spray-can',          'color' => 'lime',    'emoji' => '🌱'],
     ];
 
     /**

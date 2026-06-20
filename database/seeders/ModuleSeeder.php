@@ -36,6 +36,7 @@ class ModuleSeeder extends Seeder
             ['name' => 'Annuaire',       'slug' => 'annuaire',      'icon' => 'fa-users',           'color' => 'slate',   'display_order' => 10],
             ['name' => 'Administration', 'slug' => 'admin',         'icon' => 'fa-shield-halved',   'color' => 'purple',  'display_order' => 11],
             ['name' => 'Dépenses',       'slug' => 'depenses',      'icon' => 'fa-receipt',         'color' => 'rose',    'display_order' => 12],
+            ['name' => 'Production Végétale', 'slug' => 'cultures', 'icon' => 'fa-seedling',        'color' => 'green',   'display_order' => 13],
         ];
 
         foreach ($modules as $mod) {

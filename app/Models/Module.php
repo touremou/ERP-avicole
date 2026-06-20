@@ -61,6 +61,12 @@ class Module extends Model
             'stocks.'           => 'logistique',
             'dispatches.'       => 'logistique',
 
+            // Production Végétale (parcelles, cycles de culture, récoltes)
+            'cultures.'         => 'cultures',
+            'plots.'            => 'cultures',
+            'crop-cycles.'      => 'cultures',
+            'harvests.'         => 'cultures',
+
             // Provenderie
             'provenderie.'      => 'provenderie',
             'raw-materials.'    => 'provenderie',
@@ -126,6 +132,7 @@ class Module extends Model
             'elevage'       => 'buildings.index',
             'production'    => 'egg-productions.index',
             'provenderie'   => 'provenderie.dashboard',
+            'cultures'      => 'cultures.dashboard',
             'planning'      => 'planning.index',
             'abattoir'      => 'slaughter.dashboard',
             'commerce'      => 'sales.index',

@@ -210,7 +210,7 @@ class AppServiceProvider extends ServiceProvider
         $fallbackSlugs = [
             'dashboard', 'elevage', 'production', 'provenderie', 'planning',
             'abattoir', 'commerce', 'logistique', 'ressources', 'notifications',
-            'annuaire', 'admin', 'depenses',
+            'annuaire', 'admin', 'depenses', 'cultures',
         ];
 
         try {

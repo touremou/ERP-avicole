@@ -47,7 +47,10 @@ use App\Http\Controllers\{
     EmployeeSelfController,
     MediaController,
     InstallController,
-    PwaController
+    PwaController,
+    CultureDashboardController,
+    PlotController,
+    CropCycleController
 };
 
 Route::redirect('/', '/login');
@@ -208,6 +211,25 @@ Route::middleware(['auth'])->group(function () {
             Route::post('/{id}/toggle', 'toggleStatus')->name('toggle')->middleware('can:M');
             Route::delete('/{id}', 'destroy')->name('destroy')->middleware('can:S');
         });
+    });
+
+    // ─── PRODUCTION VÉGÉTALE (parcelles, cycles de culture, récoltes) ───
+    Route::get('/cultures/dashboard', [CultureDashboardController::class, 'index'])->name('cultures.dashboard')->middleware('can:L');
+
+    Route::prefix('cultures/plots')->name('plots.')->controller(PlotController::class)->group(function () {
+        Route::get('/', 'index')->name('index')->middleware('can:L');
+        Route::post('/', 'store')->name('store')->middleware('can:C');
+        Route::put('/{plot}', 'update')->name('update')->middleware('can:M');
+        Route::delete('/{plot}', 'destroy')->name('destroy')->middleware('can:S');
+    });
+
+    Route::prefix('cultures/cycles')->name('crop-cycles.')->controller(CropCycleController::class)->group(function () {
+        Route::get('/', 'index')->name('index')->middleware('can:L');
+        Route::get('/create', 'create')->name('create')->middleware('can:C');
+        Route::post('/', 'store')->name('store')->middleware('can:C');
+        Route::get('/{cropCycle}', 'show')->name('show')->where('cropCycle', '[0-9]+')->middleware('can:L');
+        Route::put('/{cropCycle}', 'update')->name('update')->middleware('can:M');
+        Route::post('/{cropCycle}/harvests', 'storeHarvest')->name('harvests.store')->middleware('can:C');
     });
 
     // ─── COUVOIR & INCUBATION ───

@@ -1,0 +1,165 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Carbon\Carbon;
+use App\Traits\BelongsToFarm;
+use App\Traits\HasStandardUuid;
+
+/**
+ * Cycle de culture (module Production Végétale).
+ *
+ * Équivalent fonctionnel du `Batch` côté élevage : l'unité de pilotage d'une
+ * production, du semis à la récolte. On en réutilise les patterns (uuid, sync,
+ * statuts en constantes, marge nette calculée) sans le vocabulaire animal.
+ */
+class CropCycle extends Model
+{
+    use HasFactory, SoftDeletes, HasStandardUuid, BelongsToFarm;
+
+    /** Statuts du cycle (colonne `status`). */
+    public const STATUS_EN_COURS  = 'en_cours';  // semé, en croissance
+    public const STATUS_RECOLTE   = 'recolte';   // récolte en cours / partielle
+    public const STATUS_TERMINE   = 'termine';   // cycle clos
+    public const STATUS_ABANDONNE = 'abandonne'; // perte totale / abandon
+
+    public const STATUS_ARCHIVED = [
+        self::STATUS_TERMINE,
+        self::STATUS_ABANDONNE,
+    ];
+
+    public const EDITABLE_STATUSES = [
+        self::STATUS_EN_COURS,
+        self::STATUS_RECOLTE,
+        self::STATUS_TERMINE,
+        self::STATUS_ABANDONNE,
+    ];
+
+    protected $fillable = [
+        'uuid', 'is_synced', 'last_sync_at',
+        'farm_id', 'plot_id', 'employee_id',
+        'code', 'crop_name', 'variety', 'area_used_ha',
+        'planting_date', 'expected_harvest_date', 'closing_date',
+        'seed_quantity', 'seed_unit', 'expected_yield_kg',
+        'status', 'total_acquisition_cost', 'additional_costs', 'total_revenue',
+        'notes', 'photo_path',
+    ];
+
+    protected $casts = [
+        'is_synced'              => 'boolean',
+        'last_sync_at'           => 'datetime',
+        'planting_date'          => 'date',
+        'expected_harvest_date'  => 'date',
+        'closing_date'           => 'date',
+        'area_used_ha'           => 'decimal:4',
+        'seed_quantity'          => 'decimal:3',
+        'expected_yield_kg'      => 'decimal:3',
+        'total_acquisition_cost' => 'decimal:2',
+        'additional_costs'       => 'decimal:2',
+        'total_revenue'          => 'decimal:2',
+    ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (CropCycle $cycle) {
+            $cycle->status = $cycle->status ?? self::STATUS_EN_COURS;
+        });
+    }
+
+    // ─── RELATIONS ───
+
+    public function plot(): BelongsTo
+    {
+        return $this->belongsTo(Plot::class);
+    }
+
+    public function employee(): BelongsTo
+    {
+        return $this->belongsTo(Employee::class);
+    }
+
+    public function harvests(): HasMany
+    {
+        return $this->hasMany(Harvest::class);
+    }
+
+    // ─── SCOPES ───
+
+    public function scopeActive($query)
+    {
+        return $query->where('status', self::STATUS_EN_COURS);
+    }
+
+    public function scopeArchived($query)
+    {
+        return $query->whereIn('status', self::STATUS_ARCHIVED);
+    }
+
+    // ─── ÉTAT ───
+
+    public function isActive(): bool
+    {
+        return $this->status === self::STATUS_EN_COURS;
+    }
+
+    public function isArchived(): bool
+    {
+        return in_array($this->status, self::STATUS_ARCHIVED, true);
+    }
+
+    // ─── ACCESSEURS ───
+
+    /** Âge du cycle en jours (J1 = jour de semis). */
+    public function getAgeAttribute(): int
+    {
+        if (! $this->planting_date) {
+            return 0;
+        }
+
+        $start = Carbon::parse($this->planting_date)->startOfDay();
+        $end = ($this->isArchived() && $this->closing_date)
+            ? Carbon::parse($this->closing_date)->startOfDay()
+            : now()->startOfDay();
+
+        return (int) $start->diffInDays($end) + 1;
+    }
+
+    /** Quantité totale récoltée (toutes récoltes confondues), dans l'unité des récoltes. */
+    public function getTotalHarvestedAttribute(): float
+    {
+        return (float) $this->harvests()->sum('quantity');
+    }
+
+    /**
+     * Rendement réel à l'hectare (kg/ha) sur la base de la surface emblavée.
+     * Hypothèse : les récoltes sont saisies en kg (unité par défaut).
+     */
+    public function getYieldPerHaAttribute(): float
+    {
+        $area = (float) $this->area_used_ha;
+        if ($area <= 0) {
+            return 0;
+        }
+
+        return round($this->total_harvested / $area, 2);
+    }
+
+    /**
+     * Marge nette consolidée du cycle (revenus − coûts).
+     *
+     * Même esprit que Batch::getNetMarginAttribute : revenus enregistrés moins
+     * coûts d'acquisition (semences/intrants initiaux), coûts additionnels
+     * (main d'œuvre, phyto, irrigation) et dépenses directes validées rattachées.
+     */
+    public function getNetMarginAttribute(): float
+    {
+        return (float) $this->total_revenue
+            - (float) $this->total_acquisition_cost
+            - (float) $this->additional_costs;
+    }
+}
