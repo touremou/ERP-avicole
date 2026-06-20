@@ -54,7 +54,7 @@ class CropCycle extends Model
 
     protected $fillable = [
         'uuid', 'is_synced', 'last_sync_at',
-        'farm_id', 'plot_id', 'employee_id',
+        'farm_id', 'plot_id', 'campaign_id', 'employee_id',
         'code', 'crop_name', 'variety', 'area_used_ha',
         'planting_date', 'expected_harvest_date', 'closing_date',
         'seed_quantity', 'seed_unit', 'expected_yield_kg',
@@ -88,6 +88,11 @@ class CropCycle extends Model
     public function plot(): BelongsTo
     {
         return $this->belongsTo(Plot::class);
+    }
+
+    public function campaign(): BelongsTo
+    {
+        return $this->belongsTo(CropCampaign::class, 'campaign_id');
     }
 
     public function employee(): BelongsTo
