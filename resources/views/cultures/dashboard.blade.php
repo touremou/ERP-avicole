@@ -1,5 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
+        {{-- Title row + quick actions --}}
         <div class="flex items-center justify-between">
             <div class="flex items-center gap-4">
                 <div class="w-12 h-12 bg-green-600 rounded-2xl flex items-center justify-center text-white shadow-lg -rotate-3">
@@ -11,54 +12,35 @@
                 </div>
             </div>
             <div class="flex gap-3">
-                @if($activeTab === 'overview')
-                    <a href="{{ route('crop-transformations.index') }}" class="bg-white text-slate-700 px-6 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-slate-100 transition-all shadow-sm border border-slate-100 italic flex items-center gap-2 no-underline">
-                        <i class="fa-solid fa-industry text-green-500"></i> {{ __("Transformation") }}
-                    </a>
-                    @can('cultures.C')
-                    <a href="{{ route('crop-cycles.create') }}" class="bg-slate-900 text-white px-8 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-green-600 transition-all shadow-2xl italic flex items-center gap-2 no-underline">
-                        <i class="fa-solid fa-plus"></i> {{ __("Nouveau Cycle") }}
-                    </a>
-                    @endcan
-                @elseif($activeTab === 'catalogue')
-                    @can('cultures.C')
-                    <a href="{{ route('crop-catalogue.create') }}" class="bg-slate-900 text-white px-8 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-green-600 transition-all shadow-2xl italic flex items-center gap-2 no-underline">
-                        <i class="fa-solid fa-plus"></i> {{ __("Nouvelle culture") }}
-                    </a>
-                    @endcan
-                @elseif($activeTab === 'meteo')
-                    @can('cultures.C')
-                    <button onclick="document.getElementById('weather-modal').classList.remove('hidden')" class="bg-slate-900 text-white px-8 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-sky-600 transition-all shadow-2xl italic flex items-center gap-2">
-                        <i class="fa-solid fa-plus"></i> {{ __("Nouveau relevé") }}
-                    </button>
-                    @endcan
-                @endif
+                <a href="{{ route('crop-transformations.index') }}" class="bg-white text-slate-700 px-6 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-slate-100 transition-all shadow-sm border border-slate-100 italic flex items-center gap-2 no-underline">
+                    <i class="fa-solid fa-industry text-green-500"></i> {{ __("Transformation") }}
+                </a>
+                @can('cultures.C')
+                <a href="{{ route('crop-cycles.create') }}" class="bg-slate-900 text-white px-8 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-green-600 transition-all shadow-2xl italic flex items-center gap-2 no-underline">
+                    <i class="fa-solid fa-plus"></i> {{ __("Nouveau Cycle") }}
+                </a>
+                @endcan
             </div>
         </div>
 
         {{-- Tab bar --}}
-        <div class="flex flex-wrap gap-2 mt-4">
-            @php
-                $tabs = [
-                    'overview'  => ['icon' => 'fa-gauge-high',     'label' => 'Vue d\'ensemble'],
-                    'calendar'  => ['icon' => 'fa-calendar-days',  'label' => 'Calendrier'],
-                    'catalogue' => ['icon' => 'fa-book-open',      'label' => 'Catalogue'],
-                    'meteo'     => ['icon' => 'fa-cloud-sun-rain', 'label' => 'Météo'],
-                ];
-                $activeTabBase  = 'bg-slate-900 text-white px-5 py-2.5 rounded-2xl font-black text-[9px] uppercase tracking-widest italic no-underline flex items-center gap-2 shadow-sm';
-                $inactiveTabBase = 'bg-white text-slate-400 hover:text-slate-700 px-5 py-2.5 rounded-2xl font-black text-[9px] uppercase tracking-widest italic no-underline flex items-center gap-2 border border-slate-100';
-            @endphp
-            @foreach($tabs as $key => $tab)
-                @php
-                    $params = ['tab' => $key];
-                    if ($key === 'calendar') $params['year'] = $year;
-                    if ($key === 'meteo') { $params['weatherMonth'] = $weatherMonth; if($weatherPlotId) $params['weatherPlotId'] = $weatherPlotId; }
-                @endphp
-                <a href="{{ route('cultures.dashboard', $params) }}" class="{{ $activeTab === $key ? $activeTabBase : $inactiveTabBase }}">
-                    <i class="fa-solid {{ $tab['icon'] }} {{ $activeTab === $key ? 'text-green-400' : 'text-green-500' }}"></i>
-                    {{ __($tab['label']) }}
-                </a>
-            @endforeach
+        <div class="flex flex-wrap gap-2 mt-5">
+            <a href="{{ route('cultures.dashboard', ['tab' => 'overview']) }}"
+               class="{{ $activeTab === 'overview' ? 'bg-slate-900 text-white' : 'bg-white text-slate-400 hover:text-slate-700 border border-slate-100' }} px-5 py-2.5 rounded-2xl font-black text-[9px] uppercase tracking-widest italic no-underline flex items-center gap-2 transition-all">
+                <i class="fa-solid fa-gauge-high"></i> {{ __("Vue d'ensemble") }}
+            </a>
+            <a href="{{ route('cultures.dashboard', ['tab' => 'calendar']) }}"
+               class="{{ $activeTab === 'calendar' ? 'bg-slate-900 text-white' : 'bg-white text-slate-400 hover:text-slate-700 border border-slate-100' }} px-5 py-2.5 rounded-2xl font-black text-[9px] uppercase tracking-widest italic no-underline flex items-center gap-2 transition-all">
+                <i class="fa-solid fa-calendar-days"></i> {{ __("Calendrier") }}
+            </a>
+            <a href="{{ route('cultures.dashboard', ['tab' => 'catalogue']) }}"
+               class="{{ $activeTab === 'catalogue' ? 'bg-slate-900 text-white' : 'bg-white text-slate-400 hover:text-slate-700 border border-slate-100' }} px-5 py-2.5 rounded-2xl font-black text-[9px] uppercase tracking-widest italic no-underline flex items-center gap-2 transition-all">
+                <i class="fa-solid fa-book-open"></i> {{ __("Catalogue") }}
+            </a>
+            <a href="{{ route('cultures.dashboard', ['tab' => 'meteo']) }}"
+               class="{{ $activeTab === 'meteo' ? 'bg-slate-900 text-white' : 'bg-white text-slate-400 hover:text-slate-700 border border-slate-100' }} px-5 py-2.5 rounded-2xl font-black text-[9px] uppercase tracking-widest italic no-underline flex items-center gap-2 transition-all">
+                <i class="fa-solid fa-cloud-sun-rain"></i> {{ __("Météo") }}
+            </a>
         </div>
     </x-slot>
 
@@ -70,369 +52,384 @@
                     <i class="fa-solid fa-check-double mr-3 text-lg"></i> {{ session('success') }}
                 </div>
             @endif
-            @if(session('error'))
-                <div class="p-5 bg-rose-600 text-white rounded-[2rem] font-black text-[10px] uppercase tracking-[0.2em] shadow-xl flex items-center italic">
-                    <i class="fa-solid fa-triangle-exclamation mr-3 text-lg"></i> {{ session('error') }}
-                </div>
-            @endif
 
-            {{-- ══════════════════════════════════════════════════════════════
-                 ONGLET 1 — VUE D'ENSEMBLE
-            ══════════════════════════════════════════════════════════════ --}}
+            {{-- ================================================================ --}}
+            {{-- TAB 1 — VUE D'ENSEMBLE                                          --}}
+            {{-- ================================================================ --}}
             @if($activeTab === 'overview')
 
-            {{-- INDICATEURS --}}
-            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
-                    <p class="text-[8px] font-black text-green-500 uppercase tracking-widest italic mb-2">{{ __("Parcelles") }}</p>
-                    <p class="text-3xl font-black text-slate-900 leading-none">{{ $stats['plots_total'] }}</p>
-                    <p class="text-[9px] text-slate-400 uppercase mt-1">{{ $stats['plots_occupied'] }} {{ __("en culture") }}</p>
-                </div>
-                <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
-                    <p class="text-[8px] font-black text-green-500 uppercase tracking-widest italic mb-2">{{ __("Cycles actifs") }}</p>
-                    <p class="text-3xl font-black text-slate-900 leading-none">{{ $stats['cycles_active'] }}</p>
-                    <p class="text-[9px] text-slate-400 uppercase mt-1">{{ number_format($stats['area_cultivated'], 2, ',', ' ') }} ha {{ __("cultivés") }}</p>
-                </div>
-                <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
-                    <p class="text-[8px] font-black text-sky-500 uppercase tracking-widest italic mb-2">{{ __("Pluie 30 j") }}</p>
-                    <p class="text-3xl font-black text-slate-900 leading-none">{{ number_format($stats['rainfall_30d'], 0, ',', ' ') }} <small class="text-[10px] opacity-40">mm</small></p>
-                    <p class="text-[9px] text-slate-400 uppercase mt-1">{{ $stats['transform_30d'] }} {{ __("transfo.") }}</p>
-                </div>
-                <div class="bg-slate-900 text-white p-6 rounded-[2rem] shadow-lg">
-                    <p class="text-[8px] font-black text-green-400 uppercase tracking-widest italic mb-2">{{ __("Récolté (30 j)") }}</p>
-                    <p class="text-3xl font-black leading-none">{{ number_format($stats['harvest_30d'], 0, ',', ' ') }} <small class="text-[10px] opacity-40">kg</small></p>
-                    <p class="text-[9px] text-green-400/70 uppercase mt-1">{{ number_format($stats['harvest_ytd'], 0, ',', ' ') }} kg {{ __("cette année") }}</p>
-                </div>
-            </div>
-
-            {{-- CAMPAGNE EN COURS --}}
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                @if($activeCampaign)
-                <a href="{{ route('crop-campaigns.show', $activeCampaign) }}" class="lg:col-span-2 bg-gradient-to-br from-green-600 to-emerald-700 text-white p-6 rounded-[2.5rem] shadow-lg no-underline flex items-center justify-between">
-                    <div>
-                        <p class="text-[8px] font-black text-green-200 uppercase tracking-widest italic mb-1"><i class="fa-solid fa-calendar-week mr-1"></i> {{ __("Campagne en cours") }}</p>
-                        <p class="text-lg font-black uppercase italic leading-none">{{ $activeCampaign->name }}</p>
-                        <p class="text-[9px] text-green-200 uppercase mt-1">{{ $activeCampaign->season_label }} · {{ $activeCampaign->cycles_count ?? 0 }} {{ __("cycles") }}</p>
+                {{-- INDICATEURS --}}
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
+                        <p class="text-[8px] font-black text-green-500 uppercase tracking-widest italic mb-2">{{ __("Parcelles") }}</p>
+                        <p class="text-3xl font-black text-slate-900 leading-none">{{ $stats['plots_total'] }}</p>
+                        <p class="text-[9px] text-slate-400 uppercase mt-1">{{ $stats['plots_occupied'] }} {{ __("en culture") }}</p>
                     </div>
-                    @if($activeCampaign->progress_percent !== null)
-                    <div class="text-right">
-                        <p class="text-3xl font-black leading-none">{{ $activeCampaign->progress_percent }}%</p>
-                        <p class="text-[8px] text-green-200 uppercase mt-1">{{ __("de l'objectif") }}</p>
+                    <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
+                        <p class="text-[8px] font-black text-green-500 uppercase tracking-widest italic mb-2">{{ __("Cycles actifs") }}</p>
+                        <p class="text-3xl font-black text-slate-900 leading-none">{{ $stats['cycles_active'] }}</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
+                        <p class="text-[8px] font-black text-green-500 uppercase tracking-widest italic mb-2">{{ __("Surface cultivée") }}</p>
+                        <p class="text-3xl font-black text-slate-900 leading-none">{{ number_format($stats['area_cultivated'], 2, ',', ' ') }} <small class="text-[10px] opacity-40">ha</small></p>
+                    </div>
+                    <div class="bg-slate-900 text-white p-6 rounded-[2rem] shadow-lg">
+                        <p class="text-[8px] font-black text-green-400 uppercase tracking-widest italic mb-2">{{ __("Récolté (30 j)") }}</p>
+                        <p class="text-3xl font-black leading-none">{{ number_format($stats['harvest_30d'], 0, ',', ' ') }} <small class="text-[10px] opacity-40">kg</small></p>
+                        <p class="text-[9px] text-green-400/70 uppercase mt-1">{{ number_format($stats['harvest_ytd'], 0, ',', ' ') }} kg {{ __("cette année") }}</p>
+                    </div>
+                </div>
+
+                {{-- CAMPAGNE EN COURS + INDICATEURS SECONDAIRES --}}
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    @if($activeCampaign)
+                    <a href="{{ route('crop-campaigns.show', $activeCampaign) }}" class="lg:col-span-2 bg-gradient-to-br from-green-600 to-emerald-700 text-white p-6 rounded-[2.5rem] shadow-lg no-underline flex items-center justify-between">
+                        <div>
+                            <p class="text-[8px] font-black text-green-200 uppercase tracking-widest italic mb-1"><i class="fa-solid fa-calendar-week mr-1"></i> {{ __("Campagne en cours") }}</p>
+                            <p class="text-lg font-black uppercase italic leading-none">{{ $activeCampaign->name }}</p>
+                            <p class="text-[9px] text-green-200 uppercase mt-1">{{ $activeCampaign->season_label }} · {{ $activeCampaign->cycles_count ?? $activeCampaign->cycles->count() }} {{ __("cycles") }}</p>
+                        </div>
+                        @if($activeCampaign->progress_percent !== null)
+                        <div class="text-right">
+                            <p class="text-3xl font-black leading-none">{{ $activeCampaign->progress_percent }}%</p>
+                            <p class="text-[8px] text-green-200 uppercase mt-1">{{ __("de l'objectif") }}</p>
+                        </div>
+                        @endif
+                    </a>
+                    @else
+                    <div class="lg:col-span-2 bg-white p-6 rounded-[2.5rem] border border-dashed border-slate-200 flex items-center justify-center">
+                        <a href="{{ route('crop-campaigns.create') }}" class="text-[10px] font-black uppercase text-slate-400 hover:text-green-600 italic no-underline"><i class="fa-solid fa-plus mr-2"></i>{{ __("Démarrer une campagne") }}</a>
                     </div>
                     @endif
-                </a>
-                @else
-                <div class="lg:col-span-2 bg-white p-6 rounded-[2.5rem] border border-dashed border-slate-200 flex items-center justify-center">
-                    <a href="{{ route('crop-campaigns.create') }}" class="text-[10px] font-black uppercase text-slate-400 hover:text-green-600 italic no-underline"><i class="fa-solid fa-plus mr-2"></i>{{ __("Démarrer une campagne") }}</a>
-                </div>
-                @endif
-                <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm flex flex-col justify-center gap-4">
-                    <div>
-                        <p class="text-[8px] font-black text-green-500 uppercase tracking-widest italic mb-1">{{ __("Parcelles disponibles") }}</p>
-                        <p class="text-2xl font-black text-slate-900 leading-none">{{ $stats['plots_total'] - $stats['plots_occupied'] }}</p>
-                    </div>
-                    <div class="border-t border-slate-50 pt-3">
-                        <p class="text-[8px] font-black text-amber-500 uppercase tracking-widest italic mb-1">{{ __("Transfo. 30 j") }}</p>
-                        <p class="text-2xl font-black text-slate-900 leading-none">{{ $stats['transform_30d'] }}</p>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm">
+                            <p class="text-[8px] font-black text-sky-500 uppercase tracking-widest italic mb-1">{{ __("Pluie 30 j") }}</p>
+                            <p class="text-2xl font-black text-slate-900 leading-none">{{ number_format($stats['rainfall_30d'], 0, ',', ' ') }} <small class="text-[9px] opacity-40">mm</small></p>
+                        </div>
+                        <div class="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm">
+                            <p class="text-[8px] font-black text-green-500 uppercase tracking-widest italic mb-1">{{ __("Transfo. 30 j") }}</p>
+                            <p class="text-2xl font-black text-slate-900 leading-none">{{ $stats['transform_30d'] }}</p>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            {{-- RÉCOLTES À VENIR (14 j) --}}
-            @if($dueCycles->isNotEmpty())
-            <div class="bg-amber-50 border border-amber-200 p-6 rounded-[2.5rem]">
-                <h3 class="text-[10px] font-black uppercase text-amber-600 tracking-widest italic mb-4"><i class="fa-solid fa-calendar-day mr-1"></i> {{ __("Récoltes à venir (14 j)") }}</h3>
-                <div class="flex flex-wrap gap-2">
-                    @foreach($dueCycles as $c)
-                        @php $diff = (int) now()->startOfDay()->diffInDays($c->expected_harvest_date->copy()->startOfDay(), false); @endphp
-                        <a href="{{ route('crop-cycles.show', $c) }}" class="bg-white px-4 py-2 rounded-2xl border border-amber-100 no-underline hover:border-amber-300 transition">
-                            <span class="text-[10px] font-black uppercase text-slate-800 italic">{{ $c->crop_name }}</span>
-                            <span class="text-[8px] font-black uppercase ml-2 {{ $diff < 0 ? 'text-rose-600' : 'text-amber-600' }}">
-                                {{ $diff < 0 ? '⚠ retard '.abs($diff).'j' : ($diff === 0 ? "aujourd'hui" : "dans {$diff}j") }}
-                            </span>
-                        </a>
-                    @endforeach
-                </div>
-            </div>
-            @endif
-
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {{-- CYCLES EN COURS --}}
-                <div class="lg:col-span-2 bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm">
-                    <h3 class="text-[10px] font-black uppercase text-slate-400 tracking-widest italic mb-6">{{ __("Cycles en cours") }}</h3>
-                    @forelse($activeCycles as $cycle)
-                        <a href="{{ route('crop-cycles.show', $cycle) }}" class="flex items-center justify-between p-4 mb-2 bg-slate-50 rounded-[1.5rem] hover:bg-green-50 transition no-underline">
-                            <div>
-                                <p class="text-[11px] font-black uppercase text-slate-800 italic leading-none">{{ $cycle->crop_name }} @if($cycle->variety)<span class="text-slate-400">· {{ $cycle->variety }}</span>@endif</p>
-                                <p class="text-[9px] text-slate-400 uppercase mt-1">{{ $cycle->plot?->name }} · {{ $cycle->age }} j · {{ number_format($cycle->area_used_ha, 2, ',', ' ') }} ha</p>
-                            </div>
-                            <div class="text-right">
-                                <p class="text-base font-black text-green-600 leading-none">{{ number_format($cycle->total_harvested, 0, ',', ' ') }} <small class="text-[9px] opacity-40">kg</small></p>
-                                <p class="text-[8px] text-slate-400 uppercase mt-1">{{ __("récolté") }}</p>
-                            </div>
-                        </a>
-                    @empty
-                        <p class="text-center text-slate-300 text-[10px] font-black uppercase italic py-10">{{ __("Aucun cycle en cours") }}</p>
-                    @endforelse
-                </div>
-
-                {{-- RÉCOLTES RÉCENTES --}}
-                <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm">
-                    <h3 class="text-[10px] font-black uppercase text-slate-400 tracking-widest italic mb-6">{{ __("Récoltes récentes") }}</h3>
-                    @forelse($recentHarvests as $h)
-                        <div class="flex items-center justify-between py-3 border-b border-slate-50">
-                            <div>
-                                <p class="text-[10px] font-black uppercase text-slate-700 italic leading-none">{{ $h->cropCycle?->crop_name ?? '—' }}</p>
-                                <p class="text-[8px] text-slate-400 uppercase mt-1">{{ $h->harvest_date?->format('d/m/Y') }}</p>
-                            </div>
-                            <p class="text-sm font-black text-slate-900">{{ number_format($h->quantity, 0, ',', ' ') }} <small class="text-[8px] opacity-40">{{ $h->unit }}</small></p>
-                        </div>
-                    @empty
-                        <p class="text-center text-slate-300 text-[10px] font-black uppercase italic py-10">{{ __("Aucune récolte") }}</p>
-                    @endforelse
-                </div>
-            </div>
-
-            {{-- RÉPARTITION DES SURFACES --}}
-            @if($cropMix->isNotEmpty())
-            @php $maxArea = max($cropMix->max('area'), 0.0001); @endphp
-            <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm">
-                <h3 class="text-[10px] font-black uppercase text-slate-400 tracking-widest italic mb-6">{{ __("Répartition des surfaces emblavées") }}</h3>
-                <div class="space-y-3">
-                    @foreach($cropMix as $mix)
-                        <div>
-                            <div class="flex items-center justify-between mb-1">
-                                <span class="text-[10px] font-black uppercase text-slate-700 italic">{{ $mix->crop_name }} <span class="text-slate-300">· {{ $mix->cycles }} cycle(s)</span></span>
-                                <span class="text-[10px] font-black text-green-600">{{ number_format($mix->area, 2, ',', ' ') }} ha</span>
-                            </div>
-                            <div class="h-2.5 bg-slate-100 rounded-full overflow-hidden">
-                                <div class="h-full bg-green-500 rounded-full" style="width: {{ round($mix->area / $maxArea * 100) }}%"></div>
-                            </div>
-                        </div>
-                    @endforeach
-                </div>
-            </div>
-            @endif
-
-            {{-- ══════════════════════════════════════════════════════════════
-                 ONGLET 2 — CALENDRIER CULTURAL
-            ══════════════════════════════════════════════════════════════ --}}
-            @elseif($activeTab === 'calendar')
-
-            <div class="flex flex-wrap items-center justify-between gap-4">
-                <form method="GET" action="{{ route('cultures.dashboard') }}" class="flex items-center gap-3">
-                    <input type="hidden" name="tab" value="calendar">
-                    <span class="text-[9px] font-black text-slate-400 uppercase italic">{{ __("Année") }}</span>
-                    <select name="year" onchange="this.form.submit()" class="bg-white border border-slate-100 rounded-2xl px-4 py-2 font-black text-slate-800 shadow-sm italic text-[11px] cursor-pointer">
-                        @foreach($calendarYears as $y)<option value="{{ $y }}" @selected($year == $y)>{{ $y }}</option>@endforeach
-                    </select>
-                </form>
-                <div class="flex items-center gap-4 text-[8px] font-black uppercase text-slate-400">
-                    <span><span class="inline-block w-3 h-3 bg-green-200 rounded-sm align-middle mr-1"></span> {{ __("En culture") }}</span>
-                    <span><span class="inline-block w-3 h-3 bg-green-600 rounded-sm align-middle mr-1"></span> {{ __("Semis") }}</span>
-                    <span><span class="inline-block w-3 h-3 bg-amber-500 rounded-sm align-middle mr-1"></span> {{ __("Récolte") }}</span>
-                </div>
-            </div>
-
-            <div class="bg-white rounded-[3rem] border border-slate-100 shadow-sm overflow-hidden">
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left border-collapse">
-                        <thead>
-                            <tr class="text-[8px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
-                                <th class="p-3 sticky left-0 bg-white">{{ __("Culture") }}</th>
-                                @foreach(['J','F','M','A','M','J','J','A','S','O','N','D'] as $mLabel)
-                                    <th class="p-2 text-center w-8">{{ $mLabel }}</th>
-                                @endforeach
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @forelse($calendarRows as $row)
-                                <tr class="border-b border-slate-50">
-                                    <td class="p-3 sticky left-0 bg-white">
-                                        <a href="{{ route('crop-cycles.show', $row['cycle']) }}" class="no-underline">
-                                            <p class="text-[11px] font-black uppercase text-slate-800 italic leading-none">{{ $row['cycle']->crop_name }}</p>
-                                            <p class="text-[8px] text-slate-400 uppercase mt-0.5">{{ $row['cycle']->plot?->name }}</p>
-                                        </a>
-                                    </td>
-                                    @for($m = 1; $m <= 12; $m++)
-                                        @php $cell = $row['months'][$m]; @endphp
-                                        <td class="p-1 text-center">
-                                            @if($cell['planting'])
-                                                <div class="h-6 bg-green-600 rounded-sm flex items-center justify-center" title="{{ __('Semis') }}"><i class="fa-solid fa-seedling text-white text-[8px]"></i></div>
-                                            @elseif($cell['harvest'])
-                                                <div class="h-6 bg-amber-500 rounded-sm flex items-center justify-center" title="{{ __('Récolte') }}"><i class="fa-solid fa-wheat-awn text-white text-[8px]"></i></div>
-                                            @elseif($cell['occupied'])
-                                                <div class="h-6 bg-green-200 rounded-sm"></div>
-                                            @else
-                                                <div class="h-6"></div>
-                                            @endif
-                                        </td>
-                                    @endfor
-                                </tr>
-                            @empty
-                                <tr><td colspan="13" class="p-16 text-center text-slate-300 text-[10px] font-black uppercase italic">{{ __("Aucun cycle sur") }} {{ $year }}</td></tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            @can('cultures.C')
-            <div class="text-center">
-                <a href="{{ route('crop-cycles.create') }}" class="inline-flex items-center gap-2 bg-white border border-dashed border-green-300 text-green-600 px-6 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest italic no-underline hover:bg-green-50 transition">
-                    <i class="fa-solid fa-plus"></i> {{ __("Démarrer un cycle") }}
-                </a>
-            </div>
-            @endcan
-
-            {{-- ══════════════════════════════════════════════════════════════
-                 ONGLET 3 — CATALOGUE DES CULTURES
-            ══════════════════════════════════════════════════════════════ --}}
-            @elseif($activeTab === 'catalogue')
-
-            <div class="grid grid-cols-3 gap-4">
-                <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
-                    <p class="text-[8px] font-black text-green-500 uppercase tracking-widest italic mb-2">{{ __("Cultures") }}</p>
-                    <p class="text-3xl font-black text-slate-900 leading-none">{{ $catalogueStats['species_count'] }}</p>
-                </div>
-                <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
-                    <p class="text-[8px] font-black text-green-500 uppercase tracking-widest italic mb-2">{{ __("Variétés") }}</p>
-                    <p class="text-3xl font-black text-slate-900 leading-none">{{ $catalogueStats['varieties_count'] }}</p>
-                </div>
-                <div class="bg-slate-900 text-white p-6 rounded-[2rem] shadow-lg">
-                    <p class="text-[8px] font-black text-green-400 uppercase tracking-widest italic mb-2">{{ __("Types") }}</p>
-                    <p class="text-3xl font-black leading-none">{{ $catalogueGrouped->count() }}</p>
-                </div>
-            </div>
-
-            @forelse($catalogueGrouped as $type => $list)
-                @php $meta = \App\Models\CropSpecies::TYPES[$type] ?? ['label' => ucfirst($type), 'icon' => 'fa-sprout', 'color' => 'slate']; @endphp
-                <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm">
-                    <h3 class="text-[11px] font-black uppercase text-slate-700 tracking-widest italic mb-6 flex items-center gap-2">
-                        <i class="fa-solid {{ $meta['icon'] }} text-{{ $meta['color'] }}-500"></i>
-                        {{ $meta['label'] }} <span class="text-slate-300">({{ $list->count() }})</span>
-                    </h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                        @foreach($list as $sp)
-                            <a href="{{ route('crop-catalogue.show', $sp) }}" class="block p-4 bg-slate-50 rounded-[1.5rem] hover:bg-green-50 transition no-underline border border-transparent hover:border-green-200">
-                                <div class="flex items-start justify-between gap-2">
-                                    <p class="text-[12px] font-black uppercase text-slate-800 italic leading-tight">{{ $sp->name }}</p>
-                                    @if($sp->varieties_count > 0)
-                                        <span class="shrink-0 text-[8px] font-black uppercase bg-{{ $meta['color'] }}-100 text-{{ $meta['color'] }}-700 px-2 py-1 rounded-full">{{ $sp->varieties_count }} var.</span>
-                                    @endif
-                                </div>
-                                @if($sp->local_name)<p class="text-[9px] text-slate-400 italic mt-1">🗣 {{ $sp->local_name }}</p>@endif
-                                @if($sp->family)<p class="text-[9px] text-slate-400 uppercase mt-0.5">{{ $sp->family }}</p>@endif
-                                <div class="flex flex-wrap gap-x-3 mt-2 text-[9px] text-slate-500 uppercase">
-                                    @if($sp->cycle_label)<span><i class="fa-regular fa-clock"></i> {{ $sp->cycle_label }}</span>@endif
-                                    @if($sp->avg_yield_tha)<span><i class="fa-solid fa-weight-hanging"></i> {{ rtrim(rtrim(number_format($sp->avg_yield_tha, 2, ',', ' '), '0'), ',') }} t/ha</span>@endif
-                                </div>
+                {{-- RÉCOLTES À VENIR --}}
+                @if($dueCycles->isNotEmpty())
+                <div class="bg-amber-50 border border-amber-200 p-6 rounded-[2.5rem]">
+                    <h3 class="text-[10px] font-black uppercase text-amber-600 tracking-widest italic mb-4"><i class="fa-solid fa-calendar-day mr-1"></i> {{ __("Récoltes à venir (14 j)") }}</h3>
+                    <div class="flex flex-wrap gap-2">
+                        @foreach($dueCycles as $c)
+                            @php $diff = (int) now()->startOfDay()->diffInDays($c->expected_harvest_date->copy()->startOfDay(), false); @endphp
+                            <a href="{{ route('crop-cycles.show', $c) }}" class="bg-white px-4 py-2 rounded-2xl border border-amber-100 no-underline hover:border-amber-300 transition">
+                                <span class="text-[10px] font-black uppercase text-slate-800 italic">{{ $c->crop_name }}</span>
+                                <span class="text-[8px] font-black uppercase ml-2 {{ $diff < 0 ? 'text-rose-600' : 'text-amber-600' }}">
+                                    {{ $diff < 0 ? '⚠️ retard '.abs($diff).'j' : ($diff === 0 ? "aujourd'hui" : "dans {$diff}j") }}
+                                </span>
                             </a>
                         @endforeach
                     </div>
                 </div>
-            @empty
-                <div class="bg-white p-16 rounded-[3rem] border border-slate-100 text-center">
-                    <i class="fa-solid fa-seedling text-5xl text-slate-200 mb-4"></i>
-                    <p class="text-slate-400 text-[11px] font-black uppercase italic">{{ __("Catalogue vide") }}</p>
+                @endif
+
+                {{-- CYCLES EN COURS + RÉCOLTES RÉCENTES --}}
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div class="lg:col-span-2 bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm">
+                        <h3 class="text-[10px] font-black uppercase text-slate-400 tracking-widest italic mb-6">{{ __("Cycles en cours") }}</h3>
+                        @forelse($activeCycles as $cycle)
+                            <a href="{{ route('crop-cycles.show', $cycle) }}" class="flex items-center justify-between p-4 mb-2 bg-slate-50 rounded-[1.5rem] hover:bg-green-50 transition no-underline">
+                                <div>
+                                    <p class="text-[11px] font-black uppercase text-slate-800 italic leading-none">{{ $cycle->crop_name }} @if($cycle->variety)<span class="text-slate-400">· {{ $cycle->variety }}</span>@endif</p>
+                                    <p class="text-[9px] text-slate-400 uppercase mt-1">{{ $cycle->plot?->name }} · {{ $cycle->age }} {{ __("j") }} · {{ number_format($cycle->area_used_ha, 2, ',', ' ') }} ha</p>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-base font-black text-green-600 leading-none">{{ number_format($cycle->total_harvested, 0, ',', ' ') }} <small class="text-[9px] opacity-40">kg</small></p>
+                                    <p class="text-[8px] text-slate-400 uppercase mt-1">{{ __("récolté") }}</p>
+                                </div>
+                            </a>
+                        @empty
+                            <p class="text-center text-slate-300 text-[10px] font-black uppercase italic py-10">{{ __("Aucun cycle en cours") }}</p>
+                        @endforelse
+                    </div>
+
+                    <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm">
+                        <h3 class="text-[10px] font-black uppercase text-slate-400 tracking-widest italic mb-6">{{ __("Récoltes récentes") }}</h3>
+                        @forelse($recentHarvests as $h)
+                            <div class="flex items-center justify-between py-3 border-b border-slate-50">
+                                <div>
+                                    <p class="text-[10px] font-black uppercase text-slate-700 italic leading-none">{{ $h->cropCycle?->crop_name ?? '—' }}</p>
+                                    <p class="text-[8px] text-slate-400 uppercase mt-1">{{ $h->harvest_date?->format('d/m/Y') }}</p>
+                                </div>
+                                <p class="text-sm font-black text-slate-900">{{ number_format($h->quantity, 0, ',', ' ') }} <small class="text-[8px] opacity-40">{{ $h->unit }}</small></p>
+                            </div>
+                        @empty
+                            <p class="text-center text-slate-300 text-[10px] font-black uppercase italic py-10">{{ __("Aucune récolte") }}</p>
+                        @endforelse
+                    </div>
+                </div>
+
+                {{-- RÉPARTITION DES SURFACES --}}
+                @if($cropMix->isNotEmpty())
+                @php $maxArea = max($cropMix->max('area'), 0.0001); @endphp
+                <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm">
+                    <h3 class="text-[10px] font-black uppercase text-slate-400 tracking-widest italic mb-6">{{ __("Répartition des surfaces emblavées") }}</h3>
+                    <div class="space-y-3">
+                        @foreach($cropMix as $mix)
+                            <div>
+                                <div class="flex items-center justify-between mb-1">
+                                    <span class="text-[10px] font-black uppercase text-slate-700 italic">{{ $mix->crop_name }} <span class="text-slate-300">· {{ $mix->cycles }} cycle(s)</span></span>
+                                    <span class="text-[10px] font-black text-green-600">{{ number_format($mix->area, 2, ',', ' ') }} ha</span>
+                                </div>
+                                <div class="h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                                    <div class="h-full bg-green-500 rounded-full" style="width: {{ round($mix->area / $maxArea * 100) }}%"></div>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+                @endif
+
+            {{-- ================================================================ --}}
+            {{-- TAB 2 — CALENDRIER CULTURAL                                     --}}
+            {{-- ================================================================ --}}
+            @elseif($activeTab === 'calendar')
+
+                {{-- FILTRE ANNÉE + LÉGENDE --}}
+                <div class="flex flex-wrap items-center justify-between gap-4">
+                    <form method="GET" action="{{ route('cultures.dashboard') }}" class="flex items-center gap-3">
+                        <input type="hidden" name="tab" value="calendar">
+                        <span class="text-[9px] font-black text-slate-400 uppercase italic">{{ __("Année") }}</span>
+                        <select name="year" onchange="this.form.submit()" class="bg-white border border-slate-100 rounded-2xl px-4 py-2 font-black text-slate-800 shadow-sm italic text-[11px] cursor-pointer">
+                            @foreach($calendarYears as $y)<option value="{{ $y }}" @selected($year == $y)>{{ $y }}</option>@endforeach
+                        </select>
+                    </form>
+                    <div class="flex items-center gap-4 text-[8px] font-black uppercase text-slate-400">
+                        <span><span class="inline-block w-3 h-3 bg-green-200 rounded-sm align-middle"></span> {{ __("En culture") }}</span>
+                        <span><span class="inline-block w-3 h-3 bg-green-600 rounded-sm align-middle"></span> {{ __("Semis") }}</span>
+                        <span><span class="inline-block w-3 h-3 bg-amber-500 rounded-sm align-middle"></span> {{ __("Récolte") }}</span>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-[3rem] border border-slate-100 shadow-sm overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="text-[8px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
+                                    <th class="p-3 sticky left-0 bg-white">{{ __("Culture") }}</th>
+                                    @foreach(['J','F','M','A','M','J','J','A','S','O','N','D'] as $mLabel)
+                                        <th class="p-2 text-center w-8">{{ $mLabel }}</th>
+                                    @endforeach
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse($calendarRows as $row)
+                                    <tr class="border-b border-slate-50">
+                                        <td class="p-3 sticky left-0 bg-white">
+                                            <a href="{{ route('crop-cycles.show', $row['cycle']) }}" class="no-underline">
+                                                <p class="text-[11px] font-black uppercase text-slate-800 italic leading-none">{{ $row['cycle']->crop_name }}</p>
+                                                <p class="text-[8px] text-slate-400 uppercase mt-0.5">{{ $row['cycle']->plot?->name }}</p>
+                                            </a>
+                                        </td>
+                                        @for($m = 1; $m <= 12; $m++)
+                                            @php $cell = $row['months'][$m]; @endphp
+                                            <td class="p-1 text-center">
+                                                @if($cell['planting'])
+                                                    <div class="h-6 bg-green-600 rounded-sm flex items-center justify-center" title="Semis"><i class="fa-solid fa-seedling text-white text-[8px]"></i></div>
+                                                @elseif($cell['harvest'])
+                                                    <div class="h-6 bg-amber-500 rounded-sm flex items-center justify-center" title="Récolte"><i class="fa-solid fa-wheat-awn text-white text-[8px]"></i></div>
+                                                @elseif($cell['occupied'])
+                                                    <div class="h-6 bg-green-200 rounded-sm"></div>
+                                                @else
+                                                    <div class="h-6"></div>
+                                                @endif
+                                            </td>
+                                        @endfor
+                                    </tr>
+                                @empty
+                                    <tr><td colspan="13" class="p-16 text-center text-slate-300 text-[10px] font-black uppercase italic">{{ __("Aucun cycle sur") }} {{ $year }}</td></tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                @can('cultures.C')
+                <div class="flex justify-end">
+                    <a href="{{ route('crop-cycles.create') }}" class="bg-slate-900 text-white px-8 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-green-600 transition-all shadow-2xl italic flex items-center gap-2 no-underline">
+                        <i class="fa-solid fa-plus"></i> {{ __("Nouveau Cycle") }}
+                    </a>
+                </div>
+                @endcan
+
+            {{-- ================================================================ --}}
+            {{-- TAB 3 — CATALOGUE DES CULTURES                                  --}}
+            {{-- ================================================================ --}}
+            @elseif($activeTab === 'catalogue')
+
+                {{-- HEADER ROW avec bouton créer --}}
+                <div class="flex items-center justify-end">
                     @can('cultures.C')
-                    <a href="{{ route('crop-catalogue.create') }}" class="inline-block mt-4 text-green-600 text-[10px] font-black uppercase italic no-underline">{{ __("Ajouter une première culture") }}</a>
+                    <a href="{{ route('crop-catalogue.create') }}" class="bg-slate-900 text-white px-6 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-green-600 transition-all shadow-lg italic flex items-center gap-2 no-underline">
+                        <i class="fa-solid fa-plus"></i> {{ __("Nouvelle culture") }}
+                    </a>
                     @endcan
                 </div>
-            @endforelse
 
-            {{-- ══════════════════════════════════════════════════════════════
-                 ONGLET 4 — MÉTÉO & PLUVIOMÉTRIE
-            ══════════════════════════════════════════════════════════════ --}}
+                {{-- KPI STATS --}}
+                <div class="grid grid-cols-3 gap-4">
+                    <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
+                        <p class="text-[8px] font-black text-green-500 uppercase tracking-widest italic mb-2">{{ __("Cultures") }}</p>
+                        <p class="text-3xl font-black text-slate-900 leading-none">{{ $catalogueStats['species'] }}</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
+                        <p class="text-[8px] font-black text-green-500 uppercase tracking-widest italic mb-2">{{ __("Variétés") }}</p>
+                        <p class="text-3xl font-black text-slate-900 leading-none">{{ $catalogueStats['varieties'] }}</p>
+                    </div>
+                    <div class="bg-slate-900 text-white p-6 rounded-[2rem] shadow-lg">
+                        <p class="text-[8px] font-black text-green-400 uppercase tracking-widest italic mb-2">{{ __("Types") }}</p>
+                        <p class="text-3xl font-black leading-none">{{ $catalogueStats['families'] }}</p>
+                    </div>
+                </div>
+
+                {{-- GROUPED CARDS --}}
+                @forelse($catalogueGrouped as $type => $list)
+                    @php $meta = \App\Models\CropSpecies::TYPES[$type] ?? ['label' => ucfirst($type), 'icon' => 'fa-sprout', 'color' => 'slate']; @endphp
+                    <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm">
+                        <h3 class="text-[11px] font-black uppercase text-slate-700 tracking-widest italic mb-6 flex items-center gap-2">
+                            <i class="fa-solid {{ $meta['icon'] }} text-{{ $meta['color'] }}-500"></i>
+                            {{ $meta['label'] }} <span class="text-slate-300">({{ $list->count() }})</span>
+                        </h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                            @foreach($list as $sp)
+                                <a href="{{ route('crop-catalogue.show', $sp) }}" class="block p-4 bg-slate-50 rounded-[1.5rem] hover:bg-green-50 transition no-underline border border-transparent hover:border-green-200">
+                                    <div class="flex items-start justify-between gap-2">
+                                        <p class="text-[12px] font-black uppercase text-slate-800 italic leading-tight">{{ $sp->name }}</p>
+                                        @if($sp->varieties_count > 0)
+                                            <span class="shrink-0 text-[8px] font-black uppercase bg-{{ $meta['color'] }}-100 text-{{ $meta['color'] }}-700 px-2 py-1 rounded-full">{{ $sp->varieties_count }} var.</span>
+                                        @endif
+                                    </div>
+                                    @if($sp->local_name)<p class="text-[9px] text-slate-400 italic mt-1">🗣 {{ $sp->local_name }}</p>@endif
+                                    @if($sp->family)<p class="text-[9px] text-slate-400 uppercase mt-0.5">{{ $sp->family }}</p>@endif
+                                    <div class="flex flex-wrap gap-x-3 mt-2 text-[9px] text-slate-500 uppercase">
+                                        @if($sp->cycle_label)<span><i class="fa-regular fa-clock"></i> {{ $sp->cycle_label }}</span>@endif
+                                        @if($sp->avg_yield_tha)<span><i class="fa-solid fa-weight-hanging"></i> {{ rtrim(rtrim(number_format($sp->avg_yield_tha, 2, ',', ' '), '0'), ',') }} t/ha</span>@endif
+                                    </div>
+                                </a>
+                            @endforeach
+                        </div>
+                    </div>
+                @empty
+                    <div class="bg-white p-16 rounded-[3rem] border border-slate-100 text-center">
+                        <i class="fa-solid fa-seedling text-5xl text-slate-200 mb-4"></i>
+                        <p class="text-slate-400 text-[11px] font-black uppercase italic">{{ __("Catalogue vide") }}</p>
+                        @can('cultures.C')
+                        <a href="{{ route('crop-catalogue.create') }}" class="inline-block mt-4 text-green-600 text-[10px] font-black uppercase italic no-underline">{{ __("Ajouter une première culture") }}</a>
+                        @endcan
+                    </div>
+                @endforelse
+
+            {{-- ================================================================ --}}
+            {{-- TAB 4 — MÉTÉO                                                   --}}
+            {{-- ================================================================ --}}
             @elseif($activeTab === 'meteo')
 
-            {{-- FILTRES --}}
-            <form method="GET" action="{{ route('cultures.dashboard') }}" class="flex flex-wrap items-end gap-3 bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm">
-                <input type="hidden" name="tab" value="meteo">
-                <div>
-                    <label class="block text-[8px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Mois") }}</label>
-                    <input type="month" name="weatherMonth" value="{{ $weatherMonth }}" class="bg-slate-50 border-none rounded-2xl p-3 font-black text-slate-800 shadow-inner italic text-[11px]">
+                {{-- FILTRES + bouton nouveau relevé --}}
+                <div class="flex flex-wrap items-end justify-between gap-4">
+                    <form method="GET" action="{{ route('cultures.dashboard') }}" class="flex flex-wrap items-end gap-3 bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm">
+                        <input type="hidden" name="tab" value="meteo">
+                        <div>
+                            <label class="block text-[8px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Mois") }}</label>
+                            <input type="month" name="month" value="{{ $weatherMonth }}" class="bg-slate-50 border-none rounded-2xl p-3 font-black text-slate-800 shadow-inner italic text-[11px]">
+                        </div>
+                        <div>
+                            <label class="block text-[8px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Parcelle") }}</label>
+                            <select name="plot_id" class="bg-slate-50 border-none rounded-2xl p-3 font-black text-slate-800 shadow-inner italic text-[11px] cursor-pointer">
+                                <option value="">{{ __("Toutes") }}</option>
+                                @foreach($plots as $p)<option value="{{ $p->id }}" @selected($weatherPlotId == $p->id)>{{ $p->name }}</option>@endforeach
+                            </select>
+                        </div>
+                        <button type="submit" class="bg-slate-900 text-white px-6 py-3 rounded-2xl font-black uppercase italic tracking-widest text-[9px] shadow-lg hover:bg-sky-600 transition-all">{{ __("Afficher") }}</button>
+                    </form>
+                    @can('cultures.C')
+                    <button onclick="document.getElementById('weather-modal').classList.remove('hidden')" class="bg-slate-900 text-white px-8 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-sky-600 transition-all shadow-2xl italic flex items-center gap-2">
+                        <i class="fa-solid fa-plus"></i> {{ __("Nouveau relevé") }}
+                    </button>
+                    @endcan
                 </div>
-                <div>
-                    <label class="block text-[8px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Parcelle") }}</label>
-                    <select name="weatherPlotId" class="bg-slate-50 border-none rounded-2xl p-3 font-black text-slate-800 shadow-inner italic text-[11px] cursor-pointer">
-                        <option value="">{{ __("Toutes") }}</option>
-                        @foreach($plots as $p)<option value="{{ $p->id }}" @selected($weatherPlotId == $p->id)>{{ $p->name }}</option>@endforeach
-                    </select>
-                </div>
-                <button type="submit" class="bg-slate-900 text-white px-6 py-3 rounded-2xl font-black uppercase italic tracking-widest text-[9px] shadow-lg hover:bg-sky-600 transition-all">{{ __("Afficher") }}</button>
-            </form>
 
-            {{-- KPI MÉTÉO --}}
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div class="bg-sky-500 text-white p-6 rounded-[2rem] shadow-lg">
-                    <p class="text-[8px] font-black text-sky-100 uppercase tracking-widest italic mb-2">{{ __("Pluie totale") }}</p>
-                    <p class="text-3xl font-black leading-none">{{ number_format($weatherStats['rainfall_total'], 0, ',', ' ') }} <small class="text-[10px] opacity-60">mm</small></p>
+                {{-- KPI MÉTÉO --}}
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="bg-sky-500 text-white p-6 rounded-[2rem] shadow-lg">
+                        <p class="text-[8px] font-black text-sky-100 uppercase tracking-widest italic mb-2">{{ __("Pluie totale") }}</p>
+                        <p class="text-3xl font-black leading-none">{{ number_format($weatherStats['rainfall_total'], 0, ',', ' ') }} <small class="text-[10px] opacity-60">mm</small></p>
+                    </div>
+                    <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
+                        <p class="text-[8px] font-black text-rose-500 uppercase tracking-widest italic mb-2">{{ __("T° max moy.") }}</p>
+                        <p class="text-3xl font-black text-slate-900 leading-none">{{ $weatherStats['t_max_avg'] }}<small class="text-[10px] opacity-40">°C</small></p>
+                    </div>
+                    <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
+                        <p class="text-[8px] font-black text-sky-500 uppercase tracking-widest italic mb-2">{{ __("Pluie moy./relevé") }}</p>
+                        <p class="text-3xl font-black text-slate-900 leading-none">{{ $weatherStats['rainfall_avg'] }} <small class="text-[10px] opacity-40">mm</small></p>
+                    </div>
+                    <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
+                        <p class="text-[8px] font-black text-green-500 uppercase tracking-widest italic mb-2">{{ __("Relevés") }}</p>
+                        <p class="text-3xl font-black text-slate-900 leading-none">{{ $weatherStats['count'] }}</p>
+                    </div>
                 </div>
-                <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
-                    <p class="text-[8px] font-black text-rose-500 uppercase tracking-widest italic mb-2">{{ __("T° max moy.") }}</p>
-                    <p class="text-3xl font-black text-slate-900 leading-none">{{ $weatherStats['t_max_avg'] }}<small class="text-[10px] opacity-40">°C</small></p>
-                </div>
-                <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
-                    <p class="text-[8px] font-black text-sky-500 uppercase tracking-widest italic mb-2">{{ __("Pluie moy./relevé") }}</p>
-                    <p class="text-3xl font-black text-slate-900 leading-none">{{ $weatherStats['rainfall_avg'] }} <small class="text-[10px] opacity-40">mm</small></p>
-                </div>
-                <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
-                    <p class="text-[8px] font-black text-green-500 uppercase tracking-widest italic mb-2">{{ __("Relevés") }}</p>
-                    <p class="text-3xl font-black text-slate-900 leading-none">{{ $weatherStats['count'] }}</p>
-                </div>
-            </div>
 
-            {{-- TABLEAU MÉTÉO --}}
-            <div class="bg-white rounded-[3rem] border border-slate-100 shadow-sm overflow-hidden">
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left">
-                        <thead>
-                            <tr class="text-[8px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
-                                <th class="p-4">{{ __("Date") }}</th>
-                                <th class="p-4">{{ __("Parcelle") }}</th>
-                                <th class="p-4 text-right">{{ __("T° min") }}</th>
-                                <th class="p-4 text-right">{{ __("T° max") }}</th>
-                                <th class="p-4 text-right">{{ __("Pluie") }}</th>
-                                <th class="p-4 text-right">{{ __("Humidité") }}</th>
-                                <th class="p-4 text-right">{{ __("Vent") }}</th>
-                                <th class="p-4 text-right">{{ __("Soleil") }}</th>
-                                @can('cultures.S')<th class="p-4"></th>@endcan
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @forelse($weatherReadings->sortByDesc('reading_date') as $r)
-                                <tr class="border-b border-slate-50 text-[11px] text-slate-700">
-                                    <td class="p-4 font-black">{{ $r->reading_date?->format('d/m/Y') }}</td>
-                                    <td class="p-4 text-slate-400">{{ $r->plot?->name ?? '—' }}</td>
-                                    <td class="p-4 text-right text-sky-600">{{ $r->temperature_min !== null ? number_format($r->temperature_min, 1, ',', ' ').'°' : '—' }}</td>
-                                    <td class="p-4 text-right text-rose-600">{{ $r->temperature_max !== null ? number_format($r->temperature_max, 1, ',', ' ').'°' : '—' }}</td>
-                                    <td class="p-4 text-right font-black text-sky-700">{{ $r->rainfall_mm > 0 ? number_format($r->rainfall_mm, 1, ',', ' ').' mm' : '—' }}</td>
-                                    <td class="p-4 text-right">{{ $r->humidity_pct !== null ? round($r->humidity_pct).'%' : '—' }}</td>
-                                    <td class="p-4 text-right">{{ $r->wind_kmh !== null ? round($r->wind_kmh).' km/h' : '—' }}</td>
-                                    <td class="p-4 text-right">{{ $r->sunshine_h !== null ? number_format($r->sunshine_h, 1, ',', ' ').'h' : '—' }}</td>
-                                    @can('cultures.S')
-                                    <td class="p-4 text-right">
-                                        <form action="{{ route('weather.destroy', $r) }}" method="POST" onsubmit="return confirm('Supprimer ce relevé ?')">
-                                            @csrf @method('DELETE')
-                                            <button class="text-rose-300 hover:text-rose-600"><i class="fa-solid fa-trash text-xs"></i></button>
-                                        </form>
-                                    </td>
-                                    @endcan
+                {{-- TABLEAU MÉTÉO --}}
+                <div class="bg-white rounded-[3rem] border border-slate-100 shadow-sm overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead>
+                                <tr class="text-[8px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
+                                    <th class="p-4">{{ __("Date") }}</th>
+                                    <th class="p-4">{{ __("Parcelle") }}</th>
+                                    <th class="p-4 text-right">{{ __("T° min") }}</th>
+                                    <th class="p-4 text-right">{{ __("T° max") }}</th>
+                                    <th class="p-4 text-right">{{ __("Pluie") }}</th>
+                                    <th class="p-4 text-right">{{ __("Humidité") }}</th>
+                                    <th class="p-4 text-right">{{ __("Vent") }}</th>
+                                    <th class="p-4 text-right">{{ __("Soleil") }}</th>
+                                    @can('cultures.S')<th class="p-4"></th>@endcan
                                 </tr>
-                            @empty
-                                <tr><td colspan="9" class="p-16 text-center text-slate-300 text-[10px] font-black uppercase italic">{{ __("Aucun relevé pour ce mois") }}</td></tr>
-                            @endforelse
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                @forelse($weatherReadings as $r)
+                                    <tr class="border-b border-slate-50 text-[11px] text-slate-700">
+                                        <td class="p-4 font-black">{{ $r->reading_date?->format('d/m/Y') }}</td>
+                                        <td class="p-4 text-slate-400">{{ $r->plot?->name ?? '—' }}</td>
+                                        <td class="p-4 text-right text-sky-600">{{ $r->temperature_min !== null ? number_format($r->temperature_min, 1, ',', ' ').'°' : '—' }}</td>
+                                        <td class="p-4 text-right text-rose-600">{{ $r->temperature_max !== null ? number_format($r->temperature_max, 1, ',', ' ').'°' : '—' }}</td>
+                                        <td class="p-4 text-right font-black text-sky-700">{{ $r->rainfall_mm > 0 ? number_format($r->rainfall_mm, 1, ',', ' ').' mm' : '—' }}</td>
+                                        <td class="p-4 text-right">{{ $r->humidity_pct !== null ? round($r->humidity_pct).'%' : '—' }}</td>
+                                        <td class="p-4 text-right">{{ $r->wind_kmh !== null ? round($r->wind_kmh).' km/h' : '—' }}</td>
+                                        <td class="p-4 text-right">{{ $r->sunshine_h !== null ? number_format($r->sunshine_h, 1, ',', ' ').'h' : '—' }}</td>
+                                        @can('cultures.S')
+                                        <td class="p-4 text-right">
+                                            <form action="{{ route('weather.destroy', $r) }}" method="POST" onsubmit="return confirm('Supprimer ce relevé ?')">
+                                                @csrf @method('DELETE')
+                                                <button class="text-rose-300 hover:text-rose-600"><i class="fa-solid fa-trash text-xs"></i></button>
+                                            </form>
+                                        </td>
+                                        @endcan
+                                    </tr>
+                                @empty
+                                    <tr><td colspan="9" class="p-16 text-center text-slate-300 text-[10px] font-black uppercase italic">{{ __("Aucun relevé pour ce mois") }}</td></tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
-            </div>
 
             @endif
+
         </div>
     </div>
 
-    {{-- MODAL NOUVEAU RELEVÉ MÉTÉO --}}
+    {{-- ================================================================ --}}
+    {{-- MODAL NOUVEAU RELEVÉ MÉTÉO (rendu sur la page meteo uniquement)  --}}
+    {{-- ================================================================ --}}
+    @if($activeTab === 'meteo')
     @can('cultures.C')
     <div id="weather-modal" class="hidden fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-[3rem] p-8 max-w-2xl w-full shadow-2xl italic">
@@ -442,7 +439,6 @@
             </div>
             <form action="{{ route('weather.store') }}" method="POST" class="grid grid-cols-2 md:grid-cols-3 gap-4">
                 @csrf
-                <input type="hidden" name="_redirect_tab" value="meteo">
                 <div class="col-span-2 md:col-span-1">
                     <label class="block text-[8px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Date *") }}</label>
                     <input type="date" name="reading_date" value="{{ now()->toDateString() }}" required class="w-full bg-slate-50 border-none rounded-2xl p-3 font-black text-slate-800 shadow-inner italic text-[11px]">
@@ -451,7 +447,7 @@
                     <label class="block text-[8px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Parcelle") }}</label>
                     <select name="plot_id" class="w-full bg-slate-50 border-none rounded-2xl p-3 font-black text-slate-800 shadow-inner italic text-[11px] cursor-pointer">
                         <option value="">{{ __("-- Ferme entière --") }}</option>
-                        @foreach($plots as $p)<option value="{{ $p->id }}">{{ $p->name }}</option>@endforeach
+                        @foreach($plots as $p)<option value="{{ $p->id }}" @selected($weatherPlotId == $p->id)>{{ $p->name }}</option>@endforeach
                     </select>
                 </div>
                 <div>
@@ -489,4 +485,6 @@
         </div>
     </div>
     @endcan
+    @endif
+
 </x-app-layout>
