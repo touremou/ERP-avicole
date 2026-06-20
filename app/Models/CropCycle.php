@@ -105,6 +105,21 @@ class CropCycle extends Model
         return $query->whereIn('status', self::STATUS_ARCHIVED);
     }
 
+    /**
+     * Cycles arrivant à maturité : non archivés, dont la récolte prévue tombe
+     * dans les `$daysAhead` jours (échéances passées comprises — retards).
+     *
+     * whereDate (et non comparaison de chaîne) : `expected_harvest_date` est
+     * castée `date` mais stockée en datetime — une égalité de chaîne ne
+     * matcherait jamais (bug récurrent du projet).
+     */
+    public function scopeDueForHarvest($query, int $daysAhead = 7)
+    {
+        return $query->whereIn('status', [self::STATUS_EN_COURS, self::STATUS_RECOLTE])
+            ->whereNotNull('expected_harvest_date')
+            ->whereDate('expected_harvest_date', '<=', now()->addDays($daysAhead)->toDateString());
+    }
+
     // ─── ÉTAT ───
 
     public function isActive(): bool

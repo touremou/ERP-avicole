@@ -40,6 +40,12 @@ class CultureDashboardController extends Controller
             ->take(8)
             ->get();
 
-        return view('cultures.dashboard', compact('stats', 'activeCycles', 'recentHarvests'));
+        // Calendrier cultural : récoltes prévues sous 14 jours (retards compris).
+        $dueCycles = CropCycle::dueForHarvest(14)
+            ->with('plot:id,name')
+            ->orderBy('expected_harvest_date')
+            ->get();
+
+        return view('cultures.dashboard', compact('stats', 'activeCycles', 'recentHarvests', 'dueCycles'));
     }
 }

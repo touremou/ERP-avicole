@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Batch;
+use App\Models\CropCycle;
 use App\Models\DailyCheck;
 use App\Models\DiscrepancyReport;
 use App\Models\EmployeeLeave;
@@ -593,6 +594,53 @@ class NotificationHub
             'type'    => 'alert_dispatch',
             'title'   => "Réception {$dispatch->dispatch_number}",
         ]);
+    }
+
+    /**
+     * Rappel du calendrier cultural : cycles de culture arrivant à maturité
+     * (récolte prévue dans les `$daysAhead` jours, retards compris).
+     *
+     * Diffusé aux abonnés du résumé quotidien (réutilise l'opt-in existant,
+     * pas de nouvelle préférence à gérer). Renvoie le nombre de cycles signalés.
+     */
+    public function notifyHarvestsDue(int $daysAhead = 7): int
+    {
+        $cycles = CropCycle::query()
+            ->dueForHarvest($daysAhead)
+            ->with('plot:id,name')
+            ->orderBy('expected_harvest_date')
+            ->get();
+
+        if ($cycles->isEmpty()) {
+            return 0;
+        }
+
+        $farmName = config('whatsapp.farm_name', 'AviSmart');
+        $lines = ["🌾 *{$farmName} — Calendrier cultural*", ''];
+
+        foreach ($cycles as $cycle) {
+            $date = $cycle->expected_harvest_date;
+            $today = now()->startOfDay();
+            $diff = (int) $today->diffInDays($date->copy()->startOfDay(), false);
+
+            if ($diff < 0) {
+                $when = "⚠️ en retard de " . abs($diff) . " j";
+            } elseif ($diff === 0) {
+                $when = "📍 aujourd'hui";
+            } else {
+                $when = "dans {$diff} j";
+            }
+
+            $plot = $cycle->plot?->name ? " ({$cycle->plot->name})" : '';
+            $lines[] = "• *{$cycle->crop_name}*{$plot} — récolte prévue {$cycle->expected_harvest_date->format('d/m')} — {$when}";
+        }
+
+        $lines[] = '';
+        $lines[] = "Préparez la main d'œuvre et la logistique de récolte.";
+
+        $this->broadcast('daily_summary', implode("\n", $lines), 'Calendrier cultural');
+
+        return $cycles->count();
     }
 
     /**
