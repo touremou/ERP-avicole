@@ -62,10 +62,11 @@ class Module extends Model
             'dispatches.'       => 'logistique',
 
             // Production Végétale (parcelles, cycles de culture, récoltes)
-            'cultures.'         => 'cultures',
-            'plots.'            => 'cultures',
-            'crop-cycles.'      => 'cultures',
-            'harvests.'         => 'cultures',
+            'cultures.'            => 'cultures',
+            'plots.'               => 'cultures',
+            'crop-cycles.'         => 'cultures',
+            'crop-transformations.' => 'cultures',
+            'harvests.'            => 'cultures',
 
             // Provenderie
             'provenderie.'      => 'provenderie',

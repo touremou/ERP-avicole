@@ -50,7 +50,8 @@ use App\Http\Controllers\{
     PwaController,
     CultureDashboardController,
     PlotController,
-    CropCycleController
+    CropCycleController,
+    CropTransformationController
 };
 
 Route::redirect('/', '/login');
@@ -230,6 +231,13 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{cropCycle}', 'show')->name('show')->where('cropCycle', '[0-9]+')->middleware('can:L');
         Route::put('/{cropCycle}', 'update')->name('update')->middleware('can:M');
         Route::post('/{cropCycle}/harvests', 'storeHarvest')->name('harvests.store')->middleware('can:C');
+    });
+
+    Route::prefix('cultures/transformations')->name('crop-transformations.')->controller(CropTransformationController::class)->group(function () {
+        Route::get('/', 'index')->name('index')->middleware('can:L');
+        Route::get('/create', 'create')->name('create')->middleware('can:C');
+        Route::post('/', 'store')->name('store')->middleware('can:C');
+        Route::get('/{cropTransformation}', 'show')->name('show')->where('cropTransformation', '[0-9]+')->middleware('can:L');
     });
 
     // ─── COUVOIR & INCUBATION ───

@@ -52,12 +52,13 @@
     <a href="{{ route('incubations.index') }}" class="{{ $linkClass }} {{ request()->routeIs('incubations.*') ? $activeClass : $inactiveClass }}">{{ __("Couvoir") }}</a>
     @endcan
 
-@elseif(request()->routeIs(['cultures.*', 'plots.*', 'crop-cycles.*']))
+@elseif(request()->routeIs(['cultures.*', 'plots.*', 'crop-cycles.*', 'crop-transformations.*']))
     <span class="{{ $sectionClass }}"><i class="fa-solid fa-seedling text-green-600 mr-1"></i> {{ __("Production Végétale") }}</span>
     @can('cultures.L')
     <a href="{{ route('cultures.dashboard') }}" class="{{ $linkClass }} {{ request()->routeIs('cultures.dashboard') ? $activeClass : $inactiveClass }}">{{ __("Pilotage") }}</a>
     <a href="{{ route('plots.index') }}" class="{{ $linkClass }} {{ request()->routeIs('plots.*') ? $activeClass : $inactiveClass }}">{{ __("Parcelles") }}</a>
     <a href="{{ route('crop-cycles.index') }}" class="{{ $linkClass }} {{ request()->routeIs('crop-cycles.*') ? $activeClass : $inactiveClass }}">{{ __("Cycles") }}</a>
+    <a href="{{ route('crop-transformations.index') }}" class="{{ $linkClass }} {{ request()->routeIs('crop-transformations.*') ? $activeClass : $inactiveClass }}">{{ __("Transformation") }}</a>
     @endcan
 
 @elseif(request()->routeIs(['provenderie.*', 'raw-materials.*', 'formulas.*', 'production.*', 'machines.*']))
