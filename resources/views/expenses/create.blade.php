@@ -25,7 +25,7 @@
                 <i class="fa-solid fa-wifi mr-2"></i> {{ __("Mode hors-ligne : la dépense sera enregistrée localement puis synchronisée au retour du réseau.") }}
             </div>
 
-            <form id="expense-form" method="POST" action="{{ route('expenses.store') }}">
+            <form id="expense-form" method="POST" action="{{ route('expenses.store') }}" enctype="multipart/form-data">
                 @csrf
 
                 {{-- DÉPENSE --}}
@@ -103,6 +103,17 @@
                         <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Notes") }}</label>
                         <textarea name="notes" rows="2" placeholder="{{ __("Justificatif, référence reçu, contexte...") }}"
                             class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-bold shadow-inner outline-none">{{ old('notes') }}</textarea>
+                    </div>
+
+                    {{-- JUSTIFICATIF (facture, reçu, note de frais) --}}
+                    <div class="space-y-2 mt-6">
+                        <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Justificatif (facture, reçu)") }}</label>
+                        <div class="p-6 border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/50 text-center group hover:border-rose-400 transition-all">
+                            <i class="fa-solid fa-paperclip text-slate-300 text-xl mb-3 group-hover:text-rose-500 transition-colors"></i>
+                            <input type="file" name="justificatif" accept=".pdf,.jpg,.jpeg,.png"
+                                class="block w-full text-[10px] text-slate-500 file:bg-rose-500 file:text-white file:rounded-full file:border-0 file:px-5 file:py-2 file:font-black file:uppercase file:mr-4 file:cursor-pointer cursor-pointer">
+                            <p class="text-[8px] text-slate-400 mt-3 italic uppercase tracking-widest">{{ __("PDF ou image · 5 Mo max · (en ligne uniquement)") }}</p>
+                        </div>
                     </div>
                 </div>
 

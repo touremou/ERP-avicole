@@ -12,6 +12,7 @@ use App\Models\Expense;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * ExpenseController — Registre des dépenses (module: depenses).
@@ -82,7 +83,7 @@ class ExpenseController extends Controller
 
     public function store(StoreExpenseRequest $request, CreateExpense $action)
     {
-        $expense = $action->execute($request->validated());
+        $expense = $action->execute($request->validated(), $request->file('justificatif'));
 
         return redirect()->route('expenses.index')
             ->with('success', "Dépense {$expense->reference} enregistrée (en attente de validation).");
@@ -123,9 +124,41 @@ class ExpenseController extends Controller
             return back()->with('error', 'Seule une dépense en attente peut être modifiée.');
         }
 
-        $expense->update($request->validated());
+        $data = $request->validated();
+
+        // Remplacement du justificatif : on purge l'ancien fichier pour ne pas
+        // laisser d'orphelins sur le disque (même garde-fou que UpdateEmployee).
+        if ($request->hasFile('justificatif')) {
+            if ($expense->justificatif_path && Storage::disk('public')->exists($expense->justificatif_path)) {
+                Storage::disk('public')->delete($expense->justificatif_path);
+            }
+            $data['justificatif_path'] = $request->file('justificatif')->store('expenses/justificatifs', 'public');
+        }
+
+        $expense->update($data);
 
         return redirect()->route('expenses.show', $expense)->with('success', 'Dépense mise à jour.');
+    }
+
+    /**
+     * Télécharge le justificatif d'une dépense (facture, reçu, note de frais).
+     */
+    public function downloadJustificatif(Expense $expense)
+    {
+        if (Gate::denies('depenses.L')) {
+            return back()->with('error', 'Action non autorisée.');
+        }
+
+        if (! $expense->justificatif_path || ! Storage::disk('public')->exists($expense->justificatif_path)) {
+            return back()->with('error', 'Aucun justificatif disponible pour cette dépense.');
+        }
+
+        $extension = pathinfo($expense->justificatif_path, PATHINFO_EXTENSION);
+
+        return Storage::disk('public')->download(
+            $expense->justificatif_path,
+            "justificatif-{$expense->reference}.{$extension}"
+        );
     }
 
     public function approve(Expense $expense, ApproveExpense $action)

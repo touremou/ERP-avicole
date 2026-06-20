@@ -390,6 +390,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/create', 'create')->name('create')->middleware('can:C');
         Route::post('/', 'store')->name('store')->middleware('can:C');
         Route::get('/{expense}', 'show')->name('show')->middleware('can:L');
+        Route::get('/{expense}/justificatif', 'downloadJustificatif')->name('justificatif')->middleware('can:L');
         Route::get('/{expense}/edit', 'edit')->name('edit')->middleware('can:M');
         Route::put('/{expense}', 'update')->name('update')->middleware('can:M');
         Route::put('/{expense}/approve', 'approve')->name('approve')->middleware('can:M');

@@ -20,7 +20,7 @@
                 </div>
             @endif
 
-            <form method="POST" action="{{ route('expenses.update', $expense) }}">
+            <form method="POST" action="{{ route('expenses.update', $expense) }}" enctype="multipart/form-data">
                 @csrf
                 @method('PUT')
 
@@ -96,6 +96,25 @@
                         <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Notes") }}</label>
                         <textarea name="notes" rows="2"
                             class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-bold shadow-inner outline-none">{{ old('notes', $expense->notes) }}</textarea>
+                    </div>
+
+                    {{-- JUSTIFICATIF (remplacement) --}}
+                    <div class="space-y-2 mt-6">
+                        <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Justificatif (facture, reçu)") }}</label>
+                        @if($expense->justificatif_path)
+                            <div class="mb-3">
+                                <a href="{{ route('expenses.justificatif', $expense) }}" target="_blank"
+                                   class="inline-flex items-center gap-2 text-[10px] font-black text-blue-600 uppercase tracking-widest hover:text-blue-800 no-underline">
+                                    <i class="fa-solid fa-file-arrow-down"></i> {{ __("Justificatif actuel") }}
+                                </a>
+                            </div>
+                        @endif
+                        <div class="p-6 border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/50 text-center group hover:border-rose-400 transition-all">
+                            <i class="fa-solid fa-paperclip text-slate-300 text-xl mb-3 group-hover:text-rose-500 transition-colors"></i>
+                            <input type="file" name="justificatif" accept=".pdf,.jpg,.jpeg,.png"
+                                class="block w-full text-[10px] text-slate-500 file:bg-rose-500 file:text-white file:rounded-full file:border-0 file:px-5 file:py-2 file:font-black file:uppercase file:mr-4 file:cursor-pointer cursor-pointer">
+                            <p class="text-[8px] text-slate-400 mt-3 italic uppercase tracking-widest">{{ $expense->justificatif_path ? __("Choisir un fichier remplace le justificatif actuel") : __("PDF ou image · 5 Mo max") }}</p>
+                        </div>
                     </div>
                 </div>
 

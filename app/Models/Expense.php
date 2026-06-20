@@ -27,7 +27,7 @@ class Expense extends Model
         'uuid', 'is_synced', 'last_sync_at',
         'reference', 'farm_id', 'batch_id', 'user_id',
         'category', 'label', 'amount', 'expense_date', 'payment_method',
-        'status', 'supplier_name', 'notes',
+        'status', 'supplier_name', 'notes', 'justificatif_path',
         'approved_by', 'approved_at',
     ];
 

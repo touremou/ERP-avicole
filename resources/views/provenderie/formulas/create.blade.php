@@ -205,8 +205,15 @@
          pouvait traiter le x-data avant que le script inline n'ait défini la
          fonction → composant non initialisé, dashboard figé à 0. --}}
     <script>
-        document.addEventListener('alpine:init', () => {
-            Alpine.data('formulaBuilder', () => ({
+        // Fabrique du composant. On l'enregistre de façon défensive :
+        //  • si Alpine est déjà présent (module Vite déjà exécuté, alpine:init
+        //    potentiellement déjà émis), on enregistre IMMÉDIATEMENT ;
+        //  • sinon on attend l'évènement alpine:init.
+        // Cela couvre tous les ordres de chargement possibles et garantit que
+        // « formulaBuilder » est connu avant qu'Alpine ne traite le x-data —
+        // sinon le dashboard de dosage reste figé à 0 (bug terrain signalé).
+        const registerFormulaBuilder = () => {
+            window.Alpine.data('formulaBuilder', () => ({
                 formulaName: '',
                 speciesId: '',
                 productionTypeId: '',
@@ -284,6 +291,12 @@
                     this.$el.querySelector('#formula_form').submit();
                 }
             }));
-        });
+        };
+
+        if (window.Alpine) {
+            registerFormulaBuilder();
+        } else {
+            document.addEventListener('alpine:init', registerFormulaBuilder);
+        }
     </script>
 </x-app-layout>

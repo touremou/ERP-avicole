@@ -136,23 +136,44 @@ class TaskSchedulerService
         // Garde-fou disponibilité : on écarte d'emblée les employés en congé
         // approuvé à cette date — on n'auto-assigne jamais une tâche à un absent.
         $available = $employees->reject(fn ($emp) => $emp->isOnLeaveOn($date))->values();
+        if ($available->isEmpty()) return null;
 
+        // 1. GARDIEN DÉDIÉ DU BÂTIMENT (configuration opérationnelle explicite) :
+        //    un bâtiment confié à un agent (assigned_building_id) reste sous sa
+        //    responsabilité, quelle que soit sa charge — choix d'organisation
+        //    assumé, distinct de la répartition automatique ci-dessous.
         if (Schema::hasColumn('employees', 'assigned_building_id')) {
-            $assigned = $available->where('assigned_building_id', $building->id)->first();
-            if ($assigned) return $assigned;
+            $keeper = $available->firstWhere('assigned_building_id', $building->id);
+            if ($keeper) return $keeper;
         }
 
+        // 2. RÉPARTITION DE CHARGE (équité) : à défaut de gardien dédié, on
+        //    retient l'employé le MOINS chargé ce jour-là. À charge égale, on
+        //    préfère le responsable du lot présent dans le bâtiment (continuité
+        //    du suivi), puis l'ordre stable.
+        //
+        //    Le tri par charge est PRIORITAIRE sur la responsabilité du lot :
+        //    sans cela, toutes les tâches retombaient sur le responsable des
+        //    lots (souvent l'agent qui a créé les bandes), en ignorant la
+        //    disponibilité des autres employés — exactement le défaut signalé.
         $batch = Batch::where('building_id', $building->id)->active()->live()->first();
-        if ($batch && $batch->employee_id) {
-            $emp = $available->where('id', $batch->employee_id)->first();
-            if ($emp) return $emp;
-        }
+        $batchEmployeeId = $batch?->employee_id;
 
-        return $available->sortBy(fn($emp) =>
-            TaskAssignment::where('employee_id', $emp->id)
-                ->where('scheduled_date', $date->toDateString())
-                ->count()
-        )->first();
+        return $available
+            ->sortBy(function ($emp) use ($date, $batchEmployeeId) {
+                // whereDate (et non une égalité de chaîne) : la colonne est
+                // castée en datetime (« …00:00:00 »), une comparaison brute à
+                // « Y-m-d » ne matchait jamais → la charge ressortait toujours à
+                // 0 et la répartition était inopérante.
+                $load = TaskAssignment::whereDate('scheduled_date', $date->toDateString())
+                    ->where('employee_id', $emp->id)
+                    ->count();
+
+                // Clé composite : charge du jour ×10 (critère principal) + bonus
+                // de continuité (0 pour le responsable du lot, 1 sinon).
+                return $load * 10 + ($emp->id === $batchEmployeeId ? 0 : 1);
+            })
+            ->first();
     }
 
     /**

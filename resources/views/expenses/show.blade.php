@@ -106,6 +106,18 @@
                     <dd class="text-xs font-bold text-slate-600 whitespace-pre-line">{{ $expense->notes }}</dd>
                 </div>
                 @endif
+
+                @if($expense->justificatif_path)
+                <div class="mt-6 pt-6 border-t border-slate-100">
+                    <dt class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-2">{{ __("Justificatif") }}</dt>
+                    <dd>
+                        <a href="{{ route('expenses.justificatif', $expense) }}" target="_blank"
+                           class="inline-flex items-center gap-2 bg-slate-900 text-white px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-600 transition-all no-underline italic">
+                            <i class="fa-solid fa-file-arrow-down"></i> {{ __("Télécharger le justificatif") }}
+                        </a>
+                    </dd>
+                </div>
+                @endif
             </div>
 
             @can('depenses.S')

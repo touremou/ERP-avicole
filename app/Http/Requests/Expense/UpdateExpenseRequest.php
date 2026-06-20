@@ -25,6 +25,7 @@ class UpdateExpenseRequest extends FormRequest
             'batch_id'       => 'nullable|integer|exists:batches,id',
             'supplier_name'  => 'nullable|string|max:255',
             'notes'          => 'nullable|string|max:2000',
+            'justificatif'   => 'nullable|file|mimes:pdf,jpeg,jpg,png|max:5120',
         ];
     }
 
@@ -35,6 +36,8 @@ class UpdateExpenseRequest extends FormRequest
             'amount.min'                   => 'Le montant doit être supérieur à zéro.',
             'expense_date.before_or_equal' => 'La date de dépense ne peut pas être dans le futur.',
             'payment_method.in'            => 'Mode de paiement invalide.',
+            'justificatif.mimes'           => 'Le justificatif doit être un PDF ou une image (JPG, PNG).',
+            'justificatif.max'             => 'Le justificatif ne doit pas dépasser 5 Mo.',
         ];
     }
 }
