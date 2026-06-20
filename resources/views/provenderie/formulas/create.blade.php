@@ -16,7 +16,7 @@
         </div>
     </x-slot>
 
-    <div class="py-12 italic font-bold" x-data="formulaBuilder">
+    <div class="py-12 italic font-bold" x-data="formulaBuilderData()">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             
             @if ($errors->any())
@@ -199,21 +199,14 @@
         </div>
     </div>
 
-    {{-- Enregistrement via alpine:init + Alpine.data : garantit que le composant
-         est défini AVANT qu'Alpine ne parcoure le DOM. Avec une fonction globale
-         + x-data="formulaBuilder()", Alpine (chargé en module Vite différé)
-         pouvait traiter le x-data avant que le script inline n'ait défini la
-         fonction → composant non initialisé, dashboard figé à 0. --}}
     <script>
-        // Fabrique du composant. On l'enregistre de façon défensive :
-        //  • si Alpine est déjà présent (module Vite déjà exécuté, alpine:init
-        //    potentiellement déjà émis), on enregistre IMMÉDIATEMENT ;
-        //  • sinon on attend l'évènement alpine:init.
-        // Cela couvre tous les ordres de chargement possibles et garantit que
-        // « formulaBuilder » est connu avant qu'Alpine ne traite le x-data —
-        // sinon le dashboard de dosage reste figé à 0 (bug terrain signalé).
-        const registerFormulaBuilder = () => {
-            window.Alpine.data('formulaBuilder', () => ({
+        // Composant défini comme fonction globale ordinaire, sans Alpine.data().
+        // Alpine évalue x-data="formulaBuilderData()" comme expression JS au moment
+        // où il traite le DOM — après que ce script inline ait déjà été exécuté
+        // (les scripts inline s'exécutent avant les modules Vite qui sont différés).
+        // Aucun problème de timing ni de course avec alpine:init.
+        window.formulaBuilderData = function () {
+            return {
                 formulaName: '',
                 speciesId: '',
                 productionTypeId: '',
@@ -228,22 +221,15 @@
                 realPB: 0,
                 costPerKg: 0,
 
-                // Amorçage du dashboard au chargement : indispensable pour que les
-                // indicateurs reflètent immédiatement les valeurs pré-remplies
-                // (réaffichage après erreur de validation via old()) plutôt que de
-                // rester figés à 0 jusqu'à la première frappe.
                 init() {
                     this.$nextTick(() => this.recalculate());
                 },
 
-                // Sélection espèce / type de production → pilote species_id,
-                // production_type_id, target_type (slug) et le nom proposé.
                 onPtChange(e) {
                     const opt = e.target.options[e.target.selectedIndex];
                     this.speciesId = opt?.dataset?.speciesId || '';
                     this.productionTypeId = e.target.value || '';
                     this.ptSlug = opt?.dataset?.slug || '';
-                    // target_type = slug du type de production (sauf si une norme est choisie).
                     if (!this.selectedNormId) this.targetType = this.ptSlug;
                     if (opt?.dataset?.label) this.formulaName = opt.dataset.label;
                     this.recalculate();
@@ -253,34 +239,31 @@
                     const opt = e.target.options[e.target.selectedIndex];
                     this.targetEM = parseFloat(opt?.dataset?.em) || 0;
                     this.targetPB = parseFloat(opt?.dataset?.pb) || 0;
-                    // Si une norme est choisie, target_type = sa clé (animal_type)
-                    // pour conserver l'appariement nutritionnel (volaille). Sinon,
-                    // on retombe sur le slug du type de production.
                     this.targetType = this.selectedNormId || this.ptSlug;
-                    // Rafraîchit les jauges EM/PB relatives à la nouvelle cible.
                     this.recalculate();
                 },
 
                 recalculate() {
-                    const inputs = this.$el.querySelectorAll('.pct-input');
+                    // Utilise document.querySelectorAll pour ne pas dépendre de $el
+                    const inputs = document.querySelectorAll('.pct-input');
                     let totalPct = 0, totalCost = 0, totalEM = 0, totalPB = 0;
 
-                    inputs.forEach(input => {
-                        const pct = parseFloat(input.value) || 0;
-                        const cost = parseFloat(input.dataset.cost) || 0;
-                        const em = parseFloat(input.dataset.em) || 0;
-                        const pb = parseFloat(input.dataset.pb) || 0;
+                    inputs.forEach(function (input) {
+                        const pct  = parseFloat(input.value)          || 0;
+                        const cost = parseFloat(input.dataset.cost)    || 0;
+                        const em   = parseFloat(input.dataset.em)      || 0;
+                        const pb   = parseFloat(input.dataset.pb)      || 0;
 
-                        totalPct += pct;
+                        totalPct  += pct;
                         totalCost += (pct / 100) * cost;
-                        totalEM += (pct / 100) * em;
-                        totalPB += (pct / 100) * pb;
+                        totalEM   += (pct / 100) * em;
+                        totalPB   += (pct / 100) * pb;
                     });
 
                     this.totalPercentage = totalPct;
-                    this.realEM = totalEM;
-                    this.realPB = totalPB;
-                    this.costPerKg = Math.round(totalCost);
+                    this.realEM          = totalEM;
+                    this.realPB          = totalPB;
+                    this.costPerKg       = Math.round(totalCost);
                 },
 
                 submitForm() {
@@ -288,15 +271,27 @@
                         alert({{ Js::from(__('Le total des pourcentages doit être de 100%. Actuellement : ')) }} + this.totalPercentage.toFixed(2) + '%');
                         return;
                     }
-                    this.$el.querySelector('#formula_form').submit();
+                    document.getElementById('formula_form').submit();
                 }
-            }));
+            };
         };
 
-        if (window.Alpine) {
-            registerFormulaBuilder();
-        } else {
-            document.addEventListener('alpine:init', registerFormulaBuilder);
-        }
+        // Fallback non-Alpine : si Alpine n'est pas chargé, on branche les inputs
+        // en vanilla JS pour que l'indicateur reste fonctionnel.
+        document.addEventListener('DOMContentLoaded', function () {
+            // Si Alpine a déjà pris la main, ne rien faire.
+            if (document.querySelector('[x-data]')?._x_dataStack) return;
+
+            document.querySelectorAll('.pct-input').forEach(function (input) {
+                input.addEventListener('input', function () {
+                    let totalPct = 0;
+                    document.querySelectorAll('.pct-input').forEach(function (i) {
+                        totalPct += parseFloat(i.value) || 0;
+                    });
+                    const el = document.getElementById('total-pct-display');
+                    if (el) el.textContent = totalPct.toFixed(2) + '%';
+                });
+            });
+        });
     </script>
 </x-app-layout>
