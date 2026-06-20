@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Batch;
+use App\Models\CropCycle;
+use App\Models\CropInput;
 use App\Models\HealthCheck;
 use App\Models\DailyCheck;
 use App\Models\SaleItem;
@@ -163,6 +165,17 @@ class ReportController extends Controller
         if ($milkRevenue > 0) {
             $revenue['Lait (collecte valorisée)'] = ($revenue['Lait (collecte valorisée)'] ?? 0) + $milkRevenue;
         }
+
+        // Production végétale : revenus des cycles CLÔTURÉS sur la période
+        // (reconnaissance à la clôture, cohérente avec l'imputation de leurs
+        // coûts ci-dessous — évite tout chevauchement de période).
+        $closedCyclesQuery = CropCycle::whereBetween('closing_date', [$from, $to]);
+        $closedCycleIds = (clone $closedCyclesQuery)->pluck('id');
+        $cropRevenue = (float) (clone $closedCyclesQuery)->sum('total_revenue');
+        if ($cropRevenue > 0) {
+            $revenue['Production végétale'] = ($revenue['Production végétale'] ?? 0) + $cropRevenue;
+        }
+
         $totalRevenue = array_sum($revenue);
 
         // ─── CHARGES ───
@@ -198,6 +211,18 @@ class ReportController extends Controller
             $label = 'Dépenses : ' . (Expense::CATEGORIES[$category] ?? ucfirst((string) $category));
             $costs[$label] = ($costs[$label] ?? 0) + (float) $total;
         }
+
+        // Coûts des cycles végétaux clôturés sur la période : forfaits
+        // (acquisition + additionnels) + intrants itémisés. Cohérent avec la
+        // marge nette du cycle (cf. CropCycle::getNetMarginAttribute).
+        $cropDirectCost = (float) (clone $closedCyclesQuery)
+            ->sum(DB::raw('total_acquisition_cost + additional_costs'));
+        $cropInputsCost = (float) CropInput::whereIn('crop_cycle_id', $closedCycleIds)->sum('total_cost');
+        $cropCost = $cropDirectCost + $cropInputsCost;
+        if ($cropCost > 0) {
+            $costs['Production végétale (cultures)'] = $cropCost;
+        }
+
         $totalCosts = array_sum($costs);
         $netResult  = $totalRevenue - $totalCosts;
         $marginPct  = $totalRevenue > 0 ? round(($netResult / $totalRevenue) * 100, 1) : 0;
@@ -205,10 +230,44 @@ class ReportController extends Controller
         // ─── MARGE DIRECTE PAR ESPÈCE (items traçables uniquement) ───
         $speciesMargin = $this->speciesDirectMargin($from, $to);
 
+        // ─── MARGE DIRECTE PAR CULTURE (cycles clôturés sur la période) ───
+        $cropMargin = $this->cropDirectMargin($from, $to);
+
         return compact(
             'from', 'to', 'revenue', 'totalRevenue',
-            'costs', 'totalCosts', 'netResult', 'marginPct', 'speciesMargin'
+            'costs', 'totalCosts', 'netResult', 'marginPct', 'speciesMargin', 'cropMargin'
         );
+    }
+
+    /**
+     * Marge directe par culture : agrège les cycles végétaux CLÔTURÉS sur la
+     * période par nom de culture (revenus vs coûts forfaitaires + intrants).
+     *
+     * @return array<int, array{crop:string, revenue:float, cost:float, margin:float}>
+     */
+    private function cropDirectMargin(Carbon $from, Carbon $to): array
+    {
+        $cycles = CropCycle::whereBetween('closing_date', [$from, $to])
+            ->with('inputs:id,crop_cycle_id,total_cost')
+            ->get();
+
+        $rows = [];
+        foreach ($cycles as $cycle) {
+            $crop = $cycle->crop_name;
+            $revenue = (float) $cycle->total_revenue;
+            $cost = (float) $cycle->total_acquisition_cost
+                + (float) $cycle->additional_costs
+                + (float) $cycle->inputs->sum('total_cost');
+
+            if (! isset($rows[$crop])) {
+                $rows[$crop] = ['crop' => $crop, 'revenue' => 0.0, 'cost' => 0.0, 'margin' => 0.0];
+            }
+            $rows[$crop]['revenue'] += $revenue;
+            $rows[$crop]['cost']    += $cost;
+            $rows[$crop]['margin']  += $revenue - $cost;
+        }
+
+        return array_values($rows);
     }
 
     /**

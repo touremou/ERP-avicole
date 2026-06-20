@@ -123,6 +123,34 @@
                 @endif
             </div>
 
+            @if(count($cropMargin ?? []))
+            <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm">
+                <h3 class="text-[11px] font-black uppercase text-slate-800 tracking-[0.2em] italic flex items-center mb-2">
+                    <span class="w-2 h-6 bg-green-500 rounded-full mr-3"></span> {{ __("Marge directe par culture") }}
+                </h3>
+                <p class="text-[9px] font-black text-slate-300 uppercase tracking-widest italic mb-6 ml-5">{{ __("Cycles clôturés sur la période · revenus vs coûts (forfaits + intrants)") }}</p>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead>
+                            <tr class="text-[8px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
+                                <th class="pb-3">{{ __("Culture") }}</th><th class="pb-3 text-right">{{ __("Produits") }}</th><th class="pb-3 text-right">{{ __("Coûts directs") }}</th><th class="pb-3 text-right">{{ __("Marge directe") }}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($cropMargin as $row)
+                            <tr class="text-xs font-black border-b border-slate-50">
+                                <td class="py-3 text-slate-800 uppercase">🌱 {{ $row['crop'] }}</td>
+                                <td class="py-3 text-right text-emerald-600">{{ number_format($row['revenue']) }}</td>
+                                <td class="py-3 text-right text-rose-500">{{ number_format($row['cost']) }}</td>
+                                <td class="py-3 text-right {{ $row['margin'] >= 0 ? 'text-slate-900' : 'text-rose-600' }}">{{ number_format($row['margin']) }}</td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            @endif
+
             <p class="text-[9px] font-black text-slate-300 uppercase tracking-widest italic text-center">
                 {{ __("Vue trésorerie sur la période — produits = ventes validées + lait collecté valorisé · charges = flux engagés sur la période.") }}
             </p>
