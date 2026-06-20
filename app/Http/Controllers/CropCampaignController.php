@@ -19,9 +19,10 @@ class CropCampaignController extends Controller
 
         $year = (int) $request->get('year', now()->year);
 
+        // total_harvested utilise alors son agrégat SQL (1 requête/campagne) au
+        // lieu de sommer des cycles chargés sans leurs récoltes (N+1 imbriqué).
         $campaigns = CropCampaign::forYear($year)
             ->withCount('cycles')
-            ->with(['cycles:id,campaign_id'])
             ->orderByDesc('start_date')
             ->get();
 

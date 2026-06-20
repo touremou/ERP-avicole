@@ -57,6 +57,7 @@ class CultureDashboardController extends Controller
 
         // Campagne en cours (la plus récente non clôturée).
         $activeCampaign = CropCampaign::where('status', '!=', CropCampaign::STATUS_CLOTUREE)
+            ->withCount('cycles')
             ->orderByDesc('start_date')
             ->first();
 
