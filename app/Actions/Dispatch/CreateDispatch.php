@@ -33,17 +33,18 @@ class CreateDispatch
 
             // ─── 2. CRÉER L'EXPÉDITION ───
             $dispatch = Dispatch::create([
-                'dispatch_number' => sprintf('EXP-%s-%06d', $year, $seq),
-                'sale_id'         => $data['sale_id'] ?? null,
-                'dispatched_by'   => Auth::id(),
-                'vehicle_plate'   => $data['vehicle_plate'] ?? null,
-                'driver_name'     => $data['driver_name'],
-                'driver_phone'    => $data['driver_phone'] ?? null,
-                'dispatch_date'   => $data['dispatch_date'],
-                'dispatch_time'   => $data['dispatch_time'] ?? null,
-                'destination'     => $data['destination'],
-                'status'          => 'expedie',
-                'notes'           => $data['notes'] ?? null,
+                'dispatch_number'      => sprintf('EXP-%s-%06d', $year, $seq),
+                'sale_id'              => $data['sale_id'] ?? null,
+                'dispatched_by'        => Auth::id(),
+                'intended_receiver_id' => $data['intended_receiver_id'] ?? null,
+                'vehicle_plate'        => $data['vehicle_plate'] ?? null,
+                'driver_name'          => $data['driver_name'],
+                'driver_phone'         => $data['driver_phone'] ?? null,
+                'dispatch_date'        => $data['dispatch_date'],
+                'dispatch_time'        => $data['dispatch_time'] ?? null,
+                'destination'          => $data['destination'],
+                'status'               => 'expedie',
+                'notes'                => $data['notes'] ?? null,
             ]);
 
             // ─── 3. CRÉER LES LIGNES ET DÉSTOCKER ───
@@ -64,6 +65,12 @@ class CreateDispatch
             }
 
             Log::info("Expédition {$dispatch->dispatch_number} créée — {$dispatch->destination} — Chauffeur: {$dispatch->driver_name}");
+
+            // Notifier le récepteur désigné qu'une expédition l'attend.
+            if ($dispatch->intended_receiver_id) {
+                rescue(fn () => app(\App\Services\NotificationHub::class)
+                    ->notifyDispatchReceiver($dispatch->fresh('intendedReceiver')));
+            }
 
             return $dispatch->fresh('items');
         });

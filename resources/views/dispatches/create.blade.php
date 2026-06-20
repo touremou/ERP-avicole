@@ -54,6 +54,23 @@
                             <input type="time" name="dispatch_time" value="{{ now()->format('H:i') }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black shadow-inner outline-none">
                         </div>
                     </div>
+
+                    {{-- RÉCEPTEUR DÉSIGNÉ : notifié à l'expédition et habilité à
+                         valider la réception (responsable logistique.M en secours). --}}
+                    <div class="mt-6 space-y-2">
+                        <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">
+                            <i class="fa-solid fa-user-check text-emerald-500 mr-1"></i> {{ __("Récepteur désigné") }}
+                        </label>
+                        <select name="intended_receiver_id" class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black shadow-inner outline-none appearance-none cursor-pointer">
+                            <option value="">— {{ __("Aucun (validation par un responsable logistique)") }} —</option>
+                            @foreach($receivers as $receiver)
+                                <option value="{{ $receiver->user_id }}" {{ (string) old('intended_receiver_id') === (string) $receiver->user_id ? 'selected' : '' }}>
+                                    {{ $receiver->first_name }} {{ $receiver->last_name }}
+                                </option>
+                            @endforeach
+                        </select>
+                        <p class="text-[8px] text-slate-400 ml-2 italic">{{ __("Il sera notifié et pourra valider la réception. Un responsable logistique reste habilité en secours.") }}</p>
+                    </div>
                 </div>
 
                 {{-- MARCHANDISE --}}

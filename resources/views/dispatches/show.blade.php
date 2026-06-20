@@ -13,13 +13,14 @@
                 </div>
             </div>
             @if(!$dispatch->reception && in_array($dispatch->status, ['expedie', 'en_route']))
-                {{-- Réception réservée au responsable logistique (droit M) : séparation
-                     des tâches vis-à-vis de l'expéditeur (droit C). --}}
-                @can('logistique.M')
+                {{-- Réception ouverte au RÉCEPTEUR DÉSIGNÉ ou à un responsable
+                     logistique (droit M) en secours. L'anti-fraude (expéditeur ≠
+                     récepteur) est appliquée à la validation. --}}
+                @if(auth()->user()->can('logistique.M') || $dispatch->intended_receiver_id === auth()->id())
                 <a href="{{ route('dispatches.reception.create', $dispatch) }}" class="bg-emerald-500 text-white px-8 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-2xl italic flex items-center gap-2 no-underline">
                     <i class="fa-solid fa-clipboard-check"></i> {{ __("Saisir la Réception") }}
                 </a>
-                @endcan
+                @endif
             @endif
         </div>
     </x-slot>
@@ -52,6 +53,12 @@
                     <div>
                         <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Expédié par") }}</p>
                         <p class="text-sm font-black text-slate-900">{{ $dispatch->dispatcher->name ?? '—' }}</p>
+                    </div>
+                    <div>
+                        <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Récepteur désigné") }}</p>
+                        <p class="text-sm font-black {{ $dispatch->intended_receiver_id ? 'text-emerald-600' : 'text-slate-400' }}">
+                            {{ $dispatch->intendedReceiver->name ?? __('Non désigné') }}
+                        </p>
                     </div>
                     <div>
                         <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Statut") }}</p>

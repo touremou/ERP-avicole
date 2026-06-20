@@ -414,10 +414,13 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/', 'store')->name('store')->middleware('can:C');
         Route::get('/{dispatch}', 'show')->name('show')->middleware('can:L');
 
-        // Réception (saisie par le magasin)
-        // Séparation des tâches : la réception relève du responsable logistique (M).
-        Route::get('/{dispatch}/reception', 'showReceptionForm')->name('reception.create')->middleware('can:M');
-        Route::post('/{dispatch}/reception', 'storeReception')->name('reception.store')->middleware('can:M');
+        // Réception (saisie par le magasin). L'accès est gouverné DANS le
+        // contrôleur (canReceive) : le récepteur DÉSIGNÉ à l'expédition peut
+        // valider même sans logistique.M, et un responsable logistique.M reste
+        // habilité en secours. L'anti-fraude expéditeur ≠ récepteur est appliquée
+        // dans ValidateReception.
+        Route::get('/{dispatch}/reception', 'showReceptionForm')->name('reception.create');
+        Route::post('/{dispatch}/reception', 'storeReception')->name('reception.store');
     });
 
     // ──────────────────────────────────────────────

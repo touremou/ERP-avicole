@@ -567,6 +567,35 @@ class NotificationHub
     }
 
     /**
+     * Notifie le récepteur désigné d'une expédition qu'une marchandise arrive
+     * et qu'il devra en valider la réception dans l'ERP.
+     */
+    public function notifyDispatchReceiver(\App\Models\Dispatch $dispatch): void
+    {
+        $receiver = $dispatch->intendedReceiver;
+        if (! $receiver?->whatsapp_phone) {
+            return;
+        }
+
+        $date = $dispatch->dispatch_date?->format('d/m/Y') ?? '';
+
+        $message = "📦 *EXPÉDITION À RÉCEPTIONNER*\n\n"
+            . "Réf : *{$dispatch->dispatch_number}*\n"
+            . "Destination : {$dispatch->destination}\n"
+            . "Chauffeur : {$dispatch->driver_name}"
+            . ($dispatch->driver_phone ? " ({$dispatch->driver_phone})" : '') . "\n"
+            . "Départ : {$date}" . ($dispatch->dispatch_time ? " {$dispatch->dispatch_time}" : '') . "\n\n"
+            . "Vous êtes le récepteur désigné. À l'arrivée, validez la réception dans l'ERP "
+            . "(Logistique › Expéditions) pour déclencher le contrôle des écarts.";
+
+        $this->whatsapp->send($receiver->whatsapp_phone, $message, [
+            'user_id' => $receiver->id,
+            'type'    => 'alert_dispatch',
+            'title'   => "Réception {$dispatch->dispatch_number}",
+        ]);
+    }
+
+    /**
      * Alerte anti-fraude (écart détecté).
      */
     public function alertFraud(DiscrepancyReport $report): void
