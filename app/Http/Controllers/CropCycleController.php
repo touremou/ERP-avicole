@@ -2,11 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Crop\RecordCropInput;
 use App\Actions\Crop\RecordHarvest;
 use App\Models\CropCycle;
+use App\Models\CropInput;
 use App\Models\Employee;
 use App\Models\Harvest;
 use App\Models\Plot;
+use App\Models\Provider;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 
@@ -90,12 +93,18 @@ class CropCycleController extends Controller
             return back()->with('error', 'Accès restreint.');
         }
 
-        $cropCycle->load(['plot', 'employee:id,first_name,last_name', 'harvests.employee:id,first_name,last_name']);
+        $cropCycle->load([
+            'plot', 'employee:id,first_name,last_name',
+            'harvests.employee:id,first_name,last_name',
+            'inputs.provider:id,name',
+        ]);
 
         return view('cultures.cycles.show', [
-            'cycle'     => $cropCycle,
-            'qualities' => Harvest::QUALITIES,
-            'employees' => Employee::where('status', 'Actif')->orderBy('first_name')->get(['id', 'first_name', 'last_name']),
+            'cycle'      => $cropCycle,
+            'qualities'  => Harvest::QUALITIES,
+            'inputTypes' => CropInput::TYPES,
+            'employees'  => Employee::where('status', 'Actif')->orderBy('first_name')->get(['id', 'first_name', 'last_name']),
+            'providers'  => Provider::orderBy('name')->get(['id', 'name']),
         ]);
     }
 
@@ -158,5 +167,33 @@ class CropCycleController extends Controller
         $action->execute($cropCycle, $validated);
 
         return back()->with('success', 'Récolte enregistrée.');
+    }
+
+    /**
+     * Saisie d'un intrant itémisé sur le cycle (avec intégration stock optionnelle).
+     */
+    public function storeInput(Request $request, CropCycle $cropCycle, RecordCropInput $action)
+    {
+        if (Gate::denies('cultures.C')) {
+            return back()->with('error', 'Action non autorisée.');
+        }
+
+        $validated = $request->validate([
+            'type'            => 'required|in:' . implode(',', array_keys(CropInput::TYPES)),
+            'name'            => 'required|string|max:255',
+            'quantity'        => 'nullable|numeric|min:0',
+            'unit'            => 'nullable|string|max:20',
+            'unit_cost'       => 'nullable|numeric|min:0',
+            'total_cost'      => 'nullable|numeric|min:0',
+            'input_date'      => 'required|date',
+            'provider_id'     => 'nullable|exists:providers,id',
+            'synced_to_stock' => 'nullable|boolean',
+            'stock_item_name' => 'nullable|string|max:255',
+            'notes'           => 'nullable|string|max:500',
+        ]);
+
+        $action->execute($cropCycle, $validated);
+
+        return back()->with('success', 'Intrant enregistré.');
     }
 }

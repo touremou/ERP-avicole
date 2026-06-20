@@ -88,6 +88,11 @@ class CropCycle extends Model
         return $this->hasMany(Harvest::class);
     }
 
+    public function inputs(): HasMany
+    {
+        return $this->hasMany(CropInput::class);
+    }
+
     // ─── SCOPES ───
 
     public function scopeActive($query)
@@ -150,16 +155,27 @@ class CropCycle extends Model
     }
 
     /**
+     * Total des intrants itémisés rattachés au cycle (registre crop_inputs).
+     */
+    public function getInputsCostAttribute(): float
+    {
+        return (float) $this->inputs()->sum('total_cost');
+    }
+
+    /**
      * Marge nette consolidée du cycle (revenus − coûts).
      *
      * Même esprit que Batch::getNetMarginAttribute : revenus enregistrés moins
-     * coûts d'acquisition (semences/intrants initiaux), coûts additionnels
-     * (main d'œuvre, phyto, irrigation) et dépenses directes validées rattachées.
+     * coûts d'acquisition (forfait initial), coûts additionnels forfaitaires
+     * (main d'œuvre, irrigation…) ET intrants itémisés (registre crop_inputs).
+     * Les intrants détaillés viennent en complément du forfait, pas en doublon :
+     * on saisit l'un OU l'autre selon le niveau de détail souhaité.
      */
     public function getNetMarginAttribute(): float
     {
         return (float) $this->total_revenue
             - (float) $this->total_acquisition_cost
-            - (float) $this->additional_costs;
+            - (float) $this->additional_costs
+            - $this->inputs_cost;
     }
 }

@@ -169,6 +169,92 @@
                     @endcan
                 </div>
             </div>
+
+            {{-- INTRANTS & COÛTS --}}
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div class="lg:col-span-2 bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-[10px] font-black uppercase text-slate-400 tracking-widest italic">{{ __("Registre des intrants") }}</h3>
+                        <span class="text-[10px] font-black text-rose-500 italic">{{ number_format($cycle->inputs_cost, 0, ',', ' ') }} GNF</span>
+                    </div>
+                    @forelse($cycle->inputs->sortByDesc('input_date') as $in)
+                        <div class="flex items-center justify-between py-3 border-b border-slate-50">
+                            <div>
+                                <p class="text-[11px] font-black uppercase text-slate-800 italic leading-none">{{ $in->name }}
+                                    <span class="text-[8px] px-2 py-0.5 rounded-full ml-2 bg-lime-50 text-lime-600">{{ $in->type_label }}</span>
+                                    @if($in->synced_to_stock)<i class="fa-solid fa-warehouse text-blue-400 ml-1 text-[9px]" title="{{ __('Intégré au stock') }}"></i>@endif
+                                </p>
+                                <p class="text-[8px] text-slate-400 uppercase mt-1">{{ $in->input_date?->format('d/m/Y') }}
+                                    @if($in->quantity > 0) · {{ number_format($in->quantity, 0, ',', ' ') }} {{ $in->unit }}@endif
+                                    @if($in->provider) · {{ $in->provider->name }}@endif
+                                </p>
+                            </div>
+                            <p class="text-[10px] font-black text-slate-700">{{ number_format($in->total_cost, 0, ',', ' ') }} GNF</p>
+                        </div>
+                    @empty
+                        <p class="text-center text-slate-300 text-[10px] font-black uppercase italic py-10">{{ __("Aucun intrant enregistré") }}</p>
+                    @endforelse
+                </div>
+
+                @can('cultures.C')
+                @unless($cycle->isArchived())
+                <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm">
+                    <h3 class="text-[10px] font-black uppercase text-lime-600 tracking-widest italic mb-4">{{ __("Ajouter un intrant") }}</h3>
+                    <form action="{{ route('crop-cycles.inputs.store', $cycle) }}" method="POST" class="space-y-3" x-data="{ q: 0, uc: 0, get total() { return this.q * this.uc } }">
+                        @csrf
+                        <div>
+                            <label class="block text-[8px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Type *") }}</label>
+                            <select name="type" required class="w-full bg-slate-50 border-none rounded-xl p-3 font-black text-slate-800 shadow-inner italic text-[11px] appearance-none">
+                                @foreach($inputTypes as $key => $label)<option value="{{ $key }}">{{ $label }}</option>@endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[8px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Libellé *") }}</label>
+                            <input type="text" name="name" required placeholder="{{ __('NPK 15-15-15…') }}" class="w-full bg-slate-50 border-none rounded-xl p-3 font-black text-slate-800 shadow-inner italic text-[11px]">
+                        </div>
+                        <div class="flex gap-2">
+                            <div class="w-1/2">
+                                <label class="block text-[8px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Quantité") }}</label>
+                                <input type="number" step="0.001" min="0" name="quantity" x-model.number="q" class="w-full bg-slate-50 border-none rounded-xl p-3 font-black text-slate-800 shadow-inner italic text-right text-[11px]">
+                            </div>
+                            <div class="w-1/2">
+                                <label class="block text-[8px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Unité") }}</label>
+                                <input type="text" name="unit" value="kg" class="w-full bg-slate-50 border-none rounded-xl p-3 font-black text-slate-800 shadow-inner italic text-center text-[11px]">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-[8px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Coût unitaire (GNF)") }}</label>
+                            <input type="number" step="1" min="0" name="unit_cost" x-model.number="uc" class="w-full bg-slate-50 border-none rounded-xl p-3 font-black text-slate-800 shadow-inner italic text-right text-[11px]">
+                        </div>
+                        <div>
+                            <label class="block text-[8px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Coût total (GNF)") }}</label>
+                            <input type="number" step="1" min="0" name="total_cost" :placeholder="total.toFixed(0)" class="w-full bg-slate-50 border-none rounded-xl p-3 font-black text-slate-800 shadow-inner italic text-right text-[11px]">
+                            <p class="text-[7px] text-slate-300 uppercase mt-1 ml-2 italic">{{ __("Laisser vide = quantité × coût unitaire") }}</p>
+                        </div>
+                        <div>
+                            <label class="block text-[8px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Date *") }}</label>
+                            <input type="date" name="input_date" value="{{ now()->toDateString() }}" required class="w-full bg-slate-50 border-none rounded-xl p-3 font-black text-slate-800 shadow-inner italic text-[11px]">
+                        </div>
+                        <div>
+                            <label class="block text-[8px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Fournisseur") }}</label>
+                            <select name="provider_id" class="w-full bg-slate-50 border-none rounded-xl p-3 font-black text-slate-800 shadow-inner italic text-[11px] appearance-none">
+                                <option value="">{{ __("-- Aucun --") }}</option>
+                                @foreach($providers as $p)<option value="{{ $p->id }}">{{ $p->name }}</option>@endforeach
+                            </select>
+                        </div>
+                        <label class="flex items-center gap-2 px-2 py-1 cursor-pointer" x-data="{ s: false }">
+                            <input type="hidden" name="synced_to_stock" value="0">
+                            <input type="checkbox" name="synced_to_stock" value="1" x-model="s" class="rounded">
+                            <span class="text-[9px] font-black text-slate-500 uppercase italic">{{ __("Entrer en stock (Intrants)") }}</span>
+                        </label>
+                        <button type="submit" class="w-full bg-slate-900 text-white py-4 rounded-[1.5rem] font-black uppercase italic tracking-widest text-[10px] hover:bg-lime-600 transition">
+                            <i class="fa-solid fa-plus mr-2 text-lime-400"></i> {{ __("Enregistrer") }}
+                        </button>
+                    </form>
+                </div>
+                @endunless
+                @endcan
+            </div>
         </div>
     </div>
 </x-app-layout>

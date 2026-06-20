@@ -231,6 +231,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{cropCycle}', 'show')->name('show')->where('cropCycle', '[0-9]+')->middleware('can:L');
         Route::put('/{cropCycle}', 'update')->name('update')->middleware('can:M');
         Route::post('/{cropCycle}/harvests', 'storeHarvest')->name('harvests.store')->middleware('can:C');
+        Route::post('/{cropCycle}/inputs', 'storeInput')->name('inputs.store')->middleware('can:C');
     });
 
     Route::prefix('cultures/transformations')->name('crop-transformations.')->controller(CropTransformationController::class)->group(function () {
