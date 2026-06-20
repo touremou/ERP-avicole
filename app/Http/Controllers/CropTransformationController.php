@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Actions\Crop\RecordCropTransformation;
 use App\Models\CropCycle;
+use App\Models\CropRecipe;
 use App\Models\CropTransformation;
 use App\Models\Employee;
 use Illuminate\Http\Request;
@@ -45,6 +46,7 @@ class CropTransformationController extends Controller
             'cycles'    => CropCycle::whereIn('status', [CropCycle::STATUS_EN_COURS, CropCycle::STATUS_RECOLTE, CropCycle::STATUS_TERMINE])
                 ->orderByDesc('planting_date')->get(['id', 'crop_name', 'code']),
             'employees' => Employee::where('status', 'Actif')->orderBy('first_name')->get(['id', 'first_name', 'last_name']),
+            'recipes'   => CropRecipe::active()->with('items')->orderBy('name')->get(),
         ]);
     }
 
@@ -56,6 +58,7 @@ class CropTransformationController extends Controller
 
         $validated = $request->validate([
             'crop_cycle_id'       => 'nullable|exists:crop_cycles,id',
+            'crop_recipe_id'      => 'nullable|exists:crop_recipes,id',
             'employee_id'         => 'nullable|exists:employees,id',
             'input_product'       => 'required|string|max:255',
             'output_product'      => 'required|string|max:255',
@@ -87,7 +90,7 @@ class CropTransformationController extends Controller
             return back()->with('error', 'Accès restreint.');
         }
 
-        $cropTransformation->load(['cropCycle', 'employee:id,first_name,last_name']);
+        $cropTransformation->load(['cropCycle', 'recipe:id,name', 'employee:id,first_name,last_name']);
 
         return view('cultures.transformations.show', ['transformation' => $cropTransformation]);
     }

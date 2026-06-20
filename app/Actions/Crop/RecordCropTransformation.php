@@ -30,6 +30,7 @@ class RecordCropTransformation
             $transformation = CropTransformation::create([
                 'batch_number'        => CropTransformation::generateBatchNumber(),
                 'crop_cycle_id'       => $data['crop_cycle_id'] ?? null,
+                'crop_recipe_id'      => $data['crop_recipe_id'] ?? null,
                 'employee_id'         => $data['employee_id'] ?? null,
                 'input_product'       => $data['input_product'],
                 'output_product'      => $data['output_product'],

@@ -21,6 +21,20 @@
                 @endcan
             </div>
         </div>
+        <div class="flex flex-wrap gap-2 mt-4">
+            @foreach([
+                ['cultures.calendar', 'fa-calendar-days', 'Calendrier'],
+                ['crop-campaigns.index', 'fa-calendar-week', 'Campagnes'],
+                ['crop-catalogue.index', 'fa-book-open', 'Catalogue'],
+                ['crop-recipes.index', 'fa-book', 'Recettes'],
+                ['weather.index', 'fa-cloud-sun-rain', 'Météo'],
+                ['plots.index', 'fa-map', 'Parcelles'],
+            ] as $link)
+                <a href="{{ route($link[0]) }}" class="bg-white text-slate-600 px-4 py-2 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-green-50 hover:text-green-700 transition-all shadow-sm border border-slate-100 italic flex items-center gap-2 no-underline">
+                    <i class="fa-solid {{ $link[1] }} text-green-500"></i> {{ __($link[2]) }}
+                </a>
+            @endforeach
+        </div>
     </x-slot>
 
     <div class="py-10">
@@ -50,6 +64,40 @@
                 <div class="bg-slate-900 text-white p-6 rounded-[2rem] shadow-lg">
                     <p class="text-[8px] font-black text-green-400 uppercase tracking-widest italic mb-2">{{ __("Récolté (30 j)") }}</p>
                     <p class="text-3xl font-black leading-none">{{ number_format($stats['harvest_30d'], 0, ',', ' ') }} <small class="text-[10px] opacity-40">kg</small></p>
+                    <p class="text-[9px] text-green-400/70 uppercase mt-1">{{ number_format($stats['harvest_ytd'], 0, ',', ' ') }} kg {{ __("cette année") }}</p>
+                </div>
+            </div>
+
+            {{-- CAMPAGNE EN COURS + INDICATEURS SECONDAIRES --}}
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                @if($activeCampaign)
+                <a href="{{ route('crop-campaigns.show', $activeCampaign) }}" class="lg:col-span-2 bg-gradient-to-br from-green-600 to-emerald-700 text-white p-6 rounded-[2.5rem] shadow-lg no-underline flex items-center justify-between">
+                    <div>
+                        <p class="text-[8px] font-black text-green-200 uppercase tracking-widest italic mb-1"><i class="fa-solid fa-calendar-week mr-1"></i> {{ __("Campagne en cours") }}</p>
+                        <p class="text-lg font-black uppercase italic leading-none">{{ $activeCampaign->name }}</p>
+                        <p class="text-[9px] text-green-200 uppercase mt-1">{{ $activeCampaign->season_label }} · {{ $activeCampaign->cycles_count ?? $activeCampaign->cycles->count() }} {{ __("cycles") }}</p>
+                    </div>
+                    @if($activeCampaign->progress_percent !== null)
+                    <div class="text-right">
+                        <p class="text-3xl font-black leading-none">{{ $activeCampaign->progress_percent }}%</p>
+                        <p class="text-[8px] text-green-200 uppercase mt-1">{{ __("de l'objectif") }}</p>
+                    </div>
+                    @endif
+                </a>
+                @else
+                <div class="lg:col-span-2 bg-white p-6 rounded-[2.5rem] border border-dashed border-slate-200 flex items-center justify-center">
+                    <a href="{{ route('crop-campaigns.create') }}" class="text-[10px] font-black uppercase text-slate-400 hover:text-green-600 italic no-underline"><i class="fa-solid fa-plus mr-2"></i>{{ __("Démarrer une campagne") }}</a>
+                </div>
+                @endif
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm">
+                        <p class="text-[8px] font-black text-sky-500 uppercase tracking-widest italic mb-1">{{ __("Pluie 30 j") }}</p>
+                        <p class="text-2xl font-black text-slate-900 leading-none">{{ number_format($stats['rainfall_30d'], 0, ',', ' ') }} <small class="text-[9px] opacity-40">mm</small></p>
+                    </div>
+                    <div class="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm">
+                        <p class="text-[8px] font-black text-green-500 uppercase tracking-widest italic mb-1">{{ __("Transfo. 30 j") }}</p>
+                        <p class="text-2xl font-black text-slate-900 leading-none">{{ $stats['transform_30d'] }}</p>
+                    </div>
                 </div>
             </div>
 
@@ -107,6 +155,27 @@
                     @endforelse
                 </div>
             </div>
+
+            {{-- RÉPARTITION DES SURFACES (cycles en cours) --}}
+            @if($cropMix->isNotEmpty())
+            @php $maxArea = max($cropMix->max('area'), 0.0001); @endphp
+            <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm">
+                <h3 class="text-[10px] font-black uppercase text-slate-400 tracking-widest italic mb-6">{{ __("Répartition des surfaces emblavées") }}</h3>
+                <div class="space-y-3">
+                    @foreach($cropMix as $mix)
+                        <div>
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="text-[10px] font-black uppercase text-slate-700 italic">{{ $mix->crop_name }} <span class="text-slate-300">· {{ $mix->cycles }} cycle(s)</span></span>
+                                <span class="text-[10px] font-black text-green-600">{{ number_format($mix->area, 2, ',', ' ') }} ha</span>
+                            </div>
+                            <div class="h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                                <div class="h-full bg-green-500 rounded-full" style="width: {{ round($mix->area / $maxArea * 100) }}%"></div>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+            @endif
         </div>
     </div>
 </x-app-layout>

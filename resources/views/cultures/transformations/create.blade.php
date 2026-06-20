@@ -29,6 +29,43 @@
 
             <form action="{{ route('crop-transformations.store') }}" method="POST" class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm space-y-6">
                 @csrf
+
+                @if($recipes->isNotEmpty())
+                {{-- PRÉ-REMPLISSAGE PAR RECETTE --}}
+                <div class="bg-green-50 border border-green-100 p-5 rounded-[2rem]">
+                    <label class="block text-[9px] font-black text-green-600 uppercase ml-2 mb-1 italic"><i class="fa-solid fa-book mr-1"></i> {{ __("Partir d'une recette") }}</label>
+                    <select name="crop_recipe_id" onchange="applyRecipe(this)" class="w-full bg-white border-none rounded-2xl p-4 font-black text-green-700 shadow-inner italic appearance-none cursor-pointer">
+                        <option value="">{{ __("-- Aucune (saisie libre) --") }}</option>
+                        @foreach($recipes as $r)
+                            <option value="{{ $r->id }}"
+                                data-type="{{ $r->transformation_type }}"
+                                data-output="{{ $r->output_product }}"
+                                data-unit="{{ $r->output_unit }}"
+                                data-yield="{{ $r->expected_yield_percent }}"
+                                data-shelf="{{ $r->shelf_life_days }}"
+                                data-input="{{ optional($r->items->first())->input_product }}"
+                                @selected(old('crop_recipe_id') == $r->id)>{{ $r->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <script>
+                    function applyRecipe(sel) {
+                        const o = sel.options[sel.selectedIndex];
+                        if (!o.value) return;
+                        const f = sel.form;
+                        if (o.dataset.output) f.output_product.value = o.dataset.output;
+                        if (o.dataset.input) f.input_product.value = o.dataset.input;
+                        if (o.dataset.unit) f.output_unit.value = o.dataset.unit;
+                        if (o.dataset.type) f.transformation_type.value = o.dataset.type;
+                        if (o.dataset.shelf) {
+                            const d = new Date(f.production_date.value || Date.now());
+                            d.setDate(d.getDate() + parseInt(o.dataset.shelf));
+                            f.expiry_date.value = d.toISOString().slice(0, 10);
+                        }
+                    }
+                </script>
+                @endif
+
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Produit entrant *") }}</label>

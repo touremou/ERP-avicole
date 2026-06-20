@@ -56,8 +56,20 @@
                         </select>
                     </div>
                     <div>
+                        <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Campagne") }}</label>
+                        <select name="campaign_id" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic appearance-none cursor-pointer">
+                            <option value="">{{ __("-- Hors campagne --") }}</option>
+                            @foreach($campaigns as $camp)
+                                <option value="{{ $camp->id }}" @selected(old('campaign_id') == $camp->id)>{{ $camp->name }} ({{ $camp->year }})</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
                         <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Culture *") }}</label>
-                        <input type="text" name="crop_name" value="{{ old('crop_name') }}" required placeholder="{{ __('Maïs, manioc, tomate…') }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic">
+                        <input type="text" name="crop_name" list="crop-species-list" value="{{ old('crop_name') }}" required placeholder="{{ __('Maïs, manioc, tomate…') }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic">
+                        <datalist id="crop-species-list">
+                            @foreach($species as $sp)<option value="{{ $sp->name }}">@endforeach
+                        </datalist>
                     </div>
                     <div>
                         <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Variété") }}</label>

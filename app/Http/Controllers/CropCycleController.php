@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Actions\Crop\RecordCropInput;
 use App\Actions\Crop\RecordHarvest;
+use App\Models\CropCampaign;
 use App\Models\CropCycle;
 use App\Models\CropInput;
+use App\Models\CropSpecies;
 use App\Models\Employee;
 use App\Models\Harvest;
 use App\Models\Plot;
@@ -52,6 +54,8 @@ class CropCycleController extends Controller
         return view('cultures.cycles.create', [
             'plots'     => Plot::available()->orderBy('name')->get(),
             'employees' => Employee::where('status', 'Actif')->orderBy('first_name')->get(['id', 'first_name', 'last_name']),
+            'campaigns' => CropCampaign::where('status', '!=', CropCampaign::STATUS_CLOTUREE)->orderByDesc('start_date')->get(['id', 'name', 'year']),
+            'species'   => CropSpecies::active()->orderBy('name')->get(['id', 'name', 'avg_yield_tha']),
         ]);
     }
 
@@ -63,6 +67,7 @@ class CropCycleController extends Controller
 
         $validated = $request->validate([
             'plot_id'                => 'required|exists:plots,id',
+            'campaign_id'            => 'nullable|exists:crop_campaigns,id',
             'employee_id'            => 'nullable|exists:employees,id',
             'code'                   => 'nullable|string|max:50',
             'crop_name'              => 'required|string|max:255',

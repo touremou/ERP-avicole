@@ -51,7 +51,11 @@ use App\Http\Controllers\{
     CultureDashboardController,
     PlotController,
     CropCycleController,
-    CropTransformationController
+    CropTransformationController,
+    CropCatalogueController,
+    CropCampaignController,
+    CropRecipeController,
+    WeatherController
 };
 
 Route::redirect('/', '/login');
@@ -240,6 +244,46 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/', 'store')->name('store')->middleware('can:C');
         Route::get('/{cropTransformation}', 'show')->name('show')->where('cropTransformation', '[0-9]+')->middleware('can:L');
     });
+
+    // Catalogue des cultures (espèces & variétés)
+    Route::prefix('cultures/catalogue')->name('crop-catalogue.')->controller(CropCatalogueController::class)->group(function () {
+        Route::get('/', 'index')->name('index')->middleware('can:L');
+        Route::get('/create', 'create')->name('create')->middleware('can:C');
+        Route::post('/', 'store')->name('store')->middleware('can:C');
+        Route::get('/{cropCatalogue}', 'show')->name('show')->where('cropCatalogue', '[0-9]+')->middleware('can:L');
+        Route::put('/{cropCatalogue}', 'update')->name('update')->middleware('can:M');
+        Route::post('/{cropCatalogue}/varieties', 'storeVariety')->name('varieties.store')->middleware('can:C');
+        Route::delete('/varieties/{variety}', 'destroyVariety')->name('varieties.destroy')->middleware('can:S');
+    });
+
+    // Campagnes agricoles
+    Route::prefix('cultures/campaigns')->name('crop-campaigns.')->controller(CropCampaignController::class)->group(function () {
+        Route::get('/', 'index')->name('index')->middleware('can:L');
+        Route::get('/create', 'create')->name('create')->middleware('can:C');
+        Route::post('/', 'store')->name('store')->middleware('can:C');
+        Route::get('/{cropCampaign}', 'show')->name('show')->where('cropCampaign', '[0-9]+')->middleware('can:L');
+        Route::put('/{cropCampaign}', 'update')->name('update')->middleware('can:M');
+        Route::delete('/{cropCampaign}', 'destroy')->name('destroy')->middleware('can:S');
+    });
+
+    // Recettes de transformation
+    Route::prefix('cultures/recipes')->name('crop-recipes.')->controller(CropRecipeController::class)->group(function () {
+        Route::get('/', 'index')->name('index')->middleware('can:L');
+        Route::get('/create', 'create')->name('create')->middleware('can:C');
+        Route::post('/', 'store')->name('store')->middleware('can:C');
+        Route::get('/{cropRecipe}', 'show')->name('show')->where('cropRecipe', '[0-9]+')->middleware('can:L');
+        Route::delete('/{cropRecipe}', 'destroy')->name('destroy')->middleware('can:S');
+    });
+
+    // Météo & pluviométrie
+    Route::prefix('cultures/weather')->name('weather.')->controller(WeatherController::class)->group(function () {
+        Route::get('/', 'index')->name('index')->middleware('can:L');
+        Route::post('/', 'store')->name('store')->middleware('can:C');
+        Route::delete('/{weather}', 'destroy')->name('destroy')->middleware('can:S');
+    });
+
+    // Calendrier cultural
+    Route::get('/cultures/calendar', [CultureDashboardController::class, 'calendar'])->name('cultures.calendar')->middleware('can:L');
 
     // ─── COUVOIR & INCUBATION ───
     Route::prefix('incubations')->name('incubations.')->controller(IncubationController::class)->group(function () {
