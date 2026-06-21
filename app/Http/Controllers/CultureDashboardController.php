@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\CropCalendarEvent;
 use App\Models\CropCampaign;
 use App\Models\CropCycle;
 use App\Models\CropSpecies;
@@ -124,6 +125,11 @@ class CultureDashboardController extends Controller
 
         $calendarYears = range(now()->year + 1, now()->year - 3);
 
+        // Événements calendaires libres de l'année en cours.
+        $calendarEvents = CropCalendarEvent::whereYear('event_date', $year)
+            ->orderBy('event_date')
+            ->get();
+
         // ── ONGLET CATALOGUE ─────────────────────────────────────────────────
 
         // Espèces actives avec leurs variétés, regroupées dans l'ordre défini par TYPES.
@@ -175,7 +181,7 @@ class CultureDashboardController extends Controller
             // overview
             'stats', 'activeCycles', 'recentHarvests', 'dueCycles', 'activeCampaign', 'cropMix',
             // calendar
-            'calendarRows', 'year', 'calendarYears',
+            'calendarRows', 'year', 'calendarYears', 'calendarEvents',
             // catalogue
             'catalogueGrouped', 'catalogueStats',
             // weather

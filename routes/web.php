@@ -56,7 +56,8 @@ use App\Http\Controllers\{
     CropCampaignController,
     CropRecipeController,
     CropReportController,
-    WeatherController
+    WeatherController,
+    CropCalendarEventController
 };
 
 Route::redirect('/', '/login');
@@ -326,6 +327,15 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/campaigns/pdf', 'campaignsPdf')->name('campaigns.pdf');
         Route::get('/transformations', 'transformations')->name('transformations');
         Route::get('/transformations/pdf', 'transformationsPdf')->name('transformations.pdf');
+    });
+
+    Route::prefix('cultures/calendar-events')->name('crop-calendar-events.')->controller(CropCalendarEventController::class)->group(function () {
+        Route::get('/', 'index')->name('index')->middleware('can:L');
+        Route::get('/create', 'create')->name('create')->middleware('can:C');
+        Route::post('/', 'store')->name('store')->middleware('can:C');
+        Route::get('/{event}/edit', 'edit')->name('edit')->middleware('can:M');
+        Route::put('/{event}', 'update')->name('update')->middleware('can:M');
+        Route::delete('/{event}', 'destroy')->name('destroy')->middleware('can:S');
     });
 
     // ─── COUVOIR & INCUBATION ───

@@ -19,6 +19,9 @@
                     <i class="fa-solid fa-industry text-green-500"></i> {{ __("Transformation") }}
                 </a>
                 @can('cultures.C')
+                <a href="{{ route('crop-calendar-events.create') }}" class="bg-white text-slate-700 px-6 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-slate-100 transition-all shadow-sm border border-slate-100 italic flex items-center gap-2 no-underline">
+                    <i class="fa-solid fa-calendar-plus text-green-500"></i> {{ __("Ajouter un événement") }}
+                </a>
                 <a href="{{ route('crop-cycles.create') }}" class="bg-slate-900 text-white px-8 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-green-600 transition-all shadow-2xl italic flex items-center gap-2 no-underline">
                     <i class="fa-solid fa-plus"></i> {{ __("Nouveau Cycle") }}
                 </a>
@@ -256,12 +259,63 @@
                 </div>
 
                 @can('cultures.C')
-                <div class="flex justify-end">
+                <div class="flex justify-end gap-3">
+                    <a href="{{ route('crop-calendar-events.create') }}" class="bg-white text-slate-700 px-6 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-slate-100 transition-all shadow-sm border border-slate-100 italic flex items-center gap-2 no-underline">
+                        <i class="fa-solid fa-calendar-plus text-green-500"></i> {{ __("Ajouter un événement") }}
+                    </a>
                     <a href="{{ route('crop-cycles.create') }}" class="bg-slate-900 text-white px-8 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-green-600 transition-all shadow-2xl italic flex items-center gap-2 no-underline">
                         <i class="fa-solid fa-plus"></i> {{ __("Nouveau Cycle") }}
                     </a>
                 </div>
                 @endcan
+
+                {{-- ÉVÉNEMENTS CALENDAIRES LIBRES --}}
+                @if($calendarEvents->isNotEmpty())
+                <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="text-[10px] font-black uppercase text-slate-400 tracking-widest italic"><i class="fa-solid fa-calendar-days mr-1 text-green-500"></i> {{ __("Événements") }}</h3>
+                        @can('cultures.L')
+                        <a href="{{ route('crop-calendar-events.index') }}" class="text-[9px] font-black uppercase text-slate-400 hover:text-green-600 transition no-underline italic">{{ __("Voir tout") }} →</a>
+                        @endcan
+                    </div>
+                    <div class="space-y-2">
+                        @foreach($calendarEvents->take(10) as $event)
+                            @php
+                                $colorMap = [
+                                    'green'  => 'bg-green-100 text-green-700',
+                                    'blue'   => 'bg-blue-100 text-blue-700',
+                                    'amber'  => 'bg-amber-100 text-amber-700',
+                                    'red'    => 'bg-red-100 text-red-700',
+                                    'purple' => 'bg-purple-100 text-purple-700',
+                                    'slate'  => 'bg-slate-100 text-slate-700',
+                                ];
+                                $badgeClass = $colorMap[$event->color] ?? 'bg-green-100 text-green-700';
+                            @endphp
+                            <div class="flex items-center justify-between p-3 bg-slate-50 rounded-[1.25rem]">
+                                <div class="flex items-center gap-3">
+                                    <span class="text-[9px] font-black text-slate-500 uppercase w-16 shrink-0">{{ $event->event_date->format('d/m') }}</span>
+                                    <span class="px-2 py-0.5 rounded-lg text-[8px] font-black uppercase {{ $badgeClass }}">{{ $event->type_label }}</span>
+                                    <span class="text-[10px] font-black text-slate-800 italic">{{ $event->title }}</span>
+                                </div>
+                                @can('cultures.M')
+                                <a href="{{ route('crop-calendar-events.edit', $event) }}" class="text-[9px] font-black uppercase text-slate-300 hover:text-green-600 transition no-underline italic ml-4">
+                                    <i class="fa-solid fa-pen"></i>
+                                </a>
+                                @endcan
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+                @else
+                <div class="bg-white p-6 rounded-[3rem] border border-slate-100 shadow-sm flex items-center justify-between">
+                    <p class="text-[10px] font-black uppercase text-slate-300 italic"><i class="fa-solid fa-calendar-days mr-2"></i> {{ __("Aucun événement calendaire cette année") }}</p>
+                    @can('cultures.C')
+                    <a href="{{ route('crop-calendar-events.create') }}" class="text-[9px] font-black uppercase text-green-600 hover:text-green-800 transition no-underline italic">
+                        <i class="fa-solid fa-plus mr-1"></i> {{ __("Ajouter") }}
+                    </a>
+                    @endcan
+                </div>
+                @endif
 
             {{-- ================================================================ --}}
             {{-- TAB 3 — CATALOGUE DES CULTURES                                  --}}
