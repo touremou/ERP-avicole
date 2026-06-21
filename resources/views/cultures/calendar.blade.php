@@ -60,7 +60,7 @@
                                             @if($cell['planting'])
                                                 <div class="h-6 bg-green-600 rounded-sm flex items-center justify-center" title="Semis"><i class="fa-solid fa-seedling text-white text-[8px]"></i></div>
                                             @elseif($cell['harvest'])
-                                                <div class="h-6 bg-amber-500 rounded-sm flex items-center justify-center" title="Récolte"><i class="fa-solid fa-wheat-awn text-white text-[8px]"></i></div>
+                                                <div class="h-6 bg-amber-500 rounded-sm flex items-center justify-center" title="{{ __('Récolte') }}"><i class="fa-solid fa-wheat-awn text-white text-[8px]"></i></div>
                                             @elseif($cell['occupied'])
                                                 <div class="h-6 bg-green-200 rounded-sm"></div>
                                             @else
