@@ -52,7 +52,25 @@
                     </div>
                     <div>
                         <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Type de sol") }}</label>
-                        <input type="text" name="soil_type" value="{{ old('soil_type') }}" placeholder="{{ __('Argileux, sableux…') }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic">
+                        <input type="text" name="soil_type" value="{{ old('soil_type') }}" list="soil-types" placeholder="{{ __('Argileux, sableux…') }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic">
+                        <datalist id="soil-types">
+                            @foreach(\App\Models\CropSpecies::SOIL_TYPES as $st)
+                                <option value="{{ $st }}"></option>
+                            @endforeach
+                        </datalist>
+                    </div>
+                    @php
+                        $currentFarm = \App\Models\Farm::find(session('current_farm_id'));
+                        $autoZone = \App\Models\Plot::zoneFromRegion($currentFarm?->region);
+                    @endphp
+                    <div>
+                        <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Zone agro-écologique") }}</label>
+                        <select name="agro_zone" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic appearance-none cursor-pointer">
+                            <option value="">{{ __("-- Auto (selon la ferme) --") }}</option>
+                            @foreach(\App\Models\CropSpecies::ZONES as $zKey => $zLabel)
+                                <option value="{{ $zKey }}" @selected(old('agro_zone', $autoZone) == $zKey)>{{ $zLabel }}</option>
+                            @endforeach
+                        </select>
                     </div>
                     <div>
                         <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Irrigation") }}</label>

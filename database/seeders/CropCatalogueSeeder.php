@@ -47,7 +47,131 @@ class CropCatalogueSeeder extends Seeder
             }
         }
 
+        // Référentiel agronomique fiable (fenêtres de semis, sols, zones, eau, conseils).
+        // Appliqué après création, par nom d'espèce. Idempotent.
+        foreach ($this->reference() as $speciesName => $ref) {
+            CropSpecies::where('name', $speciesName)->update($ref);
+        }
+
         $this->command?->info('✅ Catalogue cultures de référence (Guinée) : ' . CropSpecies::count() . ' espèces.');
+    }
+
+    /**
+     * RÉFÉRENTIEL AGRONOMIQUE FIABLE (normes Guinée / FAO / IRAG).
+     *
+     * Clé = nom d'espèce. Valeurs : fenêtre de semis (mois 1..12, calendrier
+     * guinéen — saison des pluies mai–oct., contre-saison maraîchère oct.–mars),
+     * sols les mieux adaptés, zones agro-écologiques favorables, besoin en eau
+     * et conseils concis d'optimisation du rendement. Les sowing_months/soil_types
+     * sont stockés en JSON (cast array) ; on encode explicitement ici (update brut).
+     *
+     * Réserve : seules les cultures pour lesquelles les données sont fiables sont
+     * renseignées ; les autres conservent des champs de référence nuls.
+     */
+    private function reference(): array
+    {
+        $j = fn (array $a) => json_encode($a);
+
+        return [
+            'Riz' => [
+                'sowing_months' => $j([5, 6, 7]),
+                'soil_types'    => $j(['argileux', 'argilo-limoneux']),
+                'agro_zones'    => $j(['basse_guinee', 'haute_guinee', 'guinee_forestiere', 'moyenne_guinee']),
+                'water_need'    => 'eleve',
+                'yield_tips'    => "Repiquer à 20–25 jours ; maintenir une lame d'eau en bas-fond ; fractionner l'azote (tallage + montaison).",
+            ],
+            'Maïs' => [
+                'sowing_months' => $j([5, 6]),
+                'soil_types'    => $j(['limoneux', 'argilo-limoneux']),
+                'agro_zones'    => $j(['haute_guinee', 'guinee_forestiere', 'basse_guinee']),
+                'water_need'    => 'moyen',
+                'yield_tips'    => "Semer dès les premières pluies installées ; densité 50–62 000 pieds/ha ; sarcler avant J30 ; apport NPK au semis + urée à J45.",
+            ],
+            'Fonio' => [
+                'sowing_months' => $j([6, 7]),
+                'soil_types'    => $j(['sableux', 'lateritique']),
+                'agro_zones'    => $j(['moyenne_guinee', 'haute_guinee']),
+                'water_need'    => 'faible',
+                'yield_tips'    => "Culture rustique sur sols pauvres ; semis à la volée ; éviter l'excès d'azote (verse).",
+            ],
+            'Manioc' => [
+                'sowing_months' => $j([4, 5, 6]),
+                'soil_types'    => $j(['sableux', 'limoneux']),
+                'agro_zones'    => $j(['basse_guinee', 'guinee_forestiere', 'haute_guinee']),
+                'water_need'    => 'faible',
+                'yield_tips'    => "Boutures saines de 20–25 cm ; récolte 9–12 mois ; éviter les sols gorgés d'eau.",
+            ],
+            'Arachide' => [
+                'sowing_months' => $j([6, 7]),
+                'soil_types'    => $j(['sableux', 'argilo-limoneux']),
+                'agro_zones'    => $j(['haute_guinee', 'basse_guinee']),
+                'water_need'    => 'moyen',
+                'yield_tips'    => "Inoculer si possible ; ne pas sur-fertiliser en azote (légumineuse) ; récolter à maturité des gousses pour limiter l'aflatoxine.",
+            ],
+            'Tomate' => [
+                'sowing_months' => $j([10, 11, 12]),
+                'soil_types'    => $j(['limoneux', 'argilo-limoneux']),
+                'agro_zones'    => $j(['moyenne_guinee', 'basse_guinee']),
+                'water_need'    => 'eleve',
+                'yield_tips'    => "Pépinière puis repiquage à 3–4 semaines ; tuteurer ; paillage ; surveiller mildiou en saison humide.",
+            ],
+            'Oignon' => [
+                'sowing_months' => $j([10, 11]),
+                'soil_types'    => $j(['limoneux', 'sableux']),
+                'agro_zones'    => $j(['moyenne_guinee', 'haute_guinee']),
+                'water_need'    => 'moyen',
+                'yield_tips'    => "Pépinière dense puis repiquage ; arrêter l'irrigation 2–3 semaines avant récolte ; bon stockage si bulbes bien ressuyés.",
+            ],
+            'Pomme de terre' => [
+                'sowing_months' => $j([11, 12]),
+                'soil_types'    => $j(['limoneux', 'humifere']),
+                'agro_zones'    => $j(['moyenne_guinee']),
+                'water_need'    => 'moyen',
+                'yield_tips'    => "Plants certifiés ; buttage ; altitude du Fouta favorable ; éviter sols gorgés.",
+            ],
+            'Mangue' => [
+                'sowing_months' => $j([6, 7, 8, 9]),
+                'soil_types'    => $j(['argilo-limoneux', 'limoneux', 'sableux']),
+                'agro_zones'    => $j(['haute_guinee', 'basse_guinee']),
+                'water_need'    => 'moyen',
+                'yield_tips'    => "Planter en début de saison des pluies ; taille de formation ; éclaircir pour calibrer.",
+            ],
+            'Ananas' => [
+                'sowing_months' => $j([3, 4, 5, 6]),
+                'soil_types'    => $j(['lateritique', 'sableux']),
+                'agro_zones'    => $j(['basse_guinee']),
+                'water_need'    => 'moyen',
+                'yield_tips'    => "Rejets sains ; TIF (induction florale) pour étaler la production ; sols acides bien drainés.",
+            ],
+            'Café' => [
+                'sowing_months' => $j([6, 7, 8, 9]),
+                'soil_types'    => $j(['humifere']),
+                'agro_zones'    => $j(['guinee_forestiere']),
+                'water_need'    => 'eleve',
+                'yield_tips'    => "Ombrage léger ; taille d'entretien ; récolte des cerises mûres uniquement.",
+            ],
+            'Palmier à huile' => [
+                'sowing_months' => $j([5, 6, 7]),
+                'soil_types'    => $j(['argilo-limoneux', 'limoneux']),
+                'agro_zones'    => $j(['guinee_forestiere', 'basse_guinee']),
+                'water_need'    => 'eleve',
+                'yield_tips'    => "Matériel végétal sélectionné (Tenera) ; entretien des ronds ; récolte régulière des régimes mûrs.",
+            ],
+            'Niébé' => [
+                'sowing_months' => $j([7, 8]),
+                'soil_types'    => $j(['sableux']),
+                'agro_zones'    => $j(['haute_guinee']),
+                'water_need'    => 'faible',
+                'yield_tips'    => "Cycle court ; bon précédent (fixe l'azote) ; surveiller pucerons et thrips.",
+            ],
+            'Gingembre' => [
+                'sowing_months' => $j([3, 4, 5]),
+                'soil_types'    => $j(['humifere', 'limoneux']),
+                'agro_zones'    => $j(['guinee_forestiere', 'basse_guinee']),
+                'water_need'    => 'eleve',
+                'yield_tips'    => "Éclats de rhizomes sains ; paillage ; sols riches bien drainés ; récolte 8–9 mois.",
+            ],
+        ];
     }
 
     /**

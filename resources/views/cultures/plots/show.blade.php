@@ -170,6 +170,16 @@
                         <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Type de sol") }}</label>
                         <p class="text-sm font-black text-slate-800 italic ml-2">{{ $plot->soil_type ?: '—' }}</p>
                     </div>
+                    @php $resolvedZone = $plot->resolvedAgroZone(); @endphp
+                    <div>
+                        <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Zone agro-écologique") }}</label>
+                        <p class="text-sm font-black text-slate-800 italic ml-2">
+                            {{ $resolvedZone ? (\App\Models\CropSpecies::ZONES[$resolvedZone] ?? $resolvedZone) : '—' }}
+                            @if($resolvedZone && ! $plot->agro_zone)
+                                <span class="text-[9px] font-bold text-slate-400 lowercase">{{ __("(héritée de la ferme)") }}</span>
+                            @endif
+                        </p>
+                    </div>
                     <div>
                         <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Irrigation") }}</label>
                         <p class="text-sm font-black text-slate-800 italic ml-2">{{ $plot->irrigation_type ?: '—' }}</p>
