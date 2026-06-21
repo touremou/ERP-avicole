@@ -32,6 +32,18 @@ class CropReportController extends Controller
         return view('cultures.reports.yield', $this->buildYieldStats($request));
     }
 
+    public function yieldPdf(Request $request)
+    {
+        if (Gate::denies('cultures.L')) {
+            abort(403);
+        }
+
+        $pdf = \Pdf::loadView('cultures.reports.pdf.yield', $this->buildYieldStats($request))
+            ->setPaper('a4', 'landscape');
+
+        return $pdf->download('rendements-' . $request->get('year', now()->year) . '.pdf');
+    }
+
     private function buildYieldStats(Request $request): array
     {
         $year     = (int) $request->get('year', now()->year);
@@ -82,6 +94,18 @@ class CropReportController extends Controller
         return view('cultures.reports.inputs', $this->buildInputsStats($request));
     }
 
+    public function inputsPdf(Request $request)
+    {
+        if (Gate::denies('cultures.L')) {
+            abort(403);
+        }
+
+        $pdf = \Pdf::loadView('cultures.reports.pdf.inputs', $this->buildInputsStats($request))
+            ->setPaper('a4', 'portrait');
+
+        return $pdf->download('intrants-' . $request->get('year', now()->year) . '.pdf');
+    }
+
     private function buildInputsStats(Request $request): array
     {
         $year = (int) $request->get('year', now()->year);
@@ -129,6 +153,18 @@ class CropReportController extends Controller
         return view('cultures.reports.campaigns', $this->buildCampaignsStats($request));
     }
 
+    public function campaignsPdf(Request $request)
+    {
+        if (Gate::denies('cultures.L')) {
+            abort(403);
+        }
+
+        $pdf = \Pdf::loadView('cultures.reports.pdf.campaigns', $this->buildCampaignsStats($request))
+            ->setPaper('a4', 'portrait');
+
+        return $pdf->download('campagnes-' . $request->get('year', now()->year) . '.pdf');
+    }
+
     private function buildCampaignsStats(Request $request): array
     {
         $year = (int) $request->get('year', now()->year);
@@ -155,6 +191,18 @@ class CropReportController extends Controller
         }
 
         return view('cultures.reports.transformations', $this->buildTransformationsStats($request));
+    }
+
+    public function transformationsPdf(Request $request)
+    {
+        if (Gate::denies('cultures.L')) {
+            abort(403);
+        }
+
+        $pdf = \Pdf::loadView('cultures.reports.pdf.transformations', $this->buildTransformationsStats($request))
+            ->setPaper('a4', 'landscape');
+
+        return $pdf->download('transformations-' . $request->get('year', now()->year) . '.pdf');
     }
 
     private function buildTransformationsStats(Request $request): array

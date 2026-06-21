@@ -1,4 +1,5 @@
 <x-app-layout>
+    @php $currency = setting('general.currency', 'GNF'); @endphp
     <x-slot name="header">
         <div class="flex items-center justify-between">
             <div class="flex items-center gap-4">
@@ -64,15 +65,15 @@
                         <input type="number" step="0.01" min="0" name="expected_yield_kg" value="{{ old('expected_yield_kg', $cycle->expected_yield_kg) }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic text-right">
                     </div>
                     <div>
-                        <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Coût semences/intrants (GNF)") }}</label>
+                        <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Coût semences/intrants") }} ({{ $currency }})</label>
                         <input type="number" step="1" min="0" name="total_acquisition_cost" value="{{ old('total_acquisition_cost', $cycle->total_acquisition_cost) }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic text-right">
                     </div>
                     <div>
-                        <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Coûts additionnels (GNF)") }}</label>
+                        <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Coûts additionnels") }} ({{ $currency }})</label>
                         <input type="number" step="1" min="0" name="additional_costs" value="{{ old('additional_costs', $cycle->additional_costs) }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic text-right">
                     </div>
                     <div>
-                        <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Revenu total (GNF)") }}</label>
+                        <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Revenu total") }} ({{ $currency }})</label>
                         <input type="number" step="1" min="0" name="total_revenue" value="{{ old('total_revenue', $cycle->total_revenue) }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic text-right">
                     </div>
                 </div>

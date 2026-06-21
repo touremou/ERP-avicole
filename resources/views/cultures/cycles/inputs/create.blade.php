@@ -1,4 +1,5 @@
 <x-app-layout>
+    @php $currency = setting('general.currency', 'GNF'); @endphp
     <x-slot name="header">
         <div class="flex items-center justify-between">
             <div class="flex items-center gap-4">
@@ -50,12 +51,12 @@
                         </div>
                     </div>
                     <div>
-                        <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Coût unitaire (GNF)") }}</label>
+                        <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Coût unitaire") }} ({{ $currency }})</label>
                         <input type="number" step="1" min="0" name="unit_cost" value="{{ old('unit_cost') }}" x-model.number="uc" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic text-right">
                     </div>
                     <div>
                         <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">
-                            {{ __("Coût total (GNF)") }} <span class="text-lime-600 ml-1" x-text="total ? '≈ '+total.toLocaleString() : ''"></span>
+                            {{ __("Coût total") }} ({{ $currency }}) <span class="text-lime-600 ml-1" x-text="total ? '≈ '+total.toLocaleString() : ''"></span>
                         </label>
                         <input type="number" step="1" min="0" name="total_cost" value="{{ old('total_cost') }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic text-right">
                     </div>

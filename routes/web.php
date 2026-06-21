@@ -315,9 +315,13 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('cultures/reports')->name('crop-reports.')->controller(CropReportController::class)->middleware('can:L')->group(function () {
         Route::get('/', 'index')->name('index');
         Route::get('/yield', 'yield')->name('yield');
+        Route::get('/yield/pdf', 'yieldPdf')->name('yield.pdf');
         Route::get('/inputs', 'inputs')->name('inputs');
+        Route::get('/inputs/pdf', 'inputsPdf')->name('inputs.pdf');
         Route::get('/campaigns', 'campaigns')->name('campaigns');
+        Route::get('/campaigns/pdf', 'campaignsPdf')->name('campaigns.pdf');
         Route::get('/transformations', 'transformations')->name('transformations');
+        Route::get('/transformations/pdf', 'transformationsPdf')->name('transformations.pdf');
     });
 
     // ─── COUVOIR & INCUBATION ───
