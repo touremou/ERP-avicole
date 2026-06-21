@@ -11,7 +11,7 @@
         </div>
     </x-slot>
 
-    <div class="py-8 italic font-bold" x-data="{ showForm: false }">
+    <div class="py-8 italic font-bold" x-data="{ showForm: false, perBuilding: true, perPlot: false }">
         <div class="max-w-5xl mx-auto sm:px-6 lg:px-8">
 
             @if(session('success'))
@@ -37,12 +37,22 @@
                             <div>
                                 <label class="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">{{ __("Catégorie") }}</label>
                                 <select name="category" required class="w-full bg-slate-50 border-none rounded-xl p-3 text-xs font-black uppercase shadow-inner outline-none">
-                                    <option value="alimentation">🌾 {{ __("Alimentation") }}</option>
-                                    <option value="collecte">🥚 {{ __("Collecte") }}</option>
-                                    <option value="controle">📋 {{ __("Contrôle") }}</option>
-                                    <option value="nettoyage">🧹 {{ __("Nettoyage") }}</option>
-                                    <option value="sante">💉 {{ __("Santé") }}</option>
-                                    <option value="maintenance">🔧 {{ __("Maintenance") }}</option>
+                                    <optgroup label="── Élevage ──">
+                                        <option value="alimentation">🌾 {{ __("Alimentation") }}</option>
+                                        <option value="collecte">🥚 {{ __("Collecte") }}</option>
+                                        <option value="controle">📋 {{ __("Contrôle") }}</option>
+                                        <option value="nettoyage">🧹 {{ __("Nettoyage") }}</option>
+                                        <option value="sante">💉 {{ __("Santé") }}</option>
+                                        <option value="maintenance">🔧 {{ __("Maintenance") }}</option>
+                                    </optgroup>
+                                    <optgroup label="── Cultures ──">
+                                        <option value="irrigation">💧 {{ __("Irrigation") }}</option>
+                                        <option value="sarclage">🌿 {{ __("Sarclage") }}</option>
+                                        <option value="traitement">🌾 {{ __("Traitement phyto") }}</option>
+                                        <option value="fertilisation">⚗️ {{ __("Fertilisation") }}</option>
+                                        <option value="recolte">🧺 {{ __("Récolte") }}</option>
+                                        <option value="semis">🌱 {{ __("Semis") }}</option>
+                                    </optgroup>
                                 </select>
                             </div>
                         </div>
@@ -88,18 +98,35 @@
                             </div>
                         </div>
 
-                        <div class="grid grid-cols-2 gap-4">
-                            <label class="flex items-center gap-3 p-3 bg-slate-50 rounded-xl cursor-pointer">
-                                <input type="checkbox" name="per_building" value="1" checked class="rounded text-indigo-500">
-                                <span class="text-[9px] font-black text-slate-600 uppercase">{{ __("Générer par bâtiment actif") }}</span>
-                            </label>
-                            <div>
+                        <div class="space-y-3">
+                            <div class="flex gap-4">
+                                <label class="flex items-center gap-3 p-3 bg-slate-50 rounded-xl cursor-pointer flex-1" @click="perBuilding = !perBuilding; if(perBuilding) perPlot = false">
+                                    <input type="checkbox" name="per_building" value="1" x-model="perBuilding" @change="if(perBuilding) perPlot = false" class="rounded text-indigo-500">
+                                    <span class="text-[9px] font-black text-slate-600 uppercase">{{ __("Générer par bâtiment actif") }}</span>
+                                </label>
+                                <label class="flex items-center gap-3 p-3 bg-slate-50 rounded-xl cursor-pointer flex-1" @click="perPlot = !perPlot; if(perPlot) perBuilding = false">
+                                    <input type="checkbox" name="per_plot" value="1" x-model="perPlot" @change="if(perPlot) perBuilding = false" class="rounded text-green-500">
+                                    <span class="text-[9px] font-black text-slate-600 uppercase">{{ __("Générer par parcelle active") }}</span>
+                                </label>
+                            </div>
+                            <div x-show="perBuilding">
                                 <label class="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">{{ __("Types de lots (optionnel)") }}</label>
                                 <div class="flex flex-wrap gap-2">
                                     @foreach($batchTypeOptions as $slug => $label)
                                     <label class="cursor-pointer">
                                         <input type="checkbox" name="batch_types[]" value="{{ $slug }}" class="hidden peer">
                                         <div class="px-3 py-1.5 rounded-lg text-[8px] font-black uppercase bg-slate-50 text-slate-400 peer-checked:bg-purple-100 peer-checked:text-purple-600 transition-all">{{ $label }}</div>
+                                    </label>
+                                    @endforeach
+                                </div>
+                            </div>
+                            <div x-show="perPlot">
+                                <label class="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">{{ __("Types de cultures (optionnel)") }}</label>
+                                <div class="flex flex-wrap gap-2">
+                                    @foreach($plotTypeOptions as $slug => $label)
+                                    <label class="cursor-pointer">
+                                        <input type="checkbox" name="plot_types[]" value="{{ $slug }}" class="hidden peer">
+                                        <div class="px-3 py-1.5 rounded-lg text-[8px] font-black uppercase bg-slate-50 text-slate-400 peer-checked:bg-green-100 peer-checked:text-green-600 transition-all">{{ $label }}</div>
                                     </label>
                                     @endforeach
                                 </div>
@@ -119,12 +146,18 @@
             @php
                 $grouped = $templates->groupBy('category');
                 $catMeta = [
-                    'alimentation' => ['label' => __('Alimentation'),  'icon' => 'fa-bowl-food',        'color' => 'amber'],
-                    'collecte'     => ['label' => __('Collecte'),      'icon' => 'fa-egg',              'color' => 'emerald'],
-                    'controle'     => ['label' => __('Contrôles'),     'icon' => 'fa-clipboard-check',  'color' => 'blue'],
-                    'nettoyage'    => ['label' => __('Nettoyage'),     'icon' => 'fa-broom',            'color' => 'purple'],
-                    'sante'        => ['label' => __('Santé'),         'icon' => 'fa-heart-pulse',      'color' => 'rose'],
-                    'maintenance'  => ['label' => __('Maintenance'),   'icon' => 'fa-wrench',           'color' => 'slate'],
+                    'alimentation' => ['label' => __('Alimentation'),  'icon' => 'fa-bowl-food',          'color' => 'amber'],
+                    'collecte'     => ['label' => __('Collecte'),      'icon' => 'fa-egg',                'color' => 'emerald'],
+                    'controle'     => ['label' => __('Contrôles'),     'icon' => 'fa-clipboard-check',    'color' => 'blue'],
+                    'nettoyage'    => ['label' => __('Nettoyage'),     'icon' => 'fa-broom',              'color' => 'purple'],
+                    'sante'        => ['label' => __('Santé'),         'icon' => 'fa-heart-pulse',        'color' => 'rose'],
+                    'maintenance'  => ['label' => __('Maintenance'),   'icon' => 'fa-wrench',             'color' => 'slate'],
+                    'irrigation'   => ['label' => __('Irrigation'),    'icon' => 'fa-droplet',            'color' => 'cyan'],
+                    'sarclage'     => ['label' => __('Sarclage'),      'icon' => 'fa-trowel',             'color' => 'amber'],
+                    'traitement'   => ['label' => __('Traitement'),    'icon' => 'fa-spray-can-sparkles', 'color' => 'rose'],
+                    'fertilisation'=> ['label' => __('Fertilisation'), 'icon' => 'fa-flask',              'color' => 'green'],
+                    'recolte'      => ['label' => __('Récolte'),       'icon' => 'fa-basket-shopping',    'color' => 'emerald'],
+                    'semis'        => ['label' => __('Semis'),         'icon' => 'fa-seedling',           'color' => 'lime'],
                 ];
                 $dayLabels = [1 => __('L'), 2 => __('M'), 3 => __('Me'), 4 => __('J'), 5 => __('V'), 6 => __('S'), 7 => __('D')];
             @endphp
@@ -149,7 +182,9 @@
                                     <span>{{ $tpl->duration_minutes }}min</span>
                                     <span class="uppercase text-blue-400">{{ $tpl->frequency }}</span>
                                     @if($tpl->per_building)<span class="text-indigo-400">×bât.</span>@endif
+                                    @if($tpl->target_type === 'plot')<span class="text-green-500">×parcelle</span>@endif
                                     @if($tpl->batch_types)<span class="text-purple-400">{{ implode(',', $tpl->batch_types) }}</span>@endif
+                                    @if($tpl->plot_types)<span class="text-green-400">{{ implode(',', $tpl->plot_types) }}</span>@endif
                                 </div>
                             </div>
 

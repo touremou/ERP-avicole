@@ -304,6 +304,7 @@
                                     <div class="flex items-center gap-3 mt-0.5">
                                         @if($task->scheduled_time)<span class="text-[8px] text-slate-400"><i class="fa-solid fa-clock mr-0.5"></i> {{ \Carbon\Carbon::parse($task->scheduled_time)->format('H:i') }}</span>@endif
                                         @if($task->building)<span class="text-[8px] text-blue-400">{{ $task->building->name }}</span>@endif
+                                        @if($task->plot_id && $task->plot)<span class="text-[8px] text-green-500"><i class="fa-solid fa-leaf mr-0.5"></i>{{ $task->plot->name }}</span>@endif
                                     </div>
                                 </div>
 

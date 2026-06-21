@@ -16,12 +16,13 @@ class TaskTemplate extends Model
         'farm_id', 'name', 'category', 'description', 'icon', 'color',
         'frequency', 'days_of_week', 'day_of_month', 'scheduled_time',
         'duration_minutes', 'target_type', 'per_building', 'batch_types',
-        'priority', 'is_active',
+        'plot_types', 'priority', 'is_active',
     ];
 
     protected $casts = [
         'days_of_week'  => 'array',
         'batch_types'   => 'array',
+        'plot_types'    => 'array',
         'per_building'  => 'boolean',
         'is_active'     => 'boolean',
     ];
@@ -91,8 +92,28 @@ class TaskTemplate extends Model
             'nettoyage'    => '🧹 Nettoyage',
             'sante'        => '💉 Santé',
             'maintenance'  => '🔧 Maintenance',
+            'irrigation'   => '💧 Irrigation',
+            'sarclage'     => '🌿 Sarclage',
+            'traitement'   => '🌾 Traitement',
+            'fertilisation'=> '⚗️ Fertilisation',
+            'recolte'      => '🧺 Récolte',
+            'semis'        => '🌱 Semis',
             default        => $this->category,
         };
+    }
+
+    public static function plotTypeOptions(): array
+    {
+        return [
+            'cereale'     => '🌾 Céréales',
+            'tubercule'   => '🥔 Tubercules',
+            'legumineuse' => '🫘 Légumineuses',
+            'maraicher'   => '🥕 Maraîchage',
+            'fruitier'    => '🍋 Fruitiers',
+            'oleagineux'  => '🌻 Oléagineux',
+            'legume'      => '🥬 Légumes feuillus',
+            'autre'       => '🌱 Autres',
+        ];
     }
 
     /**

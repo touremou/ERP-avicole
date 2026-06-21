@@ -4,7 +4,10 @@ namespace App\Services;
 
 use App\Models\Batch;
 use App\Models\Building;
+use App\Models\CropCycle;
+use App\Models\CropSpecies;
 use App\Models\Employee;
+use App\Models\Plot;
 use App\Models\TaskAssignment;
 use App\Models\TaskTemplate;
 use Carbon\Carbon;
@@ -78,6 +81,46 @@ class TaskSchedulerService
                             'duration_minutes' => $tpl->duration_minutes,
                             'priority'         => $tpl->priority,
                             'status'           => 'a_faire',
+                            'is_auto_generated' => true,
+                        ]);
+                        $created++;
+                    }
+                } elseif ($tpl->target_type === 'plot') {
+                    // Generate one task per active plot (plots with in-progress crop cycles).
+                    $plotQuery = Plot::where('status', Plot::STATUS_EN_CULTURE);
+                    if ($farmId && Schema::hasColumn('plots', 'farm_id')) {
+                        $plotQuery->where('farm_id', $farmId);
+                    }
+                    $activePlots = $plotQuery->with(['cropCycles' => fn($q) => $q->whereIn('status', CropCycle::IN_PROGRESS_STATUSES)])->get();
+
+                    foreach ($activePlots as $plot) {
+                        // Filter by plot_types if set (match against CropSpecies type via crop_name).
+                        if ($tpl->plot_types) {
+                            $hasMatchingCrop = $plot->cropCycles->contains(function ($cycle) use ($tpl) {
+                                // We match on the CropSpecies type if species exists, else pass.
+                                $species = CropSpecies::where('name', $cycle->crop_name)->first();
+                                return $species && in_array($species->type, $tpl->plot_types);
+                            });
+                            if (!$hasMatchingCrop) continue;
+                        }
+
+                        if ($this->alreadyExistsForPlot($tpl, $date, $plot->id, $farmId)) { $skipped++; continue; }
+
+                        $employee = $this->findBestEmployeeForPlot($plot, $employees, $date);
+
+                        TaskAssignment::create([
+                            'farm_id'           => $farmId ?? $plot->farm_id ?? null,
+                            'task_template_id'  => $tpl->id,
+                            'employee_id'       => $employee?->id,
+                            'title'             => $tpl->name . ' — ' . $plot->name,
+                            'description'       => $tpl->description,
+                            'category'          => $tpl->category,
+                            'plot_id'           => $plot->id,
+                            'scheduled_date'    => $date,
+                            'scheduled_time'    => $tpl->scheduled_time,
+                            'duration_minutes'  => $tpl->duration_minutes,
+                            'priority'          => $tpl->priority,
+                            'status'            => 'a_faire',
                             'is_auto_generated' => true,
                         ]);
                         $created++;
@@ -172,6 +215,38 @@ class TaskSchedulerService
                 // Clé composite : charge du jour ×10 (critère principal) + bonus
                 // de continuité (0 pour le responsable du lot, 1 sinon).
                 return $load * 10 + ($emp->id === $batchEmployeeId ? 0 : 1);
+            })
+            ->first();
+    }
+
+    private function alreadyExistsForPlot(TaskTemplate $tpl, Carbon $date, int $plotId, ?int $farmId): bool
+    {
+        $q = TaskAssignment::where('task_template_id', $tpl->id)
+            ->where('scheduled_date', $date->toDateString())
+            ->where('plot_id', $plotId);
+        if ($farmId && Schema::hasColumn('task_assignments', 'farm_id')) {
+            $q->where('farm_id', $farmId);
+        }
+        return $q->exists();
+    }
+
+    private function findBestEmployeeForPlot(Plot $plot, $employees, Carbon $date): ?Employee
+    {
+        $available = $employees->reject(fn ($emp) => $emp->isOnLeaveOn($date))->values();
+        if ($available->isEmpty()) return null;
+
+        // Prefer the employee assigned to the most recent active crop cycle on this plot.
+        $cycleEmployeeId = $plot->cropCycles
+            ->whereIn('status', CropCycle::IN_PROGRESS_STATUSES)
+            ->sortByDesc('planting_date')
+            ->first()?->employee_id;
+
+        return $available
+            ->sortBy(function ($emp) use ($date, $cycleEmployeeId) {
+                $load = TaskAssignment::whereDate('scheduled_date', $date->toDateString())
+                    ->where('employee_id', $emp->id)
+                    ->count();
+                return $load * 10 + ($emp->id === $cycleEmployeeId ? 0 : 1);
             })
             ->first();
     }
