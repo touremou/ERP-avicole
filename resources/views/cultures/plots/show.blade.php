@@ -55,7 +55,12 @@
                     \App\Models\Plot::STATUS_INACTIVE   => 'bg-slate-100 text-slate-400',
                     default                             => 'bg-blue-50 text-blue-600',
                 };
-                $activeCycles = $plot->cropCycles->whereIn('status', ['en_cours', 'recolte'])->count();
+                $activeCyclesColl = $plot->cropCycles->whereIn('status', ['en_cours', 'recolte']);
+                $activeCycles = $activeCyclesColl->count();
+                $usedHa = (float) $activeCyclesColl->sum('area_used_ha');
+                $totalHa = (float) $plot->area_ha;
+                $freeHa = max(0.0, $totalHa - $usedHa);
+                $occupancyPct = $totalHa > 0 ? min(100, round($usedHa / $totalHa * 100)) : 0;
             @endphp
 
             {{-- KPI --}}
@@ -76,6 +81,24 @@
                     <p class="text-[9px] font-black text-slate-400 uppercase ml-1 mb-1 italic">{{ __("Cycles actifs") }}</p>
                     <p class="text-2xl font-black text-green-600 italic">{{ $activeCycles }}</p>
                 </div>
+            </div>
+
+            {{-- OCCUPATION DE LA SURFACE (assolement : plusieurs cultures partagent la parcelle) --}}
+            <div class="bg-white p-6 rounded-[3rem] border border-slate-100 shadow-sm">
+                <div class="flex items-center justify-between mb-3 ml-2">
+                    <h3 class="text-[10px] font-black uppercase text-green-500 tracking-widest italic">{{ __("Occupation de la surface") }}</h3>
+                    <span class="text-[10px] font-black text-slate-600 uppercase italic">{{ number_format($usedHa, 2, ',', ' ') }} / {{ number_format($totalHa, 2, ',', ' ') }} ha · {{ $occupancyPct }}%</span>
+                </div>
+                <div class="w-full bg-slate-100 rounded-full h-4 overflow-hidden">
+                    <div class="h-4 rounded-full {{ $occupancyPct >= 100 ? 'bg-green-600' : 'bg-green-400' }}" style="width: {{ $occupancyPct }}%"></div>
+                </div>
+                <p class="text-[9px] font-black text-slate-400 uppercase italic mt-2 ml-2">
+                    @if($freeHa > 0.0001)
+                        {{ number_format($freeHa, 2, ',', ' ') }} ha {{ __("encore disponible(s) pour une nouvelle culture") }}
+                    @else
+                        {{ __("Parcelle entièrement emblavée") }}
+                    @endif
+                </p>
             </div>
 
             {{-- CYCLES --}}

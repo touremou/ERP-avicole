@@ -43,7 +43,7 @@
             @endif
 
             <form action="{{ route('crop-cycles.update', $cycle) }}" method="POST"
-                  x-data="cropCycleForm({{ Js::from($catalogue) }})"
+                  x-data="cropCycleForm({{ Js::from($catalogue) }}, {{ Js::from($maxAreaHa) }})"
                   class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm space-y-6">
                 @csrf @method('PUT')
 
@@ -97,6 +97,10 @@
                     <div>
                         <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Surface emblavée (ha) *") }}</label>
                         <input type="number" step="0.01" min="0" name="area_used_ha" x-model="areaHa" @input="recompute()" value="{{ old('area_used_ha', $cycle->area_used_ha) }}" required class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic text-right">
+                        <template x-if="maxAreaHa !== null">
+                            <p class="text-[9px] font-black mt-1 ml-2 italic" :class="areaExceedsLimit() ? 'text-red-500' : 'text-slate-400'"
+                               x-text="areaExceedsLimit() ? 'Surface dépasse le disponible (' + maxAreaHa.toFixed(2) + ' ha)' : 'Disponible sur cette parcelle : ' + maxAreaHa.toFixed(2) + ' ha'"></p>
+                        </template>
                     </div>
                     <div>
                         <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Statut *") }}</label>
@@ -152,9 +156,10 @@
     </div>
 
     <script>
-        function cropCycleForm(catalogue) {
+        function cropCycleForm(catalogue, maxAreaHa) {
             return {
                 catalogue: catalogue,
+                maxAreaHa: (maxAreaHa === undefined ? null : maxAreaHa),
                 cropName: @js(old('crop_name', $cycle->crop_name)),
                 variety: @js(old('variety', $cycle->variety ?? '')),
                 areaHa: @js(old('area_used_ha', (string) $cycle->area_used_ha)),
@@ -165,6 +170,11 @@
                 hint: '',
 
                 init() { this.resolveMatch(); },
+
+                areaExceedsLimit() {
+                    if (this.maxAreaHa === null || !this.areaHa) return false;
+                    return parseFloat(this.areaHa) > this.maxAreaHa + 0.0001;
+                },
 
                 resolveMatch() {
                     const needle = (this.cropName || '').trim().toLowerCase();

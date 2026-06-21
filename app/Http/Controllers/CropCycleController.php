@@ -275,12 +275,20 @@ class CropCycleController extends Controller
             return back()->with('error', 'Action non autorisée.');
         }
 
+        // Surface mobilisable pour CE cycle = surface parcelle − surfaces des AUTRES cycles actifs.
+        $usedByOthers = (float) CropCycle::where('plot_id', $cropCycle->plot_id)
+            ->whereIn('status', CropCycle::IN_PROGRESS_STATUSES)
+            ->where('id', '!=', $cropCycle->id)
+            ->sum('area_used_ha');
+        $maxAreaHa = max(0.0, (float) $cropCycle->plot->area_ha - $usedByOthers);
+
         return view('cultures.cycles.edit', [
             'cycle'     => $cropCycle,
             'campaigns' => CropCampaign::orderByDesc('start_date')->get(['id', 'name', 'year']),
             'employees' => Employee::where('status', 'Actif')->orderBy('first_name')->get(['id', 'first_name', 'last_name']),
             'statuses'  => CropCycle::EDITABLE_STATUSES,
             'species'   => CropSpecies::active()->with('varieties:id,crop_species_id,name,cycle_days,avg_yield_tha')->orderBy('name')->get(),
+            'maxAreaHa' => $maxAreaHa,
         ]);
     }
 
