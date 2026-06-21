@@ -1,5 +1,20 @@
 <x-app-layout>
-    @php $currency = setting('general.currency', 'GNF'); @endphp
+    @php
+        $currency = setting('general.currency', 'GNF');
+        // Référentiel agronomique encodé pour l'auto-remplissage (cf. catalogue).
+        $catalogue = $species->map(fn ($sp) => [
+            'name'           => $sp->name,
+            'local_name'     => $sp->local_name,
+            'cycle_days_min' => $sp->cycle_days_min,
+            'cycle_days_max' => $sp->cycle_days_max,
+            'avg_yield_tha'  => $sp->avg_yield_tha !== null ? (float) $sp->avg_yield_tha : null,
+            'varieties'      => $sp->varieties->map(fn ($v) => [
+                'name'          => $v->name,
+                'cycle_days'    => $v->cycle_days,
+                'avg_yield_tha' => $v->avg_yield_tha !== null ? (float) $v->avg_yield_tha : null,
+            ])->values(),
+        ])->values();
+    @endphp
     <x-slot name="header">
         <div class="flex items-center justify-between">
             <div class="flex items-center gap-4">
@@ -35,8 +50,24 @@
                 </div>
             @endif
 
-            <form action="{{ route('crop-cycles.store') }}" method="POST" class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm space-y-6">
+            <form action="{{ route('crop-cycles.store') }}" method="POST"
+                  x-data="cropCycleForm({{ Js::from($catalogue) }})"
+                  class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm space-y-6">
                 @csrf
+
+                {{-- Bandeau d'auto-remplissage depuis le catalogue --}}
+                <template x-if="match">
+                    <div class="bg-green-50 border border-green-100 text-green-700 p-4 rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest italic flex items-center justify-between gap-4">
+                        <span>
+                            <i class="fa-solid fa-wand-magic-sparkles mr-2"></i>
+                            <span x-text="hint"></span>
+                        </span>
+                        <button type="button" @click="applySuggestions()" class="shrink-0 bg-green-600 text-white px-4 py-2 rounded-full hover:bg-green-700 transition-all text-[9px]">
+                            <i class="fa-solid fa-check mr-1"></i> {{ __("Pré-remplir") }}
+                        </button>
+                    </div>
+                </template>
+
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Parcelle *") }}</label>
@@ -67,18 +98,23 @@
                     </div>
                     <div>
                         <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Culture *") }}</label>
-                        <input type="text" name="crop_name" list="crop-species-list" value="{{ old('crop_name') }}" required placeholder="{{ __('Maïs, manioc, tomate…') }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic">
+                        <input type="text" name="crop_name" list="crop-species-list" x-model="cropName" @input="onCropChange()" value="{{ old('crop_name') }}" required placeholder="{{ __('Maïs, manioc, tomate…') }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic">
                         <datalist id="crop-species-list">
                             @foreach($species as $sp)<option value="{{ $sp->name }}">@endforeach
                         </datalist>
                     </div>
                     <div>
                         <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Variété") }}</label>
-                        <input type="text" name="variety" value="{{ old('variety') }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic">
+                        <input type="text" name="variety" list="crop-variety-list" x-model="variety" @input="onVarietyChange()" value="{{ old('variety') }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic">
+                        <datalist id="crop-variety-list">
+                            <template x-for="v in (match ? match.varieties : [])" :key="v.name">
+                                <option :value="v.name"></option>
+                            </template>
+                        </datalist>
                     </div>
                     <div>
                         <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Surface emblavée (ha) *") }}</label>
-                        <input type="number" step="0.01" min="0" name="area_used_ha" value="{{ old('area_used_ha') }}" required class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic text-right">
+                        <input type="number" step="0.01" min="0" name="area_used_ha" x-model="areaHa" @input="recompute()" value="{{ old('area_used_ha') }}" required class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic text-right">
                     </div>
                     <div>
                         <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Code") }}</label>
@@ -86,11 +122,11 @@
                     </div>
                     <div>
                         <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Date de semis *") }}</label>
-                        <input type="date" name="planting_date" value="{{ old('planting_date', now()->toDateString()) }}" required class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic">
+                        <input type="date" name="planting_date" x-model="plantingDate" @change="recompute()" value="{{ old('planting_date', now()->toDateString()) }}" required class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic">
                     </div>
                     <div>
                         <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Récolte prévue") }}</label>
-                        <input type="date" name="expected_harvest_date" value="{{ old('expected_harvest_date') }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic">
+                        <input type="date" name="expected_harvest_date" x-model="expectedHarvest" value="{{ old('expected_harvest_date') }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic">
                     </div>
                     <div>
                         <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Quantité semence") }}</label>
@@ -101,7 +137,7 @@
                     </div>
                     <div>
                         <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Rendement attendu (kg)") }}</label>
-                        <input type="number" step="0.01" min="0" name="expected_yield_kg" value="{{ old('expected_yield_kg') }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic text-right">
+                        <input type="number" step="0.01" min="0" name="expected_yield_kg" x-model="expectedYield" value="{{ old('expected_yield_kg') }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic text-right">
                     </div>
                     <div>
                         <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Coût semences/intrants") }} ({{ $currency }})</label>
@@ -124,4 +160,108 @@
             </form>
         </div>
     </div>
+
+    <script>
+        function cropCycleForm(catalogue) {
+            return {
+                catalogue: catalogue,
+                cropName: @js(old('crop_name', '')),
+                variety: @js(old('variety', '')),
+                areaHa: @js(old('area_used_ha', '')),
+                plantingDate: @js(old('planting_date', now()->toDateString())),
+                expectedHarvest: @js(old('expected_harvest_date', '')),
+                expectedYield: @js(old('expected_yield_kg', '')),
+                match: null,
+                hint: '',
+
+                init() {
+                    this.resolveMatch();
+                },
+
+                /** Retrouve l'espèce du catalogue correspondant au nom saisi (insensible à la casse). */
+                resolveMatch() {
+                    const needle = (this.cropName || '').trim().toLowerCase();
+                    this.match = this.catalogue.find(s => s.name.toLowerCase() === needle) || null;
+                    this.buildHint();
+                },
+
+                onCropChange() {
+                    this.resolveMatch();
+                },
+
+                onVarietyChange() {
+                    this.buildHint();
+                },
+
+                /** Variété sélectionnée dans le catalogue (si elle existe). */
+                currentVariety() {
+                    if (!this.match) return null;
+                    const needle = (this.variety || '').trim().toLowerCase();
+                    return this.match.varieties.find(v => v.name.toLowerCase() === needle) || null;
+                },
+
+                /** Jours de cycle effectifs : variété > espèce (max). */
+                effectiveCycleDays() {
+                    const v = this.currentVariety();
+                    if (v && v.cycle_days) return v.cycle_days;
+                    if (this.match && this.match.cycle_days_max) return this.match.cycle_days_max;
+                    if (this.match && this.match.cycle_days_min) return this.match.cycle_days_min;
+                    return null;
+                },
+
+                /** Rendement de référence effectif (t/ha) : variété > espèce. */
+                effectiveYieldTha() {
+                    const v = this.currentVariety();
+                    if (v && v.avg_yield_tha) return v.avg_yield_tha;
+                    if (this.match && this.match.avg_yield_tha) return this.match.avg_yield_tha;
+                    return null;
+                },
+
+                buildHint() {
+                    if (!this.match) { this.hint = ''; return; }
+                    const parts = [];
+                    if (this.match.local_name) parts.push('Nom local : ' + this.match.local_name);
+                    const days = this.effectiveCycleDays();
+                    if (days) parts.push('Cycle ≈ ' + days + ' j');
+                    const tha = this.effectiveYieldTha();
+                    if (tha) parts.push('Rdt réf. ' + tha + ' t/ha');
+                    this.hint = (parts.length ? this.match.name + ' — ' + parts.join(' · ') : this.match.name)
+                        + ' · cliquez pour pré-remplir';
+                },
+
+                /** Calcule les valeurs suggérées (récolte + rendement) sans écraser une saisie manuelle vide. */
+                suggestions() {
+                    const out = { harvest: null, yield: null };
+                    const days = this.effectiveCycleDays();
+                    if (this.plantingDate && days) {
+                        const d = new Date(this.plantingDate);
+                        d.setDate(d.getDate() + parseInt(days, 10));
+                        out.harvest = d.toISOString().slice(0, 10);
+                    }
+                    const tha = this.effectiveYieldTha();
+                    const area = parseFloat(this.areaHa);
+                    if (tha && area > 0) {
+                        out.yield = Math.round(tha * area * 1000); // t/ha → kg
+                    }
+                    return out;
+                },
+
+                /** Applique explicitement les suggestions (bouton « Pré-remplir »). */
+                applySuggestions() {
+                    const s = this.suggestions();
+                    if (s.harvest) this.expectedHarvest = s.harvest;
+                    if (s.yield !== null) this.expectedYield = s.yield;
+                },
+
+                /** Recalcule à la volée : ne remplit que les champs encore vides (non-intrusif). */
+                recompute() {
+                    if (!this.match) return;
+                    const s = this.suggestions();
+                    if (s.harvest && !this.expectedHarvest) this.expectedHarvest = s.harvest;
+                    if (s.yield !== null && !this.expectedYield) this.expectedYield = s.yield;
+                    this.buildHint();
+                },
+            };
+        }
+    </script>
 </x-app-layout>

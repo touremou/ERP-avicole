@@ -152,8 +152,10 @@ test('clôturer un cycle libère la parcelle', function () {
 
     $this->actingAs($this->managerUser)
         ->put(route('crop-cycles.update', $cycle), [
-            'crop_name' => 'Arachide',
-            'status'    => CropCycle::STATUS_TERMINE,
+            'crop_name'     => 'Arachide',
+            'area_used_ha'  => 2.0,
+            'planting_date' => now()->subMonths(4)->toDateString(),
+            'status'        => CropCycle::STATUS_TERMINE,
         ])
         ->assertRedirect();
 

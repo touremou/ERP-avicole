@@ -55,7 +55,7 @@ class CropCycleController extends Controller
             'plots'     => Plot::available()->orderBy('name')->get(),
             'employees' => Employee::where('status', 'Actif')->orderBy('first_name')->get(['id', 'first_name', 'last_name']),
             'campaigns' => CropCampaign::where('status', '!=', CropCampaign::STATUS_CLOTUREE)->orderByDesc('start_date')->get(['id', 'name', 'year']),
-            'species'   => CropSpecies::active()->orderBy('name')->get(['id', 'name', 'avg_yield_tha']),
+            'species'   => CropSpecies::active()->with('varieties:id,crop_species_id,name,cycle_days,avg_yield_tha')->orderBy('name')->get(),
         ]);
     }
 
@@ -123,10 +123,15 @@ class CropCycleController extends Controller
         }
 
         $validated = $request->validate([
+            'campaign_id'            => 'nullable|exists:crop_campaigns,id',
             'crop_name'              => 'required|string|max:255',
             'variety'                => 'nullable|string|max:255',
             'employee_id'            => 'nullable|exists:employees,id',
-            'expected_harvest_date'  => 'nullable|date',
+            'area_used_ha'           => 'required|numeric|min:0',
+            'planting_date'          => 'required|date',
+            'expected_harvest_date'  => 'nullable|date|after_or_equal:planting_date',
+            'seed_quantity'          => 'nullable|numeric|min:0',
+            'seed_unit'              => 'nullable|string|max:20',
             'expected_yield_kg'      => 'nullable|numeric|min:0',
             'total_acquisition_cost' => 'nullable|numeric|min:0',
             'additional_costs'       => 'nullable|numeric|min:0',
@@ -143,7 +148,8 @@ class CropCycleController extends Controller
             $cropCycle->plot()->update(['status' => Plot::STATUS_DISPONIBLE]);
         }
 
-        return back()->with('success', 'Cycle de culture mis à jour.');
+        return redirect()->route('crop-cycles.show', $cropCycle)
+            ->with('success', 'Cycle de culture mis à jour.');
     }
 
     /**
@@ -219,6 +225,7 @@ class CropCycleController extends Controller
             'campaigns' => CropCampaign::orderByDesc('start_date')->get(['id', 'name', 'year']),
             'employees' => Employee::where('status', 'Actif')->orderBy('first_name')->get(['id', 'first_name', 'last_name']),
             'statuses'  => CropCycle::EDITABLE_STATUSES,
+            'species'   => CropSpecies::active()->with('varieties:id,crop_species_id,name,cycle_days,avg_yield_tha')->orderBy('name')->get(),
         ]);
     }
 

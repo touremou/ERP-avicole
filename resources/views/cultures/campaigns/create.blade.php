@@ -27,7 +27,9 @@
             @endif
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <form action="{{ route('crop-campaigns.store') }}" method="POST" class="lg:col-span-2 bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm space-y-6">
+                <form action="{{ route('crop-campaigns.store') }}" method="POST"
+                      x-data="campaignForm()"
+                      class="lg:col-span-2 bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm space-y-6">
                     @csrf
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
@@ -36,15 +38,15 @@
                         </div>
                         <div>
                             <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Année *") }}</label>
-                            <input type="number" name="year" min="2020" max="2035" value="{{ old('year', now()->year) }}" required class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic text-right">
+                            <input type="number" name="year" min="2020" max="2035" x-model="year" required class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic text-right">
                         </div>
                         <div class="md:col-span-2">
                             <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Nom de la campagne *") }}</label>
-                            <input type="text" name="name" value="{{ old('name') }}" required placeholder="{{ __('Grande saison pluies '.now()->year) }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic">
+                            <input type="text" name="name" x-model="name" @input="markNameEdited()" required placeholder="{{ __('Grande saison pluies '.now()->year) }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic">
                         </div>
                         <div>
                             <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Saison *") }}</label>
-                            <select name="season" required class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-green-700 shadow-inner italic appearance-none cursor-pointer">
+                            <select name="season" x-model="season" @change="onSeasonChange()" required class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-green-700 shadow-inner italic appearance-none cursor-pointer">
                                 @foreach($seasons as $key => $s)
                                     <option value="{{ $key }}" @selected(old('season') == $key)>{{ $s['label'] }} ({{ $s['months'] }})</option>
                                 @endforeach
@@ -60,11 +62,11 @@
                         </div>
                         <div>
                             <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Date début *") }}</label>
-                            <input type="date" name="start_date" value="{{ old('start_date', now()->toDateString()) }}" required class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic">
+                            <input type="date" name="start_date" x-model="startDate" @change="onStartDateChange()" required class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic">
                         </div>
                         <div>
                             <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Date fin prévue") }}</label>
-                            <input type="date" name="end_date_planned" value="{{ old('end_date_planned') }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic">
+                            <input type="date" name="end_date_planned" x-model="endDate" value="{{ old('end_date_planned') }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic">
                         </div>
                         <div class="md:col-span-2">
                             <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Objectif de production (tonnes)") }}</label>
@@ -94,4 +96,67 @@
             </div>
         </div>
     </div>
+
+    <script>
+        function campaignForm() {
+            return {
+                // Référentiel des saisons guinéennes (mois → saison + libellé + fin).
+                seasons: {
+                    grande_saison_pluies: { label: 'Grande saison pluies', endMonth: 10 },
+                    petite_saison:        { label: 'Petite saison',        endMonth: 12 },
+                    saison_seche:         { label: 'Saison sèche',          endMonth: 4  },
+                },
+                startDate: @js(old('start_date', now()->toDateString())),
+                endDate: @js(old('end_date_planned', '')),
+                season: @js(old('season', '')),
+                year: @js(old('year', now()->year)),
+                name: @js(old('name', '')),
+                autoName: true,
+
+                init() {
+                    // Si aucune saison choisie, on la déduit de la date de début.
+                    if (!this.season) this.detectSeason();
+                },
+
+                /** Déduit la saison du mois de la date de début (climat guinéen). */
+                seasonFromMonth(month) {
+                    if (month >= 5 && month <= 10) return 'grande_saison_pluies';
+                    if (month >= 11) return 'petite_saison';
+                    return 'saison_seche'; // janv. – avr.
+                },
+
+                detectSeason() {
+                    if (!this.startDate) return;
+                    const d = new Date(this.startDate);
+                    this.season = this.seasonFromMonth(d.getMonth() + 1);
+                    this.afterSeasonResolved(d);
+                },
+
+                onStartDateChange() {
+                    const d = new Date(this.startDate);
+                    this.year = d.getFullYear();
+                    this.season = this.seasonFromMonth(d.getMonth() + 1);
+                    this.afterSeasonResolved(d);
+                },
+
+                onSeasonChange() {
+                    // L'utilisateur fixe la saison manuellement : on garde le nom auto si non édité.
+                    if (this.startDate) this.afterSeasonResolved(new Date(this.startDate));
+                },
+
+                /** Calcule la date de fin prévue + propose un nom de campagne cohérent. */
+                afterSeasonResolved(d) {
+                    const meta = this.seasons[this.season];
+                    if (!meta) return;
+                    // Fin prévue = dernier jour du mois de fin de saison de l'année courante.
+                    const end = new Date(d.getFullYear(), meta.endMonth, 0);
+                    if (!this.endDate) this.endDate = end.toISOString().slice(0, 10);
+                    if (this.autoName) this.name = meta.label + ' ' + d.getFullYear();
+                },
+
+                // Dès que l'utilisateur édite le nom, on cesse de l'écraser.
+                markNameEdited() { this.autoName = false; },
+            };
+        }
+    </script>
 </x-app-layout>

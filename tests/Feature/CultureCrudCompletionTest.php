@@ -63,12 +63,32 @@ test('le formulaire d\'édition du cycle répond et l\'update fonctionne', funct
 
     $this->actingAs($this->managerUser)
         ->put(route('crop-cycles.update', $cycle), [
-            'crop_name' => 'Maïs jaune',
-            'status'    => CropCycle::STATUS_EN_COURS,
+            'crop_name'     => 'Maïs jaune',
+            'area_used_ha'  => 2,
+            'planting_date' => now()->subMonths(2)->toDateString(),
+            'status'        => CropCycle::STATUS_EN_COURS,
         ])
-        ->assertRedirect();
+        ->assertRedirect(route('crop-cycles.show', $cycle));
 
     expect($cycle->fresh()->crop_name)->toBe('Maïs jaune');
+});
+
+test('l\'update d\'un cycle redirige vers la fiche (pas vers l\'édition)', function () {
+    $cycle = freshCycle($this->farm->id);
+
+    $this->actingAs($this->managerUser)
+        ->put(route('crop-cycles.update', $cycle), [
+            'crop_name'     => 'Sorgho',
+            'area_used_ha'  => 1.5,
+            'planting_date' => now()->subMonth()->toDateString(),
+            'campaign_id'   => null,
+            'status'        => CropCycle::STATUS_RECOLTE,
+        ])
+        ->assertRedirect(route('crop-cycles.show', $cycle));
+
+    expect($cycle->fresh())
+        ->crop_name->toBe('Sorgho')
+        ->and((float) $cycle->fresh()->area_used_ha)->toBe(1.5);
 });
 
 // ─── RÉCOLTES : create / edit / update ───
