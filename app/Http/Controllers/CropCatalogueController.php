@@ -166,4 +166,70 @@ class CropCatalogueController extends Controller
 
         return back()->with('success', 'Variété supprimée.');
     }
+
+    // ── IMPORT CSV ─────────────────────────────────────────────────────────────
+
+    public function importForm()
+    {
+        if (Gate::denies('cultures.M')) {
+            return back()->with('error', 'Action non autorisée.');
+        }
+
+        return view('cultures.catalogue.import', ['types' => CropSpecies::TYPES]);
+    }
+
+    public function importStore(Request $request)
+    {
+        if (Gate::denies('cultures.M')) {
+            return back()->with('error', 'Action non autorisée.');
+        }
+
+        $request->validate(['file' => 'required|file|mimes:csv,txt|max:2048']);
+
+        $path           = $request->file('file')->getRealPath();
+        $handle         = fopen($path, 'r');
+        $createdSpecies = 0;
+        $createdVarieties = 0;
+        $header         = null;
+        $validTypes     = array_keys(CropSpecies::TYPES);
+
+        while (($row = fgetcsv($handle)) !== false) {
+            if ($header === null) {
+                $header = array_map('strtolower', array_map('trim', $row));
+                continue;
+            }
+
+            $data = array_combine($header, array_map('trim', $row));
+            $type = $data['type'] ?? null;
+            $name = $data['name'] ?? null;
+
+            if (! $name || ! in_array($type, $validTypes, true)) {
+                continue;
+            }
+
+            [$species, $new] = [
+                CropSpecies::firstOrCreate(['name' => $name], ['type' => $type]),
+                false,
+            ];
+            if ($species->wasRecentlyCreated) {
+                $createdSpecies++;
+            }
+
+            foreach (array_filter(explode(';', $data['varieties'] ?? '')) as $vName) {
+                $vName = trim($vName);
+                if (! $vName) {
+                    continue;
+                }
+                [$v] = [$species->varieties()->firstOrCreate(['name' => $vName])];
+                if ($v->wasRecentlyCreated) {
+                    $createdVarieties++;
+                }
+            }
+        }
+
+        fclose($handle);
+
+        return redirect()->route('crop-catalogue.index')
+            ->with('success', "{$createdSpecies} espèce(s) importée(s), {$createdVarieties} variété(s) ajoutée(s).");
+    }
 }

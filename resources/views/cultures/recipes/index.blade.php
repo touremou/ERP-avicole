@@ -14,6 +14,11 @@
                 <a href="{{ route('crop-transformations.index') }}" class="bg-white text-slate-700 px-6 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-slate-100 transition-all shadow-sm border border-slate-100 italic flex items-center gap-2 no-underline">
                     <i class="fa-solid fa-industry text-green-500"></i> {{ __("Transformations") }}
                 </a>
+                @can('cultures.M')
+                <a href="{{ route('crop-recipes.import') }}" class="bg-white text-slate-700 px-6 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-slate-100 transition-all shadow-sm border border-slate-100 italic flex items-center gap-2 no-underline">
+                    <i class="fa-solid fa-file-csv text-green-500"></i> {{ __("Importer CSV") }}
+                </a>
+                @endcan
                 @can('cultures.C')
                 <a href="{{ route('crop-recipes.create') }}" class="bg-slate-900 text-white px-8 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-green-600 transition-all shadow-2xl italic flex items-center gap-2 no-underline">
                     <i class="fa-solid fa-plus"></i> {{ __("Nouvelle recette") }}

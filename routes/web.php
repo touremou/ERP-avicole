@@ -267,6 +267,8 @@ Route::middleware(['auth'])->group(function () {
     // Catalogue des cultures (espèces & variétés)
     Route::prefix('cultures/catalogue')->name('crop-catalogue.')->controller(CropCatalogueController::class)->group(function () {
         Route::get('/', 'index')->name('index')->middleware('can:L');
+        Route::get('/import', 'importForm')->name('import')->middleware('can:M');
+        Route::post('/import', 'importStore')->name('import.store')->middleware('can:M');
         Route::get('/create', 'create')->name('create')->middleware('can:C');
         Route::post('/', 'store')->name('store')->middleware('can:C');
         Route::get('/{cropCatalogue}', 'show')->name('show')->where('cropCatalogue', '[0-9]+')->middleware('can:L');
@@ -291,6 +293,8 @@ Route::middleware(['auth'])->group(function () {
     // Recettes de transformation
     Route::prefix('cultures/recipes')->name('crop-recipes.')->controller(CropRecipeController::class)->group(function () {
         Route::get('/', 'index')->name('index')->middleware('can:L');
+        Route::get('/import', 'importForm')->name('import')->middleware('can:M');
+        Route::post('/import', 'importStore')->name('import.store')->middleware('can:M');
         Route::get('/create', 'create')->name('create')->middleware('can:C');
         Route::post('/', 'store')->name('store')->middleware('can:C');
         Route::get('/{cropRecipe}', 'show')->name('show')->where('cropRecipe', '[0-9]+')->middleware('can:L');

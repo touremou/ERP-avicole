@@ -141,4 +141,75 @@ class CropRecipeController extends Controller
 
         return back()->with('success', 'Recette mise à jour.');
     }
+
+    // ── IMPORT CSV ─────────────────────────────────────────────────────────────
+
+    public function importForm()
+    {
+        if (Gate::denies('cultures.M')) {
+            return back()->with('error', 'Action non autorisée.');
+        }
+
+        return view('cultures.recipes.import', ['types' => CropTransformation::TYPES]);
+    }
+
+    public function importStore(Request $request)
+    {
+        if (Gate::denies('cultures.M')) {
+            return back()->with('error', 'Action non autorisée.');
+        }
+
+        $request->validate(['file' => 'required|file|mimes:csv,txt|max:2048']);
+
+        $path       = $request->file('file')->getRealPath();
+        $handle     = fopen($path, 'r');
+        $created    = 0;
+        $header     = null;
+        $validTypes = array_keys(CropTransformation::TYPES);
+
+        while (($row = fgetcsv($handle)) !== false) {
+            if ($header === null) {
+                $header = array_map('strtolower', array_map('trim', $row));
+                continue;
+            }
+
+            $data = array_combine($header, array_map('trim', $row));
+            $name = $data['name'] ?? null;
+            $type = $data['transformation_type'] ?? null;
+
+            if (! $name || ! in_array($type, $validTypes, true)) {
+                continue;
+            }
+
+            $recipe = CropRecipe::firstOrCreate(
+                ['name' => $name],
+                [
+                    'transformation_type' => $type,
+                    'output_product'      => $data['output_product'] ?? $name,
+                    'notes'               => $data['description'] ?? null,
+                ]
+            );
+
+            if ($recipe->wasRecentlyCreated) {
+                $created++;
+
+                foreach (array_filter(explode(';', $data['ingredients'] ?? '')) as $ingredient) {
+                    $parts = explode(':', trim($ingredient));
+                    if (count($parts) < 2) {
+                        continue;
+                    }
+                    $recipe->items()->create([
+                        'input_product' => trim($parts[0]),
+                        'quantity'      => (float) ($parts[1] ?? 0),
+                        'unit'          => trim($parts[2] ?? 'kg'),
+                    ]);
+                }
+            }
+        }
+
+        fclose($handle);
+
+        return redirect()->route('crop-recipes.index')
+            ->with('success', "{$created} recette(s) importée(s).");
+    }
 }
