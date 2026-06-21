@@ -112,11 +112,6 @@ class CropCycle extends Model
 
     // ─── SCOPES ───
 
-    public function scopeActive($query)
-    {
-        return $query->where('status', self::STATUS_EN_COURS);
-    }
-
     /** Cycles en cours (semés OU en récolte) — occupent la parcelle. */
     public function scopeInProgress($query)
     {

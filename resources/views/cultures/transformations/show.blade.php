@@ -1,3 +1,4 @@
+@php $currency = setting('general.currency', 'GNF'); @endphp
 <x-app-layout>
     <x-slot name="header">
         <div class="flex items-center justify-between">
@@ -47,7 +48,7 @@
                 </div>
                 <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
                     <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest italic mb-2">{{ __("Valeur produit") }}</p>
-                    <p class="text-2xl font-black text-slate-900 leading-none">{{ number_format($transformation->estimated_value, 0, ',', ' ') }} <small class="text-[10px] opacity-40">GNF</small></p>
+                    <p class="text-2xl font-black text-slate-900 leading-none">{{ number_format($transformation->estimated_value, 0, ',', ' ') }} <small class="text-[10px] opacity-40">{{ $currency }}</small></p>
                 </div>
             </div>
 
@@ -56,7 +57,7 @@
                 <div class="grid grid-cols-2 md:grid-cols-3 gap-6 text-[11px]">
                     <div><p class="text-[8px] text-slate-400 uppercase">{{ __("Date production") }}</p><p class="font-black text-slate-800">{{ $transformation->production_date?->format('d/m/Y') }}</p></div>
                     <div><p class="text-[8px] text-slate-400 uppercase">{{ __("Péremption") }}</p><p class="font-black {{ $transformation->is_expired ? 'text-rose-600' : 'text-slate-800' }}">{{ $transformation->expiry_date?->format('d/m/Y') ?? '—' }}</p></div>
-                    <div><p class="text-[8px] text-slate-400 uppercase">{{ __("Coût production") }}</p><p class="font-black text-slate-800">{{ number_format($transformation->production_cost, 0, ',', ' ') }} GNF</p></div>
+                    <div><p class="text-[8px] text-slate-400 uppercase">{{ __("Coût production") }}</p><p class="font-black text-slate-800">{{ number_format($transformation->production_cost, 0, ',', ' ') }} {{ $currency }}</p></div>
                     <div><p class="text-[8px] text-slate-400 uppercase">{{ __("Cycle d'origine") }}</p><p class="font-black text-slate-800">{{ $transformation->cropCycle?->crop_name ?? '—' }}</p></div>
                     <div><p class="text-[8px] text-slate-400 uppercase">{{ __("Responsable") }}</p><p class="font-black text-slate-800">{{ $transformation->employee ? $transformation->employee->first_name.' '.$transformation->employee->last_name : '—' }}</p></div>
                     <div>

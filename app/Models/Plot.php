@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Traits\BelongsToFarm;
 use App\Traits\HasStandardUuid;
@@ -52,12 +53,12 @@ class Plot extends Model
         return $this->hasMany(CropCycle::class);
     }
 
-    /** Cycle de culture actuellement en cours sur la parcelle (le plus récent). */
-    public function activeCycle(): HasMany
+    /** Cycle de culture le plus récent actuellement en cours sur la parcelle. */
+    public function activeCycle(): HasOne
     {
-        return $this->hasMany(CropCycle::class)
+        return $this->hasOne(CropCycle::class)
             ->whereIn('status', CropCycle::IN_PROGRESS_STATUSES)
-            ->latest('planting_date');
+            ->latestOfMany('planting_date');
     }
 
     // ─── SCOPES ───

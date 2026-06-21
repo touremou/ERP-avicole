@@ -1,3 +1,4 @@
+@php $currency = setting('general.currency', 'GNF'); @endphp
 <x-app-layout>
     <x-slot name="header">
         <div class="flex items-center justify-between">
@@ -61,7 +62,7 @@
                         <input type="number" min="0" name="shelf_life_days" value="{{ old('shelf_life_days', $recipe->shelf_life_days) }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic text-right">
                     </div>
                     <div>
-                        <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Coût de transfo. réf. (GNF)") }}</label>
+                        <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Coût de transfo. réf.") }} ({{ $currency }})</label>
                         <input type="number" step="1" min="0" name="estimated_cost" value="{{ old('estimated_cost', $recipe->estimated_cost) }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic text-right">
                     </div>
                     <div class="flex items-center gap-3 pt-2">

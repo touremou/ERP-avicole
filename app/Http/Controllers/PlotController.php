@@ -45,7 +45,7 @@ class PlotController extends Controller
         $validated = $request->validate([
             'name'            => 'required|string|max:255',
             'code'            => 'nullable|string|max:50',
-            'area_ha'         => 'required|numeric|min:0',
+            'area_ha'         => 'required|numeric|min:0.001',
             'location'        => 'nullable|string|max:255',
             'soil_type'       => 'nullable|string|max:100',
             'irrigation_type' => 'nullable|string|max:100',
@@ -93,7 +93,7 @@ class PlotController extends Controller
         $validated = $request->validate([
             'name'            => 'required|string|max:255',
             'code'            => 'nullable|string|max:50',
-            'area_ha'         => 'required|numeric|min:0',
+            'area_ha'         => 'required|numeric|min:0.001',
             'location'        => 'nullable|string|max:255',
             'soil_type'       => 'nullable|string|max:100',
             'irrigation_type' => 'nullable|string|max:100',

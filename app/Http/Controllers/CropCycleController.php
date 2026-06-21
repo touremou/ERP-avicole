@@ -90,7 +90,7 @@ class CropCycleController extends Controller
             'code'                   => 'nullable|string|max:50',
             'crop_name'              => 'required|string|max:255',
             'variety'                => 'nullable|string|max:255',
-            'area_used_ha'           => 'required|numeric|min:0',
+            'area_used_ha'           => 'required|numeric|min:0.001',
             'planting_date'          => 'required|date',
             'expected_harvest_date'  => 'nullable|date|after_or_equal:planting_date',
             'seed_quantity'          => 'nullable|numeric|min:0',
@@ -159,7 +159,7 @@ class CropCycleController extends Controller
             'crop_name'              => 'required|string|max:255',
             'variety'                => 'nullable|string|max:255',
             'employee_id'            => 'nullable|exists:employees,id',
-            'area_used_ha'           => 'required|numeric|min:0',
+            'area_used_ha'           => 'required|numeric|min:0.001',
             'planting_date'          => 'required|date',
             'expected_harvest_date'  => 'nullable|date|after_or_equal:planting_date',
             'seed_quantity'          => 'nullable|numeric|min:0',
@@ -396,6 +396,15 @@ class CropCycleController extends Controller
             'provider_id' => 'nullable|exists:providers,id',
             'notes'       => 'nullable|string|max:500',
         ]);
+
+        // Recalculate total_cost if quantity and unit_cost are provided but total_cost is not.
+        if (!isset($validated['total_cost']) || $validated['total_cost'] === null) {
+            $qty = (float) ($validated['quantity'] ?? $input->quantity);
+            $unitCost = (float) ($validated['unit_cost'] ?? $input->unit_cost);
+            if ($qty > 0 && $unitCost > 0) {
+                $validated['total_cost'] = $qty * $unitCost;
+            }
+        }
 
         $input->update($validated);
 

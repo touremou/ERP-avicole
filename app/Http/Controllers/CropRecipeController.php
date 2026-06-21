@@ -139,6 +139,21 @@ class CropRecipeController extends Controller
 
         $cropRecipe->update($validated);
 
+        // Replace items if provided.
+        if ($request->has('items')) {
+            $cropRecipe->items()->delete();
+            foreach ($request->input('items', []) as $item) {
+                if (!empty($item['ingredient']) && isset($item['quantity'])) {
+                    $cropRecipe->items()->create([
+                        'ingredient'  => $item['ingredient'],
+                        'quantity'    => (float) $item['quantity'],
+                        'unit'        => $item['unit'] ?? 'kg',
+                        'notes'       => $item['notes'] ?? null,
+                    ]);
+                }
+            }
+        }
+
         return back()->with('success', 'Recette mise à jour.');
     }
 

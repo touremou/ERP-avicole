@@ -177,6 +177,7 @@ class Setting extends Model
             'rh'          => ['label' => 'RH & Paie',     'icon' => 'fa-users',            'color' => 'violet'],
             'stocks'      => ['label' => 'Stocks',        'icon' => 'fa-boxes-stacked',    'color' => 'orange'],
             'ventes'      => ['label' => 'Ventes',        'icon' => 'fa-cash-register',    'color' => 'teal'],
+            'cultures'    => ['label' => 'Cultures',      'icon' => 'fa-leaf',             'color' => 'green'],
         ];
     }
 }

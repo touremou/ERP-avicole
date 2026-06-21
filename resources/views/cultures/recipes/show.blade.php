@@ -1,3 +1,4 @@
+@php $currency = setting('general.currency', 'GNF'); @endphp
 <x-app-layout>
     <x-slot name="header">
         <div class="flex items-center justify-between">
@@ -48,7 +49,7 @@
                 </div>
                 <div class="bg-slate-900 text-white p-6 rounded-[2rem] shadow-lg">
                     <p class="text-[8px] font-black text-green-400 uppercase tracking-widest italic mb-2">{{ __("Coût de réf.") }}</p>
-                    <p class="text-2xl font-black leading-none">{{ $recipe->estimated_cost ? number_format($recipe->estimated_cost, 0, ',', ' ') : '—' }} <small class="text-[9px] opacity-40">GNF</small></p>
+                    <p class="text-2xl font-black leading-none">{{ $recipe->estimated_cost ? number_format($recipe->estimated_cost, 0, ',', ' ') : '—' }} <small class="text-[9px] opacity-40">{{ $currency }}</small></p>
                 </div>
             </div>
 

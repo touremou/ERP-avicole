@@ -1,3 +1,4 @@
+@php $currency = setting('general.currency', 'GNF'); @endphp
 <x-app-layout>
     <x-slot name="header">
         <div class="flex items-center justify-between">
@@ -75,7 +76,7 @@
                 </div>
                 <div class="bg-slate-900 text-white p-6 rounded-[2rem] shadow-lg">
                     <p class="text-[8px] font-black text-green-400 uppercase tracking-widest italic mb-2">{{ __("Marge nette") }}</p>
-                    <p class="text-2xl font-black leading-none {{ $cycle->net_margin >= 0 ? '' : 'text-rose-400' }}">{{ number_format($cycle->net_margin, 0, ',', ' ') }} <small class="text-[10px] opacity-40">GNF</small></p>
+                    <p class="text-2xl font-black leading-none {{ $cycle->net_margin >= 0 ? '' : 'text-rose-400' }}">{{ number_format($cycle->net_margin, 0, ',', ' ') }} <small class="text-[10px] opacity-40">{{ $currency }}</small></p>
                 </div>
             </div>
 
@@ -164,7 +165,7 @@
                             </p>
                         </div>
                         <div class="flex items-center gap-4">
-                            @if($h->unit_price)<p class="text-[10px] font-black text-slate-500">{{ number_format($h->estimated_value, 0, ',', ' ') }} GNF</p>@endif
+                            @if($h->unit_price)<p class="text-[10px] font-black text-slate-500">{{ number_format($h->estimated_value, 0, ',', ' ') }} {{ $currency }}</p>@endif
                             @can('cultures.M')
                             <a href="{{ route('crop-cycles.harvests.edit', [$cycle, $h]) }}" class="text-slate-300 hover:text-green-600 text-xs no-underline"><i class="fa-solid fa-pen-to-square"></i></a>
                             @endcan
@@ -186,7 +187,7 @@
                 <div class="flex justify-between items-center mb-6">
                     <h3 class="text-[10px] font-black uppercase text-slate-400 tracking-widest italic">{{ __("Registre des intrants") }}</h3>
                     <div class="flex items-center gap-4">
-                        <span class="text-[10px] font-black text-rose-500 italic">{{ number_format($cycle->inputs_cost, 0, ',', ' ') }} GNF</span>
+                        <span class="text-[10px] font-black text-rose-500 italic">{{ number_format($cycle->inputs_cost, 0, ',', ' ') }} {{ $currency }}</span>
                         @can('cultures.C')
                         @unless($cycle->isArchived())
                         <a href="{{ route('crop-cycles.inputs.create', $cycle) }}" class="text-[9px] font-black uppercase text-lime-600 hover:text-lime-700 italic no-underline"><i class="fa-solid fa-plus mr-1"></i>{{ __("Intrant") }}</a>
@@ -207,7 +208,7 @@
                             </p>
                         </div>
                         <div class="flex items-center gap-4">
-                            <p class="text-[10px] font-black text-slate-700">{{ number_format($in->total_cost, 0, ',', ' ') }} GNF</p>
+                            <p class="text-[10px] font-black text-slate-700">{{ number_format($in->total_cost, 0, ',', ' ') }} {{ $currency }}</p>
                             @can('cultures.M')
                             <a href="{{ route('crop-cycles.inputs.edit', [$cycle, $in]) }}" class="text-slate-300 hover:text-lime-600 text-xs no-underline"><i class="fa-solid fa-pen-to-square"></i></a>
                             @endcan
