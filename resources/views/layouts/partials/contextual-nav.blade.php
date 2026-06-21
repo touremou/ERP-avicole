@@ -52,7 +52,7 @@
     <a href="{{ route('incubations.index') }}" class="{{ $linkClass }} {{ request()->routeIs('incubations.*') ? $activeClass : $inactiveClass }}">{{ __("Couvoir") }}</a>
     @endcan
 
-@elseif(request()->routeIs(['cultures.*', 'plots.*', 'crop-cycles.*', 'crop-transformations.*', 'crop-catalogue.*', 'crop-campaigns.*', 'crop-recipes.*', 'crop-reports.*', 'weather.*', 'crop-calendar-events.*']))
+@elseif(request()->routeIs(['cultures.*', 'plots.*', 'crop-cycles.*', 'crop-transformations.*', 'crop-catalogue.*', 'crop-campaigns.*', 'crop-recipes.*', 'crop-reports.*', 'crop-calendar-events.*', 'weather.*']))
     <span class="{{ $sectionClass }}"><i class="fa-solid fa-seedling text-green-600 mr-1"></i> {{ __("Production Végétale") }}</span>
     @can('cultures.L')
     <a href="{{ route('cultures.dashboard') }}" class="{{ $linkClass }} {{ request()->routeIs('cultures.dashboard') || request()->routeIs('cultures.calendar') || request()->routeIs('crop-catalogue.*') || request()->routeIs('weather.*') ? $activeClass : $inactiveClass }}">{{ __("Pilotage") }}</a>
@@ -61,6 +61,7 @@
     <a href="{{ route('crop-campaigns.index') }}" class="{{ $linkClass }} {{ request()->routeIs('crop-campaigns.*') ? $activeClass : $inactiveClass }}">{{ __("Campagnes") }}</a>
     <a href="{{ route('crop-transformations.index') }}" class="{{ $linkClass }} {{ request()->routeIs('crop-transformations.*') ? $activeClass : $inactiveClass }}">{{ __("Transformation") }}</a>
     <a href="{{ route('crop-recipes.index') }}" class="{{ $linkClass }} {{ request()->routeIs('crop-recipes.*') ? $activeClass : $inactiveClass }}">{{ __("Recettes") }}</a>
+    <a href="{{ route('crop-calendar-events.index') }}" class="{{ $linkClass }} {{ request()->routeIs('crop-calendar-events.*') ? $activeClass : $inactiveClass }}">{{ __("Événements") }}</a>
     <a href="{{ route('crop-reports.index') }}" class="{{ $linkClass }} {{ request()->routeIs('crop-reports.*') ? $activeClass : $inactiveClass }}">{{ __("Rapports") }}</a>
     @endcan
 

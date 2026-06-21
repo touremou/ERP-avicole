@@ -273,10 +273,8 @@
                 @if($calendarEvents->isNotEmpty())
                 <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm">
                     <div class="flex items-center justify-between mb-6">
-                        <h3 class="text-[10px] font-black uppercase text-slate-400 tracking-widest italic"><i class="fa-solid fa-calendar-days mr-1 text-green-500"></i> {{ __("Événements") }}</h3>
-                        @can('cultures.L')
+                        <h3 class="text-[10px] font-black uppercase text-slate-400 tracking-widest italic"><i class="fa-solid fa-calendar-days mr-1 text-green-500"></i> {{ __("Événements") }} {{ $year }}</h3>
                         <a href="{{ route('crop-calendar-events.index') }}" class="text-[9px] font-black uppercase text-slate-400 hover:text-green-600 transition no-underline italic">{{ __("Voir tout") }} →</a>
-                        @endcan
                     </div>
                     <div class="space-y-2">
                         @foreach($calendarEvents->take(10) as $event)

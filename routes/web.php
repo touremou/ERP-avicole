@@ -56,8 +56,8 @@ use App\Http\Controllers\{
     CropCampaignController,
     CropRecipeController,
     CropReportController,
-    WeatherController,
-    CropCalendarEventController
+    CropCalendarEventController,
+    WeatherController
 };
 
 Route::redirect('/', '/login');
@@ -316,6 +316,16 @@ Route::middleware(['auth'])->group(function () {
     // Calendrier cultural
     Route::get('/cultures/calendar', [CultureDashboardController::class, 'calendar'])->name('cultures.calendar')->middleware('can:L');
 
+    // Événements calendaires libres
+    Route::prefix('cultures/calendar-events')->name('crop-calendar-events.')->controller(CropCalendarEventController::class)->group(function () {
+        Route::get('/', 'index')->name('index')->middleware('can:L');
+        Route::get('/create', 'create')->name('create')->middleware('can:C');
+        Route::post('/', 'store')->name('store')->middleware('can:C');
+        Route::get('/{cropCalendarEvent}/edit', 'edit')->name('edit')->where('cropCalendarEvent', '[0-9]+')->middleware('can:M');
+        Route::put('/{cropCalendarEvent}', 'update')->name('update')->middleware('can:M');
+        Route::delete('/{cropCalendarEvent}', 'destroy')->name('destroy')->middleware('can:S');
+    });
+
     // Rapports production végétale
     Route::prefix('cultures/reports')->name('crop-reports.')->controller(CropReportController::class)->middleware('can:L')->group(function () {
         Route::get('/', 'index')->name('index');
@@ -327,15 +337,6 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/campaigns/pdf', 'campaignsPdf')->name('campaigns.pdf');
         Route::get('/transformations', 'transformations')->name('transformations');
         Route::get('/transformations/pdf', 'transformationsPdf')->name('transformations.pdf');
-    });
-
-    Route::prefix('cultures/calendar-events')->name('crop-calendar-events.')->controller(CropCalendarEventController::class)->group(function () {
-        Route::get('/', 'index')->name('index')->middleware('can:L');
-        Route::get('/create', 'create')->name('create')->middleware('can:C');
-        Route::post('/', 'store')->name('store')->middleware('can:C');
-        Route::get('/{event}/edit', 'edit')->name('edit')->middleware('can:M');
-        Route::put('/{event}', 'update')->name('update')->middleware('can:M');
-        Route::delete('/{event}', 'destroy')->name('destroy')->middleware('can:S');
     });
 
     // ─── COUVOIR & INCUBATION ───

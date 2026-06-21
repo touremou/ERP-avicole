@@ -66,20 +66,20 @@ class CropCalendarEventController extends Controller
             ->with('success', 'Événement « ' . $validated['title'] . ' » ajouté au calendrier.');
     }
 
-    public function edit(CropCalendarEvent $event)
+    public function edit(CropCalendarEvent $cropCalendarEvent)
     {
         if (Gate::denies('cultures.M')) {
             return back()->with('error', 'Action non autorisée.');
         }
 
         return view('cultures.calendar-events.edit', [
-            'event'      => $event,
+            'event'      => $cropCalendarEvent,
             'types'      => CropCalendarEvent::TYPES,
             'cropCycles' => CropCycle::orderByDesc('planting_date')->get(['id', 'crop_name', 'code']),
         ]);
     }
 
-    public function update(Request $request, CropCalendarEvent $event)
+    public function update(Request $request, CropCalendarEvent $cropCalendarEvent)
     {
         if (Gate::denies('cultures.M')) {
             return back()->with('error', 'Action non autorisée.');
@@ -95,19 +95,19 @@ class CropCalendarEventController extends Controller
             'color'         => 'nullable|string|max:20',
         ]);
 
-        $event->update($validated);
+        $cropCalendarEvent->update($validated);
 
         return redirect()->route('cultures.dashboard', ['tab' => 'calendar'])
             ->with('success', 'Événement mis à jour.');
     }
 
-    public function destroy(CropCalendarEvent $event)
+    public function destroy(CropCalendarEvent $cropCalendarEvent)
     {
         if (Gate::denies('cultures.S')) {
             return back()->with('error', 'Action non autorisée.');
         }
 
-        $event->delete();
+        $cropCalendarEvent->delete();
 
         return back()->with('success', 'Événement supprimé.');
     }
