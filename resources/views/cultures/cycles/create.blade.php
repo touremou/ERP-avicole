@@ -51,7 +51,7 @@
             @endif
 
             <form action="{{ route('crop-cycles.store') }}" method="POST"
-                  x-data="cropCycleForm({{ Js::from($catalogue) }})"
+                  x-data="cropCycleForm({{ Js::from($catalogue) }}, {{ Js::from($plotData) }})"
                   class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm space-y-6">
                 @csrf
 
@@ -71,10 +71,12 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Parcelle *") }}</label>
-                        <select name="plot_id" required class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-green-700 shadow-inner italic appearance-none cursor-pointer">
+                        <select name="plot_id" x-model="selectedPlotId" @change="onPlotChange()" required class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-green-700 shadow-inner italic appearance-none cursor-pointer">
                             <option value="">{{ __("-- Choisir --") }}</option>
                             @foreach($plots as $plot)
-                                <option value="{{ $plot->id }}" @selected(old('plot_id') == $plot->id)>{{ $plot->name }} ({{ number_format($plot->area_ha, 2, ',', ' ') }} ha)</option>
+                                <option value="{{ $plot->id }}" @selected(old('plot_id') == $plot->id)>
+                                    {{ $plot->name }} — {{ number_format($plot->remaining_ha, 2, ',', ' ') }} ha dispo / {{ number_format($plot->area_ha, 2, ',', ' ') }} ha
+                                </option>
                             @endforeach
                         </select>
                     </div>
@@ -115,6 +117,10 @@
                     <div>
                         <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Surface emblavée (ha) *") }}</label>
                         <input type="number" step="0.01" min="0" name="area_used_ha" x-model="areaHa" @input="recompute()" value="{{ old('area_used_ha') }}" required class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic text-right">
+                        <template x-if="maxAreaHa !== null">
+                            <p class="text-[9px] font-black mt-1 ml-2 italic" :class="areaExceedsLimit() ? 'text-red-500' : 'text-slate-400'"
+                               x-text="areaExceedsLimit() ? 'Surface dépasse le disponible (' + maxAreaHa.toFixed(2) + ' ha)' : 'Disponible sur cette parcelle : ' + maxAreaHa.toFixed(2) + ' ha'"></p>
+                        </template>
                     </div>
                     <div>
                         <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Code") }}</label>
@@ -162,9 +168,10 @@
     </div>
 
     <script>
-        function cropCycleForm(catalogue) {
+        function cropCycleForm(catalogue, plotData) {
             return {
                 catalogue: catalogue,
+                plotData: plotData || {},
                 cropName: @js(old('crop_name', '')),
                 variety: @js(old('variety', '')),
                 areaHa: @js(old('area_used_ha', '')),
@@ -173,9 +180,21 @@
                 expectedYield: @js(old('expected_yield_kg', '')),
                 match: null,
                 hint: '',
+                selectedPlotId: '',
+                maxAreaHa: null,
 
                 init() {
                     this.resolveMatch();
+                },
+
+                onPlotChange() {
+                    const pid = this.selectedPlotId;
+                    this.maxAreaHa = (pid && this.plotData[pid]) ? this.plotData[pid].remaining_ha : null;
+                },
+
+                areaExceedsLimit() {
+                    if (this.maxAreaHa === null || !this.areaHa) return false;
+                    return parseFloat(this.areaHa) > this.maxAreaHa + 0.0001;
                 },
 
                 /** Retrouve l'espèce du catalogue correspondant au nom saisi (insensible à la casse). */

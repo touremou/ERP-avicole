@@ -51,8 +51,26 @@ class CropCycleController extends Controller
             return back()->with('error', 'Action non autorisée.');
         }
 
+        $plots = Plot::whereNotIn('status', [Plot::STATUS_INACTIVE])
+            ->withSum(['cropCycles as used_ha' => function ($query) {
+                $query->whereIn('status', CropCycle::IN_PROGRESS_STATUSES);
+            }], 'area_used_ha')
+            ->orderBy('name')
+            ->get()
+            ->each(function ($plot) {
+                $plot->remaining_ha = max(0.0, (float) $plot->area_ha - (float) ($plot->used_ha ?? 0));
+            })
+            ->filter(fn ($plot) => $plot->remaining_ha > 0)
+            ->values();
+
+        $plotData = $plots->keyBy('id')->map(fn ($p) => [
+            'area_ha'      => (float) $p->area_ha,
+            'remaining_ha' => (float) $p->remaining_ha,
+        ])->toArray();
+
         return view('cultures.cycles.create', [
-            'plots'     => Plot::available()->orderBy('name')->get(),
+            'plots'     => $plots,
+            'plotData'  => $plotData,
             'employees' => Employee::where('status', 'Actif')->orderBy('first_name')->get(['id', 'first_name', 'last_name']),
             'campaigns' => CropCampaign::where('status', '!=', CropCampaign::STATUS_CLOTUREE)->orderByDesc('start_date')->get(['id', 'name', 'year']),
             'species'   => CropSpecies::active()->with('varieties:id,crop_species_id,name,cycle_days,avg_yield_tha')->orderBy('name')->get(),
@@ -85,6 +103,20 @@ class CropCycleController extends Controller
 
         $validated['total_acquisition_cost'] = $validated['total_acquisition_cost'] ?? 0;
         $validated['additional_costs']       = $validated['additional_costs'] ?? 0;
+
+        $plot = Plot::findOrFail($validated['plot_id']);
+        $usedByOthers = (float) CropCycle::where('plot_id', $plot->id)
+            ->whereIn('status', CropCycle::IN_PROGRESS_STATUSES)
+            ->sum('area_used_ha');
+        $remaining = max(0.0, (float) $plot->area_ha - $usedByOthers);
+        if ((float) $validated['area_used_ha'] > $remaining + 0.0001) {
+            return back()->withInput()->withErrors([
+                'area_used_ha' => sprintf(
+                    'Surface demandée (%.2f ha) dépasse la surface disponible sur cette parcelle (%.2f ha restant sur %.2f ha total).',
+                    $validated['area_used_ha'], $remaining, (float) $plot->area_ha
+                )
+            ]);
+        }
 
         $cycle = CropCycle::create($validated);
 
@@ -140,12 +172,35 @@ class CropCycleController extends Controller
             'notes'                  => 'nullable|string|max:1000',
         ]);
 
+        if (in_array($validated['status'], CropCycle::IN_PROGRESS_STATUSES)) {
+            $plot = $cropCycle->plot;
+            $usedByOthers = (float) CropCycle::where('plot_id', $plot->id)
+                ->whereIn('status', CropCycle::IN_PROGRESS_STATUSES)
+                ->where('id', '!=', $cropCycle->id)
+                ->sum('area_used_ha');
+            $remaining = max(0.0, (float) $plot->area_ha - $usedByOthers);
+            if ((float) $validated['area_used_ha'] > $remaining + 0.0001) {
+                return back()->withInput()->withErrors([
+                    'area_used_ha' => sprintf(
+                        'Surface (%.2f ha) dépasse la surface disponible sur la parcelle (%.2f ha disponible).',
+                        $validated['area_used_ha'], $remaining
+                    )
+                ]);
+            }
+        }
+
         $cropCycle->update($validated);
 
-        // À la clôture/abandon, on libère la parcelle.
+        // À la clôture/abandon, on libère la parcelle seulement si aucun autre cycle actif.
         if (in_array($cropCycle->status, CropCycle::STATUS_ARCHIVED, true)) {
             $cropCycle->update(['closing_date' => $cropCycle->closing_date ?? now()]);
-            $cropCycle->plot()->update(['status' => Plot::STATUS_DISPONIBLE]);
+            $hasOtherActive = CropCycle::where('plot_id', $cropCycle->plot_id)
+                ->whereIn('status', CropCycle::IN_PROGRESS_STATUSES)
+                ->where('id', '!=', $cropCycle->id)
+                ->exists();
+            if (!$hasOtherActive) {
+                $cropCycle->plot()->update(['status' => Plot::STATUS_DISPONIBLE]);
+            }
         }
 
         return redirect()->route('crop-cycles.show', $cropCycle)
@@ -349,8 +404,11 @@ class CropCycleController extends Controller
             return back()->with('error', 'Impossible de supprimer un cycle ayant des récoltes enregistrées.');
         }
 
-        $cropCycle->plot()->update(['status' => Plot::STATUS_DISPONIBLE]);
+        $plot = $cropCycle->plot;
         $cropCycle->delete();
+        if (!$plot->isOccupied()) {
+            $plot->update(['status' => Plot::STATUS_DISPONIBLE]);
+        }
 
         return redirect()->route('crop-cycles.index')->with('success', 'Cycle supprimé.');
     }

@@ -163,3 +163,57 @@ test('clôturer un cycle libère la parcelle', function () {
         ->and($plot->fresh()->status)->toBe(Plot::STATUS_DISPONIBLE)
         ->and($cycle->fresh()->closing_date)->not->toBeNull();
 });
+
+test('deux cultures peuvent cohabiter sur une même parcelle si leurs surfaces se complètent', function () {
+    $plot = makePlot($this->farm->id); // area_ha = 2.5
+
+    // Premier cycle : 1.5 ha
+    $this->actingAs($this->operatorUser)
+        ->post(route('crop-cycles.store'), [
+            'plot_id'       => $plot->id,
+            'crop_name'     => 'Maïs',
+            'area_used_ha'  => 1.5,
+            'planting_date' => now()->toDateString(),
+        ])
+        ->assertRedirect();
+
+    expect(CropCycle::where('plot_id', $plot->id)->count())->toBe(1);
+
+    // Deuxième cycle : 1.0 ha (total = 2.5 ha = surface parcelle)
+    $this->actingAs($this->operatorUser)
+        ->post(route('crop-cycles.store'), [
+            'plot_id'       => $plot->id,
+            'crop_name'     => 'Fonio',
+            'area_used_ha'  => 1.0,
+            'planting_date' => now()->toDateString(),
+        ])
+        ->assertRedirect();
+
+    expect(CropCycle::where('plot_id', $plot->id)->count())->toBe(2);
+});
+
+test('on ne peut pas dépasser la surface totale de la parcelle', function () {
+    $plot = makePlot($this->farm->id); // area_ha = 2.5
+
+    // Cycle existant : 2.0 ha
+    CropCycle::create([
+        'farm_id'       => $this->farm->id,
+        'plot_id'       => $plot->id,
+        'crop_name'     => 'Maïs',
+        'area_used_ha'  => 2.0,
+        'planting_date' => now()->toDateString(),
+    ]);
+    $plot->update(['status' => Plot::STATUS_EN_CULTURE]);
+
+    // Tentative d'ajout de 1.0 ha → total 3.0 ha > 2.5 ha
+    $this->actingAs($this->operatorUser)
+        ->post(route('crop-cycles.store'), [
+            'plot_id'       => $plot->id,
+            'crop_name'     => 'Fonio',
+            'area_used_ha'  => 1.0,
+            'planting_date' => now()->toDateString(),
+        ])
+        ->assertSessionHasErrors(['area_used_ha']);
+
+    expect(CropCycle::where('plot_id', $plot->id)->count())->toBe(1);
+});
