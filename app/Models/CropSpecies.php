@@ -30,6 +30,7 @@ class CropSpecies extends Model
         'legumineuse' => ['label' => 'Légumineuses', 'icon' => 'fa-seedling',      'color' => 'lime'],
         'oleagineux'  => ['label' => 'Oléagineux',   'icon' => 'fa-sun',           'color' => 'yellow'],
         'maraicher'   => ['label' => 'Maraîchers',   'icon' => 'fa-pepper-hot',    'color' => 'red'],
+        'epice'       => ['label' => 'Épices & aromates', 'icon' => 'fa-mortar-pestle', 'color' => 'pink'],
         'autre'       => ['label' => 'Autre',        'icon' => 'fa-sprout',        'color' => 'slate'],
     ];
 
