@@ -109,6 +109,7 @@ class CropCalendarEventController extends Controller
 
         $cropCalendarEvent->delete();
 
-        return back()->with('success', 'Événement supprimé.');
+        return redirect()->route('cultures.dashboard', ['tab' => 'calendar'])
+            ->with('success', 'Événement supprimé.');
     }
 }

@@ -95,7 +95,7 @@ test('un admin peut supprimer un événement', function () {
 
     $this->actingAs($this->adminUser)
         ->delete(route('crop-calendar-events.destroy', $event))
-        ->assertRedirect();
+        ->assertRedirect(route('cultures.dashboard', ['tab' => 'calendar']));
 
     expect(CropCalendarEvent::withoutFarm()->find($event->id))->toBeNull();
 });
