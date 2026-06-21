@@ -69,7 +69,13 @@ class PlotController extends Controller
             'cropCycles' => fn ($q) => $q->with('harvests:id,crop_cycle_id,quantity')->orderByDesc('planting_date'),
         ]);
 
-        return view('cultures.plots.show', ['plot' => $plot]);
+        $advisor = new \App\Services\CropAdvisorService();
+        $rotation = $advisor->rotationSuggestions($plot);
+
+        return view('cultures.plots.show', [
+            'plot'     => $plot,
+            'rotation' => $rotation,
+        ]);
     }
 
     public function edit(Plot $plot)

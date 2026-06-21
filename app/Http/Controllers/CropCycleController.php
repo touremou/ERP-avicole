@@ -139,8 +139,19 @@ class CropCycleController extends Controller
             'inputs.provider:id,name',
         ]);
 
+        // Conseils agronomiques (uniquement pour un cycle non archivé).
+        $advisories = [];
+        if (! $cropCycle->isArchived()) {
+            $advisor = new \App\Services\CropAdvisorService();
+            $advisories = array_merge(
+                $advisor->cycleRisks($cropCycle),
+                $cropCycle->plot ? $advisor->weatherAlerts($cropCycle->plot) : []
+            );
+        }
+
         return view('cultures.cycles.show', [
             'cycle'      => $cropCycle,
+            'advisories' => $advisories,
             'qualities'  => Harvest::QUALITIES,
             'inputTypes' => CropInput::TYPES,
             'employees'  => Employee::where('status', 'Actif')->orderBy('first_name')->get(['id', 'first_name', 'last_name']),

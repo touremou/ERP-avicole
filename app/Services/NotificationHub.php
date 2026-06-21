@@ -644,6 +644,70 @@ class NotificationHub
     }
 
     /**
+     * Alertes agronomiques quotidiennes : pour chaque cycle de culture en cours,
+     * compile les risques semis/récolte et les alertes météo de sévérité élevée
+     * (critique / attention) produits par CropAdvisorService, et diffuse un
+     * message de synthèse par cycle concerné.
+     *
+     * Diffusé aux abonnés du résumé quotidien (réutilise l'opt-in existant, comme
+     * notifyHarvestsDue). Renvoie le nombre de cycles signalés.
+     */
+    public function notifyAgronomicRisks(): int
+    {
+        $cycles = CropCycle::query()
+            ->inProgress()
+            ->with('plot')
+            ->orderBy('planting_date')
+            ->get();
+
+        if ($cycles->isEmpty()) {
+            return 0;
+        }
+
+        $advisor = new \App\Services\CropAdvisorService();
+        $farmName = config('whatsapp.farm_name', 'AviSmart');
+        $signaled = 0;
+
+        foreach ($cycles as $cycle) {
+            $advisories = array_merge(
+                $advisor->cycleRisks($cycle),
+                $cycle->plot ? $advisor->weatherAlerts($cycle->plot) : []
+            );
+
+            $alerts = array_filter(
+                $advisories,
+                fn ($a) => in_array($a['severity'], ['critique', 'attention'], true)
+            );
+
+            if (empty($alerts)) {
+                continue;
+            }
+
+            $plot = $cycle->plot?->name ? " ({$cycle->plot->name})" : '';
+            $lines = ["🌾 *{$farmName} — Alerte agronomique*", '', "• *{$cycle->crop_name}*{$plot}", ''];
+
+            foreach ($alerts as $a) {
+                $emoji = $a['severity'] === 'critique' ? '🔴' : '⚠️';
+                $lines[] = "{$emoji} *{$a['title']}*";
+                $lines[] = "  {$a['message']}";
+            }
+
+            $hasCritical = collect($alerts)->contains(fn ($a) => $a['severity'] === 'critique');
+
+            $this->broadcast(
+                'daily_summary',
+                implode("\n", $lines),
+                'Agronomie ' . $cycle->crop_name,
+                $hasCritical ? 'critique' : 'normal'
+            );
+
+            $signaled++;
+        }
+
+        return $signaled;
+    }
+
+    /**
      * Alerte anti-fraude (écart détecté).
      */
     public function alertFraud(DiscrepancyReport $report): void

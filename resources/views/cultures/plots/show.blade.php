@@ -101,6 +101,32 @@
                 </p>
             </div>
 
+            {{-- ROTATION & SANTÉ DU SOL --}}
+            @if(!empty($rotation))
+            <div class="bg-white p-6 rounded-[3rem] border border-slate-100 shadow-sm">
+                <h3 class="text-[10px] font-black uppercase text-green-500 tracking-widest italic mb-6 ml-2">🔄 {{ __("Rotation & santé du sol") }}</h3>
+                <div class="space-y-3">
+                    @foreach($rotation as $advisory)
+                        @php
+                            $advColor = match($advisory['severity']) {
+                                'critique'  => 'bg-rose-50 border-rose-200 text-rose-700',
+                                'attention' => 'bg-amber-50 border-amber-200 text-amber-700',
+                                'conseil'   => 'bg-green-50 border-green-200 text-green-700',
+                                default     => 'bg-slate-50 border-slate-200 text-slate-500',
+                            };
+                        @endphp
+                        <div class="flex items-start gap-4 p-5 rounded-[2rem] border {{ $advColor }}">
+                            <i class="fa-solid {{ $advisory['icon'] }} text-lg mt-0.5"></i>
+                            <div>
+                                <p class="text-[11px] font-black uppercase tracking-tight italic leading-none">{{ $advisory['title'] }}</p>
+                                <p class="text-[11px] font-bold italic mt-2 opacity-90">{{ $advisory['message'] }}</p>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+            @endif
+
             {{-- CYCLES --}}
             <div class="bg-white p-6 rounded-[3rem] border border-slate-100 shadow-sm">
                 <h3 class="text-[10px] font-black uppercase text-green-500 tracking-widest italic mb-6 ml-2">{{ __("Cycles de culture") }}</h3>

@@ -137,6 +137,32 @@
                 </div>
                 @endif
 
+                {{-- ALERTES AGRONOMIQUES --}}
+                @if(!empty($agronomicAlerts))
+                <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm">
+                    <h3 class="text-[10px] font-black uppercase text-green-500 tracking-widest italic mb-4"><i class="fa-solid fa-leaf mr-1"></i> {{ __("Alertes agronomiques") }}</h3>
+                    <div class="space-y-3">
+                        @foreach($agronomicAlerts as $alert)
+                            @php
+                                $advColor = match($alert['severity']) {
+                                    'critique'  => 'bg-rose-50 border-rose-200 text-rose-700',
+                                    'attention' => 'bg-amber-50 border-amber-200 text-amber-700',
+                                    'conseil'   => 'bg-green-50 border-green-200 text-green-700',
+                                    default     => 'bg-slate-50 border-slate-200 text-slate-500',
+                                };
+                            @endphp
+                            <a href="{{ route('crop-cycles.show', $alert['cycle']) }}" class="no-underline flex items-start gap-4 p-4 rounded-[2rem] border {{ $advColor }} hover:opacity-90 transition">
+                                <i class="fa-solid {{ $alert['icon'] }} text-lg mt-0.5"></i>
+                                <div>
+                                    <p class="text-[11px] font-black uppercase tracking-tight italic leading-none">{{ $alert['title'] }} <span class="opacity-60">· {{ $alert['cycle']->crop_name }}@if($alert['cycle']->plot) ({{ $alert['cycle']->plot->name }})@endif</span></p>
+                                    <p class="text-[11px] font-bold italic mt-2 opacity-90">{{ $alert['message'] }}</p>
+                                </div>
+                            </a>
+                        @endforeach
+                    </div>
+                </div>
+                @endif
+
                 {{-- CYCLES EN COURS + RÉCOLTES RÉCENTES --}}
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     <div class="lg:col-span-2 bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm">

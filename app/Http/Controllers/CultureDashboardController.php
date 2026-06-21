@@ -56,6 +56,19 @@ class CultureDashboardController extends Controller
             ->take(12)
             ->get();
 
+        // Feed consolidé d'alertes agronomiques (risques semis/récolte) sur les
+        // cycles en cours, limité aux sévérités élevées.
+        $advisor = new \App\Services\CropAdvisorService();
+        $agronomicAlerts = [];
+        foreach ($activeCycles as $c) {
+            foreach ($advisor->cycleRisks($c) as $a) {
+                if (in_array($a['severity'], ['critique', 'attention'])) {
+                    $agronomicAlerts[] = $a + ['cycle' => $c];
+                }
+            }
+        }
+        $agronomicAlerts = array_slice($agronomicAlerts, 0, 8);
+
         // Récoltes récentes.
         $recentHarvests = Harvest::with('cropCycle:id,crop_name,code')
             ->orderByDesc('harvest_date')
@@ -184,7 +197,7 @@ class CultureDashboardController extends Controller
             // meta
             'activeTab',
             // overview
-            'stats', 'activeCycles', 'recentHarvests', 'dueCycles', 'activeCampaign', 'cropMix',
+            'stats', 'activeCycles', 'recentHarvests', 'dueCycles', 'activeCampaign', 'cropMix', 'agronomicAlerts',
             // calendar
             'calendarRows', 'year', 'calendarYears', 'calendarEvents',
             // catalogue
