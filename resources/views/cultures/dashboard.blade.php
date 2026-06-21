@@ -12,6 +12,9 @@
                 </div>
             </div>
             <div class="flex gap-3">
+                <a href="{{ route('crop-reports.index') }}" class="bg-white text-slate-700 px-6 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-slate-100 transition-all shadow-sm border border-slate-100 italic flex items-center gap-2 no-underline">
+                    <i class="fa-solid fa-chart-bar text-green-500"></i> {{ __("Rapports") }}
+                </a>
                 <a href="{{ route('crop-transformations.index') }}" class="bg-white text-slate-700 px-6 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-slate-100 transition-all shadow-sm border border-slate-100 italic flex items-center gap-2 no-underline">
                     <i class="fa-solid fa-industry text-green-500"></i> {{ __("Transformation") }}
                 </a>
@@ -278,15 +281,15 @@
                 <div class="grid grid-cols-3 gap-4">
                     <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
                         <p class="text-[8px] font-black text-green-500 uppercase tracking-widest italic mb-2">{{ __("Cultures") }}</p>
-                        <p class="text-3xl font-black text-slate-900 leading-none">{{ $catalogueStats['species'] }}</p>
+                        <p class="text-3xl font-black text-slate-900 leading-none">{{ $catalogueStats['species_count'] }}</p>
                     </div>
                     <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
                         <p class="text-[8px] font-black text-green-500 uppercase tracking-widest italic mb-2">{{ __("Variétés") }}</p>
-                        <p class="text-3xl font-black text-slate-900 leading-none">{{ $catalogueStats['varieties'] }}</p>
+                        <p class="text-3xl font-black text-slate-900 leading-none">{{ $catalogueStats['varieties_count'] }}</p>
                     </div>
                     <div class="bg-slate-900 text-white p-6 rounded-[2rem] shadow-lg">
                         <p class="text-[8px] font-black text-green-400 uppercase tracking-widest italic mb-2">{{ __("Types") }}</p>
-                        <p class="text-3xl font-black leading-none">{{ $catalogueStats['families'] }}</p>
+                        <p class="text-3xl font-black leading-none">{{ $catalogueStats['families_count'] }}</p>
                     </div>
                 </div>
 

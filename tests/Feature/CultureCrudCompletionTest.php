@@ -243,3 +243,30 @@ test('un lecteur seul ne peut pas ouvrir le formulaire d\'édition d\'un cycle',
         ->get(route('crop-cycles.edit', $cycle))
         ->assertRedirect();
 });
+
+// ─── RÉGRESSIONS : dashboard catalogue + cycle sans coûts ───
+
+test('le tableau de bord cultures affiche l\'onglet catalogue sans erreur de clé', function () {
+    CropSpecies::create(['type' => 'cereale', 'name' => 'Sorgho'])->varieties()->create(['name' => 'Local']);
+
+    $this->actingAs($this->readonlyUser)
+        ->get(route('cultures.dashboard', ['tab' => 'catalogue']))
+        ->assertOk();
+});
+
+test('un cycle peut être créé sans renseigner les coûts (défaut 0)', function () {
+    $plot = Plot::create(['farm_id' => $this->farm->id, 'name' => 'P sans coût', 'area_ha' => 1, 'status' => Plot::STATUS_DISPONIBLE]);
+
+    $this->actingAs($this->operatorUser)
+        ->post(route('crop-cycles.store'), [
+            'plot_id'       => $plot->id,
+            'crop_name'     => 'Sorgho',
+            'area_used_ha'  => 1,
+            'planting_date' => now()->toDateString(),
+        ])
+        ->assertRedirect();
+
+    $cycle = CropCycle::where('crop_name', 'Sorgho')->firstOrFail();
+    expect((float) $cycle->total_acquisition_cost)->toBe(0.0)
+        ->and((float) $cycle->additional_costs)->toBe(0.0);
+});

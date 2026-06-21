@@ -55,6 +55,7 @@ use App\Http\Controllers\{
     CropCatalogueController,
     CropCampaignController,
     CropRecipeController,
+    CropReportController,
     WeatherController
 };
 
@@ -309,6 +310,15 @@ Route::middleware(['auth'])->group(function () {
 
     // Calendrier cultural
     Route::get('/cultures/calendar', [CultureDashboardController::class, 'calendar'])->name('cultures.calendar')->middleware('can:L');
+
+    // Rapports production végétale
+    Route::prefix('cultures/reports')->name('crop-reports.')->controller(CropReportController::class)->middleware('can:L')->group(function () {
+        Route::get('/', 'index')->name('index');
+        Route::get('/yield', 'yield')->name('yield');
+        Route::get('/inputs', 'inputs')->name('inputs');
+        Route::get('/campaigns', 'campaigns')->name('campaigns');
+        Route::get('/transformations', 'transformations')->name('transformations');
+    });
 
     // ─── COUVOIR & INCUBATION ───
     Route::prefix('incubations')->name('incubations.')->controller(IncubationController::class)->group(function () {

@@ -83,6 +83,9 @@ class CropCycleController extends Controller
             'notes'                  => 'nullable|string|max:1000',
         ]);
 
+        $validated['total_acquisition_cost'] = $validated['total_acquisition_cost'] ?? 0;
+        $validated['additional_costs']       = $validated['additional_costs'] ?? 0;
+
         $cycle = CropCycle::create($validated);
 
         // La parcelle passe en culture.
