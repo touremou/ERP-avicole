@@ -21,6 +21,7 @@
                 @endcan
             </div>
         </div>
+        @include('cultures.partials.hub-tabs')
     </x-slot>
 
     <div class="py-10">

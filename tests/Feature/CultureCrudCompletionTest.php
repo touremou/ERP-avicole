@@ -266,12 +266,13 @@ test('un lecteur seul ne peut pas ouvrir le formulaire d\'édition d\'un cycle',
 
 // ─── RÉGRESSIONS : dashboard catalogue + cycle sans coûts ───
 
-test('le tableau de bord cultures affiche l\'onglet catalogue sans erreur de clé', function () {
+test('la page catalogue (hub référentiel) liste les cultures sans erreur de clé', function () {
     CropSpecies::create(['type' => 'cereale', 'name' => 'Sorgho'])->varieties()->create(['name' => 'Local']);
 
     $this->actingAs($this->readonlyUser)
-        ->get(route('cultures.dashboard', ['tab' => 'catalogue']))
-        ->assertOk();
+        ->get(route('crop-catalogue.index'))
+        ->assertOk()
+        ->assertSee('Sorgho');
 });
 
 test('un cycle peut être créé sans renseigner les coûts (défaut 0)', function () {

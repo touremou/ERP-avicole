@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\CropCalendarEvent;
 use App\Models\CropCampaign;
 use App\Models\CropCycle;
-use App\Models\CropSpecies;
 use App\Models\CropTransformation;
 use App\Models\Harvest;
 use App\Models\Plot;
@@ -154,26 +153,6 @@ class CultureDashboardController extends Controller
 
         $calendarYears = range(now()->year + 1, now()->year - 3);
 
-        // ── ONGLET CATALOGUE ─────────────────────────────────────────────────
-
-        // Espèces actives avec leurs variétés, regroupées dans l'ordre défini par TYPES.
-        $allSpecies = CropSpecies::active()
-            ->withCount('varieties')
-            ->orderBy('name')
-            ->get();
-
-        $catalogueGrouped = collect(array_keys(CropSpecies::TYPES))
-            ->mapWithKeys(fn (string $type) => [
-                $type => $allSpecies->where('type', $type)->values(),
-            ])
-            ->filter(fn ($group) => $group->isNotEmpty());
-
-        $catalogueStats = [
-            'species_count'  => $allSpecies->count(),
-            'varieties_count' => $allSpecies->sum('varieties_count'),
-            'families_count' => $allSpecies->pluck('family')->filter()->unique()->count(),
-        ];
-
         // ── ÉVÉNEMENTS CALENDAIRES ───────────────────────────────────────────
 
         $calendarEvents = CropCalendarEvent::with('cropCycle:id,crop_name,code')
@@ -216,8 +195,6 @@ class CultureDashboardController extends Controller
             'stats', 'activeCycles', 'recentHarvests', 'dueCycles', 'activeCampaign', 'cropMix', 'agronomicAlerts', 'plotSuggestions',
             // calendar
             'calendarRows', 'year', 'calendarYears', 'calendarEvents',
-            // catalogue
-            'catalogueGrouped', 'catalogueStats',
             // weather
             'weatherReadings', 'weatherStats', 'weatherMonth', 'weatherPlotId', 'plots',
         ));

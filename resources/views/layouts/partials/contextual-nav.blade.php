@@ -55,14 +55,14 @@
 @elseif(request()->routeIs(['cultures.*', 'plots.*', 'crop-cycles.*', 'crop-transformations.*', 'crop-catalogue.*', 'crop-campaigns.*', 'crop-recipes.*', 'crop-reports.*', 'crop-calendar-events.*', 'crop-protocols.*', 'weather.*']))
     <span class="{{ $sectionClass }}"><i class="fa-solid fa-seedling text-green-600 mr-1"></i> {{ __("Production Végétale") }}</span>
     @can('cultures.L')
-    <a href="{{ route('cultures.dashboard') }}" class="{{ $linkClass }} {{ request()->routeIs('cultures.dashboard') && !request()->has('tab') ? $activeClass : $inactiveClass }}">{{ __("Tableau de bord") }}</a>
+    {{-- Barre contextuelle = entités opérationnelles. Le pilotage (vue d'ensemble,
+         calendrier, météo) et le référentiel (catalogue, protocoles, recettes)
+         vivent dans la sous-navigation « hub » du tableau de bord. --}}
+    <a href="{{ route('cultures.dashboard') }}" class="{{ $linkClass }} {{ request()->routeIs('cultures.dashboard') || request()->routeIs('crop-catalogue.*') || request()->routeIs('crop-protocols.*') || request()->routeIs('crop-recipes.*') || request()->routeIs('crop-calendar-events.*') ? $activeClass : $inactiveClass }}">{{ __("Tableau de bord") }}</a>
     <a href="{{ route('plots.index') }}" class="{{ $linkClass }} {{ request()->routeIs('plots.*') ? $activeClass : $inactiveClass }}">{{ __("Parcelles") }}</a>
     <a href="{{ route('crop-cycles.index') }}" class="{{ $linkClass }} {{ request()->routeIs('crop-cycles.*') ? $activeClass : $inactiveClass }}">{{ __("Cycles") }}</a>
     <a href="{{ route('crop-campaigns.index') }}" class="{{ $linkClass }} {{ request()->routeIs('crop-campaigns.*') ? $activeClass : $inactiveClass }}">{{ __("Campagnes") }}</a>
-    <a href="{{ route('crop-protocols.index') }}" class="{{ $linkClass }} {{ request()->routeIs('crop-protocols.*') ? $activeClass : $inactiveClass }}">{{ __("Protocoles") }}</a>
-    <a href="{{ route('cultures.dashboard', ['tab' => 'calendar']) }}" class="{{ $linkClass }} {{ (request()->routeIs('cultures.dashboard') && request()->query('tab') === 'calendar') || request()->routeIs('crop-calendar-events.*') ? $activeClass : $inactiveClass }}">{{ __("Calendrier") }}</a>
-    <a href="{{ route('cultures.dashboard', ['tab' => 'catalogue']) }}" class="{{ $linkClass }} {{ (request()->routeIs('cultures.dashboard') && request()->query('tab') === 'catalogue') || request()->routeIs('crop-catalogue.*') ? $activeClass : $inactiveClass }}">{{ __("Catalogue") }}</a>
-    <a href="{{ route('crop-transformations.index') }}" class="{{ $linkClass }} {{ request()->routeIs(['crop-transformations.*', 'crop-recipes.*']) ? $activeClass : $inactiveClass }}">{{ __("Transformation") }}</a>
+    <a href="{{ route('crop-transformations.index') }}" class="{{ $linkClass }} {{ request()->routeIs('crop-transformations.*') ? $activeClass : $inactiveClass }}">{{ __("Transformation") }}</a>
     <a href="{{ route('crop-reports.index') }}" class="{{ $linkClass }} {{ request()->routeIs('crop-reports.*') ? $activeClass : $inactiveClass }}">{{ __("Rapports") }}</a>
     @endcan
 
