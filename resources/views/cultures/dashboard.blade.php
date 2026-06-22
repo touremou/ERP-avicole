@@ -12,19 +12,7 @@
                 </div>
             </div>
             <div class="flex gap-3">
-                <a href="{{ route('crop-reports.index') }}" class="bg-white text-slate-700 px-6 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-slate-100 transition-all shadow-sm border border-slate-100 italic flex items-center gap-2 no-underline">
-                    <i class="fa-solid fa-chart-bar text-green-500"></i> {{ __("Rapports") }}
-                </a>
-                <a href="{{ route('crop-transformations.index') }}" class="bg-white text-slate-700 px-6 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-slate-100 transition-all shadow-sm border border-slate-100 italic flex items-center gap-2 no-underline">
-                    <i class="fa-solid fa-industry text-green-500"></i> {{ __("Transformation") }}
-                </a>
-                <a href="{{ route('crop-protocols.index') }}" class="bg-white text-slate-700 px-6 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-slate-100 transition-all shadow-sm border border-slate-100 italic flex items-center gap-2 no-underline">
-                    <i class="fa-solid fa-list-check text-green-500"></i> {{ __("Protocoles / Itinéraires techniques") }}
-                </a>
                 @can('cultures.C')
-                <a href="{{ route('crop-calendar-events.create') }}" class="bg-white text-slate-700 px-6 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-slate-100 transition-all shadow-sm border border-slate-100 italic flex items-center gap-2 no-underline">
-                    <i class="fa-solid fa-calendar-plus text-green-500"></i> {{ __("Ajouter un événement") }}
-                </a>
                 <a href="{{ route('crop-cycles.create') }}" class="bg-slate-900 text-white px-8 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-green-600 transition-all shadow-2xl italic flex items-center gap-2 no-underline">
                     <i class="fa-solid fa-plus"></i> {{ __("Nouveau Cycle") }}
                 </a>
@@ -45,10 +33,6 @@
             <a href="{{ route('cultures.dashboard', ['tab' => 'catalogue']) }}"
                class="{{ $activeTab === 'catalogue' ? 'bg-slate-900 text-white' : 'bg-white text-slate-400 hover:text-slate-700 border border-slate-100' }} px-5 py-2.5 rounded-2xl font-black text-[9px] uppercase tracking-widest italic no-underline flex items-center gap-2 transition-all">
                 <i class="fa-solid fa-book-open"></i> {{ __("Catalogue") }}
-            </a>
-            <a href="{{ route('cultures.dashboard', ['tab' => 'meteo']) }}"
-               class="{{ $activeTab === 'meteo' ? 'bg-slate-900 text-white' : 'bg-white text-slate-400 hover:text-slate-700 border border-slate-100' }} px-5 py-2.5 rounded-2xl font-black text-[9px] uppercase tracking-widest italic no-underline flex items-center gap-2 transition-all">
-                <i class="fa-solid fa-cloud-sun-rain"></i> {{ __("Météo") }}
             </a>
         </div>
     </x-slot>
