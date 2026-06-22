@@ -72,10 +72,12 @@ class PlotController extends Controller
 
         $advisor = new \App\Services\CropAdvisorService();
         $rotation = $advisor->rotationSuggestions($plot);
+        $recommendations = $advisor->recommendCropsForPlot($plot);
 
         return view('cultures.plots.show', [
-            'plot'     => $plot,
-            'rotation' => $rotation,
+            'plot'            => $plot,
+            'rotation'        => $rotation,
+            'recommendations' => $recommendations,
         ]);
     }
 

@@ -317,4 +317,215 @@ class CropAdvisorService
 
         return $advisories;
     }
+
+    // ──────────────────────────────────────────────
+    // MÉTHODE D — RECOMMANDATION DE CULTURES POUR UNE PARCELLE
+    // ──────────────────────────────────────────────
+
+    /**
+     * Recommande les cultures du catalogue les mieux adaptées à une parcelle, en
+     * croisant zone agro-écologique, type de sol, saison de semis et historique
+     * d'assolement (rotation). Service en lecture seule : ne renvoie une culture
+     * que lorsqu'il existe une vraie raison agronomique (score >= 2).
+     *
+     * Chaque résultat :
+     *   ['species' => CropSpecies, 'score' => int, 'reasons' => string[],
+     *    'sowing_label' => ?string, 'in_season' => bool, 'avoid' => bool]
+     *
+     * Retourne [] si aucune espèce ne dispose encore de données de référence.
+     */
+    public function recommendCropsForPlot(Plot $plot, int $limit = 6): array
+    {
+        // 1. Contexte de la parcelle.
+        $zone  = $plot->resolvedAgroZone();
+        $soil  = mb_strtolower(trim((string) ($plot->soil_type ?? '')));
+        $month = (int) now()->month;
+
+        // 2. Culture la plus récente (famille/type), même résolution que rotationSuggestions.
+        $lastFamily = null;
+        $lastType   = null;
+        $lastCrop   = null;
+        $lastCycle = $plot->cropCycles()->orderByDesc('planting_date')->first();
+        if ($lastCycle) {
+            $lastSpecies = CropSpecies::whereRaw('LOWER(name) = ?', [mb_strtolower((string) $lastCycle->crop_name)])->first();
+            $lastFamily = $lastSpecies?->family;
+            $lastType   = $lastSpecies?->type;
+            $lastCrop   = $lastCycle->crop_name;
+        }
+
+        // 3. Espèces de référence : actives ET dotées d'au moins une zone agro.
+        $species = CropSpecies::active()
+            ->whereNotNull('agro_zones')
+            ->get()
+            ->filter(fn (CropSpecies $s) => ! empty($s->agro_zones));
+
+        if ($species->isEmpty()) {
+            return [];
+        }
+
+        $zoneLabel = $zone ? (CropSpecies::ZONES[$zone] ?? $zone) : null;
+
+        $scored = [];
+        foreach ($species as $sp) {
+            $score   = 0;
+            $reasons = [];
+
+            // +3 — Zone agro-écologique favorable.
+            if ($zone && is_array($sp->agro_zones) && in_array($zone, $sp->agro_zones, true)) {
+                $score += 3;
+                $reasons[] = "Adaptée à la zone {$zoneLabel}";
+            } elseif (! $zone) {
+                // Zone inconnue : on score quand même sur sol/saison, avec une note.
+                $reasons[] = "Zone inconnue";
+            }
+
+            // +2 — Sol compatible (correspondance souple dans les deux sens).
+            if ($soil !== '' && is_array($sp->soil_types) && ! empty($sp->soil_types)) {
+                foreach ($sp->soil_types as $st) {
+                    $st = mb_strtolower(trim((string) $st));
+                    if ($st !== '' && (str_contains($soil, $st) || str_contains($st, $soil))) {
+                        $score += 2;
+                        $reasons[] = "Convient au sol {$soil}";
+                        break;
+                    }
+                }
+            }
+
+            // +2 — Période de semis favorable (mois courant dans la fenêtre).
+            if (is_array($sp->sowing_months) && in_array($month, array_map('intval', $sp->sowing_months), true)) {
+                $score += 2;
+                $reasons[] = "Période de semis favorable ({$sp->sowing_label})";
+                $inSeason = true;
+            } else {
+                $inSeason = false;
+            }
+
+            // +2 — Légumineuse après une culture exigeante (restauration de l'azote).
+            if ($sp->type === 'legumineuse'
+                && in_array($lastType, ['cereale', 'maraicher', 'tubercule', 'oleagineux'], true)) {
+                $score += 2;
+                $reasons[] = "Légumineuse : restaure l'azote après {$lastCrop}";
+            }
+
+            // -4 — Même famille que la culture précédente (mauvaise rotation).
+            $avoid = false;
+            if ($lastFamily && $sp->family
+                && mb_strtolower((string) $sp->family) === mb_strtolower((string) $lastFamily)) {
+                $score -= 4;
+                $reasons[] = "Même famille que la culture précédente (éviter)";
+                $avoid = true;
+            }
+
+            // On ne retient qu'un match significatif.
+            if ($score < 2) {
+                continue;
+            }
+
+            $scored[] = [
+                'species'      => $sp,
+                'score'        => $score,
+                'reasons'      => $reasons,
+                'sowing_label' => $sp->sowing_label,
+                'in_season'    => $inSeason,
+                'avoid'        => $avoid,
+            ];
+        }
+
+        // 4. Tri : score décroissant, puis rendement de référence décroissant.
+        usort($scored, function ($a, $b) {
+            if ($a['score'] !== $b['score']) {
+                return $b['score'] <=> $a['score'];
+            }
+
+            return (float) $b['species']->avg_yield_tha <=> (float) $a['species']->avg_yield_tha;
+        });
+
+        return array_slice($scored, 0, $limit);
+    }
+
+    // ──────────────────────────────────────────────
+    // MÉTHODE E — PLAN DE SUIVI D'UN CYCLE
+    // ──────────────────────────────────────────────
+
+    /**
+     * Plan de suivi/conseils d'un cycle : fenêtre de semis conseillée, date de
+     * récolte recommandée, durée de cycle, besoin en eau/irrigation, conseils de
+     * rendement et remarques dérivées. Résout l'espèce par nom (insensible à la
+     * casse) et la variété.
+     */
+    public function monitoringPlan(CropCycle $cycle): array
+    {
+        // 1. Résolution catalogue (espèce + variété), même approche que cycleRisks.
+        $species = CropSpecies::whereRaw('LOWER(name) = ?', [mb_strtolower((string) $cycle->crop_name)])->first();
+
+        $variety = null;
+        if ($cycle->variety) {
+            $varietyQuery = CropVariety::whereRaw('LOWER(name) = ?', [mb_strtolower((string) $cycle->variety)]);
+            if ($species) {
+                $varietyQuery->where('crop_species_id', $species->id);
+            }
+            $variety = $varietyQuery->first();
+        }
+
+        // 2. Espèce hors catalogue : aucun conseil de référence possible.
+        if (! $species) {
+            return [
+                'has_reference'             => false,
+                'sowing_window'             => null,
+                'sowing_ok'                 => null,
+                'recommended_harvest_date'  => null,
+                'cycle_days'                => null,
+                'water_need'                => null,
+                'irrigation'                => null,
+                'yield_tips'                => null,
+                'notes'                     => ["Culture hors catalogue : ajoutez-la pour activer les conseils de suivi."],
+            ];
+        }
+
+        $notes = [];
+
+        // 3. Durée de cycle effective : variété > max catalogue > min catalogue.
+        $cycleDays = $variety?->cycle_days
+            ?? $species->cycle_days_max
+            ?? $species->cycle_days_min
+            ?? null;
+
+        // 4. Fenêtre de semis et conformité du semis réel.
+        $sowingWindow = $species->sowing_label;
+        $sowingOk = null;
+        if (is_array($species->sowing_months) && ! empty($species->sowing_months) && $cycle->planting_date) {
+            $plantingMonth = (int) Carbon::parse($cycle->planting_date)->month;
+            $sowingOk = in_array($plantingMonth, array_map('intval', $species->sowing_months), true);
+            if (! $sowingOk) {
+                $notes[] = "Semis hors période conseillée (conseillé : {$sowingWindow}).";
+            }
+        }
+
+        // 5. Date de récolte recommandée = semis + durée de cycle.
+        $recommendedHarvest = ($cycleDays && $cycle->planting_date)
+            ? Carbon::parse($cycle->planting_date)->copy()->addDays((int) $cycleDays)
+            : null;
+
+        // 6. Besoin en eau / irrigation.
+        $waterNeed = $species->water_need
+            ? (CropSpecies::WATER_NEEDS[$species->water_need] ?? $species->water_need)
+            : null;
+        $irrigation = $cycle->plot?->irrigation_type ?: null;
+
+        if ($species->water_need === 'eleve' && empty($cycle->plot?->irrigation_type)) {
+            $notes[] = "Besoin en eau élevé sans irrigation déclarée : prévoir un apport d'eau.";
+        }
+
+        return [
+            'has_reference'             => true,
+            'sowing_window'             => $sowingWindow,
+            'sowing_ok'                 => $sowingOk,
+            'recommended_harvest_date'  => $recommendedHarvest,
+            'cycle_days'                => $cycleDays ? (int) $cycleDays : null,
+            'water_need'                => $waterNeed,
+            'irrigation'                => $irrigation,
+            'yield_tips'                => $species->yield_tips,
+            'notes'                     => $notes,
+        ];
+    }
 }

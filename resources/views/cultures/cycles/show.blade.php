@@ -87,6 +87,60 @@
                 </div>
             @endif
 
+            {{-- PLAN DE SUIVI & CONSEILS --}}
+            @if(!empty($monitoring) && ($monitoring['has_reference'] || !empty($monitoring['notes'])))
+                <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm">
+                    <h3 class="text-[10px] font-black uppercase text-green-500 tracking-widest italic mb-6">🎯 {{ __("Plan de suivi & conseils") }}</h3>
+
+                    @if($monitoring['has_reference'])
+                    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                        {{-- Fenêtre de semis --}}
+                        <div class="p-5 rounded-[2rem] bg-slate-50 border border-slate-100">
+                            <p class="text-[8px] font-black text-slate-400 uppercase italic mb-2">{{ __("Fenêtre de semis") }}</p>
+                            <p class="text-sm font-black text-slate-800 italic leading-none">{{ $monitoring['sowing_window'] ?: '—' }}</p>
+                            @if(!is_null($monitoring['sowing_ok']))
+                                <span class="inline-block mt-3 text-[8px] font-black uppercase italic px-2 py-0.5 rounded-full {{ $monitoring['sowing_ok'] ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700' }}">{{ $monitoring['sowing_ok'] ? __('semis OK') : __('hors période') }}</span>
+                            @endif
+                        </div>
+                        {{-- Récolte recommandée --}}
+                        <div class="p-5 rounded-[2rem] bg-slate-50 border border-slate-100">
+                            <p class="text-[8px] font-black text-slate-400 uppercase italic mb-2">{{ __("Récolte recommandée") }}</p>
+                            <p class="text-sm font-black text-slate-800 italic leading-none">{{ $monitoring['recommended_harvest_date']?->format('d/m/Y') ?? '—' }}</p>
+                        </div>
+                        {{-- Durée de cycle --}}
+                        <div class="p-5 rounded-[2rem] bg-slate-50 border border-slate-100">
+                            <p class="text-[8px] font-black text-slate-400 uppercase italic mb-2">{{ __("Durée de cycle") }}</p>
+                            <p class="text-sm font-black text-slate-800 italic leading-none">{{ $monitoring['cycle_days'] ? $monitoring['cycle_days'].' j' : '—' }}</p>
+                        </div>
+                        {{-- Eau / irrigation --}}
+                        <div class="p-5 rounded-[2rem] bg-slate-50 border border-slate-100">
+                            <p class="text-[8px] font-black text-slate-400 uppercase italic mb-2">{{ __("Besoin en eau") }}</p>
+                            <p class="text-sm font-black text-slate-800 italic leading-none">{{ $monitoring['water_need'] ?: '—' }}</p>
+                            <p class="text-[8px] font-bold text-slate-400 uppercase italic mt-2"><i class="fa-solid fa-droplet text-blue-300 mr-1"></i>{{ $monitoring['irrigation'] ?: __('sans irrigation') }}</p>
+                        </div>
+                    </div>
+
+                    @if($monitoring['yield_tips'])
+                        <div class="mt-4 p-5 rounded-[2rem] bg-green-50 border border-green-200">
+                            <p class="text-[8px] font-black text-green-600 uppercase italic mb-2"><i class="fa-solid fa-lightbulb mr-1"></i>{{ __("Optimiser le rendement") }}</p>
+                            <p class="text-[11px] font-bold text-green-800 italic">{{ $monitoring['yield_tips'] }}</p>
+                        </div>
+                    @endif
+                    @endif
+
+                    @if(!empty($monitoring['notes']))
+                        <div class="space-y-2 mt-4">
+                            @foreach($monitoring['notes'] as $note)
+                                <div class="flex items-start gap-3 p-4 rounded-[1.5rem] bg-amber-50 border border-amber-200 text-amber-700">
+                                    <i class="fa-solid fa-circle-info mt-0.5"></i>
+                                    <p class="text-[11px] font-bold italic">{{ $note }}</p>
+                                </div>
+                            @endforeach
+                        </div>
+                    @endif
+                </div>
+            @endif
+
             {{-- ITINÉRAIRE TECHNIQUE (si un protocole est rattaché) --}}
             @if($cycle->protocol && !empty($schedule))
                 <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm">

@@ -161,10 +161,14 @@ class CropCycleController extends Controller
             }
         }
 
+        // Plan de suivi & conseils du cycle (fenêtre de semis, récolte recommandée…).
+        $monitoring = (new \App\Services\CropAdvisorService())->monitoringPlan($cropCycle);
+
         return view('cultures.cycles.show', [
             'cycle'      => $cropCycle,
             'advisories' => $advisories,
             'schedule'   => $schedule,
+            'monitoring' => $monitoring,
             'qualities'  => Harvest::QUALITIES,
             'inputTypes' => CropInput::TYPES,
             'employees'  => Employee::where('status', 'Actif')->orderBy('first_name')->get(['id', 'first_name', 'last_name']),

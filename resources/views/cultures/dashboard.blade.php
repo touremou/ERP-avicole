@@ -166,6 +166,27 @@
                 </div>
                 @endif
 
+                {{-- SUGGESTIONS DE CULTURE (PARCELLES LIBRES) --}}
+                @php $hasSuggestions = collect($plotSuggestions ?? [])->contains(fn ($s) => !empty($s['top'])); @endphp
+                @if($hasSuggestions)
+                <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm">
+                    <h3 class="text-[10px] font-black uppercase text-green-500 tracking-widest italic mb-4"><i class="fa-solid fa-seedling mr-1"></i> {{ __("Suggestions de culture (parcelles libres)") }}</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        @foreach($plotSuggestions as $sug)
+                            @continue(empty($sug['top']))
+                            @php $sp = $sug['top']['species']; @endphp
+                            <a href="{{ route('plots.show', $sug['plot']) }}" class="no-underline flex items-center justify-between p-4 rounded-[1.5rem] bg-slate-50 hover:bg-green-50 transition">
+                                <div>
+                                    <p class="text-[10px] font-black uppercase text-slate-400 italic leading-none">{{ $sug['plot']->name }}</p>
+                                    <p class="text-[12px] font-black uppercase text-slate-800 italic mt-1"><i class="fa-solid {{ $sp->type_icon }} text-green-500 mr-1"></i>{{ $sp->name }}</p>
+                                </div>
+                                <span class="text-[8px] font-black uppercase italic px-2 py-0.5 rounded-full {{ $sug['top']['in_season'] ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-400' }}">{{ $sug['top']['in_season'] ? __('en saison') : __('hors saison') }}</span>
+                            </a>
+                        @endforeach
+                    </div>
+                </div>
+                @endif
+
                 {{-- CYCLES EN COURS + RÉCOLTES RÉCENTES --}}
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     <div class="lg:col-span-2 bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm">

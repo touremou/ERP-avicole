@@ -127,6 +127,64 @@
             </div>
             @endif
 
+            {{-- CULTURES RECOMMANDÉES (zone / sol / saison / rotation) --}}
+            @if(!empty($recommendations))
+            <div class="bg-white p-6 rounded-[3rem] border border-slate-100 shadow-sm">
+                <div class="flex items-center justify-between mb-6 ml-2">
+                    <h3 class="text-[10px] font-black uppercase text-green-500 tracking-widest italic">🌱 {{ __("Cultures recommandées") }}</h3>
+                    @can('cultures.C')
+                    <a href="{{ route('crop-cycles.create') }}" class="text-[9px] font-black uppercase text-green-600 hover:text-green-700 italic no-underline"><i class="fa-solid fa-plus mr-1"></i>{{ __("Démarrer un cycle") }}</a>
+                    @endcan
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    @foreach($recommendations as $reco)
+                        @php
+                            $sp = $reco['species'];
+                            $strength = $reco['score'] >= 6 ? ['Forte', 'bg-green-600 text-white'] : ($reco['score'] >= 4 ? ['Bonne', 'bg-green-100 text-green-700'] : ['Moyenne', 'bg-slate-100 text-slate-500']);
+                        @endphp
+                        <div class="p-5 rounded-[2rem] border {{ $reco['avoid'] ? 'border-amber-200 bg-amber-50/40' : 'border-slate-100 bg-slate-50' }}">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-{{ $sp->type_color }}-100 text-{{ $sp->type_color }}-600">
+                                        <i class="fa-solid {{ $sp->type_icon }}"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-black uppercase text-slate-800 italic leading-none">{{ $sp->name }}</p>
+                                        <p class="text-[8px] font-black text-slate-400 uppercase italic mt-1">{{ $sp->type_label }}</p>
+                                    </div>
+                                </div>
+                                <span class="px-2.5 py-1 rounded-full text-[8px] font-black uppercase italic {{ $strength[1] }}">{{ $strength[0] }}</span>
+                            </div>
+
+                            <div class="flex flex-wrap gap-1.5 mt-3">
+                                @foreach($reco['reasons'] as $reason)
+                                    <span class="text-[8px] font-black uppercase italic px-2 py-0.5 rounded-full bg-white border border-slate-100 text-slate-500">{{ $reason }}</span>
+                                @endforeach
+                            </div>
+
+                            <div class="flex items-center justify-between mt-3 ml-0.5">
+                                @if($reco['sowing_label'])
+                                    <span class="text-[9px] font-black text-slate-500 uppercase italic"><i class="fa-solid fa-seedling text-green-400 mr-1"></i>{{ $reco['sowing_label'] }}</span>
+                                @else
+                                    <span></span>
+                                @endif
+                                <span class="text-[8px] font-black uppercase italic px-2 py-0.5 rounded-full {{ $reco['in_season'] ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-400' }}">{{ $reco['in_season'] ? __('en saison') : __('hors saison') }}</span>
+                            </div>
+
+                            @if($reco['avoid'])
+                                <p class="text-[9px] font-black uppercase italic text-amber-600 mt-3"><i class="fa-solid fa-arrows-rotate mr-1"></i>{{ __("rotation : éviter") }}</p>
+                            @endif
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+            @else
+            <div class="bg-white p-6 rounded-[3rem] border border-slate-100 shadow-sm">
+                <h3 class="text-[10px] font-black uppercase text-green-500 tracking-widest italic mb-3 ml-2">🌱 {{ __("Cultures recommandées") }}</h3>
+                <p class="text-[10px] font-black text-slate-300 uppercase italic ml-2">{{ __("Renseignez la zone agro-écologique et le type de sol, et enrichissez le catalogue, pour activer les recommandations.") }}</p>
+            </div>
+            @endif
+
             {{-- CYCLES --}}
             <div class="bg-white p-6 rounded-[3rem] border border-slate-100 shadow-sm">
                 <h3 class="text-[10px] font-black uppercase text-green-500 tracking-widest italic mb-6 ml-2">{{ __("Cycles de culture") }}</h3>

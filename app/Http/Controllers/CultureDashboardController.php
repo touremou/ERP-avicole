@@ -87,6 +87,22 @@ class CultureDashboardController extends Controller
             ->orderByDesc('start_date')
             ->first();
 
+        // Suggestions de culture pour quelques parcelles libres / partiellement
+        // libres : on propose la meilleure recommandation par parcelle (ou null).
+        $plotSuggestions = [];
+        $freePlots = Plot::whereIn('status', [Plot::STATUS_DISPONIBLE, Plot::STATUS_JACHERE])
+            ->with('farm:id,region')
+            ->orderBy('name')
+            ->take(4)
+            ->get();
+        foreach ($freePlots as $fp) {
+            $recos = $advisor->recommendCropsForPlot($fp, 1);
+            $plotSuggestions[] = [
+                'plot' => $fp,
+                'top'  => $recos[0] ?? null,
+            ];
+        }
+
         // Répartition de la surface emblavée par culture (cycles en cours).
         $cropMix = CropCycle::inProgress()
             ->selectRaw('crop_name, SUM(area_used_ha) as area, COUNT(*) as cycles')
@@ -197,7 +213,7 @@ class CultureDashboardController extends Controller
             // meta
             'activeTab',
             // overview
-            'stats', 'activeCycles', 'recentHarvests', 'dueCycles', 'activeCampaign', 'cropMix', 'agronomicAlerts',
+            'stats', 'activeCycles', 'recentHarvests', 'dueCycles', 'activeCampaign', 'cropMix', 'agronomicAlerts', 'plotSuggestions',
             // calendar
             'calendarRows', 'year', 'calendarYears', 'calendarEvents',
             // catalogue
