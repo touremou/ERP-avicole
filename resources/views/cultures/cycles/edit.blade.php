@@ -148,7 +148,10 @@
                     </div>
                     <div>
                         <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Revenu total") }} ({{ $currency }})</label>
-                        <input type="number" step="1" min="0" name="total_revenue" value="{{ old('total_revenue', $cycle->total_revenue) }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic text-right">
+                        <p class="w-full bg-slate-50 rounded-2xl p-4 font-black text-green-700 shadow-inner italic text-right text-[11px]">
+                            {{ number_format((float) $cycle->total_revenue, 0, ',', ' ') }}
+                            <span class="text-slate-400 text-[9px] ml-1">{{ __("calculé depuis les récoltes") }}</span>
+                        </p>
                     </div>
                 </div>
                 <div>

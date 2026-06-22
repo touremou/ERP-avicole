@@ -225,4 +225,17 @@ class CropCycle extends Model
             - (float) $this->additional_costs
             - $this->inputs_cost;
     }
+
+    /**
+     * Recalcule total_revenue depuis les récoltes réelles (quantité × prix unitaire).
+     * Appelé par HarvestObserver à chaque création / édition / suppression de récolte.
+     */
+    public function recalculateRevenue(): void
+    {
+        $revenue = $this->harvests()
+            ->selectRaw('COALESCE(SUM(quantity * COALESCE(unit_price, 0)), 0) as total')
+            ->value('total') ?? 0;
+
+        $this->updateQuietly(['total_revenue' => (float) $revenue]);
+    }
 }

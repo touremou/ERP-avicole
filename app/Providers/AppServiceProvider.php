@@ -71,6 +71,7 @@ class AppServiceProvider extends ServiceProvider
         if (! config('app.database_down')) {
             \App\Models\Batch::observe(\App\Observers\BatchObserver::class);
             \App\Models\CropCycle::observe(\App\Observers\CropCycleObserver::class);
+            \App\Models\Harvest::observe(\App\Observers\HarvestObserver::class);
         }
 
         // ─── 3. FIX SQL STRING LENGTH ───

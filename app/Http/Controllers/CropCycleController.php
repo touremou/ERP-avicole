@@ -196,7 +196,6 @@ class CropCycleController extends Controller
             'expected_yield_kg'      => 'nullable|numeric|min:0',
             'total_acquisition_cost' => 'nullable|numeric|min:0',
             'additional_costs'       => 'nullable|numeric|min:0',
-            'total_revenue'          => 'nullable|numeric|min:0',
             'status'                 => 'required|in:' . implode(',', CropCycle::EDITABLE_STATUSES),
             'notes'                  => 'nullable|string|max:1000',
         ]);
