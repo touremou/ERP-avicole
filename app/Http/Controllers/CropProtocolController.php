@@ -27,9 +27,17 @@ class CropProtocolController extends Controller
             ->orderByDesc('is_active')->orderBy('crop_name')->orderBy('name')
             ->get();
 
+        // Espèces du catalogue sans itinéraire technique associé.
+        $coveredNames = $protocols->pluck('crop_name')->filter()->unique()->values();
+        $uncoveredSpecies = CropSpecies::active()
+            ->whereNotIn('name', $coveredNames)
+            ->orderBy('type')->orderBy('name')
+            ->get(['id', 'name', 'type']);
+
         return view('cultures.protocols.index', [
-            'protocols' => $protocols,
-            'zones'     => CropSpecies::ZONES,
+            'protocols'        => $protocols,
+            'zones'            => CropSpecies::ZONES,
+            'uncoveredSpecies' => $uncoveredSpecies,
         ]);
     }
 

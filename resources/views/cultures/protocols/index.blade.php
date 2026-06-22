@@ -37,6 +37,71 @@
                 </div>
             @endif
 
+            {{-- ESPÈCES SANS ITINÉRAIRE --}}
+            @if($uncoveredSpecies->isNotEmpty())
+                <div x-data="{ open: false }" class="bg-amber-50 border border-amber-100 rounded-[2rem] overflow-hidden">
+                    <button type="button" @click="open = !open"
+                            class="w-full flex items-center justify-between gap-4 p-5 text-left">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-xl bg-amber-100 text-amber-500 flex items-center justify-center shrink-0">
+                                <i class="fa-solid fa-triangle-exclamation text-[11px]"></i>
+                            </div>
+                            <div>
+                                <p class="text-[10px] font-black uppercase text-amber-700 italic tracking-widest leading-none">{{ __("Espèces sans itinéraire") }}</p>
+                                <p class="text-[9px] font-bold text-amber-500 italic mt-0.5">{{ $uncoveredSpecies->count() }} {{ __("espèce(s) du catalogue non couvertes") }}</p>
+                            </div>
+                        </div>
+                        <i class="fa-solid fa-chevron-down text-amber-400 text-[10px] transition-transform" :class="open && 'rotate-180'"></i>
+                    </button>
+
+                    <div x-show="open" x-cloak x-transition class="px-5 pb-5">
+                        @php
+                            $byType = $uncoveredSpecies->groupBy('type');
+                            $typeLabels = [
+                                'cereale'     => 'Céréales',
+                                'tubercule'   => 'Tubercules',
+                                'legumineuse' => 'Légumineuses',
+                                'maraicher'   => 'Maraîchers',
+                                'fruitier'    => 'Fruitiers',
+                                'oleagineux'  => 'Oléagineux',
+                                'legume'      => 'Légumes feuillus',
+                                'epice'       => 'Épices & aromates',
+                                'autre'       => 'Autres',
+                            ];
+                        @endphp
+                        <div class="space-y-4">
+                            @foreach($byType as $type => $species)
+                                <div>
+                                    <p class="text-[8px] font-black uppercase text-amber-600 tracking-widest italic mb-2">
+                                        {{ $typeLabels[$type] ?? ucfirst($type) }}
+                                    </p>
+                                    <div class="flex flex-wrap gap-2">
+                                        @foreach($species as $sp)
+                                            @can('cultures.C')
+                                            <a href="{{ route('crop-protocols.create', ['crop_name' => $sp->name]) }}"
+                                               class="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-amber-200 rounded-2xl text-[9px] font-black uppercase text-slate-700 hover:border-green-400 hover:text-green-700 transition no-underline italic group">
+                                                {{ $sp->name }}
+                                                <i class="fa-solid fa-plus text-[8px] text-amber-300 group-hover:text-green-500 transition"></i>
+                                            </a>
+                                            @else
+                                            <span class="px-3 py-1.5 bg-white border border-amber-200 rounded-2xl text-[9px] font-black uppercase text-slate-500 italic">
+                                                {{ $sp->name }}
+                                            </span>
+                                            @endcan
+                                        @endforeach
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                        @can('cultures.C')
+                        <p class="text-[8px] font-bold text-amber-400 italic mt-4 not-italic">
+                            <i class="fa-solid fa-circle-info mr-1"></i>{{ __("Cliquez sur une espèce pour créer son itinéraire.") }}
+                        </p>
+                        @endcan
+                    </div>
+                </div>
+            @endif
+
             @forelse($protocols as $protocol)
                 <a href="{{ route('crop-protocols.show', $protocol) }}" class="block bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-md transition no-underline">
                     <div class="flex items-center justify-between">

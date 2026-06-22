@@ -6,7 +6,7 @@
     </div>
     <div>
         <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Culture cible") }}</label>
-        <input type="text" name="crop_name" list="protocol-crop-list" value="{{ old('crop_name', $protocol->crop_name ?? '') }}" placeholder="{{ __('Maïs, Riz, Tomate… (vide = générique)') }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic">
+        <input type="text" name="crop_name" list="protocol-crop-list" value="{{ old('crop_name', $protocol->crop_name ?? request('crop_name', '')) }}" placeholder="{{ __('Maïs, Riz, Tomate… (vide = générique)') }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic">
         <datalist id="protocol-crop-list">
             @foreach($species as $sp)<option value="{{ $sp->name }}">@endforeach
         </datalist>
