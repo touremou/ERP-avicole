@@ -76,15 +76,14 @@
                                     <p class="text-[12px] font-black uppercase text-slate-800 italic leading-none">{{ $item->action_name }}</p>
                                     <span class="text-[7px] font-black uppercase bg-{{ $item->type_color }}-100 text-{{ $item->type_color }}-700 px-2 py-0.5 rounded-full italic">{{ $item->type_label }}</span>
                                     @if($item->stage)<span class="text-[8px] font-black text-slate-400 uppercase italic">{{ $item->stage }}</span>@endif
+                                    @include('cultures.protocols._item-info', ['item' => $item, 'align' => 'left'])
                                 </div>
-                                @if($item->product_suggested || $item->dose || $item->method)
+                                @if($item->product_suggested || $item->dose)
                                     <p class="text-[10px] font-bold text-slate-500 italic mt-1.5">
                                         @if($item->product_suggested){{ $item->product_suggested }}@endif
                                         @if($item->dose)<span class="text-green-600"> — {{ $item->dose }}</span>@endif
-                                        @if($item->method)<span class="text-slate-400"> • {{ $item->method }}</span>@endif
                                     </p>
                                 @endif
-                                @if($item->notes)<p class="text-[10px] text-slate-500 not-italic mt-1">{{ $item->notes }}</p>@endif
                             </div>
                         </div>
                     @empty

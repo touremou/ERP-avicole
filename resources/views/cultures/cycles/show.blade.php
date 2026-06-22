@@ -172,6 +172,7 @@
                                     <div class="flex items-center gap-2 flex-wrap">
                                         <p class="text-[12px] font-black uppercase text-slate-800 italic leading-none">{{ $it->action_name }}</p>
                                         @if($it->stage)<span class="text-[8px] font-black text-slate-400 uppercase italic">{{ $it->stage }}</span>@endif
+                                        @include('cultures.protocols._item-info', ['item' => $it, 'align' => 'left'])
                                     </div>
                                     @if($it->product_suggested || $it->dose || $it->method)
                                         <p class="text-[10px] font-bold text-slate-500 italic mt-1.5">
