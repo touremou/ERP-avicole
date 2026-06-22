@@ -71,7 +71,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Parcelle *") }}</label>
-                        <select name="plot_id" x-model="selectedPlotId" @change="onPlotChange()" required class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-green-700 shadow-inner italic appearance-none cursor-pointer">
+                        <select name="plot_id" x-model="selectedPlotId" required class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-green-700 shadow-inner italic appearance-none cursor-pointer">
                             <option value="">{{ __("-- Choisir --") }}</option>
                             @foreach($plots as $plot)
                                 <option value="{{ $plot->id }}" @selected(old('plot_id') == $plot->id)>
@@ -109,14 +109,14 @@
                     </div>
                     <div>
                         <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Culture *") }}</label>
-                        <input type="text" name="crop_name" list="crop-species-list" x-model="cropName" @input="onCropChange()" value="{{ old('crop_name') }}" required placeholder="{{ __('Maïs, manioc, tomate…') }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic">
+                        <input type="text" name="crop_name" list="crop-species-list" x-model="cropName" value="{{ old('crop_name') }}" required placeholder="{{ __('Maïs, manioc, tomate…') }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic">
                         <datalist id="crop-species-list">
                             @foreach($species as $sp)<option value="{{ $sp->name }}">@endforeach
                         </datalist>
                     </div>
                     <div>
                         <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Variété") }}</label>
-                        <input type="text" name="variety" list="crop-variety-list" x-model="variety" @input="onVarietyChange()" value="{{ old('variety') }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic">
+                        <input type="text" name="variety" list="crop-variety-list" x-model="variety" value="{{ old('variety') }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic">
                         <datalist id="crop-variety-list">
                             <template x-for="v in (match ? match.varieties : [])" :key="v.name">
                                 <option :value="v.name"></option>
@@ -125,7 +125,7 @@
                     </div>
                     <div>
                         <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Surface emblavée (ha) *") }}</label>
-                        <input type="number" step="0.01" min="0" name="area_used_ha" x-model="areaHa" @input="recompute()" value="{{ old('area_used_ha') }}" required class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic text-right">
+                        <input type="number" step="0.01" min="0" name="area_used_ha" x-model="areaHa" value="{{ old('area_used_ha') }}" required class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic text-right">
                         <template x-if="maxAreaHa !== null">
                             <p class="text-[9px] font-black mt-1 ml-2 italic" :class="areaExceedsLimit() ? 'text-red-500' : 'text-slate-400'"
                                x-text="areaExceedsLimit() ? 'Surface dépasse le disponible (' + maxAreaHa.toFixed(2) + ' ha)' : 'Disponible sur cette parcelle : ' + maxAreaHa.toFixed(2) + ' ha'"></p>
@@ -137,7 +137,7 @@
                     </div>
                     <div>
                         <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Date de semis *") }}</label>
-                        <input type="date" name="planting_date" x-model="plantingDate" @change="recompute()" value="{{ old('planting_date', now()->toDateString()) }}" required class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic">
+                        <input type="date" name="planting_date" x-model="plantingDate" value="{{ old('planting_date', now()->toDateString()) }}" required class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic">
                     </div>
                     <div>
                         <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Récolte prévue") }}</label>
@@ -194,11 +194,15 @@
 
                 init() {
                     this.resolveMatch();
-                },
-
-                onPlotChange() {
-                    const pid = this.selectedPlotId;
-                    this.maxAreaHa = (pid && this.plotData[pid]) ? this.plotData[pid].remaining_ha : null;
+                    // $watch guarantees the property is already updated when the callback fires,
+                    // unlike @input which can race with x-model's own input listener.
+                    this.$watch('cropName', () => this.resolveMatch());
+                    this.$watch('variety', () => this.buildHint());
+                    this.$watch('areaHa', () => this.recompute());
+                    this.$watch('plantingDate', () => this.recompute());
+                    this.$watch('selectedPlotId', (pid) => {
+                        this.maxAreaHa = (pid && this.plotData[pid]) ? this.plotData[pid].remaining_ha : null;
+                    });
                 },
 
                 areaExceedsLimit() {
@@ -206,18 +210,9 @@
                     return parseFloat(this.areaHa) > this.maxAreaHa + 0.0001;
                 },
 
-                /** Retrouve l'espèce du catalogue correspondant au nom saisi (insensible à la casse). */
                 resolveMatch() {
                     const needle = (this.cropName || '').trim().toLowerCase();
                     this.match = this.catalogue.find(s => s.name.toLowerCase() === needle) || null;
-                    this.buildHint();
-                },
-
-                onCropChange() {
-                    this.resolveMatch();
-                },
-
-                onVarietyChange() {
                     this.buildHint();
                 },
 
