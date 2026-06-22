@@ -7,6 +7,7 @@ use App\Actions\Crop\RecordHarvest;
 use App\Models\CropCampaign;
 use App\Models\CropCycle;
 use App\Models\CropInput;
+use App\Models\CropProtocol;
 use App\Models\CropSpecies;
 use App\Models\Employee;
 use App\Models\Harvest;
@@ -74,6 +75,7 @@ class CropCycleController extends Controller
             'employees' => Employee::where('status', 'Actif')->orderBy('first_name')->get(['id', 'first_name', 'last_name']),
             'campaigns' => CropCampaign::where('status', '!=', CropCampaign::STATUS_CLOTUREE)->orderByDesc('start_date')->get(['id', 'name', 'year']),
             'species'   => CropSpecies::active()->with('varieties:id,crop_species_id,name,cycle_days,avg_yield_tha')->orderBy('name')->get(),
+            'protocols' => CropProtocol::active()->orderBy('name')->get(['id', 'name', 'crop_name']),
         ]);
     }
 
@@ -86,6 +88,7 @@ class CropCycleController extends Controller
         $validated = $request->validate([
             'plot_id'                => 'required|exists:plots,id',
             'campaign_id'            => 'nullable|exists:crop_campaigns,id',
+            'crop_protocol_id'       => 'nullable|exists:crop_protocols,id',
             'employee_id'            => 'nullable|exists:employees,id',
             'code'                   => 'nullable|string|max:50',
             'crop_name'              => 'required|string|max:255',
@@ -135,23 +138,33 @@ class CropCycleController extends Controller
 
         $cropCycle->load([
             'plot', 'campaign:id,name', 'employee:id,first_name,last_name',
+            'protocol.items',
             'harvests.employee:id,first_name,last_name',
             'inputs.provider:id,name',
         ]);
 
         // Conseils agronomiques (uniquement pour un cycle non archivé).
         $advisories = [];
+        $schedule = [];
         if (! $cropCycle->isArchived()) {
             $advisor = new \App\Services\CropAdvisorService();
             $advisories = array_merge(
                 $advisor->cycleRisks($cropCycle),
                 $cropCycle->plot ? $advisor->weatherAlerts($cropCycle->plot) : []
             );
+
+            // Itinéraire technique : calendrier projeté + alertes (retard / dû).
+            if ($cropCycle->protocol) {
+                $protocolService = new \App\Services\CropProtocolAlertService();
+                $schedule   = $protocolService->getCycleSchedule($cropCycle);
+                $advisories = array_merge($advisories, $protocolService->getCycleAlerts($cropCycle));
+            }
         }
 
         return view('cultures.cycles.show', [
             'cycle'      => $cropCycle,
             'advisories' => $advisories,
+            'schedule'   => $schedule,
             'qualities'  => Harvest::QUALITIES,
             'inputTypes' => CropInput::TYPES,
             'employees'  => Employee::where('status', 'Actif')->orderBy('first_name')->get(['id', 'first_name', 'last_name']),
@@ -167,6 +180,7 @@ class CropCycleController extends Controller
 
         $validated = $request->validate([
             'campaign_id'            => 'nullable|exists:crop_campaigns,id',
+            'crop_protocol_id'       => 'nullable|exists:crop_protocols,id',
             'crop_name'              => 'required|string|max:255',
             'variety'                => 'nullable|string|max:255',
             'employee_id'            => 'nullable|exists:employees,id',
@@ -299,6 +313,7 @@ class CropCycleController extends Controller
             'employees' => Employee::where('status', 'Actif')->orderBy('first_name')->get(['id', 'first_name', 'last_name']),
             'statuses'  => CropCycle::EDITABLE_STATUSES,
             'species'   => CropSpecies::active()->with('varieties:id,crop_species_id,name,cycle_days,avg_yield_tha')->orderBy('name')->get(),
+            'protocols' => CropProtocol::active()->orderBy('name')->get(['id', 'name', 'crop_name']),
             'maxAreaHa' => $maxAreaHa,
         ]);
     }

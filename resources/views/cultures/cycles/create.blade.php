@@ -99,6 +99,15 @@
                         </select>
                     </div>
                     <div>
+                        <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Protocole / itinéraire technique") }}</label>
+                        <select name="crop_protocol_id" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic appearance-none cursor-pointer">
+                            <option value="">{{ __("-- Aucun --") }}</option>
+                            @foreach($protocols as $proto)
+                                <option value="{{ $proto->id }}" @selected(old('crop_protocol_id') == $proto->id)>{{ $proto->name }}@if($proto->crop_name) ({{ $proto->crop_name }})@endif</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
                         <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Culture *") }}</label>
                         <input type="text" name="crop_name" list="crop-species-list" x-model="cropName" @input="onCropChange()" value="{{ old('crop_name') }}" required placeholder="{{ __('Maïs, manioc, tomate…') }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic">
                         <datalist id="crop-species-list">

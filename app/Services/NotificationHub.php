@@ -665,13 +665,15 @@ class NotificationHub
         }
 
         $advisor = new \App\Services\CropAdvisorService();
+        $protocolService = new \App\Services\CropProtocolAlertService();
         $farmName = config('whatsapp.farm_name', 'AviSmart');
         $signaled = 0;
 
         foreach ($cycles as $cycle) {
             $advisories = array_merge(
                 $advisor->cycleRisks($cycle),
-                $cycle->plot ? $advisor->weatherAlerts($cycle->plot) : []
+                $cycle->plot ? $advisor->weatherAlerts($cycle->plot) : [],
+                $cycle->crop_protocol_id ? $protocolService->getCycleAlerts($cycle) : []
             );
 
             $alerts = array_filter(

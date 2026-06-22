@@ -18,6 +18,9 @@
                 <a href="{{ route('crop-transformations.index') }}" class="bg-white text-slate-700 px-6 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-slate-100 transition-all shadow-sm border border-slate-100 italic flex items-center gap-2 no-underline">
                     <i class="fa-solid fa-industry text-green-500"></i> {{ __("Transformation") }}
                 </a>
+                <a href="{{ route('crop-protocols.index') }}" class="bg-white text-slate-700 px-6 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-slate-100 transition-all shadow-sm border border-slate-100 italic flex items-center gap-2 no-underline">
+                    <i class="fa-solid fa-list-check text-green-500"></i> {{ __("Protocoles / Itinéraires techniques") }}
+                </a>
                 @can('cultures.C')
                 <a href="{{ route('crop-calendar-events.create') }}" class="bg-white text-slate-700 px-6 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-slate-100 transition-all shadow-sm border border-slate-100 italic flex items-center gap-2 no-underline">
                     <i class="fa-solid fa-calendar-plus text-green-500"></i> {{ __("Ajouter un événement") }}

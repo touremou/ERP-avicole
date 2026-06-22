@@ -54,7 +54,7 @@ class CropCycle extends Model
 
     protected $fillable = [
         'uuid', 'is_synced', 'last_sync_at',
-        'farm_id', 'plot_id', 'campaign_id', 'employee_id',
+        'farm_id', 'plot_id', 'campaign_id', 'crop_protocol_id', 'employee_id',
         'code', 'crop_name', 'variety', 'area_used_ha',
         'planting_date', 'expected_harvest_date', 'closing_date',
         'seed_quantity', 'seed_unit', 'expected_yield_kg',
@@ -98,6 +98,12 @@ class CropCycle extends Model
     public function employee(): BelongsTo
     {
         return $this->belongsTo(Employee::class);
+    }
+
+    /** Protocole / itinéraire technique rattaché (optionnel). */
+    public function protocol(): BelongsTo
+    {
+        return $this->belongsTo(CropProtocol::class, 'crop_protocol_id');
     }
 
     public function harvests(): HasMany

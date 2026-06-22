@@ -87,6 +87,55 @@
                 </div>
             @endif
 
+            {{-- ITINÉRAIRE TECHNIQUE (si un protocole est rattaché) --}}
+            @if($cycle->protocol && !empty($schedule))
+                <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="text-[10px] font-black uppercase text-green-500 tracking-widest italic">📋 {{ __("Itinéraire technique") }}</h3>
+                        <a href="{{ route('crop-protocols.show', $cycle->protocol) }}" class="text-[9px] font-black uppercase text-slate-400 hover:text-green-600 italic no-underline">{{ $cycle->protocol->name }} <i class="fa-solid fa-arrow-up-right-from-square ml-1"></i></a>
+                    </div>
+                    <div class="space-y-3">
+                        @foreach($schedule as $entry)
+                            @php
+                                $it = $entry['item'];
+                                $stBadge = match($entry['status']) {
+                                    'done'     => ['bg-green-50 border-green-200', 'text-green-600', 'fa-circle-check', 'Fait'],
+                                    'overdue'  => ['bg-rose-50 border-rose-200', 'text-rose-600', 'fa-triangle-exclamation', 'En retard'],
+                                    'due'      => ['bg-amber-50 border-amber-200', 'text-amber-600', 'fa-bell', 'À faire'],
+                                    default    => ['bg-slate-50 border-slate-200', 'text-slate-400', 'fa-clock', 'À venir'],
+                                };
+                            @endphp
+                            <div class="flex items-start gap-4 p-4 rounded-[1.5rem] border {{ $stBadge[0] }}">
+                                <div class="flex flex-col items-center justify-center w-14 shrink-0">
+                                    <span class="text-[7px] font-black text-slate-400 uppercase italic">{{ __("Jour") }}</span>
+                                    <span class="text-lg font-black text-slate-900 leading-none">J+{{ $it->day_number }}</span>
+                                    <span class="text-[8px] font-bold text-slate-400 italic mt-0.5">{{ $entry['target_date']->format('d/m') }}</span>
+                                </div>
+                                <div class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-{{ $it->type_color }}-100 text-{{ $it->type_color }}-600">
+                                    <i class="fa-solid {{ $it->type_icon }}"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <div class="flex items-center gap-2 flex-wrap">
+                                        <p class="text-[12px] font-black uppercase text-slate-800 italic leading-none">{{ $it->action_name }}</p>
+                                        @if($it->stage)<span class="text-[8px] font-black text-slate-400 uppercase italic">{{ $it->stage }}</span>@endif
+                                    </div>
+                                    @if($it->product_suggested || $it->dose || $it->method)
+                                        <p class="text-[10px] font-bold text-slate-500 italic mt-1.5">
+                                            @if($it->product_suggested){{ $it->product_suggested }}@endif
+                                            @if($it->dose)<span class="text-green-600"> — {{ $it->dose }}</span>@endif
+                                            @if($it->method)<span class="text-slate-400"> • {{ $it->method }}</span>@endif
+                                        </p>
+                                    @endif
+                                </div>
+                                <span class="text-[8px] font-black uppercase {{ $stBadge[1] }} italic flex items-center gap-1 shrink-0">
+                                    <i class="fa-solid {{ $stBadge[2] }}"></i> {{ $stBadge[3] }}@if($entry['status']==='overdue') (+{{ $entry['delay_days'] }}j)@endif
+                                </span>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
+
             {{-- INDICATEURS --}}
             <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">

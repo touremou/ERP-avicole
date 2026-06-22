@@ -55,6 +55,7 @@ use App\Http\Controllers\{
     CropCatalogueController,
     CropCampaignController,
     CropRecipeController,
+    CropProtocolController,
     CropReportController,
     CropCalendarEventController,
     WeatherController
@@ -302,6 +303,17 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{cropRecipe}/edit', 'edit')->name('edit')->where('cropRecipe', '[0-9]+')->middleware('can:M');
         Route::put('/{cropRecipe}', 'update')->name('update')->middleware('can:M');
         Route::delete('/{cropRecipe}', 'destroy')->name('destroy')->middleware('can:S');
+    });
+
+    // Protocoles / itinéraires techniques par culture
+    Route::prefix('cultures/protocols')->name('crop-protocols.')->controller(CropProtocolController::class)->group(function () {
+        Route::get('/', 'index')->name('index')->middleware('can:L');
+        Route::get('/create', 'create')->name('create')->middleware('can:C');
+        Route::post('/', 'store')->name('store')->middleware('can:C');
+        Route::get('/{cropProtocol}', 'show')->name('show')->where('cropProtocol', '[0-9]+')->middleware('can:L');
+        Route::get('/{cropProtocol}/edit', 'edit')->name('edit')->where('cropProtocol', '[0-9]+')->middleware('can:M');
+        Route::put('/{cropProtocol}', 'update')->name('update')->middleware('can:M');
+        Route::delete('/{cropProtocol}', 'destroy')->name('destroy')->middleware('can:S');
     });
 
     // Météo & pluviométrie

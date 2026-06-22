@@ -64,5 +64,6 @@ class DatabaseSeeder extends Seeder
         $this->call(ProductionNormSeeder::class);
         $this->call(ReferentialSeeder::class);
         $this->call(CropCatalogueSeeder::class);
+        $this->call(CropProtocolSeeder::class);
     }
 }

@@ -69,6 +69,7 @@ class Module extends Model
             'crop-catalogue.'      => 'cultures',
             'crop-campaigns.'      => 'cultures',
             'crop-recipes.'         => 'cultures',
+            'crop-protocols.'       => 'cultures',
             'crop-reports.'         => 'cultures',
             'crop-calendar-events.' => 'cultures',
             'weather.'              => 'cultures',
