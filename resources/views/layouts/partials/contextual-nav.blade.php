@@ -123,11 +123,9 @@
     @endcan
 
 @elseif(request()->routeIs('utilities.*'))
-    <span class="{{ $sectionClass }}"><i class="fa-solid fa-bolt text-cyan-500 mr-1"></i> {{ __("Ressources") }}</span>
+    <span class="{{ $sectionClass }}"><i class="fa-solid fa-bolt text-cyan-500 mr-1"></i> {{ __("Eau & Énergie") }}</span>
     @can('ressources.L')
     <a href="{{ route('utilities.dashboard') }}" class="{{ $linkClass }} {{ request()->routeIs('utilities.dashboard') ? $activeClass : $inactiveClass }}">{{ __("Dashboard") }}</a>
-    @endcan
-    @can('ressources.C')
     <a href="{{ route('utilities.water.sources') }}" class="{{ $linkClass }} {{ request()->routeIs('utilities.water.*') ? $activeClass : $inactiveClass }}">{{ __("Eau") }}</a>
     <a href="{{ route('utilities.energy.sources') }}" class="{{ $linkClass }} {{ request()->routeIs('utilities.energy.*') ? $activeClass : $inactiveClass }}">{{ __("Énergie") }}</a>
     <a href="{{ route('utilities.fuel.index') }}" class="{{ $linkClass }} {{ request()->routeIs('utilities.fuel.*') ? $activeClass : $inactiveClass }}">{{ __("Gasoil") }}</a>

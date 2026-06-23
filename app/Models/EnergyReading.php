@@ -25,6 +25,15 @@ class EnergyReading extends Model
         'outage_hours'         => 'decimal:2',
     ];
 
+    protected static function booted(): void
+    {
+        // À la saisie d'un relevé, clôt la tâche planifiée « Relevé énergie » du jour.
+        static::created(function (EnergyReading $reading) {
+            app(\App\Services\ReleveTaskService::class)
+                ->complete((int) $reading->farm_id, $reading->reading_date, 'releve_energie');
+        });
+    }
+
     public function source(): BelongsTo
     {
         return $this->belongsTo(EnergySource::class, 'energy_source_id');

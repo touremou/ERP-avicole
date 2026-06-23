@@ -25,6 +25,15 @@ class WaterReading extends Model
         'cost'                   => 'decimal:2',
     ];
 
+    protected static function booted(): void
+    {
+        // À la saisie d'un relevé, clôt la tâche planifiée « Relevé eau » du jour.
+        static::created(function (WaterReading $reading) {
+            app(\App\Services\ReleveTaskService::class)
+                ->complete((int) $reading->farm_id, $reading->reading_date, 'releve_eau');
+        });
+    }
+
     public function source(): BelongsTo
     {
         return $this->belongsTo(WaterSource::class, 'water_source_id');
