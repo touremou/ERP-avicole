@@ -52,13 +52,18 @@
     <a href="{{ route('incubations.index') }}" class="{{ $linkClass }} {{ request()->routeIs('incubations.*') ? $activeClass : $inactiveClass }}">{{ __("Couvoir") }}</a>
     @endcan
 
-@elseif(request()->routeIs(['cultures.*', 'plots.*', 'crop-cycles.*', 'crop-transformations.*']))
+@elseif(request()->routeIs(['cultures.*', 'plots.*', 'crop-cycles.*', 'crop-transformations.*', 'crop-catalogue.*', 'crop-campaigns.*', 'crop-recipes.*', 'crop-reports.*', 'crop-calendar-events.*', 'crop-protocols.*', 'weather.*']))
     <span class="{{ $sectionClass }}"><i class="fa-solid fa-seedling text-green-600 mr-1"></i> {{ __("Production Végétale") }}</span>
     @can('cultures.L')
-    <a href="{{ route('cultures.dashboard') }}" class="{{ $linkClass }} {{ request()->routeIs('cultures.dashboard') ? $activeClass : $inactiveClass }}">{{ __("Pilotage") }}</a>
+    {{-- Barre contextuelle = entités opérationnelles. Le pilotage (vue d'ensemble,
+         calendrier, météo) et le référentiel (catalogue, protocoles, recettes)
+         vivent dans la sous-navigation « hub » du tableau de bord. --}}
+    <a href="{{ route('cultures.dashboard') }}" class="{{ $linkClass }} {{ request()->routeIs('cultures.dashboard') || request()->routeIs('crop-catalogue.*') || request()->routeIs('crop-protocols.*') || request()->routeIs('crop-recipes.*') || request()->routeIs('crop-calendar-events.*') ? $activeClass : $inactiveClass }}">{{ __("Tableau de bord") }}</a>
     <a href="{{ route('plots.index') }}" class="{{ $linkClass }} {{ request()->routeIs('plots.*') ? $activeClass : $inactiveClass }}">{{ __("Parcelles") }}</a>
     <a href="{{ route('crop-cycles.index') }}" class="{{ $linkClass }} {{ request()->routeIs('crop-cycles.*') ? $activeClass : $inactiveClass }}">{{ __("Cycles") }}</a>
+    <a href="{{ route('crop-campaigns.index') }}" class="{{ $linkClass }} {{ request()->routeIs('crop-campaigns.*') ? $activeClass : $inactiveClass }}">{{ __("Campagnes") }}</a>
     <a href="{{ route('crop-transformations.index') }}" class="{{ $linkClass }} {{ request()->routeIs('crop-transformations.*') ? $activeClass : $inactiveClass }}">{{ __("Transformation") }}</a>
+    <a href="{{ route('crop-reports.index') }}" class="{{ $linkClass }} {{ request()->routeIs('crop-reports.*') ? $activeClass : $inactiveClass }}">{{ __("Rapports") }}</a>
     @endcan
 
 @elseif(request()->routeIs(['provenderie.*', 'raw-materials.*', 'formulas.*', 'production.*', 'machines.*']))
@@ -118,11 +123,9 @@
     @endcan
 
 @elseif(request()->routeIs('utilities.*'))
-    <span class="{{ $sectionClass }}"><i class="fa-solid fa-bolt text-cyan-500 mr-1"></i> {{ __("Ressources") }}</span>
+    <span class="{{ $sectionClass }}"><i class="fa-solid fa-bolt text-cyan-500 mr-1"></i> {{ __("Eau & Énergie") }}</span>
     @can('ressources.L')
     <a href="{{ route('utilities.dashboard') }}" class="{{ $linkClass }} {{ request()->routeIs('utilities.dashboard') ? $activeClass : $inactiveClass }}">{{ __("Dashboard") }}</a>
-    @endcan
-    @can('ressources.C')
     <a href="{{ route('utilities.water.sources') }}" class="{{ $linkClass }} {{ request()->routeIs('utilities.water.*') ? $activeClass : $inactiveClass }}">{{ __("Eau") }}</a>
     <a href="{{ route('utilities.energy.sources') }}" class="{{ $linkClass }} {{ request()->routeIs('utilities.energy.*') ? $activeClass : $inactiveClass }}">{{ __("Énergie") }}</a>
     <a href="{{ route('utilities.fuel.index') }}" class="{{ $linkClass }} {{ request()->routeIs('utilities.fuel.*') ? $activeClass : $inactiveClass }}">{{ __("Gasoil") }}</a>

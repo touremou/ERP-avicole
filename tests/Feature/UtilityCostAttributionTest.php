@@ -155,3 +155,29 @@ test('le formulaire dashboard énergie accepte un building_id', function () {
 
     expect(EnergyReading::where('building_id', $this->building->id)->exists())->toBeTrue();
 });
+
+test('le dashboard pré-remplit avec le dernier relevé et affiche le coût/sujet', function () {
+    // Un relevé antérieur sert de base au pré-remplissage « comme hier ».
+    WaterReading::create([
+        'farm_id' => $this->farm->id, 'water_source_id' => $this->waterSource->id,
+        'reading_date' => now()->subDay()->toDateString(), 'user_id' => $this->adminUser->id,
+        'volume_consumed_liters' => 1500, 'quality_ph' => 7.2, 'cost' => 8000,
+    ]);
+
+    $this->actingAs($this->adminUser)
+        ->get(route('utilities.dashboard'))
+        ->assertOk()
+        ->assertSee('RELEVE_LAST', false)   // données de pré-remplissage injectées
+        ->assertSee('1500', false);         // valeur du dernier relevé disponible côté JS
+});
+
+test('le dashboard affiche l\'onboarding quand aucune source n\'existe', function () {
+    // Nouvelle ferme sans source.
+    $blankFarm = \App\Models\Farm::create(['name' => 'Vide', 'code' => 'F-VIDE', 'is_active' => true]);
+    session(['current_farm_id' => $blankFarm->id]);
+
+    $this->actingAs($this->adminUser)
+        ->get(route('utilities.dashboard'))
+        ->assertOk()
+        ->assertSee('Continuité de service');
+});

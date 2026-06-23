@@ -31,6 +31,7 @@ class TaskController extends Controller
         $filter = $request->input('filter', 'all');
         $employeeId = $request->input('employee');
         $buildingId = $request->input('building');
+        $plotId = $request->input('plot');
         $category = $request->input('category');
         $priority = $request->input('priority');
 
@@ -52,6 +53,7 @@ class TaskController extends Controller
         $activeFilters = array_filter([
             'employee' => $employeeId,
             'building' => $buildingId,
+            'plot'     => $plotId,
             'category' => $category,
             'priority' => $priority,
         ]);
@@ -91,13 +93,16 @@ class TaskController extends Controller
         }
 
         // ═══ VUE JOURNALIÈRE ═══
-        $query = TaskAssignment::with(['employee', 'building', 'template'])
+        // Tri par criticité décroissante. CASE portable (MySQL + SQLite) plutôt
+        // que FIELD(), qui n'existe pas en SQLite.
+        $query = TaskAssignment::with(['employee', 'building', 'plot', 'template'])
             ->forDate($date)
             ->orderBy('scheduled_time')
-            ->orderByRaw("FIELD(priority, 'critique', 'haute', 'normale', 'basse')");
+            ->orderByRaw("CASE priority WHEN 'critique' THEN 1 WHEN 'haute' THEN 2 WHEN 'normale' THEN 3 WHEN 'basse' THEN 4 ELSE 5 END");
 
         if ($employeeId) $query->where('employee_id', $employeeId);
         if ($buildingId) $query->where('building_id', $buildingId);
+        if ($plotId)     $query->where('plot_id', $plotId);
         if ($category)   $query->where('category', $category);
         if ($priority)   $query->where('priority', $priority);
         if ($filter === 'pending') $query->pending();
@@ -246,8 +251,9 @@ class TaskController extends Controller
             ->orderBy('category')->orderBy('scheduled_time')->get();
         $buildings = Building::physical()->orderBy('name')->get();
         $batchTypeOptions = TaskTemplate::batchTypeOptions();
+        $plotTypeOptions = TaskTemplate::plotTypeOptions();
 
-        return view('tasks.templates', compact('templates', 'buildings', 'batchTypeOptions'));
+        return view('tasks.templates', compact('templates', 'buildings', 'batchTypeOptions', 'plotTypeOptions'));
     }
 
     public function storeTemplate(Request $request)
@@ -264,15 +270,28 @@ class TaskController extends Controller
             'duration_minutes' => 'required|integer|min:5|max:480',
             'priority'         => 'required|in:basse,normale,haute,critique',
             'per_building'     => 'nullable',
+            'per_plot'         => 'nullable',
             'batch_types'      => 'nullable|array',
             'batch_types.*'    => 'string',
+            'plot_types'       => 'nullable|array',
+            'plot_types.*'     => 'string',
             'description'      => 'nullable|string|max:500',
         ]);
 
         $icons = ['alimentation' => 'fa-bowl-food', 'collecte' => 'fa-egg', 'controle' => 'fa-clipboard-check',
                    'nettoyage' => 'fa-broom', 'sante' => 'fa-heart-pulse', 'maintenance' => 'fa-wrench'];
+        $icons += ['irrigation' => 'fa-droplet', 'sarclage' => 'fa-trowel', 'traitement' => 'fa-spray-can-sparkles', 'fertilisation' => 'fa-flask', 'recolte' => 'fa-basket-shopping', 'semis' => 'fa-seedling', 'controle' => 'fa-clipboard-check'];
         $colors = ['alimentation' => 'amber', 'collecte' => 'emerald', 'controle' => 'blue',
                     'nettoyage' => 'purple', 'sante' => 'rose', 'maintenance' => 'slate'];
+        $colors += ['irrigation' => 'cyan', 'sarclage' => 'amber', 'traitement' => 'rose', 'fertilisation' => 'green', 'recolte' => 'emerald', 'semis' => 'lime'];
+
+        if (isset($validated['per_building'])) {
+            $targetType = 'building';
+        } elseif (isset($validated['per_plot'])) {
+            $targetType = 'plot';
+        } else {
+            $targetType = 'farm';
+        }
 
         TaskTemplate::create([
             'name'             => $validated['name'],
@@ -284,10 +303,11 @@ class TaskController extends Controller
             'priority'         => $validated['priority'],
             'per_building'     => isset($validated['per_building']),
             'batch_types'      => !empty($validated['batch_types']) ? $validated['batch_types'] : null,
+            'plot_types'       => !empty($validated['plot_types']) ? $validated['plot_types'] : null,
             'description'      => $validated['description'] ?? null,
             'icon'             => $icons[$validated['category']] ?? 'fa-circle',
             'color'            => $colors[$validated['category']] ?? 'slate',
-            'target_type'      => isset($validated['per_building']) ? 'building' : 'farm',
+            'target_type'      => $targetType,
             'is_active'        => true,
         ]);
 
@@ -315,9 +335,20 @@ class TaskController extends Controller
             'duration_minutes' => 'required|integer|min:5|max:480',
             'priority'         => 'required|in:basse,normale,haute,critique',
             'per_building'     => 'nullable',
+            'per_plot'         => 'nullable',
             'batch_types'      => 'nullable|array',
+            'plot_types'       => 'nullable|array',
+            'plot_types.*'     => 'string',
             'description'      => 'nullable|string|max:500',
         ]);
+
+        if (isset($validated['per_building'])) {
+            $targetType = 'building';
+        } elseif (isset($validated['per_plot'])) {
+            $targetType = 'plot';
+        } else {
+            $targetType = 'farm';
+        }
 
         $template->update([
             'name'             => $validated['name'],
@@ -329,8 +360,9 @@ class TaskController extends Controller
             'priority'         => $validated['priority'],
             'per_building'     => isset($validated['per_building']),
             'batch_types'      => !empty($validated['batch_types']) ? $validated['batch_types'] : null,
+            'plot_types'       => !empty($validated['plot_types']) ? $validated['plot_types'] : null,
             'description'      => $validated['description'] ?? null,
-            'target_type'      => isset($validated['per_building']) ? 'building' : 'farm',
+            'target_type'      => $targetType,
         ]);
 
         return redirect()->route('tasks.templates')->with('success', "Template \"{$template->name}\" mis à jour.");

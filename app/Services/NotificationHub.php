@@ -81,7 +81,7 @@ class NotificationHub
             ->where('alert_threshold', '>', 0)
             ->get(['item_name', 'current_quantity', 'unit']);
 
-        // Gasoil
+        // Carburant
         $groupes = EnergySource::groupes()->get();
         $fuelAlerts = $groupes->filter(fn($g) => $g->is_fuel_low);
 
@@ -139,7 +139,7 @@ class NotificationHub
         if ($fuelAlerts->count() > 0 || $lowCiternes->count() > 0) {
             $lines[] = "⚡ *ALERTES RESSOURCES*";
             foreach ($fuelAlerts as $g) {
-                $lines[] = "  ⛽ {$g->name} : *{$g->fuel_autonomy_days}j* d'autonomie gasoil";
+                $lines[] = "  ⛽ {$g->name} : *{$g->fuel_autonomy_days}j* d'autonomie carburant";
             }
             foreach ($lowCiternes as $c) {
                 $lines[] = "  💧 {$c->name} : *{$c->current_level_percent}%*";
@@ -351,7 +351,7 @@ class NotificationHub
     }
 
     /**
-     * Alerte gasoil bas.
+     * Alerte carburant bas.
      */
     public function alertFuelLow(EnergySource $source): void
     {
@@ -359,13 +359,13 @@ class NotificationHub
             ? "{$source->fuel_autonomy_hours}h de fonctionnement"
             : "{$source->fuel_autonomy_days} jour(s)";
 
-        $message = "⛽ *GASOIL CRITIQUE*\n\n"
+        $message = "⛽ *CARBURANT CRITIQUE*\n\n"
             . "Groupe : *{$source->name}*\n"
             . "Autonomie : *{$autonomyLabel}*\n"
             . "Niveau cuve : {$source->current_fuel_level}L / {$source->fuel_tank_capacity}L\n\n"
-            . "Commander du gasoil AUJOURD'HUI.";
+            . "Commander du carburant AUJOURD'HUI.";
 
-        $this->broadcast('alert_energy', $message, 'Gasoil ' . $source->name, 'critique');
+        $this->broadcast('alert_energy', $message, 'Carburant ' . $source->name, 'critique');
     }
 
     /**
@@ -641,6 +641,198 @@ class NotificationHub
         $this->broadcast('daily_summary', implode("\n", $lines), 'Calendrier cultural');
 
         return $cycles->count();
+    }
+
+    /**
+     * Dosage d'aliment recommandé par bâtiment — envoyé aux éleveurs chaque matin.
+     *
+     * Pour chaque lot actif, calcule le dosage via BatchAdvisorService et regroupe
+     * les résultats par bâtiment. Un seul message par ferme est diffusé aux abonnés
+     * du résumé quotidien (réutilise l'opt-in existant).
+     *
+     * @return int Nombre d'envois réussis.
+     */
+    public function sendFeedingDosage(): int
+    {
+        $batches = Batch::active()->live()
+            ->with(['building', 'productionType', 'species', 'dailyChecks'])
+            ->get();
+
+        if ($batches->isEmpty()) {
+            return 0;
+        }
+
+        $advisor   = new \App\Services\BatchAdvisorService();
+        $farmName  = config('whatsapp.farm_name', 'AviSmart');
+        $date      = now()->translatedFormat('l d F Y');
+
+        $byBuilding = $batches->groupBy(fn($b) => $b->building?->name ?? 'Sans bâtiment');
+
+        $lines   = ["🌾 *{$farmName} — Dosage Aliment {$date}*", ''];
+        $hasData = false;
+
+        foreach ($byBuilding as $buildingName => $buildingBatches) {
+            $lines[] = "🏠 *{$buildingName}*";
+            foreach ($buildingBatches as $batch) {
+                $reco = $advisor->recommendation($batch);
+                if ($reco === null) {
+                    $lines[] = "  • {$batch->code} — _barème non disponible_";
+                    continue;
+                }
+                $hasData   = true;
+                $heatFlag  = $reco['environment']['heat_stress'] ? ' 🌡️ THI ' . $reco['environment']['thi'] : '';
+                $lines[]   = "  • *{$batch->code}* — S{$reco['week']} {$reco['phase']}{$heatFlag}";
+                $lines[]   = "    🌾 *{$reco['total']['feed_kg']} kg* aliment ({$reco['per_subject']['feed_g']} g/sujet)";
+                $lines[]   = "    💧 *{$reco['total']['water_l']} L* eau ({$reco['per_subject']['water_ml']} ml/sujet)";
+
+                // Autonomie aliment
+                $auto = $advisor->feedAutonomy($batch);
+                if ($auto !== null) {
+                    $autoEmoji = $auto['is_critical'] ? '🔴' : ($auto['is_warning'] ? '⚠️' : '✅');
+                    $lines[]   = "    {$autoEmoji} Stock : {$auto['days']}j d'autonomie ({$auto['stock_kg']} kg)";
+                }
+            }
+            $lines[] = '';
+        }
+
+        if (! $hasData) {
+            return 0;
+        }
+
+        $lines[] = "— {$farmName} ERP 🇬🇳";
+        $message  = implode("\n", $lines);
+
+        $recipients = $this->getSubscribers('daily_summary');
+        $sent       = 0;
+
+        foreach ($recipients as $user) {
+            if ($this->whatsapp->send($user->whatsapp_phone, $message, [
+                'user_id' => $user->id,
+                'type'    => 'daily_summary',
+                'title'   => 'Dosage Aliment',
+            ])) {
+                $sent++;
+            }
+        }
+
+        Log::info("NotificationHub: dosage aliment envoyé à {$sent} destinataire(s).");
+
+        return $sent;
+    }
+
+    /**
+     * Alertes agronomiques quotidiennes : pour chaque cycle de culture en cours,
+     * compile les risques semis/récolte et les alertes météo de sévérité élevée
+     * (critique / attention) produits par CropAdvisorService, et diffuse un
+     * message de synthèse par cycle concerné.
+     *
+     * Diffusé aux abonnés du résumé quotidien (réutilise l'opt-in existant, comme
+     * notifyHarvestsDue). Renvoie le nombre de cycles signalés.
+     */
+    /**
+     * Alertes météo prédictives (J+1→J+N) par ferme active : fortes pluies,
+     * canicule, vent fort annoncés. Diffuse une fois par ferme concernée.
+     * S'appuie sur les prévisions Open-Meteo (WeatherService::forecastAlerts).
+     */
+    public function notifyWeatherForecast(int $days = 2): int
+    {
+        $weather  = app(\App\Services\WeatherService::class);
+        if (! $weather->enabled()) {
+            return 0;
+        }
+
+        $farmName = config('whatsapp.farm_name', 'AviSmart');
+        $utility  = app(\App\Services\UtilityService::class);
+        $signaled = 0;
+
+        foreach (\App\Models\Farm::where('is_active', true)->get() as $farm) {
+            session(['current_farm_id' => $farm->id]); // contexte ferme pour les modèles énergie
+
+            $alerts = $weather->forecastAlerts($farm, $days);
+
+            // Alerte composite chaleur × dépendance groupe : on extrait le pic de
+            // température prévu et on le croise avec la sollicitation du parc groupe.
+            $peakTemp = collect($weather->forecast($farm, $days))
+                ->pluck('t_max')->filter()->max();
+            if ($risk = $utility->ventilationRisk($peakTemp !== null ? (float) $peakTemp : null)) {
+                $alerts[] = $risk;
+            }
+
+            if (empty($alerts)) {
+                continue;
+            }
+
+            $lines = ["🛰️ *{$farmName} — Alerte météo (prévisions)*", ''];
+            foreach ($alerts as $a) {
+                $emoji = $a['severity'] === 'critique' ? '🔴' : '⚠️';
+                $lines[] = "{$emoji} *{$a['title']}*";
+                $lines[] = "  {$a['message']}";
+            }
+
+            $hasCritical = collect($alerts)->contains(fn ($a) => $a['severity'] === 'critique');
+
+            $this->broadcast('daily_summary', implode("\n", $lines), 'Météo ' . $farm->name, $hasCritical ? 'critique' : 'normal');
+            $signaled++;
+        }
+
+        return $signaled;
+    }
+
+    public function notifyAgronomicRisks(): int
+    {
+        $cycles = CropCycle::query()
+            ->inProgress()
+            ->with('plot')
+            ->orderBy('planting_date')
+            ->get();
+
+        if ($cycles->isEmpty()) {
+            return 0;
+        }
+
+        $advisor = new \App\Services\CropAdvisorService();
+        $protocolService = new \App\Services\CropProtocolAlertService();
+        $farmName = config('whatsapp.farm_name', 'AviSmart');
+        $signaled = 0;
+
+        foreach ($cycles as $cycle) {
+            $advisories = array_merge(
+                $advisor->cycleRisks($cycle),
+                $cycle->plot ? $advisor->weatherAlerts($cycle->plot) : [],
+                $cycle->crop_protocol_id ? $protocolService->getCycleAlerts($cycle) : []
+            );
+
+            $alerts = array_filter(
+                $advisories,
+                fn ($a) => in_array($a['severity'], ['critique', 'attention'], true)
+            );
+
+            if (empty($alerts)) {
+                continue;
+            }
+
+            $plot = $cycle->plot?->name ? " ({$cycle->plot->name})" : '';
+            $lines = ["🌾 *{$farmName} — Alerte agronomique*", '', "• *{$cycle->crop_name}*{$plot}", ''];
+
+            foreach ($alerts as $a) {
+                $emoji = $a['severity'] === 'critique' ? '🔴' : '⚠️';
+                $lines[] = "{$emoji} *{$a['title']}*";
+                $lines[] = "  {$a['message']}";
+            }
+
+            $hasCritical = collect($alerts)->contains(fn ($a) => $a['severity'] === 'critique');
+
+            $this->broadcast(
+                'daily_summary',
+                implode("\n", $lines),
+                'Agronomie ' . $cycle->crop_name,
+                $hasCritical ? 'critique' : 'normal'
+            );
+
+            $signaled++;
+        }
+
+        return $signaled;
     }
 
     /**

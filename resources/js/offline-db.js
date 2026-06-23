@@ -57,12 +57,23 @@ export async function refreshLocalData() {
     console.log("🛰️ AviSmart : rafraîchissement des référentiels locaux...");
 
     try {
-        // Lots actifs : bulkPut (upsert par uuid) pour ne JAMAIS écraser les
-        // lots créés hors-ligne et pas encore synchronisés (uuid distincts,
-        // donc préservés par cette opération).
+        // Lots actifs : le serveur fait foi pour les lots déjà synchronisés.
+        // On réconcilie le miroir local :
+        //   1. on SUPPRIME les lots synchronisés qui ne sont plus renvoyés par
+        //      le serveur (lots clôturés, supprimés ou base réinitialisée) —
+        //      sinon ils restaient affichés indéfiniment en « mode terrain » ;
+        //   2. on PRÉSERVE les lots créés hors-ligne et pas encore synchronisés
+        //      (is_synced === 0), qui n'existent pas encore côté serveur ;
+        //   3. on upsert (bulkPut par uuid) la liste serveur.
         const batchesRes = await fetch('/api/offline/batches');
         if (batchesRes.ok) {
             const batches = await batchesRes.json();
+            const serverUuids = new Set((batches || []).map(b => b.uuid));
+
+            await db.batches
+                .filter(b => b.is_synced !== 0 && !serverUuids.has(b.uuid))
+                .delete();
+
             if (batches && batches.length > 0) {
                 await db.batches.bulkPut(batches);
             }
@@ -99,3 +110,23 @@ export async function refreshLocalData() {
 }
 
 window.refreshLocalData = refreshLocalData;
+
+/**
+ * Purge complète du miroir hors-ligne (IndexedDB). À utiliser après une
+ * réinitialisation serveur (migrate:fresh) ou pour repartir d'un cache propre.
+ *
+ * ⚠️ Supprime aussi les saisies hors-ligne NON synchronisées encore en file
+ * d'attente. À n'exécuter que lorsque l'on est sûr qu'il n'y a rien à remonter.
+ *
+ * Usage console : await purgeOfflineData()
+ */
+export async function purgeOfflineData() {
+    try {
+        await Promise.all(db.tables.map(t => t.clear()));
+        console.log('🧹 Miroir hors-ligne vidé. Rechargez la page.');
+    } catch (e) {
+        console.error('❌ Échec de la purge hors-ligne :', e);
+    }
+}
+
+window.purgeOfflineData = purgeOfflineData;

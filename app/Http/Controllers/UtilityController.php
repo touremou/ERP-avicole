@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AssetMaintenanceLog;
 use App\Models\Building;
+use App\Models\TaskAssignment;
 use App\Models\WaterSource;
 use App\Models\WaterReading;
 use App\Models\EnergySource;
@@ -31,7 +33,21 @@ class UtilityController extends Controller
         $energySources = EnergySource::active()->get();
         $buildings = Building::physical()->orderBy('name')->get();
 
-        return view('utilities.dashboard', compact('data', 'waterSources', 'energySources', 'buildings', 'period'));
+        // Saisie « comme hier » : dernier relevé par source pour pré-remplir le
+        // formulaire à la sélection (réduit la friction de saisie quotidienne).
+        $lastWater = WaterReading::whereIn('water_source_id', $waterSources->pluck('id'))
+            ->get()->sortByDesc('reading_date')->groupBy('water_source_id')
+            ->map(fn ($r) => $r->first()->only(['volume_consumed_liters', 'volume_added_liters', 'quality_ph', 'chlorine_level', 'cost', 'building_id']));
+
+        // Énergie : on ne pré-remplit QUE le bâtiment desservi (attribution stable).
+        // Heures/carburant/coût restent vides → le système estime carburant et
+        // coût à partir des heures saisies (cf. storeEnergyReading), supprimant
+        // la double saisie quotidienne.
+        $lastEnergy = EnergyReading::whereIn('energy_source_id', $energySources->pluck('id'))
+            ->get()->sortByDesc('reading_date')->groupBy('energy_source_id')
+            ->map(fn ($r) => $r->first()->only(['building_id']));
+
+        return view('utilities.dashboard', compact('data', 'waterSources', 'energySources', 'buildings', 'period', 'lastWater', 'lastEnergy'));
     }
 
     // ──────────────────────────────────────────────
@@ -131,11 +147,17 @@ class UtilityController extends Controller
             'type'                       => 'required|in:edg,groupe,solaire',
             'brand'                      => 'nullable|string|max:100',
             'model'                      => 'nullable|string|max:100',
+            'serial_number'              => 'nullable|string|max:100',
             'capacity_kva'               => 'nullable|numeric|min:0',
             'fuel_type'                  => 'nullable|in:gasoil,essence',
             'fuel_tank_capacity'         => 'nullable|numeric|min:0',
             'maintenance_interval_hours' => 'nullable|integer|min:50',
             'notes'                      => 'nullable|string|max:1000',
+            'purchase_date'              => 'nullable|date',
+            'purchase_price'             => 'nullable|numeric|min:0',
+            'depreciation_years'         => 'nullable|integer|min:1|max:30',
+            'warranty_expiry'            => 'nullable|date',
+            'service_contract_ref'       => 'nullable|string|max:255',
         ]);
 
         EnergySource::create($validated);
@@ -148,17 +170,65 @@ class UtilityController extends Controller
         if (Gate::denies('ressources.M')) return back()->with('error', 'Action non autorisée.');
 
         $validated = $request->validate([
-            'maintenance_notes' => 'nullable|string|max:1000',
+            'maintenance_type'  => 'required|in:vidange,filtres,inspection,reparation,contrat',
+            'description'       => 'nullable|string|max:1000',
+            'cost'              => 'nullable|numeric|min:0',
+            'technician'        => 'nullable|string|max:255',
+            'next_interval_hours' => 'nullable|integer|min:50',
         ]);
+
+        $intervalHours = $validated['next_interval_hours'] ?? $source->maintenance_interval_hours;
 
         $source->update([
-            'last_maintenance_at' => now(),
-            'next_maintenance_at' => now()->addHours($source->maintenance_interval_hours),
-            'status'              => 'operationnel',
-            'notes'               => trim(($source->notes ?? '') . "\n[MAINTENANCE " . now()->format('d/m/Y') . "] " . ($validated['maintenance_notes'] ?? '')),
+            'last_maintenance_at'        => now(),
+            'next_maintenance_at'        => now()->addHours($intervalHours),
+            'maintenance_interval_hours' => $intervalHours,
+            'status'                     => 'operationnel',
         ]);
 
-        return back()->with('success', "Maintenance enregistrée pour {$source->name}. Compteur remis à zéro.");
+        // Journal CMMS
+        $log = AssetMaintenanceLog::create([
+            'farm_id'            => $source->farm_id,
+            'energy_source_id'   => $source->id,
+            'user_id'            => Auth::id(),
+            'maintenance_date'   => now()->toDateString(),
+            'type'               => $validated['maintenance_type'],
+            'description'        => $validated['description'] ?? null,
+            'cost'               => $validated['cost'] ?? null,
+            'technician'         => $validated['technician'] ?? null,
+            'hours_at_maintenance' => $source->total_hours_run,
+        ]);
+
+        // Compléter la tâche de maintenance préventive si elle existe aujourd'hui
+        $task = TaskAssignment::withoutGlobalScopes()
+            ->where('farm_id', $source->farm_id)
+            ->where('category', 'maintenance_preventive')
+            ->whereDate('scheduled_date', now()->toDateString())
+            ->whereIn('status', ['a_faire', 'en_retard'])
+            ->where('title', 'like', "%{$source->name}%")
+            ->first();
+
+        if ($task) {
+            $task->update([
+                'status'           => 'fait',
+                'completed_at'     => now(),
+                'completed_by'     => Auth::id(),
+                'completion_notes' => "Maintenance effectuée — {$validated['maintenance_type']}.",
+            ]);
+            $log->update(['task_assignment_id' => $task->id]);
+        }
+
+        return back()->with('success', "Maintenance enregistrée pour {$source->name}. Prochaine révision dans {$intervalHours}h.");
+    }
+
+    public function assetLogs(EnergySource $source)
+    {
+        if (Gate::denies('ressources.L')) return back()->with('error', 'Accès restreint.');
+
+        $sources = EnergySource::withCount('readings')->get();
+        $logs = $source->maintenanceLogs()->with('user')->latest('maintenance_date')->get();
+
+        return view('utilities.energy-sources', compact('sources', 'logs') + ['assetSource' => $source]);
     }
 
     // ──────────────────────────────────────────────
@@ -183,13 +253,39 @@ class UtilityController extends Controller
 
         $validated['user_id'] = Auth::id();
 
+        $source = EnergySource::find($validated['energy_source_id']);
+
+        // ─── Anti-corvée : dériver carburant et coût quand ils ne sont pas saisis ───
+        // L'opérateur ne renseigne idéalement que les heures ; le système estime
+        // le carburant (heures × conso horaire moyenne) puis le coût (carburant ×
+        // prix au litre). Toute valeur saisie manuellement est respectée.
+        $autoNotes = [];
+
+        if (empty($validated['fuel_consumed_liters'])
+            && $source->type === 'groupe'
+            && (float) $validated['hours_run'] > 0) {
+            $litersPerHour = $source->averageLitersPerHour();
+            if ($litersPerHour) {
+                $validated['fuel_consumed_liters'] = round((float) $validated['hours_run'] * $litersPerHour, 1);
+                $autoNotes[] = "carburant estimé " . number_format($validated['fuel_consumed_liters'], 1, ',', ' ') . " L";
+            }
+        }
+
+        if (empty($validated['cost']) && ! empty($validated['fuel_consumed_liters'])) {
+            // Prix réel le plus récent (dernier achat), repli sur le paramètre.
+            $unitPrice = FuelPurchase::where('energy_source_id', $source->id)
+                ->latest('purchase_date')->value('unit_price')
+                ?? (float) setting('energie.fuel_price_liter', 12000);
+            $validated['cost'] = round((float) $validated['fuel_consumed_liters'] * (float) $unitPrice);
+            $autoNotes[] = "coût estimé " . number_format($validated['cost'], 0, ',', ' ') . " GNF";
+        }
+
         EnergyReading::updateOrCreate(
             ['energy_source_id' => $validated['energy_source_id'], 'reading_date' => $validated['reading_date']],
             $validated
         );
 
         // Mettre à jour les heures totales et le niveau de carburant
-        $source = EnergySource::find($validated['energy_source_id']);
         $source->increment('total_hours_run', (float) $validated['hours_run']);
 
         $wasFuelLow = $source->is_fuel_low;
@@ -211,7 +307,9 @@ class UtilityController extends Controller
             $source->update(['status' => 'maintenance']);
         }
 
-        return back()->with('success', "Relevé énergie enregistré pour le {$validated['reading_date']}.");
+        $suffix = $autoNotes ? ' (' . implode(' · ', $autoNotes) . ')' : '';
+
+        return back()->with('success', "Relevé énergie enregistré pour le {$validated['reading_date']}.{$suffix}");
     }
 
     // ──────────────────────────────────────────────
@@ -305,7 +403,7 @@ class UtilityController extends Controller
     public function editEnergySource(EnergySource $source)
     {
         if (Gate::denies('ressources.M')) return back()->with('error', 'Action non autorisée.');
-        return view('utilities.energy-sources', ['sources' => EnergySource::withCount('readings')->get(), 'editing' => $source]);
+        return view('utilities.edit-energy', ['source' => $source]);
     }
 
     public function updateEnergySource(Request $request, EnergySource $source)
@@ -317,6 +415,7 @@ class UtilityController extends Controller
             'type'                       => 'required|in:edg,groupe,solaire',
             'brand'                      => 'nullable|string|max:100',
             'model'                      => 'nullable|string|max:100',
+            'serial_number'              => 'nullable|string|max:100',
             'capacity_kva'               => 'nullable|numeric|min:0',
             'fuel_type'                  => 'nullable|in:gasoil,essence',
             'fuel_tank_capacity'         => 'nullable|numeric|min:0',
@@ -324,6 +423,11 @@ class UtilityController extends Controller
             'status'                     => 'nullable|in:operationnel,maintenance,panne',
             'is_active'                  => 'boolean',
             'notes'                      => 'nullable|string|max:1000',
+            'purchase_date'              => 'nullable|date',
+            'purchase_price'             => 'nullable|numeric|min:0',
+            'depreciation_years'         => 'nullable|integer|min:1|max:30',
+            'warranty_expiry'            => 'nullable|date',
+            'service_contract_ref'       => 'nullable|string|max:255',
         ]);
 
         $source->update($validated);

@@ -51,13 +51,28 @@ use App\Http\Controllers\{
     CultureDashboardController,
     PlotController,
     CropCycleController,
-    CropTransformationController
+    CropTransformationController,
+    CropCatalogueController,
+    CropCampaignController,
+    CropRecipeController,
+    CropProtocolController,
+    CropReportController,
+    CropCalendarEventController,
+    WeatherController
 };
 
 Route::redirect('/', '/login');
 
 // Manifest PWA dynamique (nom + icône pilotés par les paramètres).
 Route::get('/manifest.webmanifest', [PwaController::class, 'manifest'])->name('pwa.manifest');
+
+// Page de repli hors-ligne (PWA). VOLONTAIREMENT PUBLIQUE : c'est une coquille
+// statique qui ne lit que le miroir IndexedDB côté client. Si elle était
+// protégée par `auth`, le service worker (qui la pré-cache) ou un repli de
+// navigation déclenché DÉCONNECTÉ la ferait mémoriser comme URL « intended » —
+// l'utilisateur serait alors renvoyé sur /offline juste après connexion avant
+// d'être redirigé vers son tableau de bord.
+Route::get('/offline', fn () => view('offline'))->name('offline');
 
 // ──────────────────────────────────────────────
 // ASSISTANT D'INSTALLATION (premier démarrage)
@@ -219,7 +234,10 @@ Route::middleware(['auth'])->group(function () {
 
     Route::prefix('cultures/plots')->name('plots.')->controller(PlotController::class)->group(function () {
         Route::get('/', 'index')->name('index')->middleware('can:L');
+        Route::get('/create', 'create')->name('create')->middleware('can:C');
         Route::post('/', 'store')->name('store')->middleware('can:C');
+        Route::get('/{plot}', 'show')->name('show')->where('plot', '[0-9]+')->middleware('can:L');
+        Route::get('/{plot}/edit', 'edit')->name('edit')->middleware('can:M');
         Route::put('/{plot}', 'update')->name('update')->middleware('can:M');
         Route::delete('/{plot}', 'destroy')->name('destroy')->middleware('can:S');
     });
@@ -229,9 +247,21 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/create', 'create')->name('create')->middleware('can:C');
         Route::post('/', 'store')->name('store')->middleware('can:C');
         Route::get('/{cropCycle}', 'show')->name('show')->where('cropCycle', '[0-9]+')->middleware('can:L');
+        Route::get('/{cropCycle}/edit', 'edit')->name('edit')->where('cropCycle', '[0-9]+')->middleware('can:M');
         Route::put('/{cropCycle}', 'update')->name('update')->middleware('can:M');
+        Route::delete('/{cropCycle}', 'destroy')->name('destroy')->middleware('can:S');
+        // Récoltes (sous-ressource du cycle)
+        Route::get('/{cropCycle}/harvests/create', 'createHarvest')->name('harvests.create')->middleware('can:C');
         Route::post('/{cropCycle}/harvests', 'storeHarvest')->name('harvests.store')->middleware('can:C');
+        Route::get('/{cropCycle}/harvests/{harvest}/edit', 'editHarvest')->name('harvests.edit')->middleware('can:M');
+        Route::put('/{cropCycle}/harvests/{harvest}', 'updateHarvest')->name('harvests.update')->middleware('can:M');
+        Route::delete('/{cropCycle}/harvests/{harvest}', 'destroyHarvest')->name('harvests.destroy')->middleware('can:S');
+        // Intrants (sous-ressource du cycle)
+        Route::get('/{cropCycle}/inputs/create', 'createInput')->name('inputs.create')->middleware('can:C');
         Route::post('/{cropCycle}/inputs', 'storeInput')->name('inputs.store')->middleware('can:C');
+        Route::get('/{cropCycle}/inputs/{input}/edit', 'editInput')->name('inputs.edit')->middleware('can:M');
+        Route::put('/{cropCycle}/inputs/{input}', 'updateInput')->name('inputs.update')->middleware('can:M');
+        Route::delete('/{cropCycle}/inputs/{input}', 'destroyInput')->name('inputs.destroy')->middleware('can:S');
     });
 
     Route::prefix('cultures/transformations')->name('crop-transformations.')->controller(CropTransformationController::class)->group(function () {
@@ -239,6 +269,95 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/create', 'create')->name('create')->middleware('can:C');
         Route::post('/', 'store')->name('store')->middleware('can:C');
         Route::get('/{cropTransformation}', 'show')->name('show')->where('cropTransformation', '[0-9]+')->middleware('can:L');
+        Route::get('/{cropTransformation}/edit', 'edit')->name('edit')->where('cropTransformation', '[0-9]+')->middleware('can:M');
+        Route::put('/{cropTransformation}', 'update')->name('update')->middleware('can:M');
+        Route::delete('/{cropTransformation}', 'destroy')->name('destroy')->middleware('can:S');
+    });
+
+    // Catalogue des cultures (espèces & variétés)
+    Route::prefix('cultures/catalogue')->name('crop-catalogue.')->controller(CropCatalogueController::class)->group(function () {
+        Route::get('/', 'index')->name('index')->middleware('can:L');
+        Route::get('/import', 'importForm')->name('import')->middleware('can:M');
+        Route::post('/import', 'importStore')->name('import.store')->middleware('can:M');
+        Route::get('/create', 'create')->name('create')->middleware('can:C');
+        Route::post('/', 'store')->name('store')->middleware('can:C');
+        Route::get('/{cropCatalogue}', 'show')->name('show')->where('cropCatalogue', '[0-9]+')->middleware('can:L');
+        Route::get('/{cropCatalogue}/edit', 'edit')->name('edit')->where('cropCatalogue', '[0-9]+')->middleware('can:M');
+        Route::put('/{cropCatalogue}', 'update')->name('update')->middleware('can:M');
+        Route::post('/{cropCatalogue}/varieties', 'storeVariety')->name('varieties.store')->middleware('can:C');
+        Route::put('/varieties/{variety}', 'updateVariety')->name('varieties.update')->middleware('can:M');
+        Route::delete('/varieties/{variety}', 'destroyVariety')->name('varieties.destroy')->middleware('can:S');
+    });
+
+    // Campagnes agricoles
+    Route::prefix('cultures/campaigns')->name('crop-campaigns.')->controller(CropCampaignController::class)->group(function () {
+        Route::get('/', 'index')->name('index')->middleware('can:L');
+        Route::get('/create', 'create')->name('create')->middleware('can:C');
+        Route::post('/', 'store')->name('store')->middleware('can:C');
+        Route::get('/{cropCampaign}', 'show')->name('show')->where('cropCampaign', '[0-9]+')->middleware('can:L');
+        Route::get('/{cropCampaign}/edit', 'edit')->name('edit')->where('cropCampaign', '[0-9]+')->middleware('can:M');
+        Route::put('/{cropCampaign}', 'update')->name('update')->middleware('can:M');
+        Route::delete('/{cropCampaign}', 'destroy')->name('destroy')->middleware('can:S');
+    });
+
+    // Recettes de transformation
+    Route::prefix('cultures/recipes')->name('crop-recipes.')->controller(CropRecipeController::class)->group(function () {
+        Route::get('/', 'index')->name('index')->middleware('can:L');
+        Route::get('/import', 'importForm')->name('import')->middleware('can:M');
+        Route::post('/import', 'importStore')->name('import.store')->middleware('can:M');
+        Route::get('/create', 'create')->name('create')->middleware('can:C');
+        Route::post('/', 'store')->name('store')->middleware('can:C');
+        Route::get('/{cropRecipe}', 'show')->name('show')->where('cropRecipe', '[0-9]+')->middleware('can:L');
+        Route::get('/{cropRecipe}/edit', 'edit')->name('edit')->where('cropRecipe', '[0-9]+')->middleware('can:M');
+        Route::put('/{cropRecipe}', 'update')->name('update')->middleware('can:M');
+        Route::delete('/{cropRecipe}', 'destroy')->name('destroy')->middleware('can:S');
+    });
+
+    // Protocoles / itinéraires techniques par culture
+    Route::prefix('cultures/protocols')->name('crop-protocols.')->controller(CropProtocolController::class)->group(function () {
+        Route::get('/', 'index')->name('index')->middleware('can:L');
+        Route::get('/create', 'create')->name('create')->middleware('can:C');
+        Route::post('/', 'store')->name('store')->middleware('can:C');
+        Route::get('/{cropProtocol}', 'show')->name('show')->where('cropProtocol', '[0-9]+')->middleware('can:L');
+        Route::get('/{cropProtocol}/edit', 'edit')->name('edit')->where('cropProtocol', '[0-9]+')->middleware('can:M');
+        Route::put('/{cropProtocol}', 'update')->name('update')->middleware('can:M');
+        Route::delete('/{cropProtocol}', 'destroy')->name('destroy')->middleware('can:S');
+    });
+
+    // Météo & pluviométrie
+    Route::prefix('cultures/weather')->name('weather.')->controller(WeatherController::class)->group(function () {
+        Route::get('/', 'index')->name('index')->middleware('can:L');
+        Route::post('/', 'store')->name('store')->middleware('can:C');
+        Route::post('/fetch', 'fetchNow')->name('fetch')->middleware('can:C');
+        Route::get('/{weather}/edit', 'edit')->name('edit')->where('weather', '[0-9]+')->middleware('can:M');
+        Route::put('/{weather}', 'update')->name('update')->middleware('can:M');
+        Route::delete('/{weather}', 'destroy')->name('destroy')->middleware('can:S');
+    });
+
+    // Calendrier cultural
+    Route::get('/cultures/calendar', [CultureDashboardController::class, 'calendar'])->name('cultures.calendar')->middleware('can:L');
+
+    // Événements calendaires libres
+    Route::prefix('cultures/calendar-events')->name('crop-calendar-events.')->controller(CropCalendarEventController::class)->group(function () {
+        Route::get('/', 'index')->name('index')->middleware('can:L');
+        Route::get('/create', 'create')->name('create')->middleware('can:C');
+        Route::post('/', 'store')->name('store')->middleware('can:C');
+        Route::get('/{cropCalendarEvent}/edit', 'edit')->name('edit')->where('cropCalendarEvent', '[0-9]+')->middleware('can:M');
+        Route::put('/{cropCalendarEvent}', 'update')->name('update')->middleware('can:M');
+        Route::delete('/{cropCalendarEvent}', 'destroy')->name('destroy')->middleware('can:S');
+    });
+
+    // Rapports production végétale
+    Route::prefix('cultures/reports')->name('crop-reports.')->controller(CropReportController::class)->middleware('can:L')->group(function () {
+        Route::get('/', 'index')->name('index');
+        Route::get('/yield', 'yield')->name('yield');
+        Route::get('/yield/pdf', 'yieldPdf')->name('yield.pdf');
+        Route::get('/inputs', 'inputs')->name('inputs');
+        Route::get('/inputs/pdf', 'inputsPdf')->name('inputs.pdf');
+        Route::get('/campaigns', 'campaigns')->name('campaigns');
+        Route::get('/campaigns/pdf', 'campaignsPdf')->name('campaigns.pdf');
+        Route::get('/transformations', 'transformations')->name('transformations');
+        Route::get('/transformations/pdf', 'transformationsPdf')->name('transformations.pdf');
     });
 
     // ─── COUVOIR & INCUBATION ───
@@ -320,10 +439,7 @@ Route::middleware(['auth'])->group(function () {
 
     Route::middleware(['auth', 'can:L'])->resource('protocols', ProtocolController::class);
 
-    // ─── HORS-LIGNE & API INDEXEDDB ───
-    // B-18 corrigé : UN SEUL bloc, pas de doublons closures/controllers
-    Route::get('/offline', fn() => view('offline'))->name('offline');
-
+    // ─── API INDEXEDDB (données du mode terrain) ───
     Route::middleware(['force.json', 'auth'])->prefix('api/offline')->name('offline.')->group(function () {
         // Controllers optimisés (colonnes limitées, sync incrémentale)
         Route::get('/batches', [BatchController::class, 'getOfflineBatches'])->name('batches');
@@ -478,6 +594,7 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/energy-sources/{source}', 'destroyEnergySource')->name('energy.sources.destroy')->middleware('can:S');
         Route::post('/energy-readings', 'storeEnergyReading')->name('energy.readings.store')->middleware('can:C');
         Route::put('/energy-sources/{source}/maintenance', 'recordMaintenance')->name('energy.maintenance')->middleware('can:M');
+        Route::get('/energy-sources/{source}/logs', 'assetLogs')->name('energy.logs')->middleware('can:L');
 
         // Achats carburant
         Route::get('/fuel-purchases', 'fuelPurchases')->name('fuel.index')->middleware('can:L');

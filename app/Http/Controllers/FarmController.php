@@ -64,7 +64,25 @@ class FarmController extends Controller
             'manager_name' => 'nullable|string|max:255',
         ]);
 
+        // La localisation a-t-elle changé ? (impacte le géocodage météo)
+        $locationChanged = $farm->city !== ($validated['city'] ?? null)
+            || $farm->region !== ($validated['region'] ?? null);
+
         $farm->update($validated);
+
+        // Ville/région modifiée → on invalide les coordonnées GPS mémorisées et
+        // les caches météo pour que la prochaine récupération re-géocode.
+        if ($locationChanged) {
+            $settings = $farm->settings ?? [];
+            unset($settings['geo']);
+            $farm->forceFill(['settings' => $settings])->save();
+
+            \Illuminate\Support\Facades\Cache::forget("weather.current.farm.{$farm->id}");
+            for ($d = 1; $d <= 7; $d++) {
+                \Illuminate\Support\Facades\Cache::forget("weather.forecast.farm.{$farm->id}.{$d}");
+            }
+        }
+
         return back()->with('success', "Ferme \"{$farm->name}\" mise à jour.");
     }
 

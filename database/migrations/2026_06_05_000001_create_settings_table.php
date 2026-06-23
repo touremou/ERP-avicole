@@ -103,10 +103,13 @@ return new class extends Migration
             ['group' => 'planning', 'key' => 'void_sanitaire_days', 'value' => '21',   'type' => 'number', 'label' => 'Durée vide sanitaire',            'unit' => 'jours',   'display_order' => 2],
 
             // ─── ÉNERGIE ───
-            ['group' => 'energie', 'key' => 'fuel_price_liter',     'value' => '12000', 'type' => 'number', 'label' => 'Prix gasoil',                    'unit' => 'GNF/L',   'display_order' => 1],
+            ['group' => 'energie', 'key' => 'fuel_price_liter',     'value' => '12000', 'type' => 'number', 'label' => 'Prix carburant',                  'unit' => 'GNF/L',   'display_order' => 1],
             ['group' => 'energie', 'key' => 'kwh_price_edg',        'value' => '1500',  'type' => 'number', 'label' => 'Prix kWh EDG',                   'unit' => 'GNF/kWh', 'display_order' => 2],
             ['group' => 'energie', 'key' => 'water_price_m3',       'value' => '5000',  'type' => 'number', 'label' => 'Prix eau SEEG',                  'unit' => 'GNF/m³',  'display_order' => 3],
-            ['group' => 'energie', 'key' => 'autonomy_alert_hours', 'value' => '24',    'type' => 'number', 'label' => 'Seuil alerte autonomie gasoil',  'unit' => 'heures',  'display_order' => 4],
+            ['group' => 'energie', 'key' => 'autonomy_alert_hours', 'value' => '24',    'type' => 'number', 'label' => 'Seuil alerte autonomie carburant', 'unit' => 'heures',  'display_order' => 4],
+            ['group' => 'energie', 'key' => 'anomaly_threshold_pct', 'value' => '50',   'type' => 'number', 'label' => 'Seuil anomalie conso (écart)',     'unit' => '%',       'display_order' => 5],
+            ['group' => 'energie', 'key' => 'ventilation_heat_threshold', 'value' => '36', 'type' => 'number', 'label' => 'Seuil chaleur risque ventilation', 'unit' => '°C',    'display_order' => 6],
+            ['group' => 'energie', 'key' => 'ventilation_reliance_hours', 'value' => '5',  'type' => 'number', 'label' => 'Sollicitation groupe (dépendance)', 'unit' => 'h/jour', 'display_order' => 7],
 
             // ─── NOTIFICATIONS WHATSAPP ───
             ['group' => 'whatsapp', 'key' => 'driver',           'value' => 'log',   'type' => 'select',   'label' => 'Driver WhatsApp',       'options' => 'log,callmebot,ultramsg,wati,twilio', 'display_order' => 1],

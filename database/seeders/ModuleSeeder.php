@@ -31,7 +31,7 @@ class ModuleSeeder extends Seeder
             ['name' => 'Abattoir',       'slug' => 'abattoir',      'icon' => 'fa-drumstick-bite',  'color' => 'rose',    'display_order' => 5],
             ['name' => 'Commerce',       'slug' => 'commerce',      'icon' => 'fa-cash-register',   'color' => 'teal',    'display_order' => 6],
             ['name' => 'Logistique',     'slug' => 'logistique',    'icon' => 'fa-truck',           'color' => 'orange',  'display_order' => 7],
-            ['name' => 'Ressources',     'slug' => 'ressources',    'icon' => 'fa-bolt',            'color' => 'cyan',    'display_order' => 8],
+            ['name' => 'Eau & Énergie',  'slug' => 'ressources',    'icon' => 'fa-bolt',            'color' => 'cyan',    'display_order' => 8],
             ['name' => 'Notifications',  'slug' => 'notifications', 'icon' => 'fa-bell',            'color' => 'emerald', 'display_order' => 9],
             ['name' => 'Annuaire',       'slug' => 'annuaire',      'icon' => 'fa-users',           'color' => 'slate',   'display_order' => 10],
             ['name' => 'Administration', 'slug' => 'admin',         'icon' => 'fa-shield-halved',   'color' => 'purple',  'display_order' => 11],

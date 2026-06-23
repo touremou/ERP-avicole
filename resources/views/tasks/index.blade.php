@@ -275,10 +275,11 @@
 
                         <div class="divide-y divide-slate-50">
                             @forelse($tasks as $task)
-                            <div @class(['px-5 py-3 flex items-center gap-4 transition-all group',
+                            <div x-data="{ open: false }" @class(['transition-all',
                                 'bg-emerald-50/30' => $task->status === 'fait',
                                 'bg-red-50/30' => $task->status === 'en_retard',
                                 'hover:bg-slate-50/50' => !in_array($task->status, ['fait', 'en_retard'])])>
+                            <div class="px-5 py-3 flex items-center gap-4 group">
 
                                 {{-- COMPLÉTION RAPIDE --}}
                                 @if($task->status !== 'fait')
@@ -300,10 +301,16 @@
                                             'bg-red-100 text-red-600' => $task->priority === 'critique',
                                             'bg-amber-100 text-amber-600' => $task->priority === 'haute',
                                             'hidden' => in_array($task->priority, ['normale', 'basse'])])>{{ $task->priority }}</span>
+                                        @if($task->description)
+                                        <button type="button" @click="open = !open" class="text-slate-300 hover:text-indigo-500 transition-colors bg-transparent border-none cursor-pointer p-0" title="Voir le déroulement">
+                                            <i class="fa-solid fa-list-check text-[9px]"></i>
+                                        </button>
+                                        @endif
                                     </div>
                                     <div class="flex items-center gap-3 mt-0.5">
                                         @if($task->scheduled_time)<span class="text-[8px] text-slate-400"><i class="fa-solid fa-clock mr-0.5"></i> {{ \Carbon\Carbon::parse($task->scheduled_time)->format('H:i') }}</span>@endif
                                         @if($task->building)<span class="text-[8px] text-blue-400">{{ $task->building->name }}</span>@endif
+                                        @if($task->plot_id && $task->plot)<span class="text-[8px] text-green-500"><i class="fa-solid fa-leaf mr-0.5"></i>{{ $task->plot->name }}</span>@endif
                                     </div>
                                 </div>
 
@@ -325,6 +332,14 @@
                                     </a>
                                     @endif
                                 </div>
+                            </div>
+
+                            {{-- DÉROULEMENT (description du template/tâche) --}}
+                            @if($task->description)
+                            <div x-show="open" x-transition x-cloak class="px-5 pb-4 -mt-1">
+                                <div class="bg-slate-50 rounded-2xl p-4 ml-12 text-[10px] font-bold text-slate-600 whitespace-pre-line leading-relaxed border border-slate-100">{{ $task->description }}</div>
+                            </div>
+                            @endif
                             </div>
                             @empty
                             <div class="px-8 py-12 text-center">

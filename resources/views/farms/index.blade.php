@@ -104,6 +104,15 @@
                             @if($farm->address)
                                 <p class="text-[9px] text-slate-500"><i class="fa-solid fa-location-dot w-4 text-center text-slate-300 mr-1"></i> {{ $farm->address }}</p>
                             @endif
+                            {{-- Couverture météo : géocodage résolu (météo auto active) ? --}}
+                            @php $geo = $farm->getSetting('geo'); @endphp
+                            @if($geo && isset($geo['lat']))
+                                <p class="text-[9px] text-emerald-600"><i class="fa-solid fa-satellite-dish w-4 text-center mr-1"></i> {{ __("Météo auto active") }} · {{ round($geo['lat'], 3) }}, {{ round($geo['lon'], 3) }}</p>
+                            @elseif($farm->city || $farm->region)
+                                <p class="text-[9px] text-sky-600"><i class="fa-solid fa-cloud w-4 text-center mr-1"></i> {{ __("Météo auto : localisation prête") }}</p>
+                            @else
+                                <p class="text-[9px] text-amber-600"><i class="fa-solid fa-triangle-exclamation w-4 text-center mr-1"></i> {{ __("Ville absente — météo auto indisponible") }}</p>
+                            @endif
                         </div>
 
                         {{-- UTILISATEURS --}}
@@ -120,10 +129,17 @@
                                     </div>
                                 @endif
                             </div>
-                            <button onclick="openUserModal({{ $farm->id }}, '{{ addslashes($farm->name) }}')"
-                                class="text-[8px] font-black text-violet-500 uppercase tracking-widest hover:text-violet-700 border-none bg-transparent cursor-pointer">
-                                <i class="fa-solid fa-user-gear mr-1"></i> {{ __("Gérer") }}
-                            </button>
+                            @php $farmJson = $farm->only(['id', 'name', 'city', 'region', 'address', 'phone', 'manager_name']); @endphp
+                            <div class="flex items-center gap-3">
+                                <button onclick='openEditModal(@json($farmJson))'
+                                    class="text-[8px] font-black text-slate-500 uppercase tracking-widest hover:text-violet-700 border-none bg-transparent cursor-pointer">
+                                    <i class="fa-solid fa-pen-to-square mr-1"></i> {{ __("Éditer") }}
+                                </button>
+                                <button onclick="openUserModal({{ $farm->id }}, '{{ addslashes($farm->name) }}')"
+                                    class="text-[8px] font-black text-violet-500 uppercase tracking-widest hover:text-violet-700 border-none bg-transparent cursor-pointer">
+                                    <i class="fa-solid fa-user-gear mr-1"></i> {{ __("Gérer") }}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -230,6 +246,60 @@
         </div>
     </div>
 
+    {{-- ═══ MODAL : ÉDITER UNE FERME ═══ --}}
+    <div id="editFarmModal" class="hidden fixed inset-0 bg-slate-900/90 backdrop-blur-xl z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-[3rem] w-full max-w-xl shadow-2xl overflow-hidden text-left italic font-bold">
+            <div class="px-10 py-8 border-b border-slate-100 flex justify-between items-center">
+                <h3 class="text-xl font-black text-slate-800 uppercase tracking-tighter italic leading-none">{{ __("Éditer") }} — <span id="editFarmTitle"></span></h3>
+                <button onclick="document.getElementById('editFarmModal').classList.add('hidden')" class="text-slate-300 hover:text-slate-900 border-none bg-transparent cursor-pointer text-xl"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="p-10">
+                <form id="editFarmForm" method="POST" class="space-y-5">
+                    @csrf
+                    @method('PUT')
+                    <div class="space-y-2">
+                        <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Nom du site") }} *</label>
+                        <input type="text" name="name" id="edit_name" required
+                            class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-sm shadow-inner outline-none">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="space-y-2">
+                            <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Ville") }}</label>
+                            <input type="text" name="city" id="edit_city" placeholder="Dubréka"
+                                class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black shadow-inner outline-none">
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Région") }}</label>
+                            <input type="text" name="region" id="edit_region" placeholder="Kindia"
+                                class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black shadow-inner outline-none">
+                        </div>
+                    </div>
+                    <p class="text-[8px] text-sky-600 font-black uppercase tracking-widest ml-2 -mt-2"><i class="fa-solid fa-cloud mr-1"></i> {{ __("La ville (ou région) active la météo automatique de ce site.") }}</p>
+                    <div class="space-y-2">
+                        <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Adresse") }}</label>
+                        <input type="text" name="address" id="edit_address" placeholder="Route nationale, KM 45..."
+                            class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black shadow-inner outline-none">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="space-y-2">
+                            <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Directeur de site") }}</label>
+                            <input type="text" name="manager_name" id="edit_manager_name" placeholder="Nom complet"
+                                class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black shadow-inner outline-none">
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Téléphone") }}</label>
+                            <input type="text" name="phone" id="edit_phone" placeholder="+224 6XX..."
+                                class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black shadow-inner outline-none">
+                        </div>
+                    </div>
+                    <button type="submit" class="w-full bg-violet-600 text-white py-5 rounded-2xl font-black text-xs uppercase tracking-[0.3em] hover:bg-violet-700 transition-all border-none cursor-pointer italic shadow-xl">
+                        <i class="fas fa-save mr-2"></i> {{ __("Enregistrer") }}
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
     {{-- ═══ MODAL : GÉRER LES UTILISATEURS D'UNE FERME ═══ --}}
     <div id="userFarmModal" class="hidden fixed inset-0 bg-slate-900/90 backdrop-blur-xl z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-[3rem] w-full max-w-lg shadow-2xl overflow-hidden text-left italic font-bold">
@@ -267,6 +337,18 @@
         document.getElementById('modalFarmName').innerText = farmName;
         document.getElementById('userFarmForm').action = '/farms/' + farmId + '/users';
         document.getElementById('userFarmModal').classList.remove('hidden');
+    }
+
+    function openEditModal(farm) {
+        document.getElementById('editFarmTitle').innerText = farm.name || '';
+        document.getElementById('editFarmForm').action = '/farms/' + farm.id;
+        document.getElementById('edit_name').value = farm.name || '';
+        document.getElementById('edit_city').value = farm.city || '';
+        document.getElementById('edit_region').value = farm.region || '';
+        document.getElementById('edit_address').value = farm.address || '';
+        document.getElementById('edit_manager_name').value = farm.manager_name || '';
+        document.getElementById('edit_phone').value = farm.phone || '';
+        document.getElementById('editFarmModal').classList.remove('hidden');
     }
     </script>
 </x-app-layout>

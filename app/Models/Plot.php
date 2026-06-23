@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Traits\BelongsToFarm;
 use App\Traits\HasStandardUuid;
@@ -36,7 +37,25 @@ class Plot extends Model
     protected $fillable = [
         'uuid', 'is_synced', 'last_sync_at',
         'farm_id', 'code', 'name', 'area_ha', 'location',
-        'soil_type', 'irrigation_type', 'status', 'notes',
+        'soil_type', 'agro_zone', 'irrigation_type', 'status', 'notes',
+    ];
+
+    /** Correspondance région administrative guinéenne → zone agro-écologique. */
+    private const REGION_ZONE_MAP = [
+        'conakry'    => 'basse_guinee',
+        'kindia'     => 'basse_guinee',
+        'boke'       => 'basse_guinee',
+        'dubreka'    => 'basse_guinee',
+        'mamou'      => 'moyenne_guinee',
+        'labe'       => 'moyenne_guinee',
+        'kankan'     => 'haute_guinee',
+        'faranah'    => 'haute_guinee',
+        'siguiri'    => 'haute_guinee',
+        'kouroussa'  => 'haute_guinee',
+        'nzerekore'  => 'guinee_forestiere',
+        'macenta'    => 'guinee_forestiere',
+        'gueckedou'  => 'guinee_forestiere',
+        'kissidougou' => 'guinee_forestiere',
     ];
 
     protected $casts = [
@@ -52,12 +71,12 @@ class Plot extends Model
         return $this->hasMany(CropCycle::class);
     }
 
-    /** Cycle de culture actuellement en cours sur la parcelle (le plus récent). */
-    public function activeCycle(): HasMany
+    /** Cycle de culture le plus récent actuellement en cours sur la parcelle. */
+    public function activeCycle(): HasOne
     {
-        return $this->hasMany(CropCycle::class)
+        return $this->hasOne(CropCycle::class)
             ->whereIn('status', CropCycle::IN_PROGRESS_STATUSES)
-            ->latest('planting_date');
+            ->latestOfMany('planting_date');
     }
 
     // ─── SCOPES ───
@@ -80,5 +99,37 @@ class Plot extends Model
         return $this->cropCycles()
             ->whereIn('status', CropCycle::IN_PROGRESS_STATUSES)
             ->exists();
+    }
+
+    // ─── ZONE AGRO-ÉCOLOGIQUE ───
+
+    /**
+     * Zone agro-écologique effective : la zone explicite de la parcelle si
+     * renseignée, sinon celle déduite de la région de la ferme.
+     */
+    public function resolvedAgroZone(): ?string
+    {
+        return $this->agro_zone ?: self::zoneFromRegion($this->farm?->region);
+    }
+
+    /**
+     * Déduit la zone agro-écologique d'une région administrative guinéenne.
+     * Insensible à la casse, aux accents et aux espaces. Retourne null si inconnue.
+     */
+    public static function zoneFromRegion(?string $region): ?string
+    {
+        if (! $region) {
+            return null;
+        }
+
+        $key = trim($region);
+        // Translittération ASCII (Labé → labe, Nzérékoré → nzerekore…).
+        $ascii = @iconv('UTF-8', 'ASCII//TRANSLIT', $key);
+        if ($ascii !== false) {
+            $key = preg_replace('/[^a-zA-Z]/', '', $ascii);
+        }
+        $key = strtolower($key);
+
+        return self::REGION_ZONE_MAP[$key] ?? null;
     }
 }

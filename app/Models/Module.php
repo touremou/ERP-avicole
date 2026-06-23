@@ -66,7 +66,14 @@ class Module extends Model
             'plots.'               => 'cultures',
             'crop-cycles.'         => 'cultures',
             'crop-transformations.' => 'cultures',
-            'harvests.'            => 'cultures',
+            'crop-catalogue.'      => 'cultures',
+            'crop-campaigns.'      => 'cultures',
+            'crop-recipes.'         => 'cultures',
+            'crop-protocols.'       => 'cultures',
+            'crop-reports.'         => 'cultures',
+            'crop-calendar-events.' => 'cultures',
+            'weather.'              => 'cultures',
+            'harvests.'             => 'cultures',
 
             // Provenderie
             'provenderie.'      => 'provenderie',

@@ -26,3 +26,16 @@ Schedule::command('avismart:activity-digest')->dailyAt(setting('whatsapp.activit
 
 // Rappels du calendrier cultural (récoltes à venir / en retard) — module Cultures
 Schedule::command('cultures:harvest-reminders')->dailyAt('06:30');
+
+// Récupération automatique de la météo (Open-Meteo) → relevés agronomiques.
+// Avant les alertes agronomiques (06:45) qui consomment ces relevés.
+Schedule::command('weather:fetch')->dailyAt('05:15');
+
+// Alertes agronomiques (risques semis/récolte, météo) — module Cultures
+Schedule::command('cultures:agronomic-alerts')->dailyAt('06:45');
+
+// Dosage aliment recommandé par bâtiment (BatchAdvisorService)
+Schedule::command('avismart:feeding-dosage')->dailyAt('06:00');
+
+// CMMS : génère les tâches maintenance préventive pour les actifs dus dans ≤ 48h
+Schedule::command('maintenance:check')->dailyAt('05:30');

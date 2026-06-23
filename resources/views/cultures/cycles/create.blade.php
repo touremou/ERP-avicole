@@ -1,4 +1,20 @@
 <x-app-layout>
+    @php
+        $currency = setting('general.currency', 'GNF');
+        // Référentiel agronomique encodé pour l'auto-remplissage (cf. catalogue).
+        $catalogue = $species->map(fn ($sp) => [
+            'name'           => $sp->name,
+            'local_name'     => $sp->local_name,
+            'cycle_days_min' => $sp->cycle_days_min,
+            'cycle_days_max' => $sp->cycle_days_max,
+            'avg_yield_tha'  => $sp->avg_yield_tha !== null ? (float) $sp->avg_yield_tha : null,
+            'varieties'      => $sp->varieties->map(fn ($v) => [
+                'name'          => $v->name,
+                'cycle_days'    => $v->cycle_days,
+                'avg_yield_tha' => $v->avg_yield_tha !== null ? (float) $v->avg_yield_tha : null,
+            ])->values(),
+        ])->values();
+    @endphp
     <x-slot name="header">
         <div class="flex items-center justify-between">
             <div class="flex items-center gap-4">
@@ -34,15 +50,33 @@
                 </div>
             @endif
 
-            <form action="{{ route('crop-cycles.store') }}" method="POST" class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm space-y-6">
+            <form action="{{ route('crop-cycles.store') }}" method="POST"
+                  x-data="cropCycleForm({{ Js::from($catalogue) }}, {{ Js::from($plotData) }})"
+                  class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm space-y-6">
                 @csrf
+
+                {{-- Bandeau d'auto-remplissage depuis le catalogue --}}
+                <template x-if="match">
+                    <div class="bg-green-50 border border-green-100 text-green-700 p-4 rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest italic flex items-center justify-between gap-4">
+                        <span>
+                            <i class="fa-solid fa-wand-magic-sparkles mr-2"></i>
+                            <span x-text="hint"></span>
+                        </span>
+                        <button type="button" @click="applySuggestions()" class="shrink-0 bg-green-600 text-white px-4 py-2 rounded-full hover:bg-green-700 transition-all text-[9px]">
+                            <i class="fa-solid fa-check mr-1"></i> {{ __("Pré-remplir") }}
+                        </button>
+                    </div>
+                </template>
+
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Parcelle *") }}</label>
-                        <select name="plot_id" required class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-green-700 shadow-inner italic appearance-none cursor-pointer">
+                        <select name="plot_id" x-model="selectedPlotId" required class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-green-700 shadow-inner italic appearance-none cursor-pointer">
                             <option value="">{{ __("-- Choisir --") }}</option>
                             @foreach($plots as $plot)
-                                <option value="{{ $plot->id }}" @selected(old('plot_id') == $plot->id)>{{ $plot->name }} ({{ number_format($plot->area_ha, 2, ',', ' ') }} ha)</option>
+                                <option value="{{ $plot->id }}" @selected(old('plot_id') == $plot->id)>
+                                    {{ $plot->name }} — {{ number_format($plot->remaining_ha, 2, ',', ' ') }} ha dispo / {{ number_format($plot->area_ha, 2, ',', ' ') }} ha
+                                </option>
                             @endforeach
                         </select>
                     </div>
@@ -56,16 +90,46 @@
                         </select>
                     </div>
                     <div>
+                        <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Campagne") }}</label>
+                        <select name="campaign_id" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic appearance-none cursor-pointer">
+                            <option value="">{{ __("-- Hors campagne --") }}</option>
+                            @foreach($campaigns as $camp)
+                                <option value="{{ $camp->id }}" @selected(old('campaign_id') == $camp->id)>{{ $camp->name }} ({{ $camp->year }})</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Protocole / itinéraire technique") }}</label>
+                        <select name="crop_protocol_id" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic appearance-none cursor-pointer">
+                            <option value="">{{ __("-- Aucun --") }}</option>
+                            @foreach($protocols as $proto)
+                                <option value="{{ $proto->id }}" @selected(old('crop_protocol_id') == $proto->id)>{{ $proto->name }}@if($proto->crop_name) ({{ $proto->crop_name }})@endif</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
                         <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Culture *") }}</label>
-                        <input type="text" name="crop_name" value="{{ old('crop_name') }}" required placeholder="{{ __('Maïs, manioc, tomate…') }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic">
+                        <input type="text" name="crop_name" list="crop-species-list" x-model="cropName" value="{{ old('crop_name') }}" required placeholder="{{ __('Maïs, manioc, tomate…') }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic">
+                        <datalist id="crop-species-list">
+                            @foreach($species as $sp)<option value="{{ $sp->name }}">@endforeach
+                        </datalist>
                     </div>
                     <div>
                         <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Variété") }}</label>
-                        <input type="text" name="variety" value="{{ old('variety') }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic">
+                        <input type="text" name="variety" list="crop-variety-list" x-model="variety" value="{{ old('variety') }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic">
+                        <datalist id="crop-variety-list">
+                            <template x-for="v in (match ? match.varieties : [])" :key="v.name">
+                                <option :value="v.name"></option>
+                            </template>
+                        </datalist>
                     </div>
                     <div>
                         <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Surface emblavée (ha) *") }}</label>
-                        <input type="number" step="0.01" min="0" name="area_used_ha" value="{{ old('area_used_ha') }}" required class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic text-right">
+                        <input type="number" step="0.01" min="0" name="area_used_ha" x-model="areaHa" value="{{ old('area_used_ha') }}" required class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic text-right">
+                        <template x-if="maxAreaHa !== null">
+                            <p class="text-[9px] font-black mt-1 ml-2 italic" :class="areaExceedsLimit() ? 'text-red-500' : 'text-slate-400'"
+                               x-text="areaExceedsLimit() ? 'Surface dépasse le disponible (' + maxAreaHa.toFixed(2) + ' ha)' : 'Disponible sur cette parcelle : ' + maxAreaHa.toFixed(2) + ' ha'"></p>
+                        </template>
                     </div>
                     <div>
                         <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Code") }}</label>
@@ -73,11 +137,11 @@
                     </div>
                     <div>
                         <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Date de semis *") }}</label>
-                        <input type="date" name="planting_date" value="{{ old('planting_date', now()->toDateString()) }}" required class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic">
+                        <input type="date" name="planting_date" x-model="plantingDate" value="{{ old('planting_date', now()->toDateString()) }}" required class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic">
                     </div>
                     <div>
                         <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Récolte prévue") }}</label>
-                        <input type="date" name="expected_harvest_date" value="{{ old('expected_harvest_date') }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic">
+                        <input type="date" name="expected_harvest_date" x-model="expectedHarvest" value="{{ old('expected_harvest_date') }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic">
                     </div>
                     <div>
                         <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Quantité semence") }}</label>
@@ -88,14 +152,14 @@
                     </div>
                     <div>
                         <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Rendement attendu (kg)") }}</label>
-                        <input type="number" step="0.01" min="0" name="expected_yield_kg" value="{{ old('expected_yield_kg') }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic text-right">
+                        <input type="number" step="0.01" min="0" name="expected_yield_kg" x-model="expectedYield" value="{{ old('expected_yield_kg') }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic text-right">
                     </div>
                     <div>
-                        <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Coût semences/intrants (GNF)") }}</label>
+                        <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Coût semences/intrants") }} ({{ $currency }})</label>
                         <input type="number" step="1" min="0" name="total_acquisition_cost" value="{{ old('total_acquisition_cost') }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic text-right">
                     </div>
                     <div>
-                        <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Coûts additionnels (GNF)") }}</label>
+                        <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Coûts additionnels") }} ({{ $currency }})</label>
                         <input type="number" step="1" min="0" name="additional_costs" value="{{ old('additional_costs') }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic text-right">
                     </div>
                 </div>
@@ -111,4 +175,116 @@
             </form>
         </div>
     </div>
+
+    <script>
+        function cropCycleForm(catalogue, plotData) {
+            return {
+                catalogue: catalogue,
+                plotData: plotData || {},
+                cropName: @js(old('crop_name', '')),
+                variety: @js(old('variety', '')),
+                areaHa: @js(old('area_used_ha', '')),
+                plantingDate: @js(old('planting_date', now()->toDateString())),
+                expectedHarvest: @js(old('expected_harvest_date', '')),
+                expectedYield: @js(old('expected_yield_kg', '')),
+                match: null,
+                hint: '',
+                selectedPlotId: '',
+                maxAreaHa: null,
+
+                init() {
+                    this.resolveMatch();
+                    // $watch guarantees the property is already updated when the callback fires,
+                    // unlike @input which can race with x-model's own input listener.
+                    this.$watch('cropName', () => this.resolveMatch());
+                    this.$watch('variety', () => this.buildHint());
+                    this.$watch('areaHa', () => this.recompute());
+                    this.$watch('plantingDate', () => this.recompute());
+                    this.$watch('selectedPlotId', (pid) => {
+                        this.maxAreaHa = (pid && this.plotData[pid]) ? this.plotData[pid].remaining_ha : null;
+                    });
+                },
+
+                areaExceedsLimit() {
+                    if (this.maxAreaHa === null || !this.areaHa) return false;
+                    return parseFloat(this.areaHa) > this.maxAreaHa + 0.0001;
+                },
+
+                resolveMatch() {
+                    const needle = (this.cropName || '').trim().toLowerCase();
+                    this.match = this.catalogue.find(s => s.name.toLowerCase() === needle) || null;
+                    this.buildHint();
+                },
+
+                /** Variété sélectionnée dans le catalogue (si elle existe). */
+                currentVariety() {
+                    if (!this.match) return null;
+                    const needle = (this.variety || '').trim().toLowerCase();
+                    return this.match.varieties.find(v => v.name.toLowerCase() === needle) || null;
+                },
+
+                /** Jours de cycle effectifs : variété > espèce (max). */
+                effectiveCycleDays() {
+                    const v = this.currentVariety();
+                    if (v && v.cycle_days) return v.cycle_days;
+                    if (this.match && this.match.cycle_days_max) return this.match.cycle_days_max;
+                    if (this.match && this.match.cycle_days_min) return this.match.cycle_days_min;
+                    return null;
+                },
+
+                /** Rendement de référence effectif (t/ha) : variété > espèce. */
+                effectiveYieldTha() {
+                    const v = this.currentVariety();
+                    if (v && v.avg_yield_tha) return v.avg_yield_tha;
+                    if (this.match && this.match.avg_yield_tha) return this.match.avg_yield_tha;
+                    return null;
+                },
+
+                buildHint() {
+                    if (!this.match) { this.hint = ''; return; }
+                    const parts = [];
+                    if (this.match.local_name) parts.push('Nom local : ' + this.match.local_name);
+                    const days = this.effectiveCycleDays();
+                    if (days) parts.push('Cycle ≈ ' + days + ' j');
+                    const tha = this.effectiveYieldTha();
+                    if (tha) parts.push('Rdt réf. ' + tha + ' t/ha');
+                    this.hint = (parts.length ? this.match.name + ' — ' + parts.join(' · ') : this.match.name)
+                        + ' · cliquez pour pré-remplir';
+                },
+
+                /** Calcule les valeurs suggérées (récolte + rendement) sans écraser une saisie manuelle vide. */
+                suggestions() {
+                    const out = { harvest: null, yield: null };
+                    const days = this.effectiveCycleDays();
+                    if (this.plantingDate && days) {
+                        const d = new Date(this.plantingDate);
+                        d.setDate(d.getDate() + parseInt(days, 10));
+                        out.harvest = d.toISOString().slice(0, 10);
+                    }
+                    const tha = this.effectiveYieldTha();
+                    const area = parseFloat(this.areaHa);
+                    if (tha && area > 0) {
+                        out.yield = Math.round(tha * area * 1000); // t/ha → kg
+                    }
+                    return out;
+                },
+
+                /** Applique explicitement les suggestions (bouton « Pré-remplir »). */
+                applySuggestions() {
+                    const s = this.suggestions();
+                    if (s.harvest) this.expectedHarvest = s.harvest;
+                    if (s.yield !== null) this.expectedYield = s.yield;
+                },
+
+                /** Recalcule à la volée : ne remplit que les champs encore vides (non-intrusif). */
+                recompute() {
+                    if (!this.match) return;
+                    const s = this.suggestions();
+                    if (s.harvest && !this.expectedHarvest) this.expectedHarvest = s.harvest;
+                    if (s.yield !== null && !this.expectedYield) this.expectedYield = s.yield;
+                    this.buildHint();
+                },
+            };
+        }
+    </script>
 </x-app-layout>

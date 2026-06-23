@@ -115,10 +115,10 @@ class UtilityService
         $totalKwh = (clone $readings)->sum('kwh_produced');
         $edgValue = $totalKwh * (float) setting('energie.kwh_price_edg', 0);
 
-        // Conso gasoil
+        // Conso carburant
         $totalFuel = (clone $readings)->sum('fuel_consumed_liters');
         $fuelCostPerLiter = FuelPurchase::where('purchase_date', '>=', $from)
-            ->avg('unit_price') ?? 12000; // Prix moyen gasoil Guinée
+            ->avg('unit_price') ?? 12000; // Prix moyen carburant Guinée
 
         // Évolution par jour (7 derniers jours)
         $dailyTrend = EnergyReading::select(
@@ -201,7 +201,7 @@ class UtilityService
             ];
         }
 
-        // Gasoil bas (autonomie sous le seuil paramétrable energie.autonomy_alert_hours)
+        // Carburant bas (autonomie sous le seuil paramétrable energie.autonomy_alert_hours)
         $alertHours = (float) setting('energie.autonomy_alert_hours', 24);
         foreach (EnergySource::groupes()->get() as $groupe) {
             if ($groupe->is_fuel_low) {
@@ -211,7 +211,7 @@ class UtilityService
                 $alerts[] = [
                     'type'     => 'fuel',
                     'severity' => 'critique',
-                    'title'    => "Gasoil {$groupe->name} critique",
+                    'title'    => "Carburant {$groupe->name} critique",
                     'message'  => "Autonomie : {$autonomyLabel}. Commander immédiatement.",
                     'icon'     => 'fa-gas-pump',
                 ];
@@ -244,6 +244,158 @@ class UtilityService
             ];
         }
 
+        // Anomalies de consommation (P3 — analytique : fuite eau / défaut moteur)
+        foreach ($this->detectAnomalies() as $anomaly) {
+            $alerts[] = $anomaly;
+        }
+
         return $alerts;
+    }
+
+    /**
+     * Détection d'anomalies de consommation par comparaison du dernier relevé
+     * à la ligne de base récente de la source :
+     *  - Eau   : volume du jour vs moyenne des relevés précédents → fuite/gaspillage.
+     *  - Énergie : conso horaire (L/h) du jour vs moyenne → rendement anormal / défaut moteur.
+     *
+     * Le seuil d'écart est paramétrable (energie.anomaly_threshold_pct, défaut 50%).
+     * Une ligne de base d'au moins 5 relevés est exigée pour éviter les faux
+     * positifs sur les sources récentes.
+     */
+    public function detectAnomalies(): array
+    {
+        $threshold   = (float) setting('energie.anomaly_threshold_pct', 50);
+        $minBaseline = 5;
+        $anomalies   = [];
+
+        // ─── EAU : volume consommé ───
+        foreach (WaterSource::active()->get() as $source) {
+            $readings = $source->readings()
+                ->where('volume_consumed_liters', '>', 0)
+                ->orderByDesc('reading_date')
+                ->limit($minBaseline + 1)
+                ->get();
+
+            if ($readings->count() <= $minBaseline) continue;
+
+            $latest   = (float) $readings->first()->volume_consumed_liters;
+            $baseline = $readings->slice(1);
+            $avg      = (float) $baseline->avg('volume_consumed_liters');
+
+            if ($avg <= 0) continue;
+
+            $deviation = ($latest - $avg) / $avg * 100;
+
+            if ($deviation >= $threshold) {
+                $anomalies[] = [
+                    'type'     => 'anomaly_water',
+                    'severity' => 'attention',
+                    'title'    => "Conso eau anormale — {$source->name}",
+                    'message'  => "+" . round($deviation) . "% vs habituel ("
+                        . number_format($latest) . " L contre ~" . number_format($avg) . " L). "
+                        . "Vérifier une fuite ou un abreuvoir ouvert.",
+                    'icon'     => 'fa-droplet',
+                ];
+            }
+        }
+
+        // ─── ÉNERGIE : conso horaire (L/h) des groupes ───
+        foreach (EnergySource::groupes()->get() as $source) {
+            $readings = $source->readings()
+                ->where('hours_run', '>', 0)
+                ->whereNotNull('fuel_consumed_liters')
+                ->where('fuel_consumed_liters', '>', 0)
+                ->orderByDesc('reading_date')
+                ->limit($minBaseline + 1)
+                ->get();
+
+            if ($readings->count() <= $minBaseline) continue;
+
+            $rate = fn ($r) => (float) $r->fuel_consumed_liters / (float) $r->hours_run;
+
+            $latestRate   = $rate($readings->first());
+            $baselineRates = $readings->slice(1)->map($rate);
+            $avgRate      = (float) $baselineRates->avg();
+
+            if ($avgRate <= 0) continue;
+
+            $deviation = ($latestRate - $avgRate) / $avgRate * 100;
+
+            if ($deviation >= $threshold) {
+                $anomalies[] = [
+                    'type'     => 'anomaly_energy',
+                    'severity' => 'attention',
+                    'title'    => "Surconsommation — {$source->name}",
+                    'message'  => "+" . round($deviation) . "% de carburant/heure ("
+                        . number_format($latestRate, 1, ',', ' ') . " L/h contre ~"
+                        . number_format($avgRate, 1, ',', ' ') . " L/h). "
+                        . "Contrôler le moteur (filtres, injecteurs, charge).",
+                    'icon'     => 'fa-gauge-high',
+                ];
+            }
+        }
+
+        return $anomalies;
+    }
+
+    /**
+     * Alerte composite « risque ventilation » : croise une forte chaleur
+     * annoncée (prévision) avec la dépendance réelle au groupe électrogène.
+     *
+     * Logique métier : par canicule, le besoin de ventilation/refroidissement
+     * grimpe ; si la ferme tourne déjà beaucoup sur groupe, une panne ou une
+     * panne sèche couperait la ventilation au pire moment. On combine donc le
+     * pic de température prévu (fourni par l'appelant, qui détient la prévision)
+     * et la sollicitation récente du parc groupe (heures/jour sur 7 j).
+     *
+     * Méthode pure côté données énergie (aucun appel réseau) → testable sans
+     * mocker la météo : l'appelant passe la T° max prévue.
+     *
+     * @param  float|null  $forecastMaxTemp  T° max annoncée sur l'horizon (°C).
+     * @return array{type:string,severity:string,icon:string,title:string,message:string}|null
+     */
+    public function ventilationRisk(?float $forecastMaxTemp): ?array
+    {
+        $heatThreshold = (float) setting('energie.ventilation_heat_threshold', 36);
+        if ($forecastMaxTemp === null || $forecastMaxTemp < $heatThreshold) {
+            return null;
+        }
+
+        $groupes = EnergySource::groupes()->get();
+        if ($groupes->isEmpty()) {
+            return null; // Pas de groupe → pas de dépendance électrogène.
+        }
+
+        // Sollicitation récente : heures moyennes par jour du parc sur 7 jours.
+        $hoursSum = EnergyReading::whereIn('energy_source_id', $groupes->pluck('id'))
+            ->whereDate('reading_date', '>=', now()->subDays(7)->toDateString())
+            ->sum('hours_run');
+        $dailyHours = (float) $hoursSum / 7;
+
+        $relianceThreshold = (float) setting('energie.ventilation_reliance_hours', 5);
+        if ($dailyHours < $relianceThreshold) {
+            return null; // Faible dépendance → risque non significatif.
+        }
+
+        // Autonomie carburant la plus basse du parc : aggrave le risque.
+        $lowAutonomy = $groupes
+            ->map(fn ($g) => $g->fuel_autonomy_hours)
+            ->filter(fn ($h) => $h !== null)
+            ->min();
+
+        $autonomyTxt = $lowAutonomy !== null
+            ? " Autonomie carburant la plus basse : {$lowAutonomy}h."
+            : '';
+
+        return [
+            'type'     => 'composite_ventilation',
+            'severity' => 'critique',
+            'icon'     => 'fa-fan',
+            'title'    => 'Risque ventilation (chaleur × dépendance groupe)',
+            'message'  => "Forte chaleur annoncée ({$forecastMaxTemp}°C) et recours soutenu au groupe (~"
+                . round($dailyHours, 1) . " h/j). Une panne ou une panne sèche couperait la ventilation."
+                . $autonomyTxt
+                . " Vérifier le carburant, l'état du groupe et la solution de secours avant la vague de chaleur.",
+        ];
     }
 }

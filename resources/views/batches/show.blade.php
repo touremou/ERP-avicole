@@ -362,6 +362,95 @@
                 </div>
             </div>
 
+            {{-- RECOMMANDATIONS INTELLIGENTES (dosage aliment/eau + conseils) --}}
+            @if(!empty($feedAdvice))
+            @php
+                $env = $feedAdvice['environment'];
+                $seasonLabels = [
+                    'saison_seche'         => 'Saison sèche',
+                    'grande_saison_pluies' => 'Saison des pluies',
+                    'petite_saison'        => 'Petite saison',
+                ];
+                $advColors = [
+                    'critique'  => 'bg-rose-50 border-rose-200 text-rose-700',
+                    'attention' => 'bg-amber-50 border-amber-200 text-amber-700',
+                    'conseil'   => 'bg-emerald-50 border-emerald-200 text-emerald-700',
+                    'info'      => 'bg-blue-50 border-blue-200 text-blue-700',
+                ];
+            @endphp
+            <div class="mb-8 bg-white border border-slate-100 rounded-[2.5rem] p-6 shadow-sm">
+                <div class="flex items-center justify-between mb-5">
+                    <h3 class="text-[10px] font-black uppercase text-slate-400 tracking-widest italic flex items-center gap-2 leading-none">
+                        <i class="fa-solid fa-brain text-blue-500"></i> {{ __("Recommandations du jour") }}
+                    </h3>
+                    <span class="text-[8px] font-black uppercase text-slate-400 italic flex items-center gap-1.5 flex-wrap">
+                        @if($env['heat_stress'])
+                            <span class="text-rose-500"><i class="fa-solid fa-temperature-high"></i> THI {{ $env['thi'] ?? '—' }}</span> ·
+                        @endif
+                        {{ $seasonLabels[$env['season']] ?? $env['season'] }} ·
+                        {{ $env['temp_c'] !== null ? number_format($env['temp_c'], 0) . ' °C' : '—' }}
+                        @if($env['humidity'] !== null)
+                            / {{ number_format($env['humidity'], 0) }} %HR
+                        @endif
+                        <span class="opacity-50">({{ $env['source'] === 'pointage' ? __('relevé') : __('estimé') }})</span>
+                    </span>
+                </div>
+
+                {{-- Dosage recommandé --}}
+                <div class="grid grid-cols-2 md:grid-cols-4 {{ !empty($feedAutonomy) ? 'lg:grid-cols-5' : '' }} gap-4 mb-4">
+                    <div class="bg-orange-50 border border-orange-100 rounded-[1.5rem] p-4 text-center">
+                        <p class="text-[8px] font-black text-orange-400 uppercase tracking-widest italic mb-1">{{ __("Aliment / lot / jour") }}</p>
+                        <h4 class="text-2xl font-black text-orange-600 tracking-tighter italic">{{ number_format($feedAdvice['total']['feed_kg'], 1) }}<small class="text-[10px] ml-1 opacity-60">kg</small></h4>
+                        <p class="text-[8px] font-black text-slate-400 uppercase mt-1">{{ number_format($feedAdvice['per_subject']['feed_g'], 0) }} g/{{ __("sujet") }}</p>
+                    </div>
+                    <div class="bg-blue-50 border border-blue-100 rounded-[1.5rem] p-4 text-center">
+                        <p class="text-[8px] font-black text-blue-400 uppercase tracking-widest italic mb-1">{{ __("Eau / lot / jour") }}</p>
+                        <h4 class="text-2xl font-black text-blue-600 tracking-tighter italic">{{ number_format($feedAdvice['total']['water_l'], 1) }}<small class="text-[10px] ml-1 opacity-60">L</small></h4>
+                        <p class="text-[8px] font-black text-slate-400 uppercase mt-1">{{ number_format($feedAdvice['per_subject']['water_ml'], 0) }} ml/{{ __("sujet") }}</p>
+                    </div>
+                    <div class="bg-slate-50 border border-slate-100 rounded-[1.5rem] p-4 text-center">
+                        <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest italic mb-1">{{ __("Poids cible") }}</p>
+                        <h4 class="text-2xl font-black text-slate-800 tracking-tighter italic">{{ number_format($feedAdvice['per_subject']['weight_target_g']) }}<small class="text-[10px] ml-1 opacity-50">g</small></h4>
+                        <p class="text-[8px] font-black text-slate-400 uppercase mt-1">S-{{ $feedAdvice['week'] }} · {{ $feedAdvice['phase'] }}</p>
+                    </div>
+                    <div class="bg-emerald-50 border border-emerald-100 rounded-[1.5rem] p-4 text-center">
+                        <p class="text-[8px] font-black text-emerald-400 uppercase tracking-widest italic mb-1">{{ __("Effectif suivi") }}</p>
+                        <h4 class="text-2xl font-black text-emerald-600 tracking-tighter italic">{{ number_format($feedAdvice['total']['subjects']) }}</h4>
+                        <p class="text-[8px] font-black text-slate-400 uppercase mt-1">{{ $feedAdvice['model_name'] ?: __('barème générique') }}</p>
+                    </div>
+                    @if(!empty($feedAutonomy))
+                    @php
+                        $autonomyColor = $feedAutonomy['is_critical'] ? 'rose' : ($feedAutonomy['is_warning'] ? 'amber' : 'slate');
+                    @endphp
+                    <div class="bg-{{ $autonomyColor }}-50 border border-{{ $autonomyColor }}-100 rounded-[1.5rem] p-4 text-center col-span-2 md:col-span-1">
+                        <p class="text-[8px] font-black text-{{ $autonomyColor }}-400 uppercase tracking-widest italic mb-1">{{ __("Autonomie stock") }}</p>
+                        <h4 class="text-2xl font-black text-{{ $autonomyColor }}-600 tracking-tighter italic">
+                            {{ $feedAutonomy['days'] }}<small class="text-[10px] ml-1 opacity-60">j</small>
+                        </h4>
+                        <p class="text-[8px] font-black text-slate-400 uppercase mt-1">{{ number_format($feedAutonomy['stock_kg'], 0) }} kg dispo</p>
+                    </div>
+                    @endif
+                </div>
+
+                {{-- Conseils dérivés --}}
+                @if(!empty($batchAdvisories))
+                <div class="space-y-2">
+                    @foreach($batchAdvisories as $advisory)
+                    <div class="flex items-start gap-3 p-4 rounded-[1.5rem] border {{ $advColors[$advisory['severity']] ?? $advColors['info'] }}">
+                        <i class="fa-solid {{ $advisory['icon'] }} text-base mt-0.5"></i>
+                        <div class="leading-tight">
+                            <p class="text-[11px] font-black uppercase tracking-tight italic">{{ $advisory['title'] }}</p>
+                            <p class="text-[11px] font-bold italic mt-1 opacity-90">{{ $advisory['message'] }}</p>
+                        </div>
+                    </div>
+                    @endforeach
+                </div>
+                @endif
+
+                <p class="text-[8px] font-black text-slate-300 uppercase italic mt-4 text-right">{{ __("Indicatif — ajusté à l'âge, au poids, à l'effectif et à l'ambiance") }}</p>
+            </div>
+            @endif
+
             {{-- AQUACULTURE: QUALITÉ DE L'EAU --}}
             @if($isAquaculture && (isset($stats['last_water_ph']) || isset($stats['last_water_o2'])))
             <div class="mb-8 bg-blue-50 border border-blue-200 rounded-[2rem] p-6">
@@ -455,15 +544,43 @@
             @endif
 
             {{-- GRAPHIQUES --}}
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            @php
+                $hasGrowthChart = ($weightCurve['has_actual'] ?? false) || ($weightCurve['has_target'] ?? false);
+                // Lot sans aucun pointage (ex. créé du jour) → pas de courbe possible.
+                // On affiche un état vide explicite plutôt qu'un cadre blanc.
+                $noChecks = $batch->dailyChecks->isEmpty();
+            @endphp
+            <div class="grid grid-cols-1 md:grid-cols-2 {{ $hasGrowthChart ? 'xl:grid-cols-3' : '' }} gap-8 mb-8">
                 <div class="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
                     <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest italic mb-6 leading-none"><i class="fas fa-skull-crossbones text-red-500 mr-2"></i> {{ __("Courbe de Mortalité (%)") }}</h3>
-                    <div class="h-[300px]"><canvas id="mortalityChart"></canvas></div>
+                    @if($noChecks)
+                        <x-batch-chart-empty />
+                    @else
+                        <div class="h-[280px]"><canvas id="mortalityChart"></canvas></div>
+                    @endif
                 </div>
                 <div class="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
                     <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest italic mb-6 leading-none"><i class="fas fa-tint text-blue-500 mr-2"></i> {{ __("Ration Aliment (kg) vs Eau (L)") }}</h3>
-                    <div class="h-[300px]"><canvas id="hydrationChart"></canvas></div>
+                    @if($noChecks)
+                        <x-batch-chart-empty />
+                    @else
+                        <div class="h-[280px]"><canvas id="hydrationChart"></canvas></div>
+                    @endif
                 </div>
+                @if($hasGrowthChart)
+                <div class="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest italic leading-none"><i class="fas fa-weight-scale text-emerald-500 mr-2"></i> {{ __("Croissance — Poids / sujet (kg)") }}</h3>
+                        @if($weightCurve['has_target'] ?? false)
+                            <span class="text-[8px] font-black uppercase tracking-widest text-slate-300 italic">{{ __("Réel vs Cible") }}</span>
+                        @endif
+                    </div>
+                    <div class="h-[280px]"><canvas id="growthChart"></canvas></div>
+                    @if(! ($weightCurve['has_actual'] ?? false))
+                        <p class="text-[8px] font-black uppercase text-amber-400 tracking-widest italic mt-3 ml-1"><i class="fas fa-circle-info mr-1"></i> {{ __("Aucune pesée saisie — seul le barème de la souche s'affiche") }}</p>
+                    @endif
+                </div>
+                @endif
             </div>
 
             {{-- CALENDRIER SANITAIRE --}}
@@ -849,6 +966,27 @@
                             </select>
                         </div>
                     </div>
+                    {{-- Souche / modèle — visible uniquement en graduation de phase --}}
+                    <div class="md:col-span-2" id="model-name-wrapper" style="display:none">
+                        <label class="block text-[10px] font-black text-amber-500 uppercase mb-3 ml-2 italic">
+                            {{ __("Souche / Modèle") }}
+                            <span class="text-slate-400 normal-case ml-1">({{ __("optionnel — met à jour les normes et protocoles") }})</span>
+                        </label>
+                        <select name="model_name" id="model-name-select"
+                                class="w-full p-5 bg-amber-50 rounded-[2rem] border-none shadow-inner font-black text-amber-700 italic uppercase text-xs appearance-none">
+                            <option value="">— {{ __("Conserver la souche actuelle") }} ({{ $batch->model_name ?? __('Non spécifié') }}) —</option>
+                            @foreach($normModels as $norm)
+                                <option value="{{ $norm->model_name }}"
+                                        data-type="{{ $norm->batch_type }}"
+                                        class="model-transfer-opt">
+                                    {{ $norm->model_name }}
+                                </option>
+                            @endforeach
+                        </select>
+                        <p class="text-[8px] text-amber-400 ml-4 uppercase font-bold mt-1">
+                            {{ __("* Seules les souches de la phase cible s'affichent") }}
+                        </p>
+                    </div>
                     <div class="md:col-span-2">
                         <textarea name="notes" placeholder="{{ __("Notes de traçabilité...") }}" class="w-full p-6 bg-slate-50 rounded-[2.5rem] border-none shadow-inner font-bold text-slate-500 italic text-[10px] uppercase"></textarea>
                     </div>
@@ -943,35 +1081,70 @@
             filterProtocols(initialPhase);
             filterMutationBuildings(initialPhase);
 
+            // Souche : affiche le select uniquement en graduation de phase, et
+            // filtre les options selon la phase cible (data-type).
+            const modelWrapper = document.getElementById('model-name-wrapper');
+            const modelSelect  = document.getElementById('model-name-select');
+            const needsModel   = {{ $batch->model_name === 'Non spécifié' || !$batch->model_name ? 'true' : 'false' }};
+
+            function filterModelNames(targetType) {
+                if (! modelSelect) return;
+                let count = 0;
+                modelSelect.querySelectorAll('.model-transfer-opt').forEach(opt => {
+                    const show = ! opt.dataset.type || opt.dataset.type === targetType;
+                    opt.style.display = show ? 'block' : 'none';
+                    if (show) count++;
+                });
+                return count;
+            }
+
+            function updateModelVisibility(targetType) {
+                if (! modelWrapper) return;
+                const isGraduation = targetType !== batchType;
+                if (isGraduation || needsModel) {
+                    modelWrapper.style.display = 'block';
+                    filterModelNames(targetType);
+                } else {
+                    modelWrapper.style.display = 'none';
+                }
+            }
+
+            updateModelVisibility(initialPhase);
+
             newPhaseSelect?.addEventListener('change', function() {
                 filterProtocols(this.value);
                 filterMutationBuildings(this.value);
+                updateModelVisibility(this.value);
             });
 
             // 4. INITIALISATION DES GRAPHIQUES (Correction syntaxe Chart.js)
             const raw = @json($batch->dailyChecks->sortBy('check_date')->values());
-            
+            const num = v => (v === null || v === undefined || v === '') ? null : Number(v);
+
             if (raw.length > 0) {
                 const labels = raw.map((_, i) => 'J' + (i + 1));
-                const commonOptions = { 
-                    responsive: true, 
-                    maintainAspectRatio: false, 
-                    plugins: { legend: { display: false } } 
+                const commonOptions = {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } }
                 };
 
-                // GRAPHIQUE MORTALITÉ
+                // GRAPHIQUE MORTALITÉ (cumulée, en % de l'effectif initial)
+                // Garde-fou : effectif initial nul (lots virtuels EXT-) → pas
+                // de division par zéro (sinon Infinity/NaN illisible).
+                const initialQty = {{ (int) $batch->initial_quantity }};
                 const ctxMortality = document.getElementById('mortalityChart');
-                if (ctxMortality) {
+                if (ctxMortality && initialQty > 0) {
                     new Chart(ctxMortality, {
                         type: 'line', // <-- OBLIGATOIRE À LA RACINE
-                        data: { 
-                            labels: labels, 
-                            datasets: [{ 
-                                data: raw.map((c, i, a) => (a.slice(0, i + 1).reduce((s, x) => s + x.mortality, 0) / {{ $batch->initial_quantity }}) * 100), 
-                                borderColor: '#ef4444', 
-                                borderWidth: 3, 
-                                tension: 0.4 
-                            }] 
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                data: raw.map((c, i, a) => (a.slice(0, i + 1).reduce((s, x) => s + (num(x.mortality) || 0), 0) / initialQty) * 100),
+                                borderColor: '#ef4444',
+                                borderWidth: 3,
+                                tension: 0.4
+                            }]
                         },
                         options: commonOptions
                     });
@@ -982,16 +1155,64 @@
                 if (ctxHydration) {
                     new Chart(ctxHydration, {
                         type: 'bar', // <-- OBLIGATOIRE (Définit le type de base du graphique mixte)
-                        data: { 
-                            labels: labels, 
+                        data: {
+                            labels: labels,
                             datasets: [
-                                { type: 'line', data: raw.map(c => c.feed_consumed), borderColor: '#1e293b', borderWidth: 2 },
-                                { type: 'bar', data: raw.map(c => c.water_consumed), backgroundColor: 'rgba(59, 130, 246, 0.2)' }
+                                { type: 'line', data: raw.map(c => num(c.feed_consumed)), borderColor: '#1e293b', borderWidth: 2 },
+                                { type: 'bar', data: raw.map(c => num(c.water_consumed)), backgroundColor: 'rgba(59, 130, 246, 0.2)' }
                             ]
                         },
                         options: commonOptions
                     });
                 }
+            }
+
+            // GRAPHIQUE CROISSANCE — poids réel pesé vs poids-cible de la souche.
+            // Données calculées côté serveur (BatchAdvisorService::weightCurve),
+            // alignées sur l'âge du sujet ; spanGaps relie les jours sans pesée.
+            const growth = @json($weightCurve);
+            const ctxGrowth = document.getElementById('growthChart');
+            if (ctxGrowth && growth && growth.labels && growth.labels.length > 0) {
+                const datasets = [];
+                if (growth.has_actual) {
+                    datasets.push({
+                        label: @json(__('Réel')),
+                        data: growth.actual.map(num),
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        borderWidth: 3,
+                        tension: 0.4,
+                        spanGaps: true,
+                        pointRadius: 3,
+                        fill: true
+                    });
+                }
+                if (growth.has_target) {
+                    datasets.push({
+                        label: @json(__('Cible souche')),
+                        data: growth.target.map(num),
+                        borderColor: '#94a3b8',
+                        borderWidth: 2,
+                        borderDash: [6, 4],
+                        tension: 0.4,
+                        spanGaps: true,
+                        pointRadius: 0
+                    });
+                }
+                new Chart(ctxGrowth, {
+                    type: 'line',
+                    data: { labels: growth.labels, datasets: datasets },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: datasets.length > 1,
+                                labels: { boxWidth: 10, font: { size: 9, weight: 'bold' } }
+                            }
+                        }
+                    }
+                });
             }
         });
     </script>

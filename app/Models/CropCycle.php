@@ -54,7 +54,7 @@ class CropCycle extends Model
 
     protected $fillable = [
         'uuid', 'is_synced', 'last_sync_at',
-        'farm_id', 'plot_id', 'employee_id',
+        'farm_id', 'plot_id', 'campaign_id', 'crop_protocol_id', 'employee_id',
         'code', 'crop_name', 'variety', 'area_used_ha',
         'planting_date', 'expected_harvest_date', 'closing_date',
         'seed_quantity', 'seed_unit', 'expected_yield_kg',
@@ -90,9 +90,20 @@ class CropCycle extends Model
         return $this->belongsTo(Plot::class);
     }
 
+    public function campaign(): BelongsTo
+    {
+        return $this->belongsTo(CropCampaign::class, 'campaign_id');
+    }
+
     public function employee(): BelongsTo
     {
         return $this->belongsTo(Employee::class);
+    }
+
+    /** Protocole / itinéraire technique rattaché (optionnel). */
+    public function protocol(): BelongsTo
+    {
+        return $this->belongsTo(CropProtocol::class, 'crop_protocol_id');
     }
 
     public function harvests(): HasMany
@@ -106,11 +117,6 @@ class CropCycle extends Model
     }
 
     // ─── SCOPES ───
-
-    public function scopeActive($query)
-    {
-        return $query->where('status', self::STATUS_EN_COURS);
-    }
 
     /** Cycles en cours (semés OU en récolte) — occupent la parcelle. */
     public function scopeInProgress($query)
@@ -168,20 +174,28 @@ class CropCycle extends Model
     }
 
     /**
-     * Quantité totale récoltée (toutes récoltes confondues), dans l'unité des
-     * récoltes (kg par convention). Utilise la relation déjà chargée si elle
-     * l'est (listes/dashboard l'eager-loadent) pour éviter un N+1.
+     * Poids total récolté en KG (toutes récoltes confondues). S'appuie sur le
+     * poids agronomique effectif de chaque récolte (poids net pesé, ou quantité
+     * si déjà en kg) — et reste donc juste même si certaines récoltes sont
+     * saisies en caisses/sacs. Utilise la relation déjà chargée si elle l'est
+     * (listes/dashboard l'eager-loadent) pour éviter un N+1.
      */
     public function getTotalHarvestedAttribute(): float
     {
-        return (float) ($this->relationLoaded('harvests')
-            ? $this->harvests->sum('quantity')
-            : $this->harvests()->sum('quantity'));
+        if ($this->relationLoaded('harvests')) {
+            return (float) $this->harvests->sum->effective_weight_kg;
+        }
+
+        // Agrégat SQL : COALESCE(poids net, quantité si unité=kg, sinon 0).
+        return (float) $this->harvests()
+            ->sum(\Illuminate\Support\Facades\DB::raw(
+                "COALESCE(net_weight_kg, CASE WHEN LOWER(unit) = 'kg' THEN quantity ELSE 0 END)"
+            ));
     }
 
     /**
-     * Rendement réel à l'hectare (kg/ha) sur la base de la surface emblavée.
-     * Hypothèse : les récoltes sont saisies en kg (unité par défaut).
+     * Rendement réel à l'hectare (kg/ha) sur la base de la surface emblavée,
+     * calculé à partir du poids net pesé (total_harvested, toujours en kg).
      */
     public function getYieldPerHaAttribute(): float
     {
@@ -191,6 +205,21 @@ class CropCycle extends Model
         }
 
         return round($this->total_harvested / $area, 2);
+    }
+
+    /**
+     * Écart de rendement (%) : poids réellement récolté rapporté au rendement
+     * attendu. > 0 = surperformance, < 0 = sous-performance. Null si aucun
+     * rendement attendu n'a été renseigné (comparaison impossible).
+     */
+    public function getYieldGapPercentAttribute(): ?float
+    {
+        $expected = (float) $this->expected_yield_kg;
+        if ($expected <= 0) {
+            return null;
+        }
+
+        return round(($this->total_harvested - $expected) / $expected * 100, 1);
     }
 
     /**
@@ -218,5 +247,18 @@ class CropCycle extends Model
             - (float) $this->total_acquisition_cost
             - (float) $this->additional_costs
             - $this->inputs_cost;
+    }
+
+    /**
+     * Recalcule total_revenue depuis les récoltes réelles (quantité × prix unitaire).
+     * Appelé par HarvestObserver à chaque création / édition / suppression de récolte.
+     */
+    public function recalculateRevenue(): void
+    {
+        $revenue = $this->harvests()
+            ->selectRaw('COALESCE(SUM(quantity * COALESCE(unit_price, 0)), 0) as total')
+            ->value('total') ?? 0;
+
+        $this->updateQuietly(['total_revenue' => (float) $revenue]);
     }
 }

@@ -14,12 +14,14 @@ class EnergySource extends Model
     use HasFactory, SoftDeletes, BelongsToFarm;
 
     protected $fillable = [
-        'farm_id', 'name', 'type', 'brand', 'model',
+        'farm_id', 'name', 'type', 'brand', 'model', 'serial_number',
         'capacity_kva', 'fuel_type',
         'fuel_tank_capacity', 'current_fuel_level',
         'total_hours_run', 'maintenance_interval_hours',
         'last_maintenance_at', 'next_maintenance_at',
         'status', 'is_active', 'notes',
+        'purchase_date', 'purchase_price', 'depreciation_years',
+        'warranty_expiry', 'service_contract_ref',
     ];
 
     protected $casts = [
@@ -30,6 +32,9 @@ class EnergySource extends Model
         'last_maintenance_at'       => 'datetime',
         'next_maintenance_at'       => 'datetime',
         'is_active'                 => 'boolean',
+        'purchase_date'             => 'date',
+        'warranty_expiry'           => 'date',
+        'purchase_price'            => 'decimal:0',
     ];
 
     public function readings(): HasMany
@@ -40,6 +45,11 @@ class EnergySource extends Model
     public function fuelPurchases(): HasMany
     {
         return $this->hasMany(FuelPurchase::class);
+    }
+
+    public function maintenanceLogs(): HasMany
+    {
+        return $this->hasMany(AssetMaintenanceLog::class);
     }
 
     public function scopeActive($query)
@@ -104,20 +114,36 @@ class EnergySource extends Model
     {
         if ($this->type !== 'groupe' || ! $this->current_fuel_level) return null;
 
-        $recentReadings = $this->readings()
-            ->where('reading_date', '>=', now()->subDays(7))
-            ->whereNotNull('fuel_consumed_liters')
-            ->where('hours_run', '>', 0)
-            ->get(['fuel_consumed_liters', 'hours_run']);
+        $litersPerHour = $this->averageLitersPerHour();
 
-        $totalFuel  = $recentReadings->sum('fuel_consumed_liters');
-        $totalHours = $recentReadings->sum('hours_run');
+        if (! $litersPerHour) return null;
 
-        if ($totalFuel <= 0 || $totalHours <= 0) return null;
+        return (int) floor($this->current_fuel_level / $litersPerHour);
+    }
 
-        $litersPerHour = $totalFuel / $totalHours;
+    /**
+     * Consommation horaire moyenne (L/h) sur les 7 derniers jours, avec repli
+     * sur tout l'historique. Sert à la fois au calcul d'autonomie et à
+     * l'estimation automatique du carburant consommé lors d'un relevé (pour
+     * éviter la double saisie heures + litres).
+     */
+    public function averageLitersPerHour(): ?float
+    {
+        $compute = function ($query) {
+            $rows = $query
+                ->whereNotNull('fuel_consumed_liters')
+                ->where('hours_run', '>', 0)
+                ->get(['fuel_consumed_liters', 'hours_run']);
 
-        return $litersPerHour > 0 ? (int) floor($this->current_fuel_level / $litersPerHour) : null;
+            $fuel  = $rows->sum('fuel_consumed_liters');
+            $hours = $rows->sum('hours_run');
+
+            return ($fuel > 0 && $hours > 0) ? $fuel / $hours : null;
+        };
+
+        // Priorité aux 7 derniers jours (régime récent), repli sur l'historique.
+        return $compute($this->readings()->where('reading_date', '>=', now()->subDays(7)))
+            ?? $compute($this->readings());
     }
 
     public function getNeedsMaintenanceAttribute(): bool
@@ -141,5 +167,40 @@ class EnergySource extends Model
         }
 
         return ($this->fuel_autonomy_days ?? 99) <= ceil($alertHours / 24);
+    }
+
+    /**
+     * Valeur résiduelle selon l'amortissement linéaire.
+     */
+    public function getResidualValueAttribute(): ?float
+    {
+        if (! $this->purchase_price || ! $this->purchase_date || ! $this->depreciation_years) {
+            return null;
+        }
+
+        $yearsElapsed = $this->purchase_date->diffInDays(now()) / 365.25;
+        $annualDepreciation = (float) $this->purchase_price / $this->depreciation_years;
+
+        return max(0.0, (float) $this->purchase_price - ($annualDepreciation * $yearsElapsed));
+    }
+
+    /**
+     * État de la garantie : active / expires_soon (≤30 j) / expired / unknown.
+     */
+    public function getWarrantyStatusAttribute(): string
+    {
+        if (! $this->warranty_expiry) return 'unknown';
+        if ($this->warranty_expiry->isPast()) return 'expired';
+        if (now()->diffInDays($this->warranty_expiry, false) <= 30) return 'expires_soon';
+
+        return 'active';
+    }
+
+    /**
+     * Coût total de maintenance (toutes interventions confondues).
+     */
+    public function getCumulativeMaintenanceCostAttribute(): float
+    {
+        return (float) $this->maintenanceLogs()->sum('cost');
     }
 }

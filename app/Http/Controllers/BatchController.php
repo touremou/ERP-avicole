@@ -269,7 +269,23 @@ class BatchController extends Controller
             $stats['last_survival_rate'] = $lastExt?->survival_rate;
         }
 
-        return view('batches.show', compact('batch', 'buildings', 'protocols', 'providers', 'stats'));
+        // Recommandations intelligentes (dosage aliment/eau ajusté à l'âge, au
+        // poids, à l'effectif et aux conditions d'ambiance) + conseils dérivés.
+        $advisor         = new \App\Services\BatchAdvisorService();
+        $feedAdvice      = $advisor->recommendation($batch);
+        $batchAdvisories = $advisor->advisories($batch);
+        $feedAutonomy    = $advisor->feedAutonomy($batch);
+        $weightCurve     = $advisor->weightCurve($batch);
+
+        // Souches disponibles pour le modal de mutation (graduation de phase).
+        $normModels = ProductionNorm::forSpecies($batch->species_id)
+            ->select('model_name', 'batch_type')
+            ->distinct()
+            ->orderBy('batch_type')
+            ->orderBy('model_name')
+            ->get();
+
+        return view('batches.show', compact('batch', 'buildings', 'protocols', 'providers', 'stats', 'feedAdvice', 'batchAdvisories', 'feedAutonomy', 'normModels', 'weightCurve'));
     }
 
     /**
@@ -490,6 +506,7 @@ class BatchController extends Controller
 
         return response()->json(
             Batch::active()
+                ->live() // exclut les lots virtuels (œufs externes, initial_quantity=0)
                 ->when($request->query('since'), function ($q, $since) {
                     $q->where('updated_at', '>=', $since);
                 })

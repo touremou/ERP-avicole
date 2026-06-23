@@ -36,7 +36,7 @@ class CropTransformation extends Model
 
     protected $fillable = [
         'uuid', 'is_synced', 'last_sync_at',
-        'farm_id', 'crop_cycle_id', 'employee_id',
+        'farm_id', 'crop_cycle_id', 'crop_recipe_id', 'employee_id',
         'batch_number', 'input_product', 'output_product', 'transformation_type',
         'input_quantity', 'input_unit', 'output_quantity', 'output_unit', 'yield_percent',
         'production_date', 'expiry_date',
@@ -64,6 +64,11 @@ class CropTransformation extends Model
     public function cropCycle(): BelongsTo
     {
         return $this->belongsTo(CropCycle::class);
+    }
+
+    public function recipe(): BelongsTo
+    {
+        return $this->belongsTo(CropRecipe::class, 'crop_recipe_id');
     }
 
     public function employee(): BelongsTo

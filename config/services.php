@@ -35,4 +35,20 @@ return [
         ],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Météo (Open-Meteo)
+    |--------------------------------------------------------------------------
+    | Service météo public, gratuit et sans clé. Alimente automatiquement les
+    | relevés (weather_readings) et pré-remplit la météo du pointage volaille.
+    | Le géocodage convertit la ville/région de la ferme en coordonnées GPS.
+    */
+    'weather' => [
+        'enabled'      => env('WEATHER_ENABLED', true),
+        'forecast_url' => env('WEATHER_FORECAST_URL', 'https://api.open-meteo.com/v1/forecast'),
+        'geocode_url'  => env('WEATHER_GEOCODE_URL', 'https://geocoding-api.open-meteo.com/v1/search'),
+        'timeout'      => (int) env('WEATHER_TIMEOUT', 12),
+        'country'      => env('WEATHER_COUNTRY', 'GN'), // biais géocodage (Guinée)
+    ],
+
 ];

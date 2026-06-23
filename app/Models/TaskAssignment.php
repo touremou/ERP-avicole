@@ -12,7 +12,7 @@ class TaskAssignment extends Model
 
     protected $fillable = [
         'farm_id', 'task_template_id', 'employee_id', 'title', 'description',
-        'category', 'building_id', 'batch_id', 'scheduled_date', 'scheduled_time',
+        'category', 'building_id', 'plot_id', 'batch_id', 'scheduled_date', 'scheduled_time',
         'duration_minutes', 'priority', 'status', 'started_at', 'completed_at',
         'completed_by', 'completion_notes', 'is_auto_generated',
     ];
@@ -27,6 +27,7 @@ class TaskAssignment extends Model
     public function template(): BelongsTo { return $this->belongsTo(TaskTemplate::class, 'task_template_id'); }
     public function employee(): BelongsTo { return $this->belongsTo(Employee::class); }
     public function building(): BelongsTo { return $this->belongsTo(Building::class); }
+    public function plot(): BelongsTo { return $this->belongsTo(\App\Models\Plot::class); }
     public function batch(): BelongsTo { return $this->belongsTo(Batch::class); }
     public function completedByUser(): BelongsTo { return $this->belongsTo(User::class, 'completed_by'); }
 
