@@ -48,6 +48,26 @@
                         </a>
                     @endforeach
                 </div>
+
+                {{-- Filtre par souche génétique (model_name) au sein du secteur actif --}}
+                @if($models->isNotEmpty())
+                <div class="relative w-full sm:w-auto">
+                    <select onchange="window.location.href = '?type={{ $type }}' + (this.value ? '&model=' + encodeURIComponent(this.value) : '')"
+                            class="appearance-none w-full sm:w-auto bg-white border border-slate-200 rounded-[1.5rem] pl-12 pr-10 py-3.5 text-[10px] font-black uppercase tracking-widest text-slate-600 shadow-sm cursor-pointer outline-none focus:ring-4 focus:ring-blue-500/10 italic">
+                        <option value="" @selected($model === '')>🧬 {{ __("Toutes les souches") }} ({{ $models->count() }})</option>
+                        @foreach($models as $m)
+                            <option value="{{ $m }}" @selected($model === $m)>{{ $m }}</option>
+                        @endforeach
+                    </select>
+                    <i class="fas fa-dna absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none text-xs"></i>
+                    <i class="fas fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none text-[9px]"></i>
+                </div>
+                @if($model !== '')
+                <a href="?type={{ $type }}" class="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-rose-500 hover:text-rose-700 transition-colors no-underline">
+                    <i class="fas fa-times-circle"></i> {{ __("Réinitialiser") }}
+                </a>
+                @endif
+                @endif
                 @can('admin.S')
                 <div class="lg:ml-auto flex flex-col gap-2 w-full sm:w-auto">
                     <button @click="openImport = true" class="w-full bg-emerald-100 text-emerald-700 px-5 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-emerald-600 hover:text-white transition-all shadow-sm border border-emerald-200 cursor-pointer text-left sm:text-center">

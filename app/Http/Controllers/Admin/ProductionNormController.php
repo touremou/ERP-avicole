@@ -39,15 +39,33 @@ class ProductionNormController extends Controller
             ->values();
 
         $type = $request->get('type', 'chair');
+
+        // Souches (model_name) disponibles pour ce secteur — alimente le filtre.
+        $models = ProductionNorm::where('batch_type', $type)
+                    ->whereNotNull('model_name')
+                    ->where('model_name', '!=', '')
+                    ->distinct()
+                    ->orderBy('model_name')
+                    ->pluck('model_name');
+
+        // Filtre optionnel par souche (validé contre la liste réelle pour
+        // éviter une valeur arbitraire). '' = toutes les souches.
+        $model = (string) $request->get('model', '');
+        if ($model !== '' && ! $models->contains($model)) {
+            $model = '';
+        }
+
         $norms = ProductionNorm::with('species:id,name_fr,icon')
                     ->where('batch_type', $type)
+                    ->when($model !== '', fn ($q) => $q->where('model_name', $model))
+                    ->orderBy('model_name')
                     ->orderBy('week_number')
                     ->get();
 
         // Espèces proposées pour rattacher explicitement une souche.
         $species = Species::orderBy('sort_order')->orderBy('name_fr')->get();
 
-        return view('admin.norms.index', compact('norms', 'type', 'batchTypes', 'species'));
+        return view('admin.norms.index', compact('norms', 'type', 'batchTypes', 'species', 'models', 'model'));
     }
 
     /**
