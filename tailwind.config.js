@@ -19,6 +19,13 @@ export default {
             pattern: /(bg|text)-(slate|blue|amber|lime|indigo|rose|teal|orange|cyan|emerald|pink|purple|violet|red)-(50|500)/,
             variants: ['hover'],
         },
+        // Nuances de vert appliquées dynamiquement via des ternaires Blade
+        // (ex. la barre d'occupation de la parcelle : bg-green-600 / bg-green-400
+        // selon le taux). Le scan JIT peut les manquer ; on les garantit ici
+        // pour que le remplissage de la barre conserve toujours sa couleur.
+        {
+            pattern: /(bg|text)-green-(100|200|400|600|700)/,
+        },
     ],
 
     theme: {
