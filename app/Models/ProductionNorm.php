@@ -57,7 +57,7 @@ class ProductionNorm extends Model
             'pintade' => ['pintade'],
             'canard'  => ['canard'],
             'pigeon'  => ['pigeon', 'goliath'],
-            'poulet'  => ['poule', 'poulet', 'ross', 'cobb', 'isa', 'pondeuse'],
+            'poulet'  => ['poule', 'poulet', 'ross', 'cobb', 'isa', 'lohmann', 'pondeuse', 'cou nu'],
             'mouton'  => ['mouton', 'bélier', 'belier', 'djallonké', 'djallonke'],
             'chevre'  => ['chèvre', 'chevre', 'bouc', 'maradi', 'saanen', 'sahel'],
             'lapin'   => ['lapin'],
@@ -65,7 +65,7 @@ class ProductionNorm extends Model
             'tilapia' => ['tilapia', 'alevin'],
             'carpe'   => ['carpe'],
             'silure'  => ['silure', 'clarias'],
-            'vache'   => ['vache', 'bovin', 'zébu', 'zebu'],
+            'vache'   => ['vache', 'bovin', 'zébu', 'zebu', 'ndama', 'n\'dama'],
         ];
 
         foreach ($map as $slug => $keywords) {

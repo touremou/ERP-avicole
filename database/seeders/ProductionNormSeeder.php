@@ -44,8 +44,10 @@ class ProductionNormSeeder extends Seeder
         $rows = array_merge(
             $this->broilerRoss308(),
             $this->broilerCobb500(),
+            $this->localChicken(),
             $this->turkeyBUT6(),
             $this->layerISABrown(),
+            $this->layerLohmannBrown(),
             $this->quail(),
             $this->brooding(),
             $this->guineaFowl(),
@@ -53,6 +55,7 @@ class ProductionNormSeeder extends Seeder
             $this->pigeonBreeder(),
             $this->sheepGoatRabbitPig(),
             $this->dairyGoat(),
+            $this->cattle(),
             $this->poultryBreeders(),
             $this->fishGrowout(),
             $this->fishFry(),
@@ -119,6 +122,19 @@ class ProductionNormSeeder extends Seeder
         ];
     }
 
+    /** Poulet local « Cou Nu » (souche rustique, croissance lente, Guinée). */
+    private function localChicken(): array
+    {
+        $m = 'Poulet local Cou Nu';
+        return [
+            $this->norm('chair', 2,  'Démarrage',  $m, 120,  18, 36),
+            $this->norm('chair', 4,  'Croissance', $m, 300,  35, 70),
+            $this->norm('chair', 8,  'Croissance', $m, 700,  55, 110),
+            $this->norm('chair', 12, 'Finition',   $m, 1100, 70, 140),
+            $this->norm('chair', 16, 'Finition',   $m, 1400, 80, 160),
+        ];
+    }
+
     /** Dinde de chair BUT 6 (souche lourde). */
     private function turkeyBUT6(): array
     {
@@ -154,6 +170,25 @@ class ProductionNormSeeder extends Seeder
             $this->norm('ponte', 40, 'Ponte',      $m, 1920, 120, 240, 93),
             $this->norm('ponte', 52, 'Ponte',      $m, 1960, 122, 244, 88),
             $this->norm('ponte', 72, 'Réforme',    $m, 2000, 120, 240, 78),
+        ];
+    }
+
+    /** Pondeuse Lohmann Brown : élevage poulette + cycle de ponte. */
+    private function layerLohmannBrown(): array
+    {
+        $m = 'Lohmann Brown';
+        return [
+            $this->norm('ponte', 1,  'Démarrage',  $m, 70,   13,  26,  0),
+            $this->norm('ponte', 6,  'Croissance', $m, 480,  42,  85,  0),
+            $this->norm('ponte', 12, 'Croissance', $m, 980,  63,  126, 0),
+            $this->norm('ponte', 17, 'Pré-ponte',  $m, 1400, 76,  152, 0),
+            $this->norm('ponte', 18, 'Pré-ponte',  $m, 1470, 83,  166, 5),
+            $this->norm('ponte', 20, 'Ponte',      $m, 1580, 96,  192, 30),
+            $this->norm('ponte', 25, 'Ponte',      $m, 1780, 116, 232, 93),
+            $this->norm('ponte', 30, 'Ponte',      $m, 1880, 119, 238, 95),
+            $this->norm('ponte', 40, 'Ponte',      $m, 1950, 121, 242, 92),
+            $this->norm('ponte', 52, 'Ponte',      $m, 1980, 122, 244, 87),
+            $this->norm('ponte', 72, 'Réforme',    $m, 2020, 120, 240, 76),
         ];
     }
 
@@ -251,6 +286,21 @@ class ProductionNormSeeder extends Seeder
         return [
             $this->norm('laitiere', 1,  'Croissance', $m, 18000, 700,  3000, 0),
             $this->norm('laitiere', 40, 'Finition',   $m, 60000, 2000, 8000, 0),
+        ];
+    }
+
+    /** Bovins : engraissement N'Dama (viande) + vache laitière métisse. */
+    private function cattle(): array
+    {
+        return [
+            // Bovin N'Dama (race locale trypanotolérante, engraissement viande)
+            $this->norm('engraissement', 1,  'Croissance', 'Bovin N\'Dama', 80000,  12000, 25000, 0),
+            $this->norm('engraissement', 26, 'Croissance', 'Bovin N\'Dama', 180000, 22000, 40000, 0),
+            $this->norm('engraissement', 52, 'Finition',   'Bovin N\'Dama', 280000, 28000, 50000, 0),
+
+            // Vache laitière métisse (croissance → lactation)
+            $this->norm('laitiere', 1,  'Croissance', 'Vache Laitière (Métis)', 90000,  13000, 30000, 0),
+            $this->norm('laitiere', 52, 'Finition',   'Vache Laitière (Métis)', 400000, 35000, 70000, 0),
         ];
     }
 
