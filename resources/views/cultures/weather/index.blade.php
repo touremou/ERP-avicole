@@ -76,6 +76,65 @@
                 </div>
             </div>
 
+            {{-- PRÉVISIONS & ALERTES PRÉDICTIVES (Open-Meteo) --}}
+            @if(!empty($forecast))
+            <div class="bg-white rounded-[3rem] border border-slate-100 shadow-sm p-6 md:p-8">
+                <div class="flex items-center justify-between mb-5">
+                    <h3 class="text-[11px] font-black text-slate-700 uppercase tracking-widest italic flex items-center gap-2">
+                        <i class="fa-solid fa-satellite-dish text-sky-500"></i> {{ __("Prévisions (J+1 → J+3)") }}
+                    </h3>
+                    <span class="text-[8px] font-black uppercase tracking-widest text-slate-300 italic">{{ __("Source : Open-Meteo") }}</span>
+                </div>
+
+                {{-- Alertes prédictives --}}
+                @if(!empty($forecastAlerts))
+                    <div class="space-y-2 mb-6">
+                        @foreach($forecastAlerts as $a)
+                            <div class="flex items-start gap-3 p-4 rounded-2xl {{ $a['severity'] === 'critique' ? 'bg-rose-50 text-rose-700' : 'bg-amber-50 text-amber-700' }}">
+                                <i class="fa-solid {{ $a['icon'] }} mt-0.5"></i>
+                                <div>
+                                    <p class="text-[10px] font-black uppercase tracking-wide leading-none">{{ $a['title'] }}</p>
+                                    <p class="text-[10px] font-bold mt-1 normal-case leading-snug">{{ $a['message'] }}</p>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                @else
+                    <div class="flex items-center gap-3 p-4 rounded-2xl bg-emerald-50 text-emerald-700 mb-6">
+                        <i class="fa-solid fa-circle-check"></i>
+                        <p class="text-[10px] font-black uppercase tracking-wide">{{ __("Aucun risque météo majeur annoncé") }}</p>
+                    </div>
+                @endif
+
+                {{-- Bandeau jours --}}
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    @foreach($forecast as $day)
+                        @php $heavyRain = ($day['rain_mm'] ?? 0) >= 20; @endphp
+                        <div class="rounded-2xl p-5 border {{ $heavyRain ? 'border-sky-200 bg-sky-50' : 'border-slate-100 bg-slate-50' }}">
+                            <p class="text-[8px] font-black uppercase tracking-widest text-slate-400 italic mb-2">
+                                {{ $day['horizon'] == 1 ? __('Demain') : ($day['horizon'] == 2 ? __('Après-demain') : 'J+'.$day['horizon']) }}
+                                · {{ \Carbon\Carbon::parse($day['date'])->isoFormat('ddd D MMM') }}
+                            </p>
+                            <div class="flex items-end justify-between">
+                                <div>
+                                    <p class="text-2xl font-black text-slate-800 leading-none">{{ $day['t_max'] !== null ? round($day['t_max']).'°' : '—' }}<span class="text-sm text-slate-400">/{{ $day['t_min'] !== null ? round($day['t_min']).'°' : '—' }}</span></p>
+                                    <p class="text-[9px] font-bold text-slate-400 uppercase mt-1">{{ __("Temp.") }}</p>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-lg font-black {{ $heavyRain ? 'text-sky-600' : 'text-slate-600' }} leading-none">
+                                        <i class="fa-solid fa-droplet text-[10px]"></i> {{ $day['rain_mm'] !== null ? $day['rain_mm'] : 0 }} mm
+                                    </p>
+                                    <p class="text-[9px] font-bold text-slate-400 uppercase mt-1">
+                                        @if($day['rain_prob'] !== null){{ $day['rain_prob'] }}% · @endif{{ $day['wind_kmh'] !== null ? round($day['wind_kmh']).' km/h' : '' }}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+            @endif
+
             {{-- TABLEAU --}}
             <div class="bg-white rounded-[3rem] border border-slate-100 shadow-sm overflow-hidden">
                 <div class="overflow-x-auto">

@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Gate;
  */
 class WeatherController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request, WeatherService $weather)
     {
         if (Gate::denies('cultures.L')) {
             return back()->with('error', 'Accès restreint.');
@@ -22,6 +22,12 @@ class WeatherController extends Controller
 
         $month  = $request->get('month', now()->format('Y-m'));
         $plotId = $request->get('plot_id');
+
+        // Prévisions J+1→J+3 et alertes prédictives pour la ferme courante.
+        $farmId   = session('current_farm_id') ?? Farm::defaultId();
+        $farm     = $farmId ? Farm::find($farmId) : null;
+        $forecast = $farm ? $weather->forecast($farm, 3) : [];
+        $forecastAlerts = $farm ? $weather->forecastAlerts($farm, 3) : [];
 
         $query = WeatherReading::forMonth($month)->with('plot:id,name');
         if ($plotId) {
@@ -41,11 +47,13 @@ class WeatherController extends Controller
         ];
 
         return view('cultures.weather.index', [
-            'readings' => $readings,
-            'stats'    => $stats,
-            'month'    => $month,
-            'plotId'   => $plotId,
-            'plots'    => Plot::orderBy('name')->get(['id', 'name']),
+            'readings'       => $readings,
+            'stats'          => $stats,
+            'month'          => $month,
+            'plotId'         => $plotId,
+            'plots'          => Plot::orderBy('name')->get(['id', 'name']),
+            'forecast'       => $forecast,
+            'forecastAlerts' => $forecastAlerts,
         ]);
     }
 

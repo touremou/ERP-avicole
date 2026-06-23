@@ -211,6 +211,162 @@ class WeatherService
     }
 
     /**
+     * Prévisions journalières d'une ferme à partir de J+1 (mis en cache 3 h).
+     *
+     * @return array<int, array{date: string, horizon: int, t_min: ?float, t_max: ?float, rain_mm: ?float, rain_prob: ?int, wind_kmh: ?float}>
+     */
+    public function forecast(Farm $farm, int $days = 3): array
+    {
+        if (! $this->enabled() || ! $farm->id) {
+            return [];
+        }
+
+        $days = max(1, min(7, $days));
+
+        return cache()->remember("weather.forecast.farm.{$farm->id}.{$days}", now()->addHours(3), function () use ($farm, $days) {
+            $coords = $this->coordinates($farm);
+            if ($coords === null) {
+                return [];
+            }
+
+            return $this->fetchForecast($coords['lat'], $coords['lon'], $days);
+        });
+    }
+
+    /**
+     * Appel Open-Meteo pour les prévisions J+1 à J+N.
+     *
+     * @return array<int, array{date: string, horizon: int, t_min: ?float, t_max: ?float, rain_mm: ?float, rain_prob: ?int, wind_kmh: ?float}>
+     */
+    public function fetchForecast(float $lat, float $lon, int $days): array
+    {
+        $start = now()->addDay()->toDateString();
+        $end   = now()->addDays($days)->toDateString();
+
+        try {
+            $resp = Http::timeout($this->timeout())
+                ->get(config('services.weather.forecast_url'), [
+                    'latitude'   => $lat,
+                    'longitude'  => $lon,
+                    'daily'      => 'temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,wind_speed_10m_max',
+                    'start_date' => $start,
+                    'end_date'   => $end,
+                    'timezone'   => 'auto',
+                ]);
+
+            if (! $resp->ok()) {
+                return [];
+            }
+
+            $dates = $resp->json('daily.time') ?? [];
+            $out   = [];
+            foreach ($dates as $i => $date) {
+                $out[] = [
+                    'date'      => $date,
+                    'horizon'   => $i + 1, // J+1, J+2, …
+                    't_min'     => $this->numAt($resp->json('daily.temperature_2m_min'), $i),
+                    't_max'     => $this->numAt($resp->json('daily.temperature_2m_max'), $i),
+                    'rain_mm'   => $this->numAt($resp->json('daily.precipitation_sum'), $i),
+                    'rain_prob' => ($p = $this->numAt($resp->json('daily.precipitation_probability_max'), $i)) !== null ? (int) $p : null,
+                    'wind_kmh'  => $this->numAt($resp->json('daily.wind_speed_10m_max'), $i),
+                ];
+            }
+
+            return $out;
+        } catch (\Throwable $e) {
+            Log::warning('WeatherService: échec prévisions', [
+                'lat' => $lat, 'lon' => $lon, 'error' => $e->getMessage(),
+            ]);
+            return [];
+        }
+    }
+
+    /**
+     * Alertes prédictives dérivées des prévisions (fortes pluies, canicule,
+     * vent fort) sur les `days` prochains jours. Même structure que les alertes
+     * CropAdvisorService (type/severity/icon/title/message) pour réutiliser
+     * l'affichage et la diffusion existants.
+     *
+     * @return array<int, array{type: string, severity: string, icon: string, title: string, message: string, date: string, horizon: int}>
+     */
+    public function forecastAlerts(Farm $farm, int $days = 2): array
+    {
+        $alerts = [];
+
+        foreach ($this->forecast($farm, $days) as $day) {
+            $when = $this->horizonLabel($day['horizon'], $day['date']);
+
+            // Fortes pluies annoncées : ≥ 50 mm = critique, ≥ 20 mm = attention.
+            $rain = $day['rain_mm'];
+            $prob = $day['rain_prob'];
+            if ($rain !== null && $rain >= 20 && ($prob === null || $prob >= 50)) {
+                $critique = $rain >= 50;
+                $probTxt  = $prob !== null ? " (proba {$prob}%)" : '';
+                $alerts[] = [
+                    'type'     => 'weather_forecast',
+                    'severity' => $critique ? 'critique' : 'attention',
+                    'icon'     => 'fa-cloud-showers-heavy',
+                    'title'    => $critique ? 'Fortes pluies annoncées' : 'Pluies annoncées',
+                    'message'  => "{$when} : {$rain} mm prévus{$probTxt}. "
+                        . ($critique
+                            ? 'Risque de lessivage et d’inondation : différer fertilisation/traitement, sécuriser les intrants et le drainage.'
+                            : 'Différer la fertilisation et les traitements foliaires ; vérifier le drainage.'),
+                    'date'     => $day['date'],
+                    'horizon'  => $day['horizon'],
+                ];
+            }
+
+            // Canicule annoncée (T° max ≥ 38 °C).
+            if ($day['t_max'] !== null && $day['t_max'] >= 38) {
+                $alerts[] = [
+                    'type'     => 'weather_forecast',
+                    'severity' => 'attention',
+                    'icon'     => 'fa-temperature-high',
+                    'title'    => 'Forte chaleur annoncée',
+                    'message'  => "{$when} : {$day['t_max']}°C prévus. Renforcer abreuvement/ventilation des animaux et l’irrigation des cultures sensibles.",
+                    'date'     => $day['date'],
+                    'horizon'  => $day['horizon'],
+                ];
+            }
+
+            // Vent fort (rafales/vent max ≥ 45 km/h).
+            if ($day['wind_kmh'] !== null && $day['wind_kmh'] >= 45) {
+                $alerts[] = [
+                    'type'     => 'weather_forecast',
+                    'severity' => 'attention',
+                    'icon'     => 'fa-wind',
+                    'title'    => 'Vent fort annoncé',
+                    'message'  => "{$when} : vent jusqu’à {$day['wind_kmh']} km/h. Sécuriser bâches, filets et jeunes plants ; reporter les pulvérisations.",
+                    'date'     => $day['date'],
+                    'horizon'  => $day['horizon'],
+                ];
+            }
+        }
+
+        return $alerts;
+    }
+
+    /** Libellé d'horizon lisible : « demain », « après-demain », « dans N j ». */
+    private function horizonLabel(int $horizon, string $date): string
+    {
+        return match ($horizon) {
+            1       => 'Demain',
+            2       => 'Après-demain',
+            default => "Dans {$horizon} j",
+        };
+    }
+
+    /** Valeur numérique d'un tableau indexé, ou null. */
+    private function numAt($array, int $i): ?float
+    {
+        if (! is_array($array) || ! array_key_exists($i, $array) || ! is_numeric($array[$i])) {
+            return null;
+        }
+
+        return (float) $array[$i];
+    }
+
+    /**
      * Insère ou met à jour LE relevé du jour d'une ferme (plot null), de façon
      * idempotente. On recherche via whereDate (et non une égalité littérale) :
      * la colonne date stocke un datetime sous SQLite, ce qui ferait échouer

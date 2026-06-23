@@ -729,6 +729,43 @@ class NotificationHub
      * Diffusé aux abonnés du résumé quotidien (réutilise l'opt-in existant, comme
      * notifyHarvestsDue). Renvoie le nombre de cycles signalés.
      */
+    /**
+     * Alertes météo prédictives (J+1→J+N) par ferme active : fortes pluies,
+     * canicule, vent fort annoncés. Diffuse une fois par ferme concernée.
+     * S'appuie sur les prévisions Open-Meteo (WeatherService::forecastAlerts).
+     */
+    public function notifyWeatherForecast(int $days = 2): int
+    {
+        $weather  = app(\App\Services\WeatherService::class);
+        if (! $weather->enabled()) {
+            return 0;
+        }
+
+        $farmName = config('whatsapp.farm_name', 'AviSmart');
+        $signaled = 0;
+
+        foreach (\App\Models\Farm::where('is_active', true)->get() as $farm) {
+            $alerts = $weather->forecastAlerts($farm, $days);
+            if (empty($alerts)) {
+                continue;
+            }
+
+            $lines = ["🛰️ *{$farmName} — Alerte météo (prévisions)*", ''];
+            foreach ($alerts as $a) {
+                $emoji = $a['severity'] === 'critique' ? '🔴' : '⚠️';
+                $lines[] = "{$emoji} *{$a['title']}*";
+                $lines[] = "  {$a['message']}";
+            }
+
+            $hasCritical = collect($alerts)->contains(fn ($a) => $a['severity'] === 'critique');
+
+            $this->broadcast('daily_summary', implode("\n", $lines), 'Météo ' . $farm->name, $hasCritical ? 'critique' : 'normal');
+            $signaled++;
+        }
+
+        return $signaled;
+    }
+
     public function notifyAgronomicRisks(): int
     {
         $cycles = CropCycle::query()

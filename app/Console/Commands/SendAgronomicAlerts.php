@@ -28,6 +28,14 @@ class SendAgronomicAlerts extends Command
             ? "✅ {$count} cycle(s) signalé(s) aux abonnés."
             : "Aucun risque agronomique à signaler.");
 
+        // Alertes météo prédictives (J+1→J+2) par ferme : fortes pluies,
+        // canicule, vent fort annoncés.
+        $this->info('🛰️  Analyse des prévisions météo...');
+        $forecastCount = $hub->notifyWeatherForecast(2);
+        $this->info($forecastCount > 0
+            ? "✅ {$forecastCount} ferme(s) avec alerte météo prévisionnelle."
+            : "Aucune alerte météo prévisionnelle.");
+
         return self::SUCCESS;
     }
 }
