@@ -93,10 +93,12 @@ class TaskController extends Controller
         }
 
         // ═══ VUE JOURNALIÈRE ═══
+        // Tri par criticité décroissante. CASE portable (MySQL + SQLite) plutôt
+        // que FIELD(), qui n'existe pas en SQLite.
         $query = TaskAssignment::with(['employee', 'building', 'plot', 'template'])
             ->forDate($date)
             ->orderBy('scheduled_time')
-            ->orderByRaw("FIELD(priority, 'critique', 'haute', 'normale', 'basse')");
+            ->orderByRaw("CASE priority WHEN 'critique' THEN 1 WHEN 'haute' THEN 2 WHEN 'normale' THEN 3 WHEN 'basse' THEN 4 ELSE 5 END");
 
         if ($employeeId) $query->where('employee_id', $employeeId);
         if ($buildingId) $query->where('building_id', $buildingId);
