@@ -39,9 +39,13 @@ class UtilityController extends Controller
             ->get()->sortByDesc('reading_date')->groupBy('water_source_id')
             ->map(fn ($r) => $r->first()->only(['volume_consumed_liters', 'volume_added_liters', 'quality_ph', 'chlorine_level', 'cost', 'building_id']));
 
+        // Énergie : on ne pré-remplit QUE le bâtiment desservi (attribution stable).
+        // Heures/carburant/coût restent vides → le système estime carburant et
+        // coût à partir des heures saisies (cf. storeEnergyReading), supprimant
+        // la double saisie quotidienne.
         $lastEnergy = EnergyReading::whereIn('energy_source_id', $energySources->pluck('id'))
             ->get()->sortByDesc('reading_date')->groupBy('energy_source_id')
-            ->map(fn ($r) => $r->first()->only(['hours_run', 'fuel_consumed_liters', 'outage_hours', 'cost', 'building_id']));
+            ->map(fn ($r) => $r->first()->only(['building_id']));
 
         return view('utilities.dashboard', compact('data', 'waterSources', 'energySources', 'buildings', 'period', 'lastWater', 'lastEnergy'));
     }
@@ -249,13 +253,39 @@ class UtilityController extends Controller
 
         $validated['user_id'] = Auth::id();
 
+        $source = EnergySource::find($validated['energy_source_id']);
+
+        // ─── Anti-corvée : dériver carburant et coût quand ils ne sont pas saisis ───
+        // L'opérateur ne renseigne idéalement que les heures ; le système estime
+        // le carburant (heures × conso horaire moyenne) puis le coût (carburant ×
+        // prix au litre). Toute valeur saisie manuellement est respectée.
+        $autoNotes = [];
+
+        if (empty($validated['fuel_consumed_liters'])
+            && $source->type === 'groupe'
+            && (float) $validated['hours_run'] > 0) {
+            $litersPerHour = $source->averageLitersPerHour();
+            if ($litersPerHour) {
+                $validated['fuel_consumed_liters'] = round((float) $validated['hours_run'] * $litersPerHour, 1);
+                $autoNotes[] = "carburant estimé " . number_format($validated['fuel_consumed_liters'], 1, ',', ' ') . " L";
+            }
+        }
+
+        if (empty($validated['cost']) && ! empty($validated['fuel_consumed_liters'])) {
+            // Prix réel le plus récent (dernier achat), repli sur le paramètre.
+            $unitPrice = FuelPurchase::where('energy_source_id', $source->id)
+                ->latest('purchase_date')->value('unit_price')
+                ?? (float) setting('energie.fuel_price_liter', 12000);
+            $validated['cost'] = round((float) $validated['fuel_consumed_liters'] * (float) $unitPrice);
+            $autoNotes[] = "coût estimé " . number_format($validated['cost'], 0, ',', ' ') . " GNF";
+        }
+
         EnergyReading::updateOrCreate(
             ['energy_source_id' => $validated['energy_source_id'], 'reading_date' => $validated['reading_date']],
             $validated
         );
 
         // Mettre à jour les heures totales et le niveau de carburant
-        $source = EnergySource::find($validated['energy_source_id']);
         $source->increment('total_hours_run', (float) $validated['hours_run']);
 
         $wasFuelLow = $source->is_fuel_low;
@@ -277,7 +307,9 @@ class UtilityController extends Controller
             $source->update(['status' => 'maintenance']);
         }
 
-        return back()->with('success', "Relevé énergie enregistré pour le {$validated['reading_date']}.");
+        $suffix = $autoNotes ? ' (' . implode(' · ', $autoNotes) . ')' : '';
+
+        return back()->with('success', "Relevé énergie enregistré pour le {$validated['reading_date']}.{$suffix}");
     }
 
     // ──────────────────────────────────────────────
@@ -371,7 +403,7 @@ class UtilityController extends Controller
     public function editEnergySource(EnergySource $source)
     {
         if (Gate::denies('ressources.M')) return back()->with('error', 'Action non autorisée.');
-        return view('utilities.energy-sources', ['sources' => EnergySource::withCount('readings')->get(), 'editing' => $source]);
+        return view('utilities.edit-energy', ['source' => $source]);
     }
 
     public function updateEnergySource(Request $request, EnergySource $source)

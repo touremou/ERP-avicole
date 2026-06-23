@@ -184,7 +184,7 @@
                         <p class="text-[8px] text-slate-400">{{ __("> 50% = économique") }}</p>
                     </div>
                     <div class="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm text-center">
-                        <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Gasoil consommé") }}</p>
+                        <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Carburant consommé") }}</p>
                         <p class="text-xl font-black text-amber-600">{{ number_format($data['energy']['total_fuel_liters']) }}</p>
                         <p class="text-[8px] text-slate-400">{{ __("litres") }}</p>
                     </div>
@@ -218,7 +218,7 @@
 
                         <div class="grid grid-cols-3 gap-3 mb-4">
                             <div class="text-center">
-                                <p class="text-[8px] font-black text-slate-400 uppercase">{{ __("Gasoil") }}</p>
+                                <p class="text-[8px] font-black text-slate-400 uppercase">{{ __("Carburant") }}</p>
                                 <p class="text-lg font-black {{ $groupe->is_fuel_low ? 'text-red-600' : 'text-slate-900' }}">
                                     {{ number_format($groupe->current_fuel_level ?? 0) }}L
                                 </p>
@@ -241,7 +241,7 @@
                             </div>
                         </div>
 
-                        {{-- Jauge gasoil --}}
+                        {{-- Jauge carburant --}}
                         @php $fuelPct = ($groupe->fuel_tank_capacity > 0) ? min(100, ($groupe->current_fuel_level / $groupe->fuel_tank_capacity) * 100) : 0; @endphp
                         <div class="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
                             <div @class(['h-3 rounded-full transition-all', $fuelPct < 20 ? 'bg-red-500' : ($fuelPct < 40 ? 'bg-amber-500' : 'bg-emerald-500')]) style="width: {{ $fuelPct }}%"></div>
@@ -296,9 +296,10 @@
 
                 {{-- Relevé énergie --}}
                 <div class="bg-amber-50 p-6 rounded-[2.5rem] border border-amber-200">
-                    <h3 class="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-4 flex items-center gap-2">
+                    <h3 class="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-1 flex items-center gap-2">
                         <i class="fa-solid fa-bolt"></i> {{ __("Nouveau relevé énergie") }}
                     </h3>
+                    <p class="text-[9px] font-bold text-amber-500/80 normal-case mb-4">{{ __("Saisissez simplement les heures : le carburant et le coût sont estimés automatiquement.") }}</p>
                     <form method="POST" action="{{ route('utilities.energy.readings.store') }}" class="space-y-3" data-prefill-form="energy">
                         @csrf
                         <div class="grid grid-cols-2 gap-3">
@@ -319,11 +320,11 @@
                         </select>
                         @endif
                         <div class="grid grid-cols-3 gap-3">
-                            <input type="number" name="hours_run" step="0.5" min="0" max="24" required placeholder="{{ __('Heures') }}" class="bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
-                            <input type="number" name="fuel_consumed_liters" step="0.1" min="0" placeholder="{{ __('Gasoil (L)') }}" class="bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
+                            <input type="number" name="hours_run" step="0.5" min="0" max="24" required placeholder="{{ __('Heures *') }}" class="bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
+                            <input type="number" name="fuel_consumed_liters" step="0.1" min="0" placeholder="{{ __('Carburant L (auto)') }}" class="bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
                             <input type="number" name="outage_hours" step="0.5" min="0" max="24" placeholder="{{ __('Coupures (h)') }}" class="bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
                         </div>
-                        <input type="number" name="cost" step="100" min="0" placeholder="{{ __('Coût journalier GNF') }}" class="w-full bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
+                        <input type="number" name="cost" step="100" min="0" placeholder="{{ __('Coût GNF (auto si vide)') }}" class="w-full bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
                         <button type="submit" class="w-full bg-amber-500 text-white py-3 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-amber-600 transition-all border-none cursor-pointer">
                             <i class="fa-solid fa-check mr-1"></i> {{ __("Enregistrer") }}
                         </button>

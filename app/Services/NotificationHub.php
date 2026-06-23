@@ -81,7 +81,7 @@ class NotificationHub
             ->where('alert_threshold', '>', 0)
             ->get(['item_name', 'current_quantity', 'unit']);
 
-        // Gasoil
+        // Carburant
         $groupes = EnergySource::groupes()->get();
         $fuelAlerts = $groupes->filter(fn($g) => $g->is_fuel_low);
 
@@ -139,7 +139,7 @@ class NotificationHub
         if ($fuelAlerts->count() > 0 || $lowCiternes->count() > 0) {
             $lines[] = "⚡ *ALERTES RESSOURCES*";
             foreach ($fuelAlerts as $g) {
-                $lines[] = "  ⛽ {$g->name} : *{$g->fuel_autonomy_days}j* d'autonomie gasoil";
+                $lines[] = "  ⛽ {$g->name} : *{$g->fuel_autonomy_days}j* d'autonomie carburant";
             }
             foreach ($lowCiternes as $c) {
                 $lines[] = "  💧 {$c->name} : *{$c->current_level_percent}%*";
@@ -351,7 +351,7 @@ class NotificationHub
     }
 
     /**
-     * Alerte gasoil bas.
+     * Alerte carburant bas.
      */
     public function alertFuelLow(EnergySource $source): void
     {
@@ -359,13 +359,13 @@ class NotificationHub
             ? "{$source->fuel_autonomy_hours}h de fonctionnement"
             : "{$source->fuel_autonomy_days} jour(s)";
 
-        $message = "⛽ *GASOIL CRITIQUE*\n\n"
+        $message = "⛽ *CARBURANT CRITIQUE*\n\n"
             . "Groupe : *{$source->name}*\n"
             . "Autonomie : *{$autonomyLabel}*\n"
             . "Niveau cuve : {$source->current_fuel_level}L / {$source->fuel_tank_capacity}L\n\n"
-            . "Commander du gasoil AUJOURD'HUI.";
+            . "Commander du carburant AUJOURD'HUI.";
 
-        $this->broadcast('alert_energy', $message, 'Gasoil ' . $source->name, 'critique');
+        $this->broadcast('alert_energy', $message, 'Carburant ' . $source->name, 'critique');
     }
 
     /**

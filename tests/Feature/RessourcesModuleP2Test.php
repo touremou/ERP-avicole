@@ -1,7 +1,9 @@
 <?php
 
 use App\Models\AssetMaintenanceLog;
+use App\Models\EnergyReading;
 use App\Models\EnergySource;
+use App\Models\FuelPurchase;
 use App\Models\TaskAssignment;
 use Tests\Helpers\AviSmartTestHelper;
 
@@ -234,6 +236,103 @@ test('maintenance:check ne crée pas de doublon si la tâche existe déjà', fun
         ->count();
 
     expect($count)->toBe(1);
+});
+
+// ─── Anti-corvée : estimation auto carburant & coût ──────────────────────────
+
+test('un relevé énergie sans carburant l\'estime depuis les heures et l\'historique', function () {
+    $source = EnergySource::create([
+        'farm_id' => $this->farm->id, 'name' => 'Groupe Conso', 'type' => 'groupe',
+        'fuel_type' => 'gasoil', 'is_active' => true, 'current_fuel_level' => 500,
+    ]);
+
+    // Historique : 100 L pour 10 h → 10 L/h
+    EnergyReading::create([
+        'farm_id' => $this->farm->id, 'energy_source_id' => $source->id,
+        'reading_date' => now()->subDay()->toDateString(), 'user_id' => $this->operatorUser->id,
+        'hours_run' => 10, 'fuel_consumed_liters' => 100,
+    ]);
+
+    $this->actingAs($this->operatorUser);
+
+    // Nouveau relevé : seulement les heures
+    $this->post(route('utilities.energy.readings.store'), [
+        'energy_source_id' => $source->id,
+        'reading_date'     => now()->toDateString(),
+        'hours_run'        => 6,
+    ])->assertRedirect();
+
+    $reading = EnergyReading::where('energy_source_id', $source->id)
+        ->whereDate('reading_date', now()->toDateString())->first();
+
+    // 6 h × 10 L/h = 60 L estimés
+    expect((float) $reading->fuel_consumed_liters)->toBe(60.0);
+});
+
+test('un relevé énergie sans coût le calcule depuis le carburant et le prix au litre', function () {
+    $source = EnergySource::create([
+        'farm_id' => $this->farm->id, 'name' => 'Groupe Coût', 'type' => 'groupe',
+        'fuel_type' => 'gasoil', 'is_active' => true, 'current_fuel_level' => 500,
+    ]);
+
+    // Dernier prix d'achat connu : 13 000 GNF/L
+    FuelPurchase::create([
+        'farm_id' => $this->farm->id, 'energy_source_id' => $source->id,
+        'purchase_date' => now()->subDays(2)->toDateString(), 'user_id' => $this->operatorUser->id,
+        'quantity_liters' => 200, 'unit_price' => 13000, 'total_cost' => 2_600_000,
+    ]);
+
+    $this->actingAs($this->operatorUser);
+
+    $this->post(route('utilities.energy.readings.store'), [
+        'energy_source_id'     => $source->id,
+        'reading_date'         => now()->toDateString(),
+        'hours_run'            => 5,
+        'fuel_consumed_liters' => 40,
+    ])->assertRedirect();
+
+    $reading = EnergyReading::where('energy_source_id', $source->id)
+        ->whereDate('reading_date', now()->toDateString())->first();
+
+    // 40 L × 13 000 = 520 000 GNF
+    expect((float) $reading->cost)->toBe(520_000.0);
+});
+
+test('une valeur de coût saisie manuellement n\'est pas écrasée', function () {
+    $source = EnergySource::create([
+        'farm_id' => $this->farm->id, 'name' => 'Groupe Manuel', 'type' => 'groupe',
+        'fuel_type' => 'gasoil', 'is_active' => true,
+    ]);
+
+    $this->actingAs($this->operatorUser);
+
+    $this->post(route('utilities.energy.readings.store'), [
+        'energy_source_id'     => $source->id,
+        'reading_date'         => now()->toDateString(),
+        'hours_run'            => 5,
+        'fuel_consumed_liters' => 40,
+        'cost'                 => 999_999,
+    ])->assertRedirect();
+
+    $reading = EnergyReading::where('energy_source_id', $source->id)
+        ->whereDate('reading_date', now()->toDateString())->first();
+
+    expect((float) $reading->cost)->toBe(999_999.0);
+});
+
+test('le formulaire d\'édition d\'une source affiche les champs actif', function () {
+    $source = EnergySource::create([
+        'farm_id' => $this->farm->id, 'name' => 'Groupe Edit', 'type' => 'groupe',
+        'is_active' => true, 'purchase_price' => 50_000_000, 'service_contract_ref' => 'CTR-9',
+    ]);
+
+    $this->actingAs($this->managerUser);
+
+    $this->get(route('utilities.energy.sources.edit', $source))
+        ->assertOk()
+        ->assertSee('Registre d\'actif')
+        ->assertSee('CTR-9')
+        ->assertSee('name="depreciation_years"', false);
 });
 
 test('maintenance:check ignore les groupes dont la maintenance n\'est pas due', function () {

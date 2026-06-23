@@ -114,20 +114,36 @@ class EnergySource extends Model
     {
         if ($this->type !== 'groupe' || ! $this->current_fuel_level) return null;
 
-        $recentReadings = $this->readings()
-            ->where('reading_date', '>=', now()->subDays(7))
-            ->whereNotNull('fuel_consumed_liters')
-            ->where('hours_run', '>', 0)
-            ->get(['fuel_consumed_liters', 'hours_run']);
+        $litersPerHour = $this->averageLitersPerHour();
 
-        $totalFuel  = $recentReadings->sum('fuel_consumed_liters');
-        $totalHours = $recentReadings->sum('hours_run');
+        if (! $litersPerHour) return null;
 
-        if ($totalFuel <= 0 || $totalHours <= 0) return null;
+        return (int) floor($this->current_fuel_level / $litersPerHour);
+    }
 
-        $litersPerHour = $totalFuel / $totalHours;
+    /**
+     * Consommation horaire moyenne (L/h) sur les 7 derniers jours, avec repli
+     * sur tout l'historique. Sert à la fois au calcul d'autonomie et à
+     * l'estimation automatique du carburant consommé lors d'un relevé (pour
+     * éviter la double saisie heures + litres).
+     */
+    public function averageLitersPerHour(): ?float
+    {
+        $compute = function ($query) {
+            $rows = $query
+                ->whereNotNull('fuel_consumed_liters')
+                ->where('hours_run', '>', 0)
+                ->get(['fuel_consumed_liters', 'hours_run']);
 
-        return $litersPerHour > 0 ? (int) floor($this->current_fuel_level / $litersPerHour) : null;
+            $fuel  = $rows->sum('fuel_consumed_liters');
+            $hours = $rows->sum('hours_run');
+
+            return ($fuel > 0 && $hours > 0) ? $fuel / $hours : null;
+        };
+
+        // Priorité aux 7 derniers jours (régime récent), repli sur l'historique.
+        return $compute($this->readings()->where('reading_date', '>=', now()->subDays(7)))
+            ?? $compute($this->readings());
     }
 
     public function getNeedsMaintenanceAttribute(): bool

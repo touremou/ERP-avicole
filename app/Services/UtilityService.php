@@ -115,10 +115,10 @@ class UtilityService
         $totalKwh = (clone $readings)->sum('kwh_produced');
         $edgValue = $totalKwh * (float) setting('energie.kwh_price_edg', 0);
 
-        // Conso gasoil
+        // Conso carburant
         $totalFuel = (clone $readings)->sum('fuel_consumed_liters');
         $fuelCostPerLiter = FuelPurchase::where('purchase_date', '>=', $from)
-            ->avg('unit_price') ?? 12000; // Prix moyen gasoil Guinée
+            ->avg('unit_price') ?? 12000; // Prix moyen carburant Guinée
 
         // Évolution par jour (7 derniers jours)
         $dailyTrend = EnergyReading::select(
@@ -201,7 +201,7 @@ class UtilityService
             ];
         }
 
-        // Gasoil bas (autonomie sous le seuil paramétrable energie.autonomy_alert_hours)
+        // Carburant bas (autonomie sous le seuil paramétrable energie.autonomy_alert_hours)
         $alertHours = (float) setting('energie.autonomy_alert_hours', 24);
         foreach (EnergySource::groupes()->get() as $groupe) {
             if ($groupe->is_fuel_low) {
@@ -211,7 +211,7 @@ class UtilityService
                 $alerts[] = [
                     'type'     => 'fuel',
                     'severity' => 'critique',
-                    'title'    => "Gasoil {$groupe->name} critique",
+                    'title'    => "Carburant {$groupe->name} critique",
                     'message'  => "Autonomie : {$autonomyLabel}. Commander immédiatement.",
                     'icon'     => 'fa-gas-pump',
                 ];
