@@ -77,6 +77,19 @@ class MillProductionController extends Controller
     */
     public function store(StoreMillProductionRequest $request): RedirectResponse
     {
+        // Interdit de planifier un OP sur une machine déjà engagée dans une
+        // production "En cours" : une machine ne peut traiter qu'un lot à la fois.
+        $busyIds = DB::table('mill_production_machine')
+            ->join('mill_productions', 'mill_productions.id', '=', 'mill_production_machine.mill_production_id')
+            ->whereIn('mill_production_machine.mill_machine_id', $request->machine_ids)
+            ->where('mill_productions.status', 'En cours')
+            ->pluck('mill_production_machine.mill_machine_id');
+
+        if ($busyIds->isNotEmpty()) {
+            $names = MillMachine::whereIn('id', $busyIds)->pluck('name')->join(', ');
+            return back()->withInput()->with('error', "Machine(s) déjà en production active : {$names}. Clôturez l'OP en cours avant d'en créer un nouveau.");
+        }
+
         $totalWeight = (float) ($request->nb_bags * 50);
 
         $production = DB::transaction(function () use ($request, $totalWeight) {

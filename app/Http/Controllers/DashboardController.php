@@ -527,13 +527,16 @@ class DashboardController extends Controller
             ]);
         }
 
-        // Stocks sous seuil.
-        foreach ($lowStocks as $s) {
+        // Stocks sous seuil — une seule ligne résumée (le détail est dans le
+        // bloc dédié sous le Centre de Contrôle, inutile de répéter chaque article).
+        if ($lowStocks->isNotEmpty()) {
+            $hasEmpty = $lowStocks->where('current_quantity', '<=', 0)->isNotEmpty();
             $out->push([
-                'level' => 'attention', 'icon' => 'fa-boxes-stacked',
-                'title' => 'Stock sous seuil',
-                'detail' => "{$s->item_name} — {$s->current_quantity} {$s->unit} (seuil {$s->alert_threshold}).",
-                'url' => route('stocks.index'),
+                'level'  => $hasEmpty ? 'critique' : 'attention',
+                'icon'   => 'fa-boxes-stacked',
+                'title'  => 'Stocks sous seuil',
+                'detail' => "{$lowStocks->count()} article(s) en dessous du seuil de réapprovisionnement.",
+                'url'    => route('stocks.index'),
             ]);
         }
 

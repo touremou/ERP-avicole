@@ -113,10 +113,18 @@
                                 <label class="block text-[10px] font-black text-blue-500 uppercase mb-4 tracking-widest italic leading-none">Consommation (Kg)</label>
                                 <div class="flex items-center justify-between gap-4">
                                     <button type="button" onclick="changeVal('feed_consumed', -1)" class="w-12 h-12 shrink-0 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white transition-all font-black text-lg">-1</button>
-                                    <input type="number" name="feed_consumed" id="feed_consumed" value="{{ old('feed_consumed', 0) }}" min="0" step="0.1" oninput="updateStats()" 
+                                    <input type="number" name="feed_consumed" id="feed_consumed" value="{{ old('feed_consumed', 0) }}" min="0" step="0.1" oninput="updateStats()"
                                         class="w-full text-center text-5xl font-black text-slate-800 outline-none bg-transparent border-none focus:ring-0 p-0 m-0 leading-none italic">
                                     <button type="button" onclick="changeVal('feed_consumed', 5)" class="w-12 h-12 shrink-0 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white transition-all font-black text-lg">+5</button>
                                 </div>
+                                @if(($suggestedFeed ?? null) > 0)
+                                <button type="button"
+                                    onclick="document.getElementById('feed_consumed').value={{ round($suggestedFeed, 1) }}; updateStats();"
+                                    class="mt-3 w-full flex items-center justify-between px-4 py-2 bg-blue-50 hover:bg-blue-100 rounded-xl border border-blue-100 transition cursor-pointer">
+                                    <span class="text-[8px] font-black text-blue-500 uppercase tracking-widest italic">Moy. 7j (repère)</span>
+                                    <span class="text-[10px] font-black text-blue-700 italic">{{ round($suggestedFeed, 1) }} kg</span>
+                                </button>
+                                @endif
                             </div>
 
                             <div class="pt-4 border-t border-slate-50">
@@ -225,15 +233,20 @@
                                     <input type="number" name="qty_quarantine_out" value="0" min="0" class="w-full bg-transparent text-center text-3xl font-black text-emerald-600 border-none outline-none italic">
                                 </div>
                             </div>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 italic font-black">
-                                <select id="t_type" name="treatment_type" class="p-4 bg-slate-50 border-none rounded-2xl text-[10px] uppercase shadow-inner outline-none appearance-none cursor-pointer italic font-black">
-                                    <option value="">-- ACTE --</option>
-                                    <option value="Vaccin">💉 Vaccin</option>
-                                    <option value="Antibiotique">💊 Antibiotique</option>
-                                    <option value="Vitamine">✨ Vitamine</option>
-                                </select>
-                                <input id="t_name" type="text" name="treatment_name" placeholder="NOM PRODUIT" class="p-4 bg-slate-50 border-none rounded-2xl text-[10px] uppercase shadow-inner outline-none italic font-black">
-                            </div>
+                            {{-- Acte sanitaire : lien vers le registre complet d'interventions --}}
+                            <a href="{{ route('health.create', ['batch_id' => $batch->id]) }}"
+                               class="flex items-center justify-between gap-3 p-4 bg-rose-50 hover:bg-rose-100 rounded-2xl border border-rose-100 transition-all no-underline group">
+                                <div class="flex items-center gap-3">
+                                    <span class="w-8 h-8 bg-rose-600 rounded-xl flex items-center justify-center text-white text-xs shrink-0">
+                                        <i class="fa-solid fa-heart-pulse"></i>
+                                    </span>
+                                    <div>
+                                        <p class="text-[10px] font-black text-rose-700 uppercase italic leading-none">{{ __("Enregistrer un acte sanitaire") }}</p>
+                                        <p class="text-[8px] font-bold text-rose-400 mt-0.5 leading-none">{{ __("Vaccin · Traitement · Vitamine · Désinfection") }}</p>
+                                    </div>
+                                </div>
+                                <i class="fa-solid fa-arrow-right text-rose-300 group-hover:text-rose-600 transition text-xs"></i>
+                            </a>
                         </div>
                         {{-- Bien-être animal : sujets vivants en souffrance (boiterie, picage). --}}
                         <div class="grid grid-cols-2 gap-4 mb-6">

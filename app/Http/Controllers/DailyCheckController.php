@@ -85,7 +85,14 @@ class DailyCheckController extends Controller
         // cache. Sert à fiabiliser le THI (BatchAdvisorService::environment).
         $weather = $this->suggestedWeather($batch);
 
-        return view('daily-checks.create', compact('batch', 'stockData', 'phases', 'weather'));
+        // Suggestion dose : moyenne des 7 derniers pointages (arrondie au kg).
+        // Affichée comme repère, non pré-remplie pour ne pas biaiser la saisie.
+        $suggestedFeed = $batch->dailyChecks()
+            ->latest('check_date')
+            ->take(7)
+            ->avg('feed_consumed');
+
+        return view('daily-checks.create', compact('batch', 'stockData', 'phases', 'weather', 'suggestedFeed'));
     }
 
     /**
