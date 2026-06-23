@@ -11,9 +11,18 @@
                 </div>
             </div>
             @can('cultures.C')
-            <button onclick="document.getElementById('weather-modal').classList.remove('hidden')" class="bg-slate-900 text-white px-8 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-sky-600 transition-all shadow-2xl italic flex items-center gap-2">
-                <i class="fa-solid fa-plus"></i> {{ __("Nouveau relevé") }}
-            </button>
+            <div class="flex items-center gap-3">
+                <form method="POST" action="{{ route('weather.fetch') }}">
+                    @csrf
+                    <button type="submit" title="{{ __('Récupère automatiquement la météo du jour pour la ferme (Open-Meteo)') }}"
+                            class="bg-sky-500 text-white px-6 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-sky-600 transition-all shadow-xl italic flex items-center gap-2">
+                        <i class="fa-solid fa-cloud-arrow-down"></i> {{ __("Récupérer la météo") }}
+                    </button>
+                </form>
+                <button onclick="document.getElementById('weather-modal').classList.remove('hidden')" class="bg-slate-900 text-white px-8 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-sky-600 transition-all shadow-2xl italic flex items-center gap-2">
+                    <i class="fa-solid fa-plus"></i> {{ __("Nouveau relevé") }}
+                </button>
+            </div>
             @endcan
         </div>
     </x-slot>
@@ -23,6 +32,11 @@
             @if(session('success'))
                 <div class="p-5 bg-emerald-500 text-white rounded-[2rem] font-black text-[10px] uppercase tracking-[0.2em] shadow-xl flex items-center italic">
                     <i class="fa-solid fa-check-double mr-3 text-lg"></i> {{ session('success') }}
+                </div>
+            @endif
+            @if(session('error'))
+                <div class="p-5 bg-rose-500 text-white rounded-[2rem] font-black text-[10px] uppercase tracking-[0.2em] shadow-xl flex items-center italic">
+                    <i class="fa-solid fa-triangle-exclamation mr-3 text-lg"></i> {{ session('error') }}
                 </div>
             @endif
 

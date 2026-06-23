@@ -187,15 +187,19 @@
                                 <input type="number" name="water_consumed" min="0" value="0" step="0.1" class="w-full bg-white/5 border border-white/10 p-4 rounded-2xl text-xl text-blue-400 text-center outline-none italic font-black">
                             </div>
                             <div class="space-y-2">
-                                <label class="block text-[8px] font-black text-slate-500 uppercase tracking-widest text-center leading-none">Temp. (°C)</label>
+                                <label class="block text-[8px] font-black text-slate-500 uppercase tracking-widest text-center leading-none">Temp. (°C)
+                                    @if(($weather['temp_max'] ?? null) !== null)<i class="fa-solid fa-cloud-sun text-sky-400 ml-1" title="Pré-rempli météo ({{ $weather['label'] ?? '' }})"></i>@endif
+                                </label>
                                 <div class="flex bg-white/5 rounded-2xl border border-white/10 overflow-hidden">
-                                    <input type="number" name="temp_min" placeholder="Min" step="0.1" class="w-1/2 bg-transparent border-none p-4 text-cyan-400 text-center text-sm outline-none font-black italic">
-                                    <input type="number" name="temp_max" placeholder="Max" step="0.1" class="w-1/2 bg-transparent border-none p-4 text-orange-400 text-center text-sm outline-none border-l border-white/10 font-black italic">
+                                    <input type="number" name="temp_min" placeholder="Min" step="0.1" value="{{ old('temp_min', $weather['temp_min'] ?? '') }}" class="w-1/2 bg-transparent border-none p-4 text-cyan-400 text-center text-sm outline-none font-black italic">
+                                    <input type="number" name="temp_max" placeholder="Max" step="0.1" value="{{ old('temp_max', $weather['temp_max'] ?? '') }}" class="w-1/2 bg-transparent border-none p-4 text-orange-400 text-center text-sm outline-none border-l border-white/10 font-black italic">
                                 </div>
                             </div>
                             <div class="space-y-2 text-center">
-                                <label class="block text-[8px] font-black text-slate-500 uppercase tracking-widest leading-none">Humidité (%)</label>
-                                <input type="number" name="humidity" min="0" max="100" class="w-full bg-white/5 border border-white/10 p-4 rounded-2xl text-xl text-purple-400 text-center outline-none font-black italic">
+                                <label class="block text-[8px] font-black text-slate-500 uppercase tracking-widest leading-none">Humidité (%)
+                                    @if(($weather['humidity'] ?? null) !== null)<i class="fa-solid fa-cloud-sun text-sky-400 ml-1" title="Pré-rempli météo ({{ $weather['label'] ?? '' }})"></i>@endif
+                                </label>
+                                <input type="number" name="humidity" min="0" max="100" value="{{ old('humidity', $weather['humidity'] ?? '') }}" class="w-full bg-white/5 border border-white/10 p-4 rounded-2xl text-xl text-purple-400 text-center outline-none font-black italic">
                             </div>
                             <div class="space-y-2 text-center">
                                 <label class="block text-[8px] font-black text-slate-500 uppercase tracking-widest leading-none">Poids moyen / sujet (kg)</label>

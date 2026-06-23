@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Farm;
 use App\Models\Plot;
 use App\Models\WeatherReading;
+use App\Services\WeatherService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 
@@ -68,6 +70,39 @@ class WeatherController extends Controller
         WeatherReading::create($validated);
 
         return redirect()->route('cultures.dashboard', ['tab' => 'meteo'])->with('success', 'Relevé météo enregistré.');
+    }
+
+    /**
+     * Récupère la météo du jour (Open-Meteo) et actualise le relevé de la ferme
+     * courante — déclenchement manuel depuis l'interface (bouton).
+     */
+    public function fetchNow(Request $request, WeatherService $weather)
+    {
+        if (Gate::denies('cultures.C')) {
+            return back()->with('error', 'Action non autorisée.');
+        }
+
+        if (! $weather->enabled()) {
+            return back()->with('error', 'Le service météo automatique est désactivé.');
+        }
+
+        $farmId = session('current_farm_id') ?? Farm::defaultId();
+        $farm   = $farmId ? Farm::find($farmId) : null;
+
+        if (! $farm) {
+            return back()->with('error', 'Ferme introuvable pour la récupération météo.');
+        }
+
+        $date = $request->input('reading_date', now()->toDateString());
+        $data = $weather->dailyForFarm($farm, $date);
+
+        if ($data === null) {
+            return back()->with('error', "Météo indisponible — renseignez la ville de la ferme « {$farm->name} » ou réessayez plus tard.");
+        }
+
+        $weather->storeReading($farm, $date, $data);
+
+        return back()->with('success', "Météo du {$date} récupérée : {$data['temperature_max']}°C, {$data['humidity_pct']}% HR, {$data['rainfall_mm']} mm.");
     }
 
     public function edit(WeatherReading $weather)

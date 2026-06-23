@@ -328,6 +328,7 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('cultures/weather')->name('weather.')->controller(WeatherController::class)->group(function () {
         Route::get('/', 'index')->name('index')->middleware('can:L');
         Route::post('/', 'store')->name('store')->middleware('can:C');
+        Route::post('/fetch', 'fetchNow')->name('fetch')->middleware('can:C');
         Route::get('/{weather}/edit', 'edit')->name('edit')->where('weather', '[0-9]+')->middleware('can:M');
         Route::put('/{weather}', 'update')->name('update')->middleware('can:M');
         Route::delete('/{weather}', 'destroy')->name('destroy')->middleware('can:S');

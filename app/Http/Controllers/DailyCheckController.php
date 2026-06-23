@@ -80,7 +80,47 @@ class DailyCheckController extends Controller
             }
         }
 
-        return view('daily-checks.create', compact('batch', 'stockData', 'phases'));
+        // Pré-remplissage météo : priorité au relevé du jour de la ferme (rempli
+        // par weather:fetch) ; sinon repli sur une récupération live mise en
+        // cache. Sert à fiabiliser le THI (BatchAdvisorService::environment).
+        $weather = $this->suggestedWeather($batch);
+
+        return view('daily-checks.create', compact('batch', 'stockData', 'phases', 'weather'));
+    }
+
+    /**
+     * Météo suggérée pour pré-remplir le pointage (temp min/max + humidité).
+     *
+     * @return array{temp_min: ?float, temp_max: ?float, humidity: ?float, label: ?string}|null
+     */
+    private function suggestedWeather(Batch $batch): ?array
+    {
+        $farmId = $batch->farm_id ?? session('current_farm_id') ?? \App\Models\Farm::defaultId();
+
+        // 1. Relevé agronomique du jour déjà en base (aucun appel réseau).
+        $reading = \App\Models\WeatherReading::where('farm_id', $farmId)
+            ->whereDate('reading_date', now()->toDateString())
+            ->latest('id')
+            ->first();
+
+        if ($reading) {
+            return [
+                'temp_min' => $reading->temperature_min !== null ? (float) $reading->temperature_min : null,
+                'temp_max' => $reading->temperature_max !== null ? (float) $reading->temperature_max : null,
+                'humidity' => $reading->humidity_pct !== null ? (float) $reading->humidity_pct : null,
+                'label'    => 'relevé du jour',
+            ];
+        }
+
+        // 2. Repli live (mis en cache 1 h) — jamais bloquant pour le formulaire.
+        $farm = $farmId ? \App\Models\Farm::find($farmId) : null;
+        if (! $farm) {
+            return null;
+        }
+
+        $live = app(\App\Services\WeatherService::class)->currentForFarm($farm);
+
+        return $live ? array_merge($live, ['label' => $live['label'] ?? 'météo du jour']) : null;
     }
 
     /**
