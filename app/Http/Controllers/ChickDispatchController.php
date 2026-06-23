@@ -126,13 +126,19 @@ class ChickDispatchController extends Controller
                 $speciesId   = $sourceBatch?->species_id;
                 $productionTypeId = \App\Models\ProductionType::resolveOrCreate('poussiniere', $speciesId)->id;
 
+                // Fallback employee_id : utilisateur connecté → premier employé → 1.
+                $employeeId = $validated['employee_id']
+                    ?? auth()->user()?->employee_id
+                    ?? \App\Models\Employee::first()?->id
+                    ?? 1;
+
                 $batch = Batch::create([
                     'uuid'                   => (string) Str::uuid(),
                     'code'                   => setting('elevage.batch_prefix_poussiniere', 'POUS') . '-' . now()->format('Ymd-His'),
                     'species_id'             => $speciesId,
                     'production_type_id'     => $productionTypeId,
                     'building_id'            => $validated['building_id'],
-                    'employee_id'            => $validated['employee_id'] ?? null,
+                    'employee_id'            => $employeeId,
                     'provider_id'            => $sourceBatch?->provider_id,
                     'model_name'             => $sourceBatch?->model_name ?? 'Non spécifié',
                     'initial_quantity'        => $qty,
