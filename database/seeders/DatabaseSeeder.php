@@ -21,6 +21,10 @@ class DatabaseSeeder extends Seeder
     {
         $this->call(ModuleSeeder::class);
 
+        // Rôles types + comptes de test (Admin, Technicien, Vendeur, Ouvrier)
+        // avec leur matrice module_permissions. Idempotent.
+        $this->call(UserSeeder::class);
+
         // Rôles de base (alignés sur ceux garantis par la migration roles).
         $admin = Role::firstOrCreate(
             ['name' => 'admin'],
