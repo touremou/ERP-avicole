@@ -252,6 +252,7 @@ class CropCycleController extends Controller
             'harvest_date'    => 'required|date',
             'quantity'        => 'required|numeric|min:0.001',
             'unit'            => 'nullable|string|max:20',
+            'net_weight_kg'   => 'nullable|numeric|min:0',
             'loss_quantity'   => 'nullable|numeric|min:0',
             'quality'         => 'nullable|in:' . implode(',', Harvest::QUALITIES),
             'employee_id'     => 'nullable|exists:employees,id',
@@ -366,12 +367,19 @@ class CropCycleController extends Controller
             'harvest_date'  => 'required|date',
             'quantity'      => 'required|numeric|min:0.001',
             'unit'          => 'nullable|string|max:20',
+            'net_weight_kg' => 'nullable|numeric|min:0',
             'loss_quantity' => 'nullable|numeric|min:0',
             'quality'       => 'nullable|in:' . implode(',', Harvest::QUALITIES),
             'employee_id'   => 'nullable|exists:employees,id',
             'unit_price'    => 'nullable|numeric|min:0',
             'notes'         => 'nullable|string|max:500',
         ]);
+
+        // Poids net non saisi mais récolte en kg → on le recale sur la quantité.
+        if (($validated['net_weight_kg'] ?? null) === null
+            && strtolower($validated['unit'] ?? 'kg') === 'kg') {
+            $validated['net_weight_kg'] = $validated['quantity'];
+        }
 
         $harvest->update($validated);
 

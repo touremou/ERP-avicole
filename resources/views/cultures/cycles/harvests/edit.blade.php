@@ -28,7 +28,7 @@
                 </div>
             @endif
 
-            <form action="{{ route('crop-cycles.harvests.update', [$cycle, $harvest]) }}" method="POST" class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm space-y-6">
+            <form action="{{ route('crop-cycles.harvests.update', [$cycle, $harvest]) }}" method="POST" x-data="{ unit: '{{ old('unit', $harvest->unit) }}' }" class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm space-y-6">
                 @csrf @method('PUT')
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
@@ -39,8 +39,14 @@
                         <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Quantité *") }}</label>
                         <div class="flex gap-2">
                             <input type="number" step="0.001" min="0.001" name="quantity" value="{{ old('quantity', $harvest->quantity) }}" required class="w-2/3 bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic text-right">
-                            <input type="text" name="unit" value="{{ old('unit', $harvest->unit) }}" class="w-1/3 bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic text-center">
+                            <input type="text" name="unit" x-model="unit" value="{{ old('unit', $harvest->unit) }}" class="w-1/3 bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic text-center">
                         </div>
+                    </div>
+                    {{-- Poids net pesé : à saisir si l'unité n'est pas le kg. --}}
+                    <div x-show="unit.trim().toLowerCase() !== 'kg'" x-cloak>
+                        <label class="block text-[9px] font-black text-amber-500 uppercase ml-2 mb-1 italic">{{ __("Poids net pesé (kg)") }}</label>
+                        <input type="number" step="0.001" min="0" name="net_weight_kg" value="{{ old('net_weight_kg', $harvest->net_weight_kg) }}" class="w-full bg-amber-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic text-right" placeholder="0.000">
+                        <p class="text-[8px] font-bold text-slate-400 uppercase ml-2 mt-1 italic">{{ __("Pour le calcul du rendement kg/ha") }}</p>
                     </div>
                     <div>
                         <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Pertes") }}</label>

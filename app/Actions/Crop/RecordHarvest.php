@@ -20,9 +20,9 @@ class RecordHarvest
 {
     /**
      * @param array{harvest_date:string, quantity:numeric, unit?:string,
-     *              loss_quantity?:numeric, quality?:string, employee_id?:int,
-     *              unit_price?:numeric, notes?:string, sync_to_stock?:bool,
-     *              stock_item_name?:string} $data
+     *              net_weight_kg?:numeric, loss_quantity?:numeric, quality?:string,
+     *              employee_id?:int, unit_price?:numeric, notes?:string,
+     *              sync_to_stock?:bool, stock_item_name?:string} $data
      */
     public function execute(CropCycle $cycle, array $data): Harvest
     {
@@ -32,12 +32,20 @@ class RecordHarvest
             $unit        = $data['unit'] ?? 'kg';
             $quantity    = (float) $data['quantity'];
 
+            // Poids net pesé (toujours en kg). Si non fourni mais que la récolte
+            // est saisie en kg, on le déduit de la quantité — les KPI de
+            // rendement restent ainsi alimentés sans double saisie.
+            $netWeightKg = isset($data['net_weight_kg']) && $data['net_weight_kg'] !== null && $data['net_weight_kg'] !== ''
+                ? (float) $data['net_weight_kg']
+                : (strtolower($unit) === 'kg' ? $quantity : null);
+
             $harvest = $cycle->harvests()->create([
                 'farm_id'         => $cycle->farm_id,
                 'employee_id'     => $data['employee_id'] ?? null,
                 'harvest_date'    => $data['harvest_date'],
                 'quantity'        => $quantity,
                 'unit'            => $unit,
+                'net_weight_kg'   => $netWeightKg,
                 'loss_quantity'   => $data['loss_quantity'] ?? 0,
                 'quality'         => $data['quality'] ?? Harvest::QUALITY_BON,
                 'unit_price'      => $data['unit_price'] ?? null,

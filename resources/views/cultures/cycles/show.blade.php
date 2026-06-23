@@ -236,7 +236,10 @@
 
                     {{-- Avancement vers le rendement attendu --}}
                     @if($cycle->expected_yield_kg > 0)
-                        @php $progress = min(100, round($cycle->total_harvested / $cycle->expected_yield_kg * 100)); @endphp
+                        @php
+                            $progress = min(100, round($cycle->total_harvested / $cycle->expected_yield_kg * 100));
+                            $gap = $cycle->yield_gap_percent; // peut dépasser ±100 %
+                        @endphp
                         <div class="mt-6 pt-6 border-t border-slate-50">
                             <div class="flex items-center justify-between mb-2">
                                 <span class="text-[8px] font-black text-slate-400 uppercase italic">{{ __("Récolté vs attendu") }}</span>
@@ -245,6 +248,12 @@
                             <div class="h-2.5 bg-slate-100 rounded-full overflow-hidden">
                                 <div class="h-full {{ $progress >= 90 ? 'bg-green-500' : 'bg-amber-400' }} rounded-full" style="width: {{ $progress }}%"></div>
                             </div>
+                            @if($gap !== null)
+                                <p class="mt-2 text-[8px] font-black uppercase italic {{ $gap >= 0 ? 'text-green-600' : 'text-rose-500' }}">
+                                    <i class="fa-solid fa-{{ $gap >= 0 ? 'arrow-trend-up' : 'arrow-trend-down' }} mr-1"></i>
+                                    {{ $gap >= 0 ? '+' : '' }}{{ number_format($gap, 1, ',', ' ') }}% {{ $gap >= 0 ? __("vs rendement attendu") : __("sous le rendement attendu") }}
+                                </p>
+                            @endif
                         </div>
                     @endif
 

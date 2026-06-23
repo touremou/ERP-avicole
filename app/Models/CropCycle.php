@@ -174,20 +174,28 @@ class CropCycle extends Model
     }
 
     /**
-     * Quantité totale récoltée (toutes récoltes confondues), dans l'unité des
-     * récoltes (kg par convention). Utilise la relation déjà chargée si elle
-     * l'est (listes/dashboard l'eager-loadent) pour éviter un N+1.
+     * Poids total récolté en KG (toutes récoltes confondues). S'appuie sur le
+     * poids agronomique effectif de chaque récolte (poids net pesé, ou quantité
+     * si déjà en kg) — et reste donc juste même si certaines récoltes sont
+     * saisies en caisses/sacs. Utilise la relation déjà chargée si elle l'est
+     * (listes/dashboard l'eager-loadent) pour éviter un N+1.
      */
     public function getTotalHarvestedAttribute(): float
     {
-        return (float) ($this->relationLoaded('harvests')
-            ? $this->harvests->sum('quantity')
-            : $this->harvests()->sum('quantity'));
+        if ($this->relationLoaded('harvests')) {
+            return (float) $this->harvests->sum->effective_weight_kg;
+        }
+
+        // Agrégat SQL : COALESCE(poids net, quantité si unité=kg, sinon 0).
+        return (float) $this->harvests()
+            ->sum(\Illuminate\Support\Facades\DB::raw(
+                "COALESCE(net_weight_kg, CASE WHEN LOWER(unit) = 'kg' THEN quantity ELSE 0 END)"
+            ));
     }
 
     /**
-     * Rendement réel à l'hectare (kg/ha) sur la base de la surface emblavée.
-     * Hypothèse : les récoltes sont saisies en kg (unité par défaut).
+     * Rendement réel à l'hectare (kg/ha) sur la base de la surface emblavée,
+     * calculé à partir du poids net pesé (total_harvested, toujours en kg).
      */
     public function getYieldPerHaAttribute(): float
     {
@@ -197,6 +205,21 @@ class CropCycle extends Model
         }
 
         return round($this->total_harvested / $area, 2);
+    }
+
+    /**
+     * Écart de rendement (%) : poids réellement récolté rapporté au rendement
+     * attendu. > 0 = surperformance, < 0 = sous-performance. Null si aucun
+     * rendement attendu n'a été renseigné (comparaison impossible).
+     */
+    public function getYieldGapPercentAttribute(): ?float
+    {
+        $expected = (float) $this->expected_yield_kg;
+        if ($expected <= 0) {
+            return null;
+        }
+
+        return round(($this->total_harvested - $expected) / $expected * 100, 1);
     }
 
     /**

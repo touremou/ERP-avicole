@@ -85,6 +85,86 @@ test('enregistrer une récolte bascule le cycle en phase de récolte et cumule l
     expect($cycle->status)->toBe(CropCycle::STATUS_RECOLTE)
         ->and($cycle->total_harvested)->toBe(800.0)
         ->and($cycle->yield_per_ha)->toBe(400.0); // 800 kg / 2 ha
+
+    // Récolte en kg sans poids net explicite → poids net déduit de la quantité.
+    expect((float) $cycle->harvests()->first()->net_weight_kg)->toBe(800.0);
+});
+
+test('le poids net pesé alimente le rendement même quand la récolte est en caisses', function () {
+    $plot  = makePlot($this->farm->id);
+    $cycle = CropCycle::create([
+        'farm_id'       => $this->farm->id,
+        'plot_id'       => $plot->id,
+        'crop_name'     => 'Tomate',
+        'area_used_ha'  => 2.0,
+        'planting_date' => now()->subMonths(2)->toDateString(),
+    ]);
+
+    // 40 caisses pesées à 600 kg : l'unité commerciale n'est pas le kg, mais le
+    // poids net pesé alimente le tonnage et le rendement kg/ha.
+    $this->actingAs($this->operatorUser)
+        ->post(route('crop-cycles.harvests.store', $cycle), [
+            'harvest_date'  => now()->toDateString(),
+            'quantity'      => 40,
+            'unit'          => 'caisses',
+            'net_weight_kg' => 600,
+        ])
+        ->assertRedirect();
+
+    $cycle->refresh();
+    // total_harvested et rendement reposent sur le POIDS, pas sur les caisses.
+    expect($cycle->total_harvested)->toBe(600.0)
+        ->and($cycle->yield_per_ha)->toBe(300.0); // 600 kg / 2 ha
+});
+
+test('une récolte en unité non-kg sans poids net ne fausse pas le rendement', function () {
+    $plot  = makePlot($this->farm->id);
+    $cycle = CropCycle::create([
+        'farm_id'       => $this->farm->id,
+        'plot_id'       => $plot->id,
+        'crop_name'     => 'Salade',
+        'area_used_ha'  => 1.0,
+        'planting_date' => now()->subMonth()->toDateString(),
+    ]);
+
+    // 100 bottes sans pesée : le poids agronomique reste à 0 (au lieu d'agréger
+    // « 100 » comme s'il s'agissait de kg) — le rendement n'est pas pollué.
+    $cycle->harvests()->create([
+        'farm_id'      => $this->farm->id,
+        'harvest_date' => now()->toDateString(),
+        'quantity'     => 100,
+        'unit'         => 'bottes',
+    ]);
+
+    expect($cycle->total_harvested)->toBe(0.0)
+        ->and($cycle->yield_per_ha)->toBe(0.0);
+});
+
+test('l\'écart de rendement compare le poids récolté au rendement attendu', function () {
+    $plot  = makePlot($this->farm->id);
+    $cycle = CropCycle::create([
+        'farm_id'           => $this->farm->id,
+        'plot_id'           => $plot->id,
+        'crop_name'         => 'Maïs',
+        'area_used_ha'      => 1.0,
+        'expected_yield_kg' => 1000,
+        'planting_date'     => now()->subMonths(3)->toDateString(),
+    ]);
+
+    $cycle->harvests()->create([
+        'farm_id'       => $this->farm->id,
+        'harvest_date'  => now()->toDateString(),
+        'quantity'      => 1100,
+        'unit'          => 'kg',
+        'net_weight_kg' => 1100,
+    ]);
+
+    // 1100 récoltés pour 1000 attendus → +10 %.
+    expect($cycle->yield_gap_percent)->toBe(10.0);
+
+    // Sans rendement attendu, l'écart n'est pas calculable (null).
+    $cycle->update(['expected_yield_kg' => 0]);
+    expect($cycle->fresh()->yield_gap_percent)->toBeNull();
 });
 
 test('une récolte synchronisée alimente le stock (catégorie recoltes)', function () {
