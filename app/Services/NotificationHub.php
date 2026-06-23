@@ -644,6 +644,83 @@ class NotificationHub
     }
 
     /**
+     * Dosage d'aliment recommandé par bâtiment — envoyé aux éleveurs chaque matin.
+     *
+     * Pour chaque lot actif, calcule le dosage via BatchAdvisorService et regroupe
+     * les résultats par bâtiment. Un seul message par ferme est diffusé aux abonnés
+     * du résumé quotidien (réutilise l'opt-in existant).
+     *
+     * @return int Nombre d'envois réussis.
+     */
+    public function sendFeedingDosage(): int
+    {
+        $batches = Batch::active()->live()
+            ->with(['building', 'productionType', 'species', 'dailyChecks'])
+            ->get();
+
+        if ($batches->isEmpty()) {
+            return 0;
+        }
+
+        $advisor   = new \App\Services\BatchAdvisorService();
+        $farmName  = config('whatsapp.farm_name', 'AviSmart');
+        $date      = now()->translatedFormat('l d F Y');
+
+        $byBuilding = $batches->groupBy(fn($b) => $b->building?->name ?? 'Sans bâtiment');
+
+        $lines   = ["🌾 *{$farmName} — Dosage Aliment {$date}*", ''];
+        $hasData = false;
+
+        foreach ($byBuilding as $buildingName => $buildingBatches) {
+            $lines[] = "🏠 *{$buildingName}*";
+            foreach ($buildingBatches as $batch) {
+                $reco = $advisor->recommendation($batch);
+                if ($reco === null) {
+                    $lines[] = "  • {$batch->code} — _barème non disponible_";
+                    continue;
+                }
+                $hasData   = true;
+                $heatFlag  = $reco['environment']['heat_stress'] ? ' 🌡️ THI ' . $reco['environment']['thi'] : '';
+                $lines[]   = "  • *{$batch->code}* — S{$reco['week']} {$reco['phase']}{$heatFlag}";
+                $lines[]   = "    🌾 *{$reco['total']['feed_kg']} kg* aliment ({$reco['per_subject']['feed_g']} g/sujet)";
+                $lines[]   = "    💧 *{$reco['total']['water_l']} L* eau ({$reco['per_subject']['water_ml']} ml/sujet)";
+
+                // Autonomie aliment
+                $auto = $advisor->feedAutonomy($batch);
+                if ($auto !== null) {
+                    $autoEmoji = $auto['is_critical'] ? '🔴' : ($auto['is_warning'] ? '⚠️' : '✅');
+                    $lines[]   = "    {$autoEmoji} Stock : {$auto['days']}j d'autonomie ({$auto['stock_kg']} kg)";
+                }
+            }
+            $lines[] = '';
+        }
+
+        if (! $hasData) {
+            return 0;
+        }
+
+        $lines[] = "— {$farmName} ERP 🇬🇳";
+        $message  = implode("\n", $lines);
+
+        $recipients = $this->getSubscribers('daily_summary');
+        $sent       = 0;
+
+        foreach ($recipients as $user) {
+            if ($this->whatsapp->send($user->whatsapp_phone, $message, [
+                'user_id' => $user->id,
+                'type'    => 'daily_summary',
+                'title'   => 'Dosage Aliment',
+            ])) {
+                $sent++;
+            }
+        }
+
+        Log::info("NotificationHub: dosage aliment envoyé à {$sent} destinataire(s).");
+
+        return $sent;
+    }
+
+    /**
      * Alertes agronomiques quotidiennes : pour chaque cycle de culture en cours,
      * compile les risques semis/récolte et les alertes météo de sévérité élevée
      * (critique / attention) produits par CropAdvisorService, et diffuse un

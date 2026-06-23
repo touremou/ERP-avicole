@@ -29,3 +29,6 @@ Schedule::command('cultures:harvest-reminders')->dailyAt('06:30');
 
 // Alertes agronomiques (risques semis/récolte, météo) — module Cultures
 Schedule::command('cultures:agronomic-alerts')->dailyAt('06:45');
+
+// Dosage aliment recommandé par bâtiment (BatchAdvisorService)
+Schedule::command('avismart:feeding-dosage')->dailyAt('06:00');

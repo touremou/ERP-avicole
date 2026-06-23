@@ -383,18 +383,21 @@
                     <h3 class="text-[10px] font-black uppercase text-slate-400 tracking-widest italic flex items-center gap-2 leading-none">
                         <i class="fa-solid fa-brain text-blue-500"></i> {{ __("Recommandations du jour") }}
                     </h3>
-                    <span class="text-[8px] font-black uppercase text-slate-400 italic">
+                    <span class="text-[8px] font-black uppercase text-slate-400 italic flex items-center gap-1.5 flex-wrap">
                         @if($env['heat_stress'])
-                            <span class="text-rose-500"><i class="fa-solid fa-temperature-high"></i> {{ __("Stress thermique") }}</span> ·
+                            <span class="text-rose-500"><i class="fa-solid fa-temperature-high"></i> THI {{ $env['thi'] ?? '—' }}</span> ·
                         @endif
                         {{ $seasonLabels[$env['season']] ?? $env['season'] }} ·
                         {{ $env['temp_c'] !== null ? number_format($env['temp_c'], 0) . ' °C' : '—' }}
+                        @if($env['humidity'] !== null)
+                            / {{ number_format($env['humidity'], 0) }} %HR
+                        @endif
                         <span class="opacity-50">({{ $env['source'] === 'pointage' ? __('relevé') : __('estimé') }})</span>
                     </span>
                 </div>
 
                 {{-- Dosage recommandé --}}
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                <div class="grid grid-cols-2 md:grid-cols-4 {{ !empty($feedAutonomy) ? 'lg:grid-cols-5' : '' }} gap-4 mb-4">
                     <div class="bg-orange-50 border border-orange-100 rounded-[1.5rem] p-4 text-center">
                         <p class="text-[8px] font-black text-orange-400 uppercase tracking-widest italic mb-1">{{ __("Aliment / lot / jour") }}</p>
                         <h4 class="text-2xl font-black text-orange-600 tracking-tighter italic">{{ number_format($feedAdvice['total']['feed_kg'], 1) }}<small class="text-[10px] ml-1 opacity-60">kg</small></h4>
@@ -415,6 +418,18 @@
                         <h4 class="text-2xl font-black text-emerald-600 tracking-tighter italic">{{ number_format($feedAdvice['total']['subjects']) }}</h4>
                         <p class="text-[8px] font-black text-slate-400 uppercase mt-1">{{ $feedAdvice['model_name'] ?: __('barème générique') }}</p>
                     </div>
+                    @if(!empty($feedAutonomy))
+                    @php
+                        $autonomyColor = $feedAutonomy['is_critical'] ? 'rose' : ($feedAutonomy['is_warning'] ? 'amber' : 'slate');
+                    @endphp
+                    <div class="bg-{{ $autonomyColor }}-50 border border-{{ $autonomyColor }}-100 rounded-[1.5rem] p-4 text-center col-span-2 md:col-span-1">
+                        <p class="text-[8px] font-black text-{{ $autonomyColor }}-400 uppercase tracking-widest italic mb-1">{{ __("Autonomie stock") }}</p>
+                        <h4 class="text-2xl font-black text-{{ $autonomyColor }}-600 tracking-tighter italic">
+                            {{ $feedAutonomy['days'] }}<small class="text-[10px] ml-1 opacity-60">j</small>
+                        </h4>
+                        <p class="text-[8px] font-black text-slate-400 uppercase mt-1">{{ number_format($feedAutonomy['stock_kg'], 0) }} kg dispo</p>
+                    </div>
+                    @endif
                 </div>
 
                 {{-- Conseils dérivés --}}

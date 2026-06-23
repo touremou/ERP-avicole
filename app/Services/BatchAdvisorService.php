@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Batch;
 use App\Models\DailyCheck;
 use App\Models\ProductionNorm;
+use App\Models\Stock;
 use Illuminate\Support\Collection;
 
 /**
@@ -22,15 +23,12 @@ use Illuminate\Support\Collection;
  */
 class BatchAdvisorService
 {
-    /** Seuil de confort thermique (°C) au-delà duquel le stress chaleur agit. */
-    private const HEAT_THRESHOLD = 30.0;
-
-    /** Hausse d'abreuvement par °C au-dessus du seuil (caps à +60 %). */
-    private const WATER_PER_DEGREE = 0.04;
+    /** Hausse d'abreuvement par unité de THI au-dessus du seuil espèce (plafond +60 %). */
+    private const WATER_PER_THI = 0.05;
     private const WATER_MAX_UPLIFT = 0.60;
 
-    /** Baisse d'appétit par °C au-dessus du seuil (plancher -15 %). */
-    private const FEED_PER_DEGREE = 0.012;
+    /** Baisse d'appétit par unité de THI au-dessus du seuil espèce (plancher −15 %). */
+    private const FEED_PER_THI = 0.015;
     private const FEED_MIN_FACTOR = 0.85;
 
     /** Ratio eau/aliment plancher pour la volaille (ml/g). */
@@ -121,20 +119,43 @@ class BatchAdvisorService
         $out = [];
         $env = $reco['environment'];
 
-        // 1. Stress thermique.
+        // 1. Stress thermique (THI).
         if ($env['heat_stress']) {
-            $tempLabel = $env['temp_c'] !== null
-                ? number_format($env['temp_c'], 1) . ' °C'
-                : 'saison chaude';
-            $uplift = round(($env['water_factor'] - 1) * 100);
+            $tempLabel = number_format($env['temp_c'], 1) . ' °C';
+            $humLabel  = $env['humidity'] !== null ? number_format($env['humidity'], 0) . ' %HR' : '';
+            $thiLabel  = 'THI ' . $env['thi'];
+            $uplift    = round(($env['water_factor'] - 1) * 100);
+            $isLater = isset($env['thi']) && $env['thi'] >= ($env['thi_threshold'] + 3.0);
             $out[] = [
-                'severity' => $env['temp_c'] !== null && $env['temp_c'] >= 35 ? 'critique' : 'attention',
+                'severity' => $isLater ? 'critique' : 'attention',
                 'icon'     => 'fa-temperature-high',
                 'title'    => 'Stress thermique',
-                'message'  => "Conditions chaudes ({$tempLabel}) : besoin en eau majoré d'environ {$uplift} %"
-                    . " et appétit réduit. Assurer un abreuvement frais permanent, distribuer l'aliment aux"
-                    . " heures fraîches (matin/soir) et ventiler le bâtiment.",
+                'message'  => "{$thiLabel} ({$tempLabel}" . ($humLabel ? ", {$humLabel}" : '') . ") : besoin en eau majoré"
+                    . " d'environ {$uplift} % et appétit réduit. Distribuer l'aliment aux heures fraîches"
+                    . " (matin/soir), assurer un abreuvement frais permanent et ventiler le bâtiment.",
             ];
+        }
+
+        // 1b. Stock aliment — autonomie.
+        $autonomy = $this->feedAutonomy($batch);
+        if ($autonomy !== null) {
+            if ($autonomy['is_critical']) {
+                $out[] = [
+                    'severity' => 'critique',
+                    'icon'     => 'fa-box-open',
+                    'title'    => 'Stock aliment critique',
+                    'message'  => "Autonomie estimée : {$autonomy['days']} jour(s) ({$autonomy['stock_kg']} kg"
+                        . " disponibles pour {$autonomy['daily_kg']} kg/j recommandés). Commander immédiatement.",
+                ];
+            } elseif ($autonomy['is_warning']) {
+                $out[] = [
+                    'severity' => 'attention',
+                    'icon'     => 'fa-boxes-stacked',
+                    'title'    => 'Stock aliment faible',
+                    'message'  => "Autonomie estimée : {$autonomy['days']} jour(s) ({$autonomy['stock_kg']} kg"
+                        . " disponibles pour {$autonomy['daily_kg']} kg/j). Planifier une commande cette semaine.",
+                ];
+            }
         }
 
         // 2. Aliment réel vs recommandé.
@@ -311,48 +332,151 @@ class BatchAdvisorService
     }
 
     /**
-     * Conditions d'ambiance : température/hygrométrie du dernier pointage si
-     * disponible, sinon estimation saisonnière (Guinée). Calcule les facteurs
-     * d'ajustement aliment / eau.
+     * Conditions d'ambiance avec THI (indice température-humidité) par espèce.
+     * Formule Celsius : THI = T − (0.55 − 0.55×HR/100) × (T − 14.4)
+     * Seuils d'alerte par espèce (cf. thiThresholds).
      */
     private function environment(Batch $batch): array
     {
-        $month = (int) now()->month;
+        $month  = (int) now()->month;
         $season = $this->seasonForMonth($month);
 
-        $last = $this->lastCheck($batch);
-        $temp = $last?->temp_max !== null ? (float) $last->temp_max : null;
+        $last     = $this->lastCheck($batch);
+        $temp     = $last?->temp_max !== null ? (float) $last->temp_max : null;
         $humidity = $last?->humidity !== null ? (float) $last->humidity : null;
-        $source = 'pointage';
+        $source   = 'pointage';
 
         if ($temp === null) {
-            // Estimation : températures max indicatives par saison en Guinée.
-            $temp = match ($season) {
-                'saison_seche'         => 34.0, // janv–avr, pic de chaleur
-                'grande_saison_pluies' => 30.0,
-                default                => 32.0, // petite saison (nov–déc)
+            // Estimation saisonnière indicative (Guinée conakrylaise).
+            [$temp, $humidity] = match ($season) {
+                'saison_seche'         => [34.0, 40.0],
+                'grande_saison_pluies' => [30.0, 80.0],
+                default                => [32.0, 60.0],
             };
             $source = 'estimation_saison';
+        } elseif ($humidity === null) {
+            // Température mesurée mais humidité absente : estimation saisonnière.
+            $humidity = match ($season) {
+                'saison_seche'         => 40.0,
+                'grande_saison_pluies' => 80.0,
+                default                => 60.0,
+            };
         }
 
-        $over = max(0.0, $temp - self::HEAT_THRESHOLD);
-        $waterFactor = 1.0 + min(self::WATER_MAX_UPLIFT, $over * self::WATER_PER_DEGREE);
-        $feedFactor = max(self::FEED_MIN_FACTOR, 1.0 - $over * self::FEED_PER_DEGREE);
+        $thi        = $this->computeThi($temp, $humidity);
+        $alertThi   = $this->thiThresholds($batch)['alert'];
+        $over       = max(0.0, $thi - $alertThi);
 
-        // Hygrométrie élevée + chaleur aggravent le stress (indice THI) : on
-        // renforce légèrement la majoration d'eau.
-        if ($humidity !== null && $humidity >= 70 && $over > 0) {
-            $waterFactor = min(1.0 + self::WATER_MAX_UPLIFT, $waterFactor + 0.05);
-        }
+        $waterFactor = 1.0 + min(self::WATER_MAX_UPLIFT, $over * self::WATER_PER_THI);
+        $feedFactor  = max(self::FEED_MIN_FACTOR, 1.0 - $over * self::FEED_PER_THI);
 
         return [
-            'temp_c'      => $temp,
-            'humidity'    => $humidity,
-            'source'      => $source,
-            'season'      => $season,
-            'feed_factor' => round($feedFactor, 3),
-            'water_factor'=> round($waterFactor, 3),
-            'heat_stress' => $over > 0,
+            'temp_c'       => $temp,
+            'humidity'     => $humidity,
+            'thi'          => round($thi, 1),
+            'thi_threshold'=> $alertThi,
+            'source'       => $source,
+            'season'       => $season,
+            'feed_factor'  => round($feedFactor, 3),
+            'water_factor' => round($waterFactor, 3),
+            'heat_stress'  => $over > 0,
+        ];
+    }
+
+    /** THI Celsius : T − (0.55 − 0.55×HR/100) × (T − 14.4) */
+    private function computeThi(float $temp, float $humidity): float
+    {
+        return $temp - (0.55 - 0.55 * $humidity / 100.0) * ($temp - 14.4);
+    }
+
+    /**
+     * Seuils THI (échelle Celsius) par type de production.
+     * @return array{alert: float, critical: float}
+     */
+    private function thiThresholds(Batch $batch): array
+    {
+        $type  = strtolower((string) ($batch->type ?? ''));
+        $model = strtolower((string) ($batch->model_name ?? ''));
+
+        // Pondeuse — plus sensible que le broiler
+        if ($type === 'ponte' || str_contains($model, 'isa') || str_contains($model, 'lohmann') || str_contains($model, 'caille')) {
+            return ['alert' => 24.0, 'critical' => 27.0];
+        }
+        // Volaille chair, dinde, pintade, canard, pigeon
+        if (in_array($type, ['chair', 'dinde', 'pintade', 'canard', 'pigeon', 'poussiniere'], true)
+            || str_contains($model, 'ross') || str_contains($model, 'cobb') || str_contains($model, 'but')
+        ) {
+            return ['alert' => 25.0, 'critical' => 28.5];
+        }
+        // Ruminants
+        if (in_array($type, ['bovin', 'ovin', 'caprin', 'grossissement', 'lait', 'embouche'], true)) {
+            return ['alert' => 27.0, 'critical' => 30.5];
+        }
+        // Porc
+        if ($type === 'porc') {
+            return ['alert' => 26.0, 'critical' => 29.5];
+        }
+        // Lapin
+        if ($type === 'lapin') {
+            return ['alert' => 25.5, 'critical' => 28.0];
+        }
+        // Aquaculture — stress thermique non applicable (eau tampon)
+        if (in_array($type, ['pisciculture', 'aquaculture'], true)) {
+            return ['alert' => PHP_INT_MAX, 'critical' => PHP_INT_MAX];
+        }
+
+        return ['alert' => 26.0, 'critical' => 30.0];
+    }
+
+    /**
+     * Autonomie estimée en aliment : rapproche le dosage recommandé du stock
+     * disponible (category=conso, unit=KG). Retourne null si aucun stock trouvé
+     * ou si aucune recommandation calculable.
+     *
+     * @return array{stock_kg: float, daily_kg: float, days: int, is_critical: bool, is_warning: bool, item_names: string}|null
+     */
+    public function feedAutonomy(Batch $batch): ?array
+    {
+        $reco = $this->recommendation($batch);
+        if ($reco === null || $reco['total']['feed_kg'] <= 0) {
+            return null;
+        }
+
+        $dailyKg = $reco['total']['feed_kg'];
+
+        // Type d'aliment utilisé par ce lot (depuis le dernier pointage avec feed_type)
+        $feedType = $batch->dailyChecks()
+            ->orderByDesc('check_date')
+            ->whereNotNull('feed_type')
+            ->value('feed_type');
+
+        $baseQuery = Stock::where('category', Stock::CAT_CONSO)
+            ->where('unit', 'KG')
+            ->where('current_quantity', '>', 0);
+
+        if ($feedType) {
+            $matched = (clone $baseQuery)->where('feed_type', $feedType)->get();
+            if ($matched->isEmpty()) {
+                $matched = $baseQuery->get();
+            }
+        } else {
+            $matched = $baseQuery->get();
+        }
+
+        if ($matched->isEmpty()) {
+            return null;
+        }
+
+        $totalKg = (float) $matched->sum('current_quantity');
+        $days    = (int) floor($totalKg / $dailyKg);
+
+        return [
+            'stock_kg'   => round($totalKg, 1),
+            'daily_kg'   => round($dailyKg, 1),
+            'days'       => $days,
+            'is_critical' => $days < 3,
+            'is_warning' => $days < 7,
+            'item_names' => $matched->pluck('item_name')->join(', '),
         ];
     }
 

@@ -262,12 +262,59 @@
                     }
 
                     if ('serviceWorker' in navigator) {
-                        navigator.serviceWorker.register('/sw.js')
-                            .then(() => console.log('🚀 Service Worker opérationnel !'))
-                            .catch(err => console.warn('SW passif'));
+                        navigator.serviceWorker.register('/sw.js').then((reg) => {
+
+                            function offerUpdate(waiting) {
+                                const toast = document.getElementById('sw-update-toast');
+                                if (!toast || toast._armed) return;
+                                toast._armed = true;
+                                toast.classList.remove('translate-y-24', 'opacity-0');
+                                document.getElementById('sw-reload-btn')?.addEventListener('click', () => {
+                                    waiting.postMessage('skipWaiting');
+                                    toast.remove();
+                                }, { once: true });
+                            }
+
+                            // Mise à jour déjà en attente (onglet rouvert après update)
+                            if (reg.waiting) offerUpdate(reg.waiting);
+
+                            // Mise à jour téléchargée en arrière-plan
+                            reg.addEventListener('updatefound', () => {
+                                const sw = reg.installing;
+                                if (!sw) return;
+                                sw.addEventListener('statechange', () => {
+                                    if (sw.state === 'installed' && navigator.serviceWorker.controller) {
+                                        offerUpdate(sw);
+                                    }
+                                });
+                            });
+
+                        }).catch(() => console.warn('SW passif'));
+
+                        // Rechargement propre quand le nouveau SW prend le contrôle
+                        navigator.serviceWorker.addEventListener('controllerchange', () => {
+                            window.location.reload();
+                        });
                     }
                 }, 150);
             });
         </script>
+
+        {{-- Toast mise à jour SW (caché par défaut, animé à l'apparition) --}}
+        <div id="sw-update-toast"
+             class="fixed bottom-5 right-5 z-50 flex items-center gap-3 bg-slate-900 text-white rounded-2xl shadow-2xl px-5 py-4
+                    translate-y-24 opacity-0 transition-all duration-500 ease-out"
+             aria-live="polite">
+            <i class="fa-solid fa-rotate text-blue-400 text-base"></i>
+            <span class="text-[11px] font-black uppercase tracking-widest">{{ __("Mise à jour disponible") }}</span>
+            <button id="sw-reload-btn"
+                    class="ml-1 px-4 py-2 bg-blue-500 hover:bg-blue-400 rounded-xl text-[10px] font-black uppercase tracking-wider transition-colors">
+                {{ __("Recharger") }}
+            </button>
+            <button onclick="this.closest('#sw-update-toast').classList.add('translate-y-24','opacity-0')"
+                    class="text-slate-500 hover:text-white transition-colors ml-1 text-sm">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
     </body>
 </html>

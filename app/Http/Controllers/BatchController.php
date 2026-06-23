@@ -271,11 +271,12 @@ class BatchController extends Controller
 
         // Recommandations intelligentes (dosage aliment/eau ajusté à l'âge, au
         // poids, à l'effectif et aux conditions d'ambiance) + conseils dérivés.
-        $advisor       = new \App\Services\BatchAdvisorService();
-        $feedAdvice    = $advisor->recommendation($batch);
+        $advisor         = new \App\Services\BatchAdvisorService();
+        $feedAdvice      = $advisor->recommendation($batch);
         $batchAdvisories = $advisor->advisories($batch);
+        $feedAutonomy    = $advisor->feedAutonomy($batch);
 
-        return view('batches.show', compact('batch', 'buildings', 'protocols', 'providers', 'stats', 'feedAdvice', 'batchAdvisories'));
+        return view('batches.show', compact('batch', 'buildings', 'protocols', 'providers', 'stats', 'feedAdvice', 'batchAdvisories', 'feedAutonomy'));
     }
 
     /**

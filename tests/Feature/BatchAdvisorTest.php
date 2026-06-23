@@ -62,6 +62,7 @@ test('interpole le barème à la semaine et met à l\'échelle sur l\'effectif',
     expect($reco['per_subject']['water_ml'])->toEqualWithDelta(247.5, 0.5);
     // Total = 135 g × 1000 / 1000 = 135 kg.
     expect($reco['total']['feed_kg'])->toEqualWithDelta(135.0, 0.5);
+    // THI(28°C, 50%HR) = 28 − 0.275×13.6 = 24.26 < seuil chair (25.0) → pas de stress.
     expect($reco['environment']['heat_stress'])->toBeFalse();
 });
 
@@ -79,9 +80,10 @@ test('le stress thermique majore l\'eau, réduit l\'aliment et émet une alerte'
     $reco = $advisor->recommendation($batch->fresh());
 
     expect($reco['environment']['heat_stress'])->toBeTrue();
-    // Facteur eau = 1 + min(0,6 ; 8×0,04) = 1,32 ; aliment = 1 - 8×0,012 = 0,904.
-    expect($reco['environment']['water_factor'])->toEqualWithDelta(1.32, 0.001);
-    expect($reco['environment']['feed_factor'])->toEqualWithDelta(0.904, 0.001);
+    // THI(38°C, 50%HR) = 38 − 0.275×23.6 ≈ 31.51 ; seuil chair = 25 ; over ≈ 6.51
+    // Facteur eau = 1 + min(0,6 ; 6,51×0,05) ≈ 1,326 ; aliment = max(0,85 ; 1 − 6,51×0,015) ≈ 0,902
+    expect($reco['environment']['water_factor'])->toEqualWithDelta(1.326, 0.002);
+    expect($reco['environment']['feed_factor'])->toEqualWithDelta(0.902, 0.002);
     // Aliment réduit sous le barème neutre (135 g).
     expect($reco['per_subject']['feed_g'])->toBeLessThan(135.0);
 
