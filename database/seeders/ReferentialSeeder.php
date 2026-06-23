@@ -32,7 +32,10 @@ class ReferentialSeeder extends Seeder
         $this->seedRawMaterials();
         $this->seedFoodNorms();
         $this->seedProtocols();
-        $this->seedGrowthCurves();
+        // Les courbes de croissance / normes zootechniques sont désormais
+        // gérées exclusivement par ProductionNormSeeder (source unique de
+        // vérité). seedGrowthCurves() a été retiré pour éviter les doublons
+        // de souches et les lignes sans ration/eau.
         $this->seedSampleFormulas();
         $this->seedFeedPhaseFormulas();
     }
@@ -330,38 +333,9 @@ class ReferentialSeeder extends Seeder
     }
 
     // ─────────────────────────────────────────────
-    // 4. COURBES DE CROISSANCE (poids cible par semaine)
+    // 4. COURBES DE CROISSANCE → déplacées vers ProductionNormSeeder
+    //    (source unique de vérité du référentiel zootechnique).
     // ─────────────────────────────────────────────
-    private function seedGrowthCurves(): void
-    {
-        // model_name => [batch_type, phase, [semaine => poids cible en grammes]]
-        $curves = [
-            // Volaille
-            'Poulet Chair (Ross 308)' => ['chair', [1 => 190, 2 => 480, 3 => 960, 4 => 1550, 5 => 2200, 6 => 2800]],
-            'Poule Pondeuse (ISA)'    => ['ponte', [5 => 400, 10 => 850, 15 => 1250, 20 => 1600, 30 => 1900]],
-            'Dinde Chair (BUT 6)'     => ['chair', [4 => 1200, 8 => 4000, 12 => 8000, 16 => 12000, 20 => 16000]],
-            'Caille Japonaise'        => ['ponte', [1 => 30, 2 => 70, 4 => 150, 6 => 200]],
-
-            // Mammifères
-            'Mouton Djallonké'        => ['engraissement', [1 => 18000, 4 => 21000, 8 => 24500, 12 => 28000]],
-            'Chèvre Rousse Maradi'    => ['laitiere',      [1 => 15000, 4 => 17000, 8 => 20000, 12 => 23000]],
-            'Lapin Néo-Zélandais'     => ['engraissement', [1 => 700, 4 => 1500, 8 => 2300, 10 => 2600]],
-            'Porc Large White'        => ['engraissement', [1 => 20000, 8 => 45000, 16 => 90000, 22 => 110000]],
-
-            // Poissons
-            'Tilapia du Nil'          => ['grossissement', [1 => 5, 8 => 80, 16 => 250, 24 => 400]],
-            'Silure (Clarias)'        => ['grossissement', [1 => 10, 4 => 50, 8 => 200, 12 => 500, 20 => 1000]],
-        ];
-
-        foreach ($curves as $model => [$batchType, $weeks]) {
-            foreach ($weeks as $week => $weight) {
-                ProductionNorm::updateOrCreate(
-                    ['batch_type' => $batchType, 'week_number' => $week, 'model_name' => $model],
-                    ['phase_name' => 'Croissance', 'target_weight' => $weight, 'target_laying_rate' => 0]
-                );
-            }
-        }
-    }
 
     // ─────────────────────────────────────────────
     // 5. FORMULES-TYPES (recettes par espèce)
