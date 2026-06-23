@@ -31,6 +31,35 @@
                 </div>
             @endif
 
+            {{-- ONBOARDING : aucune source configurée → on explique la valeur --}}
+            @if($waterSources->isEmpty() && $energySources->isEmpty())
+            <div class="mb-8 bg-gradient-to-br from-cyan-50 to-amber-50 border border-cyan-100 rounded-[2.5rem] p-8 not-italic">
+                <h3 class="text-lg font-black text-slate-800 uppercase italic tracking-tighter leading-none mb-3">
+                    <i class="fa-solid fa-bolt text-cyan-500 mr-2"></i> {{ __("Pilotez l'eau, l'énergie et le carburant") }}
+                </h3>
+                <p class="text-[11px] font-bold text-slate-500 normal-case mb-5 max-w-2xl">
+                    {{ __("Ce module sécurise deux enjeux vitaux de la ferme :") }}
+                </p>
+                <div class="grid md:grid-cols-2 gap-4 mb-6">
+                    <div class="bg-white/70 rounded-2xl p-4">
+                        <p class="text-[10px] font-black text-cyan-600 uppercase tracking-widest mb-1"><i class="fa-solid fa-shield-heart mr-1"></i> {{ __("Continuité de service") }}</p>
+                        <p class="text-[10px] font-bold text-slate-500 normal-case">{{ __("Autonomie carburant, niveaux de citerne et maintenance des groupes : éviter la coupure qui met un lot en danger.") }}</p>
+                    </div>
+                    <div class="bg-white/70 rounded-2xl p-4">
+                        <p class="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-1"><i class="fa-solid fa-coins mr-1"></i> {{ __("Maîtrise des coûts") }}</p>
+                        <p class="text-[10px] font-bold text-slate-500 normal-case">{{ __("Coût eau/énergie par sujet et par bâtiment, imputé automatiquement à la marge de chaque lot.") }}</p>
+                    </div>
+                </div>
+                @can('ressources.C')
+                <div class="flex flex-wrap gap-3 not-italic">
+                    <a href="{{ route('utilities.water.sources') }}" class="bg-cyan-500 text-white px-5 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-cyan-600 transition-all no-underline"><i class="fa-solid fa-droplet mr-1"></i> {{ __("1. Ajouter une source d'eau") }}</a>
+                    <a href="{{ route('utilities.energy.sources') }}" class="bg-amber-500 text-white px-5 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-amber-600 transition-all no-underline"><i class="fa-solid fa-bolt mr-1"></i> {{ __("2. Ajouter une source d'énergie") }}</a>
+                </div>
+                <p class="text-[9px] font-bold text-slate-400 normal-case mt-4">{{ __("Ensuite, les tâches quotidiennes « Relevé eau » et « Relevé énergie » guideront la saisie — elles se cochent toutes seules dès qu'un relevé est enregistré.") }}</p>
+                @endcan
+            </div>
+            @endif
+
             {{-- ALERTES CRITIQUES --}}
             @if(count($data['alerts']) > 0)
             <div class="mb-8 space-y-3">
@@ -231,10 +260,10 @@
                     <h3 class="text-[10px] font-black text-cyan-600 uppercase tracking-widest mb-4 flex items-center gap-2">
                         <i class="fa-solid fa-droplet"></i> {{ __("Nouveau relevé eau") }}
                     </h3>
-                    <form method="POST" action="{{ route('utilities.water.readings.store') }}" class="space-y-3">
+                    <form method="POST" action="{{ route('utilities.water.readings.store') }}" class="space-y-3" data-prefill-form="water">
                         @csrf
                         <div class="grid grid-cols-2 gap-3">
-                            <select name="water_source_id" required class="bg-white border-none rounded-xl p-3 text-[10px] font-black uppercase shadow-sm outline-none">
+                            <select name="water_source_id" required data-prefill-source class="bg-white border-none rounded-xl p-3 text-[10px] font-black uppercase shadow-sm outline-none">
                                 <option value="">{{ __("Source...") }}</option>
                                 @foreach($waterSources as $ws)
                                     <option value="{{ $ws->id }}">{{ $ws->name }}</option>
@@ -270,10 +299,10 @@
                     <h3 class="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-4 flex items-center gap-2">
                         <i class="fa-solid fa-bolt"></i> {{ __("Nouveau relevé énergie") }}
                     </h3>
-                    <form method="POST" action="{{ route('utilities.energy.readings.store') }}" class="space-y-3">
+                    <form method="POST" action="{{ route('utilities.energy.readings.store') }}" class="space-y-3" data-prefill-form="energy">
                         @csrf
                         <div class="grid grid-cols-2 gap-3">
-                            <select name="energy_source_id" required class="bg-white border-none rounded-xl p-3 text-[10px] font-black uppercase shadow-sm outline-none">
+                            <select name="energy_source_id" required data-prefill-source class="bg-white border-none rounded-xl p-3 text-[10px] font-black uppercase shadow-sm outline-none">
                                 <option value="">{{ __("Source...") }}</option>
                                 @foreach($energySources as $es)
                                     <option value="{{ $es->id }}">{{ $es->name }} ({{ $es->type_label }})</option>
@@ -317,4 +346,34 @@
             </div>
         </div>
     </div>
+
+    {{-- Saisie « comme hier » : pré-remplit le formulaire avec le dernier relevé
+         de la source sélectionnée. Les champs vides ne sont jamais imposés. --}}
+    @can('ressources.C')
+    <script>
+        const RELEVE_LAST = {
+            water:  @json($lastWater ?? []),
+            energy: @json($lastEnergy ?? []),
+        };
+
+        document.querySelectorAll('[data-prefill-form]').forEach(form => {
+            const kind   = form.dataset.prefillForm;
+            const select = form.querySelector('[data-prefill-source]');
+            if (! select) return;
+
+            select.addEventListener('change', () => {
+                const last = (RELEVE_LAST[kind] || {})[select.value];
+                if (! last) return;
+                Object.entries(last).forEach(([field, value]) => {
+                    if (value === null || value === '') return;
+                    const input = form.querySelector(`[name="${field}"]`);
+                    // Ne pas écraser une valeur déjà saisie par l'opérateur.
+                    if (input && (input.value === '' || input.value === '0')) {
+                        input.value = value;
+                    }
+                });
+            });
+        });
+    </script>
+    @endcan
 </x-app-layout>

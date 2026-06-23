@@ -31,7 +31,17 @@ class UtilityController extends Controller
         $energySources = EnergySource::active()->get();
         $buildings = Building::physical()->orderBy('name')->get();
 
-        return view('utilities.dashboard', compact('data', 'waterSources', 'energySources', 'buildings', 'period'));
+        // Saisie « comme hier » : dernier relevé par source pour pré-remplir le
+        // formulaire à la sélection (réduit la friction de saisie quotidienne).
+        $lastWater = WaterReading::whereIn('water_source_id', $waterSources->pluck('id'))
+            ->get()->sortByDesc('reading_date')->groupBy('water_source_id')
+            ->map(fn ($r) => $r->first()->only(['volume_consumed_liters', 'volume_added_liters', 'quality_ph', 'chlorine_level', 'cost', 'building_id']));
+
+        $lastEnergy = EnergyReading::whereIn('energy_source_id', $energySources->pluck('id'))
+            ->get()->sortByDesc('reading_date')->groupBy('energy_source_id')
+            ->map(fn ($r) => $r->first()->only(['hours_run', 'fuel_consumed_liters', 'outage_hours', 'cost', 'building_id']));
+
+        return view('utilities.dashboard', compact('data', 'waterSources', 'energySources', 'buildings', 'period', 'lastWater', 'lastEnergy'));
     }
 
     // ──────────────────────────────────────────────
