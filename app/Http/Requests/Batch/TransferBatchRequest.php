@@ -56,6 +56,7 @@ class TransferBatchRequest extends FormRequest
             'new_protocol_id'    => 'required|integer|exists:protocols,id',
             'new_phase'          => ['required', Rule::in($allowedPhases)],
             'transfer_date'      => 'required|date',
+            'model_name'         => 'nullable|string|max:100',
             'notes'              => 'nullable|string|max:1000',
         ];
     }

@@ -938,6 +938,27 @@
                             </select>
                         </div>
                     </div>
+                    {{-- Souche / modèle — visible uniquement en graduation de phase --}}
+                    <div class="md:col-span-2" id="model-name-wrapper" style="display:none">
+                        <label class="block text-[10px] font-black text-amber-500 uppercase mb-3 ml-2 italic">
+                            {{ __("Souche / Modèle") }}
+                            <span class="text-slate-400 normal-case ml-1">({{ __("optionnel — met à jour les normes et protocoles") }})</span>
+                        </label>
+                        <select name="model_name" id="model-name-select"
+                                class="w-full p-5 bg-amber-50 rounded-[2rem] border-none shadow-inner font-black text-amber-700 italic uppercase text-xs appearance-none">
+                            <option value="">— {{ __("Conserver la souche actuelle") }} ({{ $batch->model_name ?? __('Non spécifié') }}) —</option>
+                            @foreach($normModels as $norm)
+                                <option value="{{ $norm->model_name }}"
+                                        data-type="{{ $norm->batch_type }}"
+                                        class="model-transfer-opt">
+                                    {{ $norm->model_name }}
+                                </option>
+                            @endforeach
+                        </select>
+                        <p class="text-[8px] text-amber-400 ml-4 uppercase font-bold mt-1">
+                            {{ __("* Seules les souches de la phase cible s'affichent") }}
+                        </p>
+                    </div>
                     <div class="md:col-span-2">
                         <textarea name="notes" placeholder="{{ __("Notes de traçabilité...") }}" class="w-full p-6 bg-slate-50 rounded-[2.5rem] border-none shadow-inner font-bold text-slate-500 italic text-[10px] uppercase"></textarea>
                     </div>
@@ -1032,9 +1053,40 @@
             filterProtocols(initialPhase);
             filterMutationBuildings(initialPhase);
 
+            // Souche : affiche le select uniquement en graduation de phase, et
+            // filtre les options selon la phase cible (data-type).
+            const modelWrapper = document.getElementById('model-name-wrapper');
+            const modelSelect  = document.getElementById('model-name-select');
+            const needsModel   = {{ $batch->model_name === 'Non spécifié' || !$batch->model_name ? 'true' : 'false' }};
+
+            function filterModelNames(targetType) {
+                if (! modelSelect) return;
+                let count = 0;
+                modelSelect.querySelectorAll('.model-transfer-opt').forEach(opt => {
+                    const show = ! opt.dataset.type || opt.dataset.type === targetType;
+                    opt.style.display = show ? 'block' : 'none';
+                    if (show) count++;
+                });
+                return count;
+            }
+
+            function updateModelVisibility(targetType) {
+                if (! modelWrapper) return;
+                const isGraduation = targetType !== batchType;
+                if (isGraduation || needsModel) {
+                    modelWrapper.style.display = 'block';
+                    filterModelNames(targetType);
+                } else {
+                    modelWrapper.style.display = 'none';
+                }
+            }
+
+            updateModelVisibility(initialPhase);
+
             newPhaseSelect?.addEventListener('change', function() {
                 filterProtocols(this.value);
                 filterMutationBuildings(this.value);
+                updateModelVisibility(this.value);
             });
 
             // 4. INITIALISATION DES GRAPHIQUES (Correction syntaxe Chart.js)

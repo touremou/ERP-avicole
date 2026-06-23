@@ -76,14 +76,24 @@ class TransferBatch
             // ─── 3. MISE À JOUR DU LOT ───
             // Note B-12 : on ne touche PAS à current_quantity.
             // Le transfert ne change pas l'effectif, il change le lieu.
-            $batch->update(array_filter([
+            $updates = array_filter([
                 'building_id'         => $newBuilding->id,
                 'production_phase'    => $data['new_phase'],
                 'production_type_id'  => $newProductionTypeId,
                 'current_protocol_id' => $newProtocol->id,
                 'transfer_date'       => $data['transfer_date'],
                 'transfer_history'    => $history,
-            ], fn ($value) => $value !== null));
+            ], fn ($value) => $value !== null);
+
+            // Mise à jour de la souche si l'opérateur en saisit une lors de la
+            // graduation (poussinière → ponte/chair/repro). On n'écrase jamais
+            // une souche connue par une valeur vide.
+            $newModelName = trim((string) ($data['model_name'] ?? ''));
+            if ($newModelName !== '' && $newModelName !== 'Non spécifié') {
+                $updates['model_name'] = $newModelName;
+            }
+
+            $batch->update($updates);
 
             // ─── 4. STATUTS BÂTIMENTS ───
             // Nouveau bâtiment → Occupé

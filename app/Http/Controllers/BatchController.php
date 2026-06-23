@@ -276,7 +276,15 @@ class BatchController extends Controller
         $batchAdvisories = $advisor->advisories($batch);
         $feedAutonomy    = $advisor->feedAutonomy($batch);
 
-        return view('batches.show', compact('batch', 'buildings', 'protocols', 'providers', 'stats', 'feedAdvice', 'batchAdvisories', 'feedAutonomy'));
+        // Souches disponibles pour le modal de mutation (graduation de phase).
+        $normModels = ProductionNorm::forSpecies($batch->species_id)
+            ->select('model_name', 'batch_type')
+            ->distinct()
+            ->orderBy('batch_type')
+            ->orderBy('model_name')
+            ->get();
+
+        return view('batches.show', compact('batch', 'buildings', 'protocols', 'providers', 'stats', 'feedAdvice', 'batchAdvisories', 'feedAutonomy', 'normModels'));
     }
 
     /**
