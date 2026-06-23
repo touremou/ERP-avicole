@@ -544,15 +544,28 @@
             @endif
 
             {{-- GRAPHIQUES --}}
-            @php $hasGrowthChart = ($weightCurve['has_actual'] ?? false) || ($weightCurve['has_target'] ?? false); @endphp
+            @php
+                $hasGrowthChart = ($weightCurve['has_actual'] ?? false) || ($weightCurve['has_target'] ?? false);
+                // Lot sans aucun pointage (ex. créé du jour) → pas de courbe possible.
+                // On affiche un état vide explicite plutôt qu'un cadre blanc.
+                $noChecks = $batch->dailyChecks->isEmpty();
+            @endphp
             <div class="grid grid-cols-1 md:grid-cols-2 {{ $hasGrowthChart ? 'xl:grid-cols-3' : '' }} gap-8 mb-8">
                 <div class="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
                     <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest italic mb-6 leading-none"><i class="fas fa-skull-crossbones text-red-500 mr-2"></i> {{ __("Courbe de Mortalité (%)") }}</h3>
-                    <div class="h-[280px]"><canvas id="mortalityChart"></canvas></div>
+                    @if($noChecks)
+                        <x-batch-chart-empty />
+                    @else
+                        <div class="h-[280px]"><canvas id="mortalityChart"></canvas></div>
+                    @endif
                 </div>
                 <div class="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
                     <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest italic mb-6 leading-none"><i class="fas fa-tint text-blue-500 mr-2"></i> {{ __("Ration Aliment (kg) vs Eau (L)") }}</h3>
-                    <div class="h-[280px]"><canvas id="hydrationChart"></canvas></div>
+                    @if($noChecks)
+                        <x-batch-chart-empty />
+                    @else
+                        <div class="h-[280px]"><canvas id="hydrationChart"></canvas></div>
+                    @endif
                 </div>
                 @if($hasGrowthChart)
                 <div class="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">

@@ -95,6 +95,17 @@ test('un manager peut voir le détail d\'un lot', function () {
         ->assertOk();
 });
 
+test('un lot sans pointage affiche l\'état vide des graphiques', function () {
+    // Lot tout neuf : aucun daily check → les courbes ne peuvent rien tracer.
+    $batch = Batch::factory()->create(['building_id' => $this->building->id]);
+
+    $this->actingAs($this->managerUser)
+        ->get(route('batches.show', $batch))
+        ->assertOk()
+        ->assertSee('Aucun pointage enregistré')
+        ->assertDontSee('id="mortalityChart"', false); // canvas non rendu sans données
+});
+
 test('un manager peut accéder au formulaire d\'édition', function () {
     $batch = Batch::factory()->create(['building_id' => $this->building->id]);
     $this->actingAs($this->managerUser)
