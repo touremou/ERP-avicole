@@ -269,7 +269,13 @@ class BatchController extends Controller
             $stats['last_survival_rate'] = $lastExt?->survival_rate;
         }
 
-        return view('batches.show', compact('batch', 'buildings', 'protocols', 'providers', 'stats'));
+        // Recommandations intelligentes (dosage aliment/eau ajusté à l'âge, au
+        // poids, à l'effectif et aux conditions d'ambiance) + conseils dérivés.
+        $advisor       = new \App\Services\BatchAdvisorService();
+        $feedAdvice    = $advisor->recommendation($batch);
+        $batchAdvisories = $advisor->advisories($batch);
+
+        return view('batches.show', compact('batch', 'buildings', 'protocols', 'providers', 'stats', 'feedAdvice', 'batchAdvisories'));
     }
 
     /**

@@ -48,6 +48,7 @@ class ProductionNormSeeder extends Seeder
             $this->turkeyBUT6(),
             $this->layerISABrown(),
             $this->layerLohmannBrown(),
+            $this->layerLohmannLSL(),
             $this->quail(),
             $this->brooding(),
             $this->guineaFowl(),
@@ -56,6 +57,7 @@ class ProductionNormSeeder extends Seeder
             $this->sheepGoatRabbitPig(),
             $this->dairyGoat(),
             $this->cattle(),
+            $this->zebuGobra(),
             $this->poultryBreeders(),
             $this->fishGrowout(),
             $this->fishFry(),
@@ -192,6 +194,25 @@ class ProductionNormSeeder extends Seeder
         ];
     }
 
+    /** Pondeuse Lohmann LSL (œuf blanc, format léger). */
+    private function layerLohmannLSL(): array
+    {
+        $m = 'Lohmann LSL';
+        return [
+            $this->norm('ponte', 1,  'Démarrage',  $m, 65,   12,  24,  0),
+            $this->norm('ponte', 6,  'Croissance', $m, 420,  38,  76,  0),
+            $this->norm('ponte', 12, 'Croissance', $m, 870,  58,  116, 0),
+            $this->norm('ponte', 17, 'Pré-ponte',  $m, 1250, 70,  140, 0),
+            $this->norm('ponte', 18, 'Pré-ponte',  $m, 1300, 78,  156, 5),
+            $this->norm('ponte', 20, 'Ponte',      $m, 1380, 90,  180, 30),
+            $this->norm('ponte', 25, 'Ponte',      $m, 1500, 108, 216, 94),
+            $this->norm('ponte', 30, 'Ponte',      $m, 1560, 112, 224, 96),
+            $this->norm('ponte', 40, 'Ponte',      $m, 1620, 114, 228, 93),
+            $this->norm('ponte', 52, 'Ponte',      $m, 1680, 115, 230, 88),
+            $this->norm('ponte', 72, 'Réforme',    $m, 1750, 113, 226, 77),
+        ];
+    }
+
     /** Caille japonaise (Coturnix) : ponte précoce. */
     private function quail(): array
     {
@@ -301,6 +322,17 @@ class ProductionNormSeeder extends Seeder
             // Vache laitière métisse (croissance → lactation)
             $this->norm('laitiere', 1,  'Croissance', 'Vache Laitière (Métis)', 90000,  13000, 30000, 0),
             $this->norm('laitiere', 52, 'Finition',   'Vache Laitière (Métis)', 400000, 35000, 70000, 0),
+        ];
+    }
+
+    /** Zébu Gobra (grand zébu sahélien, engraissement viande). */
+    private function zebuGobra(): array
+    {
+        $m = 'Zébu Gobra';
+        return [
+            $this->norm('engraissement', 1,  'Croissance', $m, 90000,  14000, 28000, 0),
+            $this->norm('engraissement', 26, 'Croissance', $m, 220000, 26000, 45000, 0),
+            $this->norm('engraissement', 52, 'Finition',   $m, 350000, 32000, 60000, 0),
         ];
     }
 

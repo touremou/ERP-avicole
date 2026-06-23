@@ -362,6 +362,80 @@
                 </div>
             </div>
 
+            {{-- RECOMMANDATIONS INTELLIGENTES (dosage aliment/eau + conseils) --}}
+            @if(!empty($feedAdvice))
+            @php
+                $env = $feedAdvice['environment'];
+                $seasonLabels = [
+                    'saison_seche'         => 'Saison sèche',
+                    'grande_saison_pluies' => 'Saison des pluies',
+                    'petite_saison'        => 'Petite saison',
+                ];
+                $advColors = [
+                    'critique'  => 'bg-rose-50 border-rose-200 text-rose-700',
+                    'attention' => 'bg-amber-50 border-amber-200 text-amber-700',
+                    'conseil'   => 'bg-emerald-50 border-emerald-200 text-emerald-700',
+                    'info'      => 'bg-blue-50 border-blue-200 text-blue-700',
+                ];
+            @endphp
+            <div class="mb-8 bg-white border border-slate-100 rounded-[2.5rem] p-6 shadow-sm">
+                <div class="flex items-center justify-between mb-5">
+                    <h3 class="text-[10px] font-black uppercase text-slate-400 tracking-widest italic flex items-center gap-2 leading-none">
+                        <i class="fa-solid fa-brain text-blue-500"></i> {{ __("Recommandations du jour") }}
+                    </h3>
+                    <span class="text-[8px] font-black uppercase text-slate-400 italic">
+                        @if($env['heat_stress'])
+                            <span class="text-rose-500"><i class="fa-solid fa-temperature-high"></i> {{ __("Stress thermique") }}</span> ·
+                        @endif
+                        {{ $seasonLabels[$env['season']] ?? $env['season'] }} ·
+                        {{ $env['temp_c'] !== null ? number_format($env['temp_c'], 0) . ' °C' : '—' }}
+                        <span class="opacity-50">({{ $env['source'] === 'pointage' ? __('relevé') : __('estimé') }})</span>
+                    </span>
+                </div>
+
+                {{-- Dosage recommandé --}}
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                    <div class="bg-orange-50 border border-orange-100 rounded-[1.5rem] p-4 text-center">
+                        <p class="text-[8px] font-black text-orange-400 uppercase tracking-widest italic mb-1">{{ __("Aliment / lot / jour") }}</p>
+                        <h4 class="text-2xl font-black text-orange-600 tracking-tighter italic">{{ number_format($feedAdvice['total']['feed_kg'], 1) }}<small class="text-[10px] ml-1 opacity-60">kg</small></h4>
+                        <p class="text-[8px] font-black text-slate-400 uppercase mt-1">{{ number_format($feedAdvice['per_subject']['feed_g'], 0) }} g/{{ __("sujet") }}</p>
+                    </div>
+                    <div class="bg-blue-50 border border-blue-100 rounded-[1.5rem] p-4 text-center">
+                        <p class="text-[8px] font-black text-blue-400 uppercase tracking-widest italic mb-1">{{ __("Eau / lot / jour") }}</p>
+                        <h4 class="text-2xl font-black text-blue-600 tracking-tighter italic">{{ number_format($feedAdvice['total']['water_l'], 1) }}<small class="text-[10px] ml-1 opacity-60">L</small></h4>
+                        <p class="text-[8px] font-black text-slate-400 uppercase mt-1">{{ number_format($feedAdvice['per_subject']['water_ml'], 0) }} ml/{{ __("sujet") }}</p>
+                    </div>
+                    <div class="bg-slate-50 border border-slate-100 rounded-[1.5rem] p-4 text-center">
+                        <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest italic mb-1">{{ __("Poids cible") }}</p>
+                        <h4 class="text-2xl font-black text-slate-800 tracking-tighter italic">{{ number_format($feedAdvice['per_subject']['weight_target_g']) }}<small class="text-[10px] ml-1 opacity-50">g</small></h4>
+                        <p class="text-[8px] font-black text-slate-400 uppercase mt-1">S-{{ $feedAdvice['week'] }} · {{ $feedAdvice['phase'] }}</p>
+                    </div>
+                    <div class="bg-emerald-50 border border-emerald-100 rounded-[1.5rem] p-4 text-center">
+                        <p class="text-[8px] font-black text-emerald-400 uppercase tracking-widest italic mb-1">{{ __("Effectif suivi") }}</p>
+                        <h4 class="text-2xl font-black text-emerald-600 tracking-tighter italic">{{ number_format($feedAdvice['total']['subjects']) }}</h4>
+                        <p class="text-[8px] font-black text-slate-400 uppercase mt-1">{{ $feedAdvice['model_name'] ?: __('barème générique') }}</p>
+                    </div>
+                </div>
+
+                {{-- Conseils dérivés --}}
+                @if(!empty($batchAdvisories))
+                <div class="space-y-2">
+                    @foreach($batchAdvisories as $advisory)
+                    <div class="flex items-start gap-3 p-4 rounded-[1.5rem] border {{ $advColors[$advisory['severity']] ?? $advColors['info'] }}">
+                        <i class="fa-solid {{ $advisory['icon'] }} text-base mt-0.5"></i>
+                        <div class="leading-tight">
+                            <p class="text-[11px] font-black uppercase tracking-tight italic">{{ $advisory['title'] }}</p>
+                            <p class="text-[11px] font-bold italic mt-1 opacity-90">{{ $advisory['message'] }}</p>
+                        </div>
+                    </div>
+                    @endforeach
+                </div>
+                @endif
+
+                <p class="text-[8px] font-black text-slate-300 uppercase italic mt-4 text-right">{{ __("Indicatif — ajusté à l'âge, au poids, à l'effectif et à l'ambiance") }}</p>
+            </div>
+            @endif
+
             {{-- AQUACULTURE: QUALITÉ DE L'EAU --}}
             @if($isAquaculture && (isset($stats['last_water_ph']) || isset($stats['last_water_o2'])))
             <div class="mb-8 bg-blue-50 border border-blue-200 rounded-[2rem] p-6">
