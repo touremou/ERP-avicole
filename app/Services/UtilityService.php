@@ -337,4 +337,65 @@ class UtilityService
 
         return $anomalies;
     }
+
+    /**
+     * Alerte composite « risque ventilation » : croise une forte chaleur
+     * annoncée (prévision) avec la dépendance réelle au groupe électrogène.
+     *
+     * Logique métier : par canicule, le besoin de ventilation/refroidissement
+     * grimpe ; si la ferme tourne déjà beaucoup sur groupe, une panne ou une
+     * panne sèche couperait la ventilation au pire moment. On combine donc le
+     * pic de température prévu (fourni par l'appelant, qui détient la prévision)
+     * et la sollicitation récente du parc groupe (heures/jour sur 7 j).
+     *
+     * Méthode pure côté données énergie (aucun appel réseau) → testable sans
+     * mocker la météo : l'appelant passe la T° max prévue.
+     *
+     * @param  float|null  $forecastMaxTemp  T° max annoncée sur l'horizon (°C).
+     * @return array{type:string,severity:string,icon:string,title:string,message:string}|null
+     */
+    public function ventilationRisk(?float $forecastMaxTemp): ?array
+    {
+        $heatThreshold = (float) setting('energie.ventilation_heat_threshold', 36);
+        if ($forecastMaxTemp === null || $forecastMaxTemp < $heatThreshold) {
+            return null;
+        }
+
+        $groupes = EnergySource::groupes()->get();
+        if ($groupes->isEmpty()) {
+            return null; // Pas de groupe → pas de dépendance électrogène.
+        }
+
+        // Sollicitation récente : heures moyennes par jour du parc sur 7 jours.
+        $hoursSum = EnergyReading::whereIn('energy_source_id', $groupes->pluck('id'))
+            ->whereDate('reading_date', '>=', now()->subDays(7)->toDateString())
+            ->sum('hours_run');
+        $dailyHours = (float) $hoursSum / 7;
+
+        $relianceThreshold = (float) setting('energie.ventilation_reliance_hours', 5);
+        if ($dailyHours < $relianceThreshold) {
+            return null; // Faible dépendance → risque non significatif.
+        }
+
+        // Autonomie carburant la plus basse du parc : aggrave le risque.
+        $lowAutonomy = $groupes
+            ->map(fn ($g) => $g->fuel_autonomy_hours)
+            ->filter(fn ($h) => $h !== null)
+            ->min();
+
+        $autonomyTxt = $lowAutonomy !== null
+            ? " Autonomie carburant la plus basse : {$lowAutonomy}h."
+            : '';
+
+        return [
+            'type'     => 'composite_ventilation',
+            'severity' => 'critique',
+            'icon'     => 'fa-fan',
+            'title'    => 'Risque ventilation (chaleur × dépendance groupe)',
+            'message'  => "Forte chaleur annoncée ({$forecastMaxTemp}°C) et recours soutenu au groupe (~"
+                . round($dailyHours, 1) . " h/j). Une panne ou une panne sèche couperait la ventilation."
+                . $autonomyTxt
+                . " Vérifier le carburant, l'état du groupe et la solution de secours avant la vague de chaleur.",
+        ];
+    }
 }

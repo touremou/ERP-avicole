@@ -91,6 +91,54 @@ test('les anomalies remontent dans getAlerts() et donc sur le dashboard', functi
     expect(collect($alerts)->where('type', 'anomaly_water'))->not->toBeEmpty();
 });
 
+// ─── Alerte composite : chaleur × dépendance groupe ──────────────────────────
+
+/** Crée un parc groupe avec une sollicitation moyenne donnée (h/jour sur 7 j). */
+function seedGroupeUsage(int $farmId, int $userId, float $dailyHours): EnergySource
+{
+    $source = EnergySource::create([
+        'farm_id' => $farmId, 'name' => 'Groupe Principal', 'type' => 'groupe',
+        'fuel_type' => 'gasoil', 'is_active' => true,
+    ]);
+
+    for ($d = 1; $d <= 7; $d++) {
+        EnergyReading::create([
+            'farm_id'          => $farmId,
+            'energy_source_id' => $source->id,
+            'reading_date'     => now()->subDays($d)->toDateString(),
+            'user_id'          => $userId,
+            'hours_run'        => $dailyHours,
+        ]);
+    }
+
+    return $source;
+}
+
+test('pas d\'alerte ventilation sans chaleur annoncée', function () {
+    seedGroupeUsage($this->farm->id, $this->operatorUser->id, 10);
+    expect($this->service->ventilationRisk(30.0))->toBeNull(); // < seuil 36°C
+});
+
+test('pas d\'alerte ventilation si la dépendance au groupe est faible', function () {
+    seedGroupeUsage($this->farm->id, $this->operatorUser->id, 2); // < seuil 5 h/j
+    expect($this->service->ventilationRisk(40.0))->toBeNull();
+});
+
+test('pas d\'alerte ventilation sans groupe électrogène', function () {
+    expect($this->service->ventilationRisk(42.0))->toBeNull();
+});
+
+test('alerte ventilation quand chaleur ET forte dépendance au groupe', function () {
+    seedGroupeUsage($this->farm->id, $this->operatorUser->id, 10); // ≥ 5 h/j
+
+    $risk = $this->service->ventilationRisk(39.0); // ≥ 36°C
+
+    expect($risk)->not->toBeNull();
+    expect($risk['type'])->toBe('composite_ventilation');
+    expect($risk['severity'])->toBe('critique');
+    expect($risk['message'])->toContain('39');
+});
+
 test('le seuil d\'anomalie est paramétrable', function () {
     $source = WaterSource::create(['farm_id' => $this->farm->id, 'name' => 'Forage', 'type' => 'forage', 'is_active' => true]);
 

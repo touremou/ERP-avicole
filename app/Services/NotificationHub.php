@@ -742,10 +742,22 @@ class NotificationHub
         }
 
         $farmName = config('whatsapp.farm_name', 'AviSmart');
+        $utility  = app(\App\Services\UtilityService::class);
         $signaled = 0;
 
         foreach (\App\Models\Farm::where('is_active', true)->get() as $farm) {
+            session(['current_farm_id' => $farm->id]); // contexte ferme pour les modèles énergie
+
             $alerts = $weather->forecastAlerts($farm, $days);
+
+            // Alerte composite chaleur × dépendance groupe : on extrait le pic de
+            // température prévu et on le croise avec la sollicitation du parc groupe.
+            $peakTemp = collect($weather->forecast($farm, $days))
+                ->pluck('t_max')->filter()->max();
+            if ($risk = $utility->ventilationRisk($peakTemp !== null ? (float) $peakTemp : null)) {
+                $alerts[] = $risk;
+            }
+
             if (empty($alerts)) {
                 continue;
             }
