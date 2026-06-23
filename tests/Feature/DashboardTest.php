@@ -167,6 +167,38 @@ test('un stock sous son seuil déclenche une alerte de réapprovisionnement', fu
         ->assertSee('Vaccin Newcastle');
 });
 
+test('la bannière du Centre de Contrôle ne retient que les alertes critiques', function () {
+    // Stock sous seuil mais > 0 → niveau « attention » : reste dans le panneau
+    // détaillé, hors bannière critique.
+    App\Models\Stock::create([
+        'item_name'        => 'Litière Copeaux',
+        'category'         => App\Models\Stock::CAT_CONSO,
+        'unit'             => 'KG',
+        'current_quantity' => 5,
+        'alert_threshold'  => 50,
+    ]);
+
+    // Stock épuisé (0) → niveau « critique » : doit apparaître dans la bannière.
+    App\Models\Stock::create([
+        'item_name'        => 'Vaccin Gumboro',
+        'category'         => App\Models\Stock::CAT_CONSO,
+        'unit'             => 'KG',
+        'current_quantity' => 0,
+        'alert_threshold'  => 20,
+    ]);
+
+    $this->actingAs($this->adminUser)
+        ->get(route('dashboard'))
+        ->assertOk()
+        ->assertViewHas('priorityAlerts', function ($alerts) {
+            // Toutes les entrées de la bannière sont de niveau critique…
+            $allCritical = $alerts->every(fn ($a) => $a['level'] === 'critique');
+            // …et le stock épuisé y figure bien.
+            $hasEmptyStock = $alerts->contains(fn ($a) => str_contains($a['title'], 'Stocks sous seuil'));
+            return $allCritical && $hasEmptyStock;
+        });
+});
+
 test('un taux de picage élevé déclenche une alerte bien-être', function () {
     $building = Building::factory()->create(['type' => 'chair', 'capacity' => 5000]);
 

@@ -85,12 +85,13 @@ class DailyCheckController extends Controller
         // cache. Sert à fiabiliser le THI (BatchAdvisorService::environment).
         $weather = $this->suggestedWeather($batch);
 
-        // Suggestion dose : moyenne des 7 derniers pointages (arrondie au kg).
-        // Affichée comme repère, non pré-remplie pour ne pas biaiser la saisie.
-        $suggestedFeed = $batch->dailyChecks()
-            ->latest('check_date')
-            ->take(7)
-            ->avg('feed_consumed');
+        // Dose recommandée du jour : barème de la souche interpolé à la semaine
+        // d'âge puis ajusté à l'environnement (chaleur/saison), identique à la
+        // « Recommandation du jour » de la fiche lot. Source unique de vérité
+        // (BatchAdvisorService) au lieu d'une moyenne glissante approximative.
+        $advisor = new \App\Services\BatchAdvisorService();
+        $recommendation = $advisor->recommendation($batch);
+        $suggestedFeed = $recommendation['total']['feed_kg'] ?? null;
 
         return view('daily-checks.create', compact('batch', 'stockData', 'phases', 'weather', 'suggestedFeed'));
     }

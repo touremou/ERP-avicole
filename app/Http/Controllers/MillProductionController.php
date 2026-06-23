@@ -77,17 +77,21 @@ class MillProductionController extends Controller
     */
     public function store(StoreMillProductionRequest $request): RedirectResponse
     {
-        // Interdit de planifier un OP sur une machine déjà engagée dans une
-        // production "En cours" : une machine ne peut traiter qu'un lot à la fois.
+        // Occupation machine : une machine ne traite qu'un OP à la fois. Un OP
+        // est « ouvert » tant qu'il n'est ni clôturé (Terminé) ni annulé — dans
+        // ce système il naît « Planifié » et passe directement à « Terminé » à
+        // la clôture (pas d'état « En cours » intermédiaire persisté). On bloque
+        // donc sur tout OP ouvert occupant l'une des machines demandées.
         $busyIds = DB::table('mill_production_machine')
             ->join('mill_productions', 'mill_productions.id', '=', 'mill_production_machine.mill_production_id')
             ->whereIn('mill_production_machine.mill_machine_id', $request->machine_ids)
-            ->where('mill_productions.status', 'En cours')
-            ->pluck('mill_production_machine.mill_machine_id');
+            ->whereNotIn('mill_productions.status', ['Terminé', 'Annulé'])
+            ->pluck('mill_production_machine.mill_machine_id')
+            ->unique();
 
         if ($busyIds->isNotEmpty()) {
             $names = MillMachine::whereIn('id', $busyIds)->pluck('name')->join(', ');
-            return back()->withInput()->with('error', "Machine(s) déjà en production active : {$names}. Clôturez l'OP en cours avant d'en créer un nouveau.");
+            return back()->withInput()->with('error', "Machine(s) déjà engagée(s) sur un ordre en cours : {$names}. Clôturez l'OP ouvert avant d'en planifier un nouveau sur cette machine.");
         }
 
         $totalWeight = (float) ($request->nb_bags * 50);

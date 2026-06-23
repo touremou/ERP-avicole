@@ -77,7 +77,7 @@ test('changer le statut d\'une machine en Désactivé est accepté', function ()
 
 // ─── Production : vérification de disponibilité machine ──────────────────────
 
-test('planifier un OP sur une machine déjà en cours est bloqué', function () {
+test('planifier un OP sur une machine portant un OP ouvert (Planifié) est bloqué', function () {
     $machine = MillMachine::create([
         'farm_id'                    => $this->farm->id,
         'name'                       => 'Mélangeur B',
@@ -96,14 +96,16 @@ test('planifier un OP sur une machine déjà en cours est bloqué', function () 
         'is_active'          => true,
     ]);
 
-    // Premier OP en cours sur la machine
+    // Premier OP ouvert sur la machine. Statut réel à la création = 'Planifié'
+    // (le système n'a pas d'état 'En cours' persisté) : c'est justement ce cas
+    // que l'ancienne version laissait passer.
     $existing = MillProduction::create([
         'farm_id'           => $this->farm->id,
         'batch_number'      => 'OP-TEST-001',
         'formula_id'        => $formula->id,
         'quantity_produced' => 500,
         'operator_id'       => $this->operatorUser->id,
-        'status'            => 'En cours',
+        'status'            => 'Planifié',
     ]);
     $existing->machines()->attach([$machine->id => ['snapshot_capacity_per_hour' => 1000]]);
 
@@ -166,6 +168,59 @@ test('planifier un OP sur une machine disponible réussit', function () {
         'formula_id'    => $formula->id,
         'machine_ids'   => [$machine->id],
         'nb_bags'       => 5,
+        'supervisor_id' => $employee->id,
+    ]);
+
+    $response->assertSessionHasNoErrors();
+    expect(MillProduction::where('status', 'Planifié')->count())->toBe(1);
+});
+
+test('un OP clôturé (Terminé) libère la machine pour un nouvel ordre', function () {
+    $machine = MillMachine::create([
+        'farm_id'                    => $this->farm->id,
+        'name'                       => 'Broyeur D',
+        'type'                       => 'Broyeur',
+        'capacity_per_hour'          => 600,
+        'maintenance_interval_hours' => 500,
+        'status'                     => 'Opérationnel',
+    ]);
+
+    $formula = Formula::create([
+        'farm_id'            => $this->farm->id,
+        'name'               => 'Formule Ponte',
+        'code'               => 'FP-02',
+        'target_type'        => 'ponte',
+        'total_batch_weight' => 1000,
+        'is_active'          => true,
+    ]);
+
+    // Ancien OP déjà clôturé sur cette machine → ne doit PAS bloquer.
+    $done = MillProduction::create([
+        'farm_id'           => $this->farm->id,
+        'batch_number'      => 'OP-DONE-001',
+        'formula_id'        => $formula->id,
+        'quantity_produced' => 500,
+        'operator_id'       => $this->operatorUser->id,
+        'status'            => 'Terminé',
+    ]);
+    $done->machines()->attach([$machine->id => ['snapshot_capacity_per_hour' => 600]]);
+
+    $employee = \App\Models\Employee::create([
+        'farm_id'    => $this->farm->id,
+        'first_name' => 'Mamadou',
+        'last_name'  => 'Diallo',
+        'phone'      => '620000003',
+        'job_title'     => 'Opérateur',
+        'department'    => 'Production',
+        'contract_type' => 'CDI',
+        'hire_date'     => '2024-01-01',
+        'status'        => 'Actif',
+    ]);
+
+    $response = $this->actingAs($this->adminUser)->post(route('production.store'), [
+        'formula_id'    => $formula->id,
+        'machine_ids'   => [$machine->id],
+        'nb_bags'       => 8,
         'supervisor_id' => $employee->id,
     ]);
 

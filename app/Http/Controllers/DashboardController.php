@@ -550,7 +550,12 @@ class DashboardController extends Controller
             ]);
         }
 
+        // Bannière critique seulement : le Centre de Contrôle escalade les
+        // urgences (niveau « critique »). Les alertes « attention » restent dans
+        // leurs panneaux détaillés (Silos, Sanitaire, Stocks, Eau) pour éviter
+        // le doublon hub ↔ panneau.
         return $out
+            ->where('level', 'critique')
             ->map(fn ($a) => $a + ['rank' => $rank[$a['level']] ?? 9])
             ->sortBy('rank')
             ->values();

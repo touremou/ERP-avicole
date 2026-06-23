@@ -82,10 +82,10 @@
                                 <span class="relative inline-flex rounded-full h-3 w-3 {{ $critiqueCount > 0 ? 'bg-rose-500' : 'bg-amber-500' }}"></span>
                             </span>
                             <h3 class="text-[11px] font-black uppercase text-slate-800 tracking-[0.2em] italic">
-                                {{ __("Centre de Contrôle") }}
+                                {{ __("Alertes Critiques") }}
                             </h3>
-                            <span class="text-[9px] font-black uppercase px-3 py-1 rounded-full border {{ $critiqueCount > 0 ? 'bg-rose-50 text-rose-600 border-rose-100' : 'bg-amber-50 text-amber-600 border-amber-100' }}">
-                                {{ $priorityAlerts->count() }} {{ __("alerte(s)") }}@if($critiqueCount > 0) · {{ $critiqueCount }} {{ __("critique(s)") }}@endif
+                            <span class="text-[9px] font-black uppercase px-3 py-1 rounded-full border bg-rose-50 text-rose-600 border-rose-100">
+                                {{ $priorityAlerts->count() }} {{ __("critique(s)") }}
                             </span>
                         </div>
                         <i class="fa-solid fa-chevron-down text-slate-300 transition-transform" :class="{ 'rotate-180': open }"></i>

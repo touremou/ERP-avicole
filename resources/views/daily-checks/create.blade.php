@@ -120,8 +120,9 @@
                                 @if(($suggestedFeed ?? null) > 0)
                                 <button type="button"
                                     onclick="document.getElementById('feed_consumed').value={{ round($suggestedFeed, 1) }}; updateStats();"
+                                    title="{{ __('Barème de la souche ajusté à l\'âge et au climat (cf. Recommandation du jour)') }}"
                                     class="mt-3 w-full flex items-center justify-between px-4 py-2 bg-blue-50 hover:bg-blue-100 rounded-xl border border-blue-100 transition cursor-pointer">
-                                    <span class="text-[8px] font-black text-blue-500 uppercase tracking-widest italic">Moy. 7j (repère)</span>
+                                    <span class="text-[8px] font-black text-blue-500 uppercase tracking-widest italic"><i class="fa-solid fa-brain mr-1"></i>{{ __('Reco. du jour') }}</span>
                                     <span class="text-[10px] font-black text-blue-700 italic">{{ round($suggestedFeed, 1) }} kg</span>
                                 </button>
                                 @endif
