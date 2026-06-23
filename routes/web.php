@@ -66,6 +66,14 @@ Route::redirect('/', '/login');
 // Manifest PWA dynamique (nom + icône pilotés par les paramètres).
 Route::get('/manifest.webmanifest', [PwaController::class, 'manifest'])->name('pwa.manifest');
 
+// Page de repli hors-ligne (PWA). VOLONTAIREMENT PUBLIQUE : c'est une coquille
+// statique qui ne lit que le miroir IndexedDB côté client. Si elle était
+// protégée par `auth`, le service worker (qui la pré-cache) ou un repli de
+// navigation déclenché DÉCONNECTÉ la ferait mémoriser comme URL « intended » —
+// l'utilisateur serait alors renvoyé sur /offline juste après connexion avant
+// d'être redirigé vers son tableau de bord.
+Route::get('/offline', fn () => view('offline'))->name('offline');
+
 // ──────────────────────────────────────────────
 // ASSISTANT D'INSTALLATION (premier démarrage)
 // ──────────────────────────────────────────────
@@ -430,10 +438,7 @@ Route::middleware(['auth'])->group(function () {
 
     Route::middleware(['auth', 'can:L'])->resource('protocols', ProtocolController::class);
 
-    // ─── HORS-LIGNE & API INDEXEDDB ───
-    // B-18 corrigé : UN SEUL bloc, pas de doublons closures/controllers
-    Route::get('/offline', fn() => view('offline'))->name('offline');
-
+    // ─── API INDEXEDDB (données du mode terrain) ───
     Route::middleware(['force.json', 'auth'])->prefix('api/offline')->name('offline.')->group(function () {
         // Controllers optimisés (colonnes limitées, sync incrémentale)
         Route::get('/batches', [BatchController::class, 'getOfflineBatches'])->name('batches');

@@ -13,7 +13,7 @@
 //
 // CACHE_NAME est versionné : tout changement de version purge les anciens
 // caches à l'activation (cf. handler `activate`).
-const CACHE_NAME = 'avismart-v2';
+const CACHE_NAME = 'avismart-v3';
 const OFFLINE_URL = '/offline';
 
 self.addEventListener('install', (event) => {
