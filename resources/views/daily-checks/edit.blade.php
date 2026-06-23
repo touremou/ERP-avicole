@@ -152,8 +152,9 @@
                                 <input type="number" name="humidity" value="{{ old('humidity', $check->humidity) }}" class="w-full bg-white/10 p-4 rounded-2xl border-none outline-none font-black text-white text-center">
                             </div>
                             <div class="space-y-2 text-center">
-                                <label class="block text-[9px] text-slate-500 uppercase tracking-widest leading-none">{{ __("Poids (Kg)") }}</label>
-                                <input type="number" name="avg_weight" value="{{ old('avg_weight', $check->avg_weight) }}" step="0.001" class="w-full bg-white/10 p-4 rounded-2xl border-none outline-none font-black text-emerald-400 text-center font-mono">
+                                <label class="block text-[9px] text-slate-500 uppercase tracking-widest leading-none">{{ __("Poids moyen / sujet (kg)") }}</label>
+                                <input type="number" name="avg_weight" value="{{ old('avg_weight', $check->avg_weight) }}" step="0.001" title="{{ __('Poids moyen d\'un seul animal (moyenne d\'un échantillon pesé), pas le poids total du lot.') }}" class="w-full bg-white/10 p-4 rounded-2xl border-none outline-none font-black text-emerald-400 text-center font-mono">
+                                <p class="text-[7px] font-bold text-slate-500 uppercase tracking-wide leading-tight italic">{{ __("Moyenne par tête, pas le poids du lot") }}</p>
                             </div>
                         </div>
                     </div>

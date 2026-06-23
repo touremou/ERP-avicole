@@ -198,8 +198,9 @@
                                 <input type="number" name="humidity" min="0" max="100" class="w-full bg-white/5 border border-white/10 p-4 rounded-2xl text-xl text-purple-400 text-center outline-none font-black italic">
                             </div>
                             <div class="space-y-2 text-center">
-                                <label class="block text-[8px] font-black text-slate-500 uppercase tracking-widest leading-none">Pesée (Kg)</label>
-                                <input type="number" min="0" name="avg_weight" step="0.001" placeholder="0.000" class="w-full bg-white/5 border border-white/10 p-4 rounded-2xl text-xl text-emerald-400 text-center outline-none font-black italic">
+                                <label class="block text-[8px] font-black text-slate-500 uppercase tracking-widest leading-none">Poids moyen / sujet (kg)</label>
+                                <input type="number" min="0" name="avg_weight" step="0.001" placeholder="0.000" title="Poids moyen d'un seul animal (moyenne d'un échantillon pesé), pas le poids total du lot." class="w-full bg-white/5 border border-white/10 p-4 rounded-2xl text-xl text-emerald-400 text-center outline-none font-black italic">
+                                <p class="text-[7px] font-bold text-slate-500 uppercase tracking-wide leading-tight italic">Moyenne par tête, pas le poids du lot</p>
                             </div>
                         </div>
                     </div>
