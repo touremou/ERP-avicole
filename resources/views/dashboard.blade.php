@@ -612,12 +612,36 @@
         });
     });
 
+    // État vide explicite — affiché quand il n'y a réellement aucun lot actif.
+    const emptyBatchesHtml = `
+        <div class="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm px-8 py-16 text-center">
+            <div class="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-5 shadow-inner">
+                <i class="fa-solid fa-feather-pointed text-2xl text-slate-200"></i>
+            </div>
+            <p class="text-slate-300 font-black uppercase text-[11px] tracking-[0.3em] italic">{{ __("Aucun lot actif") }}</p>
+        </div>`;
+
     async function loadOfflineContent() {
         const container = document.getElementById('batchContainer');
-        if (!container || container.children.length > 0) return; 
+        if (!container || container.children.length > 0) return;
+
+        // EN LIGNE : le serveur fait foi. Conteneur vide = aucun lot actif réel.
+        // On n'affiche PAS le miroir local (potentiellement périmé) — on montre
+        // un état vide explicite plutôt que des cartes « MODE TERRAIN »
+        // trompeuses (ex. lot virtuel d'œufs externes resté en cache).
+        if (navigator.onLine) {
+            container.innerHTML = emptyBatchesHtml;
+            return;
+        }
+
         if (typeof db === 'undefined') return;
 
-        const localBatches = await db.batches.toArray();
+        // HORS-LIGNE : on rejoue le miroir IndexedDB. Filtre défensif : on écarte
+        // les lots virtuels (effectif nul, ou code « EXT-… » des œufs externes).
+        const localBatches = (await db.batches.toArray()).filter(b =>
+            Number(b.current_quantity) > 0 && !String(b.code || '').toUpperCase().startsWith('EXT-')
+        );
+
         if (localBatches.length === 0) {
             container.innerHTML = '<p class="p-10 text-center text-slate-400 text-[10px] uppercase italic font-black">{{ __("Aucune donnée locale hors-ligne.") }}</p>';
             return;

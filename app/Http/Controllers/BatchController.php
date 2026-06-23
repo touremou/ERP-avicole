@@ -497,6 +497,7 @@ class BatchController extends Controller
 
         return response()->json(
             Batch::active()
+                ->live() // exclut les lots virtuels (œufs externes, initial_quantity=0)
                 ->when($request->query('since'), function ($q, $since) {
                     $q->where('updated_at', '>=', $since);
                 })

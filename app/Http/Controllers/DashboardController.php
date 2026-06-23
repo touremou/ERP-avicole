@@ -28,8 +28,10 @@ class DashboardController extends Controller
         // ---------------------------------------------------------
         // 1. EFFECTIFS & MORTALITÉ GLOBALE
         // ---------------------------------------------------------
+        // ->live() exclut les lots virtuels (œufs externes, initial_quantity=0) :
+        // scope canonique partagé par tous les calculs ci-dessous (cohérence).
         $allActiveBatches = Batch::active()
-            ->where('initial_quantity', '>', 0)
+            ->live()
             ->with(['species', 'productionType'])
             ->get();
 
@@ -246,7 +248,7 @@ class DashboardController extends Controller
         // de l'étape). Bornée aux échéances des $protocolWindowDays derniers
         // jours pour rester actionnable et éviter le bruit d'anciens lots.
         $vaccineAlerts = collect();
-        $protocolBatches = Batch::active()->where('initial_quantity', '>', 0)
+        $protocolBatches = Batch::active()->live()
             ->whereNotNull('protocol_id')
             ->with(['protocol.steps', 'healthChecks'])
             ->get();
@@ -288,7 +290,7 @@ class DashboardController extends Controller
         $lamenessPct   = (float) setting('elevage.lameness_alert_pct', 5);
         $peckingPct    = (float) setting('elevage.pecking_alert_pct', 2);
 
-        $welfareAlerts = Batch::active()->where('initial_quantity', '>', 0)
+        $welfareAlerts = Batch::active()->live()
             ->with('latestDailyCheck')
             ->get()
             ->map(function ($batch) use ($welfareWindow, $lamenessPct, $peckingPct) {
@@ -318,10 +320,10 @@ class DashboardController extends Controller
         // ---------------------------------------------------------
         $buildings = Building::where('name', '!=', 'Zone Fournisseurs Externes')
             ->withCount(['batches' => function($q) {
-                $q->active()->where('initial_quantity', '>', 0);
+                $q->active()->live();
             }])
             ->with(['batches' => function($q) {
-                $q->active()->where('initial_quantity', '>', 0);
+                $q->active()->live();
             }])->get();
 
         $occupiedBuildingsCount = $buildings->where('batches_count', '>', 0)->count();
@@ -332,7 +334,7 @@ class DashboardController extends Controller
         // par lot alors que la vue n'affiche que le dernier poids.
         $activeBatches = Batch::with(['building', 'latestDailyCheck'])
             ->active()
-            ->where('initial_quantity', '>', 0)
+            ->live()
             ->paginate((int) setting('general.items_per_page', 20));
 
         // ---------------------------------------------------------
@@ -370,6 +372,7 @@ class DashboardController extends Controller
         // ---------------------------------------------------------
         $waterAlerts = collect();
         $aquaBatches = Batch::active()
+            ->live()
             ->whereHas('species', function($q) {
                 $q->where('family', 'aquaculture');
             })->with(['species', 'building'])->get();

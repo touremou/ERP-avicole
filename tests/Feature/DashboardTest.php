@@ -284,3 +284,52 @@ test('les boutons actions rapides sont masqués pour un opérateur sans droits l
         ->assertDontSee('Stocks')
         ->assertDontSee('Nouvelle Bande');
 });
+
+test('un lot virtuel (œufs externes) est exclu des KPI et de la liste du dashboard', function () {
+    $building = Building::factory()->create(['type' => 'chair', 'capacity' => 5000]);
+
+    // Lot physique réel.
+    App\Models\Batch::factory()->create([
+        'building_id'      => $building->id,
+        'status'           => 'Actif',
+        'code'             => 'PHYS-001',
+        'initial_quantity' => 1000,
+        'current_quantity' => 980,
+    ]);
+
+    // Lot VIRTUEL d'œufs externes : initial_quantity = 0 (cf. StartIncubation).
+    // Il ne doit ni gonfler les compteurs ni apparaître dans la liste.
+    App\Models\Batch::factory()->create([
+        'status'           => 'Actif',
+        'code'             => 'EXT-AVICO',
+        'initial_quantity' => 0,
+        'current_quantity' => 0,
+    ]);
+
+    $this->actingAs($this->adminUser)
+        ->get(route('dashboard'))
+        ->assertOk()
+        ->assertViewHas('activeLotsCount', 1)               // seul le lot physique compte
+        ->assertViewHas('totalBirds', 980)
+        ->assertViewHas('activeBatches', fn ($b) => $b->pluck('code')->doesntContain('EXT-AVICO'))
+        ->assertSee('PHYS-001')
+        ->assertDontSee('EXT-AVICO');
+});
+
+test('l\'endpoint hors-ligne des lots exclut les lots virtuels', function () {
+    App\Models\Batch::factory()->create([
+        'status' => 'Actif', 'code' => 'PHYS-XYZ',
+        'initial_quantity' => 500, 'current_quantity' => 500,
+    ]);
+    App\Models\Batch::factory()->create([
+        'status' => 'Actif', 'code' => 'EXT-FOURNISSEUR',
+        'initial_quantity' => 0, 'current_quantity' => 0,
+    ]);
+
+    $response = $this->actingAs($this->adminUser)->getJson('/api/offline/batches');
+
+    $response->assertOk();
+    $codes = collect($response->json())->pluck('code');
+    expect($codes)->toContain('PHYS-XYZ');
+    expect($codes)->not->toContain('EXT-FOURNISSEUR');
+});
