@@ -200,6 +200,66 @@ test('la mutation d\'une poussinière vers la phase ponte bascule le type de pro
     expect($lastTransfer['new_type'])->toBe('ponte');
 });
 
+test('la mutation applique la souche saisie (poussinière Non spécifié → ponte)', function () {
+    $protocol = Protocol::create(['name' => 'Proto Ponte Souche', 'type' => 'ponte']);
+
+    $poussiniereBuilding = Building::factory()->create(['type' => 'poussiniere']);
+    $ponteBuilding       = Building::factory()->create(['type' => 'ponte']);
+
+    $poussiniereType = ProductionType::resolveOrCreate('poussiniere', null);
+
+    $batch = Batch::factory()->create([
+        'building_id'        => $poussiniereBuilding->id,
+        'status'             => 'Actif',
+        'current_quantity'   => 500,
+        'production_type_id' => $poussiniereType->id,
+        'model_name'         => 'Non spécifié',
+    ]);
+
+    $this->actingAs($this->managerUser)
+        ->post(route('batches.transfer', $batch), [
+            'target_building_id' => $ponteBuilding->id,
+            'new_protocol_id'    => $protocol->id,
+            'new_phase'          => 'ponte',
+            'transfer_date'      => now()->toDateString(),
+            'model_name'         => 'ISA Brown',
+        ])
+        ->assertSessionDoesntHaveErrors();
+
+    // La souche renseignée lors de la graduation est appliquée : les normes
+    // (BatchAdvisorService) et protocoles s'appliquent sans ré-édition.
+    expect($batch->fresh()->model_name)->toBe('ISA Brown');
+});
+
+test('la mutation sans souche ne réécrase pas une souche connue', function () {
+    $protocol = Protocol::create(['name' => 'Proto Ponte Garde', 'type' => 'ponte']);
+
+    $poussiniereBuilding = Building::factory()->create(['type' => 'poussiniere']);
+    $ponteBuilding       = Building::factory()->create(['type' => 'ponte']);
+
+    $poussiniereType = ProductionType::resolveOrCreate('poussiniere', null);
+
+    $batch = Batch::factory()->create([
+        'building_id'        => $poussiniereBuilding->id,
+        'status'             => 'Actif',
+        'current_quantity'   => 500,
+        'production_type_id' => $poussiniereType->id,
+        'model_name'         => 'Lohmann Brown',
+    ]);
+
+    $this->actingAs($this->managerUser)
+        ->post(route('batches.transfer', $batch), [
+            'target_building_id' => $ponteBuilding->id,
+            'new_protocol_id'    => $protocol->id,
+            'new_phase'          => 'ponte',
+            'transfer_date'      => now()->toDateString(),
+            'model_name'         => '', // champ laissé vide → on garde l'existant
+        ])
+        ->assertSessionDoesntHaveErrors();
+
+    expect($batch->fresh()->model_name)->toBe('Lohmann Brown');
+});
+
 test('la mutation refuse un bâtiment incompatible avec la nouvelle phase', function () {
     $protocol = Protocol::create([
         'name' => 'Proto Ponte Standard 2',

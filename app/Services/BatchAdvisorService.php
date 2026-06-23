@@ -480,6 +480,82 @@ class BatchAdvisorService
         ];
     }
 
+    /**
+     * Courbe de croissance : poids moyen réel pesé (kg/sujet) confronté au
+     * poids-cible interpolé de la souche, point par point sur les pointages.
+     *
+     * Sert le 3e graphique du show : la divergence réel/cible saute aux yeux.
+     * Renvoie [] si aucune donnée exploitable (ni pesée, ni norme de poids).
+     *
+     * @return array{
+     *   labels: array<int, string>,
+     *   actual: array<int, ?float>,
+     *   target: array<int, ?float>,
+     *   has_actual: bool,
+     *   has_target: bool
+     * }
+     */
+    public function weightCurve(Batch $batch): array
+    {
+        $checks = $batch->relationLoaded('dailyChecks')
+            ? $batch->dailyChecks->sortBy('check_date')->values()
+            : $batch->dailyChecks()->orderBy('check_date')->get();
+
+        $empty = ['labels' => [], 'actual' => [], 'target' => [], 'has_actual' => false, 'has_target' => false];
+        if ($checks->isEmpty()) {
+            return $empty;
+        }
+
+        $curve = $this->normCurve($batch);
+
+        // Origine d'âge : même référence que le calendrier sanitaire du show.
+        $start = $batch->transfer_date ?? $batch->start_date ?? $batch->arrival_date;
+        $start = $start ? \Carbon\Carbon::parse($start)->startOfDay() : null;
+
+        $labels = $actual = $target = [];
+        $hasActual = $hasTarget = false;
+
+        foreach ($checks as $i => $check) {
+            $labels[] = 'J' . ($i + 1);
+
+            // Poids réel pesé (kg/sujet). Null = pas de pesée ce jour-là
+            // (Chart.js relie les points via spanGaps).
+            $w = $check->avg_weight !== null ? (float) $check->avg_weight : null;
+            $actual[] = ($w !== null && $w > 0) ? round($w, 3) : null;
+            if ($actual[count($actual) - 1] !== null) {
+                $hasActual = true;
+            }
+
+            // Poids-cible interpolé à l'âge du sujet au jour de la pesée
+            // (le barème est stocké en grammes → on convertit en kg).
+            $tg = null;
+            if ($curve->isNotEmpty()) {
+                $ageDays = $start
+                    ? max(0, (int) $start->diffInDays(\Carbon\Carbon::parse($check->check_date)))
+                    : $i;
+                $week  = max(1, (int) ceil(($ageDays + 1) / 7));
+                $tw    = $this->interpolate($curve, $week)['weight'];
+                $tg    = $tw !== null ? round($tw / 1000, 3) : null;
+                if ($tg !== null) {
+                    $hasTarget = true;
+                }
+            }
+            $target[] = $tg;
+        }
+
+        if (! $hasActual && ! $hasTarget) {
+            return $empty;
+        }
+
+        return [
+            'labels'     => $labels,
+            'actual'     => $actual,
+            'target'     => $target,
+            'has_actual' => $hasActual,
+            'has_target' => $hasTarget,
+        ];
+    }
+
     private function lastCheck(Batch $batch): ?DailyCheck
     {
         if ($batch->relationLoaded('dailyChecks')) {

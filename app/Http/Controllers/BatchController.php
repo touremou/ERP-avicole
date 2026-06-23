@@ -275,6 +275,7 @@ class BatchController extends Controller
         $feedAdvice      = $advisor->recommendation($batch);
         $batchAdvisories = $advisor->advisories($batch);
         $feedAutonomy    = $advisor->feedAutonomy($batch);
+        $weightCurve     = $advisor->weightCurve($batch);
 
         // Souches disponibles pour le modal de mutation (graduation de phase).
         $normModels = ProductionNorm::forSpecies($batch->species_id)
@@ -284,7 +285,7 @@ class BatchController extends Controller
             ->orderBy('model_name')
             ->get();
 
-        return view('batches.show', compact('batch', 'buildings', 'protocols', 'providers', 'stats', 'feedAdvice', 'batchAdvisories', 'feedAutonomy', 'normModels'));
+        return view('batches.show', compact('batch', 'buildings', 'protocols', 'providers', 'stats', 'feedAdvice', 'batchAdvisories', 'feedAutonomy', 'normModels', 'weightCurve'));
     }
 
     /**

@@ -544,15 +544,30 @@
             @endif
 
             {{-- GRAPHIQUES --}}
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            @php $hasGrowthChart = ($weightCurve['has_actual'] ?? false) || ($weightCurve['has_target'] ?? false); @endphp
+            <div class="grid grid-cols-1 md:grid-cols-2 {{ $hasGrowthChart ? 'xl:grid-cols-3' : '' }} gap-8 mb-8">
                 <div class="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
                     <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest italic mb-6 leading-none"><i class="fas fa-skull-crossbones text-red-500 mr-2"></i> {{ __("Courbe de Mortalité (%)") }}</h3>
-                    <div class="h-[300px]"><canvas id="mortalityChart"></canvas></div>
+                    <div class="h-[280px]"><canvas id="mortalityChart"></canvas></div>
                 </div>
                 <div class="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
                     <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest italic mb-6 leading-none"><i class="fas fa-tint text-blue-500 mr-2"></i> {{ __("Ration Aliment (kg) vs Eau (L)") }}</h3>
-                    <div class="h-[300px]"><canvas id="hydrationChart"></canvas></div>
+                    <div class="h-[280px]"><canvas id="hydrationChart"></canvas></div>
                 </div>
+                @if($hasGrowthChart)
+                <div class="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest italic leading-none"><i class="fas fa-weight-scale text-emerald-500 mr-2"></i> {{ __("Croissance — Poids / sujet (kg)") }}</h3>
+                        @if($weightCurve['has_target'] ?? false)
+                            <span class="text-[8px] font-black uppercase tracking-widest text-slate-300 italic">{{ __("Réel vs Cible") }}</span>
+                        @endif
+                    </div>
+                    <div class="h-[280px]"><canvas id="growthChart"></canvas></div>
+                    @if(! ($weightCurve['has_actual'] ?? false))
+                        <p class="text-[8px] font-black uppercase text-amber-400 tracking-widest italic mt-3 ml-1"><i class="fas fa-circle-info mr-1"></i> {{ __("Aucune pesée saisie — seul le barème de la souche s'affiche") }}</p>
+                    @endif
+                </div>
+                @endif
             </div>
 
             {{-- CALENDRIER SANITAIRE --}}
@@ -1091,28 +1106,32 @@
 
             // 4. INITIALISATION DES GRAPHIQUES (Correction syntaxe Chart.js)
             const raw = @json($batch->dailyChecks->sortBy('check_date')->values());
-            
+            const num = v => (v === null || v === undefined || v === '') ? null : Number(v);
+
             if (raw.length > 0) {
                 const labels = raw.map((_, i) => 'J' + (i + 1));
-                const commonOptions = { 
-                    responsive: true, 
-                    maintainAspectRatio: false, 
-                    plugins: { legend: { display: false } } 
+                const commonOptions = {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } }
                 };
 
-                // GRAPHIQUE MORTALITÉ
+                // GRAPHIQUE MORTALITÉ (cumulée, en % de l'effectif initial)
+                // Garde-fou : effectif initial nul (lots virtuels EXT-) → pas
+                // de division par zéro (sinon Infinity/NaN illisible).
+                const initialQty = {{ (int) $batch->initial_quantity }};
                 const ctxMortality = document.getElementById('mortalityChart');
-                if (ctxMortality) {
+                if (ctxMortality && initialQty > 0) {
                     new Chart(ctxMortality, {
                         type: 'line', // <-- OBLIGATOIRE À LA RACINE
-                        data: { 
-                            labels: labels, 
-                            datasets: [{ 
-                                data: raw.map((c, i, a) => (a.slice(0, i + 1).reduce((s, x) => s + x.mortality, 0) / {{ $batch->initial_quantity }}) * 100), 
-                                borderColor: '#ef4444', 
-                                borderWidth: 3, 
-                                tension: 0.4 
-                            }] 
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                data: raw.map((c, i, a) => (a.slice(0, i + 1).reduce((s, x) => s + (num(x.mortality) || 0), 0) / initialQty) * 100),
+                                borderColor: '#ef4444',
+                                borderWidth: 3,
+                                tension: 0.4
+                            }]
                         },
                         options: commonOptions
                     });
@@ -1123,16 +1142,64 @@
                 if (ctxHydration) {
                     new Chart(ctxHydration, {
                         type: 'bar', // <-- OBLIGATOIRE (Définit le type de base du graphique mixte)
-                        data: { 
-                            labels: labels, 
+                        data: {
+                            labels: labels,
                             datasets: [
-                                { type: 'line', data: raw.map(c => c.feed_consumed), borderColor: '#1e293b', borderWidth: 2 },
-                                { type: 'bar', data: raw.map(c => c.water_consumed), backgroundColor: 'rgba(59, 130, 246, 0.2)' }
+                                { type: 'line', data: raw.map(c => num(c.feed_consumed)), borderColor: '#1e293b', borderWidth: 2 },
+                                { type: 'bar', data: raw.map(c => num(c.water_consumed)), backgroundColor: 'rgba(59, 130, 246, 0.2)' }
                             ]
                         },
                         options: commonOptions
                     });
                 }
+            }
+
+            // GRAPHIQUE CROISSANCE — poids réel pesé vs poids-cible de la souche.
+            // Données calculées côté serveur (BatchAdvisorService::weightCurve),
+            // alignées sur l'âge du sujet ; spanGaps relie les jours sans pesée.
+            const growth = @json($weightCurve);
+            const ctxGrowth = document.getElementById('growthChart');
+            if (ctxGrowth && growth && growth.labels && growth.labels.length > 0) {
+                const datasets = [];
+                if (growth.has_actual) {
+                    datasets.push({
+                        label: @json(__('Réel')),
+                        data: growth.actual.map(num),
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        borderWidth: 3,
+                        tension: 0.4,
+                        spanGaps: true,
+                        pointRadius: 3,
+                        fill: true
+                    });
+                }
+                if (growth.has_target) {
+                    datasets.push({
+                        label: @json(__('Cible souche')),
+                        data: growth.target.map(num),
+                        borderColor: '#94a3b8',
+                        borderWidth: 2,
+                        borderDash: [6, 4],
+                        tension: 0.4,
+                        spanGaps: true,
+                        pointRadius: 0
+                    });
+                }
+                new Chart(ctxGrowth, {
+                    type: 'line',
+                    data: { labels: growth.labels, datasets: datasets },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: datasets.length > 1,
+                                labels: { boxWidth: 10, font: { size: 9, weight: 'bold' } }
+                            }
+                        }
+                    }
+                });
             }
         });
     </script>

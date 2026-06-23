@@ -117,3 +117,54 @@ test('retourne null sans barème applicable', function () {
 
     expect($reco)->toBeNull();
 });
+
+test('weightCurve aligne poids réel pesé et poids-cible interpolé', function () {
+    $batch = advisorMakeBatch(['arrival_date' => now()->subDays(20)]);
+
+    // Deux pesées sur des jours distincts (semaines 3 puis 4 d'âge).
+    DailyCheck::factory()->create([
+        'batch_id'   => $batch->id,
+        'check_date' => now()->subDays(6)->toDateString(),
+        'avg_weight' => 0.95,
+        'mortality'  => 0,
+    ]);
+    DailyCheck::factory()->create([
+        'batch_id'   => $batch->id,
+        'check_date' => now()->toDateString(),
+        'avg_weight' => 1.60,
+        'mortality'  => 0,
+    ]);
+
+    $curve = (new BatchAdvisorService())->weightCurve($batch->fresh());
+
+    expect($curve['has_actual'])->toBeTrue();
+    expect($curve['has_target'])->toBeTrue();
+    expect($curve['labels'])->toBe(['J1', 'J2']);
+    expect($curve['actual'])->toBe([0.95, 1.60]);
+    // Cible en kg = target_weight (g) / 1000 ; bornée par le barème Ross 308.
+    expect($curve['target'][0])->toBeGreaterThan(0.5);
+    expect($curve['target'][1])->toBeGreaterThanOrEqual($curve['target'][0]);
+});
+
+test('weightCurve gère l\'absence de pesée (cible seule) et l\'absence totale', function () {
+    $batch = advisorMakeBatch();
+
+    // Pointage sans avg_weight : la série réelle reste vide, la cible existe.
+    DailyCheck::factory()->create([
+        'batch_id'   => $batch->id,
+        'check_date' => now()->toDateString(),
+        'avg_weight' => null,
+        'mortality'  => 0,
+    ]);
+
+    $curve = (new BatchAdvisorService())->weightCurve($batch->fresh());
+    expect($curve['has_actual'])->toBeFalse();
+    expect($curve['has_target'])->toBeTrue();
+    expect($curve['actual'])->toBe([null]);
+
+    // Aucun pointage du tout → structure vide, pas d'erreur.
+    $empty = (new BatchAdvisorService())->weightCurve(advisorMakeBatch());
+    expect($empty['labels'])->toBe([]);
+    expect($empty['has_actual'])->toBeFalse();
+    expect($empty['has_target'])->toBeFalse();
+});
