@@ -252,6 +252,7 @@ class UtilityController extends Controller
         ]);
 
         $validated['user_id'] = Auth::id();
+        $validated['outage_hours'] = $validated['outage_hours'] ?? 0;
 
         $source = EnergySource::find($validated['energy_source_id']);
 
