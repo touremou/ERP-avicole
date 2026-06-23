@@ -87,43 +87,20 @@ class DashboardController extends Controller
             ->value('v');
 
         // ---------------------------------------------------------
-        // 4. MARGE NETTE ESTIMÉE DU MOIS (Ventes - Coûts réels)
+        // 4. SYNTHÈSE FINANCIÈRE DU MOIS (source unique : service)
         // ---------------------------------------------------------
-        // A. Chiffre d'affaires réel du mois : ventes validées/livrées (toutes
-        //    catégories & espèces) + lait collecté valorisé. Remplace l'ancienne
-        //    estimation œufs-seulement à prix figé, désormais incohérente avec
-        //    la vente d'animaux vifs et le lait.
+        // Chiffre d'affaires (ventes validées + lait) − charges réelles du mois
+        // (aliment au coût de revient, santé, dépenses validées ventilées). La
+        // marge nette inclut désormais les dépenses validées (carburant, main
+        // d'œuvre…), pas seulement aliment + santé. Trésorerie = encours clients.
         $monthStart = now()->startOfMonth();
         $monthEnd   = now()->endOfMonth();
 
-        $caVentes = (float) Sale::validated()
-            ->whereBetween('sale_date', [$monthStart, $monthEnd])
-            ->sum('total_amount');
+        $insights  = new \App\Services\DashboardInsightsService();
+        $financial = $insights->financial($monthStart, $monthEnd);
 
-        // Lait : on écarte les collectes en brouillon (prix unitaire nul).
-        $caLait = (float) \App\Models\MilkProduction::whereBetween('production_date', [$monthStart, $monthEnd])
-            ->where('unit_price', '>', 0)
-            ->sum(DB::raw('total_liters * unit_price'));
-
-        $caEstime = $caVentes + $caLait;
-
-        // B. Coût alimentaire réel du mois : consommation valorisée au coût de
-        //    revient figé à la saisie (feed_unit_cost, cf. costing provenderie),
-        //    et NON plus un prix forfaitaire de 4500 GNF/kg codé en dur. Le
-        //    filtre est borné au mois courant (whereBetween, pas whereMonth qui
-        //    ignorait l'année).
-        $coutAliment = (float) DailyCheck::whereBetween('check_date', [$monthStart, $monthEnd])
-            ->selectRaw('COALESCE(SUM(feed_consumed * COALESCE(feed_unit_cost, 0)), 0) AS c')
-            ->value('c');
-
-        // C. Coûts Santé du mois (borné au mois courant, année comprise).
-        $coutSante = (float) HealthCheck::whereBetween('intervention_date', [$monthStart, $monthEnd])->sum('cost');
-
-        $safeProfit = $caEstime - ($coutAliment + $coutSante);
-
-        // Encours clients (trésorerie) : montant des ventes non soldées encore
-        // dû à la ferme — une marge positive ne garantit pas la liquidité.
-        $encoursClients = (float) Sale::unpaid()->get()->sum(fn ($s) => $s->remaining_amount);
+        $safeProfit     = $financial['net_margin'];
+        $encoursClients = $financial['receivables'];
 
         // ---------------------------------------------------------
         // 5. GESTION DES ALERTES (Centre de contrôle)
@@ -443,15 +420,136 @@ class DashboardController extends Controller
             ];
         }
 
+        // ---------------------------------------------------------
+        // 11. ENRICHISSEMENT INDUSTRIEL (KPI techniques + tendances)
+        // ---------------------------------------------------------
+        $technical = $insights->technical($allActiveBatches, $globalMortalityRate);
+        $trends    = $insights->trends($batchIds->all(), 30);
+
+        // ---------------------------------------------------------
+        // 12. BANDEAU D'ALERTES PRIORISÉ (centre de contrôle unifié)
+        // ---------------------------------------------------------
+        // Consolide toutes les alertes déjà calculées en une liste unique triée
+        // par criticité (critique > attention > info), avec lien d'action.
+        $priorityAlerts = $this->buildPriorityAlerts(
+            $emergencyBatches, $underperformingBatches, $waterAlerts,
+            $criticalTypes, $lowStocks, $vaccineAlerts, $welfareAlerts, $sanitaryAlertsCount
+        );
+
         return view('dashboard', compact(
             'totalBirds', 'globalMortalityRate', 'hdp', 'plantProduction',
             'totalEggsStock', 'totalBrokenToday', 'rawMaterialsValue', 'safeProfit',
-            'encoursClients',
+            'encoursClients', 'financial', 'technical', 'trends', 'priorityAlerts',
             'criticalTypes', 'emergencyBatches', 'underperformingBatches', 'sanitaryAlertsCount',
             'lowStocks', 'vaccineAlerts', 'welfareAlerts', 'criticalDaysThreshold',
             'activeBatches', 'buildings', 'totalEggsToday', 'tabaskiWidget', 'waterAlerts',
             'familyBreakdown', 'showEggKpis', 'activeLotsCount',
             'occupiedBuildingsCount', 'totalBuildingsCount'
         ));
+    }
+
+    /**
+     * Assemble les alertes éparses du tableau de bord en une liste unique triée
+     * par criticité, pour un bandeau « centre de contrôle » actionnable.
+     *
+     * @return \Illuminate\Support\Collection<int, array{rank:int, level:string, icon:string, title:string, detail:string, url:?string}>
+     */
+    private function buildPriorityAlerts(
+        $emergencyBatches, $underperformingBatches, $waterAlerts,
+        array $criticalTypes, $lowStocks, $vaccineAlerts, $welfareAlerts, int $sanitaryAlertsCount
+    ) {
+        $rank = ['critique' => 0, 'attention' => 1, 'info' => 2];
+        $out = collect();
+
+        // Urgences mortalité (critique).
+        foreach ($emergencyBatches as $b) {
+            $out->push([
+                'level' => 'critique', 'icon' => 'fa-heart-pulse',
+                'title' => 'Pic de mortalité',
+                'detail' => "Lot {$b->code} — contrôle sanitaire immédiat requis.",
+                'url' => route('batches.show', $b->id),
+            ]);
+        }
+
+        // Qualité d'eau aquaculture.
+        foreach ($waterAlerts as $w) {
+            $out->push([
+                'level' => $w['has_critical'] ? 'critique' : 'attention', 'icon' => 'fa-droplet',
+                'title' => 'Qualité de l\'eau',
+                'detail' => "Bassin {$w['batch']->code} — paramètres hors normes.",
+                'url' => route('batches.show', $w['batch']->id),
+            ]);
+        }
+
+        // Silos d'aliment.
+        foreach ($criticalTypes as $c) {
+            $detail = match (true) {
+                $c['days'] === -1 => "{$c['type']} — consommé mais aucun stock enregistré.",
+                $c['days'] === -2 => "{$c['type']} — stock présent mais aucune sortie tracée.",
+                $c['days'] === 0  => "{$c['type']} — silo épuisé.",
+                default           => "{$c['type']} — {$c['days']} j d'autonomie restante.",
+            };
+            $out->push([
+                'level' => $c['days'] <= 0 ? 'critique' : 'attention', 'icon' => 'fa-wheat-awn',
+                'title' => 'Autonomie aliment', 'detail' => $detail,
+                'url' => route('stocks.index'),
+            ]);
+        }
+
+        // Dérive technique (mortalité cumulée).
+        foreach ($underperformingBatches as $b) {
+            $out->push([
+                'level' => 'attention', 'icon' => 'fa-chart-line',
+                'title' => 'Dérive technique',
+                'detail' => "Lot {$b->code} — mortalité cumulée au-dessus du seuil.",
+                'url' => route('batches.show', $b->id),
+            ]);
+        }
+
+        // Prophylaxie en retard.
+        foreach ($vaccineAlerts as $v) {
+            $out->push([
+                'level' => 'attention', 'icon' => 'fa-syringe',
+                'title' => 'Prophylaxie en retard',
+                'detail' => "Lot {$v['batch']->code} — {$v['count']} acte(s) à tracer (ex. {$v['next']}).",
+                'url' => route('batches.show', $v['batch']->id),
+            ]);
+        }
+
+        // Bien-être animal.
+        foreach ($welfareAlerts as $a) {
+            $types = collect($a['issues'])->pluck('type')->join(', ');
+            $out->push([
+                'level' => 'attention', 'icon' => 'fa-hand-holding-heart',
+                'title' => 'Bien-être animal',
+                'detail' => "Lot {$a['batch']->code} — {$types} au-dessus du seuil.",
+                'url' => route('batches.show', $a['batch']->id),
+            ]);
+        }
+
+        // Stocks sous seuil.
+        foreach ($lowStocks as $s) {
+            $out->push([
+                'level' => 'attention', 'icon' => 'fa-boxes-stacked',
+                'title' => 'Stock sous seuil',
+                'detail' => "{$s->item_name} — {$s->current_quantity} {$s->unit} (seuil {$s->alert_threshold}).",
+                'url' => route('stocks.index'),
+            ]);
+        }
+
+        // Vide sanitaire dépassé.
+        if ($sanitaryAlertsCount > 0) {
+            $out->push([
+                'level' => 'attention', 'icon' => 'fa-broom',
+                'title' => 'Vide sanitaire dépassé',
+                'detail' => "{$sanitaryAlertsCount} bâtiment(s) en désinfection au-delà du délai.",
+                'url' => route('buildings.index'),
+            ]);
+        }
+
+        return $out
+            ->map(fn ($a) => $a + ['rank' => $rank[$a['level']] ?? 9])
+            ->sortBy('rank')
+            ->values();
     }
 }

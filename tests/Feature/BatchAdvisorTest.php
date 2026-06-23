@@ -43,13 +43,16 @@ function advisorMakeBatch(array $attrs = []): Batch
 
 test('interpole le barème à la semaine et met à l\'échelle sur l\'effectif', function () {
     $batch = advisorMakeBatch();
-    // Pointage en ambiance neutre (pas de stress thermique).
+    // Pointage en ambiance neutre (pas de stress thermique). mortality = 0
+    // explicite : sinon la factory tire une mortalité aléatoire que l'observer
+    // déduit de l'effectif, rendant le total (mis à l'échelle) indéterministe.
     DailyCheck::factory()->create([
         'batch_id'   => $batch->id,
         'check_date' => now()->toDateString(),
         'temp_max'   => 28,
         'humidity'   => 50,
         'avg_weight' => 1.55, // kg
+        'mortality'  => 0,
     ]);
 
     $reco = (new BatchAdvisorService())->recommendation($batch->fresh());
@@ -60,7 +63,7 @@ test('interpole le barème à la semaine et met à l\'échelle sur l\'effectif',
     expect($reco['per_subject']['feed_g'])->toEqualWithDelta(135.0, 0.5);
     // Eau ≈ (175+320)/2 = 247,5 ml (au-dessus du plancher 135×1,8).
     expect($reco['per_subject']['water_ml'])->toEqualWithDelta(247.5, 0.5);
-    // Total = 135 g × 1000 / 1000 = 135 kg.
+    // Total = 135 g × 1000 sujets / 1000 = 135 kg.
     expect($reco['total']['feed_kg'])->toEqualWithDelta(135.0, 0.5);
     // THI(28°C, 50%HR) = 28 − 0.275×13.6 = 24.26 < seuil chair (25.0) → pas de stress.
     expect($reco['environment']['heat_stress'])->toBeFalse();

@@ -48,7 +48,7 @@
                 <div class="bg-slate-900 px-6 py-4 rounded-[1.5rem] text-right shadow-2xl border-l-4 border-emerald-500 group">
                     <p class="text-[8px] font-black text-emerald-400 uppercase italic mb-1 flex items-center justify-end gap-1.5">
                         {{ __("Marge Nette Mensuelle") }}
-                        <i class="fa-solid fa-circle-info text-slate-600 group-hover:text-emerald-300 transition-colors cursor-help" title="{{ __('CA du mois en cours (sorties magasin) - Coûts réels (Aliment + Santé)') }}"></i>
+                        <i class="fa-solid fa-circle-info text-slate-600 group-hover:text-emerald-300 transition-colors cursor-help" title="{{ __('CA du mois (ventes validées + lait) − charges réelles (aliment + santé + dépenses validées)') }}"></i>
                     </p>
                     <p class="text-base font-black text-white leading-none">{{ number_format($safeProfit ?? 0, 0, ',', ' ') }} <small class="text-[9px] opacity-40">GNF</small></p>
                 </div>
@@ -60,10 +60,60 @@
     <div class="py-10">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 italic font-bold text-left">
             
+            {{-- BANDEAU D'ALERTES PRIORISÉ (centre de contrôle unifié) --}}
+            @if(!empty($priorityAlerts) && $priorityAlerts->isNotEmpty())
+            @php
+                $alertStyles = [
+                    'critique'  => ['dot' => 'bg-rose-500', 'badge' => 'bg-rose-50 text-rose-600 border-rose-100', 'icon' => 'text-rose-500'],
+                    'attention' => ['dot' => 'bg-amber-500', 'badge' => 'bg-amber-50 text-amber-600 border-amber-100', 'icon' => 'text-amber-500'],
+                    'info'      => ['dot' => 'bg-blue-500', 'badge' => 'bg-blue-50 text-blue-600 border-blue-100', 'icon' => 'text-blue-500'],
+                ];
+                $critiqueCount = $priorityAlerts->where('level', 'critique')->count();
+            @endphp
+            <div class="mb-8" x-data="{ open: {{ $critiqueCount > 0 ? 'true' : 'false' }} }">
+                <div class="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
+                    <button type="button" @click="open = !open"
+                        class="w-full flex items-center justify-between px-7 py-5 cursor-pointer hover:bg-slate-50 transition-colors border-none bg-transparent text-left">
+                        <div class="flex items-center gap-4">
+                            <span class="relative flex h-3 w-3">
+                                @if($critiqueCount > 0)
+                                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                                @endif
+                                <span class="relative inline-flex rounded-full h-3 w-3 {{ $critiqueCount > 0 ? 'bg-rose-500' : 'bg-amber-500' }}"></span>
+                            </span>
+                            <h3 class="text-[11px] font-black uppercase text-slate-800 tracking-[0.2em] italic">
+                                {{ __("Centre de Contrôle") }}
+                            </h3>
+                            <span class="text-[9px] font-black uppercase px-3 py-1 rounded-full border {{ $critiqueCount > 0 ? 'bg-rose-50 text-rose-600 border-rose-100' : 'bg-amber-50 text-amber-600 border-amber-100' }}">
+                                {{ $priorityAlerts->count() }} {{ __("alerte(s)") }}@if($critiqueCount > 0) · {{ $critiqueCount }} {{ __("critique(s)") }}@endif
+                            </span>
+                        </div>
+                        <i class="fa-solid fa-chevron-down text-slate-300 transition-transform" :class="{ 'rotate-180': open }"></i>
+                    </button>
+
+                    <div x-show="open" x-transition class="px-5 pb-5 space-y-2">
+                        @foreach($priorityAlerts as $alert)
+                        @php $st = $alertStyles[$alert['level']] ?? $alertStyles['info']; @endphp
+                        <a href="{{ $alert['url'] ?? '#' }}"
+                           class="flex items-center gap-4 px-5 py-3.5 rounded-2xl border border-slate-100 hover:border-slate-200 hover:shadow-sm transition-all no-underline group">
+                            <i class="fa-solid {{ $alert['icon'] }} {{ $st['icon'] }} text-base w-5 text-center"></i>
+                            <div class="min-w-0 flex-1">
+                                <p class="text-[11px] font-black uppercase text-slate-800 tracking-tight italic leading-none">{{ $alert['title'] }}</p>
+                                <p class="text-[10px] font-bold text-slate-400 italic mt-1 truncate">{{ $alert['detail'] }}</p>
+                            </div>
+                            <span class="text-[8px] font-black uppercase px-2.5 py-1 rounded-lg border {{ $st['badge'] }} shrink-0">{{ $alert['level'] }}</span>
+                            <i class="fa-solid fa-chevron-right text-slate-200 group-hover:text-slate-400 transition-colors text-[10px]"></i>
+                        </a>
+                        @endforeach
+                    </div>
+                </div>
+            </div>
+            @endif
+
             {{-- CENTRE DE CONTRÔLE DES ALERTES --}}
             <div class="mb-10 space-y-4">
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    
+
                     {{-- BLOC A : AUTONOMIE SILOS --}}
                     <div class="lg:col-span-2 bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm">
                         <div class="flex justify-between items-center mb-4">
@@ -453,6 +503,119 @@
                 @endif
             </div>
 
+            {{-- PERFORMANCE TECHNIQUE (zootechnie) --}}
+            @if(($technical['has_data'] ?? false))
+            <div class="mb-10">
+                <h3 class="text-[11px] font-black uppercase text-slate-800 tracking-[0.2em] italic flex items-center mb-5 px-2">
+                    <span class="w-2 h-6 bg-indigo-600 rounded-full mr-3"></span> {{ __("Performance Technique") }}
+                    <span class="ml-3 text-[8px] text-slate-300 normal-case tracking-normal font-bold">{{ __("Indicateurs zootechniques des lots actifs") }}</span>
+                </h3>
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                    {{-- Indice de consommation (FCR) --}}
+                    <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
+                        <p class="text-[8px] font-black text-indigo-500 uppercase tracking-widest mb-2 italic flex items-center gap-1">
+                            {{ __("Indice Conso") }}
+                            <i class="fa-solid fa-circle-info text-slate-200 cursor-help" title="{{ __('FCR : aliment consommé (kg) / biomasse vive produite (kg). Plus bas = plus efficace.') }}"></i>
+                        </p>
+                        <p class="text-3xl font-black text-slate-900 tracking-tighter italic">{{ $technical['fcr'] !== null ? number_format($technical['fcr'], 2) : '—' }}</p>
+                        <p class="text-[8px] text-slate-400 mt-2 uppercase font-black">{{ __("kg alim / kg vif") }}</p>
+                    </div>
+                    {{-- GMQ --}}
+                    <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
+                        <p class="text-[8px] font-black text-blue-500 uppercase tracking-widest mb-2 italic">{{ __("GMQ moyen") }}</p>
+                        <p class="text-3xl font-black text-slate-900 tracking-tighter italic">{{ $technical['gmq_g'] !== null ? number_format($technical['gmq_g']) : '—' }}<small class="text-xs ml-1 opacity-50">g/j</small></p>
+                        <p class="text-[8px] text-slate-400 mt-2 uppercase font-black">{{ __("Gain quotidien") }}</p>
+                    </div>
+                    {{-- Viabilité --}}
+                    <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
+                        <p class="text-[8px] font-black text-emerald-500 uppercase tracking-widest mb-2 italic">{{ __("Viabilité") }}</p>
+                        <p class="text-3xl font-black {{ ($technical['viability'] ?? 100) >= 95 ? 'text-emerald-600' : (($technical['viability'] ?? 100) >= 90 ? 'text-amber-500' : 'text-rose-600') }} tracking-tighter italic">{{ number_format($technical['viability'], 1) }}<small class="text-xs ml-1 opacity-50">%</small></p>
+                        <p class="text-[8px] text-slate-400 mt-2 uppercase font-black">{{ __("Taux de survie") }}</p>
+                    </div>
+                    {{-- Coût aliment / kg vif --}}
+                    <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
+                        <p class="text-[8px] font-black text-orange-500 uppercase tracking-widest mb-2 italic">{{ __("Coût alim / kg") }}</p>
+                        <p class="text-3xl font-black text-slate-900 tracking-tighter italic">{{ $technical['feed_cost_per_kg'] !== null ? number_format($technical['feed_cost_per_kg'], 0, ',', ' ') : '—' }}</p>
+                        <p class="text-[8px] text-slate-400 mt-2 uppercase font-black">GNF / kg vif</p>
+                    </div>
+                    {{-- Prix de revient œuf --}}
+                    <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
+                        <p class="text-[8px] font-black text-amber-500 uppercase tracking-widest mb-2 italic flex items-center gap-1">
+                            {{ __("Revient œuf") }}
+                            <i class="fa-solid fa-circle-info text-slate-200 cursor-help" title="{{ __('Indicatif : (aliment + santé des lots de ponte ce mois) / œufs collectés.') }}"></i>
+                        </p>
+                        <p class="text-3xl font-black text-slate-900 tracking-tighter italic">{{ $technical['cost_per_egg'] !== null ? number_format($technical['cost_per_egg'], 0, ',', ' ') : '—' }}</p>
+                        <p class="text-[8px] text-slate-400 mt-2 uppercase font-black">GNF / œuf</p>
+                    </div>
+                </div>
+            </div>
+            @endif
+
+            {{-- TENDANCES 30 JOURS (graphiques Chart.js) --}}
+            <div class="mb-10 grid grid-cols-1 lg:grid-cols-3 gap-6"
+                 x-data="dashboardTrends({{ Illuminate\Support\Js::from($trends ?? ['labels' => [], 'mortality' => [], 'eggs' => [], 'feed' => []]) }})">
+                <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm">
+                    <p class="text-[9px] font-black text-rose-500 uppercase tracking-widest italic mb-4">{{ __("Mortalité — 30 j") }}</p>
+                    <canvas x-ref="mortalityChart" height="150"></canvas>
+                </div>
+                <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm">
+                    <p class="text-[9px] font-black text-emerald-500 uppercase tracking-widest italic mb-4">{{ __("Ponte — 30 j") }}</p>
+                    <canvas x-ref="eggsChart" height="150"></canvas>
+                </div>
+                <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm">
+                    <p class="text-[9px] font-black text-orange-500 uppercase tracking-widest italic mb-4">{{ __("Aliment (kg) — 30 j") }}</p>
+                    <canvas x-ref="feedChart" height="150"></canvas>
+                </div>
+            </div>
+
+            {{-- SYNTHÈSE FINANCIÈRE DU MOIS (droits commerce) --}}
+            @can('commerce.L')
+            @if(!empty($financial))
+            <div class="mb-10 bg-slate-900 rounded-[2.5rem] p-7 shadow-2xl">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-[11px] font-black uppercase text-white tracking-[0.2em] italic flex items-center">
+                        <span class="w-2 h-6 bg-emerald-500 rounded-full mr-3"></span> {{ __("Synthèse Financière") }}
+                        <span class="ml-3 text-[8px] text-slate-500 normal-case tracking-normal font-bold">{{ now()->translatedFormat('F Y') }}</span>
+                    </h3>
+                </div>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-slate-800/60 rounded-2xl p-5">
+                        <p class="text-[8px] font-black text-blue-300 uppercase tracking-widest italic mb-2">{{ __("Chiffre d'affaires") }}</p>
+                        <p class="text-xl font-black text-white tracking-tighter italic">{{ number_format($financial['ca_total'], 0, ',', ' ') }}<small class="text-[9px] ml-1 opacity-40">GNF</small></p>
+                        <p class="text-[8px] text-slate-500 mt-1 uppercase font-black">{{ number_format($financial['ca_ventes'], 0, ',', ' ') }} ventes @if($financial['ca_lait'] > 0)· {{ number_format($financial['ca_lait'], 0, ',', ' ') }} lait @endif</p>
+                    </div>
+                    <div class="bg-slate-800/60 rounded-2xl p-5">
+                        <p class="text-[8px] font-black text-rose-300 uppercase tracking-widest italic mb-2">{{ __("Charges totales") }}</p>
+                        <p class="text-xl font-black text-white tracking-tighter italic">{{ number_format($financial['cost_total'], 0, ',', ' ') }}<small class="text-[9px] ml-1 opacity-40">GNF</small></p>
+                        <p class="text-[8px] text-slate-500 mt-1 uppercase font-black">{{ __("Alim + santé + dépenses") }}</p>
+                    </div>
+                    <div class="bg-slate-800/60 rounded-2xl p-5 border-l-4 {{ $financial['net_margin'] >= 0 ? 'border-emerald-500' : 'border-rose-500' }}">
+                        <p class="text-[8px] font-black text-emerald-300 uppercase tracking-widest italic mb-2">{{ __("Marge nette") }}</p>
+                        <p class="text-xl font-black {{ $financial['net_margin'] >= 0 ? 'text-emerald-400' : 'text-rose-400' }} tracking-tighter italic">{{ number_format($financial['net_margin'], 0, ',', ' ') }}<small class="text-[9px] ml-1 opacity-40">GNF</small></p>
+                        <p class="text-[8px] text-slate-500 mt-1 uppercase font-black">{{ $financial['ca_total'] > 0 ? number_format($financial['net_margin'] / $financial['ca_total'] * 100, 1) : 0 }}% {{ __("du CA") }}</p>
+                    </div>
+                    <div class="bg-slate-800/60 rounded-2xl p-5">
+                        <p class="text-[8px] font-black text-amber-300 uppercase tracking-widest italic mb-2">{{ __("Trésorerie due") }}</p>
+                        <p class="text-xl font-black text-white tracking-tighter italic">{{ number_format($financial['receivables'], 0, ',', ' ') }}<small class="text-[9px] ml-1 opacity-40">GNF</small></p>
+                        <p class="text-[8px] text-slate-500 mt-1 uppercase font-black">{{ __("Encours clients") }}</p>
+                    </div>
+                </div>
+                @if(!empty($financial['top_expenses']))
+                <div class="border-t border-slate-800 pt-5">
+                    <p class="text-[8px] font-black text-slate-500 uppercase tracking-widest italic mb-3">{{ __("Principales dépenses du mois") }}</p>
+                    <div class="flex flex-wrap gap-2">
+                        @foreach($financial['top_expenses'] as $exp)
+                        <span class="text-[9px] font-black uppercase text-slate-300 bg-slate-800 rounded-xl px-3 py-2 border border-slate-700 italic">
+                            {{ $exp['label'] }} <span class="text-amber-400 ml-1">{{ number_format($exp['amount'], 0, ',', ' ') }}</span>
+                        </span>
+                        @endforeach
+                    </div>
+                </div>
+                @endif
+            </div>
+            @endif
+            @endcan
+
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-10 text-left">
                 {{-- SUIVI DES BANDES --}}
                 <div class="lg:col-span-2 space-y-6">
@@ -602,6 +765,59 @@
             </div>
         </div>
     </div>
+
+    {{-- Chart.js (CDN) pour les graphiques de tendance — même approche que provenderie --}}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+    <script>
+    // Composant Alpine des graphiques de tendance (30 jours).
+    document.addEventListener('alpine:init', () => {
+        Alpine.data('dashboardTrends', (data) => ({
+            init() {
+                // Chart.js (CDN) peut charger après Alpine : on attend sa dispo.
+                const ready = () => {
+                    if (typeof Chart === 'undefined') { setTimeout(ready, 120); return; }
+                    this.draw();
+                };
+                ready();
+            },
+            draw() {
+                const base = (ref, color, fill, dataset, kind = 'line') => {
+                    const el = this.$refs[ref];
+                    if (!el) return;
+                    new Chart(el.getContext('2d'), {
+                        type: kind,
+                        data: {
+                            labels: data.labels,
+                            datasets: [{
+                                data: dataset,
+                                borderColor: color,
+                                backgroundColor: fill,
+                                borderWidth: 2,
+                                fill: kind === 'line',
+                                tension: 0.35,
+                                pointRadius: 0,
+                                pointHoverRadius: 4,
+                                borderRadius: kind === 'bar' ? 4 : 0,
+                            }],
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { legend: { display: false } },
+                            scales: {
+                                x: { grid: { display: false }, ticks: { maxTicksLimit: 6, font: { size: 8 }, color: '#94a3b8' } },
+                                y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { maxTicksLimit: 4, font: { size: 8 }, color: '#94a3b8' } },
+                            },
+                        },
+                    });
+                };
+                base('mortalityChart', '#f43f5e', 'rgba(244,63,94,0.08)', data.mortality, 'bar');
+                base('eggsChart', '#10b981', 'rgba(16,185,129,0.10)', data.eggs, 'line');
+                base('feedChart', '#f97316', 'rgba(249,115,22,0.10)', data.feed, 'line');
+            },
+        }));
+    });
+    </script>
 
     <script>
     document.getElementById('batchSearch')?.addEventListener('input', function(e) {
