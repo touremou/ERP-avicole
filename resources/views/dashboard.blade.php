@@ -556,15 +556,17 @@
                  x-data="dashboardTrends({{ Illuminate\Support\Js::from($trends ?? ['labels' => [], 'mortality' => [], 'eggs' => [], 'feed' => []]) }})">
                 <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm">
                     <p class="text-[9px] font-black text-rose-500 uppercase tracking-widest italic mb-4">{{ __("Mortalité — 30 j") }}</p>
-                    <canvas x-ref="mortalityChart" height="150"></canvas>
+                    {{-- Conteneur à hauteur fixe + relative : indispensable avec
+                         maintainAspectRatio:false, sinon le canvas grandit à l'infini. --}}
+                    <div class="relative h-40"><canvas x-ref="mortalityChart"></canvas></div>
                 </div>
                 <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm">
                     <p class="text-[9px] font-black text-emerald-500 uppercase tracking-widest italic mb-4">{{ __("Ponte — 30 j") }}</p>
-                    <canvas x-ref="eggsChart" height="150"></canvas>
+                    <div class="relative h-40"><canvas x-ref="eggsChart"></canvas></div>
                 </div>
                 <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm">
                     <p class="text-[9px] font-black text-orange-500 uppercase tracking-widest italic mb-4">{{ __("Aliment (kg) — 30 j") }}</p>
-                    <canvas x-ref="feedChart" height="150"></canvas>
+                    <div class="relative h-40"><canvas x-ref="feedChart"></canvas></div>
                 </div>
             </div>
 
