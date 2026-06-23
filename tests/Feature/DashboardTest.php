@@ -224,6 +224,55 @@ test('un taux de picage élevé déclenche une alerte bien-être', function () {
             && $a->first()['issues'][0]['type'] === 'Picage');
 });
 
+test('un décès isolé sur un petit lot ne déclenche pas de pic de mortalité', function () {
+    $building = Building::factory()->create(['type' => 'chair', 'capacity' => 5000]);
+
+    // 1 mort sur 195 = 0,51 % > seuil 0,5 % MAIS sous le plancher absolu (3) :
+    // bruit statistique de petit lot, ne doit PAS lever d'alerte critique.
+    $batch = App\Models\Batch::factory()->create([
+        'building_id'      => $building->id,
+        'status'           => 'Actif',
+        'initial_quantity' => 195,
+        'current_quantity' => 194,
+    ]);
+
+    App\Models\DailyCheck::factory()->create([
+        'batch_id'   => $batch->id,
+        'check_date' => now(),
+        'mortality'  => 1,
+    ]);
+
+    $this->actingAs($this->adminUser)
+        ->get(route('dashboard'))
+        ->assertOk()
+        ->assertViewHas('priorityAlerts', fn ($alerts) =>
+            $alerts->doesntContain(fn ($a) => $a['title'] === 'Pic de mortalité'));
+});
+
+test('un pic de mortalité réel (au-dessus du plancher et du seuil) lève une alerte critique', function () {
+    $building = Building::factory()->create(['type' => 'chair', 'capacity' => 5000]);
+
+    // 5 morts sur 195 = 2,56 % : au-dessus du plancher (3) ET du seuil (0,5 %).
+    $batch = App\Models\Batch::factory()->create([
+        'building_id'      => $building->id,
+        'status'           => 'Actif',
+        'initial_quantity' => 195,
+        'current_quantity' => 190,
+    ]);
+
+    App\Models\DailyCheck::factory()->create([
+        'batch_id'   => $batch->id,
+        'check_date' => now(),
+        'mortality'  => 5,
+    ]);
+
+    $this->actingAs($this->adminUser)
+        ->get(route('dashboard'))
+        ->assertOk()
+        ->assertViewHas('priorityAlerts', fn ($alerts) =>
+            $alerts->contains(fn ($a) => $a['title'] === 'Pic de mortalité'));
+});
+
 test('la marge nette est masquée pour un utilisateur sans droit commerce', function () {
     $this->seed(Database\Seeders\ModuleSeeder::class);
 

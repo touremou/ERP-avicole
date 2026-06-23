@@ -116,6 +116,10 @@ class DashboardController extends Controller
         $periodDays            = (int) setting('stock.autonomy_period_days', 30);
         $criticalDaysThreshold = (int) setting('stock.critical_days_threshold', 3);
         $dailyMortalityPct     = (float) setting('elevage.daily_mortality_alert_pct', 0.5);
+        // Plancher absolu : un décès isolé sur un petit lot dépasse mécaniquement
+        // le seuil en % (ex. 1/195 = 0,51 % > 0,5 %) sans constituer un vrai pic.
+        // On exige donc un minimum de morts en valeur absolue AVANT d'évaluer le %.
+        $dailyMortalityMin     = (int) setting('elevage.daily_mortality_alert_min', 3);
         $cumulMortalityPct     = (float) setting('elevage.cumulative_mortality_alert_pct', 5);
         $sanitaryDays          = (int) setting('elevage.sanitary_break_days', Building::SANITARY_BREAK_DAYS);
         $protocolWindowDays    = (int) setting('elevage.protocol_overdue_window_days', 30);
@@ -183,12 +187,15 @@ class DashboardController extends Controller
         // B. Urgences Sanitaires (pic de mortalité du jour > seuil paramétré).
         // Base = effectif de DÉBUT de journée (effectif courant + morts du jour,
         // déjà décomptés par l'observer) pour ne pas surévaluer le taux.
-        $emergencyBatches = $allActiveBatches->filter(function($batch) use ($today, $dailyMortalityPct) {
+        $emergencyBatches = $allActiveBatches->filter(function($batch) use ($today, $dailyMortalityPct, $dailyMortalityMin) {
             $todayCheck = $batch->dailyChecks()->whereDate('check_date', $today)->first();
-            if (!$todayCheck || (int) $todayCheck->mortality <= 0) return false;
-            $base = (int) $batch->current_quantity + (int) $todayCheck->mortality;
+            if (!$todayCheck) return false;
+            $morts = (int) $todayCheck->mortality;
+            // Plancher absolu : sous ce nombre de morts, pas de pic (bruit de petit lot).
+            if ($morts < $dailyMortalityMin) return false;
+            $base = (int) $batch->current_quantity + $morts;
             if ($base <= 0) return false;
-            $tauxJour = ((int) $todayCheck->mortality / $base) * 100;
+            $tauxJour = ($morts / $base) * 100;
             return $tauxJour > $dailyMortalityPct;
         });
 
