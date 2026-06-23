@@ -107,6 +107,7 @@ return new class extends Migration
             ['group' => 'energie', 'key' => 'kwh_price_edg',        'value' => '1500',  'type' => 'number', 'label' => 'Prix kWh EDG',                   'unit' => 'GNF/kWh', 'display_order' => 2],
             ['group' => 'energie', 'key' => 'water_price_m3',       'value' => '5000',  'type' => 'number', 'label' => 'Prix eau SEEG',                  'unit' => 'GNF/m³',  'display_order' => 3],
             ['group' => 'energie', 'key' => 'autonomy_alert_hours', 'value' => '24',    'type' => 'number', 'label' => 'Seuil alerte autonomie carburant', 'unit' => 'heures',  'display_order' => 4],
+            ['group' => 'energie', 'key' => 'anomaly_threshold_pct', 'value' => '50',   'type' => 'number', 'label' => 'Seuil anomalie conso (écart)',     'unit' => '%',       'display_order' => 5],
 
             // ─── NOTIFICATIONS WHATSAPP ───
             ['group' => 'whatsapp', 'key' => 'driver',           'value' => 'log',   'type' => 'select',   'label' => 'Driver WhatsApp',       'options' => 'log,callmebot,ultramsg,wati,twilio', 'display_order' => 1],

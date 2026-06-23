@@ -244,6 +244,97 @@ class UtilityService
             ];
         }
 
+        // Anomalies de consommation (P3 — analytique : fuite eau / défaut moteur)
+        foreach ($this->detectAnomalies() as $anomaly) {
+            $alerts[] = $anomaly;
+        }
+
         return $alerts;
+    }
+
+    /**
+     * Détection d'anomalies de consommation par comparaison du dernier relevé
+     * à la ligne de base récente de la source :
+     *  - Eau   : volume du jour vs moyenne des relevés précédents → fuite/gaspillage.
+     *  - Énergie : conso horaire (L/h) du jour vs moyenne → rendement anormal / défaut moteur.
+     *
+     * Le seuil d'écart est paramétrable (energie.anomaly_threshold_pct, défaut 50%).
+     * Une ligne de base d'au moins 5 relevés est exigée pour éviter les faux
+     * positifs sur les sources récentes.
+     */
+    public function detectAnomalies(): array
+    {
+        $threshold   = (float) setting('energie.anomaly_threshold_pct', 50);
+        $minBaseline = 5;
+        $anomalies   = [];
+
+        // ─── EAU : volume consommé ───
+        foreach (WaterSource::active()->get() as $source) {
+            $readings = $source->readings()
+                ->where('volume_consumed_liters', '>', 0)
+                ->orderByDesc('reading_date')
+                ->limit($minBaseline + 1)
+                ->get();
+
+            if ($readings->count() <= $minBaseline) continue;
+
+            $latest   = (float) $readings->first()->volume_consumed_liters;
+            $baseline = $readings->slice(1);
+            $avg      = (float) $baseline->avg('volume_consumed_liters');
+
+            if ($avg <= 0) continue;
+
+            $deviation = ($latest - $avg) / $avg * 100;
+
+            if ($deviation >= $threshold) {
+                $anomalies[] = [
+                    'type'     => 'anomaly_water',
+                    'severity' => 'attention',
+                    'title'    => "Conso eau anormale — {$source->name}",
+                    'message'  => "+" . round($deviation) . "% vs habituel ("
+                        . number_format($latest) . " L contre ~" . number_format($avg) . " L). "
+                        . "Vérifier une fuite ou un abreuvoir ouvert.",
+                    'icon'     => 'fa-droplet',
+                ];
+            }
+        }
+
+        // ─── ÉNERGIE : conso horaire (L/h) des groupes ───
+        foreach (EnergySource::groupes()->get() as $source) {
+            $readings = $source->readings()
+                ->where('hours_run', '>', 0)
+                ->whereNotNull('fuel_consumed_liters')
+                ->where('fuel_consumed_liters', '>', 0)
+                ->orderByDesc('reading_date')
+                ->limit($minBaseline + 1)
+                ->get();
+
+            if ($readings->count() <= $minBaseline) continue;
+
+            $rate = fn ($r) => (float) $r->fuel_consumed_liters / (float) $r->hours_run;
+
+            $latestRate   = $rate($readings->first());
+            $baselineRates = $readings->slice(1)->map($rate);
+            $avgRate      = (float) $baselineRates->avg();
+
+            if ($avgRate <= 0) continue;
+
+            $deviation = ($latestRate - $avgRate) / $avgRate * 100;
+
+            if ($deviation >= $threshold) {
+                $anomalies[] = [
+                    'type'     => 'anomaly_energy',
+                    'severity' => 'attention',
+                    'title'    => "Surconsommation — {$source->name}",
+                    'message'  => "+" . round($deviation) . "% de carburant/heure ("
+                        . number_format($latestRate, 1, ',', ' ') . " L/h contre ~"
+                        . number_format($avgRate, 1, ',', ' ') . " L/h). "
+                        . "Contrôler le moteur (filtres, injecteurs, charge).",
+                    'icon'     => 'fa-gauge-high',
+                ];
+            }
+        }
+
+        return $anomalies;
     }
 }
