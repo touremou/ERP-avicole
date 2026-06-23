@@ -594,6 +594,7 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/energy-sources/{source}', 'destroyEnergySource')->name('energy.sources.destroy')->middleware('can:S');
         Route::post('/energy-readings', 'storeEnergyReading')->name('energy.readings.store')->middleware('can:C');
         Route::put('/energy-sources/{source}/maintenance', 'recordMaintenance')->name('energy.maintenance')->middleware('can:M');
+        Route::get('/energy-sources/{source}/logs', 'assetLogs')->name('energy.logs')->middleware('can:L');
 
         // Achats carburant
         Route::get('/fuel-purchases', 'fuelPurchases')->name('fuel.index')->middleware('can:L');

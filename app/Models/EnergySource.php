@@ -14,12 +14,14 @@ class EnergySource extends Model
     use HasFactory, SoftDeletes, BelongsToFarm;
 
     protected $fillable = [
-        'farm_id', 'name', 'type', 'brand', 'model',
+        'farm_id', 'name', 'type', 'brand', 'model', 'serial_number',
         'capacity_kva', 'fuel_type',
         'fuel_tank_capacity', 'current_fuel_level',
         'total_hours_run', 'maintenance_interval_hours',
         'last_maintenance_at', 'next_maintenance_at',
         'status', 'is_active', 'notes',
+        'purchase_date', 'purchase_price', 'depreciation_years',
+        'warranty_expiry', 'service_contract_ref',
     ];
 
     protected $casts = [
@@ -30,6 +32,9 @@ class EnergySource extends Model
         'last_maintenance_at'       => 'datetime',
         'next_maintenance_at'       => 'datetime',
         'is_active'                 => 'boolean',
+        'purchase_date'             => 'date',
+        'warranty_expiry'           => 'date',
+        'purchase_price'            => 'decimal:0',
     ];
 
     public function readings(): HasMany
@@ -40,6 +45,11 @@ class EnergySource extends Model
     public function fuelPurchases(): HasMany
     {
         return $this->hasMany(FuelPurchase::class);
+    }
+
+    public function maintenanceLogs(): HasMany
+    {
+        return $this->hasMany(AssetMaintenanceLog::class);
     }
 
     public function scopeActive($query)
@@ -141,5 +151,40 @@ class EnergySource extends Model
         }
 
         return ($this->fuel_autonomy_days ?? 99) <= ceil($alertHours / 24);
+    }
+
+    /**
+     * Valeur résiduelle selon l'amortissement linéaire.
+     */
+    public function getResidualValueAttribute(): ?float
+    {
+        if (! $this->purchase_price || ! $this->purchase_date || ! $this->depreciation_years) {
+            return null;
+        }
+
+        $yearsElapsed = $this->purchase_date->diffInDays(now()) / 365.25;
+        $annualDepreciation = (float) $this->purchase_price / $this->depreciation_years;
+
+        return max(0.0, (float) $this->purchase_price - ($annualDepreciation * $yearsElapsed));
+    }
+
+    /**
+     * État de la garantie : active / expires_soon (≤30 j) / expired / unknown.
+     */
+    public function getWarrantyStatusAttribute(): string
+    {
+        if (! $this->warranty_expiry) return 'unknown';
+        if ($this->warranty_expiry->isPast()) return 'expired';
+        if (now()->diffInDays($this->warranty_expiry, false) <= 30) return 'expires_soon';
+
+        return 'active';
+    }
+
+    /**
+     * Coût total de maintenance (toutes interventions confondues).
+     */
+    public function getCumulativeMaintenanceCostAttribute(): float
+    {
+        return (float) $this->maintenanceLogs()->sum('cost');
     }
 }

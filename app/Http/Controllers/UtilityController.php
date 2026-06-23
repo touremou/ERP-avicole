@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AssetMaintenanceLog;
 use App\Models\Building;
+use App\Models\TaskAssignment;
 use App\Models\WaterSource;
 use App\Models\WaterReading;
 use App\Models\EnergySource;
@@ -141,11 +143,17 @@ class UtilityController extends Controller
             'type'                       => 'required|in:edg,groupe,solaire',
             'brand'                      => 'nullable|string|max:100',
             'model'                      => 'nullable|string|max:100',
+            'serial_number'              => 'nullable|string|max:100',
             'capacity_kva'               => 'nullable|numeric|min:0',
             'fuel_type'                  => 'nullable|in:gasoil,essence',
             'fuel_tank_capacity'         => 'nullable|numeric|min:0',
             'maintenance_interval_hours' => 'nullable|integer|min:50',
             'notes'                      => 'nullable|string|max:1000',
+            'purchase_date'              => 'nullable|date',
+            'purchase_price'             => 'nullable|numeric|min:0',
+            'depreciation_years'         => 'nullable|integer|min:1|max:30',
+            'warranty_expiry'            => 'nullable|date',
+            'service_contract_ref'       => 'nullable|string|max:255',
         ]);
 
         EnergySource::create($validated);
@@ -158,17 +166,65 @@ class UtilityController extends Controller
         if (Gate::denies('ressources.M')) return back()->with('error', 'Action non autorisée.');
 
         $validated = $request->validate([
-            'maintenance_notes' => 'nullable|string|max:1000',
+            'maintenance_type'  => 'required|in:vidange,filtres,inspection,reparation,contrat',
+            'description'       => 'nullable|string|max:1000',
+            'cost'              => 'nullable|numeric|min:0',
+            'technician'        => 'nullable|string|max:255',
+            'next_interval_hours' => 'nullable|integer|min:50',
         ]);
+
+        $intervalHours = $validated['next_interval_hours'] ?? $source->maintenance_interval_hours;
 
         $source->update([
-            'last_maintenance_at' => now(),
-            'next_maintenance_at' => now()->addHours($source->maintenance_interval_hours),
-            'status'              => 'operationnel',
-            'notes'               => trim(($source->notes ?? '') . "\n[MAINTENANCE " . now()->format('d/m/Y') . "] " . ($validated['maintenance_notes'] ?? '')),
+            'last_maintenance_at'        => now(),
+            'next_maintenance_at'        => now()->addHours($intervalHours),
+            'maintenance_interval_hours' => $intervalHours,
+            'status'                     => 'operationnel',
         ]);
 
-        return back()->with('success', "Maintenance enregistrée pour {$source->name}. Compteur remis à zéro.");
+        // Journal CMMS
+        $log = AssetMaintenanceLog::create([
+            'farm_id'            => $source->farm_id,
+            'energy_source_id'   => $source->id,
+            'user_id'            => Auth::id(),
+            'maintenance_date'   => now()->toDateString(),
+            'type'               => $validated['maintenance_type'],
+            'description'        => $validated['description'] ?? null,
+            'cost'               => $validated['cost'] ?? null,
+            'technician'         => $validated['technician'] ?? null,
+            'hours_at_maintenance' => $source->total_hours_run,
+        ]);
+
+        // Compléter la tâche de maintenance préventive si elle existe aujourd'hui
+        $task = TaskAssignment::withoutGlobalScopes()
+            ->where('farm_id', $source->farm_id)
+            ->where('category', 'maintenance_preventive')
+            ->whereDate('scheduled_date', now()->toDateString())
+            ->whereIn('status', ['a_faire', 'en_retard'])
+            ->where('title', 'like', "%{$source->name}%")
+            ->first();
+
+        if ($task) {
+            $task->update([
+                'status'           => 'fait',
+                'completed_at'     => now(),
+                'completed_by'     => Auth::id(),
+                'completion_notes' => "Maintenance effectuée — {$validated['maintenance_type']}.",
+            ]);
+            $log->update(['task_assignment_id' => $task->id]);
+        }
+
+        return back()->with('success', "Maintenance enregistrée pour {$source->name}. Prochaine révision dans {$intervalHours}h.");
+    }
+
+    public function assetLogs(EnergySource $source)
+    {
+        if (Gate::denies('ressources.L')) return back()->with('error', 'Accès restreint.');
+
+        $sources = EnergySource::withCount('readings')->get();
+        $logs = $source->maintenanceLogs()->with('user')->latest('maintenance_date')->get();
+
+        return view('utilities.energy-sources', compact('sources', 'logs') + ['assetSource' => $source]);
     }
 
     // ──────────────────────────────────────────────
@@ -327,6 +383,7 @@ class UtilityController extends Controller
             'type'                       => 'required|in:edg,groupe,solaire',
             'brand'                      => 'nullable|string|max:100',
             'model'                      => 'nullable|string|max:100',
+            'serial_number'              => 'nullable|string|max:100',
             'capacity_kva'               => 'nullable|numeric|min:0',
             'fuel_type'                  => 'nullable|in:gasoil,essence',
             'fuel_tank_capacity'         => 'nullable|numeric|min:0',
@@ -334,6 +391,11 @@ class UtilityController extends Controller
             'status'                     => 'nullable|in:operationnel,maintenance,panne',
             'is_active'                  => 'boolean',
             'notes'                      => 'nullable|string|max:1000',
+            'purchase_date'              => 'nullable|date',
+            'purchase_price'             => 'nullable|numeric|min:0',
+            'depreciation_years'         => 'nullable|integer|min:1|max:30',
+            'warranty_expiry'            => 'nullable|date',
+            'service_contract_ref'       => 'nullable|string|max:255',
         ]);
 
         $source->update($validated);

@@ -36,3 +36,6 @@ Schedule::command('cultures:agronomic-alerts')->dailyAt('06:45');
 
 // Dosage aliment recommandé par bâtiment (BatchAdvisorService)
 Schedule::command('avismart:feeding-dosage')->dailyAt('06:00');
+
+// CMMS : génère les tâches maintenance préventive pour les actifs dus dans ≤ 48h
+Schedule::command('maintenance:check')->dailyAt('05:30');
