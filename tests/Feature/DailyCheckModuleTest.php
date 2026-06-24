@@ -545,3 +545,51 @@ test('le lot expose le nombre de jours depuis le dernier renouvellement de liti�
 
     expect($batch->fresh()->days_since_litter_change)->toBe(5);
 });
+
+test('le formulaire de pointage pré-remplit la météo régionale et propose la reco. eau du jour', function () {
+    $farm = App\Models\Farm::where('code', 'FT-001')->first();
+
+    $batch = Batch::factory()->create([
+        'building_id'      => $this->building->id,
+        'status'           => 'Actif',
+        'current_quantity' => 1000,
+        'model_name'       => 'Cobb500',
+        'arrival_date'     => now()->subDays(14),
+        'farm_id'          => $farm->id,
+    ]);
+
+    // Barème de souche : eau ET aliment cibles → recommendation()['total'] > 0.
+    foreach ([1, 2, 3, 4] as $wk) {
+        App\Models\ProductionNorm::create([
+            'model_name'         => 'Cobb500',
+            'batch_type'         => 'chair',
+            'week_number'        => $wk,
+            'phase_name'         => 'Démarrage',
+            'target_weight'      => 100 * $wk,
+            'target_feed_daily'  => 50 * $wk,   // g/sujet/j
+            'target_water_daily' => 100 * $wk,  // ml/sujet/j
+            'target_laying_rate' => 0,
+        ]);
+    }
+
+    // Relevé météo du jour de la ferme → pré-remplissage température/humidité.
+    App\Models\WeatherReading::create([
+        'farm_id'         => $farm->id,
+        'reading_date'    => now()->toDateString(),
+        'temperature_min' => 24.5,
+        'temperature_max' => 33.0,
+        'humidity_pct'    => 78,
+    ]);
+
+    $resp = $this->actingAs($this->managerUser)
+        ->get(route('daily-checks.create', ['batch_id' => $batch->id]))
+        ->assertOk();
+
+    // 1. Météo régionale pré-remplie (champ temp_min + indicateur visuel).
+    $resp->assertSee('value="24.5"', false)
+         ->assertSee('Pré-rempli météo', false);
+
+    // 2. Bouton « Reco. » d'eau présent : il pré-remplit le champ water_consumed
+    //    (comme le bouton aliment). Le onclick ciblant water_consumed est unique.
+    $resp->assertSee("getElementById('water_consumed').value=", false);
+});

@@ -91,9 +91,14 @@ class DailyCheckController extends Controller
         // (BatchAdvisorService) au lieu d'une moyenne glissante approximative.
         $advisor = new \App\Services\BatchAdvisorService();
         $recommendation = $advisor->recommendation($batch);
-        $suggestedFeed = $recommendation['total']['feed_kg'] ?? null;
+        $suggestedFeed  = $recommendation['total']['feed_kg'] ?? null;
 
-        return view('daily-checks.create', compact('batch', 'stockData', 'phases', 'weather', 'suggestedFeed'));
+        // Dose d'eau recommandée du jour : même barème de souche interpolé à
+        // l'âge puis ajusté à l'environnement (chaleur → soif majorée). C'est
+        // le pendant hydrique de $suggestedFeed, pour pré-remplir le champ Eau.
+        $suggestedWater = $recommendation['total']['water_l'] ?? null;
+
+        return view('daily-checks.create', compact('batch', 'stockData', 'phases', 'weather', 'suggestedFeed', 'suggestedWater'));
     }
 
     /**

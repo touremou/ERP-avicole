@@ -192,8 +192,18 @@
 
                         <div class="grid grid-cols-2 md:grid-cols-4 gap-6 relative z-10 italic font-black">
                             <div class="space-y-2 text-center">
-                                <label class="block text-[8px] font-black text-slate-500 uppercase tracking-widest leading-none">Eau (L)</label>
-                                <input type="number" name="water_consumed" min="0" value="0" step="0.1" class="w-full bg-white/5 border border-white/10 p-4 rounded-2xl text-xl text-blue-400 text-center outline-none italic font-black">
+                                <label class="block text-[8px] font-black text-slate-500 uppercase tracking-widest leading-none">Eau (L)
+                                    @if(($suggestedWater ?? null) > 0)<i class="fa-solid fa-brain text-blue-400 ml-1" title="Reco. du jour disponible (barème souche ajusté au climat)"></i>@endif
+                                </label>
+                                <input type="number" name="water_consumed" id="water_consumed" min="0" value="{{ old('water_consumed', 0) }}" step="0.1" class="w-full bg-white/5 border border-white/10 p-4 rounded-2xl text-xl text-blue-400 text-center outline-none italic font-black">
+                                @if(($suggestedWater ?? null) > 0)
+                                <button type="button"
+                                    onclick="document.getElementById('water_consumed').value={{ round($suggestedWater, 1) }};"
+                                    title="{{ __('Barème de la souche ajusté à l\'âge et au climat (cf. Recommandation du jour)') }}"
+                                    class="w-full flex items-center justify-center gap-1 px-2 py-1.5 bg-blue-500/10 hover:bg-blue-500/20 rounded-xl border border-blue-400/20 transition cursor-pointer">
+                                    <span class="text-[8px] font-black text-blue-300 uppercase tracking-widest italic"><i class="fa-solid fa-brain mr-1"></i>{{ __('Reco.') }} {{ round($suggestedWater, 1) }} L</span>
+                                </button>
+                                @endif
                             </div>
                             <div class="space-y-2">
                                 <label class="block text-[8px] font-black text-slate-500 uppercase tracking-widest text-center leading-none">Temp. (°C)
