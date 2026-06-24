@@ -304,8 +304,13 @@
 
                         }).catch(() => console.warn('SW passif'));
 
-                        // Rechargement propre quand le nouveau SW prend le contrôle
+                        // Rechargement propre quand le nouveau SW prend le contrôle —
+                        // une seule fois (anti-boucle), et uniquement suite à une mise
+                        // à jour acceptée par l'utilisateur (le SW ne s'auto-active plus).
+                        let swRefreshing = false;
                         navigator.serviceWorker.addEventListener('controllerchange', () => {
+                            if (swRefreshing) return;
+                            swRefreshing = true;
                             window.location.reload();
                         });
                     }

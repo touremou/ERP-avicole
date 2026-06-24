@@ -195,11 +195,32 @@
                             @endif
                         </div>
 
-                        <div class="flex gap-8 px-6 text-center">
+                        <div class="flex gap-6 px-6 text-center items-center">
                             <div>
                                 <span class="text-[8px] text-slate-400 uppercase block leading-none mb-2 font-black italic tracking-widest">{{ __("Volume Mis") }}</span>
                                 <span class="text-xl font-black text-slate-800 leading-none italic tracking-tighter">{{ number_format($inc->eggs_count, 0, ',', ' ') }}</span>
                             </div>
+
+                            {{-- Coût de revient (process costing « usine ») : œufs + frais
+                                 d'incubation, et coût/poussin une fois éclos. --}}
+                            @if(($inc->egg_unit_cost ?? 0) > 0 || ($inc->overhead_cost ?? 0) > 0)
+                                @php $cur = setting('general.currency', 'GNF'); @endphp
+                                <div class="border-l border-slate-100 pl-6 text-left" title="{{ __('Coût de revient du couvoir (œufs + frais d\'incubation)') }}">
+                                    <p class="text-[7px] text-slate-400 uppercase font-black tracking-widest leading-none">
+                                        <i class="fa-solid fa-coins text-amber-400 mr-1"></i>{{ __("Œufs") }} {{ number_format($inc->eggsTotalCost(), 0, ',', ' ') }}
+                                        · {{ __("Incub.") }} {{ number_format($inc->overhead_cost, 0, ',', ' ') }}
+                                    </p>
+                                    @if($inc->status === 'clos' && ($inc->hatched_chicks ?? 0) > 0)
+                                        <p class="text-[10px] font-black text-emerald-600 italic mt-1 leading-none">
+                                            {{ __("Coût/poussin") }} : {{ number_format($inc->chickUnitCost(), 2, ',', ' ') }} {{ $cur }}
+                                        </p>
+                                    @else
+                                        <p class="text-[10px] font-black text-slate-500 italic mt-1 leading-none">
+                                            {{ __("Coût cycle") }} : {{ number_format($inc->totalProcessCost(), 0, ',', ' ') }} {{ $cur }}
+                                        </p>
+                                    @endif
+                                </div>
+                            @endif
                         </div>
 
                         <div class="flex items-center gap-4 ml-auto" x-data="{ openAction: false }">

@@ -390,39 +390,54 @@ class BatchAdvisorService
     }
 
     /**
-     * Seuils THI (échelle Celsius) par type de production.
+     * Seuils THI (échelle Celsius) par FAMILLE d'espèce (source fiable :
+     * Species::$family), avec repli sur le type de production / la souche pour
+     * les lots sans espèce renseignée (données héritées).
+     *
+     * La famille lève l'ambiguïté du type (« grossissement » = poisson OU
+     * ruminant d'embouche) : un poisson n'a pas de stress thermique aérien
+     * (l'eau tamponne), un ruminant si.
+     *
      * @return array{alert: float, critical: float}
      */
     private function thiThresholds(Batch $batch): array
     {
-        $type  = strtolower((string) ($batch->type ?? ''));
-        $model = strtolower((string) ($batch->model_name ?? ''));
+        $family = $batch->species?->family;
+        $type   = strtolower((string) ($batch->type ?? ''));
+        $model  = strtolower((string) ($batch->model_name ?? ''));
 
-        // Pondeuse — plus sensible que le broiler
-        if ($type === 'ponte' || str_contains($model, 'isa') || str_contains($model, 'lohmann') || str_contains($model, 'caille')) {
-            return ['alert' => 24.0, 'critical' => 27.0];
+        // Aquaculture — l'eau tamponne, pas de stress thermique aérien.
+        if ($family === 'aquaculture' || in_array($type, ['pisciculture', 'aquaculture', 'alevinage'], true)) {
+            return ['alert' => PHP_INT_MAX, 'critical' => PHP_INT_MAX];
         }
-        // Volaille chair, dinde, pintade, canard, pigeon
-        if (in_array($type, ['chair', 'dinde', 'pintade', 'canard', 'pigeon', 'poussiniere'], true)
-            || str_contains($model, 'ross') || str_contains($model, 'cobb') || str_contains($model, 'but')
-        ) {
-            return ['alert' => 25.0, 'critical' => 28.5];
-        }
-        // Ruminants
-        if (in_array($type, ['bovin', 'ovin', 'caprin', 'grossissement', 'lait', 'embouche'], true)) {
-            return ['alert' => 27.0, 'critical' => 30.5];
-        }
-        // Porc
-        if ($type === 'porc') {
-            return ['alert' => 26.0, 'critical' => 29.5];
-        }
+
         // Lapin
-        if ($type === 'lapin') {
+        if ($family === 'lagomorphe' || $type === 'lapin') {
             return ['alert' => 25.5, 'critical' => 28.0];
         }
-        // Aquaculture — stress thermique non applicable (eau tampon)
-        if (in_array($type, ['pisciculture', 'aquaculture'], true)) {
-            return ['alert' => PHP_INT_MAX, 'critical' => PHP_INT_MAX];
+
+        // Porc
+        if ($family === 'porcin' || $type === 'porc') {
+            return ['alert' => 26.0, 'critical' => 29.5];
+        }
+
+        // Ruminants (petits & grands)
+        if (in_array($family, ['petit_ruminant', 'grand_ruminant'], true)
+            || in_array($type, ['bovin', 'ovin', 'caprin', 'grossissement', 'lait', 'laitiere', 'embouche'], true)
+        ) {
+            return ['alert' => 27.0, 'critical' => 30.5];
+        }
+
+        // Volaille — la pondeuse (et le reproducteur) est plus sensible que le broiler.
+        if ($family === 'volaille'
+            || in_array($type, ['ponte', 'chair', 'dinde', 'pintade', 'canard', 'pigeon', 'poussiniere', 'reproducteur'], true)
+            || str_contains($model, 'isa') || str_contains($model, 'lohmann')
+            || str_contains($model, 'ross') || str_contains($model, 'cobb') || str_contains($model, 'but')
+        ) {
+            $isLayer = in_array($type, ['ponte', 'reproducteur'], true)
+                || str_contains($model, 'isa') || str_contains($model, 'lohmann') || str_contains($model, 'caille');
+
+            return $isLayer ? ['alert' => 24.0, 'critical' => 27.0] : ['alert' => 25.0, 'critical' => 28.5];
         }
 
         return ['alert' => 26.0, 'critical' => 30.0];
