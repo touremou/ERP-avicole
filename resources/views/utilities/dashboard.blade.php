@@ -257,86 +257,9 @@
                 </div>
             </div>
 
-            {{-- ═══════════ FORMULAIRES RAPIDES ═══════════ --}}
-            @can('ressources.C')
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {{-- Relevé eau --}}
-                <div class="bg-cyan-50 p-6 rounded-[2.5rem] border border-cyan-200">
-                    <h3 class="text-[10px] font-black text-cyan-600 uppercase tracking-widest mb-4 flex items-center gap-2">
-                        <i class="fa-solid fa-droplet"></i> {{ __("Nouveau relevé eau") }}
-                    </h3>
-                    <form method="POST" action="{{ route('utilities.water.readings.store') }}" class="space-y-3" data-prefill-form="water">
-                        @csrf
-                        <div class="grid grid-cols-2 gap-3">
-                            <select name="water_source_id" required data-prefill-source class="bg-white border-none rounded-xl p-3 text-[10px] font-black uppercase shadow-sm outline-none">
-                                <option value="">{{ __("Source...") }}</option>
-                                @foreach($waterSources as $ws)
-                                    <option value="{{ $ws->id }}">{{ $ws->name }}</option>
-                                @endforeach
-                            </select>
-                            <input type="date" name="reading_date" value="{{ now()->toDateString() }}" required class="bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
-                        </div>
-                        @if($buildings->count())
-                        <select name="building_id" class="w-full bg-white border-none rounded-xl p-3 text-[10px] font-black uppercase shadow-sm outline-none">
-                            <option value="">{{ __("Bâtiment consommateur (optionnel)") }}</option>
-                            @foreach($buildings as $b)
-                                <option value="{{ $b->id }}">{{ $b->name }}</option>
-                            @endforeach
-                        </select>
-                        @endif
-                        <div class="grid grid-cols-2 gap-3">
-                            <input type="number" name="volume_consumed_liters" step="0.1" min="0" required placeholder="{{ __('Conso (L)') }}" class="bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
-                            <input type="number" name="volume_added_liters" step="0.1" min="0" placeholder="{{ __('Ajout citerne (L)') }}" class="bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
-                        </div>
-                        <div class="grid grid-cols-3 gap-3">
-                            <input type="number" name="quality_ph" step="0.1" min="0" max="14" placeholder="{{ __('pH') }}" class="bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
-                            <input type="number" name="chlorine_level" step="0.01" min="0" placeholder="{{ __('Chlore mg/L') }}" class="bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
-                            <input type="number" name="cost" step="100" min="0" placeholder="{{ __('Coût GNF') }}" class="bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
-                        </div>
-                        <button type="submit" class="w-full bg-cyan-500 text-white py-3 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-cyan-600 transition-all border-none cursor-pointer">
-                            <i class="fa-solid fa-check mr-1"></i> {{ __("Enregistrer") }}
-                        </button>
-                    </form>
-                </div>
-
-                {{-- Relevé énergie --}}
-                <div class="bg-amber-50 p-6 rounded-[2.5rem] border border-amber-200">
-                    <h3 class="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-1 flex items-center gap-2">
-                        <i class="fa-solid fa-bolt"></i> {{ __("Nouveau relevé énergie") }}
-                    </h3>
-                    <p class="text-[9px] font-bold text-amber-500/80 normal-case mb-4">{{ __("Saisissez simplement les heures : le gasoil et le coût sont estimés automatiquement.") }}</p>
-                    <form method="POST" action="{{ route('utilities.energy.readings.store') }}" class="space-y-3" data-prefill-form="energy">
-                        @csrf
-                        <div class="grid grid-cols-2 gap-3">
-                            <select name="energy_source_id" required data-prefill-source class="bg-white border-none rounded-xl p-3 text-[10px] font-black uppercase shadow-sm outline-none">
-                                <option value="">{{ __("Source...") }}</option>
-                                @foreach($energySources as $es)
-                                    <option value="{{ $es->id }}">{{ $es->name }} ({{ $es->type_label }})</option>
-                                @endforeach
-                            </select>
-                            <input type="date" name="reading_date" value="{{ now()->toDateString() }}" required class="bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
-                        </div>
-                        @if($buildings->count())
-                        <select name="building_id" class="w-full bg-white border-none rounded-xl p-3 text-[10px] font-black uppercase shadow-sm outline-none">
-                            <option value="">{{ __("Bâtiment desservi (optionnel)") }}</option>
-                            @foreach($buildings as $b)
-                                <option value="{{ $b->id }}">{{ $b->name }}</option>
-                            @endforeach
-                        </select>
-                        @endif
-                        <div class="grid grid-cols-3 gap-3">
-                            <input type="number" name="hours_run" step="0.5" min="0" max="24" required placeholder="{{ __('Heures *') }}" class="bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
-                            <input type="number" name="fuel_consumed_liters" step="0.1" min="0" placeholder="{{ __('Gasoil L (auto)') }}" class="bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
-                            <input type="number" name="outage_hours" step="0.5" min="0" max="24" placeholder="{{ __('Coupures (h)') }}" class="bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
-                        </div>
-                        <input type="number" name="cost" step="100" min="0" placeholder="{{ __('Coût GNF (auto si vide)') }}" class="w-full bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
-                        <button type="submit" class="w-full bg-amber-500 text-white py-3 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-amber-600 transition-all border-none cursor-pointer">
-                            <i class="fa-solid fa-check mr-1"></i> {{ __("Enregistrer") }}
-                        </button>
-                    </form>
-                </div>
-            </div>
-            @endcan
+            {{-- La saisie des relevés a été déplacée sur les pages dédiées
+                 (Eau / Énergie / Gasoil) pour garder ce tableau de bord en
+                 vue d'ensemble. Les liens rapides ci-dessous y mènent. --}}
 
             {{-- LIENS RAPIDES --}}
             <div class="mt-8 flex flex-wrap gap-3">
@@ -353,43 +276,4 @@
         </div>
     </div>
 
-    {{-- Saisie « comme hier » : pré-remplit le formulaire avec le dernier relevé
-         de la source sélectionnée. Les champs vides ne sont jamais imposés. --}}
-    @can('ressources.C')
-    <script>
-        const RELEVE_LAST = {
-            water:  @json($lastWater ?? []),
-            energy: @json($lastEnergy ?? []),
-        };
-
-        document.querySelectorAll('[data-prefill-form]').forEach(form => {
-            const kind   = form.dataset.prefillForm;
-            const select = form.querySelector('[data-prefill-source]');
-            if (! select) return;
-
-            const applyPrefill = () => {
-                const last = (RELEVE_LAST[kind] || {})[select.value];
-                if (! last) return;
-                Object.entries(last).forEach(([field, value]) => {
-                    if (value === null || value === '') return;
-                    const input = form.querySelector(`[name="${field}"]`);
-                    // Ne pas écraser une valeur déjà saisie par l'opérateur.
-                    if (input && (input.value === '' || input.value === '0')) {
-                        input.value = value;
-                    }
-                });
-            };
-
-            select.addEventListener('change', applyPrefill);
-
-            // Moins de clics au quotidien : si une seule source existe, on la
-            // présélectionne ; et on pré-remplit dès le chargement « comme hier ».
-            const realOptions = [...select.options].filter(o => o.value !== '');
-            if (realOptions.length === 1) {
-                select.value = realOptions[0].value;
-            }
-            if (select.value) applyPrefill();
-        });
-    </script>
-    @endcan
 </x-app-layout>

@@ -348,6 +348,48 @@
                 </form>
             </div>
             @endcan
+
+            {{-- RELEVÉ ÉNERGIE : saisissez les heures, le gasoil et le coût sont estimés --}}
+            @can('ressources.C')
+            @php $buildings = $buildings ?? collect(); @endphp
+            <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm mt-6">
+                <h3 class="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-1 flex items-center gap-2">
+                    <i class="fa-solid fa-bolt"></i> {{ __("Nouveau relevé énergie") }}
+                </h3>
+                <p class="text-[9px] font-bold text-slate-400 normal-case mb-4">{{ __("Saisissez simplement les heures : le gasoil et le coût sont estimés automatiquement.") }}</p>
+                <form method="POST" action="{{ route('utilities.energy.readings.store') }}" class="space-y-3" data-prefill-form="energy">
+                    @csrf
+                    <div class="grid grid-cols-2 gap-3">
+                        <select name="energy_source_id" required data-prefill-source class="bg-white border border-slate-100 rounded-xl p-3 text-[10px] font-black uppercase shadow-sm outline-none">
+                            <option value="">{{ __("Source...") }}</option>
+                            @foreach($sources as $es)
+                                <option value="{{ $es->id }}">{{ $es->name }} ({{ $es->type_label }})</option>
+                            @endforeach
+                        </select>
+                        <input type="date" name="reading_date" value="{{ now()->toDateString() }}" required class="bg-white border border-slate-100 rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
+                    </div>
+                    @if($buildings->count())
+                    <select name="building_id" class="w-full bg-white border border-slate-100 rounded-xl p-3 text-[10px] font-black uppercase shadow-sm outline-none">
+                        <option value="">{{ __("Bâtiment desservi (optionnel)") }}</option>
+                        @foreach($buildings as $b)
+                            <option value="{{ $b->id }}">{{ $b->name }}</option>
+                        @endforeach
+                    </select>
+                    @endif
+                    <div class="grid grid-cols-3 gap-3">
+                        <input type="number" name="hours_run" step="0.5" min="0" max="24" required placeholder="{{ __('Heures *') }}" class="bg-white border border-slate-100 rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
+                        <input type="number" name="fuel_consumed_liters" step="0.1" min="0" placeholder="{{ __('Gasoil L (auto)') }}" class="bg-white border border-slate-100 rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
+                        <input type="number" name="outage_hours" step="0.5" min="0" max="24" placeholder="{{ __('Coupures (h)') }}" class="bg-white border border-slate-100 rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
+                    </div>
+                    <input type="number" name="cost" step="100" min="0" placeholder="{{ __('Coût GNF (auto si vide)') }}" class="w-full bg-white border border-slate-100 rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
+                    <button type="submit" class="w-full bg-amber-500 text-white py-3 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-amber-600 transition-all border-none cursor-pointer">
+                        <i class="fa-solid fa-check mr-1"></i> {{ __("Enregistrer le relevé") }}
+                    </button>
+                </form>
+            </div>
+
+            @include('utilities.partials.prefill-script', ['lastData' => ['energy' => $lastEnergy ?? []]])
+            @endcan
         </div>
     </div>
 </x-app-layout>

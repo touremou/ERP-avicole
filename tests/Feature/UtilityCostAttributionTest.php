@@ -156,8 +156,9 @@ test('le formulaire dashboard énergie accepte un building_id', function () {
     expect(EnergyReading::where('building_id', $this->building->id)->exists())->toBeTrue();
 });
 
-test('le dashboard pré-remplit avec le dernier relevé et affiche le coût/sujet', function () {
-    // Un relevé antérieur sert de base au pré-remplissage « comme hier ».
+test('la page Eau pré-remplit le formulaire de relevé avec le dernier relevé', function () {
+    // La saisie des relevés (et son pré-remplissage « comme hier ») vit
+    // désormais sur la page dédiée Eau, plus sur le tableau de bord.
     WaterReading::create([
         'farm_id' => $this->farm->id, 'water_source_id' => $this->waterSource->id,
         'reading_date' => now()->subDay()->toDateString(), 'user_id' => $this->adminUser->id,
@@ -165,7 +166,7 @@ test('le dashboard pré-remplit avec le dernier relevé et affiche le coût/suje
     ]);
 
     $this->actingAs($this->adminUser)
-        ->get(route('utilities.dashboard'))
+        ->get(route('utilities.water.sources'))
         ->assertOk()
         ->assertSee('RELEVE_LAST', false)   // données de pré-remplissage injectées
         ->assertSee('1500', false);         // valeur du dernier relevé disponible côté JS

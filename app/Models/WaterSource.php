@@ -80,6 +80,9 @@ class WaterSource extends Model
             - (float) $todayReading->volume_consumed_liters
             + (float) $todayReading->volume_added_liters);
 
+        // Anti-débordement : une citerne ne peut pas dépasser sa capacité.
+        $newLevel = min((float) $this->capacity_liters, $newLevel);
+
         $percent = ($this->capacity_liters > 0) ? ($newLevel / $this->capacity_liters) * 100 : 0;
 
         $this->update([
