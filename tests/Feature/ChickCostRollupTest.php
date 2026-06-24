@@ -40,6 +40,14 @@ test('chickUnitCost vaut 0 tant qu\'aucun poussin n\'est éclos', function () {
     expect($inc->chickUnitCost())->toBe(0.0);
 });
 
+test('chickUnitCost intègre les frais d\'incubation (absorption complète « usine »)', function () {
+    // (100 × 500 œufs + 8 000 frais d'incubation) / 80 éclos = 725
+    $inc = new Incubation(['eggs_count' => 100, 'egg_unit_cost' => 500, 'overhead_cost' => 8000, 'hatched_chicks' => 80]);
+
+    expect($inc->totalProcessCost())->toBe(58000.0)
+        ->and($inc->chickUnitCost())->toBe(725.0);
+});
+
 test('StartIncubation enregistre le coût unitaire de l\'œuf', function () {
     $batch = Batch::factory()->create(['farm_id' => $this->farm->id, 'status' => 'Actif']);
     $incubator = Incubator::create(['farm_id' => $this->farm->id, 'name' => 'Couveuse 1', 'capacity' => 500, 'status' => 'Disponible']);

@@ -58,7 +58,7 @@
                         <div>
                             <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 tracking-widest">{{ __("Surface Totale (m²)") }}</label>
                             <div class="relative">
-                                <input type="number" name="surface" value="{{ old('surface') }}" step="0.01" min="0" required 
+                                <input type="number" name="surface" value="{{ old('surface') }}" step="0.01" min="1" required
                                        class="w-full p-4 bg-slate-50 rounded-2xl border-none font-black text-slate-700 shadow-inner focus:ring-2 focus:ring-emerald-500 outline-none pr-12">
                                 <span class="absolute right-4 top-4 text-slate-300 text-[10px] font-black uppercase">m²</span>
                             </div>
@@ -67,7 +67,7 @@
                         <div>
                             <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 tracking-widest">{{ __("Capacité Max (Sujets)") }}</label>
                             <div class="relative">
-                                <input type="number" min="0" name="capacity" value="{{ old('capacity') }}" required 
+                                <input type="number" min="1" name="capacity" value="{{ old('capacity') }}" required
                                        class="w-full p-4 bg-slate-50 rounded-2xl border-none font-black text-slate-700 shadow-inner focus:ring-2 focus:ring-emerald-500 outline-none pr-16">
                                 <span class="absolute right-4 top-4 text-slate-300 text-[10px] font-black uppercase italic">{{ __("Têtes") }}</span>
                             </div>

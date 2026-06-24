@@ -180,8 +180,13 @@ class ReportController extends Controller
 
         // ─── CHARGES ───
         $costAcquisition = (float) Batch::live()->whereBetween('arrival_date', [$from, $to])->sum('total_acquisition_cost');
-        $costFeed   = (float) FeedPurchase::whereBetween('purchase_date', [$from, $to])
-            ->sum(DB::raw('COALESCE(total_price, quantity * unit_price)'));
+
+        // Aliment : on impute la charge à la CONSOMMATION réelle (principe de
+        // rattachement) et non aux achats — un sujet qui mange génère une charge,
+        // que l'aliment soit acheté OU produit en interne (provenderie). Source de
+        // valorisation unique partagée avec la fiche lot (feed_cogs) : coût figé à
+        // la saisie, repli sur le CMP courant de l'article.
+        $costFeed = $this->feedConsumedCost($from, $to);
         $costHealth = (float) HealthCheck::whereBetween('intervention_date', [$from, $to])->sum('cost');
         $costLabor  = (float) Payslip::whereHas('period', fn ($q) => $q->whereBetween('start_date', [$from, $to]))
             ->sum('net_salary');
@@ -237,6 +242,39 @@ class ReportController extends Controller
             'from', 'to', 'revenue', 'totalRevenue',
             'costs', 'totalCosts', 'netResult', 'marginPct', 'speciesMargin', 'cropMargin'
         );
+    }
+
+    /**
+     * Coût de l'aliment CONSOMMÉ sur la période (COGS aliment) — principe de
+     * rattachement des charges. Chaque consommation de pointage est valorisée au
+     * coût figé à la saisie (feed_unit_cost, cohérent avec la fiche lot) ; à
+     * défaut (données antérieures au snapshot), au CMP courant de l'article. Ne
+     * dépend donc PAS des achats : l'aliment produit en interne est bien compté.
+     */
+    private function feedConsumedCost(Carbon $from, Carbon $to): float
+    {
+        // Carte de repli : CMP courant par nom d'article / type d'aliment.
+        $cmpByName = [];
+        foreach (\App\Models\Stock::where('category', \App\Models\Stock::CAT_CONSO)->get() as $s) {
+            $cmp = (float) ($s->last_unit_price ?? $s->unit_price ?? 0);
+            if ($cmp <= 0) continue;
+            if ($s->item_name) $cmpByName[trim($s->item_name)] = $cmp;
+            if ($s->feed_type) $cmpByName[trim($s->feed_type)] = $cmp;
+        }
+
+        $total = 0.0;
+        \App\Models\DailyCheck::whereBetween('check_date', [$from, $to])
+            ->where('feed_consumed', '>', 0)
+            ->get(['feed_consumed', 'feed_unit_cost', 'feed_type'])
+            ->each(function ($f) use (&$total, $cmpByName) {
+                $snapshot = (float) ($f->feed_unit_cost ?? 0);
+                $unitCost = $snapshot > 0
+                    ? $snapshot
+                    : (float) ($cmpByName[trim((string) $f->feed_type)] ?? 0);
+                $total += (float) $f->feed_consumed * $unitCost;
+            });
+
+        return round($total, 2);
     }
 
     /**

@@ -26,6 +26,7 @@ class Incubation extends Model
         'hatch_date_expected',
         'eggs_count',
         'egg_unit_cost',
+        'overhead_cost',
         'fertile_eggs',
         'hatched_chicks',
         'status',
@@ -38,6 +39,7 @@ class Incubation extends Model
         'incubation_duration' => 'integer',
         'eggs_count'          => 'integer',
         'egg_unit_cost'       => 'decimal:2',
+        'overhead_cost'       => 'decimal:2',
         'fertile_eggs'        => 'integer',
         'hatched_chicks'      => 'integer',
         'created_at'          => 'datetime',
@@ -51,10 +53,19 @@ class Incubation extends Model
     }
 
     /**
-     * Coût de revient d'UN poussin éclos (process costing) : le coût total des
-     * œufs est réparti sur les poussins réellement éclos — les œufs clairs /
-     * non éclos sont ainsi absorbés par les survivants (coût réel d'un poussin
-     * viable). Retourne 0 tant qu'aucun poussin n'est éclos.
+     * Coût total du cycle (absorption complète, « version usine ») :
+     * coût des œufs + frais d'incubation (énergie, main-d'œuvre, amortissement).
+     */
+    public function totalProcessCost(): float
+    {
+        return $this->eggsTotalCost() + (float) $this->overhead_cost;
+    }
+
+    /**
+     * Coût de revient d'UN poussin éclos (process costing) : le coût total du
+     * cycle (œufs + frais d'incubation) est réparti sur les poussins réellement
+     * éclos — œufs clairs / non éclos absorbés par les survivants (coût réel d'un
+     * poussin viable). Retourne 0 tant qu'aucun poussin n'est éclos.
      */
     public function chickUnitCost(): float
     {
@@ -63,7 +74,7 @@ class Incubation extends Model
             return 0.0;
         }
 
-        return round($this->eggsTotalCost() / $hatched, 2);
+        return round($this->totalProcessCost() / $hatched, 2);
     }
 
     // Accessors virtuels pour les calculs de performance

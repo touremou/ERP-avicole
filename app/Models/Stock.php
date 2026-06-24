@@ -133,7 +133,45 @@ class Stock extends Model
         'aliment'        => self::CAT_CONSO,
         'produits_finis' => self::CAT_PRODUITS_FINIS,
         'materiel'       => self::CAT_MATERIELS,
+        'litieres'       => self::CAT_LITIERES,
+        'recoltes'       => self::CAT_RECOLTES,
+        'intrants'       => self::CAT_INTRANTS,
     ];
+
+    /**
+     * Inverse de PRODUCT_TYPE_TO_CATEGORY : pour une catégorie de stock, le
+     * product_type d'expédition/vente correspondant. Permet d'aligner la liste
+     * des articles expédiables sur les catégories de stock réellement actives
+     * (cf. activeCategories) au lieu d'une liste codée en dur.
+     */
+    public const CATEGORY_TO_PRODUCT_TYPE = [
+        self::CAT_OEUFS          => 'oeufs',
+        self::CAT_LAIT           => 'lait',
+        self::CAT_CONSO          => 'aliment',
+        self::CAT_PRODUITS_FINIS => 'produits_finis',
+        self::CAT_MATERIELS      => 'materiel',
+        self::CAT_LITIERES       => 'litieres',
+        self::CAT_RECOLTES       => 'recoltes',
+        self::CAT_INTRANTS       => 'intrants',
+    ];
+
+    /**
+     * Types d'articles « stock » expédiables, alignés sur les catégories de
+     * stock ACTIVES (paramètre stocks.categories). Chaque entrée : product_type
+     * + libellé d'affichage. Source unique pour le formulaire d'expédition.
+     *
+     * @return array<int, array{type: string, label: string}>
+     */
+    public static function shippableStockTypes(): array
+    {
+        $out = [];
+        foreach (self::activeCategories() as $slug => $meta) {
+            if (isset(self::CATEGORY_TO_PRODUCT_TYPE[$slug])) {
+                $out[] = ['type' => self::CATEGORY_TO_PRODUCT_TYPE[$slug], 'label' => $meta['label']];
+            }
+        }
+        return $out;
+    }
 
     /**
      * Catégorie de stock correspondant à un product_type de ligne de

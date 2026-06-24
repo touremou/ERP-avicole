@@ -4,6 +4,7 @@ namespace App\Http\Requests\Building;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\Rule;
 
 class StoreBuildingRequest extends FormRequest
 {
@@ -15,7 +16,9 @@ class StoreBuildingRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name'        => ['required', 'string', 'max:255', 'unique:buildings,name'],
+            // Unicité sur les bâtiments NON supprimés : recréer un nom d'un
+            // bâtiment archivé (soft-deleted) ne doit pas être bloqué.
+            'name'        => ['required', 'string', 'max:255', Rule::unique('buildings', 'name')->whereNull('deleted_at')],
             'type'        => ['required', 'in:poussiniere,chair,ponte,reproducteur,mixte,bergerie,chevrerie,etable,bassin,lapiniere,porcherie'],
             'surface'     => ['required', 'numeric', 'min:1'],
             'capacity'    => ['required', 'integer', 'min:1'],

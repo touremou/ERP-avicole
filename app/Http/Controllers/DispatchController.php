@@ -56,7 +56,11 @@ class DispatchController extends Controller
         // accès au module logistique (ils pourront se connecter pour valider).
         $receivers = $this->candidateReceivers();
 
-        return view('dispatches.create', compact('stocks', 'batches', 'receivers'));
+        // Types d'articles expédiables depuis le stock, alignés sur les
+        // catégories de stock ACTIVES (au lieu d'une liste codée en dur).
+        $shippableStockTypes = Stock::shippableStockTypes();
+
+        return view('dispatches.create', compact('stocks', 'batches', 'receivers', 'shippableStockTypes'));
     }
 
     /**
@@ -99,7 +103,7 @@ class DispatchController extends Controller
             'notes'                   => 'nullable|string|max:1000',
             'items'                   => 'required|array|min:1',
             // Taxonomie multiespèces (alignée sur les ventes).
-            'items.*.product_type'    => 'required|in:oeufs,animal_vif,carcasse,lait,fumier,aliment,produits_finis,materiel,autre,volaille_vivante,volaille_abattue',
+            'items.*.product_type'    => 'required|in:oeufs,animal_vif,carcasse,lait,fumier,aliment,produits_finis,materiel,autre,volaille_vivante,volaille_abattue,litieres,recoltes,intrants',
             'items.*.product_name'    => 'required|string|max:255',
             'items.*.product_id'      => 'nullable|integer',
             'items.*.batch_id'        => 'nullable|integer|exists:batches,id',
