@@ -6,6 +6,7 @@ use App\Models\Dispatch;
 use App\Models\Reception;
 use App\Models\ReceptionItem;
 use App\Models\DiscrepancyReport;
+use App\Services\Discrepancy\DiscrepancyEvaluator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -26,43 +27,12 @@ use Illuminate\Support\Facades\Log;
 class ReconciliationService
 {
     /**
-     * Seuils de tolérance par type de produit (en %).
-     * Au-delà = écart INJUSTIFIÉ → investigation.
+     * Les tolérances par type de produit et les seuils de sévérité sont
+     * désormais centralisés dans config/logistique.php et résolus par
+     * App\Services\Discrepancy\DiscrepancyEvaluator (source unique). La
+     * méthode getTolerances() / la constante TOLERANCE codée en dur ont été
+     * supprimées au profit de ce moteur.
      */
-    /* private const TOLERANCE = [
-        'volaille' => setting('abattoir.tolerance_poultry', 0),
-        'oeufs'    => setting('abattoir.tolerance_eggs', 2),
-        'aliment'  => setting('abattoir.tolerance_feed', 1),
-        'fumier'   => setting('abattoir.tolerance_manure', 5),
-        'volaille_vivante' => 0,
-        'volaille_abattue' => 0,
-        'materiel'         => 0,
-        'autre'            => 1,
-    ]; */
-
-    /**
-     * Récupère les tolérances dynamiques depuis les paramètres de l'ERP
-     */
-    public static function getTolerances(): array
-    {
-        return [
-            'volaille'         => (float) setting('abattoir.tolerance_poultry', 0),
-            'oeufs'            => (float) setting('abattoir.tolerance_eggs', 2),
-            'aliment'          => (float) setting('abattoir.tolerance_feed', 1),
-            'fumier'           => (float) setting('abattoir.tolerance_manure', 5),
-            
-            // Les nouvelles variables variabilisées
-            'volaille_vivante' => (float) setting('abattoir.tolerance_live_poultry', 0),
-            'volaille_abattue' => (float) setting('abattoir.tolerance_slaughtered_poultry', 0),
-            'materiel'         => (float) setting('abattoir.tolerance_equipment', 0),
-            'autre'            => (float) setting('abattoir.tolerance_other', 1),
-
-            // Multiespèces : animaux vifs (tête = exact), carcasses/lait (poids/volume = légère variance)
-            'animal_vif'       => (float) setting('abattoir.tolerance_live_animals', 0),
-            'carcasse'         => (float) setting('abattoir.tolerance_carcass', 1),
-            'lait'             => (float) setting('abattoir.tolerance_milk', 1),
-        ];
-    }
 
     /**
      * Réconcilie une réception avec son expédition.
@@ -83,48 +53,37 @@ class ReconciliationService
 
         return DB::transaction(function () use ($reception, $dispatch) {
 
-            // ─── 1. CALCULER LES ÉCARTS PAR LIGNE ───
-            $totalDispatched = 0;
-            $totalReceived   = 0;
-            $totalDamaged    = 0;
-            $totalMissing    = 0;
-            $hasCritical     = false;
+            // ─── 1. ÉVALUER LES ÉCARTS VIA LE MOTEUR (source unique) ───
+            $evaluator = app(DiscrepancyEvaluator::class);
 
-            foreach ($reception->items as $recItem) {
-                $dispItem = $recItem->dispatchItem;
-                if (! $dispItem) continue;
+            // On ignore les lignes orphelines (sans expédition liée).
+            $recItems = $reception->items->filter(fn ($r) => $r->dispatchItem)->values();
 
-                $dispatched = (float) $dispItem->quantity_dispatched;
-                $received   = (float) $recItem->quantity_received;
-                $damaged    = (float) $recItem->quantity_damaged;
+            $evaluation = $evaluator->evaluateReception(
+                $recItems->map(fn ($recItem) => [
+                    'product_type' => $recItem->dispatchItem->product_type,
+                    'dispatched'   => (float) $recItem->dispatchItem->quantity_dispatched,
+                    'received'     => (float) $recItem->quantity_received,
+                    'damaged'      => (float) $recItem->quantity_damaged,
+                ])
+            );
 
-                // Calcul automatique du manquant
-                $missing = max(0, $dispatched - $received - $damaged);
-                $recItem->update(['quantity_missing' => $missing]);
+            // Persister le manquant calculé + tracer les lignes hors tolérance.
+            foreach ($evaluation->lines as $i => $line) {
+                $recItem = $recItems[$i];
+                $recItem->update(['quantity_missing' => $line->missing]);
 
-                $totalDispatched += $dispatched;
-                $totalReceived   += $received;
-                $totalDamaged    += $damaged;
-                $totalMissing    += $missing;
-
-                // Vérifier si l'écart dépasse la tolérance
-                $tolerance = self::getTolerances()[$dispItem->product_type] ?? 1;
-                if ($dispatched > 0) {
-                    $lineRate = ($missing / $dispatched) * 100;
-                    if ($lineRate > $tolerance) {
-                        $hasCritical = true;
-
-                        Log::warning(
-                            "ReconciliationService: écart critique sur {$dispItem->product_name} — " .
-                            "Expédié: {$dispatched}, Reçu: {$received}, Endommagé: {$damaged}, " .
-                            "Manquant: {$missing} ({$lineRate}% > tolérance {$tolerance}%)"
-                        );
-                    }
+                if (! $line->withinTolerance) {
+                    Log::warning(
+                        "ReconciliationService: écart critique sur {$recItem->dispatchItem->product_name} — " .
+                        "Expédié: {$line->dispatched}, Reçu: {$line->received}, Endommagé: {$line->damaged}, " .
+                        "Manquant: {$line->missing} ({$line->lineRate}% > tolérance {$line->tolerance}%)"
+                    );
                 }
             }
 
             // ─── 2. PAS D'ÉCART → PAS DE RAPPORT ───
-            if ($totalMissing == 0 && $totalDamaged == 0) {
+            if (! $evaluation->hasDiscrepancy()) {
                 $reception->update(['status' => 'valide']);
                 $dispatch->update(['status' => 'receptionne']);
 
@@ -133,26 +92,16 @@ class ReconciliationService
             }
 
             // ─── 3. ÉCART DÉTECTÉ → GÉNÉRER LE RAPPORT ───
-            $discrepancyRate = $totalDispatched > 0
-                ? round(($totalMissing / $totalDispatched) * 100, 2)
-                : 0;
-
-            $severity = match (true) {
-                $hasCritical || $discrepancyRate > 5 => 'critique',
-                $discrepancyRate > 2                  => 'attention',
-                default                               => 'normal',
-            };
-
             $report = DiscrepancyReport::create([
                 'dispatch_id'      => $dispatch->id,
                 'reception_id'     => $reception->id,
                 'reported_by'      => Auth::id(),
-                'total_dispatched' => $totalDispatched,
-                'total_received'   => $totalReceived,
-                'total_damaged'    => $totalDamaged,
-                'total_missing'    => $totalMissing,
-                'discrepancy_rate' => $discrepancyRate,
-                'severity'         => $severity,
+                'total_dispatched' => $evaluation->totalDispatched,
+                'total_received'   => $evaluation->totalReceived,
+                'total_damaged'    => $evaluation->totalDamaged,
+                'total_missing'    => $evaluation->totalMissing,
+                'discrepancy_rate' => $evaluation->discrepancyRate,
+                'severity'         => $evaluation->severity,
                 'resolution'       => 'en_cours',
             ]);
 
@@ -162,13 +111,13 @@ class ReconciliationService
 
             Log::warning(
                 "ReconciliationService: ÉCART DÉTECTÉ sur {$dispatch->dispatch_number} — " .
-                "Taux: {$discrepancyRate}%, Manquant: {$totalMissing}, Sévérité: {$severity}"
+                "Taux: {$evaluation->discrepancyRate}%, Manquant: {$evaluation->totalMissing}, Sévérité: {$evaluation->severity}"
             );
 
             // Alerte anti-fraude immédiate (admin/propriétaire hors site) si
             // l'écart n'est pas anodin — la résolution se fait a posteriori
             // via DiscrepancyReport::resolution.
-            if ($severity !== 'normal') {
+            if ($evaluation->severity !== 'normal') {
                 app(NotificationHub::class)->alertFraud($report->load(['dispatch']));
             }
 
