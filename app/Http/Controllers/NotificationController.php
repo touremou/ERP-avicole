@@ -83,6 +83,37 @@ class NotificationController extends Controller
     }
 
     /**
+     * Marque toutes les notifications in-app de l'utilisateur comme lues
+     * (bouton « tout marquer lu » de la cloche).
+     */
+    public function markAllRead()
+    {
+        Auth::user()->unreadNotifications->markAsRead();
+
+        return back()->with('success', 'Notifications marquées comme lues.');
+    }
+
+    /**
+     * Marque UNE notification comme lue puis redirige vers sa cible (data['url'])
+     * si elle existe — clic sur un élément de la cloche.
+     */
+    public function markRead(string $id)
+    {
+        $notification = Auth::user()->notifications()->where('id', $id)->first();
+
+        if ($notification) {
+            $notification->markAsRead();
+
+            $url = $notification->data['url'] ?? null;
+            if ($url) {
+                return redirect($url);
+            }
+        }
+
+        return back();
+    }
+
+    /**
      * Envoie un message de test WhatsApp.
      *
      * Priorité du destinataire : numéro personnel de l'utilisateur connecté,

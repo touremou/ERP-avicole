@@ -446,8 +446,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/buildings', [BuildingController::class, 'getOfflineBuildings'])->name('buildings');
 
         // Closures pour les référentiels simples (colonnes déjà limitées ou petites tables)
-        Route::get('/employees', fn() => \App\Models\Employee::where('is_active', true)
-            ->get(['id', 'first_name', 'last_name', 'position']))->name('employees');
+        Route::get('/employees', fn() => \App\Models\Employee::active()
+            ->get(['id', 'first_name', 'last_name', 'job_title as position']))->name('employees');
         Route::get('/providers', fn() => \App\Models\Provider::where('status', 'Actif')
             ->get(['id', 'name', 'phone']))->name('providers');
         Route::get('/protocols', fn() => \App\Models\Protocol::all(['id', 'name', 'type']))->name('protocols');
@@ -549,7 +549,9 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('budgets')->name('budgets.')->controller(\App\Http\Controllers\BudgetController::class)->group(function () {
         Route::get('/', 'index')->name('index');
         Route::get('/export', 'export')->name('export');
+        Route::get('/export-pdf', 'exportPdf')->name('export-pdf');
         Route::post('/', 'store')->name('store');
+        Route::post('/copy-previous', 'copyPrevious')->name('copy-previous');
     });
 
     // ──────────────────────────────────────────────
@@ -617,6 +619,9 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/preferences', 'updatePreferences')->name('preferences.update')->middleware('can:L');
         Route::post('/test', 'sendTest')->name('test')->middleware('can:L');
         Route::get('/logs', 'logs')->name('logs')->middleware('can:S');
+        // Cloche in-app : gérer ses propres notifications (aucun droit module requis).
+        Route::post('/read-all', 'markAllRead')->name('read-all');
+        Route::get('/{id}/read', 'markRead')->name('read');
     });
 
     // ──────────────────────────────────────────────

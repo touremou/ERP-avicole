@@ -25,10 +25,12 @@ class BudgetController extends Controller
             return redirect()->route('dashboard')->with('error', 'Accès restreint.');
         }
 
+        $mode = $request->input('mode') === 'year' ? 'year' : 'month';
         [$year, $month] = $this->resolvePeriod($request);
-        ['rows' => $rows, 'totals' => $totals] = $this->buildRecap($year, $month);
 
-        return view('budgets.index', compact('rows', 'totals', 'year', 'month'));
+        ['rows' => $rows, 'totals' => $totals] = $this->buildRecap($year, $mode === 'year' ? null : $month);
+
+        return view('budgets.index', compact('rows', 'totals', 'year', 'month', 'mode'));
     }
 
     /**
@@ -85,10 +87,13 @@ class BudgetController extends Controller
             abort(403, 'Accès restreint.');
         }
 
+        $mode = $request->input('mode') === 'year' ? 'year' : 'month';
         [$year, $month] = $this->resolvePeriod($request);
-        ['rows' => $rows, 'totals' => $totals] = $this->buildRecap($year, $month);
+        ['rows' => $rows, 'totals' => $totals] = $this->buildRecap($year, $mode === 'year' ? null : $month);
 
-        $filename = sprintf('budgets-%04d-%02d.csv', $year, $month);
+        $filename = $mode === 'year'
+            ? sprintf('budgets-%04d.csv', $year)
+            : sprintf('budgets-%04d-%02d.csv', $year, $month);
 
         return response()->streamDownload(function () use ($rows, $totals) {
             $out = fopen('php://output', 'w');
@@ -119,6 +124,65 @@ class BudgetController extends Controller
         }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 
+    /**
+     * Copie les budgets du mois PRÉCÉDENT vers la période ciblée (report
+     * mois-à-mois) — évite de re-saisir des montants stables chaque mois.
+     */
+    public function copyPrevious(Request $request)
+    {
+        if (Gate::denies('depenses.M')) {
+            return back()->with('error', 'Action non autorisée.');
+        }
+
+        $data = $request->validate([
+            'year'  => 'required|integer|min:2020|max:2100',
+            'month' => 'required|integer|min:1|max:12',
+        ]);
+
+        $prev = Carbon::create((int) $data['year'], (int) $data['month'], 1)->subMonth();
+        $prevBudgets = Budget::forPeriod($prev->year, $prev->month)->get();
+
+        if ($prevBudgets->isEmpty()) {
+            return back()->with('error', 'Aucun budget sur le mois précédent à reporter.');
+        }
+
+        $count = 0;
+        foreach ($prevBudgets as $b) {
+            Budget::updateOrCreate(
+                ['category' => $b->category, 'year' => $data['year'], 'month' => $data['month']],
+                ['amount' => $b->amount, 'created_by' => Auth::id()]
+            );
+            $count++;
+        }
+
+        return redirect()
+            ->route('budgets.index', ['year' => $data['year'], 'month' => $data['month']])
+            ->with('success', "{$count} poste(s) reporté(s) depuis le mois précédent.");
+    }
+
+    /**
+     * Export PDF du récap (mensuel ou annuel selon le mode).
+     */
+    public function exportPdf(Request $request)
+    {
+        if (Gate::denies('depenses.L')) {
+            abort(403, 'Accès restreint.');
+        }
+
+        $mode = $request->input('mode') === 'year' ? 'year' : 'month';
+        [$year, $month] = $this->resolvePeriod($request);
+        ['rows' => $rows, 'totals' => $totals] = $this->buildRecap($year, $mode === 'year' ? null : $month);
+
+        $pdf = \Pdf::loadView('budgets.pdf.recap', compact('rows', 'totals', 'year', 'month', 'mode'))
+            ->setPaper('a4', 'portrait');
+
+        $name = $mode === 'year'
+            ? sprintf('budgets-%04d.pdf', $year)
+            : sprintf('budgets-%04d-%02d.pdf', $year, $month);
+
+        return $pdf->download($name);
+    }
+
     // ──────────────────────────────────────────────
     // INTERNES
     // ──────────────────────────────────────────────
@@ -142,12 +206,23 @@ class BudgetController extends Controller
      *
      * @return array{rows: \Illuminate\Support\Collection, totals: array}
      */
-    private function buildRecap(int $year, int $month): array
+    private function buildRecap(int $year, ?int $month): array
     {
-        $from = Carbon::create($year, $month, 1)->startOfMonth();
-        $to   = (clone $from)->endOfMonth();
-
-        $budgets = Budget::forPeriod($year, $month)->get()->keyBy('category');
+        if ($month) {
+            // Récap MENSUEL.
+            $from = Carbon::create($year, $month, 1)->startOfMonth();
+            $to   = (clone $from)->endOfMonth();
+            $budgetByCategory = Budget::forPeriod($year, $month)
+                ->pluck('amount', 'category');
+        } else {
+            // Récap ANNUEL : budgets cumulés sur les 12 mois, dépenses de l'année.
+            $from = Carbon::create($year, 1, 1)->startOfYear();
+            $to   = (clone $from)->endOfYear();
+            $budgetByCategory = Budget::where('year', $year)
+                ->selectRaw('category, SUM(amount) as total')
+                ->groupBy('category')
+                ->pluck('total', 'category');
+        }
 
         $spentByCategory = Expense::validated()
             ->betweenDates($from->toDateString(), $to->toDateString())
@@ -155,8 +230,8 @@ class BudgetController extends Controller
             ->groupBy('category')
             ->pluck('total', 'category');
 
-        $rows = collect(Expense::CATEGORIES)->map(function ($label, $key) use ($budgets, $spentByCategory) {
-            $budget    = (float) ($budgets[$key]->amount ?? 0);
+        $rows = collect(Expense::CATEGORIES)->map(function ($label, $key) use ($budgetByCategory, $spentByCategory) {
+            $budget    = (float) ($budgetByCategory[$key] ?? 0);
             $spent     = (float) ($spentByCategory[$key] ?? 0);
             $remaining = $budget - $spent;
             $pct       = $budget > 0 ? round($spent / $budget * 100, 1) : 0.0;

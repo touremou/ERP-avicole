@@ -546,6 +546,28 @@ test('le lot expose le nombre de jours depuis le dernier renouvellement de liti�
     expect($batch->fresh()->days_since_litter_change)->toBe(5);
 });
 
+test('REGRESSION: le pointage persiste et la fiche lot se rend après redirection', function () {
+    $batch = Batch::factory()->create([
+        'building_id' => $this->building->id, 'status' => 'Actif', 'current_quantity' => 500,
+    ]);
+
+    $resp = $this->actingAs($this->managerUser)->post(route('daily-checks.store'), [
+        'batch_id'      => $batch->id,
+        'check_date'    => now()->toDateString(),
+        'mortality'     => 1,
+        'feed_consumed' => 0,
+        'feed_type'     => 'Chair Démarrage',
+        'water_consumed' => 25,
+        'health_status' => 'Normal',
+    ]);
+
+    $resp->assertSessionHasNoErrors()->assertRedirect();
+    expect(DailyCheck::where('batch_id', $batch->id)->where('water_consumed', 25)->exists())->toBeTrue();
+
+    // Rendu de la page du lot (cible de la redirection) — détecte un 500 post-save.
+    $this->actingAs($this->managerUser)->get(route('batches.show', $batch->id))->assertOk();
+});
+
 test('le formulaire de pointage pré-remplit la météo régionale et propose la reco. eau du jour', function () {
     $farm = App\Models\Farm::where('code', 'FT-001')->first();
 

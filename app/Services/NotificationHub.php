@@ -924,6 +924,18 @@ class NotificationHub
             ]);
         }
 
+        // Filet E-MAIL admin : pendant du filet WhatsApp ci-dessus. Sur une
+        // alerte critique, on prévient aussi l'adresse admin (whatsapp.admin_email)
+        // par e-mail, même si personne n'est abonné à ce type. Vide = inactif.
+        $adminEmail = (string) setting('whatsapp.admin_email', '');
+        if ($severity === 'critique' && $adminEmail !== '') {
+            \Illuminate\Support\Facades\Notification::route('mail', $adminEmail)
+                ->notify(new \App\Notifications\AlertNotification(
+                    ['type' => $type, 'title' => $title, 'message' => $message, 'severity' => $severity],
+                    ['mail']
+                ));
+        }
+
         // ─── Canaux IN-APP (cloche) + E-MAIL (file d'attente) ───
         // Même alerte, autres canaux : on touche aussi les abonnés sans WhatsApp.
         // Les canaux retenus dépendent des préférences de chaque destinataire ;

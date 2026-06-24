@@ -127,15 +127,20 @@
                                         </div>
                                     @else
                                         @forelse($unreadNotifications as $notification)
-                                            <div class="p-5 border-b border-slate-50 hover:bg-slate-50 transition-colors relative">
+                                            <a href="{{ route('notifications.read', $notification->id) }}" class="block p-5 border-b border-slate-50 hover:bg-slate-50 transition-colors relative no-underline">
                                                 <div class="flex items-start gap-3">
-                                                    <div class="w-2 h-2 rounded-full bg-blue-500 mt-1"></div>
+                                                    <div @class([
+                                                        'w-2 h-2 rounded-full mt-1',
+                                                        'bg-rose-600' => ($notification->data['severity'] ?? '') === 'critique',
+                                                        'bg-amber-500' => ($notification->data['severity'] ?? '') === 'attention',
+                                                        'bg-blue-500' => ! in_array($notification->data['severity'] ?? '', ['critique', 'attention']),
+                                                    ])></div>
                                                     <div class="text-left">
                                                         <p class="text-[10px] font-black text-slate-800 uppercase italic mb-1">{{ $notification->data['title'] ?? __("Alerte") }}</p>
                                                         <p class="text-[9px] text-slate-400 font-bold uppercase leading-tight">{{ $notification->data['message'] ?? '' }}</p>
                                                     </div>
                                                 </div>
-                                            </div>
+                                            </a>
                                         @empty
                                             <div class="p-10 text-center">
                                                 <i class="fa-solid fa-check-circle text-emerald-500 text-2xl mb-3"></i>
@@ -144,6 +149,14 @@
                                         @endforelse
                                     @endif
                                 </div>
+                                @if(!config('app.database_down') && $unreadCount > 0)
+                                    <form method="POST" action="{{ route('notifications.read-all') }}" class="p-3 bg-slate-50 border-t border-slate-100">
+                                        @csrf
+                                        <button type="submit" class="w-full text-center text-[9px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-900 transition-colors py-2 border-none bg-transparent cursor-pointer">
+                                            <i class="fa-solid fa-check-double mr-1"></i> {{ __("Tout marquer comme lu") }}
+                                        </button>
+                                    </form>
+                                @endif
                         </x-menu>
                     </div>
                 </header>
