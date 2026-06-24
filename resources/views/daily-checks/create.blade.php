@@ -218,7 +218,7 @@
                                 <label class="block text-[8px] font-black text-slate-500 uppercase tracking-widest leading-none">Humidité (%)
                                     @if(($weather['humidity'] ?? null) !== null)<i class="fa-solid fa-cloud-sun text-sky-400 ml-1" title="Pré-rempli météo ({{ $weather['label'] ?? '' }})"></i>@endif
                                 </label>
-                                <input type="number" name="humidity" min="0" max="100" value="{{ old('humidity', $weather['humidity'] ?? '') }}" class="w-full bg-white/5 border border-white/10 p-4 rounded-2xl text-xl text-purple-400 text-center outline-none font-black italic">
+                                <input type="number" name="humidity" min="0" max="100" step="0.1" value="{{ old('humidity', $weather['humidity'] ?? '') }}" class="w-full bg-white/5 border border-white/10 p-4 rounded-2xl text-xl text-purple-400 text-center outline-none font-black italic">
                             </div>
                             <div class="space-y-2 text-center">
                                 <label class="block text-[8px] font-black text-slate-500 uppercase tracking-widest leading-none">Poids moyen / sujet (kg)</label>

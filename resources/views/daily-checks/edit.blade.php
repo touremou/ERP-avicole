@@ -149,7 +149,7 @@
                             </div>
                             <div class="space-y-2 text-center">
                                 <label class="block text-[9px] text-slate-500 uppercase tracking-widest leading-none">{{ __("Humidité (%)") }}</label>
-                                <input type="number" name="humidity" value="{{ old('humidity', $check->humidity) }}" class="w-full bg-white/10 p-4 rounded-2xl border-none outline-none font-black text-white text-center">
+                                <input type="number" name="humidity" min="0" max="100" step="0.1" value="{{ old('humidity', $check->humidity) }}" class="w-full bg-white/10 p-4 rounded-2xl border-none outline-none font-black text-white text-center">
                             </div>
                             <div class="space-y-2 text-center">
                                 <label class="block text-[9px] text-slate-500 uppercase tracking-widest leading-none">{{ __("Poids moyen / sujet (kg)") }}</label>

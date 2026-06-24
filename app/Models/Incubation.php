@@ -24,9 +24,10 @@ class Incubation extends Model
         'start_date',
         'incubation_duration',
         'hatch_date_expected',
-        'eggs_count', 
-        'fertile_eggs', 
-        'hatched_chicks', 
+        'eggs_count',
+        'egg_unit_cost',
+        'fertile_eggs',
+        'hatched_chicks',
         'status',
         'chicks_dispatched', 'chicks_remaining', // incubation, mirage_fait, clos
     ];
@@ -36,11 +37,34 @@ class Incubation extends Model
         'hatch_date_expected' => 'date',
         'incubation_duration' => 'integer',
         'eggs_count'          => 'integer',
+        'egg_unit_cost'       => 'decimal:2',
         'fertile_eggs'        => 'integer',
         'hatched_chicks'      => 'integer',
         'created_at'          => 'datetime',
         'updated_at'          => 'datetime',
     ];
+
+    /** Coût total des œufs mis à couver (eggs_count × coût unitaire). */
+    public function eggsTotalCost(): float
+    {
+        return (float) $this->eggs_count * (float) $this->egg_unit_cost;
+    }
+
+    /**
+     * Coût de revient d'UN poussin éclos (process costing) : le coût total des
+     * œufs est réparti sur les poussins réellement éclos — les œufs clairs /
+     * non éclos sont ainsi absorbés par les survivants (coût réel d'un poussin
+     * viable). Retourne 0 tant qu'aucun poussin n'est éclos.
+     */
+    public function chickUnitCost(): float
+    {
+        $hatched = (int) $this->hatched_chicks;
+        if ($hatched <= 0) {
+            return 0.0;
+        }
+
+        return round($this->eggsTotalCost() / $hatched, 2);
+    }
 
     // Accessors virtuels pour les calculs de performance
     protected $appends = ['fertility_rate', 'hatchability_rate', 'progress_days']; 

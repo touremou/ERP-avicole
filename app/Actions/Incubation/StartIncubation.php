@@ -20,6 +20,12 @@ class StartIncubation
             
             $duration = (int) ($data['duration'] ?? 21); // Espèce par défaut : Poule
 
+            // Coût unitaire des œufs mis à couver : prix d'achat (œufs fournisseur)
+            // ou valeur interne (œufs collectés). Repli sur un défaut paramétrable.
+            $eggUnitCost = isset($data['egg_unit_cost']) && $data['egg_unit_cost'] !== ''
+                ? (float) $data['egg_unit_cost']
+                : (float) setting('couvoir.egg_unit_cost', 0);
+
             $incubation = Incubation::create([
                 'batch_id'            => $batchId,
                 'incubator_id'        => $incubator->id,
@@ -28,6 +34,7 @@ class StartIncubation
                 'incubation_duration' => $duration,
                 'hatch_date_expected' => Carbon::parse($data['start_date'])->addDays($duration),
                 'eggs_count'          => $data['eggs_count'],
+                'egg_unit_cost'       => $eggUnitCost,
                 'status'              => 'incubation'
             ]);
 

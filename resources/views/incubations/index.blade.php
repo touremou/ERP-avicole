@@ -554,6 +554,17 @@
                         <i class="fa-solid fa-egg absolute -right-6 -bottom-6 text-white/5 text-[8rem] rotate-12 pointer-events-none"></i>
                     </div>
 
+                    {{-- Coût unitaire de l'œuf : répercuté sur les poussins éclos --}}
+                    <div class="space-y-1 mt-4">
+                        <label class="text-[10px] font-black text-slate-400 uppercase italic ml-2 block tracking-widest">
+                            <i class="fa-solid fa-coins text-amber-500 mr-1"></i> {{ __("Coût unitaire de l'œuf") }} ({{ setting('general.currency', 'GNF') }})
+                        </label>
+                        <input type="number" min="0" step="0.01" name="egg_unit_cost" value="{{ old('egg_unit_cost') }}"
+                            placeholder="{{ __('Prix d\'achat ou valeur interne, par œuf') }}"
+                            class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-sm shadow-inner text-center outline-none focus:ring-2 focus:ring-amber-400">
+                        <p class="text-[8px] text-slate-400 ml-2 italic text-center">{{ __("Répercuté sur les poussins éclos (coût d'acquisition du lot de poussinière).") }}</p>
+                    </div>
+
                     {{-- Bouton de validation --}}
                     <button type="submit" class="w-full bg-blue-600 text-white font-black py-6 rounded-[2rem] uppercase italic shadow-[0_15px_30px_-10px_rgba(37,99,235,0.5)] hover:bg-blue-500 hover:shadow-[0_20px_40px_-10px_rgba(37,99,235,0.6)] transition-all transform hover:-translate-y-1 active:scale-95 active:translate-y-0 flex items-center justify-center gap-3 tracking-[0.2em] text-xs border-none cursor-pointer mt-4">
                         <i class="fa-solid fa-power-off text-blue-200"></i> {{ __("Initialiser la Production") }}

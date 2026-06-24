@@ -21,6 +21,7 @@ class StartIncubationRequest extends FormRequest
             'incubator_id' => ['required', 'exists:incubators,id'],
             'start_date'   => ['required', 'date', 'before_or_equal:today'],
             'eggs_count'   => ['required', 'integer', 'min:1', "max:{$maxCapacity}"],
+            'egg_unit_cost' => ['nullable', 'numeric', 'min:0'],
             'source_type'  => ['required', 'in:internal,external'],
             'duration'     => ['nullable', 'integer', 'min:10', 'max:60'],
         ];
