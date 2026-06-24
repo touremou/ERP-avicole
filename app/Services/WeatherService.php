@@ -35,40 +35,52 @@ class WeatherService
      */
     public function coordinates(Farm $farm): ?array
     {
-        $place = trim((string) ($farm->city ?: $farm->region ?: ''));
-        if ($place === '') {
+        // On tente d'abord la ville (plus précise), puis la région en repli :
+        // une localité absente du géocodeur (ex. petit village) ne doit pas
+        // empêcher la résolution via la région, elle généralement connue.
+        $candidates = array_values(array_filter(
+            [trim((string) $farm->city), trim((string) $farm->region)],
+            fn ($p) => $p !== ''
+        ));
+
+        if ($candidates === []) {
             return null;
         }
 
-        // Cache : on revérifie que la ville n'a pas changé depuis le géocodage.
+        // Cache : réutilisable si le lieu déjà géocodé correspond encore à l'un
+        // des candidats actuels (ville ou région).
         $geo = $farm->getSetting('geo');
         if (is_array($geo)
             && isset($geo['lat'], $geo['lon'])
-            && ($geo['query'] ?? null) === $place) {
+            && in_array($geo['query'] ?? null, $candidates, true)) {
             return [
                 'lat'   => (float) $geo['lat'],
                 'lon'   => (float) $geo['lon'],
-                'label' => (string) ($geo['label'] ?? $place),
+                'label' => (string) ($geo['label'] ?? $candidates[0]),
             ];
         }
 
-        $coords = $this->geocode($place);
-        if ($coords === null) {
-            return null;
+        foreach ($candidates as $place) {
+            $coords = $this->geocode($place);
+            if ($coords === null) {
+                continue;
+            }
+
+            // Mémorisation dans les settings de la ferme (persistant, 1 appel/lieu).
+            $settings = $farm->settings ?? [];
+            $settings['geo'] = [
+                'query' => $place,
+                'lat'   => $coords['lat'],
+                'lon'   => $coords['lon'],
+                'label' => $coords['label'],
+                'at'    => now()->toIso8601String(),
+            ];
+            $farm->forceFill(['settings' => $settings])->save();
+
+            return $coords;
         }
 
-        // Mémorisation dans les settings de la ferme (persistant, 1 appel/ville).
-        $settings = $farm->settings ?? [];
-        $settings['geo'] = [
-            'query' => $place,
-            'lat'   => $coords['lat'],
-            'lon'   => $coords['lon'],
-            'label' => $coords['label'],
-            'at'    => now()->toIso8601String(),
-        ];
-        $farm->forceFill(['settings' => $settings])->save();
-
-        return $coords;
+        return null;
     }
 
     /**

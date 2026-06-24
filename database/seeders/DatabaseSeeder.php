@@ -60,8 +60,16 @@ class DatabaseSeeder extends Seeder
             ['category' => 'materiels', 'item_name' => 'Alvéoles vides (30)', 'unit' => 'unité', 'current_quantity' => 0, 'alert_threshold' => 100],
         ];
 
+        // firstOrCreate (et NON updateOrCreate) : on garantit l'EXISTENCE de
+        // ces articles de référence sans jamais ÉCRASER une quantité déjà
+        // saisie. updateOrCreate remettait current_quantity à 0 à chaque
+        // exécution du seeder (db:seed / migrate:fresh --seed), d'où la
+        // « remise à zéro » répétée des stocks Copeaux de bois / Alvéoles vides.
         foreach ($items as $item) {
-            Stock::updateOrCreate(['item_name' => $item['item_name']], $item);
+            Stock::firstOrCreate(
+                ['item_name' => $item['item_name'], 'category' => $item['category']],
+                $item
+            );
         }
 
         $this->call(SpeciesSeeder::class);
