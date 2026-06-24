@@ -78,6 +78,17 @@ class ValidateReception
 
                 $received = (float) $itemData['quantity_received'];
                 $damaged  = (float) ($itemData['quantity_damaged'] ?? 0);
+
+                // GARDE-FOU : reçu + endommagé ne peut pas dépasser l'expédié.
+                // (Double sécurité en plus de la validation du contrôleur :
+                //  la transaction est annulée si l'invariant est violé.)
+                if ($received + $damaged > (float) $dispatchItem->quantity_dispatched + 1e-6) {
+                    throw new Exception(
+                        "Incohérence sur « {$dispatchItem->product_name} » : reçu ({$received}) + endommagé ({$damaged}) " .
+                        "dépasse la quantité expédiée ({$dispatchItem->quantity_dispatched})."
+                    );
+                }
+
                 $missing  = max(0, (float) $dispatchItem->quantity_dispatched - $received - $damaged);
 
                 $recItem = ReceptionItem::create([

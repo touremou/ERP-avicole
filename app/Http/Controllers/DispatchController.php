@@ -17,6 +17,7 @@ use App\Services\ReconciliationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Validator;
 
 class DispatchController extends Controller
 {
@@ -160,7 +161,7 @@ class DispatchController extends Controller
             return back()->with('error', "Réception réservée au récepteur désigné ou à un responsable logistique (droit M).");
         }
 
-        $validated = $request->validate([
+        $validator = Validator::make($request->all(), [
             'reception_date'              => 'required|date',
             'reception_time'              => 'nullable|date_format:H:i',
             'notes'                       => 'nullable|string|max:1000',
@@ -171,6 +172,32 @@ class DispatchController extends Controller
             'items.*.condition'           => 'nullable|in:bon,endommage,suspect',
             'items.*.notes'              => 'nullable|string|max:500',
         ]);
+
+        // COHÉRENCE QUANTITÉS : on ne peut pas réceptionner plus que ce qui a
+        // quitté la ferme. Pour chaque ligne, reçu + endommagé ≤ expédié
+        // (le manquant comble le solde). Sans ce contrôle, le rapport d'écart
+        // afficherait des totaux reçus/endommagés supérieurs à l'expédié.
+        $validator->after(function ($validator) use ($request, $dispatch) {
+            $dispatchItems = $dispatch->items()->get()->keyBy('id');
+
+            foreach ((array) $request->input('items', []) as $i => $line) {
+                $di = $dispatchItems->get($line['dispatch_item_id'] ?? null);
+                if (! $di) continue;
+
+                $received = (float) ($line['quantity_received'] ?? 0);
+                $damaged  = (float) ($line['quantity_damaged'] ?? 0);
+
+                if ($received + $damaged > (float) $di->quantity_dispatched + 1e-6) {
+                    $validator->errors()->add(
+                        "items.{$i}.quantity_damaged",
+                        "« {$di->product_name} » : reçu + endommagé (" . ($received + $damaged) . ") " .
+                        "dépasse la quantité expédiée ({$di->quantity_dispatched} {$di->unit})."
+                    );
+                }
+            }
+        });
+
+        $validated = $validator->validate();
 
         try {
             $reception = $action->execute($dispatch, $validated);
