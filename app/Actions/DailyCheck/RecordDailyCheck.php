@@ -75,6 +75,10 @@ class RecordDailyCheck
             $oldManure = (float) ($existing->manure_collected_kg ?? 0);
             $newManure = (float) ($data['manure_collected_kg'] ?? 0);
 
+            // Eau : litres avant/après pour imputer le delta à la citerne.
+            $oldWater = (float) ($existing->water_consumed ?? 0);
+            $newWater = (float) ($data['water_consumed'] ?? 0);
+
             // ─── Coût de revient de l'aliment consommé (snapshot CMP) ───
             // On fige le coût moyen pondéré courant de l'article aliment afin
             // de valoriser cette consommation dans la marge du lot, qu'il
@@ -107,6 +111,9 @@ class RecordDailyCheck
 
             // ─── Valorisation du fumier ramassé (sous-produit fertilisant) ───
             app(SyncManureCollection::class)->execute($batch, $oldManure, $newManure);
+
+            // ─── Imputation de la consommation d'eau à la citerne du bâtiment ───
+            app(SyncWaterConsumption::class)->execute($batch, $oldWater, $newWater);
 
             return $check;
         });

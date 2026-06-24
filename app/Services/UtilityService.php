@@ -42,9 +42,32 @@ class UtilityService
     {
         $readings = WaterReading::where('reading_date', '>=', $from);
 
-        $totalConsumed = (clone $readings)->sum('volume_consumed_liters');
-        $totalCost = (clone $readings)->sum('cost');
-        $days = max(1, (clone $readings)->distinct('reading_date')->count('reading_date'));
+        // Conso issue des RELEVÉS manuels (citernes/réseau saisis dans le module).
+        $readingsConsumed = (float) (clone $readings)->sum('volume_consumed_liters');
+        $readingsCost     = (float) (clone $readings)->sum('cost');
+
+        // Conso DÉRIVÉE des pointages journaliers (water_consumed, en litres) :
+        // l'éleveur la saisit déjà au pointage, inutile de la ressaisir ici.
+        // On l'agrège pour que le dashboard reflète la conso réelle des lots
+        // sans double saisie. Pas de WaterReading créé → aucun double-comptage
+        // avec les relevés manuels (ce sont deux sources distinctes : appoint
+        // citerne vs consommation animale).
+        $dcConsumed = (float) \App\Models\DailyCheck::where('check_date', '>=', $from)
+            ->sum('water_consumed');
+
+        // Coût estimé de la part « pointages » au tarif du m³ (paramètre énergie).
+        $pricePerM3 = (float) setting('energie.water_price_m3', 0);
+        $dcCost     = round(($dcConsumed / 1000) * $pricePerM3, 2);
+
+        $totalConsumed = $readingsConsumed + $dcConsumed;
+        $totalCost     = $readingsCost + $dcCost;
+
+        // Nombre de jours avec donnée (relevés OU pointages) pour la moyenne.
+        $readingDays = (clone $readings)->distinct('reading_date')->count('reading_date');
+        $checkDays   = \App\Models\DailyCheck::where('check_date', '>=', $from)
+            ->where('water_consumed', '>', 0)
+            ->distinct('check_date')->count('check_date');
+        $days = max(1, $readingDays, $checkDays);
 
         $dailyAvg = $totalConsumed / $days;
         $perBird = ($totalBirds > 0) ? ($dailyAvg / $totalBirds) : 0;
@@ -78,6 +101,9 @@ class UtilityService
             'critical_sources' => $criticalSources,
             'last_ph'          => $lastPh?->quality_ph,
             'ph_status'        => $lastPh?->ph_status ?? 'non_mesuré',
+            // Transparence : part dérivée des pointages vs relevés manuels.
+            'from_daily_checks' => round($dcConsumed),
+            'from_readings'     => round($readingsConsumed),
         ];
     }
 

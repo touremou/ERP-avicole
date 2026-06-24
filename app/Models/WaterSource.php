@@ -15,7 +15,7 @@ class WaterSource extends Model
     protected $fillable = [
         'name', 'type', 'capacity_liters',
         'current_level_liters', 'current_level_percent',
-        'quality_status', 'is_active', 'notes', 'farm_id',
+        'quality_status', 'is_active', 'is_default', 'notes', 'farm_id',
     ];
 
     protected $casts = [
@@ -23,6 +23,7 @@ class WaterSource extends Model
         'current_level_liters'  => 'decimal:2',
         'current_level_percent' => 'decimal:2',
         'is_active'             => 'boolean',
+        'is_default'            => 'boolean',
     ];
 
     public function readings(): HasMany
@@ -33,6 +34,11 @@ class WaterSource extends Model
     public function scopeActive($query)
     {
         return $query->where('is_active', true);
+    }
+
+    public function scopeDefault($query)
+    {
+        return $query->where('is_default', true);
     }
 
     public function scopeCritical($query)

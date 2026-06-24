@@ -35,7 +35,7 @@
             @if($waterSources->isEmpty() && $energySources->isEmpty())
             <div class="mb-8 bg-gradient-to-br from-cyan-50 to-amber-50 border border-cyan-100 rounded-[2.5rem] p-8 not-italic">
                 <h3 class="text-lg font-black text-slate-800 uppercase italic tracking-tighter leading-none mb-3">
-                    <i class="fa-solid fa-bolt text-cyan-500 mr-2"></i> {{ __("Pilotez l'eau, l'énergie et le carburant") }}
+                    <i class="fa-solid fa-bolt text-cyan-500 mr-2"></i> {{ __("Pilotez l'eau, l'énergie et le gasoil") }}
                 </h3>
                 <p class="text-[11px] font-bold text-slate-500 normal-case mb-5 max-w-2xl">
                     {{ __("Ce module sécurise deux enjeux vitaux de la ferme :") }}
@@ -43,7 +43,7 @@
                 <div class="grid md:grid-cols-2 gap-4 mb-6">
                     <div class="bg-white/70 rounded-2xl p-4">
                         <p class="text-[10px] font-black text-cyan-600 uppercase tracking-widest mb-1"><i class="fa-solid fa-shield-heart mr-1"></i> {{ __("Continuité de service") }}</p>
-                        <p class="text-[10px] font-bold text-slate-500 normal-case">{{ __("Autonomie carburant, niveaux de citerne et maintenance des groupes : éviter la coupure qui met un lot en danger.") }}</p>
+                        <p class="text-[10px] font-bold text-slate-500 normal-case">{{ __("Autonomie gasoil, niveaux de citerne et maintenance des groupes : éviter la coupure qui met un lot en danger.") }}</p>
                     </div>
                     <div class="bg-white/70 rounded-2xl p-4">
                         <p class="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-1"><i class="fa-solid fa-coins mr-1"></i> {{ __("Maîtrise des coûts") }}</p>
@@ -92,6 +92,11 @@
                         <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Conso période") }}</p>
                         <p class="text-xl font-black text-slate-900">{{ number_format($data['water']['total_consumed']) }}</p>
                         <p class="text-[8px] text-slate-400">{{ __("litres") }}</p>
+                        @if(($data['water']['from_daily_checks'] ?? 0) > 0)
+                            <p class="text-[7px] font-black text-cyan-500 uppercase tracking-wide mt-1" title="{{ __('Consommation saisie aux pointages journaliers (pas de double saisie)') }}">
+                                {{ __("dont :n L pointages", ['n' => number_format($data['water']['from_daily_checks'])]) }}
+                            </p>
+                        @endif
                     </div>
                     <div class="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm text-center">
                         <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Moyenne / jour") }}</p>
@@ -184,7 +189,7 @@
                         <p class="text-[8px] text-slate-400">{{ __("> 50% = économique") }}</p>
                     </div>
                     <div class="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm text-center">
-                        <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Carburant consommé") }}</p>
+                        <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Gasoil consommé") }}</p>
                         <p class="text-xl font-black text-amber-600">{{ number_format($data['energy']['total_fuel_liters']) }}</p>
                         <p class="text-[8px] text-slate-400">{{ __("litres") }}</p>
                     </div>
@@ -218,7 +223,7 @@
 
                         <div class="grid grid-cols-3 gap-3 mb-4">
                             <div class="text-center">
-                                <p class="text-[8px] font-black text-slate-400 uppercase">{{ __("Carburant") }}</p>
+                                <p class="text-[8px] font-black text-slate-400 uppercase">{{ __("Gasoil") }}</p>
                                 <p class="text-lg font-black {{ $groupe->is_fuel_low ? 'text-red-600' : 'text-slate-900' }}">
                                     {{ number_format($groupe->current_fuel_level ?? 0) }}L
                                 </p>
@@ -299,7 +304,7 @@
                     <h3 class="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-1 flex items-center gap-2">
                         <i class="fa-solid fa-bolt"></i> {{ __("Nouveau relevé énergie") }}
                     </h3>
-                    <p class="text-[9px] font-bold text-amber-500/80 normal-case mb-4">{{ __("Saisissez simplement les heures : le carburant et le coût sont estimés automatiquement.") }}</p>
+                    <p class="text-[9px] font-bold text-amber-500/80 normal-case mb-4">{{ __("Saisissez simplement les heures : le gasoil et le coût sont estimés automatiquement.") }}</p>
                     <form method="POST" action="{{ route('utilities.energy.readings.store') }}" class="space-y-3" data-prefill-form="energy">
                         @csrf
                         <div class="grid grid-cols-2 gap-3">
@@ -321,7 +326,7 @@
                         @endif
                         <div class="grid grid-cols-3 gap-3">
                             <input type="number" name="hours_run" step="0.5" min="0" max="24" required placeholder="{{ __('Heures *') }}" class="bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
-                            <input type="number" name="fuel_consumed_liters" step="0.1" min="0" placeholder="{{ __('Carburant L (auto)') }}" class="bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
+                            <input type="number" name="fuel_consumed_liters" step="0.1" min="0" placeholder="{{ __('Gasoil L (auto)') }}" class="bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
                             <input type="number" name="outage_hours" step="0.5" min="0" max="24" placeholder="{{ __('Coupures (h)') }}" class="bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
                         </div>
                         <input type="number" name="cost" step="100" min="0" placeholder="{{ __('Coût GNF (auto si vide)') }}" class="w-full bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
@@ -342,7 +347,7 @@
                     <i class="fa-solid fa-plug mr-1"></i> {{ __("Gérer les sources d'énergie") }}
                 </a>
                 <a href="{{ route('utilities.fuel.index') }}" class="bg-white border border-slate-200 px-5 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest text-slate-600 hover:bg-orange-50 hover:text-orange-600 transition-all no-underline">
-                    <i class="fa-solid fa-gas-pump mr-1"></i> {{ __("Achats carburant") }}
+                    <i class="fa-solid fa-gas-pump mr-1"></i> {{ __("Achats gasoil") }}
                 </a>
             </div>
         </div>
@@ -362,7 +367,7 @@
             const select = form.querySelector('[data-prefill-source]');
             if (! select) return;
 
-            select.addEventListener('change', () => {
+            const applyPrefill = () => {
                 const last = (RELEVE_LAST[kind] || {})[select.value];
                 if (! last) return;
                 Object.entries(last).forEach(([field, value]) => {
@@ -373,7 +378,17 @@
                         input.value = value;
                     }
                 });
-            });
+            };
+
+            select.addEventListener('change', applyPrefill);
+
+            // Moins de clics au quotidien : si une seule source existe, on la
+            // présélectionne ; et on pré-remplit dès le chargement « comme hier ».
+            const realOptions = [...select.options].filter(o => o.value !== '');
+            if (realOptions.length === 1) {
+                select.value = realOptions[0].value;
+            }
+            if (select.value) applyPrefill();
         });
     </script>
     @endcan

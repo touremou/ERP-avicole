@@ -109,6 +109,13 @@
                                 class="w-full bg-white border-none rounded-2xl p-4 text-sm font-black shadow-sm outline-none">
                         </div>
                     </div>
+                    <label class="flex items-center gap-3 cursor-pointer ml-2">
+                        <input type="checkbox" name="is_default" value="1" class="rounded border-slate-200 text-cyan-500 focus:ring-cyan-400">
+                        <span class="text-[9px] font-black uppercase text-slate-500 tracking-widest italic">
+                            {{ __("Source par défaut de la ferme") }}
+                            <span class="text-slate-400 normal-case font-bold">— {{ __("utilisée pour les bâtiments sans citerne affectée") }}</span>
+                        </span>
+                    </label>
                     <button type="submit" class="bg-cyan-500 text-white px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-cyan-600 transition-all border-none cursor-pointer shadow-lg">
                         <i class="fa-solid fa-faucet-drip mr-2"></i> {{ __("Enregistrer") }}
                     </button>

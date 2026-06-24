@@ -260,7 +260,11 @@ class DailyCheckController extends Controller
         $oldManure = (float) $check->manure_collected_kg;
         $newManure = (float) ($validated['manure_collected_kg'] ?? 0);
 
-        return DB::transaction(function () use ($request, $check, $batch, $validated, $oldManure, $newManure) {
+        // Eau : litres avant rectification, pour réajuster le niveau de la citerne.
+        $oldWater = (float) $check->water_consumed;
+        $newWater = (float) ($validated['water_consumed'] ?? 0);
+
+        return DB::transaction(function () use ($request, $check, $batch, $validated, $oldManure, $newManure, $oldWater, $newWater) {
             // Restitution de l'ancien stock
             if ((float) $check->feed_consumed > 0) {
                 StockIntegrationService::syncMovement(
@@ -298,6 +302,9 @@ class DailyCheckController extends Controller
             // Compensation du stock fumier (restitue l'ancien ramassage,
             // applique le nouveau) pour ne pas double-compter le fertilisant.
             app(SyncManureCollection::class)->execute($batch, $oldManure, $newManure);
+
+            // Réajuste le niveau de la citerne selon le delta d'eau consommée.
+            app(\App\Actions\DailyCheck\SyncWaterConsumption::class)->execute($batch, $oldWater, $newWater);
 
             // Save species-specific extension if applicable
             if ($check->batch->isGmqTracked() || $check->batch->isAquaculture()) {
@@ -360,6 +367,11 @@ class DailyCheckController extends Controller
             // Restitution du stock fumier (le ramassage supprimé sort du stock).
             if ((float) $check->manure_collected_kg > 0 && $check->batch) {
                 app(SyncManureCollection::class)->execute($check->batch, (float) $check->manure_collected_kg, 0);
+            }
+
+            // Restitution du niveau de citerne (la conso d'eau supprimée est rendue).
+            if ((float) $check->water_consumed > 0 && $check->batch) {
+                app(\App\Actions\DailyCheck\SyncWaterConsumption::class)->execute($check->batch, (float) $check->water_consumed, 0);
             }
 
             // L'observer DailyCheckObserver gère la restitution de current_quantity

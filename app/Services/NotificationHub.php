@@ -923,6 +923,60 @@ class NotificationHub
                 'title' => $title,
             ]);
         }
+
+        // ─── Canaux IN-APP (cloche) + E-MAIL (file d'attente) ───
+        // Même alerte, autres canaux : on touche aussi les abonnés sans WhatsApp.
+        // Les canaux retenus dépendent des préférences de chaque destinataire ;
+        // la décision est centralisée ici, AlertNotification ne fait que les porter.
+        foreach ($this->typeRecipients($type) as $user) {
+            $prefs = $user->notificationPreference;
+            if (! $prefs || ! $prefs->is_active) {
+                continue;
+            }
+
+            $channels = [];
+
+            // In-app : notification silencieuse → on ignore les heures calmes.
+            if ($prefs->channel_database) {
+                $channels[] = 'database';
+            }
+
+            // E-mail : intrusif comme le WhatsApp → on respecte les heures
+            // silencieuses (sauf alerte critique).
+            $emailAllowedNow = $severity === 'critique' || ! $prefs->isQuietHour();
+            if ($prefs->channel_email && $user->email && $emailAllowedNow) {
+                $channels[] = 'mail';
+            }
+
+            if ($channels !== []) {
+                $user->notify(new \App\Notifications\AlertNotification(
+                    ['type' => $type, 'title' => $title, 'message' => $message, 'severity' => $severity],
+                    $channels
+                ));
+            }
+        }
+    }
+
+    /**
+     * Destinataires d'un type d'alerte pour les canaux in-app / e-mail :
+     * tout utilisateur dont les préférences sont actives et qui n'a pas
+     * désactivé ce type — indépendamment du canal WhatsApp (on peut ne
+     * recevoir que la cloche et/ou l'e-mail).
+     */
+    private function typeRecipients(string $type)
+    {
+        $column = match ($type) {
+            'daily_summary', 'alert_mortality', 'alert_stock',
+            'alert_energy', 'alert_sales', 'alert_fraud' => $type,
+            default => null,
+        };
+
+        return User::whereHas('notificationPreference', function ($q) use ($column) {
+            $q->where('is_active', true);
+            if ($column) {
+                $q->where($column, true);
+            }
+        })->get();
     }
 
     /**

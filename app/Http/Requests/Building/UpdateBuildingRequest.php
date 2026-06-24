@@ -26,6 +26,7 @@ class UpdateBuildingRequest extends FormRequest
             'surface'                 => ['required', 'numeric', 'min:1'],
             'capacity'                => ['required', 'integer', 'min:1'],
             'status'                  => ['required', Rule::in(Building::STATUSES)],
+            'water_source_id'         => ['nullable', 'integer', 'exists:water_sources,id'],
             'description'             => ['nullable', 'string'],
             'disinfection_started_at' => ['nullable', 'date'],
         ];

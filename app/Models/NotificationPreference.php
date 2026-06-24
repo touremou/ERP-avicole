@@ -10,7 +10,7 @@ class NotificationPreference extends Model
     
     protected $fillable = [
         'user_id', 'is_active',
-        'channel_whatsapp', 'channel_database', 'channel_sms',
+        'channel_whatsapp', 'channel_database', 'channel_email', 'channel_sms',
         'daily_summary', 'alert_mortality', 'alert_stock',
         'alert_energy', 'alert_sales', 'alert_fraud',
         'quiet_start', 'quiet_end',
@@ -20,6 +20,7 @@ class NotificationPreference extends Model
         'is_active'         => 'boolean',
         'channel_whatsapp'  => 'boolean',
         'channel_database'  => 'boolean',
+        'channel_email'     => 'boolean',
         'channel_sms'       => 'boolean',
         'daily_summary'     => 'boolean',
         'alert_mortality'   => 'boolean',

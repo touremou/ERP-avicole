@@ -154,7 +154,7 @@
                     <h3 class="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-6 flex items-center gap-2">
                         <i class="fa-solid fa-tower-broadcast text-blue-500"></i> {{ __("Canaux de diffusion") }}
                     </h3>
-                    <div class="grid grid-cols-3 gap-4">
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <label class="p-4 bg-slate-50 rounded-2xl cursor-pointer text-center group">
                             <input type="hidden" name="channel_whatsapp" value="0">
                             <input type="checkbox" name="channel_whatsapp" value="1" {{ $prefs->channel_whatsapp ? 'checked' : '' }} class="sr-only peer">
@@ -169,6 +169,14 @@
                             </div>
                             <p class="text-[9px] font-black uppercase text-slate-400">In-App</p>
                             <p class="text-[7px] text-slate-300">{{ __("Toujours actif") }}</p>
+                        </label>
+                        <label class="p-4 bg-slate-50 rounded-2xl cursor-pointer text-center group">
+                            <input type="hidden" name="channel_email" value="0">
+                            <input type="checkbox" name="channel_email" value="1" {{ $prefs->channel_email ? 'checked' : '' }} class="sr-only peer">
+                            <div class="peer-checked:bg-amber-500 peer-checked:text-white bg-slate-200 text-slate-400 w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-2 transition-all">
+                                <i class="fa-solid fa-envelope text-xl"></i>
+                            </div>
+                            <p class="text-[9px] font-black uppercase peer-checked:text-amber-600 text-slate-400">E-mail</p>
                         </label>
                         <label class="p-4 bg-slate-50 rounded-2xl cursor-pointer text-center group">
                             <input type="hidden" name="channel_sms" value="0">

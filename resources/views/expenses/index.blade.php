@@ -21,6 +21,9 @@
                     <p class="text-[8px] font-black text-amber-400 uppercase italic mb-1">{{ __("En attente") }} ({{ $stats['count_attente'] }})</p>
                     <p class="text-base font-black text-amber-600 leading-none">{{ number_format($stats['total_attente'], 0, ',', ' ') }} <small class="text-[9px] opacity-40">{{ setting('general.currency', 'GNF') }}</small></p>
                 </div>
+                <a href="{{ route('budgets.index') }}" class="bg-indigo-50 text-indigo-600 px-6 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-indigo-100 transition-all italic flex items-center gap-2 no-underline">
+                    <i class="fa-solid fa-scale-balanced"></i> {{ __("Suivi budgétaire") }}
+                </a>
                 @can('depenses.C')
                 <a href="{{ route('expenses.create') }}" class="bg-slate-900 text-white px-8 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-rose-600 transition-all shadow-2xl italic flex items-center gap-2 no-underline">
                     <i class="fa-solid fa-plus"></i> {{ __("Nouvelle Dépense") }}

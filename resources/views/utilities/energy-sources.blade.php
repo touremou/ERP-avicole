@@ -107,7 +107,7 @@
                             <p class="text-lg font-black {{ $source->needs_maintenance ? 'text-amber-600' : 'text-slate-900' }}">{{ round($source->hours_before_maintenance) }}h</p>
                         </div>
                         <div class="text-center p-3 bg-slate-50 rounded-xl">
-                            <p class="text-[8px] font-black text-slate-400 uppercase">{{ __("Carburant cuve") }}</p>
+                            <p class="text-[8px] font-black text-slate-400 uppercase">{{ __("Gasoil cuve") }}</p>
                             <p class="text-lg font-black {{ $source->is_fuel_low ? 'text-red-600' : 'text-slate-900' }}">{{ number_format($source->current_fuel_level ?? 0) }}L</p>
                         </div>
                         <div class="text-center p-3 bg-slate-50 rounded-xl">

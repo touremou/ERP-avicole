@@ -545,6 +545,13 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/{expense}', 'destroy')->name('destroy')->middleware('can:S');
     });
 
+    // ─── SUIVI BUDGÉTAIRE (module: depenses — contrôle d'accès dans le contrôleur) ───
+    Route::prefix('budgets')->name('budgets.')->controller(\App\Http\Controllers\BudgetController::class)->group(function () {
+        Route::get('/', 'index')->name('index');
+        Route::get('/export', 'export')->name('export');
+        Route::post('/', 'store')->name('store');
+    });
+
     // ──────────────────────────────────────────────
     // LOGISTIQUE & ANTI-FRAUDE (Three-Way Matching)
     // ──────────────────────────────────────────────

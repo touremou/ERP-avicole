@@ -90,6 +90,22 @@
                         </select>
                     </div>
 
+                    {{-- SOURCE D'EAU (citerne desservant le bâtiment) --}}
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-3 ml-1 tracking-widest italic leading-none">
+                            <i class="fa-solid fa-droplet text-cyan-500 mr-1"></i> {{ __("Source d'eau desservante") }}
+                        </label>
+                        <select name="water_source_id" class="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-cyan-500 outline-none font-black text-slate-700 appearance-none shadow-inner uppercase text-[10px] italic cursor-pointer">
+                            <option value="">— {{ __("Source par défaut de la ferme") }} —</option>
+                            @foreach($waterSources as $src)
+                                <option value="{{ $src->id }}" {{ (string) old('water_source_id', $building->water_source_id) === (string) $src->id ? 'selected' : '' }}>
+                                    {{ $src->name }} ({{ $src->type_label }}){{ $src->is_default ? ' • ' . __('défaut') : '' }}
+                                </option>
+                            @endforeach
+                        </select>
+                        <p class="text-[8px] text-slate-400 ml-2 mt-1 italic">{{ __("La consommation d'eau des lots de ce bâtiment sera déduite de cette citerne.") }}</p>
+                    </div>
+
                     {{-- SURFACE --}}
                     <div class="bg-blue-50 p-6 rounded-[2.5rem] border border-blue-100 shadow-sm">
                         <label class="block text-[10px] font-black text-blue-400 uppercase mb-2 ml-1 italic">{{ __("Surface (m²)") }}</label>

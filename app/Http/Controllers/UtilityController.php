@@ -70,12 +70,20 @@ class UtilityController extends Controller
             'name'             => 'required|string|max:255',
             'type'             => 'required|in:seeg,forage,citerne,camion',
             'capacity_liters'  => 'nullable|numeric|min:0',
+            'is_default'       => 'nullable|boolean',
             'notes'            => 'nullable|string|max:1000',
         ]);
+
+        $validated['is_default'] = $request->boolean('is_default');
 
         if ($validated['type'] === 'citerne' && ! empty($validated['capacity_liters'])) {
             $validated['current_level_liters'] = $validated['capacity_liters'];
             $validated['current_level_percent'] = 100;
+        }
+
+        // Une seule source « par défaut » par ferme : on retire le drapeau des autres.
+        if ($validated['is_default']) {
+            WaterSource::where('is_default', true)->update(['is_default' => false]);
         }
 
         WaterSource::create($validated);

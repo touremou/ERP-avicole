@@ -79,7 +79,10 @@ class BuildingController extends Controller
         $building = Building::findOrFail($id);
         $isOccupied = $building->batches()->active()->exists();
 
-        return view('buildings.edit', compact('building', 'isOccupied'));
+        // Sources d'eau actives proposables pour desservir le bâtiment.
+        $waterSources = \App\Models\WaterSource::active()->orderBy('name')->get();
+
+        return view('buildings.edit', compact('building', 'isOccupied', 'waterSources'));
     }
 
     /**

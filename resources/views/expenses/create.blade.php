@@ -37,7 +37,7 @@
                     <div class="space-y-6">
                         <div class="space-y-2">
                             <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Libellé") }} *</label>
-                            <input type="text" name="label" value="{{ old('label') }}" required placeholder="{{ __("Ex: Carburant moto livraison") }}"
+                            <input type="text" name="label" value="{{ old('label') }}" required placeholder="{{ __("Ex: Gasoil moto livraison") }}"
                                 class="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm font-black shadow-inner outline-none focus:ring-4 focus:ring-rose-500/10">
                         </div>
 
