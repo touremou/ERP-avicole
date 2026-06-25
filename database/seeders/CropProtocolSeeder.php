@@ -870,6 +870,210 @@ class CropProtocolSeeder extends Seeder
                     ['day_number' => 255, 'stage' => 'Récolte',    'action_name' => 'Récolte gingembre mûr (8-9 mois)',            'type' => 'recolte',       'product_suggested' => null,           'dose' => null,         'method' => 'arrachage + séchage', 'notes' => 'Récolter le gingembre mûr (fibreux, plus piquant, conservable) à 8-9 mois quand les feuilles jaunissent et sèchent. Arracher par temps sec, nettoyer, laisser ressuyer. Sécher les rhizomes destinés à la conservation/poudre. Conserver des éclats sains pour la plantation suivante.'],
                 ],
             ],
+            // ─────────────────────────────────────────────────────────────
+            // VARIANTES « DÉSHERBAGE CHIMIQUE » (remplacent le sarclage manuel)
+            // ─────────────────────────────────────────────────────────────
+            [
+                'name'        => 'Itinéraire Maïs — désherbage chimique',
+                'crop_name'   => 'Maïs',
+                'source'      => 'IRAG/FAO + étiquettes homologuées (indicatif)',
+                'description' => 'Variante où le SARCLAGE MANUEL est remplacé par le DÉSHERBAGE CHIMIQUE. '
+                    . 'Produits courants à Kindia — Total avant semis : glyphosate 360 (Roundup, Kalach 360 SL, Glyphader). '
+                    . 'Pré-levée maïs : atrazine + S-métolachlore (Primagram Gold) ou atrazine seule (Calliherbe, Atraforce). '
+                    . 'Post-levée maïs : nicosulfuron (Nicomais, Callifor G) sur graminées ; 2,4-D amine sur dicotylédones. '
+                    . 'Repère pulvérisateur à dos 16 L : compter ~12-15 pulvérisateurs/ha (200-250 L de bouillie/ha). '
+                    . 'POINTS DE VIGILANCE : (1) un herbicide TOTAL (glyphosate) tue toute plante verte → uniquement AVANT semis/levée, jamais sur le maïs en place ; '
+                    . '(2) respecter le STADE (pré-levée sur sol humide ; nicosulfuron 3-6 feuilles, pas au-delà de 8) ; '
+                    . '(3) 6 h sans pluie après glyphosate ; (4) EPI obligatoires (gants, masque, bottes, manches longues), ne pas manger/boire/fumer ; '
+                    . '(5) pulvériser par temps calme (pas de vent) pour éviter la dérive sur cultures voisines ; '
+                    . '(6) zone tampon >= 5-10 m des puits, bas-fonds et cours d\'eau ; (7) NE PAS surdoser : la dose homologuée de l\'étiquette PRIME ; '
+                    . '(8) alterner les matières actives (anti-résistance) ; (9) rincer 3x le pulvérisateur, éliminer correctement les emballages. '
+                    . 'Le désherbage maîtrise la concurrence ; le BON DÉVELOPPEMENT de la plante reste assuré par une densité correcte, une fertilisation adaptée et une variété saine.',
+                'items' => [
+                    ['day_number' => 0,   'stage' => 'Préparation',  'action_name' => 'Désherbage TOTAL avant semis (glyphosate)', 'type' => 'traitement', 'product_suggested' => 'Glyphosate 360 SL (Roundup / Kalach / Glyphader)', 'dose' => '~ 120-150 ml par pulvé. 16 L (~4 L/ha)', 'method' => 'pulvérisation sur adventices vertes 7-10 j avant le semis', 'notes' => 'NON SÉLECTIF : tue toute plante verte -> à faire AVANT le semis, jamais sur culture en place. Bonne couverture des feuilles, 6 h sans pluie. EPI + temps calme.'],
+                    ['day_number' => 0,   'stage' => 'Semis',        'action_name' => 'Semis en poquets + NPK de fond', 'type' => 'semis', 'product_suggested' => 'NPK 15-15-15', 'dose' => '150-200 kg/ha', 'method' => 'poquets 80 x 40 cm', 'notes' => 'Semer 2-3 graines/poquet à 3-4 cm sur sol bien préparé. Engrais de fond légèrement décalé de la graine.'],
+                    ['day_number' => 2,   'stage' => 'Pré-levée',    'action_name' => 'Désherbage sélectif de PRÉ-LEVÉE', 'type' => 'traitement', 'product_suggested' => 'Atrazine + S-métolachlore (Primagram Gold) ou atrazine (Calliherbe / Atraforce)', 'dose' => '~ 250 ml par pulvé. 16 L (Primagram Gold ~4 L/ha)', 'method' => 'pulvérisation sur sol propre et HUMIDE juste après semis, avant la levée', 'notes' => 'Sélectif maïs en pré-levée. Sol humide indispensable (sinon inefficace). Ne pas dépasser la dose : rémanence et risque sur culture suivante. Éviter sur sol sableux très léger.'],
+                    ['day_number' => 10,  'stage' => 'Levée',        'action_name' => 'Contrôle levée & démariage', 'type' => 'observation', 'product_suggested' => null, 'dose' => null, 'method' => 'visuel', 'notes' => 'Démarier à 1-2 plants vigoureux/poquet. Combler les manques.'],
+                    ['day_number' => 20,  'stage' => 'Croissance',   'action_name' => 'Désherbage sélectif de POST-LEVÉE', 'type' => 'traitement', 'product_suggested' => 'Nicosulfuron (Nicomais / Callifor G) ; +2,4-D amine si dicotylédones', 'dose' => 'Nicosulfuron ~ 80 ml/16 L (~1 L/ha) ; 2,4-D ~ 80 ml/16 L (~1 L/ha)', 'method' => 'pulvérisation post-levée 3-6 feuilles du maïs, adventices jeunes', 'notes' => 'Respecter le stade (au-delà de 8 feuilles : risque de phytotoxicité). 2,4-D en localisé bas (le maïs y est sensible en jet dirigé). Ajouter le mouillant si l\'étiquette le prévoit. Alterner les modes d\'action.'],
+                    ['day_number' => 30,  'stage' => 'Croissance',   'action_name' => 'Apport d\'urée (couverture)', 'type' => 'fertilisation', 'product_suggested' => 'Urée 46%', 'dose' => '100 kg/ha', 'method' => 'épandage localisé', 'notes' => 'Enfouir au pied sur sol humide pour limiter la volatilisation. Pas d\'épandage avant forte pluie.'],
+                    ['day_number' => 35,  'stage' => 'Croissance',   'action_name' => 'Surveillance chenille légionnaire', 'type' => 'traitement', 'product_suggested' => 'Émamectine benzoate', 'dose' => 'selon étiquette', 'method' => 'pulvérisation foliaire si seuil atteint', 'notes' => 'Cibler les cornets dès les premières larves, en soirée. EPI. Alterner les matières actives, respecter le délai avant récolte.'],
+                    ['day_number' => 45,  'stage' => 'Montaison',    'action_name' => 'Buttage', 'type' => 'autre', 'product_suggested' => null, 'dose' => null, 'method' => 'manuel', 'notes' => 'Le buttage renforce l\'ancrage et limite la verse (le désherbage chimique a déjà géré les adventices).'],
+                    ['day_number' => 60,  'stage' => 'Floraison',    'action_name' => 'Observation floraison & stress hydrique', 'type' => 'observation', 'product_suggested' => null, 'dose' => null, 'method' => 'visuel', 'notes' => 'Stade le plus sensible au manque d\'eau : irriguer si possible.'],
+                    ['day_number' => 100, 'stage' => 'Maturation',   'action_name' => 'Récolte (grains secs)', 'type' => 'recolte', 'product_suggested' => null, 'dose' => null, 'method' => 'manuel', 'notes' => 'Récolter au grain dur (point noir). Bien sécher avant stockage.'],
+                ],
+            ],
+            [
+                'name'        => 'Itinéraire Riz pluvial — désherbage chimique',
+                'crop_name'   => 'Riz',
+                'source'      => 'IRAG/FAO + étiquettes homologuées (indicatif)',
+                'description' => 'Variante où le SARCLAGE MANUEL est remplacé par le DÉSHERBAGE CHIMIQUE. '
+                    . 'Produits courants à Kindia — Total avant semis : glyphosate 360 (Roundup, Kalach 360 SL, Glyphader). '
+                    . 'Post-levée riz : propanil sur graminées (souvent en mélange), Garil (propanil + triclopyr), ou bispyribac-sodium (Nominee) ; 2,4-D amine sur dicotylédones APRÈS le tallage. '
+                    . 'Repère pulvérisateur à dos 16 L : ~12-15 pulvérisateurs/ha (200-250 L de bouillie/ha). '
+                    . 'POINTS DE VIGILANCE : (1) glyphosate = TOTAL -> uniquement avant semis/levée ; '
+                    . '(2) le 2,4-D est PHYTOTOXIQUE pour le riz en pré-tallage et à l\'initiation paniculaire -> l\'appliquer seulement entre tallage et montaison, jamais à l\'épiaison ; '
+                    . '(3) le propanil ne se mélange PAS avec certains insecticides (carbamates/organophosphorés) — risque de brûlure ; respecter un intervalle de ~10-15 j ; '
+                    . '(4) sol humide et adventices jeunes pour l\'efficacité ; (5) EPI obligatoires, temps calme (anti-dérive) ; '
+                    . '(6) zone tampon >= 5-10 m des bas-fonds, puits et cours d\'eau (toxicité poissons) ; (7) dose homologuée de l\'étiquette PRIME, ne pas surdoser ; '
+                    . '(8) alterner les matières actives (anti-résistance) ; (9) triple rinçage du pulvérisateur et des emballages. '
+                    . 'Le BON DÉVELOPPEMENT du riz reste assuré par un peuplement dense, le fractionnement de l\'azote et une variété adaptée.',
+                'items' => [
+                    ['day_number' => 0,   'stage' => 'Préparation',  'action_name' => 'Désherbage TOTAL avant semis (glyphosate)', 'type' => 'traitement', 'product_suggested' => 'Glyphosate 360 SL (Roundup / Kalach / Glyphader)', 'dose' => '~ 120-150 ml par pulvé. 16 L (~4 L/ha)', 'method' => 'pulvérisation sur adventices vertes 7-10 j avant le semis', 'notes' => 'NON SÉLECTIF : avant le semis uniquement. 6 h sans pluie, bonne couverture, EPI, temps calme.'],
+                    ['day_number' => 0,   'stage' => 'Semis',        'action_name' => 'Semis en ligne + NPK de fond', 'type' => 'semis', 'product_suggested' => 'NPK 15-15-15', 'dose' => '150 kg/ha', 'method' => 'lignes 20 cm, 2-3 cm de profondeur', 'notes' => 'Semences saines et triées pour une levée homogène.'],
+                    ['day_number' => 18,  'stage' => 'Tallage',      'action_name' => 'Désherbage sélectif POST-LEVÉE (graminées)', 'type' => 'traitement', 'product_suggested' => 'Propanil 360 (Riz Star) ou Garil (propanil + triclopyr) ; ou bispyribac-Na (Nominee)', 'dose' => 'Propanil ~ 350-400 ml/16 L (~5 L/ha) ; Nominee ~ 8 ml/16 L (~0,1 L/ha) + mouillant', 'method' => 'pulvérisation 15-20 j après semis, adventices à 2-4 feuilles, sol humide', 'notes' => 'Ne PAS associer le propanil à un insecticide carbamate/organophosphoré (~10-15 j d\'écart) sous peine de brûlure. Adventices jeunes = meilleure efficacité.'],
+                    ['day_number' => 30,  'stage' => 'Tallage',      'action_name' => 'Désherbage dicotylédones (2,4-D) + 1re urée', 'type' => 'traitement', 'product_suggested' => '2,4-D amine (Calliherbe / DMA 6) ; Urée 46%', 'dose' => '2,4-D ~ 80 ml/16 L (~1 L/ha) ; Urée 75 kg/ha', 'method' => '2,4-D entre tallage et montaison ; urée sur sol humide', 'notes' => 'IMPÉRATIF : 2,4-D uniquement au tallage/montaison — JAMAIS à l\'initiation paniculaire ni à l\'épiaison (stérilité). Urée enfouie sur sol humide.'],
+                    ['day_number' => 55,  'stage' => 'Initiation paniculaire', 'action_name' => 'Apport d\'urée (couverture 2)', 'type' => 'fertilisation', 'product_suggested' => 'Urée 46%', 'dose' => '50 kg/ha', 'method' => 'épandage sur sol humide', 'notes' => 'Plus aucun herbicide à ce stade. Fractionner l\'azote améliore l\'efficacité.'],
+                    ['day_number' => 70,  'stage' => 'Épiaison',     'action_name' => 'Surveillance foreurs & cécidomyie', 'type' => 'observation', 'product_suggested' => null, 'dose' => null, 'method' => 'piégeage / visuel', 'notes' => 'N\'intervenir qu\'au-delà du seuil de dégâts pour préserver les auxiliaires.'],
+                    ['day_number' => 120, 'stage' => 'Maturation',   'action_name' => 'Récolte (grains à maturité)', 'type' => 'recolte', 'product_suggested' => null, 'dose' => null, 'method' => 'faucille / moissonneuse', 'notes' => 'Récolter à 80-85 % de grains jaune paille. Sécher à 13-14 % d\'humidité.'],
+                ],
+            ],
+            [
+                'name'        => 'Itinéraire Manioc — désherbage chimique',
+                'crop_name'   => 'Manioc',
+                'source'      => 'IRAG/FAO/DNPIA + étiquettes homologuées (indicatif)',
+                'description' => 'Variante où le SARCLAGE MANUEL est remplacé par le DÉSHERBAGE CHIMIQUE. '
+                    . 'Produits courants à Kindia — Total avant bouturage : glyphosate 360 (Roundup, Kalach 360 SL, Glyphader). '
+                    . 'Pré-levée : pendiméthaline (Stomp) ou diuron (Karmex). Entretien : glyphosate/paraquat en JET DIRIGÉ inter-rang (avec cache). '
+                    . 'Repère pulvérisateur à dos 16 L : ~12-15 pulvérisateurs/ha. '
+                    . 'POINTS DE VIGILANCE : (1) le manioc pousse lentement les 3 premiers mois -> garder propre sinon perte de rendement ; '
+                    . '(2) glyphosate/paraquat sont TOTAUX -> en jet DIRIGÉ inter-rang avec cache, sans toucher les feuilles du manioc ; '
+                    . '(3) le paraquat est très toxique -> EPI stricts, jamais sans masque/gants, hors de portée des enfants ; '
+                    . '(4) pré-levée sur sol humide et propre ; (5) 6 h sans pluie après glyphosate ; (6) temps calme (anti-dérive), zone tampon >= 5-10 m des eaux ; '
+                    . '(7) dose homologuée de l\'étiquette PRIME ; (8) alterner les matières actives. '
+                    . 'Le BON DÉVELOPPEMENT reste porté par des boutures saines (variété tolérante mosaïque), une densité correcte et la fertilisation.',
+                'items' => [
+                    ['day_number' => 0,   'stage' => 'Préparation',  'action_name' => 'Désherbage TOTAL avant bouturage (glyphosate)', 'type' => 'traitement', 'product_suggested' => 'Glyphosate 360 SL (Roundup / Kalach / Glyphader)', 'dose' => '~ 120-150 ml par pulvé. 16 L (~4 L/ha)', 'method' => 'pulvérisation sur adventices vertes 7-10 j avant bouturage', 'notes' => 'NON SÉLECTIF : avant plantation uniquement. 6 h sans pluie, EPI, temps calme.'],
+                    ['day_number' => 0,   'stage' => 'Bouturage',    'action_name' => 'Bouturage + fumure de fond (NPK 10-10-20)', 'type' => 'semis', 'product_suggested' => 'NPK 10-10-20', 'dose' => '200 kg/ha', 'method' => 'boutures 20-25 cm, 1 x 1 m', 'notes' => 'Boutures saines de variété tolérante à la mosaïque, inclinées.'],
+                    ['day_number' => 3,   'stage' => 'Pré-levée',    'action_name' => 'Désherbage de PRÉ-LEVÉE', 'type' => 'traitement', 'product_suggested' => 'Pendiméthaline (Stomp) ou diuron (Karmex)', 'dose' => 'Stomp ~ 200-250 ml/16 L (~3 L/ha) ; diuron ~ 130 g/16 L', 'method' => 'pulvérisation sur sol propre et HUMIDE après bouturage, avant levée des adventices', 'notes' => 'Sol humide indispensable. Ne pas dépasser la dose (rémanence). Couvrir uniformément le sol.'],
+                    ['day_number' => 30,  'stage' => 'Croissance',   'action_name' => 'Désherbage dirigé inter-rang', 'type' => 'traitement', 'product_suggested' => 'Glyphosate ou paraquat (JET DIRIGÉ + cache)', 'dose' => 'Glyphosate ~ 100-120 ml/16 L', 'method' => 'jet dirigé inter-rang avec cache, sans toucher le manioc', 'notes' => 'TOTAL : jamais sur le feuillage du manioc. Paraquat = très toxique -> EPI stricts. Buse basse, temps calme.'],
+                    ['day_number' => 60,  'stage' => 'Croissance',   'action_name' => 'Apport d\'urée', 'type' => 'fertilisation', 'product_suggested' => 'Urée 46%', 'dose' => '50 kg/ha', 'method' => 'épandage localisé au pied sur sol humide', 'notes' => 'Enfouir légèrement pour limiter la volatilisation. Pas d\'épandage avant forte pluie.'],
+                    ['day_number' => 90,  'stage' => 'Croissance',   'action_name' => 'Traitement acariose/cochenilles si nécessaire', 'type' => 'traitement', 'product_suggested' => 'Lambda-cyhalothrine', 'dose' => 'selon étiquette', 'method' => 'pulvérisation si seuil', 'notes' => 'Seulement au-delà du seuil. Soirée, temps sec, EPI, préserver les pollinisateurs.'],
+                    ['day_number' => 180, 'stage' => 'Croissance',   'action_name' => '2e désherbage dirigé inter-rang', 'type' => 'traitement', 'product_suggested' => 'Glyphosate (JET DIRIGÉ + cache)', 'dose' => 'Glyphosate ~ 100-120 ml/16 L', 'method' => 'jet dirigé inter-rang, le manioc couvre déjà en partie le sol', 'notes' => 'Maintenir propre jusqu\'à la couverture complète. Un binage léger d\'aération reste possible sans désherber.'],
+                    ['day_number' => 270, 'stage' => 'Croissance',   'action_name' => 'Contrôle taux d\'amidon (observation)', 'type' => 'observation', 'product_suggested' => null, 'dose' => null, 'method' => 'visuel', 'notes' => 'Sonder quelques tubercules : décider la récolte selon le débouché.'],
+                    ['day_number' => 360, 'stage' => 'Maturation',   'action_name' => 'Début récolte possible (manioc doux)', 'type' => 'recolte', 'product_suggested' => null, 'dose' => null, 'method' => 'arrachage manuel', 'notes' => 'Arracher par temps sec ; le manioc doux se transforme dans les 48 h.'],
+                    ['day_number' => 540, 'stage' => 'Maturation',   'action_name' => 'Récolte manioc amer conseillée', 'type' => 'recolte', 'product_suggested' => null, 'dose' => null, 'method' => 'arrachage manuel', 'notes' => 'Manioc amer : transformer (rouissage, cuisson) pour éliminer l\'acide cyanhydrique.'],
+                ],
+            ],
+            [
+                'name'        => 'Itinéraire Arachide — désherbage chimique',
+                'crop_name'   => 'Arachide',
+                'source'      => 'IRAG/FAO + étiquettes homologuées (indicatif)',
+                'description' => 'Variante où le SARCLAGE MANUEL est remplacé par le DÉSHERBAGE CHIMIQUE. '
+                    . 'ATTENTION : l\'arachide est une LÉGUMINEUSE (dicotylédone) -> 2,4-D, atrazine et la plupart des anti-dicots la DÉTRUISENT. N\'utiliser que des herbicides SÉLECTIFS de la légumineuse. '
+                    . 'Produits courants à Kindia — Total avant semis : glyphosate 360 (Roundup, Kalach 360 SL, Glyphader). '
+                    . 'Pré-levée sélective : pendiméthaline (Stomp) ou S-métolachlore (Dual Gold). '
+                    . 'Post-levée graminées : graminicide anti-graminées — haloxyfop (Gallant), quizalofop (Targa) ou fluazifop (Fusilade), SANS danger pour la légumineuse. Dicotylédones : imazéthapyr (Pivot), sélectif arachide. '
+                    . 'Repère pulvérisateur à dos 16 L : ~12-15 pulvérisateurs/ha. '
+                    . 'POINTS DE VIGILANCE : (1) JAMAIS de 2,4-D ni d\'atrazine sur arachide ; (2) les graminicides ne tuent QUE les graminées (laissent les dicots) ; '
+                    . '(3) AUCUN herbicide après la pénétration des gynophores (~40 j) -> seulement jet dirigé/manuel ; (4) pré-levée sur sol humide ; '
+                    . '(5) 6 h sans pluie après glyphosate ; (6) EPI, temps calme (anti-dérive), zone tampon >= 5-10 m des eaux ; (7) dose homologuée de l\'étiquette PRIME ; (8) alterner les matières actives. '
+                    . 'L\'arachide fixe l\'azote : pas d\'azote, privilégier P-K ; densité correcte et variété saine garantissent le BON DÉVELOPPEMENT.',
+                'items' => [
+                    ['day_number' => 0,  'stage' => 'Préparation',  'action_name' => 'Désherbage TOTAL avant semis (glyphosate)', 'type' => 'traitement', 'product_suggested' => 'Glyphosate 360 SL (Roundup / Kalach / Glyphader)', 'dose' => '~ 120-150 ml par pulvé. 16 L (~4 L/ha)', 'method' => 'pulvérisation sur adventices vertes 7-10 j avant le semis', 'notes' => 'NON SÉLECTIF : avant le semis uniquement. 6 h sans pluie, EPI, temps calme.'],
+                    ['day_number' => 0,  'stage' => 'Semis',        'action_name' => 'Semis en ligne + fumure phospho-potassique', 'type' => 'semis', 'product_suggested' => 'Engrais P-K', 'dose' => '100 kg/ha', 'method' => 'lignes 50 x 15 cm', 'notes' => 'Graines décortiquées et triées à 3-4 cm. Pas d\'azote (la légumineuse le fixe).'],
+                    ['day_number' => 2,  'stage' => 'Pré-levée',    'action_name' => 'Désherbage SÉLECTIF de pré-levée', 'type' => 'traitement', 'product_suggested' => 'Pendiméthaline (Stomp) ou S-métolachlore (Dual Gold)', 'dose' => 'Stomp ~ 200-250 ml/16 L (~3 L/ha) ; Dual Gold ~ 120 ml/16 L (~1,5 L/ha)', 'method' => 'pulvérisation sur sol propre et HUMIDE juste après semis, avant la levée', 'notes' => 'Sélectif légumineuse. Sol humide indispensable. Ne pas dépasser la dose.'],
+                    ['day_number' => 20, 'stage' => 'Croissance',   'action_name' => 'Désherbage SÉLECTIF de post-levée', 'type' => 'traitement', 'product_suggested' => 'Graminées : haloxyfop (Gallant) / quizalofop (Targa) / fluazifop (Fusilade). Dicots : imazéthapyr (Pivot)', 'dose' => 'Graminicide ~ 80-100 ml/16 L (~1 L/ha) ; imazéthapyr ~ 80 ml/16 L (~1 L/ha)', 'method' => 'pulvérisation sur adventices jeunes, sol humide', 'notes' => 'INTERDIT : 2,4-D et atrazine (détruisent l\'arachide). Le graminicide ne tue que les graminées. Ajouter le mouillant si l\'étiquette le prévoit.'],
+                    ['day_number' => 40, 'stage' => 'Floraison',    'action_name' => 'Léger buttage (gynophores)', 'type' => 'autre', 'product_suggested' => null, 'dose' => null, 'method' => 'manuel léger', 'notes' => 'Faciliter l\'enfoncement des gynophores. APRÈS ce stade : aucun herbicide, seulement désherbage manuel/dirigé pour ne pas blesser les gousses en formation.'],
+                    ['day_number' => 50, 'stage' => 'Fructification', 'action_name' => 'Surveillance cercosporiose', 'type' => 'traitement', 'product_suggested' => 'Mancozèbe', 'dose' => '2 kg/ha', 'method' => 'pulvérisation si symptômes', 'notes' => 'Dès les taches foliaires brunes. EPI, temps sec en soirée, respecter le délai avant récolte.'],
+                    ['day_number' => 100,'stage' => 'Maturation',   'action_name' => 'Récolte (arrachage des gousses)', 'type' => 'recolte', 'product_suggested' => null, 'dose' => null, 'method' => 'arrachage + séchage', 'notes' => 'Arracher au jaunissement du feuillage. Bien sécher (anti-aflatoxine), stocker au sec.'],
+                ],
+            ],
+            [
+                'name'        => 'Itinéraire Tomate (repiquée) — désherbage chimique',
+                'crop_name'   => 'Tomate',
+                'source'      => 'IRAG/FAO + étiquettes homologuées (indicatif)',
+                'description' => 'Variante où le SARCLAGE MANUEL est remplacé par le DÉSHERBAGE CHIMIQUE (la tomate se désherbe souvent à la main/au paillage : le chimique reste un APPOINT). '
+                    . 'Produits courants à Kindia — Total avant repiquage : glyphosate 360 (Roundup, Kalach 360 SL, Glyphader). '
+                    . 'Pré-plantation : pendiméthaline (Stomp). Post-reprise : metribuzine (Sencor), faible dose, en localisé ; graminées : haloxyfop (Gallant) / quizalofop (Targa). '
+                    . 'Repère pulvérisateur à dos 16 L : ~12-15 pulvérisateurs/ha. '
+                    . 'POINTS DE VIGILANCE : (1) la tomate est TRÈS sensible à la dérive du 2,4-D (déformations) -> ne jamais pulvériser de phénoxy à proximité ; '
+                    . '(2) la metribuzine est sélective mais VARIÉTÉ-dépendante et phytotoxique à forte dose -> faible dose sur plants bien repris, en localisé ; '
+                    . '(3) le paillage plastique/organique reste la meilleure option maraîchère ; (4) EPI, temps calme, zone tampon >= 5-10 m des eaux ; '
+                    . '(5) dose homologuée de l\'étiquette PRIME ; (6) alterner les matières actives. '
+                    . 'BON DÉVELOPPEMENT assuré par des plants trapus, le tuteurage, la fertilisation et un arrosage régulier.',
+                'items' => [
+                    ['day_number' => 0,  'stage' => 'Préparation',  'action_name' => 'Désherbage TOTAL avant repiquage (glyphosate)', 'type' => 'traitement', 'product_suggested' => 'Glyphosate 360 SL (Roundup / Kalach / Glyphader)', 'dose' => '~ 120-150 ml par pulvé. 16 L (~4 L/ha)', 'method' => 'pulvérisation sur adventices vertes avant repiquage', 'notes' => 'NON SÉLECTIF : avant repiquage uniquement. 6 h sans pluie, EPI, temps calme.'],
+                    ['day_number' => 0,  'stage' => 'Repiquage',    'action_name' => 'Repiquage + fumure de fond', 'type' => 'semis', 'product_suggested' => 'NPK 10-10-20 + fumier', 'dose' => '200 kg/ha + 20 t/ha', 'method' => 'localisé au pied, 60 x 40 cm', 'notes' => 'Plants trapus 4-5 feuilles, repiquage en soirée, arroser aussitôt.'],
+                    ['day_number' => 2,  'stage' => 'Pré-levée',    'action_name' => 'Désherbage pré-levée des adventices (pendiméthaline)', 'type' => 'traitement', 'product_suggested' => 'Pendiméthaline (Stomp)', 'dose' => '~ 200-250 ml/16 L (~3 L/ha)', 'method' => 'pulvérisation sur sol propre et humide, sans mouiller les plants', 'notes' => 'Bande sur le rang/inter-rang, sol humide. Éviter le contact avec le feuillage de la tomate.'],
+                    ['day_number' => 7,  'stage' => 'Reprise',      'action_name' => 'Contrôle reprise & remplacement', 'type' => 'observation', 'product_suggested' => null, 'dose' => null, 'method' => 'visuel', 'notes' => 'Remplacer les plants morts dans la semaine.'],
+                    ['day_number' => 20, 'stage' => 'Croissance',   'action_name' => 'Désherbage d\'entretien (localisé)', 'type' => 'traitement', 'product_suggested' => 'Metribuzine (Sencor) faible dose ; graminées : Gallant / Targa', 'dose' => 'Metribuzine ~ 40-60 g/16 L ; graminicide ~ 80-100 ml/16 L', 'method' => 'localisé sur plants bien repris, par temps couvert', 'notes' => 'JAMAIS de 2,4-D (tomate hypersensible). Metribuzine : variété-dépendante, faible dose, éviter par forte chaleur. Préférer le paillage si doute.'],
+                    ['day_number' => 30, 'stage' => 'Floraison',    'action_name' => 'Apport NPK + traitement mildiou', 'type' => 'traitement', 'product_suggested' => 'NPK 12-12-17 ; Mancozèbe', 'dose' => 'NPK 150 kg/ha ; Mancozèbe 2,5 kg/ha', 'method' => 'épandage localisé + pulvérisation foliaire', 'notes' => 'Mancozèbe préventif, bien mouiller le dessous des feuilles, DAR 7 j. EPI.'],
+                    ['day_number' => 35, 'stage' => 'Floraison',    'action_name' => 'Tuteurage & taille des gourmands', 'type' => 'autre', 'product_suggested' => null, 'dose' => null, 'method' => 'manuel', 'notes' => 'Aérer le feuillage (limite les maladies). Tailler le matin par temps sec.'],
+                    ['day_number' => 45, 'stage' => 'Nouaison',     'action_name' => 'Surveillance Tuta absoluta', 'type' => 'traitement', 'product_suggested' => 'Bacillus thuringiensis', 'dose' => 'selon étiquette', 'method' => 'pulvérisation si seuil', 'notes' => 'Pièges à phéromones ; traiter en soirée dès les premières mines. Alterner les modes d\'action, EPI.'],
+                    ['day_number' => 75, 'stage' => 'Récolte',      'action_name' => 'Récolte échelonnée', 'type' => 'recolte', 'product_suggested' => null, 'dose' => null, 'method' => 'manuel, tous les 2-3 jours', 'notes' => 'Stade tournant à mûr, tôt le matin. Aucun herbicide en phase de récolte.'],
+                ],
+            ],
+            [
+                'name'        => 'Itinéraire Pomme de terre — désherbage chimique',
+                'crop_name'   => 'Pomme de terre',
+                'source'      => 'IRAG/FAO + étiquettes homologuées (indicatif)',
+                'description' => 'Variante où le SARCLAGE MANUEL est remplacé par le DÉSHERBAGE CHIMIQUE. '
+                    . 'Produits courants à Kindia — Total avant plantation : glyphosate 360 (Roundup, Kalach 360 SL, Glyphader). '
+                    . 'Pré-levée : metribuzine (Sencor) — l\'herbicide de référence de la pomme de terre — ou pendiméthaline (Stomp). Graminées en post : haloxyfop (Gallant) / quizalofop (Targa). '
+                    . 'Repère pulvérisateur à dos 16 L : ~12-15 pulvérisateurs/ha. '
+                    . 'POINTS DE VIGILANCE : (1) la metribuzine est VARIÉTÉ-dépendante (certaines variétés sont brûlées) -> tester/se renseigner avant ; '
+                    . '(2) l\'appliquer en PRÉ-LEVÉE (avant la sortie des plants, tubercule < 5 cm) ; (3) le buttage reste fait (couvre tubercules + adventices) ; '
+                    . '(4) EPI, temps calme, zone tampon >= 5-10 m des eaux ; (5) dose homologuée de l\'étiquette PRIME ; (6) alterner les matières actives. '
+                    . 'BON DÉVELOPPEMENT : plants-tubercules sains germés, buttage et fertilisation.',
+                'items' => [
+                    ['day_number' => 0,  'stage' => 'Préparation',  'action_name' => 'Désherbage TOTAL avant plantation (glyphosate)', 'type' => 'traitement', 'product_suggested' => 'Glyphosate 360 SL (Roundup / Kalach / Glyphader)', 'dose' => '~ 120-150 ml par pulvé. 16 L (~4 L/ha)', 'method' => 'pulvérisation sur adventices vertes avant plantation', 'notes' => 'NON SÉLECTIF : avant plantation uniquement. 6 h sans pluie, EPI, temps calme.'],
+                    ['day_number' => 0,  'stage' => 'Plantation',   'action_name' => 'Plantation tubercules + fumure de fond', 'type' => 'semis', 'product_suggested' => 'NPK 10-10-20', 'dose' => '300 kg/ha', 'method' => 'en sillons 70 x 30 cm', 'notes' => 'Tubercules germés sains à 8-10 cm. Éviter les plants malades.'],
+                    ['day_number' => 5,  'stage' => 'Pré-levée',    'action_name' => 'Désherbage de PRÉ-LEVÉE (metribuzine)', 'type' => 'traitement', 'product_suggested' => 'Metribuzine (Sencor) ou pendiméthaline (Stomp)', 'dose' => 'Metribuzine ~ 40-60 g/16 L (~0,5-0,7 kg/ha) ; Stomp ~ 200-250 ml/16 L', 'method' => 'pulvérisation sur sol propre et humide AVANT la levée des plants', 'notes' => 'VARIÉTÉ-dépendant pour la metribuzine : se renseigner. Avant la sortie des plants impérativement.'],
+                    ['day_number' => 15, 'stage' => 'Levée',        'action_name' => 'Contrôle levée', 'type' => 'observation', 'product_suggested' => null, 'dose' => null, 'method' => 'visuel', 'notes' => 'Vérifier l\'homogénéité de la levée.'],
+                    ['day_number' => 25, 'stage' => 'Croissance',   'action_name' => 'Buttage (couvre tubercules & adventices)', 'type' => 'autre', 'product_suggested' => null, 'dose' => null, 'method' => 'manuel/mécanique', 'notes' => 'Le buttage enfouit les jeunes adventices et évite le verdissement (le désherbage chimique a géré la pré-levée).'],
+                    ['day_number' => 30, 'stage' => 'Croissance',   'action_name' => 'Traitement préventif mildiou', 'type' => 'traitement', 'product_suggested' => 'Mancozèbe', 'dose' => '2,5 kg/ha', 'method' => 'pulvérisation foliaire', 'notes' => 'Préventif par temps humide, EPI, DAR 7 j.'],
+                    ['day_number' => 40, 'stage' => 'Tubérisation', 'action_name' => 'Apport d\'urée + 2e buttage', 'type' => 'fertilisation', 'product_suggested' => 'Urée 46%', 'dose' => '100 kg/ha', 'method' => 'épandage + buttage', 'notes' => 'Sur sol humide puis butter pour enfouir.'],
+                    ['day_number' => 60, 'stage' => 'Tubérisation', 'action_name' => 'Surveillance mildiou & teigne', 'type' => 'observation', 'product_suggested' => null, 'dose' => null, 'method' => 'visuel', 'notes' => 'Renouveler la protection si la pression augmente.'],
+                    ['day_number' => 90, 'stage' => 'Maturation',   'action_name' => 'Récolte (défanage préalable)', 'type' => 'recolte', 'product_suggested' => null, 'dose' => null, 'method' => 'arrachage', 'notes' => 'Défaner 10-15 j avant. Récolter par temps sec, ressuyer à l\'ombre.'],
+                ],
+            ],
+            [
+                'name'        => 'Itinéraire Oignon (repiqué) — désherbage chimique',
+                'crop_name'   => 'Oignon',
+                'source'      => 'IRAG/FAO + étiquettes homologuées (indicatif)',
+                'description' => 'Variante où le SARCLAGE MANUEL est remplacé par le DÉSHERBAGE CHIMIQUE. '
+                    . 'Produits courants à Kindia — Total avant repiquage : glyphosate 360 (Roundup, Kalach 360 SL, Glyphader). '
+                    . 'Pré-levée : pendiméthaline (Stomp). Post-levée sélectif oignon : oxyfluorfène (Goal) au stade 2-3 feuilles ; graminées : haloxyfop (Gallant) / quizalofop (Targa). '
+                    . 'Repère pulvérisateur à dos 16 L : ~12-15 pulvérisateurs/ha. '
+                    . 'POINTS DE VIGILANCE : (1) l\'oignon s\'installe lentement et supporte MAL la concurrence -> désherber tôt ; '
+                    . '(2) l\'oxyfluorfène (Goal) a une fenêtre étroite (stade 2-3 vraies feuilles « crosse ») et peut brûler à forte dose/forte chaleur -> respecter la dose et traiter par temps couvert ; '
+                    . '(3) EPI, temps calme, zone tampon >= 5-10 m des eaux ; (4) dose homologuée de l\'étiquette PRIME ; (5) alterner les matières actives. '
+                    . 'BON DÉVELOPPEMENT : plants au stade crayon, irrigation régulière, arrêt de l\'azote en bulbaison.',
+                'items' => [
+                    ['day_number' => 0,  'stage' => 'Préparation',  'action_name' => 'Désherbage TOTAL avant repiquage (glyphosate)', 'type' => 'traitement', 'product_suggested' => 'Glyphosate 360 SL (Roundup / Kalach / Glyphader)', 'dose' => '~ 120-150 ml par pulvé. 16 L (~4 L/ha)', 'method' => 'pulvérisation sur adventices vertes avant repiquage', 'notes' => 'NON SÉLECTIF : avant repiquage uniquement. 6 h sans pluie, EPI, temps calme.'],
+                    ['day_number' => 0,  'stage' => 'Repiquage',    'action_name' => 'Repiquage + fumure de fond', 'type' => 'semis', 'product_suggested' => 'NPK 10-10-20 + fumier', 'dose' => '200 kg/ha', 'method' => 'planches 10 x 15 cm', 'notes' => 'Plants au stade crayon, collet juste sous la surface.'],
+                    ['day_number' => 3,  'stage' => 'Pré-levée',    'action_name' => 'Désherbage pré-levée (pendiméthaline)', 'type' => 'traitement', 'product_suggested' => 'Pendiméthaline (Stomp)', 'dose' => '~ 200-250 ml/16 L (~3 L/ha)', 'method' => 'pulvérisation sur sol propre et humide après repiquage', 'notes' => 'Sol humide, couvrir uniformément. N\'agit pas sur adventices déjà levées.'],
+                    ['day_number' => 10, 'stage' => 'Reprise',      'action_name' => 'Contrôle reprise & irrigation régulière', 'type' => 'irrigation', 'product_suggested' => null, 'dose' => null, 'method' => 'arrosage', 'notes' => 'Arrosage modéré et régulier (enracinement superficiel).'],
+                    ['day_number' => 20, 'stage' => 'Croissance',   'action_name' => 'Désherbage SÉLECTIF de post-levée', 'type' => 'traitement', 'product_suggested' => 'Oxyfluorfène (Goal) ; graminées : Gallant / Targa', 'dose' => 'Goal ~ 80-120 ml/16 L (~1-1,5 L/ha) ; graminicide ~ 80-100 ml/16 L', 'method' => 'pulvérisation au stade 2-3 vraies feuilles de l\'oignon, par temps couvert', 'notes' => 'Fenêtre étroite : respecter le stade et la dose (risque de brûlure). Adventices jeunes. Mouillant si étiquette.'],
+                    ['day_number' => 30, 'stage' => 'Croissance',   'action_name' => 'Apport d\'urée (couverture)', 'type' => 'fertilisation', 'product_suggested' => 'Urée 46%', 'dose' => '100 kg/ha', 'method' => 'épandage', 'notes' => 'Sur sol humide puis arroser. Arrêter l\'azote en début de bulbaison.'],
+                    ['day_number' => 40, 'stage' => 'Bulbaison',    'action_name' => 'Surveillance thrips & mildiou', 'type' => 'traitement', 'product_suggested' => 'Insecticide homologué', 'dose' => 'selon étiquette', 'method' => 'pulvérisation si seuil', 'notes' => 'Seulement au-delà du seuil. Soirée, mouillant, EPI, DAR respecté.'],
+                    ['day_number' => 110,'stage' => 'Maturation',   'action_name' => 'Récolte (chute des feuilles)', 'type' => 'recolte', 'product_suggested' => null, 'dose' => null, 'method' => 'arrachage + séchage', 'notes' => 'Arracher à 50-70 % de feuilles tombées, par temps sec. Sécher à l\'ombre.'],
+                ],
+            ],
+            [
+                'name'        => 'Itinéraire Haricot vert — désherbage chimique',
+                'crop_name'   => 'Haricot vert',
+                'source'      => 'IRAG/FAO/DNPIA + étiquettes homologuées (indicatif)',
+                'description' => 'Variante où le SARCLAGE MANUEL est remplacé par le DÉSHERBAGE CHIMIQUE. '
+                    . 'ATTENTION : le haricot est une LÉGUMINEUSE -> 2,4-D, atrazine et metribuzine la DÉTRUISENT ou la brûlent. Herbicides SÉLECTIFS uniquement. '
+                    . 'Produits courants à Kindia — Total avant semis : glyphosate 360 (Roundup, Kalach 360 SL, Glyphader). '
+                    . 'Pré-levée sélective : pendiméthaline (Stomp) ou S-métolachlore (Dual Gold). Post-levée : bentazone (Basagran) sur dicotylédones (sélectif haricot) ; graminées : haloxyfop (Gallant) / quizalofop (Targa). '
+                    . 'Repère pulvérisateur à dos 16 L : ~12-15 pulvérisateurs/ha. '
+                    . 'POINTS DE VIGILANCE : (1) JAMAIS de 2,4-D, d\'atrazine ni de metribuzine sur haricot ; (2) la bentazone est l\'anti-dicots sûr du haricot ; '
+                    . '(3) les graminicides ne tuent QUE les graminées ; (4) pas d\'herbicide en pleine floraison/nouaison -> manuel/dirigé ; (5) sol humide, EPI, temps calme, zone tampon >= 5-10 m des eaux ; '
+                    . '(6) dose homologuée de l\'étiquette PRIME ; (7) alterner les matières actives. '
+                    . 'Le haricot fixe l\'azote : apports azotés modérés ; densité correcte = BON DÉVELOPPEMENT.',
+                'items' => [
+                    ['day_number' => 0,  'stage' => 'Préparation',  'action_name' => 'Désherbage TOTAL avant semis (glyphosate)', 'type' => 'traitement', 'product_suggested' => 'Glyphosate 360 SL (Roundup / Kalach / Glyphader)', 'dose' => '~ 120-150 ml par pulvé. 16 L (~4 L/ha)', 'method' => 'pulvérisation sur adventices vertes avant le semis', 'notes' => 'NON SÉLECTIF : avant le semis uniquement. 6 h sans pluie, EPI, temps calme.'],
+                    ['day_number' => 0,  'stage' => 'Semis',        'action_name' => 'Semis direct + NPK 10-10-20', 'type' => 'semis', 'product_suggested' => 'NPK 10-10-20', 'dose' => '150 kg/ha', 'method' => 'lignes 40 x 10 cm', 'notes' => 'Semer à 3-4 cm. La légumineuse fixe l\'azote : apports modérés.'],
+                    ['day_number' => 2,  'stage' => 'Pré-levée',    'action_name' => 'Désherbage SÉLECTIF de pré-levée', 'type' => 'traitement', 'product_suggested' => 'Pendiméthaline (Stomp) ou S-métolachlore (Dual Gold)', 'dose' => 'Stomp ~ 200-250 ml/16 L (~3 L/ha) ; Dual Gold ~ 120 ml/16 L', 'method' => 'pulvérisation sur sol propre et humide juste après semis, avant la levée', 'notes' => 'Sélectif légumineuse. Sol humide indispensable.'],
+                    ['day_number' => 15, 'stage' => 'Croissance',   'action_name' => 'Désherbage SÉLECTIF de post-levée', 'type' => 'traitement', 'product_suggested' => 'Bentazone (Basagran) sur dicots ; graminées : Gallant / Targa', 'dose' => 'Bentazone ~ 160-230 ml/16 L (~2-3 L/ha) ; graminicide ~ 80-100 ml/16 L', 'method' => 'pulvérisation sur adventices jeunes, sol humide', 'notes' => 'INTERDIT : 2,4-D, atrazine et metribuzine (détruisent/brûlent le haricot). Bentazone = anti-dicots sûr. Mouillant si étiquette.'],
+                    ['day_number' => 25, 'stage' => 'Croissance',   'action_name' => 'Apport urée 46% (modéré)', 'type' => 'fertilisation', 'product_suggested' => 'Urée 46%', 'dose' => '40 kg/ha', 'method' => 'épandage', 'notes' => 'Apport modéré sur sol humide. Excès d\'azote = trop de feuilles, peu de gousses.'],
+                    ['day_number' => 30, 'stage' => 'Floraison',    'action_name' => 'Traitement préventif oïdium/anthracnose', 'type' => 'traitement', 'product_suggested' => 'Mancozèbe', 'dose' => '2,5 kg/ha', 'method' => 'pulvérisation foliaire', 'notes' => 'Éviter en pleine floraison (pollinisateurs). EPI, DAR respecté. PLUS d\'herbicide à partir de la floraison.'],
+                    ['day_number' => 45, 'stage' => 'Floraison',    'action_name' => 'Traitement acariens si attaque', 'type' => 'traitement', 'product_suggested' => 'Abamectine', 'dose' => 'selon étiquette', 'method' => 'pulvérisation si seuil', 'notes' => 'Seulement au seuil. Soirée, EPI, alterner les matières actives, DAR respecté.'],
+                    ['day_number' => 55, 'stage' => 'Récolte',      'action_name' => 'Début récolte gousses vertes', 'type' => 'recolte', 'product_suggested' => null, 'dose' => null, 'method' => 'manuel, tous les 2-3 jours', 'notes' => 'Gousses tendres avant grossissement des grains, tôt le matin.'],
+                ],
+            ],
         ];
 
         foreach ($protocols as $data) {

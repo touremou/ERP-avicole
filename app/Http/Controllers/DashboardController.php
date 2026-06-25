@@ -113,8 +113,8 @@ class DashboardController extends Controller
         // ferme : sinon chaque silo paraît se vider au rythme de tous les
         // autres réunis et déclenche de fausses alertes « épuisé ».
         // Seuils paramétrables (Réglages) — valeurs par défaut conservées.
-        $periodDays            = (int) setting('stock.autonomy_period_days', 30);
-        $criticalDaysThreshold = (int) setting('stock.critical_days_threshold', 3);
+        $periodDays            = (int) setting('stocks.autonomy_period_days', 30);
+        $criticalDaysThreshold = (int) setting('stocks.critical_days_threshold', 3);
         $dailyMortalityPct     = (float) setting('elevage.daily_mortality_alert_pct', 0.5);
         // Plancher absolu : un décès isolé sur un petit lot dépasse mécaniquement
         // le seuil en % (ex. 1/195 = 0,51 % > 0,5 %) sans constituer un vrai pic.
