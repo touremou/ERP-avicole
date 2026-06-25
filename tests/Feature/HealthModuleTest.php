@@ -79,3 +79,22 @@ test('un produit expirant le jour même de l\'intervention reste utilisable', fu
         ])
         ->assertSessionHasNoErrors();
 });
+
+test('un mode d\'administration hors des 4 anciens (ex. Spray, désinfection) est accepté', function () {
+    // Régression : la colonne était un ENUM rigide (4 valeurs) → « Data truncated »
+    // pour un mode proposé par le formulaire (Spray, Oculaire…). Désormais VARCHAR.
+    foreach (['Spray', 'Oculaire'] as $mode) {
+        $this->actingAs($this->managerUser)
+            ->post(route('health.store'), [
+                'batch_id'            => $this->batch->id,
+                'intervention_date'   => now()->toDateString(),
+                'type'                => 'Désinfection',
+                'product_name'        => "Désinfection bassin ($mode)",
+                'mode_administration' => $mode,
+                'expiry_date'         => now()->addMonth()->toDateString(),
+            ])
+            ->assertSessionHasNoErrors();
+
+        expect(HealthCheck::where('mode_administration', $mode)->exists())->toBeTrue();
+    }
+});
