@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Actions\Sale\CreateSale;
+use App\Actions\Sale\RecordPayment;
 use App\Actions\Sale\ValidateSale;
 use App\Models\Client;
+use App\Models\Sale;
 use App\Models\Stock;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -120,8 +122,100 @@ class PosController extends Controller
             return $sale;
         });
 
-        return redirect()->route('sales.show', $sale)
+        return redirect()->route('pos.receipt', $sale)
             ->with('success', "Vente encaissée : {$sale->reference} — " . money($total) . '.');
+    }
+
+    /** Ticket de caisse (reçu compact 80 mm), auto-imprimé. */
+    public function receipt(Sale $sale)
+    {
+        if (Gate::denies('commerce.C')) {
+            return redirect()->route('dashboard')->with('error', 'Accès restreint au module Commerce.');
+        }
+
+        $sale->load(['items', 'client', 'payments']);
+
+        return view('pos.receipt', compact('sale'));
+    }
+
+    /**
+     * Encaissement EXPRESS du solde d'une vente à crédit (POS appliqué aux
+     * ventes existantes) : enregistre le reste dû en un geste puis édite le
+     * ticket. Réutilise RecordPayment (mêmes contrôles que le paiement manuel).
+     */
+    public function encash(Request $request, Sale $sale, RecordPayment $payment)
+    {
+        if (Gate::denies('commerce.C')) {
+            return back()->with('error', 'Action non autorisée.');
+        }
+
+        $data = $request->validate([
+            'method' => 'required|in:especes,orange_money,virement,cheque',
+        ]);
+
+        $remaining = (float) $sale->remaining_amount;
+
+        try {
+            $payment->execute($sale, [
+                'amount'       => $remaining,
+                'method'       => $data['method'],
+                'payment_date' => now()->toDateString(),
+                'notes'        => 'Encaissement du solde (caisse)',
+            ]);
+        } catch (\Throwable $e) {
+            return back()->with('error', $e->getMessage());
+        }
+
+        return redirect()->route('pos.receipt', $sale)
+            ->with('success', 'Solde encaissé : ' . money($remaining) . '.');
+    }
+
+    /** Z de caisse : récap des encaissements/remboursements du jour par mode. */
+    public function report(Request $request)
+    {
+        if (Gate::denies('commerce.L')) {
+            return redirect()->route('dashboard')->with('error', 'Accès restreint au module Commerce.');
+        }
+
+        $date = $request->input('date');
+        try {
+            $date = $date ? \Carbon\Carbon::parse($date) : now();
+        } catch (\Throwable) {
+            $date = now();
+        }
+        $date = $date->gt(now()) ? now()->toDateString() : $date->toDateString();
+
+        // Remboursements = paiements NÉGATIFS → le net par mode est direct.
+        $payments = \App\Models\Payment::whereDate('payment_date', $date)->get();
+
+        $methods = [
+            'especes'      => 'Espèces',
+            'orange_money' => 'Orange Money / MoMo',
+            'virement'     => 'Virement',
+            'cheque'       => 'Chèque',
+        ];
+
+        $rows = [];
+        foreach ($methods as $key => $label) {
+            $m = $payments->where('method', $key);
+            $in  = (float) $m->where('amount', '>', 0)->sum('amount');
+            $out = (float) abs($m->where('amount', '<', 0)->sum('amount'));
+            $rows[] = ['label' => $label, 'in' => $in, 'out' => $out, 'net' => $in - $out];
+        }
+
+        $totalIn  = array_sum(array_column($rows, 'in'));
+        $totalOut = array_sum(array_column($rows, 'out'));
+
+        $report = [
+            'rows'          => $rows,
+            'total_in'      => $totalIn,
+            'total_out'     => $totalOut,
+            'total_net'     => $totalIn - $totalOut,
+            'tickets_count' => $payments->where('amount', '>', 0)->pluck('sale_id')->unique()->count(),
+            'refunds_count' => $payments->where('amount', '<', 0)->count(),
+        ];
+
+        return view('pos.report', compact('date', 'report'));
     }
 
     /** Client « Vente comptoir » par défaut (achat anonyme au comptoir). */

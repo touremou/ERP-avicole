@@ -519,6 +519,16 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('pos')->name('pos.')->controller(\App\Http\Controllers\PosController::class)->group(function () {
         Route::get('/', 'index')->name('index')->middleware('can:C');
         Route::post('/checkout', 'checkout')->name('checkout')->middleware('can:C');
+        Route::get('/receipt/{sale}', 'receipt')->name('receipt')->middleware('can:C');
+        Route::post('/encash/{sale}', 'encash')->name('encash')->middleware('can:C');
+        Route::get('/report', 'report')->name('report')->middleware('can:L');
+    });
+
+    // ─── JOURNAL DES AVOIRS (retours, module: commerce) ───
+    Route::prefix('returns')->name('returns.')->controller(\App\Http\Controllers\SaleReturnController::class)->group(function () {
+        Route::get('/', 'index')->name('index')->middleware('can:L');
+        Route::get('/csv', 'exportCsv')->name('csv')->middleware('can:L');
+        Route::get('/pdf', 'exportPdf')->name('pdf')->middleware('can:L');
     });
 
     Route::prefix('sales')->name('sales.')->controller(SaleController::class)->group(function () {

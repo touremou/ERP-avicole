@@ -98,7 +98,7 @@
     <a href="{{ route('slaughter.finished') }}" class="{{ $linkClass }} {{ request()->routeIs('slaughter.finished*') ? $activeClass : $inactiveClass }}">{{ __("Produits Finis") }}</a>
     @endcan
 
-@elseif(request()->routeIs(['sales.*', 'clients.*', 'payments.*', 'pos.*']))
+@elseif(request()->routeIs(['sales.*', 'clients.*', 'payments.*', 'pos.*', 'returns.*']))
     <span class="{{ $sectionClass }}"><i class="fa-solid fa-cash-register text-teal-500 mr-1"></i> {{ __("Commerce") }}</span>
     @can('commerce.C')
     <a href="{{ route('pos.index') }}" class="{{ $linkClass }} {{ request()->routeIs('pos.*') ? $activeClass : $inactiveClass }}">{{ __("Caisse") }}</a>
@@ -107,6 +107,7 @@
     <a href="{{ route('sales.index') }}" class="{{ $linkClass }} {{ request()->routeIs('sales.*') ? $activeClass : $inactiveClass }}">{{ __("Ventes") }}</a>
     <a href="{{ route('clients.index') }}" class="{{ $linkClass }} {{ request()->routeIs('clients.*') ? $activeClass : $inactiveClass }}">{{ __("Clients") }}</a>
     <a href="{{ route('payments.index') }}" class="{{ $linkClass }} {{ request()->routeIs('payments.*') ? $activeClass : $inactiveClass }}">{{ __("Paiements") }}</a>
+    <a href="{{ route('returns.index') }}" class="{{ $linkClass }} {{ request()->routeIs('returns.*') ? $activeClass : $inactiveClass }}">{{ __("Avoirs") }}</a>
     @endcan
 
 @elseif(request()->routeIs('expenses.*'))

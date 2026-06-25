@@ -173,8 +173,27 @@
 
                 {{-- Formulaire nouveau paiement --}}
                 @if($sale->payment_status !== 'solde' && !in_array($sale->status, ['brouillon', 'annule']))
+                @can('commerce.C')
+                {{-- Encaissement EXPRESS du solde complet → ticket (commodité POS). --}}
+                <form method="POST" action="{{ route('pos.encash', $sale) }}" class="bg-teal-50 p-5 rounded-[2.5rem] border border-teal-200 mb-4">
+                    @csrf
+                    <h3 class="text-[10px] font-black uppercase text-teal-600 tracking-widest mb-2">{{ __("Encaissement express (caisse)") }}</h3>
+                    <p class="text-[9px] font-bold text-teal-500 mb-3">{{ __("Solde dû") }} : <span class="font-black">{{ number_format($sale->remaining_amount, 0, ',', ' ') }} {{ currency() }}</span></p>
+                    <div class="flex gap-2">
+                        <select name="method" required class="flex-1 bg-white border-none rounded-xl p-3 text-[10px] font-black uppercase shadow-sm outline-none">
+                            <option value="especes">{{ __("Espèces") }}</option>
+                            <option value="orange_money">{{ __("Orange Money") }}</option>
+                            <option value="virement">{{ __("Virement") }}</option>
+                            <option value="cheque">{{ __("Chèque") }}</option>
+                        </select>
+                        <button type="submit" class="bg-teal-600 text-white px-5 py-3 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-teal-700 transition-all border-none cursor-pointer shrink-0">
+                            <i class="fa-solid fa-cash-register mr-1"></i> {{ __("Solde → ticket") }}
+                        </button>
+                    </div>
+                </form>
+                @endcan
                 <div class="bg-emerald-50 p-6 rounded-[2.5rem] border border-emerald-200">
-                    <h3 class="text-[10px] font-black uppercase text-emerald-600 tracking-widest mb-4">{{ __("Enregistrer un paiement") }}</h3>
+                    <h3 class="text-[10px] font-black uppercase text-emerald-600 tracking-widest mb-4">{{ __("Enregistrer un paiement (partiel)") }}</h3>
                     <form method="POST" action="{{ route('payments.store') }}" class="space-y-4">
                         @csrf
                         <input type="hidden" name="sale_id" value="{{ $sale->id }}">

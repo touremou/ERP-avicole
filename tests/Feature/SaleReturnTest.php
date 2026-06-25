@@ -81,6 +81,28 @@ test('un retour PARTIEL réduit la vente et rembourse au prorata', function () {
     expect((float) SaleReturn::where('sale_id', $sale->id)->first()->total_refund)->toBe(8000.0);
 });
 
+test('le journal des avoirs liste les retours et s\'exporte (CSV + PDF)', function () {
+    [$sale] = paidSale(100, 10, 2000, $this->adminUser);
+    $this->actingAs($this->adminUser)->post(route('sales.return.store', $sale), [
+        'refund_method' => 'especes', 'returns' => [$sale->items->first()->id => 3],
+    ])->assertRedirect();
+
+    // Liste
+    $this->actingAs($this->adminUser)->get(route('returns.index'))
+        ->assertOk()
+        ->assertSee('RET-00001')
+        ->assertSee('Total remboursé');
+
+    // CSV
+    $csv = $this->actingAs($this->adminUser)->get(route('returns.csv'))->assertOk();
+    expect($csv->headers->get('content-type'))->toContain('text/csv');
+    expect($csv->streamedContent())->toContain('RET-00001')->toContain('Remboursement');
+
+    // PDF
+    $pdf = $this->actingAs($this->adminUser)->get(route('returns.pdf'))->assertOk();
+    expect($pdf->headers->get('content-type'))->toContain('application/pdf');
+});
+
 test('le formulaire de retour est refusé pour une vente non validée', function () {
     $this->actingAs($this->adminUser); // CreateSale lit Auth::id() pour user_id
 

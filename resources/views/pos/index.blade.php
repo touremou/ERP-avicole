@@ -9,9 +9,14 @@
                     {{ __("Encaissement rapide — vente comptant") }}
                 </p>
             </div>
-            <a href="{{ route('sales.index') }}" class="inline-flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-2xl text-[9px] font-black uppercase tracking-widest hover:bg-slate-50 transition-all no-underline shadow-sm italic">
-                <i class="fa-solid fa-list"></i> {{ __("Ventes") }}
-            </a>
+            <div class="flex items-center gap-2">
+                <a href="{{ route('pos.report') }}" class="inline-flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-2xl text-[9px] font-black uppercase tracking-widest hover:bg-teal-50 hover:text-teal-600 transition-all no-underline shadow-sm italic">
+                    <i class="fa-solid fa-receipt"></i> {{ __("Z caisse") }}
+                </a>
+                <a href="{{ route('sales.index') }}" class="inline-flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-2xl text-[9px] font-black uppercase tracking-widest hover:bg-slate-50 transition-all no-underline shadow-sm italic">
+                    <i class="fa-solid fa-list"></i> {{ __("Ventes") }}
+                </a>
+            </div>
         </div>
     </x-slot>
 
