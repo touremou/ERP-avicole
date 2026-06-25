@@ -419,6 +419,45 @@ class Batch extends Model
         return $this->species?->isGmqTracked() ?? false;
     }
 
+    /**
+     * Le lot est-il élevé sur litière (suivi du renouvellement + valorisation
+     * du fumier) ? Concerne les volailles et les lapins (litière profonde).
+     * Pilote l'affichage du bloc « Litière / Fumier » du pointage journalier.
+     */
+    public function usesLitter(): bool
+    {
+        return $this->isVolaille() || $this->species?->family === 'lagomorphe';
+    }
+
+    /**
+     * Le picage / cannibalisme est un trouble comportemental propre aux
+     * volailles : on ne le suit que pour ces lots.
+     */
+    public function tracksPecking(): bool
+    {
+        return $this->isVolaille();
+    }
+
+    /**
+     * Suivi de la boiterie (bien-être locomoteur) : pertinent pour les
+     * volailles (pododermatite, croissance rapide) comme pour les mammifères
+     * d'élevage (ruminants, porcins).
+     */
+    public function tracksLameness(): bool
+    {
+        return $this->isVolaille() || $this->isGmqTracked();
+    }
+
+    /**
+     * Suivi de l'ambiance « air » (température/hygrométrie du bâtiment,
+     * litière, abreuvement classique). Sans objet en pisciculture, où le
+     * milieu est l'eau elle-même (cf. section qualité d'eau dédiée).
+     */
+    public function tracksAirAmbiance(): bool
+    {
+        return ! $this->isAquaculture();
+    }
+
     /** Indique si le lot est actuellement en production (statut Actif). */
     public function isActive(): bool
     {

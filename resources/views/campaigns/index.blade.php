@@ -68,7 +68,7 @@
                                 <p class="text-xl font-black italic tracking-tighter leading-none mb-1 {{ $marge >= 0 ? 'text-emerald-600' : 'text-rose-600' }}">
                                     {{ number_format($marge) }}
                                 </p>
-                                <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest">{{ $campaign->target_sale_price ? __("Marge projetée (GNF)") : __("Marge réalisée (GNF)") }}</p>
+                                <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest">{{ ($campaign->target_sale_price ? __("Marge projetée") : __("Marge réalisée")) }} ({{ currency() }})</p>
                             </div>
                         </div>
                     </div>

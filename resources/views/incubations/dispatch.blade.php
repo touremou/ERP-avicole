@@ -136,14 +136,14 @@
                                     </select>
                                 </div>
                                 <div class="space-y-2">
-                                    <label class="text-[9px] font-black uppercase text-slate-400 ml-2">Prix / poussin (GNF) *</label>
+                                    <label class="text-[9px] font-black uppercase text-slate-400 ml-2">Prix / poussin ({{ currency() }}) *</label>
                                     <input type="number" name="unit_price" x-model.number="unitPrice" min="0" placeholder="5 000"
                                         class="w-full p-3 bg-white rounded-xl border-none font-black text-sm shadow-inner italic outline-none text-right">
                                 </div>
                             </div>
                             <div class="mt-3 p-3 bg-white/50 rounded-xl text-center">
                                 <p class="text-[8px] font-black text-slate-400 uppercase">Total vente</p>
-                                <p class="text-lg font-black text-emerald-600" x-text="(qty * unitPrice).toLocaleString('fr-FR') + ' GNF'"></p>
+                                <p class="text-lg font-black text-emerald-600" x-text="(qty * unitPrice).toLocaleString('fr-FR') + ' {{ currency() }}'"></p>
                             </div>
                         </div>
 
@@ -187,7 +187,7 @@
                                 </div>
                                 <p class="text-[8px] text-slate-400">{{ $d->dispatch_date->format('d/m/Y') }} — Grade {{ $d->quality_grade }}</p>
                                 @if($d->total_amount > 0)
-                                    <p class="text-[9px] font-black text-emerald-600 mt-1">{{ number_format($d->total_amount, 0, ',', '.') }} GNF</p>
+                                    <p class="text-[9px] font-black text-emerald-600 mt-1">{{ number_format($d->total_amount, 0, ',', '.') }} {{ currency() }}</p>
                                 @endif
                                 @if($d->notes)
                                     <p class="text-[8px] text-slate-400 mt-1 normal-case">{{ $d->notes }}</p>
@@ -216,7 +216,7 @@
                         @if($totalRevenue > 0)
                         <div class="border-t border-slate-700 mt-3 pt-3 flex justify-between">
                             <span class="text-[9px] font-black text-emerald-400 uppercase">CA Poussins</span>
-                            <span class="text-sm font-black text-emerald-400">{{ number_format($totalRevenue, 0, ',', '.') }} GNF</span>
+                            <span class="text-sm font-black text-emerald-400">{{ number_format($totalRevenue, 0, ',', '.') }} {{ currency() }}</span>
                         </div>
                         @endif
                     </div>

@@ -71,23 +71,23 @@
                                     <div class="flex justify-between items-center p-3 bg-red-50/50 rounded-xl">
                                         <div>
                                             <span class="text-[10px] font-black text-slate-700">{{ __("🐣 Acquisition poussins") }}</span>
-                                            <p class="text-[8px] text-slate-400">{{ number_format($batch->initial_quantity) }} × {{ number_format($batch->buy_price_per_unit ?? 0, 0, ',', '.') }} GNF</p>
+                                            <p class="text-[8px] text-slate-400">{{ number_format($batch->initial_quantity) }} × {{ number_format($batch->buy_price_per_unit ?? 0, 0, ',', '.') }} {{ currency() }}</p>
                                         </div>
-                                        <span class="text-sm font-black text-red-600">{{ number_format($costs['acquisition'], 0, ',', '.') }} GNF</span>
+                                        <span class="text-sm font-black text-red-600">{{ number_format($costs['acquisition'], 0, ',', '.') }} {{ currency() }}</span>
                                     </div>
                                     <div class="flex justify-between items-center p-3 bg-red-50/50 rounded-xl">
                                         <div>
                                             <span class="text-[10px] font-black text-slate-700">{{ __("🌾 Alimentation") }}</span>
-                                            <p class="text-[8px] text-slate-400">{{ number_format($costs['feed_kg'], 0) }} kg × {{ number_format($costs['feed_price_kg'], 0, ',', '.') }} GNF/kg (moy.)</p>
+                                            <p class="text-[8px] text-slate-400">{{ number_format($costs['feed_kg'], 0) }} kg × {{ number_format($costs['feed_price_kg'], 0, ',', '.') }} {{ currency() }}/kg (moy.)</p>
                                         </div>
-                                        <span class="text-sm font-black text-red-600">{{ number_format($costs['feed'], 0, ',', '.') }} GNF</span>
+                                        <span class="text-sm font-black text-red-600">{{ number_format($costs['feed'], 0, ',', '.') }} {{ currency() }}</span>
                                     </div>
                                     <div class="flex justify-between items-center p-3 bg-red-50/50 rounded-xl">
                                         <div>
                                             <span class="text-[10px] font-black text-slate-700">{{ __("💊 Santé / Vétérinaire") }}</span>
                                             <p class="text-[8px] text-slate-400">{{ __("Traitements, vaccins, médicaments") }}</p>
                                         </div>
-                                        <span class="text-sm font-black text-red-600">{{ number_format($costs['health'], 0, ',', '.') }} GNF</span>
+                                        <span class="text-sm font-black text-red-600">{{ number_format($costs['health'], 0, ',', '.') }} {{ currency() }}</span>
                                     </div>
                                     <div class="flex justify-between items-center p-3 bg-red-50/50 rounded-xl">
                                         <div>
@@ -95,7 +95,7 @@
                                             {{-- Utilisation de round() pour enlever les décimales --}}
                                             <p class="text-[8px] text-slate-400">{{ __(":daysj × quote-part énergie", ['days' => round($costs['duration_days'])]) }}</p>
                                         </div>
-                                        <span class="text-sm font-black text-red-600">{{ number_format($costs['energy'], 0, ',', '.') }} GNF</span>
+                                        <span class="text-sm font-black text-red-600">{{ number_format($costs['energy'], 0, ',', '.') }} {{ currency() }}</span>
                                     </div>
                                     <div class="flex justify-between items-center p-3 bg-amber-50 rounded-xl">
                                         <div>
@@ -222,7 +222,7 @@
                 return totalLiveWeight > 0 ? this.totalFeedKg / totalLiveWeight : 0;
             },
 
-            formatGNF(v) { return new Intl.NumberFormat('fr-GN', { maximumFractionDigits: 0 }).format(Math.round(v)) + ' GNF'; },
+            formatGNF(v) { return new Intl.NumberFormat('fr-GN', { maximumFractionDigits: 0 }).format(Math.round(v)) + ' {{ currency() }}'; },
         }
     }
     </script>

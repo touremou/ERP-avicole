@@ -100,7 +100,7 @@
                                 <td class="px-4 py-6 text-center">
                                     <div class="flex flex-col items-center">
                                         <span class="text-sm font-black tracking-tighter {{ $realMargin >= 0 ? 'text-emerald-600' : 'text-red-600' }}">
-                                            {{ $realMargin >= 0 ? '+' : '' }}{{ number_format($realMargin, 0, ',', ' ') }} <small class="text-[10px]">GNF</small>
+                                            {{ $realMargin >= 0 ? '+' : '' }}{{ number_format($realMargin, 0, ',', ' ') }} <small class="text-[10px]">{{ currency() }}</small>
                                         </span>
                                         <span @class([
                                             'text-[8px] uppercase font-black italic tracking-widest mt-0.5 px-2 py-0.5 rounded',

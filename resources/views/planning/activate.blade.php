@@ -66,7 +66,7 @@
                                    class="w-full p-5 bg-slate-50 rounded-3xl border-none font-black text-4xl text-slate-800 shadow-inner italic appearance-none leading-none text-center">
                         </div>
                         <div>
-                            <label class="block text-[10px] font-black text-blue-600 uppercase mb-2 ml-1 italic">{{ __("Prix unitaire (GNF)") }}</label>
+                            <label class="block text-[10px] font-black text-blue-600 uppercase mb-2 ml-1 italic">{{ __("Prix unitaire") }} ({{ currency() }})</label>
                             <input type="number" name="buy_price_per_unit" value="0" min="0"
                                    class="w-full p-5 bg-slate-50 rounded-2xl border-none font-black text-2xl text-blue-700 shadow-inner italic leading-none text-center">
                         </div>

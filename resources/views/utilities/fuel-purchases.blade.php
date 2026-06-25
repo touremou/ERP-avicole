@@ -5,8 +5,8 @@
                 <i class="fa-solid fa-arrow-left"></i>
             </a>
             <div>
-                <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">{{ __("Achats Gasoil") }}</h2>
-                <p class="text-[10px] font-black text-orange-600 uppercase tracking-[0.2em] mt-2 italic">{{ __("Historique des approvisionnements gasoil") }}</p>
+                <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">{{ __("Achats Carburant") }}</h2>
+                <p class="text-[10px] font-black text-orange-600 uppercase tracking-[0.2em] mt-2 italic">{{ __("Historique des approvisionnements carburant") }}</p>
             </div>
         </div>
     </x-slot>
@@ -46,7 +46,7 @@
                                 class="w-full bg-white border-none rounded-2xl p-4 text-lg font-black text-orange-600 shadow-sm outline-none text-right">
                         </div>
                         <div class="space-y-2">
-                            <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Prix/litre (GNF) *") }}</label>
+                            <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Prix/litre") }} ({{ currency() }}) *</label>
                             <input type="number" name="unit_price" step="100" min="0" required
                                 value="{{ setting('energie.fuel_price_liter', 12000) }}"
                                 class="w-full bg-white border-none rounded-2xl p-4 text-sm font-black shadow-sm outline-none text-right">
@@ -91,7 +91,7 @@
                             <td class="px-4 py-4 text-[10px] font-black text-slate-700 uppercase">{{ $p->source->name ?? '—' }}</td>
                             <td class="px-4 py-4 text-right text-sm font-black text-orange-600">{{ number_format($p->quantity_liters, 0) }} L</td>
                             <td class="px-4 py-4 text-right text-[10px] font-black text-slate-500">{{ number_format($p->unit_price, 0, ',', ' ') }}</td>
-                            <td class="px-4 py-4 text-right text-sm font-black text-slate-900">{{ number_format($p->total_cost, 0, ',', ' ') }} GNF</td>
+                            <td class="px-4 py-4 text-right text-sm font-black text-slate-900">{{ number_format($p->total_cost, 0, ',', ' ') }} {{ currency() }}</td>
                             <td class="px-4 py-4 text-[10px] font-black text-slate-500">{{ $p->supplier ?? '—' }}</td>
 
                             {{-- 💡 BOUTONS D'ACTION --}}

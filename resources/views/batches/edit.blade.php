@@ -210,7 +210,7 @@
                                 </div>
                                 
                                 <div>
-                                    <label class="block text-[10px] font-black text-blue-600 uppercase mb-2 ml-1 italic leading-none">Prix Unitaire (GNF)</label>
+                                    <label class="block text-[10px] font-black text-blue-600 uppercase mb-2 ml-1 italic leading-none">Prix Unitaire ({{ currency() }})</label>
                                     <input type="number" name="buy_price_per_unit" id="buy_price" value="{{ old('buy_price_per_unit', (int)$batch->buy_price_per_unit) }}" min="0" required
                                            class="w-full p-5 bg-slate-50 rounded-2xl border-none font-black text-2xl text-blue-700 shadow-inner italic leading-none">
                                 </div>

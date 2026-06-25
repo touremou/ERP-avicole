@@ -104,11 +104,11 @@
                         <p class="text-[8px] text-slate-500 mt-3 text-center uppercase font-black italic">{{ __("Précision à 1 gramme (± 0.001)") }}</p>
                     </div>
 
-                    {{-- MONTANT TOTAL (GNF) --}}
+                    {{-- MONTANT TOTAL ({{ currency() }}) --}}
                     <div class="relative z-10">
-                        <label class="block text-[10px] font-black text-slate-500 uppercase mb-4 text-center italic tracking-widest">{{ __("Montant Payé (GNF)") }}</label>
+                        <label class="block text-[10px] font-black text-slate-500 uppercase mb-4 text-center italic tracking-widest">{{ __("Montant Payé") }} ({{ currency() }})</label>
                         <input type="number" min="0" name="unit_price" step="1" x-model="totalPrice" class="w-full bg-white/10 border-none rounded-2xl p-5 text-2xl font-black text-center text-white focus:ring-4 focus:ring-emerald-500/30 transition-all italic">
-                        <p class="text-[8px] text-emerald-500 mt-3 text-center uppercase font-black italic">{{ __("Coût") }} : <span x-text="unitCost.toLocaleString()"></span> GNF / KG</p>
+                        <p class="text-[8px] text-emerald-500 mt-3 text-center uppercase font-black italic">{{ __("Coût") }} : <span x-text="unitCost.toLocaleString()"></span> {{ currency() }} / KG</p>
                     </div>
                     <i class="fa-solid fa-scale-balanced absolute -right-4 -bottom-4 text-white/5 text-9xl"></i>
                 </div>

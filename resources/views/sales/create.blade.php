@@ -146,7 +146,7 @@
                                     </template>
                                 </div>
                                 <div class="col-span-2">
-                                    <label class="text-[8px] font-black uppercase text-slate-400 tracking-widest">{{ __("P.U. (GNF)") }}</label>
+                                    <label class="text-[8px] font-black uppercase text-slate-400 tracking-widest">{{ __("P.U.") }} ({{ currency() }})</label>
                                     <input type="number" x-model.number="line.unit_price" min="0" required class="w-full bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none text-right">
                                 </div>
                                 <div class="col-span-1 text-center">
@@ -328,7 +328,7 @@
                 l.quantity=1;
                 const p=prices.find(x=>x.product_type===l.product_type); l.unit_price=p?p.unit_price:0;
             },
-            formatGNF(v) { return new Intl.NumberFormat('fr-GN',{maximumFractionDigits:0}).format(v||0)+' GNF'; },
+            formatGNF(v) { return new Intl.NumberFormat('fr-GN',{maximumFractionDigits:0}).format(v||0)+ ' {{ currency() }}'; },
 
             /**
              * Interception de la soumission : si hors-ligne (ou base injoignable),

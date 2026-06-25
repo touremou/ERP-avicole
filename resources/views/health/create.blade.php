@@ -112,11 +112,11 @@
                         </select>
                     </div>
                     <div class="space-y-3">
-                        <label class="text-[10px] font-black text-emerald-600 uppercase ml-2 italic tracking-widest">{{ __("Coût de l'opération (GNF)") }}</label>
+                        <label class="text-[10px] font-black text-emerald-600 uppercase ml-2 italic tracking-widest">{{ __("Coût de l'opération") }} ({{ currency() }})</label>
                         <div class="relative">
                             <input type="number" name="cost" value="{{ old('cost', 0) }}" min="0" step="0.01"
                                    class="w-full p-5 bg-slate-50 rounded-2xl border-none font-black text-2xl text-emerald-600 shadow-inner pl-16 focus:ring-4 focus:ring-emerald-500/10 transition italic">
-                            <span class="absolute left-5 top-1/2 -translate-y-1/2 text-emerald-300 text-[10px] font-black">GNF</span>
+                            <span class="absolute left-5 top-1/2 -translate-y-1/2 text-emerald-300 text-[10px] font-black">{{ currency() }}</span>
                         </div>
                     </div>
                 </div>

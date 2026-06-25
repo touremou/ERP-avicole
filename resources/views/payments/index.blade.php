@@ -29,21 +29,21 @@
                 <div class="bg-slate-900 p-6 rounded-[2rem] text-white text-center shadow-2xl">
                     <p class="text-[8px] font-black text-emerald-400 uppercase tracking-widest mb-2">{{ __("Total du jour") }}</p>
                     <p class="text-2xl font-black tracking-tighter">{{ number_format($stats['today_total'], 0, ',', ' ') }}</p>
-                    <p class="text-[8px] opacity-50">GNF</p>
+                    <p class="text-[8px] opacity-50">{{ currency() }}</p>
                 </div>
                 <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm text-center">
                     <p class="text-[8px] font-black text-emerald-500 uppercase tracking-widest mb-2">
                         <i class="fa-solid fa-money-bills mr-1"></i> {{ __("Espèces") }}
                     </p>
                     <p class="text-xl font-black text-slate-900">{{ number_format($stats['today_cash'], 0, ',', ' ') }}</p>
-                    <p class="text-[8px] text-slate-400">GNF</p>
+                    <p class="text-[8px] text-slate-400">{{ currency() }}</p>
                 </div>
                 <div class="bg-white p-6 rounded-[2rem] border border-orange-200 shadow-sm text-center">
                     <p class="text-[8px] font-black text-orange-500 uppercase tracking-widest mb-2">
                         <i class="fa-solid fa-mobile-screen mr-1"></i> {{ __("Orange Money") }}
                     </p>
                     <p class="text-xl font-black text-slate-900">{{ number_format($stats['today_om'], 0, ',', ' ') }}</p>
-                    <p class="text-[8px] text-slate-400">GNF</p>
+                    <p class="text-[8px] text-slate-400">{{ currency() }}</p>
                 </div>
                 <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm text-center">
                     <p class="text-[8px] font-black text-blue-500 uppercase tracking-widest mb-2">
@@ -129,7 +129,7 @@
                                 </td>
                                 <td class="px-4 py-4 text-right">
                                     <p class="text-sm font-black text-emerald-600">+{{ number_format($payment->amount, 0, ',', ' ') }}</p>
-                                    <p class="text-[8px] text-slate-400">GNF</p>
+                                    <p class="text-[8px] text-slate-400">{{ currency() }}</p>
                                 </td>
                                 <td class="px-6 py-4 text-[10px] font-black text-slate-500">
                                     {{ $payment->receiver->name ?? '—' }}

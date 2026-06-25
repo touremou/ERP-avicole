@@ -45,7 +45,7 @@
 
                     <div class="grid grid-cols-2 gap-6">
                         <div>
-                            <label class="block text-[10px] font-black text-amber-500 uppercase mb-2 ml-1 italic">{{ __("Prix / litre (GNF)") }}</label>
+                            <label class="block text-[10px] font-black text-amber-500 uppercase mb-2 ml-1 italic">{{ __("Prix / litre") }} ({{ currency() }})</label>
                             <input type="number" step="1" min="0" name="unit_price" x-model.number="price" value="{{ old('unit_price', $milk->unit_price) }}"
                                    class="w-full p-4 bg-slate-50 rounded-2xl border-none font-black text-slate-700 shadow-inner italic outline-none">
                         </div>
@@ -68,7 +68,7 @@
                         </div>
                         <div class="text-right">
                             <p class="text-[9px] font-black text-amber-400 uppercase tracking-widest">{{ __("Valorisation") }}</p>
-                            <p class="text-3xl font-black italic" x-text="fmt((morning + evening) * price) + ' GNF'"></p>
+                            <p class="text-3xl font-black italic" x-text="fmt((morning + evening) * price) + ' {{ currency() }}'"></p>
                         </div>
                     </div>
 

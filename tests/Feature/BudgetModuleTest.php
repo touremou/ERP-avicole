@@ -98,7 +98,7 @@ test('l\'export CSV contient le récap du mois', function () {
     expect($resp->headers->get('content-type'))->toContain('text/csv');
 
     $csv = $resp->streamedContent();
-    expect($csv)->toContain('Gasoil')
+    expect($csv)->toContain('Carburant')
         ->toContain('500 000')
         ->toContain('200 000');
 });

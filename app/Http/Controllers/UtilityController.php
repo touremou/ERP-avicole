@@ -14,6 +14,7 @@ use App\Services\NotificationHub;
 use App\Services\UtilityService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
 class UtilityController extends Controller
@@ -375,12 +376,19 @@ class UtilityController extends Controller
         }
 
         $validated['fuel_level_after'] = $newLevel;
-        $source->update(['current_fuel_level' => $newLevel]);
 
-        FuelPurchase::create($validated);
+        // Achat = mouvement de cuve (opérationnel) + sortie de trésorerie : on
+        // tient les deux de façon atomique, et l'achat poste sa dépense carburant.
+        DB::transaction(function () use ($validated, $source, $newLevel) {
+            $source->update(['current_fuel_level' => $newLevel]);
+
+            $purchase = FuelPurchase::create($validated);
+            $purchase->setRelation('source', $source);
+            $purchase->syncLedgerExpense();
+        });
 
         return back()->with('success',
-            number_format($validated['quantity_liters']) . "L de gasoil enregistrés. " .
+            number_format($validated['quantity_liters']) . "L de carburant enregistrés (dépense générée). " .
             "Cuve {$source->name} : {$newLevel}L."
         );
     }
@@ -499,15 +507,24 @@ class UtilityController extends Controller
         ]);
 
         $validated['total_cost'] = (float) $validated['quantity_liters'] * (float) $validated['unit_price'];
-        $purchase->update($validated);
 
-        return redirect()->route('utilities.fuel.index')->with('success', 'Achat gasoil mis à jour.');
+        DB::transaction(function () use ($purchase, $validated) {
+            $purchase->update($validated);
+            $purchase->syncLedgerExpense(); // répercute le nouveau montant sur la dépense liée
+        });
+
+        return redirect()->route('utilities.fuel.index')->with('success', 'Achat carburant mis à jour.');
     }
 
     public function destroyFuelPurchase(FuelPurchase $purchase)
     {
         if (Gate::denies('ressources.S')) return back()->with('error', 'Suppression réservée aux administrateurs.');
-        $purchase->delete();
-        return back()->with('success', 'Achat supprimé.');
+
+        DB::transaction(function () use ($purchase) {
+            $purchase->expense?->delete(); // retire aussi l'écriture du registre des dépenses
+            $purchase->delete();
+        });
+
+        return back()->with('success', 'Achat et dépense liée supprimés.');
     }
 }

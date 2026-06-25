@@ -121,7 +121,7 @@
                             <div class="pt-4 border-t border-slate-800 text-left">
                                 <div class="flex justify-between items-end">
                                     <span class="text-[9px] uppercase opacity-50 italic">{{ __("Coût Théorique") }}</span>
-                                    <span class="text-2xl font-black italic tracking-tighter"><span x-text="costPerKg.toLocaleString()">0</span> <small class="text-[10px]">GNF/kg</small></span>
+                                    <span class="text-2xl font-black italic tracking-tighter"><span x-text="costPerKg.toLocaleString()">0</span> <small class="text-[10px]">{{ currency() }}/kg</small></span>
                                 </div>
                             </div>
 
@@ -158,7 +158,7 @@
                                         <p class="text-[10px] font-black uppercase italic text-slate-700 leading-none truncate">{{ $m->name }}</p>
                                         <p class="text-[8px] text-slate-400 mt-1 uppercase font-bold">
                                             {{ __("PB") }}: {{ $m->protein_rate }}% | {{ __("EM") }}: {{ $m->energy_kcal }} |
-                                            <span class="text-blue-500">{{ number_format($m->unit_cost, 0) }} GNF/kg</span>
+                                            <span class="text-blue-500">{{ number_format($m->unit_cost, 0) }} {{ currency() }}/kg</span>
                                         </p>
                                     </div>
                                     <div class="w-24">

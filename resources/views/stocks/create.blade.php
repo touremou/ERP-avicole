@@ -161,7 +161,7 @@
 
                                 {{-- PRIX UNITAIRE (NOUVEAU) --}}
                                 <div>
-                                    <label class="text-[10px] uppercase text-slate-400 ml-6 mb-2 block tracking-widest font-black italic">06. {{ __("Prix Unitaire (GNF)") }}</label>
+                                    <label class="text-[10px] uppercase text-slate-400 ml-6 mb-2 block tracking-widest font-black italic">06. {{ __("Prix Unitaire") }} ({{ currency() }})</label>
                                     <input type="number" min="0" name="unit_price" step="1" required
                                         class="w-full bg-slate-50 border-none rounded-[2rem] p-5 font-black shadow-inner text-center text-blue-500 italic focus:ring-2 focus:ring-blue-500"
                                         placeholder="{{ __('Ex: 1500') }}">

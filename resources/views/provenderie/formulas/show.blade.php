@@ -88,7 +88,7 @@
                         <p class="text-[9px] font-black text-slate-400 uppercase italic mb-1 leading-none">{{ __("Coût de Revient Théorique") }}</p>
                         <p class="text-4xl font-black text-slate-900 italic tracking-tighter leading-none">
                             {{ number_format($stats['cost'], 0, ',', ' ') }} 
-                            <small class="text-xs opacity-30 italic">GNF/kg</small>
+                            <small class="text-xs opacity-30 italic">{{ currency() }}/kg</small>
                         </p>
                     </div>
                     <div class="bg-emerald-50 p-8 rounded-[3rem] border border-emerald-100 shadow-sm relative overflow-hidden text-left">

@@ -72,24 +72,38 @@ class AppServiceProvider extends ServiceProvider
             \App\Models\Batch::observe(\App\Observers\BatchObserver::class);
             \App\Models\CropCycle::observe(\App\Observers\CropCycleObserver::class);
             \App\Models\Harvest::observe(\App\Observers\HarvestObserver::class);
+            \App\Models\Expense::observe(\App\Observers\ExpenseObserver::class);
         }
 
         // ─── 3. FIX SQL STRING LENGTH ───
         Schema::defaultStringLength(191);
 
         // ─── 4. BREADCRUMBS AUTO ───
-        View::composer('*', function ($view) {
+        // Segments « conteneurs » sans page propre (ou redondants avec l'accueil
+        // « Dashboard » déjà épinglé) : on les saute pour garder un fil d'Ariane
+        // lisible. Ex. /utilities/dashboard → « Dashboard » seul ;
+        // /utilities/water-sources → « Dashboard › Eau ».
+        $skipSegments = ['utilities', 'manage-batches', 'batches-admin', 'dashboard'];
+        $segmentLabels = [
+            'water-sources'  => 'Eau',
+            'energy-sources' => 'Énergie',
+            'fuel-purchases' => 'Carburant',
+        ];
+
+        View::composer('*', function ($view) use ($skipSegments, $segmentLabels) {
             $segments = Request::segments();
             $breadcrumbs = [];
             $url = '';
             foreach ($segments as $segment) {
                 $url .= '/' . $segment;
-                if (! is_numeric($segment)) {
-                    $breadcrumbs[] = [
-                        'label' => Str::title(str_replace(['-', '_'], ' ', $segment)),
-                        'url'   => url($url),
-                    ];
+                if (is_numeric($segment) || in_array($segment, $skipSegments, true)) {
+                    continue;
                 }
+                $breadcrumbs[] = [
+                    'label' => $segmentLabels[$segment]
+                        ?? Str::title(str_replace(['-', '_'], ' ', $segment)),
+                    'url'   => url($url),
+                ];
             }
             $view->with('autoBreadcrumbs', $breadcrumbs);
         });

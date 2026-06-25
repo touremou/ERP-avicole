@@ -369,6 +369,29 @@ class NotificationHub
     }
 
     /**
+     * Alerte de DÉPASSEMENT BUDGÉTAIRE : le cumul des dépenses validées d'un
+     * poste a franchi son budget mensuel. Déclenchée au moment du franchissement
+     * (cf. App\Services\BudgetMonitor), une seule fois par poste/mois.
+     */
+    public function alertBudgetOverrun(string $category, int $year, int $month, float $spent, float $budget): void
+    {
+        $label = \App\Models\Expense::CATEGORIES[$category] ?? ucfirst($category);
+        $monthLabel = \Carbon\Carbon::create($year, $month, 1)->locale('fr')->isoFormat('MMMM YYYY');
+        $pct  = $budget > 0 ? round($spent / $budget * 100) : 0;
+        $over = $spent - $budget;
+
+        $message = "📊 *DÉPASSEMENT BUDGET*\n\n"
+            . "Poste : *{$label}*\n"
+            . "Mois : {$monthLabel}\n"
+            . "Budget : " . number_format($budget, 0, ',', ' ') . " GNF\n"
+            . "Dépensé : *" . number_format($spent, 0, ',', ' ') . " GNF* ({$pct}%)\n"
+            . "Dépassement : " . number_format($over, 0, ',', ' ') . " GNF\n\n"
+            . "Vérifier les dépenses de ce poste.";
+
+        $this->broadcast('alert_budget', $message, "Budget {$label}", 'critique');
+    }
+
+    /**
      * Notification vente créée.
      *
      * Une vente dont le montant dépasse le seuil `whatsapp.large_sale_threshold`
@@ -980,6 +1003,7 @@ class NotificationHub
         $column = match ($type) {
             'daily_summary', 'alert_mortality', 'alert_stock',
             'alert_energy', 'alert_sales', 'alert_fraud' => $type,
+            'alert_budget' => 'alert_fraud', // contrôle financier (cf. getSubscribers)
             default => null,
         };
 
@@ -1003,6 +1027,9 @@ class NotificationHub
             'alert_energy'               => 'alert_energy',
             'alert_sales'                => 'alert_sales',
             'alert_fraud'                => 'alert_fraud',
+            // Dépassement budgétaire = contrôle financier : on réutilise la
+            // souscription « fraude/anomalies » plutôt qu'une nouvelle colonne.
+            'alert_budget'               => 'alert_fraud',
             default                      => null,
         };
 

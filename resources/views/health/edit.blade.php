@@ -107,11 +107,11 @@
                                 </div>
 
                                 <div>
-                                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-3 ml-2 italic tracking-widest leading-none">{{ __("Coût total (GNF)") }}</label>
+                                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-3 ml-2 italic tracking-widest leading-none">{{ __("Coût total") }} ({{ currency() }})</label>
                                     <div class="relative">
                                         <input type="number" name="cost" value="{{ old('cost', (float)$health->cost) }}" min="0" step="0.01" required
                                                class="w-full p-5 bg-slate-50 rounded-2xl font-black text-3xl border-none text-emerald-600 shadow-inner italic focus:ring-4 focus:ring-emerald-500/10 transition outline-none pr-16">
-                                        <span class="absolute right-6 top-1/2 -translate-y-1/2 text-slate-300 font-black italic uppercase leading-none text-xs">GNF</span>
+                                        <span class="absolute right-6 top-1/2 -translate-y-1/2 text-slate-300 font-black italic uppercase leading-none text-xs">{{ currency() }}</span>
                                     </div>
                                 </div>
 

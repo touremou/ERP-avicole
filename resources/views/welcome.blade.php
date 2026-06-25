@@ -59,7 +59,7 @@
             </div>
             <p class="text-slate-400 text-[9px] font-black uppercase tracking-widest mb-1 italic leading-none">{{ __("Estimation Actif Cir.") }}</p>
             <p class="text-3xl font-black text-slate-900 tracking-tighter italic">
-                {{ number_format($stockValue) }} <small class="text-xs font-black text-slate-400">GNF</small>
+                {{ number_format($stockValue) }} <small class="text-xs font-black text-slate-400">{{ currency() }}</small>
             </p>
             <p class="mt-4 text-[9px] font-black text-slate-300 uppercase italic tracking-widest border-t border-slate-50 pt-3">{{ __("Cotation Marché Actuelle") }}</p>
         </div>

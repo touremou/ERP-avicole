@@ -334,7 +334,7 @@
                 <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1 italic">{{ __("Fumier Ramassé") }}</p>
                 <h4 class="text-xl font-black text-slate-800 tracking-tighter">{{ number_format($stats['manure_collected_kg'], 0) }} <small class="text-xs opacity-50">kg</small></h4>
                 @if($stats['estimated_manure_revenue'] > 0)
-                <p class="text-[7px] font-black text-amber-500 uppercase mt-1">{{ __("Revenu Estimé") }} : {{ number_format($stats['estimated_manure_revenue'], 0) }} {{ __("GNF") }}</p>
+                <p class="text-[7px] font-black text-amber-500 uppercase mt-1">{{ __("Revenu Estimé") }} : {{ number_format($stats['estimated_manure_revenue'], 0) }} {{ currency() }}</p>
                 @endif
             </div>
         </div>
@@ -711,7 +711,7 @@
                                         <span class="bg-emerald-100 text-emerald-700 text-[7px] px-2 py-1 rounded-md uppercase font-black italic">{{ __("Achat") }}</span>
                                     </td>
                                     <td class="px-8 py-4 text-center text-emerald-600 font-black">+ {{ number_format($purchase->quantity, 1) }} kg</td>
-                                    <td class="px-8 py-4 text-right"><span class="text-slate-900 font-black">{{ number_format($purchase->unit_price, 0) }} GNF</span></td>
+                                    <td class="px-8 py-4 text-right"><span class="text-slate-900 font-black">{{ number_format($purchase->unit_price, 0) }} {{ currency() }}</span></td>
                                     <td class="px-8 py-4 text-right">
                                         <div class="flex justify-end gap-3">
                                             @if($batch->isActive())
@@ -742,8 +742,8 @@
                                     <td class="px-8 py-4 text-center text-rose-600 font-black">- {{ number_format($line->qty, 1) }} kg</td>
                                     <td class="px-8 py-4 text-right">
                                         @if($line->amount > 0)
-                                            <span class="text-slate-900 font-black">{{ number_format($line->amount, 0) }} GNF</span>
-                                            <br><span class="text-[8px] text-slate-400 italic">{{ number_format($line->unit_cost, 0) }} GNF/kg</span>
+                                            <span class="text-slate-900 font-black">{{ number_format($line->amount, 0) }} {{ currency() }}</span>
+                                            <br><span class="text-[8px] text-slate-400 italic">{{ number_format($line->unit_cost, 0) }} {{ currency() }}/kg</span>
                                         @else
                                             <span class="text-slate-300 italic text-[8px] uppercase">{{ __("Non valorisé") }}</span>
                                         @endif
@@ -770,7 +770,7 @@
                                     <span class="text-slate-400 ml-2 normal-case">{{ __("(achat + production interne, au CMP)") }}</span>
                                 </td>
                                 <td colspan="2" class="px-8 py-4 text-right text-orange-400 font-black text-sm">
-                                    {{ number_format($stats['feed_cogs'], 0) }} GNF
+                                    {{ number_format($stats['feed_cogs'], 0) }} {{ currency() }}
                                 </td>
                             </tr>
                         </tfoot>
@@ -791,7 +791,7 @@
                         <p class="text-[8px] font-black text-cyan-400 uppercase tracking-widest mt-0.5 normal-case italic">{{ __("Relevés taggés sur ce bâtiment sur la période d'élevage") }}</p>
                     </div>
                 </div>
-                <p class="text-xl font-black text-cyan-700">{{ number_format($stats['utility_cost'], 0) }} <span class="text-[9px] opacity-60">GNF</span></p>
+                <p class="text-xl font-black text-cyan-700">{{ number_format($stats['utility_cost'], 0) }} <span class="text-[9px] opacity-60">{{ currency() }}</span></p>
             </div>
             @endif
 

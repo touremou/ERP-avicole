@@ -75,7 +75,7 @@
                             <input type="date" name="purchase_date" value="{{ old('purchase_date', optional($source->purchase_date)->toDateString()) }}" class="w-full bg-white border-none rounded-2xl p-4 text-sm shadow-sm outline-none">
                         </div>
                         <div>
-                            <label class="text-[10px] uppercase text-slate-400 ml-2">{{ __("Prix d'achat (GNF)") }}</label>
+                            <label class="text-[10px] uppercase text-slate-400 ml-2">{{ __("Prix d'achat") }} ({{ currency() }})</label>
                             <input type="number" name="purchase_price" min="0" step="1000" value="{{ old('purchase_price', $source->purchase_price) }}" class="w-full bg-white border-none rounded-2xl p-4 shadow-sm outline-none">
                         </div>
                         <div>

@@ -43,7 +43,7 @@ class Expense extends Model
 
     /** Catégories de dépenses (clé stockée => libellé FR). */
     public const CATEGORIES = [
-        'carburant'           => 'Gasoil',
+        'carburant'           => 'Carburant',
         'transport'           => 'Transport / Déplacement',
         'entretien'           => 'Entretien / Réparation',
         'fournitures'         => 'Fournitures & petit matériel',

@@ -8,14 +8,14 @@
                 <div>
                     <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">{{ __("Registre des Ventes") }}</h2>
                     <p class="text-[10px] font-black text-teal-600 uppercase tracking-[0.2em] mt-2 italic">
-                        {{ $stats['today_count'] }} {{ __("vente(s) aujourd'hui") }} — {{ number_format($stats['today_total'], 0, ',', ' ') }} GNF
+                        {{ $stats['today_count'] }} {{ __("vente(s) aujourd'hui") }} — {{ number_format($stats['today_total'], 0, ',', ' ') }} {{ currency() }}
                     </p>
                 </div>
             </div>
             <div class="flex gap-4">
                 <div class="bg-white px-5 py-3 rounded-[1.5rem] border border-slate-100 text-right shadow-sm">
                     <p class="text-[8px] font-black text-rose-400 uppercase italic mb-1">{{ __("Impayés") }}</p>
-                    <p class="text-sm font-black text-slate-900">{{ number_format($stats['unpaid_total'], 0, ',', ' ') }} <small class="text-[8px] opacity-40">GNF</small></p>
+                    <p class="text-sm font-black text-slate-900">{{ number_format($stats['unpaid_total'], 0, ',', ' ') }} <small class="text-[8px] opacity-40">{{ currency() }}</small></p>
                 </div>
                 @can('commerce.C')
                 <a href="{{ route('sales.create') }}" class="bg-slate-900 text-white px-8 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-teal-600 transition-all shadow-2xl italic flex items-center gap-2 no-underline">

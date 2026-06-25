@@ -35,7 +35,7 @@
                     <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 italic">{{ __("Valeur Totale Stock") }}</p>
                     <p class="text-4xl font-black tracking-tighter leading-none text-slate-900">
                         {{ number_format($materials->sum(fn($m) => $m->stock_qty * $m->unit_cost), 0, ',', ' ') }}
-                        <small class="text-xs opacity-40 font-black italic">GNF</small>
+                        <small class="text-xs opacity-40 font-black italic">{{ currency() }}</small>
                     </p>
                 </div>
                 <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm relative overflow-hidden">
@@ -85,7 +85,7 @@
                             </div>
                             <div class="text-right">
                                 <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1 italic leading-none">{{ __("P.M.P Actuel") }}</p>
-                                <p class="text-lg font-black text-slate-800 leading-none italic">{{ number_format($material->unit_cost, 0, ',', ' ') }} <small class="text-[10px] text-blue-500">GNF/kg</small></p>
+                                <p class="text-lg font-black text-slate-800 leading-none italic">{{ number_format($material->unit_cost, 0, ',', ' ') }} <small class="text-[10px] text-blue-500">{{ currency() }}/kg</small></p>
                             </div>
                         </div>
 
@@ -207,7 +207,7 @@
                             <input type="number" step="0.1" min="0" placeholder="0.0" name="stock_qty" id="edit_stock_qty" required class="w-full bg-white border-2 border-blue-200 rounded-2xl p-4 font-black text-2xl text-slate-900 text-center italic shadow-lg">
                         </div>
                         <div>
-                            <label class="block text-[10px] font-black text-blue-600 uppercase mb-2 ml-2 text-center italic">{{ __("Coût/kg (GNF)") }}</label>
+                            <label class="block text-[10px] font-black text-blue-600 uppercase mb-2 ml-2 text-center italic">{{ __("Coût/kg") }} ({{ currency() }})</label>
                             <input type="number" min="0" placeholder="0.0" name="unit_cost" id="edit_unit_cost" required class="w-full bg-white border-2 border-emerald-200 rounded-2xl p-4 font-black text-2xl text-emerald-600 text-center italic shadow-lg">
                         </div>
                     </div>
@@ -328,9 +328,9 @@
                     <input type="number" step="0.1" min="0" placeholder="{{ __('Total kg') }}" name="added_qty" id="final_qty" required oninput="calculateUnitCost()" class="w-full bg-white border-2 border-blue-200 rounded-2xl p-4 font-black text-3xl text-blue-600 text-center italic shadow-lg">
                 </div>
                 <div>
-                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-2 italic tracking-widest">{{ __("Montant Facturé (GNF)") }}</label>
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-2 italic tracking-widest">{{ __("Montant Facturé") }} ({{ currency() }})</label>
                     <input type="number" min="0" placeholder="0" name="purchase_price" id="total_purchase_price" required oninput="calculateUnitCost()" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-2xl text-slate-800 shadow-inner text-center italic text-blue-600">
-                    <p class="text-center mt-3 text-[9px] text-slate-400 uppercase italic font-black">{{ __("Coût unitaire estimé") }} : <span id="unit_cost_display" class="text-blue-500">0</span> GNF/kg</p>
+                    <p class="text-center mt-3 text-[9px] text-slate-400 uppercase italic font-black">{{ __("Coût unitaire estimé") }} : <span id="unit_cost_display" class="text-blue-500">0</span> {{ currency() }}/kg</p>
                 </div>
                 <button type="submit" class="w-full bg-slate-900 text-white font-black py-5 rounded-2xl shadow-xl uppercase italic hover:bg-blue-600 transition-colors">{{ __("Valider l'entrée") }}</button>
             </form>

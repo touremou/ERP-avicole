@@ -177,7 +177,7 @@
                             <div class="peer-checked:bg-red-50 peer-checked:border-red-400 bg-slate-50 border-2 border-transparent rounded-xl p-3 text-center transition-all text-[9px] font-black uppercase">➖ {{ __("Déduction") }}</div></label>
                     </div>
                     <input type="text" name="label" required placeholder="{{ __("Ex: Prime performance, Avance...") }}" class="w-full bg-slate-50 border-none rounded-xl p-3 text-xs font-black shadow-inner outline-none">
-                    <input type="number" name="amount" required min="1" placeholder="{{ __("Montant GNF") }}" class="w-full bg-slate-50 border-none rounded-xl p-3 text-lg font-black shadow-inner outline-none text-center">
+                    <input type="number" name="amount" required min="1" placeholder="{{ __("Montant") }} {{ currency() }}" class="w-full bg-slate-50 border-none rounded-xl p-3 text-lg font-black shadow-inner outline-none text-center">
                     <select name="category" class="w-full bg-slate-50 border-none rounded-xl p-3 text-xs font-black uppercase shadow-inner outline-none italic">
                         <option value="performance">{{ __("Performance") }}</option>
                         <option value="nuit">{{ __("Nuit / Astreinte") }}</option>
@@ -209,7 +209,7 @@
         <div x-show="payModal" x-transition class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" x-cloak>
             <div class="bg-white rounded-2xl w-full max-w-md p-8 text-left font-bold italic" @click.outside="payModal = false">
                 <h3 class="text-lg font-black text-emerald-600 uppercase tracking-tighter mb-2">💰 {{ __("Paiement") }}</h3>
-                <p class="text-[9px] text-slate-500 mb-4" x-text="payEmployee + ' — ' + payAmount.toLocaleString('fr-FR') + ' GNF'"></p>
+                <p class="text-[9px] text-slate-500 mb-4" x-text="payEmployee + ' — ' + payAmount.toLocaleString('fr-FR') + ' {{ currency() }}'"></p>
                 <form :action="'/payroll/payslip/' + paySlipId + '/pay'" method="POST" class="space-y-4">
                     @csrf
                     @php

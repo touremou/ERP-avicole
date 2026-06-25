@@ -107,7 +107,7 @@
                             <p class="text-lg font-black {{ $source->needs_maintenance ? 'text-amber-600' : 'text-slate-900' }}">{{ round($source->hours_before_maintenance) }}h</p>
                         </div>
                         <div class="text-center p-3 bg-slate-50 rounded-xl">
-                            <p class="text-[8px] font-black text-slate-400 uppercase">{{ __("Gasoil cuve") }}</p>
+                            <p class="text-[8px] font-black text-slate-400 uppercase">{{ __("Carburant cuve") }}</p>
                             <p class="text-lg font-black {{ $source->is_fuel_low ? 'text-red-600' : 'text-slate-900' }}">{{ number_format($source->current_fuel_level ?? 0) }}L</p>
                         </div>
                         <div class="text-center p-3 bg-slate-50 rounded-xl">
@@ -129,13 +129,13 @@
                         @if($source->purchase_price)
                         <div class="text-center">
                             <p class="text-[7px] font-black text-indigo-400 uppercase tracking-widest">{{ __("Valeur d'achat") }}</p>
-                            <p class="text-sm font-black text-indigo-700">{{ number_format((float) $source->purchase_price, 0, ',', ' ') }} GNF</p>
+                            <p class="text-sm font-black text-indigo-700">{{ number_format((float) $source->purchase_price, 0, ',', ' ') }} {{ currency() }}</p>
                         </div>
                         <div class="text-center">
                             <p class="text-[7px] font-black text-indigo-400 uppercase tracking-widest">{{ __("Valeur résiduelle") }}</p>
                             @if($source->residual_value !== null)
                                 @php $pct = $source->purchase_price > 0 ? round(($source->residual_value / (float) $source->purchase_price) * 100) : 0; @endphp
-                                <p class="text-sm font-black text-indigo-700">{{ number_format($source->residual_value, 0, ',', ' ') }} GNF</p>
+                                <p class="text-sm font-black text-indigo-700">{{ number_format($source->residual_value, 0, ',', ' ') }} {{ currency() }}</p>
                                 <p class="text-[7px] text-indigo-300 font-black">{{ $pct }}% restant · {{ $source->depreciation_years }}ans</p>
                             @else
                                 <p class="text-sm font-black text-slate-400">—</p>
@@ -152,7 +152,7 @@
                         @if($cumulCost > 0)
                         <div class="text-center col-span-{{ $source->service_contract_ref ? '3' : '1' }} pt-2 border-t border-indigo-100/60">
                             <p class="text-[7px] font-black text-indigo-400 uppercase tracking-widest">{{ __("Coût maintenance cumulé") }}</p>
-                            <p class="text-sm font-black text-indigo-700">{{ number_format($cumulCost, 0, ',', ' ') }} GNF</p>
+                            <p class="text-sm font-black text-indigo-700">{{ number_format($cumulCost, 0, ',', ' ') }} {{ currency() }}</p>
                         </div>
                         @endif
                     </div>
@@ -161,11 +161,14 @@
                     {{-- ─── FORMULAIRE MAINTENANCE ÉTENDU ─── --}}
                     @if($source->type === 'groupe')
                     @can('ressources.M')
-                        @if($source->needs_maintenance || $source->status === 'maintenance' || $source->status === 'panne')
-                        <form method="POST" action="{{ route('utilities.energy.maintenance', $source) }}" class="mt-4 space-y-3 bg-amber-50/80 p-5 rounded-2xl border border-amber-200/60">
+                        {{-- Toujours accessible : on doit pouvoir loguer une maintenance
+                             PRÉVENTIVE (vidange de routine) sans attendre la panne. Style
+                             amber si une révision est due, neutre sinon. --}}
+                        @php $maintDue = $source->needs_maintenance || in_array($source->status, ['maintenance', 'panne'], true); @endphp
+                        <form method="POST" action="{{ route('utilities.energy.maintenance', $source) }}" class="mt-4 space-y-3 p-5 rounded-2xl border {{ $maintDue ? 'bg-amber-50/80 border-amber-200/60' : 'bg-slate-50/80 border-slate-200/60' }}">
                             @csrf @method('PUT')
-                            <p class="text-[9px] font-black text-amber-600 uppercase tracking-widest flex items-center gap-2">
-                                <i class="fa-solid fa-wrench"></i> {{ __("Enregistrer une intervention") }}
+                            <p class="text-[9px] font-black uppercase tracking-widest flex items-center gap-2 {{ $maintDue ? 'text-amber-600' : 'text-slate-500' }}">
+                                <i class="fa-solid fa-wrench"></i> {{ $maintDue ? __("Maintenance requise — enregistrer l'intervention") : __("Enregistrer une intervention (préventive ou corrective)") }}
                             </p>
                             <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
                                 <div class="space-y-1">
@@ -184,7 +187,7 @@
                                         class="w-full bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
                                 </div>
                                 <div class="space-y-1">
-                                    <label class="text-[8px] font-black text-slate-400 uppercase tracking-widest ml-1">{{ __("Coût (GNF)") }}</label>
+                                    <label class="text-[8px] font-black text-slate-400 uppercase tracking-widest ml-1">{{ __("Coût") }} ({{ currency() }})</label>
                                     <input type="number" name="cost" min="0" step="1000" placeholder="{{ __('Ex: 500000') }}"
                                         class="w-full bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
                                 </div>
@@ -199,20 +202,20 @@
                                 <input type="text" name="description" placeholder="{{ __('Huile 15W40, filtres remplacés, état courroies...') }}"
                                     class="w-full bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
                             </div>
-                            <button type="submit" class="bg-amber-500 text-white px-6 py-3 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-amber-600 transition-all border-none cursor-pointer">
+                            <button type="submit" class="{{ $maintDue ? 'bg-amber-500 hover:bg-amber-600' : 'bg-slate-900 hover:bg-indigo-600' }} text-white px-6 py-3 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all border-none cursor-pointer">
                                 <i class="fa-solid fa-check mr-2"></i> {{ __("Valider l'intervention") }}
                             </button>
                         </form>
-                        @endif
                     @endcan
                     @endif
 
                     {{-- ─── HISTORIQUE INLINE (si page logs) ─── --}}
-                    @if(isset($assetSource) && $assetSource->id === $source->id && isset($logs) && $logs->count())
+                    @if(isset($assetSource) && $assetSource->id === $source->id)
                     <div class="mt-4 border-t border-slate-100 pt-4">
                         <p class="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-2">
                             <i class="fa-solid fa-clock-rotate-left text-indigo-400"></i> {{ __("Historique des interventions") }}
                         </p>
+                        @if(isset($logs) && $logs->count())
                         <div class="space-y-2">
                             @foreach($logs as $log)
                             <div class="flex items-start justify-between p-3 bg-slate-50 rounded-xl gap-4">
@@ -230,13 +233,16 @@
                                 </div>
                                 <div class="text-right shrink-0">
                                     @if($log->cost)
-                                    <p class="text-[10px] font-black text-slate-700">{{ number_format((float) $log->cost, 0, ',', ' ') }} GNF</p>
+                                    <p class="text-[10px] font-black text-slate-700">{{ money($log->cost) }}</p>
                                     @endif
                                     <p class="text-[7px] text-slate-300 font-black">{{ number_format($log->hours_at_maintenance, 0) }}h au compteur</p>
                                 </div>
                             </div>
                             @endforeach
                         </div>
+                        @else
+                        <p class="text-[8px] text-slate-400 font-bold italic normal-case">{{ __("Aucune intervention enregistrée pour ce groupe — utilisez le formulaire ci-dessus.") }}</p>
+                        @endif
                     </div>
                     @endif
 
@@ -321,7 +327,7 @@
                                 class="w-full bg-white border-none rounded-2xl p-4 text-xs font-black shadow-sm outline-none">
                         </div>
                         <div class="space-y-2">
-                            <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Prix d'achat (GNF)") }}</label>
+                            <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Prix d'achat") }} ({{ currency() }})</label>
                             <input type="number" name="purchase_price" min="0" step="1000" placeholder="{{ __('Ex: 180000000') }}"
                                 class="w-full bg-white border-none rounded-2xl p-4 text-sm font-black shadow-sm outline-none">
                         </div>
@@ -356,7 +362,7 @@
                 <h3 class="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-1 flex items-center gap-2">
                     <i class="fa-solid fa-bolt"></i> {{ __("Nouveau relevé énergie") }}
                 </h3>
-                <p class="text-[9px] font-bold text-slate-400 normal-case mb-4">{{ __("Saisissez simplement les heures : le gasoil et le coût sont estimés automatiquement.") }}</p>
+                <p class="text-[9px] font-bold text-slate-400 normal-case mb-4">{{ __("Saisissez simplement les heures : le carburant et le coût sont estimés automatiquement.") }}</p>
                 <form method="POST" action="{{ route('utilities.energy.readings.store') }}" class="space-y-3" data-prefill-form="energy">
                     @csrf
                     <div class="grid grid-cols-2 gap-3">
@@ -378,10 +384,10 @@
                     @endif
                     <div class="grid grid-cols-3 gap-3">
                         <input type="number" name="hours_run" step="0.5" min="0" max="24" required placeholder="{{ __('Heures *') }}" class="bg-white border border-slate-100 rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
-                        <input type="number" name="fuel_consumed_liters" step="0.1" min="0" placeholder="{{ __('Gasoil L (auto)') }}" class="bg-white border border-slate-100 rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
+                        <input type="number" name="fuel_consumed_liters" step="0.1" min="0" placeholder="{{ __('Carburant L (auto)') }}" class="bg-white border border-slate-100 rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
                         <input type="number" name="outage_hours" step="0.5" min="0" max="24" placeholder="{{ __('Coupures (h)') }}" class="bg-white border border-slate-100 rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
                     </div>
-                    <input type="number" name="cost" step="100" min="0" placeholder="{{ __('Coût GNF (auto si vide)') }}" class="w-full bg-white border border-slate-100 rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
+                    <input type="number" name="cost" step="100" min="0" placeholder="{{ __('Coût') }} {{ currency() }} ({{ __('auto si vide') }})" class="w-full bg-white border border-slate-100 rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
                     <button type="submit" class="w-full bg-amber-500 text-white py-3 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-amber-600 transition-all border-none cursor-pointer">
                         <i class="fa-solid fa-check mr-1"></i> {{ __("Enregistrer le relevé") }}
                     </button>

@@ -84,7 +84,7 @@
                     <h3 class="text-3xl font-black text-amber-400 tracking-tighter leading-none">
                         {{-- CORRECTION ICI : Remplacement de last_unit_price par unit_price --}}
                         {{ number_format($stock->current_quantity * ($stock->unit_price ?? 0), 0, ',', ' ') }} 
-                        <span class="text-[10px] text-white opacity-50 uppercase font-black">GNF</span>
+                        <span class="text-[10px] text-white opacity-50 uppercase font-black">{{ currency() }}</span>
                     </h3>
                     <p class="text-[8px] text-slate-500 uppercase italic mt-2 font-black leading-none tracking-widest">
                         {{-- CORRECTION ICI AUSSI --}}

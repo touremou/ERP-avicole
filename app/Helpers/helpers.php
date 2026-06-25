@@ -32,6 +32,29 @@ if (! function_exists('setting')) {
     }
 }
 
+if (! function_exists('currency')) {
+    /**
+     * Symbole monétaire de l'application (paramètre general.currency).
+     * Centralise ce qui était codé en dur (« GNF ») un peu partout.
+     */
+    function currency(): string
+    {
+        return (string) setting('general.currency', 'GNF');
+    }
+}
+
+if (! function_exists('money')) {
+    /**
+     * Formate un montant avec la devise courante.
+     *   money(12345)      → "12 345 GNF"
+     *   money(1234.5, 2)  → "1 234,50 GNF"
+     */
+    function money($amount, int $decimals = 0): string
+    {
+        return number_format((float) $amount, $decimals, ',', ' ') . ' ' . currency();
+    }
+}
+
 if (! function_exists('media_url')) {
     /**
      * URL d'un fichier stocké sur le disque "public" (logos, photos, etc.).

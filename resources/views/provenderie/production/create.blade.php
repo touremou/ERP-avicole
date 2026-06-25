@@ -241,7 +241,7 @@
 
                     // Ligne de prix (visible uniquement si MP a un coût)
                     const priceRow = priced
-                        ? `<p class="text-[7px] text-slate-400 italic mt-1">${unitCost.toLocaleString(undefined, {minimumFractionDigits: 0})} GNF/kg</p>`
+                        ? `<p class="text-[7px] text-slate-400 italic mt-1">${unitCost.toLocaleString(undefined, {minimumFractionDigits: 0})} {{ currency() }}/kg</p>`
                         : '';
 
                     html += `

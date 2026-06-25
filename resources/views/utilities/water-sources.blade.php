@@ -182,7 +182,7 @@
                     <div class="grid grid-cols-3 gap-3">
                         <input type="number" name="quality_ph" step="0.1" min="0" max="14" placeholder="{{ __('pH') }}" class="bg-white border border-slate-100 rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
                         <input type="number" name="chlorine_level" step="0.01" min="0" placeholder="{{ __('Chlore mg/L') }}" class="bg-white border border-slate-100 rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
-                        <input type="number" name="cost" step="100" min="0" placeholder="{{ __('Coût GNF') }}" class="bg-white border border-slate-100 rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
+                        <input type="number" name="cost" step="100" min="0" placeholder="{{ __('Coût') }} {{ currency() }}" class="bg-white border border-slate-100 rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
                     </div>
                     <button type="submit" class="w-full bg-cyan-500 text-white py-3 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-cyan-600 transition-all border-none cursor-pointer">
                         <i class="fa-solid fa-check mr-1"></i> {{ __("Enregistrer le relevé") }}

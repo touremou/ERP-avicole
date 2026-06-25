@@ -35,7 +35,7 @@
             @if($waterSources->isEmpty() && $energySources->isEmpty())
             <div class="mb-8 bg-gradient-to-br from-cyan-50 to-amber-50 border border-cyan-100 rounded-[2.5rem] p-8 not-italic">
                 <h3 class="text-lg font-black text-slate-800 uppercase italic tracking-tighter leading-none mb-3">
-                    <i class="fa-solid fa-bolt text-cyan-500 mr-2"></i> {{ __("Pilotez l'eau, l'énergie et le gasoil") }}
+                    <i class="fa-solid fa-bolt text-cyan-500 mr-2"></i> {{ __("Pilotez l'eau, l'énergie et le carburant") }}
                 </h3>
                 <p class="text-[11px] font-bold text-slate-500 normal-case mb-5 max-w-2xl">
                     {{ __("Ce module sécurise deux enjeux vitaux de la ferme :") }}
@@ -43,7 +43,7 @@
                 <div class="grid md:grid-cols-2 gap-4 mb-6">
                     <div class="bg-white/70 rounded-2xl p-4">
                         <p class="text-[10px] font-black text-cyan-600 uppercase tracking-widest mb-1"><i class="fa-solid fa-shield-heart mr-1"></i> {{ __("Continuité de service") }}</p>
-                        <p class="text-[10px] font-bold text-slate-500 normal-case">{{ __("Autonomie gasoil, niveaux de citerne et maintenance des groupes : éviter la coupure qui met un lot en danger.") }}</p>
+                        <p class="text-[10px] font-bold text-slate-500 normal-case">{{ __("Autonomie carburant, niveaux de citerne et maintenance des groupes : éviter la coupure qui met un lot en danger.") }}</p>
                     </div>
                     <div class="bg-white/70 rounded-2xl p-4">
                         <p class="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-1"><i class="fa-solid fa-coins mr-1"></i> {{ __("Maîtrise des coûts") }}</p>
@@ -114,7 +114,12 @@
                     <div class="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm text-center">
                         <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Coût / 1000 têtes") }}</p>
                         <p class="text-xl font-black text-slate-900">{{ number_format($data['water']['cost_per_1000']) }}</p>
-                        <p class="text-[8px] text-slate-400">GNF</p>
+                        <p class="text-[8px] text-slate-400">{{ currency() }}</p>
+                    </div>
+                    <div class="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm text-center">
+                        <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Coût / m³") }}</p>
+                        <p class="text-xl font-black text-cyan-600">{{ number_format($data['water']['cost_per_m3']) }}</p>
+                        <p class="text-[8px] text-slate-400">{{ currency() }}</p>
                     </div>
                     <div @class(['p-5 rounded-[2rem] border shadow-sm text-center',
                         'bg-red-50 border-red-200' => $data['water']['ph_status'] === 'hors_norme',
@@ -171,7 +176,7 @@
                     <div class="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm text-center">
                         <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Coût total") }}</p>
                         <p class="text-xl font-black text-slate-900">{{ number_format($data['energy']['total_cost']) }}</p>
-                        <p class="text-[8px] text-slate-400">GNF</p>
+                        <p class="text-[8px] text-slate-400">{{ currency() }}</p>
                     </div>
                     @if(setting('energie.kwh_price_edg', 0) > 0)
                     <div class="bg-emerald-50 p-5 rounded-[2rem] border border-emerald-100 shadow-sm text-center">
@@ -189,10 +194,17 @@
                         <p class="text-[8px] text-slate-400">{{ __("> 50% = économique") }}</p>
                     </div>
                     <div class="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm text-center">
-                        <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Gasoil consommé") }}</p>
+                        <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Carburant consommé") }}</p>
                         <p class="text-xl font-black text-amber-600">{{ number_format($data['energy']['total_fuel_liters']) }}</p>
                         <p class="text-[8px] text-slate-400">{{ __("litres") }}</p>
                     </div>
+                    @if(($data['energy']['cost_per_kwh'] ?? 0) > 0)
+                    <div class="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm text-center">
+                        <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Coût / kWh") }}</p>
+                        <p class="text-xl font-black text-amber-600">{{ number_format($data['energy']['cost_per_kwh']) }}</p>
+                        <p class="text-[8px] text-slate-400">{{ currency() }}</p>
+                    </div>
+                    @endif
                     <div class="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm text-center">
                         <p class="text-[8px] font-black text-red-400 uppercase tracking-widest mb-1">{{ __("Coupures EDG / jour") }}</p>
                         <p class="text-xl font-black text-slate-900">{{ $data['energy']['daily_outage_avg'] }}h</p>
@@ -223,7 +235,7 @@
 
                         <div class="grid grid-cols-3 gap-3 mb-4">
                             <div class="text-center">
-                                <p class="text-[8px] font-black text-slate-400 uppercase">{{ __("Gasoil") }}</p>
+                                <p class="text-[8px] font-black text-slate-400 uppercase">{{ __("Carburant") }}</p>
                                 <p class="text-lg font-black {{ $groupe->is_fuel_low ? 'text-red-600' : 'text-slate-900' }}">
                                     {{ number_format($groupe->current_fuel_level ?? 0) }}L
                                 </p>
@@ -258,7 +270,7 @@
             </div>
 
             {{-- La saisie des relevés a été déplacée sur les pages dédiées
-                 (Eau / Énergie / Gasoil) pour garder ce tableau de bord en
+                 (Eau / Énergie / Carburant) pour garder ce tableau de bord en
                  vue d'ensemble. Les liens rapides ci-dessous y mènent. --}}
 
             {{-- LIENS RAPIDES --}}
@@ -270,7 +282,7 @@
                     <i class="fa-solid fa-plug mr-1"></i> {{ __("Gérer les sources d'énergie") }}
                 </a>
                 <a href="{{ route('utilities.fuel.index') }}" class="bg-white border border-slate-200 px-5 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest text-slate-600 hover:bg-orange-50 hover:text-orange-600 transition-all no-underline">
-                    <i class="fa-solid fa-gas-pump mr-1"></i> {{ __("Achats gasoil") }}
+                    <i class="fa-solid fa-gas-pump mr-1"></i> {{ __("Achats carburant") }}
                 </a>
             </div>
         </div>

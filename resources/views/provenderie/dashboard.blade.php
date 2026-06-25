@@ -20,7 +20,7 @@
                     <div class="absolute -right-2 -top-2 opacity-5 text-slate-900 group-hover:scale-110 transition-transform"><i class="fa-solid fa-vault text-6xl"></i></div>
                     <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 italic leading-none">{{ __("Trésorerie Matières") }}</p>
                     <p class="text-3xl font-black text-slate-900 tracking-tighter italic leading-none">
-                        {{ number_format($rawMaterialsValue, 0, ',', ' ') }} <small class="text-[10px] opacity-40">GNF</small>
+                        {{ number_format($rawMaterialsValue, 0, ',', ' ') }} <small class="text-[10px] opacity-40">{{ currency() }}</small>
                     </p>
                 </div>
 

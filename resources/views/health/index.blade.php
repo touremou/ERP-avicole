@@ -102,7 +102,7 @@
                 </div>
                 <div class="bg-blue-600 p-7 rounded-[2.5rem] text-white shadow-xl shadow-blue-200 relative overflow-hidden border-b-4 border-blue-800">
                     <p class="text-[9px] text-blue-200 tracking-widest mb-2 leading-none">{{ __("Budget (Page)") }}</p>
-                    <h3 class="text-3xl leading-none tracking-tighter">{{ number_format($checks->sum('cost'), 0, ',', ' ') }} <small class="text-[10px]">GNF</small></h3>
+                    <h3 class="text-3xl leading-none tracking-tighter">{{ number_format($checks->sum('cost'), 0, ',', ' ') }} <small class="text-[10px]">{{ currency() }}</small></h3>
                     <i class="fa-solid fa-vial absolute -right-3 -bottom-3 text-white/10 text-7xl"></i>
                 </div>
 
@@ -218,7 +218,7 @@
                                         <p class="font-black text-slate-900 text-base leading-none italic tracking-tighter">
                                             {{ number_format($check->cost, 0, ',', ' ') }}
                                         </p>
-                                        <p class="text-[9px] text-slate-300 font-black italic tracking-[0.2em] leading-none mt-1">GNF</p>
+                                        <p class="text-[9px] text-slate-300 font-black italic tracking-[0.2em] leading-none mt-1">{{ currency() }}</p>
                                     </div>
                                     
                                     {{-- Permission M/S : Actions --}}

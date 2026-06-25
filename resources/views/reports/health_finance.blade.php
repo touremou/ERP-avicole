@@ -178,8 +178,8 @@
                         <tr class="bg-slate-100 text-slate-900 font-black italic uppercase text-[11px]">
                             <td class="px-12 py-8 border-t border-slate-200">{{ __("Consolidé de la Période") }}</td>
                             <td class="px-8 py-8 text-center border-t border-slate-200">{{ number_format($totalBirdsInTable, 0, ',', ' ') }} {{ __("Têtes traitées") }}</td>
-                            <td class="px-8 py-8 text-right border-t border-slate-200 text-blue-600 text-lg tracking-tighter">{{ number_format($totalGlobalCost, 0, ',', ' ') }} GNF</td>
-                            <td class="px-12 py-8 text-right border-t border-slate-200 bg-slate-200/50">{{ __("Moy. de référence :") }} {{ number_format($averageCostPerHead, 0) }} GNF</td>
+                            <td class="px-8 py-8 text-right border-t border-slate-200 text-blue-600 text-lg tracking-tighter">{{ number_format($totalGlobalCost, 0, ',', ' ') }} {{ currency() }}</td>
+                            <td class="px-12 py-8 text-right border-t border-slate-200 bg-slate-200/50">{{ __("Moy. de référence :") }} {{ number_format($averageCostPerHead, 0) }} {{ currency() }}</td>
                         </tr>
                     </tfoot>
                 </table>

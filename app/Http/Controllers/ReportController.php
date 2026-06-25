@@ -12,7 +12,6 @@ use App\Models\MilkProduction;
 use App\Models\FeedPurchase;
 use App\Models\WaterReading;
 use App\Models\EnergyReading;
-use App\Models\FuelPurchase;
 use App\Models\Payslip;
 use App\Models\Species;
 use App\Models\Expense;
@@ -191,8 +190,18 @@ class ReportController extends Controller
         $costLabor  = (float) Payslip::whereHas('period', fn ($q) => $q->whereBetween('start_date', [$from, $to]))
             ->sum('net_salary');
         $costWater  = (float) WaterReading::whereBetween('reading_date', [$from, $to])->sum('cost');
-        $costEnergy = (float) EnergyReading::whereBetween('reading_date', [$from, $to])->sum('cost');
-        $costFuel   = (float) FuelPurchase::whereBetween('purchase_date', [$from, $to])->sum('total_cost');
+
+        // Énergie : on ne compte au P&L que l'énergie ACHETÉE en cash hors carburant
+        // — l'électricité réseau (EDG) et l'appoint solaire. Le coût des relevés de
+        // GROUPES électrogènes est une estimation du gasoil brûlé : ce gasoil est
+        // déjà porté par la ligne « Carburant » (registre des dépenses, base achats).
+        // On exclut donc les groupes ici pour ne pas compter le carburant deux fois.
+        // (Le coût estimé des groupes reste exploité côté analytique : coût/kWh, coût/h.)
+        $costEnergy = (float) EnergyReading::query()
+            ->join('energy_sources', 'energy_sources.id', '=', 'energy_readings.energy_source_id')
+            ->whereBetween('energy_readings.reading_date', [$from, $to])
+            ->where('energy_sources.type', '!=', 'groupe')
+            ->sum('energy_readings.cost');
 
         // Dépenses diverses validées (registre des dépenses), ventilées par catégorie.
         $expensesByCategory = Expense::validated()
@@ -201,18 +210,28 @@ class ReportController extends Controller
             ->groupBy('category')
             ->pluck('total', 'category');
 
+        // Gasoil : tenu dans le registre des dépenses (catégorie « carburant »),
+        // posté automatiquement par le module Énergie à chaque achat de cuve. On
+        // le lit ici comme poste dédié et on l'exclut de la ventilation générique
+        // plus bas pour ne JAMAIS le compter deux fois.
+        $costFuel = (float) ($expensesByCategory['carburant'] ?? 0);
+
         $costs = [
             'Achats animaux (lots)'   => $costAcquisition,
             'Aliment'                 => $costFeed,
             'Santé / prophylaxie'     => $costHealth,
             'Main d\'œuvre (paie)'    => $costLabor,
             'Eau'                     => $costWater,
-            'Énergie'                 => $costEnergy,
-            'Gasoil'                  => $costFuel,
+            'Énergie réseau (EDG)'    => $costEnergy,
+            'Carburant'               => $costFuel,
         ];
 
-        // Chaque catégorie de dépense devient une ligne de charge dédiée.
+        // Chaque catégorie de dépense devient une ligne de charge dédiée
+        // (le carburant est déjà porté par la ligne « Carburant » ci-dessus).
         foreach ($expensesByCategory as $category => $total) {
+            if ($category === 'carburant') {
+                continue;
+            }
             $label = 'Dépenses : ' . (Expense::CATEGORIES[$category] ?? ucfirst((string) $category));
             $costs[$label] = ($costs[$label] ?? 0) + (float) $total;
         }

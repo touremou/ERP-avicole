@@ -84,7 +84,7 @@
         <h2 class="section">
             {{ $name }}
             @if(! $useDateRange) {{ $currentYear }} @endif
-            — {{ count($mRows) }} {{ __("lot(s)") }} · {{ number_format($mTotal, 0, ',', ' ') }} GNF
+            — {{ count($mRows) }} {{ __("lot(s)") }} · {{ number_format($mTotal, 0, ',', ' ') }} {{ currency() }}
         </h2>
         <table class="data">
             <thead>

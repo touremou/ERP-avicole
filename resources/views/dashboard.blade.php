@@ -30,7 +30,7 @@
                         {{ __("Valeur Mat. Premières") }}
                         <i class="fa-solid fa-circle-info text-slate-300 group-hover:text-blue-500 transition-colors cursor-help" title="{{ __('Valorisation basée sur le Coût Moyen Unitaire Pondéré (CMUP) des derniers achats') }}"></i>
                     </p>
-                    <p class="text-base font-black text-slate-900 leading-none">{{ number_format($rawMaterialsValue ?? 0, 0, ',', ' ') }} <small class="text-[9px] opacity-40">GNF</small></p>
+                    <p class="text-base font-black text-slate-900 leading-none">{{ number_format($rawMaterialsValue ?? 0, 0, ',', ' ') }} <small class="text-[9px] opacity-40">{{ currency() }}</small></p>
                 </div>
                 @endcan
                 
@@ -41,7 +41,7 @@
                         {{ __("Encours Clients") }}
                         <i class="fa-solid fa-circle-info text-slate-300 group-hover:text-rose-500 transition-colors cursor-help" title="{{ __('Montant des ventes non soldées encore dû à la ferme (créances clients)') }}"></i>
                     </p>
-                    <p @class(['text-base font-black leading-none', 'text-rose-600' => ($encoursClients ?? 0) > 0, 'text-slate-900' => ($encoursClients ?? 0) <= 0])>{{ number_format($encoursClients ?? 0, 0, ',', ' ') }} <small class="text-[9px] opacity-40">GNF</small></p>
+                    <p @class(['text-base font-black leading-none', 'text-rose-600' => ($encoursClients ?? 0) > 0, 'text-slate-900' => ($encoursClients ?? 0) <= 0])>{{ number_format($encoursClients ?? 0, 0, ',', ' ') }} <small class="text-[9px] opacity-40">{{ currency() }}</small></p>
                 </div>
 
                 {{-- ENRICHI : Info bulle Marge + Changement de label --}}
@@ -50,7 +50,7 @@
                         {{ __("Marge Nette Mensuelle") }}
                         <i class="fa-solid fa-circle-info text-slate-600 group-hover:text-emerald-300 transition-colors cursor-help" title="{{ __('CA du mois (ventes validées + lait) − charges réelles (aliment + santé + dépenses validées)') }}"></i>
                     </p>
-                    <p class="text-base font-black text-white leading-none">{{ number_format($safeProfit ?? 0, 0, ',', ' ') }} <small class="text-[9px] opacity-40">GNF</small></p>
+                    <p class="text-base font-black text-white leading-none">{{ number_format($safeProfit ?? 0, 0, ',', ' ') }} <small class="text-[9px] opacity-40">{{ currency() }}</small></p>
                 </div>
                 @endcan
             </div>
@@ -536,7 +536,7 @@
                     <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
                         <p class="text-[8px] font-black text-orange-500 uppercase tracking-widest mb-2 italic">{{ __("Coût alim / kg") }}</p>
                         <p class="text-3xl font-black text-slate-900 tracking-tighter italic">{{ $technical['feed_cost_per_kg'] !== null ? number_format($technical['feed_cost_per_kg'], 0, ',', ' ') : '—' }}</p>
-                        <p class="text-[8px] text-slate-400 mt-2 uppercase font-black">GNF / kg vif</p>
+                        <p class="text-[8px] text-slate-400 mt-2 uppercase font-black">{{ currency() }} / kg vif</p>
                     </div>
                     {{-- Prix de revient œuf --}}
                     <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
@@ -545,7 +545,7 @@
                             <i class="fa-solid fa-circle-info text-slate-200 cursor-help" title="{{ __('Indicatif : (aliment + santé des lots de ponte ce mois) / œufs collectés.') }}"></i>
                         </p>
                         <p class="text-3xl font-black text-slate-900 tracking-tighter italic">{{ $technical['cost_per_egg'] !== null ? number_format($technical['cost_per_egg'], 0, ',', ' ') : '—' }}</p>
-                        <p class="text-[8px] text-slate-400 mt-2 uppercase font-black">GNF / œuf</p>
+                        <p class="text-[8px] text-slate-400 mt-2 uppercase font-black">{{ currency() }} / œuf</p>
                     </div>
                 </div>
             </div>
@@ -583,22 +583,22 @@
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                     <div class="bg-slate-800/60 rounded-2xl p-5">
                         <p class="text-[8px] font-black text-blue-300 uppercase tracking-widest italic mb-2">{{ __("Chiffre d'affaires") }}</p>
-                        <p class="text-xl font-black text-white tracking-tighter italic">{{ number_format($financial['ca_total'], 0, ',', ' ') }}<small class="text-[9px] ml-1 opacity-40">GNF</small></p>
+                        <p class="text-xl font-black text-white tracking-tighter italic">{{ number_format($financial['ca_total'], 0, ',', ' ') }}<small class="text-[9px] ml-1 opacity-40">{{ currency() }}</small></p>
                         <p class="text-[8px] text-slate-500 mt-1 uppercase font-black">{{ number_format($financial['ca_ventes'], 0, ',', ' ') }} ventes @if($financial['ca_lait'] > 0)· {{ number_format($financial['ca_lait'], 0, ',', ' ') }} lait @endif</p>
                     </div>
                     <div class="bg-slate-800/60 rounded-2xl p-5">
                         <p class="text-[8px] font-black text-rose-300 uppercase tracking-widest italic mb-2">{{ __("Charges totales") }}</p>
-                        <p class="text-xl font-black text-white tracking-tighter italic">{{ number_format($financial['cost_total'], 0, ',', ' ') }}<small class="text-[9px] ml-1 opacity-40">GNF</small></p>
+                        <p class="text-xl font-black text-white tracking-tighter italic">{{ number_format($financial['cost_total'], 0, ',', ' ') }}<small class="text-[9px] ml-1 opacity-40">{{ currency() }}</small></p>
                         <p class="text-[8px] text-slate-500 mt-1 uppercase font-black">{{ __("Alim + santé + dépenses") }}</p>
                     </div>
                     <div class="bg-slate-800/60 rounded-2xl p-5 border-l-4 {{ $financial['net_margin'] >= 0 ? 'border-emerald-500' : 'border-rose-500' }}">
                         <p class="text-[8px] font-black text-emerald-300 uppercase tracking-widest italic mb-2">{{ __("Marge nette") }}</p>
-                        <p class="text-xl font-black {{ $financial['net_margin'] >= 0 ? 'text-emerald-400' : 'text-rose-400' }} tracking-tighter italic">{{ number_format($financial['net_margin'], 0, ',', ' ') }}<small class="text-[9px] ml-1 opacity-40">GNF</small></p>
+                        <p class="text-xl font-black {{ $financial['net_margin'] >= 0 ? 'text-emerald-400' : 'text-rose-400' }} tracking-tighter italic">{{ number_format($financial['net_margin'], 0, ',', ' ') }}<small class="text-[9px] ml-1 opacity-40">{{ currency() }}</small></p>
                         <p class="text-[8px] text-slate-500 mt-1 uppercase font-black">{{ $financial['ca_total'] > 0 ? number_format($financial['net_margin'] / $financial['ca_total'] * 100, 1) : 0 }}% {{ __("du CA") }}</p>
                     </div>
                     <div class="bg-slate-800/60 rounded-2xl p-5">
                         <p class="text-[8px] font-black text-amber-300 uppercase tracking-widest italic mb-2">{{ __("Trésorerie due") }}</p>
-                        <p class="text-xl font-black text-white tracking-tighter italic">{{ number_format($financial['receivables'], 0, ',', ' ') }}<small class="text-[9px] ml-1 opacity-40">GNF</small></p>
+                        <p class="text-xl font-black text-white tracking-tighter italic">{{ number_format($financial['receivables'], 0, ',', ' ') }}<small class="text-[9px] ml-1 opacity-40">{{ currency() }}</small></p>
                         <p class="text-[8px] text-slate-500 mt-1 uppercase font-black">{{ __("Encours clients") }}</p>
                     </div>
                 </div>

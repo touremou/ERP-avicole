@@ -87,12 +87,12 @@
                            class="w-full p-4 bg-slate-50 rounded-2xl border-none font-black text-2xl text-slate-800 shadow-inner italic outline-none">
                 </div>
                 <div>
-                    <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-1 italic leading-none">{{ __("Budget achat (GNF)") }}</label>
+                    <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-1 italic leading-none">{{ __("Budget achat") }} ({{ currency() }})</label>
                     <input type="number" name="target_budget" min="0" value="{{ old('target_budget', $c->target_budget ?? '') }}" placeholder="0"
                            class="w-full p-4 bg-slate-50 rounded-2xl border-none font-black text-slate-700 shadow-inner italic outline-none">
                 </div>
                 <div>
-                    <label class="block text-[10px] font-black text-amber-500 uppercase mb-2 ml-1 italic leading-none">{{ __("Prix vente cible / tête (GNF)") }}</label>
+                    <label class="block text-[10px] font-black text-amber-500 uppercase mb-2 ml-1 italic leading-none">{{ __("Prix vente cible / tête") }} ({{ currency() }})</label>
                     <input type="number" name="target_sale_price" min="0" value="{{ old('target_sale_price', $c->target_sale_price ?? '') }}" placeholder="0"
                            class="w-full p-4 bg-slate-50 rounded-2xl border-none font-black text-slate-700 shadow-inner italic outline-none">
                 </div>

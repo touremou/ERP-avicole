@@ -97,6 +97,9 @@ class UtilityService
             'daily_avg'        => round($dailyAvg),
             'per_bird_per_day' => round($perBird, 3),
             'cost_per_1000'    => round($costPer1000),
+            // Coût unitaire RÉALISÉ du m³ (coût total ÷ volume consommé) : KPI de
+            // pilotage « usine » — dérive du prix réel, pas du tarif théorique.
+            'cost_per_m3'      => $totalConsumed > 0 ? round($totalCost / ($totalConsumed / 1000)) : 0,
             'daily_trend'      => $dailyTrend,
             'critical_sources' => $criticalSources,
             'last_ph'          => $lastPh?->quality_ph,
@@ -171,6 +174,11 @@ class UtilityService
             'solaire_hours'     => round($solaireHours, 1),
             'edg_ratio'         => $edgRatio,
             'fuel_cost_per_liter' => round($fuelCostPerLiter),
+            // Coûts unitaires RÉALISÉS : coût du kWh autoproduit et coût d'une
+            // heure de fonctionnement (toutes sources). KPI « usine » pour
+            // arbitrer EDG vs groupe et détecter une dérive de rendement.
+            'cost_per_kwh'      => $totalKwh > 0 ? round($totalCost / $totalKwh) : 0,
+            'cost_per_hour'     => $totalHours > 0 ? round($totalCost / $totalHours) : 0,
             'daily_trend'       => $dailyTrend,
         ];
     }

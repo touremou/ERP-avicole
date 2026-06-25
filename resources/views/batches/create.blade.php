@@ -173,7 +173,7 @@
                                 </div>
 
                                 <div>
-                                    <label class="block text-[10px] font-black text-blue-600 uppercase mb-2 ml-1 italic leading-none">{{ __("Prix Unitaire (GNF)") }}</label>
+                                    <label class="block text-[10px] font-black text-blue-600 uppercase mb-2 ml-1 italic leading-none">{{ __("Prix Unitaire") }} ({{ currency() }})</label>
                                     <input type="number" name="buy_price_per_unit" id="buy_price" value="{{ old('buy_price_per_unit', 0) }}" oninput="calculateAll()" min="0" required
                                            class="w-full p-5 bg-slate-50 rounded-2xl border-none font-black text-2xl text-blue-700 shadow-inner italic leading-none">
                                 </div>
@@ -257,7 +257,7 @@
 
                                 <div class="p-6 bg-white/5 rounded-3xl border border-white/10 italic text-left">
                                     <p class="text-[8px] font-black text-slate-500 uppercase mb-2 leading-none tracking-widest">{{ __("Total Facture") }}</p>
-                                    <p class="text-2xl font-black text-emerald-400 tracking-tighter leading-none" id="total_cost_display">0 GNF</p>
+                                    <p class="text-2xl font-black text-emerald-400 tracking-tighter leading-none" id="total_cost_display">0 {{ currency() }}</p>
                                 </div>
                             </div>
 
@@ -432,7 +432,7 @@
         // --- TOTAL FACTURE FACTURÉ ---
         const totalFacture = (qtyAlive + qtyDead) * buyPrice;
         if(el('total_cost_display')) {
-            el('total_cost_display').innerText = new Intl.NumberFormat('fr-FR').format(totalFacture) + " GNF";
+            el('total_cost_display').innerText = new Intl.NumberFormat('fr-FR').format(totalFacture) + " {{ currency() }}";
         }
 
         // --- VALIDATION ---

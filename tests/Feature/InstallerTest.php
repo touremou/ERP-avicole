@@ -2,6 +2,13 @@
 
 uses(Tests\TestCase::class);
 
+// Le marqueur storage/installed est un fichier disque partagé : un run précédent
+// interrompu (OOM, Ctrl-C) pouvait le laisser traîner et faire échouer le 1er test.
+// On garantit un état propre AVANT et APRÈS chaque test (idempotence).
+beforeEach(function () {
+    @unlink(storage_path('installed'));
+});
+
 afterEach(function () {
     @unlink(storage_path('installed'));
 });

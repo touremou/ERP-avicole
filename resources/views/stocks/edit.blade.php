@@ -144,7 +144,7 @@
 
                             {{-- PRIX UNITAIRE (NOUVEAU) --}}
                             <div>
-                                <label class="text-[10px] uppercase text-slate-400 ml-6 mb-2 block tracking-widest font-black italic">{{ __("Prix Unitaire (GNF)") }}</label>
+                                <label class="text-[10px] uppercase text-slate-400 ml-6 mb-2 block tracking-widest font-black italic">{{ __("Prix Unitaire") }} ({{ currency() }})</label>
                                 {{-- On utilise last_unit_price ou unit_price selon le nom de ta colonne en BDD --}}
                                 <input type="number" name="unit_price" step="1" value="{{ old('unit_price', $stock->unit_price ?? $stock->last_unit_price ?? 0) }}" required
                                         class="w-full bg-slate-50 border-none rounded-[2rem] p-5 font-black text-blue-500 focus:ring-2 focus:ring-blue-500 shadow-inner text-center italic">

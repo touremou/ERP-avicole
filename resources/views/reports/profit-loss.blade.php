@@ -40,17 +40,17 @@
                 <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm">
                     <p class="text-[9px] font-black text-emerald-500 uppercase tracking-widest mb-2 italic">{{ __("Produits") }}</p>
                     <p class="text-3xl font-black text-slate-900 italic tracking-tighter">{{ number_format($totalRevenue) }}</p>
-                    <p class="text-[8px] text-slate-400 mt-2 uppercase font-black">GNF</p>
+                    <p class="text-[8px] text-slate-400 mt-2 uppercase font-black">{{ currency() }}</p>
                 </div>
                 <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm">
                     <p class="text-[9px] font-black text-rose-500 uppercase tracking-widest mb-2 italic">{{ __("Charges") }}</p>
                     <p class="text-3xl font-black text-slate-900 italic tracking-tighter">{{ number_format($totalCosts) }}</p>
-                    <p class="text-[8px] text-slate-400 mt-2 uppercase font-black">GNF</p>
+                    <p class="text-[8px] text-slate-400 mt-2 uppercase font-black">{{ currency() }}</p>
                 </div>
                 <div class="p-8 rounded-[3rem] shadow-2xl {{ $netResult >= 0 ? 'bg-emerald-600' : 'bg-rose-600' }} text-white">
                     <p class="text-[9px] font-black uppercase tracking-widest mb-2 italic opacity-80">{{ __("Résultat net") }}</p>
                     <p class="text-3xl font-black italic tracking-tighter">{{ number_format($netResult) }}</p>
-                    <p class="text-[8px] mt-2 uppercase font-black opacity-80">{{ __("Marge") }} {{ $marginPct }}% · GNF</p>
+                    <p class="text-[8px] mt-2 uppercase font-black opacity-80">{{ __("Marge") }} {{ $marginPct }}% · {{ currency() }}</p>
                 </div>
             </div>
 
