@@ -11,6 +11,10 @@
                 </div>
             </div>
             <div class="flex gap-2">
+                {{-- Vérifier la présence qui sous-tend la paie (drill-down). --}}
+                <a href="{{ route('attendance.report', ['from' => $period->start_date->toDateString(), 'to' => $period->end_date->toDateString()]) }}"
+                   class="bg-white border border-slate-200 text-slate-600 px-5 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-violet-50 hover:text-violet-600 transition-all no-underline shadow-sm italic"><i class="fa-solid fa-user-check mr-1"></i> {{ __("Présence du mois") }}</a>
+
                 {{-- Générer = Modification (M) --}}
                 @can('annuaire.M')
                     @if($period->status === 'brouillon')
@@ -93,6 +97,7 @@
                             <td class="px-3 py-3 text-center text-[9px] font-black text-slate-500">
                                 {{ $slip->days_worked }}{{ __("j") }}
                                 @if($slip->days_absent > 0)<span class="text-red-500 ml-1">-{{ $slip->days_absent }}{{ __("abs") }}</span>@endif
+                                @if($slip->days_leave > 0)<span class="text-violet-500 ml-1">{{ $slip->days_leave }}{{ __("cg") }}</span>@endif
                             </td>
                             <td class="px-3 py-3 text-center">
                                 <span @class(['text-[8px] font-black uppercase px-2 py-1 rounded-full',

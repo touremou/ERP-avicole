@@ -336,6 +336,27 @@ class NotificationHub
     }
 
     /**
+     * Alerte PIC de mortalité QUOTIDIEN (early-warning maladie), par bâtiment.
+     *
+     * Complète l'alerte de mortalité CUMULÉE (seuil 5 %, qui arrive tard) : un
+     * pic journalier anormal (≥ seuil quotidien en nombre ET en %) signale une
+     * maladie, un problème d'eau/température ou une intoxication AVANT que le
+     * cumul ne devienne critique. Déclenchée à la saisie du pointage.
+     */
+    public function alertDailyMortalitySpike(Batch $batch, int $deaths, float $dailyRate): void
+    {
+        $building = $batch->building->name ?? 'Bâtiment ?';
+        $message = "🚨 *PIC DE MORTALITÉ — {$building}*\n\n"
+            . "Lot : *{$batch->code}*\n"
+            . "Bâtiment : {$building}\n"
+            . "Morts AUJOURD'HUI : *{$deaths}* ({$dailyRate}% de l'effectif)\n"
+            . "Effectif restant : {$batch->current_quantity}\n\n"
+            . "Mortalité quotidienne ANORMALE : vérifier maladie, eau, température, intoxication. Isoler les sujets atteints et appeler le vétérinaire si besoin.";
+
+        $this->broadcast('alert_mortality', $message, 'Pic mortalité ' . $batch->code, 'critique');
+    }
+
+    /**
      * Alerte stock critique.
      */
     public function alertStockCritical(Stock $stock): void

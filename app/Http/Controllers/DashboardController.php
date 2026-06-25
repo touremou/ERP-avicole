@@ -456,6 +456,38 @@ class DashboardController extends Controller
     }
 
     /**
+     * Vue analytique CONSOLIDÉE : mortalité + eau + énergie sur une même échelle
+     * de temps, pour repérer les corrélations (coupure énergie/ventilation → pic
+     * de mortalité, chute d'eau → maladie) sans naviguer entre les modules.
+     */
+    public function analytics(Request $request)
+    {
+        $days = (int) $request->input('days', 30);
+        $days = max(7, min(90, $days)); // borné 7-90 j
+
+        $batchIds = Batch::active()->live()->pluck('id')->all();
+
+        $series = (new \App\Services\DashboardInsightsService())
+            ->consolidatedTrends($batchIds, $days);
+
+        // Synthèse + corrélation simple : le jour de mortalité maximale et ce qui
+        // s'y passait côté eau/énergie (lecture immédiate pour le pilotage).
+        $totalMortality = array_sum($series['mortality']);
+        $totalWater     = array_sum($series['water']);
+        $totalEnergy    = array_sum($series['energy']);
+
+        $peakIdx = $series['mortality'] ? array_keys($series['mortality'], max($series['mortality']))[0] : null;
+        $peak = ($peakIdx !== null && max($series['mortality']) > 0) ? [
+            'date'      => $series['labels'][$peakIdx],
+            'mortality' => $series['mortality'][$peakIdx],
+            'water'     => $series['water'][$peakIdx],
+            'energy'    => $series['energy'][$peakIdx],
+        ] : null;
+
+        return view('dashboard-analytics', compact('series', 'days', 'totalMortality', 'totalWater', 'totalEnergy', 'peak'));
+    }
+
+    /**
      * Assemble les alertes éparses du tableau de bord en une liste unique triée
      * par criticité, pour un bandeau « centre de contrôle » actionnable.
      *

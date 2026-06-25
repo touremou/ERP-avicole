@@ -22,7 +22,7 @@ use Illuminate\View\View;
  * Bugs corrigés :
  * - S-10 : suppression du try/catch PDO (le faux mode offline)
  * - B-13 : l'Action utilise updateOrCreate avec UNIQUE index garanti (Phase 1)
- * - S-11 : lockForUpdate géré par DailyCheckObserver (Phase 2)
+ * - S-11 : lockForUpdate géré par DailyCheck::booted() (Phase 2)
  */
 class DailyCheckController extends Controller
 {
@@ -140,7 +140,7 @@ class DailyCheckController extends Controller
      * Enregistrement d'un pointage.
      *
      * La logique métier (stock aliment, updateOrCreate, compensation) est dans RecordDailyCheck.
-     * L'impact sur current_quantity est dans DailyCheckObserver.
+     * L'impact sur current_quantity est dans DailyCheck::booted().
      */
     public function store(StoreDailyCheckRequest $request, RecordDailyCheck $action): RedirectResponse
     {
@@ -226,7 +226,7 @@ class DailyCheckController extends Controller
      * Mise à jour d'un pointage.
      *
      * Gère la compensation de stock aliment et le recalcul d'impact sur le lot.
-     * Le DailyCheckObserver gère la mise à jour de current_quantity.
+     * Les hooks de DailyCheck::booted() gèrent la mise à jour de current_quantity.
      */
     public function update(UpdateDailyCheckRequest $request, DailyCheck $daily_check): RedirectResponse
     {
@@ -296,7 +296,7 @@ class DailyCheckController extends Controller
                 $validated['feed_unit_cost'] = 0;
             }
 
-            // L'observer DailyCheckObserver gère le diff sur current_quantity
+            // Les hooks de DailyCheck::booted() gèrent le diff sur current_quantity
             $check->update($validated);
 
             // Compensation du stock fumier (restitue l'ancien ramassage,
@@ -374,7 +374,7 @@ class DailyCheckController extends Controller
                 app(\App\Actions\DailyCheck\SyncWaterConsumption::class)->execute($check->batch, (float) $check->water_consumed, 0);
             }
 
-            // L'observer DailyCheckObserver gère la restitution de current_quantity
+            // Les hooks de DailyCheck::booted() gèrent la restitution de current_quantity
             $check->delete();
 
             return redirect()->route('batches.show', $batchId)

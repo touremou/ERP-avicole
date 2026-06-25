@@ -144,8 +144,8 @@ class SyncController extends Controller
     /**
      * Réconcilie un pointage journalier saisi offline.
      *
-     * IMPORTANT : L'observer DailyCheck (DailyCheckObserver ou booted())
-     * gère automatiquement le décrémentage de batch.current_quantity.
+     * IMPORTANT : Les hooks de DailyCheck::booted()
+     * gèrent automatiquement le décrémentage de batch.current_quantity.
      * On NE FAIT PAS de décrémentation manuelle ici pour éviter le double comptage.
      *
      * Pour l'aliment consommé : on utilise StockIntegrationService pour la traçabilité.

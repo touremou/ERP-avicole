@@ -24,9 +24,9 @@ use App\Models\EnergyReading;
  * - qty_dead = mortalité d'arrivage uniquement, figé après création
  * - total_mortality = accessor calculé depuis qty_dead + SUM(daily_checks.mortality)
  *
- * Observers enregistrés dans AppServiceProvider :
- * - BatchObserver : alertes mortalité, cascade soft-delete
- * - DailyCheckObserver : impact sur current_quantity (lockForUpdate)
+ * Hooks d'effectif :
+ * - BatchObserver (enregistré dans AppServiceProvider) : alertes mortalité, cascade soft-delete
+ * - DailyCheck::booted() : impact sur current_quantity (lockForUpdate)
  */
 class Batch extends Model
 {
@@ -297,7 +297,7 @@ class Batch extends Model
             }
         });
 
-        // NOTE : Les hooks d'impact sur current_quantity sont dans DailyCheckObserver
+        // NOTE : Les hooks d'impact sur current_quantity sont dans DailyCheck::booted()
         // Les hooks d'alerte mortalité et cascade soft-delete sont dans BatchObserver
     }
 

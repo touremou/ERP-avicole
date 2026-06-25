@@ -21,10 +21,11 @@
 @if(request()->routeIs('dashboard'))
     <span class="{{ $sectionClass }}"><i class="fa-solid fa-house mr-1 text-blue-500"></i> {{ __("Accueil") }}</span>
 
-@elseif(request()->routeIs(['employees.*', 'payroll.*', 'tasks.*', 'providers.*']))
+@elseif(request()->routeIs(['employees.*', 'payroll.*', 'tasks.*', 'providers.*', 'attendance.*']))
     <span class="{{ $sectionClass }}"><i class="fa-solid fa-users text-slate-500 mr-1"></i> {{ __("Annuaire") }}</span>
     @can('annuaire.L')
     <a href="{{ route('employees.index') }}" class="{{ $linkClass }} {{ request()->routeIs('employees.*') ? $activeClass : $inactiveClass }}">{{ __("Employés") }}</a>
+    <a href="{{ route('attendance.index') }}" class="{{ $linkClass }} {{ request()->routeIs('attendance.*') ? $activeClass : $inactiveClass }}">{{ __("Présence") }}</a>
     <a href="{{ route('providers.index') }}" class="{{ $linkClass }} {{ request()->routeIs('providers.*') ? $activeClass : $inactiveClass }}">{{ __("Fournisseurs") }}</a>
     <a href="{{ route('tasks.index') }}" class="{{ $linkClass }} {{ request()->routeIs('tasks.index') ? $activeClass : $inactiveClass }}">{{ __("Tâches") }}</a>
     <a href="{{ route('payroll.index') }}" class="{{ $linkClass }} {{ request()->routeIs('payroll.index') ? $activeClass : $inactiveClass }}">{{ __("Paie") }}</a>
@@ -97,8 +98,11 @@
     <a href="{{ route('slaughter.finished') }}" class="{{ $linkClass }} {{ request()->routeIs('slaughter.finished*') ? $activeClass : $inactiveClass }}">{{ __("Produits Finis") }}</a>
     @endcan
 
-@elseif(request()->routeIs(['sales.*', 'clients.*', 'payments.*']))
+@elseif(request()->routeIs(['sales.*', 'clients.*', 'payments.*', 'pos.*']))
     <span class="{{ $sectionClass }}"><i class="fa-solid fa-cash-register text-teal-500 mr-1"></i> {{ __("Commerce") }}</span>
+    @can('commerce.C')
+    <a href="{{ route('pos.index') }}" class="{{ $linkClass }} {{ request()->routeIs('pos.*') ? $activeClass : $inactiveClass }}">{{ __("Caisse") }}</a>
+    @endcan
     @can('commerce.L')
     <a href="{{ route('sales.index') }}" class="{{ $linkClass }} {{ request()->routeIs('sales.*') ? $activeClass : $inactiveClass }}">{{ __("Ventes") }}</a>
     <a href="{{ route('clients.index') }}" class="{{ $linkClass }} {{ request()->routeIs('clients.*') ? $activeClass : $inactiveClass }}">{{ __("Clients") }}</a>

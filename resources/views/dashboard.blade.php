@@ -551,6 +551,13 @@
             </div>
             @endif
 
+            {{-- Accès à la vue analytique consolidée (eau + énergie + mortalité) --}}
+            <div class="mb-4 flex justify-end">
+                <a href="{{ route('dashboard.analytics') }}" class="inline-flex items-center gap-2 px-5 py-2.5 bg-slate-900 text-white rounded-2xl text-[9px] font-black uppercase tracking-widest hover:bg-blue-600 transition-all no-underline shadow-lg italic">
+                    <i class="fa-solid fa-magnifying-glass-chart"></i> {{ __("Vue analytique consolidée") }}
+                </a>
+            </div>
+
             {{-- TENDANCES 30 JOURS (graphiques Chart.js) --}}
             <div class="mb-10 grid grid-cols-1 lg:grid-cols-3 gap-6"
                  x-data="dashboardTrends({{ Illuminate\Support\Js::from($trends ?? ['labels' => [], 'mortality' => [], 'eggs' => [], 'feed' => []]) }})">

@@ -89,6 +89,7 @@ class DailyCheck extends Model
                 static::applyBatchImpact($check->batch_id, -$impact);
             }
             static::autoCompleteTasks($check);
+            static::checkDailyMortalitySpike($check);
         });
 
         // Avant update → calculer le diff et le stocker dans le tableau statique
@@ -191,5 +192,46 @@ class DailyCheck extends Model
     {
         if ($this->temp_min === null || $this->temp_max === null) return null;
         return round(((float) $this->temp_min + (float) $this->temp_max) / 2, 1);
+    }
+
+    /**
+     * Détecte un PIC de mortalité QUOTIDIEN anormal et alerte (par bâtiment) —
+     * early-warning maladie, complémentaire de l'alerte de mortalité CUMULÉE
+     * (5 %, qui arrive trop tard). Garde-fou double (cf. paramètres
+     * elevage.daily_mortality_alert_min/pct) : on exige un MINIMUM de morts en
+     * valeur absolue ET un taux quotidien élevé, pour ne pas alerter sur un
+     * décès isolé. L'envoi est isolé (rescue) : une panne de notification ne
+     * casse jamais la saisie du pointage.
+     */
+    protected static function checkDailyMortalitySpike(self $check): void
+    {
+        $deaths = (int) $check->mortality;
+        if ($deaths <= 0) {
+            return;
+        }
+
+        $minDeaths = (int) setting('elevage.daily_mortality_alert_min', 3);
+        if ($deaths < $minDeaths) {
+            return;
+        }
+
+        $batch = Batch::with('building')->find($check->batch_id);
+        if (! $batch || $batch->status !== Batch::STATUS_ACTIF) {
+            return;
+        }
+
+        // Effectif AVANT le pointage du jour = effectif courant + impact net appliqué.
+        $effectifBefore = max(1, (int) $batch->current_quantity + $check->calculateNetImpact());
+        $dailyRate = round($deaths / $effectifBefore * 100, 2);
+
+        if ($dailyRate < (float) setting('elevage.daily_mortality_alert_pct', 0.5)) {
+            return;
+        }
+
+        rescue(
+            fn () => app(\App\Services\NotificationHub::class)->alertDailyMortalitySpike($batch, $deaths, $dailyRate),
+            fn ($e) => \Illuminate\Support\Facades\Log::warning("Alerte pic mortalité non émise (pointage #{$check->id}) : {$e->getMessage()}"),
+            report: false
+        );
     }
 }

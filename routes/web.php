@@ -102,6 +102,7 @@ Route::get('/media/{path}', [MediaController::class, 'show'])
 // ──────────────────────────────────────────────
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/dashboard/analytics', [DashboardController::class, 'analytics'])->name('dashboard.analytics');
 
     // Espace personnel de l'utilisateur connecté (lecture seule).
     Route::get('/mon-espace', [EmployeeSelfController::class, 'index'])->name('mon-espace');
@@ -514,6 +515,12 @@ Route::middleware(['auth'])->group(function () {
     });
 
     // ─── VENTES & BONS DE LIVRAISON ───
+    // ─── POINT DE VENTE (POS / caisse, module: commerce) ───
+    Route::prefix('pos')->name('pos.')->controller(\App\Http\Controllers\PosController::class)->group(function () {
+        Route::get('/', 'index')->name('index')->middleware('can:C');
+        Route::post('/checkout', 'checkout')->name('checkout')->middleware('can:C');
+    });
+
     Route::prefix('sales')->name('sales.')->controller(SaleController::class)->group(function () {
         Route::get('/', 'index')->name('index')->middleware('can:L');
         Route::get('/create', 'create')->name('create')->middleware('can:C');
@@ -523,6 +530,9 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/{sale}/validate', 'validate')->name('validate')->middleware('can:M');
         Route::put('/{sale}/deliver', 'deliver')->name('deliver')->middleware('can:M');
         Route::put('/{sale}/cancel', 'cancel')->name('cancel')->middleware('can:S');
+        // Retours client & remboursements (avoirs).
+        Route::get('/{sale}/return', [\App\Http\Controllers\SaleReturnController::class, 'create'])->name('return.create')->middleware('can:M');
+        Route::post('/{sale}/return', [\App\Http\Controllers\SaleReturnController::class, 'store'])->name('return.store')->middleware('can:M');
     });
 
     // ─── PAIEMENTS / ENCAISSEMENTS ───
@@ -737,6 +747,15 @@ Route::middleware(['auth'])->group(function () {
     });
 
     // ─── PAIE & CONGÉS (RH) ───
+    // ─── POINTAGE DE PRÉSENCE (RH léger, module: annuaire) ───
+    Route::prefix('attendance')->name('attendance.')->controller(\App\Http\Controllers\AttendanceController::class)->group(function () {
+        Route::get('/', 'index')->name('index')->middleware('can:L');
+        Route::post('/', 'store')->name('store')->middleware('can:C');
+        Route::get('/report', 'report')->name('report')->middleware('can:L');
+        Route::get('/report/csv', 'exportCsv')->name('report.csv')->middleware('can:L');
+        Route::get('/report/pdf', 'exportPdf')->name('report.pdf')->middleware('can:L');
+    });
+
     Route::prefix('payroll')->name('payroll.')->controller(PayrollController::class)->group(function () {
         Route::get('/', 'index')->name('index')->middleware('can:L');
         Route::post('/period', 'createPeriod')->name('create-period')->middleware('can:C');

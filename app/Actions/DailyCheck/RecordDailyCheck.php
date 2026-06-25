@@ -18,7 +18,7 @@ use Illuminate\Validation\ValidationException;
  * 3. La compensation stock si c'est une mise à jour (annule l'ancien mouvement)
  * 4. Le mouvement de sortie stock (via StockIntegrationService)
  *
- * L'impact sur Batch::current_quantity est géré par DailyCheckObserver.
+ * L'impact sur Batch::current_quantity est géré par DailyCheck::booted().
  */
 class RecordDailyCheck
 {
@@ -88,7 +88,7 @@ class RecordDailyCheck
             }
 
             // ─── Création ou mise à jour du pointage ───
-            // Note : l'observer DailyCheckObserver gère l'impact sur current_quantity
+            // Note : DailyCheck::booted() gère l'impact sur current_quantity
             $check = DailyCheck::updateOrCreate(
                 [
                     'batch_id'   => $data['batch_id'],

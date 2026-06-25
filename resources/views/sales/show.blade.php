@@ -29,6 +29,13 @@
                         </button>
                     </form>
                 @endif
+                @if(in_array($sale->status, ['valide', 'livre']))
+                    @can('commerce.M')
+                    <a href="{{ route('sales.return.create', $sale) }}" class="bg-orange-50 border border-orange-200 text-orange-600 px-6 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-orange-100 transition-all no-underline flex items-center gap-2">
+                        <i class="fa-solid fa-rotate-left"></i> {{ __("Retour") }}
+                    </a>
+                    @endcan
+                @endif
                 <a href="{{ route('sales.print', $sale) }}" target="_blank" class="bg-white border border-slate-200 px-6 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest text-slate-600 hover:bg-slate-50 transition-all no-underline flex items-center gap-2">
                     <i class="fa-solid fa-print"></i> {{ __("Imprimer") }}
                 </a>
