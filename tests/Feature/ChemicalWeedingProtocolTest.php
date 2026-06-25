@@ -50,6 +50,25 @@ test('les 8 variantes désherbage chimique existent et suppriment le sarclage ma
     }
 });
 
+test('le désherbage total au glyphosate est planifié AVANT la plantation (jour négatif)', function () {
+    $crops = [
+        'Maïs', 'Riz pluvial', 'Manioc', 'Arachide',
+        'Tomate (repiquée)', 'Pomme de terre', 'Oignon (repiqué)', 'Haricot vert',
+    ];
+    foreach ($crops as $crop) {
+        $p = CropProtocol::where('name', "Itinéraire {$crop} — désherbage chimique")->first();
+        $prep = $p->items()->where('stage', 'Préparation')->first();
+
+        expect($prep)->not->toBeNull("pas d'étape Préparation pour {$crop}")
+            ->and($prep->day_number)->toBeLessThan(0)                  // AVANT le J0 de plantation
+            ->and($prep->product_suggested)->toContain('Glyphosate');
+
+        // Le J0 reste la plantation/semis, pas le glyphosate.
+        $j0 = $p->items()->where('day_number', 0)->orderBy('id')->first();
+        expect($j0->stage)->not->toBe('Préparation');
+    }
+});
+
 test('le haricot vert (légumineuse) bannit 2,4-D / atrazine / metribuzine et utilise la bentazone', function () {
     $h = CropProtocol::where('name', 'Itinéraire Haricot vert — désherbage chimique')->first();
 

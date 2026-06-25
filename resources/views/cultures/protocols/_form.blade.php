@@ -44,8 +44,8 @@
         <div class="bg-slate-50 rounded-[1.5rem] p-4 mb-3">
             <div class="grid grid-cols-12 gap-2 items-center">
                 <div class="col-span-2">
-                    <label class="block text-[7px] font-black text-slate-400 uppercase italic mb-1">{{ __("J+ (DAP)") }}</label>
-                    <input type="number" min="0" :name="`items[${i}][day_number]`" x-model="item.day_number" placeholder="0" class="w-full bg-white border-none rounded-xl p-2.5 font-black text-slate-800 shadow-inner italic text-[11px] text-center">
+                    <label class="block text-[7px] font-black text-slate-400 uppercase italic mb-1">{{ __("Jour (DAP, négatif = avant semis)") }}</label>
+                    <input type="number" min="-60" :name="`items[${i}][day_number]`" x-model="item.day_number" placeholder="0" class="w-full bg-white border-none rounded-xl p-2.5 font-black text-slate-800 shadow-inner italic text-[11px] text-center">
                 </div>
                 <div class="col-span-3">
                     <label class="block text-[7px] font-black text-slate-400 uppercase italic mb-1">{{ __("Stade") }}</label>
