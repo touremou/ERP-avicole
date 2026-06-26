@@ -110,8 +110,13 @@
     <a href="{{ route('returns.index') }}" class="{{ $linkClass }} {{ request()->routeIs('returns.*') ? $activeClass : $inactiveClass }}">{{ __("Avoirs") }}</a>
     @endcan
 
-@elseif(request()->routeIs('expenses.*'))
-    <span class="{{ $sectionClass }}"><i class="fa-solid fa-receipt text-rose-500 mr-1"></i> {{ __("Dépenses") }}</span>
+@elseif(request()->routeIs(['expenses.*', 'budgets.*', 'treasury.*']))
+    <span class="{{ $sectionClass }}"><i class="fa-solid fa-receipt text-rose-500 mr-1"></i> {{ __("Finance") }}</span>
+    @can('depenses.L')
+    <a href="{{ route('treasury.index') }}" class="{{ $linkClass }} {{ request()->routeIs('treasury.*') ? $activeClass : $inactiveClass }}">{{ __("Trésorerie") }}</a>
+    <a href="{{ route('expenses.index') }}" class="{{ $linkClass }} {{ request()->routeIs('expenses.*') ? $activeClass : $inactiveClass }}">{{ __("Dépenses") }}</a>
+    <a href="{{ route('budgets.index') }}" class="{{ $linkClass }} {{ request()->routeIs('budgets.*') ? $activeClass : $inactiveClass }}">{{ __("Budgets") }}</a>
+    @endcan
 
 @elseif(request()->routeIs('notifications.*'))
     <span class="{{ $sectionClass }}"><i class="fa-solid fa-bell text-emerald-500 mr-1"></i> {{ __("Notifications") }}</span>
