@@ -8,6 +8,8 @@ use App\Models\CropCampaign;
 use App\Models\CropCycle;
 use App\Models\CropInput;
 use App\Models\CropProtocol;
+use App\Models\CropProtocolCompletion;
+use App\Models\CropProtocolItem;
 use App\Models\CropSpecies;
 use App\Models\Employee;
 use App\Models\Harvest;
@@ -141,6 +143,7 @@ class CropCycleController extends Controller
             'protocol.items',
             'harvests.employee:id,first_name,last_name',
             'inputs.provider:id,name',
+            'protocolCompletions.completedBy:id,name',
         ]);
 
         // Conseils agronomiques (uniquement pour un cycle non archivé).
@@ -174,6 +177,53 @@ class CropCycleController extends Controller
             'employees'  => Employee::where('status', 'Actif')->orderBy('first_name')->get(['id', 'first_name', 'last_name']),
             'providers'  => Provider::orderBy('name')->get(['id', 'name']),
         ]);
+    }
+
+    /**
+     * Valide (marque « fait ») une étape de l'itinéraire technique du cycle.
+     *
+     * Idempotent : revalider une étape déjà validée ne crée pas de doublon
+     * (updateOrCreate sur la clé cycle × étape) et rafraîchit horodatage/auteur.
+     */
+    public function completeStep(Request $request, CropCycle $cropCycle, CropProtocolItem $item)
+    {
+        if (Gate::denies('cultures.M')) {
+            return back()->with('error', 'Action non autorisée.');
+        }
+
+        // L'étape doit appartenir au protocole rattaché à ce cycle.
+        if (! $cropCycle->crop_protocol_id || $item->crop_protocol_id !== $cropCycle->crop_protocol_id) {
+            return back()->with('error', 'Cette étape n\'appartient pas à l\'itinéraire du cycle.');
+        }
+
+        $data = $request->validate([
+            'notes' => 'nullable|string|max:500',
+        ]);
+
+        CropProtocolCompletion::updateOrCreate(
+            ['crop_cycle_id' => $cropCycle->id, 'crop_protocol_item_id' => $item->id],
+            [
+                'completed_at' => now(),
+                'completed_by' => $request->user()?->id,
+                'notes'        => $data['notes'] ?? null,
+            ]
+        );
+
+        return back()->with('success', "Étape « {$item->action_name} » validée.");
+    }
+
+    /** Annule la validation d'une étape (réouvre le suivi). */
+    public function uncompleteStep(CropCycle $cropCycle, CropProtocolItem $item)
+    {
+        if (Gate::denies('cultures.M')) {
+            return back()->with('error', 'Action non autorisée.');
+        }
+
+        CropProtocolCompletion::where('crop_cycle_id', $cropCycle->id)
+            ->where('crop_protocol_item_id', $item->id)
+            ->delete();
+
+        return back()->with('success', "Validation de l'étape « {$item->action_name} » annulée.");
     }
 
     public function update(Request $request, CropCycle $cropCycle)

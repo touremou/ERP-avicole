@@ -116,6 +116,12 @@ class CropCycle extends Model
         return $this->hasMany(CropInput::class);
     }
 
+    /** Validations explicites d'étapes de l'itinéraire technique. */
+    public function protocolCompletions(): HasMany
+    {
+        return $this->hasMany(CropProtocolCompletion::class);
+    }
+
     // ─── SCOPES ───
 
     /** Cycles en cours (semés OU en récolte) — occupent la parcelle. */

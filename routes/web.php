@@ -294,6 +294,10 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{cropCycle}/inputs/{input}/edit', 'editInput')->name('inputs.edit')->middleware('can:M');
         Route::put('/{cropCycle}/inputs/{input}', 'updateInput')->name('inputs.update')->middleware('can:M');
         Route::delete('/{cropCycle}/inputs/{input}', 'destroyInput')->name('inputs.destroy')->middleware('can:S');
+
+        // Validation des étapes de l'itinéraire technique appliqué au cycle.
+        Route::post('/{cropCycle}/protocol-steps/{item}/complete', 'completeStep')->name('steps.complete')->middleware('can:M');
+        Route::delete('/{cropCycle}/protocol-steps/{item}/complete', 'uncompleteStep')->name('steps.uncomplete')->middleware('can:M');
     });
 
     Route::prefix('cultures/transformations')->name('crop-transformations.')->controller(CropTransformationController::class)->group(function () {

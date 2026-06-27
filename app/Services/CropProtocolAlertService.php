@@ -28,7 +28,7 @@ class CropProtocolAlertService
      * Calendrier projeté du cycle : une entrée par étape du protocole avec
      * date cible, statut (done|overdue|due|upcoming) et retard en jours.
      *
-     * @return array<int, array{item: CropProtocolItem, target_date: Carbon, status: string, delay_days: int}>
+     * @return array<int, array{item: CropProtocolItem, target_date: Carbon, status: string, delay_days: int, completion: ?\App\Models\CropProtocolCompletion}>
      */
     public function getCycleSchedule(CropCycle $cycle): array
     {
@@ -43,6 +43,12 @@ class CropProtocolAlertService
 
         $planting = Carbon::parse($cycle->planting_date)->startOfDay();
         $today = now()->startOfDay();
+
+        // Validations EXPLICITES (prioritaires), indexées par étape.
+        $completions = ($cycle->relationLoaded('protocolCompletions')
+            ? $cycle->protocolCompletions
+            : $cycle->protocolCompletions()->with('completedBy:id,name')->get())
+            ->keyBy('crop_protocol_item_id');
 
         // Pré-chargement des intrants & événements pour la détection « done ».
         $inputs = $cycle->relationLoaded('inputs')
@@ -65,7 +71,11 @@ class CropProtocolAlertService
 
         foreach ($protocol->items as $item) {
             $target = $planting->copy()->addDays((int) $item->day_number);
-            $done = $this->isItemDone($item, $doneInputNames, $doneEventTitles, $hasHarvest);
+
+            // Validation explicite prioritaire ; sinon repli sur l'inférence.
+            $completion = $completions->get($item->id);
+            $done = $completion !== null
+                || $this->isItemDone($item, $doneInputNames, $doneEventTitles, $hasHarvest);
 
             if ($done) {
                 $status = 'done';
@@ -82,6 +92,7 @@ class CropProtocolAlertService
                 'target_date' => $target,
                 'status'      => $status,
                 'delay_days'  => $status === 'overdue' ? (int) $target->diffInDays($today) : 0,
+                'completion'  => $completion,
             ];
         }
 

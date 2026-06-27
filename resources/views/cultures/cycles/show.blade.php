@@ -180,9 +180,39 @@
                                         </p>
                                     @endif
                                 </div>
-                                <span class="text-[8px] font-black uppercase {{ $stBadge[1] }} italic flex items-center gap-1 shrink-0">
-                                    <i class="fa-solid {{ $stBadge[2] }}"></i> {{ $stBadge[3] }}@if($entry['status']==='overdue') (+{{ $entry['delay_days'] }}j)@endif
-                                </span>
+                                <div class="flex flex-col items-end gap-1.5 shrink-0">
+                                    <span class="text-[8px] font-black uppercase {{ $stBadge[1] }} italic flex items-center gap-1">
+                                        <i class="fa-solid {{ $stBadge[2] }}"></i> {{ $stBadge[3] }}@if($entry['status']==='overdue') (+{{ $entry['delay_days'] }}j)@endif
+                                    </span>
+
+                                    @can('cultures.M')
+                                        @if($entry['status'] === 'done')
+                                            {{-- Validée : auteur/horodatage si validation explicite, + annulation --}}
+                                            @if($entry['completion'])
+                                                <span class="text-[7px] font-bold text-slate-400 italic text-right">
+                                                    {{ $entry['completion']->completed_at?->format('d/m/Y') }}@if($entry['completion']->completedBy) · {{ $entry['completion']->completedBy->name }}@endif
+                                                </span>
+                                                <form method="POST" action="{{ route('crop-cycles.steps.uncomplete', [$cycle, $it]) }}" onsubmit="return confirm('Annuler la validation de cette étape ?');">
+                                                    @csrf @method('DELETE')
+                                                    <button type="submit" class="text-[8px] font-black uppercase text-slate-400 hover:text-rose-600 italic">{{ __("Annuler") }}</button>
+                                                </form>
+                                            @else
+                                                {{-- Déduite d'un intrant/récolte : on peut figer la validation explicitement --}}
+                                                <form method="POST" action="{{ route('crop-cycles.steps.complete', [$cycle, $it]) }}">
+                                                    @csrf
+                                                    <button type="submit" class="text-[8px] font-black uppercase text-slate-400 hover:text-green-600 italic">{{ __("Confirmer") }}</button>
+                                                </form>
+                                            @endif
+                                        @else
+                                            <form method="POST" action="{{ route('crop-cycles.steps.complete', [$cycle, $it]) }}">
+                                                @csrf
+                                                <button type="submit" class="text-[8px] font-black uppercase text-white bg-green-600 hover:bg-green-700 px-2.5 py-1 rounded-full italic flex items-center gap-1">
+                                                    <i class="fa-solid fa-check"></i> {{ __("Valider") }}
+                                                </button>
+                                            </form>
+                                        @endif
+                                    @endcan
+                                </div>
                             </div>
                         @endforeach
                     </div>

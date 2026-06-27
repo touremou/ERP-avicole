@@ -171,3 +171,69 @@ test('le seeder de protocoles crée des itinéraires de référence et reste ide
     expect(CropProtocol::count())->toBe($countFirst)
         ->and(CropProtocol::where('crop_name', 'Maïs')->first()->items()->count())->toBe($maisItems);
 });
+
+test('un manager peut valider une étape d\'itinéraire, qui passe à « done »', function () {
+    $protocol = CropProtocol::create(['name' => 'Proto valid', 'crop_name' => 'Maïs']);
+    // Sarclage sans intrant associé : l'inférence ne le détecterait jamais.
+    $item = $protocol->items()->create(['day_number' => 15, 'action_name' => 'Sarclage manuel', 'type' => 'sarclage', 'stage' => 'Levée']);
+
+    $cycle = protocolCycle($this->farm->id, $protocol->id, now()->subDays(20)->toDateString());
+
+    // Avant validation : étape en retard (J+15 dépassé), non faite.
+    $before = collect((new CropProtocolAlertService())->getCycleSchedule($cycle->fresh()))
+        ->firstWhere('item.id', $item->id);
+    expect($before['status'])->toBe('overdue');
+
+    $this->actingAs($this->managerUser)
+        ->post(route('crop-cycles.steps.complete', [$cycle, $item]), ['notes' => 'Fait par l\'équipe'])
+        ->assertRedirect();
+
+    $this->assertDatabaseHas('crop_protocol_completions', [
+        'crop_cycle_id' => $cycle->id, 'crop_protocol_item_id' => $item->id, 'notes' => 'Fait par l\'équipe',
+    ]);
+
+    $after = collect((new CropProtocolAlertService())->getCycleSchedule($cycle->fresh()))
+        ->firstWhere('item.id', $item->id);
+    expect($after['status'])->toBe('done')
+        ->and($after['completion'])->not->toBeNull()
+        ->and($after['completion']->completed_by)->toBe($this->managerUser->id);
+});
+
+test('valider deux fois la même étape ne crée pas de doublon (idempotent)', function () {
+    $protocol = CropProtocol::create(['name' => 'Proto idemp', 'crop_name' => 'Maïs']);
+    $item = $protocol->items()->create(['day_number' => 5, 'action_name' => 'Observation', 'type' => 'observation']);
+    $cycle = protocolCycle($this->farm->id, $protocol->id, now()->subDays(10)->toDateString());
+
+    $this->actingAs($this->managerUser)->post(route('crop-cycles.steps.complete', [$cycle, $item]));
+    $this->actingAs($this->managerUser)->post(route('crop-cycles.steps.complete', [$cycle, $item]));
+
+    expect(\App\Models\CropProtocolCompletion::where('crop_cycle_id', $cycle->id)->where('crop_protocol_item_id', $item->id)->count())->toBe(1);
+});
+
+test('un manager peut annuler la validation d\'une étape (réouverture)', function () {
+    $protocol = CropProtocol::create(['name' => 'Proto annul', 'crop_name' => 'Maïs']);
+    $item = $protocol->items()->create(['day_number' => 5, 'action_name' => 'Irrigation', 'type' => 'irrigation']);
+    $cycle = protocolCycle($this->farm->id, $protocol->id, now()->subDays(10)->toDateString());
+
+    $this->actingAs($this->managerUser)->post(route('crop-cycles.steps.complete', [$cycle, $item]));
+    $this->actingAs($this->managerUser)->delete(route('crop-cycles.steps.uncomplete', [$cycle, $item]))->assertRedirect();
+
+    $this->assertDatabaseMissing('crop_protocol_completions', [
+        'crop_cycle_id' => $cycle->id, 'crop_protocol_item_id' => $item->id,
+    ]);
+});
+
+test('on ne peut pas valider une étape étrangère à l\'itinéraire du cycle', function () {
+    $protoA = CropProtocol::create(['name' => 'Proto A', 'crop_name' => 'Maïs']);
+    $cycle  = protocolCycle($this->farm->id, $protoA->id, now()->subDays(10)->toDateString());
+
+    // Étape appartenant à un AUTRE protocole.
+    $protoB = CropProtocol::create(['name' => 'Proto B', 'crop_name' => 'Riz']);
+    $alien  = $protoB->items()->create(['day_number' => 2, 'action_name' => 'Repiquage', 'type' => 'semis']);
+
+    $this->actingAs($this->managerUser)
+        ->post(route('crop-cycles.steps.complete', [$cycle, $alien]))
+        ->assertSessionHas('error');
+
+    $this->assertDatabaseMissing('crop_protocol_completions', ['crop_protocol_item_id' => $alien->id]);
+});
