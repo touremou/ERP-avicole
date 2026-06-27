@@ -50,6 +50,11 @@ class User extends Authenticatable
         return $this->hasOne(NotificationPreference::class);
     }
 
+    public function dashboardConfiguration(): HasOne
+    {
+        return $this->hasOne(DashboardConfiguration::class);
+    }
+
     // ─── RBAC GLOBAL (rétrocompatible) ───
 
     /**

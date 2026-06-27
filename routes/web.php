@@ -118,6 +118,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/dashboard/analytics', [DashboardController::class, 'analytics'])->name('dashboard.analytics');
 
+    // Personnalisation du tableau de bord (par utilisateur, aucun droit module requis).
+    Route::get('/dashboard/preferences', [\App\Http\Controllers\DashboardConfigurationController::class, 'edit'])->name('dashboard.config');
+    Route::put('/dashboard/preferences', [\App\Http\Controllers\DashboardConfigurationController::class, 'update'])->name('dashboard.config.update');
+
     // Espace personnel de l'utilisateur connecté (lecture seule).
     Route::get('/mon-espace', [EmployeeSelfController::class, 'index'])->name('mon-espace');
 

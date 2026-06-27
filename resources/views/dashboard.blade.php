@@ -53,6 +53,11 @@
                     <p class="text-base font-black text-white leading-none">{{ number_format($safeProfit ?? 0, 0, ',', ' ') }} <small class="text-[9px] opacity-40">{{ currency() }}</small></p>
                 </div>
                 @endcan
+
+                <a href="{{ route('dashboard.config') }}" title="{{ __('Personnaliser mon tableau de bord') }}"
+                   class="w-11 h-11 bg-white border border-slate-200 rounded-2xl flex items-center justify-center text-slate-400 hover:text-slate-900 hover:border-slate-300 transition-all no-underline shadow-sm shrink-0">
+                    <i class="fa-solid fa-sliders"></i>
+                </a>
             </div>
         </div>
     </x-slot>
@@ -61,7 +66,7 @@
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 italic font-bold text-left">
 
             {{-- BANDEAU D'ALERTES PRIORISÉ (centre de contrôle unifié) --}}
-            @if(!empty($priorityAlerts) && $priorityAlerts->isNotEmpty())
+            @if(!empty($priorityAlerts) && $priorityAlerts->isNotEmpty() && dashboard_block_visible('priority_alerts'))
             @php
                 $alertStyles = [
                     'critique'  => ['dot' => 'bg-rose-500', 'badge' => 'bg-rose-50 text-rose-600 border-rose-100', 'icon' => 'text-rose-500'],
@@ -111,6 +116,7 @@
             @endif
 
             {{-- CENTRE DE CONTRÔLE DES ALERTES --}}
+            @if(dashboard_block_visible('control_center'))
             <div class="mb-10 space-y-4">
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
@@ -297,9 +303,10 @@
                     </div>
                 </div>
             </div>
+            @endif
 
             {{-- ALERTE STOCK SOUS SEUIL — tout article passé sous alert_threshold --}}
-            @if(($lowStocks ?? collect())->isNotEmpty())
+            @if(($lowStocks ?? collect())->isNotEmpty() && dashboard_block_visible('low_stock'))
             <div class="mb-10 bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
                 <div class="flex items-center justify-between mb-4">
                     <h4 class="text-[10px] font-black uppercase text-slate-400 tracking-wider flex items-center gap-2">
@@ -447,6 +454,7 @@
             @endif
 
             {{-- KPI ROW --}}
+            @if(dashboard_block_visible('kpi_row'))
             <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-10">
                 <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm">
                     <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 italic">{{ __("Effectif Actif") }}</p>
@@ -502,9 +510,10 @@
                 </div>
                 @endif
             </div>
+            @endif
 
             {{-- PERFORMANCE TECHNIQUE (zootechnie) --}}
-            @if(($technical['has_data'] ?? false))
+            @if(($technical['has_data'] ?? false) && dashboard_block_visible('technical'))
             <div class="mb-10">
                 <h3 class="text-[11px] font-black uppercase text-slate-800 tracking-[0.2em] italic flex items-center mb-5 px-2">
                     <span class="w-2 h-6 bg-indigo-600 rounded-full mr-3"></span> {{ __("Performance Technique") }}
@@ -559,6 +568,7 @@
             </div>
 
             {{-- TENDANCES 30 JOURS (graphiques Chart.js) --}}
+            @if(dashboard_block_visible('trends'))
             <div class="mb-10 grid grid-cols-1 lg:grid-cols-3 gap-6"
                  x-data="dashboardTrends({{ Illuminate\Support\Js::from($trends ?? ['labels' => [], 'mortality' => [], 'eggs' => [], 'feed' => []]) }})">
                 <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm">
@@ -576,10 +586,11 @@
                     <div class="relative h-40"><canvas x-ref="feedChart"></canvas></div>
                 </div>
             </div>
+            @endif
 
             {{-- SYNTHÈSE FINANCIÈRE DU MOIS (droits commerce) --}}
             @can('commerce.L')
-            @if(!empty($financial))
+            @if(!empty($financial) && dashboard_block_visible('financial'))
             <div class="mb-10 bg-slate-900 rounded-[2.5rem] p-7 shadow-2xl">
                 <div class="flex items-center justify-between mb-6">
                     <h3 class="text-[11px] font-black uppercase text-white tracking-[0.2em] italic flex items-center">

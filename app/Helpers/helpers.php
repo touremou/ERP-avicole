@@ -79,3 +79,25 @@ if (! function_exists('media_url')) {
         return url('media/' . ltrim($path, '/'));
     }
 }
+
+if (! function_exists('dashboard_block_visible')) {
+    /**
+     * Indique si un bloc du tableau de bord doit être affiché pour l'utilisateur
+     * courant. Tout bloc est visible par défaut ; il n'est masqué que si
+     * l'utilisateur l'a explicitement retiré dans ses préférences de dashboard.
+     *
+     * La relation dashboardConfiguration est mise en cache sur l'instance User
+     * pour la durée de la requête : aucun coût de requête répété par bloc.
+     */
+    function dashboard_block_visible(string $key): bool
+    {
+        $user = auth()->user();
+        if (! $user) {
+            return true;
+        }
+
+        $config = $user->dashboardConfiguration;
+
+        return ! ($config && in_array($key, $config->hidden_blocks ?? [], true));
+    }
+}
