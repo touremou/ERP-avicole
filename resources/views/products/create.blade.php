@@ -1,6 +1,9 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-black text-xl text-slate-800 uppercase italic tracking-tighter">{{ __('Nouvel article') }}</h2>
+        <div class="flex items-center gap-4">
+            <x-back />
+            <h2 class="font-black text-xl text-slate-800 uppercase italic tracking-tighter">{{ __('Nouvel article') }}</h2>
+        </div>
     </x-slot>
 
     <div class="py-10">

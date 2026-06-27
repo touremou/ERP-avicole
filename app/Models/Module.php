@@ -105,6 +105,7 @@ class Module extends Model
             'pos.'              => 'commerce',
             'cash-register.'    => 'commerce',
             'returns.'          => 'commerce',
+            'products.'         => 'commerce',
 
             // Finance (hub + registre dépenses + trésorerie + achats fournisseurs + budgets)
             'finance.'          => 'depenses',
