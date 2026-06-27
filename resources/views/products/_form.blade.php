@@ -29,6 +29,18 @@
         <input type="text" name="sku" value="{{ old('sku', $product->sku ?? '') }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-xs uppercase shadow-inner outline-none italic">
     </div>
 
+    @if(isset($stocks) && $stocks->isNotEmpty())
+    <div class="md:col-span-2">
+        <label class="text-[10px] uppercase text-slate-400 mb-2 block tracking-widest font-black italic">{{ __('Article de stock lié') }} <span class="text-slate-300 normal-case">({{ __('optionnel — la vente décrémentera ce stock') }})</span></label>
+        <select name="stock_id" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-xs uppercase shadow-inner outline-none cursor-pointer">
+            <option value="">{{ __('Aucun (pas de suivi de stock)') }}</option>
+            @foreach($stocks as $s)
+                <option value="{{ $s->id }}" {{ (string) old('stock_id', $product->stock_id ?? '') === (string) $s->id ? 'selected' : '' }}>{{ $s->item_name }} ({{ $s->category }})</option>
+            @endforeach
+        </select>
+    </div>
+    @endif
+
     <div class="md:col-span-2">
         <label class="text-[10px] uppercase text-slate-400 mb-2 block tracking-widest font-black italic">{{ __('Photo (identification au point de vente)') }}</label>
         @if($product?->photo_url)

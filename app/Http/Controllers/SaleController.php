@@ -75,7 +75,7 @@ class SaleController extends Controller
         $prices  = PriceList::where('is_active', true)->get();
 
         // Catalogue d'articles vendables (sélection guidée + photo + prix).
-        $catalog = \App\Models\Product::active()->orderBy('name')->get()
+        $catalog = \App\Models\Product::active()->with('stock')->orderBy('name')->get()
             ->map(fn ($p) => [
                 'id'           => $p->id,
                 'name'         => $p->name,
@@ -83,6 +83,8 @@ class SaleController extends Controller
                 'unit'         => $p->unit,
                 'base_price'   => (float) $p->base_price,
                 'photo'        => $p->photo_url,
+                'stock_id'     => $p->stock_id,                                   // pour le déstockage
+                'available'    => $p->stock ? (float) $p->stock->current_quantity : null,
             ])->values();
 
         // Pré-sélection client si passé en query string

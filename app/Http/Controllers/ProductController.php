@@ -27,7 +27,7 @@ class ProductController extends Controller
     {
         if (Gate::denies('commerce.C')) return back()->with('error', 'Création non autorisée.');
 
-        return view('products.create', ['types' => self::TYPES]);
+        return view('products.create', ['types' => self::TYPES, 'stocks' => $this->stockOptions()]);
     }
 
     public function store(Request $request)
@@ -47,7 +47,7 @@ class ProductController extends Controller
     {
         if (Gate::denies('commerce.M')) return back()->with('error', 'Modification non autorisée.');
 
-        return view('products.edit', ['product' => $product, 'types' => self::TYPES]);
+        return view('products.edit', ['product' => $product, 'types' => self::TYPES, 'stocks' => $this->stockOptions()]);
     }
 
     public function update(Request $request, Product $product)
@@ -90,11 +90,19 @@ class ProductController extends Controller
             'name'         => 'required|string|max:255',
             'sku'          => 'nullable|string|max:100',
             'product_type' => 'required|in:' . implode(',', array_keys(self::TYPES)),
+            'stock_id'     => 'nullable|exists:stocks,id',
             'unit'         => 'required|string|max:30',
             'base_price'   => 'required|numeric|min:0',
             'notes'        => 'nullable|string|max:500',
             'photo'        => 'nullable|image|max:4096', // 4 Mo
         ]);
+    }
+
+    /** Articles de stock proposables au lien (catégories vendables). */
+    private function stockOptions()
+    {
+        return \App\Models\Stock::orderBy('category')->orderBy('item_name')
+            ->get(['id', 'item_name', 'category', 'unit']);
     }
 
     private function storePhoto(Request $request): ?string

@@ -334,6 +334,10 @@
                 l.unit = art.unit;
                 l.photo = art.photo || '';
                 l.unit_price = 0;
+                // Article lié à un stock : on cible ce stock (déstockage) et on
+                // borne la quantité à la disponibilité réelle.
+                l.product_id = art.stock_id || '';
+                l.max_qty = (art.available !== null && art.available !== undefined) ? art.available : 0;
                 const url = '{{ route('sales.suggest-price') }}?product_id=' + art.id + (this.clientId ? '&client_id=' + this.clientId : '');
                 fetch(url, {headers:{'Accept':'application/json'}})
                     .then(r => r.ok ? r.json() : null)
