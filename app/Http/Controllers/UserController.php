@@ -49,27 +49,10 @@ class UserController extends Controller
     /**
      * Mise à jour de la matrice globale (rétrocompatible).
      */
-    public function updateMatrix(Request $request)
-    {
-        if (Gate::denies('admin.S')) return back();
-
-        $matrix = $request->input('permissions', []);
-
-        return DB::transaction(function () use ($matrix) {
-            foreach (Role::all() as $role) {
-                $role->permissions = array_values($matrix[$role->id] ?? []);
-                $role->save();
-            }
-
-            $this->clearCacheForRoles(Role::pluck('id')->all());
-
-            return back()->with('success', 'Matrice globale synchronisée.');
-        });
-    }
-
-
     /**
      * Mise à jour de la matrice MODULE × RÔLE × LCMS.
+     * Unique éditeur d'autorisation (l'ancien « LCMS global » a été retiré au
+     * profit de cette matrice granulaire, désormais source de vérité unique).
      */
     public function updateModuleMatrix(Request $request)
     {

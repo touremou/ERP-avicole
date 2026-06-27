@@ -18,7 +18,12 @@ class Role extends Model
         'icon',         // Icone UI (ex: 🏗️)
         'label',
         'description',
-        'permissions',  // Matrice LCMS globale (ex: ["L","C","M","S"])
+        // DÉPRÉCIÉ comme source d'autorisation : la matrice `module_permissions`
+        // est désormais l'UNIQUE autorité (cf. hasPermission ci-dessous et
+        // AppServiceProvider). Cette colonne ne subsiste que comme entrée de
+        // bootstrap pratique (seeders/tests) pour générer la matrice en une
+        // passe. Elle n'est plus jamais lue pour décider d'un accès.
+        'permissions',
     ];
 
     protected $casts = [
@@ -42,12 +47,28 @@ class Role extends Model
     // -----------------------
 
     /**
-     * Vérifie si ce rôle contient une permission spécifique (L, C, M, S).
-     * Stockée dans la colonne JSON `permissions`.
+     * Vérifie si ce rôle détient une permission (L, C, M, S) — SOURCE UNIQUE :
+     * la matrice `module_permissions`. Renvoie vrai dès qu'au moins un module
+     * accorde ce niveau au rôle (sémantique « globale » cohérente avec le Gate
+     * L/C/M/S sans module ciblé dans AppServiceProvider).
      */
     public function hasPermission(string $permissionName): bool
     {
-        return in_array($permissionName, $this->permissions ?? []);
+        $column = match ($permissionName) {
+            'L' => 'can_read',
+            'C' => 'can_create',
+            'M' => 'can_modify',
+            'S' => 'can_delete',
+            default => null,
+        };
+
+        if ($column === null) {
+            return false;
+        }
+
+        return ModulePermission::where('role_id', $this->id)
+            ->where($column, true)
+            ->exists();
     }
 
     /**

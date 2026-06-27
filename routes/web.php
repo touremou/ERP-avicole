@@ -796,7 +796,6 @@ Route::middleware(['auth'])->group(function () {
         Route::patch('/users/{user}/role', [UserController::class, 'updateRole'])->name('users.update_role');
         Route::post('/roles', [UserController::class, 'storeRole'])->name('roles.store');
         Route::delete('/roles/{role}', [UserController::class, 'destroyRole'])->name('roles.destroy');
-        Route::post('/roles/matrix', [UserController::class, 'updateMatrix'])->name('roles.update_matrix');
         Route::post('/roles/module-matrix', [UserController::class, 'updateModuleMatrix'])->name('roles.update_module_matrix');
 
         // B-19 corrigé : ProductionNormController (pas NormController)

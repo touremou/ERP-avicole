@@ -204,7 +204,7 @@
     <div id="roleConfigModal" class="hidden fixed inset-0 bg-slate-900/90 backdrop-blur-xl z-50 flex items-center justify-center p-6">
     <div class="bg-white rounded-[3rem] w-full max-w-2xl shadow-2xl overflow-hidden italic font-bold text-left max-h-[85vh] flex flex-col">
         <div class="px-10 py-8 border-b border-slate-100 flex justify-between items-center shrink-0">
-            <h3 class="text-xl font-black text-slate-800 uppercase tracking-tighter italic leading-none">{{ __("Rôles & LCMS Global") }}</h3>
+            <h3 class="text-xl font-black text-slate-800 uppercase tracking-tighter italic leading-none">{{ __("Gestion des Rôles") }}</h3>
             <button onclick="document.getElementById('roleConfigModal').classList.add('hidden')" class="text-slate-300 hover:text-slate-900 border-none bg-transparent cursor-pointer text-xl"><i class="fas fa-times"></i></button>
         </div>
         <div class="flex-1 overflow-auto p-10">
@@ -229,9 +229,8 @@
                 @endif
             @endforeach
 
-            {{-- MATRICE DE MISE À JOUR --}}
-            <form action="{{ route('roles.update_matrix') }}" method="POST" class="space-y-4">
-                @csrf
+            {{-- LISTE DES RÔLES (les droits s'éditent via la « Matrice des Modules ») --}}
+            <div class="space-y-4">
                 @foreach($roles as $role)
                 <div class="p-6 bg-white rounded-2xl border border-slate-100 shadow-sm transition-all hover:border-slate-300">
                     <div class="flex items-center justify-between mb-4">
@@ -252,26 +251,13 @@
                             @endif
                         </div>
                     </div>
-                    
-                    <div class="flex flex-wrap gap-4">
-                        @foreach(['L' => __('Lecture'), 'C' => __('Création'), 'M' => __('Modification'), 'S' => __('Suppression')] as $key => $label)
-                        <label class="flex items-center gap-2 cursor-pointer group">
-                            <input type="checkbox" name="permissions[{{ $role->id }}][]" value="{{ $key }}"
-                                   @checked($role->hasPermission($key)) class="hidden peer">
-                            <div class="w-5 h-5 rounded-lg border-2 border-slate-100 peer-checked:bg-slate-900 peer-checked:border-slate-900 flex items-center justify-center transition-all group-hover:border-slate-300">
-                                <i class="fas fa-check text-[8px] text-white"></i>
-                            </div>
-                            <span class="text-[9px] font-black text-slate-400 uppercase peer-checked:text-slate-900">{{ $label }}</span>
-                        </label>
-                        @endforeach
-                    </div>
+
+                    <p class="text-[9px] font-black text-slate-300 uppercase tracking-widest italic">
+                        <i class="fa-solid fa-table-cells mr-1"></i>{{ __("Droits gérés via la Matrice des Modules") }}
+                    </p>
                 </div>
                 @endforeach
-                
-                <button type="submit" class="w-full bg-slate-900 text-white py-5 rounded-2xl font-black text-xs uppercase tracking-[0.3em] hover:bg-blue-600 transition-all border-none cursor-pointer italic mt-6 shadow-xl">
-                    {{ __("Appliquer LCMS Global") }}
-                </button>
-            </form>
+            </div>
         </div>
     </div>
 </div>

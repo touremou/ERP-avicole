@@ -58,18 +58,19 @@ class User extends Authenticatable
     // ─── RBAC GLOBAL (rétrocompatible) ───
 
     /**
-     * Vérifie une permission globale (L, C, M, S).
-     * Utilisé par Gate::define('L'), etc.
+     * Vérifie une permission « globale » (L, C, M, S) — déléguée au rôle, dont
+     * la SOURCE UNIQUE est la matrice `module_permissions`. L'administrateur a
+     * un accès total (cohérent avec Gate::before / AppServiceProvider).
      */
     public function hasPermission(string $permissionName): bool
     {
         if (! $this->role_id) return false;
 
+        if ($this->hasRole('admin')) return true;
+
         $this->loadMissing('userRole');
 
-        if (! $this->userRole) return false;
-
-        return $this->userRole->hasPermission($permissionName);
+        return $this->userRole?->hasPermission($permissionName) ?? false;
     }
 
     // ─── RBAC PAR MODULE ───
