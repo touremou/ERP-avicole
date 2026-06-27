@@ -47,6 +47,15 @@ return [
             'report' => false,
         ],
 
+        // Sauvegardes (spatie/laravel-backup). Disque PRIVÉ, hors web.
+        // En production, idéalement répliqué hors serveur (S3, stockage distant).
+        'backups' => [
+            'driver' => 'local',
+            'root' => storage_path('app/backups'),
+            'throw' => false,
+            'report' => false,
+        ],
+
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),

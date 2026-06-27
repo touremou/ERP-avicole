@@ -875,6 +875,11 @@ Route::middleware(['auth'])->group(function () {
     Route::put('/settings', [SettingsController::class, 'update'])->name('settings.update')->middleware('can:S');
     Route::get('/settings/logs', [SettingsController::class, 'logs'])->name('settings.logs')->middleware('can:S');
 
+    // ─── SAUVEGARDES (admin) ───
+    Route::get('/backups', [\App\Http\Controllers\BackupController::class, 'index'])->name('backups.index');
+    Route::post('/backups/run', [\App\Http\Controllers\BackupController::class, 'run'])->name('backups.run');
+    Route::get('/backups/download/{name}', [\App\Http\Controllers\BackupController::class, 'download'])->name('backups.download');
+
     // ─── MULTI-FERME / MULTI-SITE ───
     Route::prefix('farms')->name('farms.')->controller(FarmController::class)->group(function () {
         Route::get('/', 'index')->name('index')->middleware('can:S');

@@ -108,8 +108,24 @@ php artisan event:cache
 
 ## 6. Sauvegarde & restauration
 
-- Base : `mysqldump` quotidien, rétention 30 jours.
-- Fichiers : `storage/app/public` (logos, photos, documents) inclus dans la sauvegarde.
+Sauvegarde **automatisée** via `spatie/laravel-backup` (déclenchée par le cron
+de l'étape 5) :
+
+- `backup:run` chaque nuit à 02h00 → archive **base de données + fichiers
+  utilisateurs** (`storage/app/public` : logos, photos, justificatifs) dans le
+  disque privé `backups` (`storage/app/backups`, hors web, non versionné).
+- `backup:clean` à 01h30 applique la stratégie de rétention (cf.
+  `config/backup.php`).
+- IHM admin : **Notifications → Sauvegardes** (`/backups`) — lister, télécharger,
+  ou lancer une sauvegarde à la demande. Réservé à l'administrateur.
+- **Important** : conserver une copie HORS serveur (télécharger régulièrement
+  ou configurer un disque distant S3 dans `config/backup.php` → `destination.disks`).
+- Restauration : décompresser l'archive `.zip`, réimporter le dump SQL
+  (`mysql < db-dumps/…sql`) et restaurer `storage/app/public`.
+
+Les alertes e-mail intégrées de spatie sont **désactivées** par défaut (pas de
+dépendance mail) ; les échecs sont journalisés et l'âge du dernier backup est
+visible dans l'IHM.
 
 ## 7. Suivi post-déploiement
 

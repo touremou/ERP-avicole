@@ -46,3 +46,8 @@ Schedule::command('stock:check-expiry')->dailyAt('06:15');
 // Purge du journal d'audit au-delà de la rétention (config/activitylog.php,
 // défaut 365 j) — borne la croissance de la table activity_log.
 Schedule::command('activitylog:clean')->weekly();
+
+// Sauvegarde automatisée (base + fichiers utilisateurs) : nettoyage de la
+// rétention puis sauvegarde quotidienne aux heures creuses.
+Schedule::command('backup:clean')->dailyAt('01:30');
+Schedule::command('backup:run')->dailyAt('02:00');
