@@ -2,9 +2,7 @@
     <x-slot name="header">
         <div class="flex items-center justify-between">
             <div class="flex items-center gap-4">
-                <a href="{{ route('batches.show', $batch->id) }}" class="group text-slate-400 hover:text-slate-800 transition no-underline">
-                    <i class="fas fa-arrow-left group-hover:-translate-x-1 transition-transform"></i>
-                </a>
+                <x-back :to="route('batches.show', $batch->id)" />
                 <div class="text-left">
                     <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">
                         {{ __("Bilan de fin de cycle :") }} <span class="text-orange-500">{{ $batch->code }}</span>

@@ -1,9 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
         <div class="flex items-center gap-4">
-            <a href="{{ route('treasury.index') }}" class="group text-slate-400 hover:text-slate-800 transition no-underline">
-                <i class="fas fa-arrow-left group-hover:-translate-x-1 transition-transform text-xl"></i>
-            </a>
+            <x-back />
             <div class="flex items-center gap-3">
                 <div class="w-11 h-11 bg-slate-900 rounded-2xl flex items-center justify-center text-white shadow-lg">
                     <i class="fa-solid {{ $account->type_icon }}"></i>

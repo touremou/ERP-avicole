@@ -18,9 +18,7 @@
                     <i class="fa-solid fa-pen text-green-500"></i> {{ __("Modifier") }}
                 </a>
                 @endcan
-                <a href="{{ route('crop-catalogue.index') }}" class="text-[10px] font-black uppercase text-slate-400 hover:text-slate-900 transition no-underline">
-                    <i class="fa-solid fa-arrow-left mr-2"></i> {{ __("Catalogue") }}
-                </a>
+                <x-back label="Catalogue" />
             </div>
         </div>
     </x-slot>

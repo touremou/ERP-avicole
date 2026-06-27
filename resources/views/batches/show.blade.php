@@ -116,10 +116,7 @@
 
     {{-- ZONE 1 : IDENTITÉ & NAVIGATION --}}
     <div class="flex items-center gap-4 md:gap-5 text-left w-full xl:w-auto">
-        <a href="{{ route('batches.index') }}"
-           class="flex-shrink-0 flex items-center justify-center w-10 h-10 md:w-12 md:h-12 bg-white border border-slate-200 text-slate-400 hover:text-blue-600 hover:border-blue-100 rounded-xl md:rounded-2xl transition-all shadow-sm group no-underline">
-            <i class="fa-solid fa-arrow-left text-xs md:text-sm group-hover:-translate-x-1 transition-transform"></i>
-        </a>
+        <x-back />
 
         <div class="space-y-1 sm:space-y-2 min-w-0 flex-1">
             <div class="flex flex-wrap items-center gap-2 md:gap-3">

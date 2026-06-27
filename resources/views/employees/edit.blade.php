@@ -2,9 +2,7 @@
     <x-slot name="header">
         <div class="flex items-center justify-between">
             <div class="flex items-center gap-4 text-left">
-                <a href="{{ route('employees.show', $employee->id) }}" class="group text-slate-400 hover:text-slate-800 transition no-underline">
-                    <i class="fas fa-arrow-left group-hover:-translate-x-1 transition-transform text-xl"></i>
-                </a>
+                <x-back :to="route('employees.show', $employee->id)" />
                 <div>
                     <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">
                         {{ __('Édition du profil') }}

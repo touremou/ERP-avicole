@@ -14,9 +14,7 @@
             </div>
             
             <div class="flex gap-3">
-                <a href="{{ route('formulas.index') }}" class="bg-white border border-slate-200 text-slate-400 px-6 py-3 rounded-2xl text-[10px] font-black uppercase italic tracking-widest hover:bg-slate-50 transition-all no-underline">
-                    <i class="fa-solid fa-arrow-left mr-2"></i> {{ __("Retour") }}
-                </a>
+                <x-back />
                 
                 {{-- Permission C : Lancer une production basée sur cette formule --}}
                 @can('provenderie.C')

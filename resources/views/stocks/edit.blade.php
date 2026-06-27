@@ -12,9 +12,7 @@
                     </p>
                 </div>
             </div>
-            <a href="{{ route('stocks.index', ['category' => $stock->category]) }}" class="text-[10px] font-black uppercase italic text-slate-400 hover:text-slate-800 transition-all no-underline">
-                <i class="fa-solid fa-arrow-left mr-1"></i> {{ __("Annuler") }}
-            </a>
+            <x-back :to="route('stocks.index', ['category' => $stock->category])" />
         </div>
     </x-slot>
 

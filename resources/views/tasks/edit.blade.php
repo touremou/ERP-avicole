@@ -1,7 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
         <div class="flex items-center gap-4 text-left">
-            <a href="{{ route('tasks.index', ['date' => $task->scheduled_date->toDateString()]) }}" class="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-900 hover:text-white transition-all no-underline"><i class="fa-solid fa-arrow-left"></i></a>
+            <x-back :to="route('tasks.index', ['date' => $task->scheduled_date->toDateString()])" />
             <div>
                 <h2 class="text-lg font-black text-slate-800 uppercase italic tracking-tighter leading-none">{{ __("Modifier la tâche") }}</h2>
                 <p class="text-[9px] font-bold text-slate-400 uppercase mt-1 tracking-widest italic">{{ $task->title }}</p>

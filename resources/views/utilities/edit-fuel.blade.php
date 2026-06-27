@@ -1,6 +1,6 @@
 <x-app-layout>
     <div class="max-w-3xl mx-auto py-12 px-6 italic font-bold text-left">
-        <a href="{{ route('utilities.fuel.index') }}" class="text-xs text-slate-400 uppercase tracking-widest hover:text-slate-900 mb-6 inline-block"><i class="fa-solid fa-arrow-left mr-2"></i>{{ __("Retour") }}</a>
+        <x-back :to="route('utilities.fuel.index')" class="mb-6" />
 
         <div class="bg-orange-50 p-10 rounded-[3rem] border border-orange-200">
             <h2 class="text-2xl font-black text-orange-700 uppercase tracking-tighter mb-8"><i class="fa-solid fa-pen mr-2"></i> {{ __("Modifier l'achat") }}</h2>

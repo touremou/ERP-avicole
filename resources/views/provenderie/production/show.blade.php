@@ -4,9 +4,7 @@
             
             {{-- ZONE D'ACTION (Masquée à l'impression) --}}
             <div class="mb-8 flex justify-between items-center print:hidden">
-                <a href="{{ route('production.index') }}" class="text-slate-400 hover:text-slate-900 transition-colors uppercase text-[10px] tracking-widest flex items-center no-underline">
-                    <i class="fa-solid fa-arrow-left mr-2"></i> {{ __("Retour au journal") }}
-                </a>
+                <x-back label="Retour au journal" />
                 <div class="flex gap-4">
                     <a href="{{ route('production.label', $production->id) }}" target="_blank"
                        class="bg-lime-50 text-lime-700 px-6 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-lime-600 hover:text-white transition-all no-underline"

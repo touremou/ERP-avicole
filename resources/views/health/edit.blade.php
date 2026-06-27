@@ -9,9 +9,7 @@
                     {{ __("Affecté au lot") }} • <span class="text-blue-500 font-black">{{ $health->batch->code }}</span>
                 </p>
             </div>
-            <a href="{{ route('health.index') }}" class="group flex items-center text-slate-400 hover:text-rose-500 transition text-[10px] font-black uppercase tracking-widest leading-none no-underline">
-                <i class="fas fa-arrow-left mr-2 group-hover:-translate-x-1 transition-transform text-xs"></i> {{ __("Revenir au registre") }}
-            </a>
+            <x-back />
         </div>
     </x-slot>
 

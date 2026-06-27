@@ -2,9 +2,7 @@
     <x-slot name="header">
         <div class="flex items-center gap-4 text-left">
             {{-- RETOUR DYNAMIQUE --}}
-            <a href="{{ route('batches.show', $batch->id) }}" class="group text-slate-400 hover:text-slate-800 transition no-underline">
-                <i class="fas fa-arrow-left group-hover:-translate-x-1 transition-transform text-xl"></i>
-            </a>
+            <x-back :to="route('batches.show', $batch->id)" />
             <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">
                 <i class="fa-solid fa-pen-to-square text-orange-500 mr-2"></i> {{ __("Modifier Ravitaillement") }}
             </h2>

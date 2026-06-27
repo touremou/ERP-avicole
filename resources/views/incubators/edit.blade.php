@@ -7,9 +7,7 @@
                 </h2>
                 <p class="text-[10px] text-slate-400 uppercase tracking-[0.3em] mt-2 font-black">{{ __("Configuration technique de l'unité") }}</p>
             </div>
-            <a href="{{ route('incubators.index') }}" class="group px-5 py-3 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase italic hover:bg-rose-600 transition-all shadow-xl no-underline tracking-widest">
-                <i class="fa-solid fa-arrow-left mr-2 group-hover:-translate-x-1 transition-transform"></i> {{ __("Annuler") }}
-            </a>
+            <x-back />
         </div>
     </x-slot>
 

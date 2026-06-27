@@ -4,9 +4,7 @@
             <h2 class="text-2xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">
                 <i class="fa-solid fa-plus-circle text-emerald-500 mr-2"></i> {{ __("Nouvel Article") }}
             </h2>
-            <a href="{{ route('stocks.index', ['category' => $category ?? 'oeufs']) }}" class="text-[10px] font-black uppercase italic text-slate-400 hover:text-slate-800 transition-all leading-none no-underline">
-                <i class="fa-solid fa-arrow-left mr-1"></i> {{ __("Retour au Stock") }}
-            </a>
+            <x-back :to="route('stocks.index', ['category' => $category ?? 'oeufs'])" />
         </div>
     </x-slot>
 

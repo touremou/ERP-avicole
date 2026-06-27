@@ -7,9 +7,7 @@
                 </h2>
                 <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">{{ __("Extension du parc de production") }}</p>
             </div>
-            <a href="{{ route('buildings.index') }}" class="text-[10px] font-black uppercase text-slate-400 hover:text-slate-800 transition italic tracking-widest no-underline">
-                <i class="fas fa-arrow-left mr-1"></i> {{ __("Retour à la liste") }}
-            </a>
+            <x-back />
         </div>
     </x-slot>
 

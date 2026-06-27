@@ -12,9 +12,7 @@
                 </div>
             </div>
             <div class="flex gap-3 items-center">
-                <a href="{{ route('crop-recipes.index') }}" class="text-[10px] font-black uppercase text-slate-400 hover:text-slate-900 transition no-underline">
-                    <i class="fa-solid fa-arrow-left mr-2"></i> {{ __("Recettes") }}
-                </a>
+                <x-back label="Recettes" />
                 @can('cultures.M')
                 <a href="{{ route('crop-recipes.edit', $recipe) }}" class="bg-white border border-slate-100 text-slate-600 px-5 py-2.5 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-slate-50 transition italic no-underline flex items-center gap-2">
                     <i class="fa-solid fa-pen text-green-500"></i>{{ __("Modifier") }}

@@ -10,9 +10,7 @@
                     — {{ __("Mortalité cumulée") }} : <span class="text-red-500 font-black">{{ $batch->total_mortality }}</span>
                 </p>
             </div>
-            <a href="{{ route('batches.show', $batch->id) }}" class="group flex items-center text-slate-400 hover:text-red-500 transition text-sm font-bold uppercase tracking-widest leading-none no-underline">
-                <i class="fas fa-arrow-left mr-2 group-hover:-translate-x-1 transition-transform"></i> {{ __("Retour") }}
-            </a>
+            <x-back :to="route('batches.show', $batch->id)" />
         </div>
     </x-slot>
 

@@ -13,9 +13,7 @@
                     </p>
                 </div>
             </div>
-            <a href="{{ route('crop-cycles.index') }}" class="text-[10px] font-black uppercase text-slate-400 hover:text-slate-900 transition no-underline">
-                <i class="fa-solid fa-arrow-left mr-2"></i> {{ __("Retour") }}
-            </a>
+            <x-back />
         </div>
 
         {{-- BARRE D'ACTIONS --}}

@@ -7,9 +7,7 @@
                     $backUrl = $batchId ? route('batches.show', ['batch' => $batchId]) : route('batches.index');
                 @endphp
                 
-                <a href="{{ $backUrl }}" class="group text-slate-400 hover:text-slate-800 transition no-underline">
-                    <i class="fas fa-arrow-left group-hover:-translate-x-1 transition-transform text-xl"></i>
-                </a>
+                <x-back :to="$backUrl" />
                 <div>
                     <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">
                         📊 {{ __("Pointage de Précision") }}
