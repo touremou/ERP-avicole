@@ -42,3 +42,7 @@ Schedule::command('maintenance:check')->dailyAt('05:30');
 
 // Péremption des consommables (vaccins, médicaments, intrants…) : alerte WhatsApp
 Schedule::command('stock:check-expiry')->dailyAt('06:15');
+
+// Purge du journal d'audit au-delà de la rétention (config/activitylog.php,
+// défaut 365 j) — borne la croissance de la table activity_log.
+Schedule::command('activitylog:clean')->weekly();

@@ -9,10 +9,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Traits\HasStandardUuid;
 use App\Traits\BelongsToFarm;
+use App\Traits\AuditsChanges;
 
 class Sale extends Model
 {
-    use HasFactory, SoftDeletes, HasStandardUuid, BelongsToFarm;
+    use HasFactory, SoftDeletes, HasStandardUuid, BelongsToFarm, AuditsChanges;
 
     protected $fillable = [
         'farm_id',

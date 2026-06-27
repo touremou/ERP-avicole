@@ -6,10 +6,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Traits\BelongsToFarm;
+use App\Traits\AuditsChanges;
 
 class Role extends Model
 {
-    use HasFactory, BelongsToFarm;
+    use HasFactory, BelongsToFarm, AuditsChanges;
 
     protected $fillable = [
         'farm_id',

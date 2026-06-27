@@ -716,6 +716,8 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/preferences', 'updatePreferences')->name('preferences.update')->middleware('can:L');
         Route::post('/test', 'sendTest')->name('test')->middleware('can:L');
         Route::get('/logs', 'logs')->name('logs')->middleware('can:S');
+        // Journal d'audit (qui a modifié quoi) — lecture seule, admin.
+        Route::get('/audit', [\App\Http\Controllers\AuditLogController::class, 'index'])->name('audit');
         // Modèles de messages éditables (admin).
         Route::get('/templates', [NotificationTemplateController::class, 'index'])->name('templates')->middleware('can:S');
         Route::put('/templates/{template}', [NotificationTemplateController::class, 'update'])->name('templates.update')->middleware('can:S');

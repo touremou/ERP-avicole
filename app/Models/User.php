@@ -8,10 +8,25 @@ use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class User extends Authenticatable
 {
-    use HasApiTokens, HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable, LogsActivity;
+
+    /**
+     * Audit des comptes : on journalise les changements sensibles (rôle, email,
+     * activation…) MAIS jamais le mot de passe ni le token (logExcept).
+     */
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['name', 'email', 'role_id', 'whatsapp_phone', 'is_active'])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs()
+            ->useLogName('audit');
+    }
 
     protected $fillable = [
         'name', 'email', 'password', 'role_id', 'whatsapp_phone', 'is_active', 'locale',

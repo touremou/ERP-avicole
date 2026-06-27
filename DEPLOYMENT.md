@@ -58,8 +58,14 @@ php artisan optimize:clear                          # purge les caches avant de 
 Les migrations sont conçues pour être rejouables sans risque (gardes
 `Schema::hasTable`, `if (! exists)` sur les seeds de paramètres). Aucune
 intervention manuelle n'est requise pour les nouvelles tables
-(`notification_templates`, `dashboard_configurations`) ni pour le groupe de
-paramètres « Numérotation ».
+(`notification_templates`, `dashboard_configurations`, `activity_log`) ni pour
+le groupe de paramètres « Numérotation ».
+
+> **Dépendances ajoutées** : `endroid/qr-code` (traçabilité QR) et
+> `spatie/laravel-activitylog` (journal d'audit). Le `composer install` les
+> récupère ; le `php artisan migrate` crée la table `activity_log`. La rétention
+> du journal est purgée chaque semaine (`activitylog:clean`, défaut 365 j —
+> ajustable dans `config/activitylog.php`).
 
 > **Installation 100% en ligne de commande** (sans passer par `/install`) :
 > renseigner `DB_*` dans `.env`, puis `php artisan key:generate`,

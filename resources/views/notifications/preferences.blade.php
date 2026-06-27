@@ -227,6 +227,9 @@
                             <a href="{{ route('notifications.templates') }}" class="text-[8px] font-black text-emerald-600 uppercase tracking-widest no-underline hover:text-emerald-800">
                                 <i class="fa-solid fa-comment-dots mr-1"></i>{{ __("Modèles de messages") }}
                             </a>
+                            <a href="{{ route('notifications.audit') }}" class="text-[8px] font-black text-slate-600 uppercase tracking-widest no-underline hover:text-slate-900">
+                                <i class="fa-solid fa-clipboard-list mr-1"></i>{{ __("Journal d'audit") }}
+                            </a>
                         @endcan
                         @can('notifications.S')
                             <a href="{{ route('notifications.logs') }}" class="text-[8px] font-black text-blue-500 uppercase tracking-widest no-underline hover:text-blue-700">
