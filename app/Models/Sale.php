@@ -20,7 +20,8 @@ class Sale extends Model
         'uuid', 'is_synced', 'last_sync_at',
         'reference', 'client_id', 'user_id', 'sale_date',
         'type', 'status',
-        'subtotal', 'tax_rate', 'tax_amount', 'total_amount',
+        'subtotal', 'discount_type', 'discount_value', 'discount_amount',
+        'tax_rate', 'tax_amount', 'total_amount',
         'paid_amount', 'payment_status',
         'delivery_mode', 'delivery_address', 'delivery_notes',
         'notes', 'validated_at', 'delivered_at',
@@ -127,13 +128,35 @@ class Sale extends Model
     public function recalculateTotals(): void
     {
         $subtotal = round((float) $this->items()->sum('total'), 2);
-        $taxAmount = $this->tax_rate > 0 ? round($subtotal * ($this->tax_rate / 100), 2) : 0;
+
+        // Remise globale appliquée au sous-total (jamais > sous-total).
+        $discount = $this->computeDiscount($subtotal);
+        $net = max(0, round($subtotal - $discount, 2));
+
+        // La TVA porte sur la base APRÈS remise.
+        $taxAmount = $this->tax_rate > 0 ? round($net * ($this->tax_rate / 100), 2) : 0;
 
         $this->update([
-            'subtotal'     => $subtotal,
-            'tax_amount'   => $taxAmount,
-            'total_amount' => round($subtotal + $taxAmount, 2),
+            'subtotal'        => $subtotal,
+            'discount_amount' => $discount,
+            'tax_amount'      => $taxAmount,
+            'total_amount'    => round($net + $taxAmount, 2),
         ]);
+    }
+
+    /** Montant de remise effectif pour un sous-total donné. */
+    public function computeDiscount(float $subtotal): float
+    {
+        $value = (float) $this->discount_value;
+        if ($value <= 0) return 0.0;
+
+        $discount = match ($this->discount_type) {
+            'percent' => $subtotal * (min($value, 100) / 100),
+            'amount'  => $value,
+            default   => 0.0,
+        };
+
+        return round(min($discount, $subtotal), 2); // jamais négatif, ni > sous-total
     }
 
     /**

@@ -33,6 +33,8 @@ class StoreSaleRequest extends FormRequest
             // animal_vif / carcasse / lait sont génériques ; volaille_vivante
             // et volaille_abattue restent acceptés (rétrocompatibilité).
             'items'                  => 'required|array|min:1',
+            'discount_type'          => 'nullable|in:none,percent,amount',
+            'discount_value'         => 'nullable|numeric|min:0',
             'items.*.product_type'   => 'required|in:oeufs,animal_vif,carcasse,lait,fumier,aliment,produits_finis,materiel,autre,volaille_vivante,volaille_abattue',
             'items.*.product_name'   => 'required|string|max:255',
             'items.*.product_id'     => 'nullable|integer',

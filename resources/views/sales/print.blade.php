@@ -114,6 +114,12 @@
                 <td colspan="4" style="text-align: right; color: #94a3b8; text-transform: uppercase; font-size: 9px; letter-spacing: 1px;">{{ __("Sous-total HT") }}</td>
                 <td style="text-align: right;">{{ number_format($sale->subtotal, 0, ',', ' ') }}</td>
             </tr>
+            @if($sale->discount_amount > 0)
+            <tr>
+                <td colspan="4" style="text-align: right; color: #e11d48; text-transform: uppercase; font-size: 9px; letter-spacing: 1px;">{{ __("Remise") }}</td>
+                <td style="text-align: right; color: #e11d48;">− {{ number_format($sale->discount_amount, 0, ',', ' ') }}</td>
+            </tr>
+            @endif
             @if($sale->tax_rate > 0)
             <tr>
                 <td colspan="4" style="text-align: right; color: #94a3b8; text-transform: uppercase; font-size: 9px; letter-spacing: 1px;">{{ __("TVA (:rate%)", ['rate' => $sale->tax_rate]) }}</td>

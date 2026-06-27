@@ -203,10 +203,26 @@
                             <option value="cheque">{{ __("Chèque") }}</option>
                         </select>
                     </div>
+                    {{-- REMISE GLOBALE --}}
+                    <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm mb-4">
+                        <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest">{{ __("Remise globale") }}</label>
+                        <div class="flex gap-2 mt-2">
+                            <select x-model="discountType" class="bg-slate-50 border-none rounded-xl p-3 text-[10px] font-black uppercase shadow-sm outline-none">
+                                <option value="none">{{ __("Aucune") }}</option>
+                                <option value="percent">%</option>
+                                <option value="amount">{{ currency() }}</option>
+                            </select>
+                            <input type="number" min="0" x-model.number="discountValue" x-bind:disabled="discountType==='none'" placeholder="0" class="flex-1 bg-slate-50 border-none rounded-xl p-3 text-right font-black text-sm shadow-sm outline-none disabled:opacity-40">
+                        </div>
+                        <input type="hidden" name="discount_type" :value="discountType">
+                        <input type="hidden" name="discount_value" :value="discountType==='none' ? 0 : (discountValue||0)">
+                    </div>
+
                     <div class="bg-slate-900 p-8 rounded-[3rem] text-white shadow-2xl">
                         <h3 class="text-[10px] font-black uppercase text-emerald-400 tracking-widest mb-6">{{ __("Récapitulatif") }}</h3>
                         <div class="space-y-3">
                             <div class="flex justify-between"><span class="text-slate-400 font-black text-[10px] uppercase">{{ __("HT") }}</span><span class="font-black text-lg" x-text="formatGNF(subtotal)"></span></div>
+                            <div class="flex justify-between" x-show="discount > 0"><span class="text-rose-300 font-black text-[10px] uppercase">{{ __("Remise") }}</span><span class="font-black text-rose-300" x-text="'− ' + formatGNF(discount)"></span></div>
                             <div class="flex justify-between" x-show="saleType === 'facture'"><span class="text-slate-400 font-black text-[10px] uppercase">{{ __("TVA :rate%", ['rate' => setting('general.tva_rate', 18)]) }}</span><span class="font-black" x-text="formatGNF(taxAmount)"></span></div>
                             <div class="border-t border-slate-700 pt-3 flex justify-between"><span class="text-emerald-400 font-black text-[10px] uppercase">{{ __("Total TTC") }}</span><span class="font-black text-2xl" x-text="formatGNF(totalTTC)"></span></div>
                             <div class="border-t border-slate-700 pt-3 flex justify-between" x-show="immediatePayment > 0"><span class="text-amber-400 font-black text-[10px] uppercase">{{ __("Reste dû") }}</span><span class="font-black text-lg text-amber-400" x-text="formatGNF(Math.max(0, totalTTC - immediatePayment))"></span></div>
@@ -272,11 +288,19 @@
         return {
             catalog,
             clientId: '{{ $selectedClient?->id ?? "" }}', saleType: 'bon_livraison', immediatePayment: 0,
+            discountType: 'none', discountValue: 0,
             lines: [{ catalog_id:'', photo:'', product_type:'', product_name:'', quantity:1, unit:'', unit_price:0, product_id:'', batch_id:'', selected_stock:'', max_qty:0 }],
             batches: batchList.filter(b => b.qty > 0),
             get subtotal() { return this.lines.reduce((s,l) => s + (l.quantity*l.unit_price), 0); },
-            get taxAmount() { return this.saleType==='facture' ? this.subtotal*0.18 : 0; },
-            get totalTTC() { return this.subtotal + this.taxAmount; },
+            get discount() {
+                const v = parseFloat(this.discountValue) || 0;
+                if (v <= 0) return 0;
+                let d = this.discountType==='percent' ? this.subtotal*(Math.min(v,100)/100) : (this.discountType==='amount' ? v : 0);
+                return Math.min(d, this.subtotal);
+            },
+            get net() { return Math.max(0, this.subtotal - this.discount); },
+            get taxAmount() { return this.saleType==='facture' ? this.net*0.18 : 0; },
+            get totalTTC() { return this.net + this.taxAmount; },
             get hasStockError() { return this.lines.some(l => l.max_qty > 0 && l.quantity > l.max_qty); },
             getStocks(type) { return stocks.filter(s => s.category === (catMap[type]||type) && s.current_quantity > 0); },
             // ─── Catégories de lignes (multiespèces) ───
@@ -408,6 +432,8 @@
                     sale_date: saleDate,
                     type: this.saleType,
                     tax_rate: this.saleType === 'facture' ? {{ (int) setting('general.tva_rate', 18) }} : 0,
+                    discount_type: this.discountType,
+                    discount_value: this.discountType === 'none' ? 0 : (parseFloat(this.discountValue) || 0),
                     notes: notes,
                     immediate_payment: parseFloat(this.immediatePayment) || 0,
                     payment_method: 'especes',

@@ -63,6 +63,10 @@
 
     <hr>
     <table>
+        @if($sale->discount_amount > 0)
+        <tr class="row"><td>{{ __('Sous-total') }}</td><td class="right">{{ number_format($sale->subtotal, 0, ',', ' ') }}</td></tr>
+        <tr class="row"><td>{{ __('Remise') }}</td><td class="right">− {{ number_format($sale->discount_amount, 0, ',', ' ') }}</td></tr>
+        @endif
         <tr class="tot"><td>{{ __('TOTAL') }}</td><td class="right">{{ number_format($sale->total_amount, 0, ',', ' ') }} {{ currency() }}</td></tr>
         <tr class="row"><td>{{ __('Payé') }}</td><td class="right">{{ number_format($paid, 0, ',', ' ') }}</td></tr>
         @if($sale->remaining_amount > 0)

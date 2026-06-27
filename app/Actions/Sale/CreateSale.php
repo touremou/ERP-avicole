@@ -36,6 +36,8 @@ class CreateSale
                 'sale_date'        => $data['sale_date'],
                 'type'             => $data['type'] ?? 'bon_livraison',
                 'status'           => 'brouillon',
+                'discount_type'    => $data['discount_type'] ?? 'none',
+                'discount_value'   => $data['discount_value'] ?? 0,
                 'tax_rate'         => $data['tax_rate'] ?? 0,
                 'delivery_mode'    => $data['delivery_mode'] ?? 'sur_place',
                 'delivery_address' => $data['delivery_address'] ?? null,
