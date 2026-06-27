@@ -44,9 +44,6 @@ class SlaughterOrder extends Model
 
     public static function generateNumber(): string
     {
-        $year = now()->format('Y');
-        $last = static::where('order_number', 'LIKE', "ABA-{$year}-%")->withTrashed()->max('order_number');
-        $seq = $last ? (int) substr($last, -6) + 1 : 1;
-        return sprintf('ABA-%s-%06d', $year, $seq);
+        return \App\Services\DocumentNumberingService::generate('slaughter_order');
     }
 }

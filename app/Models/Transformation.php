@@ -45,9 +45,6 @@ class Transformation extends Model
 
     public static function generateBatchNumber(): string
     {
-        $year = now()->format('Y');
-        $last = static::where('batch_number', 'LIKE', "TRANS-{$year}-%")->max('batch_number');
-        $seq = $last ? (int) substr($last, -6) + 1 : 1;
-        return sprintf('TRANS-%s-%06d', $year, $seq);
+        return \App\Services\DocumentNumberingService::generate('transformation');
     }
 }

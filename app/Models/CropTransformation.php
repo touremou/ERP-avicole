@@ -98,12 +98,6 @@ class CropTransformation extends Model
 
     public static function generateBatchNumber(): string
     {
-        $year = now()->format('Y');
-        $last = static::withoutGlobalScopes()
-            ->where('batch_number', 'LIKE', "TRV-{$year}-%")
-            ->max('batch_number');
-        $seq = $last ? (int) substr($last, -6) + 1 : 1;
-
-        return sprintf('TRV-%s-%06d', $year, $seq);
+        return \App\Services\DocumentNumberingService::generate('crop_transformation');
     }
 }

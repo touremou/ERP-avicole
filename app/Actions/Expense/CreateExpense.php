@@ -20,8 +20,6 @@ class CreateExpense
     public function execute(array $data, ?UploadedFile $justificatif = null): Expense
     {
         return DB::transaction(function () use ($data, $justificatif) {
-            $lastId = Expense::withTrashed()->max('id') ?? 0;
-
             // Justificatif (facture, reçu, note de frais) : même convention de
             // stockage que les autres pièces du SI (disque public, chemin en BDD).
             $justificatifPath = $justificatif
@@ -30,7 +28,7 @@ class CreateExpense
 
             $expense = Expense::create([
                 'uuid'              => $data['uuid'] ?? null,
-                'reference'         => sprintf('DEP-%05d', $lastId + 1),
+                'reference'         => \App\Services\DocumentNumberingService::generate('expense'),
                 'batch_id'          => $data['batch_id'] ?? null,
                 'user_id'           => $data['user_id'] ?? Auth::id(),
                 'category'          => $data['category'],

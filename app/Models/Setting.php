@@ -178,6 +178,7 @@ class Setting extends Model
             'stocks'      => ['label' => 'Stocks',        'icon' => 'fa-boxes-stacked',    'color' => 'orange'],
             'ventes'      => ['label' => 'Ventes',        'icon' => 'fa-cash-register',    'color' => 'teal'],
             'cultures'    => ['label' => 'Cultures',      'icon' => 'fa-leaf',             'color' => 'green'],
+            'numbering'   => ['label' => 'Numérotation',  'icon' => 'fa-hashtag',          'color' => 'slate'],
         ];
     }
 }

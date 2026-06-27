@@ -48,12 +48,10 @@ class CreateStockAdjustment
                 'notes'    => trim(StockAdjustment::REASONS[$reason] ?? $reason) . " — {$before} → {$after}" . ($notes ? " ({$notes})" : ''),
             ]);
 
-            $lastId = StockAdjustment::withoutGlobalScopes()->max('id') ?? 0;
-
             $adjustment = StockAdjustment::create([
                 'stock_id'        => $stock->id,
                 'user_id'         => $userId,
-                'reference'       => sprintf('AJ-%05d', $lastId + 1),
+                'reference'       => \App\Services\DocumentNumberingService::generate('stock_adjustment'),
                 'type'            => $delta < 0 ? 'perte' : 'gain',
                 'reason'          => $reason,
                 'quantity_before' => $before,

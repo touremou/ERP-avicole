@@ -134,8 +134,6 @@ class ProcessSaleReturn
 
     private function generateReference(): string
     {
-        $lastId = (int) SaleReturn::withoutGlobalScopes()->max('id');
-
-        return sprintf('RET-%05d', $lastId + 1);
+        return \App\Services\DocumentNumberingService::generate('sale_return');
     }
 }

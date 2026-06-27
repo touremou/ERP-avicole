@@ -12,6 +12,7 @@ use Illuminate\Http\RedirectResponse;
 use App\Actions\Provenderie\RecordProductionConsumptionAction;
 use App\Actions\Provenderie\NormalizeFormulaNameAction;
 use App\Services\UnitConverter;
+use App\Services\DocumentNumberingService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
@@ -58,7 +59,7 @@ class MillProductionController extends Controller
 
         $production = DB::transaction(function () use ($request, $totalWeight) {
             $prod = MillProduction::create([
-                'batch_number'      => 'OP-' . date('Ymd-Hi') . '-' . strtoupper(Str::random(4)),
+                'batch_number'      => DocumentNumberingService::generate('mill_production'),
                 'formula_id'        => $request->formula_id,
                 'machine_id'        => $request->machine_ids[0],
                 'quantity_produced' => $totalWeight,
@@ -99,7 +100,7 @@ class MillProductionController extends Controller
 
         $production = DB::transaction(function () use ($request, $totalWeight) {
             $prod = MillProduction::create([
-                'batch_number'      => 'OP-' . date('Ymd-Hi') . '-' . strtoupper(Str::random(4)),
+                'batch_number'      => DocumentNumberingService::generate('mill_production'),
                 'formula_id'        => $request->formula_id,
                 // ON A SUPPRIMÉ 'machine_id' ICI
                 'quantity_produced' => $totalWeight,

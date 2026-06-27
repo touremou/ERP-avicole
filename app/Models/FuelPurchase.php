@@ -78,8 +78,7 @@ class FuelPurchase extends Model
             return $this->expense;
         }
 
-        $lastId = Expense::withoutGlobalScopes()->withTrashed()->max('id') ?? 0;
-        $expense = Expense::create($attributes + ['reference' => sprintf('GAS-%05d', $lastId + 1)]);
+        $expense = Expense::create($attributes + ['reference' => \App\Services\DocumentNumberingService::generate('fuel_expense')]);
 
         $this->expense_id = $expense->id;
         $this->saveQuietly();

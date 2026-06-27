@@ -91,10 +91,8 @@ class SupplierInvoiceController extends Controller
             'notes'        => 'nullable|string|max:500',
         ]);
 
-        $lastId = SupplierInvoice::withoutGlobalScopes()->max('id') ?? 0;
-
         $invoice = SupplierInvoice::create($data + [
-            'reference' => sprintf('ACH-%05d', $lastId + 1),
+            'reference' => \App\Services\DocumentNumberingService::generate('supplier_invoice'),
             'status'    => 'brouillon',
             'user_id'   => Auth::id(),
         ]);
