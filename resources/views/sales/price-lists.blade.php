@@ -34,7 +34,10 @@
 
             {{-- Édition des prix par tarif --}}
             @forelse($priceLists as $list)
-                @php $current = $list->items->keyBy('product_type'); @endphp
+                @php
+                    $current = $list->items->whereNull('product_id')->keyBy('product_type');
+                    $articleCurrent = $list->items->whereNotNull('product_id')->keyBy('product_id');
+                @endphp
                 <form action="{{ route('sales.price-lists.update', $list->id) }}" method="POST" class="bg-white rounded-3xl border border-slate-100 shadow-sm p-6">
                     @csrf @method('PUT')
                     <div class="flex items-center justify-between mb-4">
@@ -51,6 +54,20 @@
                         </div>
                         @endforeach
                     </div>
+
+                    @if($products->isNotEmpty())
+                    <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-6 mb-2 italic">{{ __('Prix par article') }} <span class="text-slate-300 normal-case">({{ __('prioritaire sur la catégorie ; vide = prix de base de l\'article') }})</span></p>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        @foreach($products as $product)
+                        <div class="flex items-center justify-between gap-3 p-3 rounded-xl bg-teal-50/40">
+                            <span class="text-[11px] font-black text-slate-600 italic truncate">{{ $product->name }}</span>
+                            <input type="number" min="0" step="1" name="article_prices[{{ $product->id }}]" value="{{ optional($articleCurrent->get($product->id))->unit_price ? (int) $articleCurrent->get($product->id)->unit_price : '' }}"
+                                   placeholder="{{ (int) $product->base_price }}" class="w-32 bg-white border-none rounded-lg p-2 text-right font-black text-xs shadow-inner outline-none">
+                        </div>
+                        @endforeach
+                    </div>
+                    @endif
+
                     <div class="text-right mt-4">
                         <button type="submit" class="bg-teal-600 text-white px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-teal-700 transition-all"><i class="fa-solid fa-floppy-disk mr-1"></i>{{ __('Enregistrer') }}</button>
                     </div>

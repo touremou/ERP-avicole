@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class SalePriceListItem extends Model
 {
-    protected $fillable = ['sale_price_list_id', 'product_type', 'unit_price'];
+    protected $fillable = ['sale_price_list_id', 'product_id', 'product_type', 'unit_price'];
 
     protected $casts = ['unit_price' => 'decimal:2'];
 

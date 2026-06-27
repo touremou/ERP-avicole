@@ -52,6 +52,7 @@ class CreateSale
                     'product_type' => $item['product_type'],
                     'product_name' => $item['product_name'],
                     'product_id'   => $item['product_id'] ?? null,
+                    'product_ref_id' => $item['product_ref_id'] ?? null,
                     'batch_id'     => $item['batch_id'] ?? null,
                     'quantity'     => $item['quantity'],
                     'unit'         => $item['unit'],

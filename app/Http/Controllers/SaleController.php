@@ -74,12 +74,23 @@ class SaleController extends Controller
         $stocks  = Stock::where('current_quantity', '>', 0)->get();
         $prices  = PriceList::where('is_active', true)->get();
 
+        // Catalogue d'articles vendables (sélection guidée + photo + prix).
+        $catalog = \App\Models\Product::active()->orderBy('name')->get()
+            ->map(fn ($p) => [
+                'id'           => $p->id,
+                'name'         => $p->name,
+                'product_type' => $p->product_type,
+                'unit'         => $p->unit,
+                'base_price'   => (float) $p->base_price,
+                'photo'        => $p->photo_url,
+            ])->values();
+
         // Pré-sélection client si passé en query string
         $selectedClient = $request->filled('client_id')
             ? Client::find($request->client_id)
             : null;
 
-        return view('sales.create', compact('clients', 'batches', 'stocks', 'prices', 'selectedClient'));
+        return view('sales.create', compact('clients', 'batches', 'stocks', 'prices', 'selectedClient', 'catalog'));
     }
 
     public function store(StoreSaleRequest $request, CreateSale $action)

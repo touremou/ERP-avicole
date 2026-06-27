@@ -36,6 +36,7 @@ class StoreSaleRequest extends FormRequest
             'items.*.product_type'   => 'required|in:oeufs,animal_vif,carcasse,lait,fumier,aliment,produits_finis,materiel,autre,volaille_vivante,volaille_abattue',
             'items.*.product_name'   => 'required|string|max:255',
             'items.*.product_id'     => 'nullable|integer',
+            'items.*.product_ref_id' => 'nullable|integer|exists:products,id',
             'items.*.batch_id'       => 'nullable|integer|exists:batches,id',
             'items.*.quantity'       => 'required|numeric|min:0.01',
             'items.*.unit'           => 'required|in:alveole,unite,kg,piece,sac,voyage,tete,litre',

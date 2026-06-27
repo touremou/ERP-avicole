@@ -31,10 +31,12 @@ class SalePriceListController extends Controller
         }
 
         $priceLists = SalePriceList::with('items')->orderByDesc('is_default')->orderBy('name')->get();
+        $products   = \App\Models\Product::active()->orderBy('name')->get(['id', 'name', 'product_type', 'base_price']);
 
         return view('sales.price-lists', [
             'priceLists'   => $priceLists,
             'productTypes' => self::PRODUCT_TYPES,
+            'products'     => $products,
         ]);
     }
 
@@ -65,20 +67,38 @@ class SalePriceListController extends Controller
     {
         if (Gate::denies('commerce.M')) return back()->with('error', 'Non autorisé.');
 
-        $prices = (array) $request->input('prices', []);
+        $prices        = (array) $request->input('prices', []);
+        $articlePrices = (array) $request->input('article_prices', []);
 
-        DB::transaction(function () use ($prices, $priceList) {
+        DB::transaction(function () use ($prices, $articlePrices, $priceList) {
+            // Prix par CATÉGORIE (product_id null).
             foreach ($prices as $type => $value) {
                 if (! array_key_exists($type, self::PRODUCT_TYPES)) continue;
 
                 if ($value === null || $value === '') {
-                    $priceList->items()->where('product_type', $type)->delete();
+                    $priceList->items()->whereNull('product_id')->where('product_type', $type)->delete();
                     continue;
                 }
 
                 SalePriceListItem::updateOrCreate(
-                    ['sale_price_list_id' => $priceList->id, 'product_type' => $type],
+                    ['sale_price_list_id' => $priceList->id, 'product_id' => null, 'product_type' => $type],
                     ['unit_price' => max(0, (float) $value)]
+                );
+            }
+
+            // Prix par ARTICLE (product_id défini) — prioritaire sur la catégorie.
+            foreach ($articlePrices as $productId => $value) {
+                $product = \App\Models\Product::find($productId);
+                if (! $product) continue;
+
+                if ($value === null || $value === '') {
+                    $priceList->items()->where('product_id', $product->id)->delete();
+                    continue;
+                }
+
+                SalePriceListItem::updateOrCreate(
+                    ['sale_price_list_id' => $priceList->id, 'product_id' => $product->id],
+                    ['product_type' => $product->product_type, 'unit_price' => max(0, (float) $value)]
                 );
             }
         });
@@ -96,11 +116,20 @@ class SalePriceListController extends Controller
 
         $data = $request->validate([
             'client_id'    => 'nullable|exists:clients,id',
-            'product_type' => 'required|string',
+            'product_id'   => 'nullable|exists:products,id',
+            'product_type' => 'required_without:product_id|string',
         ]);
 
-        $client = $data['client_id'] ? Client::find($data['client_id']) : null;
-        $price  = SalePriceList::suggestedPrice($client, $data['product_type']);
+        $client = ! empty($data['client_id']) ? Client::find($data['client_id']) : null;
+
+        // Article précis du catalogue → prix par article (cascade) ; sinon prix
+        // par catégorie (ligne en saisie libre).
+        if (! empty($data['product_id'])) {
+            $product = \App\Models\Product::find($data['product_id']);
+            $price = $product ? SalePriceList::priceForProduct($client, $product) : null;
+        } else {
+            $price = SalePriceList::suggestedPrice($client, $data['product_type']);
+        }
 
         return response()->json(['price' => $price]);
     }

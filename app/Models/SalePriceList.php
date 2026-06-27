@@ -43,9 +43,39 @@ class SalePriceList extends Model
         }
 
         $price = SalePriceListItem::where('sale_price_list_id', $listId)
+            ->whereNull('product_id')
             ->where('product_type', $productType)
             ->value('unit_price');
 
         return $price !== null ? (float) $price : null;
+    }
+
+    /**
+     * Prix suggéré pour un ARTICLE précis du catalogue. Cascade :
+     *   1. prix par article du tarif du client,
+     *   2. prix par catégorie du tarif du client,
+     *   3. prix de base de l'article,
+     *   sinon null.
+     */
+    public static function priceForProduct(?Client $client, Product $product): ?float
+    {
+        $listId = $client?->price_list_id
+            ?? static::where('is_default', true)->value('id');
+
+        if ($listId) {
+            $perArticle = SalePriceListItem::where('sale_price_list_id', $listId)
+                ->where('product_id', $product->id)
+                ->value('unit_price');
+            if ($perArticle !== null) {
+                return (float) $perArticle;
+            }
+
+            $perType = static::suggestedPrice($client, $product->product_type);
+            if ($perType !== null) {
+                return $perType;
+            }
+        }
+
+        return $product->base_price !== null ? (float) $product->base_price : null;
     }
 }

@@ -68,6 +68,23 @@
 
                     <template x-for="(line, index) in lines" :key="index">
                         <div class="mb-4 p-5 bg-slate-50 rounded-2xl border" :class="line.quantity > line.max_qty && line.max_qty > 0 ? 'border-red-300 bg-red-50/30' : 'border-slate-100'">
+                            {{-- RACCOURCI CATALOGUE : choisir un article pré-enregistré (photo + prix auto) --}}
+                            <template x-if="catalog.length">
+                                <div class="flex items-center gap-3 mb-3 pb-3 border-b border-slate-100">
+                                    <template x-if="line.photo">
+                                        <img :src="line.photo" class="w-10 h-10 rounded-lg object-cover shadow-sm" alt="">
+                                    </template>
+                                    <div class="flex-1">
+                                        <label class="text-[8px] font-black uppercase text-teal-600 tracking-widest">{{ __("Article du catalogue") }}</label>
+                                        <select x-model="line.catalog_id" @change="onCatalogSelect(index)" class="w-full bg-white border border-teal-100 rounded-xl p-2.5 text-[10px] font-black uppercase shadow-sm outline-none focus:border-teal-400">
+                                            <option value="">— {{ __("Saisie libre") }} —</option>
+                                            <template x-for="art in catalog" :key="art.id">
+                                                <option :value="art.id" x-text="art.name"></option>
+                                            </template>
+                                        </select>
+                                    </div>
+                                </div>
+                            </template>
                             <div class="grid grid-cols-12 gap-3 items-end">
                                 {{-- TYPE --}}
                                 <div class="col-span-3">
@@ -165,6 +182,7 @@
                             <input type="hidden" :name="'items['+index+'][product_type]'" :value="line.product_type">
                             <input type="hidden" :name="'items['+index+'][product_name]'" :value="line.product_name">
                             <input type="hidden" :name="'items['+index+'][product_id]'" :value="line.product_id">
+                            <input type="hidden" :name="'items['+index+'][product_ref_id]'" :value="line.catalog_id">
                             <input type="hidden" :name="'items['+index+'][batch_id]'" :value="line.batch_id">
                             <input type="hidden" :name="'items['+index+'][quantity]'" :value="line.quantity">
                             <input type="hidden" :name="'items['+index+'][unit]'" :value="line.unit">
@@ -249,10 +267,12 @@
         const batchList = @json($formattedBatches);
         const prices = @json($formattedPrices);
         const catMap = @json(\App\Models\Stock::PRODUCT_TYPE_TO_CATEGORY);
+        const catalog = {{ Illuminate\Support\Js::from($catalog) }};
 
         return {
+            catalog,
             clientId: '{{ $selectedClient?->id ?? "" }}', saleType: 'bon_livraison', immediatePayment: 0,
-            lines: [{ product_type:'', product_name:'', quantity:1, unit:'', unit_price:0, product_id:'', batch_id:'', selected_stock:'', max_qty:0 }],
+            lines: [{ catalog_id:'', photo:'', product_type:'', product_name:'', quantity:1, unit:'', unit_price:0, product_id:'', batch_id:'', selected_stock:'', max_qty:0 }],
             batches: batchList.filter(b => b.qty > 0),
             get subtotal() { return this.lines.reduce((s,l) => s + (l.quantity*l.unit_price), 0); },
             get taxAmount() { return this.saleType==='facture' ? this.subtotal*0.18 : 0; },
@@ -277,8 +297,25 @@
                 })[t] || [];
             },
             isCountUnit(u) { return ['tete','piece','unite'].includes(u); },
-            addLine() { this.lines.push({ product_type:'', product_name:'', quantity:1, unit:'', unit_price:0, product_id:'', batch_id:'', selected_stock:'', max_qty:0 }); },
+            addLine() { this.lines.push({ catalog_id:'', photo:'', product_type:'', product_name:'', quantity:1, unit:'', unit_price:0, product_id:'', batch_id:'', selected_stock:'', max_qty:0 }); },
             removeLine(i) { if(this.lines.length>1) this.lines.splice(i,1); },
+            // Sélection d'un article du catalogue : pré-remplit type, désignation,
+            // unité, photo et prix (tarif par article du client).
+            onCatalogSelect(i) {
+                let l = this.lines[i];
+                const art = this.catalog.find(a => a.id == l.catalog_id);
+                if (!art) { l.photo=''; return; }
+                l.product_type = art.product_type;
+                l.product_name = art.name;
+                l.unit = art.unit;
+                l.photo = art.photo || '';
+                l.unit_price = 0;
+                const url = '{{ route('sales.suggest-price') }}?product_id=' + art.id + (this.clientId ? '&client_id=' + this.clientId : '');
+                fetch(url, {headers:{'Accept':'application/json'}})
+                    .then(r => r.ok ? r.json() : null)
+                    .then(d => { l.unit_price = (d && d.price != null) ? d.price : art.base_price; })
+                    .catch(() => { l.unit_price = art.base_price; });
+            },
             onTypeChange(i) {
                 let l=this.lines[i]; l.product_name=''; l.product_id=''; l.batch_id=''; l.selected_stock=''; l.max_qty=0; l.unit_price=0;
                 // Unité par défaut selon le type ; les types stock prennent
