@@ -29,20 +29,20 @@ class PosController extends Controller
             return redirect()->route('dashboard')->with('error', 'Accès restreint au module Commerce.');
         }
 
-        // Le POS s'appuie désormais sur le CATALOGUE : articles actifs liés à un
-        // stock physique et disponibles (photo + prix). Un article non lié au
-        // stock (service) n'est pas vendable au comptant ici.
+        // Le POS s'appuie sur le CATALOGUE (photo + prix). Deux cas :
+        //  - article LIÉ à un stock : borné à la disponibilité (masqué si épuisé) ;
+        //  - article NON lié (vente libre, ex. service) : toujours vendable,
+        //    quantité non suivie (qty = null), aucun déstockage.
         $products = \App\Models\Product::active()
-            ->whereNotNull('stock_id')
             ->with('stock')
             ->orderBy('name')
             ->get()
-            ->filter(fn (\App\Models\Product $p) => $p->stock && (float) $p->stock->current_quantity > 0)
+            ->filter(fn (\App\Models\Product $p) => ! $p->stock_id || ($p->stock && (float) $p->stock->current_quantity > 0))
             ->map(fn (\App\Models\Product $p) => [
                 'id'     => $p->id,                                                  // ID ARTICLE catalogue
                 'name'   => $p->name,
                 'unit'   => $p->unit,
-                'qty'    => (float) $p->stock->current_quantity,
+                'qty'    => $p->stock ? (float) $p->stock->current_quantity : null,  // null = non suivi
                 'price'  => (float) (\App\Models\SalePriceList::priceForProduct(null, $p) ?? $p->base_price),
                 'photo'  => $p->photo_url,
             ])
@@ -88,22 +88,26 @@ class PosController extends Controller
         $total = 0.0;
         foreach ($data['items'] as $line) {
             $product = \App\Models\Product::with('stock')->find($line['product_id']);
-            if (! $product || ! $product->stock) {
-                continue; // article non vendable au comptant (sans stock lié)
+            if (! $product) {
+                continue;
             }
 
-            $stock = $product->stock;
             $qty = (float) $line['quantity'];
-            if ($qty > (float) $stock->current_quantity) {
-                return back()->with('error', "Stock insuffisant pour {$product->name} (disponible : {$stock->current_quantity} {$stock->unit}).");
+
+            // Article lié au stock : contrôle de disponibilité + déstockage.
+            // Article non lié : vente libre, aucun contrôle ni déstockage.
+            if ($product->stock) {
+                if ($qty > (float) $product->stock->current_quantity) {
+                    return back()->with('error', "Stock insuffisant pour {$product->name} (disponible : {$product->stock->current_quantity} {$product->stock->unit}).");
+                }
             }
 
             $price = (float) $line['unit_price'];
             $items[] = [
                 'product_type'   => $product->product_type,
                 'product_name'   => $product->name,
-                'product_id'     => $stock->id,   // cible du déstockage (chaîne ValidateSale)
-                'product_ref_id' => $product->id, // article catalogue vendu
+                'product_id'     => $product->stock_id,  // cible du déstockage (null si non suivi)
+                'product_ref_id' => $product->id,        // article catalogue vendu
                 'quantity'       => $qty,
                 'unit'           => $product->unit,
                 'unit_price'     => $price,

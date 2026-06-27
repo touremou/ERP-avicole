@@ -161,6 +161,30 @@ test('l\'encaissement express solde une vente à crédit et redirige vers le tic
         ->and((float) $sale->remaining_amount)->toBe(0.0);
 });
 
+test('un article du catalogue NON lié au stock est vendable au POS (vente libre)', function () {
+    // Article catalogue sans stock lié (ex. « Œufs XL » non suivi en stock).
+    $product = \App\Models\Product::create([
+        'name' => 'Œufs XL', 'product_type' => 'oeufs', 'unit' => 'alveole',
+        'base_price' => 1150, 'is_active' => true, // stock_id null
+    ]);
+
+    // Il apparaît dans la grille POS avec qty null (non suivi).
+    $resp = $this->actingAs($this->adminUser)->get(route('pos.index'))->assertOk();
+    $card = collect($resp->viewData('products'))->firstWhere('name', 'Œufs XL');
+    expect($card)->not->toBeNull()->and($card['qty'])->toBeNull();
+
+    // Et il s'encaisse sans contrôle de stock ni erreur.
+    $this->actingAs($this->adminUser)->post(route('pos.checkout'), [
+        'payment_method' => 'especes',
+        'items'          => [['product_id' => $product->id, 'quantity' => 4, 'unit_price' => 1150]],
+    ])->assertRedirect();
+
+    $sale = Sale::latest('id')->first();
+    expect((float) $sale->total_amount)->toBe(4600.0)
+        ->and($sale->items->first()->product_ref_id)->toBe($product->id)
+        ->and($sale->items->first()->product_id)->toBeNull(); // pas de stock cible
+});
+
 test('le POS accepte un client sélectionné', function () {
     $stock = sellableStock(50, 2000);
     $client = Client::create([

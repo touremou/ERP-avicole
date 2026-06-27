@@ -66,16 +66,21 @@ class ValidateSale
      */
     private function destockItem($item): void
     {
-        if (! $item->product_id) {
-            Log::warning("ValidateSale: ligne #{$item->id} sans product_id, déstockage par nom.");
-        }
-
         $stock = $item->product_id
             ? Stock::find($item->product_id)
             : Stock::where('item_name', $item->product_name)->first();
 
         if (! $stock) {
-            throw new Exception("Stock introuvable pour '{$item->product_name}'. Impossible de valider.");
+            // product_id explicite mais stock disparu → vraie anomalie (FK), on bloque.
+            if ($item->product_id) {
+                throw new Exception("Stock introuvable pour '{$item->product_name}'. Impossible de valider.");
+            }
+
+            // Aucun stock cible (article catalogue NON suivi en stock, ou ligne en
+            // saisie libre sans article de stock) : la vente est permise, on ne
+            // décrémente simplement aucun stock.
+            Log::warning("ValidateSale: ligne #{$item->id} ('{$item->product_name}') sans stock lié — vente sans déstockage.");
+            return;
         }
 
         if ((float) $stock->current_quantity < (float) $item->quantity) {

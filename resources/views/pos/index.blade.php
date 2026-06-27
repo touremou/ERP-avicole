@@ -84,12 +84,16 @@
                                     <p class="text-[8px] font-black text-slate-400 uppercase mt-1">
                                         <span x-text="formatMoney(priceFor(p))"></span> / <span x-text="p.unit"></span>
                                     </p>
-                                    <p class="text-[8px] font-black mt-1" :class="p.qty > 0 ? 'text-emerald-500' : 'text-red-500'">
-                                        {{ __("Stock") }} : <span x-text="p.qty"></span>
+                                    <p class="text-[8px] font-black mt-1" :class="p.qty === null ? 'text-slate-400' : (p.qty > 0 ? 'text-emerald-500' : 'text-red-500')">
+                                        <span x-show="p.qty === null">{{ __("Non suivi") }}</span>
+                                        <span x-show="p.qty !== null">{{ __("Stock") }} : <span x-text="p.qty"></span></span>
                                     </p>
                                 </button>
                             </template>
-                            <p x-show="filteredProducts.length === 0" class="col-span-full text-center text-[10px] font-black text-slate-400 uppercase tracking-widest py-8">{{ __("Aucun produit vendable en stock.") }}</p>
+                            <p x-show="filteredProducts.length === 0" class="col-span-full text-center text-[10px] font-black text-slate-400 uppercase tracking-widest py-8">
+                                {{ __("Aucun article au catalogue.") }}
+                                <a href="{{ route('products.index') }}" class="text-teal-500 underline">{{ __("Créer un article") }}</a>
+                            </p>
                         </div>
                     </div>
 
@@ -195,12 +199,12 @@
                     return this.cart.reduce((s, l) => s + (l.quantity || 0) * (l.unit_price || 0), 0);
                 },
                 addToCart(p) {
-                    if (p.qty <= 0) return;
+                    if (p.qty !== null && p.qty <= 0) return;
                     const existing = this.cart.find(l => l.id === p.id);
                     if (existing) {
                         if (existing.quantity < existing.max) existing.quantity = Math.round((existing.quantity + 1) * 100) / 100;
                     } else {
-                        this.cart.push({ id: p.id, name: p.name, unit: p.unit, max: p.qty, quantity: 1, unit_price: this.priceFor(p) });
+                        this.cart.push({ id: p.id, name: p.name, unit: p.unit, max: (p.qty === null ? Infinity : p.qty), quantity: 1, unit_price: this.priceFor(p) });
                     }
                 },
                 inc(i) { const l = this.cart[i]; if (l.quantity < l.max) l.quantity = Math.round((l.quantity + 1) * 100) / 100; },
