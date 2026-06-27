@@ -12,7 +12,7 @@
                 </button>
                 <button onclick="document.getElementById('roleConfigModal').classList.remove('hidden')"
                         class="bg-white border border-slate-200 text-slate-600 px-6 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:border-slate-900 transition-all shadow-sm italic cursor-pointer">
-                    <i class="fas fa-shield-halved mr-2 text-blue-500"></i> {{ __("Rôles & LCMS") }}
+                    <i class="fas fa-shield-halved mr-2 text-blue-500"></i> {{ __("Rôles") }}
                 </button>
                 <button onclick="document.getElementById('userModal').classList.remove('hidden')"
                         class="bg-slate-900 text-white px-6 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-blue-600 transition-all shadow-xl italic border-none cursor-pointer">
@@ -41,7 +41,6 @@
                         <tr class="bg-slate-50 text-[8px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 italic">
                             <th class="px-8 py-5 text-left">{{ __("Utilisateur") }}</th>
                             <th class="px-6 py-5 text-left">{{ __("Rôle") }}</th>
-                            <th class="px-6 py-5 text-center">{{ __("Permissions globales") }}</th>
                             <th class="px-6 py-5 text-center">{{ __("Modules accessibles") }}</th>
                             <th class="px-8 py-5 text-right">{{ __("Actions") }}</th>
                         </tr>
@@ -73,21 +72,6 @@
                                         @endforeach
                                     </select>
                                 </form>
-                            </td>
-                            <td class="px-6 py-5">
-                                <div class="flex justify-center gap-1.5">
-                                    @foreach(['L', 'C', 'M', 'S'] as $priv)
-                                        @php $has = $user->hasPermission($priv); @endphp
-                                        <div @class(['w-7 h-7 rounded-lg text-[9px] flex items-center justify-center font-black transition-all',
-                                            'bg-emerald-100 text-emerald-600' => $has && $priv === 'L',
-                                            'bg-orange-100 text-orange-600' => $has && $priv === 'C',
-                                            'bg-blue-100 text-blue-600' => $has && $priv === 'M',
-                                            'bg-rose-100 text-rose-600' => $has && $priv === 'S',
-                                            'bg-slate-50 text-slate-200' => !$has])>
-                                            {{ $has ? $priv : '·' }}
-                                        </div>
-                                    @endforeach
-                                </div>
                             </td>
                             <td class="px-6 py-5 text-center">
                                 @php $accessibleCount = $user->getAccessibleModules()->count(); @endphp
