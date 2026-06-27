@@ -105,6 +105,9 @@ Route::get('/media/{path}', [MediaController::class, 'show'])
 // pouvoir vérifier l'origine d'un lot en scannant le QR de l'étiquette, sans
 // compte. N'expose que des informations d'origine (aucune donnée financière).
 Route::get('/trace/lot/{code}', [TraceabilityController::class, 'batch'])->name('trace.batch');
+Route::get('/trace/op/{number}', [TraceabilityController::class, 'mill'])->name('trace.mill');
+Route::get('/trace/transformation/{number}', [TraceabilityController::class, 'crop'])->name('trace.crop');
+Route::get('/trace/expedition/{number}', [TraceabilityController::class, 'dispatch'])->name('trace.dispatch');
 
 // ──────────────────────────────────────────────
 // PROFIL & DASHBOARD (tout utilisateur connecté)
@@ -234,6 +237,7 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/', 'index')->name('index')->middleware('can:L');
             Route::get('/create', 'create')->name('create')->middleware('can:C');
             Route::post('/', 'store')->name('store')->middleware('can:C');
+            Route::get('/{id}/label', [TraceabilityController::class, 'millLabel'])->name('label')->middleware('can:L');
             Route::get('/{id}', 'show')->name('show')->middleware('can:L');
             Route::put('/{id}/complete', 'complete')->name('complete')->middleware('can:M');
         });
@@ -288,6 +292,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/', 'index')->name('index')->middleware('can:L');
         Route::get('/create', 'create')->name('create')->middleware('can:C');
         Route::post('/', 'store')->name('store')->middleware('can:C');
+        Route::get('/{cropTransformation}/label', [TraceabilityController::class, 'cropLabel'])->name('label')->where('cropTransformation', '[0-9]+')->middleware('can:L');
         Route::get('/{cropTransformation}', 'show')->name('show')->where('cropTransformation', '[0-9]+')->middleware('can:L');
         Route::get('/{cropTransformation}/edit', 'edit')->name('edit')->where('cropTransformation', '[0-9]+')->middleware('can:M');
         Route::put('/{cropTransformation}', 'update')->name('update')->middleware('can:M');
@@ -651,6 +656,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/', 'index')->name('index')->middleware('can:L');
         Route::get('/create', 'create')->name('create')->middleware('can:C');
         Route::post('/', 'store')->name('store')->middleware('can:C');
+        Route::get('/{dispatch}/label', [TraceabilityController::class, 'dispatchLabel'])->name('label')->where('dispatch', '[0-9]+')->middleware('can:L');
         Route::get('/{dispatch}', 'show')->name('show')->middleware('can:L');
 
         // Réception (saisie par le magasin). L'accès est gouverné DANS le

@@ -15,6 +15,11 @@
                 <a href="{{ route('crop-transformations.index') }}" class="text-[10px] font-black uppercase text-slate-400 hover:text-slate-900 transition no-underline">
                     <i class="fa-solid fa-arrow-left mr-2"></i> {{ __("Retour") }}
                 </a>
+                @if($transformation->batch_number)
+                <a href="{{ route('crop-transformations.label', $transformation) }}" target="_blank" class="bg-green-50 text-green-700 px-5 py-2.5 rounded-2xl font-black text-[9px] uppercase tracking-widest italic no-underline flex items-center gap-2 hover:bg-green-600 hover:text-white transition" title="{{ __('Étiquette QR de traçabilité') }}">
+                    <i class="fa-solid fa-qrcode"></i> {{ __("Étiquette") }}
+                </a>
+                @endif
                 @can('cultures.M')
                 <a href="{{ route('crop-transformations.edit', $transformation) }}" class="bg-white border border-slate-100 text-slate-600 px-5 py-2.5 rounded-2xl font-black text-[9px] uppercase tracking-widest italic no-underline flex items-center gap-2 hover:bg-slate-50">
                     <i class="fa-solid fa-pen text-green-500"></i> {{ __("Modifier") }}

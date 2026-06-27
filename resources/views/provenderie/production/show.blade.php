@@ -8,6 +8,11 @@
                     <i class="fa-solid fa-arrow-left mr-2"></i> {{ __("Retour au journal") }}
                 </a>
                 <div class="flex gap-4">
+                    <a href="{{ route('production.label', $production->id) }}" target="_blank"
+                       class="bg-lime-50 text-lime-700 px-6 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-lime-600 hover:text-white transition-all no-underline"
+                       title="{{ __("Étiquette QR de traçabilité") }}">
+                        <i class="fa-solid fa-qrcode mr-2"></i> {{ __("Étiquette") }}
+                    </a>
                     {{-- Permission M : Clôture de la production --}}
                     @can('provenderie.M')
                         @if($production->status === 'Planifié' || $production->status === 'En cours')

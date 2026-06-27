@@ -12,6 +12,12 @@
                     </p>
                 </div>
             </div>
+            <div class="flex items-center gap-3">
+                <a href="{{ route('dispatches.label', $dispatch->id) }}" target="_blank"
+                   class="bg-indigo-50 text-indigo-700 px-6 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all italic flex items-center gap-2 no-underline"
+                   title="{{ __("Étiquette QR de traçabilité") }}">
+                    <i class="fa-solid fa-qrcode"></i> {{ __("Étiquette") }}
+                </a>
             @if(!$dispatch->reception && in_array($dispatch->status, ['expedie', 'en_route']))
                 {{-- Réception ouverte au RÉCEPTEUR DÉSIGNÉ ou à un responsable
                      logistique (droit M) en secours. L'anti-fraude (expéditeur ≠
@@ -22,6 +28,7 @@
                 </a>
                 @endif
             @endif
+            </div>
         </div>
     </x-slot>
 
