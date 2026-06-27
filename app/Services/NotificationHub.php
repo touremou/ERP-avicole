@@ -320,17 +320,31 @@ class NotificationHub
     // ──────────────────────────────────────────────
 
     /**
+     * Construit le corps d'un message à partir d'un modèle éditable
+     * (NotificationTemplate) ou de son défaut livré, puis substitue les
+     * variables {{ clé }}.
+     */
+    private function tpl(string $key, array $vars): string
+    {
+        return \App\Models\NotificationTemplate::interpolate(
+            \App\Models\NotificationTemplate::bodyFor($key),
+            $vars
+        );
+    }
+
+    /**
      * Alerte mortalité pic.
      */
     public function alertMortality(Batch $batch, int $mortality, float $rate): void
     {
-        $emoji = $rate > 1 ? '🔴' : '⚠️';
-        $message = "{$emoji} *ALERTE MORTALITÉ*\n\n"
-            . "Lot : *{$batch->code}*\n"
-            . "Bâtiment : {$batch->building->name}\n"
-            . "Morts : *{$mortality}* ({$rate}%)\n"
-            . "Effectif restant : {$batch->current_quantity}\n\n"
-            . "Action requise immédiatement.";
+        $message = $this->tpl('alert_mortality', [
+            'emoji'     => $rate > 1 ? '🔴' : '⚠️',
+            'batch_code' => $batch->code,
+            'building'  => $batch->building->name,
+            'deaths'    => $mortality,
+            'rate'      => $rate,
+            'remaining' => $batch->current_quantity,
+        ]);
 
         $this->broadcast('alert_mortality', $message, 'Mortalité ' . $batch->code, 'critique');
     }
@@ -346,12 +360,13 @@ class NotificationHub
     public function alertDailyMortalitySpike(Batch $batch, int $deaths, float $dailyRate): void
     {
         $building = $batch->building->name ?? 'Bâtiment ?';
-        $message = "🚨 *PIC DE MORTALITÉ — {$building}*\n\n"
-            . "Lot : *{$batch->code}*\n"
-            . "Bâtiment : {$building}\n"
-            . "Morts AUJOURD'HUI : *{$deaths}* ({$dailyRate}% de l'effectif)\n"
-            . "Effectif restant : {$batch->current_quantity}\n\n"
-            . "Mortalité quotidienne ANORMALE : vérifier maladie, eau, température, intoxication. Isoler les sujets atteints et appeler le vétérinaire si besoin.";
+        $message = $this->tpl('daily_mortality_spike', [
+            'batch_code' => $batch->code,
+            'building'   => $building,
+            'deaths'     => $deaths,
+            'daily_rate' => $dailyRate,
+            'remaining'  => $batch->current_quantity,
+        ]);
 
         $this->broadcast('alert_mortality', $message, 'Pic mortalité ' . $batch->code, 'critique');
     }
@@ -361,12 +376,13 @@ class NotificationHub
      */
     public function alertStockCritical(Stock $stock): void
     {
-        $message = "🔴 *RUPTURE STOCK*\n\n"
-            . "Article : *{$stock->item_name}*\n"
-            . "Catégorie : {$stock->category}\n"
-            . "Restant : *{$stock->current_quantity} {$stock->unit}*\n"
-            . "Seuil alerte : {$stock->alert_threshold} {$stock->unit}\n\n"
-            . "Commander immédiatement.";
+        $message = $this->tpl('alert_stock', [
+            'item_name' => $stock->item_name,
+            'category'  => $stock->category,
+            'quantity'  => $stock->current_quantity,
+            'unit'      => $stock->unit,
+            'threshold' => $stock->alert_threshold,
+        ]);
 
         $this->broadcast('alert_stock', $message, 'Stock ' . $stock->item_name, 'critique');
     }
@@ -380,11 +396,12 @@ class NotificationHub
             ? "{$source->fuel_autonomy_hours}h de fonctionnement"
             : "{$source->fuel_autonomy_days} jour(s)";
 
-        $message = "⛽ *CARBURANT CRITIQUE*\n\n"
-            . "Groupe : *{$source->name}*\n"
-            . "Autonomie : *{$autonomyLabel}*\n"
-            . "Niveau cuve : {$source->current_fuel_level}L / {$source->fuel_tank_capacity}L\n\n"
-            . "Commander du carburant AUJOURD'HUI.";
+        $message = $this->tpl('alert_fuel', [
+            'source'   => $source->name,
+            'autonomy' => $autonomyLabel,
+            'level'    => $source->current_fuel_level,
+            'capacity' => $source->fuel_tank_capacity,
+        ]);
 
         $this->broadcast('alert_energy', $message, 'Carburant ' . $source->name, 'critique');
     }
@@ -426,18 +443,22 @@ class NotificationHub
         $isLarge = $threshold > 0 && (float) $sale->total_amount >= $threshold;
         $afterHours = $this->isAfterHours();
 
-        $message = ($isLarge ? "💰🔴 *GROSSE VENTE*" : "💰 *NOUVELLE VENTE*") . "\n\n"
-            . "Réf : *{$sale->reference}*\n"
-            . "Client : {$sale->client->name}\n"
-            . "Total : *" . number_format($sale->total_amount, 0, ',', '.') . " GNF*\n"
-            . "Statut : {$sale->payment_status}";
-
+        $flags = '';
         if ($isLarge) {
-            $message .= "\n\n⚠️ Montant au-delà du seuil de " . number_format($threshold, 0, ',', '.') . " GNF.";
+            $flags .= "\n\n⚠️ Montant au-delà du seuil de " . number_format($threshold, 0, ',', '.') . " GNF.";
         }
         if ($afterHours) {
-            $message .= "\n\n🌙 Enregistrée HORS heures ouvrées (" . now()->format('H:i') . ").";
+            $flags .= "\n\n🌙 Enregistrée HORS heures ouvrées (" . now()->format('H:i') . ").";
         }
+
+        $message = $this->tpl('sale_created', [
+            'header'    => $isLarge ? "💰🔴 *GROSSE VENTE*" : "💰 *NOUVELLE VENTE*",
+            'reference' => $sale->reference,
+            'client'    => $sale->client->name,
+            'total'     => number_format($sale->total_amount, 0, ',', '.'),
+            'status'    => $sale->payment_status,
+            'flags'     => $flags,
+        ]);
 
         $this->broadcast('alert_sales', $message, 'Vente ' . $sale->reference, ($isLarge || $afterHours) ? 'critique' : 'normal');
     }
@@ -496,16 +517,19 @@ class NotificationHub
         $sale = $payment->sale;
         $afterHours = $this->isAfterHours();
 
-        $message = ($afterHours ? "🌙 *ENCAISSEMENT HORS HORAIRES*" : "✅ *PAIEMENT REÇU*") . "\n\n"
-            . "Montant : *" . number_format($payment->amount, 0, ',', '.') . " GNF*\n"
-            . "Mode : {$payment->method_label}\n"
-            . "Vente : {$sale->reference}\n"
-            . "Client : {$sale->client->name}\n"
-            . "Reste dû : " . number_format($sale->remaining_amount, 0, ',', '.') . " GNF";
+        $flags = $afterHours
+            ? "\n\n⚠️ Enregistré à " . now()->format('H:i') . ", hors heures ouvrées — à vérifier."
+            : '';
 
-        if ($afterHours) {
-            $message .= "\n\n⚠️ Enregistré à " . now()->format('H:i') . ", hors heures ouvrées — à vérifier.";
-        }
+        $message = $this->tpl('payment_received', [
+            'header'    => $afterHours ? "🌙 *ENCAISSEMENT HORS HORAIRES*" : "✅ *PAIEMENT REÇU*",
+            'amount'    => number_format($payment->amount, 0, ',', '.'),
+            'method'    => $payment->method_label,
+            'reference' => $sale->reference,
+            'client'    => $sale->client->name,
+            'remaining' => number_format($sale->remaining_amount, 0, ',', '.'),
+            'flags'     => $flags,
+        ]);
 
         $this->broadcast('alert_sales', $message, 'Paiement ' . $sale->reference, $afterHours ? 'critique' : 'normal');
     }

@@ -59,7 +59,8 @@ use App\Http\Controllers\{
     CropReportController,
     CropCalendarEventController,
     WeatherController,
-    TraceabilityController
+    TraceabilityController,
+    NotificationTemplateController
 };
 
 Route::redirect('/', '/login');
@@ -711,6 +712,10 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/preferences', 'updatePreferences')->name('preferences.update')->middleware('can:L');
         Route::post('/test', 'sendTest')->name('test')->middleware('can:L');
         Route::get('/logs', 'logs')->name('logs')->middleware('can:S');
+        // Modèles de messages éditables (admin).
+        Route::get('/templates', [NotificationTemplateController::class, 'index'])->name('templates')->middleware('can:S');
+        Route::put('/templates/{template}', [NotificationTemplateController::class, 'update'])->name('templates.update')->middleware('can:S');
+        Route::put('/templates/{template}/reset', [NotificationTemplateController::class, 'reset'])->name('templates.reset')->middleware('can:S');
         // Cloche in-app : gérer ses propres notifications (aucun droit module requis).
         Route::post('/read-all', 'markAllRead')->name('read-all');
         Route::get('/{id}/read', 'markRead')->name('read');
