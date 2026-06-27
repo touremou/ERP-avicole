@@ -29,15 +29,14 @@ class PosController extends Controller
             return redirect()->route('dashboard')->with('error', 'Accès restreint au module Commerce.');
         }
 
-        // Le POS s'appuie sur le CATALOGUE (photo + prix). Deux cas :
-        //  - article LIÉ à un stock : borné à la disponibilité (masqué si épuisé) ;
-        //  - article NON lié (vente libre, ex. service) : toujours vendable,
-        //    quantité non suivie (qty = null), aucun déstockage.
+        // Le POS s'appuie sur le CATALOGUE (photo + prix). On affiche TOUS les
+        // articles actifs ; la grille distingue :
+        //  - article LIÉ à un stock : « Stock : N » (grisé/non vendable si 0) ;
+        //  - article NON lié : « Non suivi », vendable librement (qty = null).
         $products = \App\Models\Product::active()
             ->with('stock')
             ->orderBy('name')
             ->get()
-            ->filter(fn (\App\Models\Product $p) => ! $p->stock_id || ($p->stock && (float) $p->stock->current_quantity > 0))
             ->map(fn (\App\Models\Product $p) => [
                 'id'     => $p->id,                                                  // ID ARTICLE catalogue
                 'name'   => $p->name,

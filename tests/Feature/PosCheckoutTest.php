@@ -161,6 +161,23 @@ test('l\'encaissement express solde une vente à crédit et redirige vers le tic
         ->and((float) $sale->remaining_amount)->toBe(0.0);
 });
 
+test('un article lié à un stock à 0 reste visible au POS (rupture, non vendable)', function () {
+    $stock = Stock::create([
+        'category' => Stock::CAT_OEUFS, 'item_name' => 'Œuf L', 'unit' => 'alveole',
+        'current_quantity' => 0, 'alert_threshold' => 5,
+    ]);
+    \App\Models\Product::create([
+        'name' => 'Œuf L', 'product_type' => 'oeufs', 'stock_id' => $stock->id,
+        'unit' => 'alveole', 'base_price' => 3000, 'is_active' => true,
+    ]);
+
+    $resp = $this->actingAs($this->adminUser)->get(route('pos.index'))->assertOk();
+    $card = collect($resp->viewData('products'))->firstWhere('name', 'Œuf L');
+
+    // Présent dans la grille (plus caché) mais quantité 0 → grisé/non vendable côté UI.
+    expect($card)->not->toBeNull()->and($card['qty'])->toBe(0.0);
+});
+
 test('un article du catalogue NON lié au stock est vendable au POS (vente libre)', function () {
     // Article catalogue sans stock lié (ex. « Œufs XL » non suivi en stock).
     $product = \App\Models\Product::create([

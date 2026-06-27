@@ -75,7 +75,9 @@
                         <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
                             <template x-for="p in filteredProducts" :key="p.id">
                                 <button type="button" @click="addToCart(p)"
-                                        class="bg-white border border-slate-100 rounded-2xl p-3 text-left shadow-sm hover:border-teal-400 hover:shadow-md transition-all overflow-hidden">
+                                        :disabled="p.qty !== null && p.qty <= 0"
+                                        :class="(p.qty !== null && p.qty <= 0) ? 'opacity-50 cursor-not-allowed' : 'hover:border-teal-400 hover:shadow-md'"
+                                        class="bg-white border border-slate-100 rounded-2xl p-3 text-left shadow-sm transition-all overflow-hidden">
                                     <div class="h-20 -mx-3 -mt-3 mb-2 bg-slate-50 flex items-center justify-center overflow-hidden">
                                         <template x-if="p.photo"><img :src="p.photo" class="w-full h-full object-cover" alt=""></template>
                                         <template x-if="!p.photo"><i class="fa-solid fa-box-open text-2xl text-slate-200"></i></template>
@@ -86,7 +88,8 @@
                                     </p>
                                     <p class="text-[8px] font-black mt-1" :class="p.qty === null ? 'text-slate-400' : (p.qty > 0 ? 'text-emerald-500' : 'text-red-500')">
                                         <span x-show="p.qty === null">{{ __("Non suivi") }}</span>
-                                        <span x-show="p.qty !== null">{{ __("Stock") }} : <span x-text="p.qty"></span></span>
+                                        <span x-show="p.qty !== null && p.qty > 0">{{ __("Stock") }} : <span x-text="p.qty"></span></span>
+                                        <span x-show="p.qty !== null && p.qty <= 0">{{ __("Rupture") }}</span>
                                     </p>
                                 </button>
                             </template>
