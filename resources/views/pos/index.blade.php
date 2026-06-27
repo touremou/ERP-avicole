@@ -82,7 +82,7 @@
                                     </div>
                                     <p class="text-[10px] font-black text-slate-800 uppercase leading-tight truncate" x-text="p.name"></p>
                                     <p class="text-[8px] font-black text-slate-400 uppercase mt-1">
-                                        <span x-text="formatMoney(p.price)"></span> / <span x-text="p.unit"></span>
+                                        <span x-text="formatMoney(priceFor(p))"></span> / <span x-text="p.unit"></span>
                                     </p>
                                     <p class="text-[8px] font-black mt-1" :class="p.qty > 0 ? 'text-emerald-500' : 'text-red-500'">
                                         {{ __("Stock") }} : <span x-text="p.qty"></span>
@@ -166,22 +166,26 @@
                 cart: [],
                 search: '',
                 clientId: '',
-                get tier() {
-                    const c = this.clients.find(x => String(x.id) === String(this.clientId));
-                    return c ? c.tier : 'detaillant';
-                },
+                clientPrices: {},   // { product_id: prix } selon le tarif du client sélectionné
                 get tierLabel() {
-                    return { standard: 'Standard', detaillant: 'Détaillant', grossiste: 'Grossiste' }[this.tier] || this.tier;
+                    const c = this.clients.find(x => String(x.id) === String(this.clientId));
+                    return c ? c.name : '{{ __('Comptoir') }}';
                 },
+                // Prix appliqué : tarif du client (si chargé) sinon prix par défaut de l'article.
                 priceFor(p) {
-                    return (p.prices && p.prices[this.tier] != null) ? p.prices[this.tier] : p.price;
+                    return (this.clientPrices[p.id] != null) ? this.clientPrices[p.id] : p.price;
                 },
                 applyTier() {
-                    // À la sélection d'un client : réappliquer son palier aux lignes du panier.
-                    this.cart.forEach(l => {
-                        const p = this.products.find(x => x.id === l.id);
-                        if (p) l.unit_price = this.priceFor(p);
-                    });
+                    // À la sélection d'un client : recharger ses tarifs (groupes de prix
+                    // par article) puis réappliquer aux lignes du panier et à l'affichage.
+                    const url = '{{ route('sales.catalog-prices') }}' + (this.clientId ? ('?client_id=' + this.clientId) : '');
+                    fetch(url, {headers:{'Accept':'application/json'}})
+                        .then(r => r.ok ? r.json() : null)
+                        .then(d => {
+                            this.clientPrices = (d && d.prices) ? d.prices : {};
+                            this.cart.forEach(l => { if (this.clientPrices[l.id] != null) l.unit_price = this.clientPrices[l.id]; });
+                        })
+                        .catch(() => {});
                 },
                 get filteredProducts() {
                     const q = this.search.trim().toLowerCase();

@@ -107,6 +107,25 @@ class SalePriceListController extends Controller
     }
 
     /**
+     * Carte des prix du catalogue pour un client donné (POS) : { product_id: prix }.
+     * Permet de re-tarifer tout l'écran au changement de client en un seul appel.
+     */
+    public function catalogPrices(Request $request)
+    {
+        if (Gate::denies('commerce.L')) abort(403);
+
+        $data = $request->validate(['client_id' => 'nullable|exists:clients,id']);
+        $client = ! empty($data['client_id']) ? Client::find($data['client_id']) : null;
+
+        $prices = \App\Models\Product::active()->with('stock')->get()
+            ->mapWithKeys(fn ($p) => [
+                $p->id => SalePriceList::priceForProduct($client, $p) ?? (float) $p->base_price,
+            ]);
+
+        return response()->json(['prices' => $prices]);
+    }
+
+    /**
      * Endpoint JSON appelé par le formulaire de vente : prix suggéré pour un
      * client et un type de produit (le tarif du client, sinon le tarif défaut).
      */
