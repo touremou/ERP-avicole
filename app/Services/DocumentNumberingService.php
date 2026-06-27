@@ -39,6 +39,8 @@ class DocumentNumberingService
             // Ventes (préfixes historiques dans le groupe « ventes »).
             'sale_bl'             => ['model' => \App\Models\Sale::class,               'column' => 'reference',    'prefix_key' => 'ventes.invoice_prefix_bl',          'prefix_default' => 'BL',    'year' => true,  'pad' => 6],
             'sale_invoice'        => ['model' => \App\Models\Sale::class,               'column' => 'reference',    'prefix_key' => 'ventes.invoice_prefix_tva',         'prefix_default' => 'FAC',   'year' => true,  'pad' => 6],
+            // Vente comptant (POS) : ticket de caisse, distinct du BL/facture.
+            'sale_pos'            => ['model' => \App\Models\Sale::class,               'column' => 'reference',    'prefix_key' => 'ventes.invoice_prefix_pos',         'prefix_default' => 'TKT',   'year' => true,  'pad' => 6],
 
             // Documents migrés vers le groupe « numbering ».
             'sale_return'         => ['model' => \App\Models\SaleReturn::class,         'column' => 'reference',    'prefix_key' => 'numbering.sale_return_prefix',      'prefix_default' => 'RET',   'year' => false, 'pad' => 5],

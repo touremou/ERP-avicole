@@ -66,7 +66,12 @@ class SaleItem extends Model
      */
     public function requiresDestock(): bool
     {
-        return in_array($this->product_type, self::STOCK_TYPES);
+        // Déstockage dès qu'un STOCK est explicitement lié (article du catalogue,
+        // toute catégorie : litière, matériel, etc.), OU si le type est
+        // intrinsèquement stocké (compat ventes en saisie libre).
+        // (Les lignes adossées à un LOT portent batch_id, pas product_id —
+        // gérées séparément par decrementsBatchCount, sans double comptage.)
+        return $this->product_id !== null || in_array($this->product_type, self::STOCK_TYPES);
     }
 
     /**

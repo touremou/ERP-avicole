@@ -10,7 +10,11 @@
         $rccm   = setting('general.rccm', '');
         $footer = trim((string) setting('ventes.invoice_footer', 'Merci pour votre confiance.'));
         $paid   = (float) $sale->total_amount - (float) $sale->remaining_amount;
-        $docLabel = $sale->type === 'facture' ? 'FACTURE' : 'BON DE LIVRAISON';
+        $docLabel = match ($sale->type) {
+            'facture'  => 'FACTURE',
+            'comptant' => 'TICKET DE CAISSE',
+            default    => 'BON DE LIVRAISON',
+        };
     @endphp
     <style>
         @page { size: 80mm auto; margin: 4mm; }

@@ -2,7 +2,14 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>{{ $sale->reference }} — {{ $sale->type === 'facture' ? __("Facture") : __("Bon de Livraison") }}</title>
+    @php
+        $docLabel = match ($sale->type) {
+            'facture'  => __("Facture"),
+            'comptant' => __("Reçu"),
+            default    => __("Bon de Livraison"),
+        };
+    @endphp
+    <title>{{ $sale->reference }} — {{ $docLabel }}</title>
     <style>
         @page { size: A4; margin: 15mm; }
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Arial, sans-serif; }
@@ -50,7 +57,7 @@
         </div>
         <div class="doc-info">
             <div class="ref">{{ $sale->reference }}</div>
-            <div class="type">{{ $sale->type === 'facture' ? __("Facture") : __("Bon de Livraison") }}</div>
+            <div class="type">{{ $docLabel }}</div>
             <div class="date">{{ __("Date") }} : {{ $sale->sale_date->translatedFormat('d F Y') }}</div>
             @php($delai = (int) setting('ventes.payment_delay_days', 0))
             @if($delai > 0)

@@ -93,7 +93,7 @@
                                 <td class="px-6 py-4">
                                     <a href="{{ route('sales.show', $sale) }}" class="no-underline">
                                         <p class="text-xs font-black text-slate-900 uppercase">{{ $sale->reference }}</p>
-                                        <p class="text-[8px] text-slate-400 font-black uppercase">{{ $sale->type === 'facture' ? __("Facture TVA") : __("BL") }}</p>
+                                        <p class="text-[8px] text-slate-400 font-black uppercase">{{ __($sale->type_short_label) }}</p>
                                     </a>
                                 </td>
                                 <td class="px-4 py-4 text-[10px] font-black text-slate-700 uppercase">{{ $sale->client->name }}</td>

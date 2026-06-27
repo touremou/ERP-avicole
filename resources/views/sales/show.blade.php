@@ -5,8 +5,8 @@
                 <x-back />
                 <div>
                     <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">{{ $sale->reference }}</h2>
-                    <p class="text-[10px] font-black uppercase tracking-[0.2em] mt-2 italic {{ $sale->type === 'facture' ? 'text-purple-600' : 'text-teal-600' }}">
-                        {{ $sale->type === 'facture' ? __("Facture TVA") : __("Bon de Livraison") }} — {{ $sale->sale_date->translatedFormat('d F Y') }}
+                    <p class="text-[10px] font-black uppercase tracking-[0.2em] mt-2 italic {{ $sale->type === 'facture' ? 'text-purple-600' : ($sale->type === 'comptant' ? 'text-emerald-600' : 'text-teal-600') }}">
+                        {{ __($sale->type_label) }} — {{ $sale->sale_date->translatedFormat('d F Y') }}
                     </p>
                 </div>
             </div>

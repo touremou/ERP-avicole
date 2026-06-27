@@ -124,7 +124,9 @@ class PosController extends Controller
             $sale = $create->execute([
                 'client_id'         => $clientId,
                 'sale_date'         => now()->toDateString(),
-                'type'              => 'bon_livraison',
+                // Vente au comptoir = encaissement comptant → TICKET de caisse
+                // (référence préfixée TKT-), et non un bon de livraison (BL-).
+                'type'              => 'comptant',
                 'tax_rate'          => 0,
                 'delivery_mode'     => 'sur_place',
                 'items'             => $items,

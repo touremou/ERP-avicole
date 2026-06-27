@@ -144,6 +144,26 @@ class Sale extends Model
         ]);
     }
 
+    /** Libellé humain du type de document (facture / BL / ticket comptant). */
+    public function getTypeLabelAttribute(): string
+    {
+        return match ($this->type) {
+            'facture'  => 'Facture TVA',
+            'comptant' => 'Ticket de caisse',
+            default    => 'Bon de Livraison',
+        };
+    }
+
+    /** Libellé court pour listes/badges (FAC / TKT / BL). */
+    public function getTypeShortLabelAttribute(): string
+    {
+        return match ($this->type) {
+            'facture'  => 'Facture TVA',
+            'comptant' => 'Comptant',
+            default    => 'BL',
+        };
+    }
+
     /** Montant de remise effectif pour un sous-total donné. */
     public function computeDiscount(float $subtotal): float
     {

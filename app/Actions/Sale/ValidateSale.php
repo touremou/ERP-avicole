@@ -90,10 +90,14 @@ class ValidateSale
             );
         }
 
-        // Utiliser StockIntegrationService pour la traçabilité
+        // Utiliser StockIntegrationService pour la traçabilité.
+        // On passe l'IDENTITÉ RÉELLE du stock déjà résolu ($stock->item_name +
+        // $stock->category) — et non des valeurs dérivées du product_type — afin
+        // que findStock() retrouve exactement cet article, quelle que soit sa
+        // catégorie (œufs, lait, aliment… mais aussi litière, matériel, etc.).
         StockIntegrationService::syncMovement(
-            $item->product_name,
-            Stock::categoryForProductType($item->product_type),
+            $stock->item_name,
+            $stock->category,
             (float) $item->quantity,
             'out',
             "Vente {$item->sale->reference} — Client: {$item->sale->client->name}",

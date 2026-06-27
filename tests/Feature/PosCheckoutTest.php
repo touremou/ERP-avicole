@@ -202,6 +202,50 @@ test('un article du catalogue NON lié au stock est vendable au POS (vente libre
         ->and($sale->items->first()->product_id)->toBeNull(); // pas de stock cible
 });
 
+test('le POS déstocke un article de LITIÈRE lié au stock (catégorie hors STOCK_TYPES)', function () {
+    // Copeaux (litière) : catégorie 'litieres', PAS dans SaleItem::STOCK_TYPES.
+    // Le déstockage doit néanmoins se produire car l'article catalogue est LIÉ
+    // à un stock (product_id), et syncMovement doit cibler la catégorie RÉELLE
+    // du stock résolu — pas celle dérivée du product_type.
+    $stock = Stock::create([
+        'category'        => Stock::CAT_LITIERES,
+        'item_name'       => 'Copeaux de bois',
+        'unit'            => 'sac',
+        'current_quantity'=> 40,
+        'unit_price'      => 1500,
+        'last_unit_price' => 1500,
+        'alert_threshold' => 5,
+    ]);
+
+    $product = \App\Models\Product::create([
+        'name' => 'Copeaux de bois', 'product_type' => 'materiel',
+        'stock_id' => $stock->id, 'unit' => 'sac', 'base_price' => 1500, 'is_active' => true,
+    ]);
+
+    $this->actingAs($this->adminUser)
+        ->post(route('pos.checkout'), [
+            'payment_method' => 'especes',
+            'items'          => [['product_id' => $product->id, 'quantity' => 6, 'unit_price' => 1500]],
+        ])
+        ->assertRedirect();
+
+    expect((float) $stock->fresh()->current_quantity)->toBe(34.0); // 40 − 6 déstocké
+});
+
+test('une vente POS est de type comptant et porte une référence ticket (TKT-…)', function () {
+    $stock = sellableStock(50, 2000);
+
+    $this->actingAs($this->adminUser)->post(route('pos.checkout'), [
+        'payment_method' => 'especes',
+        'items'          => posItems($stock, 2, 2000),
+    ])->assertRedirect();
+
+    $sale = Sale::latest('id')->first();
+    expect($sale->type)->toBe('comptant')                          // ni BL ni facture
+        ->and($sale->reference)->toStartWith('TKT-')               // ticket de caisse
+        ->and($sale->reference)->not->toStartWith('BL-');
+});
+
 test('le POS accepte un client sélectionné', function () {
     $stock = sellableStock(50, 2000);
     $client = Client::create([
