@@ -48,6 +48,26 @@ test('créer un article avec un stock lié enregistre le lien', function () {
     expect(Product::where('name', 'Œuf calibre L')->value('stock_id'))->toBe($stock->id);
 });
 
+test('créer un article physique sans stock crée et lie automatiquement le stock', function () {
+    $this->actingAs($this->adminUser)->post(route('products.store'), [
+        'name' => 'Œufs XL', 'product_type' => 'oeufs', 'unit' => 'alveole', 'base_price' => 1150, 'is_active' => 1,
+        // pas de stock_id fourni
+    ])->assertRedirect();
+
+    $product = Product::where('name', 'Œufs XL')->first();
+    expect($product->stock_id)->not->toBeNull();
+    expect($product->stock->category)->toBe(Stock::CAT_OEUFS)
+        ->and($product->stock->item_name)->toBe('Œufs XL');
+});
+
+test('un article non stockable (fumier) n\'auto-crée pas de stock', function () {
+    $this->actingAs($this->adminUser)->post(route('products.store'), [
+        'name' => 'Fumier sac', 'product_type' => 'fumier', 'unit' => 'sac', 'base_price' => 5000, 'is_active' => 1,
+    ])->assertRedirect();
+
+    expect(Product::where('name', 'Fumier sac')->value('stock_id'))->toBeNull();
+});
+
 test('le formulaire de vente transmet stock_id et disponibilité du catalogue', function () {
     $stock = stockItem(['current_quantity' => 200]);
     Product::create([
