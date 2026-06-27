@@ -56,6 +56,26 @@ class Provider extends Model
         return $this->hasMany(FeedPurchase::class, 'supplier', 'name');
     }
 
+    /** Achats fournisseurs (dettes) — débit du compte fournisseur. */
+    public function supplierInvoices(): HasMany
+    {
+        return $this->hasMany(SupplierInvoice::class);
+    }
+
+    /**
+     * Dette en cours : Σ achats comptés (hors annulés) − Σ règlements.
+     * Symétrique de Client::recalculateBalance().
+     */
+    public function outstandingDebt(): float
+    {
+        $invoiceIds = $this->supplierInvoices()->where('status', '!=', 'annule')->pluck('id');
+
+        $billed = (float) SupplierInvoice::whereIn('id', $invoiceIds)->sum('total_amount');
+        $paid   = (float) SupplierPayment::whereIn('supplier_invoice_id', $invoiceIds)->sum('amount');
+
+        return round($billed - $paid, 2);
+    }
+
     // -----------------------
     // LOGIQUE MÉTIER & KPI
     // -----------------------

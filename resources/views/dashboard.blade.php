@@ -59,7 +59,7 @@
 
     <div class="py-10">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 italic font-bold text-left">
-            
+
             {{-- BANDEAU D'ALERTES PRIORISÉ (centre de contrôle unifié) --}}
             @if(!empty($priorityAlerts) && $priorityAlerts->isNotEmpty())
             @php

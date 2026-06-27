@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\CashRegisterSession;
 use App\Models\Sale;
 use App\Models\SaleReturn;
 use App\Models\Stock;
@@ -9,6 +10,11 @@ uses(Tests\TestCase::class, Illuminate\Foundation\Testing\RefreshDatabase::class
 
 beforeEach(function () {
     $this->setUpRbac();
+
+    // paidSale() encaisse via le POS → une session de caisse doit être ouverte.
+    CashRegisterSession::create([
+        'user_id' => $this->adminUser->id, 'status' => 'open', 'opened_at' => now(), 'opening_float' => 0,
+    ]);
 });
 
 /** Stock vendable (nom unique à ce fichier pour éviter la redéclaration Pest). */

@@ -49,6 +49,7 @@ class Module extends Model
     {
         return [
             // Élevage
+            'elevage.'          => 'elevage',
             'buildings.'        => 'elevage',
             'batches.'          => 'elevage',
             'campaigns.'        => 'elevage',
@@ -58,8 +59,10 @@ class Module extends Model
             'reports.'          => 'elevage',
 
             // Logistique
+            'logistique.'       => 'logistique',
             'stocks.'           => 'logistique',
             'dispatches.'       => 'logistique',
+            'stock-adjustments.' => 'logistique',
 
             // Production Végétale (parcelles, cycles de culture, récoltes)
             'cultures.'            => 'cultures',
@@ -84,7 +87,9 @@ class Module extends Model
             'machines.'         => 'provenderie',
             'feed-purchases.'   => 'provenderie',
 
-            // Production (œufs, couvoir, lait)
+            // Production (œufs, couvoir, lait) — 'productions.' (pluriel) = hub,
+            // distinct de 'production.' (Provenderie) : pas de collision de préfixe.
+            'productions.'      => 'production',
             'incubations.'      => 'production',
             'chick-dispatches.' => 'production',
             'incubators.'       => 'production',
@@ -92,13 +97,21 @@ class Module extends Model
             'egg-movements.'    => 'production',
             'milk-productions.' => 'production',
 
-            // Commerce
+            // Commerce (vente, caisse, après-vente — un seul module intégré)
+            'commerce.'         => 'commerce',
             'clients.'          => 'commerce',
             'sales.'            => 'commerce',
             'payments.'         => 'commerce',
+            'pos.'              => 'commerce',
+            'cash-register.'    => 'commerce',
+            'returns.'          => 'commerce',
 
-            // Dépenses
+            // Finance (hub + registre dépenses + trésorerie + achats fournisseurs + budgets)
+            'finance.'          => 'depenses',
             'expenses.'         => 'depenses',
+            'treasury.'         => 'depenses',
+            'purchases.'        => 'depenses',
+            'budgets.'          => 'depenses',
 
             // Ressources (eau & énergie)
             'utilities.'        => 'ressources',
@@ -112,8 +125,10 @@ class Module extends Model
             // Abattoir
             'slaughter.'        => 'abattoir',
 
-            // Annuaire / RH (employés, fournisseurs, paie, tâches)
+            // Annuaire / RH (hub, employés, présence, fournisseurs, paie, tâches)
+            'annuaire.'         => 'annuaire',
             'employees.'        => 'annuaire',
+            'attendance.'       => 'annuaire',
             'providers.'        => 'annuaire',
             'payroll.'          => 'annuaire',
             'tasks.'            => 'annuaire',
@@ -130,6 +145,18 @@ class Module extends Model
     }
 
     /**
+     * Modules NON affichés comme tuiles du lanceur (méga-menu) : leur accès est
+     * intégré ailleurs pour un menu plus industriel —
+     *   - planning      → carte « Planning » du hub Élevage ;
+     *   - notifications  → cloche d'en-tête + menu utilisateur.
+     * Leurs modules/permissions/routes restent intacts (juste pas de tuile).
+     */
+    public static function nonLauncherSlugs(): array
+    {
+        return ['planning', 'notifications'];
+    }
+
+    /**
      * Route d'atterrissage (« accueil ») d'un module, pour les lanceurs de
      * modules (drawer de navigation). Renvoie un nom de route Laravel.
      */
@@ -137,19 +164,19 @@ class Module extends Model
     {
         return [
             'dashboard'     => 'dashboard',
-            'elevage'       => 'buildings.index',
-            'production'    => 'egg-productions.index',
+            'elevage'       => 'elevage.index',
+            'production'    => 'productions.index',
             'provenderie'   => 'provenderie.dashboard',
             'cultures'      => 'cultures.dashboard',
             'planning'      => 'planning.index',
             'abattoir'      => 'slaughter.dashboard',
-            'commerce'      => 'sales.index',
-            'logistique'    => 'stocks.index',
+            'commerce'      => 'commerce.index',
+            'logistique'    => 'logistique.index',
             'ressources'    => 'utilities.dashboard',
             'notifications' => 'notifications.preferences',
-            'annuaire'      => 'employees.index',
+            'annuaire'      => 'annuaire.index',
             'admin'         => 'users.index',
-            'depenses'      => 'expenses.index',
+            'depenses'      => 'finance.index',
         ][$slug] ?? null;
     }
 }

@@ -6,6 +6,7 @@ use App\Models\Sale;
 use App\Models\Client;
 use App\Models\Stock;
 use App\Models\Batch;
+use App\Models\CashRegisterSession;
 use App\Models\PriceList;
 use App\Http\Requests\Sale\StoreSaleRequest;
 use App\Actions\Sale\CreateSale;
@@ -99,7 +100,11 @@ class SaleController extends Controller
 
         $sale->load(['client', 'items', 'payments.receiver', 'user']);
 
-        return view('sales.show', compact('sale'));
+        // L'encaissement express passe par la caisse → n'est proposé que si une
+        // session de caisse est ouverte (cohérent avec le verrou du PosController).
+        $hasOpenCashSession = CashRegisterSession::open()->exists();
+
+        return view('sales.show', compact('sale', 'hasOpenCashSession'));
     }
 
     public function validate(Sale $sale, ValidateSale $action) // Note: "validate" est un mot réservé en PHP, attention si vous rencontrez des bugs, préférez "approve" ou "validateSale"

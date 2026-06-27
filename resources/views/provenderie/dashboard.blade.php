@@ -13,7 +13,29 @@
 
     <div class="py-12 italic font-bold text-left">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-10">
-            
+
+            {{-- ACCÈS GROUPÉS (hub-cartes) : toutes les sous-sections du module,
+                 pour que le breadcrumb puisse rester « Tableau de bord » seul. --}}
+            @can('provenderie.L')
+            <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm not-italic">
+                <p class="text-[10px] font-black uppercase tracking-widest text-lime-600 mb-4">{{ __("Atelier") }}</p>
+                <div class="grid grid-cols-3 gap-3">
+                    @foreach([
+                        ['label' => 'Matières premières', 'icon' => 'fa-wheat-awn', 'route' => 'raw-materials.index'],
+                        ['label' => 'Formules', 'icon' => 'fa-flask', 'route' => 'formulas.index'],
+                        ['label' => 'Production', 'icon' => 'fa-industry', 'route' => 'production.index'],
+                    ] as $it)
+                        @if(\Illuminate\Support\Facades\Route::has($it['route']))
+                        <a href="{{ route($it['route']) }}" class="flex flex-col items-center justify-center gap-2 p-4 bg-slate-50 rounded-2xl hover:bg-lime-50 hover:text-lime-600 transition-all no-underline text-slate-600 text-center">
+                            <i class="fa-solid {{ $it['icon'] }} text-lg"></i>
+                            <span class="text-[8px] font-black uppercase tracking-widest leading-tight">{{ __($it['label']) }}</span>
+                        </a>
+                        @endif
+                    @endforeach
+                </div>
+            </div>
+            @endcan
+
             {{-- KPI ROW --}}
             <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm relative overflow-hidden group">

@@ -26,6 +26,29 @@
     <div class="py-10">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 italic font-bold text-left">
 
+            {{-- ACCÈS GROUPÉS (hub-cartes) : toutes les sous-sections du module. --}}
+            @can('abattoir.L')
+            <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm mb-8 not-italic">
+                <p class="text-[10px] font-black uppercase tracking-widest text-rose-600 mb-4">{{ __("Atelier d'abattage") }}</p>
+                <div class="grid grid-cols-3 gap-3">
+                    @foreach([
+                        ['label' => "Ordre d'abattage", 'icon' => 'fa-clipboard-list', 'route' => 'slaughter.orders.create', 'can' => 'abattoir.C'],
+                        ['label' => 'Transformation', 'icon' => 'fa-fire', 'route' => 'slaughter.transform.form', 'can' => 'abattoir.C'],
+                        ['label' => 'Produits finis', 'icon' => 'fa-drumstick-bite', 'route' => 'slaughter.finished', 'can' => 'abattoir.L'],
+                    ] as $it)
+                        @can($it['can'])
+                        @if(\Illuminate\Support\Facades\Route::has($it['route']))
+                        <a href="{{ route($it['route']) }}" class="flex flex-col items-center justify-center gap-2 p-4 bg-slate-50 rounded-2xl hover:bg-rose-50 hover:text-rose-600 transition-all no-underline text-slate-600 text-center">
+                            <i class="fa-solid {{ $it['icon'] }} text-lg"></i>
+                            <span class="text-[8px] font-black uppercase tracking-widest leading-tight">{{ __($it['label']) }}</span>
+                        </a>
+                        @endif
+                        @endcan
+                    @endforeach
+                </div>
+            </div>
+            @endcan
+
             @foreach(['success', 'error'] as $msg)
                 @if(session($msg))
                     <div @class(['mb-8 p-5 rounded-[2rem] font-black text-[10px] uppercase tracking-[0.2em] shadow-xl flex items-center italic', 'bg-emerald-500 text-white' => $msg === 'success', 'bg-red-500 text-white' => $msg === 'error'])>

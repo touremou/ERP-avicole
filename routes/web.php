@@ -185,6 +185,15 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/{id}', 'destroy')->name('destroy')->middleware('can:S');
     });
 
+    // ─── DÉMARQUE & AJUSTEMENTS D'INVENTAIRE (module: logistique) ───
+    Route::prefix('stock-adjustments')->name('stock-adjustments.')->controller(\App\Http\Controllers\StockAdjustmentController::class)->group(function () {
+        Route::get('/', 'index')->name('index')->middleware('can:L');
+        Route::get('/csv', 'exportCsv')->name('csv')->middleware('can:L');
+        Route::get('/pdf', 'exportPdf')->name('pdf')->middleware('can:L');
+        Route::get('/create', 'create')->name('create')->middleware('can:C');
+        Route::post('/', 'store')->name('store')->middleware('can:C');
+    });
+
     // ─── MAINTENANCE TECHNIQUE STOCKS (inventaire physique des œufs) ───
     // Le contrôleur (EggProductionController) impose production.S : on aligne
     // explicitement le middleware de route, le nom `stocks.*` résolvant sinon
@@ -508,6 +517,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/', 'index')->name('index')->middleware('can:L');
         Route::get('/create', 'create')->name('create')->middleware('can:C');
         Route::post('/', 'store')->name('store')->middleware('can:C');
+        Route::get('/{client}/statement', 'statement')->name('statement')->middleware('can:L');
+        Route::get('/{client}/statement/pdf', 'statementPdf')->name('statement.pdf')->middleware('can:L');
         Route::get('/{client}', 'show')->name('show')->middleware('can:L');
         Route::get('/{client}/edit', 'edit')->name('edit')->middleware('can:M');
         Route::put('/{client}', 'update')->name('update')->middleware('can:M');
@@ -515,6 +526,9 @@ Route::middleware(['auth'])->group(function () {
     });
 
     // ─── VENTES & BONS DE LIVRAISON ───
+    // ─── HUB COMMERCE (point d'entrée unifié du module) ───
+    Route::get('/commerce', [\App\Http\Controllers\CommerceController::class, 'index'])->name('commerce.index')->middleware('can:L');
+
     // ─── POINT DE VENTE (POS / caisse, module: commerce) ───
     Route::prefix('pos')->name('pos.')->controller(\App\Http\Controllers\PosController::class)->group(function () {
         Route::get('/', 'index')->name('index')->middleware('can:C');
@@ -522,6 +536,13 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/receipt/{sale}', 'receipt')->name('receipt')->middleware('can:C');
         Route::post('/encash/{sale}', 'encash')->name('encash')->middleware('can:C');
         Route::get('/report', 'report')->name('report')->middleware('can:L');
+    });
+
+    // ─── SESSIONS DE CAISSE (ouverture/clôture + comptage, module: commerce) ───
+    Route::prefix('cash-register')->name('cash-register.')->controller(\App\Http\Controllers\CashRegisterController::class)->group(function () {
+        Route::get('/', 'index')->name('index')->middleware('can:L');
+        Route::post('/open', 'open')->name('open')->middleware('can:C');
+        Route::post('/{session}/close', 'close')->name('close')->middleware('can:C');
     });
 
     // ─── JOURNAL DES AVOIRS (retours, module: commerce) ───
@@ -559,6 +580,28 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/transfer', 'transfer')->name('transfer')->middleware('can:C');
         Route::get('/{account}', 'show')->name('show')->middleware('can:L');
         Route::post('/{account}/movement', 'storeMovement')->name('movement')->middleware('can:C');
+    });
+
+    // ─── HUB FINANCE (point d'entrée unifié du module depenses) ───
+    Route::get('/finance', [\App\Http\Controllers\FinanceController::class, 'index'])->name('finance.index')->middleware('can:L');
+
+    // ─── HUBS DE MODULES (points d'entrée unifiés : KPIs + accès groupés) ───
+    Route::get('/elevage', [\App\Http\Controllers\ElevageHubController::class, 'index'])->name('elevage.index')->middleware('can:L');
+    Route::get('/productions', [\App\Http\Controllers\ProductionHubController::class, 'index'])->name('productions.index')->middleware('can:L');
+    Route::get('/annuaire', [\App\Http\Controllers\AnnuaireHubController::class, 'index'])->name('annuaire.index')->middleware('can:L');
+    Route::get('/logistique', [\App\Http\Controllers\LogistiqueHubController::class, 'index'])->name('logistique.index')->middleware('can:L');
+
+    // ─── ACHATS FOURNISSEURS & DETTES (compte à payer, module: depenses) ───
+    Route::prefix('purchases')->name('purchases.')->controller(\App\Http\Controllers\SupplierInvoiceController::class)->group(function () {
+        Route::get('/', 'index')->name('index')->middleware('can:L');
+        Route::get('/create', 'create')->name('create')->middleware('can:C');
+        Route::post('/', 'store')->name('store')->middleware('can:C');
+        Route::get('/provider/{provider}/statement', 'statement')->name('statement')->middleware('can:L');
+        Route::get('/provider/{provider}/statement/pdf', 'statementPdf')->name('statement.pdf')->middleware('can:L');
+        Route::get('/{invoice}', 'show')->name('show')->middleware('can:L');
+        Route::put('/{invoice}/validate', 'validateInvoice')->name('validate')->middleware('can:M');
+        Route::put('/{invoice}/cancel', 'cancel')->name('cancel')->middleware('can:M');
+        Route::post('/{invoice}/pay', 'pay')->name('pay')->middleware('can:C');
     });
 
     Route::prefix('expenses')->name('expenses.')->controller(ExpenseController::class)->group(function () {

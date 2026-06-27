@@ -13,6 +13,13 @@
                 </div>
             </div>
             <div class="flex gap-3">
+                {{-- Permission C : Démarque / ajustement d'inventaire --}}
+                @can('logistique.C')
+                <a href="{{ route('stock-adjustments.create', ['stock_id' => $stock->id]) }}" class="bg-white border border-slate-200 text-slate-600 px-5 py-3 rounded-2xl text-[10px] font-black uppercase italic hover:bg-orange-50 hover:text-orange-600 transition-all shadow-sm no-underline">
+                    <i class="fa-solid fa-sliders mr-2 text-orange-500"></i> {{ __("Démarque") }}
+                </a>
+                @endcan
+
                 {{-- Permission M : Édition de la fiche --}}
                 @can('logistique.M')
                 <a href="{{ route('stocks.edit', $stock->id) }}" class="bg-white border border-slate-200 text-slate-600 px-5 py-3 rounded-2xl text-[10px] font-black uppercase italic hover:bg-slate-50 transition-all shadow-sm no-underline">

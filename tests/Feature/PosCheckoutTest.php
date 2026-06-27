@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\CashRegisterSession;
 use App\Models\Client;
 use App\Models\Sale;
 use App\Models\Stock;
@@ -9,6 +10,11 @@ uses(Tests\TestCase::class, Illuminate\Foundation\Testing\RefreshDatabase::class
 
 beforeEach(function () {
     $this->setUpRbac();
+
+    // Toute vente POS passe par une session de caisse ouverte.
+    CashRegisterSession::create([
+        'user_id' => $this->adminUser->id, 'status' => 'open', 'opened_at' => now(), 'opening_float' => 0,
+    ]);
 });
 
 function sellableStock(int $qty = 100, float $price = 2000): Stock

@@ -30,64 +30,27 @@
             $occupationRate = $totalCapacity > 0 ? round(($totalEggsIncubating / $totalCapacity) * 100, 1) : 0;
         @endphp
 
-        <div class="space-y-6 text-left italic font-bold" x-data>
-            {{-- 1. ALERTES CRITIQUES --}}
-            @if($countAlerts > 0)
-                <div class="bg-rose-600 text-white p-5 rounded-[2rem] shadow-xl flex items-center justify-between animate-pulse italic border-b-8 border-rose-800 transition-all">
-                    <div>
-                        <p class="text-[10px] font-black uppercase tracking-[0.3em] leading-none mb-1">{{ __("Alerte Couvoir") }}</p>
-                        <p class="text-xl font-black uppercase italic leading-none">⚠️ {{ $countAlerts }} {{ __("Éclosion(s) en attente de clôture") }}</p>
-                    </div>
-                    <span class="bg-white text-rose-600 px-5 py-2 rounded-2xl text-[10px] font-black uppercase italic shadow-lg">{{ __("Action requise") }}</span>
-                </div>
-            @endif
-
-            {{-- 2. STATUT DYNAMIQUE DU PARC --}}
-            <div class="flex flex-col md:flex-row items-center justify-between bg-white border border-slate-100 p-5 rounded-[3rem] shadow-sm gap-4">
-                <div class="flex items-center gap-8 ml-6 w-full md:w-auto">
-                    <div class="text-left">
-                        <span class="text-[9px] text-slate-400 uppercase block leading-none mb-2 tracking-widest italic font-black">{{ __("Unités Libres") }}</span>
-                        <span class="text-2xl font-black text-slate-800 italic leading-none">{{ $freeIncubatorsCount }}</span>
-                    </div>
-                    <div class="text-left border-l border-slate-100 pl-8">
-                        <span class="text-[9px] text-rose-400 uppercase block leading-none mb-2 tracking-widest italic font-black">{{ __("En Maintenance") }}</span>
-                        <span class="text-2xl font-black text-rose-600 italic leading-none">{{ $maintenanceCount }}</span>
-                    </div>
-                    {{-- NOUVEAU : Indicateur d'occupation du parc --}}
-                    <div class="text-left border-l border-slate-100 pl-8 hidden md:block">
-                        <span class="text-[9px] text-blue-400 uppercase block leading-none mb-2 tracking-widest italic font-black">{{ __("Charge Globale") }}</span>
-                        <div class="flex items-center gap-2">
-                            <span class="text-2xl font-black text-blue-600 italic leading-none">{{ $occupationRate }}%</span>
-                            <div class="w-16 h-2 bg-slate-100 rounded-full overflow-hidden">
-                                <div class="h-full bg-blue-500" style="width: {{ $occupationRate }}%"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <a href="{{ route('incubators.index') }}" class="bg-slate-900 text-white px-8 py-4 rounded-[1.5rem] text-[10px] uppercase font-black tracking-widest hover:bg-blue-600 transition-all shadow-xl italic no-underline text-center w-full md:w-auto">
-                    ⚙️ {{ __("Configuration Parc") }}
-                </a>
+        {{-- Header hub : titre + tri + accès parc + action principale. Les alertes
+             et le statut du parc sont descendus dans le corps (cf. plus bas). --}}
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 text-left" x-data>
+            <div>
+                <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">🥚 {{ __("Couvoir — Incubation") }}</h2>
+                <p class="text-[10px] font-black text-blue-500 uppercase tracking-widest mt-1 italic leading-none">{{ __("Flux d'incubation & parc d'éclosion") }}</p>
             </div>
-
-            {{-- 3. HEADER ACTIONS --}}
-            <div class="bg-slate-900 p-10 rounded-[3.5rem] text-white flex flex-col md:flex-row justify-between items-center shadow-2xl relative overflow-hidden group">
-                <div class="relative z-10 text-left">
-                    <h2 class="text-3xl font-black uppercase italic tracking-tighter leading-none mb-4">{{ __("Flux d'Incubation") }}</h2>
-                    <form method="GET" class="flex items-center gap-3">
-                        <label class="text-[9px] uppercase opacity-40 tracking-widest italic">{{ __("Trier par :") }}</label>
-                        <select name="sort" onchange="this.form.submit()" class="text-[10px] font-black uppercase italic bg-white/10 border-none rounded-xl px-4 py-2 text-blue-400 focus:ring-0 cursor-pointer hover:bg-white/20 transition-all">
-                            <option value="date" {{ $sort=='date'?'selected':'' }}>📅 {{ __("Échéance Éclosion") }}</option>
-                            <option value="progress" {{ $sort=='progress'?'selected':'' }}>📊 {{ __("État d'avancement") }}</option>
-                            <option value="eggs" {{ $sort=='eggs'?'selected':'' }}>🥚 {{ __("Volume de charge") }}</option>
-                        </select>
-                    </form>
-                </div>
-
-                <button @click.stop="$dispatch('open-launch-modal')" class="relative z-10 bg-blue-600 hover:bg-blue-500 px-10 py-5 rounded-[2rem] text-[11px] uppercase font-black shadow-2xl italic flex items-center gap-4 transition-all hover:scale-105 active:scale-95 border-none cursor-pointer mt-6 md:mt-0">
-                    <i class="fa-solid fa-plus-circle text-lg"></i> {{ __("Nouveau Lancement") }}
+            <div class="flex items-center gap-2">
+                <form method="GET">
+                    <select name="sort" onchange="this.form.submit()" class="bg-white border border-slate-200 rounded-2xl px-4 py-2.5 text-[9px] font-black uppercase tracking-widest text-slate-600 outline-none cursor-pointer shadow-sm italic">
+                        <option value="date" {{ $sort=='date'?'selected':'' }}>📅 {{ __("Échéance") }}</option>
+                        <option value="progress" {{ $sort=='progress'?'selected':'' }}>📊 {{ __("Avancement") }}</option>
+                        <option value="eggs" {{ $sort=='eggs'?'selected':'' }}>🥚 {{ __("Charge") }}</option>
+                    </select>
+                </form>
+                <a href="{{ route('incubators.index') }}" class="inline-flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-2xl text-[9px] font-black uppercase tracking-widest hover:bg-slate-50 transition-all no-underline shadow-sm italic">
+                    <i class="fa-solid fa-gear"></i> {{ __("Parc") }}
+                </a>
+                <button @click.stop="$dispatch('open-launch-modal')" class="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-500 transition-all shadow-lg italic border-none cursor-pointer">
+                    <i class="fa-solid fa-plus-circle"></i> {{ __("Nouveau Lancement") }}
                 </button>
-
-                <i class="fa-solid fa-dna absolute -right-10 -bottom-10 text-[15rem] opacity-5 rotate-12 group-hover:rotate-45 transition-transform duration-1000"></i>
             </div>
         </div>
     </x-slot>
@@ -95,6 +58,34 @@
     <div class="py-12 italic font-bold">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-12">
             
+            {{-- ALERTE ÉCLOSION (descendue du header) --}}
+            @if($countAlerts > 0)
+            <div class="bg-rose-600 text-white p-5 rounded-[2.5rem] shadow-xl flex items-center justify-between gap-4 not-italic">
+                <div>
+                    <p class="text-[9px] font-black uppercase tracking-[0.3em] leading-none mb-1">{{ __("Alerte Couvoir") }}</p>
+                    <p class="text-lg font-black uppercase italic leading-none">⚠️ {{ $countAlerts }} {{ __("Éclosion(s) en attente de clôture") }}</p>
+                </div>
+                <span class="bg-white text-rose-600 px-5 py-2 rounded-2xl text-[10px] font-black uppercase italic shadow-lg shrink-0">{{ __("Action requise") }}</span>
+            </div>
+            @endif
+
+            {{-- STATUT DU PARC (descendu du header, style harmonisé) --}}
+            <div class="grid grid-cols-3 gap-4">
+                <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm text-center">
+                    <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Unités libres") }}</p>
+                    <p class="text-2xl font-black text-slate-800 leading-none">{{ $freeIncubatorsCount }}</p>
+                </div>
+                <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm text-center">
+                    <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("En maintenance") }}</p>
+                    <p class="text-2xl font-black {{ $maintenanceCount > 0 ? 'text-rose-600' : 'text-slate-800' }} leading-none">{{ $maintenanceCount }}</p>
+                </div>
+                <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm text-center">
+                    <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Charge globale") }}</p>
+                    <p class="text-2xl font-black text-blue-600 leading-none">{{ $occupationRate }}%</p>
+                    <div class="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden mt-2"><div class="h-full bg-blue-500" style="width: {{ min($occupationRate, 100) }}%"></div></div>
+                </div>
+            </div>
+
             {{-- SECTION KPI MONITORING (ENRICHIE) --}}
             <div class="grid grid-cols-2 md:grid-cols-5 gap-4 md:gap-6 font-bold italic">
                 

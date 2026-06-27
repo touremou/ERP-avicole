@@ -5,9 +5,11 @@ namespace App\Http\Controllers;
 use App\Actions\Sale\CreateSale;
 use App\Actions\Sale\RecordPayment;
 use App\Actions\Sale\ValidateSale;
+use App\Models\CashRegisterSession;
 use App\Models\Client;
 use App\Models\Sale;
 use App\Models\Stock;
+use App\Services\PricingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -22,8 +24,8 @@ use Illuminate\Support\Facades\Gate;
  */
 class PosController extends Controller
 {
-    /** Écran caisse : grille produits (stock vendable) + clients. */
-    public function index()
+    /** Écran caisse : grille produits (stock vendable) + clients + tarifs par palier. */
+    public function index(PricingService $pricing)
     {
         if (Gate::denies('commerce.C')) {
             return redirect()->route('dashboard')->with('error', 'Accès restreint au module Commerce.');
@@ -32,26 +34,39 @@ class PosController extends Controller
         $products = Stock::where('current_quantity', '>', 0)
             ->orderBy('item_name')
             ->get()
-            ->map(function (Stock $s) {
+            ->map(function (Stock $s) use ($pricing) {
                 $type = Stock::CATEGORY_TO_PRODUCT_TYPE[$s->category] ?? null;
                 if (! $type) {
                     return null; // catégories non vendables (conso, intrants…) exclues
                 }
 
+                // Tarifs par palier (grille PriceList) ; le prix affiché par défaut
+                // est le détaillant, repli sur le standard puis le CMP (last_unit_price).
+                $tiers = $pricing->tierMapForStock($s);
+                $default = $tiers['detaillant'] ?? $tiers['standard'] ?? (float) ($s->last_unit_price ?? 0);
+
                 return [
-                    'id'    => $s->id,
-                    'name'  => $s->item_name,
-                    'unit'  => $s->unit,
-                    'qty'   => (float) $s->current_quantity,
-                    'price' => (float) ($s->last_unit_price ?? 0),
+                    'id'     => $s->id,
+                    'name'   => $s->item_name,
+                    'unit'   => $s->unit,
+                    'qty'    => (float) $s->current_quantity,
+                    'price'  => (float) $default,
+                    'prices' => $tiers, // {standard, detaillant, grossiste} (null si absent)
                 ];
             })
             ->filter()
             ->values();
 
-        $clients = Client::active()->orderBy('name')->get(['id', 'name']);
+        // Chaque client porte son PALIER tarifaire (le POS appliquera le bon prix).
+        $clients = Client::active()->orderBy('name')->get()
+            ->map(fn (Client $c) => ['id' => $c->id, 'name' => $c->name, 'tier' => $pricing->tierForClient($c)]);
 
-        return view('pos.index', compact('products', 'clients'));
+        // La caisse n'est « ouverte » que si une session l'est : toute vente POS
+        // passe par la session (ouverture/clôture + comptage). Sans session, l'écran
+        // propose d'ouvrir la caisse plutôt que de vendre.
+        $session = $this->openSession();
+
+        return view('pos.index', compact('products', 'clients', 'session'));
     }
 
     /** Encaissement : crée une vente validée, livrée et soldée en une transaction. */
@@ -59,6 +74,13 @@ class PosController extends Controller
     {
         if (Gate::denies('commerce.C')) {
             return back()->with('error', 'Action non autorisée.');
+        }
+
+        // La vente comptant passe OBLIGATOIREMENT par une session de caisse ouverte
+        // (cohérence du Z et du comptage à la clôture).
+        if (! $this->openSession()) {
+            return redirect()->route('cash-register.index')
+                ->with('error', 'Ouvrez d\'abord la caisse (session) avant d\'encaisser.');
         }
 
         $data = $request->validate([
@@ -122,8 +144,13 @@ class PosController extends Controller
             return $sale;
         });
 
-        return redirect()->route('pos.receipt', $sale)
-            ->with('success', "Vente encaissée : {$sale->reference} — " . money($total) . '.');
+        $msg = "Vente encaissée : {$sale->reference} — " . money($total) . '.';
+
+        // Ticket de caisse optionnel (paramètre ventes.ticket_enabled) : sinon on
+        // reste sur l'écran POS pour enchaîner la vente suivante.
+        return setting('ventes.ticket_enabled', true)
+            ? redirect()->route('pos.receipt', $sale)->with('success', $msg)
+            : redirect()->route('pos.index')->with('success', $msg);
     }
 
     /** Ticket de caisse (reçu compact 80 mm), auto-imprimé. */
@@ -149,6 +176,12 @@ class PosController extends Controller
             return back()->with('error', 'Action non autorisée.');
         }
 
+        // Encaissement express = opération de caisse → session ouverte requise.
+        // (Pour un règlement hors caisse, utiliser l'enregistrement de paiement.)
+        if (! $this->openSession()) {
+            return back()->with('error', 'Ouvrez d\'abord la caisse (session) avant l\'encaissement express.');
+        }
+
         $data = $request->validate([
             'method' => 'required|in:especes,orange_money,virement,cheque',
         ]);
@@ -166,8 +199,11 @@ class PosController extends Controller
             return back()->with('error', $e->getMessage());
         }
 
-        return redirect()->route('pos.receipt', $sale)
-            ->with('success', 'Solde encaissé : ' . money($remaining) . '.');
+        $msg = 'Solde encaissé : ' . money($remaining) . '.';
+
+        return setting('ventes.ticket_enabled', true)
+            ? redirect()->route('pos.receipt', $sale)->with('success', $msg)
+            : redirect()->route('sales.show', $sale)->with('success', $msg);
     }
 
     /** Z de caisse : récap des encaissements/remboursements du jour par mode. */
@@ -216,6 +252,12 @@ class PosController extends Controller
         ];
 
         return view('pos.report', compact('date', 'report'));
+    }
+
+    /** Session de caisse ouverte (une seule par ferme), ou null. */
+    private function openSession(): ?CashRegisterSession
+    {
+        return CashRegisterSession::open()->latest('opened_at')->first();
     }
 
     /** Client « Vente comptoir » par défaut (achat anonyme au comptoir). */

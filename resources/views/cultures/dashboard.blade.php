@@ -27,6 +27,30 @@
     <div class="py-10">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 italic font-bold text-left space-y-8">
 
+            {{-- ACCÈS GROUPÉS (hub-cartes) : entités opérationnelles du module, pour
+                 que le breadcrumb puisse rester « Tableau de bord » seul. --}}
+            @can('cultures.L')
+            <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm not-italic">
+                <p class="text-[10px] font-black uppercase tracking-widest text-green-600 mb-4">{{ __("Opérations") }}</p>
+                <div class="grid grid-cols-3 md:grid-cols-5 gap-3">
+                    @foreach([
+                        ['label' => 'Parcelles', 'icon' => 'fa-map-location-dot', 'route' => 'plots.index'],
+                        ['label' => 'Cycles', 'icon' => 'fa-arrows-spin', 'route' => 'crop-cycles.index'],
+                        ['label' => 'Campagnes', 'icon' => 'fa-flag', 'route' => 'crop-campaigns.index'],
+                        ['label' => 'Transformation', 'icon' => 'fa-blender', 'route' => 'crop-transformations.index'],
+                        ['label' => 'Rapports', 'icon' => 'fa-chart-line', 'route' => 'crop-reports.index'],
+                    ] as $it)
+                        @if(\Illuminate\Support\Facades\Route::has($it['route']))
+                        <a href="{{ route($it['route']) }}" class="flex flex-col items-center justify-center gap-2 p-4 bg-slate-50 rounded-2xl hover:bg-green-50 hover:text-green-600 transition-all no-underline text-slate-600 text-center">
+                            <i class="fa-solid {{ $it['icon'] }} text-lg"></i>
+                            <span class="text-[8px] font-black uppercase tracking-widest leading-tight">{{ __($it['label']) }}</span>
+                        </a>
+                        @endif
+                    @endforeach
+                </div>
+            </div>
+            @endcan
+
             @if(session('success'))
                 <div class="p-5 bg-emerald-500 text-white rounded-[2rem] font-black text-[10px] uppercase tracking-[0.2em] shadow-xl flex items-center italic">
                     <i class="fa-solid fa-check-double mr-3 text-lg"></i> {{ session('success') }}

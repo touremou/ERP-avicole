@@ -70,11 +70,18 @@
         @if($method)<tr><td>{{ __("Mode") }}</td><td class="r">{{ ['especes'=>'Espèces','orange_money'=>'Orange Money','virement'=>'Virement','cheque'=>'Chèque'][$method] ?? $method }}</td></tr>@endif
     </table>
 
+    @php
+        $ticketFooter = trim((string) setting('ventes.ticket_footer', 'Merci de votre achat !'));
+        $ticketNote   = trim((string) setting('ventes.ticket_note', 'Conservez ce reçu pour tout échange ou retour.'));
+    @endphp
+    @if($ticketFooter !== '' || $ticketNote !== '')
     <div class="sep"></div>
     <div class="center foot">
-        {{ __("Merci de votre achat !") }}<br>
-        {{ __("Conservez ce reçu pour tout échange ou retour.") }}
+        @if($ticketFooter !== ''){{ $ticketFooter }}@endif
+        @if($ticketFooter !== '' && $ticketNote !== '')<br>@endif
+        @if($ticketNote !== ''){{ $ticketNote }}@endif
     </div>
+    @endif
 
     <div class="actions no-print">
         <button onclick="window.print()" class="primary">🖨 {{ __("Réimprimer") }}</button>
@@ -82,6 +89,8 @@
         <a href="{{ route('sales.show', $sale) }}">{{ __("Voir la vente") }}</a>
     </div>
 
+    @if(setting('ventes.ticket_autoprint', true))
     <script>window.addEventListener('load', () => setTimeout(() => window.print(), 300));</script>
+    @endif
 </body>
 </html>

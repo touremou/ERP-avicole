@@ -93,7 +93,13 @@
             @isset($header)
                 <header class="sticky top-16 z-40 bg-white/80 backdrop-blur-md border-b border-slate-200/50 shadow-sm transition-all duration-300">
                     <div class="max-w-7xl mx-auto py-5 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
-                        <div class="flex-1">{{ $header }}</div>
+                        {{-- Ancre de retour vers le hub du module courant (rendue
+                             seulement hors hub/page non-module). Centralisée ici →
+                             toutes les sous-pages en bénéficient sans édition page par page. --}}
+                        <div class="flex items-center gap-3 flex-1 min-w-0">
+                            <x-hub-back />
+                            <div class="flex-1 min-w-0">{{ $header }}</div>
+                        </div>
                         
                         {{-- 🔔 CLOCHE DE NOTIFICATION INDUSTRIELLE (OPTIMISÉE) --}}
                         @php

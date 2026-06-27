@@ -174,7 +174,10 @@
                 {{-- Formulaire nouveau paiement --}}
                 @if($sale->payment_status !== 'solde' && !in_array($sale->status, ['brouillon', 'annule']))
                 @can('commerce.C')
-                {{-- Encaissement EXPRESS du solde complet → ticket (commodité POS). --}}
+                @if($hasOpenCashSession ?? false)
+                {{-- Encaissement EXPRESS du solde complet → ticket (caisse). N'apparaît
+                     que si une session de caisse est ouverte (le paiement passe par la
+                     caisse). Sinon, utiliser l'enregistrement de paiement ci-dessous. --}}
                 <form method="POST" action="{{ route('pos.encash', $sale) }}" class="bg-teal-50 p-5 rounded-[2.5rem] border border-teal-200 mb-4">
                     @csrf
                     <h3 class="text-[10px] font-black uppercase text-teal-600 tracking-widest mb-2">{{ __("Encaissement express (caisse)") }}</h3>
@@ -191,6 +194,11 @@
                         </button>
                     </div>
                 </form>
+                @else
+                <a href="{{ route('cash-register.index') }}" class="block bg-slate-50 p-3 rounded-2xl border border-slate-200 mb-4 text-center text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-teal-600 transition-all no-underline italic">
+                    <i class="fa-solid fa-lock mr-1"></i> {{ __("Caisse fermée — ouvrir une session pour l'encaissement express") }}
+                </a>
+                @endif
                 @endcan
                 <div class="bg-emerald-50 p-6 rounded-[2.5rem] border border-emerald-200">
                     <h3 class="text-[10px] font-black uppercase text-emerald-600 tracking-widest mb-4">{{ __("Enregistrer un paiement (partiel)") }}</h3>

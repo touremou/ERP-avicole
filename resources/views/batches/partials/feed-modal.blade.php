@@ -108,6 +108,15 @@
                     </select>
                 </div>
 
+                {{-- 03b. RÈGLEMENT (comptant = soldé ; crédit = dette fournisseur) --}}
+                <div>
+                    <label class="text-[9px] uppercase text-slate-400 ml-4 mb-2 block tracking-widest font-black">{{ __("Règlement") }}</label>
+                    <select name="payment_mode" class="w-full bg-slate-50 border-none rounded-xl p-4 font-black text-xs uppercase shadow-inner italic outline-none">
+                        <option value="comptant">{{ __("Payé comptant (soldé)") }}</option>
+                        <option value="credit">{{ __("À crédit (dette fournisseur)") }}</option>
+                    </select>
+                </div>
+
                 {{-- 04. QUANTITÉ + COÛT --}}
                 <div class="grid grid-cols-2 gap-4">
                     <div class="bg-slate-50 p-5 rounded-[2rem] border border-slate-100">

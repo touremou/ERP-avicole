@@ -28,7 +28,7 @@
                                  lequel l'utilisateur a la lecture (can_read) apparaît ici,
                                  sans liste codée en dur. Source : getAccessibleModules()
                                  (matrice module_permissions) + Module::landingRoute(). --}}
-                            @foreach(auth()->user()->getAccessibleModules() as $module)
+                            @foreach(auth()->user()->getAccessibleModules()->whereNotIn('slug', \App\Models\Module::nonLauncherSlugs()) as $module)
                                 @php
                                     $landing = \App\Models\Module::landingRoute($module->slug);
                                     $color   = $module->color ?: 'slate';
@@ -106,6 +106,9 @@
                         <a href="{{ route('tasks.index', ['mine' => 1]) }}" class="block rounded-lg p-2 text-[9px] font-black uppercase italic tracking-widest hover:bg-blue-50 text-slate-500 no-underline"><i class="fa-solid fa-list-check text-blue-500 w-4 text-center mr-1"></i> {{ __("Mes Tâches") }}</a>
                         @endcan
                         <a href="{{ route('profile.edit') }}" class="block rounded-lg p-2 text-[9px] font-black uppercase italic tracking-widest hover:bg-blue-50 text-slate-500 no-underline"><i class="fa-solid fa-user-gear text-blue-500 w-4 text-center mr-1"></i> {{ __("Profil") }}</a>
+                        @if(\Illuminate\Support\Facades\Route::has('notifications.preferences'))
+                        <a href="{{ route('notifications.preferences') }}" class="block rounded-lg p-2 text-[9px] font-black uppercase italic tracking-widest hover:bg-blue-50 text-slate-500 no-underline"><i class="fa-solid fa-bell text-blue-500 w-4 text-center mr-1"></i> {{ __("Notifications") }}</a>
+                        @endif
                         <div class="border-t border-slate-100 my-1.5"></div>
                         <form method="POST" action="{{ route('logout') }}">@csrf
                             <button type="submit" class="w-full text-left rounded-lg p-2 text-[9px] font-black uppercase italic tracking-widest hover:bg-red-50 text-red-500 border-none bg-transparent cursor-pointer"><i class="fa-solid fa-right-from-bracket w-4 text-center mr-1"></i> {{ __("Déconnexion") }}</button>
@@ -135,7 +138,7 @@
             {{-- Lanceur de modules mobile, PILOTÉ PAR LA MATRICE : même source
                  que le drawer desktop (getAccessibleModules() + landingRoute()),
                  pour une couverture identique sur mobile et desktop. --}}
-            @foreach(auth()->user()->getAccessibleModules() as $module)
+            @foreach(auth()->user()->getAccessibleModules()->whereNotIn('slug', \App\Models\Module::nonLauncherSlugs()) as $module)
                 @php
                     $landing = \App\Models\Module::landingRoute($module->slug);
                     $color   = $module->color ?: 'slate';

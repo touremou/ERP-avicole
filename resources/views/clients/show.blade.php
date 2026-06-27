@@ -19,6 +19,10 @@
                 </a>
                 @endcan
                 
+                <a href="{{ route('clients.statement', $client) }}" class="bg-white border border-slate-200 px-6 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest text-slate-600 hover:bg-slate-50 transition-all no-underline flex items-center gap-2">
+                    <i class="fa-solid fa-file-invoice-dollar"></i> {{ __("Relevé") }}
+                </a>
+
                 @can('commerce.M')
                 <a href="{{ route('clients.edit', $client) }}" class="bg-white border border-slate-200 px-6 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest text-slate-600 hover:bg-slate-50 transition-all no-underline flex items-center gap-2">
                     <i class="fa-solid fa-pen"></i> {{ __("Modifier") }}
