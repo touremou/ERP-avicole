@@ -176,6 +176,12 @@
                     <i class="fa-solid fa-flag-checkered"></i> {{ __("Clôture") }}
                 </a>
                 @endcan
+
+                <a href="{{ route('batches.label', $batch->id) }}" target="_blank"
+                   class="flex flex-1 sm:flex-none items-center justify-center gap-2 px-4 md:px-5 py-3 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-xl font-black text-[9px] md:text-[10px] uppercase tracking-widest transition-all italic no-underline shrink-0"
+                   title="{{ __("Imprimer l'étiquette QR de traçabilité") }}">
+                    <i class="fa-solid fa-qrcode"></i> {{ __("Étiquette") }}
+                </a>
             </div>
 
             {{-- Actions Quotidiennes (ligne unique, défilement horizontal) --}}

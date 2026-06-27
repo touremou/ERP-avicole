@@ -58,7 +58,8 @@ use App\Http\Controllers\{
     CropProtocolController,
     CropReportController,
     CropCalendarEventController,
-    WeatherController
+    WeatherController,
+    TraceabilityController
 };
 
 Route::redirect('/', '/login');
@@ -98,6 +99,14 @@ Route::get('/media/{path}', [MediaController::class, 'show'])
     ->name('media.show');
 
 // ──────────────────────────────────────────────
+// TRAÇABILITÉ PUBLIQUE (scan du QR d'un lot / carton d'œufs)
+// ──────────────────────────────────────────────
+// Volontairement publique : un client, un inspecteur ou un distributeur doit
+// pouvoir vérifier l'origine d'un lot en scannant le QR de l'étiquette, sans
+// compte. N'expose que des informations d'origine (aucune donnée financière).
+Route::get('/trace/lot/{code}', [TraceabilityController::class, 'batch'])->name('trace.batch');
+
+// ──────────────────────────────────────────────
 // PROFIL & DASHBOARD (tout utilisateur connecté)
 // ──────────────────────────────────────────────
 Route::middleware(['auth', 'verified'])->group(function () {
@@ -134,6 +143,7 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('batches')->name('batches.')->controller(BatchController::class)->group(function () {
         Route::get('/', 'index')->name('index')->middleware('can:L');
         Route::get('/archives', 'archives')->name('archives')->middleware('can:L');
+        Route::get('/{batch}/label', [TraceabilityController::class, 'batchLabel'])->name('label')->where('batch', '[0-9]+')->middleware('can:L');
         Route::get('/{batch}', 'show')->name('show')->where('batch', '[0-9]+')->middleware('can:L');
 
         Route::get('/create', 'create')->name('create')->middleware('can:C');
@@ -400,6 +410,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/create', 'create')->name('create')->middleware('can:C');
         Route::post('/store', 'store')->name('store')->middleware('can:C');
         Route::get('/{eggProduction}/tri', 'tri')->name('tri')->middleware('can:L');
+        Route::get('/{eggProduction}/label', [TraceabilityController::class, 'eggLabel'])->name('label')->middleware('can:L');
         Route::get('/{eggProduction}/edit', 'edit')->name('edit')->middleware('can:M');
         Route::put('/{eggProduction}', 'update')->name('update')->middleware('can:M');
         Route::put('/{eggProduction}/tri', 'updateTri')->name('update-tri')->middleware('can:M');

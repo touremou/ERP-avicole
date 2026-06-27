@@ -248,6 +248,7 @@
                                         </td>
                                         <td class="px-4 md:px-5 py-2.5 md:py-3 text-right border-none">
                                             <div class="flex justify-end gap-1.5 md:gap-2">
+                                                <a href="{{ route('egg-productions.label', $prod->id) }}" target="_blank" title="{{ __('Étiquette QR de traçabilité') }}" class="w-6 h-6 md:w-7 md:h-7 rounded-md md:rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center hover:bg-amber-500 hover:text-white transition-all shadow-sm no-underline"><i class="fa-solid fa-qrcode text-[8px] md:text-[9px]"></i></a>
                                                 @can('production.M')
                                                     @if(!$prod->is_graded)
                                                         <a href="{{ route('egg-productions.edit', $prod->id) }}" class="w-6 h-6 md:w-7 md:h-7 rounded-md md:rounded-lg bg-slate-100 text-slate-500 flex items-center justify-center hover:bg-slate-800 hover:text-white transition-all shadow-sm no-underline"><i class="fa-solid fa-pen text-[8px] md:text-[9px]"></i></a>
