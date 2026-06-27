@@ -108,6 +108,7 @@ Route::get('/trace/lot/{code}', [TraceabilityController::class, 'batch'])->name(
 Route::get('/trace/op/{number}', [TraceabilityController::class, 'mill'])->name('trace.mill');
 Route::get('/trace/transformation/{number}', [TraceabilityController::class, 'crop'])->name('trace.crop');
 Route::get('/trace/expedition/{number}', [TraceabilityController::class, 'dispatch'])->name('trace.dispatch');
+Route::get('/trace/recolte/{uuid}', [TraceabilityController::class, 'harvest'])->name('trace.harvest');
 
 // ──────────────────────────────────────────────
 // PROFIL & DASHBOARD (tout utilisateur connecté)
@@ -182,6 +183,7 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('inventory')->name('stocks.')->controller(StockController::class)->group(function () {
         Route::get('/', 'index')->name('index')->middleware('can:L');
         Route::get('/item/{id}', 'show')->name('show')->middleware('can:L');
+        Route::get('/item/{id}/label', [TraceabilityController::class, 'stockLabel'])->name('label')->middleware('can:L');
         Route::get('/export/{category}', 'export')->name('export')->middleware('can:L');
 
         Route::get('/create', 'create')->name('create')->middleware('can:C');
@@ -277,6 +279,7 @@ Route::middleware(['auth'])->group(function () {
         // Récoltes (sous-ressource du cycle)
         Route::get('/{cropCycle}/harvests/create', 'createHarvest')->name('harvests.create')->middleware('can:C');
         Route::post('/{cropCycle}/harvests', 'storeHarvest')->name('harvests.store')->middleware('can:C');
+        Route::get('/{cropCycle}/harvests/{harvest}/label', [TraceabilityController::class, 'harvestLabel'])->name('harvests.label')->middleware('can:L');
         Route::get('/{cropCycle}/harvests/{harvest}/edit', 'editHarvest')->name('harvests.edit')->middleware('can:M');
         Route::put('/{cropCycle}/harvests/{harvest}', 'updateHarvest')->name('harvests.update')->middleware('can:M');
         Route::delete('/{cropCycle}/harvests/{harvest}', 'destroyHarvest')->name('harvests.destroy')->middleware('can:S');

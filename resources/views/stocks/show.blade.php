@@ -21,6 +21,10 @@
                 @endcan
 
                 {{-- Permission M : Édition de la fiche --}}
+                <a href="{{ route('stocks.label', $stock->id) }}" target="_blank" class="bg-white border border-slate-200 text-slate-600 px-5 py-3 rounded-2xl text-[10px] font-black uppercase italic hover:bg-slate-50 transition-all shadow-sm no-underline" title="{{ __('Étiquette de rayon (QR)') }}">
+                    <i class="fa-solid fa-qrcode mr-2 text-slate-700"></i> {{ __("Étiquette") }}
+                </a>
+
                 @can('logistique.M')
                 <a href="{{ route('stocks.edit', $stock->id) }}" class="bg-white border border-slate-200 text-slate-600 px-5 py-3 rounded-2xl text-[10px] font-black uppercase italic hover:bg-slate-50 transition-all shadow-sm no-underline">
                     <i class="fa-solid fa-pen mr-2 text-blue-500"></i> {{ __("Ajuster Fiche") }}

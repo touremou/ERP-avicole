@@ -4,8 +4,11 @@ use App\Models\Batch;
 use App\Models\CropTransformation;
 use App\Models\Dispatch;
 use App\Models\EggProduction;
+use App\Models\CropCycle;
 use App\Models\Formula;
+use App\Models\Harvest;
 use App\Models\MillProduction;
+use App\Models\Stock;
 use App\Services\QrCodeService;
 use Tests\Helpers\AviSmartTestHelper;
 
@@ -180,4 +183,60 @@ test('un numéro de document inconnu renvoie 404 sur tous les types', function (
     $this->get(route('trace.mill', 'OP-X'))->assertNotFound();
     $this->get(route('trace.crop', 'TRV-X'))->assertNotFound();
     $this->get(route('trace.dispatch', 'EXP-X'))->assertNotFound();
+    $this->get(route('trace.harvest', 'uuid-bidon'))->assertNotFound();
+});
+
+// ─── Végétal : récolte fraîche ───────────────────────────────────────────────
+
+test('la traçabilité publique d\'une récolte affiche culture, date et quantité', function () {
+    $plot = \App\Models\Plot::create([
+        'farm_id' => $this->farm->id, 'name' => 'Parcelle Nord', 'area_ha' => 1, 'status' => 'cultive',
+    ]);
+    $cycle = CropCycle::create([
+        'farm_id' => $this->farm->id, 'plot_id' => $plot->id, 'crop_name' => 'Tomate', 'variety' => 'Roma',
+        'area_used_ha' => 0.5, 'planting_date' => now()->subMonths(3)->toDateString(), 'status' => 'recolte',
+    ]);
+    $harvest = Harvest::create([
+        'farm_id'      => $this->farm->id,
+        'crop_cycle_id' => $cycle->id,
+        'harvest_date' => now()->toDateString(),
+        'quantity'     => 220,
+        'unit'         => 'kg',
+        'quality'      => 'bon',
+    ]);
+
+    $this->get(route('trace.harvest', $harvest->uuid))
+        ->assertOk()
+        ->assertSee('Tomate')
+        ->assertSee('220');
+
+    $this->actingAs($this->adminUser)
+        ->get(route('crop-cycles.harvests.label', [$cycle->id, $harvest->id]))
+        ->assertOk()
+        ->assertSee('Tomate')
+        ->assertSee('data:image/png;base64', false);
+});
+
+// ─── Stock : étiquette de rayon (interne) ────────────────────────────────────
+
+test('l\'étiquette d\'un article de stock pointe vers la fiche interne et exige une lecture', function () {
+    $stock = Stock::create([
+        'farm_id'          => $this->farm->id,
+        'item_name'        => 'Maïs concassé',
+        'category'         => Stock::CAT_CONSO,
+        'unit'             => 'KG',
+        'current_quantity' => 800,
+        'alert_threshold'  => 100,
+    ]);
+
+    // Anonyme → login.
+    $this->get(route('stocks.label', $stock->id))->assertRedirect(route('login'));
+
+    // L'étiquette encode l'URL INTERNE de la fiche stock (pas une page publique).
+    $this->actingAs($this->adminUser)
+        ->get(route('stocks.label', $stock->id))
+        ->assertOk()
+        ->assertSee('Maïs concassé')
+        ->assertSee('Article de stock')
+        ->assertSee('data:image/png;base64', false);
 });

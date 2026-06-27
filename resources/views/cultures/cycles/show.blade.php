@@ -306,6 +306,7 @@
                         </div>
                         <div class="flex items-center gap-4">
                             @if($h->unit_price)<p class="text-[10px] font-black text-slate-500">{{ number_format($h->estimated_value, 0, ',', ' ') }} {{ $currency }}</p>@endif
+                            <a href="{{ route('crop-cycles.harvests.label', [$cycle, $h]) }}" target="_blank" class="text-slate-300 hover:text-green-600 text-xs no-underline" title="{{ __('Étiquette QR de traçabilité') }}"><i class="fa-solid fa-qrcode"></i></a>
                             @can('cultures.M')
                             <a href="{{ route('crop-cycles.harvests.edit', [$cycle, $h]) }}" class="text-slate-300 hover:text-green-600 text-xs no-underline"><i class="fa-solid fa-pen-to-square"></i></a>
                             @endcan

@@ -6,7 +6,9 @@ use App\Models\Batch;
 use App\Models\CropTransformation;
 use App\Models\Dispatch;
 use App\Models\EggProduction;
+use App\Models\Harvest;
 use App\Models\MillProduction;
+use App\Models\Stock;
 use App\Services\QrCodeService;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
@@ -234,6 +236,89 @@ class TraceabilityController extends Controller
                 ['Destination', $dispatch->destination],
                 ['Chauffeur', $dispatch->driver_name],
                 ['Expédié le', optional($dispatch->dispatch_date)->format('d/m/Y')],
+            ], fn ($r) => filled($r[1])),
+        ]);
+    }
+
+    // ──────────────────────────────────────────────────────────────────────
+    // PRODUCTION VÉGÉTALE — RÉCOLTE (produit frais quittant la ferme)
+    // ──────────────────────────────────────────────────────────────────────
+
+    public function harvest(string $uuid): View
+    {
+        $h = Harvest::withoutFarm()
+            ->with(['cropCycle.plot', 'farm'])
+            ->where('uuid', $uuid)
+            ->first();
+
+        if (! $h) {
+            throw new NotFoundHttpException("Récolte introuvable.");
+        }
+
+        return $this->renderDocument([
+            'title'   => 'Récolte fraîche',
+            'code'    => $h->cropCycle?->crop_name ?? 'Récolte',
+            'status'  => $h->quality ? ucfirst($h->quality) : null,
+            'accent'  => 'green',
+            'farm'    => $h->farm?->name,
+            'rows'    => array_filter([
+                ['Date de récolte', optional($h->harvest_date)->format('d/m/Y')],
+                ['Quantité', filled($h->quantity) ? (rtrim(rtrim(number_format((float) $h->quantity, 2, '.', ''), '0'), '.') . ' ' . $h->unit) : null],
+                ['Variété', $h->cropCycle?->variety],
+                ['Parcelle', $h->cropCycle?->plot?->name],
+            ], fn ($r) => filled($r[1])),
+        ]);
+    }
+
+    public function harvestLabel(\App\Models\CropCycle $cropCycle, Harvest $harvest): View
+    {
+        if (Gate::denies('cultures.L')) {
+            abort(403);
+        }
+
+        $harvest->loadMissing(['cropCycle', 'farm']);
+
+        return $this->renderLabel([
+            'title'    => 'Récolte — ' . ($harvest->cropCycle?->crop_name ?? ''),
+            'code'     => $harvest->cropCycle?->crop_name ?? 'Récolte',
+            'accent'   => 'green',
+            'farm'     => $harvest->farm?->name,
+            'traceUrl' => route('trace.harvest', $harvest->uuid),
+            'rows'     => array_filter([
+                ['Récoltée le', optional($harvest->harvest_date)->format('d/m/Y')],
+                ['Quantité', filled($harvest->quantity) ? (rtrim(rtrim(number_format((float) $harvest->quantity, 2, '.', ''), '0'), '.') . ' ' . $harvest->unit) : null],
+                ['Qualité', $harvest->quality ? ucfirst($harvest->quality) : null],
+            ], fn ($r) => filled($r[1])),
+        ]);
+    }
+
+    // ──────────────────────────────────────────────────────────────────────
+    // STOCK — ÉTIQUETTE DE RAYON / BAC (usage INTERNE)
+    // ──────────────────────────────────────────────────────────────────────
+
+    /**
+     * Étiquette d'identification d'un article de stock. Contrairement aux
+     * autres QR (publics), celui-ci pointe vers la fiche INTERNE de l'article :
+     * les niveaux d'inventaire sont une donnée sensible qui ne doit pas être
+     * exposée publiquement. Le magasinier connecté scanne pour ouvrir l'article.
+     */
+    public function stockLabel($id): View
+    {
+        if (Gate::denies('logistique.L')) {
+            abort(403);
+        }
+
+        $stock = Stock::with('farm')->findOrFail($id);
+
+        return $this->renderLabel([
+            'title'    => 'Article de stock',
+            'code'     => $stock->item_name,
+            'accent'   => 'slate',
+            'farm'     => $stock->farm?->name,
+            'traceUrl' => route('stocks.show', $stock->id), // fiche interne (authentifiée)
+            'rows'     => array_filter([
+                ['Catégorie', ucfirst(str_replace('_', ' ', (string) $stock->category))],
+                ['Unité', $stock->unit],
             ], fn ($r) => filled($r[1])),
         ]);
     }
