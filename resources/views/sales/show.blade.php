@@ -36,8 +36,11 @@
                     </a>
                     @endcan
                 @endif
-                <a href="{{ route('sales.print', $sale) }}" target="_blank" class="bg-white border border-slate-200 px-6 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest text-slate-600 hover:bg-slate-50 transition-all no-underline flex items-center gap-2">
-                    <i class="fa-solid fa-print"></i> {{ __("Imprimer") }}
+                <a href="{{ route('sales.print', ['sale' => $sale, 'format' => 'a4']) }}" target="_blank" class="bg-white border border-slate-200 px-6 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest text-slate-600 hover:bg-slate-50 transition-all no-underline flex items-center gap-2">
+                    <i class="fa-solid fa-print"></i> {{ __("Imprimer A4") }}
+                </a>
+                <a href="{{ route('sales.print', ['sale' => $sale, 'format' => 'thermal']) }}" target="_blank" class="bg-white border border-slate-200 px-6 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest text-slate-600 hover:bg-slate-50 transition-all no-underline flex items-center gap-2">
+                    <i class="fa-solid fa-receipt"></i> {{ __("Ticket") }}
                 </a>
             </div>
         </div>

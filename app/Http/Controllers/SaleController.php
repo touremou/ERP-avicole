@@ -158,6 +158,11 @@ class SaleController extends Controller
 
         $sale->load(['client', 'items', 'payments']);
 
-        return view('sales.print', compact('sale'));
+        // Format d'impression : ?format= prioritaire, sinon paramètre par défaut.
+        // 'thermal' → ticket 80 mm ; 'a4' (défaut) → facture/BL classique.
+        $format = request('format', setting('ventes.print_format', 'a4'));
+        $view   = $format === 'thermal' ? 'sales.ticket' : 'sales.print';
+
+        return view($view, compact('sale'));
     }
 }
