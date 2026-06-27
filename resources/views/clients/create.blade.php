@@ -54,6 +54,17 @@
                                     <option value="autre" {{ old('category') === 'autre' ? 'selected' : '' }}>{{ __("Autre") }}</option>
                                 </select>
                             </div>
+                            @if(($priceLists ?? collect())->isNotEmpty())
+                            <div class="space-y-2">
+                                <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Groupe de prix") }}</label>
+                                <select name="price_list_id" class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black uppercase shadow-inner outline-none appearance-none cursor-pointer">
+                                    <option value="">{{ __("Tarif par défaut") }}</option>
+                                    @foreach($priceLists as $pl)
+                                        <option value="{{ $pl->id }}" {{ (string) old('price_list_id') === (string) $pl->id ? 'selected' : '' }}>{{ $pl->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            @endif
                         </div>
                     </div>
                 </div>

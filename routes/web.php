@@ -580,6 +580,13 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/', 'index')->name('index')->middleware('can:L');
         Route::get('/create', 'create')->name('create')->middleware('can:C');
         Route::post('/', 'store')->name('store')->middleware('can:C');
+
+        // Groupes de prix (tarifs) — gestion + suggestion de prix pour le formulaire.
+        Route::get('/price-lists', [\App\Http\Controllers\SalePriceListController::class, 'index'])->name('price-lists')->middleware('can:M');
+        Route::post('/price-lists', [\App\Http\Controllers\SalePriceListController::class, 'store'])->name('price-lists.store')->middleware('can:M');
+        Route::put('/price-lists/{priceList}', [\App\Http\Controllers\SalePriceListController::class, 'updateItems'])->name('price-lists.update')->middleware('can:M');
+        Route::get('/suggest-price', [\App\Http\Controllers\SalePriceListController::class, 'suggest'])->name('suggest-price')->middleware('can:L');
+
         Route::get('/{sale}', 'show')->name('show')->middleware('can:L');
         Route::get('/{sale}/print', 'print')->name('print')->middleware('can:L');
         Route::put('/{sale}/validate', 'validate')->name('validate')->middleware('can:M');

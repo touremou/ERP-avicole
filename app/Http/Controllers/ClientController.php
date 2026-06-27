@@ -44,7 +44,7 @@ class ClientController extends Controller
     public function create()
     {
         if (Gate::denies('commerce.C')) return back()->with('error', 'Création de client non autorisée.');
-        return view('clients.create');
+        return view('clients.create', ['priceLists' => \App\Models\SalePriceList::orderBy('name')->get()]);
     }
 
     public function store(StoreClientRequest $request)
@@ -166,7 +166,7 @@ class ClientController extends Controller
     public function edit(Client $client)
     {
         if (Gate::denies('commerce.M')) return back()->with('error', 'Modification de client non autorisée.');
-        return view('clients.edit', compact('client'));
+        return view('clients.edit', ['client' => $client, 'priceLists' => \App\Models\SalePriceList::orderBy('name')->get()]);
     }
 
     public function update(UpdateClientRequest $request, Client $client)

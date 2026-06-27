@@ -26,7 +26,7 @@
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div class="space-y-2">
                             <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Client") }} *</label>
-                            <select name="client_id" x-model="clientId" required class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black uppercase shadow-inner outline-none">
+                            <select name="client_id" x-model="clientId" @change="onClientChange()" required class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black uppercase shadow-inner outline-none">
                                 <option value="">{{ __("Sélectionner...") }}</option>
                                 @foreach($clients as $client)
                                     <option value="{{ $client->id }}" {{ ($selectedClient?->id ?? old('client_id')) == $client->id ? 'selected' : '' }}>{{ $client->name }} ({{ $client->client_id }})</option>
@@ -285,6 +285,22 @@
                 // l'unité de l'article sélectionné (renseignée plus tard).
                 const defaults = { animal_vif:'tete', carcasse:'kg', fumier:'voyage', autre:'unite' };
                 l.unit = defaults[l.product_type] || '';
+                this.suggestPrice(i);
+            },
+            // Pré-remplit le prix unitaire depuis le tarif du client (groupe de
+            // prix). N'écrase pas un prix déjà saisi manuellement (> 0).
+            suggestPrice(i) {
+                let l=this.lines[i];
+                if(!l.product_type || l.unit_price > 0) return;
+                const url = '{{ route('sales.suggest-price') }}?product_type=' + encodeURIComponent(l.product_type) + (this.clientId ? '&client_id=' + this.clientId : '');
+                fetch(url, {headers:{'Accept':'application/json'}})
+                    .then(r => r.ok ? r.json() : null)
+                    .then(d => { if(d && d.price !== null && d.price !== undefined && !(l.unit_price > 0)) l.unit_price = d.price; })
+                    .catch(() => {});
+            },
+            onClientChange() {
+                // Au changement de client, re-suggère le prix des lignes non encore tarifées.
+                this.lines.forEach((l, i) => { if(l.product_type && !(l.unit_price > 0)) this.suggestPrice(i); });
             },
             onUnitChange(i) {
                 // Pour un animal vif, le plafond (effectif du lot) ne s'applique

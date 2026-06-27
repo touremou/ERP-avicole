@@ -17,6 +17,11 @@
                     <p class="text-[8px] font-black text-rose-400 uppercase italic mb-1">{{ __("Impayés") }}</p>
                     <p class="text-sm font-black text-slate-900">{{ number_format($stats['unpaid_total'], 0, ',', ' ') }} <small class="text-[8px] opacity-40">{{ currency() }}</small></p>
                 </div>
+                @can('commerce.M')
+                <a href="{{ route('sales.price-lists') }}" class="bg-white border border-slate-200 text-slate-600 px-6 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:border-teal-500 hover:text-teal-600 transition-all shadow-sm italic flex items-center gap-2 no-underline" title="{{ __('Groupes de prix (tarifs)') }}">
+                    <i class="fa-solid fa-tags"></i> {{ __("Tarifs") }}
+                </a>
+                @endcan
                 @can('commerce.C')
                 <a href="{{ route('sales.create') }}" class="bg-slate-900 text-white px-8 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-teal-600 transition-all shadow-2xl italic flex items-center gap-2 no-underline">
                     <i class="fa-solid fa-plus"></i> {{ __("Nouvelle Vente") }}

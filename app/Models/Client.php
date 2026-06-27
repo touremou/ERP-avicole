@@ -14,7 +14,7 @@ class Client extends Model
 
     protected $fillable = [
         'farm_id',
-        'client_id', 'name', 'type', 'category',
+        'client_id', 'name', 'type', 'category', 'price_list_id',
         'phone', 'email', 'address',
         'nif', 'rccm',
         'credit_limit', 'balance',
@@ -27,6 +27,11 @@ class Client extends Model
     ];
 
     // ─── RELATIONS ───
+
+    public function priceList(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(SalePriceList::class, 'price_list_id');
+    }
 
     public function sales(): HasMany
     {
