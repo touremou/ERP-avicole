@@ -90,7 +90,18 @@
     </div>
 
     @if(setting('ventes.ticket_autoprint', true))
-    <script>window.addEventListener('load', () => setTimeout(() => window.print(), 300));</script>
+    {{-- Impression automatique, puis retour au POS une fois le dialogue fermé
+         (imprimé OU annulé) pour enchaîner la vente suivante sans navigation manuelle. --}}
+    <script>
+        let posRedirected = false;
+        const backToPos = () => {
+            if (posRedirected) return;
+            posRedirected = true;
+            setTimeout(() => { window.location.href = @json(route('pos.index')); }, 600);
+        };
+        window.addEventListener('afterprint', backToPos);
+        window.addEventListener('load', () => setTimeout(() => window.print(), 300));
+    </script>
     @endif
 </body>
 </html>
