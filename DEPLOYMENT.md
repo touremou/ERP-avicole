@@ -5,6 +5,7 @@
 ## 1. Pré-requis serveur
 
 - PHP 8.3+ avec extensions : `pdo_mysql` (ou `pdo_sqlite`), `mbstring`, `gd`, `intl`, `zip`, `curl`, `xml`, `ctype`, `fileinfo`, `tokenizer`, `openssl`
+  - `gd` est **obligatoire** : il sert au traitement d'images **et** à la génération des QR de traçabilité (`endroid/qr-code`).
 - MySQL 8 / MariaDB 10.6+ (ou SQLite pour une petite installation)
 - Composer 2, Node 18+ (build des assets)
 - HTTPS (certificat valide) + reverse proxy correctement configuré — requis
@@ -29,8 +30,36 @@ prérequis serveur, configure la connexion base de données (écrit `DB_*` et
 compte administrateur (remplace `admin@admin.com`) et propose de supprimer le
 compte de démonstration `user@users.com`.
 
-Une fois l'assistant terminé, le marqueur `storage/installed` est posé et
-`/install` redevient inaccessible.
+Une fois l'assistant terminé, le marqueur `storage/installed` est posé,
+l'assistant **bascule automatiquement `.env` en `APP_ENV=production` /
+`APP_DEBUG=false`** (plus de fuite de stack-traces) et `/install` redevient
+inaccessible.
+
+> **Traçabilité publique** : les pages scannées via les QR codes
+> (`/trace/lot/{code}`, `/trace/op/…`, `/trace/recolte/…`, `/trace/expedition/…`,
+> `/trace/transformation/…`) sont **volontairement accessibles sans
+> authentification** (vérification d'origine par un client/inspecteur) et
+> n'exposent aucune donnée financière. Ne pas les bloquer au niveau du
+> reverse-proxy/pare-feu. L'étiquette d'un article de stock pointe en revanche
+> vers la fiche **interne** (authentifiée).
+
+### Mise à jour d'une instance déjà installée
+
+À chaque déploiement d'une nouvelle version sur une instance existante :
+
+```bash
+git pull
+composer install --no-dev --optimize-autoloader   # récupère les nouvelles dépendances (ex. endroid/qr-code)
+npm ci && npm run build
+php artisan migrate --force                         # applique les nouvelles migrations (idempotentes)
+php artisan optimize:clear                          # purge les caches avant de les régénérer (§3)
+```
+
+Les migrations sont conçues pour être rejouables sans risque (gardes
+`Schema::hasTable`, `if (! exists)` sur les seeds de paramètres). Aucune
+intervention manuelle n'est requise pour les nouvelles tables
+(`notification_templates`, `dashboard_configurations`) ni pour le groupe de
+paramètres « Numérotation ».
 
 > **Installation 100% en ligne de commande** (sans passer par `/install`) :
 > renseigner `DB_*` dans `.env`, puis `php artisan key:generate`,
