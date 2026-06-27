@@ -32,7 +32,9 @@
                 </div>
             @endif
 
-            <form action="{{ route('crop-recipes.update', $recipe) }}" method="POST" class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm space-y-6">
+            <form action="{{ route('crop-recipes.update', $recipe) }}" method="POST"
+                  x-data="{ items: {{ Illuminate\Support\Js::from($recipe->items->map(fn ($it) => ['input_product' => $it->input_product, 'quantity' => $it->quantity, 'unit' => $it->unit])) }} }"
+                  class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm space-y-6">
                 @csrf @method('PUT')
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div class="md:col-span-2">
@@ -44,6 +46,10 @@
                         <select name="transformation_type" required class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-green-700 shadow-inner italic appearance-none cursor-pointer">
                             @foreach($types as $key => $label)<option value="{{ $key }}" @selected(old('transformation_type', $recipe->transformation_type) == $key)>{{ $label }}</option>@endforeach
                         </select>
+                    </div>
+                    <div>
+                        <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Code") }}</label>
+                        <input type="text" name="code" value="{{ old('code', $recipe->code) }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic uppercase">
                     </div>
                     <div>
                         <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Produit fini *") }}</label>
@@ -70,6 +76,23 @@
                         <input type="checkbox" name="is_active" value="1" id="is_active" @checked(old('is_active', $recipe->is_active)) class="rounded">
                         <label for="is_active" class="text-[9px] font-black text-slate-500 uppercase italic cursor-pointer">{{ __("Recette active") }}</label>
                     </div>
+                </div>
+
+                {{-- INTRANTS (lignes dynamiques, pré-remplies depuis la recette) --}}
+                <div class="pt-4 border-t border-slate-50">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-[10px] font-black uppercase text-slate-700 tracking-widest italic">{{ __("Intrants de la recette") }}</h3>
+                        <button type="button" @click="items.push({ input_product: '', quantity: '', unit: 'kg' })" class="text-[9px] font-black uppercase text-green-600 italic"><i class="fa-solid fa-plus mr-1"></i>{{ __("Ajouter") }}</button>
+                    </div>
+                    <template x-for="(item, i) in items" :key="i">
+                        <div class="grid grid-cols-12 gap-2 mb-2 items-center">
+                            <input type="text" :name="`items[${i}][input_product]`" x-model="item.input_product" placeholder="{{ __('Matière première') }}" class="col-span-6 bg-slate-50 border-none rounded-2xl p-3 font-black text-slate-800 shadow-inner italic text-[11px]">
+                            <input type="number" step="0.001" min="0" :name="`items[${i}][quantity]`" x-model="item.quantity" placeholder="{{ __('Qté') }}" class="col-span-3 bg-slate-50 border-none rounded-2xl p-3 font-black text-slate-800 shadow-inner italic text-[11px] text-right">
+                            <input type="text" :name="`items[${i}][unit]`" x-model="item.unit" class="col-span-2 bg-slate-50 border-none rounded-2xl p-3 font-black text-slate-800 shadow-inner italic text-[11px] text-center">
+                            <button type="button" @click="items.splice(i, 1)" class="col-span-1 text-rose-300 hover:text-rose-600"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                    </template>
+                    <p class="text-[8px] font-bold text-slate-400 uppercase italic ml-2 mt-1">{{ __("Laisser vide pour conserver les intrants actuels inchangés.") }}</p>
                 </div>
 
                 <div>

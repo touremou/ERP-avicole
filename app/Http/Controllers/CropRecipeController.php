@@ -125,6 +125,7 @@ class CropRecipeController extends Controller
         }
 
         $validated = $request->validate([
+            'code'                   => 'nullable|string|max:50',
             'name'                   => 'required|string|max:255',
             'transformation_type'    => 'required|in:' . implode(',', array_keys(CropTransformation::TYPES)),
             'output_product'         => 'required|string|max:255',
@@ -134,25 +135,32 @@ class CropRecipeController extends Controller
             'estimated_cost'         => 'nullable|numeric|min:0',
             'notes'                  => 'nullable|string|max:1000',
             'is_active'              => 'nullable|boolean',
+            'items'                  => 'nullable|array',
+            'items.*.input_product'  => 'nullable|string|max:255',
+            'items.*.quantity'       => 'nullable|numeric|min:0',
+            'items.*.unit'           => 'nullable|string|max:20',
         ]);
         $validated['is_active'] = $request->boolean('is_active', true);
 
-        $cropRecipe->update($validated);
+        DB::transaction(function () use ($cropRecipe, $validated, $request) {
+            $cropRecipe->update($validated);
 
-        // Replace items if provided.
-        if ($request->has('items')) {
-            $cropRecipe->items()->delete();
-            foreach ($request->input('items', []) as $item) {
-                if (!empty($item['ingredient']) && isset($item['quantity'])) {
+            // Remplacement intégral des intrants si la section est soumise.
+            // (Colonne réelle : `input_product`, cohérent avec store() et l'import.)
+            if ($request->has('items')) {
+                $cropRecipe->items()->delete();
+                foreach ($request->input('items', []) as $item) {
+                    if (empty($item['input_product'])) {
+                        continue;
+                    }
                     $cropRecipe->items()->create([
-                        'ingredient'  => $item['ingredient'],
-                        'quantity'    => (float) $item['quantity'],
-                        'unit'        => $item['unit'] ?? 'kg',
-                        'notes'       => $item['notes'] ?? null,
+                        'input_product' => $item['input_product'],
+                        'quantity'      => $item['quantity'] ?? 0,
+                        'unit'          => $item['unit'] ?? 'kg',
                     ]);
                 }
             }
-        }
+        });
 
         return back()->with('success', 'Recette mise à jour.');
     }

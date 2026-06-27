@@ -176,6 +176,12 @@ class CropCycle extends Model
             ? Carbon::parse($this->closing_date)->startOfDay()
             : now()->startOfDay();
 
+        // Semis daté dans le futur → âge nul (et non un âge positif aberrant :
+        // diffInDays renvoie une valeur absolue en Carbon 3).
+        if ($end->lt($start)) {
+            return 0;
+        }
+
         return (int) $start->diffInDays($end) + 1;
     }
 

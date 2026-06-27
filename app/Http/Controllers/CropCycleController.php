@@ -123,10 +123,14 @@ class CropCycleController extends Controller
             ]);
         }
 
-        $cycle = CropCycle::create($validated);
+        $cycle = \Illuminate\Support\Facades\DB::transaction(function () use ($validated) {
+            $cycle = CropCycle::create($validated);
+            // Démarrer un cycle met la parcelle en culture (y compris si elle
+            // était en jachère — action utilisateur explicite).
+            $cycle->plot()->update(['status' => Plot::STATUS_EN_CULTURE]);
 
-        // La parcelle passe en culture.
-        $cycle->plot()->update(['status' => Plot::STATUS_EN_CULTURE]);
+            return $cycle;
+        });
 
         return redirect()->route('crop-cycles.show', $cycle)
             ->with('success', "Cycle de culture « {$cycle->crop_name} » démarré.");
@@ -267,19 +271,16 @@ class CropCycleController extends Controller
             }
         }
 
-        $cropCycle->update($validated);
+        \Illuminate\Support\Facades\DB::transaction(function () use ($cropCycle, $validated) {
+            $cropCycle->update($validated);
 
-        // À la clôture/abandon, on libère la parcelle seulement si aucun autre cycle actif.
-        if (in_array($cropCycle->status, CropCycle::STATUS_ARCHIVED, true)) {
-            $cropCycle->update(['closing_date' => $cropCycle->closing_date ?? now()]);
-            $hasOtherActive = CropCycle::where('plot_id', $cropCycle->plot_id)
-                ->whereIn('status', CropCycle::IN_PROGRESS_STATUSES)
-                ->where('id', '!=', $cropCycle->id)
-                ->exists();
-            if (!$hasOtherActive) {
-                $cropCycle->plot()->update(['status' => Plot::STATUS_DISPONIBLE]);
+            // À la clôture/abandon, on horodate la fermeture. La libération de
+            // la parcelle (si plus aucun cycle actif) est assurée par
+            // CropCycleObserver dès que le statut change — source unique.
+            if (in_array($cropCycle->status, CropCycle::STATUS_ARCHIVED, true)) {
+                $cropCycle->update(['closing_date' => $cropCycle->closing_date ?? now()]);
             }
-        }
+        });
 
         return redirect()->route('crop-cycles.show', $cropCycle)
             ->with('success', 'Cycle de culture mis à jour.');
@@ -324,6 +325,10 @@ class CropCycleController extends Controller
     {
         if (Gate::denies('cultures.C')) {
             return back()->with('error', 'Action non autorisée.');
+        }
+
+        if ($cropCycle->isArchived()) {
+            return back()->with('error', 'Ce cycle est clôturé : aucun intrant ne peut y être ajouté.');
         }
 
         $validated = $request->validate([
@@ -398,6 +403,8 @@ class CropCycleController extends Controller
             return back()->with('error', 'Action non autorisée.');
         }
 
+        abort_unless($harvest->crop_cycle_id === $cropCycle->id, 404);
+
         return view('cultures.cycles.harvests.edit', [
             'cycle'     => $cropCycle,
             'harvest'   => $harvest,
@@ -412,6 +419,8 @@ class CropCycleController extends Controller
         if (Gate::denies('cultures.M')) {
             return back()->with('error', 'Action non autorisée.');
         }
+
+        abort_unless($harvest->crop_cycle_id === $cropCycle->id, 404);
 
         $validated = $request->validate([
             'harvest_date'  => 'required|date',
@@ -443,6 +452,11 @@ class CropCycleController extends Controller
             return back()->with('error', 'Action non autorisée.');
         }
 
+        if ($cropCycle->isArchived()) {
+            return redirect()->route('crop-cycles.show', $cropCycle)
+                ->with('error', 'Ce cycle est clôturé : aucun intrant ne peut y être ajouté.');
+        }
+
         return view('cultures.cycles.inputs.create', [
             'cycle'      => $cropCycle,
             'inputTypes' => CropInput::TYPES,
@@ -456,6 +470,8 @@ class CropCycleController extends Controller
         if (Gate::denies('cultures.M')) {
             return back()->with('error', 'Action non autorisée.');
         }
+
+        abort_unless($input->crop_cycle_id === $cropCycle->id, 404);
 
         return view('cultures.cycles.inputs.edit', [
             'cycle'      => $cropCycle,
@@ -471,6 +487,8 @@ class CropCycleController extends Controller
         if (Gate::denies('cultures.M')) {
             return back()->with('error', 'Action non autorisée.');
         }
+
+        abort_unless($input->crop_cycle_id === $cropCycle->id, 404);
 
         $validated = $request->validate([
             'type'        => 'required|in:' . implode(',', array_keys(CropInput::TYPES)),
@@ -508,11 +526,11 @@ class CropCycleController extends Controller
             return back()->with('error', 'Impossible de supprimer un cycle ayant des récoltes enregistrées.');
         }
 
-        $plot = $cropCycle->plot;
-        $cropCycle->delete();
-        if (!$plot->isOccupied()) {
-            $plot->update(['status' => Plot::STATUS_DISPONIBLE]);
-        }
+        // La cascade applicative (intrants, validations d'étapes) et la
+        // libération de la parcelle sont assurées par CropCycleObserver, quel
+        // que soit le chemin de suppression. On enveloppe en transaction pour
+        // l'atomicité de la cascade.
+        \Illuminate\Support\Facades\DB::transaction(fn () => $cropCycle->delete());
 
         return redirect()->route('crop-cycles.index')->with('success', 'Cycle supprimé.');
     }
@@ -523,6 +541,10 @@ class CropCycleController extends Controller
             return back()->with('error', 'Action non autorisée.');
         }
 
+        abort_unless($harvest->crop_cycle_id === $cropCycle->id, 404);
+
+        // HarvestObserver::deleted reverse le stock synchronisé et réouvre le
+        // cycle (RECOLTE → EN_COURS) s'il s'agissait de la dernière récolte.
         $harvest->delete();
 
         return back()->with('success', 'Récolte supprimée.');
@@ -534,6 +556,9 @@ class CropCycleController extends Controller
             return back()->with('error', 'Action non autorisée.');
         }
 
+        abort_unless($input->crop_cycle_id === $cropCycle->id, 404);
+
+        // CropInputObserver::deleted reverse l'entrée stock synchronisée.
         $input->delete();
 
         return back()->with('success', 'Intrant supprimé.');

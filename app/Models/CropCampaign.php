@@ -100,10 +100,15 @@ class CropCampaign extends Model
             return (float) $this->cycles->sum(fn ($c) => $c->total_harvested);
         }
 
+        // Même base que CropCycle::getTotalHarvestedAttribute : poids net pesé,
+        // ou quantité seulement si la récolte est déjà en kg. Sommer `quantity`
+        // brut mélangerait des unités hétérogènes (caisses, sacs, kg).
         return (float) Harvest::whereIn(
             'crop_cycle_id',
             CropCycle::where('campaign_id', $this->id)->select('id')
-        )->sum('quantity');
+        )->sum(\Illuminate\Support\Facades\DB::raw(
+            "COALESCE(net_weight_kg, CASE WHEN LOWER(unit) = 'kg' THEN quantity ELSE 0 END)"
+        ));
     }
 
     /** Avancement vers l'objectif de production (%), borné à 100. */

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\CropCycle;
 use App\Models\Plot;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -110,6 +111,21 @@ class PlotController extends Controller
             'status'          => 'required|in:' . implode(',', Plot::STATUSES),
             'notes'           => 'nullable|string|max:1000',
         ]);
+
+        // Garde-fou : ne pas réduire la surface en deçà de ce qui est déjà
+        // emblavé par les cycles en cours (sinon surface restante incohérente
+        // et futurs semis bloqués à tort).
+        $usedByActive = (float) $plot->cropCycles()
+            ->whereIn('status', CropCycle::IN_PROGRESS_STATUSES)
+            ->sum('area_used_ha');
+        if ((float) $validated['area_ha'] + 0.0001 < $usedByActive) {
+            return back()->withInput()->withErrors([
+                'area_ha' => sprintf(
+                    'Surface (%.2f ha) inférieure à la surface déjà emblavée par les cycles en cours (%.2f ha).',
+                    $validated['area_ha'], $usedByActive
+                )
+            ]);
+        }
 
         $plot->update($validated);
 
