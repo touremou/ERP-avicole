@@ -204,6 +204,16 @@ class InstallController extends Controller
         $alreadyInstalled = File::exists(storage_path('installed'));
 
         if (! $alreadyInstalled) {
+            // Bascule en mode PRODUCTION au terme de l'installation : sans cela,
+            // une instance déployée depuis .env.example tournerait avec
+            // APP_DEBUG=true (fuite de stack-traces = divulgation d'informations)
+            // et APP_ENV=local (perfs et garde-fous dégradés).
+            $this->updateEnv([
+                'APP_ENV'   => 'production',
+                'APP_DEBUG' => 'false',
+            ]);
+            Artisan::call('config:clear');
+
             File::put(storage_path('installed'), now()->toDateTimeString());
         }
 
