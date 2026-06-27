@@ -15,9 +15,6 @@
                 <a href="{{ route('crop-reports.yield.pdf', request()->query()) }}" class="bg-slate-900 text-white px-5 py-2.5 rounded-2xl font-black text-[9px] uppercase tracking-widest italic no-underline flex items-center gap-2 hover:bg-green-700 transition">
                     <i class="fa-solid fa-file-pdf"></i> {{ __("Export PDF") }}
                 </a>
-                <a href="{{ route('crop-reports.index') }}" class="text-[10px] font-black uppercase text-slate-400 hover:text-slate-900 transition no-underline">
-                    <i class="fa-solid fa-arrow-left mr-1"></i> {{ __("Rapports") }}
-                </a>
             </div>
         </div>
     </x-slot>

@@ -11,9 +11,6 @@
                 </div>
             </div>
             <div class="flex gap-3 items-center">
-                <a href="{{ route('cultures.dashboard') }}" class="text-[10px] font-black uppercase text-slate-400 hover:text-slate-900 transition no-underline">
-                    <i class="fa-solid fa-arrow-left mr-2"></i> {{ __("Cultures") }}
-                </a>
                 @can('cultures.C')
                 <a href="{{ route('crop-protocols.create') }}" class="bg-slate-900 text-white px-8 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-green-600 transition-all shadow-2xl italic flex items-center gap-2 no-underline">
                     <i class="fa-solid fa-plus"></i> {{ __("Nouvel itinéraire") }}

@@ -16,6 +16,11 @@ test('Planning et Notifications sont exclus du lanceur de modules (méga-menu)',
         ->and(Module::nonLauncherSlugs())->not->toContain('commerce');
 });
 
+test('les pages Planning sont rattachées au breadcrumb Élevage (intégration, pas de section autonome)', function () {
+    $this->get(route('planning.index'))->assertOk()
+        ->assertSee('href="' . route('elevage.index') . '"', false); // breadcrumb → hub Élevage
+});
+
 test('les modules atterrissent sur leur hub', function () {
     expect(Module::landingRoute('elevage'))->toBe('elevage.index')
         ->and(Module::landingRoute('production'))->toBe('productions.index')
@@ -25,14 +30,19 @@ test('les modules atterrissent sur leur hub', function () {
         ->and(Module::landingRoute('commerce'))->toBe('commerce.index');
 });
 
-test('les sous-pages portent une ancre de retour vers le hub du module', function () {
-    // Page de sous-section → flèche retour vers le tableau de bord du module.
+test('niveau 1 (section index) : l\'ancre de retour mène au hub du module', function () {
     $this->get(route('buildings.index'))->assertOk()
         ->assertSee('href="' . route('elevage.index') . '"', false);
     $this->get(route('expenses.index'))->assertOk()
         ->assertSee('href="' . route('finance.index') . '"', false);
     $this->get(route('egg-productions.index'))->assertOk()
         ->assertSee('href="' . route('productions.index') . '"', false);
+});
+
+test('niveau 2 (sous-page d\'une section) : l\'ancre de retour mène à la SECTION parente, pas au hub', function () {
+    // reports.profit_loss est sous la section reports → retour vers reports.index.
+    $this->get(route('reports.profit_loss'))->assertOk()
+        ->assertSee('href="' . route('reports.index') . '"', false);
 });
 
 test('le hub Logistique répond et expose ses KPIs', function () {

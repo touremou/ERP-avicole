@@ -10,9 +10,6 @@
                     <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1 italic">{{ __("Import CSV des espèces et variétés") }}</p>
                 </div>
             </div>
-            <a href="{{ route('crop-catalogue.index') }}" class="bg-slate-900 text-white px-6 py-3 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-green-600 transition-all shadow-xl italic flex items-center gap-2 no-underline">
-                <i class="fa-solid fa-arrow-left"></i> {{ __("Retour") }}
-            </a>
         </div>
     </x-slot>
 

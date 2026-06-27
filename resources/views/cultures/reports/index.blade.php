@@ -10,9 +10,6 @@
                     <p class="text-[9px] font-bold text-slate-400 uppercase mt-1 tracking-widest italic">{{ __("Rendements · Intrants · Campagnes · Transformations") }}</p>
                 </div>
             </div>
-            <a href="{{ route('cultures.dashboard') }}" class="text-[10px] font-black uppercase text-slate-400 hover:text-slate-900 transition no-underline">
-                <i class="fa-solid fa-arrow-left mr-2"></i> {{ __("Pilotage") }}
-            </a>
         </div>
     </x-slot>
 

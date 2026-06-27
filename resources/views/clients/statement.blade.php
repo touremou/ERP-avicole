@@ -2,9 +2,7 @@
     <x-slot name="header">
         <div class="flex items-center justify-between gap-4">
             <div class="flex items-center gap-3">
-                <a href="{{ route('clients.show', $client) }}" class="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-900 hover:text-white transition-all no-underline shrink-0">
-                    <i class="fa-solid fa-arrow-left"></i>
-                </a>
+                <x-back :to="route('clients.show', $client)" />
                 <div>
                     <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">
                         📄 {{ __("Relevé de compte") }}

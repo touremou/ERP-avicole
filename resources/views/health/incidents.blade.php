@@ -12,9 +12,6 @@
                     </p>
                 </div>
             </div>
-            <a href="{{ route('health.index') }}" class="text-[10px] font-black uppercase italic text-slate-400 hover:text-slate-800 transition-all no-underline">
-                <i class="fa-solid fa-arrow-left mr-1"></i> {{ __("Retour au Registre") }}
-            </a>
         </div>
     </x-slot>
 

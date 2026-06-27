@@ -1,7 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
         <div class="flex items-center gap-5 text-left">
-            <a href="{{ route('slaughter.dashboard') }}" class="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-900 hover:text-white transition-all no-underline"><i class="fa-solid fa-arrow-left"></i></a>
             <div>
                 <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">{{ __("Transformation") }}</h2>
                 <p class="text-[10px] font-black text-amber-600 uppercase tracking-[0.2em] mt-2 italic">{{ __("Fumage, Grillage, Marinade") }}</p>

@@ -27,7 +27,9 @@
     <a href="{{ route('annuaire.index') }}" class="{{ $linkClass }} {{ request()->routeIs('annuaire.*') ? $activeClass : $inactiveClass }}">{{ __("Tableau de bord") }}</a>
     @endcan
 
-@elseif(request()->routeIs(['elevage.*', 'buildings.*','batches.*', 'daily-checks.*', 'health.*', 'protocols.*', 'reports.*', 'campaigns.*']))
+@elseif(request()->routeIs(['elevage.*', 'buildings.*','batches.*', 'daily-checks.*', 'health.*', 'protocols.*', 'reports.*', 'campaigns.*', 'planning.*']))
+    {{-- Planning est intégré à Élevage (carte du hub) : ses pages affichent le
+         breadcrumb Élevage, pas de section autonome. --}}
     <span class="{{ $sectionClass }}"><i class="fa-solid fa-dove text-blue-500 mr-1"></i> {{ __("Élevage") }}</span>
     @can('elevage.L')
     <a href="{{ route('elevage.index') }}" class="{{ $linkClass }} {{ request()->routeIs('elevage.*') ? $activeClass : $inactiveClass }}">{{ __("Tableau de bord") }}</a>
@@ -52,15 +54,6 @@
     <span class="{{ $sectionClass }}"><i class="fa-solid fa-wheat-awn text-lime-600 mr-1"></i> {{ __("Provenderie") }}</span>
     @can('provenderie.L')
     <a href="{{ route('provenderie.dashboard') }}" class="{{ $linkClass }} {{ request()->routeIs('provenderie.dashboard') ? $activeClass : $inactiveClass }}">{{ __("Tableau de bord") }}</a>
-    @endcan
-
-@elseif(request()->routeIs('planning.*'))
-    <span class="{{ $sectionClass }}"><i class="fa-solid fa-calendar-days text-indigo-500 mr-1"></i> {{ __("Planning") }}</span>
-    @can('planning.L')
-    <a href="{{ route('planning.index') }}" class="{{ $linkClass }} {{ request()->routeIs('planning.index') ? $activeClass : $inactiveClass }}">{{ __("Calendrier") }}</a>
-    @endcan
-    @can('planning.C')
-    <a href="{{ route('planning.create') }}" class="{{ $linkClass }} {{ request()->routeIs('planning.create') ? $activeClass : $inactiveClass }}">{{ __("Planifier") }}</a>
     @endcan
 
 @elseif(request()->routeIs('slaughter.*'))

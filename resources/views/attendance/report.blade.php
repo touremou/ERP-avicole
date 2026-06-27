@@ -1,9 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
         <div class="flex items-center gap-4">
-            <a href="{{ route('attendance.index') }}" class="group text-slate-400 hover:text-slate-800 transition no-underline">
-                <i class="fas fa-arrow-left group-hover:-translate-x-1 transition-transform text-xl"></i>
-            </a>
             <div>
                 <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">
                     📋 {{ __("Rapport de présence") }}

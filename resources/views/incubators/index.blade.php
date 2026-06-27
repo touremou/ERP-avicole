@@ -7,9 +7,6 @@
             </div>
 
             <div class="flex flex-wrap gap-3">
-                <a href="{{ route('incubations.index') }}" class="flex items-center gap-2 px-5 py-3 bg-white border border-slate-200 text-slate-500 rounded-2xl font-black text-[10px] uppercase italic hover:bg-slate-50 transition shadow-sm tracking-widest no-underline">
-                    <i class="fa-solid fa-arrow-left"></i> {{ __("Retour") }}
-                </a>
                 {{-- Permission C : Ajout de machine --}}
                 @can('production.C')
                 <button @click="$dispatch('open-add-modal')" class="bg-blue-600 text-white px-7 py-3 rounded-[1.5rem] text-[10px] font-black uppercase italic shadow-xl shadow-blue-200 hover:bg-blue-500 transition-all border-none cursor-pointer">
