@@ -20,7 +20,7 @@ beforeEach(function () {
 function sellableStock(int $qty = 100, float $price = 2000): Stock
 {
     // farm_id auto-rempli depuis la session par le trait BelongsToFarm.
-    return Stock::create([
+    $stock = Stock::create([
         'category'        => Stock::CAT_PRODUITS_FINIS,
         'item_name'       => 'Poulet entier',
         'unit'            => 'piece',
@@ -29,6 +29,21 @@ function sellableStock(int $qty = 100, float $price = 2000): Stock
         'last_unit_price' => $price,
         'alert_threshold' => 5,
     ]);
+
+    // Le POS s'appuie sur le CATALOGUE : on rattache un article au stock.
+    \App\Models\Product::create([
+        'name' => 'Poulet entier', 'product_type' => 'produits_finis',
+        'stock_id' => $stock->id, 'unit' => 'piece', 'base_price' => $price, 'is_active' => true,
+    ]);
+
+    return $stock;
+}
+
+/** Construit les lignes POS (catalogue) pour un stock donné. */
+function posItems(Stock $stock, float $qty, float $price): array
+{
+    $productId = \App\Models\Product::where('stock_id', $stock->id)->value('id');
+    return [['product_id' => $productId, 'quantity' => $qty, 'unit_price' => $price]];
 }
 
 test('le POS encaisse une vente complète (validée, livrée, soldée) et déstocke', function () {
@@ -37,7 +52,7 @@ test('le POS encaisse une vente complète (validée, livrée, soldée) et désto
     $this->actingAs($this->adminUser)
         ->post(route('pos.checkout'), [
             'payment_method' => 'especes',
-            'items'          => [['stock_id' => $stock->id, 'quantity' => 10, 'unit_price' => 2000]],
+            'items'          => posItems($stock, 10, 2000),
         ])
         ->assertRedirect();
 
@@ -57,7 +72,7 @@ test('le POS redirige vers le reçu, qui s\'affiche', function () {
 
     $resp = $this->actingAs($this->adminUser)->post(route('pos.checkout'), [
         'payment_method' => 'especes',
-        'items'          => [['stock_id' => $stock->id, 'quantity' => 3, 'unit_price' => 2000]],
+        'items'          => posItems($stock, 3, 2000),
     ]);
 
     $sale = Sale::latest('id')->first();
@@ -76,7 +91,7 @@ test('le POS rejette une quantité supérieure au stock (rien n\'est créé ni d
     $this->actingAs($this->adminUser)
         ->post(route('pos.checkout'), [
             'payment_method' => 'especes',
-            'items'          => [['stock_id' => $stock->id, 'quantity' => 10, 'unit_price' => 2000]],
+            'items'          => posItems($stock, 10, 2000),
         ])
         ->assertSessionHas('error');
 
@@ -90,7 +105,7 @@ test('le Z de caisse récapitule encaissements et remboursements du jour par mod
     // Vente POS : 5 × 2000 = 10 000 (espèces).
     $this->actingAs($this->adminUser)->post(route('pos.checkout'), [
         'payment_method' => 'especes',
-        'items'          => [['stock_id' => $stock->id, 'quantity' => 5, 'unit_price' => 2000]],
+        'items'          => posItems($stock, 5, 2000),
     ])->assertRedirect();
     $sale = Sale::latest('id')->first();
 
@@ -157,7 +172,7 @@ test('le POS accepte un client sélectionné', function () {
     $this->actingAs($this->adminUser)
         ->post(route('pos.checkout'), [
             'client_id' => $client->id, 'payment_method' => 'orange_money',
-            'items'     => [['stock_id' => $stock->id, 'quantity' => 3, 'unit_price' => 2000]],
+            'items'     => posItems($stock, 3, 2000),
         ])
         ->assertRedirect();
 

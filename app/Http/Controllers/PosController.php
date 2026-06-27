@@ -8,8 +8,6 @@ use App\Actions\Sale\ValidateSale;
 use App\Models\CashRegisterSession;
 use App\Models\Client;
 use App\Models\Sale;
-use App\Models\Stock;
-use App\Services\PricingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -25,41 +23,33 @@ use Illuminate\Support\Facades\Gate;
 class PosController extends Controller
 {
     /** Écran caisse : grille produits (stock vendable) + clients + tarifs par palier. */
-    public function index(PricingService $pricing)
+    public function index()
     {
         if (Gate::denies('commerce.C')) {
             return redirect()->route('dashboard')->with('error', 'Accès restreint au module Commerce.');
         }
 
-        $products = Stock::where('current_quantity', '>', 0)
-            ->orderBy('item_name')
+        // Le POS s'appuie désormais sur le CATALOGUE : articles actifs liés à un
+        // stock physique et disponibles (photo + prix). Un article non lié au
+        // stock (service) n'est pas vendable au comptant ici.
+        $products = \App\Models\Product::active()
+            ->whereNotNull('stock_id')
+            ->with('stock')
+            ->orderBy('name')
             ->get()
-            ->map(function (Stock $s) use ($pricing) {
-                $type = Stock::CATEGORY_TO_PRODUCT_TYPE[$s->category] ?? null;
-                if (! $type) {
-                    return null; // catégories non vendables (conso, intrants…) exclues
-                }
-
-                // Tarifs par palier (grille PriceList) ; le prix affiché par défaut
-                // est le détaillant, repli sur le standard puis le CMP (last_unit_price).
-                $tiers = $pricing->tierMapForStock($s);
-                $default = $tiers['detaillant'] ?? $tiers['standard'] ?? (float) ($s->last_unit_price ?? 0);
-
-                return [
-                    'id'     => $s->id,
-                    'name'   => $s->item_name,
-                    'unit'   => $s->unit,
-                    'qty'    => (float) $s->current_quantity,
-                    'price'  => (float) $default,
-                    'prices' => $tiers, // {standard, detaillant, grossiste} (null si absent)
-                ];
-            })
-            ->filter()
+            ->filter(fn (\App\Models\Product $p) => $p->stock && (float) $p->stock->current_quantity > 0)
+            ->map(fn (\App\Models\Product $p) => [
+                'id'     => $p->id,                                                  // ID ARTICLE catalogue
+                'name'   => $p->name,
+                'unit'   => $p->unit,
+                'qty'    => (float) $p->stock->current_quantity,
+                'price'  => (float) (\App\Models\SalePriceList::priceForProduct(null, $p) ?? $p->base_price),
+                'photo'  => $p->photo_url,
+            ])
             ->values();
 
-        // Chaque client porte son PALIER tarifaire (le POS appliquera le bon prix).
         $clients = Client::active()->orderBy('name')->get()
-            ->map(fn (Client $c) => ['id' => $c->id, 'name' => $c->name, 'tier' => $pricing->tierForClient($c)]);
+            ->map(fn (Client $c) => ['id' => $c->id, 'name' => $c->name]);
 
         // La caisse n'est « ouverte » que si une session l'est : toute vente POS
         // passe par la session (ouverture/clôture + comptage). Sans session, l'écran
@@ -87,35 +77,36 @@ class PosController extends Controller
             'client_id'          => 'nullable|exists:clients,id',
             'payment_method'     => 'required|in:especes,orange_money,virement,cheque',
             'items'              => 'required|array|min:1',
-            'items.*.stock_id'   => 'required|integer|exists:stocks,id',
+            'items.*.product_id' => 'required|integer|exists:products,id',
             'items.*.quantity'   => 'required|numeric|min:0.01',
             'items.*.unit_price' => 'required|numeric|min:0',
         ]);
 
-        // Lignes construites côté SERVEUR depuis le stock (anti-falsification du
-        // type/nom/unité) + contrôle de disponibilité avant déstockage.
+        // Lignes reconstruites côté SERVEUR depuis le CATALOGUE (anti-falsification
+        // du type/nom/unité) + contrôle de disponibilité du stock lié.
         $items = [];
         $total = 0.0;
         foreach ($data['items'] as $line) {
-            $stock = Stock::find($line['stock_id']);
-            $type = $stock ? (Stock::CATEGORY_TO_PRODUCT_TYPE[$stock->category] ?? null) : null;
-            if (! $type) {
-                continue;
+            $product = \App\Models\Product::with('stock')->find($line['product_id']);
+            if (! $product || ! $product->stock) {
+                continue; // article non vendable au comptant (sans stock lié)
             }
 
+            $stock = $product->stock;
             $qty = (float) $line['quantity'];
             if ($qty > (float) $stock->current_quantity) {
-                return back()->with('error', "Stock insuffisant pour {$stock->item_name} (disponible : {$stock->current_quantity} {$stock->unit}).");
+                return back()->with('error', "Stock insuffisant pour {$product->name} (disponible : {$stock->current_quantity} {$stock->unit}).");
             }
 
             $price = (float) $line['unit_price'];
             $items[] = [
-                'product_type' => $type,
-                'product_name' => $stock->item_name,
-                'product_id'   => $stock->id,
-                'quantity'     => $qty,
-                'unit'         => $stock->unit,
-                'unit_price'   => $price,
+                'product_type'   => $product->product_type,
+                'product_name'   => $product->name,
+                'product_id'     => $stock->id,   // cible du déstockage (chaîne ValidateSale)
+                'product_ref_id' => $product->id, // article catalogue vendu
+                'quantity'       => $qty,
+                'unit'           => $product->unit,
+                'unit_price'     => $price,
             ];
             $total += round($qty * $price, 2);
         }

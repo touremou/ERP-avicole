@@ -21,10 +21,15 @@ beforeEach(function () {
 
 function hubStock(int $qty = 100, float $price = 2000): Stock
 {
-    return Stock::create([
+    $stock = Stock::create([
         'category' => Stock::CAT_PRODUITS_FINIS, 'item_name' => 'Poulet entier', 'unit' => 'piece',
         'current_quantity' => $qty, 'unit_price' => $price, 'last_unit_price' => $price, 'alert_threshold' => 5,
     ]);
+    \App\Models\Product::create([
+        'name' => 'Poulet entier', 'product_type' => 'produits_finis', 'stock_id' => $stock->id,
+        'unit' => 'piece', 'base_price' => $price, 'is_active' => true,
+    ]);
+    return $stock;
 }
 
 test('le hub commerce est accessible et agrège le CA du jour', function () {
@@ -33,7 +38,7 @@ test('le hub commerce est accessible et agrège le CA du jour', function () {
     // Vente POS comptant : 10 × 2000 = 20 000 (livrée, soldée, aujourd'hui).
     $this->actingAs($this->adminUser)->post(route('pos.checkout'), [
         'payment_method' => 'especes',
-        'items'          => [['stock_id' => $stock->id, 'quantity' => 10, 'unit_price' => 2000]],
+        'items'          => [['product_id' => \App\Models\Product::where('stock_id', $stock->id)->value('id'), 'quantity' => 10, 'unit_price' => 2000]],
     ])->assertRedirect();
 
     $kpis = $this->actingAs($this->adminUser)->get(route('commerce.index'))

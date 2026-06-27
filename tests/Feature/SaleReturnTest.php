@@ -20,7 +20,7 @@ beforeEach(function () {
 /** Stock vendable (nom unique à ce fichier pour éviter la redéclaration Pest). */
 function stockForReturn(int $qty = 100, float $price = 2000): Stock
 {
-    return Stock::create([
+    $stock = Stock::create([
         'category'        => Stock::CAT_PRODUITS_FINIS,
         'item_name'       => 'Poulet entier',
         'unit'            => 'piece',
@@ -29,6 +29,11 @@ function stockForReturn(int $qty = 100, float $price = 2000): Stock
         'last_unit_price' => $price,
         'alert_threshold' => 5,
     ]);
+    \App\Models\Product::create([
+        'name' => 'Poulet entier', 'product_type' => 'produits_finis', 'stock_id' => $stock->id,
+        'unit' => 'piece', 'base_price' => $price, 'is_active' => true,
+    ]);
+    return $stock;
 }
 
 /** Crée une vente payée+livrée de $sold unités via le POS, renvoie [sale, stock]. */
@@ -37,7 +42,7 @@ function paidSale(int $stockQty, int $sold, float $price, $user): array
     $stock = stockForReturn($stockQty, $price);
     test()->actingAs($user)->post(route('pos.checkout'), [
         'payment_method' => 'especes',
-        'items'          => [['stock_id' => $stock->id, 'quantity' => $sold, 'unit_price' => $price]],
+        'items'          => [['product_id' => \App\Models\Product::where('stock_id', $stock->id)->value('id'), 'quantity' => $sold, 'unit_price' => $price]],
     ])->assertRedirect();
 
     return [Sale::latest('id')->first(), $stock];

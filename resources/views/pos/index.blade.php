@@ -75,7 +75,11 @@
                         <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
                             <template x-for="p in filteredProducts" :key="p.id">
                                 <button type="button" @click="addToCart(p)"
-                                        class="bg-white border border-slate-100 rounded-2xl p-4 text-left shadow-sm hover:border-teal-400 hover:shadow-md transition-all">
+                                        class="bg-white border border-slate-100 rounded-2xl p-3 text-left shadow-sm hover:border-teal-400 hover:shadow-md transition-all overflow-hidden">
+                                    <div class="h-20 -mx-3 -mt-3 mb-2 bg-slate-50 flex items-center justify-center overflow-hidden">
+                                        <template x-if="p.photo"><img :src="p.photo" class="w-full h-full object-cover" alt=""></template>
+                                        <template x-if="!p.photo"><i class="fa-solid fa-box-open text-2xl text-slate-200"></i></template>
+                                    </div>
                                     <p class="text-[10px] font-black text-slate-800 uppercase leading-tight truncate" x-text="p.name"></p>
                                     <p class="text-[8px] font-black text-slate-400 uppercase mt-1">
                                         <span x-text="formatMoney(p.price)"></span> / <span x-text="p.unit"></span>
@@ -114,7 +118,7 @@
                                     <p class="text-right text-[10px] font-black text-emerald-300 mt-1" x-text="formatMoney(line.quantity * line.unit_price)"></p>
 
                                     {{-- Champs soumis --}}
-                                    <input type="hidden" :name="`items[${i}][stock_id]`" :value="line.id">
+                                    <input type="hidden" :name="`items[${i}][product_id]`" :value="line.id">
                                     <input type="hidden" :name="`items[${i}][quantity]`" :value="line.quantity">
                                     <input type="hidden" :name="`items[${i}][unit_price]`" :value="line.unit_price">
                                 </div>

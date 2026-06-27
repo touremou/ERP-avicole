@@ -45,16 +45,19 @@ test('le prix d\'un article suit le palier, avec repli sur standard', function (
     expect($this->pricing->priceForStock($this->stock, 'inexistant'))->toBe(5000.0);
 });
 
-test('le POS expose les prix par palier et le palier de chaque client', function () {
-    Client::create(['farm_id' => $this->farm->id, 'client_id' => 'C3', 'name' => 'Grossiste X', 'type' => 'entreprise', 'category' => 'grossiste', 'status' => 'actif', 'credit_limit' => 0, 'balance' => 0]);
+test('le POS (catalogue) expose les articles liés au stock avec prix et photo', function () {
+    // Le POS s'appuie désormais sur le catalogue : un article lié au stock,
+    // disponible, apparaît avec son prix (tarif par défaut → prix de base).
+    \App\Models\Product::create([
+        'name' => 'Poulet entier', 'product_type' => 'produits_finis', 'stock_id' => $this->stock->id,
+        'unit' => 'piece', 'base_price' => 4800, 'is_active' => true,
+    ]);
 
     $resp = $this->actingAs($this->adminUser)->get(route('pos.index'))->assertOk();
 
-    $product = collect($resp->viewData('products'))->firstWhere('id', $this->stock->id);
-    expect($product['price'])->toBe(5500.0)              // affiché par défaut = détaillant
-        ->and($product['prices']['grossiste'])->toBe(4000.0)
-        ->and($product['prices']['standard'])->toBe(5000.0);
-
-    $client = collect($resp->viewData('clients'))->firstWhere('name', 'Grossiste X');
-    expect($client['tier'])->toBe('grossiste');
+    $product = collect($resp->viewData('products'))->firstWhere('name', 'Poulet entier');
+    expect($product)->not->toBeNull()
+        ->and($product['price'])->toBe(4800.0)
+        ->and($product['qty'])->toBe(100.0)
+        ->and($product)->toHaveKey('photo');
 });

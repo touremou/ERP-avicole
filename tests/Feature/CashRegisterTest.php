@@ -16,10 +16,15 @@ beforeEach(function () {
 /** Stock vendable (nom unique à ce fichier). */
 function crStock(int $qty = 100, float $price = 2000): Stock
 {
-    return Stock::create([
+    $stock = Stock::create([
         'category' => Stock::CAT_PRODUITS_FINIS, 'item_name' => 'Poulet', 'unit' => 'piece',
         'current_quantity' => $qty, 'unit_price' => $price, 'last_unit_price' => $price, 'alert_threshold' => 5,
     ]);
+    \App\Models\Product::create(['name' => 'Poulet', 'product_type' => 'produits_finis', 'stock_id' => $stock->id, 'unit' => 'piece', 'base_price' => $price, 'is_active' => true]);
+    return $stock;
+}
+function crItems(Stock $stock, float $qty, float $price): array {
+    return [['product_id' => \App\Models\Product::where('stock_id', $stock->id)->value('id'), 'quantity' => $qty, 'unit_price' => $price]];
 }
 
 test('sans session ouverte, le POS refuse d\'encaisser et redirige vers la caisse', function () {
@@ -27,7 +32,7 @@ test('sans session ouverte, le POS refuse d\'encaisser et redirige vers la caiss
 
     $this->actingAs($this->adminUser)->post(route('pos.checkout'), [
         'payment_method' => 'especes',
-        'items'          => [['stock_id' => $stock->id, 'quantity' => 5, 'unit_price' => 2000]],
+        'items'          => crItems($stock, 5, 2000),
     ])
         ->assertRedirect(route('cash-register.index'))
         ->assertSessionHas('error');
@@ -57,7 +62,7 @@ test('le théorique inclut le fond + les encaissements espèces de la session', 
     $stock = crStock(100, 2000);
     $this->actingAs($this->adminUser)->post(route('pos.checkout'), [
         'payment_method' => 'especes',
-        'items'          => [['stock_id' => $stock->id, 'quantity' => 10, 'unit_price' => 2000]],
+        'items'          => crItems($stock, 10, 2000),
     ])->assertRedirect();
 
     expect($session->fresh()->expectedCash())->toBe(70000.0); // 50 000 + 20 000
@@ -70,7 +75,7 @@ test('clôturer avec comptage des billets calcule l\'écart (manquant)', functio
     $stock = crStock(100, 2000);
     $this->actingAs($this->adminUser)->post(route('pos.checkout'), [
         'payment_method' => 'especes',
-        'items'          => [['stock_id' => $stock->id, 'quantity' => 10, 'unit_price' => 2000]],
+        'items'          => crItems($stock, 10, 2000),
     ])->assertRedirect(); // théorique = 70 000
 
     // Comptage : 20000×3 + 5000×1 + 1000×3 = 68 000 → manquant 2 000.
@@ -115,7 +120,7 @@ test('la clôture reporte le comptant en trésorerie (compte Caisse suit le phys
     $stock = crStock(100, 2000);
     $this->actingAs($this->adminUser)->post(route('pos.checkout'), [
         'payment_method' => 'especes',
-        'items'          => [['stock_id' => $stock->id, 'quantity' => 10, 'unit_price' => 2000]],
+        'items'          => crItems($stock, 10, 2000),
     ])->assertRedirect(); // théorique = 70 000
 
     // Comptage exact 70 000 (20000×3 + 10000×1).
@@ -136,7 +141,7 @@ test('la trésorerie suit le comptant physique même en cas d\'écart', function
     $stock = crStock(100, 2000);
     $this->actingAs($this->adminUser)->post(route('pos.checkout'), [
         'payment_method' => 'especes',
-        'items'          => [['stock_id' => $stock->id, 'quantity' => 10, 'unit_price' => 2000]],
+        'items'          => crItems($stock, 10, 2000),
     ])->assertRedirect(); // théorique = 70 000
 
     // Compté 68 000 (manquant 2 000).

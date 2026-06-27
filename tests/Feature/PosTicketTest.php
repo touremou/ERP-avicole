@@ -17,17 +17,27 @@ beforeEach(function () {
 
 function ticketStock(): Stock
 {
-    return Stock::create([
+    $stock = Stock::create([
         'category' => Stock::CAT_PRODUITS_FINIS, 'item_name' => 'Poulet', 'unit' => 'piece',
         'current_quantity' => 100, 'unit_price' => 2000, 'last_unit_price' => 2000, 'alert_threshold' => 5,
     ]);
+    \App\Models\Product::create([
+        'name' => 'Poulet', 'product_type' => 'produits_finis', 'stock_id' => $stock->id,
+        'unit' => 'piece', 'base_price' => 2000, 'is_active' => true,
+    ]);
+    return $stock;
+}
+
+function ticketProductId(Stock $stock): int
+{
+    return (int) \App\Models\Product::where('stock_id', $stock->id)->value('id');
 }
 
 function ticketCheckout($test, $user, Stock $stock): void
 {
     $test->actingAs($user)->post(route('pos.checkout'), [
         'payment_method' => 'especes',
-        'items'          => [['stock_id' => $stock->id, 'quantity' => 2, 'unit_price' => 2000]],
+        'items'          => [['product_id' => ticketProductId($stock), 'quantity' => 2, 'unit_price' => 2000]],
     ]);
 }
 
@@ -36,7 +46,7 @@ test('ticket activé (défaut) : l\'encaissement redirige vers le reçu', functi
 
     $resp = $this->actingAs($this->adminUser)->post(route('pos.checkout'), [
         'payment_method' => 'especes',
-        'items'          => [['stock_id' => $stock->id, 'quantity' => 2, 'unit_price' => 2000]],
+        'items'          => [['product_id' => ticketProductId($stock), 'quantity' => 2, 'unit_price' => 2000]],
     ]);
 
     $sale = Sale::latest('id')->first();
@@ -51,7 +61,7 @@ test('ticket désactivé : l\'encaissement reste sur le POS (aucun reçu)', func
 
     $this->actingAs($this->adminUser)->post(route('pos.checkout'), [
         'payment_method' => 'especes',
-        'items'          => [['stock_id' => $stock->id, 'quantity' => 2, 'unit_price' => 2000]],
+        'items'          => [['product_id' => ticketProductId($stock), 'quantity' => 2, 'unit_price' => 2000]],
     ])->assertRedirect(route('pos.index'))->assertSessionHas('success');
 
     expect(Sale::count())->toBe(1); // la vente est bien créée, seul le reçu est sauté
