@@ -576,6 +576,16 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/pdf', 'exportPdf')->name('pdf')->middleware('can:L');
     });
 
+    // Catalogue d'articles vendables (commerce).
+    Route::prefix('products')->name('products.')->controller(\App\Http\Controllers\ProductController::class)->group(function () {
+        Route::get('/', 'index')->name('index')->middleware('can:commerce.L');
+        Route::get('/create', 'create')->name('create')->middleware('can:commerce.C');
+        Route::post('/', 'store')->name('store')->middleware('can:commerce.C');
+        Route::get('/{product}/edit', 'edit')->name('edit')->middleware('can:commerce.M');
+        Route::put('/{product}', 'update')->name('update')->middleware('can:commerce.M');
+        Route::delete('/{product}', 'destroy')->name('destroy')->middleware('can:commerce.S');
+    });
+
     Route::prefix('sales')->name('sales.')->controller(SaleController::class)->group(function () {
         Route::get('/', 'index')->name('index')->middleware('can:L');
         Route::get('/create', 'create')->name('create')->middleware('can:C');

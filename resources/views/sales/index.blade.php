@@ -17,6 +17,9 @@
                     <p class="text-[8px] font-black text-rose-400 uppercase italic mb-1">{{ __("Impayés") }}</p>
                     <p class="text-sm font-black text-slate-900">{{ number_format($stats['unpaid_total'], 0, ',', ' ') }} <small class="text-[8px] opacity-40">{{ currency() }}</small></p>
                 </div>
+                <a href="{{ route('products.index') }}" class="bg-white border border-slate-200 text-slate-600 px-6 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:border-teal-500 hover:text-teal-600 transition-all shadow-sm italic flex items-center gap-2 no-underline" title="{{ __('Catalogue d\'articles') }}">
+                    <i class="fa-solid fa-box-open"></i> {{ __("Catalogue") }}
+                </a>
                 <a href="{{ route('sales.receivables') }}" class="bg-white border border-slate-200 text-slate-600 px-6 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:border-rose-500 hover:text-rose-600 transition-all shadow-sm italic flex items-center gap-2 no-underline" title="{{ __('Recouvrement / relances') }}">
                     <i class="fa-solid fa-hand-holding-dollar"></i> {{ __("Recouvrement") }}
                 </a>
