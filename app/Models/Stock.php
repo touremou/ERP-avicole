@@ -222,7 +222,7 @@ class Stock extends Model
 
         $totalQty = (float) $this->current_quantity;
         $fullTrays = floor($totalQty);
-        $remainingEggs = round(($totalQty - $fullTrays) * 30);
+        $remainingEggs = \App\Services\UnitConverter::traysToEggs($totalQty - $fullTrays);
 
         return [
             'trays' => (int) $fullTrays,
@@ -238,9 +238,11 @@ class Stock extends Model
     public function getSacksEstimateAttribute(): float
     {
         if ($this->unit !== 'KG' || $this->category !== self::CAT_CONSO) return 0;
-        
-        $bagWeight = $this->metadata['bag_weight'] ?? 50;
-        return round((float) $this->current_quantity / $bagWeight, 1);
+
+        return \App\Services\UnitConverter::kgToSacks(
+            (float) $this->current_quantity,
+            $this->metadata['bag_weight'] ?? null
+        );
     }
 
     // -----------------------

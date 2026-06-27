@@ -10,6 +10,7 @@ use App\Actions\DailyCheck\SyncManureCollection;
 use App\Http\Requests\DailyCheck\StoreDailyCheckRequest;
 use App\Http\Requests\DailyCheck\UpdateDailyCheckRequest;
 use App\Services\StockIntegrationService;
+use App\Services\UnitConverter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -72,9 +73,12 @@ class DailyCheckController extends Controller
                 
             // 2. Conversion automatique en KG
             if ($item) {
-                $stockData[$phase] = (strtolower($item->unit) === 'sac') 
-                    ? (float) $item->current_quantity * 50 
-                    : (float) $item->current_quantity;
+                $stockData[$phase] = UnitConverter::toStockBase(
+                    (float) $item->current_quantity,
+                    $item->unit,
+                    Stock::CAT_CONSO,
+                    $item->metadata['bag_weight'] ?? null
+                );
             } else {
                 $stockData[$phase] = 0;
             }
@@ -211,9 +215,12 @@ class DailyCheckController extends Controller
                 ->first();
                 
             if ($item) {
-                $stockData[$phase] = (strtolower($item->unit) === 'sac') 
-                    ? (float) $item->current_quantity * 50 
-                    : (float) $item->current_quantity;
+                $stockData[$phase] = UnitConverter::toStockBase(
+                    (float) $item->current_quantity,
+                    $item->unit,
+                    Stock::CAT_CONSO,
+                    $item->metadata['bag_weight'] ?? null
+                );
             } else {
                 $stockData[$phase] = 0;
             }
@@ -396,9 +403,12 @@ class DailyCheckController extends Controller
             return 0;
         }
 
-        // 2. Conversion en KG
-        return (strtolower($stock->unit) === 'sac') 
-            ? (float) $stock->current_quantity * 50 
-            : (float) $stock->current_quantity;
+        // 2. Conversion en KG (poids du sac configuré)
+        return UnitConverter::toStockBase(
+            (float) $stock->current_quantity,
+            $stock->unit,
+            Stock::CAT_CONSO,
+            $stock->metadata['bag_weight'] ?? null
+        );
     }
 }

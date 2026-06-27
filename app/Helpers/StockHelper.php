@@ -29,7 +29,12 @@ class StockHelper
             return 0;
         }
 
-        $totalQtyKg = ($stock->unit === 'Sac') ? (float)$stock->current_quantity * 50 : (float)$stock->current_quantity;
+        $totalQtyKg = \App\Services\UnitConverter::toStockBase(
+            (float) $stock->current_quantity,
+            $stock->unit,
+            Stock::CAT_CONSO,
+            $stock->metadata['bag_weight'] ?? null
+        );
 
         // 3. CACHE MÉMOIRE POUR ÉVITER LE N+1
         static $latestChecks = null;

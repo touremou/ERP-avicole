@@ -88,11 +88,13 @@ class MillProduction extends Model
     // -----------------------
 
     /**
-     * Conversion dynamique en nombre de sacs (Standard 50kg)
+     * Conversion dynamique en nombre de sacs (poids du sac configuré).
      */
     public function getNbBagsAttribute(): float
     {
-        return $this->quantity_produced > 0 ? round($this->quantity_produced / 50, 1) : 0;
+        return $this->quantity_produced > 0
+            ? \App\Services\UnitConverter::kgToSacks((float) $this->quantity_produced)
+            : 0;
     }
 
     /**

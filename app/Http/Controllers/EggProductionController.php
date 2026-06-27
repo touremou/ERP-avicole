@@ -274,7 +274,7 @@ class EggProductionController extends Controller
                     }
                 }
                 foreach (['broken_eggs' => 'Cassé', 'small_eggs' => 'Anomalie'] as $field => $name) {
-                    $qtyAlv = (float) $eggProduction->$field / 30;
+                    $qtyAlv = \App\Services\UnitConverter::eggsToTrays((float) $eggProduction->$field);
                     if ($qtyAlv > 0) {
                         StockIntegrationService::syncMovement(
                             $name, 'oeufs', $qtyAlv, 'out',

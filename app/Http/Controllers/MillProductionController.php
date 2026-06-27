@@ -11,6 +11,7 @@ use App\Http\Requests\MillProduction\StoreMillProductionRequest;
 use Illuminate\Http\RedirectResponse;
 use App\Actions\Provenderie\RecordProductionConsumptionAction;
 use App\Actions\Provenderie\NormalizeFormulaNameAction;
+use App\Services\UnitConverter;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
@@ -53,7 +54,7 @@ class MillProductionController extends Controller
     /*
     public function store(StoreMillProductionRequest $request): RedirectResponse
     {
-        $totalWeight = (float) ($request->nb_bags * 50);
+        $totalWeight = UnitConverter::sacksToKg((float) $request->nb_bags);
 
         $production = DB::transaction(function () use ($request, $totalWeight) {
             $prod = MillProduction::create([
@@ -94,7 +95,7 @@ class MillProductionController extends Controller
             return back()->withInput()->with('error', "Machine(s) déjà engagée(s) sur un ordre en cours : {$names}. Clôturez l'OP ouvert avant d'en planifier un nouveau sur cette machine.");
         }
 
-        $totalWeight = (float) ($request->nb_bags * 50);
+        $totalWeight = UnitConverter::sacksToKg((float) $request->nb_bags);
 
         $production = DB::transaction(function () use ($request, $totalWeight) {
             $prod = MillProduction::create([

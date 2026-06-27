@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Stock;
 use App\Models\StockMovement;
+use App\Services\UnitConverter;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -209,31 +210,15 @@ class StockIntegrationService
     /**
      * Convertit la quantité saisie vers l'unité pivot du stock.
      *
-     * Unités pivots :
-     * - Catégorie 'conso'/'Aliment' : KG (1 Sac = 50 KG)
-     * - Catégorie 'oeufs' : Alvéole (1 Alvéole = 30 unités)
+     * Délègue à UnitConverter (source de vérité unique des facteurs de
+     * conversion, pilotés par les Réglages) :
+     * - Catégorie 'conso'/'Aliment' : KG (Sac → × poids du sac configuré)
+     * - Catégorie 'oeufs' : Alvéole (Unité → ÷ œufs par alvéole configuré)
      * - Autres : pas de conversion
      */
     private static function normalizeQuantity(float $quantity, string $inputUnit, string $category): float
     {
-        $inputUnit = trim($inputUnit);
-
-        if (in_array($category, [Stock::CAT_CONSO, 'Aliment'])) {
-            if (strtolower($inputUnit) === 'sac') {
-                return $quantity * 50; // 1 Sac = 50 KG
-            }
-            return $quantity; // Déjà en KG
-        }
-
-        if ($category === Stock::CAT_OEUFS) {
-            $unit = strtolower($inputUnit);
-            if (in_array($unit, ['unité', 'unite', 'piece', 'pièce'])) {
-                return $quantity / 30; // Conversion en alvéoles
-            }
-            return $quantity; // Déjà en alvéoles
-        }
-
-        return $quantity; // Litières, matériels : pas de conversion
+        return UnitConverter::toStockBase($quantity, $inputUnit, $category);
     }
 
     /**

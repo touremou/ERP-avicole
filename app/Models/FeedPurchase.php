@@ -42,12 +42,12 @@ class FeedPurchase extends Model
     // --- LOGIQUE MÉTIER (ACCESSORS) ---
 
     /**
-     * Retourne le facteur de conversion du sac (Défaut: 50kg)
-     * Rigueur : On cherche d'abord dans les métadonnées de l'achat
+     * Retourne le facteur de conversion du sac. Surcharge ponctuelle via les
+     * métadonnées de l'achat, sinon poids du sac configuré (Réglages).
      */
     public function getBagWeightAttribute(): int
     {
-        return $this->metadata['bag_weight'] ?? 50;
+        return (int) \App\Services\UnitConverter::bagWeight($this->metadata['bag_weight'] ?? null);
     }
 
     /**
@@ -56,7 +56,7 @@ class FeedPurchase extends Model
     public function getNormalizedQuantityAttribute(): float
     {
         if ($this->unit === 'Sac') {
-            return (float) ($this->quantity * $this->bag_weight);
+            return \App\Services\UnitConverter::sacksToKg((float) $this->quantity, $this->metadata['bag_weight'] ?? null);
         }
         return (float) $this->quantity;
     }

@@ -154,9 +154,12 @@ class RecordDailyCheck
         // 2. Conversion automatique en KG si le stock est géré en Sacs
         $availableKg = 0;
         if ($stock) {
-            $availableKg = (strtolower($stock->unit) === 'sac') 
-                ? (float) $stock->current_quantity * 50 
-                : (float) $stock->current_quantity;
+            $availableKg = \App\Services\UnitConverter::toStockBase(
+                (float) $stock->current_quantity,
+                $stock->unit,
+                \App\Models\Stock::CAT_CONSO,
+                $stock->metadata['bag_weight'] ?? null
+            );
         }
 
         // Si c'est une mise à jour du même type d'aliment, on "rend" l'ancien stock virtuellement
