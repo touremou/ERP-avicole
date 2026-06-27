@@ -254,6 +254,39 @@ class PosController extends Controller
         return CashRegisterSession::open()->latest('opened_at')->first();
     }
 
+    /**
+     * Création rapide d'un client depuis le POS (JSON) : sans quitter la caisse.
+     * Champs minimaux ; le reste est complété plus tard depuis la fiche client.
+     */
+    public function storeClient(Request $request)
+    {
+        if (Gate::denies('commerce.C')) {
+            return response()->json(['message' => 'Action non autorisée.'], 403);
+        }
+
+        $data = $request->validate([
+            'name'     => 'required|string|max:255',
+            'phone'    => 'nullable|string|max:30',
+            'category' => 'nullable|in:grossiste,detaillant,hotel_restaurant,revendeur,autre',
+            'type'     => 'nullable|in:particulier,entreprise',
+        ]);
+
+        $lastId = Client::withTrashed()->max('id') ?? 0;
+
+        $client = Client::create([
+            'client_id' => sprintf('CLI-%04d', $lastId + 1),
+            'name'      => $data['name'],
+            'phone'     => $data['phone'] ?? null,
+            'category'  => $data['category'] ?? 'detaillant',
+            'type'      => $data['type'] ?? 'particulier',
+            'status'    => 'actif',
+            'credit_limit' => 0,
+            'balance'      => 0,
+        ]);
+
+        return response()->json(['id' => $client->id, 'name' => $client->name]);
+    }
+
     /** Client « Vente comptoir » par défaut (achat anonyme au comptoir). */
     private function walkInClient(): Client
     {

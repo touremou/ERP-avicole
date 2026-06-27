@@ -557,6 +557,7 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('pos')->name('pos.')->controller(\App\Http\Controllers\PosController::class)->group(function () {
         Route::get('/', 'index')->name('index')->middleware('can:C');
         Route::post('/checkout', 'checkout')->name('checkout')->middleware('can:C');
+        Route::post('/clients', 'storeClient')->name('clients.store'); // autorisation gérée dans le contrôleur (JSON 403)
         Route::get('/receipt/{sale}', 'receipt')->name('receipt')->middleware('can:C');
         Route::post('/encash/{sale}', 'encash')->name('encash')->middleware('can:C');
         Route::get('/report', 'report')->name('report')->middleware('can:L');

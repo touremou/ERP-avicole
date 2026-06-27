@@ -10,6 +10,9 @@
                 </p>
             </div>
             <div class="flex items-center gap-2">
+                <button type="button" onclick="togglePosFullscreen(this)" class="inline-flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-2xl text-[9px] font-black uppercase tracking-widest hover:bg-slate-50 transition-all shadow-sm italic cursor-pointer">
+                    <i class="fa-solid fa-expand"></i> <span>{{ __("Plein écran") }}</span>
+                </button>
                 <a href="{{ route('pos.report') }}" class="inline-flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-2xl text-[9px] font-black uppercase tracking-widest hover:bg-teal-50 hover:text-teal-600 transition-all no-underline shadow-sm italic">
                     <i class="fa-solid fa-receipt"></i> {{ __("Z caisse") }}
                 </a>
@@ -139,12 +142,35 @@
                         </div>
 
                         <label class="block text-[8px] font-black uppercase tracking-widest text-slate-500 mb-1">{{ __("Client (optionnel)") }}</label>
-                        <select name="client_id" x-model="clientId" @change="applyTier()" class="w-full bg-white/10 rounded-xl p-3 text-[10px] font-black uppercase mb-1 outline-none border-none text-white appearance-none">
-                            <option value="">{{ __("Vente comptoir (détaillant)") }}</option>
-                            @foreach($clients as $c)
-                                <option value="{{ $c['id'] }}" class="text-slate-900">{{ $c['name'] }}</option>
-                            @endforeach
-                        </select>
+                        <div class="flex gap-2 mb-1">
+                            <select name="client_id" x-model="clientId" @change="applyTier()" class="flex-1 bg-white/10 rounded-xl p-3 text-[10px] font-black uppercase outline-none border-none text-white appearance-none">
+                                <option value="">{{ __("Vente comptoir (détaillant)") }}</option>
+                                <template x-for="c in clients" :key="c.id">
+                                    <option :value="c.id" x-text="c.name" class="text-slate-900"></option>
+                                </template>
+                            </select>
+                            <button type="button" @click="showNewClient = !showNewClient" title="{{ __('Nouveau client') }}"
+                                    class="shrink-0 px-3 bg-teal-600 hover:bg-teal-500 rounded-xl text-white transition-all border-none cursor-pointer">
+                                <i class="fa-solid fa-user-plus text-[11px]"></i>
+                            </button>
+                        </div>
+
+                        {{-- Création rapide d'un client sans quitter la caisse --}}
+                        <div x-show="showNewClient" x-cloak class="bg-white/5 rounded-xl p-3 mb-2 space-y-2">
+                            <input x-model="newClient.name" placeholder="{{ __('Nom du client *') }}" class="w-full bg-white/10 rounded-lg p-2 text-[10px] font-black text-white placeholder-slate-500 outline-none border-none">
+                            <input x-model="newClient.phone" placeholder="{{ __('Téléphone (optionnel)') }}" class="w-full bg-white/10 rounded-lg p-2 text-[10px] font-black text-white placeholder-slate-500 outline-none border-none">
+                            <select x-model="newClient.category" class="w-full bg-white/10 rounded-lg p-2 text-[10px] font-black uppercase text-white outline-none border-none appearance-none">
+                                <option value="detaillant" class="text-slate-900">{{ __('Détaillant') }}</option>
+                                <option value="grossiste" class="text-slate-900">{{ __('Grossiste') }}</option>
+                                <option value="hotel_restaurant" class="text-slate-900">{{ __('Hôtel / Restaurant') }}</option>
+                                <option value="revendeur" class="text-slate-900">{{ __('Revendeur') }}</option>
+                            </select>
+                            <button type="button" @click="addClient()" :disabled="!newClient.name"
+                                    class="w-full bg-teal-600 hover:bg-teal-500 disabled:opacity-40 rounded-lg p-2 text-[9px] font-black uppercase tracking-widest text-white transition-all border-none cursor-pointer">
+                                <i class="fa-solid fa-check mr-1"></i>{{ __('Enregistrer le client') }}
+                            </button>
+                        </div>
+
                         <p class="text-[8px] font-black uppercase tracking-widest text-teal-400 mb-3" x-show="cart.length > 0">{{ __("Tarif") }} : <span x-text="tierLabel"></span></p>
 
                         <label class="block text-[8px] font-black uppercase tracking-widest text-slate-500 mb-1">{{ __("Paiement") }}</label>
@@ -166,6 +192,23 @@
     </div>
 
     <script>
+        // Plein écran POS (comme une caisse dédiée). Bascule + maj de l'icône.
+        function togglePosFullscreen() {
+            if (! document.fullscreenElement) {
+                document.documentElement.requestFullscreen?.();
+            } else {
+                document.exitFullscreen?.();
+            }
+        }
+        document.addEventListener('fullscreenchange', () => {
+            const btn = document.querySelector('[onclick="togglePosFullscreen(this)"]');
+            if (! btn) return;
+            const on = !! document.fullscreenElement;
+            btn.querySelector('i').className = on ? 'fa-solid fa-compress' : 'fa-solid fa-expand';
+            const label = btn.querySelector('span');
+            if (label) label.textContent = on ? @json(__('Quitter')) : @json(__('Plein écran'));
+        });
+
         document.addEventListener('alpine:init', () => {
             Alpine.data('posView', (products, clients) => ({
                 products,
@@ -174,6 +217,27 @@
                 search: '',
                 clientId: '',
                 clientPrices: {},   // { product_id: prix } selon le tarif du client sélectionné
+                showNewClient: false,
+                newClient: { name: '', phone: '', category: 'detaillant' },
+                addClient() {
+                    if (! this.newClient.name) return;
+                    fetch('{{ route('pos.clients.store') }}', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                        body: JSON.stringify(this.newClient),
+                    })
+                    .then(r => r.ok ? r.json() : null)
+                    .then(d => {
+                        if (d && d.id) {
+                            this.clients.push({ id: d.id, name: d.name });
+                            this.clientId = String(d.id);
+                            this.showNewClient = false;
+                            this.newClient = { name: '', phone: '', category: 'detaillant' };
+                            this.applyTier();
+                        }
+                    })
+                    .catch(() => {});
+                },
                 get tierLabel() {
                     const c = this.clients.find(x => String(x.id) === String(this.clientId));
                     return c ? c.name : '{{ __('Comptoir') }}';
