@@ -28,6 +28,8 @@ class UpdateStockAction
                 'alert_threshold'  => $alertThreshold,
                 'current_quantity' => $newQuantity,
                 'unit_price'       => $data['unit_price'] ?? 0,
+                'expiry_date'      => array_key_exists('expiry_date', $data) ? $data['expiry_date'] : $stock->expiry_date,
+                'lot_number'       => array_key_exists('lot_number', $data) ? $data['lot_number'] : $stock->lot_number,
                 'metadata'         => array_merge($stock->metadata ?? [], $data['metadata'] ?? []),
             ]);
 

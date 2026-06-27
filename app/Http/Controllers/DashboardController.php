@@ -226,6 +226,15 @@ class DashboardController extends Controller
             ->orderByRaw('current_quantity / NULLIF(alert_threshold, 0) ASC')
             ->get(['id', 'item_name', 'category', 'current_quantity', 'alert_threshold', 'unit']);
 
+        // Péremption des consommables (vaccins, médicaments, intrants…) :
+        // articles déjà périmés OU périmant dans la fenêtre d'alerte configurée.
+        $expiryWindow = (int) setting('stocks.expiry_alert_days', 30);
+        $expiringStocks = Stock::where(function ($q) use ($expiryWindow) {
+                $q->expired()->orWhere(fn ($q2) => $q2->expiringSoon($expiryWindow));
+            })
+            ->orderBy('expiry_date')
+            ->get(['id', 'item_name', 'category', 'current_quantity', 'unit', 'expiry_date', 'lot_number']);
+
         // F. Prophylaxie en retard : étapes de protocole échues mais non tracées.
         // Réutilise EXACTEMENT la convention de la fiche lot (date prévue =
         // date de réf. + day_number ; « fait » si un acte sanitaire porte le nom
@@ -448,7 +457,7 @@ class DashboardController extends Controller
             'totalEggsStock', 'totalBrokenToday', 'rawMaterialsValue', 'safeProfit',
             'encoursClients', 'financial', 'technical', 'trends', 'priorityAlerts',
             'criticalTypes', 'emergencyBatches', 'underperformingBatches', 'sanitaryAlertsCount',
-            'lowStocks', 'vaccineAlerts', 'welfareAlerts', 'criticalDaysThreshold',
+            'lowStocks', 'expiringStocks', 'vaccineAlerts', 'welfareAlerts', 'criticalDaysThreshold',
             'activeBatches', 'buildings', 'totalEggsToday', 'tabaskiWidget', 'waterAlerts',
             'familyBreakdown', 'showEggKpis', 'activeLotsCount',
             'occupiedBuildingsCount', 'totalBuildingsCount'

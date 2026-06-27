@@ -83,6 +83,14 @@ class NotificationTemplate extends Model
                     . "Total : *{{total}} GNF*\n"
                     . "Statut : {{status}}{{flags}}",
             ],
+            'stock_expiry' => [
+                'label'     => 'Péremption de consommables',
+                'variables' => ['farm', 'count', 'items'],
+                'default'   => "⏳ *PÉREMPTION CONSOMMABLES — {{farm}}*\n\n"
+                    . "{{count}} article(s) à surveiller :\n"
+                    . "{{items}}\n\n"
+                    . "Vérifier et retirer du circuit les lots périmés.",
+            ],
             'payment_received' => [
                 'label'     => 'Paiement reçu',
                 'variables' => ['header', 'amount', 'method', 'reference', 'client', 'remaining', 'flags'],

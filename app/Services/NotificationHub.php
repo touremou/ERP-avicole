@@ -388,6 +388,32 @@ class NotificationHub
     }
 
     /**
+     * Alerte de péremption des consommables (vaccins, médicaments, intrants…).
+     * Reçoit la collection d'articles périmés ou périmant bientôt.
+     */
+    public function alertStockExpiry($items): void
+    {
+        if ($items->isEmpty()) return;
+
+        $hasExpired = false;
+        $lines = $items->map(function ($s) use (&$hasExpired) {
+            $left = $s->days_until_expiry;
+            if ($left < 0) $hasExpired = true;
+            $when = $left < 0 ? 'PÉRIMÉ' : "J-{$left}";
+            $date = optional($s->expiry_date)->format('d/m/Y');
+            return "• {$s->item_name} ({$date} — {$when})";
+        })->join("\n");
+
+        $message = $this->tpl('stock_expiry', [
+            'farm'  => config('whatsapp.farm_name', 'AviSmart'),
+            'count' => $items->count(),
+            'items' => $lines,
+        ]);
+
+        $this->broadcast('alert_stock', $message, 'Péremption consommables', $hasExpired ? 'critique' : 'attention');
+    }
+
+    /**
      * Alerte carburant bas.
      */
     public function alertFuelLow(EnergySource $source): void

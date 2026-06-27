@@ -149,6 +149,19 @@
                                 <input type="number" name="unit_price" step="1" value="{{ old('unit_price', $stock->unit_price ?? $stock->last_unit_price ?? 0) }}" required
                                         class="w-full bg-slate-50 border-none rounded-[2rem] p-5 font-black text-blue-500 focus:ring-2 focus:ring-blue-500 shadow-inner text-center italic">
                             </div>
+
+                            {{-- PÉREMPTION (optionnel — consommables périssables) --}}
+                            <div>
+                                <label class="text-[10px] uppercase text-slate-400 ml-6 mb-2 block tracking-widest font-black italic">{{ __("Péremption") }} <span class="text-slate-300 normal-case">({{ __('optionnel') }})</span></label>
+                                <input type="date" name="expiry_date" value="{{ old('expiry_date', optional($stock->expiry_date)->format('Y-m-d')) }}"
+                                        class="w-full bg-slate-50 border-none rounded-[2rem] p-5 font-black text-rose-500 focus:ring-2 focus:ring-rose-500 shadow-inner text-center italic">
+                            </div>
+                            <div>
+                                <label class="text-[10px] uppercase text-slate-400 ml-6 mb-2 block tracking-widest font-black italic">{{ __("N° de lot") }} <span class="text-slate-300 normal-case">({{ __('optionnel') }})</span></label>
+                                <input type="text" name="lot_number" maxlength="100" value="{{ old('lot_number', $stock->lot_number) }}"
+                                        class="w-full bg-slate-50 border-none rounded-[2rem] p-5 font-black focus:ring-2 focus:ring-slate-400 shadow-inner text-center italic"
+                                        placeholder="{{ __('Ex: VAC-2026-08') }}">
+                            </div>
                         </div>
 
                         <div class="pt-4">

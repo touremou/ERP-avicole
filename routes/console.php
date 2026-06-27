@@ -39,3 +39,6 @@ Schedule::command('avismart:feeding-dosage')->dailyAt('06:00');
 
 // CMMS : génère les tâches maintenance préventive pour les actifs dus dans ≤ 48h
 Schedule::command('maintenance:check')->dailyAt('05:30');
+
+// Péremption des consommables (vaccins, médicaments, intrants…) : alerte WhatsApp
+Schedule::command('stock:check-expiry')->dailyAt('06:15');

@@ -336,6 +336,39 @@
             </div>
             @endif
 
+            {{-- ALERTE PÉREMPTION — consommables périmés ou périmant bientôt --}}
+            @if(($expiringStocks ?? collect())->isNotEmpty() && dashboard_block_visible('stock_expiry'))
+            <div class="mb-10 bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
+                <div class="flex items-center justify-between mb-4">
+                    <h4 class="text-[10px] font-black uppercase text-slate-400 tracking-wider flex items-center gap-2">
+                        <i class="fa-solid fa-hourglass-end text-rose-500"></i> {{ __("Péremption des Consommables") }}
+                    </h4>
+                    <span class="text-[8px] font-black bg-rose-600 text-white px-2 py-1 rounded-md uppercase">{{ $expiringStocks->count() }}</span>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    @foreach($expiringStocks->take(9) as $s)
+                        @php $left = $s->days_until_expiry; @endphp
+                        <a href="{{ route('stocks.index', ['category' => $s->category]) }}" @class([
+                            'flex items-center justify-between p-4 rounded-2xl border transition-all hover:scale-[1.02] no-underline',
+                            'bg-rose-50 border-rose-200 text-rose-900 animate-pulse' => $left < 0,
+                            'bg-amber-50 border-amber-200 text-amber-900' => $left >= 0,
+                        ])>
+                            <div class="min-w-0">
+                                <h5 class="text-[11px] font-black uppercase leading-none truncate">{{ $s->item_name }}</h5>
+                                <p class="text-[9px] opacity-70 uppercase font-black mt-1">
+                                    {{ $s->expiry_date?->format('d/m/Y') }}{{ $s->lot_number ? ' · '.__('Lot').' '.$s->lot_number : '' }}
+                                </p>
+                            </div>
+                            <div class="text-right shrink-0 ml-2">
+                                <p class="text-xs font-black uppercase tracking-tight leading-none">{{ $left < 0 ? __('Périmé') : $left.' j' }}</p>
+                                <p class="text-[8px] font-black opacity-60 mt-1">{{ number_format($s->current_quantity, 0) }} {{ $s->unit }}</p>
+                            </div>
+                        </a>
+                    @endforeach
+                </div>
+            </div>
+            @endif
+
             {{-- ALERTE QUALITÉ EAU — visible uniquement si alertes actives --}}
             @if(($waterAlerts ?? collect())->isNotEmpty())
             <div class="bg-blue-950 rounded-[2.5rem] p-6 border border-blue-800">

@@ -24,6 +24,8 @@ class StoreStockRequest extends FormRequest
             'alert_threshold'  => 'required|numeric|min:0',
             'current_quantity' => 'nullable|numeric|min:0',
             'unit_price'       => 'nullable|numeric|min:0',
+            'expiry_date'      => 'nullable|date',
+            'lot_number'       => 'nullable|string|max:100',
             'metadata'         => 'nullable|array',
             'metadata.*'       => 'nullable|string', // STM-01 : Validation du contenu JSON
         ];

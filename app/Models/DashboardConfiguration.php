@@ -28,6 +28,7 @@ class DashboardConfiguration extends Model
         'priority_alerts' => 'Bandeau d\'alertes critiques',
         'control_center'  => 'Centre de contrôle des alertes',
         'low_stock'       => 'Stocks sous seuil',
+        'stock_expiry'    => 'Péremption des consommables',
         'kpi_row'         => 'Indicateurs clés (effectif, mortalité, ponte…)',
         'technical'       => 'Performance technique (zootechnie)',
         'trends'          => 'Tendances 30 jours (graphiques)',

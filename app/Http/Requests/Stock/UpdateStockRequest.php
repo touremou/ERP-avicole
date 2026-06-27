@@ -21,6 +21,8 @@ class UpdateStockRequest extends FormRequest
             'alert_threshold'  => 'required|numeric|min:0',
             'current_quantity' => 'required|numeric', 
             'unit_price'       => 'nullable|numeric|min:0',
+            'expiry_date'      => 'nullable|date',
+            'lot_number'       => 'nullable|string|max:100',
             'metadata'         => 'nullable|array',
         ];
     }

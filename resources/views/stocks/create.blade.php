@@ -167,6 +167,19 @@
                                         placeholder="{{ __('Ex: 1500') }}">
                                 </div>
 
+                                {{-- PÉREMPTION (optionnel — vaccins, médicaments, intrants…) --}}
+                                <div>
+                                    <label class="text-[10px] uppercase text-slate-400 ml-6 mb-2 block tracking-widest font-black italic">07. {{ __("Péremption") }} <span class="text-slate-300 normal-case">({{ __('optionnel') }})</span></label>
+                                    <input type="date" name="expiry_date"
+                                        class="w-full bg-slate-50 border-none rounded-[2rem] p-5 font-black shadow-inner text-center text-rose-500 italic focus:ring-2 focus:ring-rose-500">
+                                </div>
+                                <div>
+                                    <label class="text-[10px] uppercase text-slate-400 ml-6 mb-2 block tracking-widest font-black italic">08. {{ __("N° de lot") }} <span class="text-slate-300 normal-case">({{ __('optionnel') }})</span></label>
+                                    <input type="text" name="lot_number" maxlength="100"
+                                        class="w-full bg-slate-50 border-none rounded-[2rem] p-5 font-black shadow-inner text-center italic focus:ring-2 focus:ring-slate-400"
+                                        placeholder="{{ __('Ex: VAC-2026-08') }}">
+                                </div>
+
                                 {{-- STOCK INITIAL --}}
                                 <div class="bg-slate-900 rounded-[2.5rem] p-6 text-white shadow-xl relative overflow-hidden group">
                                     <label class="text-[9px] uppercase text-emerald-400 mb-2 block font-black tracking-widest italic leading-none">{{ __("Stock Initial en Entrée") }}</label>

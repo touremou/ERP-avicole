@@ -22,6 +22,8 @@ class Stock extends Model
         'unit_price',
         'alert_threshold',
         'last_unit_price',
+        'expiry_date',      // Péremption (consommables : vaccins, médicaments…)
+        'lot_number',       // N° de lot fournisseur (optionnel)
         'metadata'          // JSON: poultry_type, conso_type, supplier, bag_weight
     ];
 
@@ -35,6 +37,7 @@ class Stock extends Model
         'alert_threshold'  => 'decimal:3',
         'unit_price'       => 'decimal:2',
         'last_unit_price'  => 'decimal:2',
+        'expiry_date'      => 'date',
         'created_at'       => 'datetime',
     ];
 
@@ -252,6 +255,40 @@ class Stock extends Model
     public function scopeCategory($query, $type)
     {
         return $query->where('category', $type);
+    }
+
+    // -----------------------
+    // PÉREMPTION
+    // -----------------------
+
+    /** Articles dont la péremption est passée (et qu'il reste en stock). */
+    public function scopeExpired($query)
+    {
+        return $query->whereNotNull('expiry_date')
+            ->whereDate('expiry_date', '<', now())
+            ->where('current_quantity', '>', 0);
+    }
+
+    /** Articles qui périment dans les $days prochains jours (pas encore périmés). */
+    public function scopeExpiringSoon($query, int $days = 30)
+    {
+        return $query->whereNotNull('expiry_date')
+            ->whereDate('expiry_date', '>=', now())
+            ->whereDate('expiry_date', '<=', now()->addDays($days))
+            ->where('current_quantity', '>', 0);
+    }
+
+    public function getIsExpiredAttribute(): bool
+    {
+        return $this->expiry_date !== null && $this->expiry_date->isPast();
+    }
+
+    /** Jours restants avant péremption (négatif si déjà périmé), ou null. */
+    public function getDaysUntilExpiryAttribute(): ?int
+    {
+        return $this->expiry_date
+            ? (int) now()->startOfDay()->diffInDays($this->expiry_date->startOfDay(), false)
+            : null;
     }
 
     /**
