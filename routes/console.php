@@ -51,3 +51,6 @@ Schedule::command('activitylog:clean')->weekly();
 // rétention puis sauvegarde quotidienne aux heures creuses.
 Schedule::command('backup:clean')->dailyAt('01:30');
 Schedule::command('backup:run')->dailyAt('02:00');
+
+// Relances de paiement : rappel aux clients en retard (anti-doublon intégré).
+Schedule::command('sales:payment-reminders')->dailyAt('09:00');

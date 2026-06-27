@@ -83,6 +83,14 @@ class NotificationTemplate extends Model
                     . "Total : *{{total}} GNF*\n"
                     . "Statut : {{status}}{{flags}}",
             ],
+            'payment_reminder' => [
+                'label'     => 'Relance de paiement (client)',
+                'variables' => ['client', 'reference', 'amount', 'days', 'farm'],
+                'default'   => "Bonjour {{client}},\n\n"
+                    . "Nous vous rappelons que la facture *{{reference}}* présente un solde impayé de "
+                    . "*{{amount}} GNF* (échéance dépassée de {{days}} jour(s)).\n\n"
+                    . "Merci de bien vouloir régulariser. Cordialement,\n{{farm}}",
+            ],
             'stock_expiry' => [
                 'label'     => 'Péremption de consommables',
                 'variables' => ['farm', 'count', 'items'],

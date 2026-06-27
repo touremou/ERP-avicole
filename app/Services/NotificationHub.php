@@ -388,6 +388,47 @@ class NotificationHub
     }
 
     /**
+     * Relance de paiement adressée AU CLIENT (et non au staff) pour une vente
+     * impayée échue. Envoie sur le téléphone du client et journalise la relance
+     * (PaymentReminder) pour l'historique de recouvrement et l'anti-doublon.
+     *
+     * @return bool  Vrai si un message a été émis (client joignable + texte rendu).
+     */
+    public function remindClientPayment(Sale $sale, ?int $userId = null): bool
+    {
+        $client = $sale->client;
+        $phone  = $client?->phone;
+
+        $message = $this->tpl('payment_reminder', [
+            'client'    => $client?->name ?? 'Client',
+            'reference' => $sale->reference,
+            'amount'    => number_format($sale->remaining_amount, 0, ',', ' '),
+            'days'      => $sale->days_overdue,
+            'farm'      => config('whatsapp.farm_name', 'AviSmart'),
+        ]);
+
+        $sent = false;
+        if ($phone) {
+            $sent = (bool) $this->whatsapp->send($phone, $message, [
+                'type'  => 'payment_reminder',
+                'title' => 'Relance ' . $sale->reference,
+            ]);
+        }
+
+        \App\Models\PaymentReminder::create([
+            'farm_id'   => $sale->farm_id,
+            'sale_id'   => $sale->id,
+            'client_id' => $sale->client_id,
+            'user_id'   => $userId,
+            'channel'   => 'whatsapp',
+            'message'   => $message,
+            'sent_at'   => $sent ? now() : null,
+        ]);
+
+        return $sent;
+    }
+
+    /**
      * Alerte de péremption des consommables (vaccins, médicaments, intrants…).
      * Reçoit la collection d'articles périmés ou périmant bientôt.
      */

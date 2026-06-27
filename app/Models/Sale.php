@@ -78,6 +78,23 @@ class Sale extends Model
         return $query->whereIn('status', ['valide', 'livre']);
     }
 
+    /**
+     * Ventes en RETARD de paiement : impayées et dont l'échéance
+     * (date de vente + délai de paiement paramétré) est dépassée.
+     */
+    public function scopeOverdue($query, ?int $delayDays = null)
+    {
+        $delayDays = $delayDays ?? (int) setting('ventes.payment_delay_days', 30);
+
+        return $query->unpaid()
+            ->whereDate('sale_date', '<=', today()->subDays($delayDays));
+    }
+
+    public function reminders(): HasMany
+    {
+        return $this->hasMany(PaymentReminder::class);
+    }
+
     // ─── ACCESSORS ───
 
     public function getRemainingAmountAttribute(): float
@@ -88,6 +105,18 @@ class Sale extends Model
     public function getIsPaidAttribute(): bool
     {
         return $this->payment_status === 'solde';
+    }
+
+    /** Échéance = date de vente + délai de paiement paramétré. */
+    public function getDueDateAttribute(): \Illuminate\Support\Carbon
+    {
+        return $this->sale_date->copy()->addDays((int) setting('ventes.payment_delay_days', 30));
+    }
+
+    /** Jours de retard (positif si échéance dépassée, 0 sinon). */
+    public function getDaysOverdueAttribute(): int
+    {
+        return max(0, (int) $this->due_date->startOfDay()->diffInDays(today(), false));
     }
 
     // ─── METHODS ───

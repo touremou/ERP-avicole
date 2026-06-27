@@ -581,6 +581,10 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/create', 'create')->name('create')->middleware('can:C');
         Route::post('/', 'store')->name('store')->middleware('can:C');
 
+        // Recouvrement : encours en retard + relances de paiement.
+        Route::get('/receivables', [\App\Http\Controllers\ReceivablesController::class, 'index'])->name('receivables')->middleware('can:L');
+        Route::post('/receivables/{sale}/remind', [\App\Http\Controllers\ReceivablesController::class, 'remind'])->name('receivables.remind')->where('sale', '[0-9]+')->middleware('can:M');
+
         // Groupes de prix (tarifs) — gestion + suggestion de prix pour le formulaire.
         Route::get('/price-lists', [\App\Http\Controllers\SalePriceListController::class, 'index'])->name('price-lists')->middleware('can:M');
         Route::post('/price-lists', [\App\Http\Controllers\SalePriceListController::class, 'store'])->name('price-lists.store')->middleware('can:M');
