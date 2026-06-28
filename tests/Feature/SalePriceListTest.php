@@ -92,3 +92,23 @@ test('une seule liste reste « par défaut »', function () {
     expect(SalePriceList::where('is_default', true)->count())->toBe(1)
         ->and(SalePriceList::where('is_default', true)->value('name'))->toBe('Nouveau défaut');
 });
+
+test('les catégories tarifables sont alignées sur les types vendables (source unique)', function () {
+    expect(\App\Http\Controllers\SalePriceListController::PRODUCT_TYPES)
+        ->toBe(\App\Models\SaleItem::SELLABLE_TYPE_LABELS);
+});
+
+test('un tarif de repli s\'applique aux types vendables auparavant absents (animal_vif, aliment)', function () {
+    $list = priceList('Grossiste', true, []);
+
+    $this->actingAs($this->adminUser)
+        ->put(route('sales.price-lists.update', $list->id), [
+            'prices' => ['animal_vif' => 45000, 'aliment' => 8000],
+        ])
+        ->assertRedirect();
+
+    // Ces types étaient absents de l'ancienne liste (volaille_*) → ils sont
+    // désormais tarifables et suggérés.
+    expect((float) \App\Models\SalePriceList::suggestedPrice(null, 'animal_vif'))->toBe(45000.0)
+        ->and((float) \App\Models\SalePriceList::suggestedPrice(null, 'aliment'))->toBe(8000.0);
+});

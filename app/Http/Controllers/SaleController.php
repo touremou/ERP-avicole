@@ -92,7 +92,10 @@ class SaleController extends Controller
             ? Client::find($request->client_id)
             : null;
 
-        return view('sales.create', compact('clients', 'batches', 'stocks', 'prices', 'selectedClient', 'catalog'));
+        // Types vendables (source unique partagée avec les groupes de prix).
+        $sellableTypes = \App\Models\SaleItem::SELLABLE_TYPE_LABELS;
+
+        return view('sales.create', compact('clients', 'batches', 'stocks', 'prices', 'selectedClient', 'catalog', 'sellableTypes'));
     }
 
     public function store(StoreSaleRequest $request, CreateSale $action)

@@ -91,15 +91,10 @@
                                     <label class="text-[8px] font-black uppercase text-slate-400 tracking-widest">{{ __("Type") }}</label>
                                     <select x-model="line.product_type" @change="onTypeChange(index)" class="w-full bg-white border-none rounded-xl p-3 text-[10px] font-black uppercase shadow-sm outline-none">
                                         <option value="">— {{ __("Choisir") }} —</option>
-                                        <option value="animal_vif">{{ __("Animal vivant") }}</option>
-                                        <option value="carcasse">{{ __("Carcasse / Viande") }}</option>
-                                        <option value="oeufs">{{ __("Œufs") }}</option>
-                                        <option value="lait">{{ __("Lait") }}</option>
-                                        <option value="aliment">{{ __("Aliment") }}</option>
-                                        <option value="produits_finis">{{ __("Produits Finis (découpe, poussins...)") }}</option>
-                                        <option value="fumier">{{ __("Fumier") }}</option>
-                                        <option value="materiel">{{ __("Matériel") }}</option>
-                                        <option value="autre">{{ __("Autre") }}</option>
+                                        {{-- Source unique : SaleItem::SELLABLE_TYPE_LABELS (alignée avec les groupes de prix). --}}
+                                        @foreach($sellableTypes as $value => $label)
+                                        <option value="{{ $value }}">{{ __($label) }}</option>
+                                        @endforeach
                                     </select>
                                 </div>
 

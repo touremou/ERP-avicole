@@ -49,6 +49,27 @@ class SaleItem extends Model
     public const STOCK_TYPES = ['oeufs', 'lait', 'aliment', 'produits_finis', 'materiel'];
 
     /**
+     * SOURCE UNIQUE des types de produits vendables et de leurs libellés.
+     *
+     * Partagée par le formulaire de vente (sélecteur de type) ET par les
+     * groupes de prix (tarif de repli par catégorie) afin que les deux ne
+     * dérivent jamais l'un de l'autre. `volaille_vivante`/`volaille_abattue`
+     * restent acceptés à la validation (rétrocompatibilité) mais ne sont plus
+     * proposés : `animal_vif` / `produits_finis` les remplacent.
+     */
+    public const SELLABLE_TYPE_LABELS = [
+        'oeufs'          => 'Œufs',
+        'animal_vif'     => 'Animal vivant',
+        'carcasse'       => 'Carcasse / Viande',
+        'lait'           => 'Lait',
+        'aliment'        => 'Aliment',
+        'produits_finis' => 'Produits finis',
+        'fumier'         => 'Fumier',
+        'materiel'       => 'Matériel',
+        'autre'          => 'Autre',
+    ];
+
+    /**
      * Types de lignes adossées à un lot d'animaux vivants (toute espèce).
      * `animal_vif`/`carcasse` sont génériques ; `volaille_vivante`/
      * `volaille_abattue` sont conservés pour la rétrocompatibilité.

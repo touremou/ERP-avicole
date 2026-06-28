@@ -11,17 +11,12 @@ use Illuminate\Support\Facades\Gate;
 
 class SalePriceListController extends Controller
 {
-    /** Types de produits tarifables (alignés sur le sélecteur du formulaire de vente). */
-    public const PRODUCT_TYPES = [
-        'oeufs'            => 'Œufs',
-        'volaille_vivante' => 'Volaille vivante',
-        'volaille_abattue' => 'Volaille abattue',
-        'carcasse'         => 'Carcasse',
-        'lait'             => 'Lait',
-        'fumier'           => 'Fumier',
-        'produits_finis'   => 'Produits finis',
-        'autre'            => 'Autre',
-    ];
+    /**
+     * Types de produits tarifables — SOURCE UNIQUE partagée avec le formulaire
+     * de vente (App\Models\SaleItem::SELLABLE_TYPE_LABELS), pour que le tarif de
+     * repli par catégorie corresponde exactement aux types réellement vendables.
+     */
+    public const PRODUCT_TYPES = \App\Models\SaleItem::SELLABLE_TYPE_LABELS;
 
     /** Écran d'administration des tarifs. */
     public function index()
