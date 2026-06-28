@@ -1,6 +1,8 @@
 <x-app-layout>
     <x-slot name="header">
-        <x-page-header :title="__('🗄️ Archives & Corbeille')" :subtitle="__('Restauration des entités système supprimées')" icon="fa-box-archive" accent="slate" :back="route('employees.index')">
+        {{-- Pas de :back ici : page de section (trash.index, module admin) → le
+             layout injecte déjà <x-hub-back> (sinon double flèche de retour). --}}
+        <x-page-header :title="__('🗄️ Archives & Corbeille')" :subtitle="__('Restauration des entités système supprimées')" icon="fa-box-archive" accent="slate">
             <x-slot name="actions">
             <div class="flex items-center gap-6">
                 <span class="hidden lg:block text-[9px] font-black text-slate-400 uppercase italic tracking-[0.3em] animate-pulse">
