@@ -100,6 +100,16 @@ test('les en-têtes hors-production migrés affichent leur accent propre', funct
         ['machines.index',  'Parc Machines',        'bg-amber-600'],
         ['admin.species.index', 'Gestion des Espèces', 'bg-slate-900'],
         ['admin.norms.index',   'Référentiel des Normes', 'bg-slate-900'],
+        ['reports.index',   'Centre de Rapports',  'bg-slate-900'],
+        ['campaigns.index', 'Campagnes saisonnières', 'bg-emerald-600'],
+        ['protocols.index', 'Bibliothèque des Protocoles', 'bg-purple-600'],
+        ['notifications.audit', 'Journal d\'audit',  'bg-slate-900'],
+        ['annuaire.index',  'Annuaire / RH',        'bg-blue-600'],
+        ['notifications.preferences', 'Notifications', 'bg-emerald-600'],
+        ['notifications.templates', 'Modèles de notification', 'bg-emerald-600'],
+        ['trash.index',     'Archives & Corbeille', 'bg-slate-900'],
+        ['tasks.templates', 'Templates de Tâches',  'bg-indigo-600'],
+        ['payroll.leaves',  'Congés & Absences',    'bg-blue-600'],
     ];
     foreach ($cases as [$route, $title, $accentClass]) {
         $this->actingAs($this->adminUser)->get(route($route))

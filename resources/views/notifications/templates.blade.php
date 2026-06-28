@@ -1,14 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex justify-between items-center text-left">
-            <div class="flex items-center gap-4">
-                <div class="w-12 h-12 bg-emerald-600 rounded-xl flex items-center justify-center text-white shadow-lg"><i class="fa-solid fa-comment-dots text-lg"></i></div>
-                <div>
-                    <h2 class="font-black text-xl text-slate-800 uppercase italic tracking-tighter leading-none">{{ __('Modèles de notification') }}</h2>
-                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1 italic">{{ __('Personnaliser les messages WhatsApp') }}</p>
-                </div>
-            </div>
-        </div>
+        <x-page-header :title="__('Modèles de notification')" :subtitle="__('Personnaliser les messages WhatsApp')" icon="fa-comment-dots" accent="emerald" />
     </x-slot>
 
     <div class="py-10">

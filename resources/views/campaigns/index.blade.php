@@ -1,16 +1,14 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <div>
-                <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">{{ __("Campagnes saisonnières") }}</h2>
-                <p class="text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em] mt-2 italic">{{ __("Tabaski · Ramadan · Fêtes — pilotage de la marge") }}</p>
-            </div>
-            @can('elevage.C')
-            <a href="{{ route('campaigns.create') }}" class="bg-emerald-600 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-700 transition-all no-underline shadow-lg">
-                <i class="fa-solid fa-plus mr-1"></i> {{ __("Nouvelle campagne") }}
-            </a>
-            @endcan
-        </div>
+        <x-page-header :title="__('Campagnes saisonnières')" :subtitle="__('Tabaski · Ramadan · Fêtes — pilotage de la marge')" icon="fa-calendar-week" accent="emerald">
+            <x-slot name="actions">
+                @can('elevage.C')
+                <a href="{{ route('campaigns.create') }}" class="bg-emerald-600 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-700 transition-all no-underline shadow-lg">
+                    <i class="fa-solid fa-plus mr-1"></i> {{ __("Nouvelle campagne") }}
+                </a>
+                @endcan
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     @php

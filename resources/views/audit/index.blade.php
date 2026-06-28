@@ -1,12 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center gap-4 text-left">
-            <div class="w-12 h-12 bg-slate-900 rounded-xl flex items-center justify-center text-white shadow-lg"><i class="fa-solid fa-clipboard-list text-lg"></i></div>
-            <div>
-                <h2 class="font-black text-xl text-slate-800 uppercase italic tracking-tighter leading-none">{{ __('Journal d\'audit') }}</h2>
-                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1 italic">{{ __('Qui a modifié quoi, quand') }}</p>
-            </div>
-        </div>
+        <x-page-header :title="__('Journal d\'audit')" :subtitle="__('Qui a modifié quoi, quand')" icon="fa-clipboard-list" accent="slate" />
     </x-slot>
 
     <div class="py-10">

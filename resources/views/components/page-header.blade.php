@@ -1,9 +1,10 @@
 @props([
     'title',
-    'subtitle' => null,
-    'icon'     => 'fa-layer-group',
-    'accent'   => 'emerald',
-    'back'     => null,
+    'subtitle'  => null,
+    'icon'      => 'fa-layer-group',
+    'iconStyle' => 'fa-solid',   // 'fa-brands' pour les icônes de marque (WhatsApp…)
+    'accent'    => 'emerald',
+    'back'      => null,
 ])
 
 {{--
@@ -54,7 +55,7 @@
             </a>
         @endif
         <div class="w-10 h-10 md:w-12 md:h-12 {{ $bubble }} rounded-xl md:rounded-2xl flex items-center justify-center text-white shadow-xl rotate-3 transition-transform hover:rotate-0 flex-shrink-0">
-            <i class="fa-solid {{ $icon }} text-lg md:text-xl"></i>
+            <i class="{{ $iconStyle }} {{ $icon }} text-lg md:text-xl"></i>
         </div>
         <div>
             <h2 class="text-lg md:text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none m-0">{{ $title }}</h2>

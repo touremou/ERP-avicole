@@ -1,13 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex justify-between items-center text-left">
-            <div class="flex items-center gap-4">
-                <div>
-                    <h2 class="text-lg font-black text-slate-800 uppercase italic tracking-tighter leading-none">{{ __("Templates de Tâches") }}</h2>
-                    <p class="text-[9px] font-bold text-slate-400 uppercase mt-1 tracking-widest italic">{{ __("Configuration des routines automatisées") }}</p>
-                </div>
-            </div>
-        </div>
+        <x-page-header :title="__('Templates de Tâches')" :subtitle="__('Configuration des routines automatisées')" icon="fa-gear" accent="indigo" />
     </x-slot>
 
     <div class="py-8 italic font-bold" x-data="{ showForm: false, perBuilding: true, perPlot: false }">

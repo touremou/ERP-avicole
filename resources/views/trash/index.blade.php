@@ -1,21 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex flex-col md:flex-row items-center justify-between gap-6 text-left">
-            <div class="flex items-center gap-5">
-                <a href="{{ route('employees.index') }}" class="flex items-center justify-center w-12 h-12 bg-white border border-slate-200 text-slate-400 hover:text-slate-800 rounded-2xl transition-all shadow-sm group no-underline">
-                    <i class="fas fa-times group-hover:rotate-90 transition-transform text-sm"></i>
-                </a>
-
-                <div>
-                    <h2 class="text-2xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">
-                        🗄️ {{ __("Archives & Corbeille") }}
-                    </h2>
-                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-2 italic leading-none">
-                        {{ __("Restauration des entités système supprimées") }}
-                    </p>
-                </div>
-            </div>
-
+        <x-page-header :title="__('🗄️ Archives & Corbeille')" :subtitle="__('Restauration des entités système supprimées')" icon="fa-box-archive" accent="slate" :back="route('employees.index')">
+            <x-slot name="actions">
             <div class="flex items-center gap-6">
                 <span class="hidden lg:block text-[9px] font-black text-slate-400 uppercase italic tracking-[0.3em] animate-pulse">
                     ● {{ __("Mode Restauration Système Actif") }}
@@ -33,7 +19,8 @@
                     </form>
                 @endif
             </div>
-        </div>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-12 italic font-bold">

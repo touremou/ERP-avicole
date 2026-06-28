@@ -1,13 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex justify-between items-center text-left">
-            <div class="flex items-center gap-4">
-                <div>
-                    <h2 class="text-lg font-black text-slate-800 uppercase italic tracking-tighter leading-none">{{ __("Congés & Absences") }}</h2>
-                    <p class="text-[9px] font-bold text-slate-400 uppercase mt-1 tracking-widest italic">{{ __("Planning RH") }}</p>
-                </div>
-            </div>
-        </div>
+        <x-page-header :title="__('Congés & Absences')" :subtitle="__('Planning RH')" icon="fa-calendar-xmark" accent="blue" />
     </x-slot>
 
     <div class="py-8 italic font-bold">
