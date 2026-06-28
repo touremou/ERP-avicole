@@ -17,12 +17,7 @@
     <div class="py-10">
         <div class="max-w-5xl mx-auto sm:px-6 lg:px-8 text-left">
 
-            @foreach(['success', 'error'] as $msg)
-                @if(session($msg))
-                <div @class(['mb-6 p-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-sm',
-                    'bg-emerald-500 text-white' => $msg === 'success', 'bg-red-500 text-white' => $msg === 'error'])>{{ session($msg) }}</div>
-                @endif
-            @endforeach
+            <x-flash />
 
             @if($products->isEmpty())
                 <div class="text-center text-slate-300 font-black uppercase text-[10px] tracking-widest italic py-16">{{ __('Aucun article. Créez-en un pour faciliter la vente.') }}</div>

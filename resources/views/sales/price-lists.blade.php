@@ -12,12 +12,7 @@
     <div class="py-10">
         <div class="max-w-4xl mx-auto sm:px-6 lg:px-8 text-left space-y-6">
 
-            @foreach(['success', 'error'] as $msg)
-                @if(session($msg))
-                <div @class(['p-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-sm',
-                    'bg-emerald-500 text-white' => $msg === 'success', 'bg-red-500 text-white' => $msg === 'error'])>{{ session($msg) }}</div>
-                @endif
-            @endforeach
+            <x-flash />
 
             {{-- Création d'un tarif --}}
             <form action="{{ route('sales.price-lists.store') }}" method="POST" class="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 flex flex-wrap items-end gap-4">

@@ -23,14 +23,7 @@
     <div class="py-6 italic font-bold" x-data="taskBoard()">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
 
-            @foreach(['success', 'error'] as $msg)
-                @if(session($msg))
-                    <div @class(['mb-4 p-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg flex items-center italic',
-                        'bg-emerald-500 text-white' => $msg === 'success', 'bg-red-500 text-white' => $msg === 'error'])>
-                        <i class="fa-solid fa-{{ $msg === 'success' ? 'check-double' : 'circle-xmark' }} mr-3"></i> {{ session($msg) }}
-                    </div>
-                @endif
-            @endforeach
+            <x-flash />
 
             {{-- BARRE DE FILTRES --}}
             <form method="GET" action="{{ route('tasks.index') }}" id="filterForm" class="mb-4 flex flex-wrap items-center gap-2">

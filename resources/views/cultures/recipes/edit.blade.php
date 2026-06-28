@@ -26,11 +26,7 @@
                     </ul>
                 </div>
             @endif
-            @if(session('success'))
-                <div class="p-5 bg-emerald-500 text-white rounded-[2rem] font-black text-[10px] uppercase tracking-[0.2em] shadow-xl flex items-center italic mb-6">
-                    <i class="fa-solid fa-check-double mr-3 text-lg"></i> {{ session('success') }}
-                </div>
-            @endif
+            <x-flash />
 
             <form action="{{ route('crop-recipes.update', $recipe) }}" method="POST"
                   x-data="{ items: {{ Illuminate\Support\Js::from($recipe->items->map(fn ($it) => ['input_product' => $it->input_product, 'quantity' => $it->quantity, 'unit' => $it->unit])) }} }"

@@ -33,15 +33,7 @@
     <div class="py-10">
         <div class="max-w-5xl mx-auto sm:px-6 lg:px-8 italic font-bold text-left">
 
-            @foreach(['success', 'warning', 'error'] as $msg)
-                @if(session($msg))
-                    <div @class(['mb-8 p-5 rounded-[2rem] font-black text-[10px] uppercase tracking-[0.2em] shadow-xl flex items-center italic',
-                        'bg-emerald-500 text-white' => $msg === 'success',
-                        'bg-amber-500 text-white' => $msg === 'warning',
-                        'bg-red-500 text-white' => $msg === 'error',
-                    ])>{{ session($msg) }}</div>
-                @endif
-            @endforeach
+            <x-flash />
 
             {{-- INFOS TRANSPORT --}}
             <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm mb-6">
