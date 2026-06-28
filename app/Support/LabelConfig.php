@@ -20,6 +20,16 @@ class LabelConfig
         'a6'    => 'A6',
     ];
 
+    /** Gabarits standards d'étiquette → [largeur mm, hauteur mm]. */
+    public const PRESETS = [
+        '90x50'   => [90, 50],
+        '100x50'  => [100, 50],
+        '105x148' => [105, 148],  // A6
+        '70x37'   => [70, 37],    // planche A4 × 24
+        '63.5x38' => [63.5, 38.1],// planche A4 × 21
+        '38x21'   => [38, 21],
+    ];
+
     /** @return array<string,mixed> */
     public static function current(): array
     {
@@ -39,6 +49,16 @@ class LabelConfig
 
         $symbology = (string) setting('etiquettes.symbology', 'qr');
 
+        // Dimensions : gabarit standard, ou personnalisé (custom).
+        $preset = (string) setting('etiquettes.label_preset', '90x50');
+        if ($preset === 'custom') {
+            $width  = max(20.0, min(210.0, (float) setting('etiquettes.label_width', 90)));
+            $height = max(0.0, min(297.0, (float) setting('etiquettes.label_height', 0))); // 0 = auto
+        } else {
+            [$width, $height] = self::PRESETS[$preset] ?? self::PRESETS['90x50'];
+        }
+        $gap = max(0.0, min(20.0, (float) setting('etiquettes.label_gap', 4)));
+
         return [
             'copies'        => $copies,
             'format'        => $format,
@@ -50,6 +70,9 @@ class LabelConfig
             'showCaption'   => (bool) setting('etiquettes.show_caption', true),
             'showPrintedAt' => (bool) setting('etiquettes.show_printed_at', false),
             'autoprint'     => (bool) setting('etiquettes.autoprint', false),
+            'labelWidth'    => $width,
+            'labelHeight'   => $height,   // 0 = auto
+            'labelGap'      => $gap,
         ];
     }
 }

@@ -315,3 +315,25 @@ test('le format de page pilote la taille @page imprimable', function () {
     $resp->assertSee('size: auto', false);
     expect(substr_count($resp->getContent(), 'class="label"'))->toBe(1);
 });
+
+test('le gabarit d\'étiquette pilote la largeur physique (mm)', function () {
+    $batch = Batch::factory()->create(['farm_id' => $this->farm->id, 'code' => 'LOT-DIM-1']);
+
+    // Gabarit par défaut 90×50 → largeur 90mm.
+    $this->actingAs($this->adminUser)->get(route('batches.label', $batch->id))->assertOk()->assertSee('--label-w: 90mm', false);
+
+    // Gabarit A6 (105×148) avec hauteur fixe.
+    \App\Models\Setting::updateOrCreate(['group' => 'etiquettes', 'key' => 'label_preset', 'farm_id' => null], ['value' => '105x148', 'type' => 'select', 'options' => '90x50,custom']);
+    \Illuminate\Support\Facades\Cache::flush();
+    $resp = $this->actingAs($this->adminUser)->get(route('batches.label', $batch->id))->assertOk();
+    $resp->assertSee('--label-w: 105mm', false)->assertSee('has-fixed-h', false)->assertSee('--label-h: 148mm', false);
+
+    // Gabarit personnalisé.
+    \App\Models\Setting::updateOrCreate(['group' => 'etiquettes', 'key' => 'label_preset', 'farm_id' => null], ['value' => 'custom']);
+    \App\Models\Setting::updateOrCreate(['group' => 'etiquettes', 'key' => 'label_width', 'farm_id' => null], ['value' => '120', 'type' => 'integer']);
+    \App\Models\Setting::updateOrCreate(['group' => 'etiquettes', 'key' => 'label_height', 'farm_id' => null], ['value' => '0', 'type' => 'integer']);
+    \Illuminate\Support\Facades\Cache::flush();
+    $custom = $this->actingAs($this->adminUser)->get(route('batches.label', $batch->id))->assertOk();
+    $custom->assertSee('--label-w: 120mm', false);
+    expect($custom->getContent())->not->toContain('--label-h:'); // hauteur auto (0) → pas de var inline
+});

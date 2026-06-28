@@ -26,7 +26,8 @@
     @include('traceability._label-styles')
 </head>
 <body>
-    <div class="label-sheet fmt-{{ $cfg['format'] }}">
+    <div class="label-sheet fmt-{{ $cfg['format'] }} {{ $cfg['labelHeight'] > 0 ? 'has-fixed-h' : '' }}"
+         style="--label-w: {{ $cfg['labelWidth'] }}mm; --label-gap: {{ $cfg['labelGap'] }}mm;{{ $cfg['labelHeight'] > 0 ? ' --label-h: '.$cfg['labelHeight'].'mm;' : '' }}">
         @for($i = 0; $i < $cfg['copies']; $i++)
         <div class="label">
             <div class="head">

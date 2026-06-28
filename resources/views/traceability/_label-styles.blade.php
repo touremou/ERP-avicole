@@ -2,9 +2,9 @@
     /* Disposition AUTOMATIQUE : étiquettes en dimensions physiques (mm) qui se
        répartissent en grille et paginent selon le format @page choisi. Ces
        règles priment volontairement sur les tailles px des gabarits. */
-    .label-sheet { display: flex; flex-wrap: wrap; gap: 4mm; align-content: flex-start; }
-    .label-sheet .label { width: 90mm; box-sizing: border-box; margin: 0 !important; break-inside: avoid; page-break-inside: avoid; }
-    .label-sheet.fmt-seule .label { width: 92mm; }
+    .label-sheet { display: flex; flex-wrap: wrap; gap: var(--label-gap, 4mm); align-content: flex-start; }
+    .label-sheet .label { width: var(--label-w, 90mm); box-sizing: border-box; margin: 0 !important; break-inside: avoid; page-break-inside: avoid; overflow: hidden; }
+    .label-sheet.has-fixed-h .label { height: var(--label-h); }
     .label-sheet .qr { width: 26mm !important; height: 26mm !important; }
 
     .actions { max-width: 210mm; margin: 18px auto 0; display: flex; gap: 12px; align-items: center; justify-content: center; flex-wrap: wrap; }
