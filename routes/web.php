@@ -906,6 +906,12 @@ Route::middleware(['auth'])->group(function () {
     Route::put('/settings', [SettingsController::class, 'update'])->name('settings.update')->middleware('can:S');
     Route::get('/settings/logs', [SettingsController::class, 'logs'])->name('settings.logs')->middleware('can:S');
 
+    // ─── LICENCE / ABONNEMENT ───
+    // edit : accessible à tout utilisateur connecté (écran de renouvellement) ;
+    // update : activation réservée à l'administrateur (contrôle dans le contrôleur).
+    Route::get('/license', [\App\Http\Controllers\LicenseController::class, 'edit'])->name('license.edit');
+    Route::put('/license', [\App\Http\Controllers\LicenseController::class, 'update'])->name('license.update');
+
     // ─── SAUVEGARDES (admin) ───
     Route::get('/backups', [\App\Http\Controllers\BackupController::class, 'index'])->name('backups.index');
     Route::post('/backups/run', [\App\Http\Controllers\BackupController::class, 'run'])->name('backups.run');

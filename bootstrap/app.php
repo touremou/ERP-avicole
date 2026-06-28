@@ -31,6 +31,7 @@ return Application::configure(basePath: dirname(__DIR__))
             append: [
                 \App\Http\Middleware\SetCurrentFarm::class,
                 \App\Http\Middleware\SetUserLocale::class,
+                \App\Http\Middleware\EnsureLicensed::class,
             ],
         );
 

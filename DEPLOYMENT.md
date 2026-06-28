@@ -133,3 +133,55 @@ visible dans l'IHM.
 
 - Surveiller `storage/logs/laravel.log` (niveau `warning`+).
 - Vérifier l'absence d'erreurs 5xx et de requêtes lentes (envisager un APM).
+
+## 8. Monétisation : licence d'abonnement (fournisseur)
+
+Le système de licence est **OPT-IN** : tant que `LICENSE_PUBLIC_KEY` est absent,
+l'application n'impose aucune restriction. Pour commercialiser une instance :
+
+### 8.1 Préparation (une seule fois, chez le fournisseur)
+
+```bash
+php artisan license:keygen
+```
+
+- Conserver la **clé privée** dans un coffre (gestionnaire de secrets). Elle ne
+  doit JAMAIS être livrée ni commitée — elle sert à signer tous les codes.
+- Poser la **clé publique** dans le `.env` de l'instance cliente :
+  `LICENSE_PUBLIC_KEY=<clé publique base64>`. Optionnel : `LICENSE_ENFORCE=true`
+  (défaut), `LICENSE_GRACE_DAYS=7`.
+
+### 8.2 Émettre / renouveler un code (à chaque vente)
+
+```bash
+php artisan license:issue --id=BIOCREST --client="BioCrest" \
+    --plan=pro --days=366 --sms=1000 --private-key=<clé privée>
+# Lier au domaine (anti-copie) : --domain=erp.client.com
+```
+
+Communiquer au client l'**identifiant** (`--id`) et le **code de validité**
+généré. Le client l'active dans *Tableau de bord → Licence* (écran « Prolongez
+la date de validité »). La vérification est **hors-ligne** (signature Ed25519,
+extension `sodium`) : aucune connexion Internet requise — adapté à l'Afrique.
+
+Plans (`config/license.php`) : `basic`, `pro`, `entreprise` — déverrouillent un
+ensemble de modules et fixent les limites (utilisateurs, fermes, quota SMS). Le
+quota SMS est décompté à chaque envoi WhatsApp/SMS réel ; à zéro, l'envoi est
+bloqué. À l'expiration (+ grâce), l'application redirige vers l'écran d'activation.
+
+### 8.3 Protection du code livré (recommandé pour le commercial)
+
+Le PHP est interprété : la protection sérieuse passe par un **encodeur bytecode**
+appliqué AU MOMENT DU PACKAGING (pas dans ce dépôt). Recommandation :
+
+- **ionCube** ou **SourceGuardian** (payant) : encode `app/`, `config/`,
+  `routes/`, `database/` ; nécessite le *loader* correspondant côté serveur
+  (l'assistant `/install` le détecte et l'indique). Laisser `public/`, `vendor/`
+  et les vues Blade en clair (Blade est déjà compilé en cache).
+- Alternative gratuite : obfuscation (`yakpro-po`) — protection moindre, à tester.
+- Dans tous les cas, la **vérification de licence** ci-dessus reste la barrière
+  fonctionnelle : même du code lisible est inutilisable sans abonnement valide.
+
+> La « paternité » du code (humain/IA) n'est pas une mesure de sécurité et n'est
+> pas détectable de façon fiable : ce qui protège la propriété intellectuelle,
+> c'est l'encodage + la licence, pas la dissimulation de l'auteur.

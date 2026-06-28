@@ -60,7 +60,35 @@ class WhatsAppService
             return false;
         }
 
+        // Quota d'abonnement : seuls les drivers RÉELS consomment le crédit SMS
+        // (le driver "log" de développement est exempté). Quota épuisé → on
+        // n'appelle pas le fournisseur et on trace l'échec.
+        $billable = $this->driver !== 'log';
+        $license  = app(\App\Services\LicenseService::class);
+
+        if ($billable && $license->smsRemaining() <= 0) {
+            Log::warning('WhatsAppService: quota SMS de la licence épuisé, message non envoyé.');
+            NotificationLog::create([
+                'user_id'           => $context['user_id'] ?? null,
+                'channel'           => 'whatsapp',
+                'type'              => $context['type'] ?? 'general',
+                'title'             => $context['title'] ?? 'WhatsApp',
+                'message'           => $message,
+                'recipient_phone'   => $phone,
+                'status'            => 'failed',
+                'attempts'          => 1,
+                'provider_response' => ['error' => 'Quota SMS épuisé (licence)'],
+                'sent_at'           => null,
+            ]);
+            return false;
+        }
+
         [$result, $response] = $this->attemptDelivery($phone, $message);
+
+        // Décompte du quota uniquement sur un envoi réel ABOUTI.
+        if ($billable && $result) {
+            $license->consumeSms(1);
+        }
 
         // Logger le résultat (rejouable par avismart:retry-failed-notifications
         // si échec — coupures réseau fréquentes en zone rurale).
