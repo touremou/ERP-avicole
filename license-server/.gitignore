@@ -1,0 +1,5 @@
+# Secrets et données — JAMAIS committés
+storage/
+.env
+*.key
+*.sqlite

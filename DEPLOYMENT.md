@@ -139,6 +139,14 @@ visible dans l'IHM.
 Le système de licence est **OPT-IN** : tant que `LICENSE_PUBLIC_KEY` est absent,
 l'application n'impose aucune restriction. Pour commercialiser une instance :
 
+> **Serveur de licence fournisseur** : un mini-serveur autonome (émission,
+> révocation, renouvellement, registre, endpoint `/check`) est fourni dans
+> [`license-server/`](license-server/README.md). Il vit **chez le fournisseur**
+> (il détient la clé privée) et ne doit jamais être livré au client. Les
+> commandes `license:keygen` / `license:issue` de l'ERP ci-dessous dépannent
+> sans serveur ; le serveur dédié ajoute la persistance et la révocation à
+> distance.
+
 ### 8.1 Préparation (une seule fois, chez le fournisseur)
 
 ```bash

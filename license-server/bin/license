@@ -1,0 +1,165 @@
+#!/usr/bin/env php
+<?php
+
+/**
+ * CLI du serveur de licence fournisseur.
+ *
+ *   bin/license keygen                       Génère une paire de clés (clé publique → ERP)
+ *   bin/license issue --id=X --plan=pro ...  Émet et enregistre un code
+ *   bin/license renew --id=X [--days=366]    Renouvelle (réémet) pour un client existant
+ *   bin/license revoke --id=X                Révoque toutes les licences d'un client
+ *   bin/license list                         Liste le registre
+ *   bin/license verify --code=...            Vérifie un code
+ *   bin/license selftest                     Test interne (keygen→issue→verify)
+ */
+
+use LicenseServer\LicenseAuthority;
+use LicenseServer\Store;
+
+$config = require __DIR__ . '/../bootstrap.php';
+
+$argvCopy = $argv;
+array_shift($argvCopy);
+$command = array_shift($argvCopy) ?: 'help';
+
+/** Parse les options --clef=valeur. */
+$opts = [];
+foreach ($argvCopy as $arg) {
+    if (preg_match('/^--([^=]+)=(.*)$/', $arg, $m)) {
+        $opts[$m[1]] = $m[2];
+    } elseif (preg_match('/^--(.+)$/', $arg, $m)) {
+        $opts[$m[1]] = true;
+    }
+}
+
+function fail(string $msg): never
+{
+    fwrite(STDERR, "Erreur : {$msg}\n");
+    exit(1);
+}
+
+function authority(array $config): LicenseAuthority
+{
+    if (empty($config['private_key'])) {
+        fail("Aucune clé privée configurée (LICENSE_PRIVATE_KEY ou storage/private.key). Lancez d'abord : bin/license keygen");
+    }
+    return new LicenseAuthority($config['private_key']);
+}
+
+switch ($command) {
+    case 'keygen':
+        $pair = LicenseAuthority::generateKeypair();
+        $path = __DIR__ . '/../storage/private.key';
+        file_put_contents($path, $pair['private']);
+        @chmod($path, 0600);
+        echo "Paire de clés générée.\n\n";
+        echo "Clé privée enregistrée dans : {$path} (gardez-la secrète)\n\n";
+        echo "À POSER DANS L'ERP CLIENT (.env) :\n";
+        echo "LICENSE_PUBLIC_KEY={$pair['public']}\n";
+        break;
+
+    case 'issue':
+        if (empty($opts['id'])) {
+            fail('--id est requis.');
+        }
+        $authority = authority($config);
+        $payload   = $authority->buildPayload($config['plans'], [
+            'id'      => $opts['id'],
+            'client'  => $opts['client'] ?? null,
+            'plan'    => $opts['plan'] ?? 'basic',
+            'days'    => $opts['days'] ?? 366,
+            'sms'     => $opts['sms'] ?? null,
+            'modules' => isset($opts['modules']) ? array_map('trim', explode(',', $opts['modules'])) : null,
+            'domain'  => $opts['domain'] ?? null,
+        ]);
+        $code  = $authority->sign($payload);
+        $store = new Store($config['db_path']);
+        $store->record($payload, $code);
+
+        echo "Licence émise — client « {$payload['client']} » / plan {$payload['plan']} / expire le " . date('Y-m-d', $payload['exp']) . "\n\n";
+        echo "Identifiant     : {$payload['id']}\n";
+        echo "CODE DE VALIDITÉ (à transmettre au client) :\n{$code}\n";
+        break;
+
+    case 'renew':
+        if (empty($opts['id'])) {
+            fail('--id est requis.');
+        }
+        $store = new Store($config['db_path']);
+        $prev  = $store->latestFor($opts['id']);
+        if (! $prev) {
+            fail("Aucune licence existante pour « {$opts['id']} ». Utilisez 'issue'.");
+        }
+        $authority = authority($config);
+        $payload   = $authority->buildPayload($config['plans'], [
+            'id'      => $opts['id'],
+            'client'  => $prev['client_name'],
+            'plan'    => $opts['plan'] ?? $prev['plan'],
+            'days'    => $opts['days'] ?? 366,
+            'sms'     => $opts['sms'] ?? $prev['sms_quota'],
+            'modules' => json_decode($prev['modules'] ?: '[]', true),
+        ]);
+        $code = $authority->sign($payload);
+        $store->record($payload, $code);
+
+        echo "Licence renouvelée pour « {$opts['id']} » — nouvelle échéance " . date('Y-m-d', $payload['exp']) . "\n\n";
+        echo "NOUVEAU CODE :\n{$code}\n";
+        break;
+
+    case 'revoke':
+        if (empty($opts['id'])) {
+            fail('--id est requis.');
+        }
+        $store = new Store($config['db_path']);
+        $n = $store->revoke($opts['id']);
+        echo "{$n} licence(s) révoquée(s) pour « {$opts['id']} ».\n";
+        break;
+
+    case 'list':
+        $store = new Store($config['db_path']);
+        $rows = $store->all();
+        if (! $rows) {
+            echo "Registre vide.\n";
+            break;
+        }
+        printf("%-14s %-18s %-10s %-12s %-8s\n", 'IDENTIFIANT', 'CLIENT', 'PLAN', 'ÉCHÉANCE', 'ÉTAT');
+        foreach ($rows as $r) {
+            printf(
+                "%-14s %-18s %-10s %-12s %-8s\n",
+                $r['identifiant'],
+                mb_substr((string) $r['client_name'], 0, 18),
+                $r['plan'],
+                date('Y-m-d', (int) $r['expires_at']),
+                $r['revoked'] ? 'RÉVOQUÉE' : (($r['expires_at'] < time()) ? 'expirée' : 'active')
+            );
+        }
+        break;
+
+    case 'verify':
+        if (empty($opts['code'])) {
+            fail('--code est requis.');
+        }
+        try {
+            $payload = authority($config)->verify($opts['code']);
+            echo "Code VALIDE.\n" . json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) . "\n";
+        } catch (\Throwable $e) {
+            fail($e->getMessage());
+        }
+        break;
+
+    case 'selftest':
+        $pair      = LicenseAuthority::generateKeypair();
+        $authority = new LicenseAuthority($pair['private']);
+        $payload   = $authority->buildPayload($config['plans'], ['id' => 'TEST', 'plan' => 'pro', 'days' => 10]);
+        $code      = $authority->sign($payload);
+        $verified  = $authority->verify($code);
+        $ok = $verified['id'] === 'TEST' && $verified['plan'] === 'pro';
+        echo $ok ? "selftest OK (signature + vérification cohérentes).\n" : "selftest ÉCHEC.\n";
+        echo "Clé publique correspondante : " . $authority->publicKey() . "\n";
+        exit($ok ? 0 : 1);
+
+    default:
+        echo "Commandes : keygen | issue | renew | revoke | list | verify | selftest\n";
+        echo "Exemple : bin/license issue --id=BIOCREST --client=\"BioCrest\" --plan=pro --days=366\n";
+        break;
+}
