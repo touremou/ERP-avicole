@@ -124,14 +124,23 @@ class User extends Authenticatable
         if (! $this->role_id) return collect();
 
         if ($this->hasRole('admin')) {
-            return Module::active()->get();
+            $modules = Module::active()->get();
+        } else {
+            $explicitModuleIds = ModulePermission::where('role_id', $this->role_id)
+                ->where('can_read', true)
+                ->pluck('module_id');
+
+            $modules = Module::active()->whereIn('id', $explicitModuleIds)->get();
         }
 
-        $explicitModuleIds = ModulePermission::where('role_id', $this->role_id)
-            ->where('can_read', true)
-            ->pluck('module_id');
+        // Verrou d'abonnement : on masque les modules hors licence (tuiles du
+        // lanceur, navigation). Sans effet si le système de licence est inactif.
+        $licenses = app(\App\Services\LicenseService::class);
+        if ($licenses->isEnabled()) {
+            $modules = $modules->filter(fn ($m) => $licenses->allowsModule($m->slug))->values();
+        }
 
-        return Module::active()->whereIn('id', $explicitModuleIds)->get();
+        return $modules;
     }
 
     /**

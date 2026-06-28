@@ -3,6 +3,7 @@
 use App\Models\License;
 use App\Services\LicenseService;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Gate;
 use Tests\Helpers\AviSmartTestHelper;
 
 uses(Tests\TestCase::class, Illuminate\Foundation\Testing\RefreshDatabase::class, AviSmartTestHelper::class);
@@ -143,6 +144,32 @@ test('une licence active laisse passer et l\'écran montre l\'état', function (
     $this->actingAs($this->adminUser)->get(route('dashboard'))->assertOk();
     $this->actingAs($this->adminUser)->get(route('license.edit'))
         ->assertOk()->assertSee('BioCrest');
+});
+
+test('un module hors licence est refusé à l\'admin lui-même (verrou commercial)', function () {
+    // Licence incluant elevage mais PAS commerce.
+    app(LicenseService::class)->activate('BIOCREST', makeCode($this->keys['private'], ['modules' => ['elevage']]));
+
+    expect(Gate::forUser($this->adminUser)->allows('elevage.L'))->toBeTrue()
+        ->and(Gate::forUser($this->adminUser)->denies('commerce.L'))->toBeTrue()  // bloqué malgré admin
+        ->and(Gate::forUser($this->adminUser)->denies('commerce.S'))->toBeTrue();
+});
+
+test('le lanceur masque les modules hors licence', function () {
+    app(LicenseService::class)->activate('BIOCREST', makeCode($this->keys['private'], ['modules' => ['elevage']]));
+
+    $slugs = $this->adminUser->getAccessibleModules()->pluck('slug');
+    expect($slugs->contains('commerce'))->toBeFalse()   // hors licence → masqué
+        ->and($slugs->contains('production'))->toBeFalse()
+        ->and($slugs->contains('elevage'))->toBeTrue()   // inclus → visible
+        ->and($slugs->contains('admin'))->toBeTrue();    // infrastructure → toujours visible
+});
+
+test('système inactif : aucun module n\'est verrouillé (bypass admin normal)', function () {
+    config()->set('license.public_key', ''); // désarme
+
+    expect(Gate::forUser($this->adminUser)->allows('commerce.L'))->toBeTrue()
+        ->and(Gate::forUser($this->adminUser)->allows('elevage.S'))->toBeTrue();
 });
 
 test('un admin peut activer une licence via le formulaire', function () {

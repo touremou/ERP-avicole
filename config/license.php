@@ -27,6 +27,11 @@ return [
     // bandeau d'alerte, le temps que le client renouvelle. 0 = blocage immédiat.
     'grace_days' => (int) env('LICENSE_GRACE_DAYS', 7),
 
+    // Modules d'INFRASTRUCTURE toujours accessibles, quel que soit le plan :
+    // sans eux le client ne pourrait ni administrer son instance ni renouveler
+    // sa licence (l'activation vit dans « admin »). Jamais commercialisables.
+    'core_modules' => ['admin', 'dashboard', 'notifications'],
+
     // Coordonnées du fournisseur affichées sur l'écran de renouvellement
     // (surchargeables via les Réglages → groupe "licence").
     'vendor' => [

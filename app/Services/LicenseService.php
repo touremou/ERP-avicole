@@ -214,6 +214,12 @@ class LicenseService
             return true; // mode ouvert
         }
 
+        // Modules d'infrastructure : toujours accessibles (admin, tableau de
+        // bord, notifications) — sinon impossible de renouveler la licence.
+        if (in_array($slug, (array) config('license.core_modules', []), true)) {
+            return true;
+        }
+
         $license = $this->current();
         if (! $license) {
             return false;

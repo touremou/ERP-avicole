@@ -180,9 +180,33 @@ class AppServiceProvider extends ServiceProvider
             });
         };
 
+        // Résout le slug de module visé par une capacité (L/C/M/S génériques →
+        // module de la route courante ; "slug.L" → slug explicite). Sert au
+        // verrou d'abonnement ci-dessous.
+        $licenseModuleForAbility = function (string $ability) use ($resolveModuleSlug) {
+            if (in_array($ability, ['L', 'C', 'M', 'S'], true)) {
+                return $resolveModuleSlug();
+            }
+            if (preg_match('/^([a-z0-9_-]+)\.(L|C|M|S)$/', $ability, $m)) {
+                return $m[1];
+            }
+            return null;
+        };
+
         // ─── A. ADMIN BYPASS (doit être défini EN PREMIER) ───
-        Gate::before(function (?User $user, string $ability) {
+        Gate::before(function (?User $user, string $ability) use ($licenseModuleForAbility) {
             if (! $user || config('app.database_down')) return null;
+
+            // VERROU COMMERCIAL : un module non inclus dans l'abonnement est
+            // refusé à TOUS, administrateur compris (c'est une limite de
+            // licence, pas une permission RBAC). Évalué avant le bypass admin.
+            $licenses = app(\App\Services\LicenseService::class);
+            if ($licenses->isEnabled()) {
+                $slug = $licenseModuleForAbility($ability);
+                if ($slug !== null && ! $licenses->allowsModule($slug)) {
+                    return false;
+                }
+            }
 
             try {
                 if (($user->userRole?->name ?? '') === 'admin') return true;

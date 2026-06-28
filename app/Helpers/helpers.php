@@ -83,6 +83,20 @@ if (! function_exists('cash_round')) {
     }
 }
 
+if (! function_exists('license_allows_module')) {
+    /**
+     * Le module $slug est-il déverrouillé par l'abonnement courant ?
+     *
+     * Renvoie toujours true quand le système de licence est inactif (mode
+     * ouvert). Pratique dans les vues pour masquer une tuile/un lien de module
+     * non inclus dans le plan du client.
+     */
+    function license_allows_module(string $slug): bool
+    {
+        return app(\App\Services\LicenseService::class)->allowsModule($slug);
+    }
+}
+
 if (! function_exists('media_url')) {
     /**
      * URL d'un fichier stocké sur le disque "public" (logos, photos, etc.).
