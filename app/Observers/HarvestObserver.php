@@ -47,37 +47,42 @@ class HarvestObserver
      */
     private function reconcileStockOnUpdate(Harvest $harvest): void
     {
-        if (! $harvest->wasChanged(['quantity', 'unit', 'stock_item_name'])) {
+        if (! $harvest->wasChanged(['quantity', 'unit', 'stock_item_name', 'net_weight_kg'])) {
             return;
         }
 
         $cat   = Stock::CAT_RECOLTES;
         $label = $harvest->cropCycle?->code ?? ('#' . $harvest->crop_cycle_id);
 
-        // Annuler l'ancienne entrée si la récolte était synchronisée.
+        // Annuler l'ancienne entrée (poids effectif d'origine, en kg) si la
+        // récolte était synchronisée.
         if ($harvest->getOriginal('synced_to_stock')) {
             $oldName = trim((string) $harvest->getOriginal('stock_item_name'));
-            $oldQty  = (float) $harvest->getOriginal('quantity');
-            $oldUnit = $harvest->getOriginal('unit') ?: 'kg';
-            if ($oldName !== '' && $oldQty > 0) {
+            $oldKg   = Harvest::effectiveWeightKgFrom(
+                $harvest->getOriginal('net_weight_kg'),
+                $harvest->getOriginal('unit'),
+                $harvest->getOriginal('quantity')
+            );
+            if ($oldName !== '' && $oldKg > 0) {
                 StockIntegrationService::syncMovement(
-                    $oldName, $cat, $oldQty, 'out',
-                    "Correction récolte {$label} (ancienne valeur annulée)", $oldUnit
+                    $oldName, $cat, $oldKg, 'out',
+                    "Correction récolte {$label} (ancienne valeur annulée)", 'kg'
                 );
             }
         }
 
-        // Réappliquer la nouvelle entrée si la récolte est synchronisée.
+        // Réappliquer la nouvelle entrée (poids effectif, valorisée au coût de
+        // production) si la récolte est synchronisée.
         if ($harvest->synced_to_stock) {
             $name = trim((string) $harvest->stock_item_name);
-            $qty  = (float) $harvest->quantity;
-            $unit = $harvest->unit ?: 'kg';
-            if ($name !== '' && $qty > 0) {
-                StockIntegrationService::ensureItem($cat, $name, $unit, (float) ($harvest->unit_price ?? 0));
+            $kg   = $harvest->effective_weight_kg;
+            if ($name !== '' && $kg > 0) {
+                $costPerKg = $harvest->cropCycle?->productionCostPerKg() ?? 0.0;
+                StockIntegrationService::ensureItem($cat, $name, 'kg', $costPerKg);
                 StockIntegrationService::syncMovement(
-                    $name, $cat, $qty, 'in',
-                    "Correction récolte {$label} (nouvelle valeur)", $unit,
-                    $harvest->unit_price ?: null
+                    $name, $cat, $kg, 'in',
+                    "Correction récolte {$label} (nouvelle valeur)", 'kg',
+                    $costPerKg > 0 ? $costPerKg : null
                 );
             }
         }
@@ -91,15 +96,15 @@ class HarvestObserver
         }
 
         $name = trim((string) $harvest->stock_item_name);
-        $qty  = (float) $harvest->quantity;
-        if ($name === '' || $qty <= 0) {
+        $kg   = $harvest->effective_weight_kg;
+        if ($name === '' || $kg <= 0) {
             return;
         }
 
         $label = $harvest->cropCycle?->code ?? ('#' . $harvest->crop_cycle_id);
         StockIntegrationService::syncMovement(
-            $name, Stock::CAT_RECOLTES, $qty, 'out',
-            "Annulation récolte supprimée {$label}", $harvest->unit ?: 'kg'
+            $name, Stock::CAT_RECOLTES, $kg, 'out',
+            "Annulation récolte supprimée {$label}", 'kg'
         );
     }
 

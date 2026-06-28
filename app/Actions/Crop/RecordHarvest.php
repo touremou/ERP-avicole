@@ -60,17 +60,24 @@ class RecordHarvest
             }
 
             // ─── Intégration stock optionnelle ───
-            if ($syncToStock && $quantity > 0) {
-                StockIntegrationService::ensureItem(Stock::CAT_RECOLTES, $stockItem, $unit, (float) ($data['unit_price'] ?? 0));
+            // L'inventaire « recoltes » est tenu en KG (poids net effectif) et
+            // VALORISÉ AU COÛT DE PRODUCTION du cycle (et non au prix de vente,
+            // qui surévaluerait l'inventaire). Une récolte sans poids effectif
+            // (unité non-kg sans pesée) n'alimente pas le stock.
+            $effectiveKg = $harvest->effective_weight_kg;
+            if ($syncToStock && $effectiveKg > 0) {
+                $costPerKg = $cycle->fresh()->productionCostPerKg();
+
+                StockIntegrationService::ensureItem(Stock::CAT_RECOLTES, $stockItem, 'kg', $costPerKg);
 
                 $moved = StockIntegrationService::syncMovement(
                     itemName: $stockItem,
                     category: Stock::CAT_RECOLTES,
-                    quantity: $quantity,
+                    quantity: $effectiveKg,
                     type: 'in',
                     notes: "Récolte cycle {$cycle->code} ({$cycle->crop_name})",
-                    inputUnit: $unit,
-                    unitCost: $data['unit_price'] ?? null,
+                    inputUnit: 'kg',
+                    unitCost: $costPerKg > 0 ? $costPerKg : null,
                 );
 
                 if ($moved !== false) {

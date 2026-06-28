@@ -425,3 +425,42 @@ test('un cycle planté dans le futur a un âge nul (pas d\'âge aberrant)', func
 
     expect($cycle->age)->toBe(0);
 });
+
+test('le stock recolte est valorisé au coût de production (pas au prix de vente)', function () {
+    $plot  = makePlot($this->farm->id);
+    // Coûts du cycle : acquisition 200 000 + additionnels 100 000 = 300 000.
+    $cycle = CropCycle::create([
+        'farm_id' => $this->farm->id, 'plot_id' => $plot->id, 'crop_name' => 'Tomate',
+        'area_used_ha' => 1.0, 'planting_date' => now()->subMonths(2)->toDateString(),
+        'total_acquisition_cost' => 200000, 'additional_costs' => 100000,
+    ]);
+
+    // Récolte 150 kg vendue 5 000/kg (prix de marché), synchronisée au stock.
+    (new \App\Actions\Crop\RecordHarvest())->execute($cycle, [
+        'harvest_date' => now()->toDateString(), 'quantity' => 150, 'unit' => 'kg',
+        'unit_price' => 5000, 'sync_to_stock' => true, 'stock_item_name' => 'Tomate fraîche',
+    ]);
+
+    $stock = Stock::where('item_name', 'Tomate fraîche')->where('category', Stock::CAT_RECOLTES)->first();
+
+    // Coût de prod/kg = 300 000 / 150 = 2 000 — et NON 5 000 (prix de vente).
+    expect((float) $stock->current_quantity)->toBe(150.0)
+        ->and((float) $stock->last_unit_price)->toBe(2000.0)
+        ->and((float) $cycle->fresh()->total_revenue)->toBe(750000.0); // 150 kg × 5 000/kg
+});
+
+test('le revenu d\'une récolte en caisses repose sur le poids net (prix au kg)', function () {
+    $plot  = makePlot($this->farm->id);
+    $cycle = CropCycle::create([
+        'farm_id' => $this->farm->id, 'plot_id' => $plot->id, 'crop_name' => 'Tomate',
+        'area_used_ha' => 1.0, 'planting_date' => now()->subMonths(2)->toDateString(),
+    ]);
+
+    // 40 caisses pesées 600 kg, prix 3 000/kg → revenu 600 × 3 000 (pas 40 × 3 000).
+    (new \App\Actions\Crop\RecordHarvest())->execute($cycle, [
+        'harvest_date' => now()->toDateString(), 'quantity' => 40, 'unit' => 'caisses',
+        'net_weight_kg' => 600, 'unit_price' => 3000,
+    ]);
+
+    expect((float) $cycle->fresh()->total_revenue)->toBe(1800000.0); // 600 × 3000
+});
