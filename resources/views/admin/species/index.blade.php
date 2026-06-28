@@ -1,18 +1,12 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <div>
-                <h2 class="text-2xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">
-                    {{ __("🐾 Gestion des Espèces") }}
-                </h2>
-                <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-2 italic leading-none">
-                    {{ __("Activer / désactiver les espèces disponibles sur ce site") }}
-                </p>
-            </div>
-            <a href="{{ route('settings.index') }}" class="flex items-center justify-center w-11 h-11 bg-white border border-slate-200 text-slate-400 hover:text-rose-600 rounded-xl transition-all shadow-sm no-underline">
-                <i class="fa-solid fa-xmark"></i>
-            </a>
-        </div>
+        <x-page-header :title="__('🐾 Gestion des Espèces')" :subtitle="__('Activer / désactiver les espèces disponibles sur ce site')" icon="fa-paw" accent="slate">
+            <x-slot name="actions">
+                <a href="{{ route('settings.index') }}" class="flex items-center justify-center w-11 h-11 bg-white border border-slate-200 text-slate-400 hover:text-rose-600 rounded-xl transition-all shadow-sm no-underline">
+                    <i class="fa-solid fa-xmark"></i>
+                </a>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-10 italic font-bold">

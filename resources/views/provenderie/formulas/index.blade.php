@@ -1,21 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex flex-col md:flex-row justify-between items-center gap-6">
-            <div class="flex items-center gap-4 text-left">
-                <div class="w-14 h-14 bg-blue-600 rounded-[1.5rem] flex items-center justify-center text-white shadow-2xl rotate-3">
-                    <i class="fa-solid fa-flask-vial text-xl"></i>
-                </div>
-                <div>
-                    <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">
-                        {{ __("Bibliothèque des Formules") }}
-                    </h2>
-                    <p class="text-[10px] font-bold text-blue-500 uppercase tracking-[0.3em] mt-2 italic leading-none">
-                        {{ __("Provenderie • Recettes & Référentiels Normés") }}
-                    </p>
-                </div>
-            </div>
-
-            <div class="flex gap-4">
+        <x-page-header :title="__('Bibliothèque des Formules')" :subtitle="__('Provenderie • Recettes & Référentiels Normés')" icon="fa-flask-vial" accent="amber">
+            <x-slot name="actions">
                 {{-- Permission L : Consultation du référentiel --}}
                 @can('provenderie.L')
                 <button onclick="document.getElementById('modalNormes').classList.remove('hidden')" 
@@ -31,8 +17,8 @@
                     <i class="fa-solid fa-plus mr-2 text-blue-400"></i> {{ __("Nouvelle Recette") }}
                 </a>
                 @endcan
-            </div>
-        </div>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-12">

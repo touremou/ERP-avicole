@@ -1,18 +1,12 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 text-left italic font-bold">
-            <div>
-                <h2 class="text-3xl font-black text-slate-800 tracking-tighter uppercase italic leading-none">
-                    {{ __('Référentiel des Normes') }}
-                </h2>
-                <p class="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] mt-3 italic leading-none">
-                    {{ __("Objectifs de performance par espèce et souche génétique") }}
-                </p>
-            </div>
-            <a href="{{ route('batches.index') }}" class="group flex items-center justify-center w-12 h-12 bg-white border border-slate-200 text-slate-400 hover:text-slate-900 rounded-2xl transition-all shadow-sm no-underline">
-                <i class="fas fa-times group-hover:rotate-90 transition-transform"></i>
-            </a>
-        </div>
+        <x-page-header :title="__('Référentiel des Normes')" :subtitle="__('Objectifs de performance par espèce et souche génétique')" icon="fa-scroll" accent="slate">
+            <x-slot name="actions">
+                <a href="{{ route('batches.index') }}" class="group flex items-center justify-center w-12 h-12 bg-white border border-slate-200 text-slate-400 hover:text-slate-900 rounded-2xl transition-all shadow-sm no-underline">
+                    <i class="fas fa-times group-hover:rotate-90 transition-transform"></i>
+                </a>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <style>[x-cloak] { display: none !important; }</style>

@@ -1,28 +1,16 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex flex-col md:flex-row justify-between items-center gap-6">
-            <div class="flex items-center gap-4 text-left">
-                <div class="w-14 h-14 bg-amber-500 rounded-[1.5rem] flex items-center justify-center text-white shadow-2xl rotate-3">
-                    <i class="fa-solid fa-seedling text-xl"></i>
-                </div>
-                <div class="text-left">
-                    <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">
-                        {{ __("Matières Premières") }}
-                    </h2>
-                    <p class="text-[10px] font-bold text-amber-600 uppercase tracking-[0.3em] mt-2 italic leading-none">
-                        {{ __("Provenderie • Inventaire & Labo") }}
-                    </p>
-                </div>
-            </div>
-
-            {{-- Permission C : Ajout de nouvel ingrédient --}}
-            @can('provenderie.C')
-            <button onclick="document.getElementById('modalAddMaterial').classList.remove('hidden')"
-                class="bg-slate-900 text-white px-8 py-4 rounded-[2rem] text-[10px] font-black uppercase italic tracking-widest shadow-2xl hover:bg-amber-500 transition-all active:scale-95">
-                <i class="fa-solid fa-plus mr-2 text-amber-400"></i> {{ __("Nouvel Ingrédient") }}
-            </button>
-            @endcan
-        </div>
+        <x-page-header :title="__('Matières Premières')" :subtitle="__('Provenderie • Inventaire & Labo')" icon="fa-seedling" accent="amber">
+            <x-slot name="actions">
+                {{-- Permission C : Ajout de nouvel ingrédient --}}
+                @can('provenderie.C')
+                <button onclick="document.getElementById('modalAddMaterial').classList.remove('hidden')"
+                    class="bg-slate-900 text-white px-8 py-4 rounded-[2rem] text-[10px] font-black uppercase italic tracking-widest shadow-2xl hover:bg-amber-500 transition-all active:scale-95">
+                    <i class="fa-solid fa-plus mr-2 text-amber-400"></i> {{ __("Nouvel Ingrédient") }}
+                </button>
+                @endcan
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-12">
