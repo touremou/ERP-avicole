@@ -169,18 +169,53 @@ ensemble de modules et fixent les limites (utilisateurs, fermes, quota SMS). Le
 quota SMS est décompté à chaque envoi WhatsApp/SMS réel ; à zéro, l'envoi est
 bloqué. À l'expiration (+ grâce), l'application redirige vers l'écran d'activation.
 
-### 8.3 Protection du code livré (recommandé pour le commercial)
+### 8.3 Protection du code livré
 
-Le PHP est interprété : la protection sérieuse passe par un **encodeur bytecode**
-appliqué AU MOMENT DU PACKAGING (pas dans ce dépôt). Recommandation :
+Le PHP est interprété : aucune protection n'est absolue sans **encodeur
+bytecode**. Deux paliers, selon le budget.
 
-- **ionCube** ou **SourceGuardian** (payant) : encode `app/`, `config/`,
-  `routes/`, `database/` ; nécessite le *loader* correspondant côté serveur
-  (l'assistant `/install` le détecte et l'indique). Laisser `public/`, `vendor/`
-  et les vues Blade en clair (Blade est déjà compilé en cache).
-- Alternative gratuite : obfuscation (`yakpro-po`) — protection moindre, à tester.
-- Dans tous les cas, la **vérification de licence** ci-dessus reste la barrière
-  fonctionnelle : même du code lisible est inutilisable sans abonnement valide.
+**Palier 1 — GRATUIT (par défaut pour démarrer)**
+
+La barrière commerciale est la **licence signée** : même lisible, le code est
+inutilisable sans un code d'activation valide (signé par votre clé privée). On
+ajoute un durcissement « light » sans dépendance :
+
+```bash
+# Sur la machine du FOURNISSEUR : produit une copie de distribution durcie
+scripts/package-release.sh /chemin/vers/release-client
+```
+
+Ce script copie proprement le projet (exclut `.git`, `tests`, `.env`, logs…),
+installe les dépendances de production, build les assets, génère les caches,
+puis exécute :
+
+```bash
+php artisan release:strip /chemin/vers/release-client
+```
+
+`release:strip` réécrit tout le PHP de `app/ config/ routes/ database/
+bootstrap/` via `php_strip_whitespace()` : **suppression de tous les
+commentaires et de la mise en forme**, sans changer la sémantique (le code
+reste exécutable). Protection raisonnable, coût nul, risque de casse quasi nul
+(ni renommage de symboles, ni dépendance externe). Les vues Blade ne sont pas
+touchées (déjà compilées en cache).
+
+> Limite : `release:strip` ne renomme pas les variables/fonctions — c'est une
+> gêne, pas un coffre-fort. Suffisant tant que le projet n'est pas largement
+> déployé.
+
+**Palier 2 — ENCODEUR (quand le chiffre d'affaires le justifie)**
+
+Encodage bytecode fort, à appliquer au packaging (pas dans ce dépôt) :
+
+- **ionCube PHP Encoder** : ~199 $/an (édition de base) à ~399 $/an (toutes
+  versions PHP). *Loader* client **gratuit**.
+- **SourceGuardian** : ~199 $ la licence + ~99 $/an de mises à jour. Loader
+  client gratuit.
+
+Encoder `app/`, `config/`, `routes/`, `database/` ; laisser `public/`,
+`vendor/` et les vues Blade en clair. L'assistant `/install` détecte la
+présence du loader côté serveur et l'indique dans les prérequis.
 
 > La « paternité » du code (humain/IA) n'est pas une mesure de sécurité et n'est
 > pas détectable de façon fiable : ce qui protège la propriété intellectuelle,
