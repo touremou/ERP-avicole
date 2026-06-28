@@ -26,12 +26,7 @@
     <div class="py-10 italic font-bold text-left">
         <div class="max-w-6xl mx-auto sm:px-6 lg:px-8">
 
-            @if(session('success'))
-                <div class="mb-6 p-5 bg-emerald-50 text-emerald-700 rounded-[2rem] text-[10px] font-black uppercase tracking-widest border border-emerald-200">{{ session('success') }}</div>
-            @endif
-            @if(session('error'))
-                <div class="mb-6 p-5 bg-red-50 text-red-700 rounded-[2rem] text-[10px] font-black uppercase tracking-widest border border-red-200">{{ session('error') }}</div>
-            @endif
+            <x-flash />
 
             @forelse($campaigns as $campaign)
                 @php $sc = $statusClasses[$campaign->status] ?? $statusClasses['preparation']; @endphp

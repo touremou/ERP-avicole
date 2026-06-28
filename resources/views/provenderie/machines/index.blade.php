@@ -23,12 +23,7 @@
     <div class="py-12 italic font-bold text-left">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             {{-- BLOC ERREURS --}}
-            @if(session('error'))
-                <div class="mb-8 p-4 bg-red-600 text-white rounded-2xl shadow-lg text-[10px] font-black uppercase italic flex items-center gap-3 animate-pulse">
-                    <i class="fa-solid fa-circle-exclamation text-lg"></i>
-                    {{ session('error') }}
-                </div>
-            @endif
+            <x-flash />
 
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 @foreach($machines as $machine)

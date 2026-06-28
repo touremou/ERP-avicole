@@ -12,9 +12,7 @@
     <div class="py-10">
         <div class="max-w-2xl mx-auto sm:px-6 lg:px-8 text-left">
 
-            @if(session('success'))
-            <div class="mb-6 p-4 rounded-2xl font-black text-[10px] uppercase tracking-widest bg-emerald-500 text-white shadow-sm">{{ session('success') }}</div>
-            @endif
+            <x-flash />
 
             <form action="{{ route('dashboard.config.update') }}" method="POST" class="bg-white rounded-3xl border border-slate-100 shadow-sm p-6">
                 @csrf @method('PUT')

@@ -52,3 +52,9 @@ test('les écrans cultures migrés vers <x-flash> se rendent sans erreur', funct
         $this->actingAs($this->adminUser)->get(route($route))->assertOk();
     }
 });
+
+test('les écrans transverses migrés vers <x-flash> se rendent sans erreur', function () {
+    foreach (['sales.index', 'clients.index', 'expenses.index', 'payments.index'] as $route) {
+        $this->actingAs($this->adminUser)->get(route($route))->assertOk();
+    }
+});

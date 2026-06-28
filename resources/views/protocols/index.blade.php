@@ -47,13 +47,7 @@
     </x-slot>
 
     {{-- FEEDBACK ACTIONS --}}
-    @if(session('success'))
-        <div class="max-w-7xl mx-auto px-4 mt-6">
-            <div class="bg-emerald-50 border border-emerald-100 text-emerald-600 px-8 py-5 rounded-[2.5rem] text-[10px] font-black uppercase italic tracking-widest animate-fadeIn shadow-sm">
-                <i class="fa-solid fa-check-double mr-2"></i> {{ session('success') }}
-            </div>
-        </div>
-    @endif
+            <x-flash />
 
     <div class="py-12 italic font-bold">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">

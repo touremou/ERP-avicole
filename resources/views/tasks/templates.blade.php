@@ -13,11 +13,7 @@
     <div class="py-8 italic font-bold" x-data="{ showForm: false, perBuilding: true, perPlot: false }">
         <div class="max-w-5xl mx-auto sm:px-6 lg:px-8">
 
-            @if(session('success'))
-                <div class="mb-6 p-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg flex items-center italic bg-emerald-500 text-white">
-                    <i class="fa-solid fa-check-double mr-3"></i> {{ session('success') }}
-                </div>
-            @endif
+            <x-flash />
 
             {{-- BOUTON + FORMULAIRE CRÉATION --}}
             <div class="mb-6">

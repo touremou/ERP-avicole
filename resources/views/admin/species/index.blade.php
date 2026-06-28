@@ -18,11 +18,7 @@
     <div class="py-10 italic font-bold">
         <div class="max-w-6xl mx-auto sm:px-6 lg:px-8 space-y-10">
 
-            @if(session('success'))
-                <div class="p-5 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-[2rem] text-[10px] font-black uppercase tracking-widest italic">
-                    <i class="fas fa-check-circle mr-2"></i>{{ session('success') }}
-                </div>
-            @endif
+            <x-flash />
 
             @foreach($families as $familyKey => $familyMeta)
                 @if(isset($species[$familyKey]))
