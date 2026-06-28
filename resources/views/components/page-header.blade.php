@@ -25,6 +25,8 @@
         'sky'     => 'bg-sky-500 shadow-sky-500/20',
         'indigo'  => 'bg-indigo-600 shadow-indigo-500/20',
         'orange'  => 'bg-orange-500 shadow-orange-500/20',
+        'violet'  => 'bg-violet-500 shadow-violet-500/20',
+        'slate'   => 'bg-slate-900 shadow-slate-500/20',
         default   => 'bg-emerald-600 shadow-emerald-500/20',
     };
     $subColor = match ($accent) {
@@ -38,6 +40,8 @@
         'sky'     => 'text-sky-600',
         'indigo'  => 'text-indigo-600',
         'orange'  => 'text-orange-600',
+        'violet'  => 'text-violet-600',
+        'slate'   => 'text-slate-400',
         default   => 'text-slate-400',
     };
 @endphp

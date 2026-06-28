@@ -1,14 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex justify-between items-center text-left">
-            <div class="flex items-center gap-4">
-                <div class="w-12 h-12 bg-slate-900 rounded-xl flex items-center justify-center text-white shadow-lg"><i class="fa-solid fa-sliders text-lg"></i></div>
-                <div>
-                    <h2 class="text-lg font-black text-slate-800 uppercase italic tracking-tighter leading-none">{{ __("Paramètres Système") }}</h2>
-                    <p class="text-[9px] font-bold text-slate-400 uppercase mt-1 tracking-widest italic">{{ __("Configuration globale de l'ERP") }}</p>
-                </div>
-            </div>
-        </div>
+        <x-page-header :title="__('Paramètres Système')" :subtitle="__('Configuration globale de l\'ERP')" icon="fa-sliders" accent="slate" />
     </x-slot>
 
     <div class="py-8 italic font-bold">

@@ -32,12 +32,8 @@
 
         {{-- Header hub : titre + tri + accès parc + action principale. Les alertes
              et le statut du parc sont descendus dans le corps (cf. plus bas). --}}
-        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 text-left" x-data>
-            <div>
-                <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">🥚 {{ __("Couvoir — Incubation") }}</h2>
-                <p class="text-[10px] font-black text-blue-500 uppercase tracking-widest mt-1 italic leading-none">{{ __("Flux d'incubation & parc d'éclosion") }}</p>
-            </div>
-            <div class="flex items-center gap-2">
+        <x-page-header :title="__('🥚 Couvoir — Incubation')" :subtitle="__('Flux d\'incubation & parc d\'éclosion')" icon="fa-egg" accent="blue">
+            <x-slot name="actions">
                 <form method="GET">
                     <select name="sort" onchange="this.form.submit()" class="bg-white border border-slate-200 rounded-2xl px-4 py-2.5 text-[9px] font-black uppercase tracking-widest text-slate-600 outline-none cursor-pointer shadow-sm italic">
                         <option value="date" {{ $sort=='date'?'selected':'' }}>📅 {{ __("Échéance") }}</option>
@@ -51,8 +47,8 @@
                 <button @click.stop="$dispatch('open-launch-modal')" class="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-500 transition-all shadow-lg italic border-none cursor-pointer">
                     <i class="fa-solid fa-plus-circle"></i> {{ __("Nouveau Lancement") }}
                 </button>
-            </div>
-        </div>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-12 italic font-bold">

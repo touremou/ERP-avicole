@@ -1,22 +1,14 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between gap-4">
-            <div>
-                <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">
-                    📉 {{ __("Démarque & ajustements") }}
-                </h2>
-                <p class="text-[10px] font-black text-orange-500 uppercase tracking-widest mt-1 italic leading-none">
-                    {{ __("Écarts d'inventaire valorisés") }}
-                </p>
-            </div>
-            <div class="flex items-center gap-2">
+        <x-page-header :title="__('📉 Démarque & ajustements')" :subtitle="__('Écarts d\'inventaire valorisés')" icon="fa-arrow-trend-down" accent="orange">
+            <x-slot name="actions">
                 <a href="{{ route('stock-adjustments.csv', request()->query()) }}" class="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-2xl text-[9px] font-black uppercase tracking-widest hover:bg-emerald-50 hover:text-emerald-600 transition-all no-underline shadow-sm italic"><i class="fa-solid fa-file-csv"></i> CSV</a>
                 <a href="{{ route('stock-adjustments.pdf', request()->query()) }}" class="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-2xl text-[9px] font-black uppercase tracking-widest hover:bg-rose-50 hover:text-rose-600 transition-all no-underline shadow-sm italic"><i class="fa-solid fa-file-pdf"></i> PDF</a>
                 @can('logistique.C')
                 <a href="{{ route('stock-adjustments.create') }}" class="inline-flex items-center gap-2 px-6 py-3 bg-orange-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-orange-600 transition-all no-underline shadow-lg italic"><i class="fa-solid fa-plus"></i> {{ __("Nouvel ajustement") }}</a>
                 @endcan
-            </div>
-        </div>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-10">

@@ -1,21 +1,12 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 text-left">
-            <div class="flex items-center gap-5">
-                <div class="w-14 h-14 bg-indigo-600 rounded-[1.5rem] flex items-center justify-center text-white shadow-2xl -rotate-3">
-                    <i class="fa-solid fa-scale-balanced text-xl"></i>
-                </div>
-                <div>
-                    <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">{{ __("Suivi Budgétaire") }}</h2>
-                    <p class="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em] mt-2 italic">
-                        {{ __("Budget par poste vs dépenses validées") }}
-                    </p>
-                </div>
-            </div>
-            <a href="{{ route('expenses.index') }}" class="text-[10px] font-black uppercase italic text-slate-400 hover:text-slate-800 transition no-underline">
-                <i class="fa-solid fa-receipt mr-1"></i> {{ __("Registre des dépenses") }}
-            </a>
-        </div>
+        <x-page-header :title="__('Suivi Budgétaire')" :subtitle="__('Budget par poste vs dépenses validées')" icon="fa-scale-balanced" accent="indigo">
+            <x-slot name="actions">
+                <a href="{{ route('expenses.index') }}" class="text-[10px] font-black uppercase italic text-slate-400 hover:text-slate-800 transition no-underline">
+                    <i class="fa-solid fa-receipt mr-1"></i> {{ __("Registre des dépenses") }}
+                </a>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     @php

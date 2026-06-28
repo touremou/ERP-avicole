@@ -83,6 +83,12 @@ test('les en-têtes hors-production migrés affichent leur accent propre', funct
         ['payroll.index',   'Gestion de la Paie',  'bg-blue-600'],
         ['tasks.index',     'Planning',            'bg-indigo-600'],
         ['dispatches.index','Expéditions',         'bg-orange-500'],
+        ['budgets.index',   'Suivi Budgétaire',    'bg-indigo-600'],
+        ['stock-adjustments.index', 'Démarque',    'bg-orange-500'],
+        ['planning.index',  'Planification',       'bg-indigo-600'],
+        ['incubations.index','Couvoir',            'bg-blue-600'],
+        ['farms.index',     'Multi-Sites',         'bg-violet-500'],
+        ['settings.index',  'Paramètres',          'bg-slate-900'],
     ];
     foreach ($cases as [$route, $title, $accentClass]) {
         $this->actingAs($this->adminUser)->get(route($route))
