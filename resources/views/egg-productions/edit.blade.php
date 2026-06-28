@@ -1,4 +1,12 @@
 <x-app-layout>
+    <x-slot name="header">
+        <x-page-header :title="isset($eggProduction) ? __('✏️ Tri & Calibrage') : __('🥚 Nouvelle Collecte')"
+                       :subtitle="__('Bande') . ' : ' . $batch->code . ' • ' . $batch->building->name"
+                       :icon="isset($eggProduction) ? 'fa-scale-balanced' : 'fa-basket-shopping'"
+                       :accent="isset($eggProduction) ? 'blue' : 'emerald'"
+                       :back="route('egg-productions.index')" />
+    </x-slot>
+
     <div class="py-12 italic font-bold text-left bg-slate-50 min-h-screen">
         <div class="max-w-2xl mx-auto sm:px-6 lg:px-8 space-y-8">
 
@@ -6,28 +14,11 @@
             @if ($errors->any())
                 <div class="mb-6 p-6 bg-red-600 text-white rounded-[2rem] text-[10px] uppercase font-black shadow-lg animate-pulse">
                     <p class="mb-2 border-b border-white/20 pb-2 italic">{{ __("⚠️ Erreurs de validation :") }}</p>
-                    @foreach ($errors->all() as $error) 
-                        <p class="mt-1">• {{ $error }}</p> 
+                    @foreach ($errors->all() as $error)
+                        <p class="mt-1">• {{ $error }}</p>
                     @endforeach
                 </div>
             @endif
-
-            {{-- TITRE DYNAMIQUE --}}
-            <div class="flex items-center justify-between">
-                <div class="flex items-center gap-4">
-                    <div class="w-14 h-14 {{ isset($eggProduction) ? 'bg-blue-600' : 'bg-emerald-500' }} rounded-3xl flex items-center justify-center text-white shadow-xl rotate-3">
-                        <i class="fa-solid {{ isset($eggProduction) ? 'fa-scale-balanced' : 'fa-basket-shopping' }} text-2xl"></i>
-                    </div>
-                    <div>
-                        <h2 class="text-2xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">
-                            {{ isset($eggProduction) ? __("✏️ Tri & Calibrage") : __("🥚 Nouvelle Collecte") }}
-                        </h2>
-                        <p class="text-[10px] font-black text-slate-400 uppercase mt-2 tracking-widest italic leading-none">
-                            {{ __("Bande") }} : <span class="text-blue-500">{{ $batch->code }}</span> • {{ $batch->building->name }}
-                        </p>
-                    </div>
-                </div>
-            </div>
 
             {{-- LOGIQUE DE PERMISSION --}}
             @php 

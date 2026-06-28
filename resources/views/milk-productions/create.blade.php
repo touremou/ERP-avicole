@@ -1,12 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center gap-4">
-            <a href="{{ route('milk-productions.index') }}" class="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-500 hover:text-slate-800 rounded-xl transition-all shadow-sm no-underline">
-                <i class="fas fa-chevron-left text-xs"></i>
-                <span class="text-[10px] font-black uppercase italic tracking-widest leading-none">{{ __("Retour") }}</span>
-            </a>
-            <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">🐐 {{ __("Collecte") }} — {{ $batch->code }}</h2>
-        </div>
+        <x-page-header :title="__('🐐 Collecte') . ' — ' . $batch->code" :subtitle="$batch->building?->name"
+                       icon="fa-bottle-droplet" accent="cyan" :back="route('milk-productions.index')" />
     </x-slot>
 
     <div class="py-10 italic font-bold text-slate-700 text-left" x-data="milkForm()">

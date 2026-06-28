@@ -1,16 +1,13 @@
 <x-app-layout>
     <x-slot name="header">
-        <div>
-            <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">🐐 {{ __("Collecte de lait") }}</h2>
-            <p class="text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em] mt-2 italic">{{ __("Laiterie caprine — suivi par lot & prix") }} {{ currency() }}</p>
-        </div>
+        <x-page-header :title="__('🐐 Collecte de lait')" :subtitle="__('Laiterie caprine — suivi par lot & prix') . ' ' . currency()" icon="fa-bottle-droplet" accent="cyan" />
     </x-slot>
 
     <div class="py-10 italic font-bold text-left">
         <div class="max-w-6xl mx-auto sm:px-6 lg:px-8 space-y-8">
 
             @if(session('success'))
-                <div class="p-5 bg-emerald-50 text-emerald-700 rounded-[2rem] text-[10px] font-black uppercase tracking-widest border border-emerald-200">{{ session('success') }}</div>
+                <div class="p-5 bg-green-50 text-green-700 rounded-[2rem] text-[10px] font-black uppercase tracking-widest border border-green-200">{{ session('success') }}</div>
             @endif
             @if(session('error'))
                 <div class="p-5 bg-red-50 text-red-700 rounded-[2rem] text-[10px] font-black uppercase tracking-widest border border-red-200">{{ session('error') }}</div>
@@ -19,7 +16,7 @@
             {{-- KPI --}}
             <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
                 <div class="bg-white p-7 rounded-[2.5rem] border border-slate-100 shadow-sm">
-                    <p class="text-[9px] font-black text-emerald-500 uppercase tracking-widest mb-2 italic">{{ __("Litres aujourd'hui") }}</p>
+                    <p class="text-[9px] font-black text-cyan-500 uppercase tracking-widest mb-2 italic">{{ __("Litres aujourd'hui") }}</p>
                     <p class="text-3xl font-black text-slate-900 italic tracking-tighter">{{ number_format($totalsToday->liters ?? 0, 1) }} <small class="text-sm">L</small></p>
                 </div>
                 <div class="bg-white p-7 rounded-[2.5rem] border border-slate-100 shadow-sm">
@@ -32,7 +29,7 @@
                     <p class="text-3xl font-black text-slate-900 italic tracking-tighter">{{ number_format($last30->liters ?? 0, 0) }} <small class="text-sm">L</small></p>
                 </div>
                 <div class="bg-slate-900 p-7 rounded-[2.5rem] text-white shadow-sm">
-                    <p class="text-[9px] font-black text-emerald-400 uppercase tracking-widest mb-2 italic">{{ __("CA lait 30 jours") }}</p>
+                    <p class="text-[9px] font-black text-cyan-400 uppercase tracking-widest mb-2 italic">{{ __("CA lait 30 jours") }}</p>
                     <p class="text-3xl font-black italic tracking-tighter">{{ number_format($last30->value ?? 0) }}</p>
                     <p class="text-[8px] opacity-60 mt-2 uppercase font-black">{{ currency() }}</p>
                 </div>
@@ -41,7 +38,7 @@
             {{-- LOTS LAITIERS --}}
             <div>
                 <h3 class="text-[11px] font-black uppercase text-slate-800 tracking-[0.2em] italic flex items-center mb-5 ml-2">
-                    <span class="w-2 h-6 bg-emerald-500 rounded-full mr-3"></span> {{ __("Lots laitiers actifs") }}
+                    <span class="w-2 h-6 bg-cyan-500 rounded-full mr-3"></span> {{ __("Lots laitiers actifs") }}
                 </h3>
 
                 @forelse($dairyBatches as $batch)
@@ -53,21 +50,21 @@
                     @endphp
                     <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm mb-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div class="flex items-center gap-5">
-                            <div class="w-14 h-14 rounded-[1.5rem] bg-emerald-50 flex items-center justify-center text-2xl shadow-inner">{{ $batch->species?->icon ?? '🐐' }}</div>
+                            <div class="w-14 h-14 rounded-[1.5rem] bg-cyan-50 flex items-center justify-center text-2xl shadow-inner">{{ $batch->species?->icon ?? '🐐' }}</div>
                             <div>
-                                <a href="{{ route('batches.show', $batch->id) }}" class="font-black text-slate-900 text-lg uppercase italic no-underline hover:text-emerald-600 leading-none tracking-tighter">{{ $batch->code }}</a>
+                                <a href="{{ route('batches.show', $batch->id) }}" class="font-black text-slate-900 text-lg uppercase italic no-underline hover:text-cyan-600 leading-none tracking-tighter">{{ $batch->code }}</a>
                                 <p class="text-[9px] font-black text-slate-400 uppercase mt-2 tracking-widest">{{ $batch->species?->name_fr }} · {{ $batch->building?->name ?? '—' }} · {{ number_format($batch->current_quantity) }} {{ __("têtes") }}</p>
                             </div>
                         </div>
                         <div class="flex items-center gap-6">
                             <div class="text-right">
-                                <p class="text-xl font-black italic leading-none {{ $todayMilk ? 'text-emerald-600' : 'text-slate-300' }}">
+                                <p class="text-xl font-black italic leading-none {{ $todayMilk ? 'text-cyan-600' : 'text-slate-300' }}">
                                     {{ $todayMilk ? number_format($todayMilk->total_liters, 1).' L' : '—' }}
                                 </p>
                                 <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1">{{ __("Collecté aujourd'hui") }}</p>
                                 @if($yieldPerFemale !== null)
                                 <p @class(['text-[8px] font-black uppercase tracking-widest mt-1',
-                                    'text-emerald-500' => $yieldPerFemale >= $milkTarget,
+                                    'text-cyan-500' => $yieldPerFemale >= $milkTarget,
                                     'text-amber-500'   => $yieldPerFemale < $milkTarget])>
                                     {{ number_format($yieldPerFemale, 2) }} {{ __("L/tête") }} <span class="opacity-50">/ {{ __("cible") }} {{ number_format($milkTarget, 1) }}</span>
                                 </p>
@@ -75,13 +72,13 @@
                             </div>
                             @if($todayMilk)
                                 @can('production.M')
-                                <a href="{{ route('milk-productions.edit', $todayMilk) }}" class="bg-white border border-emerald-200 text-emerald-700 px-5 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-emerald-50 transition-all no-underline shadow-sm whitespace-nowrap">
+                                <a href="{{ route('milk-productions.edit', $todayMilk) }}" class="bg-white border border-cyan-200 text-cyan-700 px-5 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-cyan-50 transition-all no-underline shadow-sm whitespace-nowrap">
                                     <i class="fa-solid fa-pen mr-1"></i> {{ __('Rectifier') }}
                                 </a>
                                 @endcan
                             @else
                                 @can('production.C')
-                                <a href="{{ route('milk-productions.create', ['batch_id' => $batch->id]) }}" class="bg-emerald-600 text-white px-5 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-emerald-700 transition-all no-underline shadow-sm whitespace-nowrap">
+                                <a href="{{ route('milk-productions.create', ['batch_id' => $batch->id]) }}" class="bg-cyan-600 text-white px-5 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-cyan-700 transition-all no-underline shadow-sm whitespace-nowrap">
                                     <i class="fa-solid fa-droplet mr-1"></i> {{ __('Saisir') }}
                                 </a>
                                 @endcan
@@ -114,12 +111,12 @@
                                 <td class="py-3 text-slate-800 uppercase">{{ $m->batch?->code ?? '—' }}</td>
                                 <td class="py-3 text-center text-slate-500">{{ number_format($m->morning_liters, 1) }}</td>
                                 <td class="py-3 text-center text-slate-500">{{ number_format($m->evening_liters, 1) }}</td>
-                                <td class="py-3 text-center text-emerald-600">{{ number_format($m->total_liters, 1) }} L</td>
+                                <td class="py-3 text-center text-cyan-600">{{ number_format($m->total_liters, 1) }} L</td>
                                 <td class="py-3 text-right text-slate-500">{{ number_format($m->unit_price) }}</td>
                                 <td class="py-3 text-right text-slate-900">{{ number_format($m->total_value) }}</td>
                                 <td class="py-3 text-right">
                                     @can('production.M')
-                                    <a href="{{ route('milk-productions.edit', $m) }}" class="text-slate-300 hover:text-emerald-600 no-underline"><i class="fa-solid fa-pen text-[10px]"></i></a>
+                                    <a href="{{ route('milk-productions.edit', $m) }}" class="text-slate-300 hover:text-cyan-600 no-underline"><i class="fa-solid fa-pen text-[10px]"></i></a>
                                     @endcan
                                 </td>
                             </tr>

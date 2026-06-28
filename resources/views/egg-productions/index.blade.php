@@ -1,17 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 text-left">
-            <div class="flex items-center gap-4">
-                <div class="w-10 h-10 md:w-12 md:h-12 bg-emerald-600 rounded-xl md:rounded-2xl flex items-center justify-center text-white shadow-xl shadow-emerald-500/20 rotate-3 transition-transform hover:rotate-0 flex-shrink-0">
-                    <i class="fa-solid fa-layer-group text-lg md:text-xl"></i>
-                </div>
-                <div>
-                    <h2 class="text-lg md:text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none m-0">{{ __("🥚 Dashboard Production") }}</h2>
-                    <p class="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase mt-1 tracking-widest italic leading-none m-0">{{ __("Gestion des Flux & Inventaire") }}</p>
-                </div>
-            </div>
-
-            <div class="flex flex-wrap items-center gap-2 md:gap-3 w-full md:w-auto">
+        <x-page-header :title="__('🥚 Dashboard Production')" :subtitle="__('Gestion des Flux & Inventaire')" icon="fa-layer-group" accent="emerald">
+            <x-slot name="actions">
                 @can('production.L')
                 <a href="{{ route('stocks.index', ['category' => 'oeufs']) }}" class="flex-1 md:flex-none text-center bg-white border border-slate-200 text-slate-700 px-4 py-2 md:px-5 md:py-2.5 rounded-xl md:rounded-2xl text-[9px] md:text-[10px] font-black uppercase italic hover:bg-slate-50 transition-all shadow-sm no-underline">
                     <i class="fa-solid fa-box-open mr-1 md:mr-2 text-emerald-500"></i> {{ __("Magasin") }}
@@ -23,13 +13,13 @@
 
                 {{-- Corrigé en oeufs.S pour correspondre à la sécurité du contrôleur --}}
                 @can('production.S')
-                <a href="{{ route('stocks.maintenance') }}" 
+                <a href="{{ route('stocks.maintenance') }}"
                     class="w-full md:w-auto flex items-center justify-center gap-2 px-4 py-2 md:px-5 md:py-2.5 bg-slate-900 text-white rounded-xl md:rounded-2xl text-[9px] md:text-[10px] font-black uppercase italic hover:bg-red-600 transition-all shadow-xl shadow-slate-200 no-underline">
                         <i class="fa-solid fa-wrench text-red-400"></i> <span class="md:inline">{{ __("Inventaire") }}</span>
                 </a>
                 @endcan
-            </div>
-        </div>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-4 md:py-6 italic font-bold">
