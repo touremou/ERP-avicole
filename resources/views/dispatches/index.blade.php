@@ -1,18 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 text-left">
-            <div class="flex items-center gap-5">
-                <div class="w-14 h-14 bg-orange-500 rounded-[1.5rem] flex items-center justify-center text-white shadow-2xl rotate-3">
-                    <i class="fa-solid fa-truck-fast text-xl"></i>
-                </div>
-                <div>
-                    <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">{{ __("Expéditions") }}</h2>
-                    <p class="text-[10px] font-black text-orange-600 uppercase tracking-[0.2em] mt-2 italic">
-                        {{ __("Transfert de garde — Triple validation anti-fraude") }}
-                    </p>
-                </div>
-            </div>
-            <div class="flex gap-4">
+        <x-page-header :title="__('Expéditions')" :subtitle="__('Transfert de garde — Triple validation anti-fraude')" icon="fa-truck-fast" accent="orange">
+            <x-slot name="actions">
                 @if($stats['in_dispute'] > 0)
                 <a href="{{ route('dispatches.discrepancies') }}" class="bg-red-500 text-white px-6 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-red-600 transition-all shadow-2xl italic flex items-center gap-2 no-underline animate-pulse">
                     <i class="fa-solid fa-triangle-exclamation"></i> {{ __(":count litige(s)", ['count' => $stats['in_dispute']]) }}
@@ -23,8 +12,8 @@
                     <i class="fa-solid fa-truck-ramp-box"></i> {{ __("Nouvelle Expédition") }}
                 </a>
                 @endcan
-            </div>
-        </div>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-10">

@@ -1,16 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div class="text-left">
-                <h2 class="text-3xl font-black text-slate-800 tracking-tighter uppercase italic leading-none">
-                    {{ __('Personnel') }}
-                </h2>
-                <span class="text-slate-400 text-[9px] font-black uppercase tracking-[0.3em] mt-3 block italic leading-none">{{ __("Gestion des collaborateurs & Effectifs") }}</span>
-            </div>
-            
-            {{-- Permission C : Recrutement --}}
-            <div class="flex flex-wrap items-center gap-3 mt-4 md:mt-0">
-                
+        <x-page-header :title="__('Personnel')" :subtitle="__('Gestion des collaborateurs & Effectifs')" icon="fa-id-card" accent="blue">
+            <x-slot name="actions">
                 {{-- MODULE ANNUAIRE : Recrutement (C) --}}
                 @can('annuaire.C')
                 <a href="{{ route('employees.create') }}" class="group bg-slate-900 text-white px-8 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-blue-600 transition-all shadow-xl shadow-slate-900/10 italic no-underline">
@@ -31,9 +22,8 @@
                     <i class="fas fa-calendar-xmark mr-2 text-amber-500"></i> {{ __("Congés") }}
                 </a>
                 @endcan
-
-            </div>
-        </div>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-12 italic font-bold">

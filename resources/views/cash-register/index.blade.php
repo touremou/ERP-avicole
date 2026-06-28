@@ -1,23 +1,15 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between gap-4">
-            <div>
-                <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">
-                    🧰 {{ __("Session de caisse") }}
-                </h2>
-                <p class="text-[10px] font-black text-teal-500 uppercase tracking-widest mt-1 italic leading-none">
-                    {{ __("Ouverture · comptage · écart") }}
-                </p>
-            </div>
-            <div class="flex items-center gap-2">
+        <x-page-header :title="__('🧰 Session de caisse')" :subtitle="__('Ouverture · comptage · écart')" icon="fa-cash-register" accent="teal">
+            <x-slot name="actions">
                 <a href="{{ route('commerce.index') }}" class="inline-flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-2xl text-[9px] font-black uppercase tracking-widest hover:bg-slate-50 transition-all no-underline shadow-sm italic">
                     <i class="fa-solid fa-table-columns"></i> {{ __("Tableau de bord") }}
                 </a>
                 <a href="{{ route('pos.index') }}" class="inline-flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-2xl text-[9px] font-black uppercase tracking-widest hover:bg-slate-50 transition-all no-underline shadow-sm italic">
                     <i class="fa-solid fa-cash-register"></i> {{ __("Caisse (POS)") }}
                 </a>
-            </div>
-        </div>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-10">

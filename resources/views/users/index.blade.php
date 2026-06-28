@@ -1,11 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 text-left">
-            <div>
-                <h2 class="text-2xl font-black text-slate-800 tracking-tighter uppercase italic leading-none">{{ __("Gestion des Accès & Rôles") }}</h2>
-                <p class="text-slate-500 font-bold text-[10px] uppercase tracking-[0.2em] mt-2 italic">{{ __("RBAC par Module — Matrice des privilèges industrielle") }}</p>
-            </div>
-            <div class="flex flex-wrap gap-3">
+        <x-page-header :title="__('Gestion des Accès & Rôles')" :subtitle="__('RBAC par Module — Matrice des privilèges industrielle')" icon="fa-user-shield" accent="indigo">
+            <x-slot name="actions">
                 <button onclick="document.getElementById('moduleMatrixModal').classList.remove('hidden')"
                         class="bg-indigo-500 text-white px-6 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-indigo-600 transition-all shadow-lg italic border-none cursor-pointer">
                     <i class="fas fa-th mr-2"></i> {{ __("Matrice Modules") }}
@@ -18,8 +14,8 @@
                         class="bg-slate-900 text-white px-6 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-blue-600 transition-all shadow-xl italic border-none cursor-pointer">
                     <i class="fas fa-user-plus mr-2"></i> {{ __("Nouvel Utilisateur") }}
                 </button>
-            </div>
-        </div>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-10 italic">
