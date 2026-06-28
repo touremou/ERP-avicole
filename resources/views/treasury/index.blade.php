@@ -2,6 +2,9 @@
     <x-slot name="header">
         <x-page-header :title="__('💰 Trésorerie')" :subtitle="__('Caisse · Mobile Money · Banque')" icon="fa-wallet" accent="emerald">
             <x-slot name="actions">
+                <a href="{{ route('treasury.report') }}" class="inline-flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-2xl text-[9px] font-black uppercase tracking-widest hover:bg-slate-50 transition-all no-underline shadow-sm italic">
+                    <i class="fa-solid fa-chart-line"></i> {{ __("Flux") }}
+                </a>
                 <div class="text-right">
                     <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest">{{ __("Total disponible") }}</p>
                     <p class="text-2xl font-black text-emerald-600 leading-none">{{ number_format($total, 0, ',', ' ') }} <span class="text-xs">{{ currency() }}</span></p>

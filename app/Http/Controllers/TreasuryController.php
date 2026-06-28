@@ -67,6 +67,69 @@ class TreasuryController extends Controller
         return back()->with('success', "Compte « {$data['name']} » créé.");
     }
 
+    /** État des flux de trésorerie : entrées/sorties par catégorie sur une période. */
+    public function report(Request $request)
+    {
+        if (Gate::denies('depenses.L')) {
+            return redirect()->route('dashboard')->with('error', 'Accès restreint.');
+        }
+
+        $from = $this->parseDate($request->input('from'), now()->startOfMonth());
+        $to   = $this->parseDate($request->input('to'), now()->endOfMonth());
+        if ($from->gt($to)) {
+            [$from, $to] = [$to, $from];
+        }
+
+        $accountId = $request->input('account_id') ?: null;
+        $accounts  = TreasuryAccount::active()->orderBy('name')->get();
+
+        $base = \App\Models\TreasuryTransaction::whereBetween('transaction_date', [$from->toDateString(), $to->toDateString()]);
+        if ($accountId) {
+            $base->where('treasury_account_id', $accountId);
+        }
+
+        // Agrégat par catégorie (entrée / sortie).
+        $rows = (clone $base)
+            ->selectRaw('category, direction, SUM(amount) as total')
+            ->groupBy('category', 'direction')->get();
+
+        $byCategory = [];
+        foreach ($rows as $r) {
+            $byCategory[$r->category] ??= ['in' => 0.0, 'out' => 0.0];
+            $byCategory[$r->category][$r->direction] = (float) $r->total;
+        }
+        uasort($byCategory, fn ($a, $b) => ($b['in'] + $b['out']) <=> ($a['in'] + $a['out']));
+
+        $totalIn  = (float) (clone $base)->where('direction', 'in')->sum('amount');
+        $totalOut = (float) (clone $base)->where('direction', 'out')->sum('amount');
+
+        // Synthèse par compte (flux de la période).
+        $perAccount = $accounts->map(function ($acc) use ($from, $to) {
+            $q = \App\Models\TreasuryTransaction::where('treasury_account_id', $acc->id)
+                ->whereBetween('transaction_date', [$from->toDateString(), $to->toDateString()]);
+            return [
+                'account' => $acc,
+                'in'      => (float) (clone $q)->where('direction', 'in')->sum('amount'),
+                'out'     => (float) (clone $q)->where('direction', 'out')->sum('amount'),
+            ];
+        });
+
+        return view('treasury.report', [
+            'from' => $from, 'to' => $to, 'accountId' => $accountId, 'accounts' => $accounts,
+            'byCategory' => $byCategory, 'totalIn' => $totalIn, 'totalOut' => $totalOut,
+            'perAccount' => $perAccount,
+        ]);
+    }
+
+    private function parseDate(?string $value, \Carbon\Carbon $default): \Carbon\Carbon
+    {
+        try {
+            return $value ? \Carbon\Carbon::parse($value) : $default;
+        } catch (\Throwable) {
+            return $default;
+        }
+    }
+
     /** Mapping mode de paiement → compte par défaut (espèces→Caisse, OM→Mobile…). */
     public function updateMapping(Request $request)
     {

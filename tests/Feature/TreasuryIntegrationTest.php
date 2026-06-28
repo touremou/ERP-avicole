@@ -164,3 +164,22 @@ test('le grand-livre du compte affiche un lien vers la pièce d\'origine', funct
         ->assertOk()
         ->assertSee(route('sales.show', $sale->id)); // lien de rapprochement vers la vente
 });
+
+test('l\'état des flux agrège entrées/sorties par catégorie sur la période', function () {
+    $sale = tresoSale($this->client);
+    (new \App\Actions\Sale\ValidateSale())->execute($sale);
+    (new \App\Actions\Sale\RecordPayment())->execute($sale->fresh(), [
+        'amount' => 15000, 'method' => 'especes', 'payment_date' => now()->toDateString(),
+    ]);
+    Expense::create([
+        'reference' => 'DEP-FLUX', 'category' => 'fournitures', 'label' => 'Sacs', 'amount' => 6000,
+        'expense_date' => now()->toDateString(), 'status' => 'valide', 'payment_method' => 'especes', 'user_id' => $this->adminUser->id,
+    ]);
+
+    $resp = $this->get(route('treasury.report'))->assertOk();
+    expect((float) $resp->viewData('totalIn'))->toBe(15000.0)
+        ->and((float) $resp->viewData('totalOut'))->toBe(6000.0)
+        ->and($resp->viewData('byCategory'))->toHaveKeys(['vente', 'depense']);
+
+    $resp->assertSee('Flux de trésorerie')->assertSee('Encaissements ventes');
+});
