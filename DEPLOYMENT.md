@@ -4,8 +4,10 @@
 
 ## 1. Pré-requis serveur
 
-- PHP 8.3+ avec extensions : `pdo_mysql` (ou `pdo_sqlite`), `mbstring`, `gd`, `intl`, `zip`, `curl`, `xml`, `ctype`, `fileinfo`, `tokenizer`, `openssl`
+- PHP 8.3+ avec extensions : `pdo_mysql` (ou `pdo_sqlite`), `mbstring`, `gd`, `intl`, `zip`, `curl`, `xml`, `ctype`, `fileinfo`, `tokenizer`, `openssl`, `sodium`
   - `gd` est **obligatoire** : il sert au traitement d'images **et** à la génération des QR de traçabilité (`endroid/qr-code`).
+  - `sodium` est **obligatoire** : il vérifie la signature des licences d'abonnement (activation hors-ligne).
+  - Recommandées (non bloquantes, vérifiées par l'assistant) : `opcache`, `bcmath`, `pcntl`, `exif`.
 - MySQL 8 / MariaDB 10.6+ (ou SQLite pour une petite installation)
 - Composer 2, Node 18+ (build des assets)
 - HTTPS (certificat valide) + reverse proxy correctement configuré — requis
