@@ -4,6 +4,7 @@ use App\Models\License;
 use App\Services\LicenseService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Http;
 use Tests\Helpers\AviSmartTestHelper;
 
 uses(Tests\TestCase::class, Illuminate\Foundation\Testing\RefreshDatabase::class, AviSmartTestHelper::class);
@@ -202,6 +203,63 @@ test('un module hors licence renvoie vers l\'écran d\'abonnement avec message d
     $this->actingAs($this->adminUser)
         ->get(route('clients.index'))
         ->assertRedirect(route('license.edit'));
+});
+
+test('une licence révoquée à distance bloque malgré une échéance future', function () {
+    config()->set('license.server_url', 'https://licences.example.com/check');
+    $svc = app(LicenseService::class);
+    $svc->activate('BIOCREST', makeCode($this->keys['private'])); // valide 366 j
+
+    Http::fake(['*' => Http::response(['status' => 'revoked'], 200)]);
+
+    expect($svc->syncOnline(true))->toBe('revoked')
+        ->and($svc->status())->toBe(LicenseService::STATUS_EXPIRED)
+        ->and($svc->shouldBlock())->toBeTrue()
+        ->and($svc->current()->revoked_at)->not->toBeNull();
+});
+
+test('une réponse « ok » lève une révocation antérieure', function () {
+    config()->set('license.server_url', 'https://licences.example.com/check');
+    $svc = app(LicenseService::class);
+    $svc->activate('BIOCREST', makeCode($this->keys['private']));
+    $svc->current()->forceFill(['revoked_at' => now()])->saveQuietly();
+
+    Http::fake(['*' => Http::response(['status' => 'ok'], 200)]);
+
+    expect($svc->syncOnline(true))->toBe('ok')
+        ->and($svc->current()->fresh()->revoked_at)->toBeNull();
+});
+
+test('un renouvellement à distance prolonge l\'échéance', function () {
+    config()->set('license.server_url', 'https://licences.example.com/check');
+    $svc = app(LicenseService::class);
+    $svc->activate('BIOCREST', makeCode($this->keys['private'], ['exp' => now()->addDays(2)->getTimestamp()]));
+
+    $newCode = makeCode($this->keys['private'], ['exp' => now()->addDays(400)->getTimestamp()]);
+    Http::fake(['*' => Http::response(['status' => 'renewed', 'token' => $newCode], 200)]);
+
+    expect($svc->syncOnline(true))->toBe('renewed')
+        ->and($svc->current()->expires_at->greaterThan(now()->addDays(390)))->toBeTrue();
+});
+
+test('hors réseau, la synchro échoue silencieusement (hors-ligne prime)', function () {
+    config()->set('license.server_url', 'https://licences.example.com/check');
+    $svc = app(LicenseService::class);
+    $svc->activate('BIOCREST', makeCode($this->keys['private']));
+
+    Http::fake(fn () => throw new \Illuminate\Http\Client\ConnectionException('offline'));
+
+    expect($svc->syncOnline(true))->toBeNull()
+        ->and($svc->status())->toBe(LicenseService::STATUS_ACTIVE); // toujours valide hors-ligne
+});
+
+test('sans serveur configuré, la synchro ne fait rien', function () {
+    config()->set('license.server_url', '');
+    $svc = app(LicenseService::class);
+    $svc->activate('BIOCREST', makeCode($this->keys['private']));
+
+    expect($svc->onlineCheckConfigured())->toBeFalse()
+        ->and($svc->syncOnline(true))->toBeNull();
 });
 
 test('un admin peut activer une licence via le formulaire', function () {

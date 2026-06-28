@@ -167,7 +167,29 @@ extension `sodium`) : aucune connexion Internet requise — adapté à l'Afrique
 Plans (`config/license.php`) : `basic`, `pro`, `entreprise` — déverrouillent un
 ensemble de modules et fixent les limites (utilisateurs, fermes, quota SMS). Le
 quota SMS est décompté à chaque envoi WhatsApp/SMS réel ; à zéro, l'envoi est
-bloqué. À l'expiration (+ grâce), l'application redirige vers l'écran d'activation.
+bloqué. À l'expiration (+ grâce), l'application redirige vers l'écran d'activation
+(un bandeau d'alerte s'affiche pendant la période de grâce).
+
+### 8.2.1 Vérification en ligne hybride (optionnelle)
+
+Par défaut l'ERP est **100 % hors-ligne**. Pour pouvoir **révoquer ou renouveler
+à distance** (client ne payant plus, par exemple), renseigner côté client :
+
+```
+LICENSE_SERVER_URL=https://licences.votre-domaine.com/check
+LICENSE_CHECK_INTERVAL_HOURS=24
+```
+
+La commande planifiée `license:sync` (cron quotidien, déjà programmée) interroge
+ce serveur. Contrat HTTP (POST JSON) que **votre** serveur doit implémenter :
+
+- requête : `{ "identifiant": "...", "token": "<code>", "expires_at": "..." }`
+- réponse : `{ "status": "ok" | "revoked" | "renewed", "token"?: "<nouveau code signé>" }`
+
+`revoked` bloque l'instance immédiatement (même échéance future) ; `renewed`
+applique le nouveau code (re-vérifié par signature) ; `ok` lève une révocation
+antérieure. En cas de panne réseau, la synchro échoue silencieusement : le jeton
+signé hors-ligne reste la référence (aucune interruption en zone rurale).
 
 ### 8.3 Protection du code livré
 

@@ -89,6 +89,9 @@
                 </div>
             @endif
 
+            {{-- BANDEAU D'ALERTE — abonnement en période de grâce --}}
+            @include('layouts.partials._license-grace-banner')
+
             {{-- HEADER STICKY --}}
             @isset($header)
                 <header class="sticky top-16 z-40 bg-white/80 backdrop-blur-md border-b border-slate-200/50 shadow-sm transition-all duration-300">

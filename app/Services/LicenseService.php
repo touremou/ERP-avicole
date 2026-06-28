@@ -5,6 +5,8 @@ namespace App\Services;
 use App\Models\License;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
 /**
@@ -59,6 +61,12 @@ class LicenseService
         $license = $this->current();
         if (! $license) {
             return self::STATUS_NONE;
+        }
+
+        // Révocation à distance : bloque comme une expiration, quelle que soit
+        // la date de fin (client ne payant plus, fraude…).
+        if ($license->revoked_at !== null) {
+            return self::STATUS_EXPIRED;
         }
 
         $now = $this->trustedNow();
@@ -166,6 +174,99 @@ class LicenseService
         $this->touchClock();
 
         return $license;
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // VÉRIFICATION EN LIGNE HYBRIDE (révocation / renouvellement à distance)
+    // ─────────────────────────────────────────────────────────────
+
+    /** Une vérification en ligne est-elle configurée ? */
+    public function onlineCheckConfigured(): bool
+    {
+        return (string) config('license.server_url', '') !== '';
+    }
+
+    /** L'intervalle de vérification est-il écoulé depuis le dernier contrôle ? */
+    public function onlineCheckDue(): bool
+    {
+        $license = $this->current();
+        if (! $license || ! $license->last_online_check_at) {
+            return true;
+        }
+
+        $hours = max(1, (int) config('license.check_interval_hours', 24));
+
+        return $license->last_online_check_at->lte(now()->subHours($hours));
+    }
+
+    /**
+     * Synchronise l'état de la licence avec le serveur du fournisseur (opt-in).
+     *
+     * Contrat serveur (POST JSON sur license.server_url) :
+     *   requête  : { identifiant, token, expires_at }
+     *   réponse  : { status: "ok" | "revoked" | "renewed", token?: "<nouveau code>" }
+     *
+     * Tolérant à l'absence de réseau : toute erreur est journalisée sans
+     * impacter le fonctionnement hors-ligne (le jeton signé reste la référence).
+     *
+     * @return string|null Statut traité ('ok'|'revoked'|'renewed') ou null si rien fait.
+     */
+    public function syncOnline(bool $force = false): ?string
+    {
+        if (! $this->isEnabled() || ! $this->onlineCheckConfigured()) {
+            return null;
+        }
+
+        $license = $this->current();
+        if (! $license) {
+            return null;
+        }
+
+        if (! $force && ! $this->onlineCheckDue()) {
+            return null;
+        }
+
+        try {
+            $response = Http::timeout(8)->acceptJson()->post((string) config('license.server_url'), [
+                'identifiant' => $license->identifiant,
+                'token'       => $license->token,
+                'expires_at'  => $license->expires_at?->toIso8601String(),
+            ]);
+
+            if (! $response->successful()) {
+                Log::warning('LicenseService: serveur de licence injoignable (HTTP ' . $response->status() . ').');
+                return null;
+            }
+
+            $status = (string) $response->json('status', 'ok');
+            $license->forceFill(['last_online_check_at' => now()])->saveQuietly();
+
+            return match ($status) {
+                'revoked' => tap('revoked', fn () => $license->forceFill(['revoked_at' => now()])->saveQuietly()),
+                'renewed' => $this->applyRenewedToken($license, (string) $response->json('token', '')),
+                default   => tap('ok', fn () => $license->forceFill(['revoked_at' => null])->saveQuietly()),
+            };
+        } catch (\Throwable $e) {
+            // Hors-ligne ou erreur réseau : on ne bloque pas, le hors-ligne prime.
+            Log::debug('LicenseService: échec de vérification en ligne — ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    /** Applique un jeton renouvelé reçu du serveur (vérifié avant activation). */
+    private function applyRenewedToken(License $license, string $newToken): ?string
+    {
+        if ($newToken === '') {
+            return 'ok';
+        }
+
+        try {
+            $this->activate($license->identifiant, $newToken); // re-vérifie la signature
+            return 'renewed';
+        } catch (\Throwable $e) {
+            Log::warning('LicenseService: jeton renouvelé invalide — ' . $e->getMessage());
+            return null;
+        }
     }
 
     // ─────────────────────────────────────────────────────────────

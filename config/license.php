@@ -23,6 +23,13 @@ return [
     // clé publique : les deux sont requis pour verrouiller l'application.
     'enforce' => env('LICENSE_ENFORCE', true),
 
+    // VÉRIFICATION EN LIGNE HYBRIDE (opt-in). Si une URL de serveur de licence
+    // est fournie, l'instance la sollicite périodiquement (quand le réseau est
+    // disponible) pour détecter une révocation ou récupérer un jeton renouvelé.
+    // Vide = 100 % hors-ligne (comportement par défaut, adapté à l'Afrique).
+    'server_url'           => env('LICENSE_SERVER_URL', ''),
+    'check_interval_hours' => (int) env('LICENSE_CHECK_INTERVAL_HOURS', 24),
+
     // Jours de grâce après l'échéance : l'application reste utilisable avec un
     // bandeau d'alerte, le temps que le client renouvelle. 0 = blocage immédiat.
     'grace_days' => (int) env('LICENSE_GRACE_DAYS', 7),

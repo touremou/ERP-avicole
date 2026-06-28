@@ -54,3 +54,7 @@ Schedule::command('backup:run')->dailyAt('02:00');
 
 // Relances de paiement : rappel aux clients en retard (anti-doublon intégré).
 Schedule::command('sales:payment-reminders')->dailyAt('09:00');
+
+// Licence : vérification en ligne (révocation / renouvellement à distance).
+// Sans LICENSE_SERVER_URL, la commande ne fait rien (mode hors-ligne).
+Schedule::command('license:sync')->dailyAt('04:00');

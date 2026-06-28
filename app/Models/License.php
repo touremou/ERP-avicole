@@ -18,7 +18,7 @@ class License extends Model
         'identifiant', 'client_name', 'plan', 'modules',
         'max_users', 'max_farms', 'sms_quota', 'sms_used',
         'fingerprint', 'issued_at', 'starts_at', 'expires_at',
-        'activated_at', 'last_seen_at', 'token',
+        'activated_at', 'last_seen_at', 'revoked_at', 'last_online_check_at', 'token',
     ];
 
     protected $casts = [
@@ -32,6 +32,8 @@ class License extends Model
         'expires_at'   => 'datetime',
         'activated_at' => 'datetime',
         'last_seen_at' => 'datetime',
+        'revoked_at'   => 'datetime',
+        'last_online_check_at' => 'datetime',
     ];
 
     /** Durée totale du contrat en jours (borne basse 1 pour éviter la division par zéro). */
