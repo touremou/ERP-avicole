@@ -1,19 +1,13 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between gap-4">
-            <div>
-                <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">
-                    💰 {{ __("Trésorerie") }}
-                </h2>
-                <p class="text-[10px] font-black text-emerald-500 uppercase tracking-widest mt-1 italic leading-none">
-                    {{ __("Caisse · Mobile Money · Banque") }}
-                </p>
-            </div>
-            <div class="text-right">
-                <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest">{{ __("Total disponible") }}</p>
-                <p class="text-2xl font-black text-emerald-600 leading-none">{{ number_format($total, 0, ',', ' ') }} <span class="text-xs">{{ currency() }}</span></p>
-            </div>
-        </div>
+        <x-page-header :title="__('💰 Trésorerie')" :subtitle="__('Caisse · Mobile Money · Banque')" icon="fa-wallet" accent="emerald">
+            <x-slot name="actions">
+                <div class="text-right">
+                    <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest">{{ __("Total disponible") }}</p>
+                    <p class="text-2xl font-black text-emerald-600 leading-none">{{ number_format($total, 0, ',', ' ') }} <span class="text-xs">{{ currency() }}</span></p>
+                </div>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-10">

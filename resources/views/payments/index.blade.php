@@ -1,18 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 text-left">
-            <div class="flex items-center gap-5">
-                <div class="w-14 h-14 bg-emerald-500 rounded-[1.5rem] flex items-center justify-center text-white shadow-2xl rotate-3">
-                    <i class="fa-solid fa-money-bill-wave text-xl"></i>
-                </div>
-                <div>
-                    <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">{{ __("Encaissements") }}</h2>
-                    <p class="text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em] mt-2 italic">
-                        {{ __("Caisse du") }} {{ now()->translatedFormat('l d F Y') }}
-                    </p>
-                </div>
-            </div>
-        </div>
+        <x-page-header :title="__('Encaissements')" :subtitle="__('Caisse du') . ' ' . now()->translatedFormat('l d F Y')" icon="fa-money-bill-wave" accent="emerald" />
     </x-slot>
 
     <div class="py-10">

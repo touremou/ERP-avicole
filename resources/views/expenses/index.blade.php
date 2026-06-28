@@ -1,18 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 w-full text-left">
-            <div class="flex items-center gap-5">
-                <div class="w-14 h-14 bg-rose-500 rounded-[1.5rem] flex items-center justify-center text-white shadow-2xl rotate-3">
-                    <i class="fa-solid fa-receipt text-xl"></i>
-                </div>
-                <div>
-                    <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">{{ __("Registre des Dépenses") }}</h2>
-                    <p class="text-[10px] font-black text-rose-600 uppercase tracking-[0.2em] mt-2 italic">
-                        {{ __("Du") }} {{ $from->format('d/m/Y') }} {{ __("au") }} {{ $to->format('d/m/Y') }}
-                    </p>
-                </div>
-            </div>
-            <div class="flex flex-wrap gap-3 w-full sm:w-auto">
+        <x-page-header :title="__('Registre des Dépenses')" :subtitle="__('Du') . ' ' . $from->format('d/m/Y') . ' ' . __('au') . ' ' . $to->format('d/m/Y')" icon="fa-receipt" accent="rose">
+            <x-slot name="actions">
                 <div class="bg-white px-6 py-4 rounded-[1.5rem] border border-slate-100 text-right shadow-sm">
                     <p class="text-[8px] font-black text-emerald-400 uppercase italic mb-1">{{ __("Validées (période)") }}</p>
                     <p class="text-base font-black text-slate-900 leading-none">{{ number_format($stats['total_valide'], 0, ',', ' ') }} <small class="text-[9px] opacity-40">{{ setting('general.currency', 'GNF') }}</small></p>
@@ -29,8 +18,8 @@
                     <i class="fa-solid fa-plus"></i> {{ __("Nouvelle Dépense") }}
                 </a>
                 @endcan
-            </div>
-        </div>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-10">

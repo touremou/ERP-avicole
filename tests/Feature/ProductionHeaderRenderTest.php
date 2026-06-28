@@ -70,9 +70,14 @@ test('les écrans transverses migrés vers <x-flash> se rendent sans erreur', fu
 
 test('les en-têtes hors-production migrés affichent leur accent propre', function () {
     $cases = [
-        ['sales.index',   'Registre des Ventes', 'bg-teal-600'],
-        ['stocks.index',  'Inventaire Global',   'bg-orange-500'],
-        ['batches.index', 'Suivi des Bandes',    'bg-indigo-600'],
+        ['sales.index',     'Registre des Ventes', 'bg-teal-600'],
+        ['stocks.index',    'Inventaire Global',   'bg-orange-500'],
+        ['batches.index',   'Suivi des Bandes',    'bg-indigo-600'],
+        ['products.index',  'Catalogue',           'bg-teal-600'],
+        ['clients.index',   'Fichier Clients',     'bg-teal-600'],
+        ['purchases.index', 'Achats fournisseurs', 'bg-rose-600'],
+        ['expenses.index',  'Registre des Dépenses','bg-rose-600'],
+        ['treasury.index',  'Trésorerie',          'bg-emerald-600'],
     ];
     foreach ($cases as [$route, $title, $accentClass]) {
         $this->actingAs($this->adminUser)->get(route($route))

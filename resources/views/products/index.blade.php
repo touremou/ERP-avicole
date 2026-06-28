@@ -1,17 +1,12 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex justify-between items-center text-left">
-            <div class="flex items-center gap-4">
-                <div class="w-12 h-12 bg-teal-600 rounded-xl flex items-center justify-center text-white shadow-lg"><i class="fa-solid fa-box-open text-lg"></i></div>
-                <div>
-                    <h2 class="font-black text-xl text-slate-800 uppercase italic tracking-tighter leading-none">{{ __('Catalogue d\'articles') }}</h2>
-                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1 italic">{{ __('Produits vendables (photo, prix, catégorie)') }}</p>
-                </div>
-            </div>
-            @can('commerce.C')
-            <a href="{{ route('products.create') }}" class="bg-slate-900 text-white px-6 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-teal-600 transition-all shadow-xl italic no-underline"><i class="fa-solid fa-plus mr-2"></i>{{ __('Nouvel article') }}</a>
-            @endcan
-        </div>
+        <x-page-header :title="__('Catalogue d\'articles')" :subtitle="__('Produits vendables (photo, prix, catégorie)')" icon="fa-box-open" accent="teal">
+            <x-slot name="actions">
+                @can('commerce.C')
+                <a href="{{ route('products.create') }}" class="bg-slate-900 text-white px-6 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-teal-600 transition-all shadow-xl italic no-underline"><i class="fa-solid fa-plus mr-2"></i>{{ __('Nouvel article') }}</a>
+                @endcan
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-10">
