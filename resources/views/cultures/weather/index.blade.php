@@ -29,16 +29,8 @@
 
     <div class="py-10">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 italic font-bold text-left space-y-6">
-            @if(session('success'))
-                <div class="p-5 bg-emerald-500 text-white rounded-[2rem] font-black text-[10px] uppercase tracking-[0.2em] shadow-xl flex items-center italic">
-                    <i class="fa-solid fa-check-double mr-3 text-lg"></i> {{ session('success') }}
-                </div>
-            @endif
-            @if(session('error'))
-                <div class="p-5 bg-rose-500 text-white rounded-[2rem] font-black text-[10px] uppercase tracking-[0.2em] shadow-xl flex items-center italic">
-                    <i class="fa-solid fa-triangle-exclamation mr-3 text-lg"></i> {{ session('error') }}
-                </div>
-            @endif
+            <x-flash />
+
 
             {{-- FILTRES --}}
             <form method="GET" class="flex flex-wrap items-end gap-3 bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm">

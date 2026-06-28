@@ -30,11 +30,7 @@
 
     <div class="py-10">
         <div class="max-w-4xl mx-auto sm:px-6 lg:px-8 italic font-bold text-left space-y-8">
-            @if(session('success'))
-                <div class="p-5 bg-emerald-500 text-white rounded-[2rem] font-black text-[10px] uppercase tracking-[0.2em] shadow-xl flex items-center italic">
-                    <i class="fa-solid fa-check-double mr-3 text-lg"></i> {{ session('success') }}
-                </div>
-            @endif
+            <x-flash />
 
             <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
                 <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">

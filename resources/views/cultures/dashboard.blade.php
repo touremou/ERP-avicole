@@ -41,11 +41,7 @@
             </div>
             @endcan
 
-            @if(session('success'))
-                <div class="p-5 bg-emerald-500 text-white rounded-[2rem] font-black text-[10px] uppercase tracking-[0.2em] shadow-xl flex items-center italic">
-                    <i class="fa-solid fa-check-double mr-3 text-lg"></i> {{ session('success') }}
-                </div>
-            @endif
+            <x-flash />
 
             {{-- ================================================================ --}}
             {{-- TAB 1 — VUE D'ENSEMBLE                                          --}}
