@@ -201,31 +201,83 @@ class CropCycleController extends Controller
         }
 
         $data = $request->validate([
-            'notes' => 'nullable|string|max:500',
+            'completed_at'    => 'nullable|date',
+            'cost'            => 'nullable|numeric|min:0',
+            'quantity'        => 'nullable|numeric|min:0',
+            'unit'            => 'nullable|string|max:20',
+            'notes'           => 'nullable|string|max:500',
+            'record_as_input' => 'nullable|boolean',
         ]);
 
-        CropProtocolCompletion::updateOrCreate(
-            ['crop_cycle_id' => $cropCycle->id, 'crop_protocol_item_id' => $item->id],
-            [
-                'completed_at' => now(),
+        $completedAt = isset($data['completed_at']) ? \Carbon\Carbon::parse($data['completed_at']) : now();
+        $cost = (float) ($data['cost'] ?? 0);
+        $qty  = (float) ($data['quantity'] ?? 0);
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($cropCycle, $item, $request, $data, $completedAt, $cost, $qty) {
+            $completion = CropProtocolCompletion::firstOrNew([
+                'crop_cycle_id'         => $cropCycle->id,
+                'crop_protocol_item_id' => $item->id,
+            ]);
+
+            // Re-validation : on repart d'un état propre côté comptabilité —
+            // l'éventuel intrant déjà rattaché est supprimé puis recréé selon
+            // les nouvelles données (évite tout double comptage).
+            if ($completion->crop_input_id) {
+                CropInput::find($completion->crop_input_id)?->delete();
+                $completion->crop_input_id = null;
+            }
+
+            // Comptabilisation optionnelle de l'étape comme intrant du cycle :
+            // son coût alimente alors la marge (et l'inventaire si l'on étend).
+            $inputType = $item->suggestedInputType();
+            if (($data['record_as_input'] ?? false) && $inputType && ($cost > 0 || $qty > 0)) {
+                $input = $cropCycle->inputs()->create([
+                    'farm_id'         => $cropCycle->farm_id,
+                    'type'            => $inputType,
+                    'name'            => $item->product_suggested ?: $item->action_name,
+                    'quantity'        => $qty,
+                    'unit'            => $data['unit'] ?? 'kg',
+                    'unit_cost'       => $qty > 0 ? round($cost / $qty, 2) : 0,
+                    'total_cost'      => $cost,
+                    'input_date'      => $completedAt->toDateString(),
+                    'notes'           => "Étape itinéraire : {$item->action_name}",
+                    'synced_to_stock' => false,
+                ]);
+                $completion->crop_input_id = $input->id;
+            }
+
+            $completion->fill([
+                'completed_at' => $completedAt,
                 'completed_by' => $request->user()?->id,
                 'notes'        => $data['notes'] ?? null,
-            ]
-        );
+                'cost'         => $cost > 0 ? $cost : null,
+                'quantity'     => $qty > 0 ? $qty : null,
+                'unit'         => $qty > 0 ? ($data['unit'] ?? null) : null,
+            ])->save();
+        });
 
         return back()->with('success', "Étape « {$item->action_name} » validée.");
     }
 
-    /** Annule la validation d'une étape (réouvre le suivi). */
+    /** Annule la validation d'une étape (réouvre le suivi) + retire l'intrant lié. */
     public function uncompleteStep(CropCycle $cropCycle, CropProtocolItem $item)
     {
         if (Gate::denies('cultures.M')) {
             return back()->with('error', 'Action non autorisée.');
         }
 
-        CropProtocolCompletion::where('crop_cycle_id', $cropCycle->id)
+        $completion = CropProtocolCompletion::where('crop_cycle_id', $cropCycle->id)
             ->where('crop_protocol_item_id', $item->id)
-            ->delete();
+            ->first();
+
+        if ($completion) {
+            \Illuminate\Support\Facades\DB::transaction(function () use ($completion) {
+                if ($completion->crop_input_id) {
+                    CropInput::find($completion->crop_input_id)?->delete();
+                }
+                $completion->delete();
+            });
+        }
 
         return back()->with('success', "Validation de l'étape « {$item->action_name} » annulée.");
     }

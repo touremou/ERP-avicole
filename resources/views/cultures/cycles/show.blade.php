@@ -141,7 +141,7 @@
 
             {{-- ITINÉRAIRE TECHNIQUE (si un protocole est rattaché) --}}
             @if($cycle->protocol && !empty($schedule))
-                <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm">
+                <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm" x-data="stepValidation()">
                     <div class="flex items-center justify-between mb-6">
                         <h3 class="text-[10px] font-black uppercase text-green-500 tracking-widest italic">📋 {{ __("Itinéraire technique") }}</h3>
                         <a href="{{ route('crop-protocols.show', $cycle->protocol) }}" class="text-[9px] font-black uppercase text-slate-400 hover:text-green-600 italic no-underline">{{ $cycle->protocol->name }} <i class="fa-solid fa-arrow-up-right-from-square ml-1"></i></a>
@@ -186,37 +186,122 @@
                                     </span>
 
                                     @can('cultures.M')
+                                        @php
+                                            $c = $entry['completion'];
+                                            $openArgs = [
+                                                'name'     => $it->action_name,
+                                                'action'   => route('crop-cycles.steps.complete', [$cycle, $it]),
+                                                'canInput' => (bool) $it->suggestedInputType(),
+                                                'date'     => optional($c?->completed_at)->format('Y-m-d') ?: now()->format('Y-m-d'),
+                                                'cost'     => $c?->cost ? (float) $c->cost : '',
+                                                'qty'      => $c?->quantity ? (float) $c->quantity : '',
+                                                'unit'     => $c?->unit ?: '',
+                                                'notes'    => $c?->notes ?: '',
+                                                'asInput'  => (bool) $c?->crop_input_id,
+                                            ];
+                                        @endphp
                                         @if($entry['status'] === 'done')
-                                            {{-- Validée : auteur/horodatage si validation explicite, + annulation --}}
-                                            @if($entry['completion'])
+                                            @if($c)
                                                 <span class="text-[7px] font-bold text-slate-400 italic text-right">
-                                                    {{ $entry['completion']->completed_at?->format('d/m/Y') }}@if($entry['completion']->completedBy) · {{ $entry['completion']->completedBy->name }}@endif
+                                                    {{ $c->completed_at?->format('d/m/Y') }}@if($c->completedBy) · {{ $c->completedBy->name }}@endif
                                                 </span>
-                                                <form method="POST" action="{{ route('crop-cycles.steps.uncomplete', [$cycle, $it]) }}" onsubmit="return confirm('Annuler la validation de cette étape ?');">
-                                                    @csrf @method('DELETE')
-                                                    <button type="submit" class="text-[8px] font-black uppercase text-slate-400 hover:text-rose-600 italic">{{ __("Annuler") }}</button>
-                                                </form>
+                                                @if($c->cost || $c->quantity)
+                                                    <span class="text-[8px] font-black text-slate-500 italic text-right">
+                                                        @if($c->quantity){{ rtrim(rtrim(number_format((float) $c->quantity, 2, '.', ''), '0'), '.') }} {{ $c->unit }}@endif
+                                                        @if($c->cost) · {{ number_format((float) $c->cost, 0, ',', ' ') }} {{ $currency }}@endif
+                                                        @if($c->crop_input_id) <i class="fa-solid fa-coins text-amber-500" title="Comptabilisé comme intrant"></i>@endif
+                                                    </span>
+                                                @endif
+                                                <div class="flex items-center gap-2">
+                                                    <button type="button" @click='openStep(@json($openArgs))' class="text-[8px] font-black uppercase text-slate-400 hover:text-green-600 italic">{{ __("Modifier") }}</button>
+                                                    <form method="POST" action="{{ route('crop-cycles.steps.uncomplete', [$cycle, $it]) }}" onsubmit="return confirm('Annuler la validation de cette étape ?');">
+                                                        @csrf @method('DELETE')
+                                                        <button type="submit" class="text-[8px] font-black uppercase text-slate-400 hover:text-rose-600 italic">{{ __("Annuler") }}</button>
+                                                    </form>
+                                                </div>
                                             @else
-                                                {{-- Déduite d'un intrant/récolte : on peut figer la validation explicitement --}}
-                                                <form method="POST" action="{{ route('crop-cycles.steps.complete', [$cycle, $it]) }}">
-                                                    @csrf
-                                                    <button type="submit" class="text-[8px] font-black uppercase text-slate-400 hover:text-green-600 italic">{{ __("Confirmer") }}</button>
-                                                </form>
+                                                {{-- Déduite d'un intrant/récolte : figer la validation (avec données) --}}
+                                                <button type="button" @click='openStep(@json($openArgs))' class="text-[8px] font-black uppercase text-slate-400 hover:text-green-600 italic">{{ __("Renseigner") }}</button>
                                             @endif
                                         @else
-                                            <form method="POST" action="{{ route('crop-cycles.steps.complete', [$cycle, $it]) }}">
-                                                @csrf
-                                                <button type="submit" class="text-[8px] font-black uppercase text-white bg-green-600 hover:bg-green-700 px-2.5 py-1 rounded-full italic flex items-center gap-1">
-                                                    <i class="fa-solid fa-check"></i> {{ __("Valider") }}
-                                                </button>
-                                            </form>
+                                            <button type="button" @click='openStep(@json($openArgs))' class="text-[8px] font-black uppercase text-white bg-green-600 hover:bg-green-700 px-2.5 py-1 rounded-full italic flex items-center gap-1">
+                                                <i class="fa-solid fa-check"></i> {{ __("Valider") }}
+                                            </button>
                                         @endif
                                     @endcan
                                 </div>
                             </div>
                         @endforeach
                     </div>
+
+                    {{-- MODALE : validation d'étape + collecte des données réelles --}}
+                    <div x-show="open" x-cloak style="display:none"
+                         class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4"
+                         @keydown.escape.window="open = false">
+                        <div @click.outside="open = false" class="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-md p-8 text-left" x-transition>
+                            <div class="flex items-center justify-between mb-5">
+                                <h3 class="text-[11px] font-black uppercase text-slate-800 italic tracking-tight" x-text="'Valider : ' + step.name"></h3>
+                                <button type="button" @click="open = false" class="text-slate-300 hover:text-slate-700"><i class="fa-solid fa-xmark"></i></button>
+                            </div>
+                            <form :action="step.action" method="POST" class="space-y-4">
+                                @csrf
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div class="col-span-2">
+                                        <label class="block text-[9px] font-black text-slate-400 uppercase ml-1 mb-1 italic">{{ __("Date réalisée") }}</label>
+                                        <input type="date" name="completed_at" x-model="step.date" class="w-full bg-slate-50 border-none rounded-2xl p-3 font-black text-slate-800 shadow-inner italic text-[11px]">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[9px] font-black text-slate-400 uppercase ml-1 mb-1 italic">{{ __("Coût") }} ({{ $currency }})</label>
+                                        <input type="number" step="1" min="0" name="cost" x-model="step.cost" class="w-full bg-slate-50 border-none rounded-2xl p-3 font-black text-slate-800 shadow-inner italic text-[11px] text-right">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[9px] font-black text-slate-400 uppercase ml-1 mb-1 italic">{{ __("Quantité") }}</label>
+                                        <div class="flex gap-2">
+                                            <input type="number" step="0.001" min="0" name="quantity" x-model="step.qty" class="w-2/3 bg-slate-50 border-none rounded-2xl p-3 font-black text-slate-800 shadow-inner italic text-[11px] text-right">
+                                            <input type="text" name="unit" x-model="step.unit" placeholder="kg" class="w-1/3 bg-slate-50 border-none rounded-2xl p-3 font-black text-slate-800 shadow-inner italic text-[11px] text-center">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <template x-if="step.canInput">
+                                    <label class="flex items-center gap-3 bg-amber-50 rounded-2xl p-3 cursor-pointer">
+                                        <input type="checkbox" name="record_as_input" value="1" x-model="step.asInput" class="rounded">
+                                        <span class="text-[9px] font-black text-amber-700 uppercase italic leading-tight">{{ __("Comptabiliser comme intrant du cycle (coût intégré à la marge)") }}</span>
+                                    </label>
+                                </template>
+
+                                <div>
+                                    <label class="block text-[9px] font-black text-slate-400 uppercase ml-1 mb-1 italic">{{ __("Notes") }}</label>
+                                    <textarea name="notes" rows="2" x-model="step.notes" class="w-full bg-slate-50 border-none rounded-2xl p-3 font-bold text-slate-700 shadow-inner italic text-[11px]"></textarea>
+                                </div>
+
+                                <div class="flex justify-end gap-3 pt-2">
+                                    <button type="button" @click="open = false" class="text-[9px] font-black uppercase text-slate-400 italic">{{ __("Annuler") }}</button>
+                                    <button type="submit" class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-2xl font-black uppercase italic text-[10px] tracking-widest shadow-lg">
+                                        <i class="fa-solid fa-check mr-1"></i> {{ __("Valider l'étape") }}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
                 </div>
+
+                <script>
+                    function stepValidation() {
+                        return {
+                            open: false,
+                            step: { name: '', action: '', canInput: false, date: '', cost: '', qty: '', unit: '', notes: '', asInput: false },
+                            openStep(args) {
+                                this.step = {
+                                    name: args.name, action: args.action, canInput: !!args.canInput,
+                                    date: args.date || '', cost: args.cost ?? '', qty: args.qty ?? '',
+                                    unit: args.unit || '', notes: args.notes || '', asInput: !!args.asInput,
+                                };
+                                this.open = true;
+                            },
+                        };
+                    }
+                </script>
             @endif
 
             {{-- INDICATEURS --}}

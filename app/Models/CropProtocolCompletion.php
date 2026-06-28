@@ -19,11 +19,19 @@ class CropProtocolCompletion extends Model
     protected $fillable = [
         'farm_id', 'crop_cycle_id', 'crop_protocol_item_id',
         'completed_at', 'completed_by', 'notes',
+        'cost', 'quantity', 'unit', 'crop_input_id',
     ];
 
     protected $casts = [
         'completed_at' => 'datetime',
+        'cost'         => 'decimal:2',
+        'quantity'     => 'decimal:3',
     ];
+
+    public function cropInput(): BelongsTo
+    {
+        return $this->belongsTo(CropInput::class, 'crop_input_id');
+    }
 
     public function cycle(): BelongsTo
     {

@@ -237,3 +237,80 @@ test('on ne peut pas valider une étape étrangère à l\'itinéraire du cycle',
 
     $this->assertDatabaseMissing('crop_protocol_completions', ['crop_protocol_item_id' => $alien->id]);
 });
+
+test('valider une étape collecte coût / quantité / notes sur la complétion', function () {
+    $protocol = CropProtocol::create(['name' => 'Proto data', 'crop_name' => 'Maïs']);
+    $item = $protocol->items()->create(['day_number' => 15, 'action_name' => 'Sarclage', 'type' => 'sarclage']);
+    $cycle = protocolCycle($this->farm->id, $protocol->id, now()->subDays(20)->toDateString());
+
+    $this->actingAs($this->managerUser)
+        ->post(route('crop-cycles.steps.complete', [$cycle, $item]), [
+            'completed_at' => now()->subDays(2)->toDateString(),
+            'cost' => 50000, 'quantity' => 3, 'unit' => 'jour-homme', 'notes' => 'Équipe de 3',
+        ])->assertRedirect();
+
+    $c = \App\Models\CropProtocolCompletion::where('crop_cycle_id', $cycle->id)
+        ->where('crop_protocol_item_id', $item->id)->first();
+
+    expect((float) $c->cost)->toBe(50000.0)
+        ->and((float) $c->quantity)->toBe(3.0)
+        ->and($c->unit)->toBe('jour-homme')
+        ->and($c->crop_input_id)->toBeNull(); // pas comptabilisé comme intrant
+});
+
+test('valider une étape « comptabiliser comme intrant » alimente la marge du cycle', function () {
+    $protocol = CropProtocol::create(['name' => 'Proto intrant', 'crop_name' => 'Maïs']);
+    $item = $protocol->items()->create([
+        'day_number' => 30, 'action_name' => 'Apport urée', 'type' => 'fertilisation',
+        'product_suggested' => 'Urée 46%',
+    ]);
+    $cycle = protocolCycle($this->farm->id, $protocol->id, now()->subDays(40)->toDateString());
+
+    $this->actingAs($this->managerUser)
+        ->post(route('crop-cycles.steps.complete', [$cycle, $item]), [
+            'cost' => 80000, 'quantity' => 100, 'unit' => 'kg', 'record_as_input' => 1,
+        ])->assertRedirect();
+
+    $c = \App\Models\CropProtocolCompletion::where('crop_cycle_id', $cycle->id)->first();
+    expect($c->crop_input_id)->not->toBeNull();
+
+    $input = \App\Models\CropInput::find($c->crop_input_id);
+    expect($input->type)->toBe('engrais')              // fertilisation → engrais
+        ->and($input->name)->toBe('Urée 46%')          // product_suggested
+        ->and((float) $input->total_cost)->toBe(80000.0)
+        ->and((float) $input->unit_cost)->toBe(800.0)  // 80 000 / 100
+        ->and((float) $cycle->fresh()->inputs_cost)->toBe(80000.0); // coût dans la marge
+});
+
+test('annuler une étape comptabilisée retire l\'intrant créé (marge restaurée)', function () {
+    $protocol = CropProtocol::create(['name' => 'Proto annul intrant', 'crop_name' => 'Maïs']);
+    $item = $protocol->items()->create(['day_number' => 30, 'action_name' => 'Traitement', 'type' => 'traitement']);
+    $cycle = protocolCycle($this->farm->id, $protocol->id, now()->subDays(40)->toDateString());
+
+    $this->actingAs($this->managerUser)->post(route('crop-cycles.steps.complete', [$cycle, $item]), [
+        'cost' => 30000, 'record_as_input' => 1,
+    ]);
+    expect((float) $cycle->fresh()->inputs_cost)->toBe(30000.0);
+
+    $this->actingAs($this->managerUser)->delete(route('crop-cycles.steps.uncomplete', [$cycle, $item]))->assertRedirect();
+
+    expect((float) $cycle->fresh()->inputs_cost)->toBe(0.0)                                  // intrant retiré
+        ->and(\App\Models\CropProtocolCompletion::where('crop_cycle_id', $cycle->id)->exists())->toBeFalse();
+});
+
+test('re-valider une étape ne double pas l\'intrant comptabilisé', function () {
+    $protocol = CropProtocol::create(['name' => 'Proto redo', 'crop_name' => 'Maïs']);
+    $item = $protocol->items()->create(['day_number' => 30, 'action_name' => 'Apport NPK', 'type' => 'fertilisation']);
+    $cycle = protocolCycle($this->farm->id, $protocol->id, now()->subDays(40)->toDateString());
+
+    $this->actingAs($this->managerUser)->post(route('crop-cycles.steps.complete', [$cycle, $item]), [
+        'cost' => 40000, 'record_as_input' => 1,
+    ]);
+    // Correction : coût revu à 25 000.
+    $this->actingAs($this->managerUser)->post(route('crop-cycles.steps.complete', [$cycle, $item]), [
+        'cost' => 25000, 'record_as_input' => 1,
+    ]);
+
+    expect(\App\Models\CropInput::where('crop_cycle_id', $cycle->id)->count())->toBe(1)
+        ->and((float) $cycle->fresh()->inputs_cost)->toBe(25000.0); // remplacé, pas cumulé
+});
