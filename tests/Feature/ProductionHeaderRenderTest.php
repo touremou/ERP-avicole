@@ -26,3 +26,21 @@ test('la collecte de lait se rend avec l\'en-tête standardisé (accent cyan)', 
         ->assertSee('Collecte de lait')
         ->assertSee('bg-cyan-600', false); // identité visuelle du module lait
 });
+
+test('les dashboards production se rendent avec en-tête standardisé et accent propre', function () {
+    $cases = [
+        ['slaughter.dashboard',       'Abattoir',             'bg-rose-600'],
+        ['provenderie.dashboard',     'Pilotage Provenderie', 'bg-amber-600'],
+        ['cultures.dashboard',        'Production Végétale',  'bg-green-600'],
+        ['crop-cycles.index',         'Cycles de Culture',    'bg-green-600'],
+        ['production.index',          'Journal de Production','bg-amber-600'],
+    ];
+
+    foreach ($cases as [$route, $title, $accentClass]) {
+        $this->actingAs($this->adminUser)
+            ->get(route($route))
+            ->assertOk()
+            ->assertSee($title)
+            ->assertSee($accentClass, false);
+    }
+});

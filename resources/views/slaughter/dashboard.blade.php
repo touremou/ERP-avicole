@@ -1,16 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 text-left">
-            <div class="flex items-center gap-5">
-                <div class="w-14 h-14 bg-rose-500 rounded-[1.5rem] flex items-center justify-center text-white shadow-2xl rotate-3">
-                    <i class="fa-solid fa-industry text-xl"></i>
-                </div>
-                <div>
-                    <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">{{ __("Abattoir") }}</h2>
-                    <p class="text-[10px] font-black text-rose-600 uppercase tracking-[0.2em] mt-2 italic">{{ __("Abattage, Découpe & Transformation") }}</p>
-                </div>
-            </div>
-            <div class="flex gap-3">
+        <x-page-header :title="__('Abattoir')" :subtitle="__('Abattage, Découpe & Transformation')" icon="fa-industry" accent="rose">
+            <x-slot name="actions">
                 @can('abattoir.C')
                 <a href="{{ route('slaughter.orders.create') }}" class="bg-slate-900 text-white px-6 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-rose-600 transition-all shadow-xl italic no-underline flex items-center gap-2">
                     <i class="fa-solid fa-plus"></i> {{ __("Nouvel Ordre") }}
@@ -19,8 +10,8 @@
                     <i class="fa-solid fa-fire"></i> {{ __("Transformation") }}
                 </a>
                 @endcan
-            </div>
-        </div>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-10">

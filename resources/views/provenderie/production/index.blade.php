@@ -1,24 +1,10 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex flex-col md:flex-row justify-between items-center gap-6">
-            <div class="flex items-center gap-4 text-left">
-                <div class="w-14 h-14 bg-emerald-500 rounded-[1.5rem] flex items-center justify-center text-white shadow-2xl rotate-3">
-                    <i class="fa-solid fa-industry text-xl"></i>
-                </div>
-                <div>
-                    <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">
-                        {{ __("Journal de Production") }}
-                    </h2>
-                    <p class="text-[10px] font-bold text-emerald-600 uppercase tracking-[0.3em] mt-2 italic leading-none">
-                        {{ __("Provenderie • Historique & Ordres de Production") }}
-                    </p>
-                </div>
-            </div>
-
-            <div class="flex gap-4">
+        <x-page-header :title="__('Journal de Production')" :subtitle="__('Provenderie • Historique & Ordres de Production')" icon="fa-industry" accent="amber">
+            <x-slot name="actions">
                 {{-- Permission L : Accès au parc machines --}}
                 @can('provenderie.L')
-                <a href="{{ route('machines.index') }}" 
+                <a href="{{ route('machines.index') }}"
                     class="bg-slate-50 text-slate-600 border border-slate-200 px-8 py-4 rounded-[2rem] text-[10px] font-black uppercase italic tracking-widest shadow-sm hover:bg-slate-100 transition-all active:scale-95">
                     <i class="fa-solid fa-gears mr-2"></i> {{ __("Parc Machines") }}
                 </a>
@@ -26,13 +12,13 @@
 
                 {{-- Permission C : Création d'un nouvel ordre --}}
                 @can('provenderie.C')
-                <a href="{{ route('production.create') }}" 
-                    class="bg-slate-900 text-white px-8 py-4 rounded-[2rem] text-[10px] font-black uppercase italic tracking-widest shadow-2xl hover:bg-emerald-500 transition-all active:scale-95">
-                    <i class="fa-solid fa-plus mr-2 text-emerald-400"></i> {{ __("Nouvel Ordre (OP)") }}
+                <a href="{{ route('production.create') }}"
+                    class="bg-slate-900 text-white px-8 py-4 rounded-[2rem] text-[10px] font-black uppercase italic tracking-widest shadow-2xl hover:bg-amber-500 transition-all active:scale-95">
+                    <i class="fa-solid fa-plus mr-2 text-amber-400"></i> {{ __("Nouvel Ordre (OP)") }}
                 </a>
                 @endcan
-            </div>
-        </div>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-12">
