@@ -55,6 +55,34 @@ if (! function_exists('money')) {
     }
 }
 
+if (! function_exists('cash_round')) {
+    /**
+     * Arrondi monétaire à la coupure de caisse paramétrée (ventes.cash_rounding).
+     *
+     * En Guinée, certaines coupures ne circulent plus : on ne peut pas rendre
+     * la monnaie au franc près. On arrondit donc le total payable à la coupure
+     * la plus proche (0 = pas d'arrondi, 100, 500, 1000, 2000 GNF…), à la manière
+     * de l'arrondi suédois. Le client règle alors un montant « rond », sans
+     * dette fantôme ni écart entre la vente et l'encaissement.
+     *
+     *   cash_round(55100) avec step=1000 → 55000
+     *   cash_round(55600) avec step=1000 → 56000
+     *   cash_round(55100) avec step=0    → 55100 (désactivé)
+     *
+     * @param  float|int  $amount  Montant brut.
+     * @param  int|null   $step    Coupure forcée (sinon lue dans les réglages).
+     */
+    function cash_round($amount, ?int $step = null): float
+    {
+        $step = $step ?? (int) setting('ventes.cash_rounding', 0);
+        if ($step <= 0) {
+            return round((float) $amount, 2);
+        }
+
+        return round((float) $amount / $step) * $step;
+    }
+}
+
 if (! function_exists('media_url')) {
     /**
      * URL d'un fichier stocké sur le disque "public" (logos, photos, etc.).

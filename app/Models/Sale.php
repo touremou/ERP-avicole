@@ -21,7 +21,7 @@ class Sale extends Model
         'reference', 'client_id', 'user_id', 'sale_date',
         'type', 'status',
         'subtotal', 'discount_type', 'discount_value', 'discount_amount',
-        'tax_rate', 'tax_amount', 'total_amount',
+        'tax_rate', 'tax_amount', 'total_amount', 'rounding_adjustment',
         'paid_amount', 'payment_status',
         'delivery_mode', 'delivery_address', 'delivery_notes', 'delivery_fee',
         'notes', 'validated_at', 'delivered_at',
@@ -35,6 +35,7 @@ class Sale extends Model
         'tax_rate'     => 'decimal:2',
         'tax_amount'   => 'decimal:2',
         'total_amount' => 'decimal:2',
+        'rounding_adjustment' => 'decimal:2',
         'delivery_fee' => 'decimal:2',
         'paid_amount'  => 'decimal:2',
         'validated_at' => 'datetime',
@@ -140,11 +141,20 @@ class Sale extends Model
 
         $deliveryFee = max(0, (float) $this->delivery_fee);
 
+        // Total brut marchandise (avant arrondi de caisse).
+        $rawTotal = round($net + $taxAmount + $deliveryFee, 2);
+
+        // Arrondi à la coupure de caisse disponible (cf. cash_round). En Guinée,
+        // un total de 55 100 sur des coupures de 1 000 devient 55 000 payable :
+        // plus d'écart ni de dette fantôme entre la vente et l'encaissement.
+        $total = cash_round($rawTotal);
+
         $this->update([
-            'subtotal'        => $subtotal,
-            'discount_amount' => $discount,
-            'tax_amount'      => $taxAmount,
-            'total_amount'    => round($net + $taxAmount + $deliveryFee, 2),
+            'subtotal'            => $subtotal,
+            'discount_amount'     => $discount,
+            'tax_amount'          => $taxAmount,
+            'total_amount'        => $total,
+            'rounding_adjustment' => round($total - $rawTotal, 2),
         ]);
     }
 

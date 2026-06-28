@@ -118,6 +118,11 @@ class PosController extends Controller
             return back()->with('error', 'Aucun article vendable dans le panier.');
         }
 
+        // Arrondi de caisse : on encaisse le montant réellement payable (coupures
+        // disponibles en GNF), aligné sur le total arrondi de la vente — pas
+        // d'écart entre le ticket et la trésorerie. Désactivé si réglage = 0.
+        $total = cash_round($total);
+
         $clientId = $data['client_id'] ?? $this->walkInClient()->id;
 
         $sale = DB::transaction(function () use ($create, $validate, $clientId, $items, $total, $data) {
