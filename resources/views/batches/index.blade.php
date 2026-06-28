@@ -1,16 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div>
-                <h2 class="text-3xl font-black text-slate-800 tracking-tighter uppercase italic leading-none">
-                    {{ __("Suivi des Bandes") }}
-                </h2>
-                <p class="text-slate-400 text-[10px] font-black uppercase tracking-widest mt-2 italic">
-                    <i class="fas fa-microchip mr-1 text-blue-500"></i> {{ __("Gestion des cycles de production en cours") }}
-                </p>
-            </div>
-            
-            <div class="flex items-center gap-3">
+        <x-page-header :title="__('Suivi des Bandes')" :subtitle="__('Gestion des cycles de production en cours')" icon="fa-microchip" accent="indigo">
+            <x-slot name="actions">
                 {{-- PERMISSION L : ACCÈS AUX ARCHIVES ET NORMES --}}
                 @can('elevage.L')
                 <a href="{{ route('daily-checks.index') }}" class="bg-white text-slate-600 border border-slate-200 px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-50 transition-all shadow-sm flex items-center italic">
@@ -34,8 +25,8 @@
                     {{ __("Nouvel Arrivage") }}
                 </a>
                 @endcan
-            </div>
-        </div>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-12 italic" >

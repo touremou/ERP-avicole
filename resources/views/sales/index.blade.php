@@ -1,18 +1,9 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 text-left">
-            <div class="flex items-center gap-5">
-                <div class="w-14 h-14 bg-teal-500 rounded-[1.5rem] flex items-center justify-center text-white shadow-2xl rotate-3">
-                    <i class="fa-solid fa-file-invoice text-xl"></i>
-                </div>
-                <div>
-                    <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">{{ __("Registre des Ventes") }}</h2>
-                    <p class="text-[10px] font-black text-teal-600 uppercase tracking-[0.2em] mt-2 italic">
-                        {{ $stats['today_count'] }} {{ __("vente(s) aujourd'hui") }} — {{ number_format($stats['today_total'], 0, ',', ' ') }} {{ currency() }}
-                    </p>
-                </div>
-            </div>
-            <div class="flex gap-4">
+        <x-page-header :title="__('Registre des Ventes')"
+                       :subtitle="$stats['today_count'] . ' ' . __('vente(s) aujourd\'hui') . ' — ' . number_format($stats['today_total'], 0, ',', ' ') . ' ' . currency()"
+                       icon="fa-file-invoice" accent="teal">
+            <x-slot name="actions">
                 <div class="bg-white px-5 py-3 rounded-[1.5rem] border border-slate-100 text-right shadow-sm">
                     <p class="text-[8px] font-black text-rose-400 uppercase italic mb-1">{{ __("Impayés") }}</p>
                     <p class="text-sm font-black text-slate-900">{{ number_format($stats['unpaid_total'], 0, ',', ' ') }} <small class="text-[8px] opacity-40">{{ currency() }}</small></p>
@@ -33,8 +24,8 @@
                     <i class="fa-solid fa-plus"></i> {{ __("Nouvelle Vente") }}
                 </a>
                 @endcan
-            </div>
-        </div>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-10">

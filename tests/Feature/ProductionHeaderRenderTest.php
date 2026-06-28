@@ -62,7 +62,20 @@ test('les écrans transverses migrés vers <x-flash> se rendent sans erreur', fu
         'sales.index', 'clients.index', 'expenses.index', 'payments.index',
         'stocks.index', 'products.index', 'purchases.index', 'treasury.index',
         'dispatches.index', 'users.index', 'settings.index', 'tasks.index',
+        'batches.index',
     ] as $route) {
         $this->actingAs($this->adminUser)->get(route($route))->assertOk();
+    }
+});
+
+test('les en-têtes hors-production migrés affichent leur accent propre', function () {
+    $cases = [
+        ['sales.index',   'Registre des Ventes', 'bg-teal-600'],
+        ['stocks.index',  'Inventaire Global',   'bg-orange-500'],
+        ['batches.index', 'Suivi des Bandes',    'bg-indigo-600'],
+    ];
+    foreach ($cases as [$route, $title, $accentClass]) {
+        $this->actingAs($this->adminUser)->get(route($route))
+            ->assertOk()->assertSee($title)->assertSee($accentClass, false);
     }
 });
