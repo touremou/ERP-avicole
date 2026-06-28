@@ -314,3 +314,84 @@ test('re-valider une étape ne double pas l\'intrant comptabilisé', function ()
     expect(\App\Models\CropInput::where('crop_cycle_id', $cycle->id)->count())->toBe(1)
         ->and((float) $cycle->fresh()->inputs_cost)->toBe(25000.0); // remplacé, pas cumulé
 });
+
+test('valider une étape en déstockant un intrant décrémente le stock et valorise le coût', function () {
+    $stock = \App\Models\Stock::create([
+        'category' => \App\Models\Stock::CAT_INTRANTS, 'item_name' => 'Urée 46%', 'unit' => 'kg',
+        'current_quantity' => 200, 'unit_price' => 900, 'last_unit_price' => 900, 'alert_threshold' => 0,
+    ]);
+    $protocol = CropProtocol::create(['name' => 'Proto conso', 'crop_name' => 'Maïs']);
+    $item = $protocol->items()->create(['day_number' => 30, 'action_name' => 'Apport urée', 'type' => 'fertilisation']);
+    $cycle = protocolCycle($this->farm->id, $protocol->id, now()->subDays(40)->toDateString());
+
+    // 50 kg consommés, sans coût saisi → valorisé au prix du stock (50 × 900).
+    $this->actingAs($this->managerUser)
+        ->post(route('crop-cycles.steps.complete', [$cycle, $item]), [
+            'quantity' => 50, 'consume_stock_id' => $stock->id,
+        ])->assertRedirect();
+
+    expect((float) $stock->fresh()->current_quantity)->toBe(150.0)        // 200 − 50 déstocké
+        ->and((float) $cycle->fresh()->inputs_cost)->toBe(45000.0);       // 50 × 900 → marge
+
+    $c = \App\Models\CropProtocolCompletion::where('crop_cycle_id', $cycle->id)->first();
+    expect($c->consumed_stock_id)->toBe($stock->id);
+});
+
+test('annuler une étape ayant déstocké restitue la quantité au stock', function () {
+    $stock = \App\Models\Stock::create([
+        'category' => \App\Models\Stock::CAT_INTRANTS, 'item_name' => 'NPK', 'unit' => 'kg',
+        'current_quantity' => 100, 'unit_price' => 1000, 'last_unit_price' => 1000, 'alert_threshold' => 0,
+    ]);
+    $protocol = CropProtocol::create(['name' => 'Proto restitue', 'crop_name' => 'Maïs']);
+    $item = $protocol->items()->create(['day_number' => 10, 'action_name' => 'NPK fond', 'type' => 'fertilisation']);
+    $cycle = protocolCycle($this->farm->id, $protocol->id, now()->subDays(20)->toDateString());
+
+    $this->actingAs($this->managerUser)->post(route('crop-cycles.steps.complete', [$cycle, $item]), [
+        'quantity' => 30, 'consume_stock_id' => $stock->id,
+    ]);
+    expect((float) $stock->fresh()->current_quantity)->toBe(70.0);
+
+    $this->actingAs($this->managerUser)->delete(route('crop-cycles.steps.uncomplete', [$cycle, $item]))->assertRedirect();
+
+    expect((float) $stock->fresh()->current_quantity)->toBe(100.0)        // restitué
+        ->and((float) $cycle->fresh()->inputs_cost)->toBe(0.0);
+});
+
+test('re-valider en changeant la quantité consommée ne déséquilibre pas le stock', function () {
+    $stock = \App\Models\Stock::create([
+        'category' => \App\Models\Stock::CAT_INTRANTS, 'item_name' => 'Compost', 'unit' => 'kg',
+        'current_quantity' => 100, 'unit_price' => 500, 'last_unit_price' => 500, 'alert_threshold' => 0,
+    ]);
+    $protocol = CropProtocol::create(['name' => 'Proto requantite', 'crop_name' => 'Maïs']);
+    $item = $protocol->items()->create(['day_number' => 5, 'action_name' => 'Compost', 'type' => 'fertilisation']);
+    $cycle = protocolCycle($this->farm->id, $protocol->id, now()->subDays(10)->toDateString());
+
+    $this->actingAs($this->managerUser)->post(route('crop-cycles.steps.complete', [$cycle, $item]), [
+        'quantity' => 40, 'consume_stock_id' => $stock->id,
+    ]);
+    // Correction 40 → 25 : restitution des 40, puis sortie de 25.
+    $this->actingAs($this->managerUser)->post(route('crop-cycles.steps.complete', [$cycle, $item]), [
+        'quantity' => 25, 'consume_stock_id' => $stock->id,
+    ]);
+
+    expect((float) $stock->fresh()->current_quantity)->toBe(75.0)         // 100 − 25 (pas −65)
+        ->and(\App\Models\CropInput::where('crop_cycle_id', $cycle->id)->count())->toBe(1);
+});
+
+test('on ne peut pas consommer plus que le stock disponible', function () {
+    $stock = \App\Models\Stock::create([
+        'category' => \App\Models\Stock::CAT_INTRANTS, 'item_name' => 'Semence', 'unit' => 'kg',
+        'current_quantity' => 10, 'unit_price' => 2000, 'last_unit_price' => 2000, 'alert_threshold' => 0,
+    ]);
+    $protocol = CropProtocol::create(['name' => 'Proto rupture', 'crop_name' => 'Maïs']);
+    $item = $protocol->items()->create(['day_number' => 0, 'action_name' => 'Semis', 'type' => 'semis']);
+    $cycle = protocolCycle($this->farm->id, $protocol->id, now()->subDays(2)->toDateString());
+
+    $this->actingAs($this->managerUser)
+        ->post(route('crop-cycles.steps.complete', [$cycle, $item]), [
+            'quantity' => 50, 'consume_stock_id' => $stock->id,
+        ])->assertSessionHas('error');
+
+    expect((float) $stock->fresh()->current_quantity)->toBe(10.0)         // intact
+        ->and(\App\Models\CropProtocolCompletion::where('crop_cycle_id', $cycle->id)->exists())->toBeFalse();
+});

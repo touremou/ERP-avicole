@@ -15,6 +15,8 @@ use App\Models\Employee;
 use App\Models\Harvest;
 use App\Models\Plot;
 use App\Models\Provider;
+use App\Models\Stock;
+use App\Services\StockIntegrationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 
@@ -180,6 +182,9 @@ class CropCycleController extends Controller
             'inputTypes' => CropInput::TYPES,
             'employees'  => Employee::where('status', 'Actif')->orderBy('first_name')->get(['id', 'first_name', 'last_name']),
             'providers'  => Provider::orderBy('name')->get(['id', 'name']),
+            // Intrants en stock proposables au déstockage depuis une étape.
+            'intrantStocks' => Stock::where('category', Stock::CAT_INTRANTS)
+                ->orderBy('item_name')->get(['id', 'item_name', 'unit', 'current_quantity']),
         ]);
     }
 
@@ -201,47 +206,82 @@ class CropCycleController extends Controller
         }
 
         $data = $request->validate([
-            'completed_at'    => 'nullable|date',
-            'cost'            => 'nullable|numeric|min:0',
-            'quantity'        => 'nullable|numeric|min:0',
-            'unit'            => 'nullable|string|max:20',
-            'notes'           => 'nullable|string|max:500',
-            'record_as_input' => 'nullable|boolean',
+            'completed_at'      => 'nullable|date',
+            'cost'              => 'nullable|numeric|min:0',
+            'quantity'          => 'nullable|numeric|min:0',
+            'unit'              => 'nullable|string|max:20',
+            'notes'             => 'nullable|string|max:500',
+            'record_as_input'   => 'nullable|boolean',
+            'consume_stock_id'  => 'nullable|exists:stocks,id',
         ]);
 
         $completedAt = isset($data['completed_at']) ? \Carbon\Carbon::parse($data['completed_at']) : now();
-        $cost = (float) ($data['cost'] ?? 0);
         $qty  = (float) ($data['quantity'] ?? 0);
 
-        \Illuminate\Support\Facades\DB::transaction(function () use ($cropCycle, $item, $request, $data, $completedAt, $cost, $qty) {
+        // Déstockage optionnel d'un intrant existant (consommation).
+        $consumeStock = null;
+        if (! empty($data['consume_stock_id'])) {
+            $consumeStock = Stock::where('id', $data['consume_stock_id'])
+                ->where('category', Stock::CAT_INTRANTS)->first();
+            if (! $consumeStock) {
+                return back()->with('error', 'Stock d\'intrant à déduire introuvable.');
+            }
+            if ($qty <= 0) {
+                return back()->with('error', 'Indiquez la quantité à déduire du stock.');
+            }
+            if ($qty > (float) $consumeStock->current_quantity) {
+                return back()->with('error', "Stock insuffisant pour « {$consumeStock->item_name} » (disponible : {$consumeStock->current_quantity} {$consumeStock->unit}).");
+            }
+        }
+
+        // Coût : valeur saisie, ou — en cas de déstockage — valorisé au prix
+        // unitaire du stock consommé (coût moyen pondéré).
+        $cost = (float) ($data['cost'] ?? 0);
+        if ($cost <= 0 && $consumeStock) {
+            $cost = round($qty * (float) ($consumeStock->last_unit_price ?? $consumeStock->unit_price ?? 0), 2);
+        }
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($cropCycle, $item, $request, $data, $completedAt, $cost, $qty, $consumeStock) {
             $completion = CropProtocolCompletion::firstOrNew([
                 'crop_cycle_id'         => $cropCycle->id,
                 'crop_protocol_item_id' => $item->id,
             ]);
 
-            // Re-validation : on repart d'un état propre côté comptabilité —
-            // l'éventuel intrant déjà rattaché est supprimé puis recréé selon
-            // les nouvelles données (évite tout double comptage).
+            // Re-validation : on repart d'un état propre — l'intrant rattaché est
+            // supprimé et la consommation précédente est RESTITUÉE au stock,
+            // avant de réappliquer selon les nouvelles données (anti double-comptage).
             if ($completion->crop_input_id) {
                 CropInput::find($completion->crop_input_id)?->delete();
                 $completion->crop_input_id = null;
             }
+            $this->restoreConsumedStock($completion);
+            $completion->consumed_stock_id = null;
 
-            // Comptabilisation optionnelle de l'étape comme intrant du cycle :
-            // son coût alimente alors la marge (et l'inventaire si l'on étend).
+            // Le déstockage implique la comptabilisation (la consommation est une charge).
+            $recordAsInput = (bool) ($data['record_as_input'] ?? false) || $consumeStock !== null;
             $inputType = $item->suggestedInputType();
-            if (($data['record_as_input'] ?? false) && $inputType && ($cost > 0 || $qty > 0)) {
+
+            // Déstockage de l'intrant consommé (sortie de stock).
+            if ($consumeStock) {
+                StockIntegrationService::syncMovement(
+                    $consumeStock->item_name, $consumeStock->category, $qty, 'out',
+                    "Itinéraire {$cropCycle->code} — étape « {$item->action_name} »", $consumeStock->unit
+                );
+                $completion->consumed_stock_id = $consumeStock->id;
+            }
+
+            if ($recordAsInput && $inputType && ($cost > 0 || $qty > 0)) {
                 $input = $cropCycle->inputs()->create([
                     'farm_id'         => $cropCycle->farm_id,
                     'type'            => $inputType,
-                    'name'            => $item->product_suggested ?: $item->action_name,
+                    'name'            => $consumeStock?->item_name ?: ($item->product_suggested ?: $item->action_name),
                     'quantity'        => $qty,
-                    'unit'            => $data['unit'] ?? 'kg',
+                    'unit'            => $consumeStock?->unit ?: ($data['unit'] ?? 'kg'),
                     'unit_cost'       => $qty > 0 ? round($cost / $qty, 2) : 0,
                     'total_cost'      => $cost,
                     'input_date'      => $completedAt->toDateString(),
-                    'notes'           => "Étape itinéraire : {$item->action_name}",
-                    'synced_to_stock' => false,
+                    'notes'           => "Étape itinéraire : {$item->action_name}" . ($consumeStock ? ' (déstockage)' : ''),
+                    'synced_to_stock' => false, // le mouvement de stock est géré ici, pas via l'entrée
                 ]);
                 $completion->crop_input_id = $input->id;
             }
@@ -252,14 +292,14 @@ class CropCycleController extends Controller
                 'notes'        => $data['notes'] ?? null,
                 'cost'         => $cost > 0 ? $cost : null,
                 'quantity'     => $qty > 0 ? $qty : null,
-                'unit'         => $qty > 0 ? ($data['unit'] ?? null) : null,
+                'unit'         => $qty > 0 ? ($consumeStock?->unit ?: ($data['unit'] ?? null)) : null,
             ])->save();
         });
 
         return back()->with('success', "Étape « {$item->action_name} » validée.");
     }
 
-    /** Annule la validation d'une étape (réouvre le suivi) + retire l'intrant lié. */
+    /** Annule la validation d'une étape : retire l'intrant lié + restitue le stock consommé. */
     public function uncompleteStep(CropCycle $cropCycle, CropProtocolItem $item)
     {
         if (Gate::denies('cultures.M')) {
@@ -275,11 +315,28 @@ class CropCycleController extends Controller
                 if ($completion->crop_input_id) {
                     CropInput::find($completion->crop_input_id)?->delete();
                 }
+                $this->restoreConsumedStock($completion);
                 $completion->delete();
             });
         }
 
         return back()->with('success', "Validation de l'étape « {$item->action_name} » annulée.");
+    }
+
+    /** Restitue au stock la quantité précédemment consommée par une étape (sortie → entrée). */
+    private function restoreConsumedStock(CropProtocolCompletion $completion): void
+    {
+        if (! $completion->consumed_stock_id || (float) $completion->quantity <= 0) {
+            return;
+        }
+
+        $stock = Stock::find($completion->consumed_stock_id);
+        if ($stock) {
+            StockIntegrationService::syncMovement(
+                $stock->item_name, $stock->category, (float) $completion->quantity, 'in',
+                "Annulation consommation itinéraire", $stock->unit
+            );
+        }
     }
 
     public function update(Request $request, CropCycle $cropCycle)

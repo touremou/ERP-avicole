@@ -198,6 +198,7 @@
                                                 'unit'     => $c?->unit ?: '',
                                                 'notes'    => $c?->notes ?: '',
                                                 'asInput'  => (bool) $c?->crop_input_id,
+                                                'consumeStockId' => $c?->consumed_stock_id ?: '',
                                             ];
                                         @endphp
                                         @if($entry['status'] === 'done')
@@ -264,10 +265,24 @@
                                 </div>
 
                                 <template x-if="step.canInput">
-                                    <label class="flex items-center gap-3 bg-amber-50 rounded-2xl p-3 cursor-pointer">
-                                        <input type="checkbox" name="record_as_input" value="1" x-model="step.asInput" class="rounded">
-                                        <span class="text-[9px] font-black text-amber-700 uppercase italic leading-tight">{{ __("Comptabiliser comme intrant du cycle (coût intégré à la marge)") }}</span>
-                                    </label>
+                                    <div class="space-y-3">
+                                        <label class="flex items-center gap-3 bg-amber-50 rounded-2xl p-3 cursor-pointer">
+                                            <input type="checkbox" name="record_as_input" value="1" x-model="step.asInput" class="rounded">
+                                            <span class="text-[9px] font-black text-amber-700 uppercase italic leading-tight">{{ __("Comptabiliser comme intrant du cycle (coût intégré à la marge)") }}</span>
+                                        </label>
+                                        @if($intrantStocks->isNotEmpty())
+                                            <div>
+                                                <label class="block text-[9px] font-black text-slate-400 uppercase ml-1 mb-1 italic">{{ __("Déduire d'un stock d'intrant (consommation)") }}</label>
+                                                <select name="consume_stock_id" x-model="step.consumeStockId" class="w-full bg-slate-50 border-none rounded-2xl p-3 font-black text-slate-800 shadow-inner italic text-[11px] appearance-none cursor-pointer">
+                                                    <option value="">{{ __("— Aucun (charge seule) —") }}</option>
+                                                    @foreach($intrantStocks as $st)
+                                                        <option value="{{ $st->id }}">{{ $st->item_name }} ({{ rtrim(rtrim(number_format((float) $st->current_quantity, 2, '.', ''), '0'), '.') }} {{ $st->unit }})</option>
+                                                    @endforeach
+                                                </select>
+                                                <p class="text-[8px] font-bold text-slate-400 italic ml-1 mt-1">{{ __("Déstocke la quantité saisie ; coût valorisé au prix du stock si laissé vide.") }}</p>
+                                            </div>
+                                        @endif
+                                    </div>
                                 </template>
 
                                 <div>
@@ -290,12 +305,13 @@
                     function stepValidation() {
                         return {
                             open: false,
-                            step: { name: '', action: '', canInput: false, date: '', cost: '', qty: '', unit: '', notes: '', asInput: false },
+                            step: { name: '', action: '', canInput: false, date: '', cost: '', qty: '', unit: '', notes: '', asInput: false, consumeStockId: '' },
                             openStep(args) {
                                 this.step = {
                                     name: args.name, action: args.action, canInput: !!args.canInput,
                                     date: args.date || '', cost: args.cost ?? '', qty: args.qty ?? '',
                                     unit: args.unit || '', notes: args.notes || '', asInput: !!args.asInput,
+                                    consumeStockId: args.consumeStockId ? String(args.consumeStockId) : '',
                                 };
                                 this.open = true;
                             },

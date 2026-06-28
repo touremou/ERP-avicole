@@ -19,7 +19,7 @@ class CropProtocolCompletion extends Model
     protected $fillable = [
         'farm_id', 'crop_cycle_id', 'crop_protocol_item_id',
         'completed_at', 'completed_by', 'notes',
-        'cost', 'quantity', 'unit', 'crop_input_id',
+        'cost', 'quantity', 'unit', 'crop_input_id', 'consumed_stock_id',
     ];
 
     protected $casts = [
@@ -31,6 +31,11 @@ class CropProtocolCompletion extends Model
     public function cropInput(): BelongsTo
     {
         return $this->belongsTo(CropInput::class, 'crop_input_id');
+    }
+
+    public function consumedStock(): BelongsTo
+    {
+        return $this->belongsTo(Stock::class, 'consumed_stock_id');
     }
 
     public function cycle(): BelongsTo
