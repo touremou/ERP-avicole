@@ -41,7 +41,9 @@ test('le hub finance agrège trésorerie, dépenses du mois et dettes fournisseu
 
     $kpis = $this->get(route('finance.index'))->assertOk()->assertSee('Finance')->viewData('kpis');
 
-    expect($kpis['treasury'])->toBe(100000.0)
+    // La dépense validée (espèces) est désormais décaissée de la Caisse :
+    // 100 000 − 50 000 = 50 000 (intégration trésorerie ↔ transactions).
+    expect($kpis['treasury'])->toBe(50000.0)
         ->and($kpis['month_expenses'])->toBe(50000.0)
         ->and($kpis['supplier_debt'])->toBe(50000.0) // 80 000 − 30 000
         ->and($kpis['accounts_count'])->toBe(1);

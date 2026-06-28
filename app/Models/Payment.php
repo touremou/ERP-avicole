@@ -12,7 +12,7 @@ class Payment extends Model
     use BelongsToFarm, AuditsChanges;
     protected $fillable = [
         'farm_id', 'sale_id', 'amount', 'payment_date',
-        'method', 'reference', 'received_by', 'notes',
+        'method', 'treasury_account_id', 'reference', 'received_by', 'notes',
     ];
 
     protected $casts = [

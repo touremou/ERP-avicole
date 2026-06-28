@@ -28,6 +28,9 @@ class TreasuryService
         }
 
         return DB::transaction(function () use ($account, $direction, $amount, $opts) {
+            // Lien polymorphe optionnel vers la pièce d'origine (Payment, Expense…).
+            $source = $opts['source'] ?? null;
+
             $tx = TreasuryTransaction::create([
                 'farm_id'                => $account->farm_id,
                 'treasury_account_id'    => $account->id,
@@ -39,6 +42,8 @@ class TreasuryService
                 'reference'              => $opts['reference'] ?? null,
                 'counterpart_account_id' => $opts['counterpart_account_id'] ?? null,
                 'user_id'                => Auth::id(),
+                'source_type'            => $source ? $source->getMorphClass() : ($opts['source_type'] ?? null),
+                'source_id'              => $source?->getKey() ?? ($opts['source_id'] ?? null),
             ]);
 
             $account->increment('current_balance', $direction === 'in' ? $amount : -$amount);

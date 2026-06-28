@@ -17,7 +17,8 @@ class TreasuryAccount extends Model
     use BelongsToFarm;
 
     protected $fillable = [
-        'farm_id', 'name', 'type', 'opening_balance', 'current_balance', 'is_active', 'notes',
+        'farm_id', 'name', 'type', 'default_for_method',
+        'opening_balance', 'current_balance', 'is_active', 'notes',
     ];
 
     protected $casts = [
@@ -41,6 +42,41 @@ class TreasuryAccount extends Model
     public function scopeActive($query)
     {
         return $query->where('is_active', true);
+    }
+
+    /** Type de compte cible pour un mode de paiement (vente ou dépense). */
+    public static function typeForMethod(string $method): ?string
+    {
+        return match ($method) {
+            'especes'                  => 'caisse',
+            'orange_money', 'mobile_money' => 'mobile_money',
+            'virement', 'cheque'       => 'banque',
+            default                    => null,
+        };
+    }
+
+    /**
+     * Compte de trésorerie cible pour un mode de paiement :
+     *   1. compte explicitement marqué « par défaut » pour ce mode ;
+     *   2. sinon 1er compte actif du type correspondant (espèces→caisse…) ;
+     *   3. sinon n'importe quel compte actif.
+     * Renvoie null si aucun compte n'existe (la trésorerie reste optionnelle).
+     */
+    public static function resolveForMethod(string $method): ?self
+    {
+        $flagged = static::active()->where('default_for_method', $method)->first();
+        if ($flagged) {
+            return $flagged;
+        }
+
+        if ($type = self::typeForMethod($method)) {
+            $byType = static::active()->where('type', $type)->orderBy('id')->first();
+            if ($byType) {
+                return $byType;
+            }
+        }
+
+        return static::active()->orderBy('id')->first();
     }
 
     public function getTypeLabelAttribute(): string

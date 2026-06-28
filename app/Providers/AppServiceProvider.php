@@ -74,6 +74,7 @@ class AppServiceProvider extends ServiceProvider
             \App\Models\Harvest::observe(\App\Observers\HarvestObserver::class);
             \App\Models\CropInput::observe(\App\Observers\CropInputObserver::class);
             \App\Models\Expense::observe(\App\Observers\ExpenseObserver::class);
+            \App\Models\Payment::observe(\App\Observers\PaymentObserver::class);
         }
 
         // ─── 3. FIX SQL STRING LENGTH ───
