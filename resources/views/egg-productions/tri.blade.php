@@ -1,21 +1,15 @@
 <x-app-layout>
+    <x-slot name="header">
+        <x-page-header :title="__('Tri & Calibrage') . ' — ' . $batch->code" :subtitle="__('Session de tri')"
+                       icon="fa-scale-balanced" accent="blue" :back="route('egg-productions.index')">
+            <x-slot name="actions">
+                <span id="brut_alv" class="text-xs font-black text-slate-400 italic bg-white px-4 py-2 rounded-full border border-slate-100">0</span>
+            </x-slot>
+        </x-page-header>
+    </x-slot>
+
     <div class="py-12 italic font-black text-left bg-slate-50 min-h-screen">
         <div class="max-w-4xl mx-auto sm:px-6 lg:px-8 space-y-8">
-            
-            <div class="flex justify-between items-end">
-                <h2 class="text-3xl font-black text-slate-800 uppercase italic tracking-tighter flex items-center gap-4 m-0">
-                    <span class="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-xl rotate-3">
-                        <i class="fa-solid fa-scale-balanced text-lg"></i>
-                    </span>
-                    <div>
-                        <span class="text-sm text-slate-400 block tracking-widest not-italic font-bold">{{ __("SESSION DE TRI") }}</span>
-                        {{ __("LOT") }} <span class="text-blue-600">{{ $batch->code }}</span>
-                    </div>
-                </h2>
-                <div class="text-right">
-                    <span id="brut_alv" class="text-xs font-black text-slate-400 italic bg-white px-4 py-2 rounded-full border border-slate-100">0</span>
-                </div>
-            </div>
 
             <div class="bg-slate-900 p-10 rounded-[3.5rem] shadow-2xl relative overflow-hidden group">
                 <div class="relative z-10 flex flex-col md:flex-row justify-between items-center gap-6">

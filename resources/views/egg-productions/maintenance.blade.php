@@ -1,20 +1,11 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between text-left">
-            <div class="flex items-center gap-4">
-                <div>
-                    <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none m-0">
-                        {{ __("🛠️ Maintenance & Inventaire Magasin") }}
-                    </h2>
-                    <p class="text-[9px] font-black text-red-500 uppercase tracking-[0.2em] mt-1 italic leading-none animate-pulse m-0">
-                        {{ __("Accès Niveau : Super-Admin (S)") }}
-                    </p>
-                </div>
-            </div>
-            <div class="hidden md:block">
-                <span class="px-4 py-2 bg-slate-100 text-slate-400 rounded-xl text-[8px] font-black uppercase italic tracking-widest border border-slate-200">{{ __("Session d'Audit") }} : {{ now()->format('d/m/Y') }}</span>
-            </div>
-        </div>
+        <x-page-header :title="__('🛠️ Maintenance & Inventaire Magasin')" :subtitle="__('Accès Niveau : Super-Admin (S)')"
+                       icon="fa-wrench" accent="rose" :back="route('egg-productions.index')">
+            <x-slot name="actions">
+                <span class="hidden md:inline-block px-4 py-2 bg-slate-100 text-slate-400 rounded-xl text-[8px] font-black uppercase italic tracking-widest border border-slate-200">{{ __("Session d'Audit") }} : {{ now()->format('d/m/Y') }}</span>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-12 italic font-bold">
