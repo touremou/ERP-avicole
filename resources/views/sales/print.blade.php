@@ -11,9 +11,12 @@
     @endphp
     <title>{{ $sale->reference }} — {{ $docLabel }}</title>
     <style>
-        @page { size: A4; margin: 15mm; }
+        /* margin:0 sur @page supprime l'en-tête/pied INJECTÉS par le navigateur
+           (URL du site, date, n° de page) ; la marge visuelle est reportée en
+           padding sur le body. */
+        @page { size: A4; margin: 0; }
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Arial, sans-serif; }
-        body { font-size: 11px; color: #1e293b; line-height: 1.6; }
+        body { font-size: 11px; color: #1e293b; line-height: 1.6; padding: 15mm; }
         .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; border-bottom: 3px solid #0f172a; padding-bottom: 20px; }
         .logo-area h1 { font-size: 22px; font-weight: 900; text-transform: uppercase; letter-spacing: -1px; }
         .logo-area p { font-size: 8px; text-transform: uppercase; letter-spacing: 2px; color: #64748b; margin-top: 4px; }

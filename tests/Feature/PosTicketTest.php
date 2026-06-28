@@ -67,6 +67,22 @@ test('ticket désactivé : l\'encaissement reste sur le POS (aucun reçu)', func
     expect(Sale::count())->toBe(1); // la vente est bien créée, seul le reçu est sauté
 });
 
+test('auto-impression désactivée : l\'encaissement reste sur le POS (pas d\'ouverture du reçu)', function () {
+    // Ticket émis mais sans auto-impression → on ne doit plus faire surgir le
+    // reçu après chaque vente (il reste réimprimable depuis la fiche vente).
+    Setting::where('group', 'ventes')->where('key', 'ticket_autoprint')->update(['value' => '0']);
+    Setting::clearCache();
+
+    $stock = ticketStock();
+
+    $this->actingAs($this->adminUser)->post(route('pos.checkout'), [
+        'payment_method' => 'especes',
+        'items'          => [['product_id' => ticketProductId($stock), 'quantity' => 2, 'unit_price' => 2000]],
+    ])->assertRedirect(route('pos.index'))->assertSessionHas('success');
+
+    expect(Sale::count())->toBe(1); // vente créée, reçu non ouvert automatiquement
+});
+
 test('le message de pied de ticket est configurable', function () {
     Setting::where('group', 'ventes')->where('key', 'ticket_footer')->update(['value' => 'Bonne journée chez AviSmart']);
     Setting::clearCache();

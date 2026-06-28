@@ -17,9 +17,10 @@
         };
     @endphp
     <style>
-        @page { size: 80mm auto; margin: 4mm; }
+        /* margin:0 → pas d'URL/date injectées par le navigateur ; marge en padding. */
+        @page { size: 80mm auto; margin: 0; }
         * { box-sizing: border-box; }
-        body { width: 72mm; margin: 0 auto; font-family: "Courier New", monospace; font-size: 11px; color: #000; line-height: 1.5; }
+        body { width: 72mm; margin: 0 auto; padding: 4mm; font-family: "Courier New", monospace; font-size: 11px; color: #000; line-height: 1.5; }
         .center { text-align: center; }
         .bold { font-weight: 700; }
         .lg { font-size: 14px; }

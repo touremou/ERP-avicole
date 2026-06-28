@@ -9,9 +9,10 @@
         $addr  = setting('general.company_address', '');
     @endphp
     <style>
-        @page { size: 80mm auto; margin: 4mm; }
+        /* margin:0 → pas d'URL/date injectées par le navigateur ; marge en padding. */
+        @page { size: 80mm auto; margin: 0; }
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'DejaVu Sans', 'Courier New', monospace; }
-        body { width: 72mm; font-size: 11px; color: #000; line-height: 1.5; }
+        body { width: 72mm; font-size: 11px; color: #000; line-height: 1.5; padding: 4mm; }
         .center { text-align: center; }
         .shop { font-size: 15px; font-weight: 900; text-transform: uppercase; }
         .muted { color: #444; font-size: 9px; }

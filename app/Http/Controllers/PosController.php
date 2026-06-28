@@ -150,11 +150,26 @@ class PosController extends Controller
 
         $msg = "Vente encaissée : {$sale->reference} — " . money($total) . '.';
 
-        // Ticket de caisse optionnel (paramètre ventes.ticket_enabled) : sinon on
-        // reste sur l'écran POS pour enchaîner la vente suivante.
-        return setting('ventes.ticket_enabled', true)
+        // Le ticket ne s'ouvre après la vente que si l'impression automatique est
+        // active. Sinon on reste sur la caisse pour enchaîner (le ticket reste
+        // réimprimable depuis la vente). Voir shouldOpenTicket().
+        return $this->shouldOpenTicket()
             ? redirect()->route('pos.receipt', $sale)->with('success', $msg)
             : redirect()->route('pos.index')->with('success', $msg);
+    }
+
+    /**
+     * Faut-il ouvrir l'écran ticket juste après l'encaissement ?
+     *
+     * Oui seulement si l'émission de ticket est activée ET que l'impression
+     * automatique est demandée : désactiver l'auto-impression ne doit plus
+     * faire surgir le reçu après chaque vente (il reste réimprimable depuis la
+     * fiche vente).
+     */
+    private function shouldOpenTicket(): bool
+    {
+        return setting('ventes.ticket_enabled', true)
+            && setting('ventes.ticket_autoprint', true);
     }
 
     /** Ticket de caisse (reçu compact 80 mm), auto-imprimé. */
@@ -205,7 +220,7 @@ class PosController extends Controller
 
         $msg = 'Solde encaissé : ' . money($remaining) . '.';
 
-        return setting('ventes.ticket_enabled', true)
+        return $this->shouldOpenTicket()
             ? redirect()->route('pos.receipt', $sale)->with('success', $msg)
             : redirect()->route('sales.show', $sale)->with('success', $msg);
     }
