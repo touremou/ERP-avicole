@@ -9,6 +9,9 @@
         $columns     = max(1, min(4, (int) request('cols', (int) setting('etiquettes.columns', 2))));
         $showFarm    = (bool) setting('etiquettes.show_farm', true);
         $showCaption = (bool) setting('etiquettes.show_caption', true);
+        $symbology   = $symbology ?? 'qr';
+        $showQr      = in_array($symbology, ['qr', 'both'], true);
+        $showBarcode = in_array($symbology, ['barcode', 'both'], true) && ! empty($barcode);
     @endphp
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -36,7 +39,7 @@
         @for($i = 0; $i < $copies; $i++)
         <div class="label">
             <div class="top">
-                <div class="qr"><img src="{{ $qr }}" alt="QR traçabilité"></div>
+                @if($showQr)<div class="qr"><img src="{{ $qr }}" alt="QR traçabilité"></div>@endif
                 <div class="info">
                     @if($showFarm)<div class="farm">{{ $batch?->farm?->name ?? __('Œufs frais') }}</div>@endif
                     <div class="title">{{ __('Œufs') }} · {{ $eggProduction->production_date?->format('d/m/Y') }}</div>
@@ -60,6 +63,7 @@
             @endif
 
             @if($showCaption)<div class="scan">{{ __('Scanner pour la traçabilité du lot') }}</div>@endif
+            @if($showBarcode)<div class="barcode">{!! $barcode !!}</div>@endif
         </div>
         @endfor
     </div>

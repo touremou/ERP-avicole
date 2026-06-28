@@ -179,6 +179,7 @@ class Setting extends Model
             'ventes'      => ['label' => 'Ventes',        'icon' => 'fa-cash-register',    'color' => 'teal'],
             'cultures'    => ['label' => 'Cultures',      'icon' => 'fa-leaf',             'color' => 'green'],
             'numbering'   => ['label' => 'Numérotation',  'icon' => 'fa-hashtag',          'color' => 'slate'],
+            'etiquettes'  => ['label' => 'Étiquettes',    'icon' => 'fa-tag',              'color' => 'purple'],
         ];
     }
 }

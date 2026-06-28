@@ -10,6 +10,9 @@
     .actions button { background: #0f172a; color: #fff; border: 0; padding: 10px 22px; border-radius: 10px; font-weight: 800; font-size: 13px; cursor: pointer; }
     .actions button.ghost { background: #e2e8f0; color: #0f172a; padding: 8px 14px; }
     .actions .back { color: #64748b; font-weight: 700; font-size: 12px; text-decoration: none; }
+    .label .head { display: flex; gap: 16px; align-items: center; }
+    .label .barcode { margin-top: 12px; padding-top: 12px; border-top: 1px dashed #cbd5e1; text-align: center; }
+    .label .barcode svg { max-width: 100%; height: auto; }
     .printed-at { max-width: 880px; margin: 10px auto 0; text-align: center; font-size: 9px; color: #94a3b8; }
     @media print { .label-sheet { max-width: none; } .printed-at { display: none; } }
 </style>

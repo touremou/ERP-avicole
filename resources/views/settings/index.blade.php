@@ -86,6 +86,7 @@
                                     {{-- Input dynamique selon le type --}}
                                     <div class="md:flex-1 flex items-center gap-2">
                                         @switch($s->type)
+                                            @case('integer')
                                             @case('number')
                                                 <input type="number" name="settings[{{ $s->key }}]" value="{{ $s->value }}" step="any"
                                                     class="w-full md:w-48 bg-slate-50 border-none rounded-xl p-3 text-sm font-black text-slate-800 shadow-inner outline-none text-right focus:ring-2 focus:ring-blue-500">

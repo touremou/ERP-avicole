@@ -265,3 +265,40 @@ test('le paramètre autoprint relance l\'impression automatique', function () {
     $resp = $this->actingAs($this->adminUser)->get(route('batches.label', $batch->id))->assertOk();
     expect($resp->getContent())->toContain('window.print()');
 });
+
+test('les réglages exposent le groupe Étiquettes avec ses options', function () {
+    $this->actingAs($this->adminUser)
+        ->get(route('settings.index', ['group' => 'etiquettes']))
+        ->assertOk()
+        ->assertSee('Étiquettes')
+        ->assertSee('Nombre de copies par défaut')
+        ->assertSee('Type de code');
+});
+
+test('en mode code-barres, l\'étiquette rend un Code128 SVG (et pas de QR)', function () {
+    \App\Models\Setting::updateOrCreate(
+        ['group' => 'etiquettes', 'key' => 'symbology', 'farm_id' => null],
+        ['value' => 'barcode', 'type' => 'select', 'options' => 'qr,barcode,both']
+    );
+    \Illuminate\Support\Facades\Cache::flush();
+
+    $batch = Batch::factory()->create(['farm_id' => $this->farm->id, 'code' => 'LOT-BC-1']);
+    $resp = $this->actingAs($this->adminUser)->get(route('batches.label', $batch->id))->assertOk();
+
+    expect($resp->getContent())->toContain('<svg')->toContain('shape-rendering="crispEdges"');
+    // En mode barcode seul, pas d'image QR base64.
+    expect($resp->getContent())->not->toContain('data:image/png;base64');
+});
+
+test('en mode « both », QR et code-barres sont présents', function () {
+    \App\Models\Setting::updateOrCreate(
+        ['group' => 'etiquettes', 'key' => 'symbology', 'farm_id' => null],
+        ['value' => 'both', 'type' => 'select', 'options' => 'qr,barcode,both']
+    );
+    \Illuminate\Support\Facades\Cache::flush();
+
+    $batch = Batch::factory()->create(['farm_id' => $this->farm->id, 'code' => 'LOT-BOTH-1']);
+    $resp = $this->actingAs($this->adminUser)->get(route('batches.label', $batch->id))->assertOk();
+
+    expect($resp->getContent())->toContain('data:image/png;base64')->toContain('<svg');
+});
