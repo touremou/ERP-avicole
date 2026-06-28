@@ -47,11 +47,17 @@
                     </div>
                     <input type="hidden" name="tax_rate" :value="saleType === 'facture' ? 18 : 0">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-                        <select name="delivery_mode" class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black uppercase shadow-inner outline-none">
+                        <select name="delivery_mode" x-model="deliveryMode" class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black uppercase shadow-inner outline-none">
                             <option value="sur_place">{{ __("Sur place") }}</option>
                             <option value="livraison">{{ __("Livraison") }}</option>
                         </select>
                         <input type="text" name="notes" placeholder="{{ __('Observations...') }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black shadow-inner outline-none">
+                    </div>
+                    {{-- Frais de livraison (mode « livraison » uniquement) --}}
+                    <div x-show="deliveryMode === 'livraison'" x-cloak class="mt-4">
+                        <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Frais de livraison") }} ({{ currency() }})</label>
+                        <input type="number" name="delivery_fee" min="0" step="1" x-model.number="deliveryFee"
+                               class="w-full md:w-1/2 bg-slate-50 border-none rounded-2xl p-4 text-xs font-black shadow-inner outline-none text-right mt-1">
                     </div>
                 </div>
 
@@ -219,6 +225,7 @@
                             <div class="flex justify-between"><span class="text-slate-400 font-black text-[10px] uppercase">{{ __("HT") }}</span><span class="font-black text-lg" x-text="formatGNF(subtotal)"></span></div>
                             <div class="flex justify-between" x-show="discount > 0"><span class="text-rose-300 font-black text-[10px] uppercase">{{ __("Remise") }}</span><span class="font-black text-rose-300" x-text="'− ' + formatGNF(discount)"></span></div>
                             <div class="flex justify-between" x-show="saleType === 'facture'"><span class="text-slate-400 font-black text-[10px] uppercase">{{ __("TVA :rate%", ['rate' => setting('general.tva_rate', 18)]) }}</span><span class="font-black" x-text="formatGNF(taxAmount)"></span></div>
+                            <div class="flex justify-between" x-show="deliveryCost > 0"><span class="text-slate-400 font-black text-[10px] uppercase">{{ __("Livraison") }}</span><span class="font-black" x-text="'+ ' + formatGNF(deliveryCost)"></span></div>
                             <div class="border-t border-slate-700 pt-3 flex justify-between"><span class="text-emerald-400 font-black text-[10px] uppercase">{{ __("Total TTC") }}</span><span class="font-black text-2xl" x-text="formatGNF(totalTTC)"></span></div>
                             <div class="border-t border-slate-700 pt-3 flex justify-between" x-show="immediatePayment > 0"><span class="text-amber-400 font-black text-[10px] uppercase">{{ __("Reste dû") }}</span><span class="font-black text-lg text-amber-400" x-text="formatGNF(Math.max(0, totalTTC - immediatePayment))"></span></div>
                         </div>
@@ -283,6 +290,7 @@
         return {
             catalog,
             clientId: '{{ $selectedClient?->id ?? "" }}', saleType: 'bon_livraison', immediatePayment: 0,
+            deliveryMode: 'sur_place', deliveryFee: 0,
             discountType: 'none', discountValue: 0,
             lines: [{ catalog_id:'', photo:'', product_type:'', product_name:'', quantity:1, unit:'', unit_price:0, product_id:'', batch_id:'', selected_stock:'', max_qty:0 }],
             batches: batchList.filter(b => b.qty > 0),
@@ -295,7 +303,8 @@
             },
             get net() { return Math.max(0, this.subtotal - this.discount); },
             get taxAmount() { return this.saleType==='facture' ? this.net*0.18 : 0; },
-            get totalTTC() { return this.net + this.taxAmount; },
+            get deliveryCost() { return this.deliveryMode==='livraison' ? (Number(this.deliveryFee)||0) : 0; },
+            get totalTTC() { return this.net + this.taxAmount + this.deliveryCost; },
             get hasStockError() { return this.lines.some(l => l.max_qty > 0 && l.quantity > l.max_qty); },
             getStocks(type) { return stocks.filter(s => s.category === (catMap[type]||type) && s.current_quantity > 0); },
             // ─── Catégories de lignes (multiespèces) ───
@@ -434,6 +443,8 @@
                     discount_type: this.discountType,
                     discount_value: this.discountType === 'none' ? 0 : (parseFloat(this.discountValue) || 0),
                     notes: notes,
+                    delivery_mode: this.deliveryMode,
+                    delivery_fee: this.deliveryCost,
                     immediate_payment: parseFloat(this.immediatePayment) || 0,
                     payment_method: 'especes',
                     items: validLines.map(l => ({

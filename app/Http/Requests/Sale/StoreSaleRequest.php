@@ -27,6 +27,7 @@ class StoreSaleRequest extends FormRequest
             'delivery_mode'          => 'nullable|in:sur_place,livraison',
             'delivery_address'       => 'nullable|string|max:500',
             'delivery_notes'         => 'nullable|string|max:500',
+            'delivery_fee'           => 'nullable|numeric|min:0',
             'notes'                  => 'nullable|string|max:2000',
 
             // Lignes de vente — taxonomie multiespèces.
@@ -97,6 +98,12 @@ class StoreSaleRequest extends FormRequest
                 // 'autre' : libre, pas de contrainte
             ];
             foreach ((array) $this->items as $idx => $item) {
+                // Ligne issue du CATALOGUE : l'article définit lui-même son unité
+                // (validée à sa création). On ne lui applique pas la contrainte
+                // unité↔type, qui ne vise que les lignes en saisie libre.
+                if (! empty($item['product_ref_id'])) {
+                    continue;
+                }
                 $type = $item['product_type'] ?? null;
                 $unit = $item['unit'] ?? null;
                 if ($type && isset($allowedUnits[$type]) && $unit && ! in_array($unit, $allowedUnits[$type], true)) {

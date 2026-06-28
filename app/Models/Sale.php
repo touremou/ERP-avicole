@@ -23,7 +23,7 @@ class Sale extends Model
         'subtotal', 'discount_type', 'discount_value', 'discount_amount',
         'tax_rate', 'tax_amount', 'total_amount',
         'paid_amount', 'payment_status',
-        'delivery_mode', 'delivery_address', 'delivery_notes',
+        'delivery_mode', 'delivery_address', 'delivery_notes', 'delivery_fee',
         'notes', 'validated_at', 'delivered_at',
     ];
 
@@ -35,6 +35,7 @@ class Sale extends Model
         'tax_rate'     => 'decimal:2',
         'tax_amount'   => 'decimal:2',
         'total_amount' => 'decimal:2',
+        'delivery_fee' => 'decimal:2',
         'paid_amount'  => 'decimal:2',
         'validated_at' => 'datetime',
         'delivered_at' => 'datetime',
@@ -133,14 +134,17 @@ class Sale extends Model
         $discount = $this->computeDiscount($subtotal);
         $net = max(0, round($subtotal - $discount, 2));
 
-        // La TVA porte sur la base APRÈS remise.
+        // La TVA porte sur la base APRÈS remise (les frais de livraison ne sont
+        // pas taxés ici : ils s'ajoutent au TTC marchandise).
         $taxAmount = $this->tax_rate > 0 ? round($net * ($this->tax_rate / 100), 2) : 0;
+
+        $deliveryFee = max(0, (float) $this->delivery_fee);
 
         $this->update([
             'subtotal'        => $subtotal,
             'discount_amount' => $discount,
             'tax_amount'      => $taxAmount,
-            'total_amount'    => round($net + $taxAmount, 2),
+            'total_amount'    => round($net + $taxAmount + $deliveryFee, 2),
         ]);
     }
 

@@ -42,6 +42,9 @@ class CreateSale
                 'delivery_mode'    => $data['delivery_mode'] ?? 'sur_place',
                 'delivery_address' => $data['delivery_address'] ?? null,
                 'delivery_notes'   => $data['delivery_notes'] ?? null,
+                // Frais de livraison : seulement en mode « livraison ».
+                'delivery_fee'     => ($data['delivery_mode'] ?? 'sur_place') === 'livraison'
+                    ? max(0, (float) ($data['delivery_fee'] ?? 0)) : 0,
                 'notes'            => $data['notes'] ?? null,
             ]);
 

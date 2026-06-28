@@ -133,6 +133,12 @@
                 <td style="text-align: right;">{{ number_format($sale->tax_amount, 0, ',', ' ') }}</td>
             </tr>
             @endif
+            @if($sale->delivery_fee > 0)
+            <tr>
+                <td colspan="4" style="text-align: right; color: #94a3b8; text-transform: uppercase; font-size: 9px; letter-spacing: 1px;">{{ __("Frais de livraison") }}</td>
+                <td style="text-align: right;">{{ number_format($sale->delivery_fee, 0, ',', ' ') }}</td>
+            </tr>
+            @endif
             <tr class="total-row">
                 <td colspan="4" style="text-align: right; text-transform: uppercase; letter-spacing: 2px; font-size: 10px;">{{ __("Total TTC") }}</td>
                 <td style="text-align: right; font-size: 15px;">{{ number_format($sale->total_amount, 0, ',', ' ') }} {{ setting('general.currency', 'GNF') }}</td>
