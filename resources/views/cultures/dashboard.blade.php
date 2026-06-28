@@ -50,24 +50,10 @@
 
                 {{-- INDICATEURS --}}
                 <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
-                        <p class="text-[8px] font-black text-green-500 uppercase tracking-widest italic mb-2">{{ __("Parcelles") }}</p>
-                        <p class="text-3xl font-black text-slate-900 leading-none">{{ $stats['plots_total'] }}</p>
-                        <p class="text-[9px] text-slate-400 uppercase mt-1">{{ $stats['plots_occupied'] }} {{ __("en culture") }}</p>
-                    </div>
-                    <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
-                        <p class="text-[8px] font-black text-green-500 uppercase tracking-widest italic mb-2">{{ __("Cycles actifs") }}</p>
-                        <p class="text-3xl font-black text-slate-900 leading-none">{{ $stats['cycles_active'] }}</p>
-                    </div>
-                    <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
-                        <p class="text-[8px] font-black text-green-500 uppercase tracking-widest italic mb-2">{{ __("Surface cultivée") }}</p>
-                        <p class="text-3xl font-black text-slate-900 leading-none">{{ number_format($stats['area_cultivated'], 2, ',', ' ') }} <small class="text-[10px] opacity-40">ha</small></p>
-                    </div>
-                    <div class="bg-slate-900 text-white p-6 rounded-[2rem] shadow-lg">
-                        <p class="text-[8px] font-black text-green-400 uppercase tracking-widest italic mb-2">{{ __("Récolté (30 j)") }}</p>
-                        <p class="text-3xl font-black leading-none">{{ number_format($stats['harvest_30d'], 0, ',', ' ') }} <small class="text-[10px] opacity-40">kg</small></p>
-                        <p class="text-[9px] text-green-400/70 uppercase mt-1">{{ number_format($stats['harvest_ytd'], 0, ',', ' ') }} kg {{ __("cette année") }}</p>
-                    </div>
+                    <x-stat-tile :label="__('Parcelles')" :value="$stats['plots_total']" :sub="$stats['plots_occupied'] . ' ' . __('en culture')" accent="green" />
+                    <x-stat-tile :label="__('Cycles actifs')" :value="$stats['cycles_active']" accent="green" />
+                    <x-stat-tile :label="__('Surface cultivée')" :value="number_format($stats['area_cultivated'], 2, ',', ' ')" unit="ha" accent="green" />
+                    <x-stat-tile :label="__('Récolté (30 j)')" :value="number_format($stats['harvest_30d'], 0, ',', ' ')" unit="kg" :sub="number_format($stats['harvest_ytd'], 0, ',', ' ') . ' kg ' . __('cette année')" accent="green" :dark="true" />
                 </div>
 
                 {{-- CAMPAGNE EN COURS + INDICATEURS SECONDAIRES --}}
