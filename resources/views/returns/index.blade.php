@@ -1,18 +1,12 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between gap-4">
-            <div>
-                <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">
-                    ↩️ {{ __("Journal des avoirs") }}
-                </h2>
-                <p class="text-[10px] font-black text-orange-500 uppercase tracking-widest mt-1 italic leading-none">
-                    {{ \Carbon\Carbon::parse($from)->format('d/m/Y') }} → {{ \Carbon\Carbon::parse($to)->format('d/m/Y') }}
-                </p>
-            </div>
-            <a href="{{ route('sales.index') }}" class="inline-flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-2xl text-[9px] font-black uppercase tracking-widest hover:bg-slate-50 transition-all no-underline shadow-sm italic">
-                <i class="fa-solid fa-list"></i> {{ __("Ventes") }}
-            </a>
-        </div>
+        <x-page-header :title="__('↩️ Journal des avoirs')" :subtitle="\Carbon\Carbon::parse($from)->format('d/m/Y') . ' → ' . \Carbon\Carbon::parse($to)->format('d/m/Y')" icon="fa-rotate-left" accent="teal">
+            <x-slot name="actions">
+                <a href="{{ route('sales.index') }}" class="inline-flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-2xl text-[9px] font-black uppercase tracking-widest hover:bg-slate-50 transition-all no-underline shadow-sm italic">
+                    <i class="fa-solid fa-list"></i> {{ __("Ventes") }}
+                </a>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-10">

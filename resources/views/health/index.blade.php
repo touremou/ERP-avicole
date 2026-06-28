@@ -1,16 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div class="text-left">
-                <h2 class="font-black text-2xl text-slate-800 uppercase italic tracking-tighter leading-none">
-                    🩺 {{ __("Registre Sanitaire & Prophylaxie") }}
-                </h2>
-                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2 italic">
-                    {{ __("Historique des soins, vaccins et interventions techniques") }}
-                </p>
-            </div>
-
-            <div class="flex flex-wrap gap-3">
+        <x-page-header :title="__('🩺 Registre Sanitaire & Prophylaxie')" :subtitle="__('Historique des soins, vaccins et interventions techniques')" icon="fa-stethoscope" accent="purple">
+            <x-slot name="actions">
                 {{-- Permission L : Protocoles --}}
                 @can('elevage.M')
                 <a href="{{ route('protocols.index') }}" class="px-5 py-3 bg-white text-slate-600 border border-slate-200 rounded-2xl text-[10px] font-black uppercase italic tracking-widest hover:bg-slate-50 transition-all shadow-sm no-underline">
@@ -32,8 +23,8 @@
                     <i class="fa-solid fa-plus-circle mr-2 text-blue-400"></i> {{ __("Nouvelle Intervention") }}
                 </a>
                 @endcan
-            </div>
-        </div>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-12 italic font-bold">

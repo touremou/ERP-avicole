@@ -1,17 +1,14 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex justify-between items-center text-left">
-            <div class="flex flex-col">
-                <h2 class="text-2xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">{{ __("Parc de Production") }}</h2>
-                <span class="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] mt-1 italic">{{ __("Surveillance en temps réel des unités") }}</span>
-            </div>
-
-            @can('elevage.C')
-            <a href="{{ route('buildings.create') }}" class="bg-slate-900 text-white px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-600 transition-all shadow-xl shadow-slate-900/10 no-underline">
-                <i class="fas fa-plus mr-2"></i> {{ __("Nouveau Bâtiment") }}
-            </a>
-            @endcan
-        </div>
+        <x-page-header :title="__('Parc de Production')" :subtitle="__('Surveillance en temps réel des unités')" icon="fa-warehouse" accent="indigo">
+            <x-slot name="actions">
+                @can('elevage.C')
+                <a href="{{ route('buildings.create') }}" class="bg-slate-900 text-white px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-600 transition-all shadow-xl shadow-slate-900/10 no-underline">
+                    <i class="fas fa-plus mr-2"></i> {{ __("Nouveau Bâtiment") }}
+                </a>
+                @endcan
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-12 italic text-left">
