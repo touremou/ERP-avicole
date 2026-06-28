@@ -107,6 +107,12 @@ class UserController extends Controller
     {
         if (Gate::denies('admin.S')) return back();
 
+        // Limite d'utilisateurs du plan d'abonnement (0 / système inactif = illimité).
+        $licenses = app(\App\Services\LicenseService::class);
+        if (! $licenses->allowsMore('max_users', User::count())) {
+            return back()->with('error', "Limite d'utilisateurs de votre abonnement atteinte ({$licenses->limit('max_users')}). Contactez le fournisseur pour l'augmenter.");
+        }
+
         $request->validate([
             'name'     => ['required', 'string', 'max:255'],
             'email'    => ['required', 'string', 'email', 'max:255', 'unique:users'],

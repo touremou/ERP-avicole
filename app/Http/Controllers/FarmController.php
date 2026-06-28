@@ -25,6 +25,12 @@ class FarmController extends Controller
     {
         if (Gate::denies('admin.S')) return back()->with('error', 'Non autorisé.');
 
+        // Limite de fermes du plan d'abonnement (0 / système inactif = illimité).
+        $licenses = app(\App\Services\LicenseService::class);
+        if (! $licenses->allowsMore('max_farms', Farm::count())) {
+            return back()->with('error', "Limite de fermes/sites de votre abonnement atteinte ({$licenses->limit('max_farms')}). Contactez le fournisseur pour l'augmenter.");
+        }
+
         $validated = $request->validate([
             'name'         => 'required|string|max:255',
             'code'         => 'required|string|max:20|unique:farms,code',

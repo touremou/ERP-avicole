@@ -172,6 +172,38 @@ test('système inactif : aucun module n\'est verrouillé (bypass admin normal)',
         ->and(Gate::forUser($this->adminUser)->allows('elevage.S'))->toBeTrue();
 });
 
+test('la limite d\'utilisateurs du plan est appliquée à la création', function () {
+    // Plan limité à max_users = (effectif courant) → plus aucune création possible.
+    $current = \App\Models\User::count();
+    app(LicenseService::class)->activate('BIOCREST', makeCode($this->keys['private'], ['max_users' => $current]));
+
+    $this->actingAs($this->adminUser)
+        ->post(route('users.store'), [
+            'name' => 'Nouveau', 'email' => 'nouveau@ferme.gn',
+            'password' => 'password123', 'password_confirmation' => 'password123',
+            'role_id' => $this->adminUser->role_id,
+        ])
+        ->assertSessionHas('error');
+
+    expect(\App\Models\User::where('email', 'nouveau@ferme.gn')->exists())->toBeFalse();
+});
+
+test('limite illimitée (0) : la création reste possible', function () {
+    app(LicenseService::class)->activate('BIOCREST', makeCode($this->keys['private'], ['max_users' => 0]));
+
+    expect(app(LicenseService::class)->allowsMore('max_users', 9999))->toBeTrue()
+        ->and(app(LicenseService::class)->limit('max_users'))->toBe(PHP_INT_MAX);
+});
+
+test('un module hors licence renvoie vers l\'écran d\'abonnement avec message dédié', function () {
+    app(LicenseService::class)->activate('BIOCREST', makeCode($this->keys['private'], ['modules' => ['elevage']]));
+
+    // commerce hors licence → la route est refusée puis redirigée vers l'activation.
+    $this->actingAs($this->adminUser)
+        ->get(route('clients.index'))
+        ->assertRedirect(route('license.edit'));
+});
+
 test('un admin peut activer une licence via le formulaire', function () {
     $code = makeCode($this->keys['private']);
 

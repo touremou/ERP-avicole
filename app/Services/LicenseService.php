@@ -230,6 +230,58 @@ class LicenseService
         return in_array('*', $modules, true) || in_array($slug, $modules, true);
     }
 
+    /**
+     * Plafond du plan pour une limite donnée ('max_users' | 'max_farms').
+     * Retourne PHP_INT_MAX (illimité) si le système est inactif, sans licence,
+     * ou si la limite vaut 0 (illimité par convention).
+     */
+    public function limit(string $key): int
+    {
+        if (! $this->isEnabled()) {
+            return PHP_INT_MAX;
+        }
+
+        $license = $this->current();
+        if (! $license) {
+            return PHP_INT_MAX;
+        }
+
+        $max = (int) ($license->{$key} ?? 0);
+
+        return $max <= 0 ? PHP_INT_MAX : $max;
+    }
+
+    /** Peut-on encore créer une entité, au regard d'un effectif courant ? */
+    public function allowsMore(string $key, int $currentCount): bool
+    {
+        return $currentCount < $this->limit($key);
+    }
+
+    /**
+     * La route courante vise-t-elle un module NON inclus dans l'abonnement ?
+     * Utilisé par le gestionnaire d'exceptions pour distinguer un refus de
+     * licence d'un refus de droits (RBAC) et afficher le bon message.
+     */
+    public function currentRouteModuleLocked(): bool
+    {
+        if (! $this->isEnabled()) {
+            return false;
+        }
+
+        $name = request()->route()?->getName();
+        if (! $name) {
+            return false;
+        }
+
+        foreach (\App\Models\Module::routePrefixMap() as $prefix => $slug) {
+            if (str_starts_with($name, $prefix)) {
+                return ! $this->allowsModule($slug);
+            }
+        }
+
+        return false;
+    }
+
     // ─────────────────────────────────────────────────────────────
     // HORLOGE DE CONFIANCE (anti-recul)
     // ─────────────────────────────────────────────────────────────

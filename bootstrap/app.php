@@ -53,8 +53,26 @@ return Application::configure(basePath: dirname(__DIR__))
             }
         });
 
+        // Filet « licence » : un refus d'accès dû à un module HORS abonnement
+        // (et non à un manque de droits) doit renvoyer vers l'écran de
+        // renouvellement avec un message explicite. Évalué avant les filets RBAC.
+        $licenseRefusal = function ($request) {
+            if (! app(\App\Services\LicenseService::class)->currentRouteModuleLocked()) {
+                return null;
+            }
+            $message = "Ce module n'est pas inclus dans votre abonnement. Contactez le fournisseur pour l'activer.";
+            if ($request->expectsJson() || $request->is('api/*')) {
+                return response()->json(['message' => $message], 402);
+            }
+            return redirect()->route('license.edit')->with('error', $message);
+        };
+
         // Filet 1 : Intercepte les Gate, Policy et $this->authorize()
-        $exceptions->render(function (\Illuminate\Auth\Access\AuthorizationException $e, $request) {
+        $exceptions->render(function (\Illuminate\Auth\Access\AuthorizationException $e, $request) use ($licenseRefusal) {
+            if ($redirect = $licenseRefusal($request)) {
+                return $redirect;
+            }
+
             if ($request->is('api/*')) {
                 return response()->json(['message' => 'Accès refusé.'], 403);
             }
@@ -63,8 +81,12 @@ return Application::configure(basePath: dirname(__DIR__))
         });
 
         // Filet 2 : Intercepte les abort(403) et middleware 'can'
-        $exceptions->render(function (\Symfony\Component\HttpKernel\Exception\HttpException $e, $request) {
+        $exceptions->render(function (\Symfony\Component\HttpKernel\Exception\HttpException $e, $request) use ($licenseRefusal) {
             if ($e->getStatusCode() === 403) {
+                if ($redirect = $licenseRefusal($request)) {
+                    return $redirect;
+                }
+
                 if ($request->is('api/*')) {
                     return response()->json(['message' => 'Accès refusé.'], 403);
                 }
