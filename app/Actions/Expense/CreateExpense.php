@@ -36,6 +36,7 @@ class CreateExpense
                 'amount'            => $data['amount'],
                 'expense_date'      => $data['expense_date'],
                 'payment_method'    => $data['payment_method'] ?? 'especes',
+                'treasury_account_id' => $data['treasury_account_id'] ?? null,
                 'status'            => 'en_attente',
                 'supplier_name'     => $data['supplier_name'] ?? null,
                 'notes'             => $data['notes'] ?? null,

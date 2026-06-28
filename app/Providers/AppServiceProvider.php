@@ -75,6 +75,7 @@ class AppServiceProvider extends ServiceProvider
             \App\Models\CropInput::observe(\App\Observers\CropInputObserver::class);
             \App\Models\Expense::observe(\App\Observers\ExpenseObserver::class);
             \App\Models\Payment::observe(\App\Observers\PaymentObserver::class);
+            \App\Models\SupplierPayment::observe(\App\Observers\SupplierPaymentObserver::class);
         }
 
         // ─── 3. FIX SQL STRING LENGTH ───

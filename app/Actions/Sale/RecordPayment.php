@@ -40,6 +40,7 @@ class RecordPayment
                 'amount'       => $amount,
                 'payment_date' => $data['payment_date'] ?? now()->toDateString(),
                 'method'       => $data['method'] ?? 'especes',
+                'treasury_account_id' => $data['treasury_account_id'] ?? null,
                 'reference'    => $data['reference'] ?? null,
                 'received_by'  => Auth::id(),
                 'notes'        => $data['notes'] ?? null,

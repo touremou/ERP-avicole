@@ -126,3 +126,29 @@ test('l\'écran trésorerie permet d\'affecter un compte par défaut à un mode'
         ->and(TreasuryAccount::resolveForMethod('orange_money')->id)->toBe($this->banque->id) // OM suit le canal mobile
         ->and(TreasuryAccount::resolveForMethod('mobile_money')->id)->toBe($this->banque->id);
 });
+
+test('un règlement fournisseur décaisse le compte (avoir négatif → entrée)', function () {
+    $provider = \App\Models\Provider::create(['name' => 'Provendier', 'type' => 'Aliment', 'phone' => '620', 'status' => 'Actif']);
+    $inv = \App\Models\SupplierInvoice::create([
+        'provider_id' => $provider->id, 'reference' => 'ACH-T9', 'invoice_date' => now()->toDateString(),
+        'category' => 'fournitures', 'label' => 'Maïs', 'total_amount' => 90000, 'status' => 'valide', 'user_id' => $this->adminUser->id,
+    ]);
+
+    // Règlement espèces → sortie de Caisse.
+    $sp = \App\Models\SupplierPayment::create([
+        'supplier_invoice_id' => $inv->id, 'amount' => 40000, 'payment_date' => now()->toDateString(),
+        'method' => 'especes', 'paid_by' => $this->adminUser->id,
+    ]);
+    expect((float) $this->caisse->fresh()->current_balance)->toBe(-40000.0);
+
+    // Avoir fournisseur (négatif) → entrée.
+    \App\Models\SupplierPayment::create([
+        'supplier_invoice_id' => $inv->id, 'amount' => -10000, 'payment_date' => now()->toDateString(),
+        'method' => 'especes', 'paid_by' => $this->adminUser->id,
+    ]);
+    expect((float) $this->caisse->fresh()->current_balance)->toBe(-30000.0);
+
+    // Suppression du règlement → contre-passation.
+    $sp->delete();
+    expect((float) $this->caisse->fresh()->current_balance)->toBe(10000.0);
+});

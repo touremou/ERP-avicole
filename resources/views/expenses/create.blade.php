@@ -69,6 +69,18 @@
                                     @endforeach
                                 </select>
                             </div>
+                            @if($treasuryAccounts->isNotEmpty())
+                            <div class="space-y-2">
+                                <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Compte de trésorerie") }}</label>
+                                <select name="treasury_account_id" class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black uppercase shadow-inner outline-none appearance-none cursor-pointer">
+                                    <option value="">{{ __("Auto (selon le mode)") }}</option>
+                                    @foreach($treasuryAccounts as $acc)
+                                        <option value="{{ $acc->id }}" {{ (int) old('treasury_account_id') === $acc->id ? 'selected' : '' }}>{{ $acc->name }}</option>
+                                    @endforeach
+                                </select>
+                                <p class="text-[8px] font-bold text-slate-400 italic ml-2">{{ __("Débité à la validation de la dépense.") }}</p>
+                            </div>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -151,6 +163,7 @@
                     amount: amount,
                     expense_date: form.querySelector('[name=expense_date]').value || new Date().toISOString().slice(0, 10),
                     payment_method: form.querySelector('[name=payment_method]').value,
+                    treasury_account_id: (form.querySelector('[name=treasury_account_id]')?.value || null),
                     batch_id: batchVal ? parseInt(batchVal, 10) : null,
                     supplier_name: form.querySelector('[name=supplier_name]').value || null,
                     notes: form.querySelector('[name=notes]').value || null,

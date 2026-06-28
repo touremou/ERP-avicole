@@ -83,6 +83,36 @@ class TreasuryPostingService
         ]);
     }
 
+    /** Comptabilise un règlement fournisseur (sortie ; avoir négatif → entrée). */
+    public function postSupplierPayment(\App\Models\SupplierPayment $payment): ?TreasuryTransaction
+    {
+        if ($this->alreadyPosted($payment)) {
+            return null;
+        }
+
+        $amount = (float) $payment->amount;
+        if ($amount == 0.0) {
+            return null;
+        }
+
+        $account = $this->resolveAccount($payment->treasury_account_id, $payment->method);
+        if (! $account) {
+            Log::info("Trésorerie : aucun compte pour le règlement fournisseur #{$payment->id} — non comptabilisé.");
+            return null;
+        }
+
+        $direction = $amount >= 0 ? 'out' : 'in';
+        $ref = $payment->invoice?->reference;
+
+        return $this->service->record($account, $direction, abs($amount), [
+            'date'        => optional($payment->payment_date)->toDateString() ?? now()->toDateString(),
+            'category'    => $amount >= 0 ? 'achat' : 'avoir_fournisseur',
+            'description' => ($amount >= 0 ? 'Règlement fournisseur' : 'Avoir fournisseur') . ($ref ? " {$ref}" : ''),
+            'reference'   => $payment->reference ?: $ref,
+            'source'      => $payment,
+        ]);
+    }
+
     /**
      * Contre-passe toutes les écritures générées par une pièce (annulation,
      * suppression, remboursement) : restaure le solde et supprime l'écriture.

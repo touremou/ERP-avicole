@@ -207,6 +207,12 @@
                             <input type="date" name="payment_date" value="{{ now()->toDateString() }}" required
                                 class="bg-white border-none rounded-2xl p-3 text-[10px] font-black shadow-sm outline-none">
                         </div>
+                        @if(!empty($treasuryAccounts) && $treasuryAccounts->isNotEmpty())
+                        <select name="treasury_account_id" class="w-full bg-white border-none rounded-2xl p-3 text-[10px] font-black uppercase shadow-sm outline-none">
+                            <option value="">{{ __("Compte : auto (selon le mode)") }}</option>
+                            @foreach($treasuryAccounts as $acc)<option value="{{ $acc->id }}">{{ $acc->name }}</option>@endforeach
+                        </select>
+                        @endif
                         <button type="submit" class="w-full bg-emerald-500 text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-600 transition-all border-none cursor-pointer">
                             <i class="fa-solid fa-check mr-1"></i> {{ __("Encaisser") }}
                         </button>

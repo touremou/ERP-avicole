@@ -119,8 +119,9 @@ class SaleController extends Controller
         // L'encaissement express passe par la caisse → n'est proposé que si une
         // session de caisse est ouverte (cohérent avec le verrou du PosController).
         $hasOpenCashSession = CashRegisterSession::open()->exists();
+        $treasuryAccounts = \App\Models\TreasuryAccount::active()->orderBy('name')->get(['id', 'name']);
 
-        return view('sales.show', compact('sale', 'hasOpenCashSession'));
+        return view('sales.show', compact('sale', 'hasOpenCashSession', 'treasuryAccounts'));
     }
 
     public function validate(Sale $sale, ValidateSale $action) // Note: "validate" est un mot réservé en PHP, attention si vous rencontrez des bugs, préférez "approve" ou "validateSale"
