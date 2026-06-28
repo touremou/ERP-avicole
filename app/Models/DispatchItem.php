@@ -46,6 +46,19 @@ class DispatchItem extends Model
     public const BATCH_TYPES = ['animal_vif', 'carcasse', 'volaille_vivante', 'volaille_abattue'];
     public const COUNT_UNITS = ['tete', 'piece', 'unite'];
 
+    /** Libellé canonique du type de produit (aligné sur SaleItem). */
+    public function getTypeLabelAttribute(): string
+    {
+        return SaleItem::SELLABLE_TYPE_LABELS[$this->product_type] ?? match ($this->product_type) {
+            'volaille_vivante' => 'Volaille vivante',
+            'volaille_abattue' => 'Volaille abattue',
+            'litieres'         => 'Litières',
+            'recoltes'         => 'Récoltes',
+            'intrants'         => 'Intrants',
+            default            => ucfirst(str_replace('_', ' ', (string) $this->product_type)),
+        };
+    }
+
     /** Ligne adossée au magasin (déstockage Stock). */
     public function requiresDestock(): bool
     {

@@ -108,7 +108,7 @@
         <tbody>
             @foreach($sale->items as $item)
             <tr>
-                <td><strong>{{ $item->product_name }}</strong><br><span style="font-size: 8px; color: #94a3b8; text-transform: uppercase;">{{ str_replace('_', ' ', $item->product_type) }}</span></td>
+                <td><strong>{{ $item->product_name }}</strong><br><span style="font-size: 8px; color: #94a3b8; text-transform: uppercase;">{{ $item->type_label }}</span></td>
                 <td style="text-align: center;">{{ $item->quantity }}</td>
                 <td style="text-align: center; text-transform: uppercase; font-size: 9px;">{{ $item->unit }}</td>
                 <td>{{ number_format($item->unit_price, 0, ',', ' ') }}</td>

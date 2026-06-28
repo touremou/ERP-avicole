@@ -82,6 +82,16 @@ class SaleItem extends Model
      */
     public const COUNT_UNITS = ['tete', 'piece', 'unite'];
 
+    /** Libellé canonique du type de produit (source : SELLABLE_TYPE_LABELS). */
+    public function getTypeLabelAttribute(): string
+    {
+        return self::SELLABLE_TYPE_LABELS[$this->product_type] ?? match ($this->product_type) {
+            'volaille_vivante' => 'Volaille vivante',
+            'volaille_abattue' => 'Volaille abattue',
+            default            => ucfirst(str_replace('_', ' ', (string) $this->product_type)),
+        };
+    }
+
     /**
      * Détermine si cette ligne déstocke un article physique.
      */

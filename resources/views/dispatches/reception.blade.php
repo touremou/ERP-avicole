@@ -81,7 +81,7 @@
                         <div class="flex justify-between items-center mb-4">
                             <div>
                                 <p class="text-sm font-black text-slate-900 uppercase">{{ $item->product_name }}</p>
-                                <p class="text-[8px] text-slate-400 font-black uppercase tracking-widest">{{ str_replace('_', ' ', $item->product_type) }}</p>
+                                <p class="text-[8px] text-slate-400 font-black uppercase tracking-widest">{{ $item->type_label }}</p>
                             </div>
                             <div class="text-right">
                                 <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest">{{ __("Qté expédiée") }}</p>

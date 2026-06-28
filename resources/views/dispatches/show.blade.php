@@ -105,7 +105,7 @@
                         <tr @class(['bg-red-50/30' => $recItem && $recItem->quantity_missing > 0])>
                             <td class="px-6 py-4">
                                 <p class="text-xs font-black text-slate-800 uppercase">{{ $item->product_name }}</p>
-                                <p class="text-[8px] text-slate-400 uppercase tracking-widest">{{ str_replace('_', ' ', $item->product_type) }}</p>
+                                <p class="text-[8px] text-slate-400 uppercase tracking-widest">{{ $item->type_label }}</p>
                             </td>
                             <td class="px-4 py-4 text-center text-sm font-black text-slate-900">{{ $item->quantity_dispatched }}</td>
                             <td class="px-4 py-4 text-center text-[9px] font-black text-slate-500 uppercase">{{ $item->unit }}</td>

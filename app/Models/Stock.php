@@ -78,6 +78,13 @@ class Stock extends Model
         self::CAT_INTRANTS       => ['label' => 'Intrants',        'icon' => 'fa-spray-can',          'color' => 'lime',    'emoji' => '🌱'],
     ];
 
+    /** Libellé canonique de la catégorie (source : CATEGORY_META). */
+    public function getCategoryLabelAttribute(): string
+    {
+        return self::CATEGORY_META[$this->category]['label']
+            ?? ucfirst(str_replace('_', ' ', (string) $this->category));
+    }
+
     /**
      * Catégories de stock actives, pilotées par le paramètre
      * « stocks.categories » (Paramètres > Stocks). Chaque catégorie est

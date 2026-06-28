@@ -115,7 +115,7 @@
                                             <div class="w-2 h-8 rounded-full transition-all group-hover:h-10 {{ $dotColor }}"></div>
                                             <div>
                                                 <p class="text-sm font-black text-slate-800 uppercase italic leading-none">{{ $feed->item_name }}</p>
-                                                <p class="text-[8px] text-slate-400 uppercase mt-1 italic tracking-widest font-bold">{{ $feed->category }}</p>
+                                                <p class="text-[8px] text-slate-400 uppercase mt-1 italic tracking-widest font-bold">{{ $feed->category_label }}</p>
                                             </div>
                                         </div>
                                     </td>
