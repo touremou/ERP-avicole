@@ -49,6 +49,7 @@
                 $groups = [
                     ['title' => 'Trésorerie', 'color' => 'emerald', 'items' => [
                         ['label' => 'Comptes & mouvements', 'icon' => 'fa-wallet', 'route' => 'treasury.index', 'can' => 'depenses.L'],
+                        ['label' => 'Flux de trésorerie', 'icon' => 'fa-chart-line', 'route' => 'treasury.report', 'can' => 'depenses.L'],
                     ]],
                     ['title' => 'Dépenses', 'color' => 'amber', 'items' => [
                         ['label' => 'Registre', 'icon' => 'fa-receipt', 'route' => 'expenses.index', 'can' => 'depenses.L'],

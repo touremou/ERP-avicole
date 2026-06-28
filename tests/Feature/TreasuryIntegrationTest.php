@@ -183,3 +183,20 @@ test('l\'état des flux agrège entrées/sorties par catégorie sur la période'
 
     $resp->assertSee('Flux de trésorerie')->assertSee('Encaissements ventes');
 });
+
+test('l\'export CSV des flux liste les mouvements de la période', function () {
+    $sale = tresoSale($this->client);
+    (new \App\Actions\Sale\ValidateSale())->execute($sale);
+    (new \App\Actions\Sale\RecordPayment())->execute($sale->fresh(), [
+        'amount' => 7000, 'method' => 'especes', 'payment_date' => now()->toDateString(),
+    ]);
+
+    $resp = $this->get(route('treasury.report.csv'))->assertOk();
+    expect($resp->headers->get('content-disposition'))->toContain('flux-tresorerie');
+    $csv = $resp->streamedContent();
+    expect($csv)->toContain('Compte')->toContain('Caisse')->toContain('Entrée');
+});
+
+test('le hub finance expose l\'accès à l\'état des flux', function () {
+    $this->get(route('finance.index'))->assertOk()->assertSee(route('treasury.report'));
+});

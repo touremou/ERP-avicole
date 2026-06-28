@@ -121,6 +121,44 @@ class TreasuryController extends Controller
         ]);
     }
 
+    /** Export CSV des mouvements de trésorerie de la période (filtre compte optionnel). */
+    public function reportCsv(Request $request)
+    {
+        if (Gate::denies('depenses.L')) {
+            return redirect()->route('dashboard')->with('error', 'Accès restreint.');
+        }
+
+        $from = $this->parseDate($request->input('from'), now()->startOfMonth());
+        $to   = $this->parseDate($request->input('to'), now()->endOfMonth());
+        if ($from->gt($to)) {
+            [$from, $to] = [$to, $from];
+        }
+        $accountId = $request->input('account_id') ?: null;
+
+        $txs = \App\Models\TreasuryTransaction::with('account')
+            ->whereBetween('transaction_date', [$from->toDateString(), $to->toDateString()])
+            ->when($accountId, fn ($q) => $q->where('treasury_account_id', $accountId))
+            ->orderBy('transaction_date')->orderBy('id')->get();
+
+        return response()->streamDownload(function () use ($txs) {
+            $out = fopen('php://output', 'w');
+            fwrite($out, "\xEF\xBB\xBF"); // BOM UTF-8
+            fputcsv($out, ['Date', 'Compte', 'Sens', 'Montant', 'Catégorie', 'Description', 'Référence'], ';');
+            foreach ($txs as $t) {
+                fputcsv($out, [
+                    $t->transaction_date->format('d/m/Y'),
+                    $t->account?->name,
+                    $t->direction === 'in' ? 'Entrée' : 'Sortie',
+                    number_format((float) $t->amount, 2, '.', ''),
+                    $t->category,
+                    $t->description,
+                    $t->reference,
+                ], ';');
+            }
+            fclose($out);
+        }, 'flux-tresorerie-' . $from->toDateString() . '-' . $to->toDateString() . '.csv');
+    }
+
     private function parseDate(?string $value, \Carbon\Carbon $default): \Carbon\Carbon
     {
         try {
