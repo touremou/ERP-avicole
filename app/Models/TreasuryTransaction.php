@@ -27,6 +27,31 @@ class TreasuryTransaction extends Model
         return $this->morphTo();
     }
 
+    /**
+     * Lien cliquable vers la pièce d'origine (rapprochement) : ['url','label']
+     * ou null si la pièce n'est pas/plus liée ou la route absente.
+     */
+    public function getSourceLinkAttribute(): ?array
+    {
+        $s = $this->source;
+        if (! $s) {
+            return null;
+        }
+        $has = fn (string $r) => \Illuminate\Support\Facades\Route::has($r);
+
+        if ($s instanceof \App\Models\Payment && $s->sale_id && $has('sales.show')) {
+            return ['url' => route('sales.show', $s->sale_id), 'label' => __('Vente')];
+        }
+        if ($s instanceof \App\Models\Expense && $has('expenses.show')) {
+            return ['url' => route('expenses.show', $s->id), 'label' => __('Dépense')];
+        }
+        if ($s instanceof \App\Models\SupplierPayment && $s->supplier_invoice_id && $has('purchases.show')) {
+            return ['url' => route('purchases.show', $s->supplier_invoice_id), 'label' => __('Achat')];
+        }
+
+        return null;
+    }
+
     public function account(): BelongsTo
     {
         return $this->belongsTo(TreasuryAccount::class, 'treasury_account_id');

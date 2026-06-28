@@ -37,7 +37,7 @@ class TreasuryController extends Controller
         }
 
         $transactions = $account->transactions()
-            ->with('counterpart')
+            ->with(['counterpart', 'source'])
             ->latest('transaction_date')->latest('id')
             ->paginate(30);
 

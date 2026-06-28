@@ -56,6 +56,9 @@
                             <td class="px-4 py-4 text-[10px] font-black text-slate-700">
                                 {{ $tx->description ?? ucfirst($tx->category) }}
                                 @if($tx->counterpart)<span class="text-slate-400">· {{ $tx->counterpart->name }}</span>@endif
+                                @if($tx->source_link)
+                                    <a href="{{ $tx->source_link['url'] }}" class="ml-1 text-emerald-600 hover:text-emerald-800 no-underline" title="{{ $tx->source_link['label'] }}"><i class="fa-solid fa-arrow-up-right-from-square text-[8px]"></i></a>
+                                @endif
                                 <span class="block text-[7px] text-slate-300 uppercase tracking-widest">{{ $tx->category }}</span>
                             </td>
                             <td class="px-4 py-4 text-right text-sm font-black {{ $tx->direction === 'in' ? 'text-emerald-600' : 'text-red-500' }}">

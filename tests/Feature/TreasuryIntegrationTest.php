@@ -152,3 +152,15 @@ test('un règlement fournisseur décaisse le compte (avoir négatif → entrée)
     $sp->delete();
     expect((float) $this->caisse->fresh()->current_balance)->toBe(10000.0);
 });
+
+test('le grand-livre du compte affiche un lien vers la pièce d\'origine', function () {
+    $sale = tresoSale($this->client);
+    (new \App\Actions\Sale\ValidateSale())->execute($sale);
+    (new \App\Actions\Sale\RecordPayment())->execute($sale->fresh(), [
+        'amount' => 12000, 'method' => 'especes', 'payment_date' => now()->toDateString(),
+    ]);
+
+    $this->get(route('treasury.show', $this->caisse))
+        ->assertOk()
+        ->assertSee(route('sales.show', $sale->id)); // lien de rapprochement vers la vente
+});
