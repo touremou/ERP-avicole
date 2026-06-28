@@ -22,6 +22,7 @@
         'green'   => 'bg-green-600 shadow-green-500/20',
         'purple'  => 'bg-purple-600 shadow-purple-500/20',
         'teal'    => 'bg-teal-600 shadow-teal-500/20',
+        'sky'     => 'bg-sky-500 shadow-sky-500/20',
         default   => 'bg-emerald-600 shadow-emerald-500/20',
     };
     $subColor = match ($accent) {
@@ -32,6 +33,7 @@
         'green'   => 'text-green-600',
         'purple'  => 'text-purple-600',
         'teal'    => 'text-teal-600',
+        'sky'     => 'text-sky-600',
         default   => 'text-slate-400',
     };
 @endphp

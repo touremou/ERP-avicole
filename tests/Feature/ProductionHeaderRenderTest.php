@@ -48,7 +48,11 @@ test('les dashboards production se rendent avec en-tête standardisé et accent 
 });
 
 test('les écrans cultures migrés vers <x-flash> se rendent sans erreur', function () {
-    foreach (['plots.index', 'crop-catalogue.index', 'crop-campaigns.index', 'crop-protocols.index'] as $route) {
+    foreach ([
+        'plots.index', 'crop-catalogue.index', 'crop-campaigns.index', 'crop-protocols.index',
+        'crop-transformations.index', 'crop-recipes.index', 'crop-calendar-events.index',
+        'weather.index', 'crop-reports.index',
+    ] as $route) {
         $this->actingAs($this->adminUser)->get(route($route))->assertOk();
     }
 });

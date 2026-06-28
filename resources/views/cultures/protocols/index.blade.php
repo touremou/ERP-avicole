@@ -1,23 +1,14 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <div class="flex items-center gap-4">
-                <div class="w-12 h-12 bg-green-600 rounded-2xl flex items-center justify-center text-white shadow-lg -rotate-3">
-                    <i class="fa-solid fa-list-check text-lg"></i>
-                </div>
-                <div class="text-left">
-                    <h2 class="font-black text-2xl text-slate-800 uppercase italic tracking-tighter leading-none">{{ __("Protocoles / Itinéraires techniques") }}</h2>
-                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1 italic">{{ __("Calendriers culturaux de référence") }}</p>
-                </div>
-            </div>
-            <div class="flex gap-3 items-center">
+        <x-page-header :title="__('Protocoles / Itinéraires techniques')" :subtitle="__('Calendriers culturaux de référence')" icon="fa-list-check" accent="green">
+            <x-slot name="actions">
                 @can('cultures.C')
                 <a href="{{ route('crop-protocols.create') }}" class="bg-slate-900 text-white px-8 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-green-600 transition-all shadow-2xl italic flex items-center gap-2 no-underline">
                     <i class="fa-solid fa-plus"></i> {{ __("Nouvel itinéraire") }}
                 </a>
                 @endcan
-            </div>
-        </div>
+            </x-slot>
+        </x-page-header>
         @include('cultures.partials.hub-tabs')
     </x-slot>
 

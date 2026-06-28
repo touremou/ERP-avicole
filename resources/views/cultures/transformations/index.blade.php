@@ -1,21 +1,14 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <div class="flex items-center gap-4">
-                <div class="w-12 h-12 bg-green-600 rounded-2xl flex items-center justify-center text-white shadow-lg -rotate-3">
-                    <i class="fa-solid fa-industry text-lg"></i>
-                </div>
-                <div class="text-left">
-                    <h2 class="font-black text-2xl text-slate-800 uppercase italic tracking-tighter leading-none">{{ __("Transformation Végétale") }}</h2>
-                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1 italic">{{ __("Agro-transformation des récoltes") }}</p>
-                </div>
-            </div>
-            @can('cultures.C')
-            <a href="{{ route('crop-transformations.create') }}" class="bg-slate-900 text-white px-8 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-green-600 transition-all shadow-2xl italic flex items-center gap-2 no-underline">
-                <i class="fa-solid fa-plus"></i> {{ __("Nouvelle Transformation") }}
-            </a>
-            @endcan
-        </div>
+        <x-page-header :title="__('Transformation Végétale')" :subtitle="__('Agro-transformation des récoltes')" icon="fa-industry" accent="green">
+            <x-slot name="actions">
+                @can('cultures.C')
+                <a href="{{ route('crop-transformations.create') }}" class="bg-slate-900 text-white px-8 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-green-600 transition-all shadow-2xl italic flex items-center gap-2 no-underline">
+                    <i class="fa-solid fa-plus"></i> {{ __("Nouvelle Transformation") }}
+                </a>
+                @endcan
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-10">
