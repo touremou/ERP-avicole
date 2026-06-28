@@ -302,3 +302,16 @@ test('en mode « both », QR et code-barres sont présents', function () {
 
     expect($resp->getContent())->toContain('data:image/png;base64')->toContain('<svg');
 });
+
+test('le format de page pilote la taille @page imprimable', function () {
+    $batch = Batch::factory()->create(['farm_id' => $this->farm->id, 'code' => 'LOT-FMT-1']);
+
+    // A4 par défaut.
+    $this->actingAs($this->adminUser)->get(route('batches.label', $batch->id))->assertOk()->assertSee('size: A4', false);
+    // Override A5.
+    $this->actingAs($this->adminUser)->get(route('batches.label', ['batch' => $batch->id, 'format' => 'a5']))->assertOk()->assertSee('size: A5', false);
+    // Étiquette seule → page auto + 1 seule copie même si copies=10.
+    $resp = $this->actingAs($this->adminUser)->get(route('batches.label', ['batch' => $batch->id, 'format' => 'seule', 'copies' => 10]))->assertOk();
+    $resp->assertSee('size: auto', false);
+    expect(substr_count($resp->getContent(), 'class="label"'))->toBe(1);
+});

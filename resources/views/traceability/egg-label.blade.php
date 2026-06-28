@@ -5,13 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Étiquette œufs — {{ $batch?->code ?? '' }} {{ $eggProduction->production_date?->format('d/m/Y') }}</title>
     @php
-        $copies      = max(1, min(60, (int) request('copies', (int) setting('etiquettes.copies', 1))));
-        $columns     = max(1, min(4, (int) request('cols', (int) setting('etiquettes.columns', 2))));
-        $showFarm    = (bool) setting('etiquettes.show_farm', true);
-        $showCaption = (bool) setting('etiquettes.show_caption', true);
-        $symbology   = $symbology ?? 'qr';
-        $showQr      = in_array($symbology, ['qr', 'both'], true);
-        $showBarcode = in_array($symbology, ['barcode', 'both'], true) && ! empty($barcode);
+        $cfg = \App\Support\LabelConfig::current();
+        $showBarcode = $cfg['showBarcode'] && ! empty($barcode);
     @endphp
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -30,18 +25,19 @@
         .grade .g { font-size: 10px; font-weight: 900; color: #b45309; }
         .grade .n { font-size: 13px; font-weight: 800; }
         .scan { margin-top: 10px; font-size: 8px; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; text-align: center; }
-        @media print { body { background: #fff; padding: 0; } .actions { display: none; } @page { margin: 8mm; } }
+        @page { size: {{ $cfg['pageSize'] }}; margin: 8mm; }
+        @media print { body { background: #fff; padding: 0; } .actions { display: none; } }
     </style>
     @include('traceability._label-styles')
 </head>
 <body>
-    <div class="label-sheet" style="--cols: {{ $columns }}">
-        @for($i = 0; $i < $copies; $i++)
+    <div class="label-sheet fmt-{{ $cfg['format'] }}">
+        @for($i = 0; $i < $cfg['copies']; $i++)
         <div class="label">
             <div class="top">
-                @if($showQr)<div class="qr"><img src="{{ $qr }}" alt="QR traçabilité"></div>@endif
+                @if($cfg['showQr'])<div class="qr"><img src="{{ $qr }}" alt="QR traçabilité"></div>@endif
                 <div class="info">
-                    @if($showFarm)<div class="farm">{{ $batch?->farm?->name ?? __('Œufs frais') }}</div>@endif
+                    @if($cfg['showFarm'])<div class="farm">{{ $batch?->farm?->name ?? __('Œufs frais') }}</div>@endif
                     <div class="title">{{ __('Œufs') }} · {{ $eggProduction->production_date?->format('d/m/Y') }}</div>
                     <div class="meta">
                         <div>{{ __('Lot d\'origine') }} : <b>{{ $batch?->code ?? '—' }}</b></div>
@@ -62,13 +58,13 @@
             </div>
             @endif
 
-            @if($showCaption)<div class="scan">{{ __('Scanner pour la traçabilité du lot') }}</div>@endif
+            @if($cfg['showCaption'])<div class="scan">{{ __('Scanner pour la traçabilité du lot') }}</div>@endif
             @if($showBarcode)<div class="barcode">{!! $barcode !!}</div>@endif
         </div>
         @endfor
     </div>
 
-    @if(setting('etiquettes.show_printed_at', false))
+    @if($cfg['showPrintedAt'])
         <div class="printed-at">{{ __('Imprimé le') }} {{ now()->format('d/m/Y H:i') }}</div>
     @endif
 

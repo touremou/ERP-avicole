@@ -13,14 +13,8 @@
         ];
         $accentColor = $themes[$accent ?? 'slate'] ?? '#0f172a';
 
-        // Configuration (Réglages > Étiquettes) + override par querystring.
-        $copies      = max(1, min(60, (int) request('copies', (int) setting('etiquettes.copies', 1))));
-        $columns     = max(1, min(4, (int) request('cols', (int) setting('etiquettes.columns', 2))));
-        $showFarm    = (bool) setting('etiquettes.show_farm', true);
-        $showCaption = (bool) setting('etiquettes.show_caption', true);
-        $symbology   = $symbology ?? 'qr';
-        $showQr      = in_array($symbology, ['qr', 'both'], true);
-        $showBarcode = in_array($symbology, ['barcode', 'both'], true) && ! empty($barcode);
+        $cfg = \App\Support\LabelConfig::current();
+        $showBarcode = $cfg['showBarcode'] && ! empty($barcode);
     @endphp
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -35,18 +29,19 @@
         .meta { font-size: 11px; color: #334155; line-height: 1.6; }
         .meta b { font-weight: 800; }
         .scan { margin-top: 10px; font-size: 8px; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; }
-        @media print { body { background: #fff; padding: 0; } .actions { display: none; } @page { margin: 8mm; } }
+        @page { size: {{ $cfg['pageSize'] }}; margin: 8mm; }
+        @media print { body { background: #fff; padding: 0; } .actions { display: none; } }
     </style>
     @include('traceability._label-styles')
 </head>
 <body>
-    <div class="label-sheet" style="--cols: {{ $columns }}">
-        @for($i = 0; $i < $copies; $i++)
+    <div class="label-sheet fmt-{{ $cfg['format'] }}">
+        @for($i = 0; $i < $cfg['copies']; $i++)
         <div class="label">
             <div class="head">
-                @if($showQr)<div class="qr"><img src="{{ $qr }}" alt="QR {{ $code }}"></div>@endif
+                @if($cfg['showQr'])<div class="qr"><img src="{{ $qr }}" alt="QR {{ $code }}"></div>@endif
                 <div class="info">
-                    @if($showFarm)<div class="farm">{{ $farm ?? __('Traçabilité') }}</div>@endif
+                    @if($cfg['showFarm'])<div class="farm">{{ $farm ?? __('Traçabilité') }}</div>@endif
                     <div class="title">{{ $title }}</div>
                     <div class="code">{{ $code }}</div>
                     <div class="meta">
@@ -54,7 +49,7 @@
                         <div>{{ $row[0] }} : <b>{{ $row[1] }}</b></div>
                         @endforeach
                     </div>
-                    @if($showCaption)<div class="scan">{{ __('Scanner pour la traçabilité') }}</div>@endif
+                    @if($cfg['showCaption'])<div class="scan">{{ __('Scanner pour la traçabilité') }}</div>@endif
                 </div>
             </div>
             @if($showBarcode)<div class="barcode">{!! $barcode !!}</div>@endif
@@ -62,7 +57,7 @@
         @endfor
     </div>
 
-    @if(setting('etiquettes.show_printed_at', false))
+    @if($cfg['showPrintedAt'])
         <div class="printed-at">{{ __('Imprimé le') }} {{ now()->format('d/m/Y H:i') }}</div>
     @endif
 
