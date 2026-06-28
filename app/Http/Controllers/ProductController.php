@@ -24,6 +24,7 @@ class ProductController extends Controller
         'produits_finis'   => \App\Models\Stock::CAT_PRODUITS_FINIS,
         'volaille_abattue' => \App\Models\Stock::CAT_PRODUITS_FINIS,
         'carcasse'         => \App\Models\Stock::CAT_PRODUITS_FINIS,
+        'litieres'         => \App\Models\Stock::CAT_LITIERES,
     ];
 
     public function index()

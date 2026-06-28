@@ -112,3 +112,18 @@ test('un tarif de repli s\'applique aux types vendables auparavant absents (anim
     expect((float) \App\Models\SalePriceList::suggestedPrice(null, 'animal_vif'))->toBe(45000.0)
         ->and((float) \App\Models\SalePriceList::suggestedPrice(null, 'aliment'))->toBe(8000.0);
 });
+
+test('le type « litière » est vendable et adossé au stock litières', function () {
+    expect(\App\Models\SaleItem::SELLABLE_TYPE_LABELS)->toHaveKey('litieres')
+        ->and(\App\Http\Controllers\ProductController::STOCKABLE_TYPES['litieres'])->toBe(\App\Models\Stock::CAT_LITIERES)
+        ->and(in_array('litieres', \App\Models\SaleItem::STOCK_TYPES, true))->toBeTrue();
+
+    // Un article catalogue « litière » crée/lie un stock en catégorie litieres.
+    $this->actingAs($this->adminUser)->post(route('products.store'), [
+        'name' => 'Copeaux', 'product_type' => 'litieres', 'unit' => 'sac', 'base_price' => 30000, 'is_active' => 1,
+    ])->assertRedirect();
+
+    $product = \App\Models\Product::where('name', 'Copeaux')->firstOrFail();
+    expect($product->stock_id)->not->toBeNull()
+        ->and($product->stock->category)->toBe(\App\Models\Stock::CAT_LITIERES);
+});

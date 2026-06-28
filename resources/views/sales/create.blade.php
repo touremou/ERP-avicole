@@ -313,7 +313,7 @@
             // Stock::CAT_PRODUITS_FINIS par l'abattoir/découpe et les
             // poussins d'un jour) : ils se sélectionnent depuis le stock,
             // au même titre que oeufs/aliment/materiel.
-            isStockType(t) { return ['oeufs','lait','aliment','produits_finis','materiel'].includes(t); },
+            isStockType(t) { return ['oeufs','lait','aliment','produits_finis','materiel','litieres'].includes(t); },
             isBatchType(t) { return ['animal_vif','carcasse'].includes(t); },
             isManualType(t) { return ['fumier','autre'].includes(t); },
             unitChoices(t) {
@@ -321,6 +321,7 @@
                     animal_vif: ['tete','piece','kg'],
                     carcasse:   ['kg'],
                     fumier:     ['sac','voyage'],
+                    litieres:   ['sac','unite','kg'],
                     autre:      ['unite','kg','piece','litre','sac'],
                 })[t] || [];
             },

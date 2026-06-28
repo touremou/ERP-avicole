@@ -36,7 +36,7 @@ class StoreSaleRequest extends FormRequest
             'items'                  => 'required|array|min:1',
             'discount_type'          => 'nullable|in:none,percent,amount',
             'discount_value'         => 'nullable|numeric|min:0',
-            'items.*.product_type'   => 'required|in:oeufs,animal_vif,carcasse,lait,fumier,aliment,produits_finis,materiel,autre,volaille_vivante,volaille_abattue',
+            'items.*.product_type'   => 'required|in:oeufs,animal_vif,carcasse,lait,fumier,litieres,aliment,produits_finis,materiel,autre,volaille_vivante,volaille_abattue',
             'items.*.product_name'   => 'required|string|max:255',
             'items.*.product_id'     => 'nullable|integer',
             'items.*.product_ref_id' => 'nullable|integer|exists:products,id',
@@ -93,6 +93,7 @@ class StoreSaleRequest extends FormRequest
                 'lait'              => ['litre'],
                 'aliment'           => ['kg', 'sac'],
                 'fumier'            => ['sac', 'voyage'],
+                'litieres'          => ['sac', 'unite', 'kg'],
                 'produits_finis'    => ['kg', 'tete', 'piece', 'unite'],
                 'materiel'          => ['unite', 'piece'],
                 // 'autre' : libre, pas de contrainte

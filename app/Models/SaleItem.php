@@ -46,7 +46,7 @@ class SaleItem extends Model
      * sont des articles physiques réels : ils doivent être sélectionnés
      * depuis le stock et décrémentés à la vente, pas saisis manuellement.
      */
-    public const STOCK_TYPES = ['oeufs', 'lait', 'aliment', 'produits_finis', 'materiel'];
+    public const STOCK_TYPES = ['oeufs', 'lait', 'aliment', 'produits_finis', 'materiel', 'litieres'];
 
     /**
      * SOURCE UNIQUE des types de produits vendables et de leurs libellés.
@@ -65,6 +65,7 @@ class SaleItem extends Model
         'aliment'        => 'Aliment',
         'produits_finis' => 'Produits finis',
         'fumier'         => 'Fumier',
+        'litieres'       => 'Litière',
         'materiel'       => 'Matériel',
         'autre'          => 'Autre',
     ];
