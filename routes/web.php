@@ -629,6 +629,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/', 'index')->name('index')->middleware('can:L');
         Route::get('/report', 'report')->name('report')->middleware('can:L');
         Route::get('/report/csv', 'reportCsv')->name('report.csv')->middleware('can:L');
+        Route::get('/report/pdf', 'reportPdf')->name('report.pdf')->middleware('can:L');
         Route::post('/account', 'storeAccount')->name('account.store')->middleware('can:C');
         Route::post('/mapping', 'updateMapping')->name('mapping')->middleware('can:C');
         Route::post('/transfer', 'transfer')->name('transfer')->middleware('can:C');

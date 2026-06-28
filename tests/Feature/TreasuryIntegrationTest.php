@@ -200,3 +200,15 @@ test('l\'export CSV des flux liste les mouvements de la période', function () {
 test('le hub finance expose l\'accès à l\'état des flux', function () {
     $this->get(route('finance.index'))->assertOk()->assertSee(route('treasury.report'));
 });
+
+test('l\'export PDF des flux se génère (téléchargement)', function () {
+    $sale = tresoSale($this->client);
+    (new \App\Actions\Sale\ValidateSale())->execute($sale);
+    (new \App\Actions\Sale\RecordPayment())->execute($sale->fresh(), [
+        'amount' => 9000, 'method' => 'especes', 'payment_date' => now()->toDateString(),
+    ]);
+
+    $resp = $this->get(route('treasury.report.pdf'))->assertOk();
+    expect($resp->headers->get('content-type'))->toContain('application/pdf');
+    expect($resp->headers->get('content-disposition'))->toContain('flux-tresorerie');
+});

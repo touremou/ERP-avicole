@@ -74,6 +74,25 @@ class TreasuryController extends Controller
             return redirect()->route('dashboard')->with('error', 'Accès restreint.');
         }
 
+        return view('treasury.report', $this->buildReport($request));
+    }
+
+    /** Export PDF de l'état des flux (même agrégation que l'écran). */
+    public function reportPdf(Request $request)
+    {
+        if (Gate::denies('depenses.L')) {
+            return redirect()->route('dashboard')->with('error', 'Accès restreint.');
+        }
+
+        $data = $this->buildReport($request);
+        $pdf = \Pdf::loadView('treasury.report-pdf', $data)->setPaper('a4', 'portrait');
+
+        return $pdf->download('flux-tresorerie-' . $data['from']->toDateString() . '-' . $data['to']->toDateString() . '.pdf');
+    }
+
+    /** Agrégation partagée (écran / PDF) des flux de la période. */
+    private function buildReport(Request $request): array
+    {
         $from = $this->parseDate($request->input('from'), now()->startOfMonth());
         $to   = $this->parseDate($request->input('to'), now()->endOfMonth());
         if ($from->gt($to)) {
@@ -114,11 +133,7 @@ class TreasuryController extends Controller
             ];
         });
 
-        return view('treasury.report', [
-            'from' => $from, 'to' => $to, 'accountId' => $accountId, 'accounts' => $accounts,
-            'byCategory' => $byCategory, 'totalIn' => $totalIn, 'totalOut' => $totalOut,
-            'perAccount' => $perAccount,
-        ]);
+        return compact('from', 'to', 'accountId', 'accounts', 'byCategory', 'totalIn', 'totalOut', 'perAccount');
     }
 
     /** Export CSV des mouvements de trésorerie de la période (filtre compte optionnel). */

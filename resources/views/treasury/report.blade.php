@@ -5,6 +5,9 @@
                 <a href="{{ route('treasury.report.csv', ['from' => $from->toDateString(), 'to' => $to->toDateString(), 'account_id' => $accountId]) }}" class="inline-flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-2xl text-[9px] font-black uppercase tracking-widest hover:bg-emerald-50 hover:text-emerald-600 transition-all no-underline shadow-sm italic">
                     <i class="fa-solid fa-file-csv"></i> {{ __("CSV") }}
                 </a>
+                <a href="{{ route('treasury.report.pdf', ['from' => $from->toDateString(), 'to' => $to->toDateString(), 'account_id' => $accountId]) }}" class="inline-flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-2xl text-[9px] font-black uppercase tracking-widest hover:bg-rose-50 hover:text-rose-600 transition-all no-underline shadow-sm italic">
+                    <i class="fa-solid fa-file-pdf"></i> {{ __("PDF") }}
+                </a>
                 <a href="{{ route('treasury.index') }}" class="inline-flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-2xl text-[9px] font-black uppercase tracking-widest hover:bg-slate-50 transition-all no-underline shadow-sm italic">
                     <i class="fa-solid fa-wallet"></i> {{ __("Comptes") }}
                 </a>
