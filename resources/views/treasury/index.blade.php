@@ -73,6 +73,40 @@
                     @if($accounts->count() < 2)<p class="text-[8px] text-slate-400 uppercase tracking-widest text-center">{{ __("Il faut au moins 2 comptes.") }}</p>@endif
                 </form>
             </div>
+
+            {{-- AFFECTATION MODE DE PAIEMENT → COMPTE (mapping par défaut) --}}
+            @if($accounts->isNotEmpty())
+            @php
+                $channels = [
+                    'especes'      => ['Espèces', 'fa-coins'],
+                    'mobile_money' => ['Mobile Money (OM / MoMo)', 'fa-mobile-screen-button'],
+                    'virement'     => ['Virement bancaire', 'fa-building-columns'],
+                    'cheque'       => ['Chèque', 'fa-money-check'],
+                ];
+                $defaults = $accounts->whereNotNull('default_for_method')->keyBy('default_for_method');
+            @endphp
+            <form method="POST" action="{{ route('treasury.mapping') }}" class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-4">
+                @csrf
+                <div>
+                    <h3 class="text-[10px] font-black uppercase text-slate-500 tracking-widest"><i class="fa-solid fa-diagram-project mr-1"></i> {{ __("Affectation des encaissements / décaissements") }}</h3>
+                    <p class="text-[9px] font-bold text-slate-400 italic mt-1">{{ __("Compte crédité/débité par défaut selon le mode de paiement. Surchargeable au cas par cas.") }}</p>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    @foreach($channels as $key => [$label, $icon])
+                    <div class="flex items-center justify-between gap-3 p-3 rounded-2xl bg-slate-50">
+                        <span class="text-[10px] font-black text-slate-600 uppercase italic flex items-center gap-2"><i class="fa-solid {{ $icon }} text-emerald-500"></i> {{ __($label) }}</span>
+                        <select name="mapping[{{ $key }}]" class="bg-white border-none rounded-xl p-2 text-[10px] font-black uppercase shadow-inner outline-none">
+                            <option value="">{{ __("Auto (par type)") }}</option>
+                            @foreach($accounts as $a)
+                                <option value="{{ $a->id }}" @selected(optional($defaults->get($key))->id === $a->id)>{{ $a->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    @endforeach
+                </div>
+                <button type="submit" class="w-full bg-slate-900 text-white py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-600 transition-all border-none cursor-pointer"><i class="fa-solid fa-floppy-disk mr-1"></i> {{ __("Enregistrer l'affectation") }}</button>
+            </form>
+            @endif
             @endcan
         </div>
     </div>

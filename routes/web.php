@@ -628,6 +628,7 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('treasury')->name('treasury.')->controller(\App\Http\Controllers\TreasuryController::class)->group(function () {
         Route::get('/', 'index')->name('index')->middleware('can:L');
         Route::post('/account', 'storeAccount')->name('account.store')->middleware('can:C');
+        Route::post('/mapping', 'updateMapping')->name('mapping')->middleware('can:C');
         Route::post('/transfer', 'transfer')->name('transfer')->middleware('can:C');
         Route::get('/{account}', 'show')->name('show')->middleware('can:L');
         Route::post('/{account}/movement', 'storeMovement')->name('movement')->middleware('can:C');

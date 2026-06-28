@@ -64,12 +64,23 @@ class TreasuryAccount extends Model
      */
     public static function resolveForMethod(string $method): ?self
     {
+        // 1. Compte explicitement marqué pour ce mode précis (ex. « virement »).
         $flagged = static::active()->where('default_for_method', $method)->first();
         if ($flagged) {
             return $flagged;
         }
 
         if ($type = self::typeForMethod($method)) {
+            // 2. Compte marqué pour le CANAL (ex. flag « mobile_money » sert aussi
+            //    « orange_money » ; flag « caisse »/« banque » par type).
+            $flaggedByChannel = static::active()
+                ->whereIn('default_for_method', array_unique([$type, $method]))
+                ->first();
+            if ($flaggedByChannel) {
+                return $flaggedByChannel;
+            }
+
+            // 3. 1er compte actif du type correspondant.
             $byType = static::active()->where('type', $type)->orderBy('id')->first();
             if ($byType) {
                 return $byType;

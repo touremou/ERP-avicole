@@ -114,3 +114,15 @@ test('la comptabilisation est idempotente (pas de double-décaissement)', functi
     expect((float) $this->caisse->fresh()->current_balance)->toBe(-15000.0)
         ->and(TreasuryTransaction::where('source_id', $expense->id)->where('source_type', $expense->getMorphClass())->count())->toBe(1);
 });
+
+test('l\'écran trésorerie permet d\'affecter un compte par défaut à un mode', function () {
+    $this->get(route('treasury.index'))->assertOk()->assertSee('Affectation des encaissements');
+
+    $this->post(route('treasury.mapping'), [
+        'mapping' => ['mobile_money' => $this->banque->id], // on force OM/MoMo vers la banque
+    ])->assertRedirect();
+
+    expect($this->banque->fresh()->default_for_method)->toBe('mobile_money')
+        ->and(TreasuryAccount::resolveForMethod('orange_money')->id)->toBe($this->banque->id) // OM suit le canal mobile
+        ->and(TreasuryAccount::resolveForMethod('mobile_money')->id)->toBe($this->banque->id);
+});

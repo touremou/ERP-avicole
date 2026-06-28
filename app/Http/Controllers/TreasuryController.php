@@ -67,6 +67,34 @@ class TreasuryController extends Controller
         return back()->with('success', "Compte « {$data['name']} » créé.");
     }
 
+    /** Mapping mode de paiement → compte par défaut (espèces→Caisse, OM→Mobile…). */
+    public function updateMapping(Request $request)
+    {
+        if (Gate::denies('depenses.C')) {
+            return back()->with('error', 'Action non autorisée.');
+        }
+
+        $channels = ['especes', 'mobile_money', 'virement', 'cheque'];
+        $data = $request->validate([
+            'mapping'   => 'array',
+            'mapping.*' => 'nullable|exists:treasury_accounts,id',
+        ]);
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($channels, $data) {
+            foreach ($channels as $channel) {
+                $accountId = $data['mapping'][$channel] ?? null;
+
+                // On purge l'ancien défaut de ce canal, puis on (ré)assigne.
+                TreasuryAccount::where('default_for_method', $channel)->update(['default_for_method' => null]);
+                if ($accountId) {
+                    TreasuryAccount::whereKey($accountId)->update(['default_for_method' => $channel]);
+                }
+            }
+        });
+
+        return back()->with('success', 'Affectation des comptes mise à jour.');
+    }
+
     public function storeMovement(Request $request, TreasuryAccount $account, TreasuryService $service)
     {
         if (Gate::denies('depenses.C')) {
