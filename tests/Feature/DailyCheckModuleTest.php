@@ -212,17 +212,17 @@ test('un ramassage de fumier au pointage crédite un stock « Fumier » vendable
     $check = DailyCheck::where('batch_id', $batch->id)->first();
     expect((float) $check->manure_collected_kg)->toBe(120.0);
 
-    // Un article « Fumier » est créé en produits_finis et crédité de 120 kg.
+    // Un article « Fumier » est créé en litières et crédité de 120 kg.
     $fumier = Stock::where('item_name', 'Fumier')
-        ->where('category', Stock::CAT_PRODUITS_FINIS)
+        ->where('category', Stock::CAT_LITIERES)
         ->first();
 
     expect($fumier)->not->toBeNull()
         ->and((float) $fumier->current_quantity)->toBe(120.0)
         ->and(StockMovement::where('stock_id', $fumier->id)->where('type', 'in')->exists())->toBeTrue();
 
-    // produits_finis est un type vendable : le fumier est mobilisable en vente.
-    expect(Stock::categoryForProductType('produits_finis'))->toBe(Stock::CAT_PRODUITS_FINIS);
+    // litieres est un type vendable : le fumier est mobilisable en vente.
+    expect(Stock::categoryForProductType('litieres'))->toBe(Stock::CAT_LITIERES);
 });
 
 test('une quantité de fumier saisie sans litière changée est ignorée', function () {
@@ -269,7 +269,7 @@ test('rectifier la quantité de fumier compense le stock sans double comptage', 
     // On initialise le stock fumier à 100 kg (état après ramassage initial).
     $fumier = Stock::create([
         'item_name'        => 'Fumier',
-        'category'         => Stock::CAT_PRODUITS_FINIS,
+        'category'         => Stock::CAT_LITIERES,
         'unit'             => 'KG',
         'current_quantity' => 100,
         'alert_threshold'  => 0,
@@ -319,7 +319,7 @@ test('le lot expose le fumier ramassé cumulé et son revenu estimé au prix de 
 
     // Une fois le prix unitaire de l'article fixé (cf. Stocks > Edit), le
     // revenu estimé est exposé pour le rapport de marge du lot.
-    Stock::where('item_name', 'Fumier')->where('category', Stock::CAT_PRODUITS_FINIS)
+    Stock::where('item_name', 'Fumier')->where('category', Stock::CAT_LITIERES)
         ->update(['unit_price' => 50]);
 
     expect($batch->estimated_manure_revenue)->toBe(2500.0);

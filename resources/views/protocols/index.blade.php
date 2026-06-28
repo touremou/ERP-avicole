@@ -1,6 +1,8 @@
 <x-app-layout>
     <x-slot name="header">
-        <x-page-header :title="__('📜 Bibliothèque des Protocoles')" :subtitle="__('Standards de prophylaxie AviSmart')" icon="fa-scroll" accent="purple" :back="route('health.index')">
+        {{-- Pas de :back ici : page de section → le layout injecte déjà
+             <x-hub-back> (sinon double flèche de retour). --}}
+        <x-page-header :title="__('📜 Bibliothèque des Protocoles')" :subtitle="__('Standards de prophylaxie AviSmart')" icon="fa-scroll" accent="purple">
             <x-slot name="actions">
             <div class="flex flex-wrap items-center gap-4 w-full md:w-auto">
                 {{-- RECHERCHE (L) --}}

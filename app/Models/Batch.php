@@ -996,7 +996,7 @@ class Batch extends Model
         }
 
         $fumier = Stock::where('item_name', SyncManureCollection::ITEM_NAME)
-            ->where('category', Stock::CAT_PRODUITS_FINIS)
+            ->where('category', SyncManureCollection::CATEGORY)
             ->first();
 
         $unitPrice = (float) ($fumier?->unit_price ?? $fumier?->last_unit_price ?? 0);
