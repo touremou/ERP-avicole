@@ -6,33 +6,14 @@
     <div class="py-10 italic font-bold text-left">
         <div class="max-w-6xl mx-auto sm:px-6 lg:px-8 space-y-8">
 
-            @if(session('success'))
-                <div class="p-5 bg-green-50 text-green-700 rounded-[2rem] text-[10px] font-black uppercase tracking-widest border border-green-200">{{ session('success') }}</div>
-            @endif
-            @if(session('error'))
-                <div class="p-5 bg-red-50 text-red-700 rounded-[2rem] text-[10px] font-black uppercase tracking-widest border border-red-200">{{ session('error') }}</div>
-            @endif
+            <x-flash />
 
             {{-- KPI --}}
             <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
-                <div class="bg-white p-7 rounded-[2.5rem] border border-slate-100 shadow-sm">
-                    <p class="text-[9px] font-black text-cyan-500 uppercase tracking-widest mb-2 italic">{{ __("Litres aujourd'hui") }}</p>
-                    <p class="text-3xl font-black text-slate-900 italic tracking-tighter">{{ number_format($totalsToday->liters ?? 0, 1) }} <small class="text-sm">L</small></p>
-                </div>
-                <div class="bg-white p-7 rounded-[2.5rem] border border-slate-100 shadow-sm">
-                    <p class="text-[9px] font-black text-amber-500 uppercase tracking-widest mb-2 italic">{{ __("Valeur du jour") }}</p>
-                    <p class="text-3xl font-black text-slate-900 italic tracking-tighter">{{ number_format($totalsToday->value ?? 0) }}</p>
-                    <p class="text-[8px] text-amber-600 mt-2 uppercase font-black">{{ currency() }}</p>
-                </div>
-                <div class="bg-white p-7 rounded-[2.5rem] border border-slate-100 shadow-sm">
-                    <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 italic">{{ __("Litres 30 jours") }}</p>
-                    <p class="text-3xl font-black text-slate-900 italic tracking-tighter">{{ number_format($last30->liters ?? 0, 0) }} <small class="text-sm">L</small></p>
-                </div>
-                <div class="bg-slate-900 p-7 rounded-[2.5rem] text-white shadow-sm">
-                    <p class="text-[9px] font-black text-cyan-400 uppercase tracking-widest mb-2 italic">{{ __("CA lait 30 jours") }}</p>
-                    <p class="text-3xl font-black italic tracking-tighter">{{ number_format($last30->value ?? 0) }}</p>
-                    <p class="text-[8px] opacity-60 mt-2 uppercase font-black">{{ currency() }}</p>
-                </div>
+                <x-stat-tile :label="__('Litres aujourd\'hui')" :value="number_format($totalsToday->liters ?? 0, 1)" unit="L" accent="cyan" />
+                <x-stat-tile :label="__('Valeur du jour')" :value="number_format($totalsToday->value ?? 0)" :sub="currency()" accent="amber" />
+                <x-stat-tile :label="__('Litres 30 jours')" :value="number_format($last30->liters ?? 0, 0)" unit="L" accent="slate" />
+                <x-stat-tile :label="__('CA lait 30 jours')" :value="number_format($last30->value ?? 0)" :sub="currency()" accent="cyan" :dark="true" />
             </div>
 
             {{-- LOTS LAITIERS --}}

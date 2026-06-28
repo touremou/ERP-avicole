@@ -24,7 +24,9 @@ test('la collecte de lait se rend avec l\'en-tête standardisé (accent cyan)', 
         ->get(route('milk-productions.index'))
         ->assertOk()
         ->assertSee('Collecte de lait')
-        ->assertSee('bg-cyan-600', false); // identité visuelle du module lait
+        ->assertSee('bg-cyan-600', false)          // identité visuelle du module lait
+        ->assertSee("Litres aujourd'hui")          // tuile KPI via <x-stat-tile>
+        ->assertSee('rounded-[2.5rem]', false);    // panneau via composant
 });
 
 test('les dashboards production se rendent avec en-tête standardisé et accent propre', function () {
