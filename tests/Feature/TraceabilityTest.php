@@ -240,3 +240,28 @@ test('l\'étiquette d\'un article de stock pointe vers la fiche interne et exige
         ->assertSee('Article de stock')
         ->assertSee('data:image/png;base64', false);
 });
+
+test('l\'étiquette est configurable : copies, colonnes, et pas d\'impression auto par défaut', function () {
+    $batch = Batch::factory()->create(['farm_id' => $this->farm->id, 'code' => 'LOT-CFG-1']);
+
+    // Par défaut : aperçu (barre d'actions), AUCUNE impression automatique.
+    $resp = $this->actingAs($this->adminUser)->get(route('batches.label', $batch->id))->assertOk();
+    $resp->assertSee('Aperçu')->assertSee('Copies');
+    expect($resp->getContent())->not->toContain('setTimeout(() => window.print()');
+
+    // ?copies=3 → le QR est répété 3 fois (3 étiquettes sur la page).
+    $resp3 = $this->actingAs($this->adminUser)->get(route('batches.label', ['batch' => $batch->id, 'copies' => 3]))->assertOk();
+    expect(substr_count($resp3->getContent(), 'class="label"'))->toBe(3);
+});
+
+test('le paramètre autoprint relance l\'impression automatique', function () {
+    \App\Models\Setting::updateOrCreate(
+        ['group' => 'etiquettes', 'key' => 'autoprint', 'farm_id' => null],
+        ['value' => '1', 'type' => 'boolean']
+    );
+    \Illuminate\Support\Facades\Cache::flush();
+
+    $batch = Batch::factory()->create(['farm_id' => $this->farm->id, 'code' => 'LOT-AP-1']);
+    $resp = $this->actingAs($this->adminUser)->get(route('batches.label', $batch->id))->assertOk();
+    expect($resp->getContent())->toContain('window.print()');
+});
