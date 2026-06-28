@@ -29,10 +29,11 @@ class CashRegisterController extends Controller
             ->with('user')->latest('closed_at')->paginate(15);
 
         return view('cash-register.index', [
-            'open'          => $open,
-            'expectedNow'   => $open?->expectedCash(),
-            'history'       => $history,
-            'denominations' => CashRegisterSession::DENOMINATIONS,
+            'open'           => $open,
+            'expectedNow'    => $open?->expectedCash(),
+            'history'        => $history,
+            'denominations'  => CashRegisterSession::DENOMINATIONS,
+            'caisseAccounts' => TreasuryAccount::active()->where('type', 'caisse')->orderBy('name')->get(['id', 'name']),
         ]);
     }
 
@@ -47,12 +48,15 @@ class CashRegisterController extends Controller
         }
 
         $data = $request->validate([
-            'opening_float' => 'required|numeric|min:0',
+            'opening_float'       => 'required|numeric|min:0',
+            'treasury_account_id' => 'nullable|exists:treasury_accounts,id',
         ]);
 
         CashRegisterSession::create([
             'user_id'             => Auth::id(),
-            'treasury_account_id' => TreasuryAccount::active()->where('type', 'caisse')->value('id'),
+            // Compte choisi (s'il y a plusieurs caisses), sinon 1re caisse active.
+            'treasury_account_id' => $data['treasury_account_id']
+                ?? TreasuryAccount::active()->where('type', 'caisse')->value('id'),
             'status'              => 'open',
             'opened_at'           => now(),
             'opening_float'       => (float) $data['opening_float'],

@@ -163,3 +163,23 @@ test('sans compte caisse configuré, la clôture n\'écrit rien en trésorerie (
 
     expect(TreasuryTransaction::count())->toBe(0);
 });
+
+test('le POS encaisse sur le compte de caisse épinglé à la session (multi-comptes)', function () {
+    $caisseA = caisseAccount();
+    $caisseB = TreasuryAccount::create(['name' => 'Caisse Boutique', 'type' => 'caisse', 'current_balance' => 0, 'is_active' => true]);
+
+    // Ouverture en épinglant la caisse B.
+    $this->actingAs($this->adminUser)->post(route('cash-register.open'), [
+        'opening_float' => 0, 'treasury_account_id' => $caisseB->id,
+    ]);
+
+    $stock = crStock(100, 2000);
+    $this->actingAs($this->adminUser)->post(route('pos.checkout'), [
+        'payment_method' => 'especes',
+        'items'          => crItems($stock, 5, 2000), // 10 000 espèces
+    ])->assertRedirect();
+
+    // L'encaissement va sur la caisse de la session (B), pas la caisse par défaut (A).
+    expect((float) $caisseB->fresh()->current_balance)->toBe(10000.0)
+        ->and((float) $caisseA->fresh()->current_balance)->toBe(0.0);
+});

@@ -73,6 +73,8 @@ class CreateSale
                     'amount'       => $data['immediate_payment'],
                     'payment_date' => $data['sale_date'],
                     'method'       => $data['payment_method'] ?? 'especes',
+                    // Override éventuel du compte (ex. POS → compte de la session de caisse).
+                    'treasury_account_id' => $data['payment_treasury_account_id'] ?? null,
                     'reference'    => $data['payment_reference'] ?? null,
                     'received_by'  => Auth::id(),
                     'notes'        => 'Paiement à la vente',

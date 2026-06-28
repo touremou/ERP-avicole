@@ -76,6 +76,12 @@
                         <input type="number" name="opening_float" min="0" step="1" value="0" required class="flex-1 bg-slate-50 border-none rounded-2xl p-4 text-lg font-black text-slate-800 shadow-inner outline-none text-right">
                         <button type="submit" class="bg-slate-900 text-white px-6 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-teal-600 transition-all border-none cursor-pointer">{{ __("Ouvrir") }}</button>
                     </div>
+                    @if($caisseAccounts->count() > 1)
+                    <label class="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 mt-4 ml-1">{{ __("Compte de caisse") }}</label>
+                    <select name="treasury_account_id" class="w-full bg-slate-50 border-none rounded-2xl p-3 text-[11px] font-black uppercase text-slate-800 shadow-inner outline-none appearance-none cursor-pointer">
+                        @foreach($caisseAccounts as $acc)<option value="{{ $acc->id }}">{{ $acc->name }}</option>@endforeach
+                    </select>
+                    @endif
                 </form>
                 @endcan
             @endif

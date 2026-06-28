@@ -132,6 +132,9 @@ class PosController extends Controller
                 'items'             => $items,
                 'immediate_payment' => $total, // POS = payé intégralement comptant
                 'payment_method'    => $data['payment_method'],
+                // L'encaissement va sur le compte de trésorerie de la session de
+                // caisse ouverte (cohérent avec le rapprochement à la clôture).
+                'payment_treasury_account_id' => $this->openSession()?->treasury_account_id,
             ]);
 
             $validate->execute($sale); // déstockage (chaîne standard)
