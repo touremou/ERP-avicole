@@ -747,6 +747,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/preferences', 'preferences')->name('preferences')->middleware('can:L');
         Route::put('/preferences', 'updatePreferences')->name('preferences.update')->middleware('can:L');
         Route::post('/test', 'sendTest')->name('test')->middleware('can:L');
+        Route::post('/test-sms', 'sendTestSms')->name('test_sms')->middleware('can:L');
+        Route::post('/test-mail', 'sendTestMail')->name('test_mail')->middleware('can:L');
         Route::get('/logs', 'logs')->name('logs')->middleware('can:S');
         // Journal d'audit (qui a modifié quoi) — lecture seule, admin.
         Route::get('/audit', [\App\Http\Controllers\AuditLogController::class, 'index'])->name('audit');

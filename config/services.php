@@ -51,4 +51,20 @@ return [
         'country'      => env('WEATHER_COUNTRY', 'GN'), // biais géocodage (Guinée)
     ],
 
+    // WhatsApp : valeurs de repli (les Réglages › WhatsApp priment via setting()).
+    'whatsapp' => [
+        'driver'      => env('WHATSAPP_DRIVER', 'log'),
+        'api_key'     => env('WHATSAPP_API_KEY', ''),
+        'instance_id' => env('WHATSAPP_INSTANCE_ID', ''),
+    ],
+
+    // SMS : passerelle locale. driver 'log' n'envoie rien (dev) ; 'http' poste
+    // vers api_url (gateway GSM/opérateur). Réglages › WhatsApp (clés sms.*) priment.
+    'sms' => [
+        'driver'  => env('SMS_DRIVER', 'log'),
+        'api_url' => env('SMS_API_URL', ''),
+        'key'     => env('SMS_API_KEY', ''),
+        'sender'  => env('SMS_SENDER', 'AVISMART'),
+    ],
+
 ];

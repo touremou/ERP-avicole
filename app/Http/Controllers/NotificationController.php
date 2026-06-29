@@ -5,10 +5,13 @@ namespace App\Http\Controllers;
 use App\Models\NotificationLog;
 use App\Models\NotificationPreference;
 use App\Services\NotificationHub;
+use App\Services\SmsService;
 use App\Services\WhatsAppService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Str;
 
 class NotificationController extends Controller
 {
@@ -171,6 +174,56 @@ class NotificationController extends Controller
             : 'Message de test envoyé ! Vérifiez votre WhatsApp.';
 
         return back()->with('success', $sentTo);
+    }
+
+    /** Test du canal SMS (passerelle locale). */
+    public function sendTestSms(SmsService $sms)
+    {
+        $phone = Auth::user()->whatsapp_phone ?: (string) setting('whatsapp.admin_phone', '');
+        if (! $phone) {
+            return back()->with('error', 'Aucun numéro disponible. Renseignez votre numéro (WhatsApp/mobile) ou le « Téléphone admin ».');
+        }
+
+        $driver = (string) setting('sms.driver', config('services.sms.driver', 'log'));
+        $ok = $sms->send($phone, "Test SMS AviSmart — " . now()->format('d/m H:i'), [
+            'user_id' => Auth::id(), 'type' => 'test', 'title' => 'Test SMS',
+        ]);
+
+        if ($driver === 'log') {
+            return back()->with('success', "SMS en mode « log » (aucune passerelle active) : message journalisé. Configurez sms.driver=http et l'URL de passerelle (Réglages › SMS) pour de vrais SMS.");
+        }
+
+        return $ok
+            ? back()->with('success', "SMS de test envoyé à {$phone}.")
+            : back()->with('error', "Échec de l'envoi SMS. Vérifiez la passerelle (URL, clé) — détail dans Notifications › Historique.");
+    }
+
+    /** Test du canal e-mail (envoi SYNCHRONE pour faire remonter les erreurs SMTP). */
+    public function sendTestMail()
+    {
+        $email = Auth::user()->email ?: (string) setting('whatsapp.admin_email', '');
+        if (! $email) {
+            return back()->with('error', 'Aucune adresse e-mail disponible pour le test.');
+        }
+
+        try {
+            // notifyNow : contourne la file → les erreurs SMTP remontent ici.
+            Notification::route('mail', $email)->notifyNow(new \App\Notifications\AlertNotification(
+                [
+                    'type'     => 'test',
+                    'title'    => 'Test e-mail AviSmart',
+                    'message'  => 'Ce message confirme que la configuration e-mail (SMTP) fonctionne.',
+                    'severity' => 'normal',
+                ],
+                ['mail']
+            ));
+        } catch (\Throwable $e) {
+            return back()->with('error', "Échec e-mail : " . Str::limit($e->getMessage(), 160) . ' — vérifiez MAIL_* / le serveur SMTP.');
+        }
+
+        $hint = config('mail.default') === 'log' ? " (mailer « log » : voir storage/logs/laravel.log)" : '';
+
+        return back()->with('success', "E-mail de test envoyé à {$email}{$hint}.");
     }
 
     /**

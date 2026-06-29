@@ -56,11 +56,23 @@
                                 placeholder="+224 620 00 00 00"
                                 class="w-full bg-white border-none rounded-2xl p-4 text-lg font-black shadow-sm outline-none focus:ring-4 focus:ring-emerald-500/10">
                         </div>
-                        <a href="{{ route('notifications.test') }}"
-                           onclick="event.preventDefault(); document.getElementById('test-form').submit();"
-                           class="bg-emerald-500 text-white px-6 py-4 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-lg no-underline flex items-center gap-2 shrink-0">
-                            <i class="fa-solid fa-paper-plane"></i> {{ __("Tester") }}
-                        </a>
+                        <div class="flex flex-wrap items-center gap-2 shrink-0">
+                            <a href="{{ route('notifications.test') }}"
+                               onclick="event.preventDefault(); document.getElementById('test-form').submit();"
+                               class="bg-emerald-500 text-white px-5 py-4 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-lg no-underline flex items-center gap-2">
+                                <i class="fa-brands fa-whatsapp"></i> {{ __("WhatsApp") }}
+                            </a>
+                            <a href="{{ route('notifications.test_sms') }}"
+                               onclick="event.preventDefault(); document.getElementById('test-sms-form').submit();"
+                               class="bg-blue-500 text-white px-5 py-4 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-blue-600 transition-all shadow-lg no-underline flex items-center gap-2">
+                                <i class="fa-solid fa-comment-sms"></i> {{ __("SMS") }}
+                            </a>
+                            <a href="{{ route('notifications.test_mail') }}"
+                               onclick="event.preventDefault(); document.getElementById('test-mail-form').submit();"
+                               class="bg-slate-700 text-white px-5 py-4 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-slate-900 transition-all shadow-lg no-underline flex items-center gap-2">
+                                <i class="fa-solid fa-envelope"></i> {{ __("E-mail") }}
+                            </a>
+                        </div>
                     </div>
                     <p class="text-[8px] text-emerald-600 mt-3 italic">
                         {{ __("Le numéro doit être enregistré sur WhatsApp. Format : +224XXXXXXXXX") }}
@@ -194,8 +206,10 @@
                 </button>
             </form>
 
-            {{-- Formulaire test caché --}}
+            {{-- Formulaires de test cachés (WhatsApp / SMS / E-mail) --}}
             <form id="test-form" method="POST" action="{{ route('notifications.test') }}" class="hidden">@csrf</form>
+            <form id="test-sms-form" method="POST" action="{{ route('notifications.test_sms') }}" class="hidden">@csrf</form>
+            <form id="test-mail-form" method="POST" action="{{ route('notifications.test_mail') }}" class="hidden">@csrf</form>
 
             {{-- HISTORIQUE RÉCENT --}}
             @if($recentLogs->count() > 0)
