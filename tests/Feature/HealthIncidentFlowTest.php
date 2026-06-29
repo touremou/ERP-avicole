@@ -170,3 +170,26 @@ test('la quarantaine s\'active puis se lève sur un incident', function () {
     expect($fresh->is_quarantined)->toBeFalse()
         ->and($fresh->quarantine_ended_at)->not->toBeNull();
 });
+
+test('un incident peut être rattaché au pointage qui l\'a révélé (sans double comptage de mortalité)', function () {
+    $check = App\Models\DailyCheck::create([
+        'farm_id' => $this->farm->id, 'batch_id' => $this->batch->id,
+        'check_date' => now()->toDateString(), 'mortality' => 4,
+    ]);
+
+    $this->actingAs($this->adminUser)
+        ->post(route('health.incidents.store'), [
+            'batch_id'       => $this->batch->id,
+            'daily_check_id' => $check->id,
+            'mortality_count' => 4,
+            'symptoms'       => 'Mortalité anormale relevée au pointage',
+        ])
+        ->assertSessionHas('success');
+
+    $incident = HealthIncident::first();
+    expect($incident->daily_check_id)->toBe($check->id)
+        ->and($incident->batch_id)->toBe($this->batch->id);
+
+    // La mortalité du lot reste pilotée par le pointage (l'incident est qualitatif).
+    expect($this->batch->healthIncidents()->where('status', '!=', 'resolu')->count())->toBe(1);
+});

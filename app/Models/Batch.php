@@ -227,6 +227,11 @@ class Batch extends Model
         return $this->hasMany(HealthCheck::class);
     }
 
+    public function healthIncidents(): HasMany
+    {
+        return $this->hasMany(HealthIncident::class);
+    }
+
     public function feedPurchases(): HasMany
     {
         return $this->hasMany(FeedPurchase::class);

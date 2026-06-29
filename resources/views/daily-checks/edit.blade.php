@@ -26,6 +26,22 @@
 
     <div class="py-12 italic font-bold">
         <div class="max-w-4xl mx-auto sm:px-6 lg:px-8">
+            {{-- Lien Pointage ↔ Incidents : alerte incident ouvert + déclaration rattachée à CE pointage --}}
+            @php $openIncidents = $check->batch->healthIncidents()->where('status', '!=', 'resolu')->count(); @endphp
+            <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+                @if($openIncidents > 0)
+                    <a href="{{ route('health.incidents.index') }}" class="px-4 py-2 bg-rose-50 border border-rose-200 rounded-xl text-[9px] font-black text-rose-600 uppercase tracking-widest no-underline hover:bg-rose-100">
+                        <i class="fa-solid fa-shield-virus mr-1"></i> {{ $openIncidents }} {{ __("incident(s) sanitaire(s) en cours sur ce lot") }}
+                    </a>
+                @else
+                    <span></span>
+                @endif
+                @can('elevage.C')
+                    <a href="{{ route('health.index', ['batch_id' => $check->batch_id, 'daily_check_id' => $check->id]) }}" class="text-[9px] font-black text-rose-500 uppercase tracking-widest no-underline hover:text-rose-700">
+                        <i class="fa-solid fa-triangle-exclamation mr-1"></i> {{ __("Déclarer un incident depuis ce pointage") }}
+                    </a>
+                @endcan
+            </div>
             @can('elevage.M')
                 @if ($errors->any())
                     <div class="mb-8 p-6 bg-red-600 text-white rounded-[2.5rem] shadow-xl text-left">

@@ -86,6 +86,9 @@
                             <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100">
                                 <p class="text-[9px] uppercase tracking-widest text-slate-400 font-black mb-2">{{ __("Symptômes observés par") }} {{ $incident->user->name ?? __("l'agent") }}</p>
                                 <p class="text-xs text-slate-700 font-medium leading-relaxed">{{ $incident->symptoms }}</p>
+                                @if($incident->daily_check_id)
+                                    <p class="text-[8px] uppercase tracking-widest text-blue-400 font-black mt-2"><i class="fa-solid fa-clipboard-list mr-1"></i>{{ __("Issu du pointage du") }} {{ optional($incident->dailyCheck)->check_date?->format('d/m/Y') }}</p>
+                                @endif
                             </div>
 
                             {{-- Bloc Diagnostic Vétérinaire (Si rempli) --}}

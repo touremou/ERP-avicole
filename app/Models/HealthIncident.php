@@ -28,7 +28,7 @@ class HealthIncident extends Model
     public const SEVERITY_CRITICAL = 'critique';
 
     protected $fillable = [
-        'farm_id', 'building_id', 'batch_id', 'user_id', 'incident_date', 'mortality_count',
+        'farm_id', 'building_id', 'batch_id', 'daily_check_id', 'user_id', 'incident_date', 'mortality_count',
         'symptoms', 'photo_path', 'status', 'severity', 'suspected_disease', 'vet_prescription',
         'diagnosed_by', 'diagnosed_at', 'treatment_cost',
         'resolved_by', 'resolved_at', 'resolution_notes',
@@ -48,6 +48,7 @@ class HealthIncident extends Model
     // ─── RELATIONS ───
     public function building(): BelongsTo { return $this->belongsTo(Building::class); }
     public function batch(): BelongsTo { return $this->belongsTo(Batch::class); }
+    public function dailyCheck(): BelongsTo { return $this->belongsTo(DailyCheck::class); } // pointage d'origine
     public function user(): BelongsTo { return $this->belongsTo(User::class); }            // déclarant
     public function diagnosedBy(): BelongsTo { return $this->belongsTo(User::class, 'diagnosed_by'); }
     public function resolvedBy(): BelongsTo { return $this->belongsTo(User::class, 'resolved_by'); }

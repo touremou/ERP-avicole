@@ -276,13 +276,17 @@
 
             <form action="{{ route('health.incidents.store') }}" method="POST" enctype="multipart/form-data" class="p-8 space-y-6">
                 @csrf
-                
+                {{-- Lien d'origine : pointage journalier ayant révélé l'anomalie (traçabilité). --}}
+                @if(request('daily_check_id'))
+                    <input type="hidden" name="daily_check_id" value="{{ request('daily_check_id') }}">
+                @endif
+
                 <div>
                     <label class="text-[9px] uppercase text-slate-400 block tracking-widest font-black mb-1 italic">{{ __("Lot concerné *") }}</label>
                     <select name="batch_id" required class="w-full bg-slate-50 border-none rounded-xl p-4 font-black text-xs uppercase shadow-inner cursor-pointer text-slate-700">
                         <option value="">{{ __("Sélectionner un lot en cours...") }}</option>
                         @foreach($batches as $batch)
-                            <option value="{{ $batch->id }}">{{ __("LOT #") }}{{ $batch->code }} ({{ __("Bât:") }} {{ $batch->building->name ?? __("N/A") }})</option>
+                            <option value="{{ $batch->id }}" {{ request('batch_id') == $batch->id ? 'selected' : '' }}>{{ __("LOT #") }}{{ $batch->code }} ({{ __("Bât:") }} {{ $batch->building->name ?? __("N/A") }})</option>
                         @endforeach
                     </select>
                 </div>

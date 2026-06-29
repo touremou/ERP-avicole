@@ -17,7 +17,7 @@ class HealthIncidentController extends Controller
         $pendingIncidentsCount = \App\Models\HealthIncident::where('status', 'en_attente')->count();
 
         // 2. On récupère la liste paginée
-        $incidents = \App\Models\HealthIncident::with(['building', 'user'])
+        $incidents = \App\Models\HealthIncident::with(['building', 'user', 'batch', 'dailyCheck'])
             ->orderByRaw("FIELD(status, 'en_attente', 'diagnostique', 'resolu')")
             ->orderBy('created_at', 'desc')
             ->paginate((int) setting('general.items_per_page', 20));
@@ -32,6 +32,7 @@ class HealthIncidentController extends Controller
         // 1. Validation des données de l'incident
         $validated = $request->validate([
             'batch_id'        => 'required|exists:batches,id',
+            'daily_check_id'  => 'nullable|exists:daily_checks,id', // pointage d'origine (traçabilité)
             'mortality_count' => 'required|integer|min:1',
             'severity'        => 'nullable|in:mineur,modere,critique',
             'symptoms'        => 'required|string|max:1000',
@@ -51,6 +52,7 @@ class HealthIncidentController extends Controller
         $incident = HealthIncident::create([
             'building_id'     => $batch->building_id,
             'batch_id'        => $batch->id,
+            'daily_check_id'  => $validated['daily_check_id'] ?? null,
             'user_id'         => Auth::id(),
             'incident_date'   => now()->toDateString(),
             'mortality_count' => $validated['mortality_count'],
