@@ -995,7 +995,11 @@ class Batch extends Model
         $nonFeedPurchases = (float) $this->feedPurchases
             ->filter(fn ($p) => $p->category !== 'Aliment')
             ->sum('total_price');
-        $healthCost = (float) $this->healthChecks()->sum('cost');
+        // Coût santé = actes du registre (vaccins/traitements) + coûts de
+        // traitement des INCIDENTS sanitaires (champ dédié, non capté ailleurs →
+        // aucun double comptage). Ferme la boucle financière incident → marge.
+        $healthCost = (float) $this->healthChecks()->sum('cost')
+            + (float) $this->healthIncidents()->sum('treatment_cost');
         $acquisitionCost = (float) ($this->total_acquisition_cost ?? 0);
         $additionalCosts = (float) ($this->additional_costs ?? 0);
         // Dépenses directes validées rattachées au lot (registre des dépenses).

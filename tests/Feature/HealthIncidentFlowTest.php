@@ -230,3 +230,17 @@ test('l\'index expose les KPIs sanitaires', function () {
         ->and($stats['critical'])->toBe(1)
         ->and((float) $stats['cost'])->toBe(8000.0);
 });
+
+test('le coût de traitement d\'un incident impacte la marge nette du lot', function () {
+    $marginBefore = (float) $this->batch->fresh()->net_margin;
+
+    HealthIncident::create([
+        'farm_id' => $this->farm->id, 'building_id' => $this->building->id, 'batch_id' => $this->batch->id,
+        'user_id' => $this->adminUser->id, 'incident_date' => now()->toDateString(),
+        'mortality_count' => 2, 'symptoms' => 'X', 'status' => 'diagnostique',
+        'suspected_disease' => 'Coccidiose', 'treatment_cost' => 40000,
+    ]);
+
+    // La marge baisse exactement du coût de traitement (santé) imputé au lot.
+    expect((float) $this->batch->fresh()->net_margin)->toBe($marginBefore - 40000);
+});
