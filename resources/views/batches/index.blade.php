@@ -16,7 +16,7 @@
 
                 {{-- PERMISSION C : CRÉATION D'UN NOUVEAU LOT --}}
                 @can('elevage.C')
-                <a href="{{ route('admin.norms.index') }}" class="bg-white text-slate-600 border border-slate-200 px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-50 transition-all shadow-sm flex items-center italic">
+                <a href="{{ route('batches.norms.index') }}" class="bg-white text-slate-600 border border-slate-200 px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-50 transition-all shadow-sm flex items-center italic">
                     <i class="fas fa-scroll mr-2 text-blue-500"></i>
                     {{ __("Référentiel Normes") }}
                 </a>

@@ -99,7 +99,7 @@ test('les en-têtes hors-production migrés affichent leur accent propre', funct
         ['raw-materials.index', 'Matières Premières', 'bg-amber-600'],
         ['machines.index',  'Parc Machines',        'bg-amber-600'],
         ['admin.species.index', 'Gestion des Espèces', 'bg-slate-900'],
-        ['admin.norms.index',   'Référentiel des Normes', 'bg-slate-900'],
+        ['batches.norms.index', 'Référentiel des Normes', 'bg-slate-900'],
         ['reports.index',   'Centre de Rapports',  'bg-slate-900'],
         ['campaigns.index', 'Campagnes saisonnières', 'bg-emerald-600'],
         ['protocols.index', 'Bibliothèque des Protocoles', 'bg-purple-600'],

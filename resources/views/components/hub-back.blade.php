@@ -23,8 +23,18 @@
         || ! empty($route?->parameters())
     );
 
+    // Sous-sections dont le parent logique N'EST PAS le hub du module mais une
+    // autre section. Ex. le registre des suivis quotidiens (« Historique
+    // Suivi » des lots) doit remonter vers la liste des LOTS, pas vers le hub
+    // Élevage (que l'utilisateur perçoit comme un tableau de bord).
+    $parentOverride = [
+        'daily-checks.index' => 'batches.index',
+    ];
+
     $target = null;
-    if ($routeName && ! $isLeaf) {
+    if ($routeName && ! $isLeaf && isset($parentOverride[$routeName]) && \Illuminate\Support\Facades\Route::has($parentOverride[$routeName])) {
+        $target = $parentOverride[$routeName];
+    } elseif ($routeName && ! $isLeaf) {
         // Module du route courant (et exclusion des modules non-lanceur).
         $slug = null;
         foreach (\App\Models\Module::routePrefixMap() as $prefix => $s) {

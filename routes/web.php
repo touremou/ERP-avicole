@@ -831,15 +831,21 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/roles/{role}', [UserController::class, 'destroyRole'])->name('roles.destroy');
         Route::post('/roles/module-matrix', [UserController::class, 'updateModuleMatrix'])->name('roles.update_module_matrix');
 
+        // Référentiel des NORMES zootechniques : rattaché à l'ÉLEVAGE (il est
+        // consulté depuis les lots, « Référentiel Normes »), donc préfixe/nom
+        // batches.norms.* → fil d'Ariane « Lots › Normes » et retour vers les
+        // lots, et NON vers l'admin. Gestion réservée aux admins (can:S, hérité).
+        Route::prefix('batches/norms')->name('batches.norms.')->controller(ProductionNormController::class)->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::post('/import', 'import')->name('import');
+            Route::post('/', 'store')->name('store');
+            Route::put('/{norm}', 'update')->name('update');
+            Route::delete('/{norm}', 'destroy')->name('destroy');
+        });
+
         // B-19 corrigé : ProductionNormController (pas NormController)
         Route::prefix('admin')->name('admin.')->group(function () {
-            Route::get('/norms', [ProductionNormController::class, 'index'])->name('norms.index');
-            Route::post('/norms/import', [ProductionNormController::class, 'import'])->name('norms.import');
-            Route::post('/norms', [ProductionNormController::class, 'store'])->name('norms.store');
-            Route::put('/norms/{norm}', [ProductionNormController::class, 'update'])->name('norms.update');
-            Route::delete('/norms/{norm}', [ProductionNormController::class, 'destroy'])->name('norms.destroy');
-
-            // Gestion des espèces (multiespèces)
+            // Gestion des espèces (multiespèces) — relève bien de l'administration.
             Route::get('/species', [SpeciesController::class, 'index'])->name('species.index');
             Route::patch('/species/{species}/toggle', [SpeciesController::class, 'toggle'])->name('species.toggle');
         });
