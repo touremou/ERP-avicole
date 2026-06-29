@@ -1081,26 +1081,56 @@ class Batch extends Model
     }
 
     /**
+     * Seuil de mortalité CUMULÉE (%) au-delà duquel un lot est « critique ».
+     *
+     * SOURCE DE VÉRITÉ UNIQUE, partagée par l'alerte (BatchObserver), le filtre
+     * « surmortalité » de l'index, le scope critical() ET le tableau de bord —
+     * pour que l'alerte se déclenche exactement au taux affiché et que le
+     * réglage édité par l'admin pilote bien tous ces usages.
+     *
+     * Clé canonique : « elevage.cumulative_mortality_alert_pct » (libellée et
+     * éditable dans Paramètres › Élevage). Repli sur l'ancienne clé
+     * « elevage.mortality_alert » (compatibilité), puis 5 %.
+     */
+    public static function cumulativeMortalityThreshold(): float
+    {
+        return (float) setting(
+            'elevage.cumulative_mortality_alert_pct',
+            setting('elevage.mortality_alert', 5)
+        );
+    }
+
+    /**
      * Lots en surmortalité (requête SQL pure, pas d'accessor PHP).
      *
      * Correction B-01 : remplace le whereRaw('total_mortalite/...') inexistant.
      *
-     * @param float $thresholdPercent Seuil de mortalité cumulée (%)
+     * @param float|null $thresholdPercent Seuil de mortalité cumulée (%) ; par
+     *                   défaut le seuil unifié cumulativeMortalityThreshold().
      */
-    public function scopeCritical($query, float $thresholdPercent = 5.0)
+    public function scopeCritical($query, ?float $thresholdPercent = null)
     {
+        $thresholdPercent ??= self::cumulativeMortalityThreshold();
+
+        // Multiplication par 100.0 AVANT la division : force l'arithmétique en
+        // virgule flottante (SQLite ferait sinon une division ENTIÈRE → toujours
+        // 0 quand morts < effectif, ne flaggant jamais un lot ; MySQL renvoie des
+        // décimales mais on uniformise pour la cohérence et la testabilité).
+        // Le seuil est INLINÉ (cast (float), aucune injection possible) plutôt que
+        // lié : un paramètre lié est transmis en TEXTE à SQLite, qui compare alors
+        // « 6.0 > '5' » avec une affinité de type où le numérique précède le texte
+        // → toujours faux. L'inlining force une comparaison numérique sur MySQL ET
+        // SQLite. COALESCE(qty_dead, 0) gère la colonne NULL (sinon « initial +
+        // NULL = NULL » annulait tout le ratio → lot jamais détecté critique).
         return $query->where('initial_quantity', '>', 0)
             ->whereRaw(
-                '(
-                    (qty_dead + COALESCE((
+                '(COALESCE(qty_dead, 0) + COALESCE((
                         SELECT SUM(dc.mortality)
                         FROM daily_checks dc
                         WHERE dc.batch_id = batches.id
                         AND dc.deleted_at IS NULL
-                    ), 0))
-                    / (initial_quantity + qty_dead)
-                ) * 100 > ?',
-                [$thresholdPercent]
+                    ), 0)) * 100.0
+                    / (initial_quantity + COALESCE(qty_dead, 0)) > ' . (float) $thresholdPercent
             );
     }
 

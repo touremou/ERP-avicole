@@ -120,7 +120,7 @@ class DashboardController extends Controller
         // le seuil en % (ex. 1/195 = 0,51 % > 0,5 %) sans constituer un vrai pic.
         // On exige donc un minimum de morts en valeur absolue AVANT d'évaluer le %.
         $dailyMortalityMin     = (int) setting('elevage.daily_mortality_alert_min', 3);
-        $cumulMortalityPct     = (float) setting('elevage.cumulative_mortality_alert_pct', 5);
+        $cumulMortalityPct     = \App\Models\Batch::cumulativeMortalityThreshold();
         $sanitaryDays          = (int) setting('elevage.sanitary_break_days', Building::SANITARY_BREAK_DAYS);
         $protocolWindowDays    = (int) setting('elevage.protocol_overdue_window_days', 30);
 

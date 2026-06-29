@@ -78,7 +78,7 @@ class BatchController extends Controller
         // Filtre surmortalité
         $isCriticalView = $request->query('view') === 'critical';
         if ($isCriticalView) {
-            $query->critical(setting('elevage.mortality_alert', 5));
+            $query->critical(); // seuil unifié (Batch::cumulativeMortalityThreshold)
         }
 
         // Filtre par famille d'espèce
@@ -102,7 +102,7 @@ class BatchController extends Controller
         $baseQuery = Batch::active()->live();
 
         if ($isCriticalView) {
-            $baseQuery->critical(setting('elevage.mortality_alert', 5));
+            $baseQuery->critical(); // seuil unifié (Batch::cumulativeMortalityThreshold)
         }
 
         // Compteurs des onglets "famille" : indépendants du filtre famille en cours
