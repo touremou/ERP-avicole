@@ -247,6 +247,7 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/{id}/label', [TraceabilityController::class, 'millLabel'])->name('label')->middleware('can:L');
             Route::get('/{id}', 'show')->name('show')->middleware('can:L');
             Route::put('/{id}/complete', 'complete')->name('complete')->middleware('can:M');
+            Route::put('/{id}/cancel', 'cancel')->name('cancel')->middleware('can:M');
         });
 
         Route::prefix('machines')->name('machines.')->controller(MillMachineController::class)->group(function () {

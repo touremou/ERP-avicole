@@ -21,6 +21,15 @@
                                     <i class="fa-solid fa-check-double mr-2"></i> {{ __("Clôturer & Stocker") }}
                                 </button>
                             </form>
+                            {{-- Annulation : libère la machine si l'OP ne sera pas mené à terme
+                                 (sans elle, la machine resterait engagée indéfiniment). --}}
+                            <form action="{{ route('production.cancel', $production->id) }}" method="POST" onsubmit="return confirm(@json(__('Annuler cet ordre et libérer la/les machine(s) ? Aucun stock n\'est consommé tant que l\'OP n\'est pas clôturé.')))">
+                                @csrf
+                                @method('PUT')
+                                <button type="submit" class="bg-white text-rose-600 border border-rose-200 px-6 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-50 transition-all">
+                                    <i class="fa-solid fa-ban mr-2"></i> {{ __("Annuler l'ordre") }}
+                                </button>
+                            </form>
                         @endif
                     @endcan
                     

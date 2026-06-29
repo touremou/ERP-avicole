@@ -154,4 +154,29 @@ class MillProductionController extends Controller
         $production = MillProduction::with(['formula.items.rawMaterial', 'machine', 'user'])->findOrFail($id);
         return view('provenderie.production.show', compact('production'));
     }
+
+    /**
+     * Annule un ordre de production NON clôturé, libérant la/les machine(s)
+     * engagée(s). Indispensable : sans annulation, un OP planifié jamais
+     * clôturé (panne, erreur de saisie) bloquerait sa machine indéfiniment
+     * (l'occupation ne se libère que sur « Terminé » ou « Annulé »).
+     *
+     * Sûr : la consommation des matières premières n'a lieu qu'à la clôture,
+     * donc aucun stock à contre-passer pour un OP planifié.
+     */
+    public function cancel($id): RedirectResponse
+    {
+        if (Gate::denies('provenderie.M')) return back()->with('error', 'Seul un responsable peut annuler un ordre.');
+
+        $production = MillProduction::findOrFail($id);
+
+        if (in_array($production->status, ['Terminé', 'Annulé'], true)) {
+            return back()->with('error', "Cet ordre est déjà {$production->status} — annulation impossible.");
+        }
+
+        $production->update(['status' => 'Annulé']);
+
+        return redirect()->route('production.index')
+            ->with('success', "OP #{$production->batch_number} annulée. Machine(s) libérée(s).");
+    }
 }
