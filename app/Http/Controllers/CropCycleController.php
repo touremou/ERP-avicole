@@ -522,7 +522,8 @@ class CropCycleController extends Controller
         ]);
     }
 
-    /** Mise à jour d'une récolte (champs descriptifs ; pas de re-synchro stock). */
+    /** Mise à jour d'une récolte. La re-synchro stock est gérée par
+     *  HarvestObserver::updated() si quantity/unit/net_weight_kg/stock_item_name changent. */
     public function updateHarvest(Request $request, CropCycle $cropCycle, Harvest $harvest)
     {
         if (Gate::denies('cultures.M')) {
@@ -590,7 +591,8 @@ class CropCycleController extends Controller
         ]);
     }
 
-    /** Mise à jour d'un intrant (champs descriptifs ; pas de re-synchro stock). */
+    /** Mise à jour d'un intrant. La re-synchro stock est gérée par
+     *  CropInputObserver::updated() si quantity/unit/stock_item_name changent. */
     public function updateInput(Request $request, CropCycle $cropCycle, CropInput $input)
     {
         if (Gate::denies('cultures.M')) {
@@ -616,7 +618,9 @@ class CropCycleController extends Controller
             $qty = (float) ($validated['quantity'] ?? $input->quantity);
             $unitCost = (float) ($validated['unit_cost'] ?? $input->unit_cost);
             if ($qty > 0 && $unitCost > 0) {
-                $validated['total_cost'] = $qty * $unitCost;
+                // round(...,2) : cohérent avec la création (RecordCropInput) et la
+                // précision décimale de la colonne — évite des total_cost à >2 décimales.
+                $validated['total_cost'] = round($qty * $unitCost, 2);
             }
         }
 
