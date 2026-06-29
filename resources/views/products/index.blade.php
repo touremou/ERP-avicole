@@ -20,9 +20,12 @@
             <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 @foreach($products as $product)
                 <div class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden {{ $product->is_active ? '' : 'opacity-50' }}">
-                    <div class="h-32 bg-slate-50 flex items-center justify-center overflow-hidden">
+                    {{-- object-contain (et non cover) : on montre le PRODUIT entier,
+                         centré, sans rognage ni déformation, quel que soit le ratio
+                         de la photo. Le fond neutre gère le letterboxing. --}}
+                    <div class="h-32 bg-slate-50 flex items-center justify-center overflow-hidden p-2">
                         @if($product->photo_url)
-                            <img src="{{ $product->photo_url }}" alt="{{ $product->name }}" class="w-full h-full object-cover">
+                            <img src="{{ $product->photo_url }}" alt="{{ $product->name }}" loading="lazy" class="max-h-full max-w-full object-contain">
                         @else
                             <i class="fa-solid fa-image text-3xl text-slate-200"></i>
                         @endif

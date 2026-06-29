@@ -44,7 +44,7 @@
     <div class="md:col-span-2">
         <label class="text-[10px] uppercase text-slate-400 mb-2 block tracking-widest font-black italic">{{ __('Photo (identification au point de vente)') }}</label>
         @if($product?->photo_url)
-            <img src="{{ $product->photo_url }}" alt="" class="h-20 rounded-xl mb-2 object-cover">
+            <img src="{{ $product->photo_url }}" alt="" class="h-20 w-20 rounded-xl mb-2 object-contain bg-slate-50 p-1">
         @endif
         <input type="file" name="photo" accept="image/*" class="w-full bg-slate-50 border-none rounded-2xl p-3 text-[11px] font-bold shadow-inner outline-none">
     </div>
