@@ -29,9 +29,7 @@
                 <a href="{{ route('reports.technical.pdf') }}" class="ml-4 group flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase italic transition no-underline hover:bg-blue-600">
                     <i class="fa-solid fa-file-pdf"></i> {{ __("Export PDF") }}
                 </a>
-                <a href="{{ route('reports.index') }}" class="group flex items-center gap-2 text-[10px] font-black text-slate-400 hover:text-slate-800 uppercase italic transition no-underline">
-                    <i class="fa-solid fa-chevron-left group-hover:-translate-x-1 transition-transform"></i> {{ __("Retour") }}
-                </a>
+                {{-- Retour via <x-hub-back> (layout) → pas de lien « Retour » redondant. --}}
             </div>
         </div>
     </x-slot>

@@ -1,10 +1,8 @@
 <x-app-layout>
     <x-slot name="header">
+        {{-- Pas de retour manuel : le layout injecte déjà <x-hub-back> vers les
+             rapports (sinon double flèche de retour). --}}
         <div class="flex items-center gap-4">
-            <a href="{{ route('reports.index') }}" class="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-500 hover:text-slate-800 rounded-xl transition-all shadow-sm no-underline">
-                <i class="fas fa-chevron-left text-xs"></i>
-                <span class="text-[10px] font-black uppercase italic tracking-widest leading-none">{{ __("Rapports") }}</span>
-            </a>
             <div>
                 <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">⚖️ {{ __("Compte de résultat") }}</h2>
                 <p class="text-[10px] font-black text-amber-600 uppercase tracking-[0.2em] mt-2 italic">{{ __("P&L consolidé — toutes activités") }}</p>

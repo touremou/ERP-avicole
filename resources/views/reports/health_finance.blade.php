@@ -15,9 +15,7 @@
                     {{ __("Performance Économique Prophylactique") }} • {{ $batches->count() }} {{ __("Lot(s)") }}
                 </p>
             </div>
-            <a href="{{ route('reports.index') }}" class="group flex items-center gap-3 px-6 py-3 bg-white border border-slate-200 text-slate-500 hover:text-slate-900 rounded-2xl text-[10px] font-black uppercase italic transition-all shadow-sm no-underline">
-                <i class="fa-solid fa-chevron-left group-hover:-translate-x-1 transition-transform"></i> {{ __("Retour aux rapports") }}
-            </a>
+            {{-- Retour assuré par <x-hub-back> (layout) → pas de lien manuel redondant. --}}
         </div>
     </x-slot>
 

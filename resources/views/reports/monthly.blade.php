@@ -14,11 +14,7 @@
                     {{ __("Alimentation · Santé · Acquisition · Coût par tête") }}
                 </p>
             </div>
-            <div class="flex items-center gap-3">
-                <a href="{{ route('reports.index') }}" class="flex items-center justify-center w-11 h-11 bg-white border border-slate-200 text-slate-400 hover:text-rose-600 rounded-xl transition-all shadow-sm no-underline">
-                    <i class="fa-solid fa-xmark"></i>
-                </a>
-            </div>
+            {{-- Retour géré par <x-hub-back> (layout) → pas de bouton fermer redondant. --}}
         </div>
     </x-slot>
 

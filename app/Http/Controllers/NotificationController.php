@@ -159,7 +159,17 @@ class NotificationController extends Controller
                 : null;
 
             $error = 'Échec de l\'envoi vers ' . $phone . '. Vérifiez le numéro et la configuration du provider (clé API, instance).';
-            if ($detail) {
+
+            // Aide ciblée sur un 403 / page « Forbidden » (cause fréquente) :
+            // clé API absente/incorrecte, numéro non autorisé (CallMeBot exige
+            // que le destinataire active d'abord le bot), ou blocage WAF/proxy.
+            $status = is_array($log?->provider_response) ? ($log->provider_response['status'] ?? null) : null;
+            $looksForbidden = $status == 403 || \Illuminate\Support\Str::contains(strtolower((string) $detail), 'forbidden');
+            if ($looksForbidden) {
+                $error .= $driver === 'callmebot'
+                    ? ' (403) CallMeBot : le destinataire doit d\'abord AUTORISER le bot (lui envoyer le message d\'activation) pour obtenir une clé API valide, et la clé doit correspondre à CE numéro. Un 403 peut aussi venir d\'un blocage WAF/proxy de l\'hébergeur.'
+                    : ' (403) Le fournisseur a refusé la requête : clé API/instance invalide, ou blocage WAF/proxy de l\'hébergeur.';
+            } elseif ($detail) {
                 $error .= ' Détail : ' . \Illuminate\Support\Str::limit((string) $detail, 150);
             }
             if (Gate::allows('notifications.S')) {
