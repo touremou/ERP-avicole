@@ -521,7 +521,7 @@ class NotificationHub
         $message = $this->tpl('sale_created', [
             'header'    => $isLarge ? "💰🔴 *GROSSE VENTE*" : "💰 *NOUVELLE VENTE*",
             'reference' => $sale->reference,
-            'client'    => $sale->client->name,
+            'client'    => $sale->client?->name ?? 'Client',
             'total'     => number_format($sale->total_amount, 0, ',', '.'),
             'status'    => $sale->payment_status,
             'flags'     => $flags,
@@ -543,7 +543,7 @@ class NotificationHub
 
         $message = "{$emoji} *VENTE ANNULÉE*\n\n"
             . "Réf : *{$sale->reference}*\n"
-            . "Client : " . ($sale->client->name ?? 'N/A') . "\n"
+            . "Client : " . ($sale->client?->name ?? 'N/A') . "\n"
             . "Montant : *" . number_format($sale->total_amount, 0, ',', '.') . " GNF*\n"
             . "Statut avant annulation : *{$status}*\n"
             . "Par : " . (\Illuminate\Support\Facades\Auth::user()?->name ?? 'Système') . "\n"
@@ -593,7 +593,7 @@ class NotificationHub
             'amount'    => number_format($payment->amount, 0, ',', '.'),
             'method'    => $payment->method_label,
             'reference' => $sale->reference,
-            'client'    => $sale->client->name,
+            'client'    => $sale->client?->name ?? 'Client',
             'remaining' => number_format($sale->remaining_amount, 0, ',', '.'),
             'flags'     => $flags,
         ]);
