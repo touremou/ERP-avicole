@@ -193,3 +193,40 @@ test('un incident peut être rattaché au pointage qui l\'a révélé (sans doub
     // La mortalité du lot reste pilotée par le pointage (l'incident est qualitatif).
     expect($this->batch->healthIncidents()->where('status', '!=', 'resolu')->count())->toBe(1);
 });
+
+test('la fiche détail d\'un incident affiche sa chronologie', function () {
+    $incident = HealthIncident::create([
+        'farm_id' => $this->farm->id, 'building_id' => $this->building->id, 'batch_id' => $this->batch->id,
+        'user_id' => $this->adminUser->id, 'incident_date' => now()->toDateString(),
+        'mortality_count' => 3, 'symptoms' => 'Diarrhée', 'status' => 'diagnostique',
+        'severity' => 'critique', 'suspected_disease' => 'Coccidiose',
+        'diagnosed_by' => $this->adminUser->id, 'diagnosed_at' => now(), 'treatment_cost' => 12000,
+    ]);
+
+    $this->actingAs($this->adminUser)
+        ->get(route('health.incidents.show', $incident))
+        ->assertOk()
+        ->assertSee('Coccidiose')
+        ->assertSee('Chronologie')
+        ->assertSee('Critique');
+});
+
+test('l\'index expose les KPIs sanitaires', function () {
+    // 1 critique en attente + 1 résolu (hors « ouverts »).
+    HealthIncident::create([
+        'farm_id' => $this->farm->id, 'building_id' => $this->building->id, 'batch_id' => $this->batch->id,
+        'user_id' => $this->adminUser->id, 'incident_date' => now()->toDateString(),
+        'mortality_count' => 5, 'symptoms' => 'X', 'status' => 'en_attente', 'severity' => 'critique',
+    ]);
+    HealthIncident::create([
+        'farm_id' => $this->farm->id, 'building_id' => $this->building->id, 'batch_id' => $this->batch->id,
+        'user_id' => $this->adminUser->id, 'incident_date' => now()->toDateString(),
+        'mortality_count' => 1, 'symptoms' => 'Y', 'status' => 'resolu', 'severity' => 'mineur', 'treatment_cost' => 8000,
+    ]);
+
+    $stats = $this->actingAs($this->adminUser)->get(route('health.incidents.index'))->assertOk()->viewData('stats');
+
+    expect($stats['open'])->toBe(1)
+        ->and($stats['critical'])->toBe(1)
+        ->and((float) $stats['cost'])->toBe(8000.0);
+});

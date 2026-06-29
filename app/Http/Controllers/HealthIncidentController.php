@@ -13,17 +13,38 @@ class HealthIncidentController extends Controller
     public function index()
     {
         if (Gate::denies('elevage.L')) return redirect()->route('dashboard')->with('error', 'Accès restreint.');
-        // 1. On compte les cas en attente
-        $pendingIncidentsCount = \App\Models\HealthIncident::where('status', 'en_attente')->count();
 
-        // 2. On récupère la liste paginée
-        $incidents = \App\Models\HealthIncident::with(['building', 'user', 'batch', 'dailyCheck'])
-            ->orderByRaw("FIELD(status, 'en_attente', 'diagnostique', 'resolu')")
+        // 1. KPIs sanitaires (indicateurs de pilotage).
+        $slaDays = (int) setting('elevage.incident_diagnosis_sla_days', 2);
+        $stats = [
+            'open'     => HealthIncident::open()->count(),
+            'critical' => HealthIncident::open()->critical()->count(),
+            'overdue'  => HealthIncident::pending()
+                ->whereDate('incident_date', '<=', now()->subDays($slaDays)->toDateString())
+                ->count(),
+            'cost'     => (float) HealthIncident::sum('treatment_cost'),
+            'sla_days' => $slaDays,
+        ];
+        $pendingIncidentsCount = $stats['open'];
+
+        // 2. Liste paginée (tri : en attente → diagnostiqué → résolu).
+        $incidents = HealthIncident::with(['building', 'user', 'batch', 'dailyCheck'])
+            // Tri portable (CASE) : FIELD() est spécifique à MySQL et casse en SQLite.
+            ->orderByRaw("CASE status WHEN 'en_attente' THEN 0 WHEN 'diagnostique' THEN 1 ELSE 2 END")
             ->orderBy('created_at', 'desc')
             ->paginate((int) setting('general.items_per_page', 20));
 
-        // 3. 💡 N'oubliez pas d'ajouter $pendingIncidentsCount dans le compact !
-        return view('health.incidents', compact('incidents', 'pendingIncidentsCount'));
+        return view('health.incidents', compact('incidents', 'pendingIncidentsCount', 'stats'));
+    }
+
+    /** Fiche détaillée d'un incident (chronologie complète). */
+    public function show(HealthIncident $incident)
+    {
+        if (Gate::denies('elevage.L')) return redirect()->route('dashboard')->with('error', 'Accès restreint.');
+
+        $incident->load(['building', 'batch', 'user', 'diagnosedBy', 'resolvedBy', 'dailyCheck']);
+
+        return view('health.incident-show', compact('incident'));
     }
 
     public function store(Request $request)

@@ -459,6 +459,7 @@ Route::middleware(['auth'])->group(function () {
         // Incidents sanitaires → HealthIncidentController dédié
         Route::get('/incidents', [\App\Http\Controllers\HealthIncidentController::class, 'index'])->name('incidents.index')->middleware('can:L');
         Route::get('/incidents/create', [\App\Http\Controllers\HealthIncidentController::class, 'index'])->name('incidents.create')->middleware('can:C');
+        Route::get('/incidents/{incident}', [\App\Http\Controllers\HealthIncidentController::class, 'show'])->name('incidents.show')->where('incident', '[0-9]+')->middleware('can:L');
         Route::post('/incidents', [\App\Http\Controllers\HealthIncidentController::class, 'store'])->name('incidents.store')->middleware('can:C');
         Route::put('/incidents/{incident}/diagnose', [\App\Http\Controllers\HealthIncidentController::class, 'diagnose'])->name('incidents.diagnose')->middleware('can:M');
         Route::patch('/incidents/{incident}/resolve', [\App\Http\Controllers\HealthIncidentController::class, 'resolve'])->name('incidents.resolve')->middleware('can:M');

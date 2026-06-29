@@ -17,7 +17,29 @@
 
     <div class="py-12 italic font-bold text-left">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            
+
+            {{-- KPIs sanitaires --}}
+            @isset($stats)
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
+                    <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Incidents ouverts") }}</p>
+                    <p class="text-3xl font-black text-slate-800 tracking-tighter">{{ $stats['open'] }}</p>
+                </div>
+                <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
+                    <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Critiques ouverts") }}</p>
+                    <p class="text-3xl font-black {{ $stats['critical'] > 0 ? 'text-rose-600' : 'text-slate-800' }} tracking-tighter">{{ $stats['critical'] }}</p>
+                </div>
+                <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
+                    <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Diagnostic en retard") }} <span class="text-slate-300">(>{{ $stats['sla_days'] }}j)</span></p>
+                    <p class="text-3xl font-black {{ $stats['overdue'] > 0 ? 'text-amber-600' : 'text-slate-800' }} tracking-tighter">{{ $stats['overdue'] }}</p>
+                </div>
+                <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
+                    <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Coût traitements") }}</p>
+                    <p class="text-2xl font-black text-slate-800 tracking-tighter">{{ number_format($stats['cost'], 0, ',', ' ') }} <span class="text-[10px] text-slate-400">{{ currency() }}</span></p>
+                </div>
+            </div>
+            @endisset
+
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 @forelse($incidents as $incident)
                     <div class="bg-white rounded-[2.5rem] border border-slate-100 shadow-xl overflow-hidden flex flex-col">
@@ -48,9 +70,10 @@
                                     </span>
                                 @endif
                             </div>
-                            <span class="text-[10px] text-slate-400 font-black">
+                            <a href="{{ route('health.incidents.show', $incident->id) }}" class="text-[10px] text-slate-400 font-black no-underline hover:text-slate-700 flex items-center gap-1" title="{{ __('Voir le détail') }}">
                                 {{ $incident->created_at->format('d/m/Y H:i') }}
-                            </span>
+                                <i class="fa-solid fa-up-right-from-square text-[8px]"></i>
+                            </a>
                         </div>
 
                         {{-- Photo d'autopsie --}}
