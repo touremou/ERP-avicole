@@ -50,6 +50,18 @@ test('les heures supplémentaires sont calculées au taux majoré paramétré', 
     expect((int) $payslip->net_salary)->toBe(223000); // 208000 + 15000
 });
 
+test('la base mensuelle d\'heures (rh.monthly_hours) pilote le taux horaire des heures sup', function () {
+    Setting::set('rh.overtime_rate', 1.5);
+    Setting::set('rh.monthly_hours', 104); // base réduite → taux horaire doublé (208000/104 = 2000)
+
+    $this->actingAs($this->adminUser)
+        ->post(route('payroll.overtime', $this->payslip), ['hours' => 10])
+        ->assertSessionHas('success');
+
+    // 2000 GNF/h × 10 h × 1,5 = 30 000 GNF (au lieu de 15 000 avec base 208).
+    expect((int) $this->payslip->lines()->where('category', 'heures_sup')->first()->amount)->toBe(30000);
+});
+
 test('un nouvel enregistrement d\'heures sup remplace le précédent (pas de cumul de lignes)', function () {
     Setting::set('rh.overtime_rate', 2.0);
 
