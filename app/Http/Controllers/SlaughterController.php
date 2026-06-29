@@ -157,6 +157,15 @@ class SlaughterController extends Controller
     public function showCuttingForm(SlaughterOrder $order)
     {
         if (Gate::denies('abattoir.C')) return back()->with('error', 'Action non autorisée.');
+
+        // La découpe consomme la carcasse « entier frais » mise en stock par
+        // l'abattage. Tant que l'ordre n'est pas terminé, aucune carcasse n'existe
+        // → on bloque (sinon la découpe créerait des morceaux « fantômes »).
+        if ($order->status !== 'termine') {
+            return redirect()->route('slaughter.dashboard')
+                ->with('error', "L'abattage de l'ordre {$order->order_number} doit être terminé avant la découpe.");
+        }
+
         $order->load(['result', 'cuttingSessions.products', 'batch.species']);
 
         // Morceaux de découpe adaptés à l'espèce du lot abattu.
@@ -168,6 +177,14 @@ class SlaughterController extends Controller
     public function storeCutting(Request $request, SlaughterOrder $order, SlaughterService $service)
     {
         if (Gate::denies('abattoir.C')) return back()->with('error', 'Action non autorisée.');
+
+        // Enforcement serveur : pas de découpe tant que l'abattage n'est pas
+        // terminé (carcasse en stock). removeFromFinishedStock() est silencieux
+        // sur un stock absent — sans cette garde, on créerait des morceaux sans
+        // jamais consommer de carcasse.
+        if ($order->status !== 'termine') {
+            return back()->with('error', "L'abattage doit être terminé avant d'enregistrer une découpe.")->withInput();
+        }
 
         $order->loadMissing('batch.species');
         $allowedTypes = \App\Services\ButcheryNomenclature::cutCodesForSpecies($order->batch?->species);

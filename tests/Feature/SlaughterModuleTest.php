@@ -236,3 +236,19 @@ test('la page de création d\'ordre d\'abattage propose les lots de toutes les e
     $response->assertSee($chickenBatch->code);
     $response->assertSee($goatBatch->code);
 });
+
+test('la découpe est refusée tant que l\'abattage n\'est pas terminé', function () {
+    $batch = Batch::factory()->create(['current_quantity' => 100]);
+    $order = createSlaughterOrder($batch, 50); // statut 'planifie' par défaut
+
+    $this->actingAs($this->adminUser)
+        ->post(route('slaughter.cutting.store', $order), [
+            'total_input_kg' => 10,
+            'session_date'   => now()->toDateString(),
+            'products'       => [['type' => 'cuisse', 'name' => 'Cuisses', 'kg' => 8]],
+        ])
+        ->assertSessionHas('error');
+
+    // Aucune session de découpe « fantôme » créée.
+    expect(\App\Models\CuttingSession::where('slaughter_order_id', $order->id)->count())->toBe(0);
+});
