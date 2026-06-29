@@ -799,6 +799,37 @@ class Batch extends Model
     }
 
     /**
+     * Densité d'occupation COURANTE au sol (sujets/m²), calculée sur l'effectif
+     * vivant réel — contrairement à `planned_density` figée à la mise en place.
+     * Diminue avec la mortalité/les ventes. 0 si la surface n'est pas connue.
+     */
+    public function getCurrentDensityAttribute(): float
+    {
+        $surface = (float) $this->allocated_surface;
+
+        return $surface > 0 ? round($this->current_quantity / $surface, 1) : 0.0;
+    }
+
+    /**
+     * Charge pondérale courante (kg/m²) = densité × poids moyen vif. Indicateur
+     * de bien-être clé en finition (chair). 0 si surface ou poids inconnus.
+     */
+    public function getCurrentStockingWeightAttribute(): float
+    {
+        $surface = (float) $this->allocated_surface;
+        if ($surface <= 0) {
+            return 0.0;
+        }
+
+        $lastWeight = (float) ($this->dailyChecks()
+            ->whereNotNull('avg_weight')
+            ->latest('check_date')
+            ->value('avg_weight') ?? 0); // kg
+
+        return $lastWeight > 0 ? round(($this->current_quantity * $lastWeight) / $surface, 1) : 0.0;
+    }
+
+    /**
      * Phase actuelle basée sur l'âge et le type.
      */
     public function getCurrentPhaseAttribute(): string

@@ -142,6 +142,12 @@
                 <span class="text-blue-500 whitespace-nowrap"><i class="fa-solid fa-location-dot mr-1"></i> {{ $batch->building->name }}</span>
                 <span class="text-slate-200 hidden sm:inline">|</span>
                 <span class="bg-slate-100 px-2 py-0.5 rounded text-slate-500 whitespace-nowrap">{{ $batch->type }}</span>
+                @if($batch->current_density > 0)
+                <span class="text-slate-200 hidden sm:inline">|</span>
+                <span class="text-slate-500 whitespace-nowrap" title="{{ __('Densité courante au sol (effectif vivant / surface allouée)') }}">
+                    <i class="fa-solid fa-ruler-combined mr-1"></i>{{ rtrim(rtrim(number_format($batch->current_density, 1), '0'), '.') }} {{ __('sujets/m²') }}@if($batch->current_stocking_weight > 0) · {{ rtrim(rtrim(number_format($batch->current_stocking_weight, 1), '0'), '.') }} kg/m²@endif
+                </span>
+                @endif
                 <span class="text-slate-200 hidden sm:inline">|</span>
                 <span class="text-rose-500 whitespace-nowrap"><i class="fa-solid fa-dna mr-1"></i> {{ $batch->production_phase ?? __("Phase Initiale") }}</span>
             </div>
