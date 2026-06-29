@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules;
 use Illuminate\Support\Facades\Cache;
 
@@ -161,6 +162,54 @@ class UserController extends Controller
         Cache::forget(self::CACHE_KEY . $user->id);
 
         return back()->with('success', "Rôle de {$user->name} mis à jour.");
+    }
+
+    /** Édition d'un utilisateur (nom, email, rôle) — réservé admin. */
+    public function update(Request $request, User $user)
+    {
+        if (Gate::denies('admin.S')) return back();
+
+        $validated = $request->validate([
+            'name'    => ['required', 'string', 'max:255'],
+            'email'   => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
+            'role_id' => ['required', 'exists:roles,id'],
+        ]);
+
+        $user->update($validated);
+        Cache::forget(self::CACHE_KEY . $user->id); // le rôle a pu changer
+
+        return back()->with('success', "Utilisateur {$user->name} mis à jour.");
+    }
+
+    /** Suspend / réactive un compte (bloque/rouvre la connexion via is_active). */
+    public function toggleActive(User $user)
+    {
+        if (Gate::denies('admin.S')) return back();
+
+        if (auth()->id() === $user->id) {
+            return back()->with('error', 'Impossible de suspendre votre propre compte.');
+        }
+
+        $user->update(['is_active' => ! $user->isActive()]);
+        Cache::forget(self::CACHE_KEY . $user->id);
+
+        return back()->with('success', $user->is_active
+            ? "Accès de {$user->name} réactivé."
+            : "Accès de {$user->name} suspendu.");
+    }
+
+    /** Réinitialise le mot de passe d'un utilisateur (admin). */
+    public function resetPassword(Request $request, User $user)
+    {
+        if (Gate::denies('admin.S')) return back();
+
+        $validated = $request->validate([
+            'password' => ['required', 'confirmed', Rules\Password::defaults()],
+        ]);
+
+        $user->update(['password' => Hash::make($validated['password'])]);
+
+        return back()->with('success', "Mot de passe de {$user->name} réinitialisé.");
     }
 
     public function destroy(User $user)

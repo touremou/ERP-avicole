@@ -69,17 +69,54 @@
                                 </span>
                                 <p class="text-[7px] text-slate-300 uppercase">{{ __("modules") }}</p>
                             </td>
-                            <td class="px-8 py-5 text-right">
-                                @if(auth()->id() !== $user->id)
-                                <form action="{{ route('users.destroy', $user->id) }}" method="POST" onsubmit="return confirm('{{ __("Supprimer cet accès ?") }}')">
-                                    @csrf @method('DELETE')
-                                    <button class="w-10 h-10 inline-flex items-center justify-center rounded-xl text-slate-300 hover:text-rose-600 hover:bg-rose-50 transition-all border-none bg-transparent cursor-pointer">
-                                        <i class="fas fa-trash-can"></i>
+                            <td class="px-8 py-5">
+                                <div class="flex items-center justify-end gap-1">
+                                    {{-- Statut du compte --}}
+                                    @if($user->isActive())
+                                        <span class="px-2 py-1 bg-emerald-50 text-emerald-600 rounded-lg text-[7px] font-black uppercase tracking-widest mr-1">{{ __("Actif") }}</span>
+                                    @else
+                                        <span class="px-2 py-1 bg-rose-50 text-rose-600 rounded-lg text-[7px] font-black uppercase tracking-widest mr-1">{{ __("Suspendu") }}</span>
+                                    @endif
+
+                                    {{-- Éditer (nom / email / rôle) --}}
+                                    <button type="button" onclick="document.getElementById('editUser-{{ $user->id }}').classList.remove('hidden')"
+                                        class="w-9 h-9 inline-flex items-center justify-center rounded-xl text-slate-300 hover:text-blue-600 hover:bg-blue-50 transition-all border-none bg-transparent cursor-pointer" title="{{ __('Modifier') }}">
+                                        <i class="fas fa-pen text-xs"></i>
                                     </button>
-                                </form>
-                                @else
-                                    <span class="px-3 py-1 bg-slate-100 rounded-lg text-[7px] font-black text-slate-400 uppercase italic">{{ __("Moi") }}</span>
-                                @endif
+
+                                    {{-- Réinitialiser le mot de passe --}}
+                                    <button type="button" onclick="document.getElementById('pwUser-{{ $user->id }}').classList.remove('hidden')"
+                                        class="w-9 h-9 inline-flex items-center justify-center rounded-xl text-slate-300 hover:text-amber-600 hover:bg-amber-50 transition-all border-none bg-transparent cursor-pointer" title="{{ __('Réinitialiser le mot de passe') }}">
+                                        <i class="fas fa-key text-xs"></i>
+                                    </button>
+
+                                    @if(auth()->id() !== $user->id)
+                                        {{-- Suspendre / Réactiver --}}
+                                        <form action="{{ route('users.toggle_active', $user->id) }}" method="POST" class="inline">
+                                            @csrf @method('PATCH')
+                                            @if($user->isActive())
+                                                <button onclick="return confirm('{{ __("Suspendre cet accès ? L'utilisateur ne pourra plus se connecter.") }}')"
+                                                    class="w-9 h-9 inline-flex items-center justify-center rounded-xl text-slate-300 hover:text-amber-600 hover:bg-amber-50 transition-all border-none bg-transparent cursor-pointer" title="{{ __('Suspendre') }}">
+                                                    <i class="fas fa-ban text-xs"></i>
+                                                </button>
+                                            @else
+                                                <button class="w-9 h-9 inline-flex items-center justify-center rounded-xl text-emerald-400 hover:text-emerald-600 hover:bg-emerald-50 transition-all border-none bg-transparent cursor-pointer" title="{{ __('Réactiver') }}">
+                                                    <i class="fas fa-circle-check text-xs"></i>
+                                                </button>
+                                            @endif
+                                        </form>
+
+                                        {{-- Supprimer --}}
+                                        <form action="{{ route('users.destroy', $user->id) }}" method="POST" onsubmit="return confirm('{{ __("Supprimer cet accès ?") }}')" class="inline">
+                                            @csrf @method('DELETE')
+                                            <button class="w-9 h-9 inline-flex items-center justify-center rounded-xl text-slate-300 hover:text-rose-600 hover:bg-rose-50 transition-all border-none bg-transparent cursor-pointer" title="{{ __('Supprimer') }}">
+                                                <i class="fas fa-trash-can text-xs"></i>
+                                            </button>
+                                        </form>
+                                    @else
+                                        <span class="px-3 py-1 bg-slate-100 rounded-lg text-[7px] font-black text-slate-400 uppercase italic ml-1">{{ __("Moi") }}</span>
+                                    @endif
+                                </div>
                             </td>
                         </tr>
                         @endforeach
@@ -89,6 +126,66 @@
             </div>
         </div>
     </div>
+
+    {{-- ═══ MODALES PAR UTILISATEUR : ÉDITION + RÉINITIALISATION MOT DE PASSE ═══ --}}
+    @foreach($users as $user)
+        {{-- Édition --}}
+        <div id="editUser-{{ $user->id }}" class="hidden fixed inset-0 bg-slate-900/90 backdrop-blur-xl z-50 flex items-center justify-center p-6">
+            <div class="bg-white rounded-[3rem] w-full max-w-xl shadow-2xl overflow-hidden text-left italic font-bold">
+                <div class="px-10 py-8 border-b border-slate-100 flex justify-between items-center">
+                    <h3 class="text-xl font-black text-slate-800 uppercase tracking-tighter italic leading-none">{{ __("Modifier l'utilisateur") }}</h3>
+                    <button type="button" onclick="document.getElementById('editUser-{{ $user->id }}').classList.add('hidden')" class="text-slate-300 hover:text-slate-900 border-none bg-transparent cursor-pointer text-xl"><i class="fas fa-times"></i></button>
+                </div>
+                <form action="{{ route('users.update', $user->id) }}" method="POST" class="p-10 space-y-6">
+                    @csrf @method('PUT')
+                    <div class="space-y-2">
+                        <label class="text-[9px] font-black uppercase text-slate-400 ml-2 tracking-widest">{{ __("Nom") }}</label>
+                        <input type="text" name="name" value="{{ $user->name }}" required class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-sm shadow-inner outline-none">
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-[9px] font-black uppercase text-slate-400 ml-2 tracking-widest">{{ __("Email") }}</label>
+                        <input type="email" name="email" value="{{ $user->email }}" required class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-sm shadow-inner outline-none">
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-[9px] font-black uppercase text-slate-400 ml-2 tracking-widest">{{ __("Rôle") }}</label>
+                        <select name="role_id" required class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-xs uppercase shadow-inner outline-none appearance-none italic cursor-pointer">
+                            @foreach($roles as $role)
+                                <option value="{{ $role->id }}" {{ $user->role_id == $role->id ? 'selected' : '' }}>{{ $role->icon }} {{ $role->display_name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <button type="submit" class="w-full bg-slate-900 text-white py-5 rounded-2xl font-black text-xs uppercase tracking-[0.3em] hover:bg-blue-600 transition-all border-none cursor-pointer italic">
+                        <i class="fas fa-floppy-disk mr-2"></i> {{ __("Enregistrer") }}
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        {{-- Réinitialisation du mot de passe --}}
+        <div id="pwUser-{{ $user->id }}" class="hidden fixed inset-0 bg-slate-900/90 backdrop-blur-xl z-50 flex items-center justify-center p-6">
+            <div class="bg-white rounded-[3rem] w-full max-w-md shadow-2xl overflow-hidden text-left italic font-bold">
+                <div class="px-10 py-8 border-b border-slate-100 flex justify-between items-center">
+                    <h3 class="text-xl font-black text-slate-800 uppercase tracking-tighter italic leading-none">{{ __("Mot de passe") }}</h3>
+                    <button type="button" onclick="document.getElementById('pwUser-{{ $user->id }}').classList.add('hidden')" class="text-slate-300 hover:text-slate-900 border-none bg-transparent cursor-pointer text-xl"><i class="fas fa-times"></i></button>
+                </div>
+                <form action="{{ route('users.reset_password', $user->id) }}" method="POST" class="p-10 space-y-6">
+                    @csrf @method('PUT')
+                    <p class="text-[9px] font-black uppercase text-slate-400 tracking-widest leading-relaxed">{{ __("Nouveau mot de passe pour") }} <span class="text-slate-700">{{ $user->name }}</span></p>
+                    <div class="space-y-2">
+                        <label class="text-[9px] font-black uppercase text-slate-400 ml-2 tracking-widest">{{ __("Nouveau mot de passe") }}</label>
+                        <input type="password" name="password" required class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-sm shadow-inner outline-none">
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-[9px] font-black uppercase text-slate-400 ml-2 tracking-widest">{{ __("Confirmation") }}</label>
+                        <input type="password" name="password_confirmation" required class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-sm shadow-inner outline-none">
+                    </div>
+                    <button type="submit" class="w-full bg-amber-500 text-white py-5 rounded-2xl font-black text-xs uppercase tracking-[0.3em] hover:bg-amber-600 transition-all border-none cursor-pointer italic">
+                        <i class="fas fa-key mr-2"></i> {{ __("Réinitialiser") }}
+                    </button>
+                </form>
+            </div>
+        </div>
+    @endforeach
 
     {{-- ═══════════════════════════════════════════════════════════════ --}}
     {{-- MODAL : MATRICE MODULES × RÔLES (NOUVEAU)                     --}}

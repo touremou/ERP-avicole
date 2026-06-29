@@ -828,6 +828,9 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware('can:S')->group(function () {
         Route::resource('users', UserController::class)->only(['index', 'store', 'destroy']);
         Route::patch('/users/{user}/role', [UserController::class, 'updateRole'])->name('users.update_role');
+        Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update');
+        Route::patch('/users/{user}/toggle-active', [UserController::class, 'toggleActive'])->name('users.toggle_active');
+        Route::put('/users/{user}/password', [UserController::class, 'resetPassword'])->name('users.reset_password');
         Route::post('/roles', [UserController::class, 'storeRole'])->name('roles.store');
         Route::delete('/roles/{role}', [UserController::class, 'destroyRole'])->name('roles.destroy');
         Route::post('/roles/module-matrix', [UserController::class, 'updateModuleMatrix'])->name('roles.update_module_matrix');
