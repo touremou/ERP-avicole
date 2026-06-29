@@ -463,6 +463,7 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/incidents/{incident}/diagnose', [\App\Http\Controllers\HealthIncidentController::class, 'diagnose'])->name('incidents.diagnose')->middleware('can:M');
         Route::patch('/incidents/{incident}/resolve', [\App\Http\Controllers\HealthIncidentController::class, 'resolve'])->name('incidents.resolve')->middleware('can:M');
         Route::patch('/incidents/{incident}/close-fast', [\App\Http\Controllers\HealthIncidentController::class, 'closeFast'])->name('incidents.closeFast')->middleware('can:M');
+        Route::patch('/incidents/{incident}/quarantine', [\App\Http\Controllers\HealthIncidentController::class, 'toggleQuarantine'])->name('incidents.quarantine')->middleware('can:M');
     });
 
     Route::middleware('can:L')->resource('daily-checks', DailyCheckController::class);

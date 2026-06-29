@@ -350,6 +350,29 @@ class NotificationHub
     }
 
     /**
+     * Alerte INCIDENT SANITAIRE déclaré (anomalie/crise). Diffusée sur le canal
+     * sanitaire (alert_mortality) ; sévérité « critique » → escalade (admin
+     * WhatsApp/e-mail), sinon « normal ». Le vétérinaire/responsable est ainsi
+     * prévenu dès la déclaration terrain pour accélérer le diagnostic.
+     */
+    public function alertHealthIncident(\App\Models\HealthIncident $incident): void
+    {
+        $batchCode = $incident->batch?->code ?? '—';
+        $building  = $incident->building?->name ?? '—';
+
+        $message = "🩺 *INCIDENT SANITAIRE* (" . $incident->severity_label . ")\n\n"
+            . "Lot : {$batchCode}\n"
+            . "Bâtiment : {$building}\n"
+            . "Cadavres signalés : {$incident->mortality_count}\n"
+            . "Symptômes : " . \Illuminate\Support\Str::limit((string) $incident->symptoms, 180) . "\n\n"
+            . "À diagnostiquer (Élevage › Santé › Incidents).";
+
+        $severity = $incident->severity === \App\Models\HealthIncident::SEVERITY_CRITICAL ? 'critique' : 'normal';
+
+        $this->broadcast('alert_mortality', $message, 'Incident sanitaire ' . $batchCode, $severity);
+    }
+
+    /**
      * Alerte PIC de mortalité QUOTIDIEN (early-warning maladie), par bâtiment.
      *
      * Complète l'alerte de mortalité CUMULÉE (seuil 5 %, qui arrive tard) : un

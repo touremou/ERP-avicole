@@ -293,9 +293,18 @@
                         <input type="number" name="mortality_count" required min="1" placeholder="{{ __('Nb.') }}" class="w-full bg-slate-50 border-none rounded-xl p-4 font-black text-xs text-rose-600 shadow-inner focus:ring-2 focus:ring-rose-500 text-center">
                     </div>
                     <div>
-                        <label class="text-[9px] uppercase text-slate-400 block tracking-widest font-black mb-1 italic">{{ __("Photo Autopsie") }}</label>
-                        <input type="file" name="photo" accept="image/jpeg, image/png" capture="environment" class="w-full bg-slate-50 border-none rounded-xl p-3 text-[10px] shadow-inner file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:font-black file:bg-rose-100 file:text-rose-700 hover:file:bg-rose-200 cursor-pointer">
+                        <label class="text-[9px] uppercase text-slate-400 block tracking-widest font-black mb-1 italic">{{ __("Gravité") }}</label>
+                        <select name="severity" class="w-full bg-slate-50 border-none rounded-xl p-4 font-black text-xs uppercase shadow-inner cursor-pointer text-slate-700 focus:ring-2 focus:ring-rose-500">
+                            <option value="mineur">{{ __("Mineur") }}</option>
+                            <option value="modere" selected>{{ __("Modéré") }}</option>
+                            <option value="critique">{{ __("Critique") }}</option>
+                        </select>
                     </div>
+                </div>
+
+                <div>
+                    <label class="text-[9px] uppercase text-slate-400 block tracking-widest font-black mb-1 italic">{{ __("Photo Autopsie") }}</label>
+                    <input type="file" name="photo" accept="image/jpeg, image/png" capture="environment" class="w-full bg-slate-50 border-none rounded-xl p-3 text-[10px] shadow-inner file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:font-black file:bg-rose-100 file:text-rose-700 hover:file:bg-rose-200 cursor-pointer">
                 </div>
 
                 <div>
