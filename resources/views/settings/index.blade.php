@@ -57,11 +57,30 @@
                     </div>
                     @endif
 
+                    @php
+                        // Affichage dynamique par driver : seuls les champs UTILES au
+                        // driver sélectionné restent visibles (WhatsApp, SMS).
+                        $driverConfig = [
+                            'whatsapp' => ['driverKey' => 'driver', 'fields' => [
+                                'api_key'     => ['callmebot', 'ultramsg', 'wati', 'twilio'],
+                                'instance_id' => ['ultramsg'],
+                                'api_url'     => ['ultramsg', 'wati', 'twilio'],
+                            ]],
+                            'sms' => ['driverKey' => 'driver', 'fields' => [
+                                'api_url' => ['http'],
+                                'api_key' => ['http'],
+                                'sender'  => ['http'],
+                            ]],
+                        ];
+                        $dyn = $driverConfig[$activeGroup] ?? null;
+                        $currentDriver = $dyn ? (string) (collect($settings)->firstWhere('key', $dyn['driverKey'])?->value ?? '') : '';
+                    @endphp
+
                     <form method="POST" action="{{ route('settings.update') }}" enctype="multipart/form-data">
                         @csrf @method('PUT')
                         <input type="hidden" name="_group" value="{{ $activeGroup }}">
 
-                        <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                        <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden" @if($dyn) x-data="{ driver: @js($currentDriver) }" @endif>
                             <div class="px-6 py-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
                                 <h3 class="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
                                     <i class="fa-solid {{ $groups[$activeGroup]['icon'] ?? 'fa-cog' }} text-{{ $groups[$activeGroup]['color'] ?? 'slate' }}-500"></i>
@@ -74,7 +93,8 @@
 
                             <div class="divide-y divide-slate-50">
                                 @foreach($settings as $s)
-                                <div class="px-6 py-5 flex flex-col md:flex-row md:items-center gap-3 hover:bg-slate-50/50 transition-all">
+                                <div class="px-6 py-5 flex flex-col md:flex-row md:items-center gap-3 hover:bg-slate-50/50 transition-all"
+                                    @if($dyn && isset($dyn['fields'][$s->key])) x-show="@js($dyn['fields'][$s->key]).includes(driver)" x-cloak @endif>
                                     {{-- Label + description --}}
                                     <div class="md:w-1/3">
                                         <label class="text-[10px] font-black text-slate-700 uppercase tracking-widest block">{{ $s->label ?? $s->key }}</label>
@@ -106,6 +126,7 @@
 
                                             @case('select')
                                                 <select name="settings[{{ $s->key }}]"
+                                                    @if($dyn && $s->key === $dyn['driverKey']) x-model="driver" @endif
                                                     class="w-full md:w-48 bg-slate-50 border-none rounded-xl p-3 text-xs font-black uppercase shadow-inner outline-none cursor-pointer focus:ring-2 focus:ring-blue-500 italic">
                                                     @foreach(explode(',', $s->options ?? '') as $opt)
                                                         <option value="{{ trim($opt) }}" {{ $s->value === trim($opt) ? 'selected' : '' }}>{{ trim($opt) }}</option>
