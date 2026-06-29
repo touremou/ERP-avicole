@@ -9,7 +9,7 @@ class RecordHatchRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return Gate::allows('M');
+        return Gate::allows('production.M');
     }
 
     public function rules(): array
@@ -42,7 +42,7 @@ class RecordHatchRequest extends FormRequest
     public function authorize(): bool
     {
         // Seuls les profils ayant la permission de Modification (M) peuvent valider une éclosion
-        return Gate::allows('M');
+        return Gate::allows('production.M');
     }
 
 

@@ -9,7 +9,7 @@ class StartIncubationRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return Gate::allows('C');
+        return Gate::allows('production.C');
     }
 
     public function rules(): array
@@ -66,7 +66,7 @@ class StartIncubationRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return Gate::allows('C');
+        return Gate::allows('production.C');
     }
 
     public function rules(): array

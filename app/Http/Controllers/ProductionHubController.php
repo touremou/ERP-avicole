@@ -28,7 +28,9 @@ class ProductionHubController extends Controller
             'eggs_month'  => (int) EggProduction::whereDate('production_date', '>=', $monthStart)
                                     ->whereDate('production_date', '<=', $today)->sum('total_eggs_collected'),
             'milk_today'  => (float) MilkProduction::whereDate('production_date', $today)->sum('total_liters'),
-            'incub_open'  => (int) Incubation::where('status', '!=', 'termine')->count(),
+            // Incubations EN COURS = non closes. Le statut terminal est « clos »
+            // (« termine » n'existe pas → l'ancien filtre comptait TOUT, closes incluses).
+            'incub_open'  => (int) Incubation::where('status', '!=', 'clos')->count(),
         ];
 
         $recentEggs = EggProduction::with('batch')
