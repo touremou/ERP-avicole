@@ -250,3 +250,87 @@ présence du loader côté serveur et l'indique dans les prérequis.
 > La « paternité » du code (humain/IA) n'est pas une mesure de sécurité et n'est
 > pas détectable de façon fiable : ce qui protège la propriété intellectuelle,
 > c'est l'encodage + la licence, pas la dissimulation de l'auteur.
+
+## 9. Notifications : configuration des canaux (WhatsApp / SMS / e-mail)
+
+Par défaut tous les canaux sont **inactifs** (WhatsApp/SMS en mode `log`, mail
+non configuré) : aucun message réel n'est envoyé. Configurez chaque canal puis
+vérifiez via *Notifications › Préférences* (boutons **WhatsApp / SMS / E-mail**).
+Le détail de chaque tentative est consultable dans *Notifications › Historique*.
+
+> Les réglages d'interface (Réglages › WhatsApp / SMS) **priment** sur les
+> variables d'environnement ci-dessous. Le quota SMS de la licence (le cas
+> échéant) est décompté à chaque envoi WhatsApp/SMS réel abouti.
+
+### 9.1 WhatsApp (Réglages › WhatsApp)
+
+Choisir un *driver* et renseigner la clé API. Drivers supportés :
+
+| Driver | Usage | Réglages requis |
+|--------|-------|-----------------|
+| `log` | Dév : journalise, n'envoie rien | — |
+| `callmebot` | Test gratuit (1 numéro) | `api_key` (obtenue via CallMeBot) |
+| `ultramsg` | ~10 $/mois, simple | `api_key` + `instance_id` (+ `api_url` si auto-hébergé) |
+| `wati` | WhatsApp Business officiel | `api_key` + `api_url` |
+| `twilio` | Entreprise | `api_key` (SID:Token) + `api_url` |
+
+`.env` (repli si non défini en Réglages) :
+```dotenv
+WHATSAPP_DRIVER=ultramsg
+WHATSAPP_API_KEY=xxxxx
+WHATSAPP_INSTANCE_ID=instanceXXXX   # ultramsg
+```
+Renseigner aussi le **Téléphone admin** (filet de secours) et, pour les alertes
+critiques, l'**E-mail admin**. `verify_ssl` peut être désactivé pour une
+instance auto-hébergée à certificat interne (à éviter en production publique).
+
+### 9.2 SMS (Réglages › SMS)
+
+Passerelle locale (opérateur GSM / agrégateur). Driver `http` = POST
+`application/x-www-form-urlencoded` vers l'URL fournie avec les champs
+`api_key`, `to`, `text`, `sender`.
+
+| Driver | Effet |
+|--------|-------|
+| `log` | N'envoie rien, journalise (défaut) |
+| `http` | Poste vers la passerelle configurée |
+
+`.env` (repli) :
+```dotenv
+SMS_DRIVER=http
+SMS_API_URL=https://passerelle-operateur.gn/v1/sms/send
+SMS_API_KEY=xxxxx
+SMS_SENDER=AVISMART
+```
+> Adapter au format exact de votre passerelle si besoin (champs/headers) dans
+> `App\Services\SmsService`.
+
+### 9.3 E-mail (SMTP)
+
+Configuration Laravel standard. `.env` :
+```dotenv
+MAIL_MAILER=smtp
+MAIL_HOST=smtp.votre-fournisseur.com
+MAIL_PORT=587
+MAIL_USERNAME=xxxxx
+MAIL_PASSWORD=xxxxx
+MAIL_ENCRYPTION=tls
+MAIL_FROM_ADDRESS="erp@votre-domaine.com"
+MAIL_FROM_NAME="${APP_NAME}"
+```
+- `MAIL_MAILER=log` envoie vers `storage/logs/laravel.log` (utile en dév).
+- Les alertes e-mail sont **mises en file** (`QUEUE_CONNECTION`) : en production,
+  faire tourner un worker (`php artisan queue:work`) ou la planif `schedule:run`.
+  Le **bouton de test e-mail** envoie en synchrone et remonte directement les
+  erreurs SMTP.
+- Les alertes **critiques** sont aussi poussées à l'**E-mail admin** (Réglages ›
+  WhatsApp › E-mail admin), même sans abonné explicite.
+
+### 9.4 Dépannage
+
+| Symptôme | Piste |
+|----------|-------|
+| Aucun envoi | Driver en `log`, ou clé API/URL manquante → le bouton de test le précise |
+| « Quota SMS épuisé » | Licence : quota atteint → renouveler / augmenter (cf. §8) |
+| E-mail sans erreur mais non reçu | `MAIL_MAILER=log` (voir logs), ou file non drainée (`queue:work`) |
+| Échec WhatsApp | Vérifier numéro (format +224…), driver, clé API, instance — détail dans l'Historique |
