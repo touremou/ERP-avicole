@@ -93,13 +93,14 @@
                 <div class="bg-slate-900 p-8 rounded-[3rem] text-white shadow-2xl text-left border-l-8 border-amber-400">
                     <p class="text-[10px] font-black text-slate-400 uppercase mb-2 italic leading-none">{{ __("Valeur Valorisée") }}</p>
                     <h3 class="text-3xl font-black text-amber-400 tracking-tighter leading-none">
-                        {{-- CORRECTION ICI : Remplacement de last_unit_price par unit_price --}}
-                        {{ number_format($stock->current_quantity * ($stock->unit_price ?? 0), 0, ',', ' ') }} 
+                        {{-- Valorisation au COÛT MOYEN PONDÉRÉ via l'accesseur total_value
+                             (current_quantity × last_unit_price) : source unique partagée
+                             avec tableaux de bord et rapports. --}}
+                        {{ number_format($stock->total_value, 0, ',', ' ') }}
                         <span class="text-[10px] text-white opacity-50 uppercase font-black">{{ currency() }}</span>
                     </h3>
                     <p class="text-[8px] text-slate-500 uppercase italic mt-2 font-black leading-none tracking-widest">
-                        {{-- CORRECTION ICI AUSSI --}}
-                        {{ __("PU :") }} {{ number_format($stock->unit_price ?? 0, 0, ',', ' ') }} / {{ $stock->unit }}
+                        {{ __("PU (CMP) :") }} {{ number_format($stock->last_unit_price ?? 0, 0, ',', ' ') }} / {{ $stock->unit }}
                     </p>
                 </div>
             </div>
