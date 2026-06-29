@@ -244,3 +244,29 @@ test('le coût de traitement d\'un incident impacte la marge nette du lot', func
     // La marge baisse exactement du coût de traitement (santé) imputé au lot.
     expect((float) $this->batch->fresh()->net_margin)->toBe($marginBefore - 40000);
 });
+
+test('le rapport sanitaire agrège les incidents par maladie et gravité', function () {
+    HealthIncident::create([
+        'farm_id' => $this->farm->id, 'building_id' => $this->building->id, 'batch_id' => $this->batch->id,
+        'user_id' => $this->adminUser->id, 'incident_date' => now()->subDays(5)->toDateString(),
+        'mortality_count' => 6, 'symptoms' => 'X', 'status' => 'diagnostique',
+        'severity' => 'critique', 'suspected_disease' => 'Newcastle', 'treatment_cost' => 30000,
+    ]);
+    HealthIncident::create([
+        'farm_id' => $this->farm->id, 'building_id' => $this->building->id, 'batch_id' => $this->batch->id,
+        'user_id' => $this->adminUser->id, 'incident_date' => now()->subDays(2)->toDateString(),
+        'mortality_count' => 1, 'symptoms' => 'Y', 'status' => 'en_attente', 'severity' => 'mineur',
+    ]);
+
+    $resp = $this->actingAs($this->adminUser)->get(route('reports.health_incidents'))->assertOk();
+
+    $summary = $resp->viewData('summary');
+    expect($summary['total'])->toBe(2)
+        ->and($summary['open'])->toBe(2) // diagnostique + en_attente = non résolus
+        ->and($summary['mortality'])->toBe(7)
+        ->and((float) $summary['cost'])->toBe(30000.0);
+
+    expect($resp->viewData('byDisease')->has('Newcastle'))->toBeTrue()
+        ->and($resp->viewData('byDisease')->has('Non diagnostiqué'))->toBeTrue();
+    $resp->assertSee('Newcastle');
+});

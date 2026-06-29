@@ -529,6 +529,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/profit-loss/pdf', 'profitLossPdf')->name('profit_loss.pdf');
         Route::get('/nursery', 'nurseryReport')->name('nursery');
         Route::get('/nursery/pdf', 'nurseryReportPdf')->name('nursery.pdf');
+        Route::get('/health-incidents', 'healthIncidentsReport')->name('health_incidents');
         Route::get('/health-finance', 'healthFinancialReport')->name('health_finance');
         Route::get('/health-finance/pdf', 'healthFinancialReportPdf')->name('health_finance.pdf');
         Route::get('/monthly', 'monthlyExpenses')->name('monthly');

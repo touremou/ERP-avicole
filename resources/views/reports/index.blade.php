@@ -52,6 +52,19 @@
                 </a>
                 @endcan
 
+                {{-- RAPPORT SANITAIRE (INCIDENTS) --}}
+                @can('elevage.L')
+                <a href="{{ route('reports.health_incidents') }}" class="group bg-white p-8 rounded-2xl border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all no-underline relative overflow-hidden">
+                    <div class="w-12 h-12 bg-rose-500 text-white rounded-xl flex items-center justify-center mb-5 shadow-lg group-hover:scale-110 transition-transform"><i class="fa-solid fa-shield-virus text-lg"></i></div>
+                    <h3 class="text-base font-black text-slate-800 uppercase tracking-tighter mb-2 italic">{{ __("Rapport sanitaire") }}</h3>
+                    <p class="text-[9px] text-slate-400 uppercase tracking-widest font-black mb-6">{{ __("Incidents par maladie, gravité, bâtiment, saison") }}</p>
+                    <div class="flex items-center gap-2 text-rose-500 text-[9px] font-black uppercase tracking-widest border-t border-slate-100 pt-4">
+                        {{ __("Analyser") }} <i class="fa-solid fa-arrow-right group-hover:translate-x-1 transition-transform text-[8px]"></i>
+                    </div>
+                    <i class="fa-solid fa-virus-covid absolute -right-4 -bottom-4 text-7xl text-rose-50"></i>
+                </a>
+                @endcan
+
                 {{-- SANTÉ & PHARMACIE --}}
                 @can('elevage.L')
                 <a href="{{ route('reports.health_finance') }}" class="group bg-slate-900 p-8 rounded-2xl shadow-lg hover:bg-slate-800 transition-all no-underline relative overflow-hidden border-b-4 border-emerald-500">

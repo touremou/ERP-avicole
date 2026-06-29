@@ -6,6 +6,7 @@ use App\Models\Batch;
 use App\Models\CropCycle;
 use App\Models\CropInput;
 use App\Models\HealthCheck;
+use App\Models\HealthIncident;
 use App\Models\DailyCheck;
 use App\Models\SaleItem;
 use App\Models\MilkProduction;
@@ -392,6 +393,49 @@ class ReportController extends Controller
         if (Gate::denies('elevage.L')) return back()->with('error', 'Accès restreint.');
 
         return view('reports.health_finance', $this->buildHealthFinanceStats($request));
+    }
+
+    /**
+     * Rapport sanitaire : analyse des incidents par maladie, gravité, bâtiment
+     * et par mois (saisonnalité) sur une période. Aide à repérer les pathologies
+     * récurrentes et les foyers (bâtiments à risque).
+     */
+    public function healthIncidentsReport(Request $request): View
+    {
+        if (Gate::denies('elevage.L')) return back()->with('error', 'Accès restreint.');
+
+        $from = $request->filled('from') ? Carbon::parse($request->from)->startOfDay() : now()->subDays(90)->startOfDay();
+        $to   = $request->filled('to') ? Carbon::parse($request->to)->endOfDay() : now()->endOfDay();
+
+        $incidents = HealthIncident::with(['building', 'batch'])
+            ->whereBetween('incident_date', [$from->toDateString(), $to->toDateString()])
+            ->get();
+
+        $byDisease = $incidents
+            ->groupBy(fn ($i) => $i->suspected_disease ?: 'Non diagnostiqué')
+            ->map(fn ($g) => [
+                'count'     => $g->count(),
+                'mortality' => (int) $g->sum('mortality_count'),
+                'cost'      => (float) $g->sum('treatment_cost'),
+            ])
+            ->sortByDesc('count');
+
+        $bySeverity = $incidents->groupBy('severity')->map->count();
+        $byBuilding = $incidents->groupBy(fn ($i) => $i->building->name ?? '—')->map->count()->sortDesc();
+        $byMonth    = $incidents->groupBy(fn ($i) => optional($i->incident_date)->format('Y-m'))->map->count()->sortKeys();
+
+        $resolvedTimes = $incidents->where('status', 'resolu')->filter(fn ($i) => $i->resolved_at && $i->incident_date)
+            ->map(fn ($i) => $i->incident_date->startOfDay()->diffInDays($i->resolved_at->startOfDay()));
+
+        $summary = [
+            'total'               => $incidents->count(),
+            'open'                => $incidents->where('status', '!=', 'resolu')->count(),
+            'mortality'           => (int) $incidents->sum('mortality_count'),
+            'cost'                => (float) $incidents->sum('treatment_cost'),
+            'avg_resolution_days' => $resolvedTimes->isNotEmpty() ? round($resolvedTimes->avg(), 1) : null,
+        ];
+
+        return view('reports.health-incidents', compact('from', 'to', 'incidents', 'byDisease', 'bySeverity', 'byBuilding', 'byMonth', 'summary'));
     }
 
     /**

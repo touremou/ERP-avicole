@@ -360,12 +360,14 @@ class NotificationHub
         $batchCode = $incident->batch?->code ?? '—';
         $building  = $incident->building?->name ?? '—';
 
-        $message = "🩺 *INCIDENT SANITAIRE* (" . $incident->severity_label . ")\n\n"
-            . "Lot : {$batchCode}\n"
-            . "Bâtiment : {$building}\n"
-            . "Cadavres signalés : {$incident->mortality_count}\n"
-            . "Symptômes : " . \Illuminate\Support\Str::limit((string) $incident->symptoms, 180) . "\n\n"
-            . "À diagnostiquer (Élevage › Santé › Incidents).";
+        // Message via template éditable (Notifications › Modèles), à variables réelles.
+        $message = $this->tpl('alert_incident', [
+            'severity'   => $incident->severity_label,
+            'batch_code' => $batchCode,
+            'building'   => $building,
+            'deaths'     => $incident->mortality_count,
+            'symptoms'   => \Illuminate\Support\Str::limit((string) $incident->symptoms, 180),
+        ]);
 
         $severity = $incident->severity === \App\Models\HealthIncident::SEVERITY_CRITICAL ? 'critique' : 'normal';
 

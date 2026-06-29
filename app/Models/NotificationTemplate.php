@@ -55,6 +55,16 @@ class NotificationTemplate extends Model
                     . "Effectif restant : {{remaining}}\n\n"
                     . "Mortalité quotidienne ANORMALE : vérifier maladie, eau, température, intoxication. Isoler les sujets atteints et appeler le vétérinaire si besoin.",
             ],
+            'alert_incident' => [
+                'label'     => 'Incident sanitaire déclaré',
+                'variables' => ['severity', 'batch_code', 'building', 'deaths', 'symptoms'],
+                'default'   => "🩺 *INCIDENT SANITAIRE* ({{severity}})\n\n"
+                    . "Lot : *{{batch_code}}*\n"
+                    . "Bâtiment : {{building}}\n"
+                    . "Cadavres signalés : *{{deaths}}*\n"
+                    . "Symptômes : {{symptoms}}\n\n"
+                    . "À diagnostiquer (Élevage › Santé › Incidents).",
+            ],
             'alert_stock' => [
                 'label'     => 'Rupture de stock',
                 'variables' => ['item_name', 'category', 'quantity', 'unit', 'threshold'],
