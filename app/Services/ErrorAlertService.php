@@ -72,11 +72,14 @@ class ErrorAlertService
             $whatsapp = app(WhatsAppService::class);
 
             // Envoyer aux admins qui ont activé les alertes
+            // Relation correcte : userRole (et non 'role', inexistante — un
+            // whereHas('role') lèverait une BadMethodCallException qui sauterait
+            // directement au catch, neutralisant même le fallback ci-dessous).
             $admins = User::whereNotNull('whatsapp_phone')
-                ->whereHas('role', fn($q) => $q->where('name', 'admin'))
+                ->whereHas('userRole', fn($q) => $q->where('name', 'admin'))
                 ->get();
 
-            // Fallback : si pas d'admin avec relation role, chercher par role_id
+            // Fallback : si pas d'admin trouvé, chercher par role_id
             if ($admins->isEmpty()) {
                 $adminRoleId = \App\Models\Role::where('name', 'admin')->value('id');
                 if ($adminRoleId) {
