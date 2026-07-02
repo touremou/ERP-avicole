@@ -164,10 +164,15 @@ return [
 
             /*
              * The disk names on which the backups will be stored.
+             *
+             * Audit P2-⑨ : liste pilotée par env (CSV) pour activer la copie
+             * HORS SITE par déploiement, sans toucher au code :
+             *   BACKUP_DISKS=backups,backups_offsite
              */
-            'disks' => [
-                'backups',
-            ],
+            'disks' => array_values(array_filter(array_map(
+                'trim',
+                explode(',', (string) env('BACKUP_DISKS', 'backups'))
+            ))),
 
             /*
              * Determines whether to allow backups to continue when some targets fail instead of failing completely.
@@ -199,8 +204,9 @@ return [
         /*
          * After creating the zip, verify it can be opened and contains files.
          * Recommended for critical backups but adds a small overhead.
+         * Audit P2-⑨ : activé — un backup illisible doit échouer BRUYAMMENT.
          */
-        'verify_backup' => false,
+        'verify_backup' => (bool) env('BACKUP_VERIFY', true),
 
         /*
          * The number of attempts, in case the backup command encounters an exception
@@ -303,7 +309,13 @@ return [
     'monitor_backups' => [
         [
             'name' => env('APP_NAME', 'laravel-backup'),
-            'disks' => ['local'],
+            // Audit P2-⑨ : le monitor surveillait le disque « local » alors que
+            // la destination réelle est « backups » → la santé affichée en IHM
+            // ne regardait JAMAIS les vrais backups. Aligné sur BACKUP_DISKS.
+            'disks' => array_values(array_filter(array_map(
+                'trim',
+                explode(',', (string) env('BACKUP_DISKS', 'backups'))
+            ))),
             'health_checks' => [
                 MaximumAgeInDays::class => 1,
                 MaximumStorageInMegabytes::class => 5000,

@@ -62,6 +62,14 @@ return [
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 (PHP_VERSION_ID >= 80500 ? Mysql::ATTR_SSL_CA : PDO::MYSQL_ATTR_SSL_CA) => env('MYSQL_ATTR_SSL_CA'),
             ]) : [],
+
+            // spatie/laravel-backup (audit P2-⑨) : chemin du binaire mysqldump
+            // quand il n'est pas dans le PATH (WAMP Windows, certains mutualisés)
+            // + dump InnoDB sans verrouiller les tables (prod en ligne).
+            'dump' => [
+                'dump_binary_path'     => env('DB_DUMP_BINARY_PATH', ''),
+                'useSingleTransaction' => true,
+            ],
         ],
 
         'mariadb' => [

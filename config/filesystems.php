@@ -56,6 +56,17 @@ return [
             'report' => false,
         ],
 
+        // Copie HORS SITE des sauvegardes (audit P2-⑨, contexte coupures/incidents).
+        // Universel tri-mode, sans nouveau package : pointez BACKUP_OFFSITE_PATH vers
+        // un montage réseau / disque USB (on-premise), un second volume (VPS) ou un
+        // dossier synchronisé (rclone/Drive), puis BACKUP_DISKS=backups,backups_offsite.
+        'backups_offsite' => [
+            'driver' => 'local',
+            'root' => env('BACKUP_OFFSITE_PATH', storage_path('app/backups-offsite')),
+            'throw' => false,
+            'report' => false,
+        ],
+
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),
