@@ -191,6 +191,12 @@ class PayrollController extends Controller
     {
         if (Gate::denies('annuaire.S')) return back()->with('error', 'Validation réservée aux administrateurs.');
 
+        // Garde de machine à états (audit W1) : brouillon (jamais calculée),
+        // déjà validée ou payée → refus ; on ne ré-horodate jamais une validation.
+        if ($period->status !== 'calcule') {
+            return back()->with('error', "Seule une période calculée peut être validée (statut actuel : {$period->status}).");
+        }
+
         $period->update([
             'status'       => 'valide',
             'validated_by' => Auth::id(),

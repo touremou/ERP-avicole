@@ -426,13 +426,19 @@ class BatchController extends Controller
         if (Gate::denies('elevage.M')) {
             abort(403, 'Clôture interdite.');
         }
-        $result = $action->execute($batch, $request->validated());
+
+        try {
+            $result = $action->execute($batch, $request->validated());
+        } catch (\DomainException $e) {
+            // Ex. lot déjà clôturé : refus métier propre (audit W1), jamais un 500.
+            return back()->with('error', $e->getMessage());
+        }
 
         return redirect()->route('batches.index')
             ->with('success',
                 "Lot {$batch->code} clôturé. " .
-                "Revenu : " . number_format($result->total_revenue) . " GNF. " .
-                "Marge : " . number_format($result->margin) . " GNF."
+                "Revenu : " . number_format($result->total_revenue) . " " . currency() . ". " .
+                "Marge : " . number_format($result->margin) . " " . currency() . "."
             );
     }
 
@@ -447,7 +453,12 @@ class BatchController extends Controller
             return back()->with('error', 'Réouverture réservée aux administrateurs.');
         }
 
-        $result = $action->execute($batch);
+        try {
+            $result = $action->execute($batch);
+        } catch (\DomainException $e) {
+            // Ex. lot déjà actif : refus métier propre (audit W1), jamais un 500.
+            return back()->with('error', $e->getMessage());
+        }
 
         return redirect()->route('batches.show', $batch)
             ->with('success', "Lot {$batch->code} réouvert. Effectif recalculé : {$result->current_quantity} sujets.");
