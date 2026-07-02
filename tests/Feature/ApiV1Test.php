@@ -20,6 +20,17 @@ beforeEach(function () {
         'role_id' => $admin->id,
         'password' => bcrypt('secret-terrain'),
     ]);
+
+    // Le middleware farm.api borne l'API à la ferme de l'utilisateur : tout
+    // utilisateur mobile DOIT être affecté (sinon repli mono-ferme par défaut).
+    Illuminate\Support\Facades\DB::table('farm_user')->insert([
+        'farm_id'    => $farm->id,
+        'user_id'    => $this->user->id,
+        'is_default' => true,
+        'is_owner'   => true,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
 });
 
 it('délivre un token Sanctum avec des identifiants valides', function () {
@@ -69,7 +80,9 @@ it('liste les lots actifs avec un token valide', function () {
     expect($response->json('data'))->toHaveCount(1);
 });
 
-it('enregistre un pointage journalier via l\'API', function () {
+it('enregistre un pointage journalier via la porte de sync v1', function () {
+    // Depuis la fusion A2, l'écriture terrain passe par /sync/push (opération
+    // idempotente à uuid) — l'ancienne route POST /api/v1/daily-checks est morte.
     $building = Building::factory()->create();
     $batch = Batch::factory()->create([
         'building_id' => $building->id,
@@ -79,16 +92,24 @@ it('enregistre un pointage journalier via l\'API', function () {
 
     $token = $this->user->createToken('test')->plainTextToken;
 
-    $response = $this->withToken($token)->postJson('/api/v1/daily-checks', [
-        'batch_id' => $batch->id,
-        'check_date' => now()->toDateString(),
-        'mortality' => 3,
-        'feed_consumed' => 0,
-        'feed_type' => 'Démarrage',
-        'water_consumed' => 120,
+    $response = $this->withToken($token)->postJson('/api/v1/sync/push', [
+        'operations' => [[
+            'op_uuid' => fake()->uuid(),
+            'type'    => 'daily_check.create',
+            'payload' => [
+                'uuid'           => fake()->uuid(),
+                'batch_id'       => $batch->id,
+                'check_date'     => now()->toDateString(),
+                'mortality'      => 3,
+                'feed_consumed'  => 0,
+                'feed_type'      => 'Démarrage',
+                'water_consumed' => 120,
+            ],
+        ]],
     ]);
 
-    $response->assertCreated();
+    $response->assertOk();
+    expect($response->json('results.0.status'))->toBe('success');
 
     expect($batch->fresh()->current_quantity)->toBe(497);
 });

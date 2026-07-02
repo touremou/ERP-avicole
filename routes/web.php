@@ -28,7 +28,7 @@ use App\Http\Controllers\{
     FeedPurchaseController, EggProductionController, EggMovementController,
     IncubationController, IncubatorController, BatchTransferController, StockController,
     RawMaterialController, FormulaController, MillProductionController, MillMachineController,
-    ProvenderieDashboardController, ProductionController, SyncController,
+    ProvenderieDashboardController, ProductionController, SyncGatewayController,
     ClientController, SaleController, PaymentController, DispatchController,
     UtilityController,
     NotificationController,
@@ -498,10 +498,12 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/clients', [ClientController::class, 'getOfflineClients'])->name('clients');
     });
 
-    // ─── SYNCHRONISATION OFFLINE → SERVEUR ───
+    // ─── SYNCHRONISATION OFFLINE → SERVEUR (porte LEGACY, session web) ───
     // Endpoints appelés par sync-engine.js quand le réseau revient.
-    // Auth obligatoire + Gate checks dans le controller.
-    Route::middleware(['force.json', 'auth'])->prefix('api/sync')->name('sync.')->controller(SyncController::class)->group(function () {
+    // Depuis la fusion A2, la logique vit dans App\Services\Sync\SyncService ;
+    // cette passerelle ne fait que traduire l'ancien contrat HTTP.
+    // @deprecated → basculera sur /api/v1/sync/push avec la PWA.
+    Route::middleware(['force.json', 'auth'])->prefix('api/sync')->name('sync.')->controller(SyncGatewayController::class)->group(function () {
         Route::post('/reconcile', 'reconcile')->name('reconcile');
         Route::post('/daily-checks', 'reconcileDailyCheck')->name('daily_checks');
         Route::post('/egg-collections', 'reconcileEggCollection')->name('egg_collections');

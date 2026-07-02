@@ -18,6 +18,9 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin' => \App\Http\Middleware\AdminMiddleware::class,
             'redirect.if.installed' => \App\Http\Middleware\RedirectIfInstalled::class,
             'force.json' => \App\Http\Middleware\ForceJsonResponse::class,
+            // Contexte ferme pour l'API stateless (étanchéité multi-fermes) —
+            // à attacher APRÈS auth:sanctum. Cf. SetApiFarmContext.
+            'farm.api' => \App\Http\Middleware\SetApiFarmContext::class,
         ]);
 
         // NOTE : un seul appel à ->withMiddleware() doit configurer le
