@@ -292,4 +292,10 @@ Ordonnancement : P0 débloque tout (les tests P1 s'écrivent sur une CI qui les 
 - **Tests ✅** `WorkflowGuardWave2Test` (8) : re-clôture refusée (marge intacte) ; réouverture d'un actif refusée proprement ; réouverture d'un Terminé OK (effectif recalculé) ; paie brouillon non validable ; re-validation refusée (horodatage intact) ; génération sur période payée refusée ; **double validation d'achat → UNE seule dépense** (invariant AP) ; caisse : double ouverture ET double clôture refusées (nb : un écart de comptage flashe volontairement « error » — règle métier conservée).
 - Constat : gardes caisse et achats étaient déjà saines (vérifiées/verrouillées) ; `SupplierInvoiceTest` couvrait déjà le reste du workflow AP (pas de duplication).
 
-**Reste avant prod** : rotation des secrets ; P1 reliquat (gardes dispatch anti-fraude + tri d'œufs ; tests concurrence sur staging MySQL ; test étanchéité farm_id web dédié) ; P2 (backups+restore, runbooks tri-mode, monitoring).
+**2026-07-02 — P1-⑤ vague 3 (finale) : 6 gardes prouvées — P1-⑤ COMPLET (22 tests) :**
+- **Étanchéité multi-fermes WEB ✅** : les lots d'une autre ferme sont invisibles sur `batches.index` (session `current_farm_id`).
+- **Tri d'œufs ✅** : modifier une collecte `is_graded` est refusé, le total reste figé (garde O-03 verrouillée).
+- **Expéditions ✅ (anti-fraude complet)** : l'expéditeur ne peut pas réceptionner sa propre expédition (même avec droit M — règle métier de l'Action) ; un tiers ni désigné ni logistique.M est bloqué ; le récepteur DÉSIGNÉ valide même sans droit M (règle terrain magasinier) ; une expédition réceptionnée ne peut pas l'être deux fois.
+- Piège récurrent documenté (3ᵉ occurrence) : `dispatch_items` aussi a gagné `farm_id` + `BelongsToFarm` par la migration corrective multi-fermes → tout insert brut de test DOIT poser `farm_id` (pattern `Schema::hasColumn` conditionnel).
+
+**Reste avant prod** : rotation des secrets ; P1 concurrence réelle sur staging MySQL (k6/parallèle) ; **P2** (⑨ backups nightly RÉELS + drill restore, ⑩ runbooks tri-mode, ⑪ monitoring→WhatsApp, ⑫ staging Linux + E2E).
