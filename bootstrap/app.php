@@ -43,6 +43,13 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
         ->withExceptions(function (Exceptions $exceptions) {
+        // Alerte WhatsApp de l'admin sur toute erreur serveur non gérée
+        // (audit P2-⑪) : throttle 5 min par empreinte, 4xx/validation/refus
+        // métier ignorés, jamais bloquant. Cf. ErrorAlertService.
+        $exceptions->report(function (\Throwable $e) {
+            \App\Services\ErrorAlertService::handle($e);
+        });
+
         // Filet 0 : Sessions expirées/absentes sur les routes API (offline,
         // sync...) → JSON 401, jamais une redirection vers /login. Le
         // middleware "force.json" ne suffit pas : la priorité globale des
@@ -98,11 +105,4 @@ return Application::configure(basePath: dirname(__DIR__))
             }
         });
     })
-    /*
-        ->withExceptions(function (Exceptions $exceptions) {
-        $exceptions->reportable(function (\Throwable $e) {
-            \App\Services\ErrorAlertService::handle($e);
-        });
-    })
-    */
         ->create();

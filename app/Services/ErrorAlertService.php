@@ -42,6 +42,15 @@ class ErrorAlertService
      */
     public static function handle(Throwable $e): void
     {
+        // Jamais pendant les tests (la CI ne doit pas tenter d'envoyer du
+        // WhatsApp) ; pilotable par ERROR_ALERTS_ENABLED (défaut : actif
+        // hors environnement local). Audit P2-⑪.
+        if (app()->runningUnitTests()) return;
+        if (! (bool) env('ERROR_ALERTS_ENABLED', ! app()->environment('local'))) return;
+
+        // Refus métier propres (machines à états) : pas un incident serveur.
+        if ($e instanceof \DomainException) return;
+
         // Ne pas alerter pour les erreurs HTTP classiques (404, 419, 429)
         $httpCode = method_exists($e, 'getStatusCode') ? $e->getStatusCode() : 500;
         $ignoredCodes = [404, 419, 429, 403, 401];
