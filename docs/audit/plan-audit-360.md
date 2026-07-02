@@ -316,4 +316,11 @@ Ordonnancement : P0 débloque tout (les tests P1 s'écrivent sur une CI qui les 
 - **Corrections** : `config/database.php` → `engine => 'InnoDB'` forcé (toutes les installs clients, quel que soit le serveur) ; base dev **convertie 118/118** en InnoDB ; prérequis + requête de contrôle ajoutés au runbook de déploiement (§0) — noter : une base née MyISAM convertie ne récupère PAS ses FK (fresh requis pour ça).
 - **Contre-preuve** : même course → `SALE A: VALIDATED · SALE B: REFUSED "Stock insuffisant… disponible 0"` , `validees=1` — **critère C1 atteint au mot près**. Corollaire : tous les autres verrous de l'app (sync, œufs, capacité bâtiment) sont désormais réellement actifs en dev.
 
-**Reste avant prod** : rotation des secrets (manuel) ; **P2-⑫** staging Linux + 5 parcours E2E ; C3/C5 (paiement concurrent, capacité) désormais testables sur base InnoDB ; re-drill backup SUR la machine de prod ; `whatsapp.admin_phone` ; **vérifier le moteur InnoDB sur toute base importée** (requête au runbook).
+**2026-07-02 — C3 + C5 : deux failles de concurrence prouvées, corrigées, contre-prouvées** (PV détaillés : `docs/audit/drills-concurrence.md`) :
+- **C3 (sur-encaissement)** : 2 paiements parallèles de 60 000 sur 100 000 dus → **120 000 acceptés**. Cause : contrôles de `RecordPayment` hors transaction/verrou. Correctif : re-vérification complète sous `Sale::lockForUpdate()`. Contre-preuve : `ACCEPTED` + `REFUSED (reste dû 40 000)` ✅.
+- **C5 (capacité bâtiment)** : 2 créations parallèles de 60 sujets sur capacité 100 → **120 créés** MALGRÉ le verrou bâtiment existant. Cause subtile (trace SQL) : la sérialisation marchait, mais le `SUM` d'occupation était un **consistent read aveugle au commit concurrent** (snapshot). Correctif : lecture d'occupation **verrouillante** dans `CreateBatch` + `UpdateBatch::checkBuildingCapacity` (+ verrou bâtiment cible manquant dans ce dernier). Contre-preuve : `CREATED` + `REFUSED (40 places disponibles)` ✅.
+- **Enseignement gravé** (doc drills §Enseignements) : *verrou → relecture verrouillante → contrôle → écriture*, dans la transaction — tout contrôle hors de ce motif est une garde en carton ; seuls les drills 2-processus font foi (à rejouer en pré-prod).
+
+**Section 2.2 (concurrence) : C1 ✅ C2 ✅ (contraintes B2) C3 ✅ C4 ✅ (idempotence sync) C5 ✅ — COMPLÈTE.**
+
+**Reste avant prod** : rotation des secrets (manuel) ; **P2-⑫** staging Linux + 5 parcours E2E ; re-drill backup + drills concurrence SUR la machine de pré-prod ; `whatsapp.admin_phone` ; contrôle InnoDB sur toute base importée (runbook).

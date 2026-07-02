@@ -39,8 +39,14 @@ class CreateBatch
             $building = Building::lockForUpdate()->findOrFail($data['building_id']);
 
             // ─── Vérification de capacité ───
+            // AUDIT C5 (prouvé par drill parallèle) : le SUM en consistent read
+            // (snapshot REPEATABLE READ) ne voyait pas le lot committé par une
+            // création concurrente, même après l'attente du verrou bâtiment
+            // (120 sujets créés pour 100 de capacité). lockForUpdate rend la
+            // lecture VERROUILLANTE : elle lit la dernière version committée.
             $currentOccupation = Batch::where('building_id', $building->id)
                 ->active()
+                ->lockForUpdate()
                 ->sum('current_quantity');
 
             $qtyAlive = (int) ($data['qty_alive'] ?? 0);

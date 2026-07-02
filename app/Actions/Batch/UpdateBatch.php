@@ -115,11 +115,15 @@ class UpdateBatch
      */
     private function checkBuildingCapacity(Batch $batch, int $newBuildingId): void
     {
-        $building = Building::findOrFail($newBuildingId);
+        // AUDIT C5 : même motif que CreateBatch — verrou du bâtiment cible
+        // (mutex) + lecture d'occupation VERROUILLANTE (voit les commits
+        // concurrents, contrairement au consistent read du snapshot).
+        $building = Building::lockForUpdate()->findOrFail($newBuildingId);
 
         $currentOccupation = Batch::where('building_id', $newBuildingId)
             ->active()
             ->where('id', '!=', $batch->id)
+            ->lockForUpdate()
             ->sum('current_quantity');
 
         $available = $building->capacity - $currentOccupation;
