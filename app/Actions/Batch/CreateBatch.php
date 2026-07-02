@@ -69,14 +69,14 @@ class CreateBatch
             $batch = Batch::create([
                 // Identité
                 'code'        => $data['code'],
-                'model_name'  => $data['model_name'] ?: 'Non spécifié',
+                'model_name'  => ($data['model_name'] ?? null) ?: 'Non spécifié',
                 'species_id'         => $data['species_id'] ?? null,
                 'production_type_id' => $productionTypeId,
 
                 // Relations
                 'building_id'  => $building->id,
-                'employee_id'  => $data['employee_id'],
-                'provider_id'  => $data['provider_id'],
+                'employee_id'  => $data['employee_id'] ?? null,
+                'provider_id'  => $data['provider_id'] ?? null,
                 'protocol_id'  => $data['protocol_id'] ?? null,
                 'current_protocol_id' => $data['protocol_id'] ?? null,
 

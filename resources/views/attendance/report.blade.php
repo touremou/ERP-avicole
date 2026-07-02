@@ -1,15 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center gap-4">
-            <div>
-                <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">
-                    📋 {{ __("Rapport de présence") }}
-                </h2>
-                <p class="text-[10px] font-black text-violet-500 uppercase tracking-widest mt-1 italic leading-none">
-                    {{ \Carbon\Carbon::parse($from)->format('d/m/Y') }} → {{ \Carbon\Carbon::parse($to)->format('d/m/Y') }}
-                </p>
-            </div>
-        </div>
+        <x-page-header :title="'📋 ' . __('Rapport de présence')" :subtitle="\Carbon\Carbon::parse($from)->format('d/m/Y') . ' → ' . \Carbon\Carbon::parse($to)->format('d/m/Y')" icon="fa-chart-column" accent="blue" />
     </x-slot>
 
     <div class="py-10">

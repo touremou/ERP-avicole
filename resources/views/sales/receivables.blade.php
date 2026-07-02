@@ -1,18 +1,13 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 text-left">
-            <div class="flex items-center gap-4">
-                <div class="w-12 h-12 bg-rose-600 rounded-xl flex items-center justify-center text-white shadow-lg"><i class="fa-solid fa-hand-holding-dollar text-lg"></i></div>
-                <div>
-                    <h2 class="font-black text-xl text-slate-800 uppercase italic tracking-tighter leading-none">{{ __('Recouvrement') }}</h2>
-                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1 italic">{{ __('Encours clients en retard de paiement') }}</p>
+        <x-page-header :title="__('Recouvrement')" :subtitle="__('Encours clients en retard de paiement')" icon="fa-hand-holding-dollar" accent="teal">
+            <x-slot name="actions">
+                <div class="bg-white rounded-2xl border border-slate-100 shadow-sm px-6 py-3 text-right">
+                    <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest">{{ __('Total en retard') }}</p>
+                    <p class="text-lg font-black text-rose-600">{{ number_format($totalDue, 0, ',', ' ') }} {{ currency() }}</p>
                 </div>
-            </div>
-            <div class="bg-white rounded-2xl border border-slate-100 shadow-sm px-6 py-3 text-right">
-                <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest">{{ __('Total en retard') }}</p>
-                <p class="text-lg font-black text-rose-600">{{ number_format($totalDue, 0, ',', ' ') }} {{ currency() }}</p>
-            </div>
-        </div>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-10">

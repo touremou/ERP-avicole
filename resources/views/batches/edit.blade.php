@@ -1,17 +1,8 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <div class="text-left">
-                <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">
-                    {{ __("Modifier le Lot") }} : <span class="text-blue-600">{{ $batch->code }}</span>
-                </h2>
-                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1 italic">
-                    {{ __("Effectif actuel") }} : <span class="text-emerald-600 font-black">{{ $batch->current_quantity }} {{ __("sujets") }}</span>
-                    — {{ __("Mortalité cumulée") }} : <span class="text-red-500 font-black">{{ $batch->total_mortality }}</span>
-                </p>
-            </div>
-            <x-back :to="route('batches.show', $batch->id)" />
-        </div>
+        <x-page-header :title="__('Modifier le Lot') . ' : ' . $batch->code"
+                       :subtitle="__('Effectif actuel') . ' : ' . $batch->current_quantity . ' ' . __('sujets') . ' — ' . __('Mortalité cumulée') . ' : ' . $batch->total_mortality"
+                       icon="fa-microchip" accent="indigo" :back="route('batches.show', $batch->id)" />
     </x-slot>
 
     <div class="py-12 italic font-bold text-slate-700 text-left">
@@ -122,7 +113,8 @@
 
                             <div>
                                 <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 italic leading-none">{{ __("Responsable Technique") }}</label>
-                                <select name="employee_id" required class="w-full p-4 bg-slate-50 rounded-2xl font-bold border-none shadow-inner text-slate-700 italic">
+                                <select name="employee_id" class="w-full p-4 bg-slate-50 rounded-2xl font-bold border-none shadow-inner text-slate-700 italic">
+                                    <option value="" {{ old('employee_id', $batch->employee_id) ? '' : 'selected' }}>{{ __("— Aucun —") }}</option>
                                     @foreach($employees as $e)
                                         <option value="{{ $e->id }}" {{ old('employee_id', $batch->employee_id) == $e->id ? 'selected' : '' }}>{{ $e->first_name }} {{ $e->last_name }}</option>
                                     @endforeach
@@ -131,7 +123,8 @@
 
                             <div>
                                 <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 italic leading-none">{{ __("Fournisseur") }}</label>
-                                <select name="provider_id" required class="w-full p-4 bg-slate-50 rounded-2xl font-bold border-none shadow-inner text-slate-700 italic">
+                                <select name="provider_id" class="w-full p-4 bg-slate-50 rounded-2xl font-bold border-none shadow-inner text-slate-700 italic">
+                                    <option value="" {{ old('provider_id', $batch->provider_id) ? '' : 'selected' }}>{{ __("— Aucun —") }}</option>
                                     @foreach($providers as $p)
                                         <option value="{{ $p->id }}" {{ old('provider_id', $batch->provider_id) == $p->id ? 'selected' : '' }}>{{ $p->name }}</option>
                                     @endforeach

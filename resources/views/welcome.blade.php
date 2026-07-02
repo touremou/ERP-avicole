@@ -103,7 +103,7 @@
                                     <i class="fas fa-location-dot mr-2 text-blue-500"></i> {{ $batch->building->name }}
                                 </span>
                                 <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest italic flex items-center border-l border-slate-200 pl-4">
-                                    <i class="fas fa-user-gear mr-2 text-slate-400"></i> {{ $batch->employee->last_name ?? 'STAFF' }}
+                                    <i class="fas fa-user-gear mr-2 text-slate-400"></i> {{ $batch->employee?->last_name ?? 'STAFF' }}
                                 </span>
                             </div>
                         </div>

@@ -1,16 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <div class="flex items-center gap-4 text-left">
-                <a href="{{ route('batches.index') }}" class="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-500 hover:text-slate-800 rounded-xl transition-all shadow-sm group no-underline">
-                    <i class="fas fa-chevron-left group-hover:-translate-x-1 transition-transform text-xs"></i>
-                    <span class="text-[10px] font-black uppercase italic tracking-widest leading-none">{{ __("Retour") }}</span>
-                </a>
-                <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">
-                    🚀 {{ __("Lancer une nouvelle bande") }}
-                </h2>
-            </div>
-        </div>
+        <x-page-header :title="'🚀 ' . __('Lancer une nouvelle bande')" icon="fa-microchip" accent="indigo" :back="route('batches.index')" />
     </x-slot>
 
     <div class="py-12 italic font-bold text-slate-700 text-left">
@@ -239,7 +229,8 @@
                                 </div>
                                 <div>
                                     <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 italic leading-none">{{ __("Responsable du Lot") }}</label>
-                                    <select name="employee_id" required class="w-full p-4 bg-white/5 rounded-2xl border-none font-black text-slate-300 italic outline-none uppercase text-[10px]">
+                                    <select name="employee_id" class="w-full p-4 bg-white/5 rounded-2xl border-none font-black text-slate-300 italic outline-none uppercase text-[10px]">
+                                        <option value="" class="bg-slate-800 text-white">{{ __("— Aucun —") }}</option>
                                         @foreach($employees as $e)
                                             <option value="{{ $e->id }}" class="bg-slate-800 text-white">{{ $e->first_name }} {{ $e->last_name }}</option>
                                         @endforeach
@@ -248,7 +239,8 @@
 
                                 <div>
                                     <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 italic leading-none">{{ __("Fournisseur") }}</label>
-                                    <select name="provider_id" required class="w-full p-4 bg-white/5 rounded-2xl border-none font-black text-slate-300 italic outline-none uppercase text-[10px]">
+                                    <select name="provider_id" class="w-full p-4 bg-white/5 rounded-2xl border-none font-black text-slate-300 italic outline-none uppercase text-[10px]">
+                                        <option value="" class="bg-slate-800 text-white">{{ __("— Aucun —") }}</option>
                                         @foreach($providers as $p)
                                             <option value="{{ $p->id }}" class="bg-slate-800 text-white">{{ $p->name }}</option>
                                         @endforeach

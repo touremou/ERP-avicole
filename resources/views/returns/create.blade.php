@@ -1,16 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center gap-4">
-            <x-back :to="route('sales.show', $sale)" />
-            <div>
-                <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">
-                    ↩️ {{ __("Retour client") }}
-                </h2>
-                <p class="text-[10px] font-black text-orange-500 uppercase tracking-widest mt-1 italic leading-none">
-                    {{ $sale->reference }} — {{ $sale->client->name }}
-                </p>
-            </div>
-        </div>
+        <x-page-header :title="'↩️ ' . __('Retour client')" :subtitle="$sale->reference . ' — ' . $sale->client->name" icon="fa-rotate-left" accent="teal" :back="route('sales.show', $sale)" />
     </x-slot>
 
     <div class="py-10">

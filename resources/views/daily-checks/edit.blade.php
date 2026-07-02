@@ -1,27 +1,18 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <div class="flex items-center gap-4 text-left">
-                <x-back :to="route('batches.show', $check->batch_id)" />
-                <div>
-                    <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">
-                        📊 {{ __('Rectification du Pointage') }}
-                    </h2>
-                    <p class="text-[10px] font-black text-orange-500 uppercase tracking-widest mt-1 italic leading-none">
-                        {{ __("Session du") }} {{ \Carbon\Carbon::parse($check->check_date)->format(setting('general.date_format', 'd/m/Y')) }} • {{ __("Lot") }} : {{ $check->batch->code }}
-                    </p>
+        <x-page-header :title="'📊 ' . __('Rectification du Pointage')" :subtitle="__('Session du') . ' ' . \Carbon\Carbon::parse($check->check_date)->format(setting('general.date_format', 'd/m/Y')) . ' • ' . __('Lot') . ' : ' . $check->batch->code" icon="fa-clipboard-list" accent="indigo" :back="route('batches.show', $check->batch_id)">
+            <x-slot name="actions">
+                <div class="hidden md:flex items-center gap-3">
+                    <div class="text-right">
+                        <p class="text-[8px] font-black text-slate-400 uppercase leading-none">{{ __("Effectif actuel") }}</p>
+                        <p class="text-sm font-black text-slate-700 italic leading-none">{{ number_format($check->batch->current_quantity) }} {{ __("têtes") }}</p>
+                    </div>
+                    <span class="px-4 py-2 bg-orange-900 text-amber-400 rounded-xl text-[10px] font-black uppercase italic tracking-widest border border-orange-800 shadow-lg leading-none">
+                        <i class="fas fa-exclamation-triangle mr-2"></i> {{ __("Mode Correction") }} ({{ ucfirst($check->batch->type) }})
+                    </span>
                 </div>
-            </div>
-            <div class="hidden md:flex items-center gap-3">
-                <div class="text-right">
-                    <p class="text-[8px] font-black text-slate-400 uppercase leading-none">{{ __("Effectif actuel") }}</p>
-                    <p class="text-sm font-black text-slate-700 italic leading-none">{{ number_format($check->batch->current_quantity) }} {{ __("têtes") }}</p>
-                </div>
-                <span class="px-4 py-2 bg-orange-900 text-amber-400 rounded-xl text-[10px] font-black uppercase italic tracking-widest border border-orange-800 shadow-lg leading-none">
-                    <i class="fas fa-exclamation-triangle mr-2"></i> {{ __("Mode Correction") }} ({{ ucfirst($check->batch->type) }})
-                </span>
-            </div>
-        </div>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-12 italic font-bold">

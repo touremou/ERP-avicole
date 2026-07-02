@@ -1,16 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 text-left">
-            <div class="flex items-center gap-5">
-                <x-back />
-                <div>
-                    <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">{{ $sale->reference }}</h2>
-                    <p class="text-[10px] font-black uppercase tracking-[0.2em] mt-2 italic {{ $sale->type === 'facture' ? 'text-purple-600' : ($sale->type === 'comptant' ? 'text-emerald-600' : 'text-teal-600') }}">
-                        {{ __($sale->type_label) }} — {{ $sale->sale_date->translatedFormat('d F Y') }}
-                    </p>
-                </div>
-            </div>
-            <div class="flex gap-3">
+        <x-page-header :title="$sale->reference" :subtitle="__($sale->type_label) . ' — ' . $sale->sale_date->translatedFormat('d F Y')" icon="fa-file-invoice" accent="teal" :back="route('sales.index')">
+            <x-slot name="actions">
                 @if($sale->status === 'brouillon')
                     <form method="POST" action="{{ route('sales.validate', $sale) }}">
                         @csrf @method('PUT')
@@ -40,8 +31,8 @@
                 <a href="{{ route('sales.print', ['sale' => $sale, 'format' => 'thermal']) }}" target="_blank" class="bg-white border border-slate-200 px-6 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest text-slate-600 hover:bg-slate-50 transition-all no-underline flex items-center gap-2">
                     <i class="fa-solid fa-receipt"></i> {{ __("Ticket") }}
                 </a>
-            </div>
-        </div>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-10">

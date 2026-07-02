@@ -5,17 +5,8 @@
     @endphp
 
     <x-slot name="header">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 text-left">
-            <div>
-                <h2 class="text-2xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">
-                    {{ __("📊 Analyse Financière — Coûts de Production") }}
-                </h2>
-                <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-3 italic leading-none">
-                    {{ __("Alimentation · Santé · Acquisition · Coût par tête") }}
-                </p>
-            </div>
-            {{-- Retour géré par <x-hub-back> (layout) → pas de bouton fermer redondant. --}}
-        </div>
+        {{-- Retour géré par <x-hub-back> (layout) → pas de :back. --}}
+        <x-page-header :title="__('📊 Analyse Financière — Coûts de Production')" :subtitle="__('Alimentation · Santé · Acquisition · Coût par tête')" icon="fa-coins" accent="slate" />
     </x-slot>
 
     <div class="py-8 italic font-bold text-slate-700">

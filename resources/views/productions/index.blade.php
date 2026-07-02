@@ -1,14 +1,12 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between gap-4">
-            <div>
-                <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">🥚 {{ __("Production") }}</h2>
-                <p class="text-[10px] font-black text-amber-500 uppercase tracking-widest mt-1 italic leading-none">{{ __("Œufs · Lait · Couvoir") }}</p>
-            </div>
-            @can('production.C')
-            <a href="{{ route('egg-productions.index') }}" class="inline-flex items-center gap-2 px-6 py-3 bg-amber-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-amber-600 transition-all no-underline shadow-lg italic"><i class="fa-solid fa-egg"></i> {{ __("Saisir la ponte") }}</a>
-            @endcan
-        </div>
+        <x-page-header :title="'🥚 ' . __('Production')" :subtitle="__('Œufs · Lait · Couvoir')" icon="fa-egg" accent="amber">
+            <x-slot name="actions">
+                @can('production.C')
+                <a href="{{ route('egg-productions.index') }}" class="inline-flex items-center gap-2 px-6 py-3 bg-amber-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-amber-600 transition-all no-underline shadow-lg italic"><i class="fa-solid fa-egg"></i> {{ __("Saisir la ponte") }}</a>
+                @endcan
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-10">

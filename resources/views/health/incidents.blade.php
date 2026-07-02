@@ -1,18 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex justify-between items-center text-left">
-            <div class="flex items-center gap-4">
-                <div class="w-12 h-12 bg-rose-600 rounded-2xl flex items-center justify-center text-white shadow-lg rotate-3">
-                    <i class="fa-solid fa-microscope text-xl"></i>
-                </div>
-                <div>
-                    <h2 class="text-2xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">{{ __("Laboratoire & Diagnostics") }}</h2>
-                    <p class="text-[10px] font-bold text-slate-400 uppercase mt-1 tracking-widest italic leading-none">
-                        {{ __("Suivi des anomalies sanitaires et autopsies") }}
-                    </p>
-                </div>
-            </div>
-        </div>
+        <x-page-header :title="__('Laboratoire & Diagnostics')" :subtitle="__('Suivi des anomalies sanitaires et autopsies')" icon="fa-microscope" accent="purple" />
     </x-slot>
 
     <div class="py-12 italic font-bold text-left">

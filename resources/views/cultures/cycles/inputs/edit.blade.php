@@ -1,20 +1,7 @@
 <x-app-layout>
     @php $currency = setting('general.currency', 'GNF'); @endphp
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <div class="flex items-center gap-4">
-                <div class="w-12 h-12 bg-lime-600 rounded-2xl flex items-center justify-center text-white shadow-lg -rotate-3">
-                    <i class="fa-solid fa-flask text-lg"></i>
-                </div>
-                <div class="text-left">
-                    <h2 class="font-black text-2xl text-slate-800 uppercase italic tracking-tighter leading-none">{{ __("Modifier l'intrant") }}</h2>
-                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1 italic">{{ $cycle->crop_name }}</p>
-                </div>
-            </div>
-            <a href="{{ route('crop-cycles.show', $cycle) }}" class="text-[10px] font-black uppercase text-slate-400 hover:text-slate-900 transition no-underline">
-                <i class="fa-solid fa-xmark mr-2"></i> {{ __("Annuler") }}
-            </a>
-        </div>
+        <x-page-header :title="__('Modifier l\'intrant')" :subtitle="$cycle->crop_name" icon="fa-flask" accent="green" :back="route('crop-cycles.show', $cycle)" />
     </x-slot>
 
     <div class="py-12">

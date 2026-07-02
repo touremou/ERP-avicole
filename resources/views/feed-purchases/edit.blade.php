@@ -1,12 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center gap-4 text-left">
-            {{-- RETOUR DYNAMIQUE --}}
-            <x-back :to="route('batches.show', $batch->id)" />
-            <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">
-                <i class="fa-solid fa-pen-to-square text-orange-500 mr-2"></i> {{ __("Modifier Ravitaillement") }}
-            </h2>
-        </div>
+        <x-page-header :title="__('Modifier Ravitaillement')" icon="fa-wheat-awn" accent="amber" :back="route('batches.show', $batch->id)" />
     </x-slot>
 
     <div class="py-12 italic font-bold">

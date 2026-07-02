@@ -1,19 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex justify-between items-center text-left">
-            <div class="flex items-center gap-4">
-                <div class="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-lg rotate-3">
-                    <i class="fa-solid fa-pen-to-square text-xl"></i>
-                </div>
-                <div>
-                    <h2 class="text-2xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">{{ __("Ajustement Fiche") }}</h2>
-                    <p class="text-[9px] font-bold text-slate-400 uppercase mt-1 tracking-widest italic leading-none">
-                        {{ strtoupper($stock->category) }} • {{ $stock->item_name }}
-                    </p>
-                </div>
-            </div>
-            <x-back :to="route('stocks.index', ['category' => $stock->category])" />
-        </div>
+        <x-page-header :title="__('Ajustement Fiche')" :subtitle="strtoupper($stock->category) . ' • ' . $stock->item_name" icon="fa-boxes-stacked" accent="orange" :back="route('stocks.index', ['category' => $stock->category])" />
     </x-slot>
 
     {{-- Initialisation AlpineJS --}}

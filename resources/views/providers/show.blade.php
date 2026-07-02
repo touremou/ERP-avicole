@@ -1,19 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div class="flex items-center gap-4 text-left">
-                {{-- RETOUR DYNAMIQUE (L) --}}
-                <a href="{{ route('providers.index') }}" class="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-500 hover:text-slate-800 rounded-xl transition-all shadow-sm group no-underline">
-                    <i class="fas fa-chevron-left group-hover:-translate-x-1 transition-transform"></i>
-                    <span class="text-[10px] font-black uppercase italic tracking-widest">{{ __("Retour") }}</span>
-                </a>
-
-                <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">
-                    {{ __('Fiche Partenaire :') }} {{ $provider->name }}
-                </h2>
-            </div>
-
-            <div class="flex flex-wrap items-center gap-3">
+        <x-page-header :title="__('Fiche Partenaire :') . ' ' . $provider->name" icon="fa-handshake" accent="blue" :back="route('providers.index')">
+            <x-slot name="actions">
                 {{-- ACTION : RELEVÉ / DETTES (module Finance) --}}
                 @can('depenses.L')
                 <a href="{{ route('purchases.statement', $provider->id) }}"
@@ -72,8 +60,8 @@
                         </form>
                     @endif
                 @endcan
-            </div>
-        </div>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-12 italic font-bold">

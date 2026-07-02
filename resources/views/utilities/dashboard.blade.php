@@ -1,25 +1,16 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 text-left">
-            <div class="flex items-center gap-5">
-                <div class="w-14 h-14 bg-cyan-500 rounded-[1.5rem] flex items-center justify-center text-white shadow-2xl rotate-3">
-                    <i class="fa-solid fa-bolt text-xl"></i>
-                </div>
-                <div>
-                    <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">{{ __("Eau & Énergie") }}</h2>
-                    <p class="text-[10px] font-black text-cyan-600 uppercase tracking-[0.2em] mt-2 italic">
-                        {{ __("Suivi des ressources — Période :") }} {{ $period }} {{ __("jours") }}
-                    </p>
-                </div>
-            </div>
-            <form method="GET" class="flex gap-2 items-center">
-                <select name="period" onchange="this.form.submit()" class="bg-white border border-slate-100 rounded-2xl px-4 py-3 text-[10px] font-black uppercase tracking-widest shadow-sm outline-none appearance-none">
-                    <option value="7" {{ $period == 7 ? 'selected' : '' }}>{{ __("7 jours") }}</option>
-                    <option value="30" {{ $period == 30 ? 'selected' : '' }}>{{ __("30 jours") }}</option>
-                    <option value="90" {{ $period == 90 ? 'selected' : '' }}>{{ __("90 jours") }}</option>
-                </select>
-            </form>
-        </div>
+        <x-page-header :title="__('Eau & Énergie')" :subtitle="__('Suivi des ressources — Période :') . ' ' . $period . ' ' . __('jours')" icon="fa-bolt" accent="cyan">
+            <x-slot name="actions">
+                <form method="GET" class="flex gap-2 items-center">
+                    <select name="period" onchange="this.form.submit()" class="bg-white border border-slate-100 rounded-2xl px-4 py-3 text-[10px] font-black uppercase tracking-widest shadow-sm outline-none appearance-none">
+                        <option value="7" {{ $period == 7 ? 'selected' : '' }}>{{ __("7 jours") }}</option>
+                        <option value="30" {{ $period == 30 ? 'selected' : '' }}>{{ __("30 jours") }}</option>
+                        <option value="90" {{ $period == 90 ? 'selected' : '' }}>{{ __("90 jours") }}</option>
+                    </select>
+                </form>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-10">

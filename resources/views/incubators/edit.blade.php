@@ -1,14 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex justify-between items-center italic font-bold">
-            <div class="text-left">
-                <h2 class="text-2xl font-black uppercase text-slate-800 leading-none italic tracking-tighter">
-                    {{ __("Édition") }} <span class="text-blue-600">{{ $incubator->name }}</span>
-                </h2>
-                <p class="text-[10px] text-slate-400 uppercase tracking-[0.3em] mt-2 font-black">{{ __("Configuration technique de l'unité") }}</p>
-            </div>
-            <x-back />
-        </div>
+        <x-page-header :title="__('Édition') . ' ' . $incubator->name" :subtitle="__('Configuration technique de l\'unité')" icon="fa-gears" accent="blue" :back="route('incubators.index')" />
     </x-slot>
 
     <div class="py-12 italic font-bold">

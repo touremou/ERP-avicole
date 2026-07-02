@@ -1,16 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex justify-between items-center text-left">
-            <div class="flex items-center gap-4">
-                <x-back />
-                <div>
-                    <h2 class="text-lg font-black text-slate-800 uppercase italic tracking-tighter leading-none">{{ $period->label }}</h2>
-                    <p class="text-[9px] font-bold text-slate-400 uppercase mt-1 tracking-widest italic">
-                        {{ $period->start_date->format('d/m') }} → {{ $period->end_date->format('d/m/Y') }} — {{ __(ucfirst($period->status)) }}
-                    </p>
-                </div>
-            </div>
-            <div class="flex gap-2">
+        <x-page-header :title="$period->label" :subtitle="$period->start_date->format('d/m') . ' → ' . $period->end_date->format('d/m/Y') . ' — ' . __(ucfirst($period->status))" icon="fa-money-check-dollar" accent="blue" :back="route('payroll.index')">
+            <x-slot name="actions">
                 {{-- Vérifier la présence qui sous-tend la paie (drill-down). --}}
                 <a href="{{ route('attendance.report', ['from' => $period->start_date->toDateString(), 'to' => $period->end_date->toDateString()]) }}"
                    class="bg-white border border-slate-200 text-slate-600 px-5 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-violet-50 hover:text-violet-600 transition-all no-underline shadow-sm italic"><i class="fa-solid fa-user-check mr-1"></i> {{ __("Présence du mois") }}</a>
@@ -32,8 +23,8 @@
                     </form>
                     @endif
                 @endcan
-            </div>
-        </div>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-8 italic font-bold" x-data="payrollUI()">

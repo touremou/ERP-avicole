@@ -1,31 +1,20 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between gap-4">
-            <div class="flex items-center gap-4">
-                <a href="{{ route('dashboard') }}" class="group text-slate-400 hover:text-slate-800 transition no-underline">
-                    <i class="fas fa-arrow-left group-hover:-translate-x-1 transition-transform text-xl"></i>
-                </a>
-                <div>
-                    <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">
-                        📊 {{ __("Vue analytique consolidée") }}
-                    </h2>
-                    <p class="text-[10px] font-black text-blue-500 uppercase tracking-widest mt-1 italic leading-none">
-                        {{ __("Mortalité · Eau · Énergie") }} — {{ __(":n derniers jours", ['n' => $days]) }}
-                    </p>
+        <x-page-header :title="'📊 ' . __('Vue analytique consolidée')" :subtitle="__('Mortalité · Eau · Énergie') . ' — ' . __(':n derniers jours', ['n' => $days])" icon="fa-chart-pie" accent="slate" :back="route('dashboard')">
+            <x-slot name="actions">
+                {{-- Sélecteur de période --}}
+                <div class="flex items-center gap-1 bg-white rounded-2xl p-1 shadow-sm border border-slate-100">
+                    @foreach([7, 30, 90] as $p)
+                        <a href="{{ route('dashboard.analytics', ['days' => $p]) }}"
+                           @class([
+                               'px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all no-underline',
+                               'bg-slate-900 text-white' => $days === $p,
+                               'text-slate-400 hover:text-slate-700' => $days !== $p,
+                           ])>{{ $p }} j</a>
+                    @endforeach
                 </div>
-            </div>
-            {{-- Sélecteur de période --}}
-            <div class="flex items-center gap-1 bg-white rounded-2xl p-1 shadow-sm border border-slate-100">
-                @foreach([7, 30, 90] as $p)
-                    <a href="{{ route('dashboard.analytics', ['days' => $p]) }}"
-                       @class([
-                           'px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all no-underline',
-                           'bg-slate-900 text-white' => $days === $p,
-                           'text-slate-400 hover:text-slate-700' => $days !== $p,
-                       ])>{{ $p }} j</a>
-                @endforeach
-            </div>
-        </div>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-10" x-data="analyticsView({{ Illuminate\Support\Js::from($series) }})">

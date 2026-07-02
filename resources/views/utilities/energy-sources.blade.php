@@ -1,13 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 text-left">
-            <div class="flex items-center gap-5">
-                <div>
-                    <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">{{ __("Sources d'Énergie") }}</h2>
-                    <p class="text-[10px] font-black text-amber-600 uppercase tracking-[0.2em] mt-2 italic">{{ __("EDG · Groupe Électrogène · Solaire — Registre d'actifs CMMS") }}</p>
-                </div>
-            </div>
-        </div>
+        <x-page-header :title="__('Sources d\'Énergie')" :subtitle="__('EDG · Groupe Électrogène · Solaire — Registre d\'actifs CMMS')" icon="fa-bolt" accent="amber" />
     </x-slot>
 
     <div class="py-10">

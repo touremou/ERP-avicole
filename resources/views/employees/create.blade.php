@@ -1,14 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <div class="text-left">
-                <h2 class="text-2xl font-black uppercase tracking-tighter text-slate-800 italic leading-none">{{ __('Recrutement Personnel') }}</h2>
-                <p class="text-slate-400 text-[10px] font-black uppercase tracking-widest mt-2 italic leading-none">{{ __("Ajouter un nouveau membre à l'équipe") }}</p>
-            </div>
-            <a href="{{ route('employees.index') }}" class="group flex items-center px-6 py-3 bg-white border border-slate-200 text-slate-500 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-rose-50 hover:text-rose-600 transition-all shadow-sm no-underline">
-                <i class="fas fa-times mr-2 group-hover:rotate-90 transition-transform"></i> {{ __("Annuler") }}
-            </a>
-        </div>
+        <x-page-header :title="__('Recrutement Personnel')" :subtitle="__('Ajouter un nouveau membre à l\'équipe')" icon="fa-id-card" accent="blue" :back="route('employees.index')" />
     </x-slot>
 
     <div class="py-12">

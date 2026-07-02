@@ -1,12 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center gap-5 text-left">
-            <x-back />
-            <div>
-                <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">{{ __("Nouvelle Expédition") }}</h2>
-                <p class="text-[10px] font-black text-orange-600 uppercase tracking-[0.2em] mt-2 italic">{{ __("Transfert de garde — Chargement à la ferme") }}</p>
-            </div>
-        </div>
+        <x-page-header :title="__('Nouvelle Expédition')" :subtitle="__('Transfert de garde — Chargement à la ferme')" icon="fa-truck-fast" accent="orange" :back="route('dispatches.index')" />
     </x-slot>
 
     <div class="py-10">

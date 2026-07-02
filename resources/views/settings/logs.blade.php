@@ -1,11 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center gap-4 text-left">
-            <div>
-                <h2 class="text-lg font-black text-slate-800 uppercase italic tracking-tighter leading-none">{{ __("Journal Système") }}</h2>
-                <p class="text-[9px] font-bold text-slate-400 uppercase mt-1 tracking-widest italic">{{ __("Historique des modifications de paramètres") }}</p>
-            </div>
-        </div>
+        <x-page-header :title="__('Journal Système')" :subtitle="__('Historique des modifications de paramètres')" icon="fa-clock-rotate-left" accent="slate" />
     </x-slot>
 
     <div class="py-8 italic font-bold">

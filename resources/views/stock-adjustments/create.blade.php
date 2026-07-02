@@ -1,12 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center gap-3">
-            <x-back />
-            <div>
-                <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">{{ __("Nouvel ajustement") }}</h2>
-                <p class="text-[10px] font-black text-orange-500 uppercase tracking-widest mt-1 italic leading-none">{{ __("Démarque / écart d'inventaire") }}</p>
-            </div>
-        </div>
+        <x-page-header :title="__('Nouvel ajustement')" :subtitle="__('Démarque / écart d\'inventaire')" icon="fa-arrow-trend-down" accent="orange" :back="route('stock-adjustments.index')" />
     </x-slot>
 
     <div class="py-10">

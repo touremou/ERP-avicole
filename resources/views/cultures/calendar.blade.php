@@ -1,16 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <div class="flex items-center gap-4">
-                <div class="w-12 h-12 bg-green-600 rounded-2xl flex items-center justify-center text-white shadow-lg -rotate-3">
-                    <i class="fa-solid fa-calendar-days text-lg"></i>
-                </div>
-                <div class="text-left">
-                    <h2 class="font-black text-2xl text-slate-800 uppercase italic tracking-tighter leading-none">{{ __("Calendrier cultural") }}</h2>
-                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1 italic">{{ __("Assolement annuel — du semis à la récolte") }}</p>
-                </div>
-            </div>
-        </div>
+        <x-page-header :title="__('Calendrier cultural')" :subtitle="__('Assolement annuel — du semis à la récolte')" icon="fa-calendar-days" accent="green" />
     </x-slot>
 
     <div class="py-10">

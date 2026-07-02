@@ -1,13 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">
-                {{ __("💉 Enregistrer une Intervention Sanitaire") }}
-            </h2>
-            <a href="{{ route('health.index') }}" class="text-[10px] font-black text-slate-400 hover:text-slate-900 uppercase tracking-widest transition italic no-underline">
-                <i class="fa-solid fa-list-check mr-1 text-blue-500"></i> {{ __("Voir le registre") }}
-            </a>
-        </div>
+        <x-page-header :title="__('💉 Enregistrer une Intervention Sanitaire')" icon="fa-stethoscope" accent="purple" :back="route('health.index')" />
     </x-slot>
 
     <div class="py-12 italic font-bold">

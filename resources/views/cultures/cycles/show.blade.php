@@ -1,20 +1,7 @@
 @php $currency = setting('general.currency', 'GNF'); @endphp
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <div class="flex items-center gap-4">
-                <div class="w-12 h-12 bg-green-600 rounded-2xl flex items-center justify-center text-white shadow-lg -rotate-3">
-                    <i class="fa-solid fa-leaf text-lg"></i>
-                </div>
-                <div class="text-left">
-                    <h2 class="font-black text-2xl text-slate-800 uppercase italic tracking-tighter leading-none">{{ $cycle->crop_name }}</h2>
-                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1 italic">
-                        {{ $cycle->plot?->name }} · {{ $cycle->variety ?: __('Cycle de culture') }}
-                    </p>
-                </div>
-            </div>
-            <x-back />
-        </div>
+        <x-page-header :title="$cycle->crop_name" :subtitle="$cycle->plot?->name . ' · ' . ($cycle->variety ?: __('Cycle de culture'))" icon="fa-leaf" accent="green" :back="route('crop-cycles.index')" />
 
         {{-- BARRE D'ACTIONS --}}
         <div class="flex flex-wrap gap-2 mt-4">

@@ -1,14 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center gap-5 text-left">
-            <x-back :to="route('dispatches.show', $dispatch)" />
-            <div>
-                <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">{{ __("Réception") }}</h2>
-                <p class="text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em] mt-2 italic">
-                    {{ __("Expédition") }} {{ $dispatch->dispatch_number }} — {{ $dispatch->destination }}
-                </p>
-            </div>
-        </div>
+        <x-page-header :title="__('Réception')" :subtitle="__('Expédition') . ' ' . $dispatch->dispatch_number . ' — ' . $dispatch->destination" icon="fa-truck-fast" accent="orange" :back="route('dispatches.show', $dispatch)" />
     </x-slot>
 
     @php

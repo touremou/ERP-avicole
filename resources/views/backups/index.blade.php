@@ -1,20 +1,15 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 text-left">
-            <div class="flex items-center gap-4">
-                <div class="w-12 h-12 bg-slate-900 rounded-xl flex items-center justify-center text-white shadow-lg"><i class="fa-solid fa-database text-lg"></i></div>
-                <div>
-                    <h2 class="font-black text-xl text-slate-800 uppercase italic tracking-tighter leading-none">{{ __('Sauvegardes') }}</h2>
-                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1 italic">{{ __('Base de données + fichiers · automatique chaque nuit') }}</p>
-                </div>
-            </div>
-            <form action="{{ route('backups.run') }}" method="POST">
-                @csrf
-                <button type="submit" class="bg-slate-900 text-white px-6 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-xl italic border-none cursor-pointer">
-                    <i class="fa-solid fa-play mr-2"></i> {{ __('Sauvegarder maintenant') }}
-                </button>
-            </form>
-        </div>
+        <x-page-header :title="__('Sauvegardes')" :subtitle="__('Base de données + fichiers · automatique chaque nuit')" icon="fa-database" accent="slate">
+            <x-slot name="actions">
+                <form action="{{ route('backups.run') }}" method="POST">
+                    @csrf
+                    <button type="submit" class="bg-slate-900 text-white px-6 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-xl italic border-none cursor-pointer">
+                        <i class="fa-solid fa-play mr-2"></i> {{ __('Sauvegarder maintenant') }}
+                    </button>
+                </form>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-10">

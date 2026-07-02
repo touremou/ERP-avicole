@@ -1,12 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center gap-3">
-            <x-back />
-            <div>
-                <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">{{ __("Nouvel achat fournisseur") }}</h2>
-                <p class="text-[10px] font-black text-rose-500 uppercase tracking-widest mt-1 italic leading-none">{{ __("Crée une dette (brouillon)") }}</p>
-            </div>
-        </div>
+        <x-page-header :title="__('Nouvel achat fournisseur')" :subtitle="__('Crée une dette (brouillon)')" icon="fa-file-invoice-dollar" accent="rose" :back="route('purchases.index')" />
     </x-slot>
 
     <div class="py-10">

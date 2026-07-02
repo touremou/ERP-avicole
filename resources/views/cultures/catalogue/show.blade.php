@@ -1,26 +1,14 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <div class="flex items-center gap-4">
-                <div class="w-12 h-12 bg-{{ $species->type_color }}-500 rounded-2xl flex items-center justify-center text-white shadow-lg -rotate-3">
-                    <i class="fa-solid {{ $species->type_icon }} text-lg"></i>
-                </div>
-                <div class="text-left">
-                    <h2 class="font-black text-2xl text-slate-800 uppercase italic tracking-tighter leading-none">{{ $species->name }}</h2>
-                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1 italic">
-                        {{ $species->type_label }}@if($species->local_name) · 🗣 {{ $species->local_name }}@endif
-                    </p>
-                </div>
-            </div>
-            <div class="flex items-center gap-3">
+        <x-page-header :title="$species->name" :subtitle="$species->type_label . ($species->local_name ? ' · 🗣 ' . $species->local_name : '')" :icon="$species->type_icon" accent="green" :back="route('crop-catalogue.index')">
+            <x-slot name="actions">
                 @can('cultures.M')
                 <a href="{{ route('crop-catalogue.edit', $species) }}" class="bg-white border border-slate-100 text-slate-600 px-5 py-2.5 rounded-2xl font-black text-[9px] uppercase tracking-widest italic no-underline flex items-center gap-2 hover:bg-slate-50">
                     <i class="fa-solid fa-pen text-green-500"></i> {{ __("Modifier") }}
                 </a>
                 @endcan
-                <x-back label="Catalogue" />
-            </div>
-        </div>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-10">

@@ -1,14 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <div class="flex flex-col text-left">
-                <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">
-                    {{ __("🏢 Nouveau Bâtiment / Unité") }}
-                </h2>
-                <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">{{ __("Extension du parc de production") }}</p>
-            </div>
-            <x-back />
-        </div>
+        <x-page-header :title="__('🏢 Nouveau Bâtiment / Unité')" :subtitle="__('Extension du parc de production')" icon="fa-warehouse" accent="indigo" :back="route('buildings.index')" />
     </x-slot>
 
     <div class="py-12 italic font-bold">

@@ -1,16 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <div class="text-left">
-                <h2 class="text-2xl font-black text-slate-800 tracking-tighter uppercase italic">
-                    {{ __('🤝 Nouveau Partenaire') }}
-                </h2>
-                <p class="text-slate-400 text-[10px] font-black uppercase tracking-widest mt-1 italic leading-none">{{ __("Enregistrer un nouveau fournisseur ou prestataire") }}</p>
-            </div>
-            <a href="{{ route('providers.index') }}" class="px-6 py-3 bg-white border border-slate-200 text-slate-500 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-red-50 hover:text-red-600 transition shadow-sm no-underline">
-                <i class="fas fa-times mr-2"></i> {{ __("Annuler") }}
-            </a>
-        </div>
+        <x-page-header :title="__('🤝 Nouveau Partenaire')" :subtitle="__('Enregistrer un nouveau fournisseur ou prestataire')" icon="fa-handshake" accent="blue" :back="route('providers.index')" />
     </x-slot>
 
     <div class="py-12 italic font-bold">

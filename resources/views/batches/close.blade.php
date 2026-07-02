@@ -1,19 +1,12 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <div class="flex items-center gap-4">
-                <x-back :to="route('batches.show', $batch->id)" />
-                <div class="text-left">
-                    <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">
-                        {{ __("Bilan de fin de cycle :") }} <span class="text-orange-500">{{ $batch->code }}</span>
-                    </h2>
-                    <p class="text-[9px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-2 italic">{{ __("Compte de résultat & clôture") }}</p>
-                </div>
-            </div>
-            <span class="hidden md:inline px-4 py-2 bg-orange-50 rounded-xl text-[10px] font-black uppercase text-orange-600 italic tracking-widest border border-orange-100">
-                {{ $batch->building->name ?? '—' }} | {{ ucfirst($batch->type) }} | {{ $costs['duration_days'] ?? 0 }}j
-            </span>
-        </div>
+        <x-page-header :title="__('Bilan de fin de cycle :') . ' ' . $batch->code" :subtitle="__('Compte de résultat & clôture')" icon="fa-microchip" accent="indigo" :back="route('batches.show', $batch->id)">
+            <x-slot name="actions">
+                <span class="hidden md:inline px-4 py-2 bg-orange-50 rounded-xl text-[10px] font-black uppercase text-orange-600 italic tracking-widest border border-orange-100">
+                    {{ $batch->building->name ?? '—' }} | {{ ucfirst($batch->type) }} | {{ $costs['duration_days'] ?? 0 }}j
+                </span>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-12 italic font-bold">

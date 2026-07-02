@@ -1,18 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex flex-col md:flex-row justify-between items-center gap-4">
-            <div class="flex items-center gap-4 text-left">
-                <div class="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-white shadow-lg rotate-3">
-                    <i class="fa-solid fa-magnifying-glass-chart text-xl text-blue-400"></i>
-                </div>
-                <div>
-                    <h2 class="text-2xl font-black text-slate-800 uppercase italic tracking-tighter leading-none italic">{{ __("Analyse Article") }}</h2>
-                    <p class="text-[9px] font-bold text-blue-500 uppercase mt-1 tracking-widest italic leading-none">
-                        {{ $stock->item_name }} • {{ strtoupper($stock->category) }}
-                    </p>
-                </div>
-            </div>
-            <div class="flex gap-3">
+        <x-page-header :title="__('Analyse Article')" :subtitle="$stock->item_name . ' • ' . strtoupper($stock->category)" icon="fa-magnifying-glass-chart" accent="orange" :back="route('stocks.index', ['category' => $stock->category])">
+            <x-slot name="actions">
                 {{-- Permission C : Démarque / ajustement d'inventaire --}}
                 @can('logistique.C')
                 <a href="{{ route('stock-adjustments.create', ['stock_id' => $stock->id]) }}" class="bg-white border border-slate-200 text-slate-600 px-5 py-3 rounded-2xl text-[10px] font-black uppercase italic hover:bg-orange-50 hover:text-orange-600 transition-all shadow-sm no-underline">
@@ -40,12 +29,8 @@
                     </button>
                 </form>
                 @endcan
-
-                <a href="{{ route('stocks.index', ['category' => $stock->category]) }}" class="bg-slate-100 text-slate-500 px-5 py-3 rounded-2xl text-[10px] font-black uppercase italic hover:bg-slate-200 transition-all no-underline">
-                    {{ __("Retour") }}
-                </a>
-            </div>
-        </div>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-12 italic font-bold text-left">

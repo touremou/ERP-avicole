@@ -1,19 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center gap-4">
-            <x-back />
-            <div class="flex items-center gap-3">
-                <div class="w-11 h-11 bg-slate-900 rounded-2xl flex items-center justify-center text-white shadow-lg">
-                    <i class="fa-solid {{ $account->type_icon }}"></i>
-                </div>
-                <div>
-                    <h2 class="text-lg font-black text-slate-800 uppercase italic tracking-tighter leading-none">{{ $account->name }}</h2>
-                    <p class="text-[9px] font-black text-emerald-500 uppercase tracking-widest mt-1 italic">
-                        {{ $account->type_label }} — {{ __("Solde") }} : {{ number_format($account->current_balance, 0, ',', ' ') }} {{ currency() }}
-                    </p>
-                </div>
-            </div>
-        </div>
+        <x-page-header :title="$account->name" :subtitle="$account->type_label . ' — ' . __('Solde') . ' : ' . number_format($account->current_balance, 0, ',', ' ') . ' ' . currency()" :icon="$account->type_icon" accent="emerald" :back="route('treasury.index')" />
     </x-slot>
 
     <div class="py-10">

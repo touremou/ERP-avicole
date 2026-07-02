@@ -1,24 +1,18 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between gap-4">
-            <div>
-                <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">
-                    🛍️ {{ __("Commerce") }}
-                </h2>
-                <p class="text-[10px] font-black text-teal-500 uppercase tracking-widest mt-1 italic leading-none">
-                    {{ __("Vendre · Encaisser · Après-vente") }}
-                </p>
-            </div>
-            @if($session)
-                <a href="{{ route('pos.index') }}" class="inline-flex items-center gap-2 px-6 py-3 bg-teal-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-teal-600 transition-all no-underline shadow-lg italic">
-                    <i class="fa-solid fa-cash-register"></i> {{ __("Vendre (POS)") }}
-                </a>
-            @else
-                <a href="{{ route('cash-register.index') }}" class="inline-flex items-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-teal-600 transition-all no-underline shadow-lg italic">
-                    <i class="fa-solid fa-unlock"></i> {{ __("Ouvrir la caisse") }}
-                </a>
-            @endif
-        </div>
+        <x-page-header :title="'🛍️ ' . __('Commerce')" :subtitle="__('Vendre · Encaisser · Après-vente')" icon="fa-bag-shopping" accent="teal">
+            <x-slot name="actions">
+                @if($session)
+                    <a href="{{ route('pos.index') }}" class="inline-flex items-center gap-2 px-6 py-3 bg-teal-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-teal-600 transition-all no-underline shadow-lg italic">
+                        <i class="fa-solid fa-cash-register"></i> {{ __("Vendre (POS)") }}
+                    </a>
+                @else
+                    <a href="{{ route('cash-register.index') }}" class="inline-flex items-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-teal-600 transition-all no-underline shadow-lg italic">
+                        <i class="fa-solid fa-unlock"></i> {{ __("Ouvrir la caisse") }}
+                    </a>
+                @endif
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-10">

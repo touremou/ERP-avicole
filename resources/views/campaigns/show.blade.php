@@ -1,20 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <div class="flex items-center gap-4">
-                <a href="{{ route('campaigns.index') }}" class="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-500 hover:text-slate-800 rounded-xl transition-all shadow-sm no-underline">
-                    <i class="fas fa-chevron-left text-xs"></i>
-                    <span class="text-[10px] font-black uppercase italic tracking-widest leading-none">{{ __("Retour") }}</span>
-                </a>
-                <div>
-                    <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">
-                        @if($campaign->type === 'tabaski') 🐑 @elseif($campaign->type === 'ramadan') 🌙 @else 🎉 @endif
-                        {{ $campaign->name }}
-                    </h2>
-                    <p class="text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em] mt-2 italic">{{ $campaign->type_label }} · {{ $campaign->status_label }}</p>
-                </div>
-            </div>
-            <div class="flex gap-2">
+        <x-page-header :title="($campaign->type === 'tabaski' ? '🐑 ' : ($campaign->type === 'ramadan' ? '🌙 ' : '🎉 ')) . $campaign->name" :subtitle="$campaign->type_label . ' · ' . $campaign->status_label" icon="fa-calendar-week" accent="emerald" :back="route('campaigns.index')">
+            <x-slot name="actions">
                 @can('elevage.M')
                 <a href="{{ route('campaigns.edit', $campaign) }}" class="bg-white border border-slate-200 text-slate-600 px-5 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-900 hover:text-white transition-all no-underline shadow-sm">
                     <i class="fa-solid fa-pen mr-1"></i> {{ __("Modifier") }}
@@ -28,8 +15,8 @@
                     </button>
                 </form>
                 @endcan
-            </div>
-        </div>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-10 italic font-bold text-left">

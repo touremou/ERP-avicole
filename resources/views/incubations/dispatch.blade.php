@@ -1,19 +1,8 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center gap-4 text-left">
-            <a href="{{ route('incubations.index') }}" class="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-500 hover:text-slate-800 rounded-xl transition-all shadow-sm group no-underline">
-                <i class="fas fa-chevron-left group-hover:-translate-x-1 transition-transform text-xs"></i>
-                <span class="text-[10px] font-black uppercase italic tracking-widest">{{ __("Couvoir") }}</span>
-            </a>
-            <div>
-                <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">
-                    {{ __("🐣 Dispatch Poussins") }} — {{ $incubation->code_incubation }}
-                </h2>
-                <p class="text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em] mt-2 italic">
-                    {{ $incubation->incubator->name ?? '—' }} | {{ __("Éclos :") }} {{ $incubation->hatched_chicks ?? 0 }} {{ __("poussins") }}
-                </p>
-            </div>
-        </div>
+        <x-page-header :title="__('🐣 Dispatch Poussins') . ' — ' . $incubation->code_incubation"
+                       :subtitle="($incubation->incubator->name ?? '—') . ' | ' . __('Éclos :') . ' ' . ($incubation->hatched_chicks ?? 0) . ' ' . __('poussins')"
+                       icon="fa-egg" accent="blue" :back="route('incubations.index')" />
     </x-slot>
 
     <div class="py-10" x-data="dispatchForm()" x-cloak>

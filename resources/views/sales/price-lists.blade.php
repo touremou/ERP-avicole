@@ -1,12 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center gap-4 text-left">
-            <div class="w-12 h-12 bg-teal-600 rounded-xl flex items-center justify-center text-white shadow-lg"><i class="fa-solid fa-tags text-lg"></i></div>
-            <div>
-                <h2 class="font-black text-xl text-slate-800 uppercase italic tracking-tighter leading-none">{{ __('Groupes de prix') }}</h2>
-                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1 italic">{{ __('Tarifs détail / grossiste par type de produit') }}</p>
-            </div>
-        </div>
+        <x-page-header :title="__('Groupes de prix')" :subtitle="__('Tarifs détail / grossiste par type de produit')" icon="fa-tags" accent="teal" />
     </x-slot>
 
     <div class="py-10">

@@ -1,12 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center gap-5 text-left">
-            <x-back :to="route('slaughter.dashboard')" />
-            <div>
-                <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">{{ __("Ordre d'Abattage") }}</h2>
-                <p class="text-[10px] font-black text-rose-600 uppercase tracking-[0.2em] mt-2 italic">{{ __("Toutes espèces — Chair, Réformes, Poissons...") }}</p>
-            </div>
-        </div>
+        <x-page-header :title="__('Ordre d\'Abattage')" :subtitle="__('Toutes espèces — Chair, Réformes, Poissons...')" icon="fa-clipboard-list" accent="rose" :back="route('slaughter.dashboard')" />
     </x-slot>
 
     <div class="py-10">

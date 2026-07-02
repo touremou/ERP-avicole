@@ -1,14 +1,12 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between gap-4">
-            <div>
-                <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">🐔 {{ __("Élevage") }}</h2>
-                <p class="text-[10px] font-black text-blue-500 uppercase tracking-widest mt-1 italic leading-none">{{ __("Cheptel · Santé · Pilotage") }}</p>
-            </div>
-            @can('elevage.C')
-            <a href="{{ route('batches.create') }}" class="inline-flex items-center gap-2 px-6 py-3 bg-blue-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 transition-all no-underline shadow-lg italic"><i class="fa-solid fa-plus"></i> {{ __("Nouveau lot") }}</a>
-            @endcan
-        </div>
+        <x-page-header :title="'🐔 ' . __('Élevage')" :subtitle="__('Cheptel · Santé · Pilotage')" icon="fa-feather" accent="blue">
+            <x-slot name="actions">
+                @can('elevage.C')
+                <a href="{{ route('batches.create') }}" class="inline-flex items-center gap-2 px-6 py-3 bg-blue-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 transition-all no-underline shadow-lg italic"><i class="fa-solid fa-plus"></i> {{ __("Nouveau lot") }}</a>
+                @endcan
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-10">

@@ -1,16 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <div class="flex items-center gap-4">
-                <div class="w-12 h-12 bg-green-600 rounded-2xl flex items-center justify-center text-white shadow-lg -rotate-3">
-                    <i class="fa-solid fa-file-import text-lg"></i>
-                </div>
-                <div class="text-left">
-                    <h2 class="font-black text-2xl text-slate-800 uppercase italic tracking-tighter leading-none">{{ __("Importer des Recettes") }}</h2>
-                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1 italic">{{ __("Import CSV des recettes de transformation") }}</p>
-                </div>
-            </div>
-        </div>
+        <x-page-header :title="__('Importer des Recettes')" :subtitle="__('Import CSV des recettes de transformation')" icon="fa-file-import" accent="green" />
     </x-slot>
 
     <div class="py-10">

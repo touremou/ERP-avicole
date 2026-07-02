@@ -6,17 +6,8 @@
         $df = setting('general.date_format', 'd/m/Y');
     @endphp
     <x-slot name="header">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 text-left">
-            <div>
-                <h2 class="text-2xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">
-                    {{ __("💰 Analyse Financière Santé") }}
-                </h2>
-                <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-3 italic leading-none">
-                    {{ __("Performance Économique Prophylactique") }} • {{ $batches->count() }} {{ __("Lot(s)") }}
-                </p>
-            </div>
-            {{-- Retour assuré par <x-hub-back> (layout) → pas de lien manuel redondant. --}}
-        </div>
+        {{-- Retour assuré par <x-hub-back> (layout) → pas de :back. --}}
+        <x-page-header :title="__('💰 Analyse Financière Santé')" :subtitle="__('Performance Économique Prophylactique') . ' • ' . $batches->count() . ' ' . __('Lot(s)')" icon="fa-notes-medical" accent="slate" />
     </x-slot>
 
     <div class="py-12 italic font-bold text-slate-700">

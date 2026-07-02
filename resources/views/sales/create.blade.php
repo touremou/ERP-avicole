@@ -1,12 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center gap-5 text-left">
-            <x-back />
-            <div>
-                <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">{{ __("Nouvelle Vente") }}</h2>
-                <p class="text-[10px] font-black text-teal-600 uppercase tracking-[0.2em] mt-2 italic">{{ __("Saisie du bon de livraison ou facture") }}</p>
-            </div>
-        </div>
+        <x-page-header :title="__('Nouvelle Vente')" :subtitle="__('Saisie du bon de livraison ou facture')" icon="fa-file-invoice" accent="teal" :back="route('sales.index')" />
     </x-slot>
 
     <div class="py-10">

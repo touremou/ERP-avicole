@@ -1,21 +1,12 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between gap-4">
-            <div class="flex items-center gap-3">
-                <x-back :to="route('clients.show', $client)" />
-                <div>
-                    <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">
-                        📄 {{ __("Relevé de compte") }}
-                    </h2>
-                    <p class="text-[10px] font-black text-teal-500 uppercase tracking-widest mt-1 italic leading-none">
-                        {{ $client->name }} · {{ $client->client_id }}
-                    </p>
-                </div>
-            </div>
-            <a href="{{ route('clients.statement.pdf', $client) }}" class="inline-flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-2xl text-[9px] font-black uppercase tracking-widest hover:bg-rose-50 hover:text-rose-600 transition-all no-underline shadow-sm italic">
-                <i class="fa-solid fa-file-pdf"></i> {{ __("PDF") }}
-            </a>
-        </div>
+        <x-page-header :title="'📄 ' . __('Relevé de compte')" :subtitle="$client->name . ' · ' . $client->client_id" icon="fa-file-invoice" accent="teal" :back="route('clients.show', $client)">
+            <x-slot name="actions">
+                <a href="{{ route('clients.statement.pdf', $client) }}" class="inline-flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-2xl text-[9px] font-black uppercase tracking-widest hover:bg-rose-50 hover:text-rose-600 transition-all no-underline shadow-sm italic">
+                    <i class="fa-solid fa-file-pdf"></i> {{ __("PDF") }}
+                </a>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-10">

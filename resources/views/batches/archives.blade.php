@@ -1,17 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 text-left">
-            {{-- BLOC GAUCHE : Titre et Description --}}
-            <div>
-                <h2 class="text-3xl font-black text-slate-800 tracking-tighter uppercase italic leading-none">
-                    {{ __('Archives des Bandes') }}
-                </h2>
-                <p class="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] mt-3 italic leading-none">
-                    {{ __("Archives des bandes clôturées et réouvertures éventuelles") }}
-                </p>
-            </div>
-            {{-- BLOC DROITE : Filtre et Bouton Fermer --}}
-            <div class="flex flex-wrap items-center gap-3 w-full md:w-auto mt-4 md:mt-0">
+        <x-page-header :title="__('Archives des Bandes')" :subtitle="__('Archives des bandes clôturées et réouvertures éventuelles')" icon="fa-box-archive" accent="indigo">
+            <x-slot name="actions">
                 {{-- FILTRE PAR BÂTIMENT (Visible pour tous ceux ayant la permission L) --}}
                 <form action="{{ route('batches.archives') }}" method="GET" class="flex items-center gap-2 m-0">
                     <select name="building_id" onchange="this.form.submit()" class="bg-white border-slate-200 text-slate-600 rounded-xl text-[10px] font-black uppercase italic tracking-widest focus:ring-blue-500 shadow-sm px-4 py-3 cursor-pointer">
@@ -22,19 +12,14 @@
                             </option>
                         @endforeach
                     </select>
-                    {{-- Bouton pour effacer le filtre (embelli) --}}
                     @if(request('building_id'))
                         <a href="{{ route('batches.archives') }}" class="w-10 h-10 flex items-center justify-center bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white rounded-xl transition-all shadow-sm no-underline" title="{{ __("Réinitialiser le filtre") }}">
                             <i class="fas fa-times text-sm"></i>
                         </a>
                     @endif
                 </form>
-                {{-- BOUTON FERMER / RETOUR --}}
-                <a href="{{ route('batches.index') }}" class="group flex items-center justify-center w-12 h-12 bg-white border border-slate-200 text-slate-400 hover:text-slate-900 rounded-2xl transition-all shadow-sm no-underline" title="{{ __("Retour aux lots actifs") }}">
-                    <i class="fas fa-times text-lg group-hover:rotate-90 transition-transform"></i>
-                </a> 
-            </div>
-        </div>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-12">

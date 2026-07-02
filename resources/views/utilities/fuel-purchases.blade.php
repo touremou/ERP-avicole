@@ -1,11 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center gap-5 text-left">
-            <div>
-                <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">{{ __("Achats Carburant") }}</h2>
-                <p class="text-[10px] font-black text-orange-600 uppercase tracking-[0.2em] mt-2 italic">{{ __("Historique des approvisionnements carburant") }}</p>
-            </div>
-        </div>
+        <x-page-header :title="__('Achats Carburant')" :subtitle="__('Historique des approvisionnements carburant')" icon="fa-gas-pump" accent="orange" />
     </x-slot>
 
     <div class="py-10">

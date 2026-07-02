@@ -1,12 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center gap-5 text-left">
-            <x-back :to="route('expenses.show', $expense)" />
-            <div>
-                <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">{{ __("Modifier Dépense") }}</h2>
-                <p class="text-[10px] font-black text-rose-600 uppercase tracking-[0.2em] mt-2 italic">{{ $expense->reference }}</p>
-            </div>
-        </div>
+        <x-page-header :title="__('Modifier Dépense')" :subtitle="$expense->reference" icon="fa-receipt" accent="rose" :back="route('expenses.show', $expense)" />
     </x-slot>
 
     <div class="py-10">

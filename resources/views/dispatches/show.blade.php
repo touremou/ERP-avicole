@@ -1,16 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 text-left">
-            <div class="flex items-center gap-5">
-                <x-back />
-                <div>
-                    <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">{{ $dispatch->dispatch_number }}</h2>
-                    <p class="text-[10px] font-black text-orange-600 uppercase tracking-[0.2em] mt-2 italic">
-                        {{ $dispatch->destination }} — {{ $dispatch->dispatch_date->translatedFormat('d F Y') }}
-                    </p>
-                </div>
-            </div>
-            <div class="flex items-center gap-3">
+        <x-page-header :title="$dispatch->dispatch_number" :subtitle="$dispatch->destination . ' — ' . $dispatch->dispatch_date->translatedFormat('d F Y')" icon="fa-truck-fast" accent="orange" :back="route('dispatches.index')">
+            <x-slot name="actions">
                 <a href="{{ route('dispatches.label', $dispatch->id) }}" target="_blank"
                    class="bg-indigo-50 text-indigo-700 px-6 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all italic flex items-center gap-2 no-underline"
                    title="{{ __("Étiquette QR de traçabilité") }}">
@@ -26,8 +17,8 @@
                 </a>
                 @endif
             @endif
-            </div>
-        </div>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-10">

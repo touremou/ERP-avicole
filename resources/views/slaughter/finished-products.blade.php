@@ -1,17 +1,11 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 text-left">
-            <div class="flex items-center gap-5">
-                <div>
-                    <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">{{ __("Produits Finis") }}</h2>
-                    <p class="text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em] mt-2 italic">{{ __("Stock abattoir — Frais, Congelé, Transformé") }}</p>
-                </div>
-            </div>
-            <div class="flex gap-3">
+        <x-page-header :title="__('Produits Finis')" :subtitle="__('Stock abattoir — Frais, Congelé, Transformé')" icon="fa-box-open" accent="rose">
+            <x-slot name="actions">
                 <a href="{{ route('slaughter.orders.create') }}" class="bg-rose-500 text-white px-5 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-rose-600 transition-all shadow-lg italic no-underline"><i class="fa-solid fa-plus mr-1"></i> {{ __("Abattage") }}</a>
                 <a href="{{ route('slaughter.transform.form') }}" class="bg-amber-500 text-white px-5 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-amber-600 transition-all shadow-lg italic no-underline"><i class="fa-solid fa-fire mr-1"></i> {{ __("Transformation") }}</a>
-            </div>
-        </div>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-10" x-data="fpManager()">

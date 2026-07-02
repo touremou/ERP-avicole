@@ -1,16 +1,8 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <div class="text-left">
-                <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">
-                    {{ __("Modifier l'acte :") }} {{ $health->product_name }}
-                </h2>
-                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2 italic leading-none">
-                    {{ __("Affecté au lot") }} • <span class="text-blue-500 font-black">{{ $health->batch->code }}</span>
-                </p>
-            </div>
-            <x-back />
-        </div>
+        <x-page-header :title="__('Modifier l\'acte :') . ' ' . $health->product_name"
+                       :subtitle="__('Affecté au lot') . ' • ' . $health->batch->code"
+                       icon="fa-stethoscope" accent="purple" :back="route('health.index')" />
     </x-slot>
 
     <div class="py-12 italic font-bold text-slate-700">

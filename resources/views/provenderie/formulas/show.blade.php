@@ -1,29 +1,15 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex flex-col md:flex-row justify-between items-center gap-4">
-            <div class="flex items-center gap-4 text-left">
-                <div class="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-lg rotate-3">
-                    <i class="fa-solid fa-flask-vial text-lg"></i>
-                </div>
-                <div>
-                    <h2 class="font-black text-2xl text-slate-800 uppercase italic tracking-tighter leading-none">
-                        {{ __("Analyse") }} : {{ $formula->name }}
-                    </h2>
-                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1 italic">{{ __("Code") }} : {{ $formula->code }} • {{ strtoupper($formula->target_type) }}</p>
-                </div>
-            </div>
-            
-            <div class="flex gap-3">
-                <x-back />
-                
+        <x-page-header :title="__('Analyse') . ' : ' . $formula->name" :subtitle="__('Code') . ' : ' . $formula->code . ' • ' . strtoupper($formula->target_type)" icon="fa-flask-vial" accent="amber" :back="route('formulas.index')">
+            <x-slot name="actions">
                 {{-- Permission C : Lancer une production basée sur cette formule --}}
                 @can('provenderie.C')
                 <a href="{{ route('production.create', ['formula_id' => $formula->id]) }}" class="bg-emerald-500 text-white px-6 py-3 rounded-2xl text-[10px] font-black uppercase italic tracking-widest shadow-lg shadow-emerald-200 hover:bg-emerald-600 transition-all no-underline">
                     <i class="fa-solid fa-play mr-2"></i> {{ __("Produire ce lot") }}
                 </a>
                 @endcan
-            </div>
-        </div>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-12 italic font-bold">

@@ -1,13 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
-        {{-- Pas de retour manuel : le layout injecte déjà <x-hub-back> vers les
-             rapports (sinon double flèche de retour). --}}
-        <div class="flex items-center gap-4">
-            <div>
-                <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">⚖️ {{ __("Compte de résultat") }}</h2>
-                <p class="text-[10px] font-black text-amber-600 uppercase tracking-[0.2em] mt-2 italic">{{ __("P&L consolidé — toutes activités") }}</p>
-            </div>
-        </div>
+        {{-- Pas de :back : le layout injecte déjà <x-hub-back> vers les rapports. --}}
+        <x-page-header :title="'⚖️ ' . __('Compte de résultat')" :subtitle="__('P&L consolidé — toutes activités')" icon="fa-scale-balanced" accent="slate" />
     </x-slot>
 
     <div class="py-10 italic font-bold text-left">

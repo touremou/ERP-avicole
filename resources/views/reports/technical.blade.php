@@ -6,16 +6,8 @@
         $df = setting('general.date_format', 'd/m/Y');
     @endphp
     <x-slot name="header">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 text-left">
-            <div>
-                <h2 class="text-2xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">
-                    📉 {{ __("Performance Technique & Viabilité") }}
-                </h2>
-                <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-3 italic leading-none">
-                    {{ __("Analyse des indices de consommation et taux de survie") }}
-                </p>
-            </div>
-            <div class="flex flex-wrap items-center gap-3">
+        <x-page-header :title="'📉 ' . __('Performance Technique & Viabilité')" :subtitle="__('Analyse des indices de consommation et taux de survie')" icon="fa-chart-line" accent="slate">
+            <x-slot name="actions">
                 {{-- Légende technique --}}
                 <div class="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-xl text-[8px] font-black uppercase italic shadow-sm">
                     <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span> {{ __("Normal") }} < {{ $seuilAlerte }}%
@@ -29,9 +21,9 @@
                 <a href="{{ route('reports.technical.pdf') }}" class="ml-4 group flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase italic transition no-underline hover:bg-blue-600">
                     <i class="fa-solid fa-file-pdf"></i> {{ __("Export PDF") }}
                 </a>
-                {{-- Retour via <x-hub-back> (layout) → pas de lien « Retour » redondant. --}}
-            </div>
-        </div>
+                {{-- Retour via <x-hub-back> (layout) → pas de :back. --}}
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-12 italic font-bold text-slate-700">

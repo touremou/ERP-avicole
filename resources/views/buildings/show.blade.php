@@ -1,18 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div class="flex items-center gap-4 text-left">
-                <a href="{{ route('buildings.index') }}" class="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-500 hover:text-slate-800 rounded-xl transition-all shadow-sm group no-underline">
-                    <i class="fas fa-chevron-left group-hover:-translate-x-1 transition-transform"></i>
-                    <span class="text-[10px] font-black uppercase italic tracking-widest">{{ __("Retour") }}</span>
-                </a>
-
-                <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none m-0">
-                    {{ __('Unité de Production :') }} {{ $building->name }}
-                </h2>
-            </div>
-
-            <div class="flex items-center gap-3">
+        <x-page-header :title="__('Unité de Production :') . ' ' . $building->name" icon="fa-warehouse" accent="indigo" :back="route('buildings.index')">
+            <x-slot name="actions">
                 @can('elevage.M')
                 <a href="{{ route('buildings.edit', $building->id) }}" class="bg-white border border-slate-200 px-6 py-2.5 rounded-xl text-[10px] font-black uppercase text-slate-600 hover:bg-blue-600 hover:text-white transition shadow-sm tracking-widest italic no-underline">
                     <i class="fas fa-tools mr-2"></i> {{ __("Configurer") }}
@@ -41,8 +30,8 @@
                         </form>
                     @endif
                 @endcan
-            </div>
-        </div>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-12 italic font-bold text-left">

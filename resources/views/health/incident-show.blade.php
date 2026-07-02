@@ -1,17 +1,8 @@
 <x-app-layout>
     <x-slot name="header">
-        {{-- Feuille (route à paramètre) → x-back, pas de double bouton. --}}
-        <div class="flex items-center gap-4 text-left">
-            <x-back :to="route('health.incidents.index')" />
-            <div>
-                <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">
-                    🩺 {{ __("Incident sanitaire") }} #{{ $incident->id }}
-                </h2>
-                <p class="text-[10px] font-black text-rose-500 uppercase tracking-widest mt-1 italic leading-none">
-                    @if($incident->batch){{ __("Lot") }} #{{ $incident->batch->code }} • @endif{{ $incident->building->name ?? __("Bâtiment inconnu") }}
-                </p>
-            </div>
-        </div>
+        <x-page-header :title="'🩺 ' . __('Incident sanitaire') . ' #' . $incident->id"
+                       :subtitle="($incident->batch ? __('Lot') . ' #' . $incident->batch->code . ' • ' : '') . ($incident->building->name ?? __('Bâtiment inconnu'))"
+                       icon="fa-microscope" accent="purple" :back="route('health.incidents.index')" />
     </x-slot>
 
     <div class="py-10 italic font-bold">

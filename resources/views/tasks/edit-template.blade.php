@@ -1,12 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center gap-4 text-left">
-            <x-back :to="route('tasks.templates')" />
-            <div>
-                <h2 class="text-lg font-black text-slate-800 uppercase italic tracking-tighter leading-none">{{ __("Modifier le template") }}</h2>
-                <p class="text-[9px] font-bold text-slate-400 uppercase mt-1 tracking-widest italic">{{ $template->name }}</p>
-            </div>
-        </div>
+        <x-page-header :title="__('Modifier le template')" :subtitle="$template->name" icon="fa-gear" accent="indigo" :back="route('tasks.templates')" />
     </x-slot>
 
     <div class="py-8 italic font-bold">

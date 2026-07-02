@@ -1,26 +1,15 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between gap-4">
-            <div>
-                <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">
-                    🛒 {{ __("Caisse (POS)") }}
-                </h2>
-                <p class="text-[10px] font-black text-teal-500 uppercase tracking-widest mt-1 italic leading-none">
-                    {{ __("Encaissement rapide — vente comptant") }}
-                </p>
-            </div>
-            <div class="flex items-center gap-2">
+        <x-page-header :title="'🛒 ' . __('Caisse (POS)')" :subtitle="__('Encaissement rapide — vente comptant')" icon="fa-cash-register" accent="teal" :back="route('commerce.index')">
+            <x-slot name="actions">
                 <button type="button" onclick="togglePosFullscreen(this)" class="inline-flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-2xl text-[9px] font-black uppercase tracking-widest hover:bg-slate-50 transition-all shadow-sm italic cursor-pointer">
                     <i class="fa-solid fa-expand"></i> <span>{{ __("Plein écran") }}</span>
                 </button>
                 <a href="{{ route('pos.report') }}" class="inline-flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-2xl text-[9px] font-black uppercase tracking-widest hover:bg-teal-50 hover:text-teal-600 transition-all no-underline shadow-sm italic">
                     <i class="fa-solid fa-receipt"></i> {{ __("Z caisse") }}
                 </a>
-                <a href="{{ route('commerce.index') }}" class="inline-flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-2xl text-[9px] font-black uppercase tracking-widest hover:bg-slate-50 transition-all no-underline shadow-sm italic">
-                    <i class="fa-solid fa-table-columns"></i> {{ __("Tableau de bord") }}
-                </a>
-            </div>
-        </div>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-8">

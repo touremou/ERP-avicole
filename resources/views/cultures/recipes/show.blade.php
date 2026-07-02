@@ -1,18 +1,8 @@
 @php $currency = setting('general.currency', 'GNF'); @endphp
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <div class="flex items-center gap-4">
-                <div class="w-12 h-12 bg-green-600 rounded-2xl flex items-center justify-center text-white shadow-lg -rotate-3">
-                    <i class="fa-solid fa-book text-lg"></i>
-                </div>
-                <div class="text-left">
-                    <h2 class="font-black text-2xl text-slate-800 uppercase italic tracking-tighter leading-none">{{ $recipe->name }}</h2>
-                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1 italic">{{ $recipe->type_label }} <i class="fa-solid fa-arrow-right-long mx-1"></i> {{ $recipe->output_product }}</p>
-                </div>
-            </div>
-            <div class="flex gap-3 items-center">
-                <x-back label="Recettes" />
+        <x-page-header :title="$recipe->name" :subtitle="$recipe->type_label . ' → ' . $recipe->output_product" icon="fa-book" accent="green" :back="route('crop-recipes.index')">
+            <x-slot name="actions">
                 @can('cultures.M')
                 <a href="{{ route('crop-recipes.edit', $recipe) }}" class="bg-white border border-slate-100 text-slate-600 px-5 py-2.5 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-slate-50 transition italic no-underline flex items-center gap-2">
                     <i class="fa-solid fa-pen text-green-500"></i>{{ __("Modifier") }}
@@ -24,8 +14,8 @@
                     <button class="text-rose-400 hover:text-rose-600 text-[10px] font-black uppercase italic"><i class="fa-solid fa-trash mr-1"></i>{{ __("Supprimer") }}</button>
                 </form>
                 @endcan
-            </div>
-        </div>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-10">

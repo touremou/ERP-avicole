@@ -1,20 +1,14 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between gap-4">
-            <div>
-                <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">
-                    💰 {{ __("Finance") }}
-                </h2>
-                <p class="text-[10px] font-black text-rose-500 uppercase tracking-widest mt-1 italic leading-none">
-                    {{ __("Trésorerie · Dépenses · Achats · Budgets") }}
-                </p>
-            </div>
-            @can('depenses.C')
-            <a href="{{ route('expenses.create') }}" class="inline-flex items-center gap-2 px-6 py-3 bg-rose-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-600 transition-all no-underline shadow-lg italic">
-                <i class="fa-solid fa-plus"></i> {{ __("Nouvelle dépense") }}
-            </a>
-            @endcan
-        </div>
+        <x-page-header :title="'💰 ' . __('Finance')" :subtitle="__('Trésorerie · Dépenses · Achats · Budgets')" icon="fa-wallet" accent="rose">
+            <x-slot name="actions">
+                @can('depenses.C')
+                <a href="{{ route('expenses.create') }}" class="inline-flex items-center gap-2 px-6 py-3 bg-rose-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-600 transition-all no-underline shadow-lg italic">
+                    <i class="fa-solid fa-plus"></i> {{ __("Nouvelle dépense") }}
+                </a>
+                @endcan
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-10">

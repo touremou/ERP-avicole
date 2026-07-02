@@ -1,16 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <div class="text-left">
-                <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">
-                    🧪 {{ __("Architecte de Protocole") }}
-                </h2>
-                <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-2 italic leading-none">{{ __("Modélisation des programmes sanitaires standards") }}</p>
-            </div>
-            <a href="{{ route('protocols.index') }}" class="group flex items-center px-6 py-3 bg-white border border-slate-200 text-slate-500 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-rose-50 hover:text-rose-600 transition-all shadow-sm no-underline italic">
-                <i class="fa-solid fa-xmark mr-2 group-hover:rotate-90 transition-transform"></i> {{ __("Annuler") }}
-            </a>
-        </div>
+        <x-page-header :title="'🧪 ' . __('Architecte de Protocole')" :subtitle="__('Modélisation des programmes sanitaires standards')" icon="fa-scroll" accent="purple" :back="route('protocols.index')" />
     </x-slot>
 
     <div class="py-12 italic font-bold">

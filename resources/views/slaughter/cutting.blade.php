@@ -1,12 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center gap-5 text-left">
-            <x-back :to="route('slaughter.dashboard')" />
-            <div>
-                <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">{{ __("Découpe") }}</h2>
-                <p class="text-[10px] font-black text-purple-600 uppercase tracking-[0.2em] mt-2 italic">{{ $order->order_number }} — {{ __("Carcasses disponibles") }} : {{ $order->result ? number_format($order->result->total_carcass_weight_kg, 1) . ' kg' : '—' }}</p>
-            </div>
-        </div>
+        <x-page-header :title="__('Découpe')" :subtitle="$order->order_number . ' — ' . __('Carcasses disponibles') . ' : ' . ($order->result ? number_format($order->result->total_carcass_weight_kg, 1) . ' kg' : '—')" icon="fa-scissors" accent="rose" :back="route('slaughter.dashboard')" />
     </x-slot>
 
     <div class="py-10">

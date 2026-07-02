@@ -1,12 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center gap-5 text-left">
-            <x-back :to="route('clients.show', $client)" />
-            <div>
-                <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">{{ __("Modifier") }} {{ $client->name }}</h2>
-                <p class="text-[10px] font-black text-teal-600 uppercase tracking-[0.2em] mt-2 italic">{{ $client->client_id }}</p>
-            </div>
-        </div>
+        <x-page-header :title="__('Modifier') . ' ' . $client->name" :subtitle="$client->client_id" icon="fa-users" accent="teal" :back="route('clients.show', $client)" />
     </x-slot>
 
     <div class="py-10">

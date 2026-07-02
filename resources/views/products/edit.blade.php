@@ -1,9 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center gap-4">
-            <x-back />
-            <h2 class="font-black text-xl text-slate-800 uppercase italic tracking-tighter">{{ __('Modifier l\'article') }}</h2>
-        </div>
+        <x-page-header :title="__('Modifier l\'article')" icon="fa-box-open" accent="teal" :back="route('products.index')" />
     </x-slot>
 
     <div class="py-10">

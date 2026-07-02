@@ -1,20 +1,12 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between gap-4">
-            <div class="flex items-center gap-4">
-                <div>
-                    <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">
-                        🧾 {{ __("Z de caisse") }}
-                    </h2>
-                    <p class="text-[10px] font-black text-teal-500 uppercase tracking-widest mt-1 italic leading-none">
-                        {{ \Carbon\Carbon::parse($date)->translatedFormat('l j F Y') }}
-                    </p>
-                </div>
-            </div>
-            <button onclick="window.print()" class="no-print inline-flex items-center gap-2 px-5 py-2.5 bg-slate-900 text-white rounded-2xl text-[9px] font-black uppercase tracking-widest hover:bg-teal-600 transition-all border-none cursor-pointer shadow-lg italic">
-                <i class="fa-solid fa-print"></i> {{ __("Imprimer") }}
-            </button>
-        </div>
+        <x-page-header :title="'🧾 ' . __('Z de caisse')" :subtitle="\Carbon\Carbon::parse($date)->translatedFormat('l j F Y')" icon="fa-receipt" accent="teal">
+            <x-slot name="actions">
+                <button onclick="window.print()" class="no-print inline-flex items-center gap-2 px-5 py-2.5 bg-slate-900 text-white rounded-2xl text-[9px] font-black uppercase tracking-widest hover:bg-teal-600 transition-all border-none cursor-pointer shadow-lg italic">
+                    <i class="fa-solid fa-print"></i> {{ __("Imprimer") }}
+                </button>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-10">

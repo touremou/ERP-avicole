@@ -1,22 +1,10 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <div class="flex items-center gap-4">
-                <a href="{{ route('buildings.index') }}" class="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-500 hover:text-slate-800 rounded-xl transition-all shadow-sm group no-underline">
-                    <i class="fas fa-chevron-left group-hover:-translate-x-1 transition-transform"></i>
-                    <span class="text-[10px] font-black uppercase italic tracking-widest">{{ __("Retour au parc") }}</span>
-                </a>
-                <div>
-                    <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">
-                        {{ __('Configuration :') }} {{ $building->name }}
-                    </h2>
-                    <p class="text-[9px] font-bold text-orange-500 uppercase mt-1 tracking-[0.2em] italic">{{ __("Maintenance technique") }}</p>
-                </div>
-            </div>
-            <div class="hidden md:block">
-                <span class="px-4 py-2 bg-orange-50 rounded-xl text-[10px] font-black uppercase text-orange-600 italic tracking-widest border border-orange-100">B-{{ str_pad($building->id, 3, '0', STR_PAD_LEFT) }}</span>
-            </div>
-        </div>
+        <x-page-header :title="__('Configuration :') . ' ' . $building->name" :subtitle="__('Maintenance technique')" icon="fa-warehouse" accent="indigo" :back="route('buildings.index')">
+            <x-slot name="actions">
+                <span class="hidden md:inline px-4 py-2 bg-orange-50 rounded-xl text-[10px] font-black uppercase text-orange-600 italic tracking-widest border border-orange-100">B-{{ str_pad($building->id, 3, '0', STR_PAD_LEFT) }}</span>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-12 italic font-bold">

@@ -1,16 +1,8 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between gap-4">
-            <div class="flex items-center gap-3">
-                <x-back />
-                <div>
-                    <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">{{ $invoice->reference }}</h2>
-                    <p class="text-[10px] font-black text-rose-500 uppercase tracking-widest mt-1 italic leading-none">
-                        <a href="{{ route('purchases.statement', $invoice->provider) }}" class="no-underline hover:text-rose-700">{{ $invoice->provider->name ?? '—' }} →</a>
-                    </p>
-                </div>
-            </div>
-            <div class="flex gap-2">
+        <x-page-header :title="$invoice->reference" :subtitle="$invoice->provider->name ?? '—'" icon="fa-file-invoice-dollar" accent="rose" :back="route('purchases.index')">
+            <x-slot name="actions">
+                <a href="{{ route('purchases.statement', $invoice->provider) }}" class="bg-white border border-slate-200 text-slate-500 px-5 py-2.5 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-rose-50 hover:text-rose-600 transition-all no-underline italic"><i class="fa-solid fa-file-invoice-dollar mr-1"></i> {{ __("Relevé") }}</a>
                 @can('depenses.M')
                 @if($invoice->status === 'brouillon')
                 <form method="POST" action="{{ route('purchases.validate', $invoice) }}">@csrf @method('PUT')
@@ -23,8 +15,8 @@
                 </form>
                 @endif
                 @endcan
-            </div>
-        </div>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-10">

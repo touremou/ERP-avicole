@@ -1,10 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
-        {{-- Retour assuré par <x-hub-back> (layout) → pas de lien manuel. --}}
-        <div>
-            <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">🦠 {{ __("Rapport sanitaire") }}</h2>
-            <p class="text-[10px] font-black text-rose-500 uppercase tracking-[0.2em] mt-2 italic">{{ __("Incidents par maladie · gravité · bâtiment · saison") }}</p>
-        </div>
+        {{-- Retour assuré par <x-hub-back> (layout) → pas de :back. --}}
+        <x-page-header :title="'🦠 ' . __('Rapport sanitaire')" :subtitle="__('Incidents par maladie · gravité · bâtiment · saison')" icon="fa-virus" accent="slate" />
     </x-slot>
 
     <div class="py-10 italic font-bold text-slate-700">

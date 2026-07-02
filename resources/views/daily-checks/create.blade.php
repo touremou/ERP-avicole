@@ -1,34 +1,24 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <div class="flex items-center gap-4 text-left">
-                @php
-                    $batchId = $batch->id ?? request()->query('batch_id');
-                    $backUrl = $batchId ? route('batches.show', ['batch' => $batchId]) : route('batches.index');
-                @endphp
-                
-                <x-back :to="$backUrl" />
-                <div>
-                    <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">
-                        📊 {{ __("Pointage de Précision") }}
-                    </h2>
-                    <p class="text-[10px] font-black text-blue-500 uppercase tracking-widest mt-1 italic leading-none">
-                        {{ __("Lot :") }} {{ $batch->code ?? __("Chargement...") }} • {{ $batch->building->name ?? __("Mode Terrain") }}
-                        <span id="offline-qty-display">({{ $batch->current_quantity ?? '...' }} {{ __("têtes") }})</span>
-                    </p>
+        @php
+            $batchId = $batch->id ?? request()->query('batch_id');
+            $backUrl = $batchId ? route('batches.show', ['batch' => $batchId]) : route('batches.index');
+        @endphp
+        <x-page-header :title="'📊 ' . __('Pointage de Précision')"
+                       :subtitle="__('Lot :') . ' ' . ($batch->code ?? __('Chargement...')) . ' • ' . ($batch->building->name ?? __('Mode Terrain'))"
+                       icon="fa-clipboard-list" accent="indigo" :back="$backUrl">
+            <x-slot name="actions">
+                <div id="perf-widget" class="hidden md:flex items-center gap-4 bg-slate-900 p-2 pl-4 rounded-2xl border border-slate-700 shadow-2xl transition-all animate-in slide-in-from-right">
+                    <div class="text-right">
+                        <p class="text-[8px] font-black text-slate-500 uppercase leading-none mb-1">{{ __("Ratio Conso.") }}</p>
+                        <p class="text-xs font-black text-emerald-400 italic leading-none"><span id="ratio-val">0</span> {{ __("g/sujet") }}</p>
+                    </div>
+                    <div class="w-10 h-10 bg-slate-800 rounded-xl flex items-center justify-center text-emerald-400 shadow-inner">
+                        <i class="fa-solid fa-bolt-lightning text-xs"></i>
+                    </div>
                 </div>
-            </div>
-            
-            <div id="perf-widget" class="hidden md:flex items-center gap-4 bg-slate-900 p-2 pl-4 rounded-2xl border border-slate-700 shadow-2xl transition-all animate-in slide-in-from-right">
-                <div class="text-right">
-                    <p class="text-[8px] font-black text-slate-500 uppercase leading-none mb-1">{{ __("Ratio Conso.") }}</p>
-                    <p class="text-xs font-black text-emerald-400 italic leading-none"><span id="ratio-val">0</span> {{ __("g/sujet") }}</p>
-                </div>
-                <div class="w-10 h-10 bg-slate-800 rounded-xl flex items-center justify-center text-emerald-400 shadow-inner">
-                    <i class="fa-solid fa-bolt-lightning text-xs"></i>
-                </div>
-            </div>
-        </div>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-12 italic font-bold">

@@ -1,12 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center gap-5 text-left">
-            <x-back />
-            <div>
-                <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">{{ __("Nouveau Client") }}</h2>
-                <p class="text-[10px] font-black text-teal-600 uppercase tracking-[0.2em] mt-2 italic">{{ __("Enregistrement d'un partenaire commercial") }}</p>
-            </div>
-        </div>
+        <x-page-header :title="__('Nouveau Client')" :subtitle="__('Enregistrement d\'un partenaire commercial')" icon="fa-users" accent="teal" :back="route('clients.index')" />
     </x-slot>
 
     <div class="py-10">

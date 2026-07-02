@@ -1,22 +1,13 @@
 <x-app-layout>
     @php $currency = setting('general.currency', 'GNF'); @endphp
     <x-slot name="header">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 text-left">
-            <div class="flex items-center gap-4">
-                <div class="w-12 h-12 bg-amber-600 rounded-2xl flex items-center justify-center text-white shadow-lg -rotate-3">
-                    <i class="fa-solid fa-flask-vial text-lg"></i>
-                </div>
-                <div>
-                    <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">{{ __("Coûts des Intrants") }}</h2>
-                    <p class="text-[9px] font-bold text-slate-400 uppercase mt-1 tracking-widest italic">{{ __("Production végétale") }} · {{ $year }}</p>
-                </div>
-            </div>
-            <div class="flex items-center gap-3">
+        <x-page-header :title="__('Coûts des Intrants')" :subtitle="__('Production végétale') . ' · ' . $year" icon="fa-flask-vial" accent="green">
+            <x-slot name="actions">
                 <a href="{{ route('crop-reports.inputs.pdf', request()->query()) }}" class="bg-slate-900 text-white px-5 py-2.5 rounded-2xl font-black text-[9px] uppercase tracking-widest italic no-underline flex items-center gap-2 hover:bg-amber-600 transition">
                     <i class="fa-solid fa-file-pdf"></i> {{ __("Export PDF") }}
                 </a>
-            </div>
-        </div>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-10 italic font-bold text-left">

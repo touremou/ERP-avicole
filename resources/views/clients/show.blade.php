@@ -1,16 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 text-left">
-            <div class="flex items-center gap-5">
-                <x-back />
-                <div>
-                    <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">{{ $client->name }}</h2>
-                    <p class="text-[10px] font-black text-teal-600 uppercase tracking-[0.2em] mt-2 italic">
-                        {{ $client->client_id }} — {{ ucfirst(str_replace('_', '/', $client->category)) }}
-                    </p>
-                </div>
-            </div>
-            <div class="flex gap-3">
+        <x-page-header :title="$client->name" :subtitle="$client->client_id . ' — ' . ucfirst(str_replace('_', '/', $client->category))" icon="fa-users" accent="teal" :back="route('clients.index')">
+            <x-slot name="actions">
                 @can('commerce.C')
                 <a href="{{ route('sales.create', ['client_id' => $client->id]) }}" class="bg-teal-500 text-white px-6 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-teal-600 transition-all shadow-lg italic no-underline flex items-center gap-2">
                     <i class="fa-solid fa-cart-plus"></i> {{ __("Nouvelle Vente") }}
@@ -26,8 +17,8 @@
                     <i class="fa-solid fa-pen"></i> {{ __("Modifier") }}
                 </a>
                 @endcan
-            </div>
-        </div>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-10">

@@ -1,24 +1,8 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 w-full text-left">
-            <div class="flex items-center gap-5">
-                <x-back />
-                <div>
-                    <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter truncate">{{ $expense->label }}</h2>
-                    <p class="text-[10px] font-black text-rose-600 uppercase tracking-[0.2em] mt-2 italic">
-                        {{ $expense->reference }} ·
-                        <span @class([
-                            'px-2 py-0.5 rounded-full',
-                            'bg-amber-100 text-amber-700'   => $expense->status === 'en_attente',
-                            'bg-emerald-100 text-emerald-700' => $expense->status === 'valide',
-                            'bg-slate-200 text-slate-500'   => $expense->status === 'annule',
-                        ])>{{ str_replace('_', ' ', $expense->status) }}</span>
-                    </p>
-                </div>
-            </div>
-
-            @can('depenses.M')
-            <div class="flex flex-wrap gap-3">
+        <x-page-header :title="$expense->label" :subtitle="$expense->reference . ' · ' . str_replace('_', ' ', $expense->status)" icon="fa-receipt" accent="rose" :back="route('expenses.index')">
+            <x-slot name="actions">
+                @can('depenses.M')
                 @if($expense->status === 'en_attente')
                     <form method="POST" action="{{ route('expenses.approve', $expense) }}">
                         @csrf @method('PUT')
@@ -38,9 +22,9 @@
                         </button>
                     </form>
                 @endif
-            </div>
-            @endcan
-        </div>
+                @endcan
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-10">

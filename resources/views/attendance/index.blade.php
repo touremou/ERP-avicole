@@ -1,18 +1,12 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between gap-4">
-            <div>
-                <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">
-                    🧑‍🌾 {{ __("Pointage de présence") }}
-                </h2>
-                <p class="text-[10px] font-black text-violet-500 uppercase tracking-widest mt-1 italic leading-none">
-                    {{ \Carbon\Carbon::parse($date)->translatedFormat('l j F Y') }}
-                </p>
-            </div>
-            <a href="{{ route('attendance.report') }}" class="inline-flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-2xl text-[9px] font-black uppercase tracking-widest hover:bg-violet-50 hover:text-violet-600 transition-all no-underline shadow-sm italic">
-                <i class="fa-solid fa-chart-column"></i> {{ __("Rapport de présence") }}
-            </a>
-        </div>
+        <x-page-header :title="'🧑‍🌾 ' . __('Pointage de présence')" :subtitle="\Carbon\Carbon::parse($date)->translatedFormat('l j F Y')" icon="fa-user-check" accent="blue">
+            <x-slot name="actions">
+                <a href="{{ route('attendance.report') }}" class="inline-flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-2xl text-[9px] font-black uppercase tracking-widest hover:bg-violet-50 hover:text-violet-600 transition-all no-underline shadow-sm italic">
+                    <i class="fa-solid fa-chart-column"></i> {{ __("Rapport de présence") }}
+                </a>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-10">

@@ -2,18 +2,7 @@
     @php $currency = setting('general.currency', 'GNF'); @endphp
     <x-slot name="header">
         <div class="flex items-center justify-between">
-            <div class="flex items-center gap-4">
-                <div class="w-12 h-12 bg-green-600 rounded-2xl flex items-center justify-center text-white shadow-lg -rotate-3">
-                    <i class="fa-solid fa-industry text-lg"></i>
-                </div>
-                <div class="text-left">
-                    <h2 class="font-black text-2xl text-slate-800 uppercase italic tracking-tighter leading-none">{{ __("Modifier la transformation") }}</h2>
-                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1 italic">{{ $transformation->batch_number }}</p>
-                </div>
-            </div>
-            <a href="{{ route('crop-transformations.show', $transformation) }}" class="text-[10px] font-black uppercase text-slate-400 hover:text-slate-900 transition no-underline">
-                <i class="fa-solid fa-xmark mr-2"></i> {{ __("Annuler") }}
-            </a>
+            <x-page-header :title="__('Modifier la transformation')" :subtitle="$transformation->batch_number" icon="fa-industry" accent="green" :back="route('crop-transformations.show', $transformation)" />
         </div>
     </x-slot>
 

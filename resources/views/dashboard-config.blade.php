@@ -1,12 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center gap-4 text-left">
-            <div class="w-12 h-12 bg-slate-900 rounded-xl flex items-center justify-center text-white shadow-lg"><i class="fa-solid fa-table-cells-large text-lg"></i></div>
-            <div>
-                <h2 class="font-black text-xl text-slate-800 uppercase italic tracking-tighter leading-none">{{ __('Mon tableau de bord') }}</h2>
-                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1 italic">{{ __('Choisir les blocs affichés') }}</p>
-            </div>
-        </div>
+        <x-page-header :title="__('Mon tableau de bord')" :subtitle="__('Choisir les blocs affichés')" icon="fa-table-cells-large" accent="slate" :back="route('dashboard')" />
     </x-slot>
 
     <div class="py-10">

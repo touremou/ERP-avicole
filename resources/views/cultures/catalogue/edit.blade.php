@@ -1,19 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <div class="flex items-center gap-4">
-                <div class="w-12 h-12 bg-green-600 rounded-2xl flex items-center justify-center text-white shadow-lg -rotate-3">
-                    <i class="fa-solid fa-book-open text-lg"></i>
-                </div>
-                <div class="text-left">
-                    <h2 class="font-black text-2xl text-slate-800 uppercase italic tracking-tighter leading-none">{{ $species->name }}</h2>
-                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1 italic">{{ __("Modifier la culture") }}</p>
-                </div>
-            </div>
-            <a href="{{ route('crop-catalogue.show', $species) }}" class="text-[10px] font-black uppercase text-slate-400 hover:text-slate-900 transition no-underline">
-                <i class="fa-solid fa-xmark mr-2"></i> {{ __("Annuler") }}
-            </a>
-        </div>
+        <x-page-header :title="$species->name" :subtitle="__('Modifier la culture')" icon="fa-book-open" accent="green" :back="route('crop-catalogue.show', $species)" />
     </x-slot>
 
     <div class="py-12">

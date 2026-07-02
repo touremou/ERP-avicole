@@ -1,15 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center gap-4 text-left">
-            <a href="{{ route('employees.show', $employee) }}" class="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-500 hover:text-slate-800 rounded-xl transition-all shadow-sm group no-underline">
-                <i class="fas fa-chevron-left group-hover:-translate-x-1 transition-transform text-xs"></i>
-                <span class="text-[10px] font-black uppercase italic tracking-widest">{{ __("Fiche Agent") }}</span>
-            </a>
-            <div>
-                <h2 class="text-lg font-black text-slate-800 uppercase italic tracking-tighter leading-none">{{ $employee->first_name }} {{ $employee->last_name }}</h2>
-                <p class="text-[9px] font-bold text-blue-500 uppercase mt-1 tracking-widest italic">{{ __("Historique Paie & Congés") }}</p>
-            </div>
-        </div>
+        <x-page-header :title="$employee->first_name . ' ' . $employee->last_name" :subtitle="__('Historique Paie & Congés')" icon="fa-money-check-dollar" accent="blue" :back="route('employees.show', $employee)" />
     </x-slot>
 
     <div class="py-8 italic font-bold">

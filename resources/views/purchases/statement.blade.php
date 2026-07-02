@@ -1,17 +1,12 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between gap-4">
-            <div class="flex items-center gap-3">
-                <x-back />
-                <div>
-                    <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">📄 {{ __("Relevé fournisseur") }}</h2>
-                    <p class="text-[10px] font-black text-rose-500 uppercase tracking-widest mt-1 italic leading-none">{{ $provider->name }} · {{ $provider->provider_id }}</p>
-                </div>
-            </div>
-            <a href="{{ route('purchases.statement.pdf', $provider) }}" class="inline-flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-2xl text-[9px] font-black uppercase tracking-widest hover:bg-rose-50 hover:text-rose-600 transition-all no-underline shadow-sm italic">
-                <i class="fa-solid fa-file-pdf"></i> {{ __("PDF") }}
-            </a>
-        </div>
+        <x-page-header :title="'📄 ' . __('Relevé fournisseur')" :subtitle="$provider->name . ' · ' . $provider->provider_id" icon="fa-file-invoice-dollar" accent="rose" :back="route('purchases.index')">
+            <x-slot name="actions">
+                <a href="{{ route('purchases.statement.pdf', $provider) }}" class="inline-flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-2xl text-[9px] font-black uppercase tracking-widest hover:bg-rose-50 hover:text-rose-600 transition-all no-underline shadow-sm italic">
+                    <i class="fa-solid fa-file-pdf"></i> {{ __("PDF") }}
+                </a>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-10">

@@ -1,17 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center gap-4 text-left">
-            <a href="{{ route('planning.index') }}" class="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-500 hover:text-slate-800 rounded-xl transition-all shadow-sm group no-underline">
-                <i class="fas fa-chevron-left group-hover:-translate-x-1 transition-transform text-xs"></i>
-                <span class="text-[10px] font-black uppercase italic tracking-widest">{{ __("Planning") }}</span>
-            </a>
-            <div>
-                <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">{{ $plan->building->name ?? '—' }}</h2>
-                <p class="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em] mt-2 italic">
-                    {{ ucfirst($plan->batch_type) }} {{ $plan->model_name ? '— '.$plan->model_name : '' }} — {{ number_format($plan->planned_quantity) }} {{ __("sujets") }}
-                </p>
-            </div>
-        </div>
+        <x-page-header :title="$plan->building->name ?? '—'" :subtitle="ucfirst($plan->batch_type) . ($plan->model_name ? ' — ' . $plan->model_name : '') . ' — ' . number_format($plan->planned_quantity) . ' ' . __('sujets')" icon="fa-calendar-days" accent="indigo" :back="route('planning.index')" />
     </x-slot>
 
     <div class="py-10">

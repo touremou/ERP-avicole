@@ -1,14 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center gap-4 text-left">
-            <a href="{{ route('planning.show', $plan) }}" class="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-500 hover:text-slate-800 rounded-xl transition-all shadow-sm group no-underline">
-                <i class="fas fa-chevron-left group-hover:-translate-x-1 transition-transform text-xs"></i>
-                <span class="text-[10px] font-black uppercase italic tracking-widest">{{ __("Retour") }}</span>
-            </a>
-            <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">
-                🐣 {{ __("Activer la bande") }} — {{ $plan->building->name }}
-            </h2>
-        </div>
+        <x-page-header :title="'🐣 ' . __('Activer la bande') . ' — ' . $plan->building->name" icon="fa-calendar-days" accent="indigo" :back="route('planning.show', $plan)" />
     </x-slot>
 
     <div class="py-12 italic font-bold text-slate-700 text-left">
