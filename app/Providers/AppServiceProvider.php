@@ -3,6 +3,9 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Database\Events\MigrationsStarted;
+use Illuminate\Database\Events\MigrationsEnded;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\Facades\Request;
@@ -36,6 +39,26 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // ─── 0. PARITÉ MIGRATIONS MySQL (job « parité prod ») ───
+        // La chaîne de migrations comporte des FK « en avant » : une table
+        // référence une cible créée par une migration au timestamp POSTÉRIEUR
+        // (ex. batches → providers/employees, stock_movements → stocks). SQLite
+        // ignore ce cas, mais MySQL avec foreign_key_checks ON échoue (1824).
+        // On désactive les contrôles FK le temps de la commande `migrate`
+        // (MySQL uniquement) : les contraintes sont posées puis validées dès que
+        // les tables cibles existent. Ces évènements ne se déclenchent QUE pendant
+        // une migration : aucun impact au runtime, ni sur SQLite (suite de tests).
+        Event::listen(MigrationsStarted::class, function () {
+            if (DB::connection()->getDriverName() === 'mysql') {
+                Schema::disableForeignKeyConstraints();
+            }
+        });
+        Event::listen(MigrationsEnded::class, function () {
+            if (DB::connection()->getDriverName() === 'mysql') {
+                Schema::enableForeignKeyConstraints();
+            }
+        });
+
         // ─── 1. DÉTECTION PANNE MySQL ───
         config(['app.database_down' => false]);
 
