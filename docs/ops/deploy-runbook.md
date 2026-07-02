@@ -12,6 +12,14 @@
 - Secrets : `.env` jamais versionné ; `APP_DEBUG=false`, `APP_ENV=production` ;
   `BACKUP_ARCHIVE_PASSWORD` défini ; installeur verrouillé après installation.
 - Extensions PHP 8.3 requises : mbstring, xml, curl, zip, intl, gd, bcmath, sodium, pdo_mysql.
+- **MySQL : InnoDB OBLIGATOIRE** (audit C1). L'app force `engine=InnoDB` à la création des
+  tables, mais VÉRIFIER sur toute base existante/importée :
+  `SELECT engine, COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() GROUP BY engine;`
+  → tout MyISAM rend transactions, verrous et clés étrangères SILENCIEUSEMENT inopérants
+  (constaté sur WAMP dev : `default_storage_engine=MyISAM`). Conversion :
+  `ALTER TABLE x ENGINE=InnoDB` par table (préserve les données, ne recrée PAS les FK
+  historiquement ignorées — un `migrate:fresh` + restauration des données est requis
+  pour retrouver les FK sur une base née en MyISAM).
 
 ## 1. Checklist AVANT tout déploiement
 

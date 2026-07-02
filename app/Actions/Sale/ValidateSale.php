@@ -66,9 +66,13 @@ class ValidateSale
      */
     private function destockItem($item): void
     {
+        // AUDIT C1 (prouvé par drill parallèle) : sans verrou, deux validations
+        // simultanées du même dernier stock passaient TOUTES LES DEUX le
+        // contrôle ci-dessous (sur-vente silencieuse). lockForUpdate sérialise
+        // le contrôle de disponibilité — la transaction de execute() l'englobe.
         $stock = $item->product_id
-            ? Stock::find($item->product_id)
-            : Stock::where('item_name', $item->product_name)->first();
+            ? Stock::lockForUpdate()->find($item->product_id)
+            : Stock::where('item_name', $item->product_name)->lockForUpdate()->first();
 
         if (! $stock) {
             // product_id explicite mais stock disparu → vraie anomalie (FK), on bloque.
@@ -116,7 +120,9 @@ class ValidateSale
      */
     private function destockBatch($item): void
     {
-        $batch = Batch::find($item->batch_id);
+        // AUDIT C1 : même motif que destockItem — le contrôle d'effectif doit
+        // être sérialisé (deux ventes parallèles du dernier sujet, sinon).
+        $batch = Batch::lockForUpdate()->find($item->batch_id);
 
         if (! $batch) {
             throw new Exception("Lot introuvable (id={$item->batch_id}) pour la ligne '{$item->product_name}'.");
