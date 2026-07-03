@@ -283,6 +283,10 @@
                         window.refreshLocalData();
                     }
 
+                    // Audit E2E : jamais de Service Worker sous Dusk — il
+                    // intercepte navigations et POST (cache/file offline) et
+                    // rend les parcours navigateur non déterministes.
+                    @unless (app()->environment('dusk'))
                     if ('serviceWorker' in navigator) {
                         navigator.serviceWorker.register('/sw.js').then((reg) => {
 
@@ -323,6 +327,7 @@
                             window.location.reload();
                         });
                     }
+                    @endunless
                 }, 150);
             });
         </script>

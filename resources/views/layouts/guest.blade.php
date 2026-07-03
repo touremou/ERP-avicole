@@ -29,6 +29,10 @@
             </div>
         </div>
 
+        {{-- Audit E2E : jamais de Service Worker sous Dusk — il intercepte
+             navigations et POST (cache/file offline) et rend les parcours
+             navigateur non déterministes. --}}
+        @unless (app()->environment('dusk'))
         <script>
             // Enregistre le Service Worker dès la page de connexion pour que
             // l'application soit installable (PWA) avant même l'authentification.
@@ -36,5 +40,6 @@
                 navigator.serviceWorker.register('/sw.js').catch(() => {});
             }
         </script>
+        @endunless
     </body>
 </html>

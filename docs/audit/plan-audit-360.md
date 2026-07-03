@@ -323,4 +323,10 @@ Ordonnancement : P0 débloque tout (les tests P1 s'écrivent sur une CI qui les 
 
 **Section 2.2 (concurrence) : C1 ✅ C2 ✅ (contraintes B2) C3 ✅ C4 ✅ (idempotence sync) C5 ✅ — COMPLÈTE.**
 
-**Reste avant prod** : rotation des secrets (manuel) ; **P2-⑫** staging Linux + 5 parcours E2E ; re-drill backup + drills concurrence SUR la machine de pré-prod ; `whatsapp.admin_phone` ; contrôle InnoDB sur toute base importée (runbook).
+**2026-07-03 — P2-⑫ (volet E2E) : 3 parcours navigateur réels VERTS en groupe (×2 runs) :**
+- **Infra** : Laravel Dusk + Chrome 149 headless/ChromeDriver alignés, base MySQL dédiée `erp_dusk`, `.env.dusk.local` (gitignoré), serveur `artisan serve :8010`. Runbook : `docs/tests/e2e-dusk.md`.
+- **Parcours** : ① connexion réelle → dashboard ; ② retour hiérarchique (P&L → `reports.index`, invariant navigation) ; ③ création de lot de bout en bout (formulaire JS complet : auto-code, filtres espèce/type/souche, POST réel, **vérité en base** puis fiche affichée).
+- **2 causes de non-déterminisme diagnostiquées preuve à l'appui** (passaient solo, échouaient en groupe) : (a) le **service worker PWA** prenait le contrôle après le 1er test et interceptait navigations et POST (réponses ~0,1 ms servies du cache, POST jamais reçus par le serveur) → SW jamais enregistré en env `dusk` (garde Blade dans les 2 layouts) ; (b) **clic natif WebDriver perdu en `--headless=new`** après un test dans la même fenêtre (listener capture sur `document` : AUCUN événement reçu) → clics de navigation via `element.click()`/`form.requestSubmit()` (mêmes sémantiques, navigation serveur réelle). Détail + pièges formulaire : runbook E2E.
+- **Périmètre consigné** : 3 parcours sur les 5 visés — les 2 parcours vente (création, validation) sont couverts côté logique par les feature tests HTTP et les drills C1/C3 ; leur version navigateur reste au backlog. Le volet « staging Linux durable » de ⑫ reste côté ops (machine de pré-prod).
+
+**Reste avant prod** : rotation des secrets (manuel) ; **P2-⑫ volet staging Linux** (les 5 parcours E2E : 3 faits, 2 vente au backlog) ; re-drill backup + drills concurrence SUR la machine de pré-prod ; `whatsapp.admin_phone` ; contrôle InnoDB sur toute base importée (runbook).
