@@ -130,7 +130,15 @@
                                         @endif
                                     </div>
                                     <div>
-                                        <p class="font-black text-slate-800 uppercase tracking-tighter leading-none mb-1 text-sm">{{ $batch->code }}</p>
+                                        <p class="font-black text-slate-800 uppercase tracking-tighter leading-none mb-1 text-sm">
+                                            {{ $batch->code }}
+                                            @if($batch->is_under_quarantine ?? false)
+                                                <span class="ml-1 text-[7px] font-black px-2 py-0.5 rounded uppercase italic bg-rose-600 text-white animate-pulse align-middle"
+                                                      title="{{ __('Quarantaine sanitaire active — vente, mutation et collecte suspendues') }}">
+                                                    <i class="fa-solid fa-biohazard mr-0.5"></i>{{ __("Quarantaine") }}
+                                                </span>
+                                            @endif
+                                        </p>
                                         <div class="flex gap-1 items-center">
                                             <span @class([
                                                 'text-[7px] font-black px-2 py-0.5 rounded uppercase italic border',

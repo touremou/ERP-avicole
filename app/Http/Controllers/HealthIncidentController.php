@@ -50,14 +50,19 @@ class HealthIncidentController extends Controller
     public function store(Request $request)
     {
         if (Gate::denies('elevage.C')) return back()->with('error', 'Action non autorisée.');
-        // 1. Validation des données de l'incident
+        // 1. Validation des données de l'incident.
+        //    Symptômes : checklist standardisée (symptom_tags[]) et/ou texte
+        //    libre — au moins l'un des deux (compat API/sync : symptoms seul).
         $validated = $request->validate([
             'batch_id'        => 'required|exists:batches,id',
             'daily_check_id'  => 'nullable|exists:daily_checks,id', // pointage d'origine (traçabilité)
             'mortality_count' => 'required|integer|min:1',
             'severity'        => 'nullable|in:mineur,modere,critique',
-            'symptoms'        => 'required|string|max:1000',
+            'symptom_tags'    => 'required_without:symptoms|nullable|array',
+            'symptom_tags.*'  => 'string|max:100',
+            'symptoms'        => 'required_without:symptom_tags|nullable|string|max:1000',
             'photo'           => 'nullable|image|mimes:jpg,jpeg,png|max:5120',
+            'quarantine_now'  => 'nullable|boolean',
         ]);
 
         // 2. Traitement de la photo d'autopsie
@@ -67,6 +72,17 @@ class HealthIncidentController extends Controller
         }
 
         $batch = Batch::findOrFail($validated['batch_id']);
+
+        // 2.bis Composition des symptômes : tags standardisés puis détails libres.
+        $symptoms = collect($validated['symptom_tags'] ?? [])->implode(', ');
+        if (! empty($validated['symptoms'])) {
+            $symptoms = $symptoms !== '' ? $symptoms . ' — ' . $validated['symptoms'] : $validated['symptoms'];
+        }
+
+        // 2.ter Quarantaine immédiate : geler le lot dès la déclaration, sans
+        //       attendre le diagnostic. Réservé à elevage.M (même niveau que
+        //       toggleQuarantine) — la case est aussi masquée côté vue.
+        $quarantineNow = (bool) ($validated['quarantine_now'] ?? false) && Gate::allows('elevage.M');
 
         // 3. Enregistrement du registre qualitatif (rattaché au LOT, pas seulement
         //    au bâtiment — traçabilité par bande). Pas de déduction d'inventaire ici.
@@ -78,9 +94,11 @@ class HealthIncidentController extends Controller
             'incident_date'   => now()->toDateString(),
             'mortality_count' => $validated['mortality_count'],
             'severity'        => $validated['severity'] ?? HealthIncident::SEVERITY_MODERATE,
-            'symptoms'        => $validated['symptoms'],
+            'symptoms'        => $symptoms,
             'photo_path'      => $photoPath,
             'status'          => HealthIncident::STATUS_PENDING,
+            'is_quarantined'        => $quarantineNow,
+            'quarantine_started_at' => $quarantineNow ? now() : null,
         ]);
 
         // 4. Alerte temps réel (escaladée si gravité critique).
@@ -91,7 +109,13 @@ class HealthIncidentController extends Controller
         }
 
         // 5. Message de succès avec un rappel UX pour l'agent
-        return back()->with('success', 'Alerte sanitaire transmise au vétérinaire. Pensez à déduire cette mortalité lors du relevé quotidien ce soir.');
+        $message = 'Alerte sanitaire transmise au vétérinaire.';
+        if ($quarantineNow) {
+            $message .= " Lot {$batch->code} placé en QUARANTAINE : vente, mutation et collecte suspendues.";
+        }
+        $message .= ' Pensez à déduire cette mortalité lors du relevé quotidien ce soir.';
+
+        return back()->with('success', $message);
     }
     public function diagnose(Request $request, HealthIncident $incident)
     {

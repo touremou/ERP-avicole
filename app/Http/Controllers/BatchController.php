@@ -9,6 +9,7 @@ use App\Models\Protocol;
 use App\Models\Provider;
 use App\Models\ProductionNorm;
 use App\Models\Species;
+use App\Models\Stock;
 use App\Actions\Batch\CreateBatch;
 use App\Actions\Batch\UpdateBatch;
 use App\Actions\Batch\CloseBatch;
@@ -51,6 +52,10 @@ class BatchController extends Controller
 
         // 1. On exclut les lots virtuels (œufs) en exigeant des animaux vivants à l'initialisation
         $query = Batch::with(['building', 'provider', 'employee', 'species', 'productionType'])
+            // Badge quarantaine sans N+1 : booléen dérivé des incidents ouverts.
+            ->withExists(['healthIncidents as is_under_quarantine' => fn ($q) => $q
+                ->where('is_quarantined', true)
+                ->where('status', '!=', \App\Models\HealthIncident::STATUS_RESOLVED)])
             ->active()
             ->live();
 
@@ -285,7 +290,29 @@ class BatchController extends Controller
             ->orderBy('model_name')
             ->get();
 
-        return view('batches.show', compact('batch', 'buildings', 'protocols', 'providers', 'stats', 'feedAdvice', 'batchAdvisories', 'feedAutonomy', 'normModels', 'weightCurve'));
+        // Stocks d'aliment par phase du secteur du lot — précalculés ici
+        // (la vue ne fait plus de requête SQL dans sa boucle d'affichage).
+        $feedStocks = collect($batch->feedPhases())->map(function (string $phaseName) use ($batch) {
+            $stockItem = Stock::where('item_name', $phaseName)
+                    ->where('category', Stock::CAT_CONSO)
+                    ->first()
+                ?? Stock::where('item_name', 'LIKE', "%{$phaseName}%")
+                    ->where('category', Stock::CAT_CONSO)
+                    ->first();
+
+            $qty   = $stockItem ? (float) $stockItem->current_quantity : 0.0;
+            $isSac = $stockItem && $stockItem->unit === 'Sac';
+
+            return [
+                'label'        => str_replace($batch->feedSector() . ' ', '', $phaseName),
+                'exists'       => (bool) $stockItem,
+                'qty'          => $qty,
+                'is_sac'       => $isSac,
+                'available_kg' => $isSac ? $qty * 50 : $qty,
+            ];
+        });
+
+        return view('batches.show', compact('batch', 'buildings', 'protocols', 'providers', 'stats', 'feedAdvice', 'batchAdvisories', 'feedAutonomy', 'normModels', 'weightCurve', 'feedStocks'));
     }
 
     /**

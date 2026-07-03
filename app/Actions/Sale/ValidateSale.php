@@ -132,6 +132,16 @@ class ValidateSale
             throw new Exception("Le lot {$batch->code} n'est pas actif (statut: {$batch->status}).");
         }
 
+        // Biosécurité : lot sous quarantaine sanitaire → vente à la tête
+        // interdite (délai d'attente médicamenteux). Levée via le module Santé.
+        if ($quarantine = $batch->activeQuarantine()) {
+            throw new Exception(
+                "Le lot {$batch->code} est en QUARANTAINE sanitaire"
+                . ($quarantine->quarantine_started_at ? ' depuis le ' . $quarantine->quarantine_started_at->format('d/m/Y') : '')
+                . " — vente interdite jusqu'à la levée (incident santé n°{$quarantine->id})."
+            );
+        }
+
         $qty = (int) $item->quantity;
         if ($batch->current_quantity < $qty) {
             throw new Exception(

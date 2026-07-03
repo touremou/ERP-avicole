@@ -86,6 +86,10 @@
         // Suivi de la ponte : piloté par le type de production de l'espèce.
         $showPonte = $batch->tracksEggs();
 
+        // Quarantaine sanitaire active (incident ouvert) : bannière + gel des
+        // actions vente/mutation/collecte (les gardes serveur font autorité).
+        $quarantine = $batch->activeQuarantine();
+
         // Carte fumier : affichée seulement si un ramassage a été enregistré.
         $showManure = ($stats['manure_collected_kg'] ?? 0) > 0;
 
@@ -109,6 +113,31 @@
             <div class="mb-6 p-4 bg-emerald-50 border-l-4 border-emerald-600 rounded-2xl shadow-sm text-left italic">
                 <p class="text-[10px] font-black text-emerald-400 uppercase tracking-widest italic leading-none mb-1">{{ __("Opération réussie") }}</p>
                 <p class="text-sm font-bold text-emerald-700">{{ session('success') }}</p>
+            </div>
+        @endif
+
+        @if ($quarantine)
+            <div class="mb-6 p-5 bg-rose-600 rounded-2xl shadow-lg text-left italic flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div class="flex items-center gap-4">
+                    <div class="w-11 h-11 bg-white/15 rounded-xl flex items-center justify-center text-white shrink-0">
+                        <i class="fa-solid fa-biohazard text-lg animate-pulse"></i>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-black text-rose-100 uppercase tracking-widest leading-none mb-1.5">
+                            {{ __("Quarantaine sanitaire") }}
+                            @if($quarantine->quarantine_started_at)
+                                — {{ __("depuis le") }} {{ $quarantine->quarantine_started_at->format('d/m/Y') }}
+                            @endif
+                        </p>
+                        <p class="text-sm font-black text-white leading-tight">
+                            {{ __("Vente, mutation et collecte suspendues jusqu'à la levée par le circuit santé.") }}
+                        </p>
+                    </div>
+                </div>
+                <a href="{{ route('health.incidents.show', $quarantine->id) }}"
+                   class="shrink-0 px-5 py-3 bg-white text-rose-600 rounded-xl text-[9px] font-black uppercase tracking-widest italic no-underline hover:bg-rose-50 transition-all text-center">
+                    <i class="fa-solid fa-file-medical mr-1"></i> {{ __("Voir l'incident") }} n°{{ $quarantine->id }}
+                </a>
             </div>
         @endif
 
@@ -136,6 +165,11 @@
                     @endif
                     {{ $batch->status }}
                 </div>
+                @if($quarantine)
+                <div class="flex items-center gap-1.5 px-3 py-1 rounded-full text-[8px] md:text-[9px] font-black uppercase tracking-widest italic shadow-sm shrink-0 bg-rose-600 text-white animate-pulse">
+                    <i class="fa-solid fa-biohazard"></i> {{ __("Quarantaine") }}
+                </div>
+                @endif
             </div>
 
             <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-[9px] md:text-[10px] font-black uppercase tracking-widest italic text-slate-400">
@@ -154,79 +188,103 @@
         </div>
     </div>
 
-    {{-- ZONE 2 & 3 : ACTIONS --}}
-    <div class="flex flex-col lg:flex-row items-stretch lg:items-center gap-4 w-full xl:w-auto">
+    {{-- ZONE 2 : ACTIONS — 3 gestes terrain visibles + menu « Gérer » replié.
+         flex-wrap (pas de défilement caché) : plus aucun débordement d'écran. --}}
+    <div class="flex flex-wrap items-center gap-2 md:gap-3 w-full xl:w-auto xl:justify-end">
         @if($batch->isActive())
 
-            {{-- Actions Administratives (Grisées) --}}
-            <div class="flex items-center justify-between sm:justify-start bg-white p-1.5 rounded-2xl md:rounded-[1.5rem] border border-slate-200 shadow-sm w-full lg:w-auto overflow-x-auto hide-scrollbar shrink-0">
-                @can('elevage.M')
-                <a href="{{ route('batches.edit', $batch->id) }}"
-                   class="p-3 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all shrink-0"
-                   title="{{ __("Modifier les paramètres") }}">
-                    <i class="fa-solid fa-gear"></i>
+            @can('elevage.C')
+            <a href="{{ route('daily-checks.create', ['batch_id' => $batch->id]) }}"
+               class="flex items-center justify-center gap-2 px-4 py-3 md:px-6 md:py-4 bg-blue-600 text-white rounded-xl md:rounded-2xl font-black text-[9px] md:text-[10px] uppercase italic hover:bg-blue-500 transition-all shadow-lg no-underline whitespace-nowrap shrink-0">
+                <i class="fa-solid fa-clipboard-check text-blue-200"></i>
+                <span>{{ __("Suivi") }}</span>
+            </a>
+
+            <a href="{{ route('health.create', ['batch_id' => $batch->id]) }}"
+               class="flex items-center justify-center gap-2 px-4 py-3 md:px-6 md:py-4 bg-rose-600 text-white rounded-xl md:rounded-2xl font-black text-[9px] md:text-[10px] uppercase italic hover:bg-rose-500 transition-all shadow-lg no-underline whitespace-nowrap shrink-0">
+                <i class="fa-solid fa-heart-pulse text-rose-200"></i>
+                <span>{{ __("Santé") }}</span>
+            </a>
+
+            {{-- Déclaration d'anomalie en 30 s depuis le constat (modale partagée) --}}
+            <button type="button" x-data @click="$dispatch('open-pathology-modal')"
+                    class="flex items-center justify-center gap-2 px-4 py-3 md:px-6 md:py-4 bg-white text-rose-600 border-2 border-rose-200 rounded-xl md:rounded-2xl font-black text-[9px] md:text-[10px] uppercase italic hover:bg-rose-600 hover:text-white hover:border-rose-600 transition-all shadow-lg cursor-pointer whitespace-nowrap shrink-0">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                <span>{{ __("Anomalie") }}</span>
+            </button>
+
+            @if($showPonte)
+                @if($quarantine)
+                <span class="flex items-center justify-center gap-2 px-4 py-3 md:px-6 md:py-4 bg-rose-50 text-rose-500 border border-rose-200 rounded-xl md:rounded-2xl font-black text-[9px] md:text-[10px] uppercase italic shadow-lg whitespace-nowrap shrink-0 cursor-not-allowed"
+                      title="{{ __('Quarantaine sanitaire : collecte suspendue jusqu\'à la levée') }}">
+                    <i class="fa-solid fa-biohazard"></i>
+                    <span>{{ __("Quarantaine") }}</span>
+                </span>
+                @elseif($batch->canCollectEggs())
+                <a href="{{ route('egg-productions.create', ['batch_id' => $batch->id]) }}"
+                   class="flex items-center justify-center gap-2 px-4 py-3 md:px-6 md:py-4 bg-emerald-500 text-white rounded-xl md:rounded-2xl font-black text-[9px] md:text-[10px] uppercase italic hover:bg-emerald-400 transition-all shadow-lg no-underline whitespace-nowrap shrink-0">
+                    <i class="fa-solid fa-egg text-emerald-200"></i>
+                    <span>{{ __("Collecte") }}</span>
                 </a>
-
-                <div class="w-px h-6 bg-slate-200 mx-1 shrink-0"></div>
-
-                <button onclick="document.getElementById('modal-transfer').classList.remove('hidden')"
-                        class="flex flex-1 sm:flex-none items-center justify-center gap-2 px-4 md:px-5 py-3 bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white rounded-xl font-black text-[9px] md:text-[10px] uppercase tracking-widest transition-all italic border-none cursor-pointer shrink-0">
-                    <i class="fa-solid fa-right-left"></i> {{ __("Mutation") }}
-                </button>
-
-                <a href="{{ route('batches.close_form', $batch->id) }}"
-                   class="flex flex-1 sm:flex-none items-center justify-center gap-2 px-4 md:px-5 py-3 text-slate-400 hover:text-orange-600 hover:bg-orange-50 rounded-xl font-black text-[9px] md:text-[10px] uppercase tracking-widest transition-all italic no-underline shrink-0">
-                    <i class="fa-solid fa-flag-checkered"></i> {{ __("Clôture") }}
-                </a>
-                @endcan
-
-                <a href="{{ route('batches.label', $batch->id) }}" target="_blank"
-                   class="flex flex-1 sm:flex-none items-center justify-center gap-2 px-4 md:px-5 py-3 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-xl font-black text-[9px] md:text-[10px] uppercase tracking-widest transition-all italic no-underline shrink-0"
-                   title="{{ __("Imprimer l'étiquette QR de traçabilité") }}">
-                    <i class="fa-solid fa-qrcode"></i> {{ __("Étiquette") }}
-                </a>
-            </div>
-
-            {{-- Actions Quotidiennes (ligne unique, défilement horizontal) --}}
-            <div class="flex items-center gap-2 md:gap-3 w-full lg:w-auto overflow-x-auto hide-scrollbar">
-                @can('elevage.C')
-
-                <button type="button" onclick="event.stopPropagation(); openFeedModal()"
-                        class="flex items-center justify-center gap-2 px-3 py-3 md:px-6 md:py-4 bg-slate-900 text-white rounded-xl md:rounded-2xl font-black text-[9px] md:text-[10px] uppercase italic hover:bg-orange-500 transition-all shadow-lg border-none cursor-pointer group whitespace-nowrap shrink-0">
-                    <i class="fa-solid fa-truck-ramp-box text-orange-400 group-hover:text-white transition-colors"></i>
-                    <span>{{ __("Achat direct") }}</span>
-                </button>
-
-                <a href="{{ route('daily-checks.create', ['batch_id' => $batch->id]) }}"
-                   class="flex items-center justify-center gap-2 px-3 py-3 md:px-6 md:py-4 bg-blue-600 text-white rounded-xl md:rounded-2xl font-black text-[9px] md:text-[10px] uppercase italic hover:bg-blue-500 transition-all shadow-lg no-underline whitespace-nowrap shrink-0">
-                    <i class="fa-solid fa-clipboard-check text-blue-200"></i>
-                    <span>{{ __("Suivi") }}</span>
-                </a>
-
-                <a href="{{ route('health.create', ['batch_id' => $batch->id]) }}"
-                   class="flex items-center justify-center gap-2 px-3 py-3 md:px-6 md:py-4 bg-rose-600 text-white rounded-xl md:rounded-2xl font-black text-[9px] md:text-[10px] uppercase italic hover:bg-rose-500 transition-all shadow-lg no-underline whitespace-nowrap shrink-0">
-                    <i class="fa-solid fa-heart-pulse text-rose-200"></i>
-                    <span>{{ __("Santé") }}</span>
-                </a>
-
-                @if($showPonte)
-                    @if($batch->canCollectEggs())
-                    <a href="{{ route('egg-productions.create', ['batch_id' => $batch->id]) }}"
-                       class="flex items-center justify-center gap-2 px-3 py-3 md:px-6 md:py-4 bg-emerald-500 text-white rounded-xl md:rounded-2xl font-black text-[9px] md:text-[10px] uppercase italic hover:bg-emerald-400 transition-all shadow-lg no-underline whitespace-nowrap shrink-0">
-                        <i class="fa-solid fa-egg text-emerald-200"></i>
-                        <span>{{ __("Collecte") }}</span>
-                    </a>
-                    @else
-                    {{-- Garde-fou zootechnique : lot pas encore en âge de pondre --}}
-                    <span class="flex items-center justify-center gap-2 px-3 py-3 md:px-6 md:py-4 bg-amber-50 text-amber-600 border border-amber-200 rounded-xl md:rounded-2xl font-black text-[9px] md:text-[10px] uppercase italic shadow-lg whitespace-nowrap shrink-0 cursor-default"
-                          title="{{ __('Phase') }} : {{ $batch->current_phase }} — {{ __('entrée en ponte vers') }} {{ (int) ceil($batch->minLayingAgeDays() / 7) }} {{ __('sem.') }}">
-                        <i class="fa-solid fa-hourglass-half text-amber-400"></i>
-                        <span>{{ __("Pas en âge") }}</span>
-                    </span>
-                    @endif
+                @else
+                {{-- Garde-fou zootechnique : lot pas encore en âge de pondre --}}
+                <span class="flex items-center justify-center gap-2 px-4 py-3 md:px-6 md:py-4 bg-amber-50 text-amber-600 border border-amber-200 rounded-xl md:rounded-2xl font-black text-[9px] md:text-[10px] uppercase italic shadow-lg whitespace-nowrap shrink-0 cursor-default"
+                      title="{{ __('Phase') }} : {{ $batch->current_phase }} — {{ __('entrée en ponte vers') }} {{ (int) ceil($batch->minLayingAgeDays() / 7) }} {{ __('sem.') }}">
+                    <i class="fa-solid fa-hourglass-half text-amber-400"></i>
+                    <span>{{ __("Pas en âge") }}</span>
+                </span>
                 @endif
+            @endif
+            @endcan
 
-                @endcan
+            {{-- Menu replié : gestion & documents (actions non quotidiennes) --}}
+            <div class="relative shrink-0">
+                <button type="button" onclick="toggleManageMenu(event)"
+                        class="flex items-center justify-center gap-2 px-4 py-3 md:px-5 md:py-4 bg-white text-slate-600 border border-slate-200 rounded-xl md:rounded-2xl font-black text-[9px] md:text-[10px] uppercase tracking-widest italic hover:bg-slate-50 transition-all shadow-sm cursor-pointer whitespace-nowrap">
+                    <i class="fa-solid fa-sliders text-slate-400"></i>
+                    <span>{{ __("Gérer") }}</span>
+                    <i class="fa-solid fa-chevron-down text-[8px] text-slate-300"></i>
+                </button>
+
+                <div id="manage-menu" class="hidden absolute right-0 top-full mt-2 w-64 bg-white rounded-2xl border border-slate-100 shadow-2xl z-50 p-2 text-left italic">
+                    @can('elevage.C')
+                    <button type="button" onclick="document.getElementById('manage-menu').classList.add('hidden'); openFeedModal()"
+                            class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-orange-50 hover:text-orange-600 transition-all border-none bg-transparent cursor-pointer text-left">
+                        <i class="fa-solid fa-truck-ramp-box text-orange-400 w-4"></i> {{ __("Achat direct aliment") }}
+                    </button>
+                    @endcan
+
+                    @can('elevage.M')
+                    <a href="{{ route('batches.edit', $batch->id) }}"
+                       class="flex items-center gap-3 px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-blue-50 hover:text-blue-600 transition-all no-underline">
+                        <i class="fa-solid fa-gear text-slate-400 w-4"></i> {{ __("Modifier les paramètres") }}
+                    </a>
+
+                    @if($quarantine)
+                    <span class="flex items-center gap-3 px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-300 cursor-not-allowed"
+                          title="{{ __('Quarantaine sanitaire : mutation interdite (risque de propagation)') }}">
+                        <i class="fa-solid fa-lock text-slate-300 w-4"></i> {{ __("Mutation") }}
+                    </span>
+                    @else
+                    <button type="button" onclick="document.getElementById('manage-menu').classList.add('hidden'); document.getElementById('modal-transfer').classList.remove('hidden')"
+                            class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-rose-50 hover:text-rose-600 transition-all border-none bg-transparent cursor-pointer text-left">
+                        <i class="fa-solid fa-right-left text-rose-400 w-4"></i> {{ __("Mutation") }}
+                    </button>
+                    @endif
+
+                    <a href="{{ route('batches.close_form', $batch->id) }}"
+                       class="flex items-center gap-3 px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-orange-50 hover:text-orange-600 transition-all no-underline">
+                        <i class="fa-solid fa-flag-checkered text-orange-400 w-4"></i> {{ __("Clôturer le lot") }}
+                    </a>
+
+                    <div class="h-px bg-slate-100 my-1 mx-2"></div>
+                    @endcan
+
+                    <a href="{{ route('batches.label', $batch->id) }}" target="_blank"
+                       class="flex items-center gap-3 px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-all no-underline">
+                        <i class="fa-solid fa-qrcode text-slate-400 w-4"></i> {{ __("Étiquette QR") }}
+                    </a>
+                </div>
             </div>
 
         @endif
@@ -632,39 +690,24 @@
                 </div>
             </div>
 
-            {{-- STOCKS DYNAMIQUES (phases d'aliment du secteur du lot) --}}
+            {{-- STOCKS DYNAMIQUES (phases d'aliment du secteur du lot) —
+                 données précalculées dans BatchController::show ($feedStocks). --}}
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 text-left">
-                @foreach($batch->feedPhases() as $phaseName)
-                    @php
-                        $stockItem = \App\Models\Stock::where('item_name', $phaseName)
-                                        ->where('category', \App\Models\Stock::CAT_CONSO)
-                                        ->first();
-
-                        if (!$stockItem) {
-                            $stockItem = \App\Models\Stock::where('item_name', 'LIKE', "%$phaseName%")
-                                            ->where('category', \App\Models\Stock::CAT_CONSO)
-                                            ->first();
-                        }
-                        $qty = $stockItem ? (float)$stockItem->current_quantity : 0;
-                        $unit = $stockItem ? $stockItem->unit : 'KG';
-                        $isSac = ($unit === 'Sac');
-                        $availableKg = $isSac ? ($qty * 50) : $qty;
-                    @endphp
-
+                @foreach($feedStocks as $feedStock)
                     <div @class([
                         'bg-white p-6 rounded-[2.5rem] border shadow-sm relative overflow-hidden group transition-all',
-                        'border-emerald-200 bg-emerald-50/20' => $stockItem && $stockItem->current_quantity > 0,
-                        'border-slate-100 opacity-60' => !$stockItem || $stockItem->current_quantity <= 0
+                        'border-emerald-200 bg-emerald-50/20' => $feedStock['exists'] && $feedStock['qty'] > 0,
+                        'border-slate-100 opacity-60' => !$feedStock['exists'] || $feedStock['qty'] <= 0
                     ])>
                         <p class="text-[8px] uppercase text-slate-400 mb-2 tracking-widest italic font-black">
-                            {{ str_replace($batch->feedSector() . ' ', '', $phaseName) }}
+                            {{ $feedStock['label'] }}
                         </p>
-                        @if($stockItem)
+                        @if($feedStock['exists'])
                             <h4 class="text-xl font-black text-slate-800 leading-none tracking-tighter">
-                                {{ number_format($availableKg, 1) }} <small class="text-[10px] text-slate-400">kg</small>
+                                {{ number_format($feedStock['available_kg'], 1) }} <small class="text-[10px] text-slate-400">kg</small>
                             </h4>
-                            <p class="text-[7px] {{ $isSac ? 'text-emerald-600' : 'text-blue-500' }} mt-2 font-black uppercase italic">
-                                {{ $isSac ? __('Soit') . ' ' . number_format($qty, 1) . ' ' . __('Sacs') : __('Stock en Vrac') }}
+                            <p class="text-[7px] {{ $feedStock['is_sac'] ? 'text-emerald-600' : 'text-blue-500' }} mt-2 font-black uppercase italic">
+                                {{ $feedStock['is_sac'] ? __('Soit') . ' ' . number_format($feedStock['qty'], 1) . ' ' . __('Sacs') : __('Stock en Vrac') }}
                             </p>
                         @else
                             <h4 class="text-sm font-black text-slate-300 italic leading-none">{{ __("Non créé") }}</h4>
@@ -1015,17 +1058,37 @@
     @include('batches.partials.feed-modal')
     @endcan
 
+    {{-- MODALE DÉCLARATION D'ANOMALIE (lot verrouillé sur la fiche) --}}
+    @can('elevage.C')
+    @include('health.partials.declare-incident', ['fixedBatch' => $batch])
+    @endcan
+
     @include('batches.partials.building-compatibility')
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
         // GESTION DE LA MODALE STOCK/ALIMENT
-        function openFeedModal() { 
-            document.getElementById('feedModal').classList.remove('hidden'); 
+        function openFeedModal() {
+            document.getElementById('feedModal').classList.remove('hidden');
         }
-        function closeFeedModal() { 
-            document.getElementById('feedModal').classList.add('hidden'); 
+        function closeFeedModal() {
+            document.getElementById('feedModal').classList.add('hidden');
         }
+
+        // MENU « GÉRER » (header) : toggle + fermeture au clic extérieur / Échap
+        function toggleManageMenu(e) {
+            e.stopPropagation();
+            document.getElementById('manage-menu')?.classList.toggle('hidden');
+        }
+        document.addEventListener('click', function (e) {
+            const menu = document.getElementById('manage-menu');
+            if (menu && !menu.classList.contains('hidden') && !menu.contains(e.target)) {
+                menu.classList.add('hidden');
+            }
+        });
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') document.getElementById('manage-menu')?.classList.add('hidden');
+        });
         
         document.addEventListener('DOMContentLoaded', function() {
             

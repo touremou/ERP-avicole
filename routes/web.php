@@ -427,6 +427,9 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/', 'index')->name('index')->middleware('can:L');
         Route::get('/create', 'create')->name('create')->middleware('can:C');
         Route::post('/store', 'store')->name('store')->middleware('can:C');
+        // Feuille de tournée multi-lots (déclarée AVANT les routes {eggProduction})
+        Route::get('/tour', 'tour')->name('tour')->middleware('can:C');
+        Route::post('/tour', 'tourStore')->name('tour.store')->middleware('can:C');
         Route::get('/{eggProduction}/tri', 'tri')->name('tri')->middleware('can:L');
         Route::get('/{eggProduction}/label', [TraceabilityController::class, 'eggLabel'])->name('label')->middleware('can:L');
         Route::get('/{eggProduction}/edit', 'edit')->name('edit')->middleware('can:M');

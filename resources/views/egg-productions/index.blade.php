@@ -2,6 +2,11 @@
     <x-slot name="header">
         <x-page-header :title="__('🥚 Dashboard Production')" :subtitle="__('Gestion des Flux & Inventaire')" icon="fa-layer-group" accent="emerald">
             <x-slot name="actions">
+                @can('production.C')
+                <a href="{{ route('egg-productions.tour') }}" class="flex-1 md:flex-none text-center bg-emerald-500 text-white px-4 py-2 md:px-5 md:py-2.5 rounded-xl md:rounded-2xl text-[9px] md:text-[10px] font-black uppercase italic hover:bg-emerald-400 transition-all shadow-lg no-underline">
+                    <i class="fa-solid fa-route mr-1 md:mr-2 text-emerald-100"></i> {{ __("Tournée du jour") }}
+                </a>
+                @endcan
                 @can('production.L')
                 <a href="{{ route('stocks.index', ['category' => 'oeufs']) }}" class="flex-1 md:flex-none text-center bg-white border border-slate-200 text-slate-700 px-4 py-2 md:px-5 md:py-2.5 rounded-xl md:rounded-2xl text-[9px] md:text-[10px] font-black uppercase italic hover:bg-slate-50 transition-all shadow-sm no-underline">
                     <i class="fa-solid fa-box-open mr-1 md:mr-2 text-emerald-500"></i> {{ __("Magasin") }}

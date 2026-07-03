@@ -232,6 +232,31 @@ class Batch extends Model
         return $this->hasMany(HealthIncident::class);
     }
 
+    /**
+     * Incident sanitaire OUVERT plaçant ce lot en quarantaine (null sinon).
+     *
+     * Biosécurité : tant qu'une quarantaine est active, la vente à la tête
+     * (ValidateSale), la mutation (TransferBatch) et la collecte d'œufs
+     * (RecordEggCollection) sont refusées CÔTÉ SERVEUR. La levée passe
+     * exclusivement par le circuit santé (résolution ou toggle incident).
+     */
+    public function activeQuarantine(): ?HealthIncident
+    {
+        return $this->healthIncidents()
+            ->where('is_quarantined', true)
+            ->where('status', '!=', HealthIncident::STATUS_RESOLVED)
+            ->latest('quarantine_started_at')
+            ->first();
+    }
+
+    public function isQuarantined(): bool
+    {
+        return $this->healthIncidents()
+            ->where('is_quarantined', true)
+            ->where('status', '!=', HealthIncident::STATUS_RESOLVED)
+            ->exists();
+    }
+
     public function feedPurchases(): HasMany
     {
         return $this->hasMany(FeedPurchase::class);
