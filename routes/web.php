@@ -793,6 +793,7 @@ Route::middleware(['auth'])->group(function () {
         // Ordres d'abattage
         Route::get('/orders/create', 'createOrder')->name('orders.create')->middleware('can:C');
         Route::post('/orders', 'storeOrder')->name('orders.store')->middleware('can:C');
+        Route::patch('/orders/{order}/cancel', 'cancelOrder')->name('orders.cancel')->middleware('can:M');
 
         // Exécution abattage
         Route::get('/orders/{order}/execute', 'showExecuteForm')->name('execute.form')->middleware('can:M');
@@ -805,6 +806,7 @@ Route::middleware(['auth'])->group(function () {
         // Transformation
         Route::get('/transform', 'showTransformForm')->name('transform.form')->middleware('can:C');
         Route::post('/transform', 'storeTransformation')->name('transform.store')->middleware('can:C');
+        Route::patch('/transform/{transformation}/complete', 'completeTransformation')->name('transform.complete')->middleware('can:M');
 
         // Stock produits finis
         Route::get('/finished-products', 'finishedProducts')->name('finished')->middleware('can:L');

@@ -177,6 +177,51 @@
                 <span class="text-[8px] font-black text-slate-400 uppercase flex items-center gap-1"><i class="fa-solid fa-scale-balanced text-amber-400"></i> {{ __("Ajuster") }}</span>
                 <span class="text-[8px] font-black text-slate-400 uppercase flex items-center gap-1"><i class="fa-solid fa-trash text-red-400"></i> {{ __("Éliminer") }}</span>
             </div>
+
+            {{-- JOURNAL DES AJUSTEMENTS & ÉLIMINATIONS (traçabilité en base) --}}
+            @if($recentAdjustments->isNotEmpty())
+            <div class="mt-8 bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
+                <div class="px-6 py-4 bg-slate-50 border-b border-slate-100">
+                    <h3 class="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
+                        <i class="fa-solid fa-clipboard-list text-amber-500"></i> {{ __("Journal des corrections & destructions (10 dernières)") }}
+                    </h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="text-[8px] font-black uppercase text-slate-400 border-b border-slate-50 italic">
+                                <th class="px-6 py-3">{{ __("Date") }}</th>
+                                <th class="px-6 py-3">{{ __("Produit") }}</th>
+                                <th class="px-6 py-3 text-center">{{ __("Type") }}</th>
+                                <th class="px-6 py-3 text-center">{{ __("Avant → Après") }}</th>
+                                <th class="px-6 py-3">{{ __("Motif") }}</th>
+                                <th class="px-6 py-3">{{ __("Opérateur") }}</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-50 text-[10px]">
+                            @foreach($recentAdjustments as $adj)
+                            <tr>
+                                <td class="px-6 py-3 text-slate-500 font-black">{{ $adj->created_at->format('d/m/Y H:i') }}</td>
+                                <td class="px-6 py-3 text-slate-800 font-black uppercase">{{ $adj->finishedProduct?->product_name ?? '—' }}</td>
+                                <td class="px-6 py-3 text-center">
+                                    <span @class([
+                                        'text-[7px] px-2 py-1 rounded-md uppercase font-black italic',
+                                        'bg-amber-100 text-amber-700' => $adj->type === \App\Models\FinishedProductAdjustment::TYPE_ADJUSTMENT,
+                                        'bg-red-100 text-red-700'     => $adj->type === \App\Models\FinishedProductAdjustment::TYPE_DISPOSAL,
+                                    ])>{{ $adj->type === \App\Models\FinishedProductAdjustment::TYPE_DISPOSAL ? __('Élimination') : __('Ajustement') }}</span>
+                                </td>
+                                <td class="px-6 py-3 text-center font-black {{ $adj->delta_kg < 0 ? 'text-red-600' : 'text-emerald-600' }}">
+                                    {{ number_format((float) $adj->old_kg, 1) }} → {{ number_format((float) $adj->new_kg, 1) }} kg
+                                </td>
+                                <td class="px-6 py-3 text-slate-500 font-bold italic">{{ $adj->reason }}</td>
+                                <td class="px-6 py-3 text-slate-400 font-black uppercase">{{ $adj->user?->name ?? '—' }}</td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            @endif
         </div>
 
         {{-- ═══ MODAL ÉDITION (prix, péremption, seuil) ═══ --}}

@@ -38,7 +38,13 @@ class SlaughterController extends Controller
         $finishedProducts = FinishedProduct::where('current_quantity_kg', '>', 0)->get();
         $expiring = FinishedProduct::expiringSoon()->get();
 
-        return view('slaughter.dashboard', compact('kpi', 'pendingOrders', 'recentResults', 'finishedProducts', 'expiring'));
+        // Transformations engagées sans pesée de sortie (fumage/grillage en
+        // cours) : à terminer depuis le dashboard dès la sortie du fumoir.
+        $ongoingTransformations = Transformation::where('status', 'en_cours')
+            ->latest('production_date')
+            ->get();
+
+        return view('slaughter.dashboard', compact('kpi', 'pendingOrders', 'recentResults', 'finishedProducts', 'expiring', 'ongoingTransformations'));
     }
 
     // ──────────────────────────────────────────────
@@ -51,9 +57,14 @@ class SlaughterController extends Controller
 
         // Tous les lots actifs sont éligibles à l'abattage/la transformation,
         // quelle que soit l'espèce (volaille, ruminants, porcins, lapins...).
+        // Les lots en quarantaine restent listés mais VERROUILLÉS (le refus
+        // serveur est dans storeOrder + executeSlaughter).
         $batches = Batch::active()
             ->where('current_quantity', '>', 0)
             ->with(['building', 'productionType'])
+            ->withExists(['healthIncidents as is_under_quarantine' => fn ($q) => $q
+                ->where('is_quarantined', true)
+                ->where('status', '!=', \App\Models\HealthIncident::STATUS_RESOLVED)])
             ->get()
             ->sortBy(fn (Batch $batch) => $batch->type . $batch->code)
             ->values();
@@ -82,6 +93,16 @@ class SlaughterController extends Controller
             ])->withInput();
         }
 
+        // Biosécurité : pas d'ordre d'abattage sur un lot en quarantaine
+        // (délai d'attente médicamenteux — la garde est re-jouée sous verrou
+        // à l'exécution, une quarantaine pouvant être posée entre-temps).
+        if ($quarantine = $batch->activeQuarantine()) {
+            return back()->withErrors([
+                'batch_id' => "Le lot {$batch->code} est en QUARANTAINE sanitaire (incident n°{$quarantine->id}) — "
+                    . "abattage interdit jusqu'à la levée par le circuit santé."
+            ])->withInput();
+        }
+
         SlaughterOrder::create(array_merge($validated, [
             'order_number' => SlaughterOrder::generateNumber(), // La gestion du préfixe se fera dans le Model
             'requested_by' => Auth::id(),
@@ -89,6 +110,35 @@ class SlaughterController extends Controller
 
         return redirect()->route('slaughter.dashboard')
             ->with('success', "Ordre d'abattage créé — {$validated['planned_quantity']} sujets du lot {$batch->code}.");
+    }
+
+    /**
+     * Annule un ordre encore planifié (erreur de saisie, changement de plan).
+     * Un ordre exécuté ne s'annule pas — l'abattage est irréversible.
+     */
+    public function cancelOrder(SlaughterOrder $order)
+    {
+        if (Gate::denies('abattoir.M')) return back()->with('error', 'Action non autorisée.');
+
+        try {
+            \Illuminate\Support\Facades\DB::transaction(function () use ($order) {
+                $order = SlaughterOrder::lockForUpdate()->findOrFail($order->id);
+
+                if ($order->status !== 'planifie') {
+                    throw new \Exception("Seul un ordre planifié peut être annulé (statut : {$order->status}).");
+                }
+
+                $order->update([
+                    'status' => 'annule',
+                    'notes'  => trim(($order->notes ? $order->notes . ' | ' : '')
+                        . '[ANNULÉ par ' . (Auth::user()?->name ?? 'Système') . ' le ' . now()->format('d/m/Y H:i') . ']'),
+                ]);
+            });
+        } catch (\Exception $e) {
+            return back()->with('error', $e->getMessage());
+        }
+
+        return back()->with('success', "Ordre {$order->order_number} annulé.");
     }
 
     // ──────────────────────────────────────────────
@@ -266,6 +316,30 @@ class SlaughterController extends Controller
         }
     }
 
+    /**
+     * Termine une transformation « en cours » : pesée de sortie connue
+     * (fumage/grillage terminé) → rendement + entrée en stock produits finis.
+     */
+    public function completeTransformation(Request $request, Transformation $transformation, SlaughterService $service)
+    {
+        if (Gate::denies('abattoir.M')) return back()->with('error', 'Action non autorisée.');
+
+        $validated = $request->validate([
+            'output_kg' => 'required|numeric|min:0.1',
+        ]);
+
+        try {
+            $result = $service->completeTransformation($transformation, (float) $validated['output_kg']);
+
+            return back()->with('success',
+                "Transformation {$result->batch_number} terminée — rendement {$result->yield_percent} %, "
+                . number_format((float) $result->output_kg, 1) . " kg entrés en stock."
+            );
+        } catch (\Exception $e) {
+            return back()->with('error', $e->getMessage())->withInput();
+        }
+    }
+
     // ──────────────────────────────────────────────
     // STOCK PRODUITS FINIS
     // ──────────────────────────────────────────────
@@ -277,6 +351,12 @@ class SlaughterController extends Controller
         $products = FinishedProduct::orderBy('product_type')->get();
         $expiring = FinishedProduct::expiringSoon()->get();
         $lowStock = FinishedProduct::lowStock()->get();
+
+        // Journal des dernières corrections/destructions (traçabilité).
+        $recentAdjustments = \App\Models\FinishedProductAdjustment::with(['finishedProduct', 'user'])
+            ->latest()
+            ->take(10)
+            ->get();
 
         $kpi = [
             'total_kg'       => $products->sum('current_quantity_kg'),
@@ -310,50 +390,67 @@ class SlaughterController extends Controller
         if (Gate::denies('abattoir.M')) return back()->with('error', 'Action non autorisée.');
 
         $validated = $request->validate([
-            'quantity_kg' => 'required|numeric|min:0.1|max:' . $product->current_quantity_kg,
+            'quantity_kg' => 'required|numeric|min:0.1',
         ]);
 
         $qty = (float) $validated['quantity_kg'];
 
-        $stockData = [
-            'item_name'        => $product->product_name,
-            'category'         => 'produits_finis',
-        ];
+        try {
+            \Illuminate\Support\Facades\DB::transaction(function () use ($product, $qty) {
+                // Disponibilité contrôlée SOUS verrou (la règle max:… de la
+                // validation lisait un stock non verrouillé — course possible
+                // entre deux transferts, motif C1).
+                $product = FinishedProduct::lockForUpdate()->findOrFail($product->id);
+                if ($qty > (float) $product->current_quantity_kg) {
+                    throw new \Exception(
+                        "Stock insuffisant : " . number_format((float) $product->current_quantity_kg, 1)
+                        . " kg disponibles pour \"{$product->product_name}\" (demandé : " . number_format($qty, 1) . " kg)."
+                    );
+                }
 
-        $farmId = session('current_farm_id');
-        if ($farmId && \Illuminate\Support\Facades\Schema::hasColumn('stocks', 'farm_id')) {
-            $stockData['farm_id'] = $farmId;
+                $stockData = [
+                    'item_name'        => $product->product_name,
+                    'category'         => 'produits_finis',
+                ];
+
+                $farmId = session('current_farm_id');
+                if ($farmId && \Illuminate\Support\Facades\Schema::hasColumn('stocks', 'farm_id')) {
+                    $stockData['farm_id'] = $farmId;
+                }
+
+                $stock = \App\Models\Stock::firstOrCreate(
+                    $stockData,
+                    [
+                        // Utilisation de l'unité de poids configurée globalement
+                        'unit'             => setting('general.weight_unit', 'KG'),
+                        'current_quantity' => 0,
+                        'alert_threshold'  => (int) setting('stocks.default_alert_threshold', 0),
+                        'last_unit_price'  => $product->unit_price ?? 0,
+                    ]
+                );
+
+                $stock->increment('current_quantity', $qty);
+
+                $movementData = [
+                    'stock_id'     => $stock->id,
+                    'type'         => 'in',
+                    'quantity'     => $qty,
+                    'unit'         => setting('general.weight_unit', 'KG'),
+                    'notes'        => "Transfert abattoir → magasin ({$product->product_name})",
+                    'user_id'      => \Illuminate\Support\Facades\Auth::id(),
+                ];
+
+                if ($farmId && \Illuminate\Support\Facades\Schema::hasColumn('stock_movements', 'farm_id')) {
+                    $movementData['farm_id'] = $farmId;
+                }
+
+                \App\Models\StockMovement::create($movementData);
+
+                $product->decrement('current_quantity_kg', $qty);
+            });
+        } catch (\Exception $e) {
+            return back()->with('error', $e->getMessage());
         }
-
-        $stock = \App\Models\Stock::firstOrCreate(
-            $stockData,
-            [
-                // Utilisation de l'unité de poids configurée globalement
-                'unit'             => setting('general.weight_unit', 'KG'),
-                'current_quantity' => 0,
-                'alert_threshold'  => (int) setting('stocks.default_alert_threshold', 0),
-                'last_unit_price'  => $product->unit_price ?? 0,
-            ]
-        );
-
-        $stock->increment('current_quantity', $qty);
-
-        $movementData = [
-            'stock_id'     => $stock->id,
-            'type'         => 'in',
-            'quantity'     => $qty,
-            'unit'         => setting('general.weight_unit', 'KG'),
-            'notes'        => "Transfert abattoir → magasin ({$product->product_name})",
-            'user_id'      => \Illuminate\Support\Facades\Auth::id(),
-        ];
-
-        if ($farmId && \Illuminate\Support\Facades\Schema::hasColumn('stock_movements', 'farm_id')) {
-            $movementData['farm_id'] = $farmId;
-        }
-
-        \App\Models\StockMovement::create($movementData);
-
-        $product->decrement('current_quantity_kg', $qty);
 
         return back()->with('success', number_format($qty, 1) . " kg de \"{$product->product_name}\" transférés au stock magasin (onglet Produits Finis).");
     }
@@ -367,10 +464,26 @@ class SlaughterController extends Controller
             'reason'          => 'required|string|max:500',
         ]);
 
-        $oldQty = (float) $product->current_quantity_kg;
+        // Écriture atomique + JOURNAL EN BASE (le log fichier seul n'était
+        // pas requêtable — même exigence de traçabilité que la démarque).
+        $oldQty = 0.0;
         $newQty = (float) $validated['new_quantity_kg'];
 
-        $product->update(['current_quantity_kg' => $newQty]);
+        \Illuminate\Support\Facades\DB::transaction(function () use ($product, $newQty, $validated, &$oldQty) {
+            $product = FinishedProduct::lockForUpdate()->findOrFail($product->id);
+            $oldQty  = (float) $product->current_quantity_kg;
+
+            $product->update(['current_quantity_kg' => $newQty]);
+
+            \App\Models\FinishedProductAdjustment::create([
+                'finished_product_id' => $product->id,
+                'user_id'             => Auth::id(),
+                'type'                => \App\Models\FinishedProductAdjustment::TYPE_ADJUSTMENT,
+                'old_kg'              => $oldQty,
+                'new_kg'              => $newQty,
+                'reason'              => $validated['reason'],
+            ]);
+        });
 
         \Illuminate\Support\Facades\Log::info("Ajustement stock produit fini \"{$product->product_name}\" : {$oldQty} → {$newQty} kg — Raison : {$validated['reason']} — Par : " . auth()->user()->name);
 
@@ -388,11 +501,27 @@ class SlaughterController extends Controller
             'reason' => 'required|string|max:500',
         ]);
 
-        $qty = (float) $product->current_quantity_kg;
+        // Écriture atomique + JOURNAL EN BASE (traçabilité des destructions —
+        // péremption, saisie sanitaire... — exigence sanitaire ET comptable).
+        $qty = 0.0;
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($product, $validated, &$qty) {
+            $product = FinishedProduct::lockForUpdate()->findOrFail($product->id);
+            $qty     = (float) $product->current_quantity_kg;
+
+            $product->update(['current_quantity_kg' => 0, 'current_quantity_pieces' => 0]);
+
+            \App\Models\FinishedProductAdjustment::create([
+                'finished_product_id' => $product->id,
+                'user_id'             => Auth::id(),
+                'type'                => \App\Models\FinishedProductAdjustment::TYPE_DISPOSAL,
+                'old_kg'              => $qty,
+                'new_kg'              => 0,
+                'reason'              => $validated['reason'],
+            ]);
+        });
 
         \Illuminate\Support\Facades\Log::warning("ÉLIMINATION produit fini \"{$product->product_name}\" : {$qty} kg — Raison : {$validated['reason']} — Par : " . auth()->user()->name);
-
-        $product->update(['current_quantity_kg' => 0, 'current_quantity_pieces' => 0]);
 
         return back()->with('success', "{$qty} kg de \"{$product->product_name}\" éliminés. Raison : {$validated['reason']}");
     }

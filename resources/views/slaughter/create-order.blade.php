@@ -56,8 +56,9 @@
                                                     data-species-label="{{ $speciesLabel }}"
                                                     data-type-label="{{ $typeLabel }}"
                                                     data-reform="{{ $isReform ? '1' : '0' }}"
-                                                    data-building="{{ $b->building->name ?? '—' }}">
-                                                    {{ $b->code }} — {{ $b->building->name ?? '' }} ({{ $b->current_quantity }} {{ $unitLabel }}){{ $isReform ? ' — '.__('RÉFORME') : '' }}
+                                                    data-building="{{ $b->building->name ?? '—' }}"
+                                                    @if($b->is_under_quarantine ?? false) disabled @endif>
+                                                    {{ $b->code }} — {{ $b->building->name ?? '' }} ({{ $b->current_quantity }} {{ $unitLabel }}){{ $isReform ? ' — '.__('RÉFORME') : '' }}{{ ($b->is_under_quarantine ?? false) ? ' — ⛔ '.__('QUARANTAINE') : '' }}
                                                 </option>
                                             @endforeach
                                         </optgroup>

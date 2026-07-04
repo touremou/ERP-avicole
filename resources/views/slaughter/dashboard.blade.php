@@ -106,13 +106,58 @@
                                 <p class="text-[8px] text-slate-400 font-black">{{ $order->batch->code ?? '—' }} — {{ __(":qty sujets", ['qty' => $order->planned_quantity]) }} — {{ $order->planned_date->format(setting('general.date_format', 'd/m/Y')) }}</p>
                             </div>
                             @can('abattoir.M')
-                            <a href="{{ route('slaughter.execute.form', $order) }}" class="bg-rose-500 text-white px-4 py-2 rounded-xl font-black text-[8px] uppercase tracking-widest no-underline hover:bg-rose-600">{{ __("Exécuter") }}</a>
+                            <div class="flex items-center gap-2">
+                                <a href="{{ route('slaughter.execute.form', $order) }}" class="bg-rose-500 text-white px-4 py-2 rounded-xl font-black text-[8px] uppercase tracking-widest no-underline hover:bg-rose-600">{{ __("Exécuter") }}</a>
+                                @if($order->status === 'planifie')
+                                <form action="{{ route('slaughter.orders.cancel', $order) }}" method="POST"
+                                      onsubmit="return confirm(@json(__('Annuler cet ordre d\'abattage ?')))">
+                                    @csrf @method('PATCH')
+                                    <button type="submit" class="bg-white text-slate-400 border border-slate-200 px-3 py-2 rounded-xl font-black text-[8px] uppercase tracking-widest hover:text-red-600 hover:border-red-200 transition-colors cursor-pointer"
+                                            title="{{ __('Annuler l\'ordre (planifié uniquement)') }}">
+                                        <i class="fa-solid fa-ban"></i>
+                                    </button>
+                                </form>
+                                @endif
+                            </div>
                             @endcan
                         </div>
                         @empty
                         <div class="px-6 py-8 text-center"><p class="text-[10px] text-slate-400 uppercase font-black">{{ __("Aucun ordre en attente") }}</p></div>
                         @endforelse
                     </div>
+
+                    {{-- TRANSFORMATIONS EN COURS (pesée de sortie attendue) --}}
+                    @if($ongoingTransformations->isNotEmpty())
+                    <div class="px-6 py-4 bg-amber-50 border-t border-amber-100">
+                        <h3 class="text-[10px] font-black uppercase text-amber-600 tracking-widest flex items-center gap-2 mb-3">
+                            <i class="fa-solid fa-fire-burner"></i> {{ __("Transformations en cours — pesée de sortie attendue") }}
+                        </h3>
+                        <div class="space-y-3">
+                            @foreach($ongoingTransformations as $ongoing)
+                            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 bg-white rounded-2xl px-4 py-3 border border-amber-100">
+                                <div>
+                                    <p class="text-xs font-black text-slate-900 uppercase m-0">{{ $ongoing->batch_number }} — {{ $ongoing->type_label }}</p>
+                                    <p class="text-[8px] text-slate-400 font-black uppercase m-0 mt-1">
+                                        {{ $ongoing->product_source }} — {{ number_format((float) $ongoing->input_kg, 1) }} kg {{ __("engagés le") }}
+                                        {{ \Carbon\Carbon::parse($ongoing->production_date)->format(setting('general.date_format', 'd/m/Y')) }}
+                                    </p>
+                                </div>
+                                @can('abattoir.M')
+                                <form action="{{ route('slaughter.transform.complete', $ongoing) }}" method="POST" class="flex items-center gap-2">
+                                    @csrf @method('PATCH')
+                                    <input type="number" name="output_kg" step="0.1" min="0.1" required
+                                           placeholder="{{ __('kg sortis') }}"
+                                           class="w-28 bg-slate-50 border-none rounded-xl p-3 font-black text-xs text-center shadow-inner focus:ring-2 focus:ring-amber-400 outline-none">
+                                    <button type="submit" class="bg-amber-500 text-white px-4 py-3 rounded-xl font-black text-[8px] uppercase tracking-widest hover:bg-amber-600 transition-colors cursor-pointer border-none whitespace-nowrap">
+                                        <i class="fa-solid fa-scale-balanced mr-1"></i>{{ __("Terminer") }}
+                                    </button>
+                                </form>
+                                @endcan
+                            </div>
+                            @endforeach
+                        </div>
+                    </div>
+                    @endif
                 </div>
 
                 {{-- STOCK PRODUITS FINIS --}}

@@ -509,6 +509,22 @@ class DashboardController extends Controller
         $rank = ['critique' => 0, 'attention' => 1, 'info' => 2];
         $out = collect();
 
+        // Lots sous QUARANTAINE sanitaire (critique) : vente, mutation,
+        // collecte et abattage gelés — le pilote doit le voir en premier.
+        $quarantined = Batch::active()->live()
+            ->whereHas('healthIncidents', fn ($q) => $q
+                ->where('is_quarantined', true)
+                ->where('status', '!=', \App\Models\HealthIncident::STATUS_RESOLVED))
+            ->get(['id', 'code']);
+        foreach ($quarantined as $b) {
+            $out->push([
+                'level' => 'critique', 'icon' => 'fa-biohazard',
+                'title' => 'Quarantaine sanitaire',
+                'detail' => "Lot {$b->code} — vente, mutation, collecte et abattage suspendus.",
+                'url' => route('batches.show', $b->id),
+            ]);
+        }
+
         // Urgences mortalité (critique).
         foreach ($emergencyBatches as $b) {
             $out->push([
