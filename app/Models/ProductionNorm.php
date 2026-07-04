@@ -19,7 +19,15 @@ class ProductionNorm extends Model
         'target_weight',
         'target_feed_daily',
         'target_water_daily',
-        'target_laying_rate'
+        'target_laying_rate',
+
+        // Guide de souche détaillé (fiches officielles — nullable si inconnu) :
+        // fourchettes conso/poids, uniformité cible, programme lumineux, T°.
+        'feed_min_daily', 'feed_max_daily',
+        'weight_min', 'weight_max',
+        'uniformity_target',
+        'light_hours', 'light_lux_min', 'light_lux_max',
+        'temp_min_c', 'temp_max_c',
     ];
 
     /**

@@ -8,12 +8,12 @@ use Illuminate\Support\Facades\Gate;
 /**
  * Validation pour la rectification d'un pointage journalier.
  *
- * Mutualise les règles de champ et les bornes des métriques d'extension
+ * Mutualise les rÃ¨gles de champ et les bornes des mÃ©triques d'extension
  * (ruminants & aquaculture) avec StoreDailyCheckRequest, afin que la
  * rectification soit aussi stricte que la saisie (un pH > 14, une survie
- * > 100 %, etc. sont rejetés dans les deux sens).
+ * > 100 %, etc. sont rejetÃ©s dans les deux sens).
  *
- * Les vérifications métier dépendant des anciennes valeurs du pointage
+ * Les vÃ©rifications mÃ©tier dÃ©pendant des anciennes valeurs du pointage
  * (delta d'effectif, compensation de stock aliment) restent dans le
  * controller : elles ont besoin de l'instance existante.
  */
@@ -35,6 +35,7 @@ class UpdateDailyCheckRequest extends FormRequest
             'temp_max'           => 'nullable|numeric',
             'humidity'           => 'nullable|numeric|min:0|max:100',
             'avg_weight'         => 'nullable|numeric|min:0',
+            'uniformity_pct'    => 'nullable|numeric|min:0|max:100',
             'qty_quarantine_in'  => 'required|integer|min:0',
             'qty_quarantine_out' => 'required|integer|min:0',
             'qty_sorted_out'     => 'nullable|integer|min:0',
@@ -51,15 +52,15 @@ class UpdateDailyCheckRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'mortality.min'     => 'La mortalité ne peut pas être négative.',
-            'feed_consumed.min' => 'La consommation ne peut pas être négative.',
-            'humidity.max'      => 'L\'humidité ne peut pas dépasser 100%.',
+            'mortality.min'     => 'La mortalitÃ© ne peut pas Ãªtre nÃ©gative.',
+            'feed_consumed.min' => 'La consommation ne peut pas Ãªtre nÃ©gative.',
+            'humidity.max'      => 'L\'humiditÃ© ne peut pas dÃ©passer 100%.',
         ];
     }
 
     /**
-     * Défauts alignés sur la saisie : un champ effectif laissé vide vaut 0
-     * (et non une erreur « requis »), comme dans StoreDailyCheckRequest.
+     * DÃ©fauts alignÃ©s sur la saisie : un champ effectif laissÃ© vide vaut 0
+     * (et non une erreur Â« requis Â»), comme dans StoreDailyCheckRequest.
      */
     protected function prepareForValidation(): void
     {
@@ -70,7 +71,7 @@ class UpdateDailyCheckRequest extends FormRequest
             'qty_quarantine_in'  => $this->input('qty_quarantine_in', 0) ?: 0,
             'qty_quarantine_out' => $this->input('qty_quarantine_out', 0) ?: 0,
             'qty_sorted_out'     => $this->input('qty_sorted_out', 0) ?: 0,
-            // Cohérence : pas de fumier comptabilisé sans renouvellement de litière.
+            // CohÃ©rence : pas de fumier comptabilisÃ© sans renouvellement de litiÃ¨re.
             'manure_collected_kg' => $litterChanged ? $this->input('manure_collected_kg') : 0,
         ]);
     }

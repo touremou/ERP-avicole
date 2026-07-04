@@ -236,6 +236,13 @@
                                 <input type="number" min="0" name="avg_weight" step="0.001" placeholder="0.000" title="Poids moyen d'un seul animal (moyenne d'un échantillon pesé), pas le poids total du lot." class="w-full bg-white/5 border border-white/10 p-4 rounded-2xl text-xl text-emerald-400 text-center outline-none font-black italic">
                                 <p class="text-[7px] font-bold text-slate-500 uppercase tracking-wide leading-tight italic">Moyenne par tête, pas le poids du lot</p>
                             </div>
+                            <div class="space-y-2 text-center">
+                                <label class="block text-[8px] font-black text-slate-500 uppercase tracking-widest leading-none">{{ __("Uniformité (%)") }}</label>
+                                <input type="number" min="0" max="100" name="uniformity_pct" step="0.1" placeholder="—" value="{{ old('uniformity_pct') }}"
+                                       title="{{ __('Part des sujets pesés dont le poids est à ±10 % du poids moyen de l\'échantillon. Guide de souche : viser ≥ 80 %.') }}"
+                                       class="w-full bg-white/5 border border-white/10 p-4 rounded-2xl text-xl text-amber-400 text-center outline-none font-black italic">
+                                <p class="text-[7px] font-bold text-slate-500 uppercase tracking-wide leading-tight italic">{{ __("Sujets à ±10 % du poids moyen — cible ≥ 80 %") }}</p>
+                            </div>
                         </div>
                     </div>
                     @endif

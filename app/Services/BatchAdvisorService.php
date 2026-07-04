@@ -158,6 +158,75 @@ class BatchAdvisorService
             }
         }
 
+        // 1c. Guide de souche détaillé (fiche officielle : programme lumineux,
+        //     températures bâtiment, uniformité du lot). Silencieux pour les
+        //     souches sans fiche enrichie — aucune colonne, aucun bruit.
+        $guideWeek = max(1, (int) ceil($batch->age / 7));
+        $guideNorm = \App\Models\ProductionNorm::where('batch_type', $batch->type)
+            ->where('model_name', $batch->model_name)
+            ->where('week_number', $guideWeek)
+            ->first();
+
+        if ($guideNorm) {
+            $lastCheck = $batch->dailyChecks->sortByDesc('check_date')->first();
+
+            // Programme lumineux recommandé cette semaine.
+            if ($guideNorm->light_hours !== null) {
+                $hours = rtrim(rtrim(number_format((float) $guideNorm->light_hours, 1), '0'), '.');
+                $lux = null;
+                if ($guideNorm->light_lux_min !== null) {
+                    $lux = (int) $guideNorm->light_lux_min === (int) ($guideNorm->light_lux_max ?? $guideNorm->light_lux_min)
+                        ? "{$guideNorm->light_lux_min} lux"
+                        : "{$guideNorm->light_lux_min}–{$guideNorm->light_lux_max} lux";
+                }
+                $out[] = [
+                    'severity' => 'info',
+                    'icon'     => 'fa-lightbulb',
+                    'title'    => 'Programme lumineux (guide souche)',
+                    'message'  => "Semaine {$guideWeek} : {$hours} h de lumière" . ($lux ? " à {$lux}" : '')
+                        . " recommandées pour {$batch->model_name}.",
+                ];
+            }
+
+            // Température du bâtiment hors plage du guide (dernier relevé).
+            if ($guideNorm->temp_min_c !== null && $lastCheck
+                && ($lastCheck->temp_min !== null || $lastCheck->temp_max !== null)) {
+                $measuredMin = (float) ($lastCheck->temp_min ?? $lastCheck->temp_max);
+                $measuredMax = (float) ($lastCheck->temp_max ?? $lastCheck->temp_min);
+                $gMin = (float) $guideNorm->temp_min_c;
+                $gMax = (float) ($guideNorm->temp_max_c ?? $guideNorm->temp_min_c);
+
+                if ($measuredMax > $gMax + 1 || $measuredMin < $gMin - 1) {
+                    $out[] = [
+                        'severity' => 'attention',
+                        'icon'     => 'fa-temperature-half',
+                        'title'    => 'Température hors plage du guide',
+                        'message'  => 'Relevé ' . number_format($measuredMin, 1) . '–' . number_format($measuredMax, 1)
+                            . " °C contre {$gMin}–{$gMax} °C recommandés en semaine {$guideWeek}"
+                            . " ({$batch->model_name}). Ajuster chauffage/ventilation.",
+                    ];
+                }
+            }
+
+            // Uniformité du lot mesurée à la pesée vs cible du guide (≥ 80 %).
+            if ($guideNorm->uniformity_target !== null && $lastCheck
+                && $lastCheck->uniformity_pct !== null) {
+                $measured = (float) $lastCheck->uniformity_pct;
+                $target   = (float) $guideNorm->uniformity_target;
+
+                if ($measured < $target) {
+                    $out[] = [
+                        'severity' => $measured < $target - 10 ? 'critique' : 'attention',
+                        'icon'     => 'fa-scale-unbalanced',
+                        'title'    => 'Uniformité du lot insuffisante',
+                        'message'  => "Uniformité mesurée {$measured} % contre ≥ {$target} % visés : lot hétérogène."
+                            . " Trier les sujets légers, vérifier l'accès aux mangeoires (longueur/nombre)"
+                            . " et densité — un lot homogène conditionne le pic de ponte.",
+                    ];
+                }
+            }
+        }
+
         // 2. Aliment réel vs recommandé.
         if ($reco['actual']['feed_kg'] !== null && $reco['total']['feed_kg'] > 0) {
             $ratio = $reco['actual']['feed_kg'] / $reco['total']['feed_kg'];
