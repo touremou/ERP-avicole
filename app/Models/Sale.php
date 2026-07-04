@@ -18,7 +18,7 @@ class Sale extends Model
     protected $fillable = [
         'farm_id',
         'uuid', 'is_synced', 'last_sync_at',
-        'reference', 'client_id', 'user_id', 'sale_date',
+        'reference', 'client_id', 'user_id', 'seller_employee_id', 'sale_date',
         'type', 'status',
         'subtotal', 'discount_type', 'discount_value', 'discount_amount',
         'tax_rate', 'tax_amount', 'total_amount', 'rounding_adjustment',
@@ -47,6 +47,12 @@ class Sale extends Model
     public function client(): BelongsTo
     {
         return $this->belongsTo(Client::class);
+    }
+
+    /** Vendeur (employé) à qui la vente POS est attribuée nominativement. */
+    public function sellerEmployee(): BelongsTo
+    {
+        return $this->belongsTo(Employee::class, 'seller_employee_id');
     }
 
     public function user(): BelongsTo

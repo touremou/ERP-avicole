@@ -14,12 +14,13 @@ class Product extends Model
 
     protected $fillable = [
         'farm_id', 'name', 'sku', 'product_type', 'stock_id', 'unit',
-        'base_price', 'photo_path', 'is_active', 'notes',
+        'base_price', 'photo_path', 'is_active', 'is_favorite', 'notes',
     ];
 
     protected $casts = [
-        'base_price' => 'decimal:2',
-        'is_active'  => 'boolean',
+        'base_price'  => 'decimal:2',
+        'is_active'   => 'boolean',
+        'is_favorite' => 'boolean',
     ];
 
     public function scopeActive($query)

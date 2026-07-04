@@ -52,6 +52,7 @@ class ProductController extends Controller
         $data = $this->validated($request);
         $data['photo_path'] = $this->storePhoto($request);
         $data['is_active'] = $request->boolean('is_active', true);
+        $data['is_favorite'] = $request->boolean('is_favorite'); // touche favorite POS
 
         $product = Product::create($data);
         $this->ensureStockLink($product);
@@ -72,6 +73,7 @@ class ProductController extends Controller
 
         $data = $this->validated($request);
         $data['is_active'] = $request->boolean('is_active', true);
+        $data['is_favorite'] = $request->boolean('is_favorite'); // touche favorite POS
 
         if ($newPhoto = $this->storePhoto($request)) {
             // Remplace l'ancienne photo (nettoyage disque).

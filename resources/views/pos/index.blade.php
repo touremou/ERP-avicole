@@ -52,21 +52,55 @@
                     <a href="{{ route('cash-register.index') }}" class="shrink-0 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all no-underline text-white">{{ __("Clôturer / compter") }}</a>
                 </div>
 
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6" x-data="posView({{ Illuminate\Support\Js::from($products) }}, {{ Illuminate\Support\Js::from($clients) }})">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6" x-data="posView({{ Illuminate\Support\Js::from($products) }}, {{ Illuminate\Support\Js::from($clients) }}, {{ Illuminate\Support\Js::from($sellers) }})">
                     {{-- GRILLE PRODUITS --}}
                     <div class="lg:col-span-2">
-                        <input type="text" x-model="search" placeholder="{{ __('Rechercher un produit…') }}"
+                        {{-- Onglets façon balance : favoris / tous les articles / meilleures ventes --}}
+                        <div class="flex flex-wrap items-center gap-2 mb-3">
+                            <button type="button" @click="tab = 'fav'" x-show="hasFavorites"
+                                    :class="tab === 'fav' ? 'bg-teal-600 text-white' : 'bg-white text-slate-500 border border-slate-200'"
+                                    class="px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all cursor-pointer">
+                                <i class="fa-solid fa-star mr-1"></i>{{ __("Favoris") }}
+                            </button>
+                            <button type="button" @click="tab = 'all'"
+                                    :class="tab === 'all' ? 'bg-teal-600 text-white' : 'bg-white text-slate-500 border border-slate-200'"
+                                    class="px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all cursor-pointer">
+                                <i class="fa-solid fa-table-cells mr-1"></i>{{ __("Tous") }}
+                            </button>
+                            <button type="button" @click="tab = 'top'"
+                                    :class="tab === 'top' ? 'bg-teal-600 text-white' : 'bg-white text-slate-500 border border-slate-200'"
+                                    class="px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all cursor-pointer">
+                                <i class="fa-solid fa-fire mr-1"></i>{{ __("Plus vendus") }}
+                            </button>
+
+                            {{-- Saisie code PLU au pavé (Entrée = ajout direct au panier) --}}
+                            <div class="ml-auto flex items-center gap-1">
+                                <input type="text" inputmode="numeric" x-model="pluCode" @keydown.enter.prevent="enterPlu()"
+                                       placeholder="{{ __('PLU') }}" title="{{ __('Code article (PLU) — Entrée pour ajouter au panier') }}"
+                                       class="w-24 bg-white border border-slate-200 rounded-xl p-2.5 text-center text-sm font-black shadow-sm outline-none focus:ring-2 focus:ring-teal-200">
+                                <button type="button" @click="enterPlu()"
+                                        class="px-3 py-2.5 bg-slate-900 text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-teal-600 transition-all cursor-pointer border-none">
+                                    <i class="fa-solid fa-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <input type="text" x-model="search" placeholder="{{ __('Rechercher un produit (nom ou code)…') }}"
                                class="w-full mb-4 bg-white border border-slate-100 rounded-2xl p-4 text-xs font-black shadow-sm outline-none focus:ring-2 focus:ring-teal-200">
                         <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
                             <template x-for="p in filteredProducts" :key="p.id">
                                 <button type="button" @click="addToCart(p)"
                                         :disabled="p.qty !== null && p.qty <= 0"
                                         :class="(p.qty !== null && p.qty <= 0) ? 'opacity-50 cursor-not-allowed' : 'hover:border-teal-400 hover:shadow-md'"
-                                        class="bg-white border border-slate-100 rounded-2xl p-3 text-left shadow-sm transition-all overflow-hidden">
+                                        class="bg-white border border-slate-100 rounded-2xl p-3 text-left shadow-sm transition-all overflow-hidden relative">
                                     <div class="h-20 -mx-3 -mt-3 mb-2 bg-slate-50 flex items-center justify-center overflow-hidden">
                                         <template x-if="p.photo"><img :src="p.photo" class="w-full h-full object-cover" alt=""></template>
                                         <template x-if="!p.photo"><i class="fa-solid fa-box-open text-2xl text-slate-200"></i></template>
                                     </div>
+                                    {{-- Code PLU + étoile favori (façon balance) --}}
+                                    <span x-show="p.sku" x-text="p.sku"
+                                          class="absolute top-1.5 left-1.5 bg-slate-900/80 text-white text-[8px] font-black px-1.5 py-0.5 rounded-md"></span>
+                                    <i x-show="p.fav" class="fa-solid fa-star absolute top-1.5 right-1.5 text-amber-400 text-[10px]"></i>
                                     <p class="text-[10px] font-black text-slate-800 uppercase leading-tight truncate" x-text="p.name"></p>
                                     <p class="text-[8px] font-black text-slate-400 uppercase mt-1">
                                         <span x-text="formatMoney(priceFor(p))"></span> / <span x-text="p.unit"></span>
@@ -103,9 +137,27 @@
                                                class="w-14 bg-white/10 rounded-lg p-1.5 text-center text-xs font-black outline-none border-none text-white">
                                         <button type="button" @click="inc(i)" class="w-7 h-7 bg-white/10 rounded-lg text-white shrink-0">+</button>
                                         <span class="text-[8px] text-slate-400" x-text="line.unit"></span>
+                                        {{-- Pesée brut − tare (articles au poids, façon balance) --}}
+                                        <button type="button" x-show="isWeighable(line)" @click="line.showWeigh = !line.showWeigh"
+                                                :class="line.showWeigh ? 'text-amber-300' : 'text-slate-400'"
+                                                class="w-7 h-7 bg-white/10 rounded-lg shrink-0 hover:text-amber-300 transition-colors border-none cursor-pointer"
+                                                title="{{ __('Peser (brut − tare = net)') }}">
+                                            <i class="fa-solid fa-scale-balanced text-[10px]"></i>
+                                        </button>
                                         <span class="flex-1"></span>
                                         <input type="number" x-model.number="line.unit_price" min="0" step="1"
                                                class="w-20 bg-white/10 rounded-lg p-1.5 text-right text-xs font-black outline-none border-none text-emerald-300">
+                                    </div>
+                                    <div x-show="line.showWeigh" x-cloak class="mt-2 bg-amber-500/10 border border-amber-400/20 rounded-xl p-2 flex items-center gap-2">
+                                        <input type="number" x-model.number="line.gross" min="0" step="0.005" placeholder="{{ __('Brut kg') }}"
+                                               class="w-20 bg-white/10 rounded-lg p-1.5 text-center text-[10px] font-black outline-none border-none text-white placeholder-slate-500">
+                                        <span class="text-[10px] text-slate-400 font-black">−</span>
+                                        <input type="number" x-model.number="line.tare" min="0" step="0.005" placeholder="{{ __('Tare kg') }}"
+                                               class="w-20 bg-white/10 rounded-lg p-1.5 text-center text-[10px] font-black outline-none border-none text-white placeholder-slate-500">
+                                        <button type="button" @click="applyWeigh(i)"
+                                                class="flex-1 bg-amber-500 hover:bg-amber-400 rounded-lg p-1.5 text-[9px] font-black uppercase text-white transition-all border-none cursor-pointer">
+                                            = <span x-text="netOf(line)"></span> kg
+                                        </button>
                                     </div>
                                     <p class="text-right text-[10px] font-black text-emerald-300 mt-1" x-text="formatMoney(line.quantity * line.unit_price)"></p>
 
@@ -122,6 +174,22 @@
                             <span class="text-[10px] font-black uppercase tracking-widest text-slate-400">{{ __("Total") }}</span>
                             <span class="text-2xl font-black text-emerald-400" x-text="formatMoney(total)"></span>
                         </div>
+
+                        {{-- Vendeur nominatif (façon balance : boutons prénom) --}}
+                        <template x-if="sellers.length > 0">
+                            <div class="mb-4">
+                                <label class="block text-[8px] font-black uppercase tracking-widest text-slate-500 mb-2">{{ __("Vendeur") }}</label>
+                                <div class="flex flex-wrap gap-1.5">
+                                    <template x-for="s in sellers" :key="s.id">
+                                        <button type="button" @click="sellerId = (sellerId === String(s.id) ? '' : String(s.id))"
+                                                :class="sellerId === String(s.id) ? 'bg-teal-500 text-white' : 'bg-white/10 text-slate-300 hover:bg-white/20'"
+                                                class="px-3 py-2 rounded-xl text-[9px] font-black uppercase tracking-wide transition-all border-none cursor-pointer"
+                                                x-text="s.name"></button>
+                                    </template>
+                                </div>
+                                <input type="hidden" name="seller_employee_id" :value="sellerId">
+                            </div>
+                        </template>
 
                         <label class="block text-[8px] font-black uppercase tracking-widest text-slate-500 mb-1">{{ __("Client (optionnel)") }}</label>
                         <div class="flex gap-2 mb-1">
@@ -192,12 +260,16 @@
         });
 
         document.addEventListener('alpine:init', () => {
-            Alpine.data('posView', (products, clients) => ({
+            Alpine.data('posView', (products, clients, sellers) => ({
                 products,
                 clients,
+                sellers: sellers || [],
                 cart: [],
                 search: '',
                 clientId: '',
+                sellerId: '',
+                pluCode: '',
+                tab: (products || []).some(p => p.fav) ? 'fav' : 'all',
                 clientPrices: {},   // { product_id: prix } selon le tarif du client sélectionné
                 showNewClient: false,
                 newClient: { name: '', phone: '', category: 'detaillant' },
@@ -240,9 +312,47 @@
                         })
                         .catch(() => {});
                 },
+                get hasFavorites() {
+                    return this.products.some(p => p.fav);
+                },
                 get filteredProducts() {
                     const q = this.search.trim().toLowerCase();
-                    return q ? this.products.filter(p => p.name.toLowerCase().includes(q)) : this.products;
+                    // La recherche texte (nom OU code PLU) court-circuite l'onglet.
+                    if (q) {
+                        return this.products.filter(p => p.name.toLowerCase().includes(q)
+                            || (p.sku && String(p.sku).toLowerCase().includes(q)));
+                    }
+                    if (this.tab === 'fav' && this.hasFavorites) {
+                        return this.products.filter(p => p.fav);
+                    }
+                    if (this.tab === 'top') {
+                        return [...this.products].filter(p => p.sold > 0)
+                            .sort((a, b) => b.sold - a.sold).slice(0, 15);
+                    }
+                    return this.products;
+                },
+                // Code PLU tapé au pavé → ajout direct au panier (Entrée).
+                enterPlu() {
+                    const code = this.pluCode.trim().toLowerCase();
+                    if (! code) return;
+                    const p = this.products.find(x => x.sku && String(x.sku).toLowerCase() === code);
+                    if (p) { this.addToCart(p); this.pluCode = ''; }
+                },
+                // Pesée façon balance : net = brut − tare, appliqué à la quantité.
+                isWeighable(line) {
+                    return ['kg', 'KG', 'Kg'].includes(line.unit);
+                },
+                netOf(line) {
+                    const net = Math.max(0, (line.gross || 0) - (line.tare || 0));
+                    return Math.round(net * 1000) / 1000;
+                },
+                applyWeigh(i) {
+                    const line = this.cart[i];
+                    const net = this.netOf(line);
+                    if (net > 0) {
+                        line.quantity = Math.min(net, line.max === Infinity ? net : line.max);
+                        line.showWeigh = false;
+                    }
                 },
                 get total() {
                     return this.cart.reduce((s, l) => s + (l.quantity || 0) * (l.unit_price || 0), 0);
@@ -253,7 +363,12 @@
                     if (existing) {
                         if (existing.quantity < existing.max) existing.quantity = Math.round((existing.quantity + 1) * 100) / 100;
                     } else {
-                        this.cart.push({ id: p.id, name: p.name, unit: p.unit, max: (p.qty === null ? Infinity : p.qty), quantity: 1, unit_price: this.priceFor(p) });
+                        this.cart.push({
+                            id: p.id, name: p.name, unit: p.unit,
+                            max: (p.qty === null ? Infinity : p.qty),
+                            quantity: 1, unit_price: this.priceFor(p),
+                            showWeigh: false, gross: null, tare: null,
+                        });
                     }
                 },
                 inc(i) { const l = this.cart[i]; if (l.quantity < l.max) l.quantity = Math.round((l.quantity + 1) * 100) / 100; },

@@ -49,10 +49,14 @@
         <input type="file" name="photo" accept="image/*" class="w-full bg-slate-50 border-none rounded-2xl p-3 text-[11px] font-bold shadow-inner outline-none">
     </div>
 
-    <div class="md:col-span-2">
+    <div class="md:col-span-2 flex flex-wrap gap-6">
         <label class="flex items-center gap-2 text-[11px] font-black text-slate-600 uppercase tracking-widest cursor-pointer">
             <input type="checkbox" name="is_active" value="1" {{ old('is_active', $product->is_active ?? true) ? 'checked' : '' }} class="rounded accent-teal-600">
             {{ __('Actif (proposé à la vente)') }}
+        </label>
+        <label class="flex items-center gap-2 text-[11px] font-black text-slate-600 uppercase tracking-widest cursor-pointer">
+            <input type="checkbox" name="is_favorite" value="1" {{ old('is_favorite', $product->is_favorite ?? false) ? 'checked' : '' }} class="rounded accent-amber-500">
+            <i class="fa-solid fa-star text-amber-400"></i> {{ __('Favori caisse (1er écran du POS)') }}
         </label>
     </div>
 </div>

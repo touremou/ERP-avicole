@@ -45,6 +45,9 @@
         <tr><td>{{ __("Reçu") }}</td><td class="r"><strong>{{ $sale->reference }}</strong></td></tr>
         <tr><td>{{ __("Date") }}</td><td class="r">{{ $sale->sale_date->format('d/m/Y') }} {{ $sale->created_at->format('H:i') }}</td></tr>
         <tr><td>{{ __("Caissier") }}</td><td class="r">{{ $sale->user?->name ?? '—' }}</td></tr>
+        @if($sale->sellerEmployee)
+        <tr><td>{{ __("Vendeur") }}</td><td class="r">{{ $sale->sellerEmployee->first_name }} {{ $sale->sellerEmployee->last_name }}</td></tr>
+        @endif
         <tr><td>{{ __("Client") }}</td><td class="r">{{ $sale->client->name }}</td></tr>
     </table>
 

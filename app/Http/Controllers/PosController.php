@@ -29,6 +29,17 @@ class PosController extends Controller
             return redirect()->route('dashboard')->with('error', 'Accès restreint au module Commerce.');
         }
 
+        // Classement « meilleures ventes » (30 j) façon balance : quantités
+        // vendues par article catalogue, une seule requête agrégée.
+        $topSales = \App\Models\SaleItem::query()
+            ->whereNotNull('product_ref_id')
+            ->whereHas('sale', fn ($q) => $q
+                ->whereDate('sale_date', '>=', now()->subDays(30)->toDateString())
+                ->whereNotIn('status', ['brouillon', 'annule']))
+            ->selectRaw('product_ref_id, SUM(quantity) as sold')
+            ->groupBy('product_ref_id')
+            ->pluck('sold', 'product_ref_id');
+
         // Le POS s'appuie sur le CATALOGUE (photo + prix). On affiche TOUS les
         // articles actifs ; la grille distingue :
         //  - article LIÉ à un stock : « Stock : N » (grisé/non vendable si 0) ;
@@ -44,18 +55,29 @@ class PosController extends Controller
                 'qty'    => $p->stock ? (float) $p->stock->current_quantity : null,  // null = non suivi
                 'price'  => (float) (\App\Models\SalePriceList::priceForProduct(null, $p) ?? $p->base_price),
                 'photo'  => $p->photo_url,
+                'sku'    => $p->sku,                                                 // code PLU (pavé numérique)
+                'fav'    => (bool) $p->is_favorite,                                  // touche favorite
+                'sold'   => (float) ($topSales[$p->id] ?? 0),                        // classement top ventes
             ])
             ->values();
 
         $clients = Client::active()->orderBy('name')->get()
             ->map(fn (Client $c) => ['id' => $c->id, 'name' => $c->name]);
 
+        // Vendeurs nominatifs (façon balance : boutons prénom). Optionnel —
+        // sans employés actifs (palier sans annuaire), la rangée est absente.
+        $sellers = \App\Models\Employee::where('status', 'Actif')
+            ->orderBy('first_name')
+            ->get()
+            ->map(fn ($e) => ['id' => $e->id, 'name' => trim("{$e->first_name} " . mb_substr((string) $e->last_name, 0, 1) . '.')])
+            ->values();
+
         // La caisse n'est « ouverte » que si une session l'est : toute vente POS
         // passe par la session (ouverture/clôture + comptage). Sans session, l'écran
         // propose d'ouvrir la caisse plutôt que de vendre.
         $session = $this->openSession();
 
-        return view('pos.index', compact('products', 'clients', 'session'));
+        return view('pos.index', compact('products', 'clients', 'session', 'sellers'));
     }
 
     /** Encaissement : crée une vente validée, livrée et soldée en une transaction. */
@@ -74,6 +96,7 @@ class PosController extends Controller
 
         $data = $request->validate([
             'client_id'          => 'nullable|exists:clients,id',
+            'seller_employee_id' => 'nullable|exists:employees,id', // vendeur nominatif (façon balance)
             'payment_method'     => 'required|in:especes,orange_money,virement,cheque',
             'items'              => 'required|array|min:1',
             'items.*.product_id' => 'required|integer|exists:products,id',
@@ -143,7 +166,11 @@ class PosController extends Controller
             ]);
 
             $validate->execute($sale); // déstockage (chaîne standard)
-            $sale->update(['status' => 'livre', 'delivered_at' => now()]); // remis en main propre
+            $sale->update([
+                'status'             => 'livre',
+                'delivered_at'       => now(), // remis en main propre
+                'seller_employee_id' => $data['seller_employee_id'] ?? null,
+            ]);
 
             return $sale;
         });
@@ -179,7 +206,7 @@ class PosController extends Controller
             return redirect()->route('dashboard')->with('error', 'Accès restreint au module Commerce.');
         }
 
-        $sale->load(['items', 'client', 'payments']);
+        $sale->load(['items', 'client', 'payments', 'sellerEmployee']);
 
         return view('pos.receipt', compact('sale'));
     }
@@ -261,6 +288,21 @@ class PosController extends Controller
         $totalIn  = array_sum(array_column($rows, 'in'));
         $totalOut = array_sum(array_column($rows, 'out'));
 
+        // Ventes du jour PAR VENDEUR (attribution nominative POS, façon balance).
+        $bySeller = Sale::whereDate('sale_date', $date)
+            ->whereNotIn('status', ['brouillon', 'annule'])
+            ->whereNotNull('seller_employee_id')
+            ->with('sellerEmployee')
+            ->get()
+            ->groupBy('seller_employee_id')
+            ->map(fn ($sales) => [
+                'name'  => trim(($sales->first()->sellerEmployee?->first_name ?? '—') . ' ' . ($sales->first()->sellerEmployee?->last_name ?? '')),
+                'count' => $sales->count(),
+                'total' => (float) $sales->sum('total_amount'),
+            ])
+            ->sortByDesc('total')
+            ->values();
+
         $report = [
             'rows'          => $rows,
             'total_in'      => $totalIn,
@@ -268,6 +310,7 @@ class PosController extends Controller
             'total_net'     => $totalIn - $totalOut,
             'tickets_count' => $payments->where('amount', '>', 0)->pluck('sale_id')->unique()->count(),
             'refunds_count' => $payments->where('amount', '<', 0)->count(),
+            'by_seller'     => $bySeller,
         ];
 
         return view('pos.report', compact('date', 'report'));

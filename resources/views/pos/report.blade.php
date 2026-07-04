@@ -69,6 +69,28 @@
             <p class="mt-4 text-[8px] text-slate-300 font-black uppercase tracking-widest text-center">
                 {{ __("Net = encaissements − remboursements du jour (tous canaux de vente confondus).") }}
             </p>
+
+            {{-- Ventes par vendeur (attribution nominative POS) --}}
+            @if($report['by_seller']->isNotEmpty())
+            <div class="mt-6 bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
+                <div class="px-6 py-4 bg-slate-50 border-b border-slate-100">
+                    <h3 class="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
+                        <i class="fa-solid fa-user-tag text-teal-500"></i> {{ __("Ventes par vendeur") }}
+                    </h3>
+                </div>
+                <table class="w-full text-left border-collapse">
+                    <tbody class="divide-y divide-slate-50">
+                        @foreach($report['by_seller'] as $seller)
+                        <tr class="hover:bg-slate-50/50 transition-all">
+                            <td class="px-6 py-4 text-[10px] font-black text-slate-700 uppercase">{{ $seller['name'] }}</td>
+                            <td class="px-4 py-4 text-right text-[10px] font-black text-slate-400">{{ $seller['count'] }} {{ __("vente(s)") }}</td>
+                            <td class="px-6 py-4 text-right text-sm font-black text-teal-600">{{ number_format($seller['total'], 0, ',', ' ') }} {{ currency() }}</td>
+                        </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+            @endif
         </div>
     </div>
 </x-app-layout>
