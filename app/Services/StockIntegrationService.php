@@ -53,7 +53,8 @@ class StockIntegrationService
         string $type,
         string $notes,
         ?string $inputUnit = null,
-        ?float $unitCost = null
+        ?float $unitCost = null,
+        bool   $strictOut = false
     ): StockMovement|false {
 
         // ─── 1. RECHERCHE DE L'ARTICLE ───
@@ -65,7 +66,7 @@ class StockIntegrationService
             return false;
         }
 
-        return DB::transaction(function () use ($stock, $itemName, $category, $quantity, $type, $notes, $inputUnit, $unitCost) {
+        return DB::transaction(function () use ($stock, $itemName, $category, $quantity, $type, $notes, $inputUnit, $unitCost, $strictOut) {
 
             // ─── 2. DÉTERMINATION DE L'UNITÉ ───
             // B-17 corrigé : si $inputUnit n'est pas fourni, on logge un warning
@@ -103,6 +104,19 @@ class StockIntegrationService
                 }
                 $stock->increment('current_quantity', $quantityBase, $extra);
             } elseif ($type === 'out') {
+                // Mode STRICT (audit C — conservation de matière) : la sortie
+                // est contrôlée SOUS le verrou pris ci-dessus. Sans lui, le
+                // plafonnement à zéro faisait « disparaître » silencieusement
+                // la matière manquante (ex. transformer 500 kg avec 100 kg en
+                // stock) : aucune erreur, comptabilité matière faussée.
+                if ($strictOut && $quantityBase > (float) $stock->current_quantity + 0.0001) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'input_quantity' => "Stock insuffisant pour « {$stock->item_name} » : "
+                            . number_format((float) $stock->current_quantity, 1) . " {$stock->unit} disponibles, "
+                            . number_format($quantityBase, 1) . " {$stock->unit} demandés.",
+                    ]);
+                }
+
                 // Sécurité : ne pas descendre sous zéro
                 $newQty = max(0, (float) $stock->current_quantity - $quantityBase);
                 $stock->update(['current_quantity' => $newQty]);
