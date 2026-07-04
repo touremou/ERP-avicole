@@ -29,8 +29,13 @@ class StoreDailyCheckRequest extends FormRequest
             'feed_consumed'     => 'required|numeric|min:0',
             'feed_type'         => 'required|string|max:255',
             'water_consumed'    => 'nullable|numeric|min:0',
-            'temp_min'          => 'nullable|numeric',
-            'temp_max'          => 'nullable|numeric',
+            // Bornes physiques strictes (anti « fat-finger » : 220 au lieu de
+            // 22.0 sur tablette gantée) — un bâtiment d'élevage vit entre
+            // −10 et +50 °C, au-delà c'est une erreur de saisie.
+            'temp_min'          => 'nullable|numeric|between:-10,50',
+            'temp_max'          => 'nullable|numeric|between:-10,50|gte:temp_min',
+            'temp_source'       => 'nullable|in:manuel,iot',
+            'temp_recorded_by'  => 'nullable|string|max:100',
             'humidity'          => 'nullable|numeric|min:0|max:100',
             'avg_weight'        => 'nullable|numeric|min:0',
             'uniformity_pct'    => 'nullable|numeric|min:0|max:100',

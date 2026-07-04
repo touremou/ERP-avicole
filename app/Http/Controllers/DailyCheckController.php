@@ -102,7 +102,12 @@ class DailyCheckController extends Controller
         // le pendant hydrique de $suggestedFeed, pour pré-remplir le champ Eau.
         $suggestedWater = $recommendation['total']['water_l'] ?? null;
 
-        return view('daily-checks.create', compact('batch', 'stockData', 'phases', 'weather', 'suggestedFeed', 'suggestedWater'));
+        // Température CAPTEUR du bâtiment (IoT) : min/max des relevés du jour
+        // en zone tampon. Prioritaire sur la météo régionale quand un capteur
+        // équipe le bâtiment — la source est tracée (temp_source = iot).
+        $iotTemp = $this->iotTemperature($batch);
+
+        return view('daily-checks.create', compact('batch', 'stockData', 'phases', 'weather', 'suggestedFeed', 'suggestedWater', 'iotTemp'));
     }
 
     /**
@@ -141,6 +146,36 @@ class DailyCheckController extends Controller
     }
 
     /**
+     * Température IoT du jour pour le bâtiment du lot : min/max des relevés
+     * capteur en zone tampon (telemetry_logs), avec l'identité du capteur.
+     *
+     * @return array{temp_min: float, temp_max: float, sensor: string, count: int}|null
+     */
+    private function iotTemperature(Batch $batch): ?array
+    {
+        if (! $batch->building_id) {
+            return null;
+        }
+
+        $today = \App\Models\TelemetryLog::where('building_id', $batch->building_id)
+            ->where('metric', 'temperature')
+            ->whereDate('recorded_at', now()->toDateString())
+            ->selectRaw('MIN(value) as tmin, MAX(value) as tmax, COUNT(*) as n, MAX(sensor_id) as sensor')
+            ->first();
+
+        if (! $today || ! $today->n) {
+            return null;
+        }
+
+        return [
+            'temp_min' => (float) $today->tmin,
+            'temp_max' => (float) $today->tmax,
+            'sensor'   => (string) $today->sensor,
+            'count'    => (int) $today->n,
+        ];
+    }
+
+    /**
      * Enregistrement d'un pointage.
      *
      * La logique métier (stock aliment, updateOrCreate, compensation) est dans RecordDailyCheck.
@@ -151,7 +186,41 @@ class DailyCheckController extends Controller
         if (Gate::denies('elevage.C')) {
             return back()->with('error', 'Action non autorisée.');
         }
-        $check = $action->execute($request->validated());
+
+        // ── Traçabilité de la SOURCE de température (IoT vs manuel) ──
+        // Le champ temp_source vient du formulaire ('iot' si l'opérateur a
+        // appliqué la valeur capteur sans la retoucher, 'manuel' sinon).
+        // temp_recorded_by = capteur OU nom de l'opérateur.
+        $validated = $request->validated();
+        $calibrationWarning = null;
+
+        if (($validated['temp_min'] ?? null) !== null || ($validated['temp_max'] ?? null) !== null) {
+            $source = $validated['temp_source'] ?? 'manuel';
+            $validated['temp_source']      = $source;
+            $validated['temp_recorded_by'] = $source === 'iot'
+                ? ($validated['temp_recorded_by'] ?? 'capteur')
+                : (\Illuminate\Support\Facades\Auth::user()?->name ?? 'Opérateur');
+
+            // Règle de conflit : la saisie MANUELLE prime, mais un écart
+            // significatif avec le capteur du jour signale une calibration à
+            // vérifier (non bloquant).
+            if ($source === 'manuel') {
+                $batch = Batch::find($validated['batch_id'] ?? null);
+                $iot   = $batch ? $this->iotTemperature($batch) : null;
+                $manualMax = (float) ($validated['temp_max'] ?? $validated['temp_min']);
+                if ($iot && abs($manualMax - $iot['temp_max']) > (float) setting('telemetry.calibration_gap_c', 2)) {
+                    $calibrationWarning = 'Écart de ' . number_format(abs($manualMax - $iot['temp_max']), 1)
+                        . ' °C entre la saisie manuelle et le capteur ' . $iot['sensor']
+                        . ' — vérifier la calibration (saisie manuelle conservée).';
+                }
+            }
+        }
+
+        $check = $action->execute($validated);
+
+        if ($calibrationWarning) {
+            session()->flash('warning', $calibrationWarning);
+        }
 
         // Save species-specific extension if applicable
         if ($check->batch->isGmqTracked() || $check->batch->isAquaculture()) {

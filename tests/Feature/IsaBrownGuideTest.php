@@ -100,9 +100,11 @@ test('advisories guide : rappel lumière + température hors plage + lot hétér
 });
 
 test('souche sans fiche enrichie : aucun advisory guide (pas de bruit)', function () {
+    // La dinde BUT 6 n'a volontairement pas de guide (rusticité/conduite
+    // spécifiques : silence tant que la fiche officielle n'est pas intégrée).
     $chair = Batch::factory()->create([
         'production_type_id' => ProductionType::resolveOrCreate('chair', null)->id,
-        'model_name'         => 'Ross 308',
+        'model_name'         => 'Dinde BUT 6',
         'arrival_date'       => now()->subDays(14),
         'initial_quantity'   => 500,
         'current_quantity'   => 500,
@@ -113,7 +115,7 @@ test('souche sans fiche enrichie : aucun advisory guide (pas de bruit)', functio
         'batch_id'       => $chair->id,
         'check_date'     => now()->toDateString(),
         'mortality'      => 0,
-        'uniformity_pct' => 60, // pas de cible chez Ross 308 → silencieux
+        'uniformity_pct' => 60, // pas de cible chez BUT 6 → silencieux
     ]);
 
     $titles = collect(app(BatchAdvisorService::class)->advisories($chair->fresh()->load('dailyChecks')))
@@ -121,4 +123,34 @@ test('souche sans fiche enrichie : aucun advisory guide (pas de bruit)', functio
 
     expect($titles)->not->toContain('Programme lumineux (guide souche)');
     expect($titles)->not->toContain('Uniformité du lot insuffisante');
+});
+
+test('le KPI uniformité s\'affiche sur la fiche lot (dernière mesure, code couleur)', function () {
+    DailyCheck::factory()->create([
+        'batch_id'       => $this->pondeuse->id,
+        'check_date'     => now()->toDateString(),
+        'mortality'      => 0,
+        'uniformity_pct' => 76.5, // sous la cible 80 → état orange
+    ]);
+
+    $this->actingAs($this->managerUser)
+        ->get(route('batches.show', $this->pondeuse))
+        ->assertOk()
+        ->assertSee('Uniformité')
+        ->assertSee('76.5');
+});
+
+test('conduite standard appliquée aux autres souches commerciales (Lohmann, Ross, Cobb)', function () {
+    // Pondeuse : Lohmann Brown S6 hérite du schéma standard (12 h, 10 lux, ≥ 80 %).
+    $lohmann = ProductionNorm::where('model_name', 'Lohmann Brown')->where('week_number', 6)->first();
+    expect((float) $lohmann->light_hours)->toEqual(12.0);
+    expect((float) $lohmann->uniformity_target)->toEqual(80.0);
+
+    // Broiler : Ross 308 S1 = 23L:1D, 30-40 lux, 30-32 °C ; Cobb 500 S5 = 18 h.
+    $ross = ProductionNorm::where('model_name', 'Ross 308')->where('week_number', 1)->first();
+    expect((float) $ross->light_hours)->toEqual(23.0);
+    expect((float) $ross->temp_max_c)->toEqual(32.0);
+
+    $cobb = ProductionNorm::where('model_name', 'Cobb 500')->where('week_number', 5)->first();
+    expect((float) $cobb->light_hours)->toEqual(18.0);
 });

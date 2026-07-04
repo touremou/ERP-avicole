@@ -18,6 +18,13 @@ return [
         'key' => env('POSTMARK_API_KEY'),
     ],
 
+    // Ingestion IoT (télémétrie bâtiments) : clé d'API attendue dans le
+    // header X-Api-Key de POST /api/v1/telemetry/temperature. Vide = endpoint
+    // désactivé (503) — sécurité par défaut tant que le matériel n'est pas choisi.
+    'telemetry' => [
+        'api_key' => env('TELEMETRY_API_KEY', ''),
+    ],
+
     'resend' => [
         'key' => env('RESEND_API_KEY'),
     ],

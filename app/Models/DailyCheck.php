@@ -34,7 +34,7 @@ class DailyCheck extends Model
     protected $fillable = [
         'farm_id', 'batch_id', 'check_date',
         'mortality', 'feed_consumed', 'feed_type', 'feed_unit_cost', 'water_consumed',
-        'temp_min', 'temp_max', 'humidity',
+        'temp_min', 'temp_max', 'temp_source', 'temp_recorded_by', 'humidity',
         'avg_weight', 'uniformity_pct', 'health_status',
         'treatment_type', 'treatment_name',
         'qty_quarantine_in', 'qty_quarantine_out', 'qty_sorted_out',

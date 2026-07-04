@@ -90,10 +90,24 @@
         // actions vente/mutation/collecte (les gardes serveur font autorité).
         $quarantine = $batch->activeQuarantine();
 
+        // KPI TAUX D'UNIFORMITÉ (exigence pré-MEP) — dernière mesure saisie à
+        // la pesée. Formule : part des sujets pesés dont le poids est à ±10 %
+        // du poids moyen de l'échantillon (guide de souche : viser ≥ 80 %).
+        // Dérivé des dailyChecks DÉJÀ eager-loadés : zéro requête ajoutée,
+        // aucun impact sur le temps de chargement (< 1 s garanti sans cache).
+        $lastUniformityCheck = $batch->dailyChecks
+            ->whereNotNull('uniformity_pct')
+            ->sortByDesc('check_date')
+            ->first();
+        $uniformityPct    = $lastUniformityCheck?->uniformity_pct;
+        $uniformityTarget = (float) ($norm->uniformity_target ?? 80);
+        // Carte affichée si une mesure existe OU si la souche a une cible guide.
+        $showUniformity   = $uniformityPct !== null || ($norm->uniformity_target ?? null) !== null;
+
         // Carte fumier : affichée seulement si un ramassage a été enregistré.
         $showManure = ($stats['manure_collected_kg'] ?? 0) > 0;
 
-        $colCount = 3 + ($showPonte ? 1 : 0) + ($isChair ? 1 : 0) + ($showManure ? 1 : 0);
+        $colCount = 3 + ($showPonte ? 1 : 0) + ($isChair ? 1 : 0) + ($showManure ? 1 : 0) + ($showUniformity ? 1 : 0);
     @endphp
 
     <x-slot name="header">
@@ -113,6 +127,13 @@
             <div class="mb-6 p-4 bg-emerald-50 border-l-4 border-emerald-600 rounded-2xl shadow-sm text-left italic">
                 <p class="text-[10px] font-black text-emerald-400 uppercase tracking-widest italic leading-none mb-1">{{ __("Opération réussie") }}</p>
                 <p class="text-sm font-bold text-emerald-700">{{ session('success') }}</p>
+            </div>
+        @endif
+
+        @if (session('warning'))
+            <div class="mb-6 p-4 bg-amber-50 border-l-4 border-amber-500 rounded-2xl shadow-sm text-left italic">
+                <p class="text-[10px] font-black text-amber-500 uppercase tracking-widest italic leading-none mb-1">{{ __("Attention") }}</p>
+                <p class="text-sm font-bold text-amber-700">{{ session('warning') }}</p>
             </div>
         @endif
 
@@ -339,6 +360,47 @@
                 </span>
             </div>
         </div>
+
+        @if($showUniformity)
+        @php
+            // Code couleur métier : vert ≥ cible, orange dans les 10 points
+            // sous la cible, rouge au-delà (lot hétérogène — trier/peser).
+            $unifState = $uniformityPct === null ? 'none'
+                : ((float) $uniformityPct >= $uniformityTarget ? 'ok'
+                : ((float) $uniformityPct >= $uniformityTarget - 10 ? 'warn' : 'bad'));
+        @endphp
+        <div @class([
+                'p-5 rounded-[2rem] shadow-xl border flex items-center gap-4 group transition-transform hover:scale-[1.02]',
+                'bg-white border-slate-100'              => $unifState === 'none',
+                'bg-white border-emerald-50'             => $unifState === 'ok',
+                'bg-amber-50 border-amber-200'           => $unifState === 'warn',
+                'bg-red-50 border-red-200 animate-pulse' => $unifState === 'bad',
+            ])
+            title="{{ __('Part des sujets pesés dont le poids est à ±10 % du poids moyen de l\'échantillon — saisie à la pesée (pointage). Cible guide :') }} ≥ {{ number_format($uniformityTarget, 0) }} %">
+            <div @class([
+                'w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg',
+                'bg-slate-300'   => $unifState === 'none',
+                'bg-emerald-600' => $unifState === 'ok',
+                'bg-amber-500'   => $unifState === 'warn',
+                'bg-red-600'     => $unifState === 'bad',
+            ])><i class="fa-solid fa-scale-unbalanced text-lg"></i></div>
+            <div class="text-left leading-none">
+                <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1 italic">{{ __("Uniformité") }} <span class="opacity-60">/ ≥ {{ number_format($uniformityTarget, 0) }} %</span></p>
+                @if($uniformityPct !== null)
+                <h4 @class([
+                    'text-xl font-black tracking-tighter',
+                    'text-emerald-600' => $unifState === 'ok',
+                    'text-amber-600'   => $unifState === 'warn',
+                    'text-red-700'     => $unifState === 'bad',
+                ])>{{ rtrim(rtrim(number_format((float) $uniformityPct, 1), '0'), '.') }} %</h4>
+                <p class="text-[7px] font-black text-slate-300 mt-1 uppercase italic">{{ __("Pesée du") }} {{ $lastUniformityCheck->check_date->format('d/m') }}</p>
+                @else
+                <h4 class="text-sm font-black text-slate-300 uppercase">—</h4>
+                <p class="text-[7px] font-black text-slate-300 mt-1 uppercase italic">{{ __("À saisir à la pesée hebdo") }}</p>
+                @endif
+            </div>
+        </div>
+        @endif
 
         @if($isChair)
         <div @class(['p-5 rounded-[2rem] shadow-xl border flex items-center gap-4 group transition-transform hover:scale-[1.02]', 'bg-white border-orange-50' => ! $fcrBad, 'bg-red-50 border-red-100 animate-pulse' => $fcrBad])>
@@ -874,7 +936,17 @@
                                     <p class="font-black text-slate-700">{{ number_format($check->water_consumed, 1) }}L</p>
                                     <p class="text-blue-500 font-black">{{ number_format($check->feed_consumed, 1) }}kg</p>
                                 </td>
-                                <td class="px-4 py-5 text-center font-black text-slate-700">{{ $check->avg_temperature ? number_format($check->avg_temperature, 1).'°C' : '--' }}</td>
+                                <td class="px-4 py-5 text-center font-black text-slate-700">
+                                    {{ $check->avg_temperature ? number_format($check->avg_temperature, 1).'°C' : '--' }}
+                                    @if($check->avg_temperature && $check->temp_source)
+                                        {{-- Origine de la donnée : capteur IoT ou saisie manuelle (opérateur) --}}
+                                        <i @class([
+                                            'ml-1 text-[9px]',
+                                            'fa-solid fa-microchip text-emerald-500' => $check->temp_source === 'iot',
+                                            'fa-solid fa-user text-slate-300'        => $check->temp_source !== 'iot',
+                                        ]) title="{{ $check->temp_source === 'iot' ? __('Capteur') : __('Saisie manuelle') }}{{ $check->temp_recorded_by ? ' — ' . $check->temp_recorded_by : '' }}"></i>
+                                    @endif
+                                </td>
                                 <td class="px-4 py-5 text-center font-black text-emerald-600">
                                     @if($check->avg_weight)
                                         {{ $batch->isGmqTracked() ? number_format($check->avg_weight, 2).' kg' : number_format($check->avg_weight * 1000, 0).' g' }}

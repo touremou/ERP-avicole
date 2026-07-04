@@ -25,6 +25,15 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         ->middleware('throttle:10,1')
         ->name('auth.login');
 
+    // ── Ingestion IoT (exigence 3 pré-MEP) ──────────────────────────────
+    // Endpoint générique découplé : clé d'API (X-Api-Key), contrat strict,
+    // écrêtage anti-spam, écriture en zone TAMPON (telemetry_logs) puis
+    // association au lot par le worker telemetry:process. Le throttle HTTP
+    // borne en plus un capteur fou (120 req/min max, avant même l'écrêtage).
+    Route::post('/telemetry/temperature', [\App\Http\Controllers\Api\TelemetryController::class, 'storeTemperature'])
+        ->middleware('throttle:120,1')
+        ->name('telemetry.temperature');
+
     Route::middleware(['auth:sanctum', 'farm.api'])->group(function () {
         Route::get('/auth/me', [AuthController::class, 'me'])->name('auth.me');
         Route::post('/auth/logout', [AuthController::class, 'logout'])->name('auth.logout');

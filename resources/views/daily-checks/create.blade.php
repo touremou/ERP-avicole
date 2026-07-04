@@ -221,9 +221,21 @@
                                     @if(($weather['temp_max'] ?? null) !== null)<i class="fa-solid fa-cloud-sun text-sky-400 ml-1" title="Pré-rempli météo ({{ $weather['label'] ?? '' }})"></i>@endif
                                 </label>
                                 <div class="flex bg-white/5 rounded-2xl border border-white/10 overflow-hidden">
-                                    <input type="number" name="temp_min" placeholder="Min" step="0.1" value="{{ old('temp_min', $weather['temp_min'] ?? '') }}" class="w-1/2 bg-transparent border-none p-4 text-cyan-400 text-center text-sm outline-none font-black italic">
-                                    <input type="number" name="temp_max" placeholder="Max" step="0.1" value="{{ old('temp_max', $weather['temp_max'] ?? '') }}" class="w-1/2 bg-transparent border-none p-4 text-orange-400 text-center text-sm outline-none border-l border-white/10 font-black italic">
+                                    <input type="number" name="temp_min" id="temp_min" placeholder="Min" step="0.1" min="-10" max="50" oninput="tempSourceManual()" value="{{ old('temp_min', $weather['temp_min'] ?? '') }}" class="w-1/2 bg-transparent border-none p-4 text-cyan-400 text-center text-sm outline-none font-black italic">
+                                    <input type="number" name="temp_max" id="temp_max" placeholder="Max" step="0.1" min="-10" max="50" oninput="tempSourceManual()" value="{{ old('temp_max', $weather['temp_max'] ?? '') }}" class="w-1/2 bg-transparent border-none p-4 text-orange-400 text-center text-sm outline-none border-l border-white/10 font-black italic">
                                 </div>
+                                {{-- Source de la donnée (traçabilité IoT/manuel) : posée par JS,
+                                     repasse à « manuel » dès que l'opérateur retouche un champ. --}}
+                                <input type="hidden" name="temp_source" id="temp_source" value="manuel">
+                                <input type="hidden" name="temp_recorded_by" id="temp_recorded_by" value="">
+                                @if(($iotTemp ?? null) !== null)
+                                <button type="button"
+                                    onclick="applyIotTemp({{ $iotTemp['temp_min'] }}, {{ $iotTemp['temp_max'] }}, @json($iotTemp['sensor']))"
+                                    title="{{ __('Relevés capteur du bâtiment aujourd\'hui (:n mesures) — la saisie manuelle prime en cas de désaccord', ['n' => $iotTemp['count']]) }}"
+                                    class="w-full flex items-center justify-center gap-1 px-2 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 rounded-xl border border-emerald-400/20 transition cursor-pointer">
+                                    <span class="text-[8px] font-black text-emerald-300 uppercase tracking-widest italic"><i class="fa-solid fa-microchip mr-1"></i>{{ __('Capteur') }} {{ number_format($iotTemp['temp_min'], 1) }}–{{ number_format($iotTemp['temp_max'], 1) }} °C</span>
+                                </button>
+                                @endif
                             </div>
                             <div class="space-y-2 text-center">
                                 <label class="block text-[8px] font-black text-slate-500 uppercase tracking-widest leading-none">Humidité (%)
@@ -539,6 +551,21 @@
     </div>
 
     <script>
+        // ── Source de température (traçabilité IoT / manuel) ──
+        // Le bouton « Capteur » applique les min/max IoT et marque la source ;
+        // toute retouche clavier repasse en « manuel » (la saisie manuelle
+        // prime — le serveur signale un écart de calibration le cas échéant).
+        function applyIotTemp(min, max, sensor) {
+            document.getElementById('temp_min').value = min;
+            document.getElementById('temp_max').value = max;
+            document.getElementById('temp_source').value = 'iot';
+            document.getElementById('temp_recorded_by').value = sensor;
+        }
+        function tempSourceManual() {
+            document.getElementById('temp_source').value = 'manuel';
+            document.getElementById('temp_recorded_by').value = '';
+        }
+
         function changeVal(id, delta) {
             const input = document.getElementById(id);
             let newVal = (parseFloat(input.value) || 0) + delta;

@@ -58,3 +58,8 @@ Schedule::command('sales:payment-reminders')->dailyAt('09:00');
 // Licence : vérification en ligne (révocation / renouvellement à distance).
 // Sans LICENSE_SERVER_URL, la commande ne fait rien (mode hors-ligne).
 Schedule::command('license:sync')->dailyAt('04:00');
+
+// Télémétrie IoT : association des relevés en tampon au lot actif du
+// bâtiment (lieu + heure), puis rétention bornée (90 j).
+Schedule::command('telemetry:process')->everyFiveMinutes();
+Schedule::command('telemetry:prune')->dailyAt('03:30');

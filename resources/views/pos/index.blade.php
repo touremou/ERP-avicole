@@ -1,6 +1,8 @@
 <x-app-layout>
     <x-slot name="header">
-        <x-page-header :title="'🛒 ' . __('Caisse (POS)')" :subtitle="__('Encaissement rapide — vente comptant')" icon="fa-cash-register" accent="teal" :back="route('commerce.index')">
+        {{-- Pas de :back ici : pos.index est une section de niveau 1, le layout
+             rend déjà l'ancre hub (x-hub-back) → :back doublait la flèche. --}}
+        <x-page-header :title="'🛒 ' . __('Caisse (POS)')" :subtitle="__('Encaissement rapide — vente comptant')" icon="fa-cash-register" accent="teal">
             <x-slot name="actions">
                 <button type="button" onclick="togglePosFullscreen(this)" class="inline-flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-2xl text-[9px] font-black uppercase tracking-widest hover:bg-slate-50 transition-all shadow-sm italic cursor-pointer">
                     <i class="fa-solid fa-expand"></i> <span>{{ __("Plein écran") }}</span>

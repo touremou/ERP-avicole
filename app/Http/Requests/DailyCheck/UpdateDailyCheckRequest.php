@@ -31,8 +31,9 @@ class UpdateDailyCheckRequest extends FormRequest
             'feed_consumed'      => 'required|numeric|min:0',
             'feed_type'          => 'required|string|max:255',
             'water_consumed'     => 'nullable|numeric|min:0',
-            'temp_min'           => 'nullable|numeric',
-            'temp_max'           => 'nullable|numeric',
+            // Bornes physiques strictes (anti « fat-finger », cf. Store).
+            'temp_min'           => 'nullable|numeric|between:-10,50',
+            'temp_max'           => 'nullable|numeric|between:-10,50|gte:temp_min',
             'humidity'           => 'nullable|numeric|min:0|max:100',
             'avg_weight'         => 'nullable|numeric|min:0',
             'uniformity_pct'    => 'nullable|numeric|min:0|max:100',
