@@ -366,7 +366,7 @@ class SlaughterController extends Controller
             'types_count'    => $products->where('current_quantity_kg', '>', 0)->groupBy('product_type')->count(),
         ];
 
-        return view('slaughter.finished-products', compact('products', 'expiring', 'lowStock', 'kpi'));
+        return view('slaughter.finished-products', compact('products', 'expiring', 'lowStock', 'kpi', 'recentAdjustments'));
     }
 
     public function updateProduct(Request $request, FinishedProduct $product)

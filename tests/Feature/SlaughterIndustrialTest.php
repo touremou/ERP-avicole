@@ -68,6 +68,29 @@ beforeEach(function () {
     ];
 });
 
+// ─── RENDU DES PAGES (attrape les variables manquantes) ───
+
+test('les pages du module abattoir se rendent, journal des ajustements inclus', function () {
+    $product = FinishedProduct::create([
+        'product_name' => 'Cuisses', 'product_type' => 'cuisse',
+        'storage_location' => 'frais', 'unit' => 'kg', 'unit_price' => 0,
+        'current_quantity_kg' => 25,
+    ]);
+
+    // Une écriture de journal pour rendre la table des ajustements.
+    $this->actingAs($this->managerUser)
+        ->post(route('slaughter.finished.adjust', $product), [
+            'new_quantity_kg' => 20, 'reason' => 'Recomptage',
+        ]);
+
+    $this->actingAs($this->managerUser)->get(route('slaughter.dashboard'))->assertOk();
+    $this->actingAs($this->managerUser)->get(route('slaughter.orders.create'))->assertOk();
+    $this->actingAs($this->managerUser)
+        ->get(route('slaughter.finished'))
+        ->assertOk()
+        ->assertSee('Recomptage'); // le journal s'affiche réellement
+});
+
 // ─── BIOSÉCURITÉ ───
 
 test('ordre d\'abattage sur un lot en quarantaine : refusé', function () {
