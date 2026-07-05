@@ -95,8 +95,11 @@
                                         :disabled="p.qty !== null && p.qty <= 0"
                                         :class="(p.qty !== null && p.qty <= 0) ? 'opacity-50 cursor-not-allowed' : 'hover:border-teal-400 hover:shadow-md'"
                                         class="bg-white border border-slate-100 rounded-2xl p-3 text-left shadow-sm transition-all overflow-hidden relative">
-                                    <div class="h-20 -mx-3 -mt-3 mb-2 bg-slate-50 flex items-center justify-center overflow-hidden">
-                                        <template x-if="p.photo"><img :src="p.photo" class="w-full h-full object-cover" alt=""></template>
+                                    {{-- object-contain : produit ENTIER, centré, sans rognage ni
+                                         déformation (comme le catalogue). object-cover coupait le
+                                         haut/bas des photos qui ne sont pas au ratio de la vignette. --}}
+                                    <div class="h-20 -mx-3 -mt-3 mb-2 bg-slate-50 flex items-center justify-center overflow-hidden p-1.5">
+                                        <template x-if="p.photo"><img :src="p.photo" class="max-w-full max-h-full object-contain" alt=""></template>
                                         <template x-if="!p.photo"><i class="fa-solid fa-box-open text-2xl text-slate-200"></i></template>
                                     </div>
                                     {{-- Code PLU + étoile favori (façon balance) --}}

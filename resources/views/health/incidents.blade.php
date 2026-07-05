@@ -64,11 +64,13 @@
                             </a>
                         </div>
 
-                        {{-- Photo d'autopsie --}}
+                        {{-- Photo d'autopsie — object-contain : la preuve visuelle doit
+                             être montrée ENTIÈRE (une lésion recadrée hors champ est
+                             inutile au diagnostic). Fond sombre = letterboxing propre. --}}
                         @if($incident->photo_path)
-                            <div class="h-48 w-full bg-slate-900 relative group overflow-hidden">
-                                <img src="{{ media_url($incident->photo_path) }}" alt="Autopsie" class="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all duration-500">
-                                <div class="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex items-end p-4">
+                            <div class="h-48 w-full bg-slate-900 relative group overflow-hidden flex items-center justify-center">
+                                <img src="{{ media_url($incident->photo_path) }}" alt="Autopsie" loading="lazy" class="max-w-full max-h-full object-contain opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500">
+                                <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent flex items-end p-4 pointer-events-none">
                                     <span class="text-white text-[9px] uppercase tracking-widest font-black"><i class="fa-solid fa-camera mr-1"></i> {{ __("Preuve visuelle jointe") }}</span>
                                 </div>
                             </div>
