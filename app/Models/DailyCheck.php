@@ -35,7 +35,7 @@ class DailyCheck extends Model
         'farm_id', 'batch_id', 'check_date',
         'mortality', 'feed_consumed', 'feed_type', 'feed_unit_cost', 'water_consumed',
         'temp_min', 'temp_max', 'temp_source', 'temp_recorded_by', 'humidity',
-        'avg_weight', 'uniformity_pct', 'health_status',
+        'avg_weight', 'uniformity_pct', 'weight_samples', 'health_status',
         'treatment_type', 'treatment_name',
         'qty_quarantine_in', 'qty_quarantine_out', 'qty_sorted_out',
         'observations', 'litter_changed', 'manure_collected_kg',
@@ -49,6 +49,7 @@ class DailyCheck extends Model
         'water_consumed'     => 'decimal:2',
         'avg_weight'         => 'decimal:3',
         'uniformity_pct'     => 'decimal:2',
+        'weight_samples'     => 'array',
         'temp_min'           => 'decimal:1',
         'temp_max'           => 'decimal:1',
         'humidity'           => 'decimal:1',
@@ -70,6 +71,49 @@ class DailyCheck extends Model
     public function extension(): \Illuminate\Database\Eloquent\Relations\HasOne
     {
         return $this->hasOne(\App\Models\DailyCheckExtension::class);
+    }
+
+    /**
+     * Calcule poids moyen et TAUX D'UNIFORMITÉ depuis les pesées individuelles
+     * de l'échantillon (kg) — CÔTÉ SERVEUR, source de vérité (la valeur
+     * calculée par le navigateur n'est jamais crue sur parole).
+     *
+     * FORMULE (guides de souche) :
+     *   uniformité (%) = 100 × (nb de pesées dans [0,9 × m̄ ; 1,1 × m̄]) / n
+     *   avec m̄ = moyenne arithmétique de l'échantillon.
+     *
+     * Retourne null si aucune pesée exploitable ; l'uniformité n'est calculée
+     * qu'à partir de 2 pesées (sur 1 seul sujet elle vaudrait trivialement
+     * 100 % — sans signification).
+     *
+     * @param  array $samples  Poids en kg (valeurs non numériques ignorées)
+     * @return array{samples: float[], count: int, avg_weight: float, uniformity_pct: ?float}|null
+     */
+    public static function computeSampleStats(array $samples): ?array
+    {
+        $clean = collect($samples)
+            ->filter(fn ($v) => is_numeric($v) && (float) $v > 0)
+            ->map(fn ($v) => round((float) $v, 3))
+            ->values();
+
+        if ($clean->isEmpty()) {
+            return null;
+        }
+
+        $avg = $clean->avg();
+        $uniformity = null;
+
+        if ($clean->count() >= 2 && $avg > 0) {
+            $inRange = $clean->filter(fn (float $w) => $w >= $avg * 0.9 && $w <= $avg * 1.1)->count();
+            $uniformity = round($inRange / $clean->count() * 100, 2);
+        }
+
+        return [
+            'samples'        => $clean->all(),
+            'count'          => $clean->count(),
+            'avg_weight'     => round($avg, 3),
+            'uniformity_pct' => $uniformity,
+        ];
     }
 
     public function calculateNetImpact(): int

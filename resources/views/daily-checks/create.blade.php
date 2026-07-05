@@ -251,9 +251,32 @@
                             <div class="space-y-2 text-center">
                                 <label class="block text-[8px] font-black text-slate-500 uppercase tracking-widest leading-none">{{ __("Uniformité (%)") }}</label>
                                 <input type="number" min="0" max="100" name="uniformity_pct" step="0.1" placeholder="—" value="{{ old('uniformity_pct') }}"
-                                       title="{{ __('Part des sujets pesés dont le poids est à ±10 % du poids moyen de l\'échantillon. Guide de souche : viser ≥ 80 %.') }}"
+                                       title="{{ __('Part des sujets pesés dont le poids est à ±10 % du poids moyen de l\'échantillon. Guide de souche : viser ≥ 80 %. Calculée automatiquement si vous pesez un échantillon ci-dessous.') }}"
                                        class="w-full bg-white/5 border border-white/10 p-4 rounded-2xl text-xl text-amber-400 text-center outline-none font-black italic">
                                 <p class="text-[7px] font-bold text-slate-500 uppercase tracking-wide leading-tight italic">{{ __("Sujets à ±10 % du poids moyen — cible ≥ 80 %") }}</p>
+                            </div>
+                        </div>
+
+                        {{-- ⚖️ PESÉE D'ÉCHANTILLON — calcul AUTOMATIQUE moyenne + uniformité.
+                             L'opérateur tape les poids un à un ; poids moyen et uniformité se
+                             remplissent seuls (et le SERVEUR refait le calcul : source de vérité). --}}
+                        <div class="mt-4 bg-white/5 border border-white/10 rounded-2xl p-4">
+                            <button type="button" onclick="document.getElementById('sample-panel').classList.toggle('hidden')"
+                                    class="w-full flex items-center justify-center gap-2 text-[9px] font-black text-emerald-300 uppercase tracking-widest italic bg-transparent border-none cursor-pointer">
+                                <i class="fa-solid fa-weight-scale"></i> {{ __("Peser un échantillon — moyenne & uniformité calculées automatiquement") }}
+                                <i class="fa-solid fa-chevron-down text-[8px] opacity-60"></i>
+                            </button>
+                            <div id="sample-panel" class="hidden mt-3 space-y-3">
+                                <div class="flex items-center gap-4 text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                                    <span>{{ __("Unité des pesées :") }}</span>
+                                    <label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="sample_unit_ui" value="g" {{ $batch->isGmqTracked() ? '' : 'checked' }} onchange="sampleRecalc()" class="accent-emerald-500"> g</label>
+                                    <label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="sample_unit_ui" value="kg" {{ $batch->isGmqTracked() ? 'checked' : '' }} onchange="sampleRecalc()" class="accent-emerald-500"> kg</label>
+                                </div>
+                                <textarea id="sample-weights" rows="3" oninput="sampleRecalc()"
+                                          placeholder="{{ __('Poids un par un, séparés par espace ou retour à la ligne — ex : 512 498 505 520 487') }}"
+                                          class="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm font-black text-emerald-300 outline-none italic placeholder-slate-600"></textarea>
+                                <p id="sample-stats" class="hidden text-[9px] font-black uppercase tracking-widest text-slate-400 leading-relaxed"></p>
+                                <div id="sample-hidden"></div>
                             </div>
                         </div>
                     </div>
@@ -551,6 +574,47 @@
     </div>
 
     <script>
+        // ── Pesée d'échantillon : moyenne + uniformité calculées en direct ──
+        // Formule (guides de souche) : uniformité = % des pesées dans
+        // [0,9 × moyenne ; 1,1 × moyenne]. Le serveur refait le même calcul
+        // depuis weight_samples[] (source de vérité) — le JS n'est qu'un aperçu.
+        function sampleRecalc() {
+            const raw    = document.getElementById('sample-weights').value;
+            const unit   = document.querySelector('input[name="sample_unit_ui"]:checked')?.value || 'g';
+            const stats  = document.getElementById('sample-stats');
+            const holder = document.getElementById('sample-hidden');
+
+            const parts = raw.replace(/,/g, '.').split(/[\s;]+/)
+                .map(parseFloat).filter(v => isFinite(v) && v > 0);
+
+            holder.innerHTML = '';
+            if (! parts.length) { stats.classList.add('hidden'); return; }
+
+            const kg  = parts.map(v => unit === 'g' ? v / 1000 : v);
+            const avg = kg.reduce((s, v) => s + v, 0) / kg.length;
+
+            let unif = null;
+            if (kg.length >= 2 && avg > 0) {
+                unif = Math.round(kg.filter(w => w >= avg * 0.9 && w <= avg * 1.1).length / kg.length * 10000) / 100;
+            }
+
+            // Remplit les champs officiels (le serveur recalculera pareil).
+            const avgInput = document.querySelector('input[name="avg_weight"]');
+            if (avgInput) avgInput.value = avg.toFixed(3);
+            const unifInput = document.querySelector('input[name="uniformity_pct"]');
+            if (unifInput && unif !== null) unifInput.value = unif.toFixed(1);
+
+            holder.innerHTML = kg.map(v => `<input type="hidden" name="weight_samples[]" value="${v.toFixed(3)}">`).join('');
+
+            const min = Math.min(...parts), max = Math.max(...parts);
+            const avgDisplay = unit === 'g' ? Math.round(avg * 1000) + ' g' : avg.toFixed(3) + ' kg';
+            const color = unif === null ? 'text-slate-400' : (unif >= 80 ? 'text-emerald-400' : (unif >= 70 ? 'text-amber-400' : 'text-red-400'));
+            stats.classList.remove('hidden');
+            stats.innerHTML = `${parts.length} {{ __('pesées') }} · {{ __('moyenne') }} ${avgDisplay} · min ${min} · max ${max}`
+                + (unif === null ? '' : ` · <span class="${color}">{{ __('uniformité') }} ${unif.toFixed(1)} %</span>`)
+                + (parts.length < 30 ? ` · <span class="text-amber-400/70">{{ __('échantillon faible (< 30 sujets)') }}</span>` : '');
+        }
+
         // ── Source de température (traçabilité IoT / manuel) ──
         // Le bouton « Capteur » applique les min/max IoT et marque la source ;
         // toute retouche clavier repasse en « manuel » (la saisie manuelle

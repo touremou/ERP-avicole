@@ -87,6 +87,23 @@ class RecordDailyCheck
                 $data['feed_unit_cost'] = $this->resolveFeedUnitCost($feedType);
             }
 
+            // ─── Uniformité AUTOMATISÉE depuis les pesées d'échantillon ───
+            // Si des pesées individuelles sont fournies, le SERVEUR recalcule
+            // poids moyen + taux d'uniformité et écrase les valeurs client
+            // (formule documentée : DailyCheck::computeSampleStats).
+            if (! empty($data['weight_samples']) && is_array($data['weight_samples'])) {
+                $stats = DailyCheck::computeSampleStats($data['weight_samples']);
+                if ($stats) {
+                    $data['weight_samples'] = $stats['samples'];
+                    $data['avg_weight']     = $stats['avg_weight'];
+                    if ($stats['uniformity_pct'] !== null) {
+                        $data['uniformity_pct'] = $stats['uniformity_pct'];
+                    }
+                } else {
+                    unset($data['weight_samples']);
+                }
+            }
+
             // ─── Création ou mise à jour du pointage ───
             // Note : DailyCheck::booted() gère l'impact sur current_quantity
             $check = DailyCheck::updateOrCreate(

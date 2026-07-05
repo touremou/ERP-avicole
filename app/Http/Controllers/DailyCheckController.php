@@ -311,6 +311,21 @@ class DailyCheckController extends Controller
 
         $validated = $request->validated();
 
+        // Uniformité AUTOMATISÉE : mêmes règles que le store (le serveur
+        // recalcule moyenne + uniformité depuis les pesées fournies).
+        if (! empty($validated['weight_samples']) && is_array($validated['weight_samples'])) {
+            $stats = DailyCheck::computeSampleStats($validated['weight_samples']);
+            if ($stats) {
+                $validated['weight_samples'] = $stats['samples'];
+                $validated['avg_weight']     = $stats['avg_weight'];
+                if ($stats['uniformity_pct'] !== null) {
+                    $validated['uniformity_pct'] = $stats['uniformity_pct'];
+                }
+            } else {
+                unset($validated['weight_samples']);
+            }
+        }
+
         // Vérification effectif
         $oldImpact = $check->calculateNetImpact();
         $newImpact = ((int) $validated['mortality'] + (int) $validated['qty_quarantine_in'] + (int) ($validated['qty_sorted_out'] ?? 0))

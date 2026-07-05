@@ -37,6 +37,9 @@ class UpdateDailyCheckRequest extends FormRequest
             'humidity'           => 'nullable|numeric|min:0|max:100',
             'avg_weight'         => 'nullable|numeric|min:0',
             'uniformity_pct'    => 'nullable|numeric|min:0|max:100',
+            // Pesées individuelles (kg) — cf. StoreDailyCheckRequest.
+            'weight_samples'    => 'nullable|array|max:500',
+            'weight_samples.*'  => 'numeric|min:0.001|max:200',
             'qty_quarantine_in'  => 'required|integer|min:0',
             'qty_quarantine_out' => 'required|integer|min:0',
             'qty_sorted_out'     => 'nullable|integer|min:0',
