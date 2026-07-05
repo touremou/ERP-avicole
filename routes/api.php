@@ -46,6 +46,11 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
             ->whereNumber('deviceId')
             ->name('devices.destroy');
 
+        // Centre de notifications (miroir mobile de la cloche web).
+        Route::get('/notifications', [\App\Http\Controllers\Api\NotificationController::class, 'index'])->name('notifications.index');
+        Route::post('/notifications/read-all', [\App\Http\Controllers\Api\NotificationController::class, 'markAllRead'])->name('notifications.read_all');
+        Route::post('/notifications/{id}/read', [\App\Http\Controllers\Api\NotificationController::class, 'markRead'])->name('notifications.read');
+
         Route::get('/batches', [BatchController::class, 'index'])->name('batches.index');
         Route::get('/batches/{batch}', [BatchController::class, 'show'])->name('batches.show');
 

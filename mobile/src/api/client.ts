@@ -12,6 +12,7 @@ import type {
   DeviceInfo,
   LoginResponse,
   MeResponse,
+  NotificationsResponse,
   PushOperation,
   PushResponse,
   PullResponse,
@@ -89,4 +90,12 @@ export const api = {
 
   syncPull: (since: string | null) =>
     request<PullResponse>(`/sync/pull${since ? `?since=${encodeURIComponent(since)}` : ''}`),
+
+  notifications: () => request<NotificationsResponse>('/notifications'),
+
+  markNotificationRead: (id: string) =>
+    request<{ message: string }>(`/notifications/${id}/read`, { method: 'POST' }),
+
+  markAllNotificationsRead: () =>
+    request<{ message: string }>('/notifications/read-all', { method: 'POST' }),
 }

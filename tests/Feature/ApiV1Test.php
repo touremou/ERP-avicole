@@ -244,3 +244,50 @@ it("ne révoque jamais l'appareil d'un autre utilisateur (404, sans fuite)", fun
 
     expect($other->tokens()->count())->toBe(1);
 });
+
+// ── CENTRE DE NOTIFICATIONS ──
+
+it('liste les notifications database avec compteur de non-lues, et marque lu', function () {
+    $this->user->notify(new App\Notifications\AlertNotification([
+        'type' => 'alert_mortality', 'title' => 'Pic de mortalité',
+        'message' => 'Lot P-001 : 12 sujets', 'severity' => 'critical',
+    ]));
+    $this->user->notify(new App\Notifications\AlertNotification([
+        'type' => 'general', 'title' => 'Info', 'message' => 'RAS',
+    ]));
+
+    $token = $this->postJson('/api/v1/auth/login', [
+        'email' => $this->user->email, 'password' => 'secret-terrain', 'device_name' => 'Pixel',
+    ])->json('token');
+    $auth = fn () => $this->withHeader('Authorization', "Bearer {$token}");
+
+    $response = $auth()->getJson('/api/v1/notifications');
+    $response->assertOk()->assertJsonStructure(['notifications', 'unread_count', 'server_time']);
+    expect($response->json('unread_count'))->toBe(2);
+    expect($response->json('notifications.0.title'))->toBeIn(['Pic de mortalité', 'Info']);
+
+    // Marquer une notification lue.
+    $id = $response->json('notifications.0.id');
+    $auth()->postJson("/api/v1/notifications/{$id}/read")->assertOk();
+    expect($auth()->getJson('/api/v1/notifications')->json('unread_count'))->toBe(1);
+
+    // Tout marquer lu.
+    $auth()->postJson('/api/v1/notifications/read-all')->assertOk();
+    expect($auth()->getJson('/api/v1/notifications')->json('unread_count'))->toBe(0);
+});
+
+it("ne marque jamais lue la notification d'un autre utilisateur (404)", function () {
+    $other = User::factory()->create(['role_id' => Role::where('name', 'admin')->first()->id]);
+    $other->notify(new App\Notifications\AlertNotification(['title' => 'Privée', 'message' => 'x']));
+    $otherId = $other->notifications()->first()->id;
+
+    $token = $this->postJson('/api/v1/auth/login', [
+        'email' => $this->user->email, 'password' => 'secret-terrain', 'device_name' => 'Pixel',
+    ])->json('token');
+
+    $this->withHeader('Authorization', "Bearer {$token}")
+        ->postJson("/api/v1/notifications/{$otherId}/read")
+        ->assertNotFound();
+
+    expect($other->unreadNotifications()->count())->toBe(1);
+});

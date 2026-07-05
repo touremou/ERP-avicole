@@ -88,6 +88,7 @@ export async function syncNow(): Promise<void> {
   try {
     await pushOutbox()
     await pullDelta()
+    await refreshNotifications()
     await notify('idle')
   } catch {
     // Réseau tombé en plein cycle : l'outbox est intacte, on retentera.
@@ -167,6 +168,18 @@ async function pullDelta(): Promise<void> {
   )
 
   await setMeta('last_pull_at', response.server_time)
+}
+
+/** Miroir local des notifications (lecture hors-ligne du centre d'alertes). */
+async function refreshNotifications(): Promise<void> {
+  const response = await api.notifications()
+  await db.transaction('rw', db.notifications, async () => {
+    // Remplacement complet : le serveur renvoie les 50 dernières, qui sont
+    // la fenêtre utile terrain — pas de pagination locale à gérer.
+    await db.notifications.clear()
+    await db.notifications.bulkPut(response.notifications)
+  })
+  window.dispatchEvent(new CustomEvent('notifications:updated'))
 }
 
 /** À appeler une fois au démarrage de l'app. */

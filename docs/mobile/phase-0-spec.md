@@ -24,8 +24,8 @@ Checklist :
 - [x] `SyncController` et `Api\FieldOperationController` **fusionnés** derrière un `SyncService` unique.
 - [x] PWA installable (manifest + service worker), Capacitor pré-câblé **inactif**.
 - [x] Moteur offline : miroir Dexie + outbox + sync (push/pull/conflit) + gate de permissions hors-ligne.
-- [x] App-shell : bottom-nav, home par rôle, « Mon espace » (⚠️ centre de notifications : reste à faire).
-- [ ] Tests : Feature (API push/pull, idempotence, conflit, permissions) + le scénario tracer-bullet.
+- [x] App-shell : bottom-nav, home par rôle, « Mon espace », centre de notifications.
+- [x] Tests : Feature (API push/pull, idempotence, conflit, permissions) + le scénario tracer-bullet (validé en E2E automatisé Chromium : saisie hors-ligne → retour réseau → pointage serveur, effectif 500→497, stock aliment 200→175, idempotent).
 
 ---
 

@@ -380,3 +380,29 @@ test('pull renvoie les données de référence de la ferme, les tombstones, et r
     expect($empty->json('entities.batches.upserts'))->toBe([]);
     expect($empty->json('entities.batches.deletes'))->toBe([]);
 });
+
+test("daily_check.create : stock aliment insuffisant renvoie conflict (non rejouable), pas error", function () {
+    // Aucun stock d'aliment seedé : consommer 25 kg doit être refusé par la
+    // règle métier (RecordDailyCheck::checkFeedStock). Le point critique :
+    // le statut doit être 'conflict' (le terrain sort l'op de sa file vers le
+    // bac « À corriger ») et non 'error' (qui serait retenté indéfiniment).
+    Sanctum::actingAs($this->manager);
+
+    $uuid = (string) Str::uuid();
+    $response = $this->postJson('/api/v1/sync/push', pushOps([[
+        'type'    => 'daily_check.create',
+        'payload' => [
+            'uuid'          => $uuid,
+            'batch_id'      => $this->batch->id,
+            'check_date'    => now()->toDateString(),
+            'mortality'     => 1,
+            'feed_consumed' => 25,
+            'feed_type'     => 'Aliment Inexistant',
+        ],
+    ]]));
+
+    $response->assertOk();
+    expect($response->json('results.0.status'))->toBe('conflict');
+    expect($response->json('results.0.message'))->toContain('Stock insuffisant');
+    expect(App\Models\DailyCheck::count())->toBe(0);
+});

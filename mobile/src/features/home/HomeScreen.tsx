@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../app/AuthContext'
 import { db } from '../../offline/db'
+import { onSyncChange } from '../../offline/sync'
 import type { RefBatch } from '../../api/types'
 
 export function HomeScreen() {
@@ -15,7 +16,7 @@ export function HomeScreen() {
   const [pointedToday, setPointedToday] = useState<Set<number>>(new Set())
 
   useEffect(() => {
-    void (async () => {
+    const load = async () => {
       const active = await db.ref_batches.where('status').equals('Actif').toArray()
       setBatches(active)
 
@@ -28,7 +29,12 @@ export function HomeScreen() {
         if (payload.check_date === today && payload.batch_id) done.add(payload.batch_id)
       }
       setPointedToday(done)
-    })()
+    }
+
+    void load()
+    // Se recharge à chaque cycle de sync : au premier login, le pull qui
+    // rapatrie les lots aboutit APRÈS le montage de la home.
+    return onSyncChange(() => void load())
   }, [])
 
   const todo = batches.filter((b) => !pointedToday.has(b.id))

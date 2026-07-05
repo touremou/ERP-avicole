@@ -148,3 +148,22 @@ export interface DeviceInfo {
   created_at: string | null
   current: boolean
 }
+
+// ── Notifications (centre mobile — miroir de la cloche web) ─────────────
+
+export interface ApiNotification {
+  id: string
+  type: string
+  title: string
+  message: string
+  severity: string
+  url: string | null
+  read_at: string | null
+  created_at: string
+}
+
+export interface NotificationsResponse {
+  notifications: ApiNotification[]
+  unread_count: number
+  server_time: string
+}

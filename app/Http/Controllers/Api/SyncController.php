@@ -70,9 +70,20 @@ class SyncController extends Controller
         foreach ($validated['operations'] as $operation) {
             try {
                 $result = $sync->handle($operation['type'], $operation['payload']);
+            } catch (\Illuminate\Validation\ValidationException $e) {
+                // Règle métier violée au plus profond de l'Action (ex. stock
+                // aliment insuffisant, capacité bâtiment) : refus NON REJOUABLE.
+                // Sans ce catch dédié, l'op tomberait en 'error' générique et le
+                // terrain la retenterait indéfiniment — ici elle sort de la file
+                // vers le bac « À corriger » avec le motif exact.
+                $result = [
+                    'status'  => 'conflict',
+                    'message' => $e->getMessage(),
+                    'errors'  => $e->errors(),
+                ];
             } catch (\Throwable $e) {
                 // Une opération ne doit JAMAIS faire échouer le lot : on logue
-                // et on renvoie un statut d'erreur ciblé au client.
+                // et on renvoie un statut d'erreur ciblé au client (retenté).
                 Log::error("Sync push: échec op {$operation['op_uuid']} ({$operation['type']}) : {$e->getMessage()}", [
                     'exception' => $e,
                 ]);

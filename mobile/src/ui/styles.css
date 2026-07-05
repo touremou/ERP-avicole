@@ -115,13 +115,13 @@ h3 {
 /* ── Formulaires (saisie gantée) ── */
 label { font-weight: 800; font-size: 14px; }
 
-input, textarea {
+input, textarea, select {
   width: 100%; min-height: var(--touch);
   padding: 12px 14px; font-size: 18px;
   border: 1px solid var(--line); border-radius: var(--radius);
   background: var(--surface); color: var(--ink);
 }
-input:focus, textarea:focus { outline: 3px solid #bfdbfe; border-color: var(--accent); }
+input:focus, textarea:focus, select:focus { outline: 3px solid #bfdbfe; border-color: var(--accent); }
 
 /* ── Steppers ── */
 .stepper { display: flex; flex-direction: column; gap: 6px; }
@@ -155,4 +155,22 @@ input:focus, textarea:focus { outline: 3px solid #bfdbfe; border-color: var(--ac
   display: flex; flex-direction: column; gap: 10px;
   background: var(--surface); border: 1px solid var(--line);
   border-radius: 24px; padding: 28px;
+}
+
+/* ── Notifications ── */
+.notif-card {
+  display: flex; gap: 12px; align-items: flex-start;
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 14px;
+}
+.notif-read { opacity: 0.55; }
+.notif-icon { font-size: 20px; line-height: 1.4; }
+.notif-body { display: flex; flex-direction: column; gap: 2px; }
+
+.nav-icon { position: relative; }
+.nav-badge {
+  position: absolute; top: -4px; right: -10px;
+  background: var(--danger); color: #fff;
+  border-radius: 999px; font-size: 10px; font-weight: 800;
+  padding: 1px 5px; min-width: 16px; text-align: center;
 }

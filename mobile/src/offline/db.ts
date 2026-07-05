@@ -12,6 +12,7 @@
  */
 import Dexie, { type Table } from 'dexie'
 import type {
+  ApiNotification,
   MeResponse,
   OperationType,
   RefBatch,
@@ -56,6 +57,7 @@ class ErpMobileDb extends Dexie {
   ref_products!: Table<RefProduct, number>
   outbox!: Table<OutboxEntry, string>
   my_records!: Table<MyRecord, string>
+  notifications!: Table<ApiNotification, string>
   meta!: Table<MetaEntry, string>
 
   constructor() {
@@ -68,6 +70,7 @@ class ErpMobileDb extends Dexie {
       ref_products: 'id, product_type',
       outbox: 'op_uuid, status, created_at',
       my_records: 'uuid, type, sync_status, created_at',
+      notifications: 'id, read_at, created_at',
       meta: 'key',
     })
   }

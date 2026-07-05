@@ -6,6 +6,7 @@ import { LoginScreen } from '../features/auth/LoginScreen'
 import { HomeScreen } from '../features/home/HomeScreen'
 import { DailyCheckScreen } from '../features/elevage/DailyCheckScreen'
 import { MonEspaceScreen } from '../features/mon-espace/MonEspaceScreen'
+import { NotificationsScreen } from '../features/notifications/NotificationsScreen'
 import { BottomNav } from '../ui/BottomNav'
 import { SyncBadge } from '../ui/SyncBadge'
 
@@ -29,6 +30,7 @@ function Shell() {
         <Routes>
           <Route path="/" element={<HomeScreen />} />
           <Route path="/elevage/pointage/:batchId?" element={<DailyCheckScreen />} />
+          <Route path="/alertes" element={<NotificationsScreen />} />
           <Route path="/mon-espace" element={<MonEspaceScreen />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

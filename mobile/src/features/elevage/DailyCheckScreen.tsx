@@ -10,21 +10,33 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { db } from '../../offline/db'
 import { enqueue } from '../../offline/sync'
 import { NumberStepper } from '../../ui/NumberStepper'
-import type { RefBatch } from '../../api/types'
+import type { RefBatch, RefStock } from '../../api/types'
 
 export function DailyCheckScreen() {
   const { batchId } = useParams()
   const navigate = useNavigate()
 
   const [batch, setBatch] = useState<RefBatch | null>(null)
+  const [feedStocks, setFeedStocks] = useState<RefStock[]>([])
   const [mortality, setMortality] = useState(0)
   const [feedConsumed, setFeedConsumed] = useState(0)
+  const [feedType, setFeedType] = useState('')
   const [avgWeight, setAvgWeight] = useState('')
   const [observations, setObservations] = useState('')
   const [saved, setSaved] = useState(false)
 
   useEffect(() => {
     if (batchId) void db.ref_batches.get(Number(batchId)).then((b) => setBatch(b ?? null))
+    // Types d'aliment = stocks « conso » du miroir local (preset, pas de
+    // clavier) — le serveur décrémentera CE stock au push.
+    void db.ref_stocks
+      .where('category')
+      .equals('conso')
+      .toArray()
+      .then((stocks) => {
+        setFeedStocks(stocks)
+        if (stocks.length === 1) setFeedType(stocks[0].item_name)
+      })
   }, [batchId])
 
   async function onSubmit(event: FormEvent) {
@@ -38,6 +50,7 @@ export function DailyCheckScreen() {
         check_date: new Date().toISOString().slice(0, 10),
         mortality,
         feed_consumed: feedConsumed || null,
+        feed_type: feedConsumed > 0 ? feedType : null,
         avg_weight: avgWeight ? Number(avgWeight) : null,
         observations: observations || null,
       },
@@ -82,6 +95,27 @@ export function DailyCheckScreen() {
         min={0}
         step={5}
       />
+
+      {feedConsumed > 0 && (
+        <>
+          <label htmlFor="feed_type">Type d'aliment (stock décrémenté)</label>
+          <select
+            id="feed_type"
+            required
+            value={feedType}
+            onChange={(e) => setFeedType(e.target.value)}
+          >
+            <option value="" disabled>
+              — Choisir dans le stock —
+            </option>
+            {feedStocks.map((stock) => (
+              <option key={stock.id} value={stock.item_name}>
+                {stock.item_name} ({stock.current_quantity} {stock.unit})
+              </option>
+            ))}
+          </select>
+        </>
+      )}
 
       <label htmlFor="avg_weight">Poids moyen (kg) — optionnel</label>
       <input
