@@ -28,7 +28,7 @@ class HealthIncident extends Model
     public const SEVERITY_CRITICAL = 'critique';
 
     protected $fillable = [
-        'farm_id', 'building_id', 'batch_id', 'daily_check_id', 'user_id', 'incident_date', 'mortality_count',
+        'uuid', 'farm_id', 'building_id', 'batch_id', 'daily_check_id', 'user_id', 'incident_date', 'mortality_count',
         'symptoms', 'photo_path', 'status', 'severity', 'suspected_disease', 'vet_prescription',
         'diagnosed_by', 'diagnosed_at', 'treatment_cost',
         'resolved_by', 'resolved_at', 'resolution_notes',

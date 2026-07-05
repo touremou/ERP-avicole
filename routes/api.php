@@ -54,6 +54,11 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::get('/batches', [BatchController::class, 'index'])->name('batches.index');
         Route::get('/batches/{batch}', [BatchController::class, 'show'])->name('batches.show');
 
+        // Photos terrain (téléversées AVANT le push de l'op qui les référence).
+        Route::post('/photos', [\App\Http\Controllers\Api\PhotoController::class, 'store'])
+            ->middleware('throttle:30,1')
+            ->name('photos.store');
+
         // Synchronisation offline (fusion audit A2 — remplace les anciennes
         // routes d'écriture éparses /daily-checks et /egg-productions).
         Route::post('/sync/push', [SyncController::class, 'push'])

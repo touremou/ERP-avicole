@@ -19,6 +19,7 @@ import type {
   RefBuilding,
   RefClient,
   RefProduct,
+  RefProductionType,
   RefStock,
 } from '../api/types'
 
@@ -49,6 +50,16 @@ export interface MetaEntry {
   value: unknown
 }
 
+/** Photo en attente de téléversement (référencée par payload.photo_uuid). */
+export interface LocalPhoto {
+  uuid: string
+  blob: Blob
+  context: 'incident' | 'expense' | 'daily_check'
+  /** Chemin serveur une fois téléversée (le payload de l'op est alors mis à jour). */
+  uploaded_path: string | null
+  created_at: string
+}
+
 class ErpMobileDb extends Dexie {
   ref_batches!: Table<RefBatch, number>
   ref_buildings!: Table<RefBuilding, number>
@@ -58,6 +69,8 @@ class ErpMobileDb extends Dexie {
   outbox!: Table<OutboxEntry, string>
   my_records!: Table<MyRecord, string>
   notifications!: Table<ApiNotification, string>
+  photos!: Table<LocalPhoto, string>
+  ref_production_types!: Table<RefProductionType, number>
   meta!: Table<MetaEntry, string>
 
   constructor() {
@@ -72,6 +85,13 @@ class ErpMobileDb extends Dexie {
       my_records: 'uuid, type, sync_status, created_at',
       notifications: 'id, read_at, created_at',
       meta: 'key',
+    })
+    // v2 (Phase 1) : photos hors-ligne + référentiel des types de production.
+    this.version(2).stores({
+      photos: 'uuid, created_at, uploaded_path',
+      ref_production_types: 'id, slug',
+      // + index `code` pour la résolution du scan QR.
+      ref_batches: 'id, uuid, code, building_id, status',
     })
   }
 }

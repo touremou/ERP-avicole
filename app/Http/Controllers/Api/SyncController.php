@@ -35,7 +35,7 @@ class SyncController extends Controller
     private const PULL_ENTITIES = [
         'batches' => [
             'model'   => Batch::class,
-            'columns' => ['id', 'uuid', 'code', 'status', 'building_id', 'species_id',
+            'columns' => ['id', 'uuid', 'code', 'status', 'building_id', 'species_id', 'production_type_id',
                           'initial_quantity', 'current_quantity', 'qty_dead', 'arrival_date', 'updated_at'],
         ],
         'buildings' => [
@@ -53,6 +53,13 @@ class SyncController extends Controller
         'products' => [
             'model'   => Product::class,
             'columns' => ['id', 'name', 'sku', 'product_type', 'unit', 'base_price', 'is_active', 'updated_at'],
+        ],
+        // Référentiel global (non borné ferme) : permet au client de savoir
+        // quel lot est en ponte (tâche « collecte d'œufs ») sans dupliquer la
+        // taxonomie. Table petite et stable.
+        'production_types' => [
+            'model'   => \App\Models\ProductionType::class,
+            'columns' => ['id', 'slug', 'name_fr', 'updated_at'],
         ],
     ];
 

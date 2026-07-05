@@ -41,6 +41,7 @@ export type OperationType =
   | 'sale.create'
   | 'expense.create'
   | 'batch.upsert'
+  | 'health_incident.create'
 
 export interface PushOperation {
   op_uuid: string
@@ -82,6 +83,7 @@ export interface PullResponse {
     stocks: PullEntity<RefStock>
     clients: PullEntity<RefClient>
     products: PullEntity<RefProduct>
+    production_types: PullEntity<RefProductionType>
   }
 }
 
@@ -94,6 +96,7 @@ export interface RefBatch {
   status: string
   building_id: number
   species_id: number | null
+  production_type_id: number | null
   initial_quantity: number
   current_quantity: number
   qty_dead: number
@@ -165,5 +168,18 @@ export interface ApiNotification {
 export interface NotificationsResponse {
   notifications: ApiNotification[]
   unread_count: number
+  server_time: string
+}
+
+export interface RefProductionType {
+  id: number
+  slug: string
+  name_fr: string
+  updated_at: string
+}
+
+export interface PhotoUploadResponse {
+  path: string
+  url: string
   server_time: string
 }

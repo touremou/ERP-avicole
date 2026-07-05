@@ -5,6 +5,10 @@ import { startSyncLoop } from '../offline/sync'
 import { LoginScreen } from '../features/auth/LoginScreen'
 import { HomeScreen } from '../features/home/HomeScreen'
 import { DailyCheckScreen } from '../features/elevage/DailyCheckScreen'
+import { EggCollectionScreen } from '../features/elevage/EggCollectionScreen'
+import { IncidentScreen } from '../features/elevage/IncidentScreen'
+import { BatchScreen } from '../features/elevage/BatchScreen'
+import { ScanScreen } from '../features/scan/ScanScreen'
 import { MonEspaceScreen } from '../features/mon-espace/MonEspaceScreen'
 import { NotificationsScreen } from '../features/notifications/NotificationsScreen'
 import { BottomNav } from '../ui/BottomNav'
@@ -30,6 +34,10 @@ function Shell() {
         <Routes>
           <Route path="/" element={<HomeScreen />} />
           <Route path="/elevage/pointage/:batchId?" element={<DailyCheckScreen />} />
+          <Route path="/elevage/collecte/:batchId" element={<EggCollectionScreen />} />
+          <Route path="/elevage/incident/:batchId" element={<IncidentScreen />} />
+          <Route path="/lot/:batchId" element={<BatchScreen />} />
+          <Route path="/scan" element={<ScanScreen />} />
           <Route path="/alertes" element={<NotificationsScreen />} />
           <Route path="/mon-espace" element={<MonEspaceScreen />} />
           <Route path="*" element={<Navigate to="/" replace />} />

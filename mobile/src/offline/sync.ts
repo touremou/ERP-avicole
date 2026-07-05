@@ -102,6 +102,31 @@ async function pushOutbox(): Promise<void> {
   const pending = await db.outbox.where('status').equals('pending').sortBy('created_at')
   if (pending.length === 0) return
 
+  // Photos d'abord : une op qui référence une photo locale (payload.photo_uuid)
+  // ne part qu'une fois la photo téléversée et son chemin serveur substitué.
+  // Rejouable : le chemin est persisté sur la photo ET dans le payload — un
+  // échec de push ultérieur ne re-téléverse pas.
+  for (const entry of pending) {
+    const photoUuid = entry.payload.photo_uuid as string | undefined
+    if (!photoUuid) continue
+
+    const photo = await db.photos.get(photoUuid)
+    if (!photo) {
+      // Photo disparue (purge navigateur) : l'op part sans photo plutôt
+      // que de bloquer la file.
+      delete entry.payload.photo_uuid
+      await db.outbox.update(entry.op_uuid, { payload: entry.payload })
+      continue
+    }
+
+    const path = photo.uploaded_path ?? (await api.uploadPhoto(photo.blob, photo.context)).path
+    await db.photos.update(photoUuid, { uploaded_path: path })
+
+    entry.payload.photo_path = path
+    delete entry.payload.photo_uuid
+    await db.outbox.update(entry.op_uuid, { payload: entry.payload })
+  }
+
   // Lots de 50 (le serveur accepte max 100) pour borner la taille de requête.
   for (let i = 0; i < pending.length; i += 50) {
     const batch = pending.slice(i, i + 50)
@@ -115,10 +140,14 @@ async function pushOutbox(): Promise<void> {
 
       switch (result.status) {
         case 'success':
-        case 'already_synced':
+        case 'already_synced': {
           await db.outbox.delete(result.op_uuid)
           await db.my_records.update(result.op_uuid, { sync_status: 'synced' })
+          // La photo est au serveur : on libère l'espace local.
+          const path = entry.payload.photo_path as string | undefined
+          if (path) await db.photos.where('uploaded_path').equals(path).delete()
           break
+        }
 
         case 'conflict':
         case 'validation_failed':
@@ -148,11 +177,11 @@ async function pullDelta(): Promise<void> {
   const since = (await getMeta<string>('last_pull_at')) ?? null
   const response: PullResponse = await api.syncPull(since)
 
-  const { batches, buildings, stocks, clients, products } = response.entities
+  const { batches, buildings, stocks, clients, products, production_types } = response.entities
 
   await db.transaction(
     'rw',
-    [db.ref_batches, db.ref_buildings, db.ref_stocks, db.ref_clients, db.ref_products],
+    [db.ref_batches, db.ref_buildings, db.ref_stocks, db.ref_clients, db.ref_products, db.ref_production_types],
     async () => {
       await db.ref_batches.bulkPut(batches.upserts)
       await db.ref_batches.bulkDelete(batches.deletes)
@@ -164,6 +193,10 @@ async function pullDelta(): Promise<void> {
       await db.ref_clients.bulkDelete(clients.deletes)
       await db.ref_products.bulkPut(products.upserts)
       await db.ref_products.bulkDelete(products.deletes)
+      if (production_types) {
+        await db.ref_production_types.bulkPut(production_types.upserts)
+        await db.ref_production_types.bulkDelete(production_types.deletes)
+      }
     },
   )
 

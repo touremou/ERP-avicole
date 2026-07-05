@@ -10,6 +10,7 @@ use App\Actions\Stock\MoveStockAction;
 use App\Models\Batch;
 use App\Models\DailyCheck;
 use App\Models\EggProduction;
+use App\Models\HealthIncident;
 use App\Models\Expense;
 use App\Models\Sale;
 use App\Models\Stock;
@@ -53,12 +54,13 @@ class SyncService
     public static function types(): array
     {
         return [
-            'daily_check.create'    => 'dailyCheckCreate',
-            'egg_collection.create' => 'eggCollectionCreate',
-            'stock_movement.create' => 'stockMovementCreate',
-            'sale.create'           => 'saleCreate',
-            'expense.create'        => 'expenseCreate',
-            'batch.upsert'          => 'batchUpsert',
+            'daily_check.create'     => 'dailyCheckCreate',
+            'egg_collection.create'  => 'eggCollectionCreate',
+            'stock_movement.create'  => 'stockMovementCreate',
+            'sale.create'            => 'saleCreate',
+            'expense.create'         => 'expenseCreate',
+            'batch.upsert'           => 'batchUpsert',
+            'health_incident.create' => 'healthIncidentCreate',
         ];
     }
 
@@ -447,6 +449,66 @@ class SyncService
     }
 
     // ─── Helpers de statut ───
+
+    /**
+     * Déclaration d'incident sanitaire depuis le terrain (avec photo déjà
+     * téléversée via POST /api/v1/photos → photo_path). L'alerte
+     * multi-canaux part en best-effort, comme sur le web
+     * (HealthIncidentController@store).
+     */
+    private function healthIncidentCreate(array $payload): array
+    {
+        if (Gate::denies('elevage.C')) {
+            return $this->denied();
+        }
+
+        $v = Validator::make($payload, [
+            'uuid'            => 'required|uuid',
+            'batch_id'        => 'required|integer|exists:batches,id',
+            'incident_date'   => 'required|date|before_or_equal:today',
+            'mortality_count' => 'required|integer|min:0',
+            'symptoms'        => 'required|string|max:2000',
+            'severity'        => 'nullable|in:mineur,modere,critique',
+            'photo_path'      => 'nullable|string|max:255',
+        ]);
+
+        if ($v->fails()) {
+            return $this->invalid($v->errors()->toArray());
+        }
+
+        $data = $v->validated();
+
+        return DB::transaction(function () use ($data) {
+            // Idempotence : rejeu réseau du même uuid.
+            if (HealthIncident::withoutGlobalScopes()->where('uuid', $data['uuid'])->exists()) {
+                return ['status' => 'already_synced'];
+            }
+
+            $batch = Batch::findOrFail($data['batch_id']);
+
+            $incident = HealthIncident::create([
+                'uuid'            => $data['uuid'],
+                'building_id'     => $batch->building_id,
+                'batch_id'        => $batch->id,
+                'user_id'         => Auth::id(),
+                'incident_date'   => $data['incident_date'],
+                'mortality_count' => $data['mortality_count'],
+                'symptoms'        => $data['symptoms'],
+                'severity'        => $data['severity'] ?? HealthIncident::SEVERITY_MODERATE,
+                'photo_path'      => $data['photo_path'] ?? null,
+                'status'          => HealthIncident::STATUS_PENDING,
+            ]);
+
+            // Alerte (WhatsApp/SMS/mail selon préférences) — jamais bloquante.
+            try {
+                app(\App\Services\NotificationHub::class)->alertHealthIncident($incident);
+            } catch (\Throwable $e) {
+                Log::warning("Sync incident {$incident->id}: alerte non envoyée : {$e->getMessage()}");
+            }
+
+            return ['status' => 'success', 'server_id' => $incident->id];
+        });
+    }
 
     private function denied(): array
     {

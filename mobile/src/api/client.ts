@@ -13,6 +13,7 @@ import type {
   LoginResponse,
   MeResponse,
   NotificationsResponse,
+  PhotoUploadResponse,
   PushOperation,
   PushResponse,
   PullResponse,
@@ -98,4 +99,26 @@ export const api = {
 
   markAllNotificationsRead: () =>
     request<{ message: string }>('/notifications/read-all', { method: 'POST' }),
+
+  /** Multipart — on laisse le navigateur poser le boundary (pas de JSON ici). */
+  uploadPhoto: async (blob: Blob, context: string): Promise<PhotoUploadResponse> => {
+    const token = (await db.meta.get('token'))?.value as string | undefined
+    const farmId = (await db.meta.get('farm_id'))?.value as number | undefined
+    const form = new FormData()
+    form.append('photo', blob, 'photo.jpg')
+    form.append('context', context)
+
+    const response = await fetch(`${BASE}/photos`, {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(farmId ? { 'X-Farm-Id': String(farmId) } : {}),
+      },
+      body: form,
+    })
+    const body = await response.json().catch(() => ({}))
+    if (!response.ok) throw new ApiError(response.status, body.message ?? `Erreur ${response.status}`, body.errors)
+    return body as PhotoUploadResponse
+  },
 }

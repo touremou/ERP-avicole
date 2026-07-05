@@ -406,3 +406,80 @@ test("daily_check.create : stock aliment insuffisant renvoie conflict (non rejou
     expect($response->json('results.0.message'))->toContain('Stock insuffisant');
     expect(App\Models\DailyCheck::count())->toBe(0);
 });
+
+test('health_incident.create : incident créé avec photo, idempotent au rejeu', function () {
+    Sanctum::actingAs($this->manager);
+
+    $uuid = (string) Str::uuid();
+    $op = [[
+        'type'    => 'health_incident.create',
+        'payload' => [
+            'uuid'            => $uuid,
+            'batch_id'        => $this->batch->id,
+            'incident_date'   => now()->toDateString(),
+            'mortality_count' => 4,
+            'symptoms'        => 'Fientes vertes, prostration',
+            'severity'        => 'critique',
+            'photo_path'      => 'field/incident/autopsie.jpg',
+        ],
+    ]];
+
+    $response = $this->postJson('/api/v1/sync/push', pushOps($op))->assertOk();
+    expect($response->json('results.0.status'))->toBe('success');
+
+    $incident = App\Models\HealthIncident::where('uuid', $uuid)->first();
+    expect($incident)->not->toBeNull();
+    expect($incident->building_id)->toBe($this->batch->building_id); // dérivé du lot
+    expect($incident->severity)->toBe('critique');
+    expect($incident->photo_path)->toBe('field/incident/autopsie.jpg');
+    expect($incident->status)->toBe(App\Models\HealthIncident::STATUS_PENDING);
+
+    // Rejeu réseau : même uuid → already_synced, pas de doublon.
+    $replay = $this->postJson('/api/v1/sync/push', pushOps($op));
+    expect($replay->json('results.0.status'))->toBe('already_synced');
+    expect(App\Models\HealthIncident::count())->toBe(1);
+});
+
+test('health_incident.create : refusé pour un rôle lecture seule', function () {
+    Sanctum::actingAs($this->viewer);
+
+    $uuid = (string) Str::uuid();
+    $response = $this->postJson('/api/v1/sync/push', pushOps([[
+        'type'    => 'health_incident.create',
+        'payload' => ['uuid' => $uuid, 'batch_id' => $this->batch->id, 'incident_date' => now()->toDateString(), 'mortality_count' => 1, 'symptoms' => 'x'],
+    ]]));
+
+    expect($response->json('results.0.status'))->toBe('permission_denied');
+    expect(App\Models\HealthIncident::count())->toBe(0);
+});
+
+test('pull expose production_types et production_type_id sur les lots', function () {
+    Sanctum::actingAs($this->manager);
+
+    $response = $this->getJson('/api/v1/sync/pull')->assertOk();
+    expect($response->json('entities.production_types.upserts'))->not->toBeEmpty();
+    expect($response->json('entities.batches.upserts.0'))->toHaveKey('production_type_id');
+});
+
+test('téléversement de photo terrain : stockée sur le disque public', function () {
+    Illuminate\Support\Facades\Storage::fake('public');
+    Sanctum::actingAs($this->manager);
+
+    $response = $this->postJson('/api/v1/photos', [
+        'photo'   => Illuminate\Http\UploadedFile::fake()->image('autopsie.jpg', 800, 600),
+        'context' => 'incident',
+    ]);
+
+    $response->assertCreated()->assertJsonStructure(['path', 'url', 'server_time']);
+    Illuminate\Support\Facades\Storage::disk('public')->assertExists($response->json('path'));
+    expect($response->json('path'))->toStartWith('field/incident/');
+});
+
+test('téléversement de photo refusé en lecture seule', function () {
+    Illuminate\Support\Facades\Storage::fake('public');
+    Sanctum::actingAs($this->viewer);
+
+    $this->postJson('/api/v1/photos', [
+        'photo' => Illuminate\Http\UploadedFile::fake()->image('x.jpg'),
+    ])->assertForbidden();
+});
