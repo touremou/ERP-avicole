@@ -903,19 +903,40 @@
                 </div>
             </div>
 
-            {{-- COÛTS EAU & ÉNERGIE (si des relevés sont taggés sur ce bâtiment) --}}
-            @if(($stats['utility_cost'] ?? 0) > 0)
-            <div class="bg-cyan-50 border border-cyan-200 rounded-[2rem] p-5 mb-8 flex items-center justify-between text-left italic font-bold">
+            {{-- COÛTS EAU & ÉNERGIE — deux lignes distinctes, jamais additionnées :
+                 1. FACTURÉ (relevés compteur taggés bâtiment) → entre dans la marge ;
+                 2. EAU BUE aux pointages, valorisée au prix m³ → estimation
+                    analytique qui bouge à CHAQUE pointage (informatif). --}}
+            @php $waterDrunk = (float) ($stats['water_drunk_liters'] ?? 0); @endphp
+            @if(($stats['utility_cost'] ?? 0) > 0 || $waterDrunk > 0)
+            <div class="bg-cyan-50 border border-cyan-200 rounded-[2rem] p-5 mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-left italic font-bold">
                 <div class="flex items-center gap-4">
                     <div class="w-10 h-10 bg-cyan-500 rounded-xl flex items-center justify-center text-white shadow-sm">
                         <i class="fa-solid fa-bolt text-sm"></i>
                     </div>
                     <div>
-                        <p class="text-[9px] font-black text-cyan-700 uppercase tracking-widest">{{ __("Eau & Énergie imputés à ce bâtiment") }}</p>
-                        <p class="text-[8px] font-black text-cyan-400 uppercase tracking-widest mt-0.5 normal-case italic">{{ __("Relevés taggés sur ce bâtiment sur la période d'élevage") }}</p>
+                        <p class="text-[9px] font-black text-cyan-700 uppercase tracking-widest">{{ __("Eau & Énergie du bâtiment") }}</p>
+                        <p class="text-[8px] font-black text-cyan-400 uppercase tracking-widest mt-0.5 normal-case italic">{{ __("Facturé = relevés compteur imputés (compte dans la marge) · Eau bue = pointages (estimation)") }}</p>
                     </div>
                 </div>
-                <p class="text-xl font-black text-cyan-700">{{ number_format($stats['utility_cost'], 0) }} <span class="text-[9px] opacity-60">{{ currency() }}</span></p>
+                <div class="flex items-center gap-6 shrink-0">
+                    <div class="text-right" title="{{ __('Somme des relevés eau/énergie taggés sur ce bâtiment pendant la période d\'élevage — saisis au module Ressources. Entre dans la marge nette du lot.') }}">
+                        <p class="text-[8px] font-black text-cyan-400 uppercase tracking-widest mb-0.5">{{ __("Facturé (relevés)") }}</p>
+                        <p class="text-xl font-black text-cyan-700 leading-none">{{ number_format($stats['utility_cost'], 0) }} <span class="text-[9px] opacity-60">{{ currency() }}</span></p>
+                    </div>
+                    @if($waterDrunk > 0)
+                    <div class="text-right border-l border-cyan-200 pl-6"
+                         title="{{ __('Litres saisis aux pointages quotidiens, valorisés au prix du m³ paramétré (Réglages › Énergie). Estimation analytique : ne s\'additionne PAS au facturé (ce serait compter le même m³ deux fois).') }}">
+                        <p class="text-[8px] font-black text-blue-400 uppercase tracking-widest mb-0.5">{{ __("Eau bue (pointages)") }}</p>
+                        <p class="text-xl font-black text-blue-600 leading-none">
+                            {{ number_format($waterDrunk, 0, ',', ' ') }} <span class="text-[9px] opacity-60">L</span>
+                            @if(($stats['water_price_m3'] ?? 0) > 0)
+                                <span class="text-[10px] text-blue-400 ml-1">≈ {{ money($waterDrunk / 1000 * $stats['water_price_m3']) }}</span>
+                            @endif
+                        </p>
+                    </div>
+                    @endif
+                </div>
             </div>
             @endif
 

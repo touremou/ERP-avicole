@@ -235,6 +235,12 @@ class BatchController extends Controller
             'net_margin'       => $batch->net_margin,
             'feed_cogs'        => $batch->feed_cogs,
             'utility_cost'     => $batch->utility_cost,
+            // Eau BUE aux pointages (litres, collection déjà chargée) + son
+            // estimation au prix du m³ : INFORMATIF (analytique). Le coût
+            // comptable reste utility_cost (relevés facturés taggés bâtiment)
+            // — les mélanger compterait le même m³ deux fois.
+            'water_drunk_liters' => (float) $batch->dailyChecks->sum('water_consumed'),
+            'water_price_m3'     => (float) setting('energie.water_price_m3', 0),
             'manure_collected_kg'      => $batch->manure_collected_kg,
             'estimated_manure_revenue' => $batch->estimated_manure_revenue,
         ];
