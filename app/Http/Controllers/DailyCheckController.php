@@ -153,7 +153,12 @@ class DailyCheckController extends Controller
      * Température IoT du jour pour le bâtiment du lot : min/max des relevés
      * capteur en zone tampon (telemetry_logs), avec l'identité du capteur.
      *
-     * @return array{temp_min: float, temp_max: float, sensor: string, count: int}|null
+     * Retourne null si AUCUN capteur n'est enrôlé pour le bâtiment (rien à
+     * afficher). Si un capteur est enrôlé mais sans relevé aujourd'hui :
+     * count = 0 — la vue affiche l'état « aucun relevé » plutôt que rien
+     * (l'opérateur sait que le canal IoT existe).
+     *
+     * @return array{temp_min: ?float, temp_max: ?float, sensor: string, count: int}|null
      */
     private function iotTemperature(Batch $batch): ?array
     {
@@ -161,21 +166,25 @@ class DailyCheckController extends Controller
             return null;
         }
 
+        $sensor = \App\Models\TelemetrySensor::where('building_id', $batch->building_id)
+            ->where('is_active', true)
+            ->first();
+
+        if (! $sensor) {
+            return null; // pas de capteur enrôlé : le canal IoT n'existe pas ici
+        }
+
         $today = \App\Models\TelemetryLog::where('building_id', $batch->building_id)
             ->where('metric', 'temperature')
             ->whereDate('recorded_at', now()->toDateString())
-            ->selectRaw('MIN(value) as tmin, MAX(value) as tmax, COUNT(*) as n, MAX(sensor_id) as sensor')
+            ->selectRaw('MIN(value) as tmin, MAX(value) as tmax, COUNT(*) as n')
             ->first();
 
-        if (! $today || ! $today->n) {
-            return null;
-        }
-
         return [
-            'temp_min' => (float) $today->tmin,
-            'temp_max' => (float) $today->tmax,
-            'sensor'   => (string) $today->sensor,
-            'count'    => (int) $today->n,
+            'temp_min' => $today?->n ? (float) $today->tmin : null,
+            'temp_max' => $today?->n ? (float) $today->tmax : null,
+            'sensor'   => $sensor->label ?: $sensor->sensor_id,
+            'count'    => (int) ($today->n ?? 0),
         ];
     }
 

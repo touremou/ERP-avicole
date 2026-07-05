@@ -256,22 +256,34 @@
                             </div>
                         </div>
 
-                        {{-- Bien-être animal : adapté à l'espèce (boiterie = volaille + mammifères, picage = volaille). --}}
-                        @php $showLame = $check->batch->tracksLameness(); $showPecking = $check->batch->tracksPecking(); @endphp
+                        {{-- Bien-être animal : observations troupeau (≠ infirmerie), panneau
+                             replié — ouvert d'office si le pointage porte déjà des valeurs. --}}
+                        @php
+                            $showLame = $check->batch->tracksLameness();
+                            $showPecking = $check->batch->tracksPecking();
+                            $welfareOpen = ((int) $check->lame_count > 0) || ((int) $check->pecking_injury_count > 0);
+                        @endphp
                         @if($showLame || $showPecking)
-                        <div class="grid {{ $showLame && $showPecking ? 'grid-cols-2' : 'grid-cols-1' }} gap-4 mb-4">
-                            @if($showLame)
-                            <div class="p-4 bg-violet-50/60 rounded-2xl border border-violet-100">
-                                <label class="block text-[8px] font-black text-violet-500 uppercase mb-2 text-center tracking-widest">{{ __('Boiteux') }}</label>
-                                <input type="number" name="lame_count" value="{{ old('lame_count', $check->lame_count) }}" min="0" class="w-full bg-transparent text-center text-2xl font-black text-violet-600 border-none outline-none italic">
+                        <div class="mb-4 bg-white/5 border border-white/10 rounded-2xl p-4">
+                            <button type="button" onclick="document.getElementById('welfare-panel').classList.toggle('hidden')"
+                                    class="w-full flex items-center justify-center gap-2 text-[9px] font-black text-violet-400 uppercase tracking-widest italic bg-transparent border-none cursor-pointer">
+                                <i class="fa-solid fa-eye"></i> {{ __("Observations bien-être (boiteux, picage) — optionnel") }}
+                                <i class="fa-solid fa-chevron-down text-[8px] opacity-60"></i>
+                            </button>
+                            <div id="welfare-panel" class="{{ $welfareOpen ? '' : 'hidden' }} mt-3 grid {{ $showLame && $showPecking ? 'grid-cols-2' : 'grid-cols-1' }} gap-4">
+                                @if($showLame)
+                                <div class="p-4 bg-violet-50/60 rounded-2xl border border-violet-100">
+                                    <label class="block text-[8px] font-black text-violet-500 uppercase mb-2 text-center tracking-widest">{{ __('Boiteux (observés au troupeau)') }}</label>
+                                    <input type="number" name="lame_count" value="{{ old('lame_count', $check->lame_count) }}" min="0" class="w-full bg-transparent text-center text-2xl font-black text-violet-600 border-none outline-none italic">
+                                </div>
+                                @endif
+                                @if($showPecking)
+                                <div class="p-4 bg-fuchsia-50/60 rounded-2xl border border-fuchsia-100">
+                                    <label class="block text-[8px] font-black text-fuchsia-500 uppercase mb-2 text-center tracking-widest">{{ __('Picage / Blessés (observés)') }}</label>
+                                    <input type="number" name="pecking_injury_count" value="{{ old('pecking_injury_count', $check->pecking_injury_count) }}" min="0" class="w-full bg-transparent text-center text-2xl font-black text-fuchsia-600 border-none outline-none italic">
+                                </div>
+                                @endif
                             </div>
-                            @endif
-                            @if($showPecking)
-                            <div class="p-4 bg-fuchsia-50/60 rounded-2xl border border-fuchsia-100">
-                                <label class="block text-[8px] font-black text-fuchsia-500 uppercase mb-2 text-center tracking-widest">{{ __('Picage / Blessés') }}</label>
-                                <input type="number" name="pecking_injury_count" value="{{ old('pecking_injury_count', $check->pecking_injury_count) }}" min="0" class="w-full bg-transparent text-center text-2xl font-black text-fuchsia-600 border-none outline-none italic">
-                            </div>
-                            @endif
                         </div>
                         @endif
 

@@ -129,6 +129,18 @@ test('telemetry:process associe le relevé au lot actif du bâtiment ; capteur i
         ->toBe(TelemetryLog::STATUS_ORPHAN);
 });
 
+test('capteur enrôlé mais muet aujourd\'hui : le pointage affiche l\'état au lieu de rien', function () {
+    // TH-001 est enrôlé (setUp) mais n'a envoyé aucun relevé.
+    $response = $this->actingAs($this->managerUser)
+        ->get(route('daily-checks.create', ['batch_id' => $this->batch->id]))
+        ->assertOk()
+        ->assertSee('aucun relevé aujourd', false);
+
+    $iot = $response->viewData('iotTemp');
+    expect($iot['count'])->toBe(0);
+    expect($iot['sensor'])->toBe('Sonde bâtiment A');
+});
+
 // ─── POINTAGE (fat-finger, source, calibration) ───
 
 test('fat-finger : température manuelle hors bornes physiques (220 °C) refusée', function () {
