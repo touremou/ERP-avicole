@@ -21,14 +21,18 @@ class ElevageHubController extends Controller
             return redirect()->route('dashboard')->with('error', 'Accès restreint au module Élevage.');
         }
 
+        // Scopes canoniques : physical() exclut le bâtiment virtuel « Zone
+        // Fournisseurs Externes », live() exclut les lots virtuels de
+        // traçabilité (EXT-, effectif initial nul) — aucun animal réel ne
+        // doit manquer NI être compté deux fois dans les KPI du hub.
         $kpis = [
-            'buildings'    => (int) Building::count(),
-            'active_lots'  => (int) Batch::active()->count(),
-            'livestock'    => (int) Batch::active()->sum('current_quantity'),
-            'critical'     => (int) Batch::critical()->count(),
+            'buildings'    => (int) Building::physical()->count(),
+            'active_lots'  => (int) Batch::active()->live()->count(),
+            'livestock'    => (int) Batch::active()->live()->sum('current_quantity'),
+            'critical'     => (int) Batch::critical()->live()->count(),
         ];
 
-        $criticalLots = Batch::critical()->with('building')
+        $criticalLots = Batch::critical()->live()->with('building')
             ->orderByDesc('qty_dead')->take(6)->get();
 
         return view('elevage.index', compact('kpis', 'criticalLots'));

@@ -167,11 +167,13 @@
                                 <p class="text-[7px] font-bold text-slate-500 uppercase tracking-wide leading-tight italic">{{ __("Moyenne par tête, pas le poids du lot") }}</p>
                             </div>
                             <div class="space-y-2 text-center">
-                                <label class="block text-[9px] text-slate-500 uppercase tracking-widest leading-none">{{ __("Uniformité (%)") }}</label>
-                                <input type="number" name="uniformity_pct" min="0" max="100" step="0.1" value="{{ old('uniformity_pct', $check->uniformity_pct) }}"
-                                       title="{{ __('Part des sujets pesés dont le poids est à ±10 % du poids moyen de l\'échantillon. Guide de souche : viser ≥ 80 %. Calculée automatiquement si vous ressaisissez un échantillon ci-dessous.') }}"
-                                       class="w-full bg-white/10 p-4 rounded-2xl border-none outline-none font-black text-amber-400 text-center">
-                                <p class="text-[7px] font-bold text-slate-500 uppercase tracking-wide leading-tight italic">{{ __("Sujets à ±10 % du poids moyen — cible ≥ 80 %") }}</p>
+                                <label class="block text-[9px] text-slate-500 uppercase tracking-widest leading-none">{{ __("Uniformité (%)") }} <i class="fa-solid fa-calculator text-emerald-400 ml-1"></i></label>
+                                {{-- LECTURE SEULE : calculée exclusivement depuis l'échantillon
+                                     (la saisie directe, source d'erreur, n'est plus acceptée). --}}
+                                <input type="number" id="uniformity_pct" readonly tabindex="-1" value="{{ $check->uniformity_pct }}" placeholder="{{ __('auto') }}"
+                                       title="{{ __('Calculée automatiquement depuis l\'échantillon pesé. Formule : part des sujets à ±10 % du poids moyen — cible ≥ 80 %.') }}"
+                                       class="w-full bg-white/10 p-4 rounded-2xl border border-emerald-400/20 outline-none font-black text-amber-400 text-center cursor-not-allowed opacity-80">
+                                <p class="text-[7px] font-bold text-slate-500 uppercase tracking-wide leading-tight italic">{{ __("Se recalcule en ressaisissant l'échantillon ci-dessous") }}</p>
                             </div>
                         </div>
 
@@ -502,7 +504,7 @@
 
             const avgInput = document.querySelector('input[name="avg_weight"]');
             if (avgInput) avgInput.value = avg.toFixed(3);
-            const unifInput = document.querySelector('input[name="uniformity_pct"]');
+            const unifInput = document.getElementById('uniformity_pct');
             if (unifInput && unif !== null) unifInput.value = unif.toFixed(1);
 
             holder.innerHTML = kg.map(v => `<input type="hidden" name="weight_samples[]" value="${v.toFixed(3)}">`).join('');

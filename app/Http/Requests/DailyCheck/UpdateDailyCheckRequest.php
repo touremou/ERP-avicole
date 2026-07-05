@@ -36,7 +36,7 @@ class UpdateDailyCheckRequest extends FormRequest
             'temp_max'           => 'nullable|numeric|between:-10,50|gte:temp_min',
             'humidity'           => 'nullable|numeric|min:0|max:100',
             'avg_weight'         => 'nullable|numeric|min:0',
-            'uniformity_pct'    => 'nullable|numeric|min:0|max:100',
+            // uniformity_pct : calculé serveur uniquement (cf. Store).
             // Pesées individuelles (kg) — cf. StoreDailyCheckRequest.
             'weight_samples'    => 'nullable|array|max:500',
             'weight_samples.*'  => 'numeric|min:0.001|max:200',

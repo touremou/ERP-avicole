@@ -55,7 +55,7 @@ test('le seeder charge le guide ISA Brown : fourchettes, lumière, lux, T°, uni
         ->whereBetween('week_number', [1, 18])->count())->toBe(18);
 });
 
-test('l\'uniformité mesurée se saisit au pointage quotidien et est persistée', function () {
+test('l\'uniformité se calcule au pointage depuis l\'échantillon pesé (plus de saisie directe)', function () {
     $this->actingAs($this->managerUser)
         ->post(route('daily-checks.store'), [
             'batch_id'       => $this->pondeuse->id,
@@ -65,13 +65,14 @@ test('l\'uniformité mesurée se saisit au pointage quotidien et est persistée'
             'feed_type'      => 'Ponte Croissance',
             'water_consumed' => 42,
             'health_status'  => 'Normal',
-            'avg_weight'     => 0.495,
-            'uniformity_pct' => 76.5,
+            // 8 pesées dans la bande ±10 %, 2 dehors → 80 % (calcul serveur).
+            'weight_samples' => [0.50, 0.51, 0.49, 0.52, 0.48, 0.50, 0.51, 0.49, 0.60, 0.38],
         ])
         ->assertSessionHasNoErrors();
 
     $check = DailyCheck::where('batch_id', $this->pondeuse->id)->first();
-    expect((float) $check->uniformity_pct)->toEqual(76.5);
+    expect((float) $check->uniformity_pct)->toEqual(80.0);
+    expect((float) $check->avg_weight)->toEqual(0.498);
 });
 
 test('advisories guide : rappel lumière + température hors plage + lot hétérogène', function () {

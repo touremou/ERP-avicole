@@ -249,11 +249,14 @@
                                 <p class="text-[7px] font-bold text-slate-500 uppercase tracking-wide leading-tight italic">Moyenne par tête, pas le poids du lot</p>
                             </div>
                             <div class="space-y-2 text-center">
-                                <label class="block text-[8px] font-black text-slate-500 uppercase tracking-widest leading-none">{{ __("Uniformité (%)") }}</label>
-                                <input type="number" min="0" max="100" name="uniformity_pct" step="0.1" placeholder="—" value="{{ old('uniformity_pct') }}"
-                                       title="{{ __('Part des sujets pesés dont le poids est à ±10 % du poids moyen de l\'échantillon. Guide de souche : viser ≥ 80 %. Calculée automatiquement si vous pesez un échantillon ci-dessous.') }}"
-                                       class="w-full bg-white/5 border border-white/10 p-4 rounded-2xl text-xl text-amber-400 text-center outline-none font-black italic">
-                                <p class="text-[7px] font-bold text-slate-500 uppercase tracking-wide leading-tight italic">{{ __("Sujets à ±10 % du poids moyen — cible ≥ 80 %") }}</p>
+                                <label class="block text-[8px] font-black text-slate-500 uppercase tracking-widest leading-none">{{ __("Uniformité (%)") }} <i class="fa-solid fa-calculator text-emerald-400 ml-1"></i></label>
+                                {{-- LECTURE SEULE : calculée exclusivement depuis l'échantillon
+                                     pesé ci-dessous (le serveur refait le calcul — la saisie
+                                     directe, source d'erreur, n'est plus acceptée). --}}
+                                <input type="number" id="uniformity_pct" readonly tabindex="-1" placeholder="{{ __('auto') }}"
+                                       title="{{ __('Calculée automatiquement : pesez un échantillon ci-dessous. Formule : part des sujets à ±10 % du poids moyen — cible ≥ 80 %.') }}"
+                                       class="w-full bg-white/5 border border-emerald-400/20 p-4 rounded-2xl text-xl text-amber-400 text-center outline-none font-black italic cursor-not-allowed opacity-80">
+                                <p class="text-[7px] font-bold text-slate-500 uppercase tracking-wide leading-tight italic">{{ __("Se calcule en pesant un échantillon ci-dessous") }}</p>
                             </div>
                         </div>
 
@@ -601,7 +604,7 @@
             // Remplit les champs officiels (le serveur recalculera pareil).
             const avgInput = document.querySelector('input[name="avg_weight"]');
             if (avgInput) avgInput.value = avg.toFixed(3);
-            const unifInput = document.querySelector('input[name="uniformity_pct"]');
+            const unifInput = document.getElementById('uniformity_pct');
             if (unifInput && unif !== null) unifInput.value = unif.toFixed(1);
 
             holder.innerHTML = kg.map(v => `<input type="hidden" name="weight_samples[]" value="${v.toFixed(3)}">`).join('');

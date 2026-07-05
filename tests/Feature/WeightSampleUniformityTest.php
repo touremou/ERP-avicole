@@ -64,6 +64,19 @@ test('le serveur écrase des valeurs client incohérentes avec l\'échantillon',
     expect((float) $check->uniformity_pct)->toEqual(80.0);
 });
 
+test('la saisie DIRECTE du taux (sans échantillon) est ignorée — source d\'erreur supprimée', function () {
+    $this->actingAs($this->managerUser)
+        ->post(route('daily-checks.store'), ($this->basePayload)([
+            'uniformity_pct' => 95, // saisie directe forgée : plus acceptée
+            'avg_weight'     => 0.5,
+        ]))
+        ->assertSessionHasNoErrors();
+
+    $check = DailyCheck::first();
+    expect($check->uniformity_pct)->toBeNull(); // seul le calcul serveur écrit ce champ
+    expect((float) $check->avg_weight)->toEqual(0.5); // le poids moyen manuel reste permis
+});
+
 test('pesée aberrante (250 kg — erreur d\'unité) : refusée', function () {
     $this->actingAs($this->managerUser)
         ->post(route('daily-checks.store'), ($this->basePayload)([
