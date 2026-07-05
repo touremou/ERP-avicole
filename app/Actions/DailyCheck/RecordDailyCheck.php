@@ -47,6 +47,23 @@ class RecordDailyCheck
                 ->where('check_date', $data['check_date'])
                 ->first();
 
+            // ─── Cohérence INFIRMERIE : on ne peut pas sortir (rétablis) ni
+            //     déclarer morts plus de sujets qu'il n'y en a d'isolés. Le
+            //     solde disponible exclut le pointage en cours de correction.
+            $infirmaryOutflow = (int) ($data['qty_quarantine_out'] ?? 0)
+                              + (int) ($data['mortality_infirmary'] ?? 0);
+            $infirmaryInflow = (int) ($data['qty_quarantine_in'] ?? 0);
+
+            if ($infirmaryOutflow > 0) {
+                $available = $batch->infirmaryCountExcluding($existing?->id) + $infirmaryInflow;
+                if ($infirmaryOutflow > $available) {
+                    throw ValidationException::withMessages([
+                        'qty_quarantine_out' => "Infirmerie : {$infirmaryOutflow} sortie(s) déclarée(s) "
+                            . "(rétablis + morts) mais seulement {$available} sujet(s) isolé(s) disponible(s).",
+                    ]);
+                }
+            }
+
             // ─── Vérification stock aliment ───
             $feedType = trim($data['feed_type']);
             $feedConsumed = (float) ($data['feed_consumed'] ?? 0);

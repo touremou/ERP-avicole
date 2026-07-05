@@ -37,7 +37,7 @@ class DailyCheck extends Model
         'temp_min', 'temp_max', 'temp_source', 'temp_recorded_by', 'humidity',
         'avg_weight', 'uniformity_pct', 'weight_samples', 'health_status',
         'treatment_type', 'treatment_name',
-        'qty_quarantine_in', 'qty_quarantine_out', 'qty_sorted_out',
+        'qty_quarantine_in', 'qty_quarantine_out', 'mortality_infirmary', 'qty_sorted_out',
         'observations', 'litter_changed', 'manure_collected_kg',
         'lame_count', 'pecking_injury_count',
     ];

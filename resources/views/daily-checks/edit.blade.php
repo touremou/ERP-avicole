@@ -166,14 +166,14 @@
                                 <input type="number" name="avg_weight" value="{{ old('avg_weight', $check->avg_weight) }}" step="0.001" title="{{ __('Poids moyen d\'un seul animal (moyenne d\'un échantillon pesé), pas le poids total du lot.') }}" class="w-full bg-white/10 p-4 rounded-2xl border-none outline-none font-black text-emerald-400 text-center font-mono">
                                 <p class="text-[7px] font-bold text-slate-500 uppercase tracking-wide leading-tight italic">{{ __("Moyenne par tête, pas le poids du lot") }}</p>
                             </div>
-                            <div class="space-y-2 text-center">
+                            {{-- Uniformité : carte affichée UNIQUEMENT si une valeur existe
+                                 (échantillon déjà pesé) ou dès qu'on en ressaisit un. --}}
+                            <div id="uniformity-box" class="space-y-2 text-center {{ $check->uniformity_pct === null ? 'hidden' : '' }}">
                                 <label class="block text-[9px] text-slate-500 uppercase tracking-widest leading-none">{{ __("Uniformité (%)") }} <i class="fa-solid fa-calculator text-emerald-400 ml-1"></i></label>
-                                {{-- LECTURE SEULE : calculée exclusivement depuis l'échantillon
-                                     (la saisie directe, source d'erreur, n'est plus acceptée). --}}
                                 <input type="number" id="uniformity_pct" readonly tabindex="-1" value="{{ $check->uniformity_pct }}" placeholder="{{ __('auto') }}"
                                        title="{{ __('Calculée automatiquement depuis l\'échantillon pesé. Formule : part des sujets à ±10 % du poids moyen — cible ≥ 80 %.') }}"
                                        class="w-full bg-white/10 p-4 rounded-2xl border border-emerald-400/20 outline-none font-black text-amber-400 text-center cursor-not-allowed opacity-80">
-                                <p class="text-[7px] font-bold text-slate-500 uppercase tracking-wide leading-tight italic">{{ __("Se recalcule en ressaisissant l'échantillon ci-dessous") }}</p>
+                                <p class="text-[7px] font-bold text-slate-500 uppercase tracking-wide leading-tight italic">{{ __("Calculée depuis l'échantillon pesé") }}</p>
                             </div>
                         </div>
 
@@ -215,15 +215,33 @@
                             <span class="w-2 h-2 bg-orange-500 rounded-full animate-ping"></span> {{ __("Mouvements & Soins (Rectification)") }}
                         </h3>
 
+                        {{-- Solde d'infirmerie (hors ce pointage) : disponible réel pour
+                             les sorties ressaisies ici. --}}
+                        <div @class([
+                            'flex flex-wrap items-center justify-between gap-3 p-4 rounded-2xl border mb-6',
+                            'bg-orange-500/10 border-orange-400/30' => $infirmaryCount > 0,
+                            'bg-white/5 border-white/10'            => $infirmaryCount === 0,
+                        ])>
+                            <p class="text-[10px] font-black uppercase tracking-widest {{ $infirmaryCount > 0 ? 'text-orange-400' : 'text-slate-500' }} m-0">
+                                <i class="fa-solid fa-house-medical mr-2"></i>{{ __("En infirmerie (hors ce pointage) :") }}
+                                <span id="infirmary-live">{{ $infirmaryCount }}</span> {{ __("sujet(s)") }}
+                            </p>
+                            <p id="infirmary-error" class="hidden text-[9px] font-black text-red-400 uppercase tracking-widest m-0"><i class="fa-solid fa-triangle-exclamation mr-1"></i>{{ __("Sorties > sujets isolés disponibles") }}</p>
+                        </div>
+
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-                            <div class="grid grid-cols-2 gap-4">
-                                <div class="p-5 bg-orange-50/50 rounded-3xl border border-orange-100">
-                                    <label class="block text-[8px] font-black text-orange-400 uppercase mb-2 text-center leading-none">{{ __("Infirmerie (In)") }}</label>
-                                    <input type="number" name="qty_quarantine_in" value="{{ old('qty_quarantine_in', $check->qty_quarantine_in) }}" min="0" class="w-full bg-transparent text-center text-2xl font-black text-orange-600 border-none outline-none p-0 leading-none">
+                            <div class="grid grid-cols-3 gap-3">
+                                <div class="p-4 bg-orange-50/50 rounded-3xl border border-orange-100">
+                                    <label class="block text-[8px] font-black text-orange-400 uppercase mb-2 text-center leading-tight">{{ __("Mise en infirmerie") }}</label>
+                                    <input type="number" name="qty_quarantine_in" value="{{ old('qty_quarantine_in', $check->qty_quarantine_in) }}" min="0" oninput="infirmaryRecalc()" class="w-full bg-transparent text-center text-2xl font-black text-orange-600 border-none outline-none p-0 leading-none">
                                 </div>
-                                <div class="p-5 bg-emerald-50/50 rounded-3xl border border-emerald-100">
-                                    <label class="block text-[8px] font-black text-emerald-400 uppercase mb-2 text-center leading-none">{{ __("Rétablis (Out)") }}</label>
-                                    <input type="number" name="qty_quarantine_out" value="{{ old('qty_quarantine_out', $check->qty_quarantine_out) }}" min="0" class="w-full bg-transparent text-center text-2xl font-black text-emerald-600 border-none outline-none p-0 leading-none">
+                                <div class="p-4 bg-emerald-50/50 rounded-3xl border border-emerald-100">
+                                    <label class="block text-[8px] font-black text-emerald-400 uppercase mb-2 text-center leading-tight">{{ __("Rétablis") }}</label>
+                                    <input type="number" name="qty_quarantine_out" value="{{ old('qty_quarantine_out', $check->qty_quarantine_out) }}" min="0" oninput="infirmaryRecalc()" class="w-full bg-transparent text-center text-2xl font-black text-emerald-600 border-none outline-none p-0 leading-none">
+                                </div>
+                                <div class="p-4 bg-rose-50/50 rounded-3xl border border-rose-100">
+                                    <label class="block text-[8px] font-black text-rose-400 uppercase mb-2 text-center leading-tight" title="{{ __('Déjà isolés donc déjà hors effectif : compté dans la mortalité du lot, sans double décompte.') }}">{{ __("Morts en infirmerie") }}</label>
+                                    <input type="number" name="mortality_infirmary" value="{{ old('mortality_infirmary', $check->mortality_infirmary) }}" min="0" oninput="infirmaryRecalc()" class="w-full bg-transparent text-center text-2xl font-black text-rose-600 border-none outline-none p-0 leading-none">
                                 </div>
                             </div>
 
@@ -479,6 +497,17 @@
             updateEditStats();
         });
 
+        // ── Solde d'infirmerie en direct (rectification) ──
+        const INFIRMARY_BASE = {{ (int) $infirmaryCount }};
+        function infirmaryRecalc() {
+            const v = name => parseInt(document.querySelector(`input[name="${name}"]`)?.value || '0', 10) || 0;
+            const projected = INFIRMARY_BASE + v('qty_quarantine_in') - v('qty_quarantine_out') - v('mortality_infirmary');
+            const live = el('infirmary-live');
+            const err  = el('infirmary-error');
+            if (live) live.textContent = Math.max(0, projected);
+            err?.classList.toggle('hidden', projected >= 0);
+        }
+
         // ── Pesée d'échantillon (rectification) : mêmes règles que le create.
         // Uniformité = % des pesées dans [0,9 × moyenne ; 1,1 × moyenne] ;
         // le serveur refait le calcul depuis weight_samples[] (source de vérité).
@@ -505,7 +534,11 @@
             const avgInput = document.querySelector('input[name="avg_weight"]');
             if (avgInput) avgInput.value = avg.toFixed(3);
             const unifInput = document.getElementById('uniformity_pct');
-            if (unifInput && unif !== null) unifInput.value = unif.toFixed(1);
+            const unifBox   = document.getElementById('uniformity-box');
+            if (unifInput && unif !== null) {
+                unifInput.value = unif.toFixed(1);
+                unifBox?.classList.remove('hidden');
+            }
 
             holder.innerHTML = kg.map(v => `<input type="hidden" name="weight_samples[]" value="${v.toFixed(3)}">`).join('');
 

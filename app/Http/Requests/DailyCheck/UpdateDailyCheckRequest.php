@@ -42,6 +42,8 @@ class UpdateDailyCheckRequest extends FormRequest
             'weight_samples.*'  => 'numeric|min:0.001|max:200',
             'qty_quarantine_in'  => 'required|integer|min:0',
             'qty_quarantine_out' => 'required|integer|min:0',
+            // Morts parmi les isolés — cf. StoreDailyCheckRequest.
+            'mortality_infirmary' => 'nullable|integer|min:0',
             'qty_sorted_out'     => 'nullable|integer|min:0',
             'treatment_type'     => 'nullable|string|max:255',
             'treatment_name'     => 'nullable|string|max:255',

@@ -90,6 +90,9 @@
         // actions vente/mutation/collecte (les gardes serveur font autorité).
         $quarantine = $batch->activeQuarantine();
 
+        // Solde d'infirmerie (sujets isolés, hors effectif sain).
+        $infirmaryCount = $batch->infirmary_count;
+
         // KPI TAUX D'UNIFORMITÉ (exigence pré-MEP) — dernière mesure saisie à
         // la pesée. Formule : part des sujets pesés dont le poids est à ±10 %
         // du poids moyen de l'échantillon (guide de souche : viser ≥ 80 %).
@@ -205,6 +208,13 @@
                 @endif
                 <span class="text-slate-200 hidden sm:inline">|</span>
                 <span class="text-rose-500 whitespace-nowrap"><i class="fa-solid fa-dna mr-1"></i> {{ $batch->production_phase ?? __("Phase Initiale") }}</span>
+                @if($infirmaryCount > 0)
+                <span class="text-slate-200 hidden sm:inline">|</span>
+                <span class="bg-orange-100 text-orange-600 px-2 py-0.5 rounded whitespace-nowrap"
+                      title="{{ __('Sujets isolés en infirmerie — hors effectif sain (cheptel réel = effectif + isolés)') }}">
+                    <i class="fa-solid fa-house-medical mr-1"></i>{{ $infirmaryCount }} {{ __("isolé(s)") }}
+                </span>
+                @endif
             </div>
         </div>
     </div>
@@ -953,9 +963,10 @@
                                     @else -- @endif
                                 </td>
                                 <td class="px-4 py-5 text-center leading-none">
-                                    @if($check->qty_quarantine_in > 0) <span class="text-orange-500 font-black text-[8px] block">+{{ $check->qty_quarantine_in }}</span> @endif
-                                    @if($check->qty_quarantine_out > 0) <span class="text-emerald-500 font-black text-[8px] block">-{{ $check->qty_quarantine_out }}</span> @endif
-                                    @if(!$check->qty_quarantine_in && !$check->qty_quarantine_out) <span class="text-slate-200">-</span> @endif
+                                    @if($check->qty_quarantine_in > 0) <span class="text-orange-500 font-black text-[8px] block" title="{{ __('Mises en infirmerie') }}">+{{ $check->qty_quarantine_in }}</span> @endif
+                                    @if($check->qty_quarantine_out > 0) <span class="text-emerald-500 font-black text-[8px] block" title="{{ __('Rétablis') }}">-{{ $check->qty_quarantine_out }}</span> @endif
+                                    @if(($check->mortality_infirmary ?? 0) > 0) <span class="text-rose-600 font-black text-[8px] block" title="{{ __('Morts en infirmerie') }}">✝{{ $check->mortality_infirmary }}</span> @endif
+                                    @if(!$check->qty_quarantine_in && !$check->qty_quarantine_out && !($check->mortality_infirmary ?? 0)) <span class="text-slate-200">-</span> @endif
                                 </td>
                                 <td class="px-8 py-4 text-right flex justify-end items-center gap-3">
                                     @if($check->extension && ($check->extension->qty_born > 0 || $check->extension->water_ph !== null))

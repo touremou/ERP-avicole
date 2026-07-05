@@ -758,8 +758,45 @@ class Batch extends Model
      */
     public function getTotalMortalityAttribute(): int
     {
+        // Mortalité troupeau (impacte l'effectif) + mortalité EN INFIRMERIE
+        // (sujets déjà isolés : aucun impact effectif, mais bien des pertes).
         return (int) ($this->qty_dead ?? 0)
-             + (int) $this->dailyChecks()->sum('mortality');
+             + (int) $this->dailyChecks()->sum('mortality')
+             + (int) $this->dailyChecks()->sum('mortality_infirmary');
+    }
+
+    /**
+     * Solde de sujets ACTUELLEMENT isolés en infirmerie :
+     * Σ mises en infirmerie − Σ retours (rétablis) − Σ morts en infirmerie.
+     *
+     * Ces sujets sont déjà DÉCOMPTÉS de current_quantity (l'isolement les
+     * sort de l'effectif sain) : cheptel total réel = current_quantity +
+     * infirmary_count.
+     */
+    public function getInfirmaryCountAttribute(): int
+    {
+        return $this->infirmaryCountExcluding(null);
+    }
+
+    /**
+     * Même solde en EXCLUANT un pointage donné — utilisé par la garde de
+     * saisie lors de la rectification (le pointage modifié ne doit pas se
+     * compter lui-même dans le disponible).
+     */
+    public function infirmaryCountExcluding(?int $exceptCheckId): int
+    {
+        $query = $this->dailyChecks();
+        if ($exceptCheckId !== null) {
+            $query->where('id', '!=', $exceptCheckId);
+        }
+
+        $sums = $query->selectRaw('
+            COALESCE(SUM(qty_quarantine_in), 0)  as q_in,
+            COALESCE(SUM(qty_quarantine_out), 0) as q_out,
+            COALESCE(SUM(mortality_infirmary), 0) as q_dead
+        ')->first();
+
+        return max(0, (int) $sums->q_in - (int) $sums->q_out - (int) $sums->q_dead);
     }
 
     /**

@@ -107,7 +107,11 @@ class DailyCheckController extends Controller
         // équipe le bâtiment — la source est tracée (temp_source = iot).
         $iotTemp = $this->iotTemperature($batch);
 
-        return view('daily-checks.create', compact('batch', 'stockData', 'phases', 'weather', 'suggestedFeed', 'suggestedWater', 'iotTemp'));
+        // Solde d'infirmerie courant : affiché dans le bloc Soins & Mouvements
+        // (ces sujets sont hors effectif sain — cheptel réel = effectif + solde).
+        $infirmaryCount = $batch->infirmary_count;
+
+        return view('daily-checks.create', compact('batch', 'stockData', 'phases', 'weather', 'suggestedFeed', 'suggestedWater', 'iotTemp', 'infirmaryCount'));
     }
 
     /**
@@ -295,7 +299,11 @@ class DailyCheckController extends Controller
             }
         }
 
-        return view('daily-checks.edit', compact('check', 'phases', 'stockData'));
+        // Solde d'infirmerie SANS ce pointage : c'est le disponible réel pour
+        // les sorties (rétablis/morts) que l'opérateur peut ressaisir ici.
+        $infirmaryCount = $check->batch->infirmaryCountExcluding($check->id);
+
+        return view('daily-checks.edit', compact('check', 'phases', 'stockData', 'infirmaryCount'));
     }
 
     /**
@@ -334,6 +342,21 @@ class DailyCheckController extends Controller
 
         if (($batch->current_quantity - $diff) < 0) {
             return back()->withErrors(['mortality' => "L'effectif du lot deviendrait négatif."])->withInput();
+        }
+
+        // Cohérence infirmerie : sorties (rétablis + morts isolés) ≤ solde
+        // disponible — le pointage corrigé ne se compte pas lui-même.
+        $infirmaryOutflow = (int) ($validated['qty_quarantine_out'] ?? 0)
+                          + (int) ($validated['mortality_infirmary'] ?? 0);
+        if ($infirmaryOutflow > 0) {
+            $available = $batch->infirmaryCountExcluding($check->id)
+                       + (int) ($validated['qty_quarantine_in'] ?? 0);
+            if ($infirmaryOutflow > $available) {
+                return back()->withErrors([
+                    'qty_quarantine_out' => "Infirmerie : {$infirmaryOutflow} sortie(s) déclarée(s) "
+                        . "(rétablis + morts) mais seulement {$available} sujet(s) isolé(s) disponible(s).",
+                ])->withInput();
+            }
         }
 
         // Vérification stock aliment

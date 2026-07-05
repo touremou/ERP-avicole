@@ -47,6 +47,9 @@ class StoreDailyCheckRequest extends FormRequest
             'weight_samples.*'  => 'numeric|min:0.001|max:200',
             'qty_quarantine_in' => 'nullable|integer|min:0',
             'qty_quarantine_out'=> 'nullable|integer|min:0',
+            // Morts PARMI les isolés (déjà hors effectif : pas de double
+            // décompte) — le solde disponible est contrôlé dans l'Action.
+            'mortality_infirmary' => 'nullable|integer|min:0',
             'qty_sorted_out'    => 'nullable|integer|min:0',
             'treatment_type'    => 'nullable|string|max:255',
             'treatment_name'    => 'nullable|string|max:255',
