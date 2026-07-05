@@ -121,3 +121,126 @@ it('révoque le token à la déconnexion', function () {
 
     expect($this->user->tokens()->count())->toBe(0);
 });
+
+// ── AUTH/ME ENRICHI (home par rôle + gate hors-ligne) ──
+
+it('me renvoie le rôle, la matrice de permissions, le scope fermes et server_time', function () {
+    $token = $this->postJson('/api/v1/auth/login', [
+        'email' => $this->user->email,
+        'password' => 'secret-terrain',
+        'device_name' => 'Pixel Test',
+    ])->json('token');
+
+    $response = $this->withHeader('Authorization', "Bearer {$token}")
+        ->getJson('/api/v1/auth/me');
+
+    $response->assertOk()
+        ->assertJsonStructure([
+            'user' => ['id', 'name', 'email', 'role'],
+            'role' => ['slug', 'label'],
+            'permissions',
+            'scope' => ['farm_id', 'farms'],
+            'server_time',
+        ]);
+
+    // Admin : toutes les lettres sur au moins un module actif.
+    $permissions = $response->json('permissions');
+    expect($permissions)->not->toBeEmpty();
+    expect(collect($permissions)->flatten()->unique()->sort()->values()->all())
+        ->toBe(['C', 'L', 'M', 'S']);
+
+    // Le scope reflète la ferme fixée par le middleware farm.api.
+    expect($response->json('scope.farm_id'))->toBe(App\Models\Farm::where('code', 'FT-001')->first()->id);
+    expect($response->json('scope.farms.0.name'))->toBe('Ferme Test');
+    expect($response->json('scope.farms.0.is_default'))->toBeTrue();
+});
+
+it('login renvoie server_time (le serveur fait foi pour le since de sync)', function () {
+    $this->postJson('/api/v1/auth/login', [
+        'email' => $this->user->email,
+        'password' => 'secret-terrain',
+        'device_name' => 'Pixel Test',
+    ])->assertOk()->assertJsonStructure(['token', 'user', 'server_time']);
+});
+
+// ── GESTION DES APPAREILS (tokens par device) ──
+
+it('liste les appareils connectés avec le marqueur current', function () {
+    $login = fn (string $device) => $this->postJson('/api/v1/auth/login', [
+        'email' => $this->user->email,
+        'password' => 'secret-terrain',
+        'device_name' => $device,
+    ])->json('token');
+
+    $tokenA = $login('Tecno-Spark-gardien');
+    $tokenB = $login('Tablette-magasin');
+
+    $response = $this->withHeader('Authorization', "Bearer {$tokenB}")
+        ->getJson('/api/v1/devices');
+
+    $response->assertOk();
+    $devices = collect($response->json('devices'));
+    expect($devices)->toHaveCount(2);
+    expect($devices->firstWhere('name', 'Tablette-magasin')['current'])->toBeTrue();
+    expect($devices->firstWhere('name', 'Tecno-Spark-gardien')['current'])->toBeFalse();
+});
+
+it('révoque un autre appareil (téléphone perdu) : son token cesse de fonctionner', function () {
+    $login = fn (string $device) => $this->postJson('/api/v1/auth/login', [
+        'email' => $this->user->email,
+        'password' => 'secret-terrain',
+        'device_name' => $device,
+    ])->json('token');
+
+    $lostToken = $login('Telephone-perdu');
+    $myToken   = $login('Mon-telephone');
+
+    $lostId = $this->user->tokens()->where('name', 'Telephone-perdu')->first()->id;
+
+    $this->withHeader('Authorization', "Bearer {$myToken}")
+        ->deleteJson("/api/v1/devices/{$lostId}")
+        ->assertOk();
+
+    // Le token révoqué est refusé partout. (forgetGuards : sinon le guard
+    // Sanctum résolu à la requête précédente reste en mémoire dans le test.)
+    $this->app['auth']->forgetGuards();
+    $this->withHeader('Authorization', "Bearer {$lostToken}")
+        ->getJson('/api/v1/auth/me')
+        ->assertUnauthorized();
+});
+
+it("refuse de révoquer l'appareil courant (la déconnexion est la seule voie)", function () {
+    $token = $this->postJson('/api/v1/auth/login', [
+        'email' => $this->user->email,
+        'password' => 'secret-terrain',
+        'device_name' => 'Mon-telephone',
+    ])->json('token');
+
+    $currentId = $this->user->tokens()->where('name', 'Mon-telephone')->first()->id;
+
+    $this->withHeader('Authorization', "Bearer {$token}")
+        ->deleteJson("/api/v1/devices/{$currentId}")
+        ->assertStatus(422);
+
+    // Toujours authentifié.
+    $this->withHeader('Authorization', "Bearer {$token}")
+        ->getJson('/api/v1/auth/me')
+        ->assertOk();
+});
+
+it("ne révoque jamais l'appareil d'un autre utilisateur (404, sans fuite)", function () {
+    $other = User::factory()->create(['role_id' => Role::where('name', 'admin')->first()->id]);
+    $otherTokenId = $other->createToken('Appareil-autrui')->accessToken->id;
+
+    $token = $this->postJson('/api/v1/auth/login', [
+        'email' => $this->user->email,
+        'password' => 'secret-terrain',
+        'device_name' => 'Mon-telephone',
+    ])->json('token');
+
+    $this->withHeader('Authorization', "Bearer {$token}")
+        ->deleteJson("/api/v1/devices/{$otherTokenId}")
+        ->assertNotFound();
+
+    expect($other->tokens()->count())->toBe(1);
+});

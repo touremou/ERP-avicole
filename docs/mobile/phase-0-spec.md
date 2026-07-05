@@ -19,9 +19,9 @@ La Phase 0 est terminée quand la **balle traçante** passe de bout en bout :
 > décrément d'effectif correct (via l'observer `DailyCheck`).
 
 Checklist :
-- [ ] `POST /api/v1/auth/login` + `GET /api/v1/auth/me` (enrichi) + `POST /api/v1/auth/logout` + gestion devices.
-- [ ] `GET /api/v1/sync/pull?since=` et `POST /api/v1/sync/push` opérationnels et **idempotents**.
-- [ ] `SyncController` et `Api\FieldOperationController` **fusionnés** derrière un `SyncService` unique.
+- [x] `POST /api/v1/auth/login` + `GET /api/v1/auth/me` (enrichi) + `POST /api/v1/auth/logout` + gestion devices.
+- [x] `GET /api/v1/sync/pull?since=` et `POST /api/v1/sync/push` opérationnels et **idempotents**.
+- [x] `SyncController` et `Api\FieldOperationController` **fusionnés** derrière un `SyncService` unique.
 - [ ] PWA installable (manifest + service worker), Capacitor pré-câblé **inactif**.
 - [ ] Moteur offline : miroir Dexie + outbox + sync (push/pull/conflit) + gate de permissions hors-ligne.
 - [ ] App-shell : bottom-nav, home par rôle, « Mon espace », centre de notifications.

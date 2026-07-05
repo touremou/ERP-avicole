@@ -38,6 +38,14 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::get('/auth/me', [AuthController::class, 'me'])->name('auth.me');
         Route::post('/auth/logout', [AuthController::class, 'logout'])->name('auth.logout');
 
+        // Appareils connectés (un token Sanctum = un device) : liste +
+        // révocation à distance (téléphone perdu). L'appareil courant se
+        // déconnecte via /auth/logout, jamais par ici.
+        Route::get('/devices', [\App\Http\Controllers\Api\DeviceController::class, 'index'])->name('devices.index');
+        Route::delete('/devices/{deviceId}', [\App\Http\Controllers\Api\DeviceController::class, 'destroy'])
+            ->whereNumber('deviceId')
+            ->name('devices.destroy');
+
         Route::get('/batches', [BatchController::class, 'index'])->name('batches.index');
         Route::get('/batches/{batch}', [BatchController::class, 'show'])->name('batches.show');
 
