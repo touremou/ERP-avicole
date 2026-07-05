@@ -345,6 +345,8 @@ class SyncService
             'batch_id'       => 'nullable|integer|exists:batches,id',
             'supplier_name'  => 'nullable|string|max:255',
             'notes'          => 'nullable|string|max:2000',
+            // Photo du reçu téléversée au préalable via POST /api/v1/photos.
+            'photo_path'     => 'nullable|string|max:255',
         ]);
 
         if ($v->fails()) {
@@ -358,9 +360,10 @@ class SyncService
                 return ['status' => 'already_synced'];
             }
 
-            $expense = app(CreateExpense::class)->execute(
-                array_merge($validated, ['user_id' => Auth::id()])
-            );
+            $expense = app(CreateExpense::class)->execute(array_merge($validated, [
+                'user_id'           => Auth::id(),
+                'justificatif_path' => $validated['photo_path'] ?? null,
+            ]));
             $expense->update(['is_synced' => true, 'last_sync_at' => now()]);
 
             Log::info("Sync: dépense réconciliée (uuid: {$validated['uuid']}, ref: {$expense->reference}).");

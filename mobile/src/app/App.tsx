@@ -9,6 +9,9 @@ import { EggCollectionScreen } from '../features/elevage/EggCollectionScreen'
 import { IncidentScreen } from '../features/elevage/IncidentScreen'
 import { BatchScreen } from '../features/elevage/BatchScreen'
 import { ScanScreen } from '../features/scan/ScanScreen'
+import { SaleScreen } from '../features/commerce/SaleScreen'
+import { StockMovementScreen } from '../features/logistique/StockMovementScreen'
+import { ExpenseScreen } from '../features/depenses/ExpenseScreen'
 import { MonEspaceScreen } from '../features/mon-espace/MonEspaceScreen'
 import { NotificationsScreen } from '../features/notifications/NotificationsScreen'
 import { BottomNav } from '../ui/BottomNav'
@@ -38,6 +41,9 @@ function Shell() {
           <Route path="/elevage/incident/:batchId" element={<IncidentScreen />} />
           <Route path="/lot/:batchId" element={<BatchScreen />} />
           <Route path="/scan" element={<ScanScreen />} />
+          <Route path="/commerce/vente" element={<SaleScreen />} />
+          <Route path="/logistique/mouvement" element={<StockMovementScreen />} />
+          <Route path="/depenses/nouvelle" element={<ExpenseScreen />} />
           <Route path="/alertes" element={<NotificationsScreen />} />
           <Route path="/mon-espace" element={<MonEspaceScreen />} />
           <Route path="*" element={<Navigate to="/" replace />} />

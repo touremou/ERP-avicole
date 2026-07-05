@@ -100,6 +100,30 @@ export function HomeScreen() {
         </section>
       )}
 
+      {(can('commerce', 'C') || can('logistique', 'M') || can('depenses', 'C')) && (
+        <section>
+          <h3>Actions rapides</h3>
+          {can('commerce', 'C') && (
+            <Link to="/commerce/vente" className="task-card">
+              <span className="task-title">💰 Vente rapide</span>
+              <span className="task-meta">brouillon</span>
+            </Link>
+          )}
+          {can('logistique', 'M') && (
+            <Link to="/logistique/mouvement" className="task-card">
+              <span className="task-title">📦 Mouvement de stock</span>
+              <span className="task-meta">entrée · sortie</span>
+            </Link>
+          )}
+          {can('depenses', 'C') && (
+            <Link to="/depenses/nouvelle" className="task-card">
+              <span className="task-title">🧾 Dépense</span>
+              <span className="task-meta">reçu photo</span>
+            </Link>
+          )}
+        </section>
+      )}
+
       {nothingTodo && batches.length > 0 && (
         <p className="success">✓ Tout est à jour pour aujourd'hui.</p>
       )}

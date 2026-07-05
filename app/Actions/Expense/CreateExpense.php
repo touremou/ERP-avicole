@@ -22,9 +22,12 @@ class CreateExpense
         return DB::transaction(function () use ($data, $justificatif) {
             // Justificatif (facture, reçu, note de frais) : même convention de
             // stockage que les autres pièces du SI (disque public, chemin en BDD).
+            // Depuis le web : fichier joint au formulaire. Depuis la sync
+            // mobile : la photo du reçu est DÉJÀ téléversée (POST /photos) et
+            // arrive comme chemin ($data['justificatif_path']).
             $justificatifPath = $justificatif
                 ? $justificatif->store('expenses/justificatifs', 'public')
-                : null;
+                : ($data['justificatif_path'] ?? null);
 
             $expense = Expense::create([
                 'uuid'              => $data['uuid'] ?? null,

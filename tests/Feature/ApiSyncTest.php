@@ -483,3 +483,25 @@ test('téléversement de photo refusé en lecture seule', function () {
         'photo' => Illuminate\Http\UploadedFile::fake()->image('x.jpg'),
     ])->assertForbidden();
 });
+
+test("expense.create : la photo du reçu (photo_path) devient le justificatif", function () {
+    Sanctum::actingAs($this->manager);
+
+    $uuid = (string) Str::uuid();
+    $response = $this->postJson('/api/v1/sync/push', pushOps([[
+        'type'    => 'expense.create',
+        'payload' => [
+            'uuid'         => $uuid,
+            'category'     => 'carburant',
+            'label'        => 'Gasoil groupe électrogène',
+            'amount'       => 150000,
+            'expense_date' => now()->toDateString(),
+            'photo_path'   => 'field/expense/recu.jpg',
+        ],
+    ]]));
+
+    expect($response->json('results.0.status'))->toBe('success');
+    $expense = App\Models\Expense::where('uuid', $uuid)->first();
+    expect($expense->justificatif_path)->toBe('field/expense/recu.jpg');
+    expect($expense->status)->toBe('en_attente'); // brouillon : validation en ligne
+});
