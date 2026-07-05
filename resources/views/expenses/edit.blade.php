@@ -31,11 +31,16 @@
                         <div class="grid grid-cols-2 gap-6">
                             <div class="space-y-2">
                                 <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Catégorie") }} *</label>
-                                <select name="category" required class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black uppercase shadow-inner outline-none appearance-none cursor-pointer">
+                                <select name="category" required onchange="document.getElementById('eau-energie-hint')?.classList.toggle('hidden', this.value !== 'eau_energie')"
+                                        class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black uppercase shadow-inner outline-none appearance-none cursor-pointer">
                                     @foreach($categories as $key => $label)
                                         <option value="{{ $key }}" {{ old('category', $expense->category) === $key ? 'selected' : '' }}>{{ $label }}</option>
                                     @endforeach
                                 </select>
+                                {{-- Anti double comptage — cf. formulaire de création. --}}
+                                <p id="eau-energie-hint" class="{{ old('category', $expense->category) === 'eau_energie' ? '' : 'hidden' }} text-[9px] font-bold text-amber-600 leading-tight ml-2 mt-1">
+                                    <i class="fa-solid fa-triangle-exclamation mr-1"></i>{{ __("Réservé aux achats d'APPOINT (bidons, recharge ponctuelle). Les factures d'eau et d'électricité relevées au module Ressources sont déjà comptées au compte de résultat — les saisir ici les compterait deux fois.") }}
+                                </p>
                             </div>
                             <div class="space-y-2">
                                 <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Montant") }} ({{ setting('general.currency', 'GNF') }}) *</label>

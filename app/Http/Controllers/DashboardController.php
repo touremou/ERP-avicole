@@ -525,6 +525,51 @@ class DashboardController extends Controller
             ]);
         }
 
+        // RESSOURCES (eau / gasoil / maintenance) : le centre de contrôle voit
+        // les utilités sans ouvrir le module — une citerne vide ou un groupe
+        // à sec arrête la ferme aussi sûrement qu'un silo d'aliment épuisé.
+        // Le bandeau n'escalade que le niveau « critique » (cf. return) : les
+        // niveaux intermédiaires restent dans le dashboard Ressources.
+        foreach (\App\Models\WaterSource::active()->where('type', 'citerne')->get() as $ws) {
+            $pct = (float) ($ws->current_level_percent ?? 0);
+            if (! $ws->is_low || $pct >= 15) {
+                continue; // 15-30 % : visible au module Ressources, pas une urgence hub
+            }
+            $out->push([
+                'level' => 'critique', 'icon' => 'fa-faucet-drip',
+                'title' => 'Citerne d\'eau critique',
+                'detail' => "{$ws->name} — " . number_format($pct, 0) . ' % ('
+                    . number_format((float) $ws->current_level_liters, 0, ',', ' ') . ' L restants). Remplissage immédiat.',
+                'url' => route('utilities.water.sources'),
+            ]);
+        }
+
+        foreach (\App\Models\EnergySource::active()->groupes()->get() as $es) {
+            if ($es->is_fuel_low) {
+                $autonomy = $es->fuel_autonomy_hours !== null
+                    ? "≈ {$es->fuel_autonomy_hours} h de marche"
+                    : "≈ {$es->fuel_autonomy_days} j";
+                $out->push([
+                    'level' => 'critique', 'icon' => 'fa-gas-pump',
+                    'title' => 'Gasoil groupe critique',
+                    'detail' => "{$es->name} — " . number_format((float) $es->current_fuel_level, 0) . " L en cuve ({$autonomy}). Commander du carburant.",
+                    'url' => route('utilities.fuel.index'),
+                ]);
+            }
+
+            // ≤ 20 h avant révision : un groupe non entretenu qui lâche coupe
+            // pompes/éclairage — urgence réelle (double canal : une tâche
+            // auto est déjà générée par maintenance:check).
+            if ($es->needs_maintenance) {
+                $out->push([
+                    'level' => 'critique', 'icon' => 'fa-screwdriver-wrench',
+                    'title' => 'Maintenance groupe due',
+                    'detail' => "{$es->name} — " . round($es->hours_before_maintenance) . ' h avant révision (huile, filtres, courroies).',
+                    'url' => route('utilities.energy.sources'),
+                ]);
+            }
+        }
+
         // Urgences mortalité (critique).
         foreach ($emergencyBatches as $b) {
             $out->push([
