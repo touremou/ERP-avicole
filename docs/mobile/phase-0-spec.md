@@ -22,9 +22,9 @@ Checklist :
 - [x] `POST /api/v1/auth/login` + `GET /api/v1/auth/me` (enrichi) + `POST /api/v1/auth/logout` + gestion devices.
 - [x] `GET /api/v1/sync/pull?since=` et `POST /api/v1/sync/push` opérationnels et **idempotents**.
 - [x] `SyncController` et `Api\FieldOperationController` **fusionnés** derrière un `SyncService` unique.
-- [ ] PWA installable (manifest + service worker), Capacitor pré-câblé **inactif**.
-- [ ] Moteur offline : miroir Dexie + outbox + sync (push/pull/conflit) + gate de permissions hors-ligne.
-- [ ] App-shell : bottom-nav, home par rôle, « Mon espace », centre de notifications.
+- [x] PWA installable (manifest + service worker), Capacitor pré-câblé **inactif**.
+- [x] Moteur offline : miroir Dexie + outbox + sync (push/pull/conflit) + gate de permissions hors-ligne.
+- [x] App-shell : bottom-nav, home par rôle, « Mon espace » (⚠️ centre de notifications : reste à faire).
 - [ ] Tests : Feature (API push/pull, idempotence, conflit, permissions) + le scénario tracer-bullet.
 
 ---
