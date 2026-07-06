@@ -53,6 +53,11 @@ Produit `mobile/dist/` (à copier dans la racine web) et une archive
 
 ## 2. Vhost nginx
 
+> Hébergement **mutualisé** (Apache/LiteSpeed, ex. PlanetHoster) : pas de
+> nginx — voir le parcours complet **`DEPLOYMENT.md` §11.C** (sous-domaine via
+> le panneau + `.htaccess` fourni : no-cache `sw.js`, cache long assets,
+> fallback SPA).
+
 ### Topologie A — reverse-proxy (PWA + /api sur le même hôte)
 
 ```nginx

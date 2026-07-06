@@ -1,6 +1,9 @@
 # Déploiement & checklist d'industrialisation — AviSmart ERP
 
 > Guide complet (installation, administration, modules) : [`docs/GUIDE.md`](docs/GUIDE.md)
+>
+> **Pressé ?** Guides **pas-à-pas par environnement** — localhost, VPS,
+> hébergement mutualisé (PlanetHoster) — web **et** mobile : voir **§11**.
 
 ## 1. Pré-requis serveur
 
@@ -355,3 +358,398 @@ Sonde de connectivité (publique) : `GET /api/v1/health` → `{"status":"ok",…
 > ⚠️ **HTTPS obligatoire** : sans lui, le service worker, l'installation PWA,
 > la caméra (photo/scan) et la géolocalisation sont désactivés par le
 > navigateur. Provisionner le certificat avant le test pilote.
+
+---
+
+## 11. Guides pas-à-pas par environnement (web + mobile)
+
+Trois parcours complets, du clone au « 100 % fonctionnel » : **A. Localhost**
+(développement/démo), **B. VPS** (production recommandée), **C. Hébergement
+mutualisé** type PlanetHoster. Chaque parcours couvre l'application **web**
+(Laravel) puis la **PWA mobile** (`mobile/`), et se termine par la checklist
+§11.4 commune.
+
+Rappel d'architecture : la PWA est un **build statique** qui consomme l'API
+v1 ; elle se déploie soit en **même origine** (un vhost sert la PWA et relaie
+`/api` → zéro CORS), soit en **cross-origine** (PWA sur `app.*`, API sur le
+domaine principal → `VITE_API_BASE_URL` au build + `CORS_ALLOWED_ORIGINS`
+côté Laravel). Détails : `docs/mobile/deploiement-staging.md`.
+
+---
+
+### 11.A — Localhost (développement / démonstration)
+
+#### Prérequis
+| Outil | Version | Vérifier |
+|---|---|---|
+| PHP + extensions §1 | **8.3+** | `php -v` puis `php -m \| grep -E 'gd\|sodium\|intl'` |
+| Composer | 2.x | `composer -V` |
+| Node.js | 18+ (20 recommandé) | `node -v` |
+| Git | — | `git --version` |
+
+Pas de MySQL requis : **SQLite** suffit en local (`DB_CONNECTION=sqlite` est
+déjà le défaut de `.env.example`).
+
+#### Application web
+
+```bash
+git clone <repo> && cd ERP-avicole
+cp .env.example .env
+composer install
+npm ci && npm run build          # assets du back-office (Vite)
+touch database/database.sqlite   # la base SQLite locale
+php artisan key:generate
+php artisan storage:link
+php artisan serve                # → http://127.0.0.1:8000
+```
+
+Ouvrir `http://127.0.0.1:8000` : l'**assistant `/install`** se lance seul
+(prérequis → base → migrations + seeds → compte admin). À la fin il pose le
+marqueur `storage/installed` et verrouille `/install`.
+
+Dans **deux autres terminaux** (l'équivalent local du cron et du worker) :
+
+```bash
+php artisan schedule:work        # tâches planifiées (alertes, résumés…)
+php artisan queue:work           # file d'attente (e-mails de notification)
+```
+
+> Alternative démo sans worker : `QUEUE_CONNECTION=sync` dans `.env`
+> (tout devient synchrone — suffisant pour tester).
+
+#### PWA mobile
+
+```bash
+cd mobile
+npm ci
+npm run dev                      # → http://127.0.0.1:5173 (proxy /api → :8000)
+```
+
+Le serveur de dev proxifie `/api` vers Laravel : **aucune config**. Se
+connecter avec le compte créé par l'assistant ; le premier `sync/pull`
+rapatrie lots/clients/produits, puis l'app fonctionne hors-ligne (couper le
+réseau dans DevTools → onglet Network → « Offline » pour tester).
+
+> **Test sur un vrai téléphone en local** : servir avec
+> `npm run dev -- --host` et ouvrir `http://IP-du-PC:5173` depuis le
+> téléphone (même Wi-Fi). Limite : hors `localhost`, le navigateur exige
+> HTTPS pour service worker, caméra et installation PWA — la saisie et la
+> sync fonctionnent, mais photo/scan/installation seront inactifs. Pour un
+> test complet sur téléphone : Android + `adb reverse tcp:5173 tcp:5173`
+> (le téléphone voit alors l'app comme `localhost`), ou passer au parcours
+> B/C avec un vrai certificat.
+
+---
+
+### 11.B — VPS (production recommandée)
+
+Exemple : Ubuntu 22.04/24.04, domaine `ferme.example.com` (web) et
+`app.ferme.example.com` (PWA). Adapter les chemins/domaines.
+
+#### Prérequis (installation une fois)
+
+```bash
+sudo apt update
+sudo apt install -y nginx mysql-server supervisor certbot python3-certbot-nginx git unzip
+sudo apt install -y php8.3-fpm php8.3-mysql php8.3-mbstring php8.3-gd php8.3-intl \
+                    php8.3-zip php8.3-curl php8.3-xml php8.3-bcmath
+# sodium est inclus dans php8.3-common ; vérifier : php -m | grep sodium
+# Composer 2 : https://getcomposer.org/download/
+# Node 20 (build des assets uniquement) : https://github.com/nodesource/distributions
+```
+
+Base de données (l'assistant sait la créer si l'utilisateur MySQL a le droit
+`CREATE`, mais la créer soi-même est plus propre) :
+
+```sql
+CREATE DATABASE avismart CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'avismart'@'localhost' IDENTIFIED BY 'MOT-DE-PASSE-FORT';
+GRANT ALL PRIVILEGES ON avismart.* TO 'avismart'@'localhost';
+FLUSH PRIVILEGES;
+```
+
+#### Application web
+
+```bash
+sudo mkdir -p /var/www && cd /var/www
+sudo git clone <repo> ERP-avicole && cd ERP-avicole
+sudo chown -R $USER:www-data .
+cp .env.production.example .env          # APP_URL=https://ferme.example.com
+composer install --no-dev --optimize-autoloader
+npm ci && npm run build
+php artisan key:generate
+php artisan storage:link
+sudo chgrp -R www-data storage bootstrap/cache
+sudo chmod -R ug+rwx  storage bootstrap/cache
+```
+
+Vhost nginx (`/etc/nginx/sites-available/ferme.example.com`) :
+
+```nginx
+server {
+    listen 80;
+    server_name ferme.example.com;
+    root /var/www/ERP-avicole/public;
+    index index.php;
+    client_max_body_size 20M;            # photos terrain (5 Mo) + marge
+
+    location / { try_files $uri $uri/ /index.php?$query_string; }
+
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/run/php/php8.3-fpm.sock;
+    }
+    location ~ /\.(?!well-known) { deny all; }
+}
+```
+
+```bash
+sudo ln -s /etc/nginx/sites-available/ferme.example.com /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
+sudo certbot --nginx -d ferme.example.com      # HTTPS (obligatoire, cf. §1)
+```
+
+Ouvrir `https://ferme.example.com` → **assistant `/install`** (base : hôte
+`127.0.0.1`, base `avismart`, utilisateur `avismart`). Puis :
+
+```bash
+php artisan optimize            # config/route/view caches (§3)
+```
+
+**Cron** (§5) — `crontab -e` de l'utilisateur du projet :
+
+```cron
+* * * * * cd /var/www/ERP-avicole && php artisan schedule:run >> /dev/null 2>&1
+```
+
+**Worker de file** — `/etc/supervisor/conf.d/avismart-worker.conf` :
+
+```ini
+[program:avismart-worker]
+command=php /var/www/ERP-avicole/artisan queue:work --sleep=3 --tries=3 --max-time=3600
+user=www-data
+autostart=true
+autorestart=true
+stopasgroup=true
+killasgroup=true
+stdout_logfile=/var/www/ERP-avicole/storage/logs/worker.log
+```
+
+```bash
+sudo supervisorctl reread && sudo supervisorctl update
+sudo supervisorctl status avismart-worker      # → RUNNING
+```
+
+#### PWA mobile (même origine — recommandé)
+
+```bash
+cd /var/www/ERP-avicole/mobile
+./scripts/build-staging.sh                 # VITE_API_BASE_URL vide → /api relatif
+sudo mkdir -p /var/www/aviterrain
+sudo tar -xzf aviterrain-pwa.tar.gz -C /var/www/aviterrain
+```
+
+Vhost `app.ferme.example.com` : la PWA en statique, `/api` et `/storage`
+relayés **en loopback vers le vhost principal** (monde php-fpm — pas de
+`:8000` ici) :
+
+```nginx
+server {
+    listen 80;
+    server_name app.ferme.example.com;
+    root /var/www/aviterrain;
+    index index.html;
+
+    location = /sw.js  { add_header Cache-Control "no-cache, no-store, must-revalidate"; try_files $uri =404; }
+    location /assets/  { add_header Cache-Control "public, max-age=31536000, immutable"; try_files $uri =404; }
+
+    location /api/     { proxy_pass http://127.0.0.1; proxy_set_header Host ferme.example.com; proxy_set_header X-Forwarded-Proto https; }
+    location /storage/ { proxy_pass http://127.0.0.1; proxy_set_header Host ferme.example.com; }
+
+    location / { try_files $uri $uri/ /index.html; }
+}
+```
+
+```bash
+sudo ln -s /etc/nginx/sites-available/app.ferme.example.com /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
+sudo certbot --nginx -d app.ferme.example.com
+```
+
+Même origine → **pas de CORS à configurer**. (Variante cross-origine : build
+avec `VITE_API_BASE_URL=https://ferme.example.com/api/v1` + `CORS_ALLOWED_ORIGINS`
+dans le `.env` Laravel — cf. `docs/mobile/deploiement-staging.md`.)
+
+---
+
+### 11.C — Hébergement mutualisé (PlanetHoster et similaires)
+
+Contraintes du mutualisé : pas de root ni de démon (supervisor/systemd),
+Apache/LiteSpeed (`.htaccess` au lieu de nginx), Node souvent absent ou
+limité → **les assets se construisent sur votre poste** et on téléverse le
+résultat. Tout le reste (PHP 8.3, MySQL, SSH, cron, sous-domaines, SSL
+Let's Encrypt) est disponible dans le panneau (N0C chez PlanetHoster).
+
+#### Prérequis
+- Un plan avec **PHP 8.3** (sélecteur de version du panneau) et les
+  extensions §1 activées (chez PlanetHoster : `gd`, `intl`, `sodium`… se
+  cochent dans « PHP » → extensions).
+- **Accès SSH** activé (panneau → SSH) — fortement recommandé ; sans SSH,
+  tout se fait par le gestionnaire de fichiers mais `composer`/`artisan`
+  deviennent pénibles.
+- Une **base MySQL + utilisateur** créés depuis le panneau (noter hôte —
+  souvent `localhost` —, nom, utilisateur, mot de passe).
+- Sur votre **poste local** : PHP 8.3, Composer, Node 20 (pour préparer
+  l'archive).
+
+#### Application web
+
+**1. Préparer l'archive sur votre poste** (on embarque `vendor/` et les
+assets construits pour ne rien compiler sur le mutualisé) :
+
+```bash
+git clone <repo> && cd ERP-avicole
+composer install --no-dev --optimize-autoloader
+npm ci && npm run build
+tar -czf avismart.tar.gz --exclude=node_modules --exclude=.git --exclude=mobile/node_modules .
+```
+
+**2. Téléverser & décompresser** (SSH ou gestionnaire de fichiers) — **hors
+racine web** de préférence :
+
+```bash
+ssh utilisateur@votre-serveur.planethoster.net
+mkdir -p ~/apps/avismart && cd ~/apps/avismart
+# téléverser avismart.tar.gz ici (scp/SFTP) puis :
+tar -xzf avismart.tar.gz && rm avismart.tar.gz
+cp .env.production.example .env
+php artisan key:generate
+php artisan storage:link
+```
+
+**3. Pointer le domaine sur `public/`** : dans le panneau (Domaines), régler
+le **dossier racine** du domaine sur `apps/avismart/public`. C'est l'option
+propre — le code et le `.env` restent inaccessibles du web.
+
+> Si votre offre ne permet pas de changer le dossier racine : déplacer le
+> CONTENU de `public/` dans `public_html/`, puis dans `public_html/index.php`
+> corriger les deux `require` vers `../apps/avismart/vendor/autoload.php` et
+> `../apps/avismart/bootstrap/app.php`. Le lien `storage` doit alors être
+> recréé : `ln -s ~/apps/avismart/storage/app/public ~/public_html/storage`
+> (à défaut, le fallback intégré `/media/{chemin}` sert les fichiers sans lien).
+
+**4. Activer HTTPS** : panneau → SSL/Let's Encrypt sur le domaine (généralement
+automatique chez PlanetHoster).
+
+**5. Installer** : ouvrir `https://votre-domaine.tld` → assistant `/install`,
+renseigner la base MySQL créée à l'étape prérequis. Puis en SSH :
+
+```bash
+php artisan optimize
+```
+
+**6. Cron** (panneau → Tâches cron) — deux entrées, **chaque minute** :
+
+```cron
+* * * * * cd ~/apps/avismart && php artisan schedule:run >> /dev/null 2>&1
+* * * * * cd ~/apps/avismart && flock -n storage/framework/queue.lock php artisan queue:work --stop-when-empty --max-time=50 >> /dev/null 2>&1
+```
+
+La 2ᵉ ligne remplace le démon supervisor impossible en mutualisé : elle
+draine la file (`database`) puis s'arrête ; `flock` empêche deux exécutions
+simultanées. Alternative minimaliste : `QUEUE_CONNECTION=sync` dans `.env`
+(les e-mails partent pendant la requête — acceptable à petite échelle).
+
+**7. Mail** : renseigner le SMTP de l'hébergeur dans `.env`
+(`MAIL_MAILER=smtp`, hôte/port/identifiants du panneau E-mail) — cf. §9.3.
+
+#### PWA mobile
+
+Ici la PWA vit sur un **sous-domaine** et l'API sur le domaine principal →
+**cross-origine**.
+
+**1. Build sur votre poste** avec l'URL absolue de l'API :
+
+```bash
+cd mobile
+VITE_API_BASE_URL=https://votre-domaine.tld/api/v1 ./scripts/build-staging.sh
+```
+
+**2. Sous-domaine** : panneau → créer `app.votre-domaine.tld` avec pour
+racine un dossier dédié (ex. `apps/aviterrain`) + **SSL Let's Encrypt**.
+
+**3. Téléverser** le contenu de `mobile/dist/` dans ce dossier, et y créer ce
+`.htaccess` (Apache/LiteSpeed) :
+
+```apache
+AddType application/manifest+json .webmanifest
+
+# Assets fingerprintés : cache long
+<FilesMatch "\.(js|css|png|svg|woff2)$">
+  Header set Cache-Control "public, max-age=31536000, immutable"
+</FilesMatch>
+
+# …sauf le service worker, JAMAIS mis en cache (sinon les mises à jour
+# de l'app n'atteignent plus les téléphones). Déclaré APRÈS pour primer.
+<Files "sw.js">
+  Header set Cache-Control "no-cache, no-store, must-revalidate"
+</Files>
+
+# SPA fallback
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule . /index.html [L]
+</IfModule>
+```
+
+**4. Ouvrir CORS** côté Laravel — dans le `.env` du domaine principal :
+
+```dotenv
+CORS_ALLOWED_ORIGINS=https://app.votre-domaine.tld
+```
+
+puis `php artisan config:clear` (ou `optimize`) en SSH.
+
+**5. Vérifier** :
+
+```bash
+curl -s https://votre-domaine.tld/api/v1/health          # {"status":"ok",...}
+curl -sI -X OPTIONS https://votre-domaine.tld/api/v1/health \
+  -H 'Origin: https://app.votre-domaine.tld' \
+  -H 'Access-Control-Request-Method: GET' | grep -i access-control-allow-origin
+```
+
+Ouvrir `https://app.votre-domaine.tld` sur un téléphone Android/Chrome →
+menu **« Installer l'application »**.
+
+---
+
+### 11.4 Checklist « 100 % fonctionnel » (tous environnements)
+
+Cocher dans l'ordre — chaque ligne indique aussi comment vérifier :
+
+| ✔ | Point | Vérification |
+|---|---|---|
+| ☐ | App web répond en HTTPS | `curl -sI https://…/up` → `200` |
+| ☐ | Assistant verrouillé après installation | `/install` redirige vers login ; `storage/installed` présent |
+| ☐ | `APP_ENV=production`, `APP_DEBUG=false` | fait automatiquement par l'assistant — contrôler `.env` |
+| ☐ | Connexion admin + tuiles modules OK | login → lanceur de modules |
+| ☐ | Fichiers/photos servis | téléverser une photo (incident) puis l'ouvrir ; sinon vérifier `storage:link` (fallback `/media` sinon) |
+| ☐ | Cron actif | `Réglages → journal` ou `storage/logs/laravel.log` : traces `schedule:run` ; après 15 min les tâches planifiées apparaissent |
+| ☐ | File d'attente drainée | envoyer un **test e-mail** (Notifications → Préférences) → reçu ; table `jobs` vide |
+| ☐ | Canaux WhatsApp/SMS/e-mail | boutons de test §9 ; historique des notifications |
+| ☐ | Licence activée (si monétisation) | §8 — sinon module verrouillé = 402 |
+| ☐ | Sauvegardes | §6 — lancer une sauvegarde manuelle depuis l'IHM |
+| ☐ | **API mobile** vivante | `curl https://…/api/v1/health` → `{"status":"ok"}` |
+| ☐ | PWA installable | Android/Chrome : bannière ou menu « Installer l'application » ; DevTools → Application : SW « activated » |
+| ☐ | CORS (si cross-origine) | préflight `OPTIONS` ci-dessus renvoie `Access-Control-Allow-Origin` |
+| ☐ | **Balle traçante terrain** | login PWA → mode avion → saisir un pointage → réseau → badge « Synchronisé » → le pointage apparaît dans le web |
+| ☐ | Révocation d'appareil | « Mon espace » → appareils → révoquer un token de test |
+
+> Mise à jour d'une instance (tous environnements) : §2 « Mise à jour » —
+> `git pull` (ou téléverser la nouvelle archive), `composer install --no-dev`,
+> rebuild des assets, `php artisan migrate --force`, `php artisan optimize`.
+> Pour la PWA : re-builder `mobile/` et re-téléverser `dist/` — le service
+> worker se met à jour seul au prochain lancement.
