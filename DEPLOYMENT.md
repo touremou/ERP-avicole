@@ -334,3 +334,24 @@ MAIL_FROM_NAME="${APP_NAME}"
 | « Quota SMS épuisé » | Licence : quota atteint → renouveler / augmenter (cf. §8) |
 | E-mail sans erreur mais non reçu | `MAIL_MAILER=log` (voir logs), ou file non drainée (`queue:work`) |
 | Échec WhatsApp | Vérifier numéro (format +224…), driver, clé API, instance — détail dans l'Historique |
+
+---
+
+## 10. Application mobile terrain (PWA « AviTerrain »)
+
+La PWA compagnon (`mobile/`) se déploie sur un sous-domaine `app.*` comme un
+**build statique** qui consomme l'API v1 déjà en place. Deux topologies :
+
+- **Reverse-proxy** (recommandé pilote) : le vhost `app.*` sert les fichiers
+  ET relaie `/api` vers Laravel → base API relative, **aucun CORS**.
+- **Cross-origine** : PWA et API sur des hôtes distincts → build avec
+  `VITE_API_BASE_URL` + `CORS_ALLOWED_ORIGINS` côté Laravel (`config/cors.php`).
+
+Guide pas-à-pas (build, vhosts nginx, CORS, HTTPS, compte pilote, vérifs) :
+**`docs/mobile/deploiement-staging.md`**.
+
+Sonde de connectivité (publique) : `GET /api/v1/health` → `{"status":"ok",…}`.
+
+> ⚠️ **HTTPS obligatoire** : sans lui, le service worker, l'installation PWA,
+> la caméra (photo/scan) et la géolocalisation sont désactivés par le
+> navigateur. Provisionner le certificat avant le test pilote.

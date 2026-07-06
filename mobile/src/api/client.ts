@@ -19,7 +19,12 @@ import type {
   PullResponse,
 } from './types'
 
-const BASE = '/api/v1'
+// Base de l'API. En dev et en même-origine (PWA servie par le même hôte que
+// Laravel, ou reverse-proxy /api → Laravel), on reste en relatif `/api/v1`.
+// En déploiement cross-origine (PWA sur app.*, API sur le domaine principal),
+// on fixe VITE_API_BASE_URL au build (ex. https://ferme.example.com/api/v1)
+// — cf. docs/mobile/deploiement-staging.md.
+const BASE = (import.meta.env.VITE_API_BASE_URL ?? '/api/v1').replace(/\/$/, '')
 
 export class ApiError extends Error {
   constructor(
