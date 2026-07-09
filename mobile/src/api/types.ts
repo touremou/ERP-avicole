@@ -42,6 +42,11 @@ export type OperationType =
   | 'expense.create'
   | 'batch.upsert'
   | 'health_incident.create'
+  // Phase 3 — cultures, abattoir, provenderie.
+  | 'harvest.create'
+  | 'crop_input.create'
+  | 'slaughter.execute'
+  | 'mill_production.complete'
 
 export interface PushOperation {
   op_uuid: string
@@ -84,6 +89,12 @@ export interface PullResponse {
     clients: PullEntity<RefClient>
     products: PullEntity<RefProduct>
     production_types: PullEntity<RefProductionType>
+    // Phase 3 (optionnels : un serveur antérieur ne les renvoie pas).
+    plots?: PullEntity<RefPlot>
+    crop_cycles?: PullEntity<RefCropCycle>
+    slaughter_orders?: PullEntity<RefSlaughterOrder>
+    formulas?: PullEntity<RefFormula>
+    mill_productions?: PullEntity<RefMillProduction>
   }
 }
 
@@ -175,6 +186,59 @@ export interface RefProductionType {
   id: number
   slug: string
   name_fr: string
+  updated_at: string
+}
+
+// ── Référentiels Phase 3 (cultures / abattoir / provenderie) ────────────
+
+export interface RefPlot {
+  id: number
+  code: string
+  name: string
+  status: string
+  area_ha: string | number | null
+  updated_at: string
+}
+
+/** Statuts « en cours » : en_cours | recolte (miroir de CropCycle::IN_PROGRESS_STATUSES). */
+export interface RefCropCycle {
+  id: number
+  uuid: string | null
+  plot_id: number
+  code: string
+  crop_name: string
+  variety: string | null
+  status: string
+  planting_date: string | null
+  updated_at: string
+}
+
+export interface RefSlaughterOrder {
+  id: number
+  order_number: string
+  batch_id: number | null
+  planned_date: string
+  planned_quantity: number
+  status: string
+  updated_at: string
+}
+
+export interface RefFormula {
+  id: number
+  name: string
+  code: string | null
+  target_type: string | null
+  is_active: boolean
+  updated_at: string
+}
+
+export interface RefMillProduction {
+  id: number
+  batch_number: string
+  formula_id: number | null
+  quantity_produced: string | number
+  status: string
+  started_at: string | null
   updated_at: string
 }
 

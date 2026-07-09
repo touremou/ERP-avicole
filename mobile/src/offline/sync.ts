@@ -177,11 +177,18 @@ async function pullDelta(): Promise<void> {
   const since = (await getMeta<string>('last_pull_at')) ?? null
   const response: PullResponse = await api.syncPull(since)
 
-  const { batches, buildings, stocks, clients, products, production_types } = response.entities
+  const {
+    batches, buildings, stocks, clients, products, production_types,
+    plots, crop_cycles, slaughter_orders, formulas, mill_productions,
+  } = response.entities
 
   await db.transaction(
     'rw',
-    [db.ref_batches, db.ref_buildings, db.ref_stocks, db.ref_clients, db.ref_products, db.ref_production_types],
+    [
+      db.ref_batches, db.ref_buildings, db.ref_stocks, db.ref_clients, db.ref_products,
+      db.ref_production_types, db.ref_plots, db.ref_crop_cycles, db.ref_slaughter_orders,
+      db.ref_formulas, db.ref_mill_productions,
+    ],
     async () => {
       await db.ref_batches.bulkPut(batches.upserts)
       await db.ref_batches.bulkDelete(batches.deletes)
@@ -196,6 +203,27 @@ async function pullDelta(): Promise<void> {
       if (production_types) {
         await db.ref_production_types.bulkPut(production_types.upserts)
         await db.ref_production_types.bulkDelete(production_types.deletes)
+      }
+      // Phase 3 — gardés optionnels (serveur antérieur = entités absentes).
+      if (plots) {
+        await db.ref_plots.bulkPut(plots.upserts)
+        await db.ref_plots.bulkDelete(plots.deletes)
+      }
+      if (crop_cycles) {
+        await db.ref_crop_cycles.bulkPut(crop_cycles.upserts)
+        await db.ref_crop_cycles.bulkDelete(crop_cycles.deletes)
+      }
+      if (slaughter_orders) {
+        await db.ref_slaughter_orders.bulkPut(slaughter_orders.upserts)
+        await db.ref_slaughter_orders.bulkDelete(slaughter_orders.deletes)
+      }
+      if (formulas) {
+        await db.ref_formulas.bulkPut(formulas.upserts)
+        await db.ref_formulas.bulkDelete(formulas.deletes)
+      }
+      if (mill_productions) {
+        await db.ref_mill_productions.bulkPut(mill_productions.upserts)
+        await db.ref_mill_productions.bulkDelete(mill_productions.deletes)
       }
     },
   )

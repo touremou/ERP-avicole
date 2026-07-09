@@ -2,19 +2,29 @@
 
 namespace App\Services\Sync;
 
+use App\Actions\Crop\RecordCropInput;
+use App\Actions\Crop\RecordHarvest;
 use App\Actions\DailyCheck\RecordDailyCheck;
 use App\Actions\EggProduction\RecordEggCollection;
 use App\Actions\Expense\CreateExpense;
+use App\Actions\MillProduction\CompleteMillProduction;
 use App\Actions\Sale\CreateSale;
 use App\Actions\Stock\MoveStockAction;
 use App\Models\Batch;
+use App\Models\CropCycle;
+use App\Models\CropInput;
 use App\Models\DailyCheck;
 use App\Models\EggProduction;
+use App\Models\Harvest;
 use App\Models\HealthIncident;
 use App\Models\Expense;
+use App\Models\MillProduction;
 use App\Models\Sale;
+use App\Models\SlaughterOrder;
+use App\Models\SlaughterResult;
 use App\Models\Stock;
 use App\Models\StockMovement;
+use App\Services\SlaughterService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -61,6 +71,11 @@ class SyncService
             'expense.create'         => 'expenseCreate',
             'batch.upsert'           => 'batchUpsert',
             'health_incident.create' => 'healthIncidentCreate',
+            // Phase 3 — cultures, abattoir, provenderie (rfc-cadrage §MoSCoW).
+            'harvest.create'          => 'harvestCreate',
+            'crop_input.create'       => 'cropInputCreate',
+            'slaughter.execute'       => 'slaughterExecute',
+            'mill_production.complete' => 'millProductionComplete',
         ];
     }
 
@@ -510,6 +525,256 @@ class SyncService
             }
 
             return ['status' => 'success', 'server_id' => $incident->id];
+        });
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    //  RÉCOLTE (cultures) — réutilise RecordHarvest (bascule du cycle en
+    //  phase « recolte », intégration stock optionnelle au coût de production).
+    // ─────────────────────────────────────────────────────────────
+
+    private function harvestCreate(array $payload): array
+    {
+        if (Gate::denies('cultures.C')) {
+            return $this->denied();
+        }
+
+        $v = Validator::make($payload, [
+            'uuid'            => 'required|uuid',
+            'crop_cycle_id'   => 'required|integer|exists:crop_cycles,id',
+            'harvest_date'    => 'required|date|before_or_equal:today',
+            'quantity'        => 'required|numeric|min:0.001',
+            'unit'            => 'nullable|string|max:20',
+            'net_weight_kg'   => 'nullable|numeric|min:0',
+            'loss_quantity'   => 'nullable|numeric|min:0',
+            'quality'         => 'nullable|in:' . implode(',', Harvest::QUALITIES),
+            'sync_to_stock'   => 'nullable|boolean',
+            'stock_item_name' => 'nullable|string|max:255',
+            'notes'           => 'nullable|string|max:1000',
+        ]);
+
+        if ($v->fails()) {
+            return $this->invalid($v->errors()->toArray());
+        }
+
+        $data = $v->validated();
+
+        return DB::transaction(function () use ($data) {
+            if (Harvest::withoutGlobalScopes()->where('uuid', $data['uuid'])->exists()) {
+                return ['status' => 'already_synced'];
+            }
+
+            // find() (et non exists:) sous FarmScope : un id d'une autre ferme
+            // est un refus définitif, pas une erreur 500 rejouée.
+            $cycle = CropCycle::find($data['crop_cycle_id']);
+            if (! $cycle) {
+                return ['status' => 'conflict', 'message' => 'Cycle de culture introuvable dans cette ferme.'];
+            }
+
+            if ($cycle->isArchived()) {
+                return ['status' => 'conflict', 'message' => "Le cycle {$cycle->code} est clos — récolte impossible."];
+            }
+
+            $uuid = $data['uuid'];
+            unset($data['uuid'], $data['crop_cycle_id']);
+
+            $harvest = app(RecordHarvest::class)->execute($cycle, $data);
+
+            // L'uuid terrain remplace celui auto-généré (HasStandardUuid) :
+            // c'est LUI la clé d'idempotence du rejeu réseau.
+            $harvest->forceFill([
+                'uuid'         => $uuid,
+                'is_synced'    => true,
+                'last_sync_at' => now(),
+            ])->save();
+
+            Log::info("Sync: récolte réconciliée (uuid: {$uuid}, cycle: {$cycle->code}).");
+
+            return ['status' => 'success', 'server_id' => $harvest->id];
+        });
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    //  INTRANT (cultures) — coût total dérivé, entrée stock optionnelle.
+    // ─────────────────────────────────────────────────────────────
+
+    private function cropInputCreate(array $payload): array
+    {
+        if (Gate::denies('cultures.C')) {
+            return $this->denied();
+        }
+
+        $v = Validator::make($payload, [
+            'uuid'            => 'required|uuid',
+            'crop_cycle_id'   => 'required|integer|exists:crop_cycles,id',
+            'type'            => 'required|in:' . implode(',', array_keys(CropInput::TYPES)),
+            'name'            => 'required|string|max:255',
+            'input_date'      => 'required|date|before_or_equal:today',
+            'quantity'        => 'nullable|numeric|min:0',
+            'unit'            => 'nullable|string|max:20',
+            'unit_cost'       => 'nullable|numeric|min:0',
+            'total_cost'      => 'nullable|numeric|min:0',
+            'synced_to_stock' => 'nullable|boolean',
+            'stock_item_name' => 'nullable|string|max:255',
+            'notes'           => 'nullable|string|max:1000',
+        ]);
+
+        if ($v->fails()) {
+            return $this->invalid($v->errors()->toArray());
+        }
+
+        $data = $v->validated();
+
+        return DB::transaction(function () use ($data) {
+            if (CropInput::withoutGlobalScopes()->where('uuid', $data['uuid'])->exists()) {
+                return ['status' => 'already_synced'];
+            }
+
+            $cycle = CropCycle::find($data['crop_cycle_id']);
+            if (! $cycle) {
+                return ['status' => 'conflict', 'message' => 'Cycle de culture introuvable dans cette ferme.'];
+            }
+
+            if ($cycle->isArchived()) {
+                return ['status' => 'conflict', 'message' => "Le cycle {$cycle->code} est clos — saisie d'intrant impossible."];
+            }
+
+            $uuid = $data['uuid'];
+            unset($data['uuid'], $data['crop_cycle_id']);
+
+            $input = app(RecordCropInput::class)->execute($cycle, $data);
+
+            $input->forceFill([
+                'uuid'         => $uuid,
+                'is_synced'    => true,
+                'last_sync_at' => now(),
+            ])->save();
+
+            Log::info("Sync: intrant réconcilié (uuid: {$uuid}, cycle: {$cycle->code}).");
+
+            return ['status' => 'success', 'server_id' => $input->id];
+        });
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    //  ABATTAGE (abattoir) — exécution terrain d'un ordre planifié au bureau.
+    //  Les gardes métier (quarantaine, effectif, carcasse ≤ vif, statut sous
+    //  verrou) vivent dans SlaughterService — partagées avec le web.
+    // ─────────────────────────────────────────────────────────────
+
+    private function slaughterExecute(array $payload): array
+    {
+        if (Gate::denies('abattoir.M')) {
+            return $this->denied();
+        }
+
+        $v = Validator::make($payload, [
+            'uuid'                    => 'required|uuid',
+            'slaughter_order_id'      => 'required|integer|exists:slaughter_orders,id',
+            'execution_date'          => 'required|date|before_or_equal:today',
+            'actual_quantity'         => 'required|integer|min:1',
+            'total_live_weight_kg'    => 'required|numeric|min:0.1',
+            'total_carcass_weight_kg' => 'required|numeric|min:0.1|lte:total_live_weight_kg',
+            'condemned_count'         => 'nullable|integer|min:0',
+            'condemned_reason'        => 'nullable|string|max:500',
+            'inspector_notes'         => 'nullable|string|max:1000',
+        ]);
+
+        if ($v->fails()) {
+            return $this->invalid($v->errors()->toArray());
+        }
+
+        $data = $v->validated();
+
+        return DB::transaction(function () use ($data) {
+            if (SlaughterResult::withoutGlobalScopes()->where('uuid', $data['uuid'])->exists()) {
+                return ['status' => 'already_synced'];
+            }
+
+            $order = SlaughterOrder::find($data['slaughter_order_id']);
+            if (! $order) {
+                return ['status' => 'conflict', 'message' => "Ordre d'abattage introuvable dans cette ferme."];
+            }
+
+            try {
+                $result = app(SlaughterService::class)->executeSlaughter($order, $data);
+            } catch (\Exception $e) {
+                // SlaughterService signale ses règles métier par \Exception
+                // (ordre déjà exécuté, quarantaine, effectif insuffisant…) :
+                // refus définitif → bac « À corriger ». Les vraies pannes
+                // (SQL…) restent des erreurs rejouables.
+                if ($e instanceof \Illuminate\Database\QueryException || $e instanceof \PDOException) {
+                    throw $e;
+                }
+
+                return ['status' => 'conflict', 'message' => $e->getMessage()];
+            }
+
+            $result->forceFill(['uuid' => $data['uuid']])->save();
+
+            Log::info("Sync: abattage réconcilié (uuid: {$data['uuid']}, ordre: {$order->order_number}).");
+
+            return ['status' => 'success', 'server_id' => $result->id];
+        });
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    //  CLÔTURE D'OP (provenderie) — consomme les MP et crédite le silo
+    //  d'aliment fini (CompleteMillProduction, partagé avec le web).
+    //  L'op ne crée aucune ligne : l'uuid de clôture est mémorisé sur l'OP
+    //  (completion_uuid) pour distinguer rejeu et clôture concurrente.
+    // ─────────────────────────────────────────────────────────────
+
+    private function millProductionComplete(array $payload): array
+    {
+        if (Gate::denies('provenderie.M')) {
+            return $this->denied();
+        }
+
+        $v = Validator::make($payload, [
+            'uuid'               => 'required|uuid',
+            'mill_production_id' => 'required|integer|exists:mill_productions,id',
+        ]);
+
+        if ($v->fails()) {
+            return $this->invalid($v->errors()->toArray());
+        }
+
+        $data = $v->validated();
+
+        return DB::transaction(function () use ($data) {
+            $production = MillProduction::lockForUpdate()->find($data['mill_production_id']);
+            if (! $production) {
+                return ['status' => 'conflict', 'message' => 'Ordre de production introuvable dans cette ferme.'];
+            }
+
+            if ($production->status === 'Terminé') {
+                return $production->completion_uuid === $data['uuid']
+                    ? ['status' => 'already_synced']
+                    : ['status' => 'conflict', 'message' => "L'OP #{$production->batch_number} a déjà été clôturée (en ligne ou par un autre appareil)."];
+            }
+
+            if ($production->status === 'Annulé') {
+                return ['status' => 'conflict', 'message' => "L'OP #{$production->batch_number} a été annulée."];
+            }
+
+            try {
+                app(CompleteMillProduction::class)->execute($production);
+            } catch (\DomainException|\RuntimeException $e) {
+                // Règles métier de la clôture (stock MP insuffisant, machine en
+                // panne, MP sans prix…) : refus définitif, l'utilisateur arbitre.
+                if ($e instanceof \Illuminate\Database\QueryException || $e instanceof \PDOException) {
+                    throw $e;
+                }
+
+                return ['status' => 'conflict', 'message' => $e->getMessage()];
+            }
+
+            $production->forceFill(['completion_uuid' => $data['uuid']])->save();
+
+            Log::info("Sync: OP clôturé (uuid: {$data['uuid']}, OP: {$production->batch_number}).");
+
+            return ['status' => 'success', 'server_id' => $production->id];
         });
     }
 

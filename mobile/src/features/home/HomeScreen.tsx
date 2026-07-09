@@ -9,7 +9,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../../app/AuthContext'
 import { db } from '../../offline/db'
 import { onSyncChange } from '../../offline/sync'
-import type { RefBatch } from '../../api/types'
+import type { RefBatch, RefCropCycle, RefMillProduction, RefSlaughterOrder } from '../../api/types'
 
 export function HomeScreen() {
   const { me, can } = useAuth()
@@ -19,6 +19,11 @@ export function HomeScreen() {
     checks: new Set(),
     eggs: new Set(),
   })
+  // Phase 3 : cycles de culture en cours, ordres d'abattage planifiés,
+  // OP provenderie ouverts — masqués dès qu'une saisie locale les traite.
+  const [cropCycles, setCropCycles] = useState<RefCropCycle[]>([])
+  const [slaughterOrders, setSlaughterOrders] = useState<RefSlaughterOrder[]>([])
+  const [millProductions, setMillProductions] = useState<RefMillProduction[]>([])
 
   useEffect(() => {
     const load = async () => {
@@ -40,17 +45,31 @@ export function HomeScreen() {
       const records = await db.my_records.toArray()
       const checks = new Set<number>()
       const eggs = new Set<number>()
+      const executedOrders = new Set<number>()
+      const completedOps = new Set<number>()
       for (const record of records) {
         const payload = record.payload as {
           batch_id?: number
           check_date?: string
           production_date?: string
+          slaughter_order_id?: number
+          mill_production_id?: number
         }
-        if (!payload.batch_id) continue
-        if (record.type === 'daily_check.create' && payload.check_date === today) checks.add(payload.batch_id)
-        if (record.type === 'egg_collection.create' && payload.production_date === today) eggs.add(payload.batch_id)
+        if (record.type === 'daily_check.create' && payload.batch_id && payload.check_date === today) checks.add(payload.batch_id)
+        if (record.type === 'egg_collection.create' && payload.batch_id && payload.production_date === today) eggs.add(payload.batch_id)
+        // Un ordre/OP traité localement disparaît de la home avant même que
+        // le pull ne rapatrie son nouveau statut serveur.
+        if (record.type === 'slaughter.execute' && payload.slaughter_order_id) executedOrders.add(payload.slaughter_order_id)
+        if (record.type === 'mill_production.complete' && payload.mill_production_id) completedOps.add(payload.mill_production_id)
       }
       setDoneToday({ checks, eggs })
+
+      // Phase 3 — seules les entités « à traiter » remontent en tâches.
+      setCropCycles(await db.ref_crop_cycles.where('status').anyOf('en_cours', 'recolte').toArray())
+      const orders = await db.ref_slaughter_orders.where('status').equals('planifie').toArray()
+      setSlaughterOrders(orders.filter((o) => !executedOrders.has(o.id)))
+      const ops = await db.ref_mill_productions.where('status').anyOf('Planifié', 'En cours').toArray()
+      setMillProductions(ops.filter((op) => !completedOps.has(op.id)))
     }
 
     void load()
@@ -63,7 +82,14 @@ export function HomeScreen() {
   const eggsTodo = batches.filter((b) => ponteIds.has(b.id) && !doneToday.eggs.has(b.id))
   const canElevage = can('elevage', 'C')
   const canProduction = can('production', 'C')
-  const nothingTodo = (!canElevage || checksTodo.length === 0) && (!canProduction || eggsTodo.length === 0)
+  const canCultures = can('cultures', 'C')
+  const canAbattoir = can('abattoir', 'M')
+  const canProvenderie = can('provenderie', 'M')
+  const nothingTodo =
+    (!canElevage || checksTodo.length === 0) &&
+    (!canProduction || eggsTodo.length === 0) &&
+    (!canAbattoir || slaughterOrders.length === 0) &&
+    (!canProvenderie || millProductions.length === 0)
 
   return (
     <div className="screen">
@@ -95,6 +121,42 @@ export function HomeScreen() {
             <Link key={batch.id} to={`/elevage/collecte/${batch.id}`} className="task-card">
               <span className="task-title">🥚 Collecte — {batch.code}</span>
               <span className="task-meta">{batch.current_quantity} pondeuses</span>
+            </Link>
+          ))}
+        </section>
+      )}
+
+      {canAbattoir && slaughterOrders.length > 0 && (
+        <section>
+          <h3>Abattages à exécuter</h3>
+          {slaughterOrders.map((order) => (
+            <Link key={order.id} to={`/abattoir/execution/${order.id}`} className="task-card">
+              <span className="task-title">🔪 {order.order_number}</span>
+              <span className="task-meta">{order.planned_quantity} sujets · {order.planned_date}</span>
+            </Link>
+          ))}
+        </section>
+      )}
+
+      {canProvenderie && millProductions.length > 0 && (
+        <section>
+          <h3>OP provenderie à clôturer</h3>
+          {millProductions.map((op) => (
+            <Link key={op.id} to={`/provenderie/cloture/${op.id}`} className="task-card">
+              <span className="task-title">🏭 {op.batch_number}</span>
+              <span className="task-meta">{Number(op.quantity_produced).toLocaleString('fr-FR')} kg · {op.status}</span>
+            </Link>
+          ))}
+        </section>
+      )}
+
+      {canCultures && cropCycles.length > 0 && (
+        <section>
+          <h3>Cultures en cours</h3>
+          {cropCycles.map((cycle) => (
+            <Link key={cycle.id} to={`/cultures/recolte/${cycle.id}`} className="task-card">
+              <span className="task-title">🌾 {cycle.crop_name} — {cycle.code}</span>
+              <span className="task-meta">{cycle.status === 'recolte' ? 'récolte en cours' : 'récolte · intrant'}</span>
             </Link>
           ))}
         </section>
@@ -132,7 +194,7 @@ export function HomeScreen() {
           Aucun lot local — la synchronisation les rapatriera au premier passage réseau.
         </p>
       )}
-      {!canElevage && !canProduction && (
+      {!canElevage && !canProduction && !canCultures && !canAbattoir && !canProvenderie && (
         <p className="muted">
           Votre rôle n'a pas encore d'action terrain dans cette version — consultez « Mon espace ».
         </p>

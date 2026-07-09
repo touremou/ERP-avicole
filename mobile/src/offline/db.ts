@@ -18,8 +18,13 @@ import type {
   RefBatch,
   RefBuilding,
   RefClient,
+  RefCropCycle,
+  RefFormula,
+  RefMillProduction,
+  RefPlot,
   RefProduct,
   RefProductionType,
+  RefSlaughterOrder,
   RefStock,
 } from '../api/types'
 
@@ -71,6 +76,11 @@ class ErpMobileDb extends Dexie {
   notifications!: Table<ApiNotification, string>
   photos!: Table<LocalPhoto, string>
   ref_production_types!: Table<RefProductionType, number>
+  ref_plots!: Table<RefPlot, number>
+  ref_crop_cycles!: Table<RefCropCycle, number>
+  ref_slaughter_orders!: Table<RefSlaughterOrder, number>
+  ref_formulas!: Table<RefFormula, number>
+  ref_mill_productions!: Table<RefMillProduction, number>
   meta!: Table<MetaEntry, string>
 
   constructor() {
@@ -92,6 +102,14 @@ class ErpMobileDb extends Dexie {
       ref_production_types: 'id, slug',
       // + index `code` pour la résolution du scan QR.
       ref_batches: 'id, uuid, code, building_id, status',
+    })
+    // v3 (Phase 3) : référentiels cultures, abattoir, provenderie.
+    this.version(3).stores({
+      ref_plots: 'id, status',
+      ref_crop_cycles: 'id, plot_id, status',
+      ref_slaughter_orders: 'id, batch_id, status',
+      ref_formulas: 'id',
+      ref_mill_productions: 'id, formula_id, status',
     })
   }
 }

@@ -143,6 +143,11 @@ Envoie la **file d'outbox** en lot. Chaque opération est typée et idempotente.
 | `stock_movement.create` | `MoveStockAction` | `logistique.M` | revérif disponibilité (sortie) au push |
 | `sale.create` | `CreateSale` (brouillon) | `commerce.C` | validation/déstockage = **en ligne** |
 | `expense.create` | `CreateExpense` (en attente) | `depenses.C` | validation = **en ligne** |
+| `health_incident.create` (Ph. 1) | `HealthIncident::create` + alerte | `elevage.C` | photo via `POST /photos` préalable |
+| `harvest.create` (Ph. 3) | `RecordHarvest` | `cultures.C` | bascule cycle → `recolte` ; refus cycle clos |
+| `crop_input.create` (Ph. 3) | `RecordCropInput` | `cultures.C` | coût total dérivé ; refus cycle clos |
+| `slaughter.execute` (Ph. 3) | `SlaughterService::executeSlaughter` | `abattoir.M` | gardes quarantaine/effectif/carcasse≤vif rejouées ; uuid sur `slaughter_results` |
+| `mill_production.complete` (Ph. 3) | `CompleteMillProduction` | `provenderie.M` | consomme MP + crédite silo ; uuid mémorisé sur l'OP (`completion_uuid`) |
 
 ### 4.4 Règles de conflit
 - **Idempotence d'abord** : `uuid` déjà présent → `already_synced`.

@@ -61,6 +61,32 @@ class SyncController extends Controller
             'model'   => \App\Models\ProductionType::class,
             'columns' => ['id', 'slug', 'name_fr', 'updated_at'],
         ],
+        // ── Phase 3 : cultures, abattoir, provenderie ──
+        'plots' => [
+            'model'   => \App\Models\Plot::class,
+            'columns' => ['id', 'code', 'name', 'status', 'area_ha', 'updated_at'],
+        ],
+        'crop_cycles' => [
+            'model'   => \App\Models\CropCycle::class,
+            'columns' => ['id', 'uuid', 'plot_id', 'code', 'crop_name', 'variety', 'status',
+                          'planting_date', 'updated_at'],
+        ],
+        'slaughter_orders' => [
+            'model'   => \App\Models\SlaughterOrder::class,
+            'columns' => ['id', 'order_number', 'batch_id', 'planned_date', 'planned_quantity',
+                          'status', 'updated_at'],
+        ],
+        'formulas' => [
+            'model'   => \App\Models\Formula::class,
+            'columns' => ['id', 'name', 'code', 'target_type', 'is_active', 'updated_at'],
+        ],
+        // Pas de SoftDeletes sur mill_productions/formulas : jamais de
+        // tombstones — un OP annulé reste visible avec son statut « Annulé ».
+        'mill_productions' => [
+            'model'   => \App\Models\MillProduction::class,
+            'columns' => ['id', 'batch_number', 'formula_id', 'quantity_produced', 'status',
+                          'started_at', 'updated_at'],
+        ],
     ];
 
     public function push(Request $request, SyncService $sync): JsonResponse
