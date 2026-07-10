@@ -10,6 +10,7 @@ import { db } from '../../offline/db'
 import { enqueue } from '../../offline/sync'
 import { NumberStepper } from '../../ui/NumberStepper'
 import { platform, compressImage } from '../../platform'
+import { t } from '../../i18n'
 import type { RefBatch } from '../../api/types'
 
 const SYMPTOM_PRESETS = [
@@ -83,7 +84,7 @@ export function IncidentScreen() {
       payload.photo_uuid = photoUuid
     }
 
-    await enqueue('health_incident.create', payload, `Incident ${batch.code}`)
+    await enqueue('health_incident.create', payload, t('Incident :code', { code: batch.code }))
 
     setSaved(true)
     setTimeout(() => navigate('/'), 900)
@@ -92,7 +93,7 @@ export function IncidentScreen() {
   if (!batch) {
     return (
       <div className="screen">
-        <p className="muted">Lot introuvable en local — synchronisez d'abord.</p>
+        <p className="muted">{t("Lot introuvable en local — synchronisez d'abord.")}</p>
       </div>
     )
   }
@@ -100,19 +101,19 @@ export function IncidentScreen() {
   if (saved) {
     return (
       <div className="screen-center">
-        <p className="success big">✓ Incident déclaré</p>
-        <p className="muted">L'alerte partira au vétérinaire dès que le réseau le permet.</p>
+        <p className="success big">✓ {t('Incident déclaré')}</p>
+        <p className="muted">{t("L'alerte partira au vétérinaire dès que le réseau le permet.")}</p>
       </div>
     )
   }
 
   return (
     <form className="screen" onSubmit={onSubmit}>
-      <h2>🩺 Incident — {batch.code}</h2>
+      <h2>🩺 {t('Incident')} — {batch.code}</h2>
 
-      <NumberStepper label="Cadavres constatés" value={mortalityCount} onChange={setMortalityCount} min={0} />
+      <NumberStepper label={t('Cadavres constatés')} value={mortalityCount} onChange={setMortalityCount} min={0} />
 
-      <label>Symptômes observés</label>
+      <label>{t('Symptômes observés')}</label>
       <div className="chip-row">
         {SYMPTOM_PRESETS.map((symptom) => (
           <button
@@ -121,15 +122,15 @@ export function IncidentScreen() {
             className={`chip ${symptoms.includes(symptom) ? 'chip-on' : ''}`}
             onClick={() => toggleSymptom(symptom)}
           >
-            {symptom}
+            {t(symptom)}
           </button>
         ))}
       </div>
 
-      <label htmlFor="details">Autres constats — optionnel</label>
+      <label htmlFor="details">{t('Autres constats — optionnel')}</label>
       <textarea id="details" rows={2} maxLength={1000} value={details} onChange={(e) => setDetails(e.target.value)} />
 
-      <label>Gravité</label>
+      <label>{t('Gravité')}</label>
       <div className="chip-row">
         {(['mineur', 'modere', 'critique'] as const).map((level) => (
           <button
@@ -138,18 +139,18 @@ export function IncidentScreen() {
             className={`chip ${severity === level ? (level === 'critique' ? 'chip-danger' : 'chip-on') : ''}`}
             onClick={() => setSeverity(level)}
           >
-            {level === 'modere' ? 'Modéré' : level.charAt(0).toUpperCase() + level.slice(1)}
+            {t(level === 'modere' ? 'Modéré' : level.charAt(0).toUpperCase() + level.slice(1))}
           </button>
         ))}
       </div>
 
       <button type="button" className="btn-secondary" onClick={() => void attachPhoto()}>
-        📷 {photoBlob ? 'Reprendre la photo' : 'Prendre une photo'}
+        📷 {photoBlob ? t('Reprendre la photo') : t('Prendre une photo')}
       </button>
-      {photoPreview && <img src={photoPreview} alt="Photo de l'incident" className="photo-preview" />}
+      {photoPreview && <img src={photoPreview} alt={t("Photo de l'incident")} className="photo-preview" />}
 
       <button type="submit" className="btn-primary" disabled={symptoms.length === 0 && !details.trim()}>
-        Déclarer l'incident
+        {t("Déclarer l'incident")}
       </button>
     </form>
   )

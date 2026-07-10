@@ -9,6 +9,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../../app/AuthContext'
 import { db } from '../../offline/db'
 import { onSyncChange } from '../../offline/sync'
+import { t, dateLocale } from '../../i18n'
 import type { RefBatch, RefCropCycle, RefMillProduction, RefSlaughterOrder } from '../../api/types'
 
 export function HomeScreen() {
@@ -93,22 +94,22 @@ export function HomeScreen() {
 
   return (
     <div className="screen">
-      <h2>Bonjour {me?.user.name?.split(' ')[0]} 👋</h2>
+      <h2>{t('Bonjour')} {me?.user.name?.split(' ')[0]} 👋</h2>
 
       {(canElevage || canProduction) && (
         <Link to="/scan" className="task-card scan-card">
-          <span className="task-title">📷 Scanner un lot</span>
-          <span className="task-meta">QR de traçabilité</span>
+          <span className="task-title">📷 {t('Scanner un lot')}</span>
+          <span className="task-meta">{t('QR de traçabilité')}</span>
         </Link>
       )}
 
       {canElevage && checksTodo.length > 0 && (
         <section>
-          <h3>Pointages du jour</h3>
+          <h3>{t('Pointages du jour')}</h3>
           {checksTodo.map((batch) => (
             <Link key={batch.id} to={`/elevage/pointage/${batch.id}`} className="task-card">
-              <span className="task-title">Pointage — {batch.code}</span>
-              <span className="task-meta">{batch.current_quantity} sujets</span>
+              <span className="task-title">{t('Pointage')} — {batch.code}</span>
+              <span className="task-meta">{batch.current_quantity} {t('sujets')}</span>
             </Link>
           ))}
         </section>
@@ -116,11 +117,11 @@ export function HomeScreen() {
 
       {canProduction && eggsTodo.length > 0 && (
         <section>
-          <h3>Collectes d'œufs</h3>
+          <h3>{t("Collectes d'œufs")}</h3>
           {eggsTodo.map((batch) => (
             <Link key={batch.id} to={`/elevage/collecte/${batch.id}`} className="task-card">
-              <span className="task-title">🥚 Collecte — {batch.code}</span>
-              <span className="task-meta">{batch.current_quantity} pondeuses</span>
+              <span className="task-title">🥚 {t('Collecte')} — {batch.code}</span>
+              <span className="task-meta">{batch.current_quantity} {t('pondeuses')}</span>
             </Link>
           ))}
         </section>
@@ -128,11 +129,11 @@ export function HomeScreen() {
 
       {canAbattoir && slaughterOrders.length > 0 && (
         <section>
-          <h3>Abattages à exécuter</h3>
+          <h3>{t('Abattages à exécuter')}</h3>
           {slaughterOrders.map((order) => (
             <Link key={order.id} to={`/abattoir/execution/${order.id}`} className="task-card">
               <span className="task-title">🔪 {order.order_number}</span>
-              <span className="task-meta">{order.planned_quantity} sujets · {order.planned_date}</span>
+              <span className="task-meta">{order.planned_quantity} {t('sujets')} · {order.planned_date}</span>
             </Link>
           ))}
         </section>
@@ -140,11 +141,11 @@ export function HomeScreen() {
 
       {canProvenderie && millProductions.length > 0 && (
         <section>
-          <h3>OP provenderie à clôturer</h3>
+          <h3>{t('OP provenderie à clôturer')}</h3>
           {millProductions.map((op) => (
             <Link key={op.id} to={`/provenderie/cloture/${op.id}`} className="task-card">
               <span className="task-title">🏭 {op.batch_number}</span>
-              <span className="task-meta">{Number(op.quantity_produced).toLocaleString('fr-FR')} kg · {op.status}</span>
+              <span className="task-meta">{Number(op.quantity_produced).toLocaleString(dateLocale())} kg · {op.status}</span>
             </Link>
           ))}
         </section>
@@ -152,11 +153,11 @@ export function HomeScreen() {
 
       {canCultures && cropCycles.length > 0 && (
         <section>
-          <h3>Cultures en cours</h3>
+          <h3>{t('Cultures en cours')}</h3>
           {cropCycles.map((cycle) => (
             <Link key={cycle.id} to={`/cultures/recolte/${cycle.id}`} className="task-card">
               <span className="task-title">🌾 {cycle.crop_name} — {cycle.code}</span>
-              <span className="task-meta">{cycle.status === 'recolte' ? 'récolte en cours' : 'récolte · intrant'}</span>
+              <span className="task-meta">{cycle.status === 'recolte' ? t('récolte en cours') : t('récolte · intrant')}</span>
             </Link>
           ))}
         </section>
@@ -164,39 +165,39 @@ export function HomeScreen() {
 
       {(can('commerce', 'C') || can('logistique', 'M') || can('depenses', 'C')) && (
         <section>
-          <h3>Actions rapides</h3>
+          <h3>{t('Actions rapides')}</h3>
           {can('commerce', 'C') && (
             <Link to="/commerce/vente" className="task-card">
-              <span className="task-title">💰 Vente rapide</span>
-              <span className="task-meta">brouillon</span>
+              <span className="task-title">💰 {t('Vente rapide')}</span>
+              <span className="task-meta">{t('brouillon')}</span>
             </Link>
           )}
           {can('logistique', 'M') && (
             <Link to="/logistique/mouvement" className="task-card">
-              <span className="task-title">📦 Mouvement de stock</span>
-              <span className="task-meta">entrée · sortie</span>
+              <span className="task-title">📦 {t('Mouvement de stock')}</span>
+              <span className="task-meta">{t('entrée · sortie')}</span>
             </Link>
           )}
           {can('depenses', 'C') && (
             <Link to="/depenses/nouvelle" className="task-card">
-              <span className="task-title">🧾 Dépense</span>
-              <span className="task-meta">reçu photo</span>
+              <span className="task-title">🧾 {t('Dépense')}</span>
+              <span className="task-meta">{t('reçu photo')}</span>
             </Link>
           )}
         </section>
       )}
 
       {nothingTodo && batches.length > 0 && (
-        <p className="success">✓ Tout est à jour pour aujourd'hui.</p>
+        <p className="success">✓ {t("Tout est à jour pour aujourd'hui.")}</p>
       )}
       {batches.length === 0 && (
         <p className="muted">
-          Aucun lot local — la synchronisation les rapatriera au premier passage réseau.
+          {t('Aucun lot local — la synchronisation les rapatriera au premier passage réseau.')}
         </p>
       )}
       {!canElevage && !canProduction && !canCultures && !canAbattoir && !canProvenderie && (
         <p className="muted">
-          Votre rôle n'a pas encore d'action terrain dans cette version — consultez « Mon espace ».
+          {t("Votre rôle n'a pas encore d'action terrain dans cette version — consultez « Mon espace ».")}
         </p>
       )}
     </div>

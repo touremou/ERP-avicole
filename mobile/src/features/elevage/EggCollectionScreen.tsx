@@ -8,6 +8,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { db } from '../../offline/db'
 import { enqueue } from '../../offline/sync'
 import { NumberStepper } from '../../ui/NumberStepper'
+import { t, dateLocale } from '../../i18n'
 import type { RefBatch } from '../../api/types'
 
 export function EggCollectionScreen() {
@@ -39,7 +40,7 @@ export function EggCollectionScreen() {
         small_eggs: smallEggs || null,
         observations: observations || null,
       },
-      `Collecte ${batch.code}`,
+      t('Collecte :code', { code: batch.code }),
     )
 
     setSaved(true)
@@ -49,7 +50,7 @@ export function EggCollectionScreen() {
   if (!batch) {
     return (
       <div className="screen">
-        <p className="muted">Lot introuvable en local — synchronisez d'abord.</p>
+        <p className="muted">{t("Lot introuvable en local — synchronisez d'abord.")}</p>
       </div>
     )
   }
@@ -57,24 +58,24 @@ export function EggCollectionScreen() {
   if (saved) {
     return (
       <div className="screen-center">
-        <p className="success big">✓ Collecte enregistrée</p>
-        <p className="muted">Les passages du jour se cumulent automatiquement.</p>
+        <p className="success big">✓ {t('Collecte enregistrée')}</p>
+        <p className="muted">{t('Les passages du jour se cumulent automatiquement.')}</p>
       </div>
     )
   }
 
   return (
     <form className="screen" onSubmit={onSubmit}>
-      <h2>🥚 Collecte — {batch.code}</h2>
+      <h2>🥚 {t('Collecte')} — {batch.code}</h2>
       <p className="muted">
-        {batch.current_quantity} pondeuses · {new Date().toLocaleDateString('fr-FR')}
+        {batch.current_quantity} {t('pondeuses')} · {new Date().toLocaleDateString(dateLocale())}
       </p>
 
-      <NumberStepper label="Œufs ramassés (ce passage)" value={totalEggs} onChange={setTotalEggs} min={0} step={10} />
-      <NumberStepper label="Cassés / fêlés" value={brokenEggs} onChange={setBrokenEggs} min={0} />
-      <NumberStepper label="Petits calibres" value={smallEggs} onChange={setSmallEggs} min={0} />
+      <NumberStepper label={t('Œufs ramassés (ce passage)')} value={totalEggs} onChange={setTotalEggs} min={0} step={10} />
+      <NumberStepper label={t('Cassés / fêlés')} value={brokenEggs} onChange={setBrokenEggs} min={0} />
+      <NumberStepper label={t('Petits calibres')} value={smallEggs} onChange={setSmallEggs} min={0} />
 
-      <label htmlFor="observations">Observations — optionnel</label>
+      <label htmlFor="observations">{t('Observations — optionnel')}</label>
       <textarea
         id="observations"
         rows={2}
@@ -84,7 +85,7 @@ export function EggCollectionScreen() {
       />
 
       <button type="submit" className="btn-primary" disabled={totalEggs <= 0}>
-        Enregistrer la collecte
+        {t('Enregistrer la collecte')}
       </button>
     </form>
   )

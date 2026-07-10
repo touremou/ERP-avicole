@@ -1,22 +1,29 @@
 /**
  * Mon espace — mon activité (saisies locales + statut de sync), le bac
- * « À corriger » (refus définitifs avec motif serveur), et ma session.
+ * « À corriger » (refus définitifs avec motif serveur), ma session et le
+ * choix de langue (prioritaire sur la langue du profil web, cf. i18n).
  */
 import { useEffect, useState } from 'react'
 import { useAuth } from '../../app/AuthContext'
 import { db, type MyRecord, type OutboxEntry } from '../../offline/db'
 import { syncNow } from '../../offline/sync'
+import { getLocale, setLocale, t, type Locale } from '../../i18n'
 
-const STATUS_LABEL: Record<MyRecord['sync_status'], string> = {
-  pending: '⏳ En attente',
-  synced: '✓ Synchronisé',
-  review: '⚠️ À corriger',
-}
+const LOCALES: { value: Locale; label: string }[] = [
+  { value: 'fr', label: '🇫🇷 Français' },
+  { value: 'en', label: '🇬🇧 English' },
+]
 
 export function MonEspaceScreen() {
   const { me, logout } = useAuth()
   const [records, setRecords] = useState<MyRecord[]>([])
   const [review, setReview] = useState<OutboxEntry[]>([])
+
+  const statusLabel: Record<MyRecord['sync_status'], string> = {
+    pending: t('⏳ En attente'),
+    synced: t('✓ Synchronisé'),
+    review: t('⚠️ À corriger'),
+  }
 
   async function refresh() {
     setRecords(await db.my_records.orderBy('created_at').reverse().limit(30).toArray())
@@ -37,14 +44,14 @@ export function MonEspaceScreen() {
 
   return (
     <div className="screen">
-      <h2>Mon espace</h2>
+      <h2>{t('Mon espace')}</h2>
       <p className="muted">
         {me?.user.name} — {me?.role.label ?? me?.role.slug}
       </p>
 
       {review.length > 0 && (
         <section>
-          <h3>À corriger ({review.length})</h3>
+          <h3>{t('À corriger')} ({review.length})</h3>
           {review.map((entry) => (
             <div key={entry.op_uuid} className="review-card">
               <p className="error">{entry.last_error}</p>
@@ -56,7 +63,7 @@ export function MonEspaceScreen() {
                 </ul>
               )}
               <button type="button" className="btn-secondary" onClick={() => void discard(entry.op_uuid)}>
-                Abandonner cette saisie
+                {t('Abandonner cette saisie')}
               </button>
             </div>
           ))}
@@ -64,22 +71,38 @@ export function MonEspaceScreen() {
       )}
 
       <section>
-        <h3>Mon activité</h3>
-        {records.length === 0 && <p className="muted">Aucune saisie sur cet appareil.</p>}
+        <h3>{t('Mon activité')}</h3>
+        {records.length === 0 && <p className="muted">{t('Aucune saisie sur cet appareil.')}</p>}
         {records.map((record) => (
           <div key={record.uuid} className="record-row">
             <span>{record.label}</span>
-            <span className="task-meta">{STATUS_LABEL[record.sync_status]}</span>
+            <span className="task-meta">{statusLabel[record.sync_status]}</span>
           </div>
         ))}
       </section>
 
       <section>
+        <h3>{t('Langue')}</h3>
+        <div className="chip-row">
+          {LOCALES.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              className={`chip ${getLocale() === option.value ? 'chip-on' : ''}`}
+              onClick={() => void setLocale(option.value)}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section>
         <button type="button" className="btn-secondary" onClick={() => void syncNow().then(refresh)}>
-          🔄 Synchroniser maintenant
+          {t('🔄 Synchroniser maintenant')}
         </button>
         <button type="button" className="btn-danger" onClick={() => void logout()}>
-          Se déconnecter
+          {t('Se déconnecter')}
         </button>
       </section>
     </div>

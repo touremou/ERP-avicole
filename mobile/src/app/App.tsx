@@ -1,6 +1,7 @@
-import { useEffect } from 'react'
+import { useEffect, useSyncExternalStore } from 'react'
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider, useAuth } from './AuthContext'
+import { getLocale, subscribeLocale } from '../i18n'
 import { startSyncLoop } from '../offline/sync'
 import { LoginScreen } from '../features/auth/LoginScreen'
 import { HomeScreen } from '../features/home/HomeScreen'
@@ -23,6 +24,8 @@ import { SyncBadge } from '../ui/SyncBadge'
 
 function Shell() {
   const { me, loading } = useAuth()
+  // Changement de langue → re-rendu complet (t() lit un état module).
+  const locale = useSyncExternalStore(subscribeLocale, getLocale)
 
   useEffect(() => {
     if (me) startSyncLoop()
@@ -32,7 +35,7 @@ function Shell() {
   if (!me) return <LoginScreen />
 
   return (
-    <div className="app-shell">
+    <div className="app-shell" key={locale}>
       <header className="app-header">
         <span className="app-title">AviTerrain</span>
         <SyncBadge />

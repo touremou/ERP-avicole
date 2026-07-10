@@ -7,6 +7,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { db } from '../../offline/db'
+import { t } from '../../i18n'
 
 /** Extrait le code lot d'un contenu de QR (URL /trace/lot/{code} ou code brut). */
 export function parseBatchCode(raw: string): string {
@@ -24,7 +25,7 @@ export function ScanScreen() {
   async function openBatch(code: string) {
     const batch = await db.ref_batches.where('code').equals(code).first()
     if (!batch) {
-      setError(`Lot « ${code} » introuvable en local — vérifiez le code ou synchronisez.`)
+      setError(t('Lot « :code » introuvable en local — vérifiez le code ou synchronisez.', { code }))
       return
     }
     navigate(`/lot/${batch.id}`)
@@ -77,22 +78,22 @@ export function ScanScreen() {
 
   return (
     <div className="screen">
-      <h2>📷 Scanner un lot</h2>
+      <h2>{t('📷 Scanner un lot')}</h2>
 
       {supported ? (
         <video ref={videoRef} className="scan-video" muted playsInline />
       ) : (
         <p className="muted">
-          Scanner indisponible sur cet appareil — saisissez le code du lot (imprimé sous le QR).
+          {t('Scanner indisponible sur cet appareil — saisissez le code du lot (imprimé sous le QR).')}
         </p>
       )}
 
-      <label htmlFor="manual_code">Code du lot</label>
+      <label htmlFor="manual_code">{t('Code du lot')}</label>
       <input
         id="manual_code"
         value={manualCode}
         onChange={(e) => setManualCode(e.target.value.toUpperCase())}
-        placeholder="ex. P-001"
+        placeholder={t('ex. P-001')}
         autoCapitalize="characters"
       />
       <button
@@ -101,7 +102,7 @@ export function ScanScreen() {
         disabled={!manualCode.trim()}
         onClick={() => void openBatch(parseBatchCode(manualCode))}
       >
-        Ouvrir le lot
+        {t('Ouvrir le lot')}
       </button>
 
       {error && <p className="error">{error}</p>}

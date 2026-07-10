@@ -8,6 +8,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { db } from '../../offline/db'
 import { enqueue } from '../../offline/sync'
+import { dateLocale, t } from '../../i18n'
 import { NumberStepper } from '../../ui/NumberStepper'
 import type { RefCropCycle } from '../../api/types'
 
@@ -47,7 +48,7 @@ export function HarvestScreen() {
         quality,
         notes: notes || null,
       },
-      `Récolte ${cycle.crop_name} — ${cycle.code} (${quantity} ${unit})`,
+      t('Récolte :crop — :code (:qty :unit)', { crop: cycle.crop_name, code: cycle.code, qty: quantity, unit }),
     )
 
     setSaved(true)
@@ -57,7 +58,7 @@ export function HarvestScreen() {
   if (!cycle) {
     return (
       <div className="screen">
-        <p className="muted">Cycle de culture introuvable en local — synchronisez d'abord.</p>
+        <p className="muted">{t("Cycle de culture introuvable en local — synchronisez d'abord.")}</p>
       </div>
     )
   }
@@ -65,23 +66,23 @@ export function HarvestScreen() {
   if (saved) {
     return (
       <div className="screen-center">
-        <p className="success big">✓ Récolte enregistrée</p>
-        <p className="muted">Le cycle passe en phase récolte côté serveur.</p>
+        <p className="success big">{t('✓ Récolte enregistrée')}</p>
+        <p className="muted">{t('Le cycle passe en phase récolte côté serveur.')}</p>
       </div>
     )
   }
 
   return (
     <form className="screen" onSubmit={onSubmit}>
-      <h2>🌾 Récolte — {cycle.crop_name}</h2>
+      <h2>{t('🌾 Récolte — :crop', { crop: cycle.crop_name })}</h2>
       <p className="muted">
         {cycle.code}
-        {cycle.variety ? ` · ${cycle.variety}` : ''} · {new Date().toLocaleDateString('fr-FR')}
+        {cycle.variety ? ` · ${cycle.variety}` : ''} · {new Date().toLocaleDateString(dateLocale())}
       </p>
 
-      <NumberStepper label={`Quantité récoltée (${unit})`} value={quantity} onChange={setQuantity} min={0} step={5} />
+      <NumberStepper label={t('Quantité récoltée (:unit)', { unit })} value={quantity} onChange={setQuantity} min={0} step={5} />
 
-      <label>Unité</label>
+      <label>{t('Unité')}</label>
       <div className="chip-row">
         {UNITS.map((option) => (
           <button
@@ -96,12 +97,11 @@ export function HarvestScreen() {
       </div>
       {unit !== 'kg' && (
         <p className="muted">
-          Sans pesée en kg, cette récolte n'alimentera pas les KPI de rendement — le poids net
-          pourra être complété sur le web.
+          {t("Sans pesée en kg, cette récolte n'alimentera pas les KPI de rendement — le poids net pourra être complété sur le web.")}
         </p>
       )}
 
-      <label>Qualité</label>
+      <label>{t('Qualité')}</label>
       <div className="chip-row">
         {QUALITIES.map((option) => (
           <button
@@ -110,20 +110,20 @@ export function HarvestScreen() {
             className={`chip ${quality === option.value ? 'chip-on' : ''}`}
             onClick={() => setQuality(option.value)}
           >
-            {option.label}
+            {t(option.label)}
           </button>
         ))}
       </div>
 
-      <label htmlFor="notes">Observations — optionnel</label>
+      <label htmlFor="notes">{t('Observations — optionnel')}</label>
       <textarea id="notes" rows={2} maxLength={1000} value={notes} onChange={(e) => setNotes(e.target.value)} />
 
       <button type="submit" className="btn-primary" disabled={quantity <= 0}>
-        Enregistrer la récolte
+        {t('Enregistrer la récolte')}
       </button>
 
       <Link to={`/cultures/intrant/${cycle.id}`} className="btn-secondary" style={{ textAlign: 'center', lineHeight: '56px', textDecoration: 'none' }}>
-        🧪 Saisir un intrant plutôt
+        {t('🧪 Saisir un intrant plutôt')}
       </Link>
     </form>
   )

@@ -9,6 +9,7 @@ import { useNavigate } from 'react-router-dom'
 import { db } from '../../offline/db'
 import { enqueue } from '../../offline/sync'
 import { NumberStepper } from '../../ui/NumberStepper'
+import { t } from '../../i18n'
 import type { RefStock } from '../../api/types'
 
 const TYPES = [
@@ -44,7 +45,7 @@ export function StockMovementScreen() {
         quantity,
         notes: notes || null,
       },
-      `${TYPES.find((t) => t.value === type)?.label ?? type} ${selected.item_name} (${quantity} ${selected.unit})`,
+      `${t(TYPES.find((o) => o.value === type)?.label ?? type)} ${selected.item_name} (${quantity} ${selected.unit})`,
     )
 
     setSaved(true)
@@ -54,20 +55,20 @@ export function StockMovementScreen() {
   if (saved) {
     return (
       <div className="screen-center">
-        <p className="success big">✓ Mouvement enregistré</p>
-        <p className="muted">La disponibilité sera re-vérifiée par le serveur au push.</p>
+        <p className="success big">{t('✓ Mouvement enregistré')}</p>
+        <p className="muted">{t('La disponibilité sera re-vérifiée par le serveur au push.')}</p>
       </div>
     )
   }
 
   return (
     <form className="screen" onSubmit={onSubmit}>
-      <h2>📦 Mouvement de stock</h2>
+      <h2>{t('📦 Mouvement de stock')}</h2>
 
-      <label htmlFor="stock">Article</label>
+      <label htmlFor="stock">{t('Article')}</label>
       <select id="stock" required value={stockId} onChange={(e) => setStockId(e.target.value)}>
         <option value="" disabled>
-          — Choisir un article —
+          {t('— Choisir un article —')}
         </option>
         {stocks.map((stock) => (
           <option key={stock.id} value={stock.id}>
@@ -76,7 +77,7 @@ export function StockMovementScreen() {
         ))}
       </select>
 
-      <label>Type de mouvement</label>
+      <label>{t('Type de mouvement')}</label>
       <div className="chip-row">
         {TYPES.map((option) => (
           <button
@@ -85,13 +86,13 @@ export function StockMovementScreen() {
             className={`chip ${type === option.value ? 'chip-on' : ''}`}
             onClick={() => setType(option.value)}
           >
-            {option.label}
+            {t(option.label)}
           </button>
         ))}
       </div>
 
       <NumberStepper
-        label={`Quantité${selected ? ` (${selected.unit})` : ''}`}
+        label={selected ? t('Quantité (:unit)', { unit: selected.unit }) : t('Quantité')}
         value={quantity}
         onChange={setQuantity}
         min={0}
@@ -99,16 +100,18 @@ export function StockMovementScreen() {
       />
       {selected && type === 'out' && quantity > selected.current_quantity && (
         <p className="error">
-          ⚠️ Supérieur au stock local connu ({selected.current_quantity} {selected.unit}) — le
-          serveur tranchera au push.
+          {t('⚠️ Supérieur au stock local connu (:quantity :unit) — le serveur tranchera au push.', {
+            quantity: selected.current_quantity,
+            unit: selected.unit,
+          })}
         </p>
       )}
 
-      <label htmlFor="notes">Motif / destination — optionnel</label>
-      <input id="notes" maxLength={500} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="ex. Poulailler A" />
+      <label htmlFor="notes">{t('Motif / destination — optionnel')}</label>
+      <input id="notes" maxLength={500} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder={t('ex. Poulailler A')} />
 
       <button type="submit" className="btn-primary" disabled={!selected || quantity <= 0}>
-        Enregistrer le mouvement
+        {t('Enregistrer le mouvement')}
       </button>
     </form>
   )

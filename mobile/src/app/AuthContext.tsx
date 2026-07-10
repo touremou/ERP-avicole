@@ -14,6 +14,7 @@ import {
 } from 'react'
 import { api, clearSession } from '../api/client'
 import { db, getMeta, setMeta } from '../offline/db'
+import { adoptProfileLocale } from '../i18n'
 import type { MeResponse, PermissionLevel } from '../api/types'
 
 interface AuthContextValue {
@@ -42,6 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           const fresh = await api.me()
           await setMeta('me', fresh)
+          await adoptProfileLocale(fresh.user.locale)
           setMe(fresh)
         } catch {
           // Hors-ligne ou token expiré (géré par l'event auth:expired).
@@ -61,6 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const fresh = await api.me()
     await setMeta('me', fresh)
     if (fresh.scope.farm_id) await setMeta('farm_id', fresh.scope.farm_id)
+    await adoptProfileLocale(fresh.user.locale)
     setMe(fresh)
   }, [])
 

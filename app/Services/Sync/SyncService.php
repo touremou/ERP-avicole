@@ -91,7 +91,7 @@ class SyncService
         $method = self::types()[$type] ?? null;
 
         if (! $method) {
-            return ['status' => 'validation_failed', 'message' => "Type d'opération inconnu : {$type}"];
+            return ['status' => 'validation_failed', 'message' => __("Type d'opération inconnu : :type", ['type' => $type])];
         }
 
         return $this->{$method}($payload);
@@ -147,7 +147,7 @@ class SyncService
             if ($dayExists) {
                 return [
                     'status'  => 'conflict',
-                    'message' => 'Un pointage existe déjà pour ce lot à cette date.',
+                    'message' => __('Un pointage existe déjà pour ce lot à cette date.'),
                 ];
             }
 
@@ -209,7 +209,7 @@ class SyncService
                 if ($existing->is_graded) {
                     return [
                         'status'  => 'conflict',
-                        'message' => 'Les œufs de ce jour ont déjà été triés et mis en stock.',
+                        'message' => __('Les œufs de ce jour ont déjà été triés et mis en stock.'),
                     ];
                 }
 
@@ -272,7 +272,7 @@ class SyncService
                 && (float) $stock->current_quantity < (float) $validated['quantity']) {
                 return [
                     'status'  => 'conflict',
-                    'message' => "Stock insuffisant pour {$stock->item_name} (disponible : {$stock->current_quantity} {$stock->unit}).",
+                    'message' => __('Stock insuffisant pour :item (disponible : :qty :unit).', ['item' => $stock->item_name, 'qty' => $stock->current_quantity, 'unit' => $stock->unit]),
                 ];
             }
 
@@ -280,7 +280,7 @@ class SyncService
                 $validated['stock_id'],
                 $validated['type'],
                 (float) $validated['quantity'],
-                $validated['notes'] ?? 'Mouvement saisi hors-ligne',
+                $validated['notes'] ?? __('Mouvement saisi hors-ligne'),
                 Auth::id(),
                 $validated['uuid']
             );
@@ -568,11 +568,11 @@ class SyncService
             // est un refus définitif, pas une erreur 500 rejouée.
             $cycle = CropCycle::find($data['crop_cycle_id']);
             if (! $cycle) {
-                return ['status' => 'conflict', 'message' => 'Cycle de culture introuvable dans cette ferme.'];
+                return ['status' => 'conflict', 'message' => __('Cycle de culture introuvable dans cette ferme.')];
             }
 
             if ($cycle->isArchived()) {
-                return ['status' => 'conflict', 'message' => "Le cycle {$cycle->code} est clos — récolte impossible."];
+                return ['status' => 'conflict', 'message' => __('Le cycle :code est clos — récolte impossible.', ['code' => $cycle->code])];
             }
 
             $uuid = $data['uuid'];
@@ -632,11 +632,11 @@ class SyncService
 
             $cycle = CropCycle::find($data['crop_cycle_id']);
             if (! $cycle) {
-                return ['status' => 'conflict', 'message' => 'Cycle de culture introuvable dans cette ferme.'];
+                return ['status' => 'conflict', 'message' => __('Cycle de culture introuvable dans cette ferme.')];
             }
 
             if ($cycle->isArchived()) {
-                return ['status' => 'conflict', 'message' => "Le cycle {$cycle->code} est clos — saisie d'intrant impossible."];
+                return ['status' => 'conflict', 'message' => __("Le cycle :code est clos — saisie d'intrant impossible.", ['code' => $cycle->code])];
             }
 
             $uuid = $data['uuid'];
@@ -693,7 +693,7 @@ class SyncService
 
             $order = SlaughterOrder::find($data['slaughter_order_id']);
             if (! $order) {
-                return ['status' => 'conflict', 'message' => "Ordre d'abattage introuvable dans cette ferme."];
+                return ['status' => 'conflict', 'message' => __("Ordre d'abattage introuvable dans cette ferme.")];
             }
 
             try {
@@ -745,17 +745,17 @@ class SyncService
         return DB::transaction(function () use ($data) {
             $production = MillProduction::lockForUpdate()->find($data['mill_production_id']);
             if (! $production) {
-                return ['status' => 'conflict', 'message' => 'Ordre de production introuvable dans cette ferme.'];
+                return ['status' => 'conflict', 'message' => __('Ordre de production introuvable dans cette ferme.')];
             }
 
             if ($production->status === 'Terminé') {
                 return $production->completion_uuid === $data['uuid']
                     ? ['status' => 'already_synced']
-                    : ['status' => 'conflict', 'message' => "L'OP #{$production->batch_number} a déjà été clôturée (en ligne ou par un autre appareil)."];
+                    : ['status' => 'conflict', 'message' => __("L'OP #:op a déjà été clôturée (en ligne ou par un autre appareil).", ['op' => $production->batch_number])];
             }
 
             if ($production->status === 'Annulé') {
-                return ['status' => 'conflict', 'message' => "L'OP #{$production->batch_number} a été annulée."];
+                return ['status' => 'conflict', 'message' => __("L'OP #:op a été annulée.", ['op' => $production->batch_number])];
             }
 
             try {
@@ -780,7 +780,7 @@ class SyncService
 
     private function denied(): array
     {
-        return ['status' => 'permission_denied', 'message' => 'Permission insuffisante.'];
+        return ['status' => 'permission_denied', 'message' => __('Permission insuffisante.')];
     }
 
     private function invalid(array $errors): array

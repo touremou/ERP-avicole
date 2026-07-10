@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom'
 import { db } from '../../offline/db'
 import { enqueue } from '../../offline/sync'
 import { NumberStepper } from '../../ui/NumberStepper'
+import { t, dateLocale } from '../../i18n'
 import type { RefClient, RefProduct } from '../../api/types'
 
 interface SaleItem {
@@ -81,7 +82,7 @@ export function SaleScreen() {
         immediate_payment: immediatePayment ? Number(immediatePayment) : null,
         payment_method: immediatePayment ? 'especes' : null,
       },
-      `Vente ${client?.name ?? ''} (${items.length} art.)`,
+      t('Vente :name (:count art.)', { name: client?.name ?? '', count: items.length }),
     )
 
     setSaved(true)
@@ -91,20 +92,20 @@ export function SaleScreen() {
   if (saved) {
     return (
       <div className="screen-center">
-        <p className="success big">✓ Vente enregistrée (brouillon)</p>
-        <p className="muted">La validation et le déstockage se font au bureau, en ligne.</p>
+        <p className="success big">{t('✓ Vente enregistrée (brouillon)')}</p>
+        <p className="muted">{t('La validation et le déstockage se font au bureau, en ligne.')}</p>
       </div>
     )
   }
 
   return (
     <form className="screen" onSubmit={onSubmit}>
-      <h2>💰 Vente rapide</h2>
+      <h2>{t('💰 Vente rapide')}</h2>
 
-      <label htmlFor="client">Client</label>
+      <label htmlFor="client">{t('Client')}</label>
       <select id="client" required value={clientId} onChange={(e) => setClientId(e.target.value)}>
         <option value="" disabled>
-          — Choisir un client —
+          {t('— Choisir un client —')}
         </option>
         {clients.map((client) => (
           <option key={client.id} value={client.id}>
@@ -115,18 +116,18 @@ export function SaleScreen() {
 
       {items.length > 0 && (
         <section>
-          <h3>Panier ({items.length})</h3>
+          <h3>{t('Panier (:count)', { count: items.length })}</h3>
           {items.map((item, index) => (
             <div key={index} className="record-row">
               <span>
                 {item.product_name} × {item.quantity}
               </span>
               <span className="task-meta">
-                {(item.quantity * item.unit_price).toLocaleString('fr-FR')}
+                {(item.quantity * item.unit_price).toLocaleString(dateLocale())}
                 <button
                   type="button"
                   className="row-delete"
-                  aria-label={`Retirer ${item.product_name}`}
+                  aria-label={t('Retirer :name', { name: item.product_name })}
                   onClick={() => setItems((current) => current.filter((_, i) => i !== index))}
                 >
                   ✕
@@ -134,26 +135,26 @@ export function SaleScreen() {
               </span>
             </div>
           ))}
-          <p className="task-title">Total : {total.toLocaleString('fr-FR')}</p>
+          <p className="task-title">{t('Total : :amount', { amount: total.toLocaleString(dateLocale()) })}</p>
         </section>
       )}
 
-      <h3>Ajouter un article</h3>
-      <select value={productId} onChange={(e) => setProductId(e.target.value)} aria-label="Article">
+      <h3>{t('Ajouter un article')}</h3>
+      <select value={productId} onChange={(e) => setProductId(e.target.value)} aria-label={t('Article')}>
         <option value="" disabled>
-          — Choisir un article —
+          {t('— Choisir un article —')}
         </option>
         {products.map((product) => (
           <option key={product.id} value={product.id}>
-            {product.name} ({product.base_price.toLocaleString('fr-FR')}/{product.unit ?? 'u'})
+            {product.name} ({product.base_price.toLocaleString(dateLocale())}/{product.unit ?? t('u')})
           </option>
         ))}
       </select>
 
       {selectedProduct && (
         <>
-          <NumberStepper label={`Quantité (${selectedProduct.unit ?? 'unité'})`} value={quantity} onChange={setQuantity} min={1} />
-          <label htmlFor="unit_price">Prix unitaire</label>
+          <NumberStepper label={t('Quantité (:unit)', { unit: selectedProduct.unit ?? t('unité') })} value={quantity} onChange={setQuantity} min={1} />
+          <label htmlFor="unit_price">{t('Prix unitaire')}</label>
           <input
             id="unit_price"
             type="number"
@@ -163,14 +164,14 @@ export function SaleScreen() {
             onChange={(e) => setUnitPrice(e.target.value)}
           />
           <button type="button" className="btn-secondary" onClick={addItem}>
-            + Ajouter au panier
+            {t('+ Ajouter au panier')}
           </button>
         </>
       )}
 
       {items.length > 0 && (
         <>
-          <label htmlFor="immediate_payment">Acompte encaissé (espèces) — optionnel</label>
+          <label htmlFor="immediate_payment">{t('Acompte encaissé (espèces) — optionnel')}</label>
           <input
             id="immediate_payment"
             type="number"
@@ -183,7 +184,7 @@ export function SaleScreen() {
       )}
 
       <button type="submit" className="btn-primary" disabled={!clientId || items.length === 0}>
-        Enregistrer la vente (brouillon)
+        {t('Enregistrer la vente (brouillon)')}
       </button>
     </form>
   )

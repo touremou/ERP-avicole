@@ -6,6 +6,7 @@
 import { useEffect, useState } from 'react'
 import { api } from '../../api/client'
 import { db } from '../../offline/db'
+import { dateLocale, t } from '../../i18n'
 import type { ApiNotification } from '../../api/types'
 
 const SEVERITY_ICON: Record<string, string> = {
@@ -47,16 +48,16 @@ export function NotificationsScreen() {
 
   return (
     <div className="screen">
-      <h2>Alertes</h2>
+      <h2>{t('Alertes')}</h2>
 
       {unread > 0 && (
         <button type="button" className="btn-secondary" onClick={() => void markAllRead()}>
-          Tout marquer lu ({unread})
+          {t('Tout marquer lu (:count)', { count: unread })}
         </button>
       )}
 
       {notifications.length === 0 && (
-        <p className="muted">Aucune alerte — elles arrivent à chaque synchronisation.</p>
+        <p className="muted">{t('Aucune alerte — elles arrivent à chaque synchronisation.')}</p>
       )}
 
       {notifications.map((n) => (
@@ -65,7 +66,7 @@ export function NotificationsScreen() {
           <div className="notif-body">
             <span className="task-title">{n.title}</span>
             <span className="muted">{n.message}</span>
-            <span className="task-meta">{new Date(n.created_at).toLocaleString('fr-FR')}</span>
+            <span className="task-meta">{new Date(n.created_at).toLocaleString(dateLocale())}</span>
           </div>
         </div>
       ))}

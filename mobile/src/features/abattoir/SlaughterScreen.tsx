@@ -9,6 +9,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { db } from '../../offline/db'
 import { enqueue } from '../../offline/sync'
+import { dateLocale, t } from '../../i18n'
 import { NumberStepper } from '../../ui/NumberStepper'
 import type { RefBatch, RefSlaughterOrder } from '../../api/types'
 
@@ -54,7 +55,7 @@ export function SlaughterScreen() {
         condemned_count: condemned || null,
         inspector_notes: notes || null,
       },
-      `Abattage ${order.order_number} (${actualQuantity} sujets)`,
+      t('Abattage :order (:qty sujets)', { order: order.order_number, qty: actualQuantity }),
     )
 
     setSaved(true)
@@ -64,7 +65,7 @@ export function SlaughterScreen() {
   if (!order) {
     return (
       <div className="screen">
-        <p className="muted">Ordre d'abattage introuvable en local — synchronisez d'abord.</p>
+        <p className="muted">{t("Ordre d'abattage introuvable en local — synchronisez d'abord.")}</p>
       </div>
     )
   }
@@ -72,28 +73,28 @@ export function SlaughterScreen() {
   if (saved) {
     return (
       <div className="screen-center">
-        <p className="success big">✓ Abattage enregistré</p>
-        <p className="muted">Quarantaine et effectif seront re-vérifiés par le serveur au push.</p>
+        <p className="success big">{t('✓ Abattage enregistré')}</p>
+        <p className="muted">{t('Quarantaine et effectif seront re-vérifiés par le serveur au push.')}</p>
       </div>
     )
   }
 
   return (
     <form className="screen" onSubmit={onSubmit}>
-      <h2>🔪 Abattage — {order.order_number}</h2>
+      <h2>{t('🔪 Abattage — :order', { order: order.order_number })}</h2>
       <p className="muted">
-        {batch ? `Lot ${batch.code} · ` : ''}
-        {order.planned_quantity} sujets planifiés · {new Date().toLocaleDateString('fr-FR')}
+        {batch ? `${t('Lot :code', { code: batch.code })} · ` : ''}
+        {t(':qty sujets planifiés', { qty: order.planned_quantity })} · {new Date().toLocaleDateString(dateLocale())}
       </p>
 
-      <NumberStepper label="Sujets abattus" value={actualQuantity} onChange={setActualQuantity} min={0} />
+      <NumberStepper label={t('Sujets abattus')} value={actualQuantity} onChange={setActualQuantity} min={0} />
       {batch && actualQuantity > batch.current_quantity && (
         <p className="error">
-          ⚠️ Supérieur à l'effectif local connu ({batch.current_quantity}) — le serveur tranchera au push.
+          {t("⚠️ Supérieur à l'effectif local connu (:count) — le serveur tranchera au push.", { count: batch.current_quantity })}
         </p>
       )}
 
-      <label htmlFor="live">Poids vif total (kg)</label>
+      <label htmlFor="live">{t('Poids vif total (kg)')}</label>
       <input
         id="live"
         type="number"
@@ -103,10 +104,10 @@ export function SlaughterScreen() {
         required
         value={liveWeight}
         onChange={(e) => setLiveWeight(e.target.value)}
-        placeholder="ex. 120.5"
+        placeholder={t('ex. 120.5')}
       />
 
-      <label htmlFor="carcass">Poids carcasse total (kg)</label>
+      <label htmlFor="carcass">{t('Poids carcasse total (kg)')}</label>
       <input
         id="carcass"
         type="number"
@@ -116,20 +117,20 @@ export function SlaughterScreen() {
         required
         value={carcassWeight}
         onChange={(e) => setCarcassWeight(e.target.value)}
-        placeholder="ex. 90.0"
+        placeholder={t('ex. 90.0')}
       />
       {live > 0 && carcass > live && (
-        <p className="error">⚠️ La carcasse ne peut pas peser plus que le vif.</p>
+        <p className="error">{t('⚠️ La carcasse ne peut pas peser plus que le vif.')}</p>
       )}
-      {yieldPercent !== null && <p className="muted">Rendement carcasse : {yieldPercent} %</p>}
+      {yieldPercent !== null && <p className="muted">{t('Rendement carcasse : :pct %', { pct: yieldPercent })}</p>}
 
-      <NumberStepper label="Saisies / condamnés" value={condemned} onChange={setCondemned} min={0} />
+      <NumberStepper label={t('Saisies / condamnés')} value={condemned} onChange={setCondemned} min={0} />
 
-      <label htmlFor="notes">Notes d'inspection — optionnel</label>
+      <label htmlFor="notes">{t("Notes d'inspection — optionnel")}</label>
       <textarea id="notes" rows={2} maxLength={1000} value={notes} onChange={(e) => setNotes(e.target.value)} />
 
       <button type="submit" className="btn-primary" disabled={actualQuantity <= 0 || !weightsValid}>
-        Enregistrer l'abattage
+        {t("Enregistrer l'abattage")}
       </button>
     </form>
   )

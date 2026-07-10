@@ -35,13 +35,13 @@ class AuthController extends Controller
 
         if (! $user || ! Hash::check($credentials['password'], $user->password)) {
             throw ValidationException::withMessages([
-                'email' => ['Identifiants invalides.'],
+                'email' => [__('Identifiants invalides.')],
             ]);
         }
 
         if (! $user->isActive()) {
             throw ValidationException::withMessages([
-                'email' => ['Ce compte est désactivé.'],
+                'email' => [__('Ce compte est désactivé.')],
             ]);
         }
 
@@ -75,7 +75,7 @@ class AuthController extends Controller
     {
         $request->user()->currentAccessToken()->delete();
 
-        return response()->json(['message' => 'Déconnecté.']);
+        return response()->json(['message' => __('Déconnecté.')]);
     }
 
     private function userPayload(User $user): array
@@ -87,6 +87,8 @@ class AuthController extends Controller
             'name' => $user->name,
             'email' => $user->email,
             'role' => $user->userRole?->name,
+            // Langue du profil web : la PWA l'adopte (sauf choix manuel local).
+            'locale' => $user->locale,
         ];
     }
 

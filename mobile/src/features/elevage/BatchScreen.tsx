@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useAuth } from '../../app/AuthContext'
 import { db } from '../../offline/db'
+import { t } from '../../i18n'
 import type { RefBatch, RefBuilding, RefProductionType } from '../../api/types'
 
 export function BatchScreen() {
@@ -32,7 +33,7 @@ export function BatchScreen() {
   if (!batch) {
     return (
       <div className="screen">
-        <p className="muted">Lot introuvable en local — synchronisez d'abord.</p>
+        <p className="muted">{t("Lot introuvable en local — synchronisez d'abord.")}</p>
       </div>
     )
   }
@@ -43,28 +44,28 @@ export function BatchScreen() {
     <div className="screen">
       <h2>{batch.code}</h2>
       <p className="muted">
-        {productionType?.name_fr ?? 'Lot'} · {building?.name ?? `Bâtiment #${batch.building_id}`} ·{' '}
-        {batch.current_quantity} sujets
+        {productionType?.name_fr ?? t('Lot')} · {building?.name ?? t('Bâtiment #:id', { id: batch.building_id })} ·{' '}
+        {batch.current_quantity} {t('sujets')}
       </p>
 
       {can('elevage', 'C') && (
         <Link to={`/elevage/pointage/${batch.id}`} className="task-card">
-          <span className="task-title">📋 Pointage du jour</span>
-          <span className="task-meta">mortalité · aliment</span>
+          <span className="task-title">📋 {t('Pointage du jour')}</span>
+          <span className="task-meta">{t('mortalité · aliment')}</span>
         </Link>
       )}
 
       {isPonte && can('production', 'C') && (
         <Link to={`/elevage/collecte/${batch.id}`} className="task-card">
-          <span className="task-title">🥚 Collecte d'œufs</span>
-          <span className="task-meta">par passage</span>
+          <span className="task-title">🥚 {t("Collecte d'œufs")}</span>
+          <span className="task-meta">{t('par passage')}</span>
         </Link>
       )}
 
       {can('elevage', 'C') && (
         <Link to={`/elevage/incident/${batch.id}`} className="task-card">
-          <span className="task-title">🩺 Déclarer un incident</span>
-          <span className="task-meta">symptômes · photo</span>
+          <span className="task-title">🩺 {t('Déclarer un incident')}</span>
+          <span className="task-meta">{t('symptômes · photo')}</span>
         </Link>
       )}
     </div>

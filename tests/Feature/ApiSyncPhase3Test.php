@@ -407,6 +407,51 @@ test('mill_production.complete avec stock MP insuffisant → conflict avec le mo
     expect($production->fresh()->status)->toBe('En cours');
 });
 
+// ─── MULTI-LANGUE : les messages de sync suivent users.locale ───
+
+test("les messages de conflit sync sont localisés selon la langue du profil (en)", function () {
+    $this->manager->update(['locale' => 'en']);
+    $production = makeMillProduction();
+    app(\App\Actions\MillProduction\CompleteMillProduction::class)->execute($production);
+    Sanctum::actingAs($this->manager);
+
+    $response = $this->postJson('/api/v1/sync/push', phase3Ops([[
+        'type'    => 'mill_production.complete',
+        'payload' => ['uuid' => (string) Str::uuid(), 'mill_production_id' => $production->id],
+    ]]))->assertOk();
+
+    expect($response->json('results.0.message'))
+        ->toBe("Production order #{$production->batch_number} has already been completed (online or by another device).");
+});
+
+test('les refus de permission sont localisés (fr par défaut, en sur profil en)', function () {
+    $cycle = makeCropCycle();
+    $payload = fn () => [
+        'type'    => 'crop_input.create',
+        'payload' => [
+            'uuid' => (string) Str::uuid(), 'crop_cycle_id' => $cycle->id,
+            'type' => 'engrais', 'name' => 'Urée', 'input_date' => now()->toDateString(),
+        ],
+    ];
+
+    Sanctum::actingAs($this->viewer);
+    $fr = $this->postJson('/api/v1/sync/push', phase3Ops([$payload()]))->assertOk();
+    expect($fr->json('results.0.message'))->toBe('Permission insuffisante.');
+
+    $this->viewer->update(['locale' => 'en']);
+    $en = $this->postJson('/api/v1/sync/push', phase3Ops([$payload()]))->assertOk();
+    expect($en->json('results.0.message'))->toBe('Insufficient permission.');
+});
+
+test("auth/me expose la langue du profil (adoptée par la PWA)", function () {
+    $this->manager->update(['locale' => 'en']);
+    Sanctum::actingAs($this->manager);
+
+    $this->getJson('/api/v1/auth/me')
+        ->assertOk()
+        ->assertJsonPath('user.locale', 'en');
+});
+
 // ─── PULL : nouveaux référentiels Phase 3 ───
 
 test('pull expose les référentiels cultures/abattoir/provenderie (liste blanche)', function () {

@@ -4,6 +4,7 @@
  * doute de l'outil. Toujours visible dans le header.
  */
 import { useEffect, useState } from 'react'
+import { t } from '../i18n'
 import { onSyncChange, syncNow, type SyncState } from '../offline/sync'
 
 const LABELS: Record<SyncState, string> = {
@@ -26,7 +27,10 @@ export function SyncBadge() {
     [],
   )
 
-  const label = pending > 0 && state !== 'syncing' ? `${LABELS[state]} · ${pending} en attente` : LABELS[state]
+  const label =
+    pending > 0 && state !== 'syncing'
+      ? t(':label · :count en attente', { label: t(LABELS[state]), count: pending })
+      : t(LABELS[state])
 
   return (
     <button type="button" className={`sync-badge sync-${state}`} onClick={() => void syncNow()}>

@@ -15,6 +15,8 @@ export interface ApiUser {
   name: string
   email: string
   role: string | null
+  /** Langue du profil web (users.locale) — adoptée par la PWA au login. */
+  locale?: string | null
 }
 
 /** GET /auth/me — payload mis en cache pour la home par rôle + gate offline. */

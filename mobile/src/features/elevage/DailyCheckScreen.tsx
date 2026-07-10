@@ -10,6 +10,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { db } from '../../offline/db'
 import { enqueue } from '../../offline/sync'
 import { NumberStepper } from '../../ui/NumberStepper'
+import { t, dateLocale } from '../../i18n'
 import type { RefBatch, RefStock } from '../../api/types'
 
 export function DailyCheckScreen() {
@@ -54,7 +55,7 @@ export function DailyCheckScreen() {
         avg_weight: avgWeight ? Number(avgWeight) : null,
         observations: observations || null,
       },
-      `Pointage ${batch.code}`,
+      t('Pointage :code', { code: batch.code }),
     )
 
     // Confirmation instantanée (règle UX n°8 : jamais de spinner bloquant).
@@ -65,7 +66,7 @@ export function DailyCheckScreen() {
   if (!batch) {
     return (
       <div className="screen">
-        <p className="muted">Lot introuvable en local — synchronisez d'abord.</p>
+        <p className="muted">{t("Lot introuvable en local — synchronisez d'abord.")}</p>
       </div>
     )
   }
@@ -73,23 +74,23 @@ export function DailyCheckScreen() {
   if (saved) {
     return (
       <div className="screen-center">
-        <p className="success big">✓ Pointage enregistré</p>
-        <p className="muted">Il partira au serveur dès que le réseau le permet.</p>
+        <p className="success big">✓ {t('Pointage enregistré')}</p>
+        <p className="muted">{t('Il partira au serveur dès que le réseau le permet.')}</p>
       </div>
     )
   }
 
   return (
     <form className="screen" onSubmit={onSubmit}>
-      <h2>Pointage — {batch.code}</h2>
+      <h2>{t('Pointage')} — {batch.code}</h2>
       <p className="muted">
-        {batch.current_quantity} sujets · {new Date().toLocaleDateString('fr-FR')}
+        {batch.current_quantity} {t('sujets')} · {new Date().toLocaleDateString(dateLocale())}
       </p>
 
-      <NumberStepper label="Mortalité (sujets)" value={mortality} onChange={setMortality} min={0} />
+      <NumberStepper label={t('Mortalité (sujets)')} value={mortality} onChange={setMortality} min={0} />
 
       <NumberStepper
-        label="Aliment consommé (kg)"
+        label={t('Aliment consommé (kg)')}
         value={feedConsumed}
         onChange={setFeedConsumed}
         min={0}
@@ -98,7 +99,7 @@ export function DailyCheckScreen() {
 
       {feedConsumed > 0 && (
         <>
-          <label htmlFor="feed_type">Type d'aliment (stock décrémenté)</label>
+          <label htmlFor="feed_type">{t("Type d'aliment (stock décrémenté)")}</label>
           <select
             id="feed_type"
             required
@@ -106,7 +107,7 @@ export function DailyCheckScreen() {
             onChange={(e) => setFeedType(e.target.value)}
           >
             <option value="" disabled>
-              — Choisir dans le stock —
+              {t('— Choisir dans le stock —')}
             </option>
             {feedStocks.map((stock) => (
               <option key={stock.id} value={stock.item_name}>
@@ -117,7 +118,7 @@ export function DailyCheckScreen() {
         </>
       )}
 
-      <label htmlFor="avg_weight">Poids moyen (kg) — optionnel</label>
+      <label htmlFor="avg_weight">{t('Poids moyen (kg) — optionnel')}</label>
       <input
         id="avg_weight"
         type="number"
@@ -126,21 +127,21 @@ export function DailyCheckScreen() {
         min="0"
         value={avgWeight}
         onChange={(e) => setAvgWeight(e.target.value)}
-        placeholder="ex. 1.25"
+        placeholder={t('ex. 1.25')}
       />
 
-      <label htmlFor="observations">Observations — optionnel</label>
+      <label htmlFor="observations">{t('Observations — optionnel')}</label>
       <textarea
         id="observations"
         rows={2}
         maxLength={1000}
         value={observations}
         onChange={(e) => setObservations(e.target.value)}
-        placeholder="Comportement, litière…"
+        placeholder={t('Comportement, litière…')}
       />
 
       <button type="submit" className="btn-primary">
-        Enregistrer le pointage
+        {t('Enregistrer le pointage')}
       </button>
     </form>
   )

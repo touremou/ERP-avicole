@@ -9,6 +9,7 @@ import { useNavigate } from 'react-router-dom'
 import { db } from '../../offline/db'
 import { enqueue } from '../../offline/sync'
 import { platform, compressImage } from '../../platform'
+import { t } from '../../i18n'
 
 /** Miroir de App\Models\Expense::CATEGORIES (référentiel stable). */
 const CATEGORIES: Record<string, string> = {
@@ -69,7 +70,7 @@ export function ExpenseScreen() {
       payload.photo_uuid = photoUuid
     }
 
-    await enqueue('expense.create', payload, `Dépense ${label.trim()}`)
+    await enqueue('expense.create', payload, t('Dépense :label', { label: label.trim() }))
 
     setSaved(true)
     setTimeout(() => navigate('/'), 900)
@@ -78,39 +79,39 @@ export function ExpenseScreen() {
   if (saved) {
     return (
       <div className="screen-center">
-        <p className="success big">✓ Dépense enregistrée</p>
-        <p className="muted">Elle attend la validation du gestionnaire (en ligne).</p>
+        <p className="success big">{t('✓ Dépense enregistrée')}</p>
+        <p className="muted">{t('Elle attend la validation du gestionnaire (en ligne).')}</p>
       </div>
     )
   }
 
   return (
     <form className="screen" onSubmit={onSubmit}>
-      <h2>🧾 Dépense terrain</h2>
+      <h2>{t('🧾 Dépense terrain')}</h2>
 
-      <label htmlFor="category">Catégorie</label>
+      <label htmlFor="category">{t('Catégorie')}</label>
       <select id="category" required value={category} onChange={(e) => setCategory(e.target.value)}>
         <option value="" disabled>
-          — Choisir —
+          {t('— Choisir —')}
         </option>
         {Object.entries(CATEGORIES).map(([value, text]) => (
           <option key={value} value={value}>
-            {text}
+            {t(text)}
           </option>
         ))}
       </select>
 
-      <label htmlFor="label">Libellé</label>
+      <label htmlFor="label">{t('Libellé')}</label>
       <input
         id="label"
         required
         maxLength={255}
         value={label}
         onChange={(e) => setLabel(e.target.value)}
-        placeholder="ex. Gasoil groupe électrogène"
+        placeholder={t('ex. Gasoil groupe électrogène')}
       />
 
-      <label htmlFor="amount">Montant</label>
+      <label htmlFor="amount">{t('Montant')}</label>
       <input
         id="amount"
         type="number"
@@ -121,16 +122,16 @@ export function ExpenseScreen() {
         onChange={(e) => setAmount(e.target.value)}
       />
 
-      <label htmlFor="supplier">Fournisseur / bénéficiaire — optionnel</label>
+      <label htmlFor="supplier">{t('Fournisseur / bénéficiaire — optionnel')}</label>
       <input id="supplier" maxLength={255} value={supplierName} onChange={(e) => setSupplierName(e.target.value)} />
 
       <button type="button" className="btn-secondary" onClick={() => void attachPhoto()}>
-        📷 {photoBlob ? 'Reprendre le reçu' : 'Photographier le reçu'}
+        📷 {photoBlob ? t('Reprendre le reçu') : t('Photographier le reçu')}
       </button>
-      {photoPreview && <img src={photoPreview} alt="Reçu" className="photo-preview" />}
+      {photoPreview && <img src={photoPreview} alt={t('Reçu')} className="photo-preview" />}
 
       <button type="submit" className="btn-primary" disabled={!category || !label.trim() || Number(amount) < 1}>
-        Enregistrer la dépense
+        {t('Enregistrer la dépense')}
       </button>
     </form>
   )

@@ -121,7 +121,7 @@ class SyncController extends Controller
                     'exception' => $e,
                 ]);
 
-                $result = ['status' => 'error', 'message' => 'Erreur interne lors de la réconciliation.'];
+                $result = ['status' => 'error', 'message' => __('Erreur interne lors de la réconciliation.')];
             }
 
             $results[] = array_merge(['op_uuid' => $operation['op_uuid']], $result);

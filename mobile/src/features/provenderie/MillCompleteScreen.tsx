@@ -10,6 +10,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { db } from '../../offline/db'
 import { enqueue } from '../../offline/sync'
+import { dateLocale, t } from '../../i18n'
 import type { RefFormula, RefMillProduction } from '../../api/types'
 
 export function MillCompleteScreen() {
@@ -34,7 +35,7 @@ export function MillCompleteScreen() {
     await enqueue(
       'mill_production.complete',
       { mill_production_id: production.id },
-      `Clôture OP ${production.batch_number}`,
+      t('Clôture OP :number', { number: production.batch_number }),
     )
 
     setSaved(true)
@@ -44,7 +45,7 @@ export function MillCompleteScreen() {
   if (!production) {
     return (
       <div className="screen">
-        <p className="muted">Ordre de production introuvable en local — synchronisez d'abord.</p>
+        <p className="muted">{t("Ordre de production introuvable en local — synchronisez d'abord.")}</p>
       </div>
     )
   }
@@ -52,8 +53,8 @@ export function MillCompleteScreen() {
   if (saved) {
     return (
       <div className="screen-center">
-        <p className="success big">✓ Clôture envoyée</p>
-        <p className="muted">MP consommées et silo crédité après validation serveur.</p>
+        <p className="success big">{t('✓ Clôture envoyée')}</p>
+        <p className="muted">{t('MP consommées et silo crédité après validation serveur.')}</p>
       </div>
     )
   }
@@ -62,23 +63,21 @@ export function MillCompleteScreen() {
 
   return (
     <div className="screen">
-      <h2>🏭 Clôturer l'OP {production.batch_number}</h2>
+      <h2>{t("🏭 Clôturer l'OP :number", { number: production.batch_number })}</h2>
       <p className="muted">
         {formula ? `${formula.name} · ` : ''}
-        {Number(production.quantity_produced).toLocaleString('fr-FR')} kg · statut : {production.status}
+        {t(':qty kg · statut : :status', { qty: Number(production.quantity_produced).toLocaleString(dateLocale()), status: production.status })}
       </p>
 
       {alreadyDone ? (
-        <p className="error">Cet OP est déjà « {production.status} » — rien à clôturer.</p>
+        <p className="error">{t('Cet OP est déjà « :status » — rien à clôturer.', { status: production.status })}</p>
       ) : (
         <>
           <p className="muted">
-            La clôture déstocke les matières premières de la formule et crédite le silo d'aliment
-            fini au coût de revient. En cas de stock MP insuffisant ou de machine en panne, le
-            serveur refusera au push (bac « À corriger »).
+            {t("La clôture déstocke les matières premières de la formule et crédite le silo d'aliment fini au coût de revient. En cas de stock MP insuffisant ou de machine en panne, le serveur refusera au push (bac « À corriger »).")}
           </p>
           <button type="button" className="btn-primary" onClick={() => void onConfirm()}>
-            ✓ Confirmer la clôture
+            {t('✓ Confirmer la clôture')}
           </button>
         </>
       )}
