@@ -110,10 +110,20 @@ class SlaughterService
 
             // 4. Entrer les carcasses en stock produits finis (nom selon
             //    l'espèce du lot — multiespèces : "Poulet", "Chèvre", "Mouton"...)
-            $productName = $this->carcassProductName($batch);
-            $this->addToFinishedStock($productName, 'entier_frais', $carcassWeight, $effectiveQty, 'frais');
+            //    RG-07 : JAMAIS pour un abattage à façon — les produits restent
+            //    propriété du client et ne rejoignent pas le stock vendable.
+            if (! $order->isFacon()) {
+                $productName = $this->carcassProductName($batch);
+                $this->addToFinishedStock($productName, 'entier_frais', $carcassWeight, $effectiveQty, 'frais');
+            }
 
-            Log::info("Abattage {$order->order_number} : {$actualQty} sujets, {$liveWeight}kg vif → {$carcassWeight}kg carcasse (rendement {$yieldPercent}%)");
+            // 5. Façon (E8) : calcul de la prestation selon le modèle figé sur
+            //    l'ordre + facture brouillon dans le module Commerce.
+            if ($order->isFacon()) {
+                app(\App\Actions\Slaughter\BillTollSlaughter::class)->execute($order->fresh());
+            }
+
+            Log::info("Abattage {$order->order_number} : {$actualQty} sujets, {$liveWeight}kg vif → {$carcassWeight}kg carcasse (rendement {$yieldPercent}%)" . ($order->isFacon() ? ' [FAÇON]' : ''));
 
             return $result;
         });
@@ -159,9 +169,14 @@ class SlaughterService
             ]);
 
             // Retirer du stock "entier frais" le poids découpé (nom selon
-            // l'espèce du lot abattu — cf. carcassProductName())
-            $sourceProductName = $this->carcassProductName($order->batch);
-            $this->removeFromFinishedStock($sourceProductName, 'entier_frais', (float) $data['total_input_kg']);
+            // l'espèce du lot abattu — cf. carcassProductName()).
+            // RG-07 : un ordre à façon n'a RIEN mis en stock à l'abattage —
+            // sa découpe ne touche donc pas le stock de l'entreprise (les
+            // morceaux repartent avec le client, tracés en CutProduct).
+            if (! $order->isFacon()) {
+                $sourceProductName = $this->carcassProductName($order->batch);
+                $this->removeFromFinishedStock($sourceProductName, 'entier_frais', (float) $data['total_input_kg']);
+            }
 
             // Enregistrer chaque produit de découpe
             foreach ($data['products'] as $product) {
@@ -175,8 +190,9 @@ class SlaughterService
                     'destination'        => $product['destination'] ?? 'stock_frais',
                 ]);
 
-                // Entrer en stock produits finis selon destination
-                if (($product['destination'] ?? 'stock_frais') !== 'transformation') {
+                // Entrer en stock produits finis selon destination.
+                // RG-07 : jamais pour la façon (propriété du client).
+                if (! $order->isFacon() && ($product['destination'] ?? 'stock_frais') !== 'transformation') {
                     $storage = match ($product['destination'] ?? 'stock_frais') {
                         'stock_congele' => 'congele',
                         'vente_directe' => 'vitrine',

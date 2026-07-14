@@ -15,11 +15,26 @@ class SlaughterOrder extends Model
 {
     use HasFactory, SoftDeletes, BelongsToFarm, AuditsChanges;
 
+    /** Modèles de facturation de la prestation d'abattage à façon (E8). */
+    public const BILLING_MODELS = [
+        'par_sujet'       => 'Par sujet abattu',
+        'par_kg_vif'      => 'Au kg vif (pesée réception)',
+        'par_kg_carcasse' => 'Au kg carcasse (pesée sortie)',
+    ];
+
+    /** Clé de réglage du tarif par défaut de chaque modèle. */
+    public const BILLING_RATE_SETTINGS = [
+        'par_sujet'       => 'abattoir.facon_rate_per_bird',
+        'par_kg_vif'      => 'abattoir.facon_rate_per_kg_live',
+        'par_kg_carcasse' => 'abattoir.facon_rate_per_kg_carcass',
+    ];
+
     protected $fillable = [
         'farm_id',
         'order_number', 'batch_id', 'reception_id', 'planned_date', 'actual_date',
         'planned_quantity', 'actual_quantity', 'total_live_weight_kg',
         'status', 'requested_by', 'executed_by', 'client_id', 'notes',
+        'service_type', 'billing_model', 'billing_rate',
     ];
 
     // Blocage/libération HACCP : champs volontairement HORS fillable —
@@ -32,6 +47,8 @@ class SlaughterOrder extends Model
         'total_live_weight_kg' => 'decimal:2',
         'blocked_at'           => 'datetime',
         'released_at'          => 'datetime',
+        'billing_rate'         => 'decimal:2',
+        'service_fee'          => 'decimal:2',
     ];
 
     public function batch(): BelongsTo { return $this->belongsTo(Batch::class); }
@@ -50,6 +67,11 @@ class SlaughterOrder extends Model
 
     /** RG-03 : un lot bloqué sort du circuit (découpe, stock, vente). */
     public function isBlocked(): bool { return $this->status === 'bloque'; }
+
+    /** RG-07 : façon = produits propriété du client, hors stock vendable. */
+    public function isFacon(): bool { return $this->service_type === 'facon'; }
+
+    public function serviceSale(): BelongsTo { return $this->belongsTo(Sale::class, 'service_sale_id'); }
 
     public function getAvgLiveWeightAttribute(): ?float
     {

@@ -27,6 +27,17 @@
                     <p class="text-[8px] font-black uppercase text-slate-400 tracking-widest m-0">{{ __("Rendement carcasse") }}</p>
                     <p class="text-lg font-black text-slate-800 m-0">{{ $order->result?->carcass_yield_percent ? $order->result->carcass_yield_percent . ' %' : '—' }}</p>
                 </div>
+                @if($order->isFacon())
+                <div class="text-right">
+                    <p class="text-[8px] font-black uppercase text-amber-600 tracking-widest m-0"><i class="fa-solid fa-handshake mr-1"></i>{{ __("Prestation à façon") }}</p>
+                    <p class="text-lg font-black text-amber-600 m-0">{{ $order->service_fee ? number_format((float) $order->service_fee, 0, ',', ' ') . ' GNF' : '—' }}</p>
+                    <p class="text-[9px] text-slate-500 m-0">
+                        {{ __(\App\Models\SlaughterOrder::BILLING_MODELS[$order->billing_model] ?? '—') }} · {{ number_format((float) $order->billing_rate, 0, ',', ' ') }} GNF
+                        @if($order->serviceSale) · {{ __("facture") }} <span class="font-black">{{ $order->serviceSale->reference }}</span> ({{ $order->serviceSale->status }}) @endif
+                    </p>
+                    <p class="text-[8px] text-amber-600 m-0">{{ __("Produits propriété du client — hors stock vendable (RG-07).") }}</p>
+                </div>
+                @endif
             </div>
 
             {{-- 1. AMONT --}}

@@ -166,9 +166,48 @@
                                 </div>
                             </div>
 
+                            {{-- TYPE DE PRESTATION : propre (stock) ou façon (E8, volailles du client) --}}
                             <div class="space-y-2">
-                                <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Client (si sur commande)") }}</label>
-                                <select name="client_id" class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black uppercase shadow-inner outline-none">
+                                <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Type de prestation *") }}</label>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <label class="cursor-pointer">
+                                        <input type="radio" name="service_type" value="propre" x-model="serviceType" class="peer sr-only" checked>
+                                        <div class="p-4 rounded-2xl border-2 text-center transition-all peer-checked:bg-slate-900 peer-checked:text-white peer-checked:border-slate-900 bg-slate-50 border-slate-100 text-slate-500">
+                                            <span class="text-[9px] font-black uppercase tracking-widest">{{ __("Abattage propre (stock)") }}</span>
+                                        </div>
+                                    </label>
+                                    <label class="cursor-pointer">
+                                        <input type="radio" name="service_type" value="facon" x-model="serviceType" @change="if (serviceType === 'facon') source = 'reception'" class="peer sr-only">
+                                        <div class="p-4 rounded-2xl border-2 text-center transition-all peer-checked:bg-amber-500 peer-checked:text-white peer-checked:border-amber-500 bg-slate-50 border-slate-100 text-slate-500">
+                                            <span class="text-[9px] font-black uppercase tracking-widest"><i class="fa-solid fa-handshake mr-1"></i>{{ __("Abattage à façon") }}</span>
+                                        </div>
+                                    </label>
+                                </div>
+                                <p class="text-[8px] text-slate-400 ml-2" x-show="serviceType === 'facon'" x-transition>
+                                    <i class="fa-solid fa-circle-info mr-1"></i>{{ __("Volailles du client : réception ante-mortem obligatoire, produits hors stock vendable (RG-07), prestation facturée à l'exécution (facture brouillon).") }}
+                                </p>
+                            </div>
+
+                            {{-- FACTURATION FAÇON : modèle + tarif figés sur l'ordre --}}
+                            <div class="grid grid-cols-2 gap-4" x-show="serviceType === 'facon'" x-transition>
+                                <div class="space-y-2">
+                                    <label class="text-[9px] font-black uppercase text-amber-600 tracking-widest ml-2">{{ __("Modèle de facturation *") }}</label>
+                                    <select name="billing_model" x-model="billingModel" @change="billingRate = billingDefaults[billingModel] ?? ''" :required="serviceType === 'facon'" class="w-full bg-amber-50 border-none rounded-2xl p-4 text-xs font-black uppercase shadow-inner outline-none">
+                                        @foreach(\App\Models\SlaughterOrder::BILLING_MODELS as $key => $label)
+                                            <option value="{{ $key }}">{{ __($label) }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="space-y-2">
+                                    <label class="text-[9px] font-black uppercase text-amber-600 tracking-widest ml-2">{{ __("Tarif (GNF)") }}</label>
+                                    <input type="number" name="billing_rate" x-model="billingRate" step="0.01" min="0" class="w-full bg-amber-50 border-none rounded-2xl p-4 text-xs font-black shadow-inner outline-none">
+                                    <p class="text-[8px] text-slate-400 ml-2 m-0">{{ __("Prérempli depuis les Réglages — modifiable, puis figé sur l'ordre. Minimum forfaitaire : :min GNF.", ['min' => number_format((float) setting('abattoir.facon_min_fee', 0), 0, ',', ' ')]) }}</p>
+                                </div>
+                            </div>
+
+                            <div class="space-y-2">
+                                <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2" x-text="serviceType === 'facon' ? {{ Js::from(__('Client propriétaire des volailles *')) }} : {{ Js::from(__('Client (si sur commande)')) }}"></label>
+                                <select name="client_id" :required="serviceType === 'facon'" class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black uppercase shadow-inner outline-none">
                                     <option value="">{{ __("Abattage standard (stock)") }}</option>
                                     @foreach($clients as $c)
                                         <option value="{{ $c->id }}">{{ $c->name }}</option>
@@ -209,6 +248,14 @@
 
         return {
             source: 'batch', selectedReception: '',
+            serviceType: 'propre',
+            billingModel: 'par_sujet',
+            billingRate: {{ (float) setting('abattoir.facon_rate_per_bird', 0) }},
+            billingDefaults: {
+                par_sujet: {{ (float) setting('abattoir.facon_rate_per_bird', 0) }},
+                par_kg_vif: {{ (float) setting('abattoir.facon_rate_per_kg_live', 0) }},
+                par_kg_carcasse: {{ (float) setting('abattoir.facon_rate_per_kg_carcass', 0) }},
+            },
             selectedBatch: '', plannedQty: 0, maxQty: 0,
             batchType: '', batchSpecies: '', speciesLabel: '', typeLabel: '', building: '', isReform: false,
             yieldPonte: yieldPonte,

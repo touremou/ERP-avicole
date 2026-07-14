@@ -15,7 +15,7 @@
 | E5 Produits finis / rendement / stock | Déjà couvert (SlaughterResult, CuttingSession, FinishedProduct) | ✅ existant |
 | E6 Étiquettes QR | Étiquettes imprimables web + pages `/trace/*` publiques (PR #5) | ✅ existant |
 | E7 Registre nettoyage | `cleaning_logs` — web + mobile | ✅ P0 |
-| E8 Abattage à façon | **Différé** (P1) — nécessite décision sur la facturation de prestation | ⏳ |
+| E8 Abattage à façon | `service_type=facon` sur l'ordre — 3 modèles de facturation (par sujet / kg vif / kg carcasse) + minimum forfaitaire (Réglages), tarif figé à la création, facture brouillon auto (Commerce), RG-07 produits hors stock vendable, réception ante-mortem obligatoire | ✅ |
 | E9 Sous-produits | `slaughter_byproducts` — registre web + mobile, volumes par type | ✅ |
 | E10 Dashboard + exports | Exports PDF + KPIs HACCP au dashboard (relevés du jour, NC par CCP, taux d'écart réception, lots bloqués) | ✅ |
 | Impression Bluetooth ESC/POS (H6) | **Différé** — à tester physiquement sur le parc réel avant de figer | ⏳ |
@@ -67,5 +67,4 @@ blocage) partent à la saisie.
 3. Passerelle SMS de secours (Orange/MTN) — le canal WhatsApp + cloche + mail
    existe déjà ; le SMS de secours est branché dans `NotificationHub` dès
    qu'une passerelle est retenue (réglages `sms.*` existants).
-4. Abattage à façon (E8) : modèle de facturation de prestation.
 5. Signature manuscrite sur écran — valeur probante à valider juridiquement.

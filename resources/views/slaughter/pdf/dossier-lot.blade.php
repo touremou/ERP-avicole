@@ -100,6 +100,14 @@
         <p style="margin:4px 0 0">Client destinataire : <strong>{{ $order->client->name }}</strong></p>
     @endif
 
+    @if($order->isFacon())
+        <h2>5. Prestation d'abattage à façon</h2>
+        <p style="margin:0">Modèle : <strong>{{ \App\Models\SlaughterOrder::BILLING_MODELS[$order->billing_model] ?? '—' }}</strong> · tarif figé : {{ number_format((float) $order->billing_rate, 0, ',', ' ') }} GNF ·
+        prestation : <strong>{{ $order->service_fee ? number_format((float) $order->service_fee, 0, ',', ' ') . ' GNF' : 'à l\'exécution' }}</strong>
+        @if($order->serviceSale) · facture {{ $order->serviceSale->reference }} ({{ $order->serviceSale->status }})@endif<br>
+        <span class="muted">Les produits restent propriété du client (RG-07) — aucun n'entre au stock vendable.</span></p>
+    @endif
+
     <div class="footer">Document généré par AviSmart — dossier de lot HACCP (horodatages relevé/synchronisation conservés). {{ $farm }} — {{ $generatedAt->format('d/m/Y H:i') }}</div>
 </body>
 </html>

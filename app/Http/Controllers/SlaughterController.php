@@ -151,6 +151,10 @@ class SlaughterController extends Controller
 
         // Volailles externes : un ordre peut naître d'une RÉCEPTION VIF
         // (sans lot interne). batch_id devient alors optionnel.
+        // Façon (E8) : volailles DU CLIENT — le contrôle ante-mortem (CCP 1)
+        // s'applique à l'identique (la responsabilité sanitaire reste la
+        // nôtre) → réception obligatoire, client et modèle de facturation
+        // obligatoires, tarif figé sur l'ordre.
         $validated = $request->validate([
             'batch_id'         => 'required_without:reception_id|nullable|exists:batches,id',
             'reception_id'     => 'nullable|integer|exists:slaughter_receptions,id',
@@ -158,7 +162,24 @@ class SlaughterController extends Controller
             'planned_quantity' => 'required|integer|min:1',
             'client_id'        => 'nullable|exists:clients,id',
             'notes'            => 'nullable|string|max:1000',
+            'service_type'     => 'nullable|in:propre,facon',
+            'billing_model'    => 'required_if:service_type,facon|nullable|in:' . implode(',', array_keys(SlaughterOrder::BILLING_MODELS)),
+            'billing_rate'     => 'nullable|numeric|min:0',
         ]);
+
+        if (($validated['service_type'] ?? 'propre') === 'facon') {
+            if (empty($validated['client_id'])) {
+                return back()->withErrors(['client_id' => __('Un abattage à façon exige le client propriétaire des volailles.')])->withInput();
+            }
+            if (empty($validated['reception_id'])) {
+                return back()->withErrors(['reception_id' => __("Un abattage à façon exige une réception du vif (le contrôle ante-mortem s'applique aussi aux volailles des clients).")])->withInput();
+            }
+            // Tarif figé à la création : celui saisi, sinon le réglage du modèle.
+            $validated['billing_rate'] = $validated['billing_rate']
+                ?? (float) setting(SlaughterOrder::BILLING_RATE_SETTINGS[$validated['billing_model']], 0);
+        } else {
+            unset($validated['billing_model'], $validated['billing_rate']);
+        }
 
         // RG-04 : une réception REFUSÉE ne peut jamais donner d'ordre d'abattage.
         if (! empty($validated['reception_id'])) {
