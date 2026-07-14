@@ -217,6 +217,61 @@ class HaccpRegisterController extends Controller
     }
 
     // ──────────────────────────────────────────────
+    // SOUS-PRODUITS (E9) — sang, plumes, viscères
+    // ──────────────────────────────────────────────
+
+    public function byproductsIndex(Request $request)
+    {
+        if (Gate::denies('abattoir.L')) return redirect()->route('dashboard')->with('error', 'Accès restreint.');
+
+        $byproducts = \App\Models\SlaughterByproduct::with(['operator', 'slaughterOrder'])
+            ->when($request->filled('type'), fn ($q) => $q->where('type', $request->input('type')))
+            ->when($request->filled('from'), fn ($q) => $q->whereDate('collected_at', '>=', $request->input('from')))
+            ->when($request->filled('to'), fn ($q) => $q->whereDate('collected_at', '<=', $request->input('to')))
+            ->latest('collected_at')->latest('id')
+            ->paginate((int) setting('general.items_per_page', 15))
+            ->withQueryString();
+
+        // Volumes par type sur la période filtrée (pilotage valorisation).
+        $totals = \App\Models\SlaughterByproduct::query()
+            ->when($request->filled('from'), fn ($q) => $q->whereDate('collected_at', '>=', $request->input('from')))
+            ->when($request->filled('to'), fn ($q) => $q->whereDate('collected_at', '<=', $request->input('to')))
+            ->selectRaw('type, SUM(quantity_kg) as total_kg')
+            ->groupBy('type')
+            ->pluck('total_kg', 'type');
+
+        $recentOrders = SlaughterOrder::whereIn('status', ['termine', 'bloque'])
+            ->latest('actual_date')->take(30)->get();
+
+        return view('slaughter.registres.sous-produits', compact('byproducts', 'totals', 'recentOrders'));
+    }
+
+    public function byproductsStore(Request $request)
+    {
+        if (Gate::denies('abattoir.C')) return back()->with('error', 'Action non autorisée.');
+
+        $validated = $request->validate([
+            'slaughter_order_id' => 'nullable|integer|exists:slaughter_orders,id',
+            'type'               => 'required|in:' . implode(',', array_keys(\App\Models\SlaughterByproduct::TYPES)),
+            'quantity_kg'        => 'required|numeric|min:0.01',
+            'destination'        => 'required|in:' . implode(',', array_keys(\App\Models\SlaughterByproduct::DESTINATIONS)),
+            'notes'              => 'nullable|string|max:1000',
+        ]);
+
+        \App\Models\SlaughterByproduct::create(array_merge($validated, [
+            'operator_id'  => Auth::id(),
+            'collected_at' => now(),
+            'synced_at'    => now(),
+        ]));
+
+        return redirect()->route('slaughter.registres.sous_produits')
+            ->with('success', __('Sous-produit enregistré — :type, :qty kg.', [
+                'type' => \App\Models\SlaughterByproduct::TYPES[$validated['type']] ?? $validated['type'],
+                'qty'  => $validated['quantity_kg'],
+            ]));
+    }
+
+    // ──────────────────────────────────────────────
     // EXPORT PDF — registre opposable (releve_at + synced_at)
     // ──────────────────────────────────────────────
 

@@ -64,6 +64,7 @@
     <a href="{{ route('slaughter.registres.ccp') }}" class="{{ $linkClass }} {{ request()->routeIs('slaughter.registres.ccp*') ? $activeClass : $inactiveClass }}">{{ __("Registre CCP") }}</a>
     <a href="{{ route('slaughter.registres.temperatures') }}" class="{{ $linkClass }} {{ request()->routeIs('slaughter.registres.temperatures*') ? $activeClass : $inactiveClass }}">{{ __("Températures") }}</a>
     <a href="{{ route('slaughter.registres.nettoyage') }}" class="{{ $linkClass }} {{ request()->routeIs('slaughter.registres.nettoyage*') ? $activeClass : $inactiveClass }}">{{ __("Nettoyage") }}</a>
+    <a href="{{ route('slaughter.registres.sous_produits') }}" class="{{ $linkClass }} {{ request()->routeIs('slaughter.registres.sous_produits*') ? $activeClass : $inactiveClass }}">{{ __("Sous-produits") }}</a>
     @endcan
 
 @elseif(request()->routeIs(['commerce.*', 'sales.*', 'clients.*', 'payments.*', 'pos.*', 'returns.*', 'cash-register.*']))

@@ -51,7 +51,28 @@ class SlaughterController extends Controller
             ->latest('blocked_at')
             ->get();
 
-        return view('slaughter.dashboard', compact('kpi', 'pendingOrders', 'recentResults', 'finishedProducts', 'expiring', 'ongoingTransformations', 'blockedOrders'));
+        // ── Indicateurs HACCP (spec E10) sur la période KPI ──
+        $days = (int) setting('abattoir.kpi_days', 30);
+        $since = now()->subDays($days);
+
+        $receptionStats = \App\Models\SlaughterReception::where('reception_date', '>=', $since->toDateString())
+            ->selectRaw('COALESCE(SUM(received_quantity),0) as received, COALESCE(SUM(rejected_quantity),0) as rejected')
+            ->first();
+
+        $haccp = [
+            'temp_today'    => \App\Models\TemperatureLog::whereDate('releve_at', today())->count(),
+            'temp_required' => (int) setting('abattoir.temp_readings_per_day', 2),
+            'ccp_nc'        => \App\Models\CcpRecord::where('conforme', false)->where('releve_at', '>=', $since)->count(),
+            'ccp_total'     => \App\Models\CcpRecord::where('releve_at', '>=', $since)->count(),
+            // Taux d'écart réception = sujets écartés / reçus (inspection ante-mortem).
+            'reject_rate'   => $receptionStats->received > 0
+                ? round(100 * $receptionStats->rejected / $receptionStats->received, 1)
+                : null,
+            'blocked'       => $blockedOrders->count(),
+            'days'          => $days,
+        ];
+
+        return view('slaughter.dashboard', compact('kpi', 'pendingOrders', 'recentResults', 'finishedProducts', 'expiring', 'ongoingTransformations', 'blockedOrders', 'haccp'));
     }
 
     // ──────────────────────────────────────────────

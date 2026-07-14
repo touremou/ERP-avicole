@@ -46,6 +46,30 @@
 
             <x-flash />
 
+            {{-- INDICATEURS HACCP (E10) — complétude & non-conformités --}}
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                <div class="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm">
+                    <p class="text-[8px] font-black uppercase text-slate-400 tracking-widest m-0">{{ __("Relevés T° aujourd'hui") }}</p>
+                    <p class="text-xl font-black m-0 {{ $haccp['temp_today'] >= $haccp['temp_required'] ? 'text-emerald-600' : 'text-amber-600' }}">
+                        {{ $haccp['temp_today'] }} <span class="text-[10px] text-slate-400">/ {{ $haccp['temp_required'] }} {{ __("requis") }}</span>
+                    </p>
+                </div>
+                <div class="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm">
+                    <p class="text-[8px] font-black uppercase text-slate-400 tracking-widest m-0">{{ __("CCP non conformes (:days j)", ['days' => $haccp['days']]) }}</p>
+                    <p class="text-xl font-black m-0 {{ $haccp['ccp_nc'] === 0 ? 'text-emerald-600' : 'text-red-600' }}">
+                        {{ $haccp['ccp_nc'] }} <span class="text-[10px] text-slate-400">/ {{ $haccp['ccp_total'] }} {{ __("relevés") }}</span>
+                    </p>
+                </div>
+                <div class="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm">
+                    <p class="text-[8px] font-black uppercase text-slate-400 tracking-widest m-0">{{ __("Taux d'écart réception (:days j)", ['days' => $haccp['days']]) }}</p>
+                    <p class="text-xl font-black text-slate-800 m-0">{{ $haccp['reject_rate'] !== null ? $haccp['reject_rate'] . ' %' : '—' }}</p>
+                </div>
+                <div class="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm">
+                    <p class="text-[8px] font-black uppercase text-slate-400 tracking-widest m-0">{{ __("Lots bloqués") }}</p>
+                    <p class="text-xl font-black m-0 {{ $haccp['blocked'] === 0 ? 'text-emerald-600' : 'text-red-600' }}">{{ $haccp['blocked'] }}</p>
+                </div>
+            </div>
+
             {{-- LOTS BLOQUÉS (RG-02/RG-03) — hors circuit jusqu'à libération qualité --}}
             @if($blockedOrders->isNotEmpty())
             <div class="mb-8 bg-white rounded-[2.5rem] border-2 border-red-200 shadow-sm overflow-hidden">

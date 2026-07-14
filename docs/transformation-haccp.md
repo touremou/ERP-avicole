@@ -16,8 +16,8 @@
 | E6 Étiquettes QR | Étiquettes imprimables web + pages `/trace/*` publiques (PR #5) | ✅ existant |
 | E7 Registre nettoyage | `cleaning_logs` — web + mobile | ✅ P0 |
 | E8 Abattage à façon | **Différé** (P1) — nécessite décision sur la facturation de prestation | ⏳ |
-| E9 Sous-produits | **Différé** (P2) | ⏳ |
-| E10 Dashboard + exports | Exports PDF registres (températures / CCP / nettoyage) ; dashboard abattoir existant | ✅ partiel |
+| E9 Sous-produits | `slaughter_byproducts` — registre web + mobile, volumes par type | ✅ |
+| E10 Dashboard + exports | Exports PDF + KPIs HACCP au dashboard (relevés du jour, NC par CCP, taux d'écart réception, lots bloqués) | ✅ |
 | Impression Bluetooth ESC/POS (H6) | **Différé** — à tester physiquement sur le parc réel avant de figer | ⏳ |
 
 ## Décisions d'architecture (écarts assumés vs la spec)
@@ -52,6 +52,13 @@
 | Conformité jamais confiée au client | `RecordCcp::evaluate()` + `TemperatureLog::isCompliant()` (seuils Settings) |
 | Action corrective obligatoire si non conforme | refus `conflict` avant toute écriture |
 | Double horodatage | `releve_at` (client) + `synced_at` (serveur) sur toutes les tables sanitaires, visibles dans registres et exports |
+
+## Alertes planifiées (§9)
+
+`haccp:check-registers` (tous les jours à 18 h) : relevés de température
+du jour < N requis, abattage du jour sans relevé CCP 3 → alerte
+multi-canaux. Les alertes immédiates (T° hors seuil, CCP non conforme,
+blocage) partent à la saisie.
 
 ## Points restant à trancher (§16 de la spec)
 

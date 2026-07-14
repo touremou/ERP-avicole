@@ -54,6 +54,7 @@ export type OperationType =
   | 'ccp_record.create'
   | 'temperature_log.create'
   | 'cleaning_log.create'
+  | 'byproduct.create'
 
 export interface PushOperation {
   op_uuid: string

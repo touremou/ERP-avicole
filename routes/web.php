@@ -813,6 +813,8 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/registres/temperatures', [\App\Http\Controllers\HaccpRegisterController::class, 'temperatureStore'])->name('registres.temperatures.store')->middleware('can:C');
         Route::get('/registres/nettoyage', [\App\Http\Controllers\HaccpRegisterController::class, 'cleaningIndex'])->name('registres.nettoyage')->middleware('can:L');
         Route::post('/registres/nettoyage', [\App\Http\Controllers\HaccpRegisterController::class, 'cleaningStore'])->name('registres.nettoyage.store')->middleware('can:C');
+        Route::get('/registres/sous-produits', [\App\Http\Controllers\HaccpRegisterController::class, 'byproductsIndex'])->name('registres.sous_produits')->middleware('can:L');
+        Route::post('/registres/sous-produits', [\App\Http\Controllers\HaccpRegisterController::class, 'byproductsStore'])->name('registres.sous_produits.store')->middleware('can:C');
         Route::get('/registres/export', [\App\Http\Controllers\HaccpRegisterController::class, 'export'])->name('registres.export')->middleware('can:L');
 
         // Exécution abattage

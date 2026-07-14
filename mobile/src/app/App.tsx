@@ -20,6 +20,7 @@ import { ReceptionScreen } from '../features/abattoir/ReceptionScreen'
 import { TemperatureScreen } from '../features/abattoir/TemperatureScreen'
 import { CcpScreen } from '../features/abattoir/CcpScreen'
 import { CleaningScreen } from '../features/abattoir/CleaningScreen'
+import { ByproductScreen } from '../features/abattoir/ByproductScreen'
 import { MillCompleteScreen } from '../features/provenderie/MillCompleteScreen'
 import { MonEspaceScreen } from '../features/mon-espace/MonEspaceScreen'
 import { NotificationsScreen } from '../features/notifications/NotificationsScreen'
@@ -62,6 +63,7 @@ function Shell() {
           <Route path="/abattoir/temperature" element={<TemperatureScreen />} />
           <Route path="/abattoir/ccp" element={<CcpScreen />} />
           <Route path="/abattoir/nettoyage" element={<CleaningScreen />} />
+          <Route path="/abattoir/sousproduit" element={<ByproductScreen />} />
           <Route path="/provenderie/cloture/:opId" element={<MillCompleteScreen />} />
           <Route path="/alertes" element={<NotificationsScreen />} />
           <Route path="/mon-espace" element={<MonEspaceScreen />} />

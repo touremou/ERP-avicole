@@ -81,6 +81,7 @@ class SyncService
             'ccp_record.create'          => 'ccpRecordCreate',
             'temperature_log.create'     => 'temperatureLogCreate',
             'cleaning_log.create'        => 'cleaningLogCreate',
+            'byproduct.create'           => 'byproductCreate',
         ];
     }
 
@@ -997,6 +998,53 @@ class SyncService
             Log::info("Sync: nettoyage réconcilié (uuid: {$uuid}, zone: {$log->zone}).");
 
             return ['status' => 'success', 'server_id' => $log->id];
+        });
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    //  SOUS-PRODUITS (E9) — sang, plumes, viscères : volume + destination.
+    // ─────────────────────────────────────────────────────────────
+
+    private function byproductCreate(array $payload): array
+    {
+        if (Gate::denies('abattoir.C')) {
+            return $this->denied();
+        }
+
+        $v = Validator::make($payload, [
+            'uuid'               => 'required|uuid',
+            'slaughter_order_id' => 'nullable|integer|exists:slaughter_orders,id',
+            'type'               => 'required|in:' . implode(',', array_keys(\App\Models\SlaughterByproduct::TYPES)),
+            'quantity_kg'        => 'required|numeric|min:0.01',
+            'destination'        => 'required|in:' . implode(',', array_keys(\App\Models\SlaughterByproduct::DESTINATIONS)),
+            'notes'              => 'nullable|string|max:1000',
+            'collected_at'       => 'required|date',
+        ]);
+
+        if ($v->fails()) {
+            return $this->invalid($v->errors()->toArray());
+        }
+
+        $data = $v->validated();
+
+        return DB::transaction(function () use ($data) {
+            if (\App\Models\SlaughterByproduct::withoutGlobalScopes()->where('uuid', $data['uuid'])->exists()) {
+                return ['status' => 'already_synced'];
+            }
+
+            $uuid = $data['uuid'];
+            unset($data['uuid']);
+
+            $byproduct = \App\Models\SlaughterByproduct::create(array_merge($data, [
+                'operator_id' => Auth::id(),
+                'synced_at'   => now(),
+            ]));
+
+            $byproduct->forceFill(['uuid' => $uuid])->save();
+
+            Log::info("Sync: sous-produit réconcilié (uuid: {$uuid}, {$byproduct->type}: {$byproduct->quantity_kg} kg).");
+
+            return ['status' => 'success', 'server_id' => $byproduct->id];
         });
     }
 

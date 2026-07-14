@@ -203,6 +203,10 @@ export function HomeScreen() {
                 <span className="task-title">📋 {t('Relevé CCP')}</span>
                 <span className="task-meta">{t('points critiques')}</span>
               </Link>
+              <Link to="/abattoir/sousproduit" className="task-card">
+                <span className="task-title">♻️ {t('Sous-produit')}</span>
+                <span className="task-meta">{t('sang · plumes · viscères')}</span>
+              </Link>
             </>
           )}
         </section>

@@ -339,6 +339,63 @@ test('cleaning_log.create enregistre le nettoyage, idempotent, viewer refusé', 
     expect($denied->json('results.0.status'))->toBe('permission_denied');
 });
 
+// ─── SOUS-PRODUITS (E9) ───
+
+test('byproduct.create enregistre le sous-produit, idempotent', function () {
+    Sanctum::actingAs($this->manager);
+
+    $payload = [
+        'uuid'         => (string) Str::uuid(),
+        'type'         => 'plumes',
+        'quantity_kg'  => 18.5,
+        'destination'  => 'compost',
+        'collected_at' => now()->toIso8601String(),
+    ];
+
+    $first = $this->postJson('/api/v1/sync/push', haccpOps([['type' => 'byproduct.create', 'payload' => $payload]]))->assertOk();
+    expect($first->json('results.0.status'))->toBe('success');
+
+    $replay = $this->postJson('/api/v1/sync/push', haccpOps([['type' => 'byproduct.create', 'payload' => $payload]]))->assertOk();
+    expect($replay->json('results.0.status'))->toBe('already_synced');
+    expect(\App\Models\SlaughterByproduct::withoutGlobalScopes()->count())->toBe(1);
+
+    $byproduct = \App\Models\SlaughterByproduct::withoutGlobalScopes()->first();
+    expect((float) $byproduct->quantity_kg)->toBe(18.5)
+        ->and($byproduct->destination)->toBe('compost');
+});
+
+// ─── COMMANDE PLANIFIÉE §9 : complétude des registres ───
+
+test('haccp:check-registers alerte sur relevés manquants et CCP 3 absent', function () {
+    // Un abattage exécuté aujourd'hui sans CCP 3, zéro relevé température.
+    $order = makeHaccpOrder($this->manager);
+    $order->update(['status' => 'termine', 'actual_date' => now()->toDateString()]);
+
+    $this->artisan('haccp:check-registers')
+        ->expectsOutputToContain('2 alerte(s)')
+        ->assertExitCode(0);
+
+    // Registres complets → plus d'alerte.
+    session(['current_farm_id' => $this->farmA->id]);
+    app(\App\Actions\Slaughter\RecordTemperatureLog::class)->execute([
+        'point' => 'chambre_froide_positive', 'temperature' => 3.0,
+        'operator_id' => $this->manager->id, 'releve_at' => now(),
+    ]);
+    app(\App\Actions\Slaughter\RecordTemperatureLog::class)->execute([
+        'point' => 'congelation', 'temperature' => -19.0,
+        'operator_id' => $this->manager->id, 'releve_at' => now(),
+    ]);
+    app(\App\Actions\Slaughter\RecordCcp::class)->execute([
+        'ccp' => \App\Models\CcpRecord::CCP3, 'slaughter_order_id' => $order->id,
+        'mesures' => ['temperature_coeur' => 3.1],
+        'operator_id' => $this->manager->id, 'releve_at' => now(),
+    ]);
+
+    $this->artisan('haccp:check-registers')
+        ->expectsOutputToContain('0 alerte(s)')
+        ->assertExitCode(0);
+});
+
 // ─── PULL : éleveurs livreurs ───
 
 test('pull expose les providers (liste blanche sans données sensibles)', function () {
