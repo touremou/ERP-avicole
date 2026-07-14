@@ -5,6 +5,7 @@
  * Contrat : SyncService::healthIncidentCreate (gate elevage.C).
  */
 import { useEffect, useState, type FormEvent } from 'react'
+import { VoiceDictation } from '../../ui/VoiceDictation'
 import { useNavigate, useParams } from 'react-router-dom'
 import { db } from '../../offline/db'
 import { enqueue } from '../../offline/sync'
@@ -129,6 +130,9 @@ export function IncidentScreen() {
 
       <label htmlFor="details">{t('Autres constats — optionnel')}</label>
       <textarea id="details" rows={2} maxLength={1000} value={details} onChange={(e) => setDetails(e.target.value)} />
+      <div className="chip-row">
+        <VoiceDictation onText={(text) => setDetails((prev) => (prev ? prev + ' ' : '') + text)} />
+      </div>
 
       <label>{t('Gravité')}</label>
       <div className="chip-row">

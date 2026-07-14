@@ -9,6 +9,7 @@ import { db } from '../../offline/db'
 import { enqueue } from '../../offline/sync'
 import { lastPayloadOf } from '../../offline/prefill'
 import { platform, compressImage } from '../../platform'
+import { VoiceDictation } from '../../ui/VoiceDictation'
 import { t } from '../../i18n'
 
 /** Miroir de App\Models\CleaningLog::ZONES (référentiel stable). */
@@ -133,6 +134,9 @@ export function CleaningScreen() {
 
       <label htmlFor="notes">{t('Notes — optionnel')}</label>
       <textarea id="notes" rows={2} maxLength={1000} value={notes} onChange={(e) => setNotes(e.target.value)} />
+      <div className="chip-row">
+        <VoiceDictation onText={(text) => setNotes((prev) => (prev ? prev + ' ' : '') + text)} />
+      </div>
 
       <button type="button" className="btn-secondary" onClick={() => void attachPhoto()}>
         📷 {photoBlob ? t('Reprendre la photo') : t('Photographier la zone')}

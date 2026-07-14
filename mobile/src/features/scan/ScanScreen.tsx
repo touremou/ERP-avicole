@@ -1,6 +1,10 @@
 /**
- * Scan QR de traçabilité — on flashe l'étiquette d'un lot (QR encodant
- * …/trace/lot/{code}, cf. QrCodeService) et sa fiche d'actions s'ouvre.
+ * Scan QR — point d'entrée UNIVERSEL des saisies (anti-corvée) : on flashe
+ * n'importe quelle étiquette de traçabilité de l'ERP et l'écran d'action
+ * correspondant s'ouvre, prêt à saisir :
+ *   étiquette lot (…/trace/lot/{code})   → fiche d'actions du lot
+ *   étiquette OP  (…/trace/op/{numéro})  → clôture de l'OP provenderie
+ *   code brut : lot, n° d'ordre d'abattage, code de cycle de culture, n° OP.
  * BarcodeDetector natif (Chrome/Android) ; repli : saisie manuelle du code —
  * aucun périphérique n'est bloqué.
  */
@@ -15,6 +19,42 @@ export function parseBatchCode(raw: string): string {
   return decodeURIComponent(match ? match[1] : raw).trim().toUpperCase()
 }
 
+/**
+ * Résout un contenu scanné vers la route d'action locale. Ordre d'essai :
+ * URLs de traçabilité explicites, puis codes bruts contre chaque miroir
+ * local (lot → ordre d'abattage → OP provenderie → cycle de culture).
+ * Renvoie null si rien ne correspond hors-ligne.
+ */
+export async function resolveScan(raw: string): Promise<string | null> {
+  const opUrl = /\/trace\/op\/([^/?#]+)/.exec(raw)
+  if (opUrl) {
+    const op = await db.ref_mill_productions
+      .filter((p) => p.batch_number.toUpperCase() === decodeURIComponent(opUrl[1]).trim().toUpperCase())
+      .first()
+    return op ? `/provenderie/cloture/${op.id}` : null
+  }
+
+  const code = parseBatchCode(raw) // gère /trace/lot/{code} ET le code brut
+
+  const batch = await db.ref_batches.where('code').equals(code).first()
+  if (batch) return `/lot/${batch.id}`
+
+  const order = await db.ref_slaughter_orders
+    .filter((o) => o.order_number.toUpperCase() === code)
+    .first()
+  if (order) return `/abattoir/execution/${order.id}`
+
+  const op = await db.ref_mill_productions
+    .filter((p) => p.batch_number.toUpperCase() === code)
+    .first()
+  if (op) return `/provenderie/cloture/${op.id}`
+
+  const cycle = await db.ref_crop_cycles.filter((c) => c.code.toUpperCase() === code).first()
+  if (cycle) return `/cultures/recolte/${cycle.id}`
+
+  return null
+}
+
 export function ScanScreen() {
   const navigate = useNavigate()
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -22,13 +62,15 @@ export function ScanScreen() {
   const [manualCode, setManualCode] = useState('')
   const [error, setError] = useState<string | null>(null)
 
-  async function openBatch(code: string) {
-    const batch = await db.ref_batches.where('code').equals(code).first()
-    if (!batch) {
-      setError(t('Lot « :code » introuvable en local — vérifiez le code ou synchronisez.', { code }))
+  async function openScanned(raw: string) {
+    const target = await resolveScan(raw)
+    if (!target) {
+      setError(t('« :code » introuvable en local (lot, ordre, OP ou cycle) — vérifiez ou synchronisez.', {
+        code: parseBatchCode(raw),
+      }))
       return
     }
-    navigate(`/lot/${batch.id}`)
+    navigate(target)
   }
 
   useEffect(() => {
@@ -55,7 +97,7 @@ export function ScanScreen() {
           try {
             const codes = await detector.detect(videoRef.current)
             if (codes.length > 0) {
-              await openBatch(parseBatchCode(codes[0].rawValue as string))
+              await openScanned(codes[0].rawValue as string)
               return
             }
           } catch {
@@ -78,17 +120,17 @@ export function ScanScreen() {
 
   return (
     <div className="screen">
-      <h2>{t('📷 Scanner un lot')}</h2>
+      <h2>{t('📷 Scanner une étiquette')}</h2>
 
       {supported ? (
         <video ref={videoRef} className="scan-video" muted playsInline />
       ) : (
         <p className="muted">
-          {t('Scanner indisponible sur cet appareil — saisissez le code du lot (imprimé sous le QR).')}
+          {t('Scanner indisponible sur cet appareil — saisissez le code (imprimé sous le QR).')}
         </p>
       )}
 
-      <label htmlFor="manual_code">{t('Code du lot')}</label>
+      <label htmlFor="manual_code">{t('Code (lot, ordre, OP, cycle)')}</label>
       <input
         id="manual_code"
         value={manualCode}
@@ -100,9 +142,9 @@ export function ScanScreen() {
         type="button"
         className="btn-primary"
         disabled={!manualCode.trim()}
-        onClick={() => void openBatch(parseBatchCode(manualCode))}
+        onClick={() => void openScanned(manualCode)}
       >
-        {t('Ouvrir le lot')}
+        {t('Ouvrir')}
       </button>
 
       {error && <p className="error">{error}</p>}

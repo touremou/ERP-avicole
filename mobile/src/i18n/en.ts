@@ -5,6 +5,16 @@
  * orpheline des deux côtés au moment de la génération).
  */
 export const en: Record<string, string> = {
+  '📷 Scanner une étiquette': '📷 Scan a label',
+  'Scanner indisponible sur cet appareil — saisissez le code (imprimé sous le QR).': 'Scanner unavailable on this device — type the code (printed under the QR).',
+  'Code (lot, ordre, OP, cycle)': 'Code (batch, order, feed-mill order, cycle)',
+  'Ouvrir': 'Open',
+  '« :code » introuvable en local (lot, ordre, OP ou cycle) — vérifiez ou synchronisez.': '":code" not found locally (batch, order, feed-mill order or cycle) — check or sync.',
+  '🎤 Dicter': '🎤 Dictate',
+  '🎤 En écoute… (toucher pour arrêter)': '🎤 Listening… (tap to stop)',
+  'Dicter au lieu de taper': 'Dictate instead of typing',
+  'Dictée indisponible hors-ligne': 'Dictation unavailable offline',
+  '↺ Dernier passage : :eggs œufs (:date).': '↺ Last pass: :eggs eggs (:date).',
   '↺ Aliment prérempli d’après votre dernier pointage — corrigez si besoin.': '↺ Feed pre-filled from your last daily check — adjust if needed.',
   '🛡️ CCP 3 — T° à cœur après refroidissement (°C) — recommandé': '🛡️ CCP 3 — Core temp after chilling (°C) — recommended',
   'ex. 3.4': 'e.g. 3.4',

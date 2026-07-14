@@ -11,6 +11,7 @@ import { db } from '../../offline/db'
 import { enqueue } from '../../offline/sync'
 import { lastPayloadOf } from '../../offline/prefill'
 import { NumberStepper } from '../../ui/NumberStepper'
+import { VoiceDictation } from '../../ui/VoiceDictation'
 import { t, dateLocale } from '../../i18n'
 import type { RefBatch, RefStock } from '../../api/types'
 
@@ -158,6 +159,9 @@ export function DailyCheckScreen() {
         onChange={(e) => setObservations(e.target.value)}
         placeholder={t('Comportement, litière…')}
       />
+      <div className="chip-row">
+        <VoiceDictation onText={(text) => setObservations((prev) => (prev ? prev + ' ' : '') + text)} />
+      </div>
 
       <button type="submit" className="btn-primary">
         {t('Enregistrer le pointage')}

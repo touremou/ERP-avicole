@@ -11,6 +11,7 @@ import { db } from '../../offline/db'
 import { enqueue } from '../../offline/sync'
 import { dateLocale, t } from '../../i18n'
 import { NumberStepper } from '../../ui/NumberStepper'
+import { VoiceDictation } from '../../ui/VoiceDictation'
 import type { RefBatch, RefSlaughterOrder } from '../../api/types'
 
 export function SlaughterScreen() {
@@ -149,6 +150,9 @@ export function SlaughterScreen() {
 
       <label htmlFor="notes">{t("Notes d'inspection — optionnel")}</label>
       <textarea id="notes" rows={2} maxLength={1000} value={notes} onChange={(e) => setNotes(e.target.value)} />
+      <div className="chip-row">
+        <VoiceDictation onText={(text) => setNotes((prev) => (prev ? prev + ' ' : '') + text)} />
+      </div>
 
       <label htmlFor="coretemp">{t('🛡️ CCP 3 — T° à cœur après refroidissement (°C) — recommandé')}</label>
       <input
