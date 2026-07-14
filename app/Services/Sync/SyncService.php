@@ -76,6 +76,11 @@ class SyncService
             'crop_input.create'       => 'cropInputCreate',
             'slaughter.execute'       => 'slaughterExecute',
             'mill_production.complete' => 'millProductionComplete',
+            // Cœur sanitaire HACCP (spec Transformation — E1/E3/E4/E7).
+            'slaughter_reception.create' => 'slaughterReceptionCreate',
+            'ccp_record.create'          => 'ccpRecordCreate',
+            'temperature_log.create'     => 'temperatureLogCreate',
+            'cleaning_log.create'        => 'cleaningLogCreate',
         ];
     }
 
@@ -775,6 +780,223 @@ class SyncService
             Log::info("Sync: OP clôturé (uuid: {$data['uuid']}, OP: {$production->batch_number}).");
 
             return ['status' => 'success', 'server_id' => $production->id];
+        });
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    //  RÉCEPTION DU VIF (CCP 1) — contrôle ante-mortem, immuable à la
+    //  création. Décision ≠ accepté → motif obligatoire + alerte qualité.
+    // ─────────────────────────────────────────────────────────────
+
+    private function slaughterReceptionCreate(array $payload): array
+    {
+        if (Gate::denies('abattoir.C')) {
+            return $this->denied();
+        }
+
+        $v = Validator::make($payload, [
+            'uuid'                 => 'required|uuid',
+            'provider_id'          => 'required|integer|exists:providers,id',
+            'reception_date'       => 'required|date|before_or_equal:today',
+            'announced_quantity'   => 'nullable|integer|min:0',
+            'received_quantity'    => 'required|integer|min:1',
+            'rejected_quantity'    => 'nullable|integer|min:0|lte:received_quantity',
+            'total_live_weight_kg' => 'required|numeric|min:0.1',
+            'sanitary_state'       => 'required|in:' . implode(',', \App\Models\SlaughterReception::SANITARY_STATES),
+            'fasting_respected'    => 'required|in:' . implode(',', \App\Models\SlaughterReception::FASTING),
+            'decision'             => 'required|in:' . implode(',', \App\Models\SlaughterReception::DECISIONS),
+            'decision_reason'      => 'required_unless:decision,accepte|nullable|string|max:1000',
+            'photo_path'           => 'nullable|string|max:255',
+            'releve_at'            => 'nullable|date',
+        ]);
+
+        if ($v->fails()) {
+            return $this->invalid($v->errors()->toArray());
+        }
+
+        $data = $v->validated();
+
+        return DB::transaction(function () use ($data) {
+            if (\App\Models\SlaughterReception::withoutGlobalScopes()->where('uuid', $data['uuid'])->exists()) {
+                return ['status' => 'already_synced'];
+            }
+
+            $uuid = $data['uuid'];
+            unset($data['uuid']);
+
+            $reception = app(\App\Actions\Slaughter\RecordSlaughterReception::class)->execute(array_merge($data, [
+                'controller_id'  => Auth::id(),
+                'doc_photo_path' => $data['photo_path'] ?? null,
+            ]));
+
+            $reception->forceFill([
+                'uuid'         => $uuid,
+                'synced_at'    => now(),
+                'is_synced'    => true,
+                'last_sync_at' => now(),
+            ])->save();
+
+            Log::info("Sync: réception vif réconciliée (uuid: {$uuid}, décision: {$reception->decision}).");
+
+            return ['status' => 'success', 'server_id' => $reception->id];
+        });
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    //  RELEVÉ CCP — conformité calculée SERVEUR (seuils Réglages) ;
+    //  non conforme + ordre → blocage automatique (RG-02). INSERT-ONLY.
+    // ─────────────────────────────────────────────────────────────
+
+    private function ccpRecordCreate(array $payload): array
+    {
+        if (Gate::denies('abattoir.C')) {
+            return $this->denied();
+        }
+
+        $v = Validator::make($payload, [
+            'uuid'               => 'required|uuid',
+            'ccp'                => 'required|in:' . implode(',', \App\Models\CcpRecord::CCPS),
+            'slaughter_order_id' => 'nullable|integer|exists:slaughter_orders,id',
+            'equipment_ref'      => 'nullable|string|max:50',
+            'mesures'            => 'required|array|min:1',
+            'conforme'           => 'nullable|boolean',
+            'corrective_action'  => 'nullable|string|max:2000',
+            'releve_at'          => 'required|date',
+        ]);
+
+        if ($v->fails()) {
+            return $this->invalid($v->errors()->toArray());
+        }
+
+        $data = $v->validated();
+
+        return DB::transaction(function () use ($data) {
+            if (\App\Models\CcpRecord::withoutGlobalScopes()->where('uuid', $data['uuid'])->exists()) {
+                return ['status' => 'already_synced'];
+            }
+
+            if (! empty($data['slaughter_order_id'])
+                && ! SlaughterOrder::whereKey($data['slaughter_order_id'])->exists()) {
+                return ['status' => 'conflict', 'message' => __("Ordre d'abattage introuvable dans cette ferme.")];
+            }
+
+            $action = app(\App\Actions\Slaughter\RecordCcp::class);
+
+            // Non conforme (évaluation SERVEUR) sans action corrective :
+            // refus définitif AVANT toute écriture — le plan HACCP exige
+            // l'action en face du constat.
+            $conforme = $action->evaluate($data['ccp'], $data['mesures'], $data['conforme'] ?? null);
+            if (! $conforme && blank($data['corrective_action'] ?? null)) {
+                return [
+                    'status'  => 'conflict',
+                    'message' => __('Une action corrective est obligatoire pour un CCP non conforme.'),
+                ];
+            }
+
+            $uuid = $data['uuid'];
+            unset($data['uuid']);
+
+            $record = $action->execute(array_merge($data, [
+                'operator_id' => Auth::id(),
+            ]));
+
+            $record->forceFill(['uuid' => $uuid])->save();
+
+            Log::info("Sync: relevé CCP réconcilié (uuid: {$uuid}, {$record->ccp}, conforme: " . ($record->conforme ? 'oui' : 'NON') . ').');
+
+            return ['status' => 'success', 'server_id' => $record->id, 'conforme' => $record->conforme];
+        });
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    //  REGISTRE DES TEMPÉRATURES — conformité serveur, alerte immédiate.
+    // ─────────────────────────────────────────────────────────────
+
+    private function temperatureLogCreate(array $payload): array
+    {
+        if (Gate::denies('abattoir.C')) {
+            return $this->denied();
+        }
+
+        $v = Validator::make($payload, [
+            'uuid'              => 'required|uuid',
+            'point'             => 'required|in:' . implode(',', array_keys(\App\Models\TemperatureLog::POINTS)),
+            'equipment_ref'     => 'nullable|string|max:50',
+            'temperature'       => 'required|numeric|min:-60|max:120',
+            'corrective_action' => 'nullable|string|max:2000',
+            'releve_at'         => 'required|date',
+        ]);
+
+        if ($v->fails()) {
+            return $this->invalid($v->errors()->toArray());
+        }
+
+        $data = $v->validated();
+
+        return DB::transaction(function () use ($data) {
+            if (\App\Models\TemperatureLog::withoutGlobalScopes()->where('uuid', $data['uuid'])->exists()) {
+                return ['status' => 'already_synced'];
+            }
+
+            $uuid = $data['uuid'];
+            unset($data['uuid']);
+
+            $log = app(\App\Actions\Slaughter\RecordTemperatureLog::class)->execute(array_merge($data, [
+                'operator_id' => Auth::id(),
+            ]));
+
+            $log->forceFill(['uuid' => $uuid])->save();
+
+            Log::info("Sync: relevé température réconcilié (uuid: {$uuid}, {$log->point}: {$log->temperature}°C).");
+
+            return ['status' => 'success', 'server_id' => $log->id, 'conforme' => $log->conforme];
+        });
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    //  REGISTRE NETTOYAGE / DÉSINFECTION — trace simple, insert-only.
+    // ─────────────────────────────────────────────────────────────
+
+    private function cleaningLogCreate(array $payload): array
+    {
+        if (Gate::denies('abattoir.C')) {
+            return $this->denied();
+        }
+
+        $v = Validator::make($payload, [
+            'uuid'         => 'required|uuid',
+            'zone'         => 'required|string|max:100',
+            'product_used' => 'required|string|max:100',
+            'dosage'       => 'nullable|string|max:50',
+            'notes'        => 'nullable|string|max:1000',
+            'photo_path'   => 'nullable|string|max:255',
+            'done_at'      => 'required|date',
+        ]);
+
+        if ($v->fails()) {
+            return $this->invalid($v->errors()->toArray());
+        }
+
+        $data = $v->validated();
+
+        return DB::transaction(function () use ($data) {
+            if (\App\Models\CleaningLog::withoutGlobalScopes()->where('uuid', $data['uuid'])->exists()) {
+                return ['status' => 'already_synced'];
+            }
+
+            $uuid = $data['uuid'];
+            unset($data['uuid']);
+
+            $log = \App\Models\CleaningLog::create(array_merge($data, [
+                'operator_id' => Auth::id(),
+                'synced_at'   => now(),
+            ]));
+
+            $log->forceFill(['uuid' => $uuid])->save();
+
+            Log::info("Sync: nettoyage réconcilié (uuid: {$uuid}, zone: {$log->zone}).");
+
+            return ['status' => 'success', 'server_id' => $log->id];
         });
     }
 

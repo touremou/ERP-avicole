@@ -85,6 +85,7 @@ export function HomeScreen() {
   const canProduction = can('production', 'C')
   const canCultures = can('cultures', 'C')
   const canAbattoir = can('abattoir', 'M')
+  const abattoirC = can('abattoir', 'C')
   const canProvenderie = can('provenderie', 'M')
   const nothingTodo =
     (!canElevage || checksTodo.length === 0) &&
@@ -163,7 +164,7 @@ export function HomeScreen() {
         </section>
       )}
 
-      {(can('commerce', 'C') || can('logistique', 'M') || can('depenses', 'C')) && (
+      {(can('commerce', 'C') || can('logistique', 'M') || can('depenses', 'C') || abattoirC) && (
         <section>
           <h3>{t('Actions rapides')}</h3>
           {can('commerce', 'C') && (
@@ -183,6 +184,26 @@ export function HomeScreen() {
               <span className="task-title">🧾 {t('Dépense')}</span>
               <span className="task-meta">{t('reçu photo')}</span>
             </Link>
+          )}
+          {abattoirC && (
+            <>
+              <Link to="/abattoir/temperature" className="task-card">
+                <span className="task-title">🌡️ {t('Relevé température')}</span>
+                <span className="task-meta">{t('registre HACCP')}</span>
+              </Link>
+              <Link to="/abattoir/nettoyage" className="task-card">
+                <span className="task-title">🧽 {t('Nettoyage')}</span>
+                <span className="task-meta">{t('zone · produit')}</span>
+              </Link>
+              <Link to="/abattoir/reception" className="task-card">
+                <span className="task-title">🚚 {t('Réception vif')}</span>
+                <span className="task-meta">{t('contrôle ante-mortem')}</span>
+              </Link>
+              <Link to="/abattoir/ccp" className="task-card">
+                <span className="task-title">📋 {t('Relevé CCP')}</span>
+                <span className="task-meta">{t('points critiques')}</span>
+              </Link>
+            </>
           )}
         </section>
       )}

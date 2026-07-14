@@ -49,6 +49,11 @@ export type OperationType =
   | 'crop_input.create'
   | 'slaughter.execute'
   | 'mill_production.complete'
+  // Phase 3 — cœur sanitaire HACCP abattoir.
+  | 'slaughter_reception.create'
+  | 'ccp_record.create'
+  | 'temperature_log.create'
+  | 'cleaning_log.create'
 
 export interface PushOperation {
   op_uuid: string
@@ -95,6 +100,7 @@ export interface PullResponse {
     plots?: PullEntity<RefPlot>
     crop_cycles?: PullEntity<RefCropCycle>
     slaughter_orders?: PullEntity<RefSlaughterOrder>
+    providers?: PullEntity<RefProvider>
     formulas?: PullEntity<RefFormula>
     mill_productions?: PullEntity<RefMillProduction>
   }
@@ -222,6 +228,15 @@ export interface RefSlaughterOrder {
   planned_date: string
   planned_quantity: number
   status: string
+  updated_at: string
+}
+
+/** Éleveurs livreurs pour la réception du vif (CCP 1). */
+export interface RefProvider {
+  id: number
+  name: string
+  type: string | null
+  status: string | null
   updated_at: string
 }
 

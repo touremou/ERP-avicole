@@ -795,6 +795,26 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/orders', 'storeOrder')->name('orders.store')->middleware('can:C');
         Route::patch('/orders/{order}/cancel', 'cancelOrder')->name('orders.cancel')->middleware('can:M');
 
+        // Blocage / libération qualité (RG-02/RG-03) — libération réservée
+        // au niveau QUALITÉ (S), motif obligatoire dans les deux sens.
+        Route::patch('/orders/{order}/block', 'blockOrder')->name('orders.block')->middleware('can:M');
+        Route::patch('/orders/{order}/release', 'releaseOrder')->name('orders.release')->middleware('can:S');
+
+        // Réception du vif (CCP 1) — registre IMMUABLE : pas d'edit/update/destroy.
+        Route::get('/receptions', [\App\Http\Controllers\SlaughterReceptionController::class, 'index'])->name('receptions.index')->middleware('can:L');
+        Route::get('/receptions/create', [\App\Http\Controllers\SlaughterReceptionController::class, 'create'])->name('receptions.create')->middleware('can:C');
+        Route::post('/receptions', [\App\Http\Controllers\SlaughterReceptionController::class, 'store'])->name('receptions.store')->middleware('can:C');
+
+        // Registres HACCP (CCP, températures, nettoyage) — INSERT-ONLY (RG-06).
+        Route::get('/registres/ccp', [\App\Http\Controllers\HaccpRegisterController::class, 'ccpIndex'])->name('registres.ccp')->middleware('can:L');
+        Route::get('/registres/ccp/create', [\App\Http\Controllers\HaccpRegisterController::class, 'ccpCreate'])->name('registres.ccp.create')->middleware('can:C');
+        Route::post('/registres/ccp', [\App\Http\Controllers\HaccpRegisterController::class, 'ccpStore'])->name('registres.ccp.store')->middleware('can:C');
+        Route::get('/registres/temperatures', [\App\Http\Controllers\HaccpRegisterController::class, 'temperatureIndex'])->name('registres.temperatures')->middleware('can:L');
+        Route::post('/registres/temperatures', [\App\Http\Controllers\HaccpRegisterController::class, 'temperatureStore'])->name('registres.temperatures.store')->middleware('can:C');
+        Route::get('/registres/nettoyage', [\App\Http\Controllers\HaccpRegisterController::class, 'cleaningIndex'])->name('registres.nettoyage')->middleware('can:L');
+        Route::post('/registres/nettoyage', [\App\Http\Controllers\HaccpRegisterController::class, 'cleaningStore'])->name('registres.nettoyage.store')->middleware('can:C');
+        Route::get('/registres/export', [\App\Http\Controllers\HaccpRegisterController::class, 'export'])->name('registres.export')->middleware('can:L');
+
         // Exécution abattage
         Route::get('/orders/{order}/execute', 'showExecuteForm')->name('execute.form')->middleware('can:M');
         Route::post('/orders/{order}/execute', 'executeSlaughter')->name('execute.store')->middleware('can:M');

@@ -60,6 +60,10 @@
     <span class="{{ $sectionClass }}"><i class="fa-solid fa-drumstick-bite text-rose-500 mr-1"></i> {{ __("Abattoir") }}</span>
     @can('abattoir.L')
     <a href="{{ route('slaughter.dashboard') }}" class="{{ $linkClass }} {{ request()->routeIs('slaughter.dashboard') ? $activeClass : $inactiveClass }}">{{ __("Tableau de bord") }}</a>
+    <a href="{{ route('slaughter.receptions.index') }}" class="{{ $linkClass }} {{ request()->routeIs('slaughter.receptions.*') ? $activeClass : $inactiveClass }}">{{ __("Réceptions vif") }}</a>
+    <a href="{{ route('slaughter.registres.ccp') }}" class="{{ $linkClass }} {{ request()->routeIs('slaughter.registres.ccp*') ? $activeClass : $inactiveClass }}">{{ __("Registre CCP") }}</a>
+    <a href="{{ route('slaughter.registres.temperatures') }}" class="{{ $linkClass }} {{ request()->routeIs('slaughter.registres.temperatures*') ? $activeClass : $inactiveClass }}">{{ __("Températures") }}</a>
+    <a href="{{ route('slaughter.registres.nettoyage') }}" class="{{ $linkClass }} {{ request()->routeIs('slaughter.registres.nettoyage*') ? $activeClass : $inactiveClass }}">{{ __("Nettoyage") }}</a>
     @endcan
 
 @elseif(request()->routeIs(['commerce.*', 'sales.*', 'clients.*', 'payments.*', 'pos.*', 'returns.*', 'cash-register.*']))

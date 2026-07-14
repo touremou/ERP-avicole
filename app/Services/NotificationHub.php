@@ -324,6 +324,17 @@ class NotificationHub
      * (NotificationTemplate) ou de son défaut livré, puis substitue les
      * variables {{ clé }}.
      */
+    /**
+     * Alerte sanitaire HACCP (CCP non conforme, température hors seuil,
+     * blocage/libération de lot) — type 'alert_haccp' inconnu de
+     * typeRecipients() → diffusée à TOUS les utilisateurs actifs : la
+     * sécurité sanitaire ne dépend pas d'un abonnement individuel.
+     */
+    public function alertHaccp(string $message, string $title, string $severity = 'normal'): void
+    {
+        $this->broadcast('alert_haccp', $message, $title, $severity);
+    }
+
     private function tpl(string $key, array $vars): string
     {
         return \App\Models\NotificationTemplate::interpolate(

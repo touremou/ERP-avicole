@@ -179,7 +179,7 @@ async function pullDelta(): Promise<void> {
 
   const {
     batches, buildings, stocks, clients, products, production_types,
-    plots, crop_cycles, slaughter_orders, formulas, mill_productions,
+    plots, crop_cycles, slaughter_orders, providers, formulas, mill_productions,
   } = response.entities
 
   await db.transaction(
@@ -187,7 +187,7 @@ async function pullDelta(): Promise<void> {
     [
       db.ref_batches, db.ref_buildings, db.ref_stocks, db.ref_clients, db.ref_products,
       db.ref_production_types, db.ref_plots, db.ref_crop_cycles, db.ref_slaughter_orders,
-      db.ref_formulas, db.ref_mill_productions,
+      db.ref_providers, db.ref_formulas, db.ref_mill_productions,
     ],
     async () => {
       await db.ref_batches.bulkPut(batches.upserts)
@@ -216,6 +216,10 @@ async function pullDelta(): Promise<void> {
       if (slaughter_orders) {
         await db.ref_slaughter_orders.bulkPut(slaughter_orders.upserts)
         await db.ref_slaughter_orders.bulkDelete(slaughter_orders.deletes)
+      }
+      if (providers) {
+        await db.ref_providers.bulkPut(providers.upserts)
+        await db.ref_providers.bulkDelete(providers.deletes)
       }
       if (formulas) {
         await db.ref_formulas.bulkPut(formulas.upserts)

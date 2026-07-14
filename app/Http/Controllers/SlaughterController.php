@@ -44,7 +44,14 @@ class SlaughterController extends Controller
             ->latest('production_date')
             ->get();
 
-        return view('slaughter.dashboard', compact('kpi', 'pendingOrders', 'recentResults', 'finishedProducts', 'expiring', 'ongoingTransformations'));
+        // Lots bloqués (RG-02/RG-03) : hors circuit jusqu'à libération
+        // explicite par le niveau qualité (abattoir.S), motif obligatoire.
+        $blockedOrders = SlaughterOrder::where('status', 'bloque')
+            ->with(['batch', 'reception.provider', 'blockedBy'])
+            ->latest('blocked_at')
+            ->get();
+
+        return view('slaughter.dashboard', compact('kpi', 'pendingOrders', 'recentResults', 'finishedProducts', 'expiring', 'ongoingTransformations', 'blockedOrders'));
     }
 
     // ──────────────────────────────────────────────
@@ -71,36 +78,63 @@ class SlaughterController extends Controller
 
         $clients = Client::active()->orderBy('name')->get();
 
-        return view('slaughter.create-order', compact('batches', 'clients'));
+        // Réceptions externes (volailles hors élevage interne) éligibles :
+        // décision ≠ refuse (RG-04), 7 derniers jours.
+        $receptions = \App\Models\SlaughterReception::with('provider')
+            ->where('decision', '!=', 'refuse')
+            ->whereDate('reception_date', '>=', now()->subDays(7)->toDateString())
+            ->latest('reception_date')->latest('id')
+            ->get();
+
+        return view('slaughter.create-order', compact('batches', 'clients', 'receptions'));
     }
 
     public function storeOrder(Request $request)
     {
         if (Gate::denies('abattoir.C')) return back()->with('error', 'Action non autorisée.');
 
+        // Volailles externes : un ordre peut naître d'une RÉCEPTION VIF
+        // (sans lot interne). batch_id devient alors optionnel.
         $validated = $request->validate([
-            'batch_id'         => 'required|exists:batches,id',
+            'batch_id'         => 'required_without:reception_id|nullable|exists:batches,id',
+            'reception_id'     => 'nullable|integer|exists:slaughter_receptions,id',
             'planned_date'     => 'required|date',
             'planned_quantity' => 'required|integer|min:1',
             'client_id'        => 'nullable|exists:clients,id',
             'notes'            => 'nullable|string|max:1000',
         ]);
 
-        $batch = Batch::findOrFail($validated['batch_id']);
-        if ($batch->current_quantity < $validated['planned_quantity']) {
-            return back()->withErrors([
-                'planned_quantity' => "Le lot {$batch->code} n'a que {$batch->current_quantity} sujets (demandé: {$validated['planned_quantity']})."
-            ])->withInput();
+        // RG-04 : une réception REFUSÉE ne peut jamais donner d'ordre d'abattage.
+        if (! empty($validated['reception_id'])) {
+            $reception = \App\Models\SlaughterReception::findOrFail($validated['reception_id']);
+
+            if ($reception->isRefused()) {
+                return back()->withErrors([
+                    'reception_id' => "La réception n°{$reception->id} du "
+                        . $reception->reception_date->format('d/m/Y')
+                        . " a été REFUSÉE au contrôle ante-mortem — aucun ordre d'abattage ne peut être créé sur ce lot (RG-04).",
+                ])->withInput();
+            }
         }
 
-        // Biosécurité : pas d'ordre d'abattage sur un lot en quarantaine
-        // (délai d'attente médicamenteux — la garde est re-jouée sous verrou
-        // à l'exécution, une quarantaine pouvant être posée entre-temps).
-        if ($quarantine = $batch->activeQuarantine()) {
-            return back()->withErrors([
-                'batch_id' => "Le lot {$batch->code} est en QUARANTAINE sanitaire (incident n°{$quarantine->id}) — "
-                    . "abattage interdit jusqu'à la levée par le circuit santé."
-            ])->withInput();
+        $batch = null;
+        if (! empty($validated['batch_id'])) {
+            $batch = Batch::findOrFail($validated['batch_id']);
+            if ($batch->current_quantity < $validated['planned_quantity']) {
+                return back()->withErrors([
+                    'planned_quantity' => "Le lot {$batch->code} n'a que {$batch->current_quantity} sujets (demandé: {$validated['planned_quantity']})."
+                ])->withInput();
+            }
+
+            // Biosécurité : pas d'ordre d'abattage sur un lot en quarantaine
+            // (délai d'attente médicamenteux — la garde est re-jouée sous verrou
+            // à l'exécution, une quarantaine pouvant être posée entre-temps).
+            if ($quarantine = $batch->activeQuarantine()) {
+                return back()->withErrors([
+                    'batch_id' => "Le lot {$batch->code} est en QUARANTAINE sanitaire (incident n°{$quarantine->id}) — "
+                        . "abattage interdit jusqu'à la levée par le circuit santé."
+                ])->withInput();
+            }
         }
 
         SlaughterOrder::create(array_merge($validated, [
@@ -109,7 +143,8 @@ class SlaughterController extends Controller
         ]));
 
         return redirect()->route('slaughter.dashboard')
-            ->with('success', "Ordre d'abattage créé — {$validated['planned_quantity']} sujets du lot {$batch->code}.");
+            ->with('success', "Ordre d'abattage créé — {$validated['planned_quantity']} sujets "
+                . ($batch ? "du lot {$batch->code}." : "(réception externe n°{$validated['reception_id']})."));
     }
 
     /**
@@ -139,6 +174,50 @@ class SlaughterController extends Controller
         }
 
         return back()->with('success', "Ordre {$order->order_number} annulé.");
+    }
+
+    /**
+     * Blocage qualité d'un ordre (RG-02/RG-03) — motif obligatoire,
+     * le lot sort du circuit jusqu'à libération explicite.
+     */
+    public function blockOrder(Request $request, SlaughterOrder $order)
+    {
+        if (Gate::denies('abattoir.M')) return back()->with('error', 'Action non autorisée.');
+
+        $validated = $request->validate([
+            'reason' => 'required|string|max:1000',
+        ]);
+
+        if ($order->isBlocked()) {
+            return back()->with('error', __('L\'ordre :number est déjà bloqué.', ['number' => $order->order_number]));
+        }
+
+        app(\App\Actions\Slaughter\BlockSlaughterOrder::class)
+            ->execute($order, $validated['reason'], Auth::id());
+
+        return back()->with('success', __('Ordre :number BLOQUÉ — le lot est sorti du circuit.', ['number' => $order->order_number]));
+    }
+
+    /**
+     * Libération d'un ordre bloqué — réservée au niveau QUALITÉ (abattoir.S),
+     * motif obligatoire (traçabilité de la décision).
+     */
+    public function releaseOrder(Request $request, SlaughterOrder $order)
+    {
+        if (Gate::denies('abattoir.S')) return back()->with('error', 'Action non autorisée — la libération est réservée au niveau qualité.');
+
+        $validated = $request->validate([
+            'reason' => 'required|string|max:1000',
+        ]);
+
+        if (! $order->isBlocked()) {
+            return back()->with('error', __('L\'ordre :number n\'est pas bloqué.', ['number' => $order->order_number]));
+        }
+
+        app(\App\Actions\Slaughter\ReleaseSlaughterOrder::class)
+            ->execute($order, $validated['reason'], Auth::id());
+
+        return back()->with('success', __('Ordre :number libéré — il reprend son cours.', ['number' => $order->order_number]));
     }
 
     // ──────────────────────────────────────────────

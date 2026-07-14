@@ -2691,6 +2691,7 @@
     "Un client blacklisté ne peut plus passer de commande.": "A blacklisted customer can no longer place an order.",
     "Un pointage existe déjà pour ce lot à cette date.": "A daily check already exists for this batch on this date.",
     "Un.": "One.",
+    "Une action corrective est obligatoire pour un CCP non conforme.": "A corrective action is mandatory for a non-compliant CCP.",
     "Une collecte existe déjà pour ce lot aujourd'hui — l'enregistrement la mettra à jour.": "A collection already exists for this batch today — saving will update it.",
     "Une erreur s'est produite :": "An error occurred:",
     "Une erreur technique est survenue. L'équipe a été alertée automatiquement.": "A technical error occurred. The team has been automatically notified.",

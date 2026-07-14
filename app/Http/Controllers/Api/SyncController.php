@@ -80,6 +80,12 @@ class SyncController extends Controller
             'model'   => \App\Models\Formula::class,
             'columns' => ['id', 'name', 'code', 'target_type', 'is_active', 'updated_at'],
         ],
+        // Éleveurs livreurs pour la réception du vif (CCP 1) — pas de
+        // données financières ni de coordonnées complètes.
+        'providers' => [
+            'model'   => \App\Models\Provider::class,
+            'columns' => ['id', 'name', 'type', 'status', 'updated_at'],
+        ],
         // Pas de SoftDeletes sur mill_productions/formulas : jamais de
         // tombstones — un OP annulé reste visible avec son statut « Annulé ».
         'mill_productions' => [

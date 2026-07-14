@@ -24,6 +24,7 @@ import type {
   RefPlot,
   RefProduct,
   RefProductionType,
+  RefProvider,
   RefSlaughterOrder,
   RefStock,
 } from '../api/types'
@@ -59,7 +60,7 @@ export interface MetaEntry {
 export interface LocalPhoto {
   uuid: string
   blob: Blob
-  context: 'incident' | 'expense' | 'daily_check'
+  context: 'incident' | 'expense' | 'daily_check' | 'reception' | 'cleaning'
   /** Chemin serveur une fois téléversée (le payload de l'op est alors mis à jour). */
   uploaded_path: string | null
   created_at: string
@@ -79,6 +80,7 @@ class ErpMobileDb extends Dexie {
   ref_plots!: Table<RefPlot, number>
   ref_crop_cycles!: Table<RefCropCycle, number>
   ref_slaughter_orders!: Table<RefSlaughterOrder, number>
+  ref_providers!: Table<RefProvider, number>
   ref_formulas!: Table<RefFormula, number>
   ref_mill_productions!: Table<RefMillProduction, number>
   meta!: Table<MetaEntry, string>
@@ -110,6 +112,10 @@ class ErpMobileDb extends Dexie {
       ref_slaughter_orders: 'id, batch_id, status',
       ref_formulas: 'id',
       ref_mill_productions: 'id, formula_id, status',
+    })
+    // v4 (Phase 3 — HACCP abattoir) : éleveurs livreurs pour la réception du vif.
+    this.version(4).stores({
+      ref_providers: 'id, name',
     })
   }
 }

@@ -17,10 +17,44 @@
                     <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm mb-6">
                         <div class="space-y-6">
 
-                            {{-- LOT SOURCE — tous types --}}
+                            {{-- SOURCE : lot interne OU réception externe (volailles hors élevage) --}}
                             <div class="space-y-2">
+                                <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Source des volailles *") }}</label>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <label class="cursor-pointer">
+                                        <input type="radio" value="batch" x-model="source" @change="onSourceChange()" class="peer sr-only" checked>
+                                        <div class="p-4 rounded-2xl border-2 text-center transition-all peer-checked:bg-rose-500 peer-checked:text-white peer-checked:border-rose-500 bg-slate-50 border-slate-100 text-slate-500">
+                                            <span class="text-[9px] font-black uppercase tracking-widest"><i class="fa-solid fa-kiwi-bird mr-1"></i>{{ __("Lot interne") }}</span>
+                                        </div>
+                                    </label>
+                                    <label class="cursor-pointer">
+                                        <input type="radio" value="reception" x-model="source" @change="onSourceChange()" class="peer sr-only">
+                                        <div class="p-4 rounded-2xl border-2 text-center transition-all peer-checked:bg-rose-500 peer-checked:text-white peer-checked:border-rose-500 bg-slate-50 border-slate-100 text-slate-500">
+                                            <span class="text-[9px] font-black uppercase tracking-widest"><i class="fa-solid fa-truck-ramp-box mr-1"></i>{{ __("Réception externe") }}</span>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+
+                            {{-- RÉCEPTION EXTERNE — décision ≠ refusé (RG-04), 7 derniers jours --}}
+                            <div class="space-y-2" x-show="source === 'reception'" x-transition>
+                                <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Réception du vif *") }}</label>
+                                <select name="reception_id" x-model="selectedReception" :disabled="source !== 'reception'" :required="source === 'reception'"
+                                    class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black uppercase shadow-inner outline-none">
+                                    <option value="">{{ __("— Sélectionner la réception —") }}</option>
+                                    @foreach($receptions as $rec)
+                                        <option value="{{ $rec->id }}">
+                                            #{{ $rec->id }} — {{ $rec->provider?->name ?? '—' }} — {{ $rec->reception_date->format('d/m/Y') }} — {{ $rec->received_quantity }} {{ __("sujets") }} ({{ str_replace('_', ' ', $rec->decision) }})
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <p class="text-[8px] text-slate-400 ml-2"><i class="fa-solid fa-shield-halved mr-1"></i>{{ __("Réceptions des 7 derniers jours non refusées — une réception refusée ne peut jamais donner d'ordre (RG-04).") }}</p>
+                            </div>
+
+                            {{-- LOT SOURCE — tous types --}}
+                            <div class="space-y-2" x-show="source === 'batch'">
                                 <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Lot source *") }}</label>
-                                <select name="batch_id" x-model="selectedBatch" @change="onBatchChange()" required
+                                <select name="batch_id" x-model="selectedBatch" @change="onBatchChange()" :disabled="source !== 'batch'" :required="source === 'batch'"
                                     class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black uppercase shadow-inner outline-none">
                                     <option value="">{{ __("— Sélectionner le lot —") }}</option>
 
@@ -146,11 +180,13 @@
                         </div>
                     </div>
 
-                    <button type="submit" :disabled="(plannedQty > maxQty && maxQty > 0) || !selectedBatch"
-                        :class="((plannedQty > maxQty && maxQty > 0) || !selectedBatch) ? 'bg-slate-300 cursor-not-allowed' : 'bg-rose-500 hover:bg-rose-600 cursor-pointer'"
+                    <button type="submit" :disabled="(source === 'batch' && ((plannedQty > maxQty && maxQty > 0) || !selectedBatch)) || (source === 'reception' && !selectedReception)"
+                        :class="((source === 'batch' && ((plannedQty > maxQty && maxQty > 0) || !selectedBatch)) || (source === 'reception' && !selectedReception)) ? 'bg-slate-300 cursor-not-allowed' : 'bg-rose-500 hover:bg-rose-600 cursor-pointer'"
                         class="w-full text-white py-6 rounded-[2rem] font-black text-xs uppercase tracking-[0.3em] transition-all shadow-2xl italic border-none">
                         <i class="fa-solid fa-clipboard-list mr-2"></i>
-                        <span x-text="plannedQty > maxQty && maxQty > 0 ? 'QUANTITÉ INSUFFISANTE' : (!selectedBatch ? 'SÉLECTIONNER UN LOT' : 'Créer l\'Ordre d\'Abattage')"></span>
+                        <span x-text="source === 'reception'
+                            ? (!selectedReception ? {{ Js::from(__('SÉLECTIONNER UNE RÉCEPTION')) }} : {{ Js::from(__('Créer l\'Ordre d\'Abattage')) }})
+                            : (plannedQty > maxQty && maxQty > 0 ? {{ Js::from(__('QUANTITÉ INSUFFISANTE')) }} : (!selectedBatch ? {{ Js::from(__('SÉLECTIONNER UN LOT')) }} : {{ Js::from(__('Créer l\'Ordre d\'Abattage')) }}))"></span>
                     </button>
                 </form>
             @else
@@ -172,10 +208,20 @@
         const yieldRepro = "{{ setting('abattoir.yield_repro_est', '55-65') }}";
 
         return {
+            source: 'batch', selectedReception: '',
             selectedBatch: '', plannedQty: 0, maxQty: 0,
             batchType: '', batchSpecies: '', speciesLabel: '', typeLabel: '', building: '', isReform: false,
             yieldPonte: yieldPonte,
             yieldRepro: yieldRepro,
+
+            onSourceChange() {
+                if (this.source === 'reception') {
+                    this.selectedBatch = ''; this.maxQty = 0; this.batchType = ''; this.batchSpecies = '';
+                    this.speciesLabel = ''; this.typeLabel = ''; this.building = ''; this.isReform = false;
+                } else {
+                    this.selectedReception = '';
+                }
+            },
 
             onBatchChange() {
                 const sel = document.querySelector('select[name="batch_id"]');

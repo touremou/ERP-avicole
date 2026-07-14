@@ -20,15 +20,16 @@ class PhotoController extends Controller
 {
     public function store(Request $request): JsonResponse
     {
-        // Toute photo terrain accompagne une écriture élevage/terrain.
-        if (Gate::denies('elevage.C')) {
-            return response()->json(['message' => 'Permission insuffisante.'], 403);
+        // Toute photo terrain accompagne une écriture élevage OU abattoir
+        // (certificat sanitaire de réception, preuve de nettoyage HACCP).
+        if (Gate::denies('elevage.C') && Gate::denies('abattoir.C')) {
+            return response()->json(['message' => __('Permission insuffisante.')], 403);
         }
 
         $validated = $request->validate([
             // 5 Mo max : les clients compressent avant envoi (règle data faible).
             'photo'   => 'required|image|max:5120',
-            'context' => 'nullable|string|in:incident,expense,daily_check',
+            'context' => 'nullable|string|in:incident,expense,daily_check,reception,cleaning',
         ]);
 
         $folder = 'field/' . ($validated['context'] ?? 'incident');
