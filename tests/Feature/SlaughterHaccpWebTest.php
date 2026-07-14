@@ -82,17 +82,41 @@ test('les écrans HACCP se rendent (réceptions, registres, dashboard, création
     $this->actingAs($this->manager);
 
     foreach ([
+        route('slaughter.registres.index'),
         route('slaughter.receptions.index'),
         route('slaughter.receptions.create'),
         route('slaughter.registres.ccp'),
         route('slaughter.registres.ccp.create'),
         route('slaughter.registres.temperatures'),
         route('slaughter.registres.nettoyage'),
+        route('slaughter.registres.sous_produits'),
         route('slaughter.dashboard'),
         route('slaughter.orders.create'),
     ] as $url) {
         $this->get($url)->assertOk();
     }
+});
+
+test('les pages index des registres n\'ont plus qu\'une seule flèche de retour (hub-back, pas de :back en double)', function () {
+    $this->actingAs($this->manager);
+
+    // hub-back rend <i class="fa-solid fa-arrow-left"> ; page-header :back rend
+    // <i class="fas fa-chevron-left">. Sur une page index de section, seul
+    // hub-back doit apparaître (une seule ancre de retour).
+    foreach (['slaughter.registres.ccp', 'slaughter.registres.temperatures',
+              'slaughter.registres.nettoyage', 'slaughter.registres.sous_produits',
+              'slaughter.receptions.index'] as $name) {
+        $html = $this->get(route($name))->assertOk()->getContent();
+        expect(substr_count($html, 'fa-chevron-left'))->toBe(0);      // pas de :back page-header
+        expect(substr_count($html, 'fa-arrow-left'))->toBe(1);        // un seul hub-back
+    }
+
+    // Le hub des registres remonte au tableau de bord (une flèche) ; les 4
+    // registres remontent au hub.
+    expect($this->get(route('slaughter.registres.index'))->getContent())
+        ->toContain(route('slaughter.dashboard'));
+    expect($this->get(route('slaughter.registres.ccp'))->getContent())
+        ->toContain(route('slaughter.registres.index'));
 });
 
 test('blocage par M, libération REFUSÉE à M et accordée à S, motifs obligatoires', function () {

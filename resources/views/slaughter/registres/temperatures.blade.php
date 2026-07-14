@@ -1,6 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <x-page-header :title="__('Registre des températures')" :subtitle="__('E4 — Relevés manuels par point de contrôle')" icon="fa-temperature-half" accent="rose" :back="route('slaughter.dashboard')">
+        <x-page-header :title="__('Registre des températures')" :subtitle="__('E4 — Relevés manuels par point de contrôle')" icon="fa-temperature-half" accent="rose">
             <x-slot name="actions">
                 <a href="{{ route('slaughter.registres.export', array_filter(['type' => 'temperatures', 'from' => request('from'), 'to' => request('to')])) }}" class="bg-slate-900 text-white px-5 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-slate-700 transition-all shadow-lg italic no-underline"><i class="fa-solid fa-file-pdf mr-1"></i> {{ __("Export PDF") }}</a>
             </x-slot>

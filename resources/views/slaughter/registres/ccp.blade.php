@@ -1,6 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <x-page-header :title="__('Registre CCP')" :subtitle="__('Points critiques HACCP 1-4 — registre opposable')" icon="fa-shield-halved" accent="rose" :back="route('slaughter.dashboard')">
+        <x-page-header :title="__('Registre CCP')" :subtitle="__('Points critiques HACCP 1-4 — registre opposable')" icon="fa-shield-halved" accent="rose">
             <x-slot name="actions">
                 @can('abattoir.C')
                 <a href="{{ route('slaughter.registres.ccp.create') }}" class="bg-rose-500 text-white px-5 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-rose-600 transition-all shadow-lg italic no-underline"><i class="fa-solid fa-plus mr-1"></i> {{ __("Saisir un relevé") }}</a>

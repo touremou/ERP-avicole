@@ -21,6 +21,32 @@ use Illuminate\Support\Facades\Gate;
 class HaccpRegisterController extends Controller
 {
     // ──────────────────────────────────────────────
+    // HUB DES REGISTRES — point d'entrée unique conformité
+    // ──────────────────────────────────────────────
+
+    public function registersHub()
+    {
+        if (Gate::denies('abattoir.L')) return redirect()->route('dashboard')->with('error', 'Accès restreint.');
+
+        // Compteurs rapides pour chaque registre (30 derniers jours) — donne à
+        // la qualité un aperçu de la complétude avant d'ouvrir le détail.
+        $since = now()->subDays((int) setting('abattoir.kpi_days', 30));
+
+        $counters = [
+            'ccp'          => CcpRecord::where('releve_at', '>=', $since)->count(),
+            'ccp_nc'       => CcpRecord::where('conforme', false)->where('releve_at', '>=', $since)->count(),
+            'temp'         => TemperatureLog::where('releve_at', '>=', $since)->count(),
+            'temp_today'   => TemperatureLog::whereDate('releve_at', today())->count(),
+            'temp_req'     => (int) setting('abattoir.temp_readings_per_day', 2),
+            'cleaning'     => CleaningLog::where('done_at', '>=', $since)->count(),
+            'byproducts'   => \App\Models\SlaughterByproduct::where('collected_at', '>=', $since)->count(),
+            'days'         => (int) setting('abattoir.kpi_days', 30),
+        ];
+
+        return view('slaughter.registres.index', compact('counters'));
+    }
+
+    // ──────────────────────────────────────────────
     // REGISTRE CCP
     // ──────────────────────────────────────────────
 

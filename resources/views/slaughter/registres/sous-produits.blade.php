@@ -1,6 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <x-page-header :title="__('Registre des sous-produits')" :subtitle="__('E9 — Sang, plumes, viscères : volumes et destination')" icon="fa-recycle" accent="rose" :back="route('slaughter.dashboard')" />
+        <x-page-header :title="__('Registre des sous-produits')" :subtitle="__('E9 — Sang, plumes, viscères : volumes et destination')" icon="fa-recycle" accent="rose" />
     </x-slot>
 
     <div class="py-10">

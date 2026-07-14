@@ -29,6 +29,12 @@
     // Élevage (que l'utilisateur perçoit comme un tableau de bord).
     $parentOverride = [
         'daily-checks.index' => 'batches.index',
+        // Les 4 registres HACCP remontent vers LEUR hub (« Registres HACCP »),
+        // pas vers le tableau de bord de l'abattoir.
+        'slaughter.registres.ccp'          => 'slaughter.registres.index',
+        'slaughter.registres.temperatures' => 'slaughter.registres.index',
+        'slaughter.registres.nettoyage'    => 'slaughter.registres.index',
+        'slaughter.registres.sous_produits' => 'slaughter.registres.index',
     ];
 
     $target = null;

@@ -807,6 +807,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/receptions', [\App\Http\Controllers\SlaughterReceptionController::class, 'store'])->name('receptions.store')->middleware('can:C');
 
         // Registres HACCP (CCP, températures, nettoyage) — INSERT-ONLY (RG-06).
+        Route::get('/registres', [\App\Http\Controllers\HaccpRegisterController::class, 'registersHub'])->name('registres.index')->middleware('can:L');
         Route::get('/registres/ccp', [\App\Http\Controllers\HaccpRegisterController::class, 'ccpIndex'])->name('registres.ccp')->middleware('can:L');
         Route::get('/registres/ccp/create', [\App\Http\Controllers\HaccpRegisterController::class, 'ccpCreate'])->name('registres.ccp.create')->middleware('can:C');
         Route::post('/registres/ccp', [\App\Http\Controllers\HaccpRegisterController::class, 'ccpStore'])->name('registres.ccp.store')->middleware('can:C');
