@@ -9,6 +9,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { db } from '../../offline/db'
 import { enqueue } from '../../offline/sync'
+import { lastPayloadOf } from '../../offline/prefill'
 import { NumberStepper } from '../../ui/NumberStepper'
 import { t, dateLocale } from '../../i18n'
 import type { RefBatch, RefStock } from '../../api/types'
@@ -24,6 +25,7 @@ export function DailyCheckScreen() {
   const [feedType, setFeedType] = useState('')
   const [avgWeight, setAvgWeight] = useState('')
   const [observations, setObservations] = useState('')
+  const [prefilled, setPrefilled] = useState(false)
   const [saved, setSaved] = useState(false)
 
   useEffect(() => {
@@ -38,6 +40,20 @@ export function DailyCheckScreen() {
         setFeedStocks(stocks)
         if (stocks.length === 1) setFeedType(stocks[0].item_name)
       })
+
+    // Anti-corvée : la conso d'aliment et son type varient peu d'un jour à
+    // l'autre → préremplis depuis le dernier pointage LOCAL du même lot.
+    // La mortalité, elle, repart toujours de zéro (jamais présumée).
+    if (batchId) {
+      void lastPayloadOf('daily_check.create', (p) => p.batch_id === Number(batchId)).then((last) => {
+        if (!last) return
+        if (typeof last.feed_consumed === 'number' && last.feed_consumed > 0) {
+          setFeedConsumed(last.feed_consumed)
+          if (typeof last.feed_type === 'string' && last.feed_type) setFeedType(last.feed_type)
+          setPrefilled(true)
+        }
+      })
+    }
   }, [batchId])
 
   async function onSubmit(event: FormEvent) {
@@ -96,6 +112,9 @@ export function DailyCheckScreen() {
         min={0}
         step={5}
       />
+      {prefilled && (
+        <p className="muted">{t('↺ Aliment prérempli d’après votre dernier pointage — corrigez si besoin.')}</p>
+      )}
 
       {feedConsumed > 0 && (
         <>

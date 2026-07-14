@@ -3,10 +3,11 @@
  * optionnelle (même pipeline hors-ligne que les dépenses).
  * Contrat : SyncService::cleaningLogCreate (gate abattoir.C).
  */
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { db } from '../../offline/db'
 import { enqueue } from '../../offline/sync'
+import { lastPayloadOf } from '../../offline/prefill'
 import { platform, compressImage } from '../../platform'
 import { t } from '../../i18n'
 
@@ -30,6 +31,16 @@ export function CleaningScreen() {
   const [photoBlob, setPhotoBlob] = useState<Blob | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
+
+  // Anti-corvée : le plan de nettoyage se répète (même produit agréé, même
+  // dosage par zone) → prérempli depuis la dernière saisie locale de la zone.
+  useEffect(() => {
+    void lastPayloadOf('cleaning_log.create', (p) => p.zone === zone).then((last) => {
+      if (!last) return
+      if (typeof last.product_used === 'string') setProductUsed(last.product_used)
+      setDosage(typeof last.dosage === 'string' ? last.dosage : '')
+    })
+  }, [zone])
 
   async function attachPhoto() {
     const file = await platform.takePhoto()

@@ -5,6 +5,12 @@
  * orpheline des deux côtés au moment de la génération).
  */
 export const en: Record<string, string> = {
+  '↺ Aliment prérempli d’après votre dernier pointage — corrigez si besoin.': '↺ Feed pre-filled from your last daily check — adjust if needed.',
+  '🛡️ CCP 3 — T° à cœur après refroidissement (°C) — recommandé': '🛡️ CCP 3 — Core temp after chilling (°C) — recommended',
+  'ex. 3.4': 'e.g. 3.4',
+  'Le relevé CCP 3 part avec l’abattage — plus rien à ressaisir au registre.': 'The CCP 3 record goes with the slaughter — nothing to re-enter in the register.',
+  'Action corrective (si hors seuil)': 'Corrective action (if out of range)',
+  'CCP 3 :order : :temp °C': 'CCP 3 :order: :temp °C',
   'Sous-produit': 'By-product',
   'Sous-produit :type (:qty kg)': 'By-product :type (:qty kg)',
   'Sous-produit d\'abattage': 'Slaughter by-product',

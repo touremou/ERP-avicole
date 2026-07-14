@@ -4,9 +4,10 @@
  * le terrain saisit la mesure et, si besoin, l'action corrective.
  * Contrat : SyncService::temperatureLogCreate (gate abattoir.C).
  */
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { enqueue } from '../../offline/sync'
+import { lastPayloadOf } from '../../offline/prefill'
 import { t } from '../../i18n'
 
 /** Miroir de App\Models\TemperatureLog::POINT_LABELS. */
@@ -27,6 +28,14 @@ export function TemperatureScreen() {
   const [saved, setSaved] = useState(false)
 
   const valid = temperature.trim() !== '' && !Number.isNaN(Number(temperature))
+
+  // Anti-corvée : le même point de contrôle se relève sur le même
+  // équipement (CF-01, Camion-A…) → rappelle celui du dernier relevé local.
+  useEffect(() => {
+    void lastPayloadOf('temperature_log.create', (p) => p.point === point).then((last) => {
+      if (last && typeof last.equipment_ref === 'string') setEquipmentRef(last.equipment_ref)
+    })
+  }, [point])
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault()

@@ -87,7 +87,8 @@
                             <th class="px-3 py-4 text-center">{{ __("Photo") }}</th>
                             <th class="px-3 py-4 text-left">{{ __("Opérateur") }}</th>
                             <th class="px-3 py-4 text-center">{{ __("Effectué le") }}</th>
-                            <th class="px-5 py-4 text-center">{{ __("Synchronisé le") }}</th>
+                            <th class="px-3 py-4 text-center">{{ __("Synchronisé le") }}</th>
+                            @can('abattoir.C')<th class="px-5 py-4 text-center">{{ __("Refaire") }}</th>@endcan
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-50">
@@ -106,11 +107,26 @@
                             </td>
                             <td class="px-3 py-4 text-[9px] font-black text-slate-600 uppercase">{{ $log->operator?->name ?? '—' }}</td>
                             <td class="px-3 py-4 text-center text-[9px] font-black text-slate-600">{{ $log->done_at?->format('d/m/Y H:i') ?? '—' }}</td>
-                            <td class="px-5 py-4 text-center text-[9px] font-black text-slate-400">{{ $log->synced_at?->format('d/m/Y H:i') ?? '—' }}</td>
+                            <td class="px-3 py-4 text-center text-[9px] font-black text-slate-400">{{ $log->synced_at?->format('d/m/Y H:i') ?? '—' }}</td>
+                            @can('abattoir.C')
+                            <td class="px-5 py-4 text-center">
+                                {{-- Anti-corvée : re-consigner l'opération identique
+                                     (zone/produit/dosage) en UN clic, horodatée maintenant. --}}
+                                <form method="POST" action="{{ route('slaughter.registres.nettoyage.store') }}" class="inline">
+                                    @csrf
+                                    <input type="hidden" name="zone" value="{{ $log->zone }}">
+                                    <input type="hidden" name="product_used" value="{{ $log->product_used }}">
+                                    <input type="hidden" name="dosage" value="{{ $log->dosage }}">
+                                    <button type="submit" class="bg-slate-100 text-slate-500 hover:bg-rose-500 hover:text-white px-3 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all border-none cursor-pointer" title="{{ __('Refaire à l’identique, maintenant') }}">
+                                        <i class="fa-solid fa-rotate-right"></i>
+                                    </button>
+                                </form>
+                            </td>
+                            @endcan
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="8" class="px-8 py-16 text-center">
+                            <td colspan="9" class="px-8 py-16 text-center">
                                 <i class="fa-solid fa-broom text-slate-200 text-3xl mb-4 block"></i>
                                 <p class="text-[10px] text-slate-400 uppercase tracking-widest font-black">{{ __("Aucune opération de nettoyage enregistrée") }}</p>
                             </td>

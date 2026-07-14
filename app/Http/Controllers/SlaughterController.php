@@ -325,7 +325,33 @@ class SlaughterController extends Controller
             'condemned_reason'        => 'nullable|string|max:500',
             'execution_date'          => 'required|date',
             'inspector_notes'         => 'nullable|string|max:1000',
+            // Anti-corvée : le CCP 3 se saisit ICI, dans le même geste que
+            // l'abattage (sinon : second écran + alerte « CCP 3 manquant »
+            // le soir). Optionnel — le registre reste saisissable à part.
+            'ccp3_core_temp'          => 'nullable|numeric|min:-10|max:60',
+            'ccp3_corrective_action'  => 'nullable|string|max:2000',
         ]);
+
+        // Pré-évaluation du CCP 3 AVANT d'abattre : un constat non conforme
+        // sans action corrective doit bloquer la soumission entière (on ne
+        // veut pas d'un abattage fait mais d'un CCP rejeté après coup).
+        if (($validated['ccp3_core_temp'] ?? null) !== null && $validated['ccp3_core_temp'] !== '') {
+            $ccpAction = app(\App\Actions\Slaughter\RecordCcp::class);
+            $conforme = $ccpAction->evaluate(
+                \App\Models\CcpRecord::CCP3,
+                ['temperature_coeur' => (float) $validated['ccp3_core_temp']],
+                null,
+            );
+
+            if (! $conforme && blank($validated['ccp3_corrective_action'] ?? null)) {
+                return back()->withErrors([
+                    'ccp3_corrective_action' => __('T° à cœur hors seuil (:temp °C > :max °C) : une action corrective est obligatoire — le lot sera bloqué automatiquement.', [
+                        'temp' => $validated['ccp3_core_temp'],
+                        'max'  => setting('abattoir.ccp3_core_temp_max'),
+                    ]),
+                ])->withInput();
+            }
+        }
 
         // ── Cohérence des pesées ──
         // Une carcasse ne peut jamais peser plus que l'animal vivant, quelle
@@ -349,8 +375,30 @@ class SlaughterController extends Controller
         try {
             $result = $service->executeSlaughter($order, $validated);
 
+            // CCP 3 dans le même geste (pré-validé plus haut) : relevé créé,
+            // blocage automatique si hors seuil (RG-02) — best-effort, un
+            // échec ici ne défait pas l'abattage (le registre reste saisissable).
+            $ccpNote = '';
+            if (($validated['ccp3_core_temp'] ?? null) !== null && $validated['ccp3_core_temp'] !== '') {
+                try {
+                    $record = app(\App\Actions\Slaughter\RecordCcp::class)->execute([
+                        'ccp'                => \App\Models\CcpRecord::CCP3,
+                        'slaughter_order_id' => $order->id,
+                        'mesures'            => ['temperature_coeur' => (float) $validated['ccp3_core_temp']],
+                        'corrective_action'  => $validated['ccp3_corrective_action'] ?? null,
+                        'operator_id'        => Auth::id(),
+                        'releve_at'          => now(),
+                    ]);
+                    $ccpNote = $record->conforme
+                        ? ' ' . __('CCP 3 conforme enregistré (:temp °C).', ['temp' => $validated['ccp3_core_temp']])
+                        : ' ' . __('CCP 3 NON CONFORME — lot bloqué automatiquement.');
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning("CCP3 intégré non enregistré pour {$order->order_number} : {$e->getMessage()}");
+                }
+            }
+
             return redirect()->route('slaughter.dashboard')
-                ->with('success', "Abattage {$order->order_number} terminé — Rendement carcasse: {$result->carcass_yield_percent}%.");
+                ->with('success', "Abattage {$order->order_number} terminé — Rendement carcasse: {$result->carcass_yield_percent}%." . $ccpNote);
         } catch (\Exception $e) {
             return back()->with('error', $e->getMessage())->withInput();
         }

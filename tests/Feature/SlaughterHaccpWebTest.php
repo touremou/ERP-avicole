@@ -226,6 +226,51 @@ test('le dossier de lot retrace la chaîne complète (amont → CCP → produits
         ->assertOk()->assertHeader('content-type', 'application/pdf');
 });
 
+test('anti-corvée : la T° à cœur saisie à l\'exécution crée le relevé CCP 3 automatiquement', function () {
+    $order = webOrder($this->manager);
+
+    // Conforme (3.2 ≤ 4) : abattage + CCP 3 en UNE soumission.
+    $this->actingAs($this->manager)
+        ->post(route('slaughter.execute.store', $order), [
+            'actual_quantity' => 60, 'total_live_weight_kg' => 120,
+            'total_carcass_weight_kg' => 90, 'execution_date' => now()->toDateString(),
+            'ccp3_core_temp' => 3.2,
+        ])->assertRedirect(route('slaughter.dashboard'));
+
+    $record = \App\Models\CcpRecord::where('slaughter_order_id', $order->id)
+        ->where('ccp', \App\Models\CcpRecord::CCP3)->first();
+    expect($record)->not->toBeNull()
+        ->and($record->conforme)->toBeTrue()
+        ->and((float) $record->mesures['temperature_coeur'])->toBe(3.2);
+    expect($order->fresh()->status)->toBe('termine');
+});
+
+test('anti-corvée : T° à cœur HORS SEUIL sans action corrective → soumission refusée AVANT l\'abattage', function () {
+    $order = webOrder($this->manager);
+
+    $this->actingAs($this->manager)
+        ->post(route('slaughter.execute.store', $order), [
+            'actual_quantity' => 60, 'total_live_weight_kg' => 120,
+            'total_carcass_weight_kg' => 90, 'execution_date' => now()->toDateString(),
+            'ccp3_core_temp' => 6.5, // > 4 °C
+        ])->assertSessionHasErrors('ccp3_corrective_action');
+
+    // Rien n'a été exécuté : pas d'abattage orphelin d'un CCP rejeté.
+    expect($order->fresh()->status)->toBe('planifie')
+        ->and(\App\Models\CcpRecord::count())->toBe(0);
+
+    // Avec l'action corrective : abattage fait, CCP 3 non conforme, lot BLOQUÉ (RG-02).
+    $this->post(route('slaughter.execute.store', $order), [
+        'actual_quantity' => 60, 'total_live_weight_kg' => 120,
+        'total_carcass_weight_kg' => 90, 'execution_date' => now()->toDateString(),
+        'ccp3_core_temp' => 6.5,
+        'ccp3_corrective_action' => 'Carcasses replongées en bac glacé, re-contrôle 30 min',
+    ])->assertRedirect(route('slaughter.dashboard'));
+
+    expect($order->fresh()->status)->toBe('bloque')
+        ->and(\App\Models\CcpRecord::where('conforme', false)->count())->toBe(1);
+});
+
 test('l\'export PDF du registre des températures répond', function () {
     $this->actingAs($this->qualite);
 

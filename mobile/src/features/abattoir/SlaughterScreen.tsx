@@ -24,6 +24,10 @@ export function SlaughterScreen() {
   const [carcassWeight, setCarcassWeight] = useState('')
   const [condemned, setCondemned] = useState(0)
   const [notes, setNotes] = useState('')
+  // Anti-corvée : le CCP 3 (T° à cœur) se saisit dans le MÊME geste —
+  // une seconde opération part dans la file, pas de second écran.
+  const [coreTemp, setCoreTemp] = useState('')
+  const [ccpAction, setCcpAction] = useState('')
   const [saved, setSaved] = useState(false)
 
   useEffect(() => {
@@ -57,6 +61,23 @@ export function SlaughterScreen() {
       },
       t('Abattage :order (:qty sujets)', { order: order.order_number, qty: actualQuantity }),
     )
+
+    // CCP 3 dans la foulée (file FIFO : part APRÈS l'exécution). La
+    // conformité est évaluée serveur ; hors seuil sans action → bac
+    // « À corriger », le geste d'abattage n'est jamais perdu.
+    if (coreTemp.trim() !== '' && !Number.isNaN(Number(coreTemp))) {
+      await enqueue(
+        'ccp_record.create',
+        {
+          ccp: 'ccp3_refroidissement',
+          slaughter_order_id: order.id,
+          mesures: { temperature_coeur: Number(coreTemp) },
+          corrective_action: ccpAction.trim() || null,
+          releve_at: new Date().toISOString(),
+        },
+        t('CCP 3 :order : :temp °C', { order: order.order_number, temp: Number(coreTemp) }),
+      )
+    }
 
     setSaved(true)
     setTimeout(() => navigate('/'), 900)
@@ -128,6 +149,26 @@ export function SlaughterScreen() {
 
       <label htmlFor="notes">{t("Notes d'inspection — optionnel")}</label>
       <textarea id="notes" rows={2} maxLength={1000} value={notes} onChange={(e) => setNotes(e.target.value)} />
+
+      <label htmlFor="coretemp">{t('🛡️ CCP 3 — T° à cœur après refroidissement (°C) — recommandé')}</label>
+      <input
+        id="coretemp"
+        type="number"
+        inputMode="decimal"
+        min={-10}
+        max={60}
+        step="0.1"
+        value={coreTemp}
+        onChange={(e) => setCoreTemp(e.target.value)}
+        placeholder={t('ex. 3.4')}
+      />
+      {coreTemp.trim() !== '' && (
+        <>
+          <p className="muted">{t('Le relevé CCP 3 part avec l’abattage — plus rien à ressaisir au registre.')}</p>
+          <label htmlFor="ccpaction">{t('Action corrective (si hors seuil)')}</label>
+          <textarea id="ccpaction" rows={2} maxLength={2000} value={ccpAction} onChange={(e) => setCcpAction(e.target.value)} />
+        </>
+      )}
 
       <button type="submit" className="btn-primary" disabled={actualQuantity <= 0 || !weightsValid}>
         {t("Enregistrer l'abattage")}
