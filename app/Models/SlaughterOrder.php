@@ -42,6 +42,7 @@ class SlaughterOrder extends Model
     public function cuttingSessions(): HasMany { return $this->hasMany(CuttingSession::class); }
     public function reception(): BelongsTo { return $this->belongsTo(SlaughterReception::class, 'reception_id'); }
     public function ccpRecords(): HasMany { return $this->hasMany(CcpRecord::class); }
+    public function byproducts(): HasMany { return $this->hasMany(SlaughterByproduct::class); }
     public function blockedBy(): BelongsTo { return $this->belongsTo(User::class, 'blocked_by_id'); }
     public function releasedBy(): BelongsTo { return $this->belongsTo(User::class, 'released_by_id'); }
 

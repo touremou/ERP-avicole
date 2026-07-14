@@ -797,6 +797,7 @@ Route::middleware(['auth'])->group(function () {
 
         // Blocage / libération qualité (RG-02/RG-03) — libération réservée
         // au niveau QUALITÉ (S), motif obligatoire dans les deux sens.
+        Route::get('/orders/{order}/tracabilite', 'traceability')->name('orders.traceability')->middleware('can:L');
         Route::patch('/orders/{order}/block', 'blockOrder')->name('orders.block')->middleware('can:M');
         Route::patch('/orders/{order}/release', 'releaseOrder')->name('orders.release')->middleware('can:S');
 

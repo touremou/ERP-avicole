@@ -83,7 +83,7 @@
                     <div class="px-6 py-4 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                         <div>
                             <p class="text-xs font-black text-slate-900 uppercase m-0">
-                                {{ $blocked->order_number }}
+                                <a href="{{ route('slaughter.orders.traceability', $blocked) }}" class="text-slate-900 no-underline hover:text-rose-600">{{ $blocked->order_number }}</a>
                                 <span class="text-[7px] font-black text-red-700 bg-red-100 px-2 py-0.5 rounded-full ml-1 animate-pulse">{{ __("BLOQUÉ") }}</span>
                             </p>
                             <p class="text-[8px] text-slate-400 font-black uppercase m-0 mt-1">
@@ -280,7 +280,9 @@
                     <tbody class="divide-y divide-slate-50">
                         @foreach($recentResults as $order)
                         <tr class="hover:bg-slate-50/50">
-                            <td class="px-6 py-3 text-xs font-black text-slate-900 uppercase">{{ $order->order_number }}</td>
+                            <td class="px-6 py-3 text-xs font-black text-slate-900 uppercase">
+                                <a href="{{ route('slaughter.orders.traceability', $order) }}" class="text-slate-900 no-underline hover:text-rose-600" title="{{ __('Dossier de lot (traçabilité)') }}">{{ $order->order_number }} <i class="fa-solid fa-route text-[8px] text-slate-300"></i></a>
+                            </td>
                             <td class="px-4 py-3 text-[10px] font-black text-slate-700">{{ $order->batch->code ?? '—' }}</td>
                             <td class="px-4 py-3 text-center text-sm font-black text-slate-900">{{ $order->actual_quantity }}</td>
                             <td class="px-4 py-3 text-right text-[10px] font-black text-slate-600">{{ number_format($order->total_live_weight_kg, 1) }} kg</td>

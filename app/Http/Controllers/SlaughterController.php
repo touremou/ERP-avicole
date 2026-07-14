@@ -110,6 +110,41 @@ class SlaughterController extends Controller
         return view('slaughter.create-order', compact('batches', 'clients', 'receptions'));
     }
 
+    /**
+     * Dossier de lot — traçabilité complète de l'ordre (exigence n°1 de la
+     * spec Transformation : remonter d'un produit livré à l'éleveur
+     * d'origine en < 5 minutes) : réception/lot amont → contrôles CCP →
+     * exécution → découpes → produits finis → sous-produits, avec les
+     * décisions qualité (blocage/libération). ?format=pdf → dossier
+     * imprimable (rappel ciblé, inspection vétérinaire).
+     */
+    public function traceability(Request $request, SlaughterOrder $order)
+    {
+        if (Gate::denies('abattoir.L')) return redirect()->route('dashboard')->with('error', 'Accès restreint.');
+
+        $order->load([
+            'batch.building', 'reception.provider', 'client',
+            'requester', 'executor', 'blockedBy', 'releasedBy',
+            'result',
+            'ccpRecords' => fn ($q) => $q->with('operator')->orderBy('releve_at'),
+            'cuttingSessions.products',
+            'byproducts' => fn ($q) => $q->with('operator')->orderBy('collected_at'),
+        ]);
+
+        if ($request->query('format') === 'pdf') {
+            $pdf = \Pdf::loadView('slaughter.pdf.dossier-lot', [
+                'order'       => $order,
+                'generatedAt' => now(),
+                'farm'        => \App\Models\Farm::find(session('current_farm_id'))?->name
+                    ?? setting('general.company_name', config('app.name')),
+            ])->setPaper('a4');
+
+            return $pdf->download("dossier-lot-{$order->order_number}.pdf");
+        }
+
+        return view('slaughter.traceability', compact('order'));
+    }
+
     public function storeOrder(Request $request)
     {
         if (Gate::denies('abattoir.C')) return back()->with('error', 'Action non autorisée.');

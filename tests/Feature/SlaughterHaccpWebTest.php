@@ -159,6 +159,49 @@ test('les registres sont insert-only : aucune route update/delete n\'existe', fu
     }
 });
 
+test('le dossier de lot retrace la chaîne complète (amont → CCP → produits) et s\'exporte en PDF', function () {
+    $provider = Provider::factory()->create(['name' => 'Élevage Camara']);
+    $reception = SlaughterReception::create([
+        'provider_id' => $provider->id, 'reception_date' => now()->toDateString(),
+        'received_quantity' => 100, 'rejected_quantity' => 2, 'total_live_weight_kg' => 180,
+        'sanitary_state' => 'conforme', 'fasting_respected' => 'oui',
+        'decision' => 'accepte', 'controller_id' => $this->manager->id, 'validated_at' => now(),
+    ]);
+
+    $order = SlaughterOrder::create([
+        'order_number' => SlaughterOrder::generateNumber(), 'reception_id' => $reception->id,
+        'planned_date' => now()->toDateString(), 'planned_quantity' => 98,
+        'status' => 'planifie', 'requested_by' => $this->manager->id,
+    ]);
+
+    app(\App\Services\SlaughterService::class)->executeSlaughter($order, [
+        'actual_quantity' => 98, 'total_live_weight_kg' => 176,
+        'total_carcass_weight_kg' => 130, 'execution_date' => now()->toDateString(),
+    ]);
+
+    app(\App\Actions\Slaughter\RecordCcp::class)->execute([
+        'ccp' => \App\Models\CcpRecord::CCP3, 'slaughter_order_id' => $order->id,
+        'mesures' => ['temperature_coeur' => 3.2],
+        'operator_id' => $this->manager->id, 'releve_at' => now(),
+    ]);
+
+    \App\Models\SlaughterByproduct::create([
+        'slaughter_order_id' => $order->id, 'type' => 'plumes', 'quantity_kg' => 9.5,
+        'destination' => 'compost', 'operator_id' => $this->manager->id,
+        'collected_at' => now(), 'synced_at' => now(),
+    ]);
+
+    $this->actingAs($this->manager)
+        ->get(route('slaughter.orders.traceability', $order))
+        ->assertOk()
+        ->assertSee('Élevage Camara')            // amont : l'éleveur d'origine
+        ->assertSee('CCP 3')                     // contrôle tracé
+        ->assertSee('Plumes');                   // aval : sous-produit
+
+    $this->get(route('slaughter.orders.traceability', [$order, 'format' => 'pdf']))
+        ->assertOk()->assertHeader('content-type', 'application/pdf');
+});
+
 test('l\'export PDF du registre des températures répond', function () {
     $this->actingAs($this->qualite);
 
