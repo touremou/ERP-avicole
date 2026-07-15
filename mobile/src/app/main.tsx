@@ -3,6 +3,12 @@ import ReactDOM from 'react-dom/client'
 import { registerSW } from 'virtual:pwa-register'
 import { App } from './App'
 import { initLocale } from '../i18n'
+// Inter auto-hébergée (bundlée par Vite) : rendu identique hors-ligne, sans CDN.
+import '@fontsource/inter/400.css'
+import '@fontsource/inter/500.css'
+import '@fontsource/inter/600.css'
+import '@fontsource/inter/700.css'
+import '@fontsource/inter/800.css'
 import '../ui/styles.css'
 
 // Service worker : mise à jour silencieuse (autoUpdate) — le terrain a
