@@ -1,7 +1,7 @@
 import { useEffect, useSyncExternalStore } from 'react'
-import { HashRouter, Link, Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { HashRouter, Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './AuthContext'
-import { getLocale, subscribeLocale } from '../i18n'
+import { getLocale, subscribeLocale, t } from '../i18n'
 import { startSyncLoop } from '../offline/sync'
 import { LoginScreen } from '../features/auth/LoginScreen'
 import { HomeScreen } from '../features/home/HomeScreen'
@@ -32,6 +32,7 @@ function Shell() {
   // Changement de langue → re-rendu complet (t() lit un état module).
   const locale = useSyncExternalStore(subscribeLocale, getLocale)
   const onHome = useLocation().pathname === '/'
+  const navigate = useNavigate()
 
   useEffect(() => {
     if (me) startSyncLoop()
@@ -54,6 +55,17 @@ function Shell() {
         </div>
         <SyncBadge />
       </header>
+      {/* Barre de retour — présente sur tout écran hors accueil (cible pouce). */}
+      {!onHome && (
+        <div className="subbar">
+          <button type="button" className="subbar-back" onClick={() => navigate(-1)}>
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m15 18-6-6 6-6" />
+            </svg>
+            {t('Retour')}
+          </button>
+        </div>
+      )}
       <main className="app-main">
         <Routes>
           <Route path="/" element={<HomeScreen />} />

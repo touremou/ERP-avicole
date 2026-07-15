@@ -73,6 +73,7 @@ export const en: Record<string, string> = {
   'Cultures': 'Crops',
   ':count tâche(s) à traiter aujourd’hui': ':count task(s) to handle today',
   'Rien d’urgent — bonne journée sur le terrain.': 'Nothing urgent — have a good day in the field.',
+  'Retour': 'Back',
   'Bâtiment #:id': 'Building #:id',
   'Cadavres constatés': 'Dead birds found',
   'Carburant': 'Fuel',

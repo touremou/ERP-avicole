@@ -337,6 +337,33 @@ input:focus, textarea:focus, select:focus {
   border-radius: 8px; width: 32px; height: 32px; font-weight: 800; cursor: pointer;
 }
 
+/* ── Barre de retour (écrans hors accueil) ── */
+.subbar {
+  display: flex; align-items: center;
+  padding: 5px 8px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+.subbar-back {
+  display: inline-flex; align-items: center; gap: 3px;
+  min-height: 40px; padding: 6px 12px 6px 8px;
+  border: none; background: none; cursor: pointer;
+  color: var(--primary); font-weight: 700; font-size: 15px;
+  font-family: inherit; border-radius: 10px;
+}
+.subbar-back:active { background: var(--primary-50); }
+
+/* ── État de confirmation (après sauvegarde) ── */
+.screen-center .success.big {
+  font-size: 22px;
+  display: inline-flex; align-items: center; gap: 8px;
+  animation: pop 0.28s ease;
+}
+@keyframes pop {
+  from { transform: scale(0.82); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  * { transition: none !important; }
+  *, *::before, *::after { transition: none !important; animation: none !important; }
 }
