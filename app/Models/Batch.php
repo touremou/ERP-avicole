@@ -24,9 +24,9 @@ use App\Models\EnergyReading;
  * - qty_dead = mortalité d'arrivage uniquement, figé après création
  * - total_mortality = accessor calculé depuis qty_dead + SUM(daily_checks.mortality)
  *
- * Observers enregistrés dans AppServiceProvider :
- * - BatchObserver : alertes mortalité, cascade soft-delete
- * - DailyCheckObserver : impact sur current_quantity (lockForUpdate)
+ * Hooks d'effectif :
+ * - BatchObserver (enregistré dans AppServiceProvider) : alertes mortalité, cascade soft-delete
+ * - DailyCheck::booted() : impact sur current_quantity (lockForUpdate)
  */
 class Batch extends Model
 {
@@ -227,6 +227,36 @@ class Batch extends Model
         return $this->hasMany(HealthCheck::class);
     }
 
+    public function healthIncidents(): HasMany
+    {
+        return $this->hasMany(HealthIncident::class);
+    }
+
+    /**
+     * Incident sanitaire OUVERT plaçant ce lot en quarantaine (null sinon).
+     *
+     * Biosécurité : tant qu'une quarantaine est active, la vente à la tête
+     * (ValidateSale), la mutation (TransferBatch) et la collecte d'œufs
+     * (RecordEggCollection) sont refusées CÔTÉ SERVEUR. La levée passe
+     * exclusivement par le circuit santé (résolution ou toggle incident).
+     */
+    public function activeQuarantine(): ?HealthIncident
+    {
+        return $this->healthIncidents()
+            ->where('is_quarantined', true)
+            ->where('status', '!=', HealthIncident::STATUS_RESOLVED)
+            ->latest('quarantine_started_at')
+            ->first();
+    }
+
+    public function isQuarantined(): bool
+    {
+        return $this->healthIncidents()
+            ->where('is_quarantined', true)
+            ->where('status', '!=', HealthIncident::STATUS_RESOLVED)
+            ->exists();
+    }
+
     public function feedPurchases(): HasMany
     {
         return $this->hasMany(FeedPurchase::class);
@@ -297,7 +327,7 @@ class Batch extends Model
             }
         });
 
-        // NOTE : Les hooks d'impact sur current_quantity sont dans DailyCheckObserver
+        // NOTE : Les hooks d'impact sur current_quantity sont dans DailyCheck::booted()
         // Les hooks d'alerte mortalité et cascade soft-delete sont dans BatchObserver
     }
 
@@ -417,6 +447,45 @@ class Batch extends Model
     public function isGmqTracked(): bool
     {
         return $this->species?->isGmqTracked() ?? false;
+    }
+
+    /**
+     * Le lot est-il élevé sur litière (suivi du renouvellement + valorisation
+     * du fumier) ? Concerne les volailles et les lapins (litière profonde).
+     * Pilote l'affichage du bloc « Litière / Fumier » du pointage journalier.
+     */
+    public function usesLitter(): bool
+    {
+        return $this->isVolaille() || $this->species?->family === 'lagomorphe';
+    }
+
+    /**
+     * Le picage / cannibalisme est un trouble comportemental propre aux
+     * volailles : on ne le suit que pour ces lots.
+     */
+    public function tracksPecking(): bool
+    {
+        return $this->isVolaille();
+    }
+
+    /**
+     * Suivi de la boiterie (bien-être locomoteur) : pertinent pour les
+     * volailles (pododermatite, croissance rapide) comme pour les mammifères
+     * d'élevage (ruminants, porcins).
+     */
+    public function tracksLameness(): bool
+    {
+        return $this->isVolaille() || $this->isGmqTracked();
+    }
+
+    /**
+     * Suivi de l'ambiance « air » (température/hygrométrie du bâtiment,
+     * litière, abreuvement classique). Sans objet en pisciculture, où le
+     * milieu est l'eau elle-même (cf. section qualité d'eau dédiée).
+     */
+    public function tracksAirAmbiance(): bool
+    {
+        return ! $this->isAquaculture();
     }
 
     /** Indique si le lot est actuellement en production (statut Actif). */
@@ -689,8 +758,45 @@ class Batch extends Model
      */
     public function getTotalMortalityAttribute(): int
     {
+        // Mortalité troupeau (impacte l'effectif) + mortalité EN INFIRMERIE
+        // (sujets déjà isolés : aucun impact effectif, mais bien des pertes).
         return (int) ($this->qty_dead ?? 0)
-             + (int) $this->dailyChecks()->sum('mortality');
+             + (int) $this->dailyChecks()->sum('mortality')
+             + (int) $this->dailyChecks()->sum('mortality_infirmary');
+    }
+
+    /**
+     * Solde de sujets ACTUELLEMENT isolés en infirmerie :
+     * Σ mises en infirmerie − Σ retours (rétablis) − Σ morts en infirmerie.
+     *
+     * Ces sujets sont déjà DÉCOMPTÉS de current_quantity (l'isolement les
+     * sort de l'effectif sain) : cheptel total réel = current_quantity +
+     * infirmary_count.
+     */
+    public function getInfirmaryCountAttribute(): int
+    {
+        return $this->infirmaryCountExcluding(null);
+    }
+
+    /**
+     * Même solde en EXCLUANT un pointage donné — utilisé par la garde de
+     * saisie lors de la rectification (le pointage modifié ne doit pas se
+     * compter lui-même dans le disponible).
+     */
+    public function infirmaryCountExcluding(?int $exceptCheckId): int
+    {
+        $query = $this->dailyChecks();
+        if ($exceptCheckId !== null) {
+            $query->where('id', '!=', $exceptCheckId);
+        }
+
+        $sums = $query->selectRaw('
+            COALESCE(SUM(qty_quarantine_in), 0)  as q_in,
+            COALESCE(SUM(qty_quarantine_out), 0) as q_out,
+            COALESCE(SUM(mortality_infirmary), 0) as q_dead
+        ')->first();
+
+        return max(0, (int) $sums->q_in - (int) $sums->q_out - (int) $sums->q_dead);
     }
 
     /**
@@ -757,6 +863,37 @@ class Batch extends Model
         $biomass = $this->current_quantity * $lastWeight;
 
         return round($totalFeed / max($biomass, 1), 2);
+    }
+
+    /**
+     * Densité d'occupation COURANTE au sol (sujets/m²), calculée sur l'effectif
+     * vivant réel — contrairement à `planned_density` figée à la mise en place.
+     * Diminue avec la mortalité/les ventes. 0 si la surface n'est pas connue.
+     */
+    public function getCurrentDensityAttribute(): float
+    {
+        $surface = (float) $this->allocated_surface;
+
+        return $surface > 0 ? round($this->current_quantity / $surface, 1) : 0.0;
+    }
+
+    /**
+     * Charge pondérale courante (kg/m²) = densité × poids moyen vif. Indicateur
+     * de bien-être clé en finition (chair). 0 si surface ou poids inconnus.
+     */
+    public function getCurrentStockingWeightAttribute(): float
+    {
+        $surface = (float) $this->allocated_surface;
+        if ($surface <= 0) {
+            return 0.0;
+        }
+
+        $lastWeight = (float) ($this->dailyChecks()
+            ->whereNotNull('avg_weight')
+            ->latest('check_date')
+            ->value('avg_weight') ?? 0); // kg
+
+        return $lastWeight > 0 ? round(($this->current_quantity * $lastWeight) / $surface, 1) : 0.0;
     }
 
     /**
@@ -920,7 +1057,11 @@ class Batch extends Model
         $nonFeedPurchases = (float) $this->feedPurchases
             ->filter(fn ($p) => $p->category !== 'Aliment')
             ->sum('total_price');
-        $healthCost = (float) $this->healthChecks()->sum('cost');
+        // Coût santé = actes du registre (vaccins/traitements) + coûts de
+        // traitement des INCIDENTS sanitaires (champ dédié, non capté ailleurs →
+        // aucun double comptage). Ferme la boucle financière incident → marge.
+        $healthCost = (float) $this->healthChecks()->sum('cost')
+            + (float) $this->healthIncidents()->sum('treatment_cost');
         $acquisitionCost = (float) ($this->total_acquisition_cost ?? 0);
         $additionalCosts = (float) ($this->additional_costs ?? 0);
         // Dépenses directes validées rattachées au lot (registre des dépenses).
@@ -957,7 +1098,7 @@ class Batch extends Model
         }
 
         $fumier = Stock::where('item_name', SyncManureCollection::ITEM_NAME)
-            ->where('category', Stock::CAT_PRODUITS_FINIS)
+            ->where('category', SyncManureCollection::CATEGORY)
             ->first();
 
         $unitPrice = (float) ($fumier?->unit_price ?? $fumier?->last_unit_price ?? 0);
@@ -1011,26 +1152,56 @@ class Batch extends Model
     }
 
     /**
+     * Seuil de mortalité CUMULÉE (%) au-delà duquel un lot est « critique ».
+     *
+     * SOURCE DE VÉRITÉ UNIQUE, partagée par l'alerte (BatchObserver), le filtre
+     * « surmortalité » de l'index, le scope critical() ET le tableau de bord —
+     * pour que l'alerte se déclenche exactement au taux affiché et que le
+     * réglage édité par l'admin pilote bien tous ces usages.
+     *
+     * Clé canonique : « elevage.cumulative_mortality_alert_pct » (libellée et
+     * éditable dans Paramètres › Élevage). Repli sur l'ancienne clé
+     * « elevage.mortality_alert » (compatibilité), puis 5 %.
+     */
+    public static function cumulativeMortalityThreshold(): float
+    {
+        return (float) setting(
+            'elevage.cumulative_mortality_alert_pct',
+            setting('elevage.mortality_alert', 5)
+        );
+    }
+
+    /**
      * Lots en surmortalité (requête SQL pure, pas d'accessor PHP).
      *
      * Correction B-01 : remplace le whereRaw('total_mortalite/...') inexistant.
      *
-     * @param float $thresholdPercent Seuil de mortalité cumulée (%)
+     * @param float|null $thresholdPercent Seuil de mortalité cumulée (%) ; par
+     *                   défaut le seuil unifié cumulativeMortalityThreshold().
      */
-    public function scopeCritical($query, float $thresholdPercent = 5.0)
+    public function scopeCritical($query, ?float $thresholdPercent = null)
     {
+        $thresholdPercent ??= self::cumulativeMortalityThreshold();
+
+        // Multiplication par 100.0 AVANT la division : force l'arithmétique en
+        // virgule flottante (SQLite ferait sinon une division ENTIÈRE → toujours
+        // 0 quand morts < effectif, ne flaggant jamais un lot ; MySQL renvoie des
+        // décimales mais on uniformise pour la cohérence et la testabilité).
+        // Le seuil est INLINÉ (cast (float), aucune injection possible) plutôt que
+        // lié : un paramètre lié est transmis en TEXTE à SQLite, qui compare alors
+        // « 6.0 > '5' » avec une affinité de type où le numérique précède le texte
+        // → toujours faux. L'inlining force une comparaison numérique sur MySQL ET
+        // SQLite. COALESCE(qty_dead, 0) gère la colonne NULL (sinon « initial +
+        // NULL = NULL » annulait tout le ratio → lot jamais détecté critique).
         return $query->where('initial_quantity', '>', 0)
             ->whereRaw(
-                '(
-                    (qty_dead + COALESCE((
+                '(COALESCE(qty_dead, 0) + COALESCE((
                         SELECT SUM(dc.mortality)
                         FROM daily_checks dc
                         WHERE dc.batch_id = batches.id
                         AND dc.deleted_at IS NULL
-                    ), 0))
-                    / (initial_quantity + qty_dead)
-                ) * 100 > ?',
-                [$thresholdPercent]
+                    ), 0)) * 100.0
+                    / (initial_quantity + COALESCE(qty_dead, 0)) > ' . (float) $thresholdPercent
             );
     }
 

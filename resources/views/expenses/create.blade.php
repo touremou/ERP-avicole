@@ -1,14 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center gap-5 text-left">
-            <a href="{{ route('expenses.index') }}" class="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-900 hover:text-white transition-all no-underline">
-                <i class="fa-solid fa-arrow-left"></i>
-            </a>
-            <div>
-                <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">{{ __("Nouvelle Dépense") }}</h2>
-                <p class="text-[10px] font-black text-rose-600 uppercase tracking-[0.2em] mt-2 italic">{{ __("Enregistrement d'une charge ponctuelle") }}</p>
-            </div>
-        </div>
+        <x-page-header :title="__('Nouvelle Dépense')" :subtitle="__('Enregistrement d\'une charge ponctuelle')" icon="fa-receipt" accent="rose" :back="route('expenses.index')" />
     </x-slot>
 
     <div class="py-10">
@@ -44,11 +36,17 @@
                         <div class="grid grid-cols-2 gap-6">
                             <div class="space-y-2">
                                 <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Catégorie") }} *</label>
-                                <select name="category" required class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black uppercase shadow-inner outline-none appearance-none cursor-pointer">
+                                <select name="category" required onchange="document.getElementById('eau-energie-hint')?.classList.toggle('hidden', this.value !== 'eau_energie')"
+                                        class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black uppercase shadow-inner outline-none appearance-none cursor-pointer">
                                     @foreach($categories as $key => $label)
                                         <option value="{{ $key }}" {{ old('category') === $key ? 'selected' : '' }}>{{ $label }}</option>
                                     @endforeach
                                 </select>
+                                {{-- Anti double comptage (même invariant que le carburant) : les
+                                     relevés eau/EDG du module Ressources alimentent DÉJÀ le P&L. --}}
+                                <p id="eau-energie-hint" class="{{ old('category') === 'eau_energie' ? '' : 'hidden' }} text-[9px] font-bold text-amber-600 leading-tight ml-2 mt-1">
+                                    <i class="fa-solid fa-triangle-exclamation mr-1"></i>{{ __("Réservé aux achats d'APPOINT (bidons, recharge ponctuelle). Les factures d'eau et d'électricité relevées au module Ressources sont déjà comptées au compte de résultat — les saisir ici les compterait deux fois.") }}
+                                </p>
                             </div>
                             <div class="space-y-2">
                                 <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Montant") }} ({{ setting('general.currency', 'GNF') }}) *</label>
@@ -71,6 +69,18 @@
                                     @endforeach
                                 </select>
                             </div>
+                            @if($treasuryAccounts->isNotEmpty())
+                            <div class="space-y-2">
+                                <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Compte de trésorerie") }}</label>
+                                <select name="treasury_account_id" class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black uppercase shadow-inner outline-none appearance-none cursor-pointer">
+                                    <option value="">{{ __("Auto (selon le mode)") }}</option>
+                                    @foreach($treasuryAccounts as $acc)
+                                        <option value="{{ $acc->id }}" {{ (int) old('treasury_account_id') === $acc->id ? 'selected' : '' }}>{{ $acc->name }}</option>
+                                    @endforeach
+                                </select>
+                                <p class="text-[8px] font-bold text-slate-400 italic ml-2">{{ __("Débité à la validation de la dépense.") }}</p>
+                            </div>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -153,6 +163,7 @@
                     amount: amount,
                     expense_date: form.querySelector('[name=expense_date]').value || new Date().toISOString().slice(0, 10),
                     payment_method: form.querySelector('[name=payment_method]').value,
+                    treasury_account_id: (form.querySelector('[name=treasury_account_id]')?.value || null),
                     batch_id: batchVal ? parseInt(batchVal, 10) : null,
                     supplier_name: form.querySelector('[name=supplier_name]').value || null,
                     notes: form.querySelector('[name=notes]').value || null,

@@ -22,6 +22,7 @@ class StoreExpenseRequest extends FormRequest
             'amount'         => 'required|numeric|min:1',
             'expense_date'   => 'required|date|before_or_equal:today',
             'payment_method' => ['required', 'string', Rule::in(array_keys(Expense::PAYMENT_METHODS))],
+            'treasury_account_id' => 'nullable|exists:treasury_accounts,id',
             'batch_id'       => 'nullable|integer|exists:batches,id',
             'supplier_name'  => 'nullable|string|max:255',
             'notes'          => 'nullable|string|max:2000',

@@ -1,30 +1,16 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex justify-between items-center text-left">
-            <div class="flex items-center gap-4">
-                <div class="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg"><i class="fa-solid fa-money-bill-wave text-lg"></i></div>
-                <div>
-                    <h2 class="text-lg font-black text-slate-800 uppercase italic tracking-tighter leading-none">{{ __("Gestion de la Paie") }}</h2>
-                    <p class="text-[9px] font-bold text-slate-400 uppercase mt-1 tracking-widest italic">{{ __("Périodes, fiches & paiements") }}</p>
-                </div>
-            </div>
-            <div class="flex gap-3">
+        <x-page-header :title="__('Gestion de la Paie')" :subtitle="__('Périodes, fiches & paiements')" icon="fa-money-bill-wave" accent="blue">
+            <x-slot name="actions">
                 <a href="{{ route('payroll.leaves') }}" class="bg-white border border-slate-200 px-5 py-2.5 rounded-xl text-[9px] font-black uppercase italic text-slate-600 hover:bg-amber-50 no-underline"><i class="fa-solid fa-calendar-xmark text-amber-500 mr-1"></i> {{ __("Congés") }}</a>
-            </div>
-        </div>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-8 italic font-bold">
         <div class="max-w-5xl mx-auto sm:px-6 lg:px-8">
 
-            @foreach(['success', 'error'] as $msg)
-                @if(session($msg))
-                    <div @class(['mb-6 p-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg flex items-center italic',
-                        'bg-emerald-500 text-white' => $msg === 'success', 'bg-red-500 text-white' => $msg === 'error'])>
-                        <i class="fa-solid fa-{{ $msg === 'success' ? 'check-double' : 'circle-xmark' }} mr-3"></i> {{ session($msg) }}
-                    </div>
-                @endif
-            @endforeach
+            <x-flash />
 
             {{-- CRÉER UNE PÉRIODE --}}
             @can('annuaire.C')

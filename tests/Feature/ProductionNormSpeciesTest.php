@@ -48,7 +48,7 @@ test('le formulaire admin enregistre la souche avec son espèce explicite', func
     $caille = Species::firstOrCreate(['slug' => 'caille'], ['name_fr' => 'Caille', 'is_active' => true]);
 
     $this->actingAs($this->adminUser)
-        ->post(route('admin.norms.store'), [
+        ->post(route('batches.norms.store'), [
             'batch_type'  => 'ponte',
             'species_id'  => $caille->id,
             'week_number' => 4,

@@ -1,19 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <div class="flex items-center gap-4">
-                <div class="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-lg -rotate-3">
-                    <i class="fa-solid fa-flask-vial text-lg"></i>
-                </div>
-                <div class="text-left">
-                    <h2 class="font-black text-2xl text-slate-800 uppercase italic tracking-tighter leading-none">{{ __("Nouvelle Formulation") }}</h2>
-                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1 italic">{{ __("Laboratoire — Création de Recette") }}</p>
-                </div>
-            </div>
-            <a href="{{ route('formulas.index') }}" class="text-[10px] font-black uppercase text-slate-400 hover:text-slate-900 transition no-underline">
-                <i class="fa-solid fa-xmark mr-2"></i> {{ __("Annuler") }}
-            </a>
-        </div>
+        <x-page-header :title="__('Nouvelle Formulation')" :subtitle="__('Laboratoire — Création de Recette')" icon="fa-flask-vial" accent="amber" :back="route('formulas.index')" />
     </x-slot>
 
     <div class="py-12 italic font-bold" x-data="formulaBuilderData()">
@@ -121,7 +108,7 @@
                             <div class="pt-4 border-t border-slate-800 text-left">
                                 <div class="flex justify-between items-end">
                                     <span class="text-[9px] uppercase opacity-50 italic">{{ __("Coût Théorique") }}</span>
-                                    <span class="text-2xl font-black italic tracking-tighter"><span x-text="costPerKg.toLocaleString()">0</span> <small class="text-[10px]">GNF/kg</small></span>
+                                    <span class="text-2xl font-black italic tracking-tighter"><span x-text="costPerKg.toLocaleString()">0</span> <small class="text-[10px]">{{ currency() }}/kg</small></span>
                                 </div>
                             </div>
 
@@ -158,7 +145,7 @@
                                         <p class="text-[10px] font-black uppercase italic text-slate-700 leading-none truncate">{{ $m->name }}</p>
                                         <p class="text-[8px] text-slate-400 mt-1 uppercase font-bold">
                                             {{ __("PB") }}: {{ $m->protein_rate }}% | {{ __("EM") }}: {{ $m->energy_kcal }} |
-                                            <span class="text-blue-500">{{ number_format($m->unit_cost, 0) }} GNF/kg</span>
+                                            <span class="text-blue-500">{{ number_format($m->unit_cost, 0) }} {{ currency() }}/kg</span>
                                         </p>
                                     </div>
                                     <div class="w-24">

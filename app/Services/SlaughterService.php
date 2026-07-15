@@ -18,18 +18,54 @@ class SlaughterService
 {
     /**
      * Exécute un abattage : pesée vif, abattage, pesée carcasse, mise en stock.
+     *
+     * Motif audit (drills C1/C3/C5) : verrou → relecture verrouillante →
+     * contrôle → écriture, DANS la transaction. Statut, effectif et
+     * quarantaine sont re-contrôlés sous verrou — un double-clic ne
+     * décrémente pas deux fois, un lot qui a maigri depuis l'ordre ne passe
+     * pas en négatif, la viande d'un lot en quarantaine n'entre jamais en
+     * stock alimentaire.
      */
     public function executeSlaughter(SlaughterOrder $order, array $data): SlaughterResult
     {
-        if ($order->status !== 'planifie') {
-            throw new Exception("L'ordre {$order->order_number} n'est pas en attente (statut: {$order->status}).");
-        }
-
         return DB::transaction(function () use ($order, $data) {
+            // Anti-rejeu : statut relu SOUS verrou (le contrôle hors
+            // transaction laissait passer le double-clic — motif C3).
+            $order = SlaughterOrder::lockForUpdate()->findOrFail($order->id);
+            if ($order->status !== 'planifie') {
+                throw new Exception("L'ordre {$order->order_number} n'est pas en attente (statut: {$order->status}).");
+            }
+
             $actualQty = (int) $data['actual_quantity'];
             $liveWeight = (float) $data['total_live_weight_kg'];
             $carcassWeight = (float) $data['total_carcass_weight_kg'];
             $condemned = (int) ($data['condemned_count'] ?? 0);
+
+            // Lot source relu SOUS verrou : l'effectif a pu changer depuis la
+            // création de l'ordre (mortalité, ventes) et une quarantaine a pu
+            // être posée entre-temps.
+            $batch = $order->batch_id ? Batch::lockForUpdate()->find($order->batch_id) : null;
+            if ($batch) {
+                if ($batch->status !== 'Actif') {
+                    throw new Exception("Le lot {$batch->code} n'est plus actif (statut : {$batch->status}) — abattage impossible.");
+                }
+
+                // Biosécurité : viande d'un lot sous traitement = délai
+                // d'attente non purgé. Blocage dur, levée via le module Santé.
+                if ($quarantine = $batch->activeQuarantine()) {
+                    throw new Exception(
+                        "Le lot {$batch->code} est en QUARANTAINE sanitaire (incident n°{$quarantine->id}) — "
+                        . "abattage et mise en stock alimentaire interdits jusqu'à la levée."
+                    );
+                }
+
+                if ($actualQty > (int) $batch->current_quantity) {
+                    throw new Exception(
+                        "Effectif insuffisant : {$actualQty} sujets à abattre mais le lot {$batch->code} "
+                        . "n'en compte plus que {$batch->current_quantity} (mortalité/ventes depuis l'ordre)."
+                    );
+                }
+            }
 
             // Calculs
             $effectiveQty = $actualQty - $condemned;
@@ -59,9 +95,8 @@ class SlaughterService
                 'executed_by'          => Auth::id(),
             ]);
 
-            // 3. Décrémenter le lot source
-            $batch = $order->batch;
-            if ($batch && $batch->status === 'Actif') {
+            // 3. Décrémenter le lot source (déjà verrouillé et contrôlé en tête)
+            if ($batch) {
                 $batch->decrement('current_quantity', $actualQty);
 
                 // Si tout le lot est abattu, fermer le lot
@@ -75,10 +110,20 @@ class SlaughterService
 
             // 4. Entrer les carcasses en stock produits finis (nom selon
             //    l'espèce du lot — multiespèces : "Poulet", "Chèvre", "Mouton"...)
-            $productName = $this->carcassProductName($batch);
-            $this->addToFinishedStock($productName, 'entier_frais', $carcassWeight, $effectiveQty, 'frais');
+            //    RG-07 : JAMAIS pour un abattage à façon — les produits restent
+            //    propriété du client et ne rejoignent pas le stock vendable.
+            if (! $order->isFacon()) {
+                $productName = $this->carcassProductName($batch);
+                $this->addToFinishedStock($productName, 'entier_frais', $carcassWeight, $effectiveQty, 'frais');
+            }
 
-            Log::info("Abattage {$order->order_number} : {$actualQty} sujets, {$liveWeight}kg vif → {$carcassWeight}kg carcasse (rendement {$yieldPercent}%)");
+            // 5. Façon (E8) : calcul de la prestation selon le modèle figé sur
+            //    l'ordre + facture brouillon dans le module Commerce.
+            if ($order->isFacon()) {
+                app(\App\Actions\Slaughter\BillTollSlaughter::class)->execute($order->fresh());
+            }
+
+            Log::info("Abattage {$order->order_number} : {$actualQty} sujets, {$liveWeight}kg vif → {$carcassWeight}kg carcasse (rendement {$yieldPercent}%)" . ($order->isFacon() ? ' [FAÇON]' : ''));
 
             return $result;
         });
@@ -86,10 +131,36 @@ class SlaughterService
 
     /**
      * Enregistre une session de découpe.
+     *
+     * Conservation de matière : la somme des entrées de TOUTES les sessions
+     * de l'ordre ne peut pas dépasser la carcasse produite par l'abattage
+     * (sans ce plafond, removeFromFinishedStock — silencieux et borné —
+     * laissait créer des morceaux fantômes au-delà du stock réel). Le verrou
+     * de l'ordre sérialise les sessions concurrentes.
      */
     public function executeCutting(SlaughterOrder $order, array $data): CuttingSession
     {
         return DB::transaction(function () use ($order, $data) {
+            $order = SlaughterOrder::lockForUpdate()->findOrFail($order->id);
+
+            if ($order->status !== 'termine') {
+                throw new Exception("L'abattage de l'ordre {$order->order_number} doit être terminé avant la découpe.");
+            }
+
+            $carcassKg  = (float) ($order->result?->total_carcass_weight_kg ?? 0);
+            $alreadyCut = (float) $order->cuttingSessions()->sum('total_input_kg');
+            $inputKg    = (float) $data['total_input_kg'];
+
+            if ($inputKg + $alreadyCut > $carcassKg + 0.001) {
+                $remaining = max(0, $carcassKg - $alreadyCut);
+                throw new Exception(
+                    "Conservation de matière : {$inputKg} kg demandés mais il ne reste que "
+                    . number_format($remaining, 1) . " kg de carcasse à découper sur l'ordre {$order->order_number} "
+                    . "(carcasse produite : " . number_format($carcassKg, 1) . " kg, déjà découpé : "
+                    . number_format($alreadyCut, 1) . " kg)."
+                );
+            }
+
             $session = CuttingSession::create([
                 'slaughter_order_id' => $order->id,
                 'session_date'       => $data['session_date'] ?? now()->toDateString(),
@@ -98,9 +169,14 @@ class SlaughterService
             ]);
 
             // Retirer du stock "entier frais" le poids découpé (nom selon
-            // l'espèce du lot abattu — cf. carcassProductName())
-            $sourceProductName = $this->carcassProductName($order->batch);
-            $this->removeFromFinishedStock($sourceProductName, 'entier_frais', (float) $data['total_input_kg']);
+            // l'espèce du lot abattu — cf. carcassProductName()).
+            // RG-07 : un ordre à façon n'a RIEN mis en stock à l'abattage —
+            // sa découpe ne touche donc pas le stock de l'entreprise (les
+            // morceaux repartent avec le client, tracés en CutProduct).
+            if (! $order->isFacon()) {
+                $sourceProductName = $this->carcassProductName($order->batch);
+                $this->removeFromFinishedStock($sourceProductName, 'entier_frais', (float) $data['total_input_kg']);
+            }
 
             // Enregistrer chaque produit de découpe
             foreach ($data['products'] as $product) {
@@ -114,8 +190,9 @@ class SlaughterService
                     'destination'        => $product['destination'] ?? 'stock_frais',
                 ]);
 
-                // Entrer en stock produits finis selon destination
-                if (($product['destination'] ?? 'stock_frais') !== 'transformation') {
+                // Entrer en stock produits finis selon destination.
+                // RG-07 : jamais pour la façon (propriété du client).
+                if (! $order->isFacon() && ($product['destination'] ?? 'stock_frais') !== 'transformation') {
                     $storage = match ($product['destination'] ?? 'stock_frais') {
                         'stock_congele' => 'congele',
                         'vente_directe' => 'vitrine',
@@ -155,13 +232,27 @@ class SlaughterService
             $outputKg = (float) ($data['output_kg'] ?? 0);
             $sourceName = $data['product_source'];
 
-            // ═══ 1. VÉRIFIER LE STOCK SOURCE ═══
+            // ═══ 1. VÉRIFIER LE STOCK SOURCE (sous verrou — deux
+            //     transformations simultanées du même stock se sérialisent,
+            //     le contrôle ne peut plus être doublé : motif C1) ═══
             $sourceProduct = FinishedProduct::where('product_name', $sourceName)
                 ->where('current_quantity_kg', '>', 0)
+                ->lockForUpdate()
                 ->first();
 
             if (! $sourceProduct) {
                 throw new Exception("Produit source \"{$sourceName}\" introuvable ou stock vide.");
+            }
+
+            // Cohérence physique : fumage/grillage PERDENT de l'eau, la
+            // marinade peut en gagner un peu — au-delà de ×1,5 c'est une
+            // erreur de pesée (kg/pièce au lieu du total, etc.).
+            if ($outputKg > 0 && $outputKg > $inputKg * 1.5) {
+                throw new Exception(
+                    "Rendement aberrant : " . number_format($outputKg, 1) . " kg produits pour "
+                    . number_format($inputKg, 1) . " kg engagés (" . round(($outputKg / $inputKg) * 100)
+                    . " %). Vérifiez les deux pesées."
+                );
             }
 
             if ((float) $sourceProduct->current_quantity_kg < $inputKg) {
@@ -219,6 +310,51 @@ class SlaughterService
             Log::info("Transformation {$transformation->batch_number} : {$inputKg}kg {$data['product_source']} → {$outputKg}kg {$data['type']} (rendement {$yieldPercent}%)");
 
             return $transformation;
+        });
+    }
+
+    /**
+     * Termine une transformation restée « en cours » (fumage/grillage saisi
+     * à l'engagement de la matière, pesée de sortie connue des heures plus
+     * tard) : enregistre la sortie, calcule le rendement et entre le produit
+     * transformé en stock. Idempotent sous verrou : une transformation déjà
+     * terminée ne peut pas être re-terminée (pas de double entrée en stock).
+     */
+    public function completeTransformation(Transformation $transformation, float $outputKg): Transformation
+    {
+        return DB::transaction(function () use ($transformation, $outputKg) {
+            $transformation = Transformation::lockForUpdate()->findOrFail($transformation->id);
+
+            if ($transformation->status !== 'en_cours') {
+                throw new Exception("La transformation {$transformation->batch_number} est déjà terminée.");
+            }
+
+            $inputKg = (float) $transformation->input_kg;
+            if ($outputKg > $inputKg * 1.5) {
+                throw new Exception(
+                    "Rendement aberrant : " . number_format($outputKg, 1) . " kg produits pour "
+                    . number_format($inputKg, 1) . " kg engagés. Vérifiez la pesée de sortie."
+                );
+            }
+
+            $transformation->update([
+                'output_kg'     => $outputKg,
+                'yield_percent' => $inputKg > 0 ? round(($outputKg / $inputKg) * 100, 2) : 0,
+                'status'        => 'termine',
+            ]);
+
+            $productName = ucfirst($transformation->product_source) . ' ' . $transformation->type_label;
+            $this->addToFinishedStock(
+                $productName,
+                $transformation->transformation_type,
+                $outputKg,
+                0,
+                $transformation->transformation_type === 'fume' ? 'fumoir' : 'vitrine'
+            );
+
+            Log::info("Transformation {$transformation->batch_number} terminée : {$inputKg}kg → {$outputKg}kg ({$transformation->yield_percent}%)");
+
+            return $transformation->fresh();
         });
     }
 

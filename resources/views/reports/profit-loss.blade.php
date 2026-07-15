@@ -1,15 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center gap-4">
-            <a href="{{ route('reports.index') }}" class="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-500 hover:text-slate-800 rounded-xl transition-all shadow-sm no-underline">
-                <i class="fas fa-chevron-left text-xs"></i>
-                <span class="text-[10px] font-black uppercase italic tracking-widest leading-none">{{ __("Rapports") }}</span>
-            </a>
-            <div>
-                <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">⚖️ {{ __("Compte de résultat") }}</h2>
-                <p class="text-[10px] font-black text-amber-600 uppercase tracking-[0.2em] mt-2 italic">{{ __("P&L consolidé — toutes activités") }}</p>
-            </div>
-        </div>
+        {{-- Pas de :back : le layout injecte déjà <x-hub-back> vers les rapports. --}}
+        <x-page-header :title="'⚖️ ' . __('Compte de résultat')" :subtitle="__('P&L consolidé — toutes activités')" icon="fa-scale-balanced" accent="slate" />
     </x-slot>
 
     <div class="py-10 italic font-bold text-left">
@@ -40,17 +32,17 @@
                 <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm">
                     <p class="text-[9px] font-black text-emerald-500 uppercase tracking-widest mb-2 italic">{{ __("Produits") }}</p>
                     <p class="text-3xl font-black text-slate-900 italic tracking-tighter">{{ number_format($totalRevenue) }}</p>
-                    <p class="text-[8px] text-slate-400 mt-2 uppercase font-black">GNF</p>
+                    <p class="text-[8px] text-slate-400 mt-2 uppercase font-black">{{ currency() }}</p>
                 </div>
                 <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm">
                     <p class="text-[9px] font-black text-rose-500 uppercase tracking-widest mb-2 italic">{{ __("Charges") }}</p>
                     <p class="text-3xl font-black text-slate-900 italic tracking-tighter">{{ number_format($totalCosts) }}</p>
-                    <p class="text-[8px] text-slate-400 mt-2 uppercase font-black">GNF</p>
+                    <p class="text-[8px] text-slate-400 mt-2 uppercase font-black">{{ currency() }}</p>
                 </div>
                 <div class="p-8 rounded-[3rem] shadow-2xl {{ $netResult >= 0 ? 'bg-emerald-600' : 'bg-rose-600' }} text-white">
                     <p class="text-[9px] font-black uppercase tracking-widest mb-2 italic opacity-80">{{ __("Résultat net") }}</p>
                     <p class="text-3xl font-black italic tracking-tighter">{{ number_format($netResult) }}</p>
-                    <p class="text-[8px] mt-2 uppercase font-black opacity-80">{{ __("Marge") }} {{ $marginPct }}% · GNF</p>
+                    <p class="text-[8px] mt-2 uppercase font-black opacity-80">{{ __("Marge") }} {{ $marginPct }}% · {{ currency() }}</p>
                 </div>
             </div>
 

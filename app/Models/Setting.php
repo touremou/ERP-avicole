@@ -174,10 +174,14 @@ class Setting extends Model
             'planning'    => ['label' => 'Planning',      'icon' => 'fa-calendar-days',    'color' => 'indigo'],
             'energie'     => ['label' => 'Énergie',       'icon' => 'fa-bolt',             'color' => 'cyan'],
             'whatsapp'    => ['label' => 'WhatsApp',      'icon' => 'fa-bell',             'color' => 'emerald'],
+            'sms'         => ['label' => 'SMS',           'icon' => 'fa-comment-sms',      'color' => 'blue'],
             'rh'          => ['label' => 'RH & Paie',     'icon' => 'fa-users',            'color' => 'violet'],
             'stocks'      => ['label' => 'Stocks',        'icon' => 'fa-boxes-stacked',    'color' => 'orange'],
             'ventes'      => ['label' => 'Ventes',        'icon' => 'fa-cash-register',    'color' => 'teal'],
             'cultures'    => ['label' => 'Cultures',      'icon' => 'fa-leaf',             'color' => 'green'],
+            'numbering'   => ['label' => 'Numérotation',  'icon' => 'fa-hashtag',          'color' => 'slate'],
+            'etiquettes'  => ['label' => 'Étiquettes',    'icon' => 'fa-tag',              'color' => 'purple'],
+            'licence'     => ['label' => 'Licence',       'icon' => 'fa-key',              'color' => 'purple'],
         ];
     }
 }

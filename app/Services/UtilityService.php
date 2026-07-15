@@ -42,9 +42,32 @@ class UtilityService
     {
         $readings = WaterReading::where('reading_date', '>=', $from);
 
-        $totalConsumed = (clone $readings)->sum('volume_consumed_liters');
-        $totalCost = (clone $readings)->sum('cost');
-        $days = max(1, (clone $readings)->distinct('reading_date')->count('reading_date'));
+        // Conso issue des RELEVÉS manuels (citernes/réseau saisis dans le module).
+        $readingsConsumed = (float) (clone $readings)->sum('volume_consumed_liters');
+        $readingsCost     = (float) (clone $readings)->sum('cost');
+
+        // Conso DÉRIVÉE des pointages journaliers (water_consumed, en litres) :
+        // l'éleveur la saisit déjà au pointage, inutile de la ressaisir ici.
+        // On l'agrège pour que le dashboard reflète la conso réelle des lots
+        // sans double saisie. Pas de WaterReading créé → aucun double-comptage
+        // avec les relevés manuels (ce sont deux sources distinctes : appoint
+        // citerne vs consommation animale).
+        $dcConsumed = (float) \App\Models\DailyCheck::where('check_date', '>=', $from)
+            ->sum('water_consumed');
+
+        // Coût estimé de la part « pointages » au tarif du m³ (paramètre énergie).
+        $pricePerM3 = (float) setting('energie.water_price_m3', 0);
+        $dcCost     = round(($dcConsumed / 1000) * $pricePerM3, 2);
+
+        $totalConsumed = $readingsConsumed + $dcConsumed;
+        $totalCost     = $readingsCost + $dcCost;
+
+        // Nombre de jours avec donnée (relevés OU pointages) pour la moyenne.
+        $readingDays = (clone $readings)->distinct('reading_date')->count('reading_date');
+        $checkDays   = \App\Models\DailyCheck::where('check_date', '>=', $from)
+            ->where('water_consumed', '>', 0)
+            ->distinct('check_date')->count('check_date');
+        $days = max(1, $readingDays, $checkDays);
 
         $dailyAvg = $totalConsumed / $days;
         $perBird = ($totalBirds > 0) ? ($dailyAvg / $totalBirds) : 0;
@@ -74,10 +97,16 @@ class UtilityService
             'daily_avg'        => round($dailyAvg),
             'per_bird_per_day' => round($perBird, 3),
             'cost_per_1000'    => round($costPer1000),
+            // Coût unitaire RÉALISÉ du m³ (coût total ÷ volume consommé) : KPI de
+            // pilotage « usine » — dérive du prix réel, pas du tarif théorique.
+            'cost_per_m3'      => $totalConsumed > 0 ? round($totalCost / ($totalConsumed / 1000)) : 0,
             'daily_trend'      => $dailyTrend,
             'critical_sources' => $criticalSources,
             'last_ph'          => $lastPh?->quality_ph,
             'ph_status'        => $lastPh?->ph_status ?? 'non_mesuré',
+            // Transparence : part dérivée des pointages vs relevés manuels.
+            'from_daily_checks' => round($dcConsumed),
+            'from_readings'     => round($readingsConsumed),
         ];
     }
 
@@ -145,6 +174,11 @@ class UtilityService
             'solaire_hours'     => round($solaireHours, 1),
             'edg_ratio'         => $edgRatio,
             'fuel_cost_per_liter' => round($fuelCostPerLiter),
+            // Coûts unitaires RÉALISÉS : coût du kWh autoproduit et coût d'une
+            // heure de fonctionnement (toutes sources). KPI « usine » pour
+            // arbitrer EDG vs groupe et détecter une dérive de rendement.
+            'cost_per_kwh'      => $totalKwh > 0 ? round($totalCost / $totalKwh) : 0,
+            'cost_per_hour'     => $totalHours > 0 ? round($totalCost / $totalHours) : 0,
             'daily_trend'       => $dailyTrend,
         ];
     }

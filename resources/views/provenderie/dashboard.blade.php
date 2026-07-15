@@ -1,26 +1,40 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center gap-4">
-            <div class="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-white shadow-lg rotate-3">
-                <i class="fa-solid fa-gears text-lg"></i>
-            </div>
-            <div class="text-left">
-                <h2 class="font-black text-2xl text-slate-800 uppercase italic tracking-tighter leading-none">{{ __("Pilotage Provenderie") }}</h2>
-                <p class="text-[10px] font-bold text-blue-600 uppercase tracking-widest mt-1 italic leading-none">{{ __("Flux de transformation & Stocks finis") }}</p>
-            </div>
-        </div>
+        <x-page-header :title="__('Pilotage Provenderie')" :subtitle="__('Flux de transformation & Stocks finis')" icon="fa-gears" accent="amber" />
     </x-slot>
 
     <div class="py-12 italic font-bold text-left">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-10">
-            
+
+            {{-- ACCÈS GROUPÉS (hub-cartes) : toutes les sous-sections du module,
+                 pour que le breadcrumb puisse rester « Tableau de bord » seul. --}}
+            @can('provenderie.L')
+            <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm not-italic">
+                <p class="text-[10px] font-black uppercase tracking-widest text-lime-600 mb-4">{{ __("Atelier") }}</p>
+                <div class="grid grid-cols-3 gap-3">
+                    @foreach([
+                        ['label' => 'Matières premières', 'icon' => 'fa-wheat-awn', 'route' => 'raw-materials.index'],
+                        ['label' => 'Formules', 'icon' => 'fa-flask', 'route' => 'formulas.index'],
+                        ['label' => 'Production', 'icon' => 'fa-industry', 'route' => 'production.index'],
+                    ] as $it)
+                        @if(\Illuminate\Support\Facades\Route::has($it['route']))
+                        <a href="{{ route($it['route']) }}" class="flex flex-col items-center justify-center gap-2 p-4 bg-slate-50 rounded-2xl hover:bg-lime-50 hover:text-lime-600 transition-all no-underline text-slate-600 text-center">
+                            <i class="fa-solid {{ $it['icon'] }} text-lg"></i>
+                            <span class="text-[8px] font-black uppercase tracking-widest leading-tight">{{ __($it['label']) }}</span>
+                        </a>
+                        @endif
+                    @endforeach
+                </div>
+            </div>
+            @endcan
+
             {{-- KPI ROW --}}
             <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm relative overflow-hidden group">
                     <div class="absolute -right-2 -top-2 opacity-5 text-slate-900 group-hover:scale-110 transition-transform"><i class="fa-solid fa-vault text-6xl"></i></div>
                     <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 italic leading-none">{{ __("Trésorerie Matières") }}</p>
                     <p class="text-3xl font-black text-slate-900 tracking-tighter italic leading-none">
-                        {{ number_format($rawMaterialsValue, 0, ',', ' ') }} <small class="text-[10px] opacity-40">GNF</small>
+                        {{ number_format($rawMaterialsValue, 0, ',', ' ') }} <small class="text-[10px] opacity-40">{{ currency() }}</small>
                     </p>
                 </div>
 
@@ -93,7 +107,7 @@
                                             <div class="w-2 h-8 rounded-full transition-all group-hover:h-10 {{ $dotColor }}"></div>
                                             <div>
                                                 <p class="text-sm font-black text-slate-800 uppercase italic leading-none">{{ $feed->item_name }}</p>
-                                                <p class="text-[8px] text-slate-400 uppercase mt-1 italic tracking-widest font-bold">{{ $feed->category }}</p>
+                                                <p class="text-[8px] text-slate-400 uppercase mt-1 italic tracking-widest font-bold">{{ $feed->category_label }}</p>
                                             </div>
                                         </div>
                                     </td>

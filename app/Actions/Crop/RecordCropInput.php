@@ -46,7 +46,12 @@ class RecordCropInput
                 'stock_item_name' => $syncToStock ? $stockItem : null,
             ]);
 
-            // ─── Entrée stock optionnelle (achat d'intrant) ───
+            // ─── Entrée stock optionnelle (ACHAT d'intrant) ───
+            // Modèle assumé : saisir un intrant synchronisé = approvisionner le
+            // stock « intrants » (achat). Le coût alimente la marge du cycle ;
+            // la quantité alimente l'inventaire (entrée). La consommation
+            // proprement dite relève d'un déstockage séparé — non conflée ici
+            // pour garder un inventaire cohérent et jamais négatif.
             if ($syncToStock && $quantity > 0) {
                 StockIntegrationService::ensureItem(Stock::CAT_INTRANTS, $stockItem, $unit, $unitCost);
 

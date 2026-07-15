@@ -1,29 +1,12 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 text-left">
-            <div class="flex items-center gap-5">
-                <a href="{{ route('utilities.dashboard') }}" class="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-900 hover:text-white transition-all no-underline">
-                    <i class="fa-solid fa-arrow-left"></i>
-                </a>
-                <div>
-                    <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">{{ __("Sources d'Eau") }}</h2>
-                    <p class="text-[10px] font-black text-cyan-600 uppercase tracking-[0.2em] mt-2 italic">{{ __("SEEG, forage, citernes — Configuration") }}</p>
-                </div>
-            </div>
-        </div>
+        <x-page-header :title="__('Sources d\'Eau')" :subtitle="__('SEEG, forage, citernes — Configuration')" icon="fa-droplet" accent="cyan" />
     </x-slot>
 
     <div class="py-10">
         <div class="max-w-5xl mx-auto sm:px-6 lg:px-8 italic font-bold text-left">
 
-            @foreach(['success', 'error'] as $msg)
-                @if(session($msg))
-                    <div @class(['mb-8 p-5 rounded-[2rem] font-black text-[10px] uppercase tracking-[0.2em] shadow-xl flex items-center italic',
-                        'bg-emerald-500 text-white' => $msg === 'success', 'bg-red-500 text-white' => $msg === 'error'])>
-                        <i class="fa-solid fa-{{ $msg === 'success' ? 'check-double' : 'circle-xmark' }} mr-3 text-lg"></i> {{ session($msg) }}
-                    </div>
-                @endif
-            @endforeach
+            <x-flash />
 
             {{-- LISTE DES SOURCES --}}
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
@@ -80,40 +63,117 @@
                 @endforeach
             </div>
 
-            {{-- FORMULAIRE AJOUT --}}
-            @can('ressources.C')
-            <div class="bg-cyan-50 p-8 rounded-[3rem] border border-cyan-200">
+            {{-- FORMULAIRE SOURCE : Ajouter OU Modifier (selon $editing) --}}
+            @php $editing = $editing ?? null; @endphp
+            @if($editing ? auth()->user()->can('ressources.M') : auth()->user()->can('ressources.C'))
+            <div class="bg-cyan-50 p-8 rounded-[3rem] border border-cyan-200 mb-6">
                 <h3 class="text-[10px] font-black text-cyan-600 uppercase tracking-widest mb-6 flex items-center gap-2">
-                    <i class="fa-solid fa-plus"></i> {{ __("Ajouter une source d'eau") }}
+                    <i class="fa-solid fa-{{ $editing ? 'pen-to-square' : 'plus' }}"></i>
+                    {{ $editing ? __('Modifier la source') : __("Ajouter une source d'eau") }}
                 </h3>
-                <form method="POST" action="{{ route('utilities.water.sources.store') }}" class="space-y-4">
+                <form method="POST" action="{{ $editing ? route('utilities.water.sources.update', $editing->id) : route('utilities.water.sources.store') }}" class="space-y-4">
                     @csrf
+                    @if($editing) @method('PUT') @endif
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div class="space-y-2">
                             <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Nom") }} *</label>
-                            <input type="text" name="name" required placeholder="{{ __('Citerne Bât. A, Forage principal...') }}"
+                            <input type="text" name="name" required value="{{ old('name', $editing->name ?? '') }}" placeholder="{{ __('Citerne Bât. A, Forage principal...') }}"
                                 class="w-full bg-white border-none rounded-2xl p-4 text-sm font-black shadow-sm outline-none">
                         </div>
                         <div class="space-y-2">
                             <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Type") }} *</label>
                             <select name="type" required class="w-full bg-white border-none rounded-2xl p-4 text-xs font-black uppercase shadow-sm outline-none appearance-none">
-                                <option value="seeg">{{ __("SEEG (Réseau)") }}</option>
-                                <option value="forage">{{ __("Forage") }}</option>
-                                <option value="citerne">{{ __("Citerne") }}</option>
-                                <option value="camion">{{ __("Camion-citerne") }}</option>
+                                @foreach(['seeg' => __('SEEG (Réseau)'), 'forage' => __('Forage'), 'citerne' => __('Citerne'), 'camion' => __('Camion-citerne')] as $val => $lbl)
+                                    <option value="{{ $val }}" {{ old('type', $editing->type ?? 'citerne') === $val ? 'selected' : '' }}>{{ $lbl }}</option>
+                                @endforeach
                             </select>
                         </div>
                         <div class="space-y-2">
                             <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Capacité (litres)") }}</label>
-                            <input type="number" name="capacity_liters" min="0" placeholder="{{ __('Ex: 10000') }}"
+                            <input type="number" name="capacity_liters" min="0" value="{{ old('capacity_liters', $editing->capacity_liters ?? '') }}" placeholder="{{ __('Ex: 10000') }}"
                                 class="w-full bg-white border-none rounded-2xl p-4 text-sm font-black shadow-sm outline-none">
                         </div>
                     </div>
-                    <button type="submit" class="bg-cyan-500 text-white px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-cyan-600 transition-all border-none cursor-pointer shadow-lg">
-                        <i class="fa-solid fa-faucet-drip mr-2"></i> {{ __("Enregistrer") }}
+                    @if($editing)
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                        <div class="space-y-2">
+                            <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Qualité") }}</label>
+                            <select name="quality_status" class="w-full bg-white border-none rounded-2xl p-4 text-xs font-black uppercase shadow-sm outline-none appearance-none">
+                                @foreach(['bon' => __('Bon'), 'acceptable' => __('Acceptable'), 'traitement_requis' => __('Traitement requis')] as $val => $lbl)
+                                    <option value="{{ $val }}" {{ old('quality_status', $editing->quality_status) === $val ? 'selected' : '' }}>{{ $lbl }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <label class="flex items-center gap-3 cursor-pointer ml-2 mt-4">
+                            <input type="hidden" name="is_active" value="0">
+                            <input type="checkbox" name="is_active" value="1" {{ old('is_active', $editing->is_active) ? 'checked' : '' }} class="rounded border-slate-200 text-cyan-500 focus:ring-cyan-400">
+                            <span class="text-[9px] font-black uppercase text-slate-500 tracking-widest italic">{{ __("Source active") }}</span>
+                        </label>
+                    </div>
+                    @endif
+                    <label class="flex items-center gap-3 cursor-pointer ml-2">
+                        <input type="hidden" name="is_default" value="0">
+                        <input type="checkbox" name="is_default" value="1" {{ old('is_default', $editing->is_default ?? false) ? 'checked' : '' }} class="rounded border-slate-200 text-cyan-500 focus:ring-cyan-400">
+                        <span class="text-[9px] font-black uppercase text-slate-500 tracking-widest italic">
+                            {{ __("Source par défaut de la ferme") }}
+                            <span class="text-slate-400 normal-case font-bold">— {{ __("utilisée pour les bâtiments sans citerne affectée") }}</span>
+                        </span>
+                    </label>
+                    <div class="flex items-center gap-3">
+                        <button type="submit" class="bg-cyan-500 text-white px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-cyan-600 transition-all border-none cursor-pointer shadow-lg">
+                            <i class="fa-solid fa-faucet-drip mr-2"></i> {{ $editing ? __('Mettre à jour') : __('Enregistrer') }}
+                        </button>
+                        @if($editing)
+                        <a href="{{ route('utilities.water.sources') }}" class="text-[10px] font-black uppercase italic text-slate-400 hover:text-slate-700 no-underline">{{ __("Annuler") }}</a>
+                        @endif
+                    </div>
+                </form>
+            </div>
+            @endif
+
+            {{-- RELEVÉ EAU : ajout/qualité (la conso des lots est déjà déduite des pointages) --}}
+            @can('ressources.C')
+            @php $buildings = $buildings ?? collect(); @endphp
+            <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm">
+                <h3 class="text-[10px] font-black text-cyan-600 uppercase tracking-widest mb-1 flex items-center gap-2">
+                    <i class="fa-solid fa-droplet"></i> {{ __("Nouveau relevé eau") }}
+                </h3>
+                <p class="text-[9px] font-bold text-slate-400 normal-case mb-4">{{ __("Appoint citerne, qualité, coût. La consommation des lots est déjà déduite des pointages journaliers.") }}</p>
+                <form method="POST" action="{{ route('utilities.water.readings.store') }}" class="space-y-3" data-prefill-form="water">
+                    @csrf
+                    <div class="grid grid-cols-2 gap-3">
+                        <select name="water_source_id" required data-prefill-source class="bg-white border border-slate-100 rounded-xl p-3 text-[10px] font-black uppercase shadow-sm outline-none">
+                            <option value="">{{ __("Source...") }}</option>
+                            @foreach($sources as $ws)
+                                <option value="{{ $ws->id }}">{{ $ws->name }}</option>
+                            @endforeach
+                        </select>
+                        <input type="date" name="reading_date" value="{{ now()->toDateString() }}" required class="bg-white border border-slate-100 rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
+                    </div>
+                    @if($buildings->count())
+                    <select name="building_id" class="w-full bg-white border border-slate-100 rounded-xl p-3 text-[10px] font-black uppercase shadow-sm outline-none">
+                        <option value="">{{ __("Bâtiment consommateur (optionnel)") }}</option>
+                        @foreach($buildings as $b)
+                            <option value="{{ $b->id }}">{{ $b->name }}</option>
+                        @endforeach
+                    </select>
+                    @endif
+                    <div class="grid grid-cols-2 gap-3">
+                        <input type="number" name="volume_consumed_liters" step="0.1" min="0" required value="0" placeholder="{{ __('Conso (L)') }}" class="bg-white border border-slate-100 rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
+                        <input type="number" name="volume_added_liters" step="0.1" min="0" placeholder="{{ __('Appoint citerne (L)') }}" class="bg-white border border-slate-100 rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
+                    </div>
+                    <div class="grid grid-cols-3 gap-3">
+                        <input type="number" name="quality_ph" step="0.1" min="0" max="14" placeholder="{{ __('pH') }}" class="bg-white border border-slate-100 rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
+                        <input type="number" name="chlorine_level" step="0.01" min="0" placeholder="{{ __('Chlore mg/L') }}" class="bg-white border border-slate-100 rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
+                        <input type="number" name="cost" step="100" min="0" placeholder="{{ __('Coût') }} {{ currency() }}" class="bg-white border border-slate-100 rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
+                    </div>
+                    <button type="submit" class="w-full bg-cyan-500 text-white py-3 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-cyan-600 transition-all border-none cursor-pointer">
+                        <i class="fa-solid fa-check mr-1"></i> {{ __("Enregistrer le relevé") }}
                     </button>
                 </form>
             </div>
+
+            @include('utilities.partials.prefill-script', ['lastData' => ['water' => $lastWater ?? []]])
             @endcan
         </div>
     </div>

@@ -4,10 +4,13 @@
             
             {{-- ZONE D'ACTION (Masquée à l'impression) --}}
             <div class="mb-8 flex justify-between items-center print:hidden">
-                <a href="{{ route('production.index') }}" class="text-slate-400 hover:text-slate-900 transition-colors uppercase text-[10px] tracking-widest flex items-center no-underline">
-                    <i class="fa-solid fa-arrow-left mr-2"></i> {{ __("Retour au journal") }}
-                </a>
+                <x-back label="Retour au journal" />
                 <div class="flex gap-4">
+                    <a href="{{ route('production.label', $production->id) }}" target="_blank"
+                       class="bg-lime-50 text-lime-700 px-6 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-lime-600 hover:text-white transition-all no-underline"
+                       title="{{ __("Étiquette QR de traçabilité") }}">
+                        <i class="fa-solid fa-qrcode mr-2"></i> {{ __("Étiquette") }}
+                    </a>
                     {{-- Permission M : Clôture de la production --}}
                     @can('provenderie.M')
                         @if($production->status === 'Planifié' || $production->status === 'En cours')
@@ -16,6 +19,15 @@
                                 @method('PUT')
                                 <button type="submit" class="bg-emerald-500 text-white px-8 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-emerald-500/20 hover:bg-emerald-600 transition-all">
                                     <i class="fa-solid fa-check-double mr-2"></i> {{ __("Clôturer & Stocker") }}
+                                </button>
+                            </form>
+                            {{-- Annulation : libère la machine si l'OP ne sera pas mené à terme
+                                 (sans elle, la machine resterait engagée indéfiniment). --}}
+                            <form action="{{ route('production.cancel', $production->id) }}" method="POST" onsubmit="return confirm(@json(__('Annuler cet ordre et libérer la/les machine(s) ? Aucun stock n\'est consommé tant que l\'OP n\'est pas clôturé.')))">
+                                @csrf
+                                @method('PUT')
+                                <button type="submit" class="bg-white text-rose-600 border border-rose-200 px-6 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-50 transition-all">
+                                    <i class="fa-solid fa-ban mr-2"></i> {{ __("Annuler l'ordre") }}
                                 </button>
                             </form>
                         @endif
@@ -45,7 +57,7 @@
                     <div class="text-right">
                         <p class="text-[10px] text-slate-400 uppercase leading-none italic font-black">{{ __("Coût de revient réel") }}</p>
                         <p class="text-lg font-black text-emerald-600 italic leading-none mt-1">
-                            {{ number_format($production->real_cost_per_kg ?? 0, 0, ',', ' ') }} <small class="text-[10px]">GNF/KG</small>
+                            {{ number_format($production->real_cost_per_kg ?? 0, 0, ',', ' ') }} <small class="text-[10px]">{{ currency() }}/KG</small>
                         </p>
                     </div>
                 </div>

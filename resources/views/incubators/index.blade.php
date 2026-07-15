@@ -1,23 +1,15 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex justify-between items-center italic font-bold" x-data>
-            <div class="text-left">
-                <h2 class="text-2xl font-black uppercase text-slate-800 leading-none italic tracking-tighter">⚙️ {{ __("Parc Machines") }}</h2>
-                <p class="text-[10px] text-slate-400 uppercase tracking-[0.3em] mt-2 font-black leading-none">{{ __("Maintenance & Configuration Industrielle") }}</p>
-            </div>
-
-            <div class="flex flex-wrap gap-3">
-                <a href="{{ route('incubations.index') }}" class="flex items-center gap-2 px-5 py-3 bg-white border border-slate-200 text-slate-500 rounded-2xl font-black text-[10px] uppercase italic hover:bg-slate-50 transition shadow-sm tracking-widest no-underline">
-                    <i class="fa-solid fa-arrow-left"></i> {{ __("Retour") }}
-                </a>
+        <x-page-header :title="__('⚙️ Parc Machines')" :subtitle="__('Maintenance & Configuration Industrielle')" icon="fa-gears" accent="blue">
+            <x-slot name="actions">
                 {{-- Permission C : Ajout de machine --}}
                 @can('production.C')
                 <button @click="$dispatch('open-add-modal')" class="bg-blue-600 text-white px-7 py-3 rounded-[1.5rem] text-[10px] font-black uppercase italic shadow-xl shadow-blue-200 hover:bg-blue-500 transition-all border-none cursor-pointer">
                     + {{ __("Ajouter une Unité") }}
                 </button>
                 @endcan
-            </div>
-        </div>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-12 italic font-bold">

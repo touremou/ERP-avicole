@@ -1,16 +1,14 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <div>
-                <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">{{ __("Campagnes saisonnières") }}</h2>
-                <p class="text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em] mt-2 italic">{{ __("Tabaski · Ramadan · Fêtes — pilotage de la marge") }}</p>
-            </div>
-            @can('elevage.C')
-            <a href="{{ route('campaigns.create') }}" class="bg-emerald-600 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-700 transition-all no-underline shadow-lg">
-                <i class="fa-solid fa-plus mr-1"></i> {{ __("Nouvelle campagne") }}
-            </a>
-            @endcan
-        </div>
+        <x-page-header :title="__('Campagnes saisonnières')" :subtitle="__('Tabaski · Ramadan · Fêtes — pilotage de la marge')" icon="fa-calendar-week" accent="emerald">
+            <x-slot name="actions">
+                @can('elevage.C')
+                <a href="{{ route('campaigns.create') }}" class="bg-emerald-600 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-700 transition-all no-underline shadow-lg">
+                    <i class="fa-solid fa-plus mr-1"></i> {{ __("Nouvelle campagne") }}
+                </a>
+                @endcan
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     @php
@@ -26,12 +24,7 @@
     <div class="py-10 italic font-bold text-left">
         <div class="max-w-6xl mx-auto sm:px-6 lg:px-8">
 
-            @if(session('success'))
-                <div class="mb-6 p-5 bg-emerald-50 text-emerald-700 rounded-[2rem] text-[10px] font-black uppercase tracking-widest border border-emerald-200">{{ session('success') }}</div>
-            @endif
-            @if(session('error'))
-                <div class="mb-6 p-5 bg-red-50 text-red-700 rounded-[2rem] text-[10px] font-black uppercase tracking-widest border border-red-200">{{ session('error') }}</div>
-            @endif
+            <x-flash />
 
             @forelse($campaigns as $campaign)
                 @php $sc = $statusClasses[$campaign->status] ?? $statusClasses['preparation']; @endphp
@@ -68,7 +61,7 @@
                                 <p class="text-xl font-black italic tracking-tighter leading-none mb-1 {{ $marge >= 0 ? 'text-emerald-600' : 'text-rose-600' }}">
                                     {{ number_format($marge) }}
                                 </p>
-                                <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest">{{ $campaign->target_sale_price ? __("Marge projetée (GNF)") : __("Marge réalisée (GNF)") }}</p>
+                                <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest">{{ ($campaign->target_sale_price ? __("Marge projetée") : __("Marge réalisée")) }} ({{ currency() }})</p>
                             </div>
                         </div>
                     </div>

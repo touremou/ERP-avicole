@@ -9,9 +9,9 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Gate;
 
 /**
- * Validation pour la création d'un pointage journalier.
+ * Validation pour la crÃ©ation d'un pointage journalier.
  *
- * Intègre la vérification de stock aliment qui était dans le controller.
+ * IntÃ¨gre la vÃ©rification de stock aliment qui Ã©tait dans le controller.
  */
 class StoreDailyCheckRequest extends FormRequest
 {
@@ -29,12 +29,27 @@ class StoreDailyCheckRequest extends FormRequest
             'feed_consumed'     => 'required|numeric|min:0',
             'feed_type'         => 'required|string|max:255',
             'water_consumed'    => 'nullable|numeric|min:0',
-            'temp_min'          => 'nullable|numeric',
-            'temp_max'          => 'nullable|numeric',
+            // Bornes physiques strictes (anti « fat-finger » : 220 au lieu de
+            // 22.0 sur tablette gantée) — un bâtiment d'élevage vit entre
+            // −10 et +50 °C, au-delà c'est une erreur de saisie.
+            'temp_min'          => 'nullable|numeric|between:-10,50',
+            'temp_max'          => 'nullable|numeric|between:-10,50|gte:temp_min',
+            'temp_source'       => 'nullable|in:manuel,iot',
+            'temp_recorded_by'  => 'nullable|string|max:100',
             'humidity'          => 'nullable|numeric|min:0|max:100',
             'avg_weight'        => 'nullable|numeric|min:0',
+            // uniformity_pct N'EST PLUS accepté du client (source d'erreur) :
+            // il est CALCULÉ côté serveur depuis les pesées d'échantillon
+            // (DailyCheck::computeSampleStats) — seule source de vérité.
+            // Pesées individuelles (kg) : 0,001–200 kg, du poussin au bovin
+            // (borne anti-erreur d'unité).
+            'weight_samples'    => 'nullable|array|max:500',
+            'weight_samples.*'  => 'numeric|min:0.001|max:200',
             'qty_quarantine_in' => 'nullable|integer|min:0',
             'qty_quarantine_out'=> 'nullable|integer|min:0',
+            // Morts PARMI les isolés (déjà hors effectif : pas de double
+            // décompte) — le solde disponible est contrôlé dans l'Action.
+            'mortality_infirmary' => 'nullable|integer|min:0',
             'qty_sorted_out'    => 'nullable|integer|min:0',
             'treatment_type'    => 'nullable|string|max:255',
             'treatment_name'    => 'nullable|string|max:255',
@@ -47,12 +62,12 @@ class StoreDailyCheckRequest extends FormRequest
     }
 
     /**
-     * Règles des métriques d'extension espèce-spécifiques (ruminants & aquaculture).
+     * RÃ¨gles des mÃ©triques d'extension espÃ¨ce-spÃ©cifiques (ruminants & aquaculture).
      *
-     * Bornées pour fiabiliser alertes & rapports : un pH > 14, une survie
-     * > 100 % ou une biomasse négative n'ont aucun sens. Toutes nullable
-     * (absentes pour la volaille → sans impact). Partagées entre création
-     * et mise à jour du pointage.
+     * BornÃ©es pour fiabiliser alertes & rapports : un pH > 14, une survie
+     * > 100 % ou une biomasse nÃ©gative n'ont aucun sens. Toutes nullable
+     * (absentes pour la volaille â†’ sans impact). PartagÃ©es entre crÃ©ation
+     * et mise Ã  jour du pointage.
      */
     public static function extensionRules(): array
     {
@@ -73,7 +88,7 @@ class StoreDailyCheckRequest extends FormRequest
     }
 
     /**
-     * Validations métier post-règles.
+     * Validations mÃ©tier post-rÃ¨gles.
      */
     public function withValidator($validator): void
     {
@@ -83,13 +98,13 @@ class StoreDailyCheckRequest extends FormRequest
                 return;
             }
 
-            // Lot doit être actif
+            // Lot doit Ãªtre actif
             if ($batch->status !== 'Actif') {
-                $validator->errors()->add('batch_id', 'Ce lot est clôturé. Saisie impossible.');
+                $validator->errors()->add('batch_id', 'Ce lot est clÃ´turÃ©. Saisie impossible.');
                 return;
             }
 
-            // Mortalité ne peut pas dépasser l'effectif
+            // MortalitÃ© ne peut pas dÃ©passer l'effectif
             $totalImpact = (int) $this->input('mortality', 0)
                          + (int) $this->input('qty_quarantine_in', 0)
                          + (int) $this->input('qty_sorted_out', 0)
@@ -98,7 +113,7 @@ class StoreDailyCheckRequest extends FormRequest
             if ($totalImpact > $batch->current_quantity) {
                 $validator->errors()->add(
                     'mortality',
-                    "Impact total ({$totalImpact}) dépasse l'effectif vivant ({$batch->current_quantity})."
+                    "Impact total ({$totalImpact}) dÃ©passe l'effectif vivant ({$batch->current_quantity})."
                 );
             }
         });
@@ -108,10 +123,10 @@ class StoreDailyCheckRequest extends FormRequest
     {
         return [
             'batch_id.exists'              => 'Lot introuvable.',
-            'check_date.before_or_equal'   => 'La date ne peut pas être dans le futur.',
-            'mortality.min'                => 'La mortalité ne peut pas être négative.',
-            'feed_consumed.min'            => 'La consommation ne peut pas être négative.',
-            'humidity.max'                 => 'L\'humidité ne peut pas dépasser 100%.',
+            'check_date.before_or_equal'   => 'La date ne peut pas Ãªtre dans le futur.',
+            'mortality.min'                => 'La mortalitÃ© ne peut pas Ãªtre nÃ©gative.',
+            'feed_consumed.min'            => 'La consommation ne peut pas Ãªtre nÃ©gative.',
+            'humidity.max'                 => 'L\'humiditÃ© ne peut pas dÃ©passer 100%.',
         ];
     }
 
@@ -124,8 +139,8 @@ class StoreDailyCheckRequest extends FormRequest
             'qty_quarantine_in'  => $this->input('qty_quarantine_in', 0),
             'qty_quarantine_out' => $this->input('qty_quarantine_out', 0),
             'qty_sorted_out'     => $this->input('qty_sorted_out', 0),
-            // Le fumier n'est ramassé que lors d'un renouvellement de litière :
-            // toute quantité saisie sans litière changée est ignorée.
+            // Le fumier n'est ramassÃ© que lors d'un renouvellement de litiÃ¨re :
+            // toute quantitÃ© saisie sans litiÃ¨re changÃ©e est ignorÃ©e.
             'manure_collected_kg' => $litterChanged ? $this->input('manure_collected_kg') : 0,
         ]);
     }

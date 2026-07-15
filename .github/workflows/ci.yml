@@ -1,8 +1,7 @@
 name: CI
 
 on:
-  push:
-    branches: [main]
+  push:            # toutes les branches : la dérive vendor/Blade doit casser AVANT la PR
   pull_request:
 
 jobs:
@@ -16,7 +15,7 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
-          extensions: mbstring, gd, bcmath, intl, zip, pdo_sqlite, sqlite3
+          extensions: mbstring, gd, bcmath, intl, zip, sodium, pdo_sqlite, sqlite3
           coverage: none
 
       - name: Cache Composer dependencies
@@ -34,6 +33,11 @@ jobs:
           cp .env.example .env
           php artisan key:generate
 
+      - name: Compile all Blade views
+        # Compile TOUT le Blade (équivalent CI du réflexe local `view:cache`) :
+        # attrape les composants/props cassés sans attendre qu'un test rende la vue.
+        run: php artisan view:cache
+
       - name: Install & build front-end assets
         run: |
           npm ci
@@ -49,3 +53,69 @@ jobs:
       - name: Run test suite
         # phpunit.xml force sqlite :memory: + APP_ENV=testing.
         run: php artisan test
+
+  mysql:
+    # Parité prod (audit 360° §1.4-D1/B5) : les 897 tests valident sqlite,
+    # mais la production est MySQL 8 auto-géré. Ce job garantit que la chaîne
+    # de migrations complète se construit ET se rejoue proprement sur MySQL.
+    name: Migrations MySQL 8 (parité prod)
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_DATABASE: erp_ci
+          MYSQL_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, gd, bcmath, intl, zip, sodium, pdo_mysql
+          coverage: none
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: composer-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-
+
+      - name: Install PHP dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Prepare environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Build full schema on MySQL 8
+        env:
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_DATABASE: erp_ci
+          DB_USERNAME: root
+          DB_PASSWORD: root
+        run: php artisan migrate:fresh --force
+
+      - name: Re-run migrate on existing schema (idempotence)
+        env:
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_DATABASE: erp_ci
+          DB_USERNAME: root
+          DB_PASSWORD: root
+        run: php artisan migrate --force

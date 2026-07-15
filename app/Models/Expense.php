@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Traits\HasStandardUuid;
 use App\Traits\BelongsToFarm;
+use App\Traits\AuditsChanges;
 
 /**
  * Expense — Registre des dépenses ponctuelles (charges diverses, cash).
@@ -21,12 +22,12 @@ use App\Traits\BelongsToFarm;
  */
 class Expense extends Model
 {
-    use HasFactory, SoftDeletes, HasStandardUuid, BelongsToFarm;
+    use HasFactory, SoftDeletes, HasStandardUuid, BelongsToFarm, AuditsChanges;
 
     protected $fillable = [
         'uuid', 'is_synced', 'last_sync_at',
         'reference', 'farm_id', 'batch_id', 'user_id',
-        'category', 'label', 'amount', 'expense_date', 'payment_method',
+        'category', 'label', 'amount', 'expense_date', 'payment_method', 'treasury_account_id',
         'status', 'supplier_name', 'notes', 'justificatif_path',
         'approved_by', 'approved_at',
     ];

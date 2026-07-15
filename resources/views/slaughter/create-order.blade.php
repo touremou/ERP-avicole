@@ -1,12 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center gap-5 text-left">
-            <a href="{{ route('slaughter.dashboard') }}" class="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-900 hover:text-white transition-all no-underline"><i class="fa-solid fa-arrow-left"></i></a>
-            <div>
-                <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">{{ __("Ordre d'Abattage") }}</h2>
-                <p class="text-[10px] font-black text-rose-600 uppercase tracking-[0.2em] mt-2 italic">{{ __("Toutes espèces — Chair, Réformes, Poissons...") }}</p>
-            </div>
-        </div>
+        <x-page-header :title="__('Ordre d\'Abattage')" :subtitle="__('Toutes espèces — Chair, Réformes, Poissons...')" icon="fa-clipboard-list" accent="rose" :back="route('slaughter.dashboard')" />
     </x-slot>
 
     <div class="py-10">
@@ -23,10 +17,44 @@
                     <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm mb-6">
                         <div class="space-y-6">
 
-                            {{-- LOT SOURCE — tous types --}}
+                            {{-- SOURCE : lot interne OU réception externe (volailles hors élevage) --}}
                             <div class="space-y-2">
+                                <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Source des volailles *") }}</label>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <label class="cursor-pointer">
+                                        <input type="radio" value="batch" x-model="source" @change="onSourceChange()" class="peer sr-only" checked>
+                                        <div class="p-4 rounded-2xl border-2 text-center transition-all peer-checked:bg-rose-500 peer-checked:text-white peer-checked:border-rose-500 bg-slate-50 border-slate-100 text-slate-500">
+                                            <span class="text-[9px] font-black uppercase tracking-widest"><i class="fa-solid fa-kiwi-bird mr-1"></i>{{ __("Lot interne") }}</span>
+                                        </div>
+                                    </label>
+                                    <label class="cursor-pointer">
+                                        <input type="radio" value="reception" x-model="source" @change="onSourceChange()" class="peer sr-only">
+                                        <div class="p-4 rounded-2xl border-2 text-center transition-all peer-checked:bg-rose-500 peer-checked:text-white peer-checked:border-rose-500 bg-slate-50 border-slate-100 text-slate-500">
+                                            <span class="text-[9px] font-black uppercase tracking-widest"><i class="fa-solid fa-truck-ramp-box mr-1"></i>{{ __("Réception externe") }}</span>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+
+                            {{-- RÉCEPTION EXTERNE — décision ≠ refusé (RG-04), 7 derniers jours --}}
+                            <div class="space-y-2" x-show="source === 'reception'" x-transition>
+                                <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Réception du vif *") }}</label>
+                                <select name="reception_id" x-model="selectedReception" :disabled="source !== 'reception'" :required="source === 'reception'"
+                                    class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black uppercase shadow-inner outline-none">
+                                    <option value="">{{ __("— Sélectionner la réception —") }}</option>
+                                    @foreach($receptions as $rec)
+                                        <option value="{{ $rec->id }}">
+                                            #{{ $rec->id }} — {{ $rec->provider?->name ?? '—' }} — {{ $rec->reception_date->format('d/m/Y') }} — {{ $rec->received_quantity }} {{ __("sujets") }} ({{ str_replace('_', ' ', $rec->decision) }})
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <p class="text-[8px] text-slate-400 ml-2"><i class="fa-solid fa-shield-halved mr-1"></i>{{ __("Réceptions des 7 derniers jours non refusées — une réception refusée ne peut jamais donner d'ordre (RG-04).") }}</p>
+                            </div>
+
+                            {{-- LOT SOURCE — tous types --}}
+                            <div class="space-y-2" x-show="source === 'batch'">
                                 <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Lot source *") }}</label>
-                                <select name="batch_id" x-model="selectedBatch" @change="onBatchChange()" required
+                                <select name="batch_id" x-model="selectedBatch" @change="onBatchChange()" :disabled="source !== 'batch'" :required="source === 'batch'"
                                     class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black uppercase shadow-inner outline-none">
                                     <option value="">{{ __("— Sélectionner le lot —") }}</option>
 
@@ -62,8 +90,9 @@
                                                     data-species-label="{{ $speciesLabel }}"
                                                     data-type-label="{{ $typeLabel }}"
                                                     data-reform="{{ $isReform ? '1' : '0' }}"
-                                                    data-building="{{ $b->building->name ?? '—' }}">
-                                                    {{ $b->code }} — {{ $b->building->name ?? '' }} ({{ $b->current_quantity }} {{ $unitLabel }}){{ $isReform ? ' — '.__('RÉFORME') : '' }}
+                                                    data-building="{{ $b->building->name ?? '—' }}"
+                                                    @if($b->is_under_quarantine ?? false) disabled @endif>
+                                                    {{ $b->code }} — {{ $b->building->name ?? '' }} ({{ $b->current_quantity }} {{ $unitLabel }}){{ $isReform ? ' — '.__('RÉFORME') : '' }}{{ ($b->is_under_quarantine ?? false) ? ' — ⛔ '.__('QUARANTAINE') : '' }}
                                                 </option>
                                             @endforeach
                                         </optgroup>
@@ -137,9 +166,48 @@
                                 </div>
                             </div>
 
+                            {{-- TYPE DE PRESTATION : propre (stock) ou façon (E8, volailles du client) --}}
                             <div class="space-y-2">
-                                <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Client (si sur commande)") }}</label>
-                                <select name="client_id" class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black uppercase shadow-inner outline-none">
+                                <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Type de prestation *") }}</label>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <label class="cursor-pointer">
+                                        <input type="radio" name="service_type" value="propre" x-model="serviceType" class="peer sr-only" checked>
+                                        <div class="p-4 rounded-2xl border-2 text-center transition-all peer-checked:bg-slate-900 peer-checked:text-white peer-checked:border-slate-900 bg-slate-50 border-slate-100 text-slate-500">
+                                            <span class="text-[9px] font-black uppercase tracking-widest">{{ __("Abattage propre (stock)") }}</span>
+                                        </div>
+                                    </label>
+                                    <label class="cursor-pointer">
+                                        <input type="radio" name="service_type" value="facon" x-model="serviceType" @change="if (serviceType === 'facon') source = 'reception'" class="peer sr-only">
+                                        <div class="p-4 rounded-2xl border-2 text-center transition-all peer-checked:bg-amber-500 peer-checked:text-white peer-checked:border-amber-500 bg-slate-50 border-slate-100 text-slate-500">
+                                            <span class="text-[9px] font-black uppercase tracking-widest"><i class="fa-solid fa-handshake mr-1"></i>{{ __("Abattage à façon") }}</span>
+                                        </div>
+                                    </label>
+                                </div>
+                                <p class="text-[8px] text-slate-400 ml-2" x-show="serviceType === 'facon'" x-transition>
+                                    <i class="fa-solid fa-circle-info mr-1"></i>{{ __("Volailles du client : réception ante-mortem obligatoire, produits hors stock vendable (RG-07), prestation facturée à l'exécution (facture brouillon).") }}
+                                </p>
+                            </div>
+
+                            {{-- FACTURATION FAÇON : modèle + tarif figés sur l'ordre --}}
+                            <div class="grid grid-cols-2 gap-4" x-show="serviceType === 'facon'" x-transition>
+                                <div class="space-y-2">
+                                    <label class="text-[9px] font-black uppercase text-amber-600 tracking-widest ml-2">{{ __("Modèle de facturation *") }}</label>
+                                    <select name="billing_model" x-model="billingModel" @change="billingRate = billingDefaults[billingModel] ?? ''" :required="serviceType === 'facon'" class="w-full bg-amber-50 border-none rounded-2xl p-4 text-xs font-black uppercase shadow-inner outline-none">
+                                        @foreach(\App\Models\SlaughterOrder::BILLING_MODELS as $key => $label)
+                                            <option value="{{ $key }}">{{ __($label) }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="space-y-2">
+                                    <label class="text-[9px] font-black uppercase text-amber-600 tracking-widest ml-2">{{ __("Tarif (GNF)") }}</label>
+                                    <input type="number" name="billing_rate" x-model="billingRate" step="0.01" min="0" class="w-full bg-amber-50 border-none rounded-2xl p-4 text-xs font-black shadow-inner outline-none">
+                                    <p class="text-[8px] text-slate-400 ml-2 m-0">{{ __("Prérempli depuis les Réglages — modifiable, puis figé sur l'ordre. Minimum forfaitaire : :min GNF.", ['min' => number_format((float) setting('abattoir.facon_min_fee', 0), 0, ',', ' ')]) }}</p>
+                                </div>
+                            </div>
+
+                            <div class="space-y-2">
+                                <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2" x-text="serviceType === 'facon' ? {{ Js::from(__('Client propriétaire des volailles *')) }} : {{ Js::from(__('Client (si sur commande)')) }}"></label>
+                                <select name="client_id" :required="serviceType === 'facon'" class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black uppercase shadow-inner outline-none">
                                     <option value="">{{ __("Abattage standard (stock)") }}</option>
                                     @foreach($clients as $c)
                                         <option value="{{ $c->id }}">{{ $c->name }}</option>
@@ -151,11 +219,13 @@
                         </div>
                     </div>
 
-                    <button type="submit" :disabled="(plannedQty > maxQty && maxQty > 0) || !selectedBatch"
-                        :class="((plannedQty > maxQty && maxQty > 0) || !selectedBatch) ? 'bg-slate-300 cursor-not-allowed' : 'bg-rose-500 hover:bg-rose-600 cursor-pointer'"
+                    <button type="submit" :disabled="(source === 'batch' && ((plannedQty > maxQty && maxQty > 0) || !selectedBatch)) || (source === 'reception' && !selectedReception)"
+                        :class="((source === 'batch' && ((plannedQty > maxQty && maxQty > 0) || !selectedBatch)) || (source === 'reception' && !selectedReception)) ? 'bg-slate-300 cursor-not-allowed' : 'bg-rose-500 hover:bg-rose-600 cursor-pointer'"
                         class="w-full text-white py-6 rounded-[2rem] font-black text-xs uppercase tracking-[0.3em] transition-all shadow-2xl italic border-none">
                         <i class="fa-solid fa-clipboard-list mr-2"></i>
-                        <span x-text="plannedQty > maxQty && maxQty > 0 ? 'QUANTITÉ INSUFFISANTE' : (!selectedBatch ? 'SÉLECTIONNER UN LOT' : 'Créer l\'Ordre d\'Abattage')"></span>
+                        <span x-text="source === 'reception'
+                            ? (!selectedReception ? {{ Js::from(__('SÉLECTIONNER UNE RÉCEPTION')) }} : {{ Js::from(__('Créer l\'Ordre d\'Abattage')) }})
+                            : (plannedQty > maxQty && maxQty > 0 ? {{ Js::from(__('QUANTITÉ INSUFFISANTE')) }} : (!selectedBatch ? {{ Js::from(__('SÉLECTIONNER UN LOT')) }} : {{ Js::from(__('Créer l\'Ordre d\'Abattage')) }}))"></span>
                     </button>
                 </form>
             @else
@@ -177,10 +247,28 @@
         const yieldRepro = "{{ setting('abattoir.yield_repro_est', '55-65') }}";
 
         return {
+            source: 'batch', selectedReception: '',
+            serviceType: 'propre',
+            billingModel: 'par_sujet',
+            billingRate: {{ (float) setting('abattoir.facon_rate_per_bird', 0) }},
+            billingDefaults: {
+                par_sujet: {{ (float) setting('abattoir.facon_rate_per_bird', 0) }},
+                par_kg_vif: {{ (float) setting('abattoir.facon_rate_per_kg_live', 0) }},
+                par_kg_carcasse: {{ (float) setting('abattoir.facon_rate_per_kg_carcass', 0) }},
+            },
             selectedBatch: '', plannedQty: 0, maxQty: 0,
             batchType: '', batchSpecies: '', speciesLabel: '', typeLabel: '', building: '', isReform: false,
             yieldPonte: yieldPonte,
             yieldRepro: yieldRepro,
+
+            onSourceChange() {
+                if (this.source === 'reception') {
+                    this.selectedBatch = ''; this.maxQty = 0; this.batchType = ''; this.batchSpecies = '';
+                    this.speciesLabel = ''; this.typeLabel = ''; this.building = ''; this.isReform = false;
+                } else {
+                    this.selectedReception = '';
+                }
+            },
 
             onBatchChange() {
                 const sel = document.querySelector('select[name="batch_id"]');

@@ -1,17 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex justify-between items-center">
-            <div class="flex items-center gap-4 text-left">
-                <a href="{{ route('employees.index') }}" class="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-500 hover:text-slate-800 rounded-xl transition-all shadow-sm group no-underline">
-                    <i class="fas fa-chevron-left group-hover:-translate-x-1 transition-transform text-xs"></i>
-                    <span class="text-[10px] font-black uppercase italic tracking-widest">{{ __("Retour") }}</span>
-                </a>
-                <div>
-                    <h2 class="text-lg font-black text-slate-800 uppercase italic tracking-tighter leading-none">{{ $employee->first_name }} {{ $employee->last_name }}</h2>
-                    <p class="text-[9px] font-black text-blue-500 uppercase tracking-widest mt-1 italic">{{ $employee->employee_id }} · {{ $employee->job_title }}</p>
-                </div>
-            </div>
-            <div class="flex items-center gap-2">
+        <x-page-header :title="$employee->first_name . ' ' . $employee->last_name" :subtitle="$employee->employee_id . ' · ' . $employee->job_title" icon="fa-id-card" accent="blue" :back="route('employees.index')">
+            <x-slot name="actions">
                 {{-- MODULE PLANNING : Accès aux tâches --}}
                 @can('planning.L')
                 <a href="{{ route('tasks.index', ['employee' => $employee->id]) }}" class="bg-white border border-indigo-200 px-4 py-2 rounded-xl text-[9px] font-black uppercase text-indigo-600 hover:bg-indigo-900 hover:text-white transition shadow-sm italic no-underline">
@@ -43,21 +33,14 @@
                 </form>
                 @endif
                 @endcan
-            </div>
-        </div>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-8 italic font-bold">
         <div class="max-w-6xl mx-auto sm:px-6 lg:px-8">
 
-            @foreach(['success', 'error'] as $msg)
-                @if(session($msg))
-                    <div @class(['mb-6 p-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg flex items-center italic',
-                        'bg-emerald-500 text-white' => $msg === 'success', 'bg-red-500 text-white' => $msg === 'error'])>
-                        <i class="fa-solid fa-{{ $msg === 'success' ? 'check-double' : 'circle-xmark' }} mr-3"></i> {{ session($msg) }}
-                    </div>
-                @endif
-            @endforeach
+            <x-flash />
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 

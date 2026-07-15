@@ -1,27 +1,12 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center gap-5 text-left">
-            <a href="{{ route('utilities.dashboard') }}" class="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-900 hover:text-white transition-all no-underline">
-                <i class="fa-solid fa-arrow-left"></i>
-            </a>
-            <div>
-                <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">{{ __("Achats Carburant") }}</h2>
-                <p class="text-[10px] font-black text-orange-600 uppercase tracking-[0.2em] mt-2 italic">{{ __("Historique des approvisionnements carburant") }}</p>
-            </div>
-        </div>
+        <x-page-header :title="__('Achats Carburant')" :subtitle="__('Historique des approvisionnements carburant')" icon="fa-gas-pump" accent="orange" />
     </x-slot>
 
     <div class="py-10">
         <div class="max-w-5xl mx-auto sm:px-6 lg:px-8 italic font-bold text-left">
 
-            @foreach(['success', 'error'] as $msg)
-                @if(session($msg))
-                    <div @class(['mb-8 p-5 rounded-[2rem] font-black text-[10px] uppercase tracking-[0.2em] shadow-xl flex items-center italic',
-                        'bg-emerald-500 text-white' => $msg === 'success', 'bg-red-500 text-white' => $msg === 'error'])>
-                        <i class="fa-solid fa-{{ $msg === 'success' ? 'check-double' : 'circle-xmark' }} mr-3 text-lg"></i> {{ session($msg) }}
-                    </div>
-                @endif
-            @endforeach
+            <x-flash />
 
             {{-- FORMULAIRE RAPIDE --}}
             @can('ressources.C')
@@ -46,7 +31,7 @@
                                 class="w-full bg-white border-none rounded-2xl p-4 text-lg font-black text-orange-600 shadow-sm outline-none text-right">
                         </div>
                         <div class="space-y-2">
-                            <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Prix/litre (GNF) *") }}</label>
+                            <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Prix/litre") }} ({{ currency() }}) *</label>
                             <input type="number" name="unit_price" step="100" min="0" required
                                 value="{{ setting('energie.fuel_price_liter', 12000) }}"
                                 class="w-full bg-white border-none rounded-2xl p-4 text-sm font-black shadow-sm outline-none text-right">
@@ -91,7 +76,7 @@
                             <td class="px-4 py-4 text-[10px] font-black text-slate-700 uppercase">{{ $p->source->name ?? '—' }}</td>
                             <td class="px-4 py-4 text-right text-sm font-black text-orange-600">{{ number_format($p->quantity_liters, 0) }} L</td>
                             <td class="px-4 py-4 text-right text-[10px] font-black text-slate-500">{{ number_format($p->unit_price, 0, ',', ' ') }}</td>
-                            <td class="px-4 py-4 text-right text-sm font-black text-slate-900">{{ number_format($p->total_cost, 0, ',', ' ') }} GNF</td>
+                            <td class="px-4 py-4 text-right text-sm font-black text-slate-900">{{ number_format($p->total_cost, 0, ',', ' ') }} {{ currency() }}</td>
                             <td class="px-4 py-4 text-[10px] font-black text-slate-500">{{ $p->supplier ?? '—' }}</td>
 
                             {{-- 💡 BOUTONS D'ACTION --}}

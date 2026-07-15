@@ -156,8 +156,9 @@ test('le formulaire dashboard énergie accepte un building_id', function () {
     expect(EnergyReading::where('building_id', $this->building->id)->exists())->toBeTrue();
 });
 
-test('le dashboard pré-remplit avec le dernier relevé et affiche le coût/sujet', function () {
-    // Un relevé antérieur sert de base au pré-remplissage « comme hier ».
+test('la page Eau pré-remplit le formulaire de relevé avec le dernier relevé', function () {
+    // La saisie des relevés (et son pré-remplissage « comme hier ») vit
+    // désormais sur la page dédiée Eau, plus sur le tableau de bord.
     WaterReading::create([
         'farm_id' => $this->farm->id, 'water_source_id' => $this->waterSource->id,
         'reading_date' => now()->subDay()->toDateString(), 'user_id' => $this->adminUser->id,
@@ -165,7 +166,7 @@ test('le dashboard pré-remplit avec le dernier relevé et affiche le coût/suje
     ]);
 
     $this->actingAs($this->adminUser)
-        ->get(route('utilities.dashboard'))
+        ->get(route('utilities.water.sources'))
         ->assertOk()
         ->assertSee('RELEVE_LAST', false)   // données de pré-remplissage injectées
         ->assertSee('1500', false);         // valeur du dernier relevé disponible côté JS
@@ -180,4 +181,48 @@ test('le dashboard affiche l\'onboarding quand aucune source n\'existe', functio
         ->get(route('utilities.dashboard'))
         ->assertOk()
         ->assertSee('Continuité de service');
+});
+
+test('la fiche lot distingue le coût facturé (relevés) de l\'eau bue aux pointages (estimation)', function () {
+    \App\Models\Setting::set('energie.water_price_m3', 8000); // 8 000 GNF / m³
+
+    $batch = Batch::factory()->create([
+        'farm_id'      => $this->farm->id,
+        'building_id'  => $this->building->id,
+        'arrival_date' => now()->subDays(10)->toDateString(),
+        'status'       => 'Actif',
+        'initial_quantity' => 500, 'current_quantity' => 500, 'qty_alive' => 500,
+    ]);
+
+    // Coût FACTURÉ : un relevé compteur taggé bâtiment (comptable, marge).
+    WaterReading::create([
+        'farm_id'                => $this->farm->id,
+        'water_source_id'        => $this->waterSource->id,
+        'building_id'            => $this->building->id,
+        'reading_date'           => now()->subDays(2)->toDateString(),
+        'volume_consumed_liters' => 1000,
+        'cost'                   => 5000,
+        'user_id'                => $this->adminUser->id,
+    ]);
+
+    // Eau BUE : deux pointages (250 L + 250 L) — n'affecte PAS utility_cost.
+    foreach ([3, 1] as $daysAgo) {
+        \App\Models\DailyCheck::factory()->create([
+            'batch_id'       => $batch->id,
+            'check_date'     => now()->subDays($daysAgo)->toDateString(),
+            'mortality'      => 0,
+            'water_consumed' => 250,
+        ]);
+    }
+
+    // Le coût comptable reste celui des relevés : les pointages ne le gonflent pas.
+    expect($batch->fresh()->utility_cost)->toBe(5000.0);
+
+    // La fiche affiche les DEUX lignes : facturé + eau bue estimée (500 L ≈ 4 000).
+    $this->actingAs($this->adminUser)
+        ->get(route('batches.show', $batch))
+        ->assertOk()
+        ->assertSee('Facturé (relevés)')
+        ->assertSee('Eau bue (pointages)')
+        ->assertSee('4 000', false); // 0,5 m³ × 8 000
 });

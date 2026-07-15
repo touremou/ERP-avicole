@@ -21,6 +21,7 @@ class StoreFeedPurchaseRequest extends FormRequest
             'quantity'      => 'required|numeric|min:0.001',
             'unit_price'    => 'required|numeric|min:0', // Montant total payé
             'supplier'      => 'nullable|string|max:255',
+            'payment_mode'  => 'nullable|in:comptant,credit',
             'unit'          => 'required|string|in:Sac,KG,Litre,Unité,Boite',
             'metadata'      => 'nullable|array',
         ];

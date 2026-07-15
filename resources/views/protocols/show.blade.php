@@ -1,21 +1,12 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex justify-between items-center text-left">
-            <div class="flex items-center gap-5">
-                <a href="{{ route('protocols.index') }}" class="group flex items-center justify-center w-12 h-12 bg-white border border-slate-200 text-slate-400 hover:text-slate-800 rounded-2xl transition-all shadow-sm no-underline">
-                    <i class="fa-solid fa-circle-chevron-left text-xl group-hover:-translate-x-1 transition-transform"></i>
-                </a>
-                <div>
-                    <h2 class="font-black text-xl text-slate-800 uppercase italic tracking-tighter leading-none">
-                        💉 {{ __("Configuration") }} : {{ $protocol->name }}
-                    </h2>
-                    <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-2 italic">{{ __("Architecture chronologique du standard") }}</p>
-                </div>
-            </div>
-            <span class="px-5 py-2 bg-slate-900 text-yellow-500 rounded-xl text-[9px] font-black uppercase italic tracking-[0.2em] shadow-xl ring-1 ring-white/10">
-                {{ __("Mode Édition Séquence") }}
-            </span>
-        </div>
+        <x-page-header :title="'💉 ' . __('Configuration') . ' : ' . $protocol->name" :subtitle="__('Architecture chronologique du standard')" icon="fa-scroll" accent="purple" :back="route('protocols.index')">
+            <x-slot name="actions">
+                <span class="px-5 py-2 bg-slate-900 text-yellow-500 rounded-xl text-[9px] font-black uppercase italic tracking-[0.2em] shadow-xl ring-1 ring-white/10">
+                    {{ __("Mode Édition Séquence") }}
+                </span>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-12 italic font-bold">

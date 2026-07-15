@@ -4,10 +4,12 @@ namespace App\Services;
 
 use App\Models\DailyCheck;
 use App\Models\EggProduction;
+use App\Models\EnergyReading;
 use App\Models\Expense;
 use App\Models\HealthCheck;
 use App\Models\MilkProduction;
 use App\Models\Sale;
+use App\Models\WaterReading;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -266,6 +268,75 @@ class DashboardInsightsService
             'mortality' => array_values($mortality),
             'eggs'      => array_values($eggs),
             'feed'      => array_values($feed),
+        ];
+    }
+
+    /**
+     * Séries quotidiennes CONSOLIDÉES pour la vue analytique : mortalité +
+     * eau + énergie sur une même échelle de temps. Permet de repérer les
+     * corrélations (ex. coupure d'énergie/ventilation → pic de mortalité,
+     * chute de conso d'eau → maladie). Jours sans donnée = 0 (pas de trous).
+     */
+    public function consolidatedTrends(array $batchIds, int $days = 30): array
+    {
+        $start = now()->subDays($days - 1)->startOfDay();
+
+        $labels = [];
+        for ($i = 0; $i < $days; $i++) {
+            $labels[] = $start->copy()->addDays($i)->toDateString();
+        }
+
+        $mortality = array_fill_keys($labels, 0);
+        $water     = array_fill_keys($labels, 0.0);
+        $energy    = array_fill_keys($labels, 0.0);
+
+        // Mortalité + eau ANIMALE issues des pointages journaliers.
+        if (! empty($batchIds)) {
+            DailyCheck::whereIn('batch_id', $batchIds)
+                ->where('check_date', '>=', $start->toDateString())
+                ->select('check_date',
+                    DB::raw('SUM(mortality) AS m'),
+                    DB::raw('SUM(water_consumed) AS w'))
+                ->groupBy('check_date')
+                ->get()
+                ->each(function ($row) use (&$mortality, &$water) {
+                    $d = Carbon::parse($row->check_date)->toDateString();
+                    if (isset($mortality[$d])) {
+                        $mortality[$d] = (int) $row->m;
+                        $water[$d]     = (float) $row->w;
+                    }
+                });
+        }
+
+        // Eau : relevés manuels (citernes/réseau) — s'ajoutent aux pointages.
+        WaterReading::where('reading_date', '>=', $start->toDateString())
+            ->select('reading_date', DB::raw('SUM(volume_consumed_liters) AS w'))
+            ->groupBy('reading_date')
+            ->get()
+            ->each(function ($row) use (&$water) {
+                $d = Carbon::parse($row->reading_date)->toDateString();
+                if (isset($water[$d])) {
+                    $water[$d] += (float) $row->w;
+                }
+            });
+
+        // Énergie : coût quotidien (réseau + groupes).
+        EnergyReading::where('reading_date', '>=', $start->toDateString())
+            ->select('reading_date', DB::raw('SUM(cost) AS c'))
+            ->groupBy('reading_date')
+            ->get()
+            ->each(function ($row) use (&$energy) {
+                $d = Carbon::parse($row->reading_date)->toDateString();
+                if (isset($energy[$d])) {
+                    $energy[$d] = (float) $row->c;
+                }
+            });
+
+        return [
+            'labels'    => array_map(fn ($d) => Carbon::parse($d)->format('d/m'), $labels),
+            'mortality' => array_values($mortality),
+            'water'     => array_map(fn ($v) => (int) round($v), array_values($water)),
+            'energy'    => array_map(fn ($v) => (int) round($v), array_values($energy)),
         ];
     }
 }

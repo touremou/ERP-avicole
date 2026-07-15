@@ -1,30 +1,12 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center gap-4 text-left">
-            <a href="{{ route('planning.index') }}" class="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-500 hover:text-slate-800 rounded-xl transition-all shadow-sm group no-underline">
-                <i class="fas fa-chevron-left group-hover:-translate-x-1 transition-transform text-xs"></i>
-                <span class="text-[10px] font-black uppercase italic tracking-widest">{{ __("Planning") }}</span>
-            </a>
-            <div>
-                <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">{{ $plan->building->name ?? '—' }}</h2>
-                <p class="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em] mt-2 italic">
-                    {{ ucfirst($plan->batch_type) }} {{ $plan->model_name ? '— '.$plan->model_name : '' }} — {{ number_format($plan->planned_quantity) }} {{ __("sujets") }}
-                </p>
-            </div>
-        </div>
+        <x-page-header :title="$plan->building->name ?? '—'" :subtitle="ucfirst($plan->batch_type) . ($plan->model_name ? ' — ' . $plan->model_name : '') . ' — ' . number_format($plan->planned_quantity) . ' ' . __('sujets')" icon="fa-calendar-days" accent="indigo" :back="route('planning.index')" />
     </x-slot>
 
     <div class="py-10">
         <div class="max-w-4xl mx-auto sm:px-6 lg:px-8 italic font-bold text-left">
 
-            @foreach(['success', 'error'] as $msg)
-                @if(session($msg))
-                    <div @class(['mb-8 p-5 rounded-[2rem] font-black text-[10px] uppercase tracking-[0.2em] shadow-xl flex items-center italic',
-                        'bg-emerald-500 text-white' => $msg === 'success', 'bg-red-500 text-white' => $msg === 'error'])>
-                        <i class="fa-solid fa-{{ $msg === 'success' ? 'check-double' : 'circle-xmark' }} mr-3 text-lg"></i> {{ session($msg) }}
-                    </div>
-                @endif
-            @endforeach
+            <x-flash />
 
             {{-- ═══ TIMELINE VISUELLE ═══ --}}
             <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm mb-6">

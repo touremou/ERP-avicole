@@ -18,6 +18,13 @@ return [
         'key' => env('POSTMARK_API_KEY'),
     ],
 
+    // Ingestion IoT (télémétrie bâtiments) : clé d'API attendue dans le
+    // header X-Api-Key de POST /api/v1/telemetry/temperature. Vide = endpoint
+    // désactivé (503) — sécurité par défaut tant que le matériel n'est pas choisi.
+    'telemetry' => [
+        'api_key' => env('TELEMETRY_API_KEY', ''),
+    ],
+
     'resend' => [
         'key' => env('RESEND_API_KEY'),
     ],
@@ -49,6 +56,22 @@ return [
         'geocode_url'  => env('WEATHER_GEOCODE_URL', 'https://geocoding-api.open-meteo.com/v1/search'),
         'timeout'      => (int) env('WEATHER_TIMEOUT', 12),
         'country'      => env('WEATHER_COUNTRY', 'GN'), // biais géocodage (Guinée)
+    ],
+
+    // WhatsApp : valeurs de repli (les Réglages › WhatsApp priment via setting()).
+    'whatsapp' => [
+        'driver'      => env('WHATSAPP_DRIVER', 'log'),
+        'api_key'     => env('WHATSAPP_API_KEY', ''),
+        'instance_id' => env('WHATSAPP_INSTANCE_ID', ''),
+    ],
+
+    // SMS : passerelle locale. driver 'log' n'envoie rien (dev) ; 'http' poste
+    // vers api_url (gateway GSM/opérateur). Réglages › WhatsApp (clés sms.*) priment.
+    'sms' => [
+        'driver'  => env('SMS_DRIVER', 'log'),
+        'api_url' => env('SMS_API_URL', ''),
+        'key'     => env('SMS_API_KEY', ''),
+        'sender'  => env('SMS_SENDER', 'AVISMART'),
     ],
 
 ];

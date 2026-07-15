@@ -1,27 +1,12 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <div class="flex items-center gap-4 text-left">
-                {{-- BOUTON RETOUR RAPIDE --}}
-                <a href="{{ route('providers.show', $provider->id) }}" class="group flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-400 hover:text-slate-800 rounded-xl transition shadow-sm no-underline">
-                    <i class="fas fa-chevron-left group-hover:-translate-x-1 transition-transform"></i>
-                    <span class="text-[10px] font-black uppercase italic tracking-widest">{{ __("Retour") }}</span>
-                </a>
-                <div>
-                    <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">
-                        {{ __('Modification du partenaire') }}
-                    </h2>
-                    <p class="text-[10px] font-black text-blue-500 uppercase tracking-widest mt-1 italic leading-none">
-                        {{ $provider->name }}
-                    </p>
-                </div>
-            </div>
-            <div class="hidden md:block">
-                <span class="px-4 py-2 bg-slate-900 rounded-xl text-[10px] font-black uppercase text-amber-400 italic tracking-widest border border-slate-800 shadow-lg">
+        <x-page-header :title="__('Modification du partenaire')" :subtitle="$provider->name" icon="fa-handshake" accent="blue" :back="route('providers.show', $provider->id)">
+            <x-slot name="actions">
+                <span class="hidden md:inline px-4 py-2 bg-slate-900 rounded-xl text-[10px] font-black uppercase text-amber-400 italic tracking-widest border border-slate-800 shadow-lg">
                     <i class="fas fa-edit mr-2"></i> {{ __("Mode Édition Actif") }}
                 </span>
-            </div>
-        </div>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-12 italic font-bold">

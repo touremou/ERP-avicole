@@ -116,6 +116,12 @@ class CropCycle extends Model
         return $this->hasMany(CropInput::class);
     }
 
+    /** Validations explicites d'étapes de l'itinéraire technique. */
+    public function protocolCompletions(): HasMany
+    {
+        return $this->hasMany(CropProtocolCompletion::class);
+    }
+
     // ─── SCOPES ───
 
     /** Cycles en cours (semés OU en récolte) — occupent la parcelle. */
@@ -169,6 +175,12 @@ class CropCycle extends Model
         $end = ($this->isArchived() && $this->closing_date)
             ? Carbon::parse($this->closing_date)->startOfDay()
             : now()->startOfDay();
+
+        // Semis daté dans le futur → âge nul (et non un âge positif aberrant :
+        // diffInDays renvoie une valeur absolue en Carbon 3).
+        if ($end->lt($start)) {
+            return 0;
+        }
 
         return (int) $start->diffInDays($end) + 1;
     }
@@ -250,13 +262,41 @@ class CropCycle extends Model
     }
 
     /**
-     * Recalcule total_revenue depuis les récoltes réelles (quantité × prix unitaire).
-     * Appelé par HarvestObserver à chaque création / édition / suppression de récolte.
+     * Coût de production par KG récolté du cycle (base de valorisation de
+     * l'inventaire « recoltes »).
+     *
+     * = (coût d'acquisition forfaitaire + coûts additionnels + intrants
+     * itémisés) ÷ poids total récolté (kg effectifs). Renvoie 0 si rien n'a
+     * encore été récolté (valorisation impossible / division par zéro).
+     */
+    public function productionCostPerKg(): float
+    {
+        $kg = $this->total_harvested;
+        if ($kg <= 0) {
+            return 0.0;
+        }
+
+        $cost = (float) $this->total_acquisition_cost
+            + (float) $this->additional_costs
+            + $this->inputs_cost;
+
+        return round($cost / $kg, 2);
+    }
+
+    /**
+     * Recalcule total_revenue depuis les récoltes réelles.
+     *
+     * Base = POIDS NET EFFECTIF (kg) × prix unitaire (exprimé au kg), cohérent
+     * avec le rendement (kg/ha) et la valorisation de l'inventaire. Sommer
+     * quantity × prix mélangerait des unités hétérogènes (caisses, sacs, kg)
+     * et fausserait le revenu dès qu'une récolte n'est pas saisie en kg.
      */
     public function recalculateRevenue(): void
     {
         $revenue = $this->harvests()
-            ->selectRaw('COALESCE(SUM(quantity * COALESCE(unit_price, 0)), 0) as total')
+            ->selectRaw(
+                "COALESCE(SUM(COALESCE(net_weight_kg, CASE WHEN LOWER(unit) = 'kg' THEN quantity ELSE 0 END) * COALESCE(unit_price, 0)), 0) as total"
+            )
             ->value('total') ?? 0;
 
         $this->updateQuietly(['total_revenue' => (float) $revenue]);

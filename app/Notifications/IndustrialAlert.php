@@ -46,7 +46,10 @@ class IndustrialAlert extends Notification
     public function toSms($notifiable)
     {
         return [
-            'to'      => $notifiable->phone,
+            // L'utilisateur stocke son mobile dans whatsapp_phone (il n'existe pas
+            // de colonne `phone`) — l'ancien $notifiable->phone était toujours null,
+            // donc aucun SMS n'atteignait jamais le destinataire.
+            'to'      => $notifiable->whatsapp_phone ?? $notifiable->phone ?? null,
             'message' => "AVISMART CRITIQUE: " . ($this->alertData['message'] ?? 'Alerte sans message'),
         ];
     }

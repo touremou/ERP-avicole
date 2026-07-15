@@ -29,7 +29,7 @@ class StoreFormulaRequest extends FormRequest
             'instructions'             => 'nullable|string|max:2000',
             'ingredients'              => 'required|array|min:1',
             'ingredients.*.id'         => 'required|integer|exists:raw_materials,id',
-            'ingredients.*.percentage' => 'required|numeric|min:0|max:100',
+            'ingredients.*.percentage' => 'nullable|numeric|min:0|max:100',
         ];
     }
 
@@ -40,7 +40,9 @@ class StoreFormulaRequest extends FormRequest
     {
         $validator->after(function ($validator) {
             $ingredients = $this->input('ingredients', []);
-            $total = collect($ingredients)->sum('percentage');
+            $total = collect($ingredients)
+                ->filter(fn($i) => isset($i['percentage']) && $i['percentage'] !== '' && $i['percentage'] !== null)
+                ->sum('percentage');
 
             if (abs($total - 100) > 0.1) {
                 $validator->errors()->add(

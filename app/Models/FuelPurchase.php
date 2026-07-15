@@ -14,7 +14,7 @@ class FuelPurchase extends Model
         'farm_id', 'energy_source_id', 'building_id', 'purchase_date', 'user_id',
         'quantity_liters', 'unit_price', 'total_cost',
         'supplier', 'receipt_reference',
-        'fuel_level_after', 'notes',
+        'fuel_level_after', 'notes', 'expense_id',
     ];
 
     protected $casts = [
@@ -38,5 +38,51 @@ class FuelPurchase extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Écriture comptable miroir au registre des dépenses (catégorie carburant).
+     *
+     * Un achat de gasoil est À LA FOIS un mouvement opérationnel (remplissage de
+     * cuve, suivi dans le module Énergie) ET une sortie de trésorerie. Plutôt
+     * que de tenir deux comptabilités parallèles, l'achat poste une dépense
+     * « valide » unique : elle apparaît dans le registre Dépenses et alimente le
+     * P&L. Le rapport de résultat lit le poste Gasoil DEPUIS ce registre (et non
+     * la table fuel_purchases) — source unique, zéro double comptage.
+     */
+    public function expense(): BelongsTo
+    {
+        return $this->belongsTo(Expense::class);
+    }
+
+    /** Crée (ou met à jour) la dépense carburant liée à cet achat. */
+    public function syncLedgerExpense(): Expense
+    {
+        $liters = rtrim(rtrim(number_format((float) $this->quantity_liters, 2, '.', ''), '0'), '.');
+
+        $attributes = [
+            'farm_id'       => $this->farm_id,
+            'user_id'       => $this->user_id,
+            'category'      => 'carburant',
+            'label'         => 'Carburant — ' . ($this->source?->name ?? 'cuve') . " ({$liters} L)",
+            'amount'        => $this->total_cost,
+            'expense_date'  => $this->purchase_date,
+            'status'        => 'valide', // achat confirmé (trésorerie sortie) → compté en P&L
+            'supplier_name' => $this->supplier,
+            'notes'         => $this->receipt_reference ? ('Réf. reçu : ' . $this->receipt_reference) : null,
+        ];
+
+        if ($this->expense) {
+            $this->expense->update($attributes);
+
+            return $this->expense;
+        }
+
+        $expense = Expense::create($attributes + ['reference' => \App\Services\DocumentNumberingService::generate('fuel_expense')]);
+
+        $this->expense_id = $expense->id;
+        $this->saveQuietly();
+
+        return $expense;
     }
 }

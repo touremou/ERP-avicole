@@ -1,20 +1,8 @@
 @php $currency = setting('general.currency', 'GNF'); @endphp
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <div class="flex items-center gap-4">
-                <div class="w-12 h-12 bg-green-600 rounded-2xl flex items-center justify-center text-white shadow-lg -rotate-3">
-                    <i class="fa-solid fa-book text-lg"></i>
-                </div>
-                <div class="text-left">
-                    <h2 class="font-black text-2xl text-slate-800 uppercase italic tracking-tighter leading-none">{{ $recipe->name }}</h2>
-                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1 italic">{{ $recipe->type_label }} <i class="fa-solid fa-arrow-right-long mx-1"></i> {{ $recipe->output_product }}</p>
-                </div>
-            </div>
-            <div class="flex gap-3 items-center">
-                <a href="{{ route('crop-recipes.index') }}" class="text-[10px] font-black uppercase text-slate-400 hover:text-slate-900 transition no-underline">
-                    <i class="fa-solid fa-arrow-left mr-2"></i> {{ __("Recettes") }}
-                </a>
+        <x-page-header :title="$recipe->name" :subtitle="$recipe->type_label . ' → ' . $recipe->output_product" icon="fa-book" accent="green" :back="route('crop-recipes.index')">
+            <x-slot name="actions">
                 @can('cultures.M')
                 <a href="{{ route('crop-recipes.edit', $recipe) }}" class="bg-white border border-slate-100 text-slate-600 px-5 py-2.5 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-slate-50 transition italic no-underline flex items-center gap-2">
                     <i class="fa-solid fa-pen text-green-500"></i>{{ __("Modifier") }}
@@ -26,17 +14,13 @@
                     <button class="text-rose-400 hover:text-rose-600 text-[10px] font-black uppercase italic"><i class="fa-solid fa-trash mr-1"></i>{{ __("Supprimer") }}</button>
                 </form>
                 @endcan
-            </div>
-        </div>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-10">
         <div class="max-w-4xl mx-auto sm:px-6 lg:px-8 italic font-bold text-left space-y-8">
-            @if(session('success'))
-                <div class="p-5 bg-emerald-500 text-white rounded-[2rem] font-black text-[10px] uppercase tracking-[0.2em] shadow-xl flex items-center italic">
-                    <i class="fa-solid fa-check-double mr-3 text-lg"></i> {{ session('success') }}
-                </div>
-            @endif
+            <x-flash />
 
             <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
                 <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">

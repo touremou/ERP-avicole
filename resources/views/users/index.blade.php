@@ -1,38 +1,27 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 text-left">
-            <div>
-                <h2 class="text-2xl font-black text-slate-800 tracking-tighter uppercase italic leading-none">{{ __("Gestion des Accès & Rôles") }}</h2>
-                <p class="text-slate-500 font-bold text-[10px] uppercase tracking-[0.2em] mt-2 italic">{{ __("RBAC par Module — Matrice des privilèges industrielle") }}</p>
-            </div>
-            <div class="flex flex-wrap gap-3">
+        <x-page-header :title="__('Gestion des Accès & Rôles')" :subtitle="__('RBAC par Module — Matrice des privilèges industrielle')" icon="fa-user-shield" accent="indigo">
+            <x-slot name="actions">
                 <button onclick="document.getElementById('moduleMatrixModal').classList.remove('hidden')"
                         class="bg-indigo-500 text-white px-6 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-indigo-600 transition-all shadow-lg italic border-none cursor-pointer">
                     <i class="fas fa-th mr-2"></i> {{ __("Matrice Modules") }}
                 </button>
                 <button onclick="document.getElementById('roleConfigModal').classList.remove('hidden')"
                         class="bg-white border border-slate-200 text-slate-600 px-6 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:border-slate-900 transition-all shadow-sm italic cursor-pointer">
-                    <i class="fas fa-shield-halved mr-2 text-blue-500"></i> {{ __("Rôles & LCMS") }}
+                    <i class="fas fa-shield-halved mr-2 text-blue-500"></i> {{ __("Rôles") }}
                 </button>
                 <button onclick="document.getElementById('userModal').classList.remove('hidden')"
                         class="bg-slate-900 text-white px-6 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-blue-600 transition-all shadow-xl italic border-none cursor-pointer">
                     <i class="fas fa-user-plus mr-2"></i> {{ __("Nouvel Utilisateur") }}
                 </button>
-            </div>
-        </div>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-10 italic">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
 
-            @foreach(['success', 'error'] as $msg)
-                @if(session($msg))
-                    <div @class(['mb-8 p-5 rounded-[2rem] font-black text-[10px] uppercase tracking-[0.2em] shadow-xl flex items-center italic',
-                        'bg-emerald-500 text-white' => $msg === 'success', 'bg-red-500 text-white' => $msg === 'error'])>
-                        <i class="fa-solid fa-{{ $msg === 'success' ? 'check-double' : 'circle-xmark' }} mr-3 text-lg"></i> {{ session($msg) }}
-                    </div>
-                @endif
-            @endforeach
+            <x-flash />
 
             {{-- TABLEAU DES UTILISATEURS --}}
             <div class="bg-white rounded-[3rem] border border-slate-100 shadow-sm overflow-hidden text-left font-bold">
@@ -41,7 +30,6 @@
                         <tr class="bg-slate-50 text-[8px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 italic">
                             <th class="px-8 py-5 text-left">{{ __("Utilisateur") }}</th>
                             <th class="px-6 py-5 text-left">{{ __("Rôle") }}</th>
-                            <th class="px-6 py-5 text-center">{{ __("Permissions globales") }}</th>
                             <th class="px-6 py-5 text-center">{{ __("Modules accessibles") }}</th>
                             <th class="px-8 py-5 text-right">{{ __("Actions") }}</th>
                         </tr>
@@ -74,21 +62,6 @@
                                     </select>
                                 </form>
                             </td>
-                            <td class="px-6 py-5">
-                                <div class="flex justify-center gap-1.5">
-                                    @foreach(['L', 'C', 'M', 'S'] as $priv)
-                                        @php $has = $user->hasPermission($priv); @endphp
-                                        <div @class(['w-7 h-7 rounded-lg text-[9px] flex items-center justify-center font-black transition-all',
-                                            'bg-emerald-100 text-emerald-600' => $has && $priv === 'L',
-                                            'bg-orange-100 text-orange-600' => $has && $priv === 'C',
-                                            'bg-blue-100 text-blue-600' => $has && $priv === 'M',
-                                            'bg-rose-100 text-rose-600' => $has && $priv === 'S',
-                                            'bg-slate-50 text-slate-200' => !$has])>
-                                            {{ $has ? $priv : '·' }}
-                                        </div>
-                                    @endforeach
-                                </div>
-                            </td>
                             <td class="px-6 py-5 text-center">
                                 @php $accessibleCount = $user->getAccessibleModules()->count(); @endphp
                                 <span class="text-xs font-black {{ $accessibleCount >= 10 ? 'text-emerald-600' : ($accessibleCount >= 5 ? 'text-blue-600' : 'text-slate-400') }}">
@@ -96,17 +69,54 @@
                                 </span>
                                 <p class="text-[7px] text-slate-300 uppercase">{{ __("modules") }}</p>
                             </td>
-                            <td class="px-8 py-5 text-right">
-                                @if(auth()->id() !== $user->id)
-                                <form action="{{ route('users.destroy', $user->id) }}" method="POST" onsubmit="return confirm('{{ __("Supprimer cet accès ?") }}')">
-                                    @csrf @method('DELETE')
-                                    <button class="w-10 h-10 inline-flex items-center justify-center rounded-xl text-slate-300 hover:text-rose-600 hover:bg-rose-50 transition-all border-none bg-transparent cursor-pointer">
-                                        <i class="fas fa-trash-can"></i>
+                            <td class="px-8 py-5">
+                                <div class="flex items-center justify-end gap-1">
+                                    {{-- Statut du compte --}}
+                                    @if($user->isActive())
+                                        <span class="px-2 py-1 bg-emerald-50 text-emerald-600 rounded-lg text-[7px] font-black uppercase tracking-widest mr-1">{{ __("Actif") }}</span>
+                                    @else
+                                        <span class="px-2 py-1 bg-rose-50 text-rose-600 rounded-lg text-[7px] font-black uppercase tracking-widest mr-1">{{ __("Suspendu") }}</span>
+                                    @endif
+
+                                    {{-- Éditer (nom / email / rôle) --}}
+                                    <button type="button" onclick="document.getElementById('editUser-{{ $user->id }}').classList.remove('hidden')"
+                                        class="w-9 h-9 inline-flex items-center justify-center rounded-xl text-slate-300 hover:text-blue-600 hover:bg-blue-50 transition-all border-none bg-transparent cursor-pointer" title="{{ __('Modifier') }}">
+                                        <i class="fas fa-pen text-xs"></i>
                                     </button>
-                                </form>
-                                @else
-                                    <span class="px-3 py-1 bg-slate-100 rounded-lg text-[7px] font-black text-slate-400 uppercase italic">{{ __("Moi") }}</span>
-                                @endif
+
+                                    {{-- Réinitialiser le mot de passe --}}
+                                    <button type="button" onclick="document.getElementById('pwUser-{{ $user->id }}').classList.remove('hidden')"
+                                        class="w-9 h-9 inline-flex items-center justify-center rounded-xl text-slate-300 hover:text-amber-600 hover:bg-amber-50 transition-all border-none bg-transparent cursor-pointer" title="{{ __('Réinitialiser le mot de passe') }}">
+                                        <i class="fas fa-key text-xs"></i>
+                                    </button>
+
+                                    @if(auth()->id() !== $user->id)
+                                        {{-- Suspendre / Réactiver --}}
+                                        <form action="{{ route('users.toggle_active', $user->id) }}" method="POST" class="inline">
+                                            @csrf @method('PATCH')
+                                            @if($user->isActive())
+                                                <button onclick="return confirm('{{ __("Suspendre cet accès ? L'utilisateur ne pourra plus se connecter.") }}')"
+                                                    class="w-9 h-9 inline-flex items-center justify-center rounded-xl text-slate-300 hover:text-amber-600 hover:bg-amber-50 transition-all border-none bg-transparent cursor-pointer" title="{{ __('Suspendre') }}">
+                                                    <i class="fas fa-ban text-xs"></i>
+                                                </button>
+                                            @else
+                                                <button class="w-9 h-9 inline-flex items-center justify-center rounded-xl text-emerald-400 hover:text-emerald-600 hover:bg-emerald-50 transition-all border-none bg-transparent cursor-pointer" title="{{ __('Réactiver') }}">
+                                                    <i class="fas fa-circle-check text-xs"></i>
+                                                </button>
+                                            @endif
+                                        </form>
+
+                                        {{-- Supprimer --}}
+                                        <form action="{{ route('users.destroy', $user->id) }}" method="POST" onsubmit="return confirm('{{ __("Supprimer cet accès ?") }}')" class="inline">
+                                            @csrf @method('DELETE')
+                                            <button class="w-9 h-9 inline-flex items-center justify-center rounded-xl text-slate-300 hover:text-rose-600 hover:bg-rose-50 transition-all border-none bg-transparent cursor-pointer" title="{{ __('Supprimer') }}">
+                                                <i class="fas fa-trash-can text-xs"></i>
+                                            </button>
+                                        </form>
+                                    @else
+                                        <span class="px-3 py-1 bg-slate-100 rounded-lg text-[7px] font-black text-slate-400 uppercase italic ml-1">{{ __("Moi") }}</span>
+                                    @endif
+                                </div>
                             </td>
                         </tr>
                         @endforeach
@@ -116,6 +126,66 @@
             </div>
         </div>
     </div>
+
+    {{-- ═══ MODALES PAR UTILISATEUR : ÉDITION + RÉINITIALISATION MOT DE PASSE ═══ --}}
+    @foreach($users as $user)
+        {{-- Édition --}}
+        <div id="editUser-{{ $user->id }}" class="hidden fixed inset-0 bg-slate-900/90 backdrop-blur-xl z-50 flex items-center justify-center p-6">
+            <div class="bg-white rounded-[3rem] w-full max-w-xl shadow-2xl overflow-hidden text-left italic font-bold">
+                <div class="px-10 py-8 border-b border-slate-100 flex justify-between items-center">
+                    <h3 class="text-xl font-black text-slate-800 uppercase tracking-tighter italic leading-none">{{ __("Modifier l'utilisateur") }}</h3>
+                    <button type="button" onclick="document.getElementById('editUser-{{ $user->id }}').classList.add('hidden')" class="text-slate-300 hover:text-slate-900 border-none bg-transparent cursor-pointer text-xl"><i class="fas fa-times"></i></button>
+                </div>
+                <form action="{{ route('users.update', $user->id) }}" method="POST" class="p-10 space-y-6">
+                    @csrf @method('PUT')
+                    <div class="space-y-2">
+                        <label class="text-[9px] font-black uppercase text-slate-400 ml-2 tracking-widest">{{ __("Nom") }}</label>
+                        <input type="text" name="name" value="{{ $user->name }}" required class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-sm shadow-inner outline-none">
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-[9px] font-black uppercase text-slate-400 ml-2 tracking-widest">{{ __("Email") }}</label>
+                        <input type="email" name="email" value="{{ $user->email }}" required class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-sm shadow-inner outline-none">
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-[9px] font-black uppercase text-slate-400 ml-2 tracking-widest">{{ __("Rôle") }}</label>
+                        <select name="role_id" required class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-xs uppercase shadow-inner outline-none appearance-none italic cursor-pointer">
+                            @foreach($roles as $role)
+                                <option value="{{ $role->id }}" {{ $user->role_id == $role->id ? 'selected' : '' }}>{{ $role->icon }} {{ $role->display_name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <button type="submit" class="w-full bg-slate-900 text-white py-5 rounded-2xl font-black text-xs uppercase tracking-[0.3em] hover:bg-blue-600 transition-all border-none cursor-pointer italic">
+                        <i class="fas fa-floppy-disk mr-2"></i> {{ __("Enregistrer") }}
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        {{-- Réinitialisation du mot de passe --}}
+        <div id="pwUser-{{ $user->id }}" class="hidden fixed inset-0 bg-slate-900/90 backdrop-blur-xl z-50 flex items-center justify-center p-6">
+            <div class="bg-white rounded-[3rem] w-full max-w-md shadow-2xl overflow-hidden text-left italic font-bold">
+                <div class="px-10 py-8 border-b border-slate-100 flex justify-between items-center">
+                    <h3 class="text-xl font-black text-slate-800 uppercase tracking-tighter italic leading-none">{{ __("Mot de passe") }}</h3>
+                    <button type="button" onclick="document.getElementById('pwUser-{{ $user->id }}').classList.add('hidden')" class="text-slate-300 hover:text-slate-900 border-none bg-transparent cursor-pointer text-xl"><i class="fas fa-times"></i></button>
+                </div>
+                <form action="{{ route('users.reset_password', $user->id) }}" method="POST" class="p-10 space-y-6">
+                    @csrf @method('PUT')
+                    <p class="text-[9px] font-black uppercase text-slate-400 tracking-widest leading-relaxed">{{ __("Nouveau mot de passe pour") }} <span class="text-slate-700">{{ $user->name }}</span></p>
+                    <div class="space-y-2">
+                        <label class="text-[9px] font-black uppercase text-slate-400 ml-2 tracking-widest">{{ __("Nouveau mot de passe") }}</label>
+                        <input type="password" name="password" required class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-sm shadow-inner outline-none">
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-[9px] font-black uppercase text-slate-400 ml-2 tracking-widest">{{ __("Confirmation") }}</label>
+                        <input type="password" name="password_confirmation" required class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-sm shadow-inner outline-none">
+                    </div>
+                    <button type="submit" class="w-full bg-amber-500 text-white py-5 rounded-2xl font-black text-xs uppercase tracking-[0.3em] hover:bg-amber-600 transition-all border-none cursor-pointer italic">
+                        <i class="fas fa-key mr-2"></i> {{ __("Réinitialiser") }}
+                    </button>
+                </form>
+            </div>
+        </div>
+    @endforeach
 
     {{-- ═══════════════════════════════════════════════════════════════ --}}
     {{-- MODAL : MATRICE MODULES × RÔLES (NOUVEAU)                     --}}
@@ -204,7 +274,7 @@
     <div id="roleConfigModal" class="hidden fixed inset-0 bg-slate-900/90 backdrop-blur-xl z-50 flex items-center justify-center p-6">
     <div class="bg-white rounded-[3rem] w-full max-w-2xl shadow-2xl overflow-hidden italic font-bold text-left max-h-[85vh] flex flex-col">
         <div class="px-10 py-8 border-b border-slate-100 flex justify-between items-center shrink-0">
-            <h3 class="text-xl font-black text-slate-800 uppercase tracking-tighter italic leading-none">{{ __("Rôles & LCMS Global") }}</h3>
+            <h3 class="text-xl font-black text-slate-800 uppercase tracking-tighter italic leading-none">{{ __("Gestion des Rôles") }}</h3>
             <button onclick="document.getElementById('roleConfigModal').classList.add('hidden')" class="text-slate-300 hover:text-slate-900 border-none bg-transparent cursor-pointer text-xl"><i class="fas fa-times"></i></button>
         </div>
         <div class="flex-1 overflow-auto p-10">
@@ -229,9 +299,8 @@
                 @endif
             @endforeach
 
-            {{-- MATRICE DE MISE À JOUR --}}
-            <form action="{{ route('roles.update_matrix') }}" method="POST" class="space-y-4">
-                @csrf
+            {{-- LISTE DES RÔLES (les droits s'éditent via la « Matrice des Modules ») --}}
+            <div class="space-y-4">
                 @foreach($roles as $role)
                 <div class="p-6 bg-white rounded-2xl border border-slate-100 shadow-sm transition-all hover:border-slate-300">
                     <div class="flex items-center justify-between mb-4">
@@ -252,26 +321,13 @@
                             @endif
                         </div>
                     </div>
-                    
-                    <div class="flex flex-wrap gap-4">
-                        @foreach(['L' => __('Lecture'), 'C' => __('Création'), 'M' => __('Modification'), 'S' => __('Suppression')] as $key => $label)
-                        <label class="flex items-center gap-2 cursor-pointer group">
-                            <input type="checkbox" name="permissions[{{ $role->id }}][]" value="{{ $key }}"
-                                   @checked($role->hasPermission($key)) class="hidden peer">
-                            <div class="w-5 h-5 rounded-lg border-2 border-slate-100 peer-checked:bg-slate-900 peer-checked:border-slate-900 flex items-center justify-center transition-all group-hover:border-slate-300">
-                                <i class="fas fa-check text-[8px] text-white"></i>
-                            </div>
-                            <span class="text-[9px] font-black text-slate-400 uppercase peer-checked:text-slate-900">{{ $label }}</span>
-                        </label>
-                        @endforeach
-                    </div>
+
+                    <p class="text-[9px] font-black text-slate-300 uppercase tracking-widest italic">
+                        <i class="fa-solid fa-table-cells mr-1"></i>{{ __("Droits gérés via la Matrice des Modules") }}
+                    </p>
                 </div>
                 @endforeach
-                
-                <button type="submit" class="w-full bg-slate-900 text-white py-5 rounded-2xl font-black text-xs uppercase tracking-[0.3em] hover:bg-blue-600 transition-all border-none cursor-pointer italic mt-6 shadow-xl">
-                    {{ __("Appliquer LCMS Global") }}
-                </button>
-            </form>
+            </div>
         </div>
     </div>
 </div>

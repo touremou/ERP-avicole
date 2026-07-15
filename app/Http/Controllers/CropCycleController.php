@@ -8,11 +8,15 @@ use App\Models\CropCampaign;
 use App\Models\CropCycle;
 use App\Models\CropInput;
 use App\Models\CropProtocol;
+use App\Models\CropProtocolCompletion;
+use App\Models\CropProtocolItem;
 use App\Models\CropSpecies;
 use App\Models\Employee;
 use App\Models\Harvest;
 use App\Models\Plot;
 use App\Models\Provider;
+use App\Models\Stock;
+use App\Services\StockIntegrationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 
@@ -121,10 +125,14 @@ class CropCycleController extends Controller
             ]);
         }
 
-        $cycle = CropCycle::create($validated);
+        $cycle = \Illuminate\Support\Facades\DB::transaction(function () use ($validated) {
+            $cycle = CropCycle::create($validated);
+            // Démarrer un cycle met la parcelle en culture (y compris si elle
+            // était en jachère — action utilisateur explicite).
+            $cycle->plot()->update(['status' => Plot::STATUS_EN_CULTURE]);
 
-        // La parcelle passe en culture.
-        $cycle->plot()->update(['status' => Plot::STATUS_EN_CULTURE]);
+            return $cycle;
+        });
 
         return redirect()->route('crop-cycles.show', $cycle)
             ->with('success', "Cycle de culture « {$cycle->crop_name} » démarré.");
@@ -141,6 +149,7 @@ class CropCycleController extends Controller
             'protocol.items',
             'harvests.employee:id,first_name,last_name',
             'inputs.provider:id,name',
+            'protocolCompletions.completedBy:id,name',
         ]);
 
         // Conseils agronomiques (uniquement pour un cycle non archivé).
@@ -173,7 +182,161 @@ class CropCycleController extends Controller
             'inputTypes' => CropInput::TYPES,
             'employees'  => Employee::where('status', 'Actif')->orderBy('first_name')->get(['id', 'first_name', 'last_name']),
             'providers'  => Provider::orderBy('name')->get(['id', 'name']),
+            // Intrants en stock proposables au déstockage depuis une étape.
+            'intrantStocks' => Stock::where('category', Stock::CAT_INTRANTS)
+                ->orderBy('item_name')->get(['id', 'item_name', 'unit', 'current_quantity']),
         ]);
+    }
+
+    /**
+     * Valide (marque « fait ») une étape de l'itinéraire technique du cycle.
+     *
+     * Idempotent : revalider une étape déjà validée ne crée pas de doublon
+     * (updateOrCreate sur la clé cycle × étape) et rafraîchit horodatage/auteur.
+     */
+    public function completeStep(Request $request, CropCycle $cropCycle, CropProtocolItem $item)
+    {
+        if (Gate::denies('cultures.M')) {
+            return back()->with('error', 'Action non autorisée.');
+        }
+
+        // L'étape doit appartenir au protocole rattaché à ce cycle.
+        if (! $cropCycle->crop_protocol_id || $item->crop_protocol_id !== $cropCycle->crop_protocol_id) {
+            return back()->with('error', 'Cette étape n\'appartient pas à l\'itinéraire du cycle.');
+        }
+
+        $data = $request->validate([
+            'completed_at'      => 'nullable|date',
+            'cost'              => 'nullable|numeric|min:0',
+            'quantity'          => 'nullable|numeric|min:0',
+            'unit'              => 'nullable|string|max:20',
+            'notes'             => 'nullable|string|max:500',
+            'record_as_input'   => 'nullable|boolean',
+            'consume_stock_id'  => 'nullable|exists:stocks,id',
+        ]);
+
+        $completedAt = isset($data['completed_at']) ? \Carbon\Carbon::parse($data['completed_at']) : now();
+        $qty  = (float) ($data['quantity'] ?? 0);
+
+        // Déstockage optionnel d'un intrant existant (consommation).
+        $consumeStock = null;
+        if (! empty($data['consume_stock_id'])) {
+            $consumeStock = Stock::where('id', $data['consume_stock_id'])
+                ->where('category', Stock::CAT_INTRANTS)->first();
+            if (! $consumeStock) {
+                return back()->with('error', 'Stock d\'intrant à déduire introuvable.');
+            }
+            if ($qty <= 0) {
+                return back()->with('error', 'Indiquez la quantité à déduire du stock.');
+            }
+            if ($qty > (float) $consumeStock->current_quantity) {
+                return back()->with('error', "Stock insuffisant pour « {$consumeStock->item_name} » (disponible : {$consumeStock->current_quantity} {$consumeStock->unit}).");
+            }
+        }
+
+        // Coût : valeur saisie, ou — en cas de déstockage — valorisé au prix
+        // unitaire du stock consommé (coût moyen pondéré).
+        $cost = (float) ($data['cost'] ?? 0);
+        if ($cost <= 0 && $consumeStock) {
+            $cost = round($qty * (float) ($consumeStock->last_unit_price ?? $consumeStock->unit_price ?? 0), 2);
+        }
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($cropCycle, $item, $request, $data, $completedAt, $cost, $qty, $consumeStock) {
+            $completion = CropProtocolCompletion::firstOrNew([
+                'crop_cycle_id'         => $cropCycle->id,
+                'crop_protocol_item_id' => $item->id,
+            ]);
+
+            // Re-validation : on repart d'un état propre — l'intrant rattaché est
+            // supprimé et la consommation précédente est RESTITUÉE au stock,
+            // avant de réappliquer selon les nouvelles données (anti double-comptage).
+            if ($completion->crop_input_id) {
+                CropInput::find($completion->crop_input_id)?->delete();
+                $completion->crop_input_id = null;
+            }
+            $this->restoreConsumedStock($completion);
+            $completion->consumed_stock_id = null;
+
+            // Le déstockage implique la comptabilisation (la consommation est une charge).
+            $recordAsInput = (bool) ($data['record_as_input'] ?? false) || $consumeStock !== null;
+            $inputType = $item->suggestedInputType();
+
+            // Déstockage de l'intrant consommé (sortie de stock).
+            if ($consumeStock) {
+                StockIntegrationService::syncMovement(
+                    $consumeStock->item_name, $consumeStock->category, $qty, 'out',
+                    "Itinéraire {$cropCycle->code} — étape « {$item->action_name} »", $consumeStock->unit
+                );
+                $completion->consumed_stock_id = $consumeStock->id;
+            }
+
+            if ($recordAsInput && $inputType && ($cost > 0 || $qty > 0)) {
+                $input = $cropCycle->inputs()->create([
+                    'farm_id'         => $cropCycle->farm_id,
+                    'type'            => $inputType,
+                    'name'            => $consumeStock?->item_name ?: ($item->product_suggested ?: $item->action_name),
+                    'quantity'        => $qty,
+                    'unit'            => $consumeStock?->unit ?: ($data['unit'] ?? 'kg'),
+                    'unit_cost'       => $qty > 0 ? round($cost / $qty, 2) : 0,
+                    'total_cost'      => $cost,
+                    'input_date'      => $completedAt->toDateString(),
+                    'notes'           => "Étape itinéraire : {$item->action_name}" . ($consumeStock ? ' (déstockage)' : ''),
+                    'synced_to_stock' => false, // le mouvement de stock est géré ici, pas via l'entrée
+                ]);
+                $completion->crop_input_id = $input->id;
+            }
+
+            $completion->fill([
+                'completed_at' => $completedAt,
+                'completed_by' => $request->user()?->id,
+                'notes'        => $data['notes'] ?? null,
+                'cost'         => $cost > 0 ? $cost : null,
+                'quantity'     => $qty > 0 ? $qty : null,
+                'unit'         => $qty > 0 ? ($consumeStock?->unit ?: ($data['unit'] ?? null)) : null,
+            ])->save();
+        });
+
+        return back()->with('success', "Étape « {$item->action_name} » validée.");
+    }
+
+    /** Annule la validation d'une étape : retire l'intrant lié + restitue le stock consommé. */
+    public function uncompleteStep(CropCycle $cropCycle, CropProtocolItem $item)
+    {
+        if (Gate::denies('cultures.M')) {
+            return back()->with('error', 'Action non autorisée.');
+        }
+
+        $completion = CropProtocolCompletion::where('crop_cycle_id', $cropCycle->id)
+            ->where('crop_protocol_item_id', $item->id)
+            ->first();
+
+        if ($completion) {
+            \Illuminate\Support\Facades\DB::transaction(function () use ($completion) {
+                if ($completion->crop_input_id) {
+                    CropInput::find($completion->crop_input_id)?->delete();
+                }
+                $this->restoreConsumedStock($completion);
+                $completion->delete();
+            });
+        }
+
+        return back()->with('success', "Validation de l'étape « {$item->action_name} » annulée.");
+    }
+
+    /** Restitue au stock la quantité précédemment consommée par une étape (sortie → entrée). */
+    private function restoreConsumedStock(CropProtocolCompletion $completion): void
+    {
+        if (! $completion->consumed_stock_id || (float) $completion->quantity <= 0) {
+            return;
+        }
+
+        $stock = Stock::find($completion->consumed_stock_id);
+        if ($stock) {
+            StockIntegrationService::syncMovement(
+                $stock->item_name, $stock->category, (float) $completion->quantity, 'in',
+                "Annulation consommation itinéraire", $stock->unit
+            );
+        }
     }
 
     public function update(Request $request, CropCycle $cropCycle)
@@ -217,19 +380,16 @@ class CropCycleController extends Controller
             }
         }
 
-        $cropCycle->update($validated);
+        \Illuminate\Support\Facades\DB::transaction(function () use ($cropCycle, $validated) {
+            $cropCycle->update($validated);
 
-        // À la clôture/abandon, on libère la parcelle seulement si aucun autre cycle actif.
-        if (in_array($cropCycle->status, CropCycle::STATUS_ARCHIVED, true)) {
-            $cropCycle->update(['closing_date' => $cropCycle->closing_date ?? now()]);
-            $hasOtherActive = CropCycle::where('plot_id', $cropCycle->plot_id)
-                ->whereIn('status', CropCycle::IN_PROGRESS_STATUSES)
-                ->where('id', '!=', $cropCycle->id)
-                ->exists();
-            if (!$hasOtherActive) {
-                $cropCycle->plot()->update(['status' => Plot::STATUS_DISPONIBLE]);
+            // À la clôture/abandon, on horodate la fermeture. La libération de
+            // la parcelle (si plus aucun cycle actif) est assurée par
+            // CropCycleObserver dès que le statut change — source unique.
+            if (in_array($cropCycle->status, CropCycle::STATUS_ARCHIVED, true)) {
+                $cropCycle->update(['closing_date' => $cropCycle->closing_date ?? now()]);
             }
-        }
+        });
 
         return redirect()->route('crop-cycles.show', $cropCycle)
             ->with('success', 'Cycle de culture mis à jour.');
@@ -274,6 +434,10 @@ class CropCycleController extends Controller
     {
         if (Gate::denies('cultures.C')) {
             return back()->with('error', 'Action non autorisée.');
+        }
+
+        if ($cropCycle->isArchived()) {
+            return back()->with('error', 'Ce cycle est clôturé : aucun intrant ne peut y être ajouté.');
         }
 
         $validated = $request->validate([
@@ -348,6 +512,8 @@ class CropCycleController extends Controller
             return back()->with('error', 'Action non autorisée.');
         }
 
+        abort_unless($harvest->crop_cycle_id === $cropCycle->id, 404);
+
         return view('cultures.cycles.harvests.edit', [
             'cycle'     => $cropCycle,
             'harvest'   => $harvest,
@@ -356,12 +522,15 @@ class CropCycleController extends Controller
         ]);
     }
 
-    /** Mise à jour d'une récolte (champs descriptifs ; pas de re-synchro stock). */
+    /** Mise à jour d'une récolte. La re-synchro stock est gérée par
+     *  HarvestObserver::updated() si quantity/unit/net_weight_kg/stock_item_name changent. */
     public function updateHarvest(Request $request, CropCycle $cropCycle, Harvest $harvest)
     {
         if (Gate::denies('cultures.M')) {
             return back()->with('error', 'Action non autorisée.');
         }
+
+        abort_unless($harvest->crop_cycle_id === $cropCycle->id, 404);
 
         $validated = $request->validate([
             'harvest_date'  => 'required|date',
@@ -393,6 +562,11 @@ class CropCycleController extends Controller
             return back()->with('error', 'Action non autorisée.');
         }
 
+        if ($cropCycle->isArchived()) {
+            return redirect()->route('crop-cycles.show', $cropCycle)
+                ->with('error', 'Ce cycle est clôturé : aucun intrant ne peut y être ajouté.');
+        }
+
         return view('cultures.cycles.inputs.create', [
             'cycle'      => $cropCycle,
             'inputTypes' => CropInput::TYPES,
@@ -407,6 +581,8 @@ class CropCycleController extends Controller
             return back()->with('error', 'Action non autorisée.');
         }
 
+        abort_unless($input->crop_cycle_id === $cropCycle->id, 404);
+
         return view('cultures.cycles.inputs.edit', [
             'cycle'      => $cropCycle,
             'input'      => $input,
@@ -415,12 +591,15 @@ class CropCycleController extends Controller
         ]);
     }
 
-    /** Mise à jour d'un intrant (champs descriptifs ; pas de re-synchro stock). */
+    /** Mise à jour d'un intrant. La re-synchro stock est gérée par
+     *  CropInputObserver::updated() si quantity/unit/stock_item_name changent. */
     public function updateInput(Request $request, CropCycle $cropCycle, CropInput $input)
     {
         if (Gate::denies('cultures.M')) {
             return back()->with('error', 'Action non autorisée.');
         }
+
+        abort_unless($input->crop_cycle_id === $cropCycle->id, 404);
 
         $validated = $request->validate([
             'type'        => 'required|in:' . implode(',', array_keys(CropInput::TYPES)),
@@ -439,7 +618,9 @@ class CropCycleController extends Controller
             $qty = (float) ($validated['quantity'] ?? $input->quantity);
             $unitCost = (float) ($validated['unit_cost'] ?? $input->unit_cost);
             if ($qty > 0 && $unitCost > 0) {
-                $validated['total_cost'] = $qty * $unitCost;
+                // round(...,2) : cohérent avec la création (RecordCropInput) et la
+                // précision décimale de la colonne — évite des total_cost à >2 décimales.
+                $validated['total_cost'] = round($qty * $unitCost, 2);
             }
         }
 
@@ -458,11 +639,11 @@ class CropCycleController extends Controller
             return back()->with('error', 'Impossible de supprimer un cycle ayant des récoltes enregistrées.');
         }
 
-        $plot = $cropCycle->plot;
-        $cropCycle->delete();
-        if (!$plot->isOccupied()) {
-            $plot->update(['status' => Plot::STATUS_DISPONIBLE]);
-        }
+        // La cascade applicative (intrants, validations d'étapes) et la
+        // libération de la parcelle sont assurées par CropCycleObserver, quel
+        // que soit le chemin de suppression. On enveloppe en transaction pour
+        // l'atomicité de la cascade.
+        \Illuminate\Support\Facades\DB::transaction(fn () => $cropCycle->delete());
 
         return redirect()->route('crop-cycles.index')->with('success', 'Cycle supprimé.');
     }
@@ -473,6 +654,10 @@ class CropCycleController extends Controller
             return back()->with('error', 'Action non autorisée.');
         }
 
+        abort_unless($harvest->crop_cycle_id === $cropCycle->id, 404);
+
+        // HarvestObserver::deleted reverse le stock synchronisé et réouvre le
+        // cycle (RECOLTE → EN_COURS) s'il s'agissait de la dernière récolte.
         $harvest->delete();
 
         return back()->with('success', 'Récolte supprimée.');
@@ -484,6 +669,9 @@ class CropCycleController extends Controller
             return back()->with('error', 'Action non autorisée.');
         }
 
+        abort_unless($input->crop_cycle_id === $cropCycle->id, 404);
+
+        // CropInputObserver::deleted reverse l'entrée stock synchronisée.
         $input->delete();
 
         return back()->with('success', 'Intrant supprimé.');

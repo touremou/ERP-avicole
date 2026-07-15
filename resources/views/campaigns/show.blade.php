@@ -1,20 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <div class="flex items-center gap-4">
-                <a href="{{ route('campaigns.index') }}" class="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-500 hover:text-slate-800 rounded-xl transition-all shadow-sm no-underline">
-                    <i class="fas fa-chevron-left text-xs"></i>
-                    <span class="text-[10px] font-black uppercase italic tracking-widest leading-none">{{ __("Retour") }}</span>
-                </a>
-                <div>
-                    <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">
-                        @if($campaign->type === 'tabaski') 🐑 @elseif($campaign->type === 'ramadan') 🌙 @else 🎉 @endif
-                        {{ $campaign->name }}
-                    </h2>
-                    <p class="text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em] mt-2 italic">{{ $campaign->type_label }} · {{ $campaign->status_label }}</p>
-                </div>
-            </div>
-            <div class="flex gap-2">
+        <x-page-header :title="($campaign->type === 'tabaski' ? '🐑 ' : ($campaign->type === 'ramadan' ? '🌙 ' : '🎉 ')) . $campaign->name" :subtitle="$campaign->type_label . ' · ' . $campaign->status_label" icon="fa-calendar-week" accent="emerald" :back="route('campaigns.index')">
+            <x-slot name="actions">
                 @can('elevage.M')
                 <a href="{{ route('campaigns.edit', $campaign) }}" class="bg-white border border-slate-200 text-slate-600 px-5 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-900 hover:text-white transition-all no-underline shadow-sm">
                     <i class="fa-solid fa-pen mr-1"></i> {{ __("Modifier") }}
@@ -28,19 +15,14 @@
                     </button>
                 </form>
                 @endcan
-            </div>
-        </div>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-10 italic font-bold text-left">
         <div class="max-w-6xl mx-auto sm:px-6 lg:px-8 space-y-8">
 
-            @if(session('success'))
-                <div class="p-5 bg-emerald-50 text-emerald-700 rounded-[2rem] text-[10px] font-black uppercase tracking-widest border border-emerald-200">{{ session('success') }}</div>
-            @endif
-            @if(session('error'))
-                <div class="p-5 bg-red-50 text-red-700 rounded-[2rem] text-[10px] font-black uppercase tracking-widest border border-red-200">{{ session('error') }}</div>
-            @endif
+            <x-flash />
 
             {{-- COMPTE À REBOURS --}}
             <div class="bg-slate-900 p-10 rounded-[3rem] text-white shadow-2xl flex flex-col md:flex-row items-center justify-between gap-6">
@@ -75,13 +57,13 @@
                 <div class="bg-white p-7 rounded-[2.5rem] border border-slate-100 shadow-sm">
                     <p class="text-[9px] font-black text-amber-500 uppercase tracking-widest mb-2 italic">{{ __("CA projeté") }}</p>
                     <p class="text-2xl font-black text-slate-900 italic tracking-tighter">{{ number_format($campaign->projected_revenue) }}</p>
-                    <p class="text-[8px] text-amber-600 mt-2 uppercase font-black">{{ $campaign->target_sale_price ? number_format($campaign->target_sale_price).' '.__("GNF/tête") : __("Définir prix cible") }}</p>
+                    <p class="text-[8px] text-amber-600 mt-2 uppercase font-black">{{ $campaign->target_sale_price ? number_format($campaign->target_sale_price).' '.currency().'/tête' : __("Définir prix cible") }}</p>
                 </div>
                 @php $marge = $campaign->target_sale_price ? $campaign->projected_margin : $campaign->realized_margin; @endphp
                 <div class="p-7 rounded-[2.5rem] shadow-sm {{ $marge >= 0 ? 'bg-emerald-600' : 'bg-rose-600' }} text-white">
                     <p class="text-[9px] font-black uppercase tracking-widest mb-2 italic opacity-80">{{ __("Marge") }} {{ $campaign->target_sale_price ? __("projetée") : __("réalisée") }}</p>
                     <p class="text-2xl font-black italic tracking-tighter">{{ number_format($marge) }}</p>
-                    <p class="text-[8px] mt-2 uppercase font-black opacity-80">GNF</p>
+                    <p class="text-[8px] mt-2 uppercase font-black opacity-80">{{ currency() }}</p>
                 </div>
             </div>
 

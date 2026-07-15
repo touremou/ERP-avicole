@@ -18,6 +18,9 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin' => \App\Http\Middleware\AdminMiddleware::class,
             'redirect.if.installed' => \App\Http\Middleware\RedirectIfInstalled::class,
             'force.json' => \App\Http\Middleware\ForceJsonResponse::class,
+            // Contexte ferme pour l'API stateless (étanchéité multi-fermes) —
+            // à attacher APRÈS auth:sanctum. Cf. SetApiFarmContext.
+            'farm.api' => \App\Http\Middleware\SetApiFarmContext::class,
         ]);
 
         // NOTE : un seul appel à ->withMiddleware() doit configurer le
@@ -31,6 +34,7 @@ return Application::configure(basePath: dirname(__DIR__))
             append: [
                 \App\Http\Middleware\SetCurrentFarm::class,
                 \App\Http\Middleware\SetUserLocale::class,
+                \App\Http\Middleware\EnsureLicensed::class,
             ],
         );
 
@@ -39,6 +43,13 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
         ->withExceptions(function (Exceptions $exceptions) {
+        // Alerte WhatsApp de l'admin sur toute erreur serveur non gérée
+        // (audit P2-⑪) : throttle 5 min par empreinte, 4xx/validation/refus
+        // métier ignorés, jamais bloquant. Cf. ErrorAlertService.
+        $exceptions->report(function (\Throwable $e) {
+            \App\Services\ErrorAlertService::handle($e);
+        });
+
         // Filet 0 : Sessions expirées/absentes sur les routes API (offline,
         // sync...) → JSON 401, jamais une redirection vers /login. Le
         // middleware "force.json" ne suffit pas : la priorité globale des
@@ -52,8 +63,26 @@ return Application::configure(basePath: dirname(__DIR__))
             }
         });
 
+        // Filet « licence » : un refus d'accès dû à un module HORS abonnement
+        // (et non à un manque de droits) doit renvoyer vers l'écran de
+        // renouvellement avec un message explicite. Évalué avant les filets RBAC.
+        $licenseRefusal = function ($request) {
+            if (! app(\App\Services\LicenseService::class)->currentRouteModuleLocked()) {
+                return null;
+            }
+            $message = "Ce module n'est pas inclus dans votre abonnement. Contactez le fournisseur pour l'activer.";
+            if ($request->expectsJson() || $request->is('api/*')) {
+                return response()->json(['message' => $message], 402);
+            }
+            return redirect()->route('license.edit')->with('error', $message);
+        };
+
         // Filet 1 : Intercepte les Gate, Policy et $this->authorize()
-        $exceptions->render(function (\Illuminate\Auth\Access\AuthorizationException $e, $request) {
+        $exceptions->render(function (\Illuminate\Auth\Access\AuthorizationException $e, $request) use ($licenseRefusal) {
+            if ($redirect = $licenseRefusal($request)) {
+                return $redirect;
+            }
+
             if ($request->is('api/*')) {
                 return response()->json(['message' => 'Accès refusé.'], 403);
             }
@@ -62,8 +91,12 @@ return Application::configure(basePath: dirname(__DIR__))
         });
 
         // Filet 2 : Intercepte les abort(403) et middleware 'can'
-        $exceptions->render(function (\Symfony\Component\HttpKernel\Exception\HttpException $e, $request) {
+        $exceptions->render(function (\Symfony\Component\HttpKernel\Exception\HttpException $e, $request) use ($licenseRefusal) {
             if ($e->getStatusCode() === 403) {
+                if ($redirect = $licenseRefusal($request)) {
+                    return $redirect;
+                }
+
                 if ($request->is('api/*')) {
                     return response()->json(['message' => 'Accès refusé.'], 403);
                 }
@@ -72,11 +105,4 @@ return Application::configure(basePath: dirname(__DIR__))
             }
         });
     })
-    /*
-        ->withExceptions(function (Exceptions $exceptions) {
-        $exceptions->reportable(function (\Throwable $e) {
-            \App\Services\ErrorAlertService::handle($e);
-        });
-    })
-    */
         ->create();

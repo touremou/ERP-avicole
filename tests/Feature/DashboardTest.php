@@ -167,6 +167,38 @@ test('un stock sous son seuil déclenche une alerte de réapprovisionnement', fu
         ->assertSee('Vaccin Newcastle');
 });
 
+test('la bannière du Centre de Contrôle ne retient que les alertes critiques', function () {
+    // Stock sous seuil mais > 0 → niveau « attention » : reste dans le panneau
+    // détaillé, hors bannière critique.
+    App\Models\Stock::create([
+        'item_name'        => 'Litière Copeaux',
+        'category'         => App\Models\Stock::CAT_CONSO,
+        'unit'             => 'KG',
+        'current_quantity' => 5,
+        'alert_threshold'  => 50,
+    ]);
+
+    // Stock épuisé (0) → niveau « critique » : doit apparaître dans la bannière.
+    App\Models\Stock::create([
+        'item_name'        => 'Vaccin Gumboro',
+        'category'         => App\Models\Stock::CAT_CONSO,
+        'unit'             => 'KG',
+        'current_quantity' => 0,
+        'alert_threshold'  => 20,
+    ]);
+
+    $this->actingAs($this->adminUser)
+        ->get(route('dashboard'))
+        ->assertOk()
+        ->assertViewHas('priorityAlerts', function ($alerts) {
+            // Toutes les entrées de la bannière sont de niveau critique…
+            $allCritical = $alerts->every(fn ($a) => $a['level'] === 'critique');
+            // …et le stock épuisé y figure bien.
+            $hasEmptyStock = $alerts->contains(fn ($a) => str_contains($a['title'], 'Stocks sous seuil'));
+            return $allCritical && $hasEmptyStock;
+        });
+});
+
 test('un taux de picage élevé déclenche une alerte bien-être', function () {
     $building = Building::factory()->create(['type' => 'chair', 'capacity' => 5000]);
 
@@ -190,6 +222,55 @@ test('un taux de picage élevé déclenche une alerte bien-être', function () {
         ->assertOk()
         ->assertViewHas('welfareAlerts', fn ($a) => $a->isNotEmpty()
             && $a->first()['issues'][0]['type'] === 'Picage');
+});
+
+test('un décès isolé sur un petit lot ne déclenche pas de pic de mortalité', function () {
+    $building = Building::factory()->create(['type' => 'chair', 'capacity' => 5000]);
+
+    // 1 mort sur 195 = 0,51 % > seuil 0,5 % MAIS sous le plancher absolu (3) :
+    // bruit statistique de petit lot, ne doit PAS lever d'alerte critique.
+    $batch = App\Models\Batch::factory()->create([
+        'building_id'      => $building->id,
+        'status'           => 'Actif',
+        'initial_quantity' => 195,
+        'current_quantity' => 194,
+    ]);
+
+    App\Models\DailyCheck::factory()->create([
+        'batch_id'   => $batch->id,
+        'check_date' => now(),
+        'mortality'  => 1,
+    ]);
+
+    $this->actingAs($this->adminUser)
+        ->get(route('dashboard'))
+        ->assertOk()
+        ->assertViewHas('priorityAlerts', fn ($alerts) =>
+            $alerts->doesntContain(fn ($a) => $a['title'] === 'Pic de mortalité'));
+});
+
+test('un pic de mortalité réel (au-dessus du plancher et du seuil) lève une alerte critique', function () {
+    $building = Building::factory()->create(['type' => 'chair', 'capacity' => 5000]);
+
+    // 5 morts sur 195 = 2,56 % : au-dessus du plancher (3) ET du seuil (0,5 %).
+    $batch = App\Models\Batch::factory()->create([
+        'building_id'      => $building->id,
+        'status'           => 'Actif',
+        'initial_quantity' => 195,
+        'current_quantity' => 190,
+    ]);
+
+    App\Models\DailyCheck::factory()->create([
+        'batch_id'   => $batch->id,
+        'check_date' => now(),
+        'mortality'  => 5,
+    ]);
+
+    $this->actingAs($this->adminUser)
+        ->get(route('dashboard'))
+        ->assertOk()
+        ->assertViewHas('priorityAlerts', fn ($alerts) =>
+            $alerts->contains(fn ($a) => $a['title'] === 'Pic de mortalité'));
 });
 
 test('la marge nette est masquée pour un utilisateur sans droit commerce', function () {

@@ -1,14 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center gap-5 text-left">
-            <a href="{{ route('sales.index') }}" class="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-900 hover:text-white transition-all no-underline">
-                <i class="fa-solid fa-arrow-left"></i>
-            </a>
-            <div>
-                <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">{{ __("Nouvelle Vente") }}</h2>
-                <p class="text-[10px] font-black text-teal-600 uppercase tracking-[0.2em] mt-2 italic">{{ __("Saisie du bon de livraison ou facture") }}</p>
-            </div>
-        </div>
+        <x-page-header :title="__('Nouvelle Vente')" :subtitle="__('Saisie du bon de livraison ou facture')" icon="fa-file-invoice" accent="teal" :back="route('sales.index')" />
     </x-slot>
 
     <div class="py-10">
@@ -28,7 +20,7 @@
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div class="space-y-2">
                             <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Client") }} *</label>
-                            <select name="client_id" x-model="clientId" required class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black uppercase shadow-inner outline-none">
+                            <select name="client_id" x-model="clientId" @change="onClientChange()" required class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black uppercase shadow-inner outline-none">
                                 <option value="">{{ __("Sélectionner...") }}</option>
                                 @foreach($clients as $client)
                                     <option value="{{ $client->id }}" {{ ($selectedClient?->id ?? old('client_id')) == $client->id ? 'selected' : '' }}>{{ $client->name }} ({{ $client->client_id }})</option>
@@ -49,11 +41,17 @@
                     </div>
                     <input type="hidden" name="tax_rate" :value="saleType === 'facture' ? 18 : 0">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-                        <select name="delivery_mode" class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black uppercase shadow-inner outline-none">
+                        <select name="delivery_mode" x-model="deliveryMode" class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black uppercase shadow-inner outline-none">
                             <option value="sur_place">{{ __("Sur place") }}</option>
                             <option value="livraison">{{ __("Livraison") }}</option>
                         </select>
                         <input type="text" name="notes" placeholder="{{ __('Observations...') }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black shadow-inner outline-none">
+                    </div>
+                    {{-- Frais de livraison (mode « livraison » uniquement) --}}
+                    <div x-show="deliveryMode === 'livraison'" x-cloak class="mt-4">
+                        <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Frais de livraison") }} ({{ currency() }})</label>
+                        <input type="number" name="delivery_fee" min="0" step="1" x-model.number="deliveryFee"
+                               class="w-full md:w-1/2 bg-slate-50 border-none rounded-2xl p-4 text-xs font-black shadow-inner outline-none text-right mt-1">
                     </div>
                 </div>
 
@@ -70,21 +68,33 @@
 
                     <template x-for="(line, index) in lines" :key="index">
                         <div class="mb-4 p-5 bg-slate-50 rounded-2xl border" :class="line.quantity > line.max_qty && line.max_qty > 0 ? 'border-red-300 bg-red-50/30' : 'border-slate-100'">
+                            {{-- RACCOURCI CATALOGUE : choisir un article pré-enregistré (photo + prix auto) --}}
+                            <template x-if="catalog.length">
+                                <div class="flex items-center gap-3 mb-3 pb-3 border-b border-slate-100">
+                                    <template x-if="line.photo">
+                                        <img :src="line.photo" class="w-10 h-10 rounded-lg object-cover shadow-sm" alt="">
+                                    </template>
+                                    <div class="flex-1">
+                                        <label class="text-[8px] font-black uppercase text-teal-600 tracking-widest">{{ __("Article du catalogue") }}</label>
+                                        <select x-model="line.catalog_id" @change="onCatalogSelect(index)" class="w-full bg-white border border-teal-100 rounded-xl p-2.5 text-[10px] font-black uppercase shadow-sm outline-none focus:border-teal-400">
+                                            <option value="">— {{ __("Saisie libre") }} —</option>
+                                            <template x-for="art in catalog" :key="art.id">
+                                                <option :value="art.id" x-text="art.name"></option>
+                                            </template>
+                                        </select>
+                                    </div>
+                                </div>
+                            </template>
                             <div class="grid grid-cols-12 gap-3 items-end">
                                 {{-- TYPE --}}
                                 <div class="col-span-3">
                                     <label class="text-[8px] font-black uppercase text-slate-400 tracking-widest">{{ __("Type") }}</label>
                                     <select x-model="line.product_type" @change="onTypeChange(index)" class="w-full bg-white border-none rounded-xl p-3 text-[10px] font-black uppercase shadow-sm outline-none">
                                         <option value="">— {{ __("Choisir") }} —</option>
-                                        <option value="animal_vif">{{ __("Animal vivant") }}</option>
-                                        <option value="carcasse">{{ __("Carcasse / Viande") }}</option>
-                                        <option value="oeufs">{{ __("Œufs") }}</option>
-                                        <option value="lait">{{ __("Lait") }}</option>
-                                        <option value="aliment">{{ __("Aliment") }}</option>
-                                        <option value="produits_finis">{{ __("Produits Finis (découpe, poussins...)") }}</option>
-                                        <option value="fumier">{{ __("Fumier") }}</option>
-                                        <option value="materiel">{{ __("Matériel") }}</option>
-                                        <option value="autre">{{ __("Autre") }}</option>
+                                        {{-- Source unique : SaleItem::SELLABLE_TYPE_LABELS (alignée avec les groupes de prix). --}}
+                                        @foreach($sellableTypes as $value => $label)
+                                        <option value="{{ $value }}">{{ __($label) }}</option>
+                                        @endforeach
                                     </select>
                                 </div>
 
@@ -146,7 +156,7 @@
                                     </template>
                                 </div>
                                 <div class="col-span-2">
-                                    <label class="text-[8px] font-black uppercase text-slate-400 tracking-widest">{{ __("P.U. (GNF)") }}</label>
+                                    <label class="text-[8px] font-black uppercase text-slate-400 tracking-widest">{{ __("P.U.") }} ({{ currency() }})</label>
                                     <input type="number" x-model.number="line.unit_price" min="0" required class="w-full bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none text-right">
                                 </div>
                                 <div class="col-span-1 text-center">
@@ -167,6 +177,7 @@
                             <input type="hidden" :name="'items['+index+'][product_type]'" :value="line.product_type">
                             <input type="hidden" :name="'items['+index+'][product_name]'" :value="line.product_name">
                             <input type="hidden" :name="'items['+index+'][product_id]'" :value="line.product_id">
+                            <input type="hidden" :name="'items['+index+'][product_ref_id]'" :value="line.catalog_id">
                             <input type="hidden" :name="'items['+index+'][batch_id]'" :value="line.batch_id">
                             <input type="hidden" :name="'items['+index+'][quantity]'" :value="line.quantity">
                             <input type="hidden" :name="'items['+index+'][unit]'" :value="line.unit">
@@ -187,11 +198,28 @@
                             <option value="cheque">{{ __("Chèque") }}</option>
                         </select>
                     </div>
+                    {{-- REMISE GLOBALE --}}
+                    <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm mb-4">
+                        <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest">{{ __("Remise globale") }}</label>
+                        <div class="flex gap-2 mt-2">
+                            <select x-model="discountType" class="bg-slate-50 border-none rounded-xl p-3 text-[10px] font-black uppercase shadow-sm outline-none">
+                                <option value="none">{{ __("Aucune") }}</option>
+                                <option value="percent">%</option>
+                                <option value="amount">{{ currency() }}</option>
+                            </select>
+                            <input type="number" min="0" x-model.number="discountValue" x-bind:disabled="discountType==='none'" placeholder="0" class="flex-1 bg-slate-50 border-none rounded-xl p-3 text-right font-black text-sm shadow-sm outline-none disabled:opacity-40">
+                        </div>
+                        <input type="hidden" name="discount_type" :value="discountType">
+                        <input type="hidden" name="discount_value" :value="discountType==='none' ? 0 : (discountValue||0)">
+                    </div>
+
                     <div class="bg-slate-900 p-8 rounded-[3rem] text-white shadow-2xl">
                         <h3 class="text-[10px] font-black uppercase text-emerald-400 tracking-widest mb-6">{{ __("Récapitulatif") }}</h3>
                         <div class="space-y-3">
                             <div class="flex justify-between"><span class="text-slate-400 font-black text-[10px] uppercase">{{ __("HT") }}</span><span class="font-black text-lg" x-text="formatGNF(subtotal)"></span></div>
+                            <div class="flex justify-between" x-show="discount > 0"><span class="text-rose-300 font-black text-[10px] uppercase">{{ __("Remise") }}</span><span class="font-black text-rose-300" x-text="'− ' + formatGNF(discount)"></span></div>
                             <div class="flex justify-between" x-show="saleType === 'facture'"><span class="text-slate-400 font-black text-[10px] uppercase">{{ __("TVA :rate%", ['rate' => setting('general.tva_rate', 18)]) }}</span><span class="font-black" x-text="formatGNF(taxAmount)"></span></div>
+                            <div class="flex justify-between" x-show="deliveryCost > 0"><span class="text-slate-400 font-black text-[10px] uppercase">{{ __("Livraison") }}</span><span class="font-black" x-text="'+ ' + formatGNF(deliveryCost)"></span></div>
                             <div class="border-t border-slate-700 pt-3 flex justify-between"><span class="text-emerald-400 font-black text-[10px] uppercase">{{ __("Total TTC") }}</span><span class="font-black text-2xl" x-text="formatGNF(totalTTC)"></span></div>
                             <div class="border-t border-slate-700 pt-3 flex justify-between" x-show="immediatePayment > 0"><span class="text-amber-400 font-black text-[10px] uppercase">{{ __("Reste dû") }}</span><span class="font-black text-lg text-amber-400" x-text="formatGNF(Math.max(0, totalTTC - immediatePayment))"></span></div>
                         </div>
@@ -251,14 +279,26 @@
         const batchList = @json($formattedBatches);
         const prices = @json($formattedPrices);
         const catMap = @json(\App\Models\Stock::PRODUCT_TYPE_TO_CATEGORY);
+        const catalog = {{ Illuminate\Support\Js::from($catalog) }};
 
         return {
+            catalog,
             clientId: '{{ $selectedClient?->id ?? "" }}', saleType: 'bon_livraison', immediatePayment: 0,
-            lines: [{ product_type:'', product_name:'', quantity:1, unit:'', unit_price:0, product_id:'', batch_id:'', selected_stock:'', max_qty:0 }],
+            deliveryMode: 'sur_place', deliveryFee: 0,
+            discountType: 'none', discountValue: 0,
+            lines: [{ catalog_id:'', photo:'', product_type:'', product_name:'', quantity:1, unit:'', unit_price:0, product_id:'', batch_id:'', selected_stock:'', max_qty:0 }],
             batches: batchList.filter(b => b.qty > 0),
             get subtotal() { return this.lines.reduce((s,l) => s + (l.quantity*l.unit_price), 0); },
-            get taxAmount() { return this.saleType==='facture' ? this.subtotal*0.18 : 0; },
-            get totalTTC() { return this.subtotal + this.taxAmount; },
+            get discount() {
+                const v = parseFloat(this.discountValue) || 0;
+                if (v <= 0) return 0;
+                let d = this.discountType==='percent' ? this.subtotal*(Math.min(v,100)/100) : (this.discountType==='amount' ? v : 0);
+                return Math.min(d, this.subtotal);
+            },
+            get net() { return Math.max(0, this.subtotal - this.discount); },
+            get taxAmount() { return this.saleType==='facture' ? this.net*0.18 : 0; },
+            get deliveryCost() { return this.deliveryMode==='livraison' ? (Number(this.deliveryFee)||0) : 0; },
+            get totalTTC() { return this.net + this.taxAmount + this.deliveryCost; },
             get hasStockError() { return this.lines.some(l => l.max_qty > 0 && l.quantity > l.max_qty); },
             getStocks(type) { return stocks.filter(s => s.category === (catMap[type]||type) && s.current_quantity > 0); },
             // ─── Catégories de lignes (multiespèces) ───
@@ -267,7 +307,7 @@
             // Stock::CAT_PRODUITS_FINIS par l'abattoir/découpe et les
             // poussins d'un jour) : ils se sélectionnent depuis le stock,
             // au même titre que oeufs/aliment/materiel.
-            isStockType(t) { return ['oeufs','lait','aliment','produits_finis','materiel'].includes(t); },
+            isStockType(t) { return ['oeufs','lait','aliment','produits_finis','materiel','litieres'].includes(t); },
             isBatchType(t) { return ['animal_vif','carcasse'].includes(t); },
             isManualType(t) { return ['fumier','autre'].includes(t); },
             unitChoices(t) {
@@ -275,18 +315,56 @@
                     animal_vif: ['tete','piece','kg'],
                     carcasse:   ['kg'],
                     fumier:     ['sac','voyage'],
+                    litieres:   ['sac','unite','kg'],
                     autre:      ['unite','kg','piece','litre','sac'],
                 })[t] || [];
             },
             isCountUnit(u) { return ['tete','piece','unite'].includes(u); },
-            addLine() { this.lines.push({ product_type:'', product_name:'', quantity:1, unit:'', unit_price:0, product_id:'', batch_id:'', selected_stock:'', max_qty:0 }); },
+            addLine() { this.lines.push({ catalog_id:'', photo:'', product_type:'', product_name:'', quantity:1, unit:'', unit_price:0, product_id:'', batch_id:'', selected_stock:'', max_qty:0 }); },
             removeLine(i) { if(this.lines.length>1) this.lines.splice(i,1); },
+            // Sélection d'un article du catalogue : pré-remplit type, désignation,
+            // unité, photo et prix (tarif par article du client).
+            onCatalogSelect(i) {
+                let l = this.lines[i];
+                const art = this.catalog.find(a => a.id == l.catalog_id);
+                if (!art) { l.photo=''; return; }
+                l.product_type = art.product_type;
+                l.product_name = art.name;
+                l.unit = art.unit;
+                l.photo = art.photo || '';
+                l.unit_price = 0;
+                // Article lié à un stock : on cible ce stock (déstockage) et on
+                // borne la quantité à la disponibilité réelle.
+                l.product_id = art.stock_id || '';
+                l.max_qty = (art.available !== null && art.available !== undefined) ? art.available : 0;
+                const url = '{{ route('sales.suggest-price') }}?product_id=' + art.id + (this.clientId ? '&client_id=' + this.clientId : '');
+                fetch(url, {headers:{'Accept':'application/json'}})
+                    .then(r => r.ok ? r.json() : null)
+                    .then(d => { l.unit_price = (d && d.price != null) ? d.price : art.base_price; })
+                    .catch(() => { l.unit_price = art.base_price; });
+            },
             onTypeChange(i) {
                 let l=this.lines[i]; l.product_name=''; l.product_id=''; l.batch_id=''; l.selected_stock=''; l.max_qty=0; l.unit_price=0;
                 // Unité par défaut selon le type ; les types stock prennent
                 // l'unité de l'article sélectionné (renseignée plus tard).
                 const defaults = { animal_vif:'tete', carcasse:'kg', fumier:'voyage', autre:'unite' };
                 l.unit = defaults[l.product_type] || '';
+                this.suggestPrice(i);
+            },
+            // Pré-remplit le prix unitaire depuis le tarif du client (groupe de
+            // prix). N'écrase pas un prix déjà saisi manuellement (> 0).
+            suggestPrice(i) {
+                let l=this.lines[i];
+                if(!l.product_type || l.unit_price > 0) return;
+                const url = '{{ route('sales.suggest-price') }}?product_type=' + encodeURIComponent(l.product_type) + (this.clientId ? '&client_id=' + this.clientId : '');
+                fetch(url, {headers:{'Accept':'application/json'}})
+                    .then(r => r.ok ? r.json() : null)
+                    .then(d => { if(d && d.price !== null && d.price !== undefined && !(l.unit_price > 0)) l.unit_price = d.price; })
+                    .catch(() => {});
+            },
+            onClientChange() {
+                // Au changement de client, re-suggère le prix des lignes non encore tarifées.
+                this.lines.forEach((l, i) => { if(l.product_type && !(l.unit_price > 0)) this.suggestPrice(i); });
             },
             onUnitChange(i) {
                 // Pour un animal vif, le plafond (effectif du lot) ne s'applique
@@ -328,7 +406,7 @@
                 l.quantity=1;
                 const p=prices.find(x=>x.product_type===l.product_type); l.unit_price=p?p.unit_price:0;
             },
-            formatGNF(v) { return new Intl.NumberFormat('fr-GN',{maximumFractionDigits:0}).format(v||0)+' GNF'; },
+            formatGNF(v) { return new Intl.NumberFormat('fr-GN',{maximumFractionDigits:0}).format(v||0)+ ' {{ currency() }}'; },
 
             /**
              * Interception de la soumission : si hors-ligne (ou base injoignable),
@@ -357,7 +435,11 @@
                     sale_date: saleDate,
                     type: this.saleType,
                     tax_rate: this.saleType === 'facture' ? {{ (int) setting('general.tva_rate', 18) }} : 0,
+                    discount_type: this.discountType,
+                    discount_value: this.discountType === 'none' ? 0 : (parseFloat(this.discountValue) || 0),
                     notes: notes,
+                    delivery_mode: this.deliveryMode,
+                    delivery_fee: this.deliveryCost,
                     immediate_payment: parseFloat(this.immediatePayment) || 0,
                     payment_method: 'especes',
                     items: validLines.map(l => ({

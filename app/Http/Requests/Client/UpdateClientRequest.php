@@ -23,6 +23,7 @@ class UpdateClientRequest extends FormRequest
             'name'         => ['required', 'string', 'max:255', Rule::unique('clients', 'name')->ignore($clientId)],
             'type'         => ['required', 'in:particulier,entreprise'],
             'category'     => ['required', 'in:grossiste,detaillant,hotel_restaurant,revendeur,autre'],
+            'price_list_id' => ['nullable', 'exists:sale_price_lists,id'],
             'phone'        => ['nullable', 'string', 'max:30', Rule::unique('clients', 'phone')->ignore($clientId)],
             'email'        => ['nullable', 'email', 'max:255', Rule::unique('clients', 'email')->ignore($clientId)],
             'address'      => ['nullable', 'string', 'max:1000'],

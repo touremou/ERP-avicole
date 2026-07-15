@@ -5,10 +5,13 @@ namespace App\Http\Controllers;
 use App\Models\NotificationLog;
 use App\Models\NotificationPreference;
 use App\Services\NotificationHub;
+use App\Services\SmsService;
 use App\Services\WhatsAppService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Str;
 
 class NotificationController extends Controller
 {
@@ -23,6 +26,7 @@ class NotificationController extends Controller
                 'is_active'         => true,
                 'channel_whatsapp'  => true,
                 'channel_database'  => true,
+                'channel_email'     => false,
                 'daily_summary'     => true,
                 'alert_mortality'   => true,
                 'alert_stock'       => true,
@@ -55,6 +59,8 @@ class NotificationController extends Controller
             'whatsapp_phone'    => 'nullable|string|max:30',
             'is_active'         => 'boolean',
             'channel_whatsapp'  => 'boolean',
+            'channel_database'  => 'boolean',
+            'channel_email'     => 'boolean',
             'channel_sms'       => 'boolean',
             'daily_summary'     => 'boolean',
             'alert_mortality'   => 'boolean',
@@ -77,6 +83,37 @@ class NotificationController extends Controller
         );
 
         return back()->with('success', 'Préférences de notification mises à jour.');
+    }
+
+    /**
+     * Marque toutes les notifications in-app de l'utilisateur comme lues
+     * (bouton « tout marquer lu » de la cloche).
+     */
+    public function markAllRead()
+    {
+        Auth::user()->unreadNotifications->markAsRead();
+
+        return back()->with('success', 'Notifications marquées comme lues.');
+    }
+
+    /**
+     * Marque UNE notification comme lue puis redirige vers sa cible (data['url'])
+     * si elle existe — clic sur un élément de la cloche.
+     */
+    public function markRead(string $id)
+    {
+        $notification = Auth::user()->notifications()->where('id', $id)->first();
+
+        if ($notification) {
+            $notification->markAsRead();
+
+            $url = $notification->data['url'] ?? null;
+            if ($url) {
+                return redirect($url);
+            }
+        }
+
+        return back();
     }
 
     /**
@@ -122,7 +159,17 @@ class NotificationController extends Controller
                 : null;
 
             $error = 'Échec de l\'envoi vers ' . $phone . '. Vérifiez le numéro et la configuration du provider (clé API, instance).';
-            if ($detail) {
+
+            // Aide ciblée sur un 403 / page « Forbidden » (cause fréquente) :
+            // clé API absente/incorrecte, numéro non autorisé (CallMeBot exige
+            // que le destinataire active d'abord le bot), ou blocage WAF/proxy.
+            $status = is_array($log?->provider_response) ? ($log->provider_response['status'] ?? null) : null;
+            $looksForbidden = $status == 403 || \Illuminate\Support\Str::contains(strtolower((string) $detail), 'forbidden');
+            if ($looksForbidden) {
+                $error .= $driver === 'callmebot'
+                    ? ' (403) CallMeBot : le destinataire doit d\'abord AUTORISER le bot (lui envoyer le message d\'activation) pour obtenir une clé API valide, et la clé doit correspondre à CE numéro. Un 403 peut aussi venir d\'un blocage WAF/proxy de l\'hébergeur.'
+                    : ' (403) Le fournisseur a refusé la requête : clé API/instance invalide, ou blocage WAF/proxy de l\'hébergeur.';
+            } elseif ($detail) {
                 $error .= ' Détail : ' . \Illuminate\Support\Str::limit((string) $detail, 150);
             }
             if (Gate::allows('notifications.S')) {
@@ -137,6 +184,56 @@ class NotificationController extends Controller
             : 'Message de test envoyé ! Vérifiez votre WhatsApp.';
 
         return back()->with('success', $sentTo);
+    }
+
+    /** Test du canal SMS (passerelle locale). */
+    public function sendTestSms(SmsService $sms)
+    {
+        $phone = Auth::user()->whatsapp_phone ?: (string) setting('whatsapp.admin_phone', '');
+        if (! $phone) {
+            return back()->with('error', 'Aucun numéro disponible. Renseignez votre numéro (WhatsApp/mobile) ou le « Téléphone admin ».');
+        }
+
+        $driver = (string) setting('sms.driver', config('services.sms.driver', 'log'));
+        $ok = $sms->send($phone, "Test SMS AviSmart — " . now()->format('d/m H:i'), [
+            'user_id' => Auth::id(), 'type' => 'test', 'title' => 'Test SMS',
+        ]);
+
+        if ($driver === 'log') {
+            return back()->with('success', "SMS en mode « log » (aucune passerelle active) : message journalisé. Configurez sms.driver=http et l'URL de passerelle (Réglages › SMS) pour de vrais SMS.");
+        }
+
+        return $ok
+            ? back()->with('success', "SMS de test envoyé à {$phone}.")
+            : back()->with('error', "Échec de l'envoi SMS. Vérifiez la passerelle (URL, clé) — détail dans Notifications › Historique.");
+    }
+
+    /** Test du canal e-mail (envoi SYNCHRONE pour faire remonter les erreurs SMTP). */
+    public function sendTestMail()
+    {
+        $email = Auth::user()->email ?: (string) setting('whatsapp.admin_email', '');
+        if (! $email) {
+            return back()->with('error', 'Aucune adresse e-mail disponible pour le test.');
+        }
+
+        try {
+            // notifyNow : contourne la file → les erreurs SMTP remontent ici.
+            Notification::route('mail', $email)->notifyNow(new \App\Notifications\AlertNotification(
+                [
+                    'type'     => 'test',
+                    'title'    => 'Test e-mail AviSmart',
+                    'message'  => 'Ce message confirme que la configuration e-mail (SMTP) fonctionne.',
+                    'severity' => 'normal',
+                ],
+                ['mail']
+            ));
+        } catch (\Throwable $e) {
+            return back()->with('error', "Échec e-mail : " . Str::limit($e->getMessage(), 160) . ' — vérifiez MAIL_* / le serveur SMTP.');
+        }
+
+        $hint = config('mail.default') === 'log' ? " (mailer « log » : voir storage/logs/laravel.log)" : '';
+
+        return back()->with('success', "E-mail de test envoyé à {$email}{$hint}.");
     }
 
     /**

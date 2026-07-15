@@ -20,6 +20,7 @@ class StorePaymentRequest extends FormRequest
             'amount'       => 'required|numeric|min:1',
             'payment_date' => 'required|date|before_or_equal:today',
             'method'       => 'required|in:especes,orange_money,virement,cheque',
+            'treasury_account_id' => 'nullable|exists:treasury_accounts,id',
             'reference'    => 'nullable|string|max:100',
             'notes'        => 'nullable|string|max:500',
         ];

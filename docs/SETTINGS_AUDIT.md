@@ -15,7 +15,14 @@ au moment de l'audit.
 - `general.company_logo` — sélecteur de fichier + affichage menu/PDF.
 - `general.timezone` — appliqué au runtime (`AppServiceProvider`).
 - `general.country` — en-tête des documents imprimés.
-- `ventes.invoice_prefix_bl` / `ventes.invoice_prefix_tva` — `SaleNumberingService`.
+- `ventes.invoice_prefix_bl` / `ventes.invoice_prefix_tva` — `SaleNumberingService` (délègue à `DocumentNumberingService`).
+- `numbering.*` (groupe « Numérotation ») — préfixes des 9 autres documents
+  (achat, dépense, carburant, ajustement, retour, abattage, transformations,
+  ordre de production), lus par `App\Services\DocumentNumberingService`.
+- `general.feed_bag_weight` / `general.eggs_per_tray` — facteurs de conversion
+  centralisés dans `App\Services\UnitConverter` (sac↔kg, alvéole↔unité).
+- `elevage.daily_mortality_alert_min` — plancher absolu de l'alerte pic de
+  mortalité (`DashboardController`), évite les fausses alertes sur petits lots.
 - `ventes.invoice_footer` — pied de page des factures/BL.
 - `ventes.payment_delay_days` — échéance affichée sur la facture.
 - `ventes.credit_limit_default` — plafond crédit pré-rempli à la création client.

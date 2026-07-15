@@ -1,19 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex justify-between items-center text-left">
-            <div class="flex items-center gap-4">
-                <div class="w-12 h-12 bg-green-700 rounded-2xl flex items-center justify-center text-white shadow-lg -rotate-3">
-                    <i class="fa-solid fa-chart-bar text-lg"></i>
-                </div>
-                <div>
-                    <h2 class="text-lg font-black text-slate-800 uppercase italic tracking-tighter leading-none">{{ __("Rapports Production Végétale") }}</h2>
-                    <p class="text-[9px] font-bold text-slate-400 uppercase mt-1 tracking-widest italic">{{ __("Rendements · Intrants · Campagnes · Transformations") }}</p>
-                </div>
-            </div>
-            <a href="{{ route('cultures.dashboard') }}" class="text-[10px] font-black uppercase text-slate-400 hover:text-slate-900 transition no-underline">
-                <i class="fa-solid fa-arrow-left mr-2"></i> {{ __("Pilotage") }}
-            </a>
-        </div>
+        <x-page-header :title="__('Rapports Production Végétale')" :subtitle="__('Rendements · Intrants · Campagnes · Transformations')" icon="fa-chart-bar" accent="green" />
     </x-slot>
 
     <div class="py-8 italic font-bold">

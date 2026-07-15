@@ -1,12 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center gap-5 text-left">
-            <a href="{{ route('slaughter.dashboard') }}" class="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-900 hover:text-white transition-all no-underline"><i class="fa-solid fa-arrow-left"></i></a>
-            <div>
-                <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">{{ __("Exécution Abattage") }}</h2>
-                <p class="text-[10px] font-black text-rose-600 uppercase tracking-[0.2em] mt-2 italic">{{ $order->order_number }} — {{ $order->batch->code ?? '—' }}</p>
-            </div>
-        </div>
+        <x-page-header :title="__('Exécution Abattage')" :subtitle="$order->order_number . ' — ' . ($order->batch->code ?? '—')" icon="fa-industry" accent="rose" :back="route('slaughter.dashboard')" />
     </x-slot>
 
     <div class="py-10">
@@ -86,6 +80,24 @@
                         <div class="mt-6 space-y-2">
                             <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Notes inspecteur") }}</label>
                             <textarea name="inspector_notes" rows="2" placeholder="{{ __('Observations sanitaires...') }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-bold shadow-inner outline-none"></textarea>
+                        </div>
+
+                        {{-- CCP 3 dans le même geste (anti-corvée) : évite le second
+                             écran registre + l'alerte « CCP 3 manquant » du soir. --}}
+                        <div class="mt-6 p-5 bg-rose-50/60 border border-rose-100 rounded-[2rem]" x-data="{ ccp3: '{{ old('ccp3_core_temp') }}' }">
+                            <p class="text-[9px] font-black uppercase tracking-widest text-rose-600 mb-3"><i class="fa-solid fa-shield-halved mr-1"></i> {{ __("CCP 3 — T° à cœur après refroidissement (recommandé)") }}</p>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="space-y-2">
+                                    <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Température à cœur (°C)") }}</label>
+                                    <input type="number" name="ccp3_core_temp" x-model="ccp3" step="0.1" min="-10" max="60" value="{{ old('ccp3_core_temp') }}" placeholder="≤ {{ setting('abattoir.ccp3_core_temp_max', 4) }} °C" class="w-full bg-white border border-rose-100 rounded-2xl p-4 text-lg font-black text-rose-600 outline-none text-center">
+                                </div>
+                                <div class="space-y-2" x-show="ccp3 !== '' && parseFloat(ccp3) > {{ (float) setting('abattoir.ccp3_core_temp_max', 4) }}" x-transition>
+                                    <label class="text-[9px] font-black uppercase text-red-600 tracking-widest ml-2">{{ __("Hors seuil — action corrective *") }}</label>
+                                    <textarea name="ccp3_corrective_action" rows="2" maxlength="2000" placeholder="{{ __('Carcasses replongées en bac glacé, re-contrôle à 30 min...') }}" class="w-full bg-white border border-red-200 rounded-2xl p-4 text-xs font-bold outline-none">{{ old('ccp3_corrective_action') }}</textarea>
+                                    <p class="text-[8px] text-red-500 ml-2 m-0">{{ __("Le lot sera BLOQUÉ automatiquement (RG-02) — libération réservée au niveau qualité.") }}</p>
+                                </div>
+                            </div>
+                            <p class="text-[8px] text-slate-400 mt-2 mb-0 ml-2">{{ __("Renseigné ici = relevé CCP 3 créé automatiquement au registre, plus rien à ressaisir.") }}</p>
                         </div>
                     </div>
 

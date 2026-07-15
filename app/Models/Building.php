@@ -64,6 +64,7 @@ class Building extends Model
         'surface',
         'description',
         'status', // cf. constantes STATUS_* ci-dessus
+        'water_source_id', // Source d'eau desservant le bâtiment (citerne…)
         'is_active',
         'disinfection_started_at' // Présent dans votre schéma DB
     ];
@@ -90,6 +91,34 @@ class Building extends Model
     public function batches(): HasMany
     {
         return $this->hasMany(Batch::class);
+    }
+
+    /**
+     * Source d'eau affectée au bâtiment (citerne / forage / réseau).
+     */
+    public function waterSource(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(WaterSource::class);
+    }
+
+    /**
+     * Source d'eau EFFECTIVE desservant le bâtiment : la source affectée si
+     * définie, sinon la source « par défaut » active de la ferme. Sert à
+     * imputer automatiquement la consommation d'eau des lots à la bonne
+     * citerne (cf. App\Actions\DailyCheck\SyncWaterConsumption). Retourne null
+     * si aucune source affectée ni par défaut n'est disponible.
+     */
+    public function resolveWaterSource(): ?WaterSource
+    {
+        if ($this->water_source_id && $this->waterSource) {
+            return $this->waterSource;
+        }
+
+        return WaterSource::withoutFarm()
+            ->where('farm_id', $this->farm_id)
+            ->where('is_active', true)
+            ->where('is_default', true)
+            ->first();
     }
 
     // --- SCOPES ---

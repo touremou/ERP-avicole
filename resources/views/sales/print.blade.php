@@ -2,11 +2,21 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>{{ $sale->reference }} — {{ $sale->type === 'facture' ? __("Facture") : __("Bon de Livraison") }}</title>
+    @php
+        $docLabel = match ($sale->type) {
+            'facture'  => __("Facture"),
+            'comptant' => __("Reçu"),
+            default    => __("Bon de Livraison"),
+        };
+    @endphp
+    <title>{{ $sale->reference }} — {{ $docLabel }}</title>
     <style>
-        @page { size: A4; margin: 15mm; }
+        /* margin:0 sur @page supprime l'en-tête/pied INJECTÉS par le navigateur
+           (URL du site, date, n° de page) ; la marge visuelle est reportée en
+           padding sur le body. */
+        @page { size: A4; margin: 0; }
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Arial, sans-serif; }
-        body { font-size: 11px; color: #1e293b; line-height: 1.6; }
+        body { font-size: 11px; color: #1e293b; line-height: 1.6; padding: 15mm; }
         .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; border-bottom: 3px solid #0f172a; padding-bottom: 20px; }
         .logo-area h1 { font-size: 22px; font-weight: 900; text-transform: uppercase; letter-spacing: -1px; }
         .logo-area p { font-size: 8px; text-transform: uppercase; letter-spacing: 2px; color: #64748b; margin-top: 4px; }
@@ -50,7 +60,7 @@
         </div>
         <div class="doc-info">
             <div class="ref">{{ $sale->reference }}</div>
-            <div class="type">{{ $sale->type === 'facture' ? __("Facture") : __("Bon de Livraison") }}</div>
+            <div class="type">{{ $docLabel }}</div>
             <div class="date">{{ __("Date") }} : {{ $sale->sale_date->translatedFormat('d F Y') }}</div>
             @php($delai = (int) setting('ventes.payment_delay_days', 0))
             @if($delai > 0)
@@ -101,7 +111,7 @@
         <tbody>
             @foreach($sale->items as $item)
             <tr>
-                <td><strong>{{ $item->product_name }}</strong><br><span style="font-size: 8px; color: #94a3b8; text-transform: uppercase;">{{ str_replace('_', ' ', $item->product_type) }}</span></td>
+                <td><strong>{{ $item->product_name }}</strong><br><span style="font-size: 8px; color: #94a3b8; text-transform: uppercase;">{{ $item->type_label }}</span></td>
                 <td style="text-align: center;">{{ $item->quantity }}</td>
                 <td style="text-align: center; text-transform: uppercase; font-size: 9px;">{{ $item->unit }}</td>
                 <td>{{ number_format($item->unit_price, 0, ',', ' ') }}</td>
@@ -114,10 +124,22 @@
                 <td colspan="4" style="text-align: right; color: #94a3b8; text-transform: uppercase; font-size: 9px; letter-spacing: 1px;">{{ __("Sous-total HT") }}</td>
                 <td style="text-align: right;">{{ number_format($sale->subtotal, 0, ',', ' ') }}</td>
             </tr>
+            @if($sale->discount_amount > 0)
+            <tr>
+                <td colspan="4" style="text-align: right; color: #e11d48; text-transform: uppercase; font-size: 9px; letter-spacing: 1px;">{{ __("Remise") }}</td>
+                <td style="text-align: right; color: #e11d48;">− {{ number_format($sale->discount_amount, 0, ',', ' ') }}</td>
+            </tr>
+            @endif
             @if($sale->tax_rate > 0)
             <tr>
                 <td colspan="4" style="text-align: right; color: #94a3b8; text-transform: uppercase; font-size: 9px; letter-spacing: 1px;">{{ __("TVA (:rate%)", ['rate' => $sale->tax_rate]) }}</td>
                 <td style="text-align: right;">{{ number_format($sale->tax_amount, 0, ',', ' ') }}</td>
+            </tr>
+            @endif
+            @if($sale->delivery_fee > 0)
+            <tr>
+                <td colspan="4" style="text-align: right; color: #94a3b8; text-transform: uppercase; font-size: 9px; letter-spacing: 1px;">{{ __("Frais de livraison") }}</td>
+                <td style="text-align: right;">{{ number_format($sale->delivery_fee, 0, ',', ' ') }}</td>
             </tr>
             @endif
             <tr class="total-row">

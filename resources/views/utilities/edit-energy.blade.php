@@ -1,6 +1,6 @@
 <x-app-layout>
     <div class="max-w-3xl mx-auto py-12 px-6 italic font-bold text-left">
-        <a href="{{ route('utilities.energy.sources') }}" class="text-xs text-slate-400 uppercase tracking-widest hover:text-slate-900 mb-6 inline-block"><i class="fa-solid fa-arrow-left mr-2"></i>{{ __("Retour") }}</a>
+        <x-back :to="route('utilities.energy.sources')" class="mb-6" />
 
         <div class="bg-amber-50 p-10 rounded-[3rem] border border-amber-200">
             <h2 class="text-2xl font-black text-amber-700 uppercase tracking-tighter mb-8"><i class="fa-solid fa-pen mr-2"></i> {{ __("Modifier la source d'énergie") }}</h2>
@@ -75,7 +75,7 @@
                             <input type="date" name="purchase_date" value="{{ old('purchase_date', optional($source->purchase_date)->toDateString()) }}" class="w-full bg-white border-none rounded-2xl p-4 text-sm shadow-sm outline-none">
                         </div>
                         <div>
-                            <label class="text-[10px] uppercase text-slate-400 ml-2">{{ __("Prix d'achat (GNF)") }}</label>
+                            <label class="text-[10px] uppercase text-slate-400 ml-2">{{ __("Prix d'achat") }} ({{ currency() }})</label>
                             <input type="number" name="purchase_price" min="0" step="1000" value="{{ old('purchase_price', $source->purchase_price) }}" class="w-full bg-white border-none rounded-2xl p-4 shadow-sm outline-none">
                         </div>
                         <div>

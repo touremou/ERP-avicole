@@ -1,35 +1,22 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 text-left">
-            <div class="flex items-center gap-5">
-                <div class="w-14 h-14 bg-cyan-500 rounded-[1.5rem] flex items-center justify-center text-white shadow-2xl rotate-3">
-                    <i class="fa-solid fa-bolt text-xl"></i>
-                </div>
-                <div>
-                    <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">{{ __("Eau & Énergie") }}</h2>
-                    <p class="text-[10px] font-black text-cyan-600 uppercase tracking-[0.2em] mt-2 italic">
-                        {{ __("Suivi des ressources — Période :") }} {{ $period }} {{ __("jours") }}
-                    </p>
-                </div>
-            </div>
-            <form method="GET" class="flex gap-2 items-center">
-                <select name="period" onchange="this.form.submit()" class="bg-white border border-slate-100 rounded-2xl px-4 py-3 text-[10px] font-black uppercase tracking-widest shadow-sm outline-none appearance-none">
-                    <option value="7" {{ $period == 7 ? 'selected' : '' }}>{{ __("7 jours") }}</option>
-                    <option value="30" {{ $period == 30 ? 'selected' : '' }}>{{ __("30 jours") }}</option>
-                    <option value="90" {{ $period == 90 ? 'selected' : '' }}>{{ __("90 jours") }}</option>
-                </select>
-            </form>
-        </div>
+        <x-page-header :title="__('Eau & Énergie')" :subtitle="__('Suivi des ressources — Période :') . ' ' . $period . ' ' . __('jours')" icon="fa-bolt" accent="cyan">
+            <x-slot name="actions">
+                <form method="GET" class="flex gap-2 items-center">
+                    <select name="period" onchange="this.form.submit()" class="bg-white border border-slate-100 rounded-2xl px-4 py-3 text-[10px] font-black uppercase tracking-widest shadow-sm outline-none appearance-none">
+                        <option value="7" {{ $period == 7 ? 'selected' : '' }}>{{ __("7 jours") }}</option>
+                        <option value="30" {{ $period == 30 ? 'selected' : '' }}>{{ __("30 jours") }}</option>
+                        <option value="90" {{ $period == 90 ? 'selected' : '' }}>{{ __("90 jours") }}</option>
+                    </select>
+                </form>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-10">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 italic font-bold text-left">
 
-            @if(session('success'))
-                <div class="mb-8 p-5 bg-emerald-500 text-white rounded-[2rem] font-black text-[10px] uppercase tracking-[0.2em] shadow-xl flex items-center italic">
-                    <i class="fa-solid fa-check-double mr-3 text-lg"></i> {{ session('success') }}
-                </div>
-            @endif
+            <x-flash />
 
             {{-- ONBOARDING : aucune source configurée → on explique la valeur --}}
             @if($waterSources->isEmpty() && $energySources->isEmpty())
@@ -92,6 +79,11 @@
                         <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Conso période") }}</p>
                         <p class="text-xl font-black text-slate-900">{{ number_format($data['water']['total_consumed']) }}</p>
                         <p class="text-[8px] text-slate-400">{{ __("litres") }}</p>
+                        @if(($data['water']['from_daily_checks'] ?? 0) > 0)
+                            <p class="text-[7px] font-black text-cyan-500 uppercase tracking-wide mt-1" title="{{ __('Consommation saisie aux pointages journaliers (pas de double saisie)') }}">
+                                {{ __("dont :n L pointages", ['n' => number_format($data['water']['from_daily_checks'])]) }}
+                            </p>
+                        @endif
                     </div>
                     <div class="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm text-center">
                         <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Moyenne / jour") }}</p>
@@ -109,7 +101,12 @@
                     <div class="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm text-center">
                         <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Coût / 1000 têtes") }}</p>
                         <p class="text-xl font-black text-slate-900">{{ number_format($data['water']['cost_per_1000']) }}</p>
-                        <p class="text-[8px] text-slate-400">GNF</p>
+                        <p class="text-[8px] text-slate-400">{{ currency() }}</p>
+                    </div>
+                    <div class="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm text-center">
+                        <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Coût / m³") }}</p>
+                        <p class="text-xl font-black text-cyan-600">{{ number_format($data['water']['cost_per_m3']) }}</p>
+                        <p class="text-[8px] text-slate-400">{{ currency() }}</p>
                     </div>
                     <div @class(['p-5 rounded-[2rem] border shadow-sm text-center',
                         'bg-red-50 border-red-200' => $data['water']['ph_status'] === 'hors_norme',
@@ -166,7 +163,7 @@
                     <div class="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm text-center">
                         <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Coût total") }}</p>
                         <p class="text-xl font-black text-slate-900">{{ number_format($data['energy']['total_cost']) }}</p>
-                        <p class="text-[8px] text-slate-400">GNF</p>
+                        <p class="text-[8px] text-slate-400">{{ currency() }}</p>
                     </div>
                     @if(setting('energie.kwh_price_edg', 0) > 0)
                     <div class="bg-emerald-50 p-5 rounded-[2rem] border border-emerald-100 shadow-sm text-center">
@@ -188,6 +185,13 @@
                         <p class="text-xl font-black text-amber-600">{{ number_format($data['energy']['total_fuel_liters']) }}</p>
                         <p class="text-[8px] text-slate-400">{{ __("litres") }}</p>
                     </div>
+                    @if(($data['energy']['cost_per_kwh'] ?? 0) > 0)
+                    <div class="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm text-center">
+                        <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Coût / kWh") }}</p>
+                        <p class="text-xl font-black text-amber-600">{{ number_format($data['energy']['cost_per_kwh']) }}</p>
+                        <p class="text-[8px] text-slate-400">{{ currency() }}</p>
+                    </div>
+                    @endif
                     <div class="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm text-center">
                         <p class="text-[8px] font-black text-red-400 uppercase tracking-widest mb-1">{{ __("Coupures EDG / jour") }}</p>
                         <p class="text-xl font-black text-slate-900">{{ $data['energy']['daily_outage_avg'] }}h</p>
@@ -252,86 +256,9 @@
                 </div>
             </div>
 
-            {{-- ═══════════ FORMULAIRES RAPIDES ═══════════ --}}
-            @can('ressources.C')
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {{-- Relevé eau --}}
-                <div class="bg-cyan-50 p-6 rounded-[2.5rem] border border-cyan-200">
-                    <h3 class="text-[10px] font-black text-cyan-600 uppercase tracking-widest mb-4 flex items-center gap-2">
-                        <i class="fa-solid fa-droplet"></i> {{ __("Nouveau relevé eau") }}
-                    </h3>
-                    <form method="POST" action="{{ route('utilities.water.readings.store') }}" class="space-y-3" data-prefill-form="water">
-                        @csrf
-                        <div class="grid grid-cols-2 gap-3">
-                            <select name="water_source_id" required data-prefill-source class="bg-white border-none rounded-xl p-3 text-[10px] font-black uppercase shadow-sm outline-none">
-                                <option value="">{{ __("Source...") }}</option>
-                                @foreach($waterSources as $ws)
-                                    <option value="{{ $ws->id }}">{{ $ws->name }}</option>
-                                @endforeach
-                            </select>
-                            <input type="date" name="reading_date" value="{{ now()->toDateString() }}" required class="bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
-                        </div>
-                        @if($buildings->count())
-                        <select name="building_id" class="w-full bg-white border-none rounded-xl p-3 text-[10px] font-black uppercase shadow-sm outline-none">
-                            <option value="">{{ __("Bâtiment consommateur (optionnel)") }}</option>
-                            @foreach($buildings as $b)
-                                <option value="{{ $b->id }}">{{ $b->name }}</option>
-                            @endforeach
-                        </select>
-                        @endif
-                        <div class="grid grid-cols-2 gap-3">
-                            <input type="number" name="volume_consumed_liters" step="0.1" min="0" required placeholder="{{ __('Conso (L)') }}" class="bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
-                            <input type="number" name="volume_added_liters" step="0.1" min="0" placeholder="{{ __('Ajout citerne (L)') }}" class="bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
-                        </div>
-                        <div class="grid grid-cols-3 gap-3">
-                            <input type="number" name="quality_ph" step="0.1" min="0" max="14" placeholder="{{ __('pH') }}" class="bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
-                            <input type="number" name="chlorine_level" step="0.01" min="0" placeholder="{{ __('Chlore mg/L') }}" class="bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
-                            <input type="number" name="cost" step="100" min="0" placeholder="{{ __('Coût GNF') }}" class="bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
-                        </div>
-                        <button type="submit" class="w-full bg-cyan-500 text-white py-3 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-cyan-600 transition-all border-none cursor-pointer">
-                            <i class="fa-solid fa-check mr-1"></i> {{ __("Enregistrer") }}
-                        </button>
-                    </form>
-                </div>
-
-                {{-- Relevé énergie --}}
-                <div class="bg-amber-50 p-6 rounded-[2.5rem] border border-amber-200">
-                    <h3 class="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-1 flex items-center gap-2">
-                        <i class="fa-solid fa-bolt"></i> {{ __("Nouveau relevé énergie") }}
-                    </h3>
-                    <p class="text-[9px] font-bold text-amber-500/80 normal-case mb-4">{{ __("Saisissez simplement les heures : le carburant et le coût sont estimés automatiquement.") }}</p>
-                    <form method="POST" action="{{ route('utilities.energy.readings.store') }}" class="space-y-3" data-prefill-form="energy">
-                        @csrf
-                        <div class="grid grid-cols-2 gap-3">
-                            <select name="energy_source_id" required data-prefill-source class="bg-white border-none rounded-xl p-3 text-[10px] font-black uppercase shadow-sm outline-none">
-                                <option value="">{{ __("Source...") }}</option>
-                                @foreach($energySources as $es)
-                                    <option value="{{ $es->id }}">{{ $es->name }} ({{ $es->type_label }})</option>
-                                @endforeach
-                            </select>
-                            <input type="date" name="reading_date" value="{{ now()->toDateString() }}" required class="bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
-                        </div>
-                        @if($buildings->count())
-                        <select name="building_id" class="w-full bg-white border-none rounded-xl p-3 text-[10px] font-black uppercase shadow-sm outline-none">
-                            <option value="">{{ __("Bâtiment desservi (optionnel)") }}</option>
-                            @foreach($buildings as $b)
-                                <option value="{{ $b->id }}">{{ $b->name }}</option>
-                            @endforeach
-                        </select>
-                        @endif
-                        <div class="grid grid-cols-3 gap-3">
-                            <input type="number" name="hours_run" step="0.5" min="0" max="24" required placeholder="{{ __('Heures *') }}" class="bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
-                            <input type="number" name="fuel_consumed_liters" step="0.1" min="0" placeholder="{{ __('Carburant L (auto)') }}" class="bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
-                            <input type="number" name="outage_hours" step="0.5" min="0" max="24" placeholder="{{ __('Coupures (h)') }}" class="bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
-                        </div>
-                        <input type="number" name="cost" step="100" min="0" placeholder="{{ __('Coût GNF (auto si vide)') }}" class="w-full bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
-                        <button type="submit" class="w-full bg-amber-500 text-white py-3 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-amber-600 transition-all border-none cursor-pointer">
-                            <i class="fa-solid fa-check mr-1"></i> {{ __("Enregistrer") }}
-                        </button>
-                    </form>
-                </div>
-            </div>
-            @endcan
+            {{-- La saisie des relevés a été déplacée sur les pages dédiées
+                 (Eau / Énergie / Carburant) pour garder ce tableau de bord en
+                 vue d'ensemble. Les liens rapides ci-dessous y mènent. --}}
 
             {{-- LIENS RAPIDES --}}
             <div class="mt-8 flex flex-wrap gap-3">
@@ -348,33 +275,4 @@
         </div>
     </div>
 
-    {{-- Saisie « comme hier » : pré-remplit le formulaire avec le dernier relevé
-         de la source sélectionnée. Les champs vides ne sont jamais imposés. --}}
-    @can('ressources.C')
-    <script>
-        const RELEVE_LAST = {
-            water:  @json($lastWater ?? []),
-            energy: @json($lastEnergy ?? []),
-        };
-
-        document.querySelectorAll('[data-prefill-form]').forEach(form => {
-            const kind   = form.dataset.prefillForm;
-            const select = form.querySelector('[data-prefill-source]');
-            if (! select) return;
-
-            select.addEventListener('change', () => {
-                const last = (RELEVE_LAST[kind] || {})[select.value];
-                if (! last) return;
-                Object.entries(last).forEach(([field, value]) => {
-                    if (value === null || value === '') return;
-                    const input = form.querySelector(`[name="${field}"]`);
-                    // Ne pas écraser une valeur déjà saisie par l'opérateur.
-                    if (input && (input.value === '' || input.value === '0')) {
-                        input.value = value;
-                    }
-                });
-            });
-        });
-    </script>
-    @endcan
 </x-app-layout>

@@ -11,6 +11,8 @@ use App\Http\Requests\MillProduction\StoreMillProductionRequest;
 use Illuminate\Http\RedirectResponse;
 use App\Actions\Provenderie\RecordProductionConsumptionAction;
 use App\Actions\Provenderie\NormalizeFormulaNameAction;
+use App\Services\UnitConverter;
+use App\Services\DocumentNumberingService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
@@ -53,11 +55,11 @@ class MillProductionController extends Controller
     /*
     public function store(StoreMillProductionRequest $request): RedirectResponse
     {
-        $totalWeight = (float) ($request->nb_bags * 50);
+        $totalWeight = UnitConverter::sacksToKg((float) $request->nb_bags);
 
         $production = DB::transaction(function () use ($request, $totalWeight) {
             $prod = MillProduction::create([
-                'batch_number'      => 'OP-' . date('Ymd-Hi') . '-' . strtoupper(Str::random(4)),
+                'batch_number'      => DocumentNumberingService::generate('mill_production'),
                 'formula_id'        => $request->formula_id,
                 'machine_id'        => $request->machine_ids[0],
                 'quantity_produced' => $totalWeight,
@@ -77,11 +79,28 @@ class MillProductionController extends Controller
     */
     public function store(StoreMillProductionRequest $request): RedirectResponse
     {
-        $totalWeight = (float) ($request->nb_bags * 50);
+        // Occupation machine : une machine ne traite qu'un OP à la fois. Un OP
+        // est « ouvert » tant qu'il n'est ni clôturé (Terminé) ni annulé — dans
+        // ce système il naît « Planifié » et passe directement à « Terminé » à
+        // la clôture (pas d'état « En cours » intermédiaire persisté). On bloque
+        // donc sur tout OP ouvert occupant l'une des machines demandées.
+        $busyIds = DB::table('mill_production_machine')
+            ->join('mill_productions', 'mill_productions.id', '=', 'mill_production_machine.mill_production_id')
+            ->whereIn('mill_production_machine.mill_machine_id', $request->machine_ids)
+            ->whereNotIn('mill_productions.status', ['Terminé', 'Annulé'])
+            ->pluck('mill_production_machine.mill_machine_id')
+            ->unique();
+
+        if ($busyIds->isNotEmpty()) {
+            $names = MillMachine::whereIn('id', $busyIds)->pluck('name')->join(', ');
+            return back()->withInput()->with('error', "Machine(s) déjà engagée(s) sur un ordre en cours : {$names}. Clôturez l'OP ouvert avant d'en planifier un nouveau sur cette machine.");
+        }
+
+        $totalWeight = UnitConverter::sacksToKg((float) $request->nb_bags);
 
         $production = DB::transaction(function () use ($request, $totalWeight) {
             $prod = MillProduction::create([
-                'batch_number'      => 'OP-' . date('Ymd-Hi') . '-' . strtoupper(Str::random(4)),
+                'batch_number'      => DocumentNumberingService::generate('mill_production'),
                 'formula_id'        => $request->formula_id,
                 // ON A SUPPRIMÉ 'machine_id' ICI
                 'quantity_produced' => $totalWeight,
@@ -134,5 +153,30 @@ class MillProductionController extends Controller
     {
         $production = MillProduction::with(['formula.items.rawMaterial', 'machine', 'user'])->findOrFail($id);
         return view('provenderie.production.show', compact('production'));
+    }
+
+    /**
+     * Annule un ordre de production NON clôturé, libérant la/les machine(s)
+     * engagée(s). Indispensable : sans annulation, un OP planifié jamais
+     * clôturé (panne, erreur de saisie) bloquerait sa machine indéfiniment
+     * (l'occupation ne se libère que sur « Terminé » ou « Annulé »).
+     *
+     * Sûr : la consommation des matières premières n'a lieu qu'à la clôture,
+     * donc aucun stock à contre-passer pour un OP planifié.
+     */
+    public function cancel($id): RedirectResponse
+    {
+        if (Gate::denies('provenderie.M')) return back()->with('error', 'Seul un responsable peut annuler un ordre.');
+
+        $production = MillProduction::findOrFail($id);
+
+        if (in_array($production->status, ['Terminé', 'Annulé'], true)) {
+            return back()->with('error', "Cet ordre est déjà {$production->status} — annulation impossible.");
+        }
+
+        $production->update(['status' => 'Annulé']);
+
+        return redirect()->route('production.index')
+            ->with('success', "OP #{$production->batch_number} annulée. Machine(s) libérée(s).");
     }
 }

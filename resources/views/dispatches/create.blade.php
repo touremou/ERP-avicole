@@ -1,14 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center gap-5 text-left">
-            <a href="{{ route('dispatches.index') }}" class="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-900 hover:text-white transition-all no-underline">
-                <i class="fa-solid fa-arrow-left"></i>
-            </a>
-            <div>
-                <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">{{ __("Nouvelle Expédition") }}</h2>
-                <p class="text-[10px] font-black text-orange-600 uppercase tracking-[0.2em] mt-2 italic">{{ __("Transfert de garde — Chargement à la ferme") }}</p>
-            </div>
-        </div>
+        <x-page-header :title="__('Nouvelle Expédition')" :subtitle="__('Transfert de garde — Chargement à la ferme')" icon="fa-truck-fast" accent="orange" :back="route('dispatches.index')" />
     </x-slot>
 
     <div class="py-10">
@@ -89,14 +81,15 @@
                                     <label class="text-[8px] font-black uppercase text-slate-400 tracking-widest">{{ __("Type") }}</label>
                                     <select x-model="line.product_type" @change="onTypeChange(index)" class="w-full bg-white border-none rounded-xl p-3 text-[10px] font-black uppercase shadow-sm outline-none">
                                         <option value="">— {{ __("Choisir") }} —</option>
+                                        {{-- Sur pied / carcasse : issus des lots, pas du stock --}}
                                         <option value="animal_vif">{{ __("Animal vivant") }}</option>
                                         <option value="carcasse">{{ __("Carcasse / Viande") }}</option>
-                                        <option value="oeufs">{{ __("Œufs") }}</option>
-                                        <option value="lait">{{ __("Lait") }}</option>
-                                        <option value="aliment">{{ __("Aliment") }}</option>
-                                        <option value="produits_finis">{{ __("Produits Finis (découpe, poussins...)") }}</option>
+                                        {{-- Articles en stock : alignés sur les catégories de stock ACTIVES --}}
+                                        @foreach($shippableStockTypes as $st)
+                                            <option value="{{ $st['type'] }}">{{ $st['label'] }}</option>
+                                        @endforeach
+                                        {{-- Saisie manuelle --}}
                                         <option value="fumier">{{ __("Fumier") }}</option>
-                                        <option value="materiel">{{ __("Matériel") }}</option>
                                         <option value="autre">{{ __("Autre") }}</option>
                                     </select>
                                 </div>
@@ -198,6 +191,8 @@
         const stocks = @json($formattedStocks);
         const batchList = @json($formattedBatches);
         const catMap = @json(\App\Models\Stock::PRODUCT_TYPE_TO_CATEGORY);
+        // Types « stock » expédiables = catégories de stock actives (source unique).
+        const stockTypes = @json(collect($shippableStockTypes)->pluck('type'));
 
         return {
             lines: [{ product_type:'', product_name:'', quantity:1, unit:'', product_id:'', batch_id:'', selected_stock:'', max_qty:0, condition:'bon' }],
@@ -207,7 +202,7 @@
             // 'lait' et 'produits_finis' sont des articles physiques réels
             // (Stock::CAT_LAIT, Stock::CAT_PRODUITS_FINIS) : sélection depuis
             // le stock, comme oeufs/aliment/materiel (cf. sales/create).
-            isStockType(t) { return ['oeufs','lait','aliment','produits_finis','materiel'].includes(t); },
+            isStockType(t) { return stockTypes.includes(t); },
             isBatchType(t) { return ['animal_vif','carcasse'].includes(t); },
             isManualType(t) { return ['fumier','autre'].includes(t); },
             unitChoices(t) {

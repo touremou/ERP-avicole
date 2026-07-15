@@ -1,0 +1,123 @@
+name: Deploy pilot (PlanetHoster)
+
+# Déploiement continu du pilote sur l'hébergement mutualisé PlanetHoster.
+#
+# Déclencheurs :
+#   • workflow_run : APRÈS que le workflow « CI » a réussi sur `main`
+#     → un `main` cassé (tests rouges) ne déploie JAMAIS.
+#   • workflow_dispatch : bouton « Run workflow » (déploiement manuel).
+#
+# Le build (Composer sans dev + assets web + PWA) se fait ICI, dans le CI :
+# l'hébergement mutualisé n'a besoin ni de Node ni de Composer. Les fichiers
+# sont ensuite poussés par rsync/SSH, et migrate+optimize s'exécutent à
+# distance. Le `.env`, le dossier `storage/` et la base ne sont JAMAIS touchés.
+#
+# Secrets à définir (Settings → Secrets and variables → Actions) :
+#   PILOT_SSH_HOST      hôte SSH PlanetHoster (ex. node42.n0c.com)
+#   PILOT_SSH_PORT      port SSH (souvent 5022 chez PlanetHoster)
+#   PILOT_SSH_USER      utilisateur SSH du compte
+#   PILOT_SSH_KEY       clé PRIVÉE de déploiement (ed25519, sans passphrase)
+#   PILOT_WEB_PATH      chemin absolu de l'app web (ex. /home/USER/apps/avismart)
+#   PILOT_PWA_PATH      chemin absolu du sous-domaine app.* (ex. /home/USER/apps/aviterrain)
+#   PILOT_API_BASE_URL  URL absolue de l'API (ex. https://votre-domaine.tld/api/v1)
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-pilot
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    # Ne déploie que sur succès de la CI (ou déclenchement manuel).
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # ── Build back-end (dépendances de PRODUCTION) ──
+      - name: Setup PHP 8.3
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, gd, bcmath, intl, zip, sodium, pdo_mysql
+          coverage: none
+          tools: composer
+
+      - name: Composer install (--no-dev)
+        run: composer install --no-dev --optimize-autoloader --no-interaction --no-progress --prefer-dist
+
+      # ── Build front-end : assets web + PWA ──
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build web assets
+        run: |
+          npm ci
+          npm run build            # → public/build
+
+      - name: Build PWA
+        env:
+          VITE_API_BASE_URL: ${{ secrets.PILOT_API_BASE_URL }}
+        run: |
+          cd mobile
+          npm ci
+          npm run build            # → mobile/dist (inclut .htaccess via public/)
+
+      # ── Connexion SSH ──
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.PILOT_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p "${{ secrets.PILOT_SSH_PORT }}" -H "${{ secrets.PILOT_SSH_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+
+      # ── Déploiement de l'application web ──
+      # Pas de --delete côté web : on préserve tout ce qui vit sur le serveur
+      # (storage/, .env, lien public/storage). On téléverse code + vendor +
+      # public/build.
+      - name: Deploy web app
+        run: |
+          rsync -az --no-perms --no-owner --no-group \
+            --exclude='.git/' --exclude='.github/' \
+            --exclude='node_modules/' --exclude='mobile/' \
+            --exclude='tests/' \
+            --exclude='.env' --exclude='storage/' --exclude='public/storage' \
+            --exclude='*.tar.gz' \
+            -e "ssh -p ${{ secrets.PILOT_SSH_PORT }} -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes" \
+            ./ "${{ secrets.PILOT_SSH_USER }}@${{ secrets.PILOT_SSH_HOST }}:${{ secrets.PILOT_WEB_PATH }}/"
+
+      # ── Déploiement de la PWA (dist propre : --delete) ──
+      # On EXCLUT .well-known/ : c'est le dossier de validation SSL du
+      # sous-domaine (Let's Encrypt), présent sur le serveur mais absent de
+      # mobile/dist. Sans cette exclusion, --delete l'effacerait à chaque
+      # déploiement et casserait le renouvellement du certificat.
+      - name: Deploy PWA
+        run: |
+          rsync -az --delete --no-perms --no-owner --no-group \
+            --exclude='.well-known/' \
+            -e "ssh -p ${{ secrets.PILOT_SSH_PORT }} -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes" \
+            mobile/dist/ "${{ secrets.PILOT_SSH_USER }}@${{ secrets.PILOT_SSH_HOST }}:${{ secrets.PILOT_PWA_PATH }}/"
+
+      # ── Migrations + caches (à distance) ──
+      # Fenêtre de maintenance courte ; l'app est TOUJOURS remise en ligne
+      # (trap), même si une migration échoue — l'erreur reste visible dans le log.
+      - name: Migrate & optimize (remote)
+        run: |
+          ssh -p "${{ secrets.PILOT_SSH_PORT }}" -i ~/.ssh/deploy_key \
+            -o StrictHostKeyChecking=yes \
+            "${{ secrets.PILOT_SSH_USER }}@${{ secrets.PILOT_SSH_HOST }}" \
+            "set -e; cd '${{ secrets.PILOT_WEB_PATH }}'; \
+             trap 'php artisan up' EXIT; \
+             php artisan down --retry=15 || true; \
+             php artisan storage:link || true; \
+             php artisan migrate --force; \
+             php artisan optimize;"

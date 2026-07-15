@@ -1,12 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center gap-4">
-            <a href="{{ route('milk-productions.index') }}" class="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-500 hover:text-slate-800 rounded-xl transition-all shadow-sm no-underline">
-                <i class="fas fa-chevron-left text-xs"></i>
-                <span class="text-[10px] font-black uppercase italic tracking-widest leading-none">{{ __("Retour") }}</span>
-            </a>
-            <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">🐐 {{ __("Collecte") }} — {{ $batch->code }}</h2>
-        </div>
+        <x-page-header :title="__('🐐 Collecte') . ' — ' . $batch->code" :subtitle="$batch->building?->name"
+                       icon="fa-bottle-droplet" accent="cyan" :back="route('milk-productions.index')" />
     </x-slot>
 
     <div class="py-10 italic font-bold text-slate-700 text-left" x-data="milkForm()">
@@ -51,7 +46,7 @@
 
                     <div class="grid grid-cols-2 gap-6">
                         <div>
-                            <label class="block text-[10px] font-black text-amber-500 uppercase mb-2 ml-1 italic">{{ __("Prix / litre (GNF)") }}</label>
+                            <label class="block text-[10px] font-black text-amber-500 uppercase mb-2 ml-1 italic">{{ __("Prix / litre") }} ({{ currency() }})</label>
                             <input type="number" step="1" min="0" name="unit_price" x-model.number="price" value="{{ old('unit_price', $existingToday?->unit_price ?? $lastPrice ?? 0) }}"
                                    class="w-full p-4 bg-slate-50 rounded-2xl border-none font-black text-slate-700 shadow-inner italic outline-none">
                             @if($lastPrice && !$existingToday)
@@ -78,7 +73,7 @@
                         </div>
                         <div class="text-right">
                             <p class="text-[9px] font-black text-amber-400 uppercase tracking-widest">{{ __("Valorisation") }}</p>
-                            <p class="text-3xl font-black italic" x-text="fmt((morning + evening) * price) + ' GNF'"></p>
+                            <p class="text-3xl font-black italic" x-text="fmt((morning + evening) * price) + ' {{ currency() }}'"></p>
                         </div>
                     </div>
 

@@ -1,14 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center gap-5 text-left">
-            <a href="{{ route('clients.index') }}" class="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-900 hover:text-white transition-all no-underline">
-                <i class="fa-solid fa-arrow-left"></i>
-            </a>
-            <div>
-                <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">{{ __("Nouveau Client") }}</h2>
-                <p class="text-[10px] font-black text-teal-600 uppercase tracking-[0.2em] mt-2 italic">{{ __("Enregistrement d'un partenaire commercial") }}</p>
-            </div>
-        </div>
+        <x-page-header :title="__('Nouveau Client')" :subtitle="__('Enregistrement d\'un partenaire commercial')" icon="fa-users" accent="teal" :back="route('clients.index')" />
     </x-slot>
 
     <div class="py-10">
@@ -56,6 +48,17 @@
                                     <option value="autre" {{ old('category') === 'autre' ? 'selected' : '' }}>{{ __("Autre") }}</option>
                                 </select>
                             </div>
+                            @if(($priceLists ?? collect())->isNotEmpty())
+                            <div class="space-y-2">
+                                <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Groupe de prix") }}</label>
+                                <select name="price_list_id" class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black uppercase shadow-inner outline-none appearance-none cursor-pointer">
+                                    <option value="">{{ __("Tarif par défaut") }}</option>
+                                    @foreach($priceLists as $pl)
+                                        <option value="{{ $pl->id }}" {{ (string) old('price_list_id') === (string) $pl->id ? 'selected' : '' }}>{{ $pl->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            @endif
                         </div>
                     </div>
                 </div>

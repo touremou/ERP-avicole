@@ -3,6 +3,9 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Database\Events\MigrationsStarted;
+use Illuminate\Database\Events\MigrationsEnded;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\Facades\Request;
@@ -36,6 +39,26 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // ─── 0. PARITÉ MIGRATIONS MySQL (job « parité prod ») ───
+        // La chaîne de migrations comporte des FK « en avant » : une table
+        // référence une cible créée par une migration au timestamp POSTÉRIEUR
+        // (ex. batches → providers/employees, stock_movements → stocks). SQLite
+        // ignore ce cas, mais MySQL avec foreign_key_checks ON échoue (1824).
+        // On désactive les contrôles FK le temps de la commande `migrate`
+        // (MySQL uniquement) : les contraintes sont posées puis validées dès que
+        // les tables cibles existent. Ces évènements ne se déclenchent QUE pendant
+        // une migration : aucun impact au runtime, ni sur SQLite (suite de tests).
+        Event::listen(MigrationsStarted::class, function () {
+            if (DB::connection()->getDriverName() === 'mysql') {
+                Schema::disableForeignKeyConstraints();
+            }
+        });
+        Event::listen(MigrationsEnded::class, function () {
+            if (DB::connection()->getDriverName() === 'mysql') {
+                Schema::enableForeignKeyConstraints();
+            }
+        });
+
         // ─── 1. DÉTECTION PANNE MySQL ───
         config(['app.database_down' => false]);
 
@@ -72,24 +95,41 @@ class AppServiceProvider extends ServiceProvider
             \App\Models\Batch::observe(\App\Observers\BatchObserver::class);
             \App\Models\CropCycle::observe(\App\Observers\CropCycleObserver::class);
             \App\Models\Harvest::observe(\App\Observers\HarvestObserver::class);
+            \App\Models\CropInput::observe(\App\Observers\CropInputObserver::class);
+            \App\Models\Expense::observe(\App\Observers\ExpenseObserver::class);
+            \App\Models\Payment::observe(\App\Observers\PaymentObserver::class);
+            \App\Models\SupplierPayment::observe(\App\Observers\SupplierPaymentObserver::class);
         }
 
         // ─── 3. FIX SQL STRING LENGTH ───
         Schema::defaultStringLength(191);
 
         // ─── 4. BREADCRUMBS AUTO ───
-        View::composer('*', function ($view) {
+        // Segments « conteneurs » sans page propre (ou redondants avec l'accueil
+        // « Dashboard » déjà épinglé) : on les saute pour garder un fil d'Ariane
+        // lisible. Ex. /utilities/dashboard → « Dashboard » seul ;
+        // /utilities/water-sources → « Dashboard › Eau ».
+        $skipSegments = ['utilities', 'manage-batches', 'batches-admin', 'dashboard'];
+        $segmentLabels = [
+            'water-sources'  => 'Eau',
+            'energy-sources' => 'Énergie',
+            'fuel-purchases' => 'Carburant',
+        ];
+
+        View::composer('*', function ($view) use ($skipSegments, $segmentLabels) {
             $segments = Request::segments();
             $breadcrumbs = [];
             $url = '';
             foreach ($segments as $segment) {
                 $url .= '/' . $segment;
-                if (! is_numeric($segment)) {
-                    $breadcrumbs[] = [
-                        'label' => Str::title(str_replace(['-', '_'], ' ', $segment)),
-                        'url'   => url($url),
-                    ];
+                if (is_numeric($segment) || in_array($segment, $skipSegments, true)) {
+                    continue;
                 }
+                $breadcrumbs[] = [
+                    'label' => $segmentLabels[$segment]
+                        ?? Str::title(str_replace(['-', '_'], ' ', $segment)),
+                    'url'   => url($url),
+                ];
             }
             $view->with('autoBreadcrumbs', $breadcrumbs);
         });
@@ -163,9 +203,33 @@ class AppServiceProvider extends ServiceProvider
             });
         };
 
+        // Résout le slug de module visé par une capacité (L/C/M/S génériques →
+        // module de la route courante ; "slug.L" → slug explicite). Sert au
+        // verrou d'abonnement ci-dessous.
+        $licenseModuleForAbility = function (string $ability) use ($resolveModuleSlug) {
+            if (in_array($ability, ['L', 'C', 'M', 'S'], true)) {
+                return $resolveModuleSlug();
+            }
+            if (preg_match('/^([a-z0-9_-]+)\.(L|C|M|S)$/', $ability, $m)) {
+                return $m[1];
+            }
+            return null;
+        };
+
         // ─── A. ADMIN BYPASS (doit être défini EN PREMIER) ───
-        Gate::before(function (?User $user, string $ability) {
+        Gate::before(function (?User $user, string $ability) use ($licenseModuleForAbility) {
             if (! $user || config('app.database_down')) return null;
+
+            // VERROU COMMERCIAL : un module non inclus dans l'abonnement est
+            // refusé à TOUS, administrateur compris (c'est une limite de
+            // licence, pas une permission RBAC). Évalué avant le bypass admin.
+            $licenses = app(\App\Services\LicenseService::class);
+            if ($licenses->isEnabled()) {
+                $slug = $licenseModuleForAbility($ability);
+                if ($slug !== null && ! $licenses->allowsModule($slug)) {
+                    return false;
+                }
+            }
 
             try {
                 if (($user->userRole?->name ?? '') === 'admin') return true;

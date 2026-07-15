@@ -34,6 +34,16 @@ class TransferBatch
     public function execute(Batch $batch, array $data): Batch
     {
         return DB::transaction(function () use ($batch, $data) {
+            // Biosécurité : un lot en quarantaine ne bouge pas — la mutation
+            // vers un autre bâtiment est le vecteur de propagation n°1.
+            // Levée exclusivement via le module Santé (incident).
+            if ($quarantine = $batch->activeQuarantine()) {
+                throw new \Exception(
+                    "Lot {$batch->code} en QUARANTAINE sanitaire (incident n°{$quarantine->id}) : "
+                    . "mutation interdite — risque de propagation. Levez d'abord la quarantaine via le module Santé."
+                );
+            }
+
             $newBuilding = Building::lockForUpdate()->findOrFail($data['target_building_id']);
             $oldBuilding = $batch->building;
             $newProtocol = Protocol::findOrFail($data['new_protocol_id']);

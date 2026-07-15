@@ -1,16 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <div class="flex items-center gap-4 text-left">
-                <a href="{{ route('batches.index') }}" class="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-500 hover:text-slate-800 rounded-xl transition-all shadow-sm group no-underline">
-                    <i class="fas fa-chevron-left group-hover:-translate-x-1 transition-transform text-xs"></i>
-                    <span class="text-[10px] font-black uppercase italic tracking-widest leading-none">{{ __("Retour") }}</span>
-                </a>
-                <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">
-                    🚀 {{ __("Lancer une nouvelle bande") }}
-                </h2>
-            </div>
-        </div>
+        <x-page-header :title="'🚀 ' . __('Lancer une nouvelle bande')" icon="fa-microchip" accent="indigo" :back="route('batches.index')" />
     </x-slot>
 
     <div class="py-12 italic font-bold text-slate-700 text-left">
@@ -173,7 +163,7 @@
                                 </div>
 
                                 <div>
-                                    <label class="block text-[10px] font-black text-blue-600 uppercase mb-2 ml-1 italic leading-none">{{ __("Prix Unitaire (GNF)") }}</label>
+                                    <label class="block text-[10px] font-black text-blue-600 uppercase mb-2 ml-1 italic leading-none">{{ __("Prix Unitaire") }} ({{ currency() }})</label>
                                     <input type="number" name="buy_price_per_unit" id="buy_price" value="{{ old('buy_price_per_unit', 0) }}" oninput="calculateAll()" min="0" required
                                            class="w-full p-5 bg-slate-50 rounded-2xl border-none font-black text-2xl text-blue-700 shadow-inner italic leading-none">
                                 </div>
@@ -239,7 +229,8 @@
                                 </div>
                                 <div>
                                     <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 italic leading-none">{{ __("Responsable du Lot") }}</label>
-                                    <select name="employee_id" required class="w-full p-4 bg-white/5 rounded-2xl border-none font-black text-slate-300 italic outline-none uppercase text-[10px]">
+                                    <select name="employee_id" class="w-full p-4 bg-white/5 rounded-2xl border-none font-black text-slate-300 italic outline-none uppercase text-[10px]">
+                                        <option value="" class="bg-slate-800 text-white">{{ __("— Aucun —") }}</option>
                                         @foreach($employees as $e)
                                             <option value="{{ $e->id }}" class="bg-slate-800 text-white">{{ $e->first_name }} {{ $e->last_name }}</option>
                                         @endforeach
@@ -248,7 +239,8 @@
 
                                 <div>
                                     <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 italic leading-none">{{ __("Fournisseur") }}</label>
-                                    <select name="provider_id" required class="w-full p-4 bg-white/5 rounded-2xl border-none font-black text-slate-300 italic outline-none uppercase text-[10px]">
+                                    <select name="provider_id" class="w-full p-4 bg-white/5 rounded-2xl border-none font-black text-slate-300 italic outline-none uppercase text-[10px]">
+                                        <option value="" class="bg-slate-800 text-white">{{ __("— Aucun —") }}</option>
                                         @foreach($providers as $p)
                                             <option value="{{ $p->id }}" class="bg-slate-800 text-white">{{ $p->name }}</option>
                                         @endforeach
@@ -257,7 +249,7 @@
 
                                 <div class="p-6 bg-white/5 rounded-3xl border border-white/10 italic text-left">
                                     <p class="text-[8px] font-black text-slate-500 uppercase mb-2 leading-none tracking-widest">{{ __("Total Facture") }}</p>
-                                    <p class="text-2xl font-black text-emerald-400 tracking-tighter leading-none" id="total_cost_display">0 GNF</p>
+                                    <p class="text-2xl font-black text-emerald-400 tracking-tighter leading-none" id="total_cost_display">0 {{ currency() }}</p>
                                 </div>
                             </div>
 
@@ -432,7 +424,7 @@
         // --- TOTAL FACTURE FACTURÉ ---
         const totalFacture = (qtyAlive + qtyDead) * buyPrice;
         if(el('total_cost_display')) {
-            el('total_cost_display').innerText = new Intl.NumberFormat('fr-FR').format(totalFacture) + " GNF";
+            el('total_cost_display').innerText = new Intl.NumberFormat('fr-FR').format(totalFacture) + " {{ currency() }}";
         }
 
         // --- VALIDATION ---

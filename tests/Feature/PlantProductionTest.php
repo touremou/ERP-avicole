@@ -297,3 +297,170 @@ test('on ne peut pas dépasser la surface totale de la parcelle', function () {
 
     expect(CropCycle::where('plot_id', $plot->id)->count())->toBe(1);
 });
+
+// ───────────────────────────────────────────────────────────────────────────
+// FIABILISATION : réconciliation stock / statut / parcelle (audit)
+// ───────────────────────────────────────────────────────────────────────────
+
+/** Crée un cycle en cours avec une récolte synchronisée au stock. */
+function cycleWithSyncedHarvest(int $farmId, float $qty = 150): array
+{
+    $plot  = makePlot($farmId);
+    $cycle = CropCycle::create([
+        'farm_id' => $farmId, 'plot_id' => $plot->id, 'crop_name' => 'Tomate',
+        'area_used_ha' => 1.0, 'planting_date' => now()->subMonths(2)->toDateString(),
+    ]);
+    (new \App\Actions\Crop\RecordHarvest())->execute($cycle, [
+        'harvest_date' => now()->toDateString(), 'quantity' => $qty, 'unit' => 'kg',
+        'unit_price' => 5000, 'sync_to_stock' => true, 'stock_item_name' => 'Tomate fraîche',
+    ]);
+    $stock = Stock::where('item_name', 'Tomate fraîche')->where('category', Stock::CAT_RECOLTES)->first();
+
+    return [$cycle, $stock->fresh(), Harvest::where('crop_cycle_id', $cycle->id)->first()];
+}
+
+test('éditer une récolte synchronisée corrige le stock par delta (pas de dérive)', function () {
+    [$cycle, $stock, $harvest] = cycleWithSyncedHarvest($this->farm->id, 150);
+    expect((float) $stock->current_quantity)->toBe(150.0);
+
+    // Correction 150 → 90 kg via l'écran d'édition.
+    $this->actingAs($this->managerUser)
+        ->put(route('crop-cycles.harvests.update', [$cycle, $harvest]), [
+            'harvest_date' => now()->toDateString(), 'quantity' => 90, 'unit' => 'kg',
+        ])->assertRedirect();
+
+    expect((float) $stock->fresh()->current_quantity)->toBe(90.0); // pas 150, pas 240
+});
+
+test('supprimer une récolte synchronisée reverse le stock et réouvre le cycle', function () {
+    [$cycle, $stock, $harvest] = cycleWithSyncedHarvest($this->farm->id, 150);
+    expect($cycle->fresh()->status)->toBe(CropCycle::STATUS_RECOLTE);
+
+    $this->actingAs($this->adminUser)
+        ->delete(route('crop-cycles.harvests.destroy', [$cycle, $harvest]))
+        ->assertRedirect();
+
+    expect((float) $stock->fresh()->current_quantity)->toBe(0.0)            // entrée reversée
+        ->and($cycle->fresh()->status)->toBe(CropCycle::STATUS_EN_COURS);   // dernière récolte → réouverture
+});
+
+test('éditer un intrant synchronisé corrige le stock intrants par delta', function () {
+    $plot  = makePlot($this->farm->id);
+    $cycle = CropCycle::create([
+        'farm_id' => $this->farm->id, 'plot_id' => $plot->id, 'crop_name' => 'Maïs',
+        'area_used_ha' => 1.0, 'planting_date' => now()->subMonth()->toDateString(),
+    ]);
+    $input = (new \App\Actions\Crop\RecordCropInput())->execute($cycle, [
+        'type' => 'engrais', 'name' => 'Urée', 'quantity' => 50, 'unit' => 'kg',
+        'unit_cost' => 1000, 'input_date' => now()->toDateString(),
+        'synced_to_stock' => true, 'stock_item_name' => 'Urée 46%',
+    ]);
+    $stock = Stock::where('item_name', 'Urée 46%')->where('category', Stock::CAT_INTRANTS)->first();
+    expect((float) $stock->current_quantity)->toBe(50.0);
+
+    $this->actingAs($this->managerUser)
+        ->put(route('crop-cycles.inputs.update', [$cycle, $input]), [
+            'type' => 'engrais', 'name' => 'Urée', 'quantity' => 30, 'unit' => 'kg',
+            'unit_cost' => 1000, 'input_date' => now()->toDateString(),
+        ])->assertRedirect();
+
+    expect((float) $stock->fresh()->current_quantity)->toBe(30.0);
+});
+
+test('on ne peut pas éditer une récolte via un cycle qui n\'est pas le sien (404)', function () {
+    [$cycleA, , $harvestA] = cycleWithSyncedHarvest($this->farm->id, 100);
+    $plotB  = Plot::create(['farm_id' => $this->farm->id, 'name' => 'Parcelle B', 'area_ha' => 2, 'status' => Plot::STATUS_DISPONIBLE]);
+    $cycleB = CropCycle::create([
+        'farm_id' => $this->farm->id, 'plot_id' => $plotB->id, 'crop_name' => 'Oignon',
+        'area_used_ha' => 1.0, 'planting_date' => now()->subMonth()->toDateString(),
+    ]);
+
+    $this->actingAs($this->managerUser)
+        ->put(route('crop-cycles.harvests.update', [$cycleB, $harvestA]), [
+            'harvest_date' => now()->toDateString(), 'quantity' => 5, 'unit' => 'kg',
+        ])->assertNotFound();
+});
+
+test('supprimer un cycle cascade ses intrants et libère la parcelle', function () {
+    $plot  = makePlot($this->farm->id);
+    $cycle = CropCycle::create([
+        'farm_id' => $this->farm->id, 'plot_id' => $plot->id, 'crop_name' => 'Manioc',
+        'area_used_ha' => 1.0, 'planting_date' => now()->subMonth()->toDateString(),
+    ]);
+    expect($plot->fresh()->status)->toBe(Plot::STATUS_EN_CULTURE); // observer à la création
+    \App\Models\CropInput::create([
+        'farm_id' => $this->farm->id, 'crop_cycle_id' => $cycle->id, 'type' => 'semence',
+        'name' => 'Boutures', 'quantity' => 10, 'unit' => 'sac', 'unit_cost' => 0, 'total_cost' => 0,
+        'input_date' => now()->toDateString(),
+    ]);
+
+    $this->actingAs($this->adminUser)->delete(route('crop-cycles.destroy', $cycle))->assertRedirect();
+
+    expect(\App\Models\CropInput::where('crop_cycle_id', $cycle->id)->exists())->toBeFalse() // cascade soft-delete
+        ->and($plot->fresh()->status)->toBe(Plot::STATUS_DISPONIBLE);                        // parcelle libérée
+});
+
+test('réduire une parcelle sous la surface emblavée est refusé', function () {
+    $plot  = makePlot($this->farm->id); // 2.5 ha
+    CropCycle::create([
+        'farm_id' => $this->farm->id, 'plot_id' => $plot->id, 'crop_name' => 'Riz',
+        'area_used_ha' => 2.0, 'planting_date' => now()->subMonth()->toDateString(),
+    ]);
+
+    $this->actingAs($this->managerUser)
+        ->put(route('plots.update', $plot), [
+            'name' => 'Parcelle Nord', 'area_ha' => 1.0, 'status' => Plot::STATUS_EN_CULTURE,
+        ])
+        ->assertSessionHasErrors('area_ha');
+
+    expect((float) $plot->fresh()->area_ha)->toBe(2.5); // inchangé
+});
+
+test('un cycle planté dans le futur a un âge nul (pas d\'âge aberrant)', function () {
+    $plot  = makePlot($this->farm->id);
+    $cycle = CropCycle::create([
+        'farm_id' => $this->farm->id, 'plot_id' => $plot->id, 'crop_name' => 'Sorgho',
+        'area_used_ha' => 1.0, 'planting_date' => now()->addDays(10)->toDateString(),
+    ]);
+
+    expect($cycle->age)->toBe(0);
+});
+
+test('le stock recolte est valorisé au coût de production (pas au prix de vente)', function () {
+    $plot  = makePlot($this->farm->id);
+    // Coûts du cycle : acquisition 200 000 + additionnels 100 000 = 300 000.
+    $cycle = CropCycle::create([
+        'farm_id' => $this->farm->id, 'plot_id' => $plot->id, 'crop_name' => 'Tomate',
+        'area_used_ha' => 1.0, 'planting_date' => now()->subMonths(2)->toDateString(),
+        'total_acquisition_cost' => 200000, 'additional_costs' => 100000,
+    ]);
+
+    // Récolte 150 kg vendue 5 000/kg (prix de marché), synchronisée au stock.
+    (new \App\Actions\Crop\RecordHarvest())->execute($cycle, [
+        'harvest_date' => now()->toDateString(), 'quantity' => 150, 'unit' => 'kg',
+        'unit_price' => 5000, 'sync_to_stock' => true, 'stock_item_name' => 'Tomate fraîche',
+    ]);
+
+    $stock = Stock::where('item_name', 'Tomate fraîche')->where('category', Stock::CAT_RECOLTES)->first();
+
+    // Coût de prod/kg = 300 000 / 150 = 2 000 — et NON 5 000 (prix de vente).
+    expect((float) $stock->current_quantity)->toBe(150.0)
+        ->and((float) $stock->last_unit_price)->toBe(2000.0)
+        ->and((float) $cycle->fresh()->total_revenue)->toBe(750000.0); // 150 kg × 5 000/kg
+});
+
+test('le revenu d\'une récolte en caisses repose sur le poids net (prix au kg)', function () {
+    $plot  = makePlot($this->farm->id);
+    $cycle = CropCycle::create([
+        'farm_id' => $this->farm->id, 'plot_id' => $plot->id, 'crop_name' => 'Tomate',
+        'area_used_ha' => 1.0, 'planting_date' => now()->subMonths(2)->toDateString(),
+    ]);
+
+    // 40 caisses pesées 600 kg, prix 3 000/kg → revenu 600 × 3 000 (pas 40 × 3 000).
+    (new \App\Actions\Crop\RecordHarvest())->execute($cycle, [
+        'harvest_date' => now()->toDateString(), 'quantity' => 40, 'unit' => 'caisses',
+        'net_weight_kg' => 600, 'unit_price' => 3000,
+    ]);
+
+    expect((float) $cycle->fresh()->total_revenue)->toBe(1800000.0); // 600 × 3000
+});

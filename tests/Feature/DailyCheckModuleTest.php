@@ -212,17 +212,17 @@ test('un ramassage de fumier au pointage crédite un stock « Fumier » vendable
     $check = DailyCheck::where('batch_id', $batch->id)->first();
     expect((float) $check->manure_collected_kg)->toBe(120.0);
 
-    // Un article « Fumier » est créé en produits_finis et crédité de 120 kg.
+    // Un article « Fumier » est créé en litières et crédité de 120 kg.
     $fumier = Stock::where('item_name', 'Fumier')
-        ->where('category', Stock::CAT_PRODUITS_FINIS)
+        ->where('category', Stock::CAT_LITIERES)
         ->first();
 
     expect($fumier)->not->toBeNull()
         ->and((float) $fumier->current_quantity)->toBe(120.0)
         ->and(StockMovement::where('stock_id', $fumier->id)->where('type', 'in')->exists())->toBeTrue();
 
-    // produits_finis est un type vendable : le fumier est mobilisable en vente.
-    expect(Stock::categoryForProductType('produits_finis'))->toBe(Stock::CAT_PRODUITS_FINIS);
+    // litieres est un type vendable : le fumier est mobilisable en vente.
+    expect(Stock::categoryForProductType('litieres'))->toBe(Stock::CAT_LITIERES);
 });
 
 test('une quantité de fumier saisie sans litière changée est ignorée', function () {
@@ -269,7 +269,7 @@ test('rectifier la quantité de fumier compense le stock sans double comptage', 
     // On initialise le stock fumier à 100 kg (état après ramassage initial).
     $fumier = Stock::create([
         'item_name'        => 'Fumier',
-        'category'         => Stock::CAT_PRODUITS_FINIS,
+        'category'         => Stock::CAT_LITIERES,
         'unit'             => 'KG',
         'current_quantity' => 100,
         'alert_threshold'  => 0,
@@ -319,7 +319,7 @@ test('le lot expose le fumier ramassé cumulé et son revenu estimé au prix de 
 
     // Une fois le prix unitaire de l'article fixé (cf. Stocks > Edit), le
     // revenu estimé est exposé pour le rapport de marge du lot.
-    Stock::where('item_name', 'Fumier')->where('category', Stock::CAT_PRODUITS_FINIS)
+    Stock::where('item_name', 'Fumier')->where('category', Stock::CAT_LITIERES)
         ->update(['unit_price' => 50]);
 
     expect($batch->estimated_manure_revenue)->toBe(2500.0);
@@ -544,4 +544,74 @@ test('le lot expose le nombre de jours depuis le dernier renouvellement de liti�
     ]);
 
     expect($batch->fresh()->days_since_litter_change)->toBe(5);
+});
+
+test('REGRESSION: le pointage persiste et la fiche lot se rend après redirection', function () {
+    $batch = Batch::factory()->create([
+        'building_id' => $this->building->id, 'status' => 'Actif', 'current_quantity' => 500,
+    ]);
+
+    $resp = $this->actingAs($this->managerUser)->post(route('daily-checks.store'), [
+        'batch_id'      => $batch->id,
+        'check_date'    => now()->toDateString(),
+        'mortality'     => 1,
+        'feed_consumed' => 0,
+        'feed_type'     => 'Chair Démarrage',
+        'water_consumed' => 25,
+        'health_status' => 'Normal',
+    ]);
+
+    $resp->assertSessionHasNoErrors()->assertRedirect();
+    expect(DailyCheck::where('batch_id', $batch->id)->where('water_consumed', 25)->exists())->toBeTrue();
+
+    // Rendu de la page du lot (cible de la redirection) — détecte un 500 post-save.
+    $this->actingAs($this->managerUser)->get(route('batches.show', $batch->id))->assertOk();
+});
+
+test('le formulaire de pointage pré-remplit la météo régionale et propose la reco. eau du jour', function () {
+    $farm = App\Models\Farm::where('code', 'FT-001')->first();
+
+    $batch = Batch::factory()->create([
+        'building_id'      => $this->building->id,
+        'status'           => 'Actif',
+        'current_quantity' => 1000,
+        'model_name'       => 'Cobb500',
+        'arrival_date'     => now()->subDays(14),
+        'farm_id'          => $farm->id,
+    ]);
+
+    // Barème de souche : eau ET aliment cibles → recommendation()['total'] > 0.
+    foreach ([1, 2, 3, 4] as $wk) {
+        App\Models\ProductionNorm::create([
+            'model_name'         => 'Cobb500',
+            'batch_type'         => 'chair',
+            'week_number'        => $wk,
+            'phase_name'         => 'Démarrage',
+            'target_weight'      => 100 * $wk,
+            'target_feed_daily'  => 50 * $wk,   // g/sujet/j
+            'target_water_daily' => 100 * $wk,  // ml/sujet/j
+            'target_laying_rate' => 0,
+        ]);
+    }
+
+    // Relevé météo du jour de la ferme → pré-remplissage température/humidité.
+    App\Models\WeatherReading::create([
+        'farm_id'         => $farm->id,
+        'reading_date'    => now()->toDateString(),
+        'temperature_min' => 24.5,
+        'temperature_max' => 33.0,
+        'humidity_pct'    => 78,
+    ]);
+
+    $resp = $this->actingAs($this->managerUser)
+        ->get(route('daily-checks.create', ['batch_id' => $batch->id]))
+        ->assertOk();
+
+    // 1. Météo régionale pré-remplie (champ temp_min + indicateur visuel).
+    $resp->assertSee('value="24.5"', false)
+         ->assertSee('Pré-rempli météo', false);
+
+    // 2. Bouton « Reco. » d'eau présent : il pré-remplit le champ water_consumed
+    //    (comme le bouton aliment). Le onclick ciblant water_consumed est unique.
+    $resp->assertSee("getElementById('water_consumed').value=", false);
 });

@@ -204,6 +204,16 @@ class InstallController extends Controller
         $alreadyInstalled = File::exists(storage_path('installed'));
 
         if (! $alreadyInstalled) {
+            // Bascule en mode PRODUCTION au terme de l'installation : sans cela,
+            // une instance déployée depuis .env.example tournerait avec
+            // APP_DEBUG=true (fuite de stack-traces = divulgation d'informations)
+            // et APP_ENV=local (perfs et garde-fous dégradés).
+            $this->updateEnv([
+                'APP_ENV'   => 'production',
+                'APP_DEBUG' => 'false',
+            ]);
+            Artisan::call('config:clear');
+
             File::put(storage_path('installed'), now()->toDateTimeString());
         }
 
@@ -216,7 +226,22 @@ class InstallController extends Controller
 
     private function requirementChecks(): array
     {
-        $extensions = ['pdo', 'mbstring', 'openssl', 'tokenizer', 'xml', 'ctype', 'json', 'fileinfo', 'curl', 'gd'];
+        // Extensions INDISPENSABLES au fonctionnement de l'ERP (bloquantes).
+        //  - sodium : vérification des licences signées (abonnement hors-ligne).
+        //  - intl/zip : i18n, exports Excel et sauvegardes (spatie/laravel-backup).
+        //  - gd : images + QR de traçabilité (endroid/qr-code).
+        $extensions = [
+            'pdo', 'mbstring', 'openssl', 'sodium', 'tokenizer',
+            'xml', 'ctype', 'json', 'fileinfo', 'curl', 'gd', 'intl', 'zip',
+        ];
+
+        // Extensions RECOMMANDÉES (non bloquantes) : performance et robustesse.
+        $recommended = [
+            'opcache' => 'Cache d\'opcode — fortement conseillé en production',
+            'bcmath'  => 'Calculs monétaires de précision (totaux, TVA)',
+            'pcntl'   => 'Exécution des files d\'attente (queue:work)',
+            'exif'    => 'Orientation correcte des photos importées',
+        ];
 
         $checks = [
             [
@@ -241,6 +266,26 @@ class InstallController extends Controller
             'status'   => extension_loaded('pdo_mysql') || extension_loaded('pdo_sqlite'),
             'detail'   => 'Au moins un des deux pilotes est requis',
             'required' => true,
+        ];
+
+        foreach ($recommended as $ext => $why) {
+            $checks[] = [
+                'label'    => "Extension PHP : {$ext}",
+                'status'   => extension_loaded($ext),
+                'detail'   => extension_loaded($ext) ? 'Chargée' : $why,
+                'required' => false,
+            ];
+        }
+
+        // Marqueur de build protégé : si l'instance livrée au client est encodée
+        // (ionCube/SourceGuardian), le loader doit être présent. Purement informatif
+        // sur une instance en source clair (cas par défaut).
+        $encoded = extension_loaded('ionCube Loader') || extension_loaded('SourceGuardian');
+        $checks[] = [
+            'label'    => 'Chargeur de code protégé (ionCube / SourceGuardian)',
+            'status'   => $encoded,
+            'detail'   => $encoded ? 'Présent — build protégé pris en charge' : 'Absent — requis uniquement pour un déploiement à code protégé',
+            'required' => false,
         ];
 
         $writablePaths = [

@@ -62,10 +62,13 @@ class Harvest extends Model
 
     // ─── ACCESSEURS ───
 
-    /** Valeur estimée de la récolte (quantité × prix unitaire). */
+    /**
+     * Valeur estimée de la récolte = poids net effectif (kg) × prix unitaire
+     * (au kg), cohérent avec total_revenue et la valorisation de l'inventaire.
+     */
     public function getEstimatedValueAttribute(): float
     {
-        return round((float) $this->quantity * (float) ($this->unit_price ?? 0), 2);
+        return round($this->effective_weight_kg * (float) ($this->unit_price ?? 0), 2);
     }
 
     /**
@@ -75,10 +78,19 @@ class Harvest extends Model
      */
     public function getEffectiveWeightKgAttribute(): float
     {
-        if ($this->net_weight_kg !== null) {
-            return (float) $this->net_weight_kg;
+        return self::effectiveWeightKgFrom($this->net_weight_kg, $this->unit, $this->quantity);
+    }
+
+    /**
+     * Poids effectif (kg) à partir de valeurs brutes — utile pour réévaluer un
+     * mouvement de stock depuis les valeurs d'origine (réconciliation observer).
+     */
+    public static function effectiveWeightKgFrom($netWeightKg, $unit, $quantity): float
+    {
+        if ($netWeightKg !== null && $netWeightKg !== '') {
+            return (float) $netWeightKg;
         }
 
-        return strtolower((string) $this->unit) === 'kg' ? (float) $this->quantity : 0.0;
+        return strtolower((string) $unit) === 'kg' ? (float) $quantity : 0.0;
     }
 }

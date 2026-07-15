@@ -43,9 +43,18 @@ class Reception extends Model
 
     // ─── ACCESSORS ───
 
+    /**
+     * Un écart existe si AU MOINS une ligne présente du manquant OU de
+     * l'endommagé — définition alignée sur ReconciliationService (qui met la
+     * réception en litige et génère un rapport dans les deux cas). Sans cet
+     * alignement, une réception « endommagé seul » s'affichait « aucun écart »
+     * tout en étant classée LITIGE.
+     */
     public function getHasDiscrepancyAttribute(): bool
     {
-        return $this->items()->where('quantity_missing', '>', 0)->exists();
+        return $this->items()
+            ->where(fn ($q) => $q->where('quantity_missing', '>', 0)->orWhere('quantity_damaged', '>', 0))
+            ->exists();
     }
 
     public function getTotalReceivedAttribute(): float

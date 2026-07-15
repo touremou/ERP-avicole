@@ -1,21 +1,12 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <div class="flex items-center gap-4">
-                <a href="{{ route('batches.show', $batch->id) }}" class="group text-slate-400 hover:text-slate-800 transition no-underline">
-                    <i class="fas fa-arrow-left group-hover:-translate-x-1 transition-transform"></i>
-                </a>
-                <div class="text-left">
-                    <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">
-                        {{ __("Bilan de fin de cycle :") }} <span class="text-orange-500">{{ $batch->code }}</span>
-                    </h2>
-                    <p class="text-[9px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-2 italic">{{ __("Compte de résultat & clôture") }}</p>
-                </div>
-            </div>
-            <span class="hidden md:inline px-4 py-2 bg-orange-50 rounded-xl text-[10px] font-black uppercase text-orange-600 italic tracking-widest border border-orange-100">
-                {{ $batch->building->name ?? '—' }} | {{ ucfirst($batch->type) }} | {{ $costs['duration_days'] ?? 0 }}j
-            </span>
-        </div>
+        <x-page-header :title="__('Bilan de fin de cycle :') . ' ' . $batch->code" :subtitle="__('Compte de résultat & clôture')" icon="fa-microchip" accent="indigo" :back="route('batches.show', $batch->id)">
+            <x-slot name="actions">
+                <span class="hidden md:inline px-4 py-2 bg-orange-50 rounded-xl text-[10px] font-black uppercase text-orange-600 italic tracking-widest border border-orange-100">
+                    {{ $batch->building->name ?? '—' }} | {{ ucfirst($batch->type) }} | {{ $costs['duration_days'] ?? 0 }}j
+                </span>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-12 italic font-bold">
@@ -71,23 +62,23 @@
                                     <div class="flex justify-between items-center p-3 bg-red-50/50 rounded-xl">
                                         <div>
                                             <span class="text-[10px] font-black text-slate-700">{{ __("🐣 Acquisition poussins") }}</span>
-                                            <p class="text-[8px] text-slate-400">{{ number_format($batch->initial_quantity) }} × {{ number_format($batch->buy_price_per_unit ?? 0, 0, ',', '.') }} GNF</p>
+                                            <p class="text-[8px] text-slate-400">{{ number_format($batch->initial_quantity) }} × {{ number_format($batch->buy_price_per_unit ?? 0, 0, ',', '.') }} {{ currency() }}</p>
                                         </div>
-                                        <span class="text-sm font-black text-red-600">{{ number_format($costs['acquisition'], 0, ',', '.') }} GNF</span>
+                                        <span class="text-sm font-black text-red-600">{{ number_format($costs['acquisition'], 0, ',', '.') }} {{ currency() }}</span>
                                     </div>
                                     <div class="flex justify-between items-center p-3 bg-red-50/50 rounded-xl">
                                         <div>
                                             <span class="text-[10px] font-black text-slate-700">{{ __("🌾 Alimentation") }}</span>
-                                            <p class="text-[8px] text-slate-400">{{ number_format($costs['feed_kg'], 0) }} kg × {{ number_format($costs['feed_price_kg'], 0, ',', '.') }} GNF/kg (moy.)</p>
+                                            <p class="text-[8px] text-slate-400">{{ number_format($costs['feed_kg'], 0) }} kg × {{ number_format($costs['feed_price_kg'], 0, ',', '.') }} {{ currency() }}/kg (moy.)</p>
                                         </div>
-                                        <span class="text-sm font-black text-red-600">{{ number_format($costs['feed'], 0, ',', '.') }} GNF</span>
+                                        <span class="text-sm font-black text-red-600">{{ number_format($costs['feed'], 0, ',', '.') }} {{ currency() }}</span>
                                     </div>
                                     <div class="flex justify-between items-center p-3 bg-red-50/50 rounded-xl">
                                         <div>
                                             <span class="text-[10px] font-black text-slate-700">{{ __("💊 Santé / Vétérinaire") }}</span>
                                             <p class="text-[8px] text-slate-400">{{ __("Traitements, vaccins, médicaments") }}</p>
                                         </div>
-                                        <span class="text-sm font-black text-red-600">{{ number_format($costs['health'], 0, ',', '.') }} GNF</span>
+                                        <span class="text-sm font-black text-red-600">{{ number_format($costs['health'], 0, ',', '.') }} {{ currency() }}</span>
                                     </div>
                                     <div class="flex justify-between items-center p-3 bg-red-50/50 rounded-xl">
                                         <div>
@@ -95,7 +86,7 @@
                                             {{-- Utilisation de round() pour enlever les décimales --}}
                                             <p class="text-[8px] text-slate-400">{{ __(":daysj × quote-part énergie", ['days' => round($costs['duration_days'])]) }}</p>
                                         </div>
-                                        <span class="text-sm font-black text-red-600">{{ number_format($costs['energy'], 0, ',', '.') }} GNF</span>
+                                        <span class="text-sm font-black text-red-600">{{ number_format($costs['energy'], 0, ',', '.') }} {{ currency() }}</span>
                                     </div>
                                     <div class="flex justify-between items-center p-3 bg-amber-50 rounded-xl">
                                         <div>
@@ -222,7 +213,7 @@
                 return totalLiveWeight > 0 ? this.totalFeedKg / totalLiveWeight : 0;
             },
 
-            formatGNF(v) { return new Intl.NumberFormat('fr-GN', { maximumFractionDigits: 0 }).format(Math.round(v)) + ' GNF'; },
+            formatGNF(v) { return new Intl.NumberFormat('fr-GN', { maximumFractionDigits: 0 }).format(Math.round(v)) + ' {{ currency() }}'; },
         }
     }
     </script>

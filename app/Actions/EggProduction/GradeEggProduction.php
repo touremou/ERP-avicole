@@ -35,7 +35,7 @@ class GradeEggProduction
                 $uni = (int) ($data["grade_{$g}_uni"] ?? 0);
 
                 // Quantité en alvéoles (unité pivot)
-                $newQtyAlv = $alv + ($uni / 30);
+                $newQtyAlv = $alv + ($uni / \App\Services\UnitConverter::eggsPerTray());
                 $oldQtyAlv = (float) ($prod->{"grade_{$g}"} ?? 0);
                 $delta     = round($newQtyAlv - $oldQtyAlv, 4);
 
@@ -63,7 +63,7 @@ class GradeEggProduction
                 $newVal    = (int) ($data[$field] ?? 0);
                 $oldVal    = (int) ($prod->$field ?? 0);
                 $deltaUnits = $newVal - $oldVal;
-                $deltaAlv   = round($deltaUnits / 30, 4);
+                $deltaAlv   = round($deltaUnits / \App\Services\UnitConverter::eggsPerTray(), 4);
 
                 if (abs($deltaAlv) > 0.0001) {
                     StockIntegrationService::syncMovement(

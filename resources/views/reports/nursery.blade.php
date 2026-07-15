@@ -1,15 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center gap-4">
-            <a href="{{ route('reports.index') }}" class="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-500 hover:text-slate-800 rounded-xl transition-all shadow-sm no-underline">
-                <i class="fas fa-chevron-left text-xs"></i>
-                <span class="text-[10px] font-black uppercase italic tracking-widest leading-none">{{ __("Rapports") }}</span>
-            </a>
-            <div>
-                <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">🍼 {{ __("Nurserie / Reproduction") }}</h2>
-                <p class="text-[10px] font-black text-pink-600 uppercase tracking-[0.2em] mt-2 italic">{{ __("Agnelage · chevrotage · sevrage") }}</p>
-            </div>
-        </div>
+        {{-- Pas de :back : <x-hub-back> est déjà injecté (anti double flèche). --}}
+        <x-page-header :title="'🍼 ' . __('Nurserie / Reproduction')" :subtitle="__('Agnelage · chevrotage · sevrage')" icon="fa-baby" accent="slate" />
     </x-slot>
 
     <div class="py-10 italic font-bold text-left">

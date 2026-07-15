@@ -46,6 +46,18 @@ class RecordEggCollection
                 ]);
             }
 
+            // 2.ter BIOSÉCURITÉ : lot en quarantaine → collecte suspendue
+            // (délai d'attente médicamenteux — les œufs ne sont pas vendables).
+            // Même point d'écriture unique que la garde d'âge : couvre web,
+            // API terrain et sync hors-ligne.
+            if ($quarantine = $batch->activeQuarantine()) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'batch_id' => "Lot {$batch->code} en QUARANTAINE sanitaire"
+                        . ($quarantine->quarantine_started_at ? ' depuis le ' . $quarantine->quarantine_started_at->format('d/m/Y') : '')
+                        . " : collecte suspendue jusqu'à la levée (incident n°{$quarantine->id}).",
+                ]);
+            }
+
             // 3. CUMUL DES DONNÉES
             $newTotal = (int) $data['total_eggs_collected'];
             $newBroken = (int) ($data['broken_eggs'] ?? 0);

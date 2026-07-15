@@ -132,6 +132,11 @@ class ChickDispatchController extends Controller
                     ?? \App\Models\Employee::first()?->id
                     ?? 1;
 
+                // Process costing : le coût des œufs mis à couver est répercuté
+                // sur les poussins éclos (coût/poussin = coût œufs ÷ éclos). Le
+                // lot de poussinière hérite ainsi d'un vrai coût d'acquisition.
+                $chickUnitCost = $incubation->chickUnitCost();
+
                 $batch = Batch::create([
                     'uuid'                   => (string) Str::uuid(),
                     'code'                   => setting('elevage.batch_prefix_poussiniere', 'POUS') . '-' . now()->format('Ymd-His'),
@@ -151,8 +156,8 @@ class ChickDispatchController extends Controller
                     'avg_weight_start'       => 0,
                     'planned_density'        => 0,
                     'arrival_mortality_rate' => 0,
-                    'buy_price_per_unit'     => 0,
-                    'total_acquisition_cost'  => 0,
+                    'buy_price_per_unit'     => $chickUnitCost,
+                    'total_acquisition_cost'  => round($qty * $chickUnitCost, 2),
                     'status'                 => 'Actif',
                     'chick_state'            => 'Normal',
                     'observations'           => "Couvoir — {$incubation->code_incubation}",

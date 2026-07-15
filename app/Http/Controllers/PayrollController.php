@@ -129,9 +129,13 @@ class PayrollController extends Controller
             'hours' => 'required|numeric|min:0.5|max:300',
         ]);
 
-        $rate       = (float) setting('rh.overtime_rate', 1.5);
-        $hourlyRate = (float) $payslip->base_salary / 208;
-        $amount     = (int) round($hourlyRate * $validated['hours'] * $rate);
+        // Taux horaire = salaire mensuel / durée mensuelle contractuelle. La base
+        // (208 h = 26 j × 8 h) est paramétrable selon la convention applicable ;
+        // garde-fou contre une valeur nulle/absente (division par zéro).
+        $monthlyHours = max(1, (float) setting('rh.monthly_hours', 208));
+        $rate         = (float) setting('rh.overtime_rate', 1.5);
+        $hourlyRate   = (float) $payslip->base_salary / $monthlyHours;
+        $amount       = (int) round($hourlyRate * $validated['hours'] * $rate);
 
         PayslipLine::updateOrCreate(
             ['payslip_id' => $payslip->id, 'category' => 'heures_sup'],
@@ -186,6 +190,12 @@ class PayrollController extends Controller
     public function validatePeriod(PayrollPeriod $period)
     {
         if (Gate::denies('annuaire.S')) return back()->with('error', 'Validation réservée aux administrateurs.');
+
+        // Garde de machine à états (audit W1) : brouillon (jamais calculée),
+        // déjà validée ou payée → refus ; on ne ré-horodate jamais une validation.
+        if ($period->status !== 'calcule') {
+            return back()->with('error', "Seule une période calculée peut être validée (statut actuel : {$period->status}).");
+        }
 
         $period->update([
             'status'       => 'valide',

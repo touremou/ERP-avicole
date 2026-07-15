@@ -1,13 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">
-                {{ __("💉 Enregistrer une Intervention Sanitaire") }}
-            </h2>
-            <a href="{{ route('health.index') }}" class="text-[10px] font-black text-slate-400 hover:text-slate-900 uppercase tracking-widest transition italic no-underline">
-                <i class="fa-solid fa-list-check mr-1 text-blue-500"></i> {{ __("Voir le registre") }}
-            </a>
-        </div>
+        <x-page-header :title="__('💉 Enregistrer une Intervention Sanitaire')" icon="fa-stethoscope" accent="purple" :back="route('health.index')" />
     </x-slot>
 
     <div class="py-12 italic font-bold">
@@ -112,11 +105,11 @@
                         </select>
                     </div>
                     <div class="space-y-3">
-                        <label class="text-[10px] font-black text-emerald-600 uppercase ml-2 italic tracking-widest">{{ __("Coût de l'opération (GNF)") }}</label>
+                        <label class="text-[10px] font-black text-emerald-600 uppercase ml-2 italic tracking-widest">{{ __("Coût de l'opération") }} ({{ currency() }})</label>
                         <div class="relative">
                             <input type="number" name="cost" value="{{ old('cost', 0) }}" min="0" step="0.01"
                                    class="w-full p-5 bg-slate-50 rounded-2xl border-none font-black text-2xl text-emerald-600 shadow-inner pl-16 focus:ring-4 focus:ring-emerald-500/10 transition italic">
-                            <span class="absolute left-5 top-1/2 -translate-y-1/2 text-emerald-300 text-[10px] font-black">GNF</span>
+                            <span class="absolute left-5 top-1/2 -translate-y-1/2 text-emerald-300 text-[10px] font-black">{{ currency() }}</span>
                         </div>
                     </div>
                 </div>

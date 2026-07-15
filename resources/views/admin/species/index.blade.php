@@ -1,28 +1,18 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <div>
-                <h2 class="text-2xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">
-                    {{ __("🐾 Gestion des Espèces") }}
-                </h2>
-                <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-2 italic leading-none">
-                    {{ __("Activer / désactiver les espèces disponibles sur ce site") }}
-                </p>
-            </div>
-            <a href="{{ route('settings.index') }}" class="flex items-center justify-center w-11 h-11 bg-white border border-slate-200 text-slate-400 hover:text-rose-600 rounded-xl transition-all shadow-sm no-underline">
-                <i class="fa-solid fa-xmark"></i>
-            </a>
-        </div>
+        <x-page-header :title="__('🐾 Gestion des Espèces')" :subtitle="__('Activer / désactiver les espèces disponibles sur ce site')" icon="fa-paw" accent="slate">
+            <x-slot name="actions">
+                <a href="{{ route('settings.index') }}" class="flex items-center justify-center w-11 h-11 bg-white border border-slate-200 text-slate-400 hover:text-rose-600 rounded-xl transition-all shadow-sm no-underline">
+                    <i class="fa-solid fa-xmark"></i>
+                </a>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-10 italic font-bold">
         <div class="max-w-6xl mx-auto sm:px-6 lg:px-8 space-y-10">
 
-            @if(session('success'))
-                <div class="p-5 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-[2rem] text-[10px] font-black uppercase tracking-widest italic">
-                    <i class="fas fa-check-circle mr-2"></i>{{ session('success') }}
-                </div>
-            @endif
+            <x-flash />
 
             @foreach($families as $familyKey => $familyMeta)
                 @if(isset($species[$familyKey]))
@@ -59,20 +49,34 @@
                                         </div>
                                     </div>
                                     @can('admin.S')
-                                    <form action="{{ route('admin.species.toggle', $sp) }}" method="POST">
-                                        @csrf @method('PATCH')
-                                        <button type="submit" @class([
-                                            'relative w-12 h-6 rounded-full transition-all duration-300 shadow-inner focus:outline-none',
-                                            'bg-emerald-500' => $sp->is_active,
-                                            'bg-slate-200'   => !$sp->is_active,
-                                        ])>
-                                            <span @class([
-                                                'absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all duration-300',
-                                                'left-6' => $sp->is_active,
-                                                'left-0.5' => !$sp->is_active,
-                                            ])></span>
-                                        </button>
-                                    </form>
+                                    <div class="flex items-center gap-2">
+                                        {{-- Suppression : uniquement pour une espèce orpheline (0 lot) —
+                                             ménage d'une ligne créée à la main / reliquat. Une espèce
+                                             utilisée ne se supprime pas, elle se désactive. --}}
+                                        @if(($sp->batches_count ?? 0) === 0)
+                                        <form action="{{ route('admin.species.destroy', $sp) }}" method="POST"
+                                              onsubmit="return confirm(@js(__('Supprimer définitivement l’espèce « :name » ? (aucun lot n’y est rattaché)', ['name' => $sp->name_fr])))">
+                                            @csrf @method('DELETE')
+                                            <button type="submit" class="w-8 h-8 rounded-lg bg-slate-50 text-slate-300 hover:bg-red-500 hover:text-white transition-all border-none cursor-pointer" title="{{ __('Supprimer cette espèce orpheline') }}">
+                                                <i class="fa-solid fa-trash-can text-xs"></i>
+                                            </button>
+                                        </form>
+                                        @endif
+                                        <form action="{{ route('admin.species.toggle', $sp) }}" method="POST">
+                                            @csrf @method('PATCH')
+                                            <button type="submit" @class([
+                                                'relative w-12 h-6 rounded-full transition-all duration-300 shadow-inner focus:outline-none',
+                                                'bg-emerald-500' => $sp->is_active,
+                                                'bg-slate-200'   => !$sp->is_active,
+                                            ])>
+                                                <span @class([
+                                                    'absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all duration-300',
+                                                    'left-6' => $sp->is_active,
+                                                    'left-0.5' => !$sp->is_active,
+                                                ])></span>
+                                            </button>
+                                        </form>
+                                    </div>
                                     @endcan
                                 </div>
 

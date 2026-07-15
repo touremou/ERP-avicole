@@ -9,6 +9,7 @@ use App\Models\Protocol;
 use App\Models\Provider;
 use App\Models\ProductionNorm;
 use App\Models\Species;
+use App\Models\Stock;
 use App\Actions\Batch\CreateBatch;
 use App\Actions\Batch\UpdateBatch;
 use App\Actions\Batch\CloseBatch;
@@ -51,6 +52,10 @@ class BatchController extends Controller
 
         // 1. On exclut les lots virtuels (œufs) en exigeant des animaux vivants à l'initialisation
         $query = Batch::with(['building', 'provider', 'employee', 'species', 'productionType'])
+            // Badge quarantaine sans N+1 : booléen dérivé des incidents ouverts.
+            ->withExists(['healthIncidents as is_under_quarantine' => fn ($q) => $q
+                ->where('is_quarantined', true)
+                ->where('status', '!=', \App\Models\HealthIncident::STATUS_RESOLVED)])
             ->active()
             ->live();
 
@@ -78,7 +83,7 @@ class BatchController extends Controller
         // Filtre surmortalité
         $isCriticalView = $request->query('view') === 'critical';
         if ($isCriticalView) {
-            $query->critical(setting('elevage.mortality_alert', 5));
+            $query->critical(); // seuil unifié (Batch::cumulativeMortalityThreshold)
         }
 
         // Filtre par famille d'espèce
@@ -102,7 +107,7 @@ class BatchController extends Controller
         $baseQuery = Batch::active()->live();
 
         if ($isCriticalView) {
-            $baseQuery->critical(setting('elevage.mortality_alert', 5));
+            $baseQuery->critical(); // seuil unifié (Batch::cumulativeMortalityThreshold)
         }
 
         // Compteurs des onglets "famille" : indépendants du filtre famille en cours
@@ -230,6 +235,12 @@ class BatchController extends Controller
             'net_margin'       => $batch->net_margin,
             'feed_cogs'        => $batch->feed_cogs,
             'utility_cost'     => $batch->utility_cost,
+            // Eau BUE aux pointages (litres, collection déjà chargée) + son
+            // estimation au prix du m³ : INFORMATIF (analytique). Le coût
+            // comptable reste utility_cost (relevés facturés taggés bâtiment)
+            // — les mélanger compterait le même m³ deux fois.
+            'water_drunk_liters' => (float) $batch->dailyChecks->sum('water_consumed'),
+            'water_price_m3'     => (float) setting('energie.water_price_m3', 0),
             'manure_collected_kg'      => $batch->manure_collected_kg,
             'estimated_manure_revenue' => $batch->estimated_manure_revenue,
         ];
@@ -285,7 +296,29 @@ class BatchController extends Controller
             ->orderBy('model_name')
             ->get();
 
-        return view('batches.show', compact('batch', 'buildings', 'protocols', 'providers', 'stats', 'feedAdvice', 'batchAdvisories', 'feedAutonomy', 'normModels', 'weightCurve'));
+        // Stocks d'aliment par phase du secteur du lot — précalculés ici
+        // (la vue ne fait plus de requête SQL dans sa boucle d'affichage).
+        $feedStocks = collect($batch->feedPhases())->map(function (string $phaseName) use ($batch) {
+            $stockItem = Stock::where('item_name', $phaseName)
+                    ->where('category', Stock::CAT_CONSO)
+                    ->first()
+                ?? Stock::where('item_name', 'LIKE', "%{$phaseName}%")
+                    ->where('category', Stock::CAT_CONSO)
+                    ->first();
+
+            $qty   = $stockItem ? (float) $stockItem->current_quantity : 0.0;
+            $isSac = $stockItem && $stockItem->unit === 'Sac';
+
+            return [
+                'label'        => str_replace($batch->feedSector() . ' ', '', $phaseName),
+                'exists'       => (bool) $stockItem,
+                'qty'          => $qty,
+                'is_sac'       => $isSac,
+                'available_kg' => $isSac ? $qty * 50 : $qty,
+            ];
+        });
+
+        return view('batches.show', compact('batch', 'buildings', 'protocols', 'providers', 'stats', 'feedAdvice', 'batchAdvisories', 'feedAutonomy', 'normModels', 'weightCurve', 'feedStocks'));
     }
 
     /**
@@ -426,13 +459,19 @@ class BatchController extends Controller
         if (Gate::denies('elevage.M')) {
             abort(403, 'Clôture interdite.');
         }
-        $result = $action->execute($batch, $request->validated());
+
+        try {
+            $result = $action->execute($batch, $request->validated());
+        } catch (\DomainException $e) {
+            // Ex. lot déjà clôturé : refus métier propre (audit W1), jamais un 500.
+            return back()->with('error', $e->getMessage());
+        }
 
         return redirect()->route('batches.index')
             ->with('success',
                 "Lot {$batch->code} clôturé. " .
-                "Revenu : " . number_format($result->total_revenue) . " GNF. " .
-                "Marge : " . number_format($result->margin) . " GNF."
+                "Revenu : " . number_format($result->total_revenue) . " " . currency() . ". " .
+                "Marge : " . number_format($result->margin) . " " . currency() . "."
             );
     }
 
@@ -447,7 +486,12 @@ class BatchController extends Controller
             return back()->with('error', 'Réouverture réservée aux administrateurs.');
         }
 
-        $result = $action->execute($batch);
+        try {
+            $result = $action->execute($batch);
+        } catch (\DomainException $e) {
+            // Ex. lot déjà actif : refus métier propre (audit W1), jamais un 500.
+            return back()->with('error', $e->getMessage());
+        }
 
         return redirect()->route('batches.show', $batch)
             ->with('success', "Lot {$batch->code} réouvert. Effectif recalculé : {$result->current_quantity} sujets.");

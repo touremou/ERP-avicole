@@ -8,23 +8,47 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Traits\AuditsChanges;
 use App\Traits\BelongsToFarm;
 
 class SlaughterOrder extends Model
 {
-    use HasFactory, SoftDeletes, BelongsToFarm;
+    use HasFactory, SoftDeletes, BelongsToFarm, AuditsChanges;
+
+    /** Modèles de facturation de la prestation d'abattage à façon (E8). */
+    public const BILLING_MODELS = [
+        'par_sujet'       => 'Par sujet abattu',
+        'par_kg_vif'      => 'Au kg vif (pesée réception)',
+        'par_kg_carcasse' => 'Au kg carcasse (pesée sortie)',
+    ];
+
+    /** Clé de réglage du tarif par défaut de chaque modèle. */
+    public const BILLING_RATE_SETTINGS = [
+        'par_sujet'       => 'abattoir.facon_rate_per_bird',
+        'par_kg_vif'      => 'abattoir.facon_rate_per_kg_live',
+        'par_kg_carcasse' => 'abattoir.facon_rate_per_kg_carcass',
+    ];
 
     protected $fillable = [
         'farm_id',
-        'order_number', 'batch_id', 'planned_date', 'actual_date',
+        'order_number', 'batch_id', 'reception_id', 'planned_date', 'actual_date',
         'planned_quantity', 'actual_quantity', 'total_live_weight_kg',
         'status', 'requested_by', 'executed_by', 'client_id', 'notes',
+        'service_type', 'billing_model', 'billing_rate',
     ];
+
+    // Blocage/libération HACCP : champs volontairement HORS fillable —
+    // posés uniquement par les Actions Block/ReleaseSlaughterOrder
+    // (forceFill), tracés par l'audit trail (AuditsChanges).
 
     protected $casts = [
         'planned_date'         => 'date',
         'actual_date'          => 'date',
         'total_live_weight_kg' => 'decimal:2',
+        'blocked_at'           => 'datetime',
+        'released_at'          => 'datetime',
+        'billing_rate'         => 'decimal:2',
+        'service_fee'          => 'decimal:2',
     ];
 
     public function batch(): BelongsTo { return $this->belongsTo(Batch::class); }
@@ -33,8 +57,21 @@ class SlaughterOrder extends Model
     public function executor(): BelongsTo { return $this->belongsTo(User::class, 'executed_by'); }
     public function result(): HasOne { return $this->hasOne(SlaughterResult::class); }
     public function cuttingSessions(): HasMany { return $this->hasMany(CuttingSession::class); }
+    public function reception(): BelongsTo { return $this->belongsTo(SlaughterReception::class, 'reception_id'); }
+    public function ccpRecords(): HasMany { return $this->hasMany(CcpRecord::class); }
+    public function byproducts(): HasMany { return $this->hasMany(SlaughterByproduct::class); }
+    public function blockedBy(): BelongsTo { return $this->belongsTo(User::class, 'blocked_by_id'); }
+    public function releasedBy(): BelongsTo { return $this->belongsTo(User::class, 'released_by_id'); }
 
     public function scopePending($query) { return $query->whereIn('status', ['planifie', 'en_cours']); }
+
+    /** RG-03 : un lot bloqué sort du circuit (découpe, stock, vente). */
+    public function isBlocked(): bool { return $this->status === 'bloque'; }
+
+    /** RG-07 : façon = produits propriété du client, hors stock vendable. */
+    public function isFacon(): bool { return $this->service_type === 'facon'; }
+
+    public function serviceSale(): BelongsTo { return $this->belongsTo(Sale::class, 'service_sale_id'); }
 
     public function getAvgLiveWeightAttribute(): ?float
     {
@@ -44,9 +81,6 @@ class SlaughterOrder extends Model
 
     public static function generateNumber(): string
     {
-        $year = now()->format('Y');
-        $last = static::where('order_number', 'LIKE', "ABA-{$year}-%")->withTrashed()->max('order_number');
-        $seq = $last ? (int) substr($last, -6) + 1 : 1;
-        return sprintf('ABA-%s-%06d', $year, $seq);
+        return \App\Services\DocumentNumberingService::generate('slaughter_order');
     }
 }

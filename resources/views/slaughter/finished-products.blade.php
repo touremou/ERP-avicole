@@ -1,31 +1,17 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 text-left">
-            <div class="flex items-center gap-5">
-                <a href="{{ route('slaughter.dashboard') }}" class="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-900 hover:text-white transition-all no-underline"><i class="fa-solid fa-arrow-left"></i></a>
-                <div>
-                    <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">{{ __("Produits Finis") }}</h2>
-                    <p class="text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em] mt-2 italic">{{ __("Stock abattoir — Frais, Congelé, Transformé") }}</p>
-                </div>
-            </div>
-            <div class="flex gap-3">
+        <x-page-header :title="__('Produits Finis')" :subtitle="__('Stock abattoir — Frais, Congelé, Transformé')" icon="fa-box-open" accent="rose">
+            <x-slot name="actions">
                 <a href="{{ route('slaughter.orders.create') }}" class="bg-rose-500 text-white px-5 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-rose-600 transition-all shadow-lg italic no-underline"><i class="fa-solid fa-plus mr-1"></i> {{ __("Abattage") }}</a>
                 <a href="{{ route('slaughter.transform.form') }}" class="bg-amber-500 text-white px-5 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-amber-600 transition-all shadow-lg italic no-underline"><i class="fa-solid fa-fire mr-1"></i> {{ __("Transformation") }}</a>
-            </div>
-        </div>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-10" x-data="fpManager()">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 italic font-bold text-left">
 
-            @foreach(['success', 'error'] as $msg)
-                @if(session($msg))
-                    <div @class(['mb-6 p-5 rounded-[2rem] font-black text-[10px] uppercase tracking-[0.2em] shadow-xl flex items-center italic',
-                        'bg-emerald-500 text-white' => $msg === 'success', 'bg-red-500 text-white' => $msg === 'error'])>
-                        <i class="fa-solid fa-{{ $msg === 'success' ? 'check-double' : 'circle-xmark' }} mr-3 text-lg"></i> {{ session($msg) }}
-                    </div>
-                @endif
-            @endforeach
+            <x-flash />
 
             {{-- KPI --}}
             <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
@@ -191,6 +177,51 @@
                 <span class="text-[8px] font-black text-slate-400 uppercase flex items-center gap-1"><i class="fa-solid fa-scale-balanced text-amber-400"></i> {{ __("Ajuster") }}</span>
                 <span class="text-[8px] font-black text-slate-400 uppercase flex items-center gap-1"><i class="fa-solid fa-trash text-red-400"></i> {{ __("Éliminer") }}</span>
             </div>
+
+            {{-- JOURNAL DES AJUSTEMENTS & ÉLIMINATIONS (traçabilité en base) --}}
+            @if($recentAdjustments->isNotEmpty())
+            <div class="mt-8 bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
+                <div class="px-6 py-4 bg-slate-50 border-b border-slate-100">
+                    <h3 class="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
+                        <i class="fa-solid fa-clipboard-list text-amber-500"></i> {{ __("Journal des corrections & destructions (10 dernières)") }}
+                    </h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="text-[8px] font-black uppercase text-slate-400 border-b border-slate-50 italic">
+                                <th class="px-6 py-3">{{ __("Date") }}</th>
+                                <th class="px-6 py-3">{{ __("Produit") }}</th>
+                                <th class="px-6 py-3 text-center">{{ __("Type") }}</th>
+                                <th class="px-6 py-3 text-center">{{ __("Avant → Après") }}</th>
+                                <th class="px-6 py-3">{{ __("Motif") }}</th>
+                                <th class="px-6 py-3">{{ __("Opérateur") }}</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-50 text-[10px]">
+                            @foreach($recentAdjustments as $adj)
+                            <tr>
+                                <td class="px-6 py-3 text-slate-500 font-black">{{ $adj->created_at->format('d/m/Y H:i') }}</td>
+                                <td class="px-6 py-3 text-slate-800 font-black uppercase">{{ $adj->finishedProduct?->product_name ?? '—' }}</td>
+                                <td class="px-6 py-3 text-center">
+                                    <span @class([
+                                        'text-[7px] px-2 py-1 rounded-md uppercase font-black italic',
+                                        'bg-amber-100 text-amber-700' => $adj->type === \App\Models\FinishedProductAdjustment::TYPE_ADJUSTMENT,
+                                        'bg-red-100 text-red-700'     => $adj->type === \App\Models\FinishedProductAdjustment::TYPE_DISPOSAL,
+                                    ])>{{ $adj->type === \App\Models\FinishedProductAdjustment::TYPE_DISPOSAL ? __('Élimination') : __('Ajustement') }}</span>
+                                </td>
+                                <td class="px-6 py-3 text-center font-black {{ $adj->delta_kg < 0 ? 'text-red-600' : 'text-emerald-600' }}">
+                                    {{ number_format((float) $adj->old_kg, 1) }} → {{ number_format((float) $adj->new_kg, 1) }} kg
+                                </td>
+                                <td class="px-6 py-3 text-slate-500 font-bold italic">{{ $adj->reason }}</td>
+                                <td class="px-6 py-3 text-slate-400 font-black uppercase">{{ $adj->user?->name ?? '—' }}</td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            @endif
         </div>
 
         {{-- ═══ MODAL ÉDITION (prix, péremption, seuil) ═══ --}}

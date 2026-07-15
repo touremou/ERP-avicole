@@ -18,6 +18,8 @@
         </include>
     </source>
     <php>
+        <!-- Suite complète en un seul process : le défaut 128 Mo est insuffisant. -->
+        <ini name="memory_limit" value="512M"/>
         <env name="APP_ENV" value="testing"/>
         <env name="APP_LOCALE" value="fr"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>

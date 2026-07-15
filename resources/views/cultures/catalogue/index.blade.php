@@ -1,16 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <div class="flex items-center gap-4">
-                <div class="w-12 h-12 bg-green-600 rounded-2xl flex items-center justify-center text-white shadow-lg -rotate-3">
-                    <i class="fa-solid fa-book-open text-lg"></i>
-                </div>
-                <div class="text-left">
-                    <h2 class="font-black text-2xl text-slate-800 uppercase italic tracking-tighter leading-none">{{ __("Catalogue des cultures") }}</h2>
-                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1 italic">{{ __("Espèces & variétés — contexte guinéen") }}</p>
-                </div>
-            </div>
-            <div class="flex items-center gap-3">
+        <x-page-header :title="__('Catalogue des cultures')" :subtitle="__('Espèces & variétés — contexte guinéen')" icon="fa-book-open" accent="green">
+            <x-slot name="actions">
                 @can('cultures.M')
                 <a href="{{ route('crop-catalogue.import') }}" class="bg-white text-slate-700 px-6 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-slate-100 transition-all shadow-sm border border-slate-100 italic flex items-center gap-2 no-underline">
                     <i class="fa-solid fa-file-csv text-green-500"></i> {{ __("Importer CSV") }}
@@ -21,19 +12,15 @@
                     <i class="fa-solid fa-plus"></i> {{ __("Nouvelle culture") }}
                 </a>
                 @endcan
-            </div>
-        </div>
+            </x-slot>
+        </x-page-header>
         @include('cultures.partials.hub-tabs')
     </x-slot>
 
     <div class="py-10">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 italic font-bold text-left space-y-8">
 
-            @if(session('success'))
-                <div class="p-5 bg-emerald-500 text-white rounded-[2rem] font-black text-[10px] uppercase tracking-[0.2em] shadow-xl flex items-center italic">
-                    <i class="fa-solid fa-check-double mr-3 text-lg"></i> {{ session('success') }}
-                </div>
-            @endif
+            <x-flash />
 
             {{-- INDICATEURS --}}
             <div class="grid grid-cols-3 gap-4">

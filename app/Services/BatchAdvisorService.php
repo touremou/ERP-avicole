@@ -158,6 +158,75 @@ class BatchAdvisorService
             }
         }
 
+        // 1c. Guide de souche détaillé (fiche officielle : programme lumineux,
+        //     températures bâtiment, uniformité du lot). Silencieux pour les
+        //     souches sans fiche enrichie — aucune colonne, aucun bruit.
+        $guideWeek = max(1, (int) ceil($batch->age / 7));
+        $guideNorm = \App\Models\ProductionNorm::where('batch_type', $batch->type)
+            ->where('model_name', $batch->model_name)
+            ->where('week_number', $guideWeek)
+            ->first();
+
+        if ($guideNorm) {
+            $lastCheck = $batch->dailyChecks->sortByDesc('check_date')->first();
+
+            // Programme lumineux recommandé cette semaine.
+            if ($guideNorm->light_hours !== null) {
+                $hours = rtrim(rtrim(number_format((float) $guideNorm->light_hours, 1), '0'), '.');
+                $lux = null;
+                if ($guideNorm->light_lux_min !== null) {
+                    $lux = (int) $guideNorm->light_lux_min === (int) ($guideNorm->light_lux_max ?? $guideNorm->light_lux_min)
+                        ? "{$guideNorm->light_lux_min} lux"
+                        : "{$guideNorm->light_lux_min}–{$guideNorm->light_lux_max} lux";
+                }
+                $out[] = [
+                    'severity' => 'info',
+                    'icon'     => 'fa-lightbulb',
+                    'title'    => 'Programme lumineux (guide souche)',
+                    'message'  => "Semaine {$guideWeek} : {$hours} h de lumière" . ($lux ? " à {$lux}" : '')
+                        . " recommandées pour {$batch->model_name}.",
+                ];
+            }
+
+            // Température du bâtiment hors plage du guide (dernier relevé).
+            if ($guideNorm->temp_min_c !== null && $lastCheck
+                && ($lastCheck->temp_min !== null || $lastCheck->temp_max !== null)) {
+                $measuredMin = (float) ($lastCheck->temp_min ?? $lastCheck->temp_max);
+                $measuredMax = (float) ($lastCheck->temp_max ?? $lastCheck->temp_min);
+                $gMin = (float) $guideNorm->temp_min_c;
+                $gMax = (float) ($guideNorm->temp_max_c ?? $guideNorm->temp_min_c);
+
+                if ($measuredMax > $gMax + 1 || $measuredMin < $gMin - 1) {
+                    $out[] = [
+                        'severity' => 'attention',
+                        'icon'     => 'fa-temperature-half',
+                        'title'    => 'Température hors plage du guide',
+                        'message'  => 'Relevé ' . number_format($measuredMin, 1) . '–' . number_format($measuredMax, 1)
+                            . " °C contre {$gMin}–{$gMax} °C recommandés en semaine {$guideWeek}"
+                            . " ({$batch->model_name}). Ajuster chauffage/ventilation.",
+                    ];
+                }
+            }
+
+            // Uniformité du lot mesurée à la pesée vs cible du guide (≥ 80 %).
+            if ($guideNorm->uniformity_target !== null && $lastCheck
+                && $lastCheck->uniformity_pct !== null) {
+                $measured = (float) $lastCheck->uniformity_pct;
+                $target   = (float) $guideNorm->uniformity_target;
+
+                if ($measured < $target) {
+                    $out[] = [
+                        'severity' => $measured < $target - 10 ? 'critique' : 'attention',
+                        'icon'     => 'fa-scale-unbalanced',
+                        'title'    => 'Uniformité du lot insuffisante',
+                        'message'  => "Uniformité mesurée {$measured} % contre ≥ {$target} % visés : lot hétérogène."
+                            . " Trier les sujets légers, vérifier l'accès aux mangeoires (longueur/nombre)"
+                            . " et densité — un lot homogène conditionne le pic de ponte.",
+                    ];
+                }
+            }
+        }
+
         // 2. Aliment réel vs recommandé.
         if ($reco['actual']['feed_kg'] !== null && $reco['total']['feed_kg'] > 0) {
             $ratio = $reco['actual']['feed_kg'] / $reco['total']['feed_kg'];
@@ -390,39 +459,54 @@ class BatchAdvisorService
     }
 
     /**
-     * Seuils THI (échelle Celsius) par type de production.
+     * Seuils THI (échelle Celsius) par FAMILLE d'espèce (source fiable :
+     * Species::$family), avec repli sur le type de production / la souche pour
+     * les lots sans espèce renseignée (données héritées).
+     *
+     * La famille lève l'ambiguïté du type (« grossissement » = poisson OU
+     * ruminant d'embouche) : un poisson n'a pas de stress thermique aérien
+     * (l'eau tamponne), un ruminant si.
+     *
      * @return array{alert: float, critical: float}
      */
     private function thiThresholds(Batch $batch): array
     {
-        $type  = strtolower((string) ($batch->type ?? ''));
-        $model = strtolower((string) ($batch->model_name ?? ''));
+        $family = $batch->species?->family;
+        $type   = strtolower((string) ($batch->type ?? ''));
+        $model  = strtolower((string) ($batch->model_name ?? ''));
 
-        // Pondeuse — plus sensible que le broiler
-        if ($type === 'ponte' || str_contains($model, 'isa') || str_contains($model, 'lohmann') || str_contains($model, 'caille')) {
-            return ['alert' => 24.0, 'critical' => 27.0];
+        // Aquaculture — l'eau tamponne, pas de stress thermique aérien.
+        if ($family === 'aquaculture' || in_array($type, ['pisciculture', 'aquaculture', 'alevinage'], true)) {
+            return ['alert' => PHP_INT_MAX, 'critical' => PHP_INT_MAX];
         }
-        // Volaille chair, dinde, pintade, canard, pigeon
-        if (in_array($type, ['chair', 'dinde', 'pintade', 'canard', 'pigeon', 'poussiniere'], true)
-            || str_contains($model, 'ross') || str_contains($model, 'cobb') || str_contains($model, 'but')
-        ) {
-            return ['alert' => 25.0, 'critical' => 28.5];
-        }
-        // Ruminants
-        if (in_array($type, ['bovin', 'ovin', 'caprin', 'grossissement', 'lait', 'embouche'], true)) {
-            return ['alert' => 27.0, 'critical' => 30.5];
-        }
-        // Porc
-        if ($type === 'porc') {
-            return ['alert' => 26.0, 'critical' => 29.5];
-        }
+
         // Lapin
-        if ($type === 'lapin') {
+        if ($family === 'lagomorphe' || $type === 'lapin') {
             return ['alert' => 25.5, 'critical' => 28.0];
         }
-        // Aquaculture — stress thermique non applicable (eau tampon)
-        if (in_array($type, ['pisciculture', 'aquaculture'], true)) {
-            return ['alert' => PHP_INT_MAX, 'critical' => PHP_INT_MAX];
+
+        // Porc
+        if ($family === 'porcin' || $type === 'porc') {
+            return ['alert' => 26.0, 'critical' => 29.5];
+        }
+
+        // Ruminants (petits & grands)
+        if (in_array($family, ['petit_ruminant', 'grand_ruminant'], true)
+            || in_array($type, ['bovin', 'ovin', 'caprin', 'grossissement', 'lait', 'laitiere', 'embouche'], true)
+        ) {
+            return ['alert' => 27.0, 'critical' => 30.5];
+        }
+
+        // Volaille — la pondeuse (et le reproducteur) est plus sensible que le broiler.
+        if ($family === 'volaille'
+            || in_array($type, ['ponte', 'chair', 'dinde', 'pintade', 'canard', 'pigeon', 'poussiniere', 'reproducteur'], true)
+            || str_contains($model, 'isa') || str_contains($model, 'lohmann')
+            || str_contains($model, 'ross') || str_contains($model, 'cobb') || str_contains($model, 'but')
+        ) {
+            $isLayer = in_array($type, ['ponte', 'reproducteur'], true)
+                || str_contains($model, 'isa') || str_contains($model, 'lohmann') || str_contains($model, 'caille');
+
+            return $isLayer ? ['alert' => 24.0, 'critical' => 27.0] : ['alert' => 25.0, 'critical' => 28.5];
         }
 
         return ['alert' => 26.0, 'critical' => 30.0];

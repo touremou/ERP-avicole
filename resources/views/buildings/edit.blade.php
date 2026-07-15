@@ -1,22 +1,10 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <div class="flex items-center gap-4">
-                <a href="{{ route('buildings.index') }}" class="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-500 hover:text-slate-800 rounded-xl transition-all shadow-sm group no-underline">
-                    <i class="fas fa-chevron-left group-hover:-translate-x-1 transition-transform"></i>
-                    <span class="text-[10px] font-black uppercase italic tracking-widest">{{ __("Retour au parc") }}</span>
-                </a>
-                <div>
-                    <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">
-                        {{ __('Configuration :') }} {{ $building->name }}
-                    </h2>
-                    <p class="text-[9px] font-bold text-orange-500 uppercase mt-1 tracking-[0.2em] italic">{{ __("Maintenance technique") }}</p>
-                </div>
-            </div>
-            <div class="hidden md:block">
-                <span class="px-4 py-2 bg-orange-50 rounded-xl text-[10px] font-black uppercase text-orange-600 italic tracking-widest border border-orange-100">B-{{ str_pad($building->id, 3, '0', STR_PAD_LEFT) }}</span>
-            </div>
-        </div>
+        <x-page-header :title="__('Configuration :') . ' ' . $building->name" :subtitle="__('Maintenance technique')" icon="fa-warehouse" accent="indigo" :back="route('buildings.index')">
+            <x-slot name="actions">
+                <span class="hidden md:inline px-4 py-2 bg-orange-50 rounded-xl text-[10px] font-black uppercase text-orange-600 italic tracking-widest border border-orange-100">B-{{ str_pad($building->id, 3, '0', STR_PAD_LEFT) }}</span>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-12 italic font-bold">
@@ -88,6 +76,22 @@
                             <option value="{{ \App\Models\Building::STATUS_DESINFECTION }}" {{ old('status', $building->status) == \App\Models\Building::STATUS_DESINFECTION ? 'selected' : '' }}>🟠 {{ __("En désinfection") }}</option>
                             <option value="{{ \App\Models\Building::STATUS_MAINTENANCE }}" {{ old('status', $building->status) == \App\Models\Building::STATUS_MAINTENANCE ? 'selected' : '' }} {{ $isOccupied ? 'disabled' : '' }}>🛠️ {{ __("Maintenance technique") }}</option>
                         </select>
+                    </div>
+
+                    {{-- SOURCE D'EAU (citerne desservant le bâtiment) --}}
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-3 ml-1 tracking-widest italic leading-none">
+                            <i class="fa-solid fa-droplet text-cyan-500 mr-1"></i> {{ __("Source d'eau desservante") }}
+                        </label>
+                        <select name="water_source_id" class="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-cyan-500 outline-none font-black text-slate-700 appearance-none shadow-inner uppercase text-[10px] italic cursor-pointer">
+                            <option value="">— {{ __("Source par défaut de la ferme") }} —</option>
+                            @foreach($waterSources as $src)
+                                <option value="{{ $src->id }}" {{ (string) old('water_source_id', $building->water_source_id) === (string) $src->id ? 'selected' : '' }}>
+                                    {{ $src->name }} ({{ $src->type_label }}){{ $src->is_default ? ' • ' . __('défaut') : '' }}
+                                </option>
+                            @endforeach
+                        </select>
+                        <p class="text-[8px] text-slate-400 ml-2 mt-1 italic">{{ __("La consommation d'eau des lots de ce bâtiment sera déduite de cette citerne.") }}</p>
                     </div>
 
                     {{-- SURFACE --}}

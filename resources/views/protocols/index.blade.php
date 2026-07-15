@@ -1,19 +1,9 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 text-left">
-            <div class="flex items-center gap-5">
-                {{-- Permission L : Lecture du registre santé --}}
-                <a href="{{ route('health.index') }}" class="group flex items-center justify-center w-12 h-12 bg-white border border-slate-200 text-slate-400 hover:text-slate-800 rounded-2xl transition-all shadow-sm no-underline">
-                    <i class="fas fa-chevron-left group-hover:-translate-x-1 transition-transform"></i>
-                </a>
-                <div>
-                    <h2 class="font-black text-2xl text-slate-800 uppercase italic tracking-tighter leading-none">
-                        📜 {{ __("Bibliothèque des Protocoles") }}
-                    </h2>
-                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-2 italic">{{ __("Standards de prophylaxie AviSmart") }}</p>
-                </div>
-            </div>
-
+        {{-- Pas de :back ici : page de section → le layout injecte déjà
+             <x-hub-back> (sinon double flèche de retour). --}}
+        <x-page-header :title="__('📜 Bibliothèque des Protocoles')" :subtitle="__('Standards de prophylaxie AviSmart')" icon="fa-scroll" accent="purple">
+            <x-slot name="actions">
             <div class="flex flex-wrap items-center gap-4 w-full md:w-auto">
                 {{-- RECHERCHE (L) --}}
                 <div class="relative flex-1 md:w-48">
@@ -43,17 +33,12 @@
                 </button>
                 @endcan
             </div>
-        </div>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     {{-- FEEDBACK ACTIONS --}}
-    @if(session('success'))
-        <div class="max-w-7xl mx-auto px-4 mt-6">
-            <div class="bg-emerald-50 border border-emerald-100 text-emerald-600 px-8 py-5 rounded-[2.5rem] text-[10px] font-black uppercase italic tracking-widest animate-fadeIn shadow-sm">
-                <i class="fa-solid fa-check-double mr-2"></i> {{ session('success') }}
-            </div>
-        </div>
-    @endif
+            <x-flash />
 
     <div class="py-12 italic font-bold">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">

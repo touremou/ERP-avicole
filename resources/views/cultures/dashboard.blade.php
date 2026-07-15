@@ -1,24 +1,14 @@
 <x-app-layout>
     <x-slot name="header">
-        {{-- Title row + quick actions --}}
-        <div class="flex items-center justify-between">
-            <div class="flex items-center gap-4">
-                <div class="w-12 h-12 bg-green-600 rounded-2xl flex items-center justify-center text-white shadow-lg -rotate-3">
-                    <i class="fa-solid fa-seedling text-lg"></i>
-                </div>
-                <div class="text-left">
-                    <h2 class="font-black text-2xl text-slate-800 uppercase italic tracking-tighter leading-none">{{ __("Production Végétale") }}</h2>
-                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1 italic">{{ __("Pilotage des parcelles & cultures") }}</p>
-                </div>
-            </div>
-            <div class="flex gap-3">
+        <x-page-header :title="__('Production Végétale')" :subtitle="__('Pilotage des parcelles & cultures')" icon="fa-seedling" accent="green">
+            <x-slot name="actions">
                 @can('cultures.C')
                 <a href="{{ route('crop-cycles.create') }}" class="bg-slate-900 text-white px-8 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-green-600 transition-all shadow-2xl italic flex items-center gap-2 no-underline">
                     <i class="fa-solid fa-plus"></i> {{ __("Nouveau Cycle") }}
                 </a>
                 @endcan
-            </div>
-        </div>
+            </x-slot>
+        </x-page-header>
 
         {{-- Sous-navigation hub (pilotage + référentiel) — partagée avec les pages Catalogue/Protocoles/Recettes --}}
         @include('cultures.partials.hub-tabs')
@@ -27,11 +17,31 @@
     <div class="py-10">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 italic font-bold text-left space-y-8">
 
-            @if(session('success'))
-                <div class="p-5 bg-emerald-500 text-white rounded-[2rem] font-black text-[10px] uppercase tracking-[0.2em] shadow-xl flex items-center italic">
-                    <i class="fa-solid fa-check-double mr-3 text-lg"></i> {{ session('success') }}
+            {{-- ACCÈS GROUPÉS (hub-cartes) : entités opérationnelles du module, pour
+                 que le breadcrumb puisse rester « Tableau de bord » seul. --}}
+            @can('cultures.L')
+            <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm not-italic">
+                <p class="text-[10px] font-black uppercase tracking-widest text-green-600 mb-4">{{ __("Opérations") }}</p>
+                <div class="grid grid-cols-3 md:grid-cols-5 gap-3">
+                    @foreach([
+                        ['label' => 'Parcelles', 'icon' => 'fa-map-location-dot', 'route' => 'plots.index'],
+                        ['label' => 'Cycles', 'icon' => 'fa-arrows-spin', 'route' => 'crop-cycles.index'],
+                        ['label' => 'Campagnes', 'icon' => 'fa-flag', 'route' => 'crop-campaigns.index'],
+                        ['label' => 'Transformation', 'icon' => 'fa-blender', 'route' => 'crop-transformations.index'],
+                        ['label' => 'Rapports', 'icon' => 'fa-chart-line', 'route' => 'crop-reports.index'],
+                    ] as $it)
+                        @if(\Illuminate\Support\Facades\Route::has($it['route']))
+                        <a href="{{ route($it['route']) }}" class="flex flex-col items-center justify-center gap-2 p-4 bg-slate-50 rounded-2xl hover:bg-green-50 hover:text-green-600 transition-all no-underline text-slate-600 text-center">
+                            <i class="fa-solid {{ $it['icon'] }} text-lg"></i>
+                            <span class="text-[8px] font-black uppercase tracking-widest leading-tight">{{ __($it['label']) }}</span>
+                        </a>
+                        @endif
+                    @endforeach
                 </div>
-            @endif
+            </div>
+            @endcan
+
+            <x-flash />
 
             {{-- ================================================================ --}}
             {{-- TAB 1 — VUE D'ENSEMBLE                                          --}}
@@ -40,24 +50,10 @@
 
                 {{-- INDICATEURS --}}
                 <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
-                        <p class="text-[8px] font-black text-green-500 uppercase tracking-widest italic mb-2">{{ __("Parcelles") }}</p>
-                        <p class="text-3xl font-black text-slate-900 leading-none">{{ $stats['plots_total'] }}</p>
-                        <p class="text-[9px] text-slate-400 uppercase mt-1">{{ $stats['plots_occupied'] }} {{ __("en culture") }}</p>
-                    </div>
-                    <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
-                        <p class="text-[8px] font-black text-green-500 uppercase tracking-widest italic mb-2">{{ __("Cycles actifs") }}</p>
-                        <p class="text-3xl font-black text-slate-900 leading-none">{{ $stats['cycles_active'] }}</p>
-                    </div>
-                    <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
-                        <p class="text-[8px] font-black text-green-500 uppercase tracking-widest italic mb-2">{{ __("Surface cultivée") }}</p>
-                        <p class="text-3xl font-black text-slate-900 leading-none">{{ number_format($stats['area_cultivated'], 2, ',', ' ') }} <small class="text-[10px] opacity-40">ha</small></p>
-                    </div>
-                    <div class="bg-slate-900 text-white p-6 rounded-[2rem] shadow-lg">
-                        <p class="text-[8px] font-black text-green-400 uppercase tracking-widest italic mb-2">{{ __("Récolté (30 j)") }}</p>
-                        <p class="text-3xl font-black leading-none">{{ number_format($stats['harvest_30d'], 0, ',', ' ') }} <small class="text-[10px] opacity-40">kg</small></p>
-                        <p class="text-[9px] text-green-400/70 uppercase mt-1">{{ number_format($stats['harvest_ytd'], 0, ',', ' ') }} kg {{ __("cette année") }}</p>
-                    </div>
+                    <x-stat-tile :label="__('Parcelles')" :value="$stats['plots_total']" :sub="$stats['plots_occupied'] . ' ' . __('en culture')" accent="green" />
+                    <x-stat-tile :label="__('Cycles actifs')" :value="$stats['cycles_active']" accent="green" />
+                    <x-stat-tile :label="__('Surface cultivée')" :value="number_format($stats['area_cultivated'], 2, ',', ' ')" unit="ha" accent="green" />
+                    <x-stat-tile :label="__('Récolté (30 j)')" :value="number_format($stats['harvest_30d'], 0, ',', ' ')" unit="kg" :sub="number_format($stats['harvest_ytd'], 0, ',', ' ') . ' kg ' . __('cette année')" accent="green" :dark="true" />
                 </div>
 
                 {{-- CAMPAGNE EN COURS + INDICATEURS SECONDAIRES --}}

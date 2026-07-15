@@ -36,10 +36,15 @@ class CreateSale
                 'sale_date'        => $data['sale_date'],
                 'type'             => $data['type'] ?? 'bon_livraison',
                 'status'           => 'brouillon',
+                'discount_type'    => $data['discount_type'] ?? 'none',
+                'discount_value'   => $data['discount_value'] ?? 0,
                 'tax_rate'         => $data['tax_rate'] ?? 0,
                 'delivery_mode'    => $data['delivery_mode'] ?? 'sur_place',
                 'delivery_address' => $data['delivery_address'] ?? null,
                 'delivery_notes'   => $data['delivery_notes'] ?? null,
+                // Frais de livraison : seulement en mode « livraison ».
+                'delivery_fee'     => ($data['delivery_mode'] ?? 'sur_place') === 'livraison'
+                    ? max(0, (float) ($data['delivery_fee'] ?? 0)) : 0,
                 'notes'            => $data['notes'] ?? null,
             ]);
 
@@ -52,6 +57,7 @@ class CreateSale
                     'product_type' => $item['product_type'],
                     'product_name' => $item['product_name'],
                     'product_id'   => $item['product_id'] ?? null,
+                    'product_ref_id' => $item['product_ref_id'] ?? null,
                     'batch_id'     => $item['batch_id'] ?? null,
                     'quantity'     => $item['quantity'],
                     'unit'         => $item['unit'],
@@ -70,6 +76,8 @@ class CreateSale
                     'amount'       => $data['immediate_payment'],
                     'payment_date' => $data['sale_date'],
                     'method'       => $data['payment_method'] ?? 'especes',
+                    // Override éventuel du compte (ex. POS → compte de la session de caisse).
+                    'treasury_account_id' => $data['payment_treasury_account_id'] ?? null,
                     'reference'    => $data['payment_reference'] ?? null,
                     'received_by'  => Auth::id(),
                     'notes'        => 'Paiement à la vente',

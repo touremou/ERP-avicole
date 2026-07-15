@@ -1,35 +1,19 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 text-left">
-            <div class="flex items-center gap-5">
-                <div class="w-14 h-14 bg-violet-500 rounded-[1.5rem] flex items-center justify-center text-white shadow-2xl rotate-3">
-                    <i class="fa-solid fa-city text-xl"></i>
-                </div>
-                <div>
-                    <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">Multi-Sites</h2>
-                    <p class="text-[10px] font-black text-violet-600 uppercase tracking-[0.2em] mt-2 italic">
-                        {{ __(":count ferme(s) enregistrée(s)", ['count' => $farms->count()]) }}
-                    </p>
-                </div>
-            </div>
-            <button onclick="document.getElementById('newFarmModal').classList.remove('hidden')"
-                    class="bg-slate-900 text-white px-8 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-violet-600 transition-all shadow-2xl italic border-none cursor-pointer flex items-center gap-2">
-                <i class="fa-solid fa-plus"></i> {{ __("Nouvelle Ferme") }}
-            </button>
-        </div>
+        <x-page-header title="Multi-Sites" :subtitle="__(':count ferme(s) enregistrée(s)', ['count' => $farms->count()])" icon="fa-city" accent="violet">
+            <x-slot name="actions">
+                <button onclick="document.getElementById('newFarmModal').classList.remove('hidden')"
+                        class="bg-slate-900 text-white px-8 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-violet-600 transition-all shadow-2xl italic border-none cursor-pointer flex items-center gap-2">
+                    <i class="fa-solid fa-plus"></i> {{ __("Nouvelle Ferme") }}
+                </button>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-10">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 italic font-bold text-left">
 
-            @foreach(['success', 'error'] as $msg)
-                @if(session($msg))
-                    <div @class(['mb-8 p-5 rounded-[2rem] font-black text-[10px] uppercase tracking-[0.2em] shadow-xl flex items-center italic',
-                        'bg-emerald-500 text-white' => $msg === 'success', 'bg-red-500 text-white' => $msg === 'error'])>
-                        <i class="fa-solid fa-{{ $msg === 'success' ? 'check-double' : 'circle-xmark' }} mr-3 text-lg"></i> {{ session($msg) }}
-                    </div>
-                @endif
-            @endforeach
+            <x-flash />
 
             {{-- ═══ GRILLE DES FERMES ═══ --}}
             <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-10">

@@ -11,9 +11,9 @@ use App\Services\StockIntegrationService;
  *
  * Les copeaux de bois étalés comme litière, mélangés aux déjections, forment
  * un fumier vendable comme fertilisant. À chaque ramassage (litière changée +
- * poids saisi), on crédite l'article de stock « Fumier » — rangé en
- * produits_finis, donc directement vendable via le module Commerce
- * (product_type « produits_finis », cf. Stock::PRODUCT_TYPE_TO_CATEGORY).
+ * poids saisi), on crédite l'article de stock « Fumier » — rangé en catégorie
+ * LITIÈRES (sous-produit litière/déjections), cohérent avec le type vendable
+ * « litieres » du catalogue (cf. Stock::PRODUCT_TYPE_TO_CATEGORY).
  *
  * La méthode gère la COMPENSATION : sur une rectification ou une suppression
  * de pointage, l'ancienne quantité est restituée (sortie) avant d'appliquer
@@ -23,6 +23,10 @@ class SyncManureCollection
 {
     /** Nom canonique de l'article de stock fumier. */
     public const ITEM_NAME = 'Fumier';
+
+    /** Catégorie de stock : litière (sous-produit litière/déjections), cohérent
+     *  avec le type vendable « litieres » — et non « produits finis ». */
+    public const CATEGORY = Stock::CAT_LITIERES;
 
     /**
      * Synchronise le mouvement de stock fumier.
@@ -45,7 +49,7 @@ class SyncManureCollection
         if ($oldKg > 0) {
             StockIntegrationService::syncMovement(
                 self::ITEM_NAME,
-                Stock::CAT_PRODUITS_FINIS,
+                self::CATEGORY,
                 $oldKg,
                 'out',
                 "Rectification ramassage fumier lot {$batch->code} (annulation)",
@@ -56,7 +60,7 @@ class SyncManureCollection
         if ($newKg > 0) {
             StockIntegrationService::syncMovement(
                 self::ITEM_NAME,
-                Stock::CAT_PRODUITS_FINIS,
+                self::CATEGORY,
                 $newKg,
                 'in',
                 "Ramassage fumier lot {$batch->code}",
@@ -72,7 +76,7 @@ class SyncManureCollection
     private function resolveStock(): Stock
     {
         return Stock::firstOrCreate(
-            ['item_name' => self::ITEM_NAME, 'category' => Stock::CAT_PRODUITS_FINIS],
+            ['item_name' => self::ITEM_NAME, 'category' => self::CATEGORY],
             [
                 'unit'             => 'KG',
                 'current_quantity' => 0,

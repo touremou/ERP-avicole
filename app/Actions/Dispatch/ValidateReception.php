@@ -6,6 +6,7 @@ use App\Models\Dispatch;
 use App\Models\Reception;
 use App\Models\ReceptionItem;
 use App\Services\ReconciliationService;
+use App\Services\Discrepancy\DiscrepancyEvaluator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -69,6 +70,8 @@ class ValidateReception
             ]);
 
             // ─── 3. CRÉER LES LIGNES DE RÉCEPTION ───
+            $evaluator = app(DiscrepancyEvaluator::class);
+
             foreach ($data['items'] as $itemData) {
                 $dispatchItem = $dispatch->items()->find($itemData['dispatch_item_id']);
 
@@ -76,9 +79,22 @@ class ValidateReception
                     throw new Exception("Ligne d'expédition #{$itemData['dispatch_item_id']} introuvable.");
                 }
 
-                $received = (float) $itemData['quantity_received'];
-                $damaged  = (float) ($itemData['quantity_damaged'] ?? 0);
-                $missing  = max(0, (float) $dispatchItem->quantity_dispatched - $received - $damaged);
+                $received   = (float) $itemData['quantity_received'];
+                $damaged    = (float) ($itemData['quantity_damaged'] ?? 0);
+                $dispatched = (float) $dispatchItem->quantity_dispatched;
+
+                // GARDE-FOU : reçu + endommagé ne peut pas dépasser l'expédié.
+                // (Double sécurité en plus de la validation du contrôleur :
+                //  la transaction est annulée si l'invariant est violé.)
+                if ($received + $damaged > $dispatched + 1e-6) {
+                    throw new Exception(
+                        "Incohérence sur « {$dispatchItem->product_name} » : reçu ({$received}) + endommagé ({$damaged}) " .
+                        "dépasse la quantité expédiée ({$dispatchItem->quantity_dispatched})."
+                    );
+                }
+
+                // Manquant calculé par le moteur d'écart (source unique).
+                $missing = $evaluator->evaluateLine($dispatchItem->product_type, $dispatched, $received, $damaged)->missing;
 
                 $recItem = ReceptionItem::create([
                     'reception_id'          => $reception->id,

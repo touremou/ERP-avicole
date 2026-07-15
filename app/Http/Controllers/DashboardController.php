@@ -113,10 +113,14 @@ class DashboardController extends Controller
         // ferme : sinon chaque silo paraît se vider au rythme de tous les
         // autres réunis et déclenche de fausses alertes « épuisé ».
         // Seuils paramétrables (Réglages) — valeurs par défaut conservées.
-        $periodDays            = (int) setting('stock.autonomy_period_days', 30);
-        $criticalDaysThreshold = (int) setting('stock.critical_days_threshold', 3);
+        $periodDays            = (int) setting('stocks.autonomy_period_days', 30);
+        $criticalDaysThreshold = (int) setting('stocks.critical_days_threshold', 3);
         $dailyMortalityPct     = (float) setting('elevage.daily_mortality_alert_pct', 0.5);
-        $cumulMortalityPct     = (float) setting('elevage.cumulative_mortality_alert_pct', 5);
+        // Plancher absolu : un décès isolé sur un petit lot dépasse mécaniquement
+        // le seuil en % (ex. 1/195 = 0,51 % > 0,5 %) sans constituer un vrai pic.
+        // On exige donc un minimum de morts en valeur absolue AVANT d'évaluer le %.
+        $dailyMortalityMin     = (int) setting('elevage.daily_mortality_alert_min', 3);
+        $cumulMortalityPct     = \App\Models\Batch::cumulativeMortalityThreshold();
         $sanitaryDays          = (int) setting('elevage.sanitary_break_days', Building::SANITARY_BREAK_DAYS);
         $protocolWindowDays    = (int) setting('elevage.protocol_overdue_window_days', 30);
 
@@ -183,12 +187,15 @@ class DashboardController extends Controller
         // B. Urgences Sanitaires (pic de mortalité du jour > seuil paramétré).
         // Base = effectif de DÉBUT de journée (effectif courant + morts du jour,
         // déjà décomptés par l'observer) pour ne pas surévaluer le taux.
-        $emergencyBatches = $allActiveBatches->filter(function($batch) use ($today, $dailyMortalityPct) {
+        $emergencyBatches = $allActiveBatches->filter(function($batch) use ($today, $dailyMortalityPct, $dailyMortalityMin) {
             $todayCheck = $batch->dailyChecks()->whereDate('check_date', $today)->first();
-            if (!$todayCheck || (int) $todayCheck->mortality <= 0) return false;
-            $base = (int) $batch->current_quantity + (int) $todayCheck->mortality;
+            if (!$todayCheck) return false;
+            $morts = (int) $todayCheck->mortality;
+            // Plancher absolu : sous ce nombre de morts, pas de pic (bruit de petit lot).
+            if ($morts < $dailyMortalityMin) return false;
+            $base = (int) $batch->current_quantity + $morts;
             if ($base <= 0) return false;
-            $tauxJour = ((int) $todayCheck->mortality / $base) * 100;
+            $tauxJour = ($morts / $base) * 100;
             return $tauxJour > $dailyMortalityPct;
         });
 
@@ -218,6 +225,15 @@ class DashboardController extends Controller
             ->whereColumn('current_quantity', '<=', 'alert_threshold')
             ->orderByRaw('current_quantity / NULLIF(alert_threshold, 0) ASC')
             ->get(['id', 'item_name', 'category', 'current_quantity', 'alert_threshold', 'unit']);
+
+        // Péremption des consommables (vaccins, médicaments, intrants…) :
+        // articles déjà périmés OU périmant dans la fenêtre d'alerte configurée.
+        $expiryWindow = (int) setting('stocks.expiry_alert_days', 30);
+        $expiringStocks = Stock::where(function ($q) use ($expiryWindow) {
+                $q->expired()->orWhere(fn ($q2) => $q2->expiringSoon($expiryWindow));
+            })
+            ->orderBy('expiry_date')
+            ->get(['id', 'item_name', 'category', 'current_quantity', 'unit', 'expiry_date', 'lot_number']);
 
         // F. Prophylaxie en retard : étapes de protocole échues mais non tracées.
         // Réutilise EXACTEMENT la convention de la fiche lot (date prévue =
@@ -441,11 +457,43 @@ class DashboardController extends Controller
             'totalEggsStock', 'totalBrokenToday', 'rawMaterialsValue', 'safeProfit',
             'encoursClients', 'financial', 'technical', 'trends', 'priorityAlerts',
             'criticalTypes', 'emergencyBatches', 'underperformingBatches', 'sanitaryAlertsCount',
-            'lowStocks', 'vaccineAlerts', 'welfareAlerts', 'criticalDaysThreshold',
+            'lowStocks', 'expiringStocks', 'vaccineAlerts', 'welfareAlerts', 'criticalDaysThreshold',
             'activeBatches', 'buildings', 'totalEggsToday', 'tabaskiWidget', 'waterAlerts',
             'familyBreakdown', 'showEggKpis', 'activeLotsCount',
             'occupiedBuildingsCount', 'totalBuildingsCount'
         ));
+    }
+
+    /**
+     * Vue analytique CONSOLIDÉE : mortalité + eau + énergie sur une même échelle
+     * de temps, pour repérer les corrélations (coupure énergie/ventilation → pic
+     * de mortalité, chute d'eau → maladie) sans naviguer entre les modules.
+     */
+    public function analytics(Request $request)
+    {
+        $days = (int) $request->input('days', 30);
+        $days = max(7, min(90, $days)); // borné 7-90 j
+
+        $batchIds = Batch::active()->live()->pluck('id')->all();
+
+        $series = (new \App\Services\DashboardInsightsService())
+            ->consolidatedTrends($batchIds, $days);
+
+        // Synthèse + corrélation simple : le jour de mortalité maximale et ce qui
+        // s'y passait côté eau/énergie (lecture immédiate pour le pilotage).
+        $totalMortality = array_sum($series['mortality']);
+        $totalWater     = array_sum($series['water']);
+        $totalEnergy    = array_sum($series['energy']);
+
+        $peakIdx = $series['mortality'] ? array_keys($series['mortality'], max($series['mortality']))[0] : null;
+        $peak = ($peakIdx !== null && max($series['mortality']) > 0) ? [
+            'date'      => $series['labels'][$peakIdx],
+            'mortality' => $series['mortality'][$peakIdx],
+            'water'     => $series['water'][$peakIdx],
+            'energy'    => $series['energy'][$peakIdx],
+        ] : null;
+
+        return view('dashboard-analytics', compact('series', 'days', 'totalMortality', 'totalWater', 'totalEnergy', 'peak'));
     }
 
     /**
@@ -460,6 +508,67 @@ class DashboardController extends Controller
     ) {
         $rank = ['critique' => 0, 'attention' => 1, 'info' => 2];
         $out = collect();
+
+        // Lots sous QUARANTAINE sanitaire (critique) : vente, mutation,
+        // collecte et abattage gelés — le pilote doit le voir en premier.
+        $quarantined = Batch::active()->live()
+            ->whereHas('healthIncidents', fn ($q) => $q
+                ->where('is_quarantined', true)
+                ->where('status', '!=', \App\Models\HealthIncident::STATUS_RESOLVED))
+            ->get(['id', 'code']);
+        foreach ($quarantined as $b) {
+            $out->push([
+                'level' => 'critique', 'icon' => 'fa-biohazard',
+                'title' => 'Quarantaine sanitaire',
+                'detail' => "Lot {$b->code} — vente, mutation, collecte et abattage suspendus.",
+                'url' => route('batches.show', $b->id),
+            ]);
+        }
+
+        // RESSOURCES (eau / gasoil / maintenance) : le centre de contrôle voit
+        // les utilités sans ouvrir le module — une citerne vide ou un groupe
+        // à sec arrête la ferme aussi sûrement qu'un silo d'aliment épuisé.
+        // Le bandeau n'escalade que le niveau « critique » (cf. return) : les
+        // niveaux intermédiaires restent dans le dashboard Ressources.
+        foreach (\App\Models\WaterSource::active()->where('type', 'citerne')->get() as $ws) {
+            $pct = (float) ($ws->current_level_percent ?? 0);
+            if (! $ws->is_low || $pct >= 15) {
+                continue; // 15-30 % : visible au module Ressources, pas une urgence hub
+            }
+            $out->push([
+                'level' => 'critique', 'icon' => 'fa-faucet-drip',
+                'title' => 'Citerne d\'eau critique',
+                'detail' => "{$ws->name} — " . number_format($pct, 0) . ' % ('
+                    . number_format((float) $ws->current_level_liters, 0, ',', ' ') . ' L restants). Remplissage immédiat.',
+                'url' => route('utilities.water.sources'),
+            ]);
+        }
+
+        foreach (\App\Models\EnergySource::active()->groupes()->get() as $es) {
+            if ($es->is_fuel_low) {
+                $autonomy = $es->fuel_autonomy_hours !== null
+                    ? "≈ {$es->fuel_autonomy_hours} h de marche"
+                    : "≈ {$es->fuel_autonomy_days} j";
+                $out->push([
+                    'level' => 'critique', 'icon' => 'fa-gas-pump',
+                    'title' => 'Gasoil groupe critique',
+                    'detail' => "{$es->name} — " . number_format((float) $es->current_fuel_level, 0) . " L en cuve ({$autonomy}). Commander du carburant.",
+                    'url' => route('utilities.fuel.index'),
+                ]);
+            }
+
+            // ≤ 20 h avant révision : un groupe non entretenu qui lâche coupe
+            // pompes/éclairage — urgence réelle (double canal : une tâche
+            // auto est déjà générée par maintenance:check).
+            if ($es->needs_maintenance) {
+                $out->push([
+                    'level' => 'critique', 'icon' => 'fa-screwdriver-wrench',
+                    'title' => 'Maintenance groupe due',
+                    'detail' => "{$es->name} — " . round($es->hours_before_maintenance) . ' h avant révision (huile, filtres, courroies).',
+                    'url' => route('utilities.energy.sources'),
+                ]);
+            }
+        }
 
         // Urgences mortalité (critique).
         foreach ($emergencyBatches as $b) {
@@ -527,13 +636,16 @@ class DashboardController extends Controller
             ]);
         }
 
-        // Stocks sous seuil.
-        foreach ($lowStocks as $s) {
+        // Stocks sous seuil — une seule ligne résumée (le détail est dans le
+        // bloc dédié sous le Centre de Contrôle, inutile de répéter chaque article).
+        if ($lowStocks->isNotEmpty()) {
+            $hasEmpty = $lowStocks->where('current_quantity', '<=', 0)->isNotEmpty();
             $out->push([
-                'level' => 'attention', 'icon' => 'fa-boxes-stacked',
-                'title' => 'Stock sous seuil',
-                'detail' => "{$s->item_name} — {$s->current_quantity} {$s->unit} (seuil {$s->alert_threshold}).",
-                'url' => route('stocks.index'),
+                'level'  => $hasEmpty ? 'critique' : 'attention',
+                'icon'   => 'fa-boxes-stacked',
+                'title'  => 'Stocks sous seuil',
+                'detail' => "{$lowStocks->count()} article(s) en dessous du seuil de réapprovisionnement.",
+                'url'    => route('stocks.index'),
             ]);
         }
 
@@ -547,7 +659,12 @@ class DashboardController extends Controller
             ]);
         }
 
+        // Bannière critique seulement : le Centre de Contrôle escalade les
+        // urgences (niveau « critique »). Les alertes « attention » restent dans
+        // leurs panneaux détaillés (Silos, Sanitaire, Stocks, Eau) pour éviter
+        // le doublon hub ↔ panneau.
         return $out
+            ->where('level', 'critique')
             ->map(fn ($a) => $a + ['rank' => $rank[$a['level']] ?? 9])
             ->sortBy('rank')
             ->values();

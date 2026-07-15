@@ -27,15 +27,19 @@ class StoreSaleRequest extends FormRequest
             'delivery_mode'          => 'nullable|in:sur_place,livraison',
             'delivery_address'       => 'nullable|string|max:500',
             'delivery_notes'         => 'nullable|string|max:500',
+            'delivery_fee'           => 'nullable|numeric|min:0',
             'notes'                  => 'nullable|string|max:2000',
 
             // Lignes de vente — taxonomie multiespèces.
             // animal_vif / carcasse / lait sont génériques ; volaille_vivante
             // et volaille_abattue restent acceptés (rétrocompatibilité).
             'items'                  => 'required|array|min:1',
-            'items.*.product_type'   => 'required|in:oeufs,animal_vif,carcasse,lait,fumier,aliment,produits_finis,materiel,autre,volaille_vivante,volaille_abattue',
+            'discount_type'          => 'nullable|in:none,percent,amount',
+            'discount_value'         => 'nullable|numeric|min:0',
+            'items.*.product_type'   => 'required|in:oeufs,animal_vif,carcasse,lait,fumier,litieres,aliment,produits_finis,materiel,autre,volaille_vivante,volaille_abattue',
             'items.*.product_name'   => 'required|string|max:255',
             'items.*.product_id'     => 'nullable|integer',
+            'items.*.product_ref_id' => 'nullable|integer|exists:products,id',
             'items.*.batch_id'       => 'nullable|integer|exists:batches,id',
             'items.*.quantity'       => 'required|numeric|min:0.01',
             'items.*.unit'           => 'required|in:alveole,unite,kg,piece,sac,voyage,tete,litre',
@@ -89,11 +93,18 @@ class StoreSaleRequest extends FormRequest
                 'lait'              => ['litre'],
                 'aliment'           => ['kg', 'sac'],
                 'fumier'            => ['sac', 'voyage'],
+                'litieres'          => ['sac', 'unite', 'kg'],
                 'produits_finis'    => ['kg', 'tete', 'piece', 'unite'],
                 'materiel'          => ['unite', 'piece'],
                 // 'autre' : libre, pas de contrainte
             ];
             foreach ((array) $this->items as $idx => $item) {
+                // Ligne issue du CATALOGUE : l'article définit lui-même son unité
+                // (validée à sa création). On ne lui applique pas la contrainte
+                // unité↔type, qui ne vise que les lignes en saisie libre.
+                if (! empty($item['product_ref_id'])) {
+                    continue;
+                }
                 $type = $item['product_type'] ?? null;
                 $unit = $item['unit'] ?? null;
                 if ($type && isset($allowedUnits[$type]) && $unit && ! in_array($unit, $allowedUnits[$type], true)) {

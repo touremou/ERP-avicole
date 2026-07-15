@@ -39,3 +39,32 @@ Schedule::command('avismart:feeding-dosage')->dailyAt('06:00');
 
 // CMMS : génère les tâches maintenance préventive pour les actifs dus dans ≤ 48h
 Schedule::command('maintenance:check')->dailyAt('05:30');
+
+// Complétude des registres HACCP (spec Transformation §9) : relevés de
+// température < N/jour et abattages du jour sans CCP 3 → alerte en fin
+// de journée, quand il est encore temps de compléter.
+Schedule::command('haccp:check-registers')->dailyAt('18:00');
+
+// Péremption des consommables (vaccins, médicaments, intrants…) : alerte WhatsApp
+Schedule::command('stock:check-expiry')->dailyAt('06:15');
+
+// Purge du journal d'audit au-delà de la rétention (config/activitylog.php,
+// défaut 365 j) — borne la croissance de la table activity_log.
+Schedule::command('activitylog:clean')->weekly();
+
+// Sauvegarde automatisée (base + fichiers utilisateurs) : nettoyage de la
+// rétention puis sauvegarde quotidienne aux heures creuses.
+Schedule::command('backup:clean')->dailyAt('01:30');
+Schedule::command('backup:run')->dailyAt('02:00');
+
+// Relances de paiement : rappel aux clients en retard (anti-doublon intégré).
+Schedule::command('sales:payment-reminders')->dailyAt('09:00');
+
+// Licence : vérification en ligne (révocation / renouvellement à distance).
+// Sans LICENSE_SERVER_URL, la commande ne fait rien (mode hors-ligne).
+Schedule::command('license:sync')->dailyAt('04:00');
+
+// Télémétrie IoT : association des relevés en tampon au lot actif du
+// bâtiment (lieu + heure), puis rétention bornée (90 j).
+Schedule::command('telemetry:process')->everyFiveMinutes();
+Schedule::command('telemetry:prune')->dailyAt('03:30');

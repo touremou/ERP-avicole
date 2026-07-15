@@ -161,7 +161,10 @@ class CropProtocolController extends Controller
             'source'                   => 'nullable|string|max:255',
             'is_active'                => 'nullable|boolean',
             'items'                    => 'nullable|array',
-            'items.*.day_number'       => 'required_with:items.*.action_name|integer|min:0',
+            // Jours négatifs autorisés : un itinéraire cultural comporte des
+            // opérations AVANT plantation (préparation du sol, désherbage total au
+            // glyphosate ~7-10 j avant le semis). J0 = semis/repiquage/plantation.
+            'items.*.day_number'       => 'required_with:items.*.action_name|integer|min:-60|max:1000',
             'items.*.stage'            => 'nullable|string|max:255',
             'items.*.action_name'      => 'required_with:items.*.day_number|string|max:255',
             'items.*.type'             => 'required_with:items.*.action_name|in:' . implode(',', array_keys(CropProtocol::ITEM_TYPES)),

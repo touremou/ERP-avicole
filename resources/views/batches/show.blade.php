@@ -86,10 +86,31 @@
         // Suivi de la ponte : piloté par le type de production de l'espèce.
         $showPonte = $batch->tracksEggs();
 
+        // Quarantaine sanitaire active (incident ouvert) : bannière + gel des
+        // actions vente/mutation/collecte (les gardes serveur font autorité).
+        $quarantine = $batch->activeQuarantine();
+
+        // Solde d'infirmerie (sujets isolés, hors effectif sain).
+        $infirmaryCount = $batch->infirmary_count;
+
+        // KPI TAUX D'UNIFORMITÉ (exigence pré-MEP) — dernière mesure saisie à
+        // la pesée. Formule : part des sujets pesés dont le poids est à ±10 %
+        // du poids moyen de l'échantillon (guide de souche : viser ≥ 80 %).
+        // Dérivé des dailyChecks DÉJÀ eager-loadés : zéro requête ajoutée,
+        // aucun impact sur le temps de chargement (< 1 s garanti sans cache).
+        $lastUniformityCheck = $batch->dailyChecks
+            ->whereNotNull('uniformity_pct')
+            ->sortByDesc('check_date')
+            ->first();
+        $uniformityPct    = $lastUniformityCheck?->uniformity_pct;
+        $uniformityTarget = (float) ($norm->uniformity_target ?? 80);
+        // Carte affichée si une mesure existe OU si la souche a une cible guide.
+        $showUniformity   = $uniformityPct !== null || ($norm->uniformity_target ?? null) !== null;
+
         // Carte fumier : affichée seulement si un ramassage a été enregistré.
         $showManure = ($stats['manure_collected_kg'] ?? 0) > 0;
 
-        $colCount = 3 + ($showPonte ? 1 : 0) + ($isChair ? 1 : 0) + ($showManure ? 1 : 0);
+        $colCount = 3 + ($showPonte ? 1 : 0) + ($isChair ? 1 : 0) + ($showManure ? 1 : 0) + ($showUniformity ? 1 : 0);
     @endphp
 
     <x-slot name="header">
@@ -112,14 +133,43 @@
             </div>
         @endif
 
+        @if (session('warning'))
+            <div class="mb-6 p-4 bg-amber-50 border-l-4 border-amber-500 rounded-2xl shadow-sm text-left italic">
+                <p class="text-[10px] font-black text-amber-500 uppercase tracking-widest italic leading-none mb-1">{{ __("Attention") }}</p>
+                <p class="text-sm font-bold text-amber-700">{{ session('warning') }}</p>
+            </div>
+        @endif
+
+        @if ($quarantine)
+            <div class="mb-6 p-5 bg-rose-600 rounded-2xl shadow-lg text-left italic flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div class="flex items-center gap-4">
+                    <div class="w-11 h-11 bg-white/15 rounded-xl flex items-center justify-center text-white shrink-0">
+                        <i class="fa-solid fa-biohazard text-lg animate-pulse"></i>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-black text-rose-100 uppercase tracking-widest leading-none mb-1.5">
+                            {{ __("Quarantaine sanitaire") }}
+                            @if($quarantine->quarantine_started_at)
+                                — {{ __("depuis le") }} {{ $quarantine->quarantine_started_at->format('d/m/Y') }}
+                            @endif
+                        </p>
+                        <p class="text-sm font-black text-white leading-tight">
+                            {{ __("Vente, mutation et collecte suspendues jusqu'à la levée par le circuit santé.") }}
+                        </p>
+                    </div>
+                </div>
+                <a href="{{ route('health.incidents.show', $quarantine->id) }}"
+                   class="shrink-0 px-5 py-3 bg-white text-rose-600 rounded-xl text-[9px] font-black uppercase tracking-widest italic no-underline hover:bg-rose-50 transition-all text-center">
+                    <i class="fa-solid fa-file-medical mr-1"></i> {{ __("Voir l'incident") }} n°{{ $quarantine->id }}
+                </a>
+            </div>
+        @endif
+
         <div class="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 md:gap-8 w-full">
 
     {{-- ZONE 1 : IDENTITÉ & NAVIGATION --}}
     <div class="flex items-center gap-4 md:gap-5 text-left w-full xl:w-auto">
-        <a href="{{ route('batches.index') }}"
-           class="flex-shrink-0 flex items-center justify-center w-10 h-10 md:w-12 md:h-12 bg-white border border-slate-200 text-slate-400 hover:text-blue-600 hover:border-blue-100 rounded-xl md:rounded-2xl transition-all shadow-sm group no-underline">
-            <i class="fa-solid fa-arrow-left text-xs md:text-sm group-hover:-translate-x-1 transition-transform"></i>
-        </a>
+        <x-back />
 
         <div class="space-y-1 sm:space-y-2 min-w-0 flex-1">
             <div class="flex flex-wrap items-center gap-2 md:gap-3">
@@ -139,85 +189,133 @@
                     @endif
                     {{ $batch->status }}
                 </div>
+                @if($quarantine)
+                <div class="flex items-center gap-1.5 px-3 py-1 rounded-full text-[8px] md:text-[9px] font-black uppercase tracking-widest italic shadow-sm shrink-0 bg-rose-600 text-white animate-pulse">
+                    <i class="fa-solid fa-biohazard"></i> {{ __("Quarantaine") }}
+                </div>
+                @endif
             </div>
 
             <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-[9px] md:text-[10px] font-black uppercase tracking-widest italic text-slate-400">
                 <span class="text-blue-500 whitespace-nowrap"><i class="fa-solid fa-location-dot mr-1"></i> {{ $batch->building->name }}</span>
                 <span class="text-slate-200 hidden sm:inline">|</span>
                 <span class="bg-slate-100 px-2 py-0.5 rounded text-slate-500 whitespace-nowrap">{{ $batch->type }}</span>
+                @if($batch->current_density > 0)
+                <span class="text-slate-200 hidden sm:inline">|</span>
+                <span class="text-slate-500 whitespace-nowrap" title="{{ __('Densité courante au sol (effectif vivant / surface allouée)') }}">
+                    <i class="fa-solid fa-ruler-combined mr-1"></i>{{ rtrim(rtrim(number_format($batch->current_density, 1), '0'), '.') }} {{ __('sujets/m²') }}@if($batch->current_stocking_weight > 0) · {{ rtrim(rtrim(number_format($batch->current_stocking_weight, 1), '0'), '.') }} kg/m²@endif
+                </span>
+                @endif
                 <span class="text-slate-200 hidden sm:inline">|</span>
                 <span class="text-rose-500 whitespace-nowrap"><i class="fa-solid fa-dna mr-1"></i> {{ $batch->production_phase ?? __("Phase Initiale") }}</span>
+                @if($infirmaryCount > 0)
+                <span class="text-slate-200 hidden sm:inline">|</span>
+                <span class="bg-orange-100 text-orange-600 px-2 py-0.5 rounded whitespace-nowrap"
+                      title="{{ __('Sujets isolés en infirmerie — hors effectif sain (cheptel réel = effectif + isolés)') }}">
+                    <i class="fa-solid fa-house-medical mr-1"></i>{{ $infirmaryCount }} {{ __("isolé(s)") }}
+                </span>
+                @endif
             </div>
         </div>
     </div>
 
-    {{-- ZONE 2 & 3 : ACTIONS --}}
-    <div class="flex flex-col lg:flex-row items-stretch lg:items-center gap-4 w-full xl:w-auto">
+    {{-- ZONE 2 : ACTIONS — 3 gestes terrain visibles + menu « Gérer » replié.
+         flex-wrap (pas de défilement caché) : plus aucun débordement d'écran. --}}
+    <div class="flex flex-wrap items-center gap-2 md:gap-3 w-full xl:w-auto xl:justify-end">
         @if($batch->isActive())
 
-            {{-- Actions Administratives (Grisées) --}}
-            <div class="flex items-center justify-between sm:justify-start bg-white p-1.5 rounded-2xl md:rounded-[1.5rem] border border-slate-200 shadow-sm w-full lg:w-auto overflow-x-auto hide-scrollbar shrink-0">
-                @can('elevage.M')
-                <a href="{{ route('batches.edit', $batch->id) }}"
-                   class="p-3 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all shrink-0"
-                   title="{{ __("Modifier les paramètres") }}">
-                    <i class="fa-solid fa-gear"></i>
+            @can('elevage.C')
+            <a href="{{ route('daily-checks.create', ['batch_id' => $batch->id]) }}"
+               class="flex items-center justify-center gap-2 px-4 py-3 md:px-6 md:py-4 bg-blue-600 text-white rounded-xl md:rounded-2xl font-black text-[9px] md:text-[10px] uppercase italic hover:bg-blue-500 transition-all shadow-lg no-underline whitespace-nowrap shrink-0">
+                <i class="fa-solid fa-clipboard-check text-blue-200"></i>
+                <span>{{ __("Suivi") }}</span>
+            </a>
+
+            <a href="{{ route('health.create', ['batch_id' => $batch->id]) }}"
+               class="flex items-center justify-center gap-2 px-4 py-3 md:px-6 md:py-4 bg-rose-600 text-white rounded-xl md:rounded-2xl font-black text-[9px] md:text-[10px] uppercase italic hover:bg-rose-500 transition-all shadow-lg no-underline whitespace-nowrap shrink-0">
+                <i class="fa-solid fa-heart-pulse text-rose-200"></i>
+                <span>{{ __("Santé") }}</span>
+            </a>
+
+            {{-- Déclaration d'anomalie en 30 s depuis le constat (modale partagée) --}}
+            <button type="button" x-data @click="$dispatch('open-pathology-modal')"
+                    class="flex items-center justify-center gap-2 px-4 py-3 md:px-6 md:py-4 bg-white text-rose-600 border-2 border-rose-200 rounded-xl md:rounded-2xl font-black text-[9px] md:text-[10px] uppercase italic hover:bg-rose-600 hover:text-white hover:border-rose-600 transition-all shadow-lg cursor-pointer whitespace-nowrap shrink-0">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                <span>{{ __("Anomalie") }}</span>
+            </button>
+
+            @if($showPonte)
+                @if($quarantine)
+                <span class="flex items-center justify-center gap-2 px-4 py-3 md:px-6 md:py-4 bg-rose-50 text-rose-500 border border-rose-200 rounded-xl md:rounded-2xl font-black text-[9px] md:text-[10px] uppercase italic shadow-lg whitespace-nowrap shrink-0 cursor-not-allowed"
+                      title="{{ __('Quarantaine sanitaire : collecte suspendue jusqu\'à la levée') }}">
+                    <i class="fa-solid fa-biohazard"></i>
+                    <span>{{ __("Quarantaine") }}</span>
+                </span>
+                @elseif($batch->canCollectEggs())
+                <a href="{{ route('egg-productions.create', ['batch_id' => $batch->id]) }}"
+                   class="flex items-center justify-center gap-2 px-4 py-3 md:px-6 md:py-4 bg-emerald-500 text-white rounded-xl md:rounded-2xl font-black text-[9px] md:text-[10px] uppercase italic hover:bg-emerald-400 transition-all shadow-lg no-underline whitespace-nowrap shrink-0">
+                    <i class="fa-solid fa-egg text-emerald-200"></i>
+                    <span>{{ __("Collecte") }}</span>
                 </a>
-
-                <div class="w-px h-6 bg-slate-200 mx-1 shrink-0"></div>
-
-                <button onclick="document.getElementById('modal-transfer').classList.remove('hidden')"
-                        class="flex flex-1 sm:flex-none items-center justify-center gap-2 px-4 md:px-5 py-3 bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white rounded-xl font-black text-[9px] md:text-[10px] uppercase tracking-widest transition-all italic border-none cursor-pointer shrink-0">
-                    <i class="fa-solid fa-right-left"></i> {{ __("Mutation") }}
-                </button>
-
-                <a href="{{ route('batches.close_form', $batch->id) }}"
-                   class="flex flex-1 sm:flex-none items-center justify-center gap-2 px-4 md:px-5 py-3 text-slate-400 hover:text-orange-600 hover:bg-orange-50 rounded-xl font-black text-[9px] md:text-[10px] uppercase tracking-widest transition-all italic no-underline shrink-0">
-                    <i class="fa-solid fa-flag-checkered"></i> {{ __("Clôture") }}
-                </a>
-                @endcan
-            </div>
-
-            {{-- Actions Quotidiennes (ligne unique, défilement horizontal) --}}
-            <div class="flex items-center gap-2 md:gap-3 w-full lg:w-auto overflow-x-auto hide-scrollbar">
-                @can('elevage.C')
-
-                <button type="button" onclick="event.stopPropagation(); openFeedModal()"
-                        class="flex items-center justify-center gap-2 px-3 py-3 md:px-6 md:py-4 bg-slate-900 text-white rounded-xl md:rounded-2xl font-black text-[9px] md:text-[10px] uppercase italic hover:bg-orange-500 transition-all shadow-lg border-none cursor-pointer group whitespace-nowrap shrink-0">
-                    <i class="fa-solid fa-truck-ramp-box text-orange-400 group-hover:text-white transition-colors"></i>
-                    <span>{{ __("Achat direct") }}</span>
-                </button>
-
-                <a href="{{ route('daily-checks.create', ['batch_id' => $batch->id]) }}"
-                   class="flex items-center justify-center gap-2 px-3 py-3 md:px-6 md:py-4 bg-blue-600 text-white rounded-xl md:rounded-2xl font-black text-[9px] md:text-[10px] uppercase italic hover:bg-blue-500 transition-all shadow-lg no-underline whitespace-nowrap shrink-0">
-                    <i class="fa-solid fa-clipboard-check text-blue-200"></i>
-                    <span>{{ __("Suivi") }}</span>
-                </a>
-
-                <a href="{{ route('health.create', ['batch_id' => $batch->id]) }}"
-                   class="flex items-center justify-center gap-2 px-3 py-3 md:px-6 md:py-4 bg-rose-600 text-white rounded-xl md:rounded-2xl font-black text-[9px] md:text-[10px] uppercase italic hover:bg-rose-500 transition-all shadow-lg no-underline whitespace-nowrap shrink-0">
-                    <i class="fa-solid fa-heart-pulse text-rose-200"></i>
-                    <span>{{ __("Santé") }}</span>
-                </a>
-
-                @if($showPonte)
-                    @if($batch->canCollectEggs())
-                    <a href="{{ route('egg-productions.create', ['batch_id' => $batch->id]) }}"
-                       class="flex items-center justify-center gap-2 px-3 py-3 md:px-6 md:py-4 bg-emerald-500 text-white rounded-xl md:rounded-2xl font-black text-[9px] md:text-[10px] uppercase italic hover:bg-emerald-400 transition-all shadow-lg no-underline whitespace-nowrap shrink-0">
-                        <i class="fa-solid fa-egg text-emerald-200"></i>
-                        <span>{{ __("Collecte") }}</span>
-                    </a>
-                    @else
-                    {{-- Garde-fou zootechnique : lot pas encore en âge de pondre --}}
-                    <span class="flex items-center justify-center gap-2 px-3 py-3 md:px-6 md:py-4 bg-amber-50 text-amber-600 border border-amber-200 rounded-xl md:rounded-2xl font-black text-[9px] md:text-[10px] uppercase italic shadow-lg whitespace-nowrap shrink-0 cursor-default"
-                          title="{{ __('Phase') }} : {{ $batch->current_phase }} — {{ __('entrée en ponte vers') }} {{ (int) ceil($batch->minLayingAgeDays() / 7) }} {{ __('sem.') }}">
-                        <i class="fa-solid fa-hourglass-half text-amber-400"></i>
-                        <span>{{ __("Pas en âge") }}</span>
-                    </span>
-                    @endif
+                @else
+                {{-- Garde-fou zootechnique : lot pas encore en âge de pondre --}}
+                <span class="flex items-center justify-center gap-2 px-4 py-3 md:px-6 md:py-4 bg-amber-50 text-amber-600 border border-amber-200 rounded-xl md:rounded-2xl font-black text-[9px] md:text-[10px] uppercase italic shadow-lg whitespace-nowrap shrink-0 cursor-default"
+                      title="{{ __('Phase') }} : {{ $batch->current_phase }} — {{ __('entrée en ponte vers') }} {{ (int) ceil($batch->minLayingAgeDays() / 7) }} {{ __('sem.') }}">
+                    <i class="fa-solid fa-hourglass-half text-amber-400"></i>
+                    <span>{{ __("Pas en âge") }}</span>
+                </span>
                 @endif
+            @endif
+            @endcan
 
-                @endcan
+            {{-- Menu replié : gestion & documents (actions non quotidiennes) --}}
+            <div class="relative shrink-0">
+                <button type="button" onclick="toggleManageMenu(event)"
+                        class="flex items-center justify-center gap-2 px-4 py-3 md:px-5 md:py-4 bg-white text-slate-600 border border-slate-200 rounded-xl md:rounded-2xl font-black text-[9px] md:text-[10px] uppercase tracking-widest italic hover:bg-slate-50 transition-all shadow-sm cursor-pointer whitespace-nowrap">
+                    <i class="fa-solid fa-sliders text-slate-400"></i>
+                    <span>{{ __("Gérer") }}</span>
+                    <i class="fa-solid fa-chevron-down text-[8px] text-slate-300"></i>
+                </button>
+
+                <div id="manage-menu" class="hidden absolute right-0 top-full mt-2 w-64 bg-white rounded-2xl border border-slate-100 shadow-2xl z-50 p-2 text-left italic">
+                    @can('elevage.C')
+                    <button type="button" onclick="document.getElementById('manage-menu').classList.add('hidden'); openFeedModal()"
+                            class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-orange-50 hover:text-orange-600 transition-all border-none bg-transparent cursor-pointer text-left">
+                        <i class="fa-solid fa-truck-ramp-box text-orange-400 w-4"></i> {{ __("Achat direct aliment") }}
+                    </button>
+                    @endcan
+
+                    @can('elevage.M')
+                    <a href="{{ route('batches.edit', $batch->id) }}"
+                       class="flex items-center gap-3 px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-blue-50 hover:text-blue-600 transition-all no-underline">
+                        <i class="fa-solid fa-gear text-slate-400 w-4"></i> {{ __("Modifier les paramètres") }}
+                    </a>
+
+                    @if($quarantine)
+                    <span class="flex items-center gap-3 px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-300 cursor-not-allowed"
+                          title="{{ __('Quarantaine sanitaire : mutation interdite (risque de propagation)') }}">
+                        <i class="fa-solid fa-lock text-slate-300 w-4"></i> {{ __("Mutation") }}
+                    </span>
+                    @else
+                    <button type="button" onclick="document.getElementById('manage-menu').classList.add('hidden'); document.getElementById('modal-transfer').classList.remove('hidden')"
+                            class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-rose-50 hover:text-rose-600 transition-all border-none bg-transparent cursor-pointer text-left">
+                        <i class="fa-solid fa-right-left text-rose-400 w-4"></i> {{ __("Mutation") }}
+                    </button>
+                    @endif
+
+                    <a href="{{ route('batches.close_form', $batch->id) }}"
+                       class="flex items-center gap-3 px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-orange-50 hover:text-orange-600 transition-all no-underline">
+                        <i class="fa-solid fa-flag-checkered text-orange-400 w-4"></i> {{ __("Clôturer le lot") }}
+                    </a>
+
+                    <div class="h-px bg-slate-100 my-1 mx-2"></div>
+                    @endcan
+
+                    <a href="{{ route('batches.label', $batch->id) }}" target="_blank"
+                       class="flex items-center gap-3 px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-all no-underline">
+                        <i class="fa-solid fa-qrcode text-slate-400 w-4"></i> {{ __("Étiquette QR") }}
+                    </a>
+                </div>
             </div>
 
         @endif
@@ -272,6 +370,47 @@
                 </span>
             </div>
         </div>
+
+        @if($showUniformity)
+        @php
+            // Code couleur métier : vert ≥ cible, orange dans les 10 points
+            // sous la cible, rouge au-delà (lot hétérogène — trier/peser).
+            $unifState = $uniformityPct === null ? 'none'
+                : ((float) $uniformityPct >= $uniformityTarget ? 'ok'
+                : ((float) $uniformityPct >= $uniformityTarget - 10 ? 'warn' : 'bad'));
+        @endphp
+        <div @class([
+                'p-5 rounded-[2rem] shadow-xl border flex items-center gap-4 group transition-transform hover:scale-[1.02]',
+                'bg-white border-slate-100'              => $unifState === 'none',
+                'bg-white border-emerald-50'             => $unifState === 'ok',
+                'bg-amber-50 border-amber-200'           => $unifState === 'warn',
+                'bg-red-50 border-red-200 animate-pulse' => $unifState === 'bad',
+            ])
+            title="{{ __('Part des sujets pesés dont le poids est à ±10 % du poids moyen de l\'échantillon — saisie à la pesée (pointage). Cible guide :') }} ≥ {{ number_format($uniformityTarget, 0) }} %">
+            <div @class([
+                'w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg',
+                'bg-slate-300'   => $unifState === 'none',
+                'bg-emerald-600' => $unifState === 'ok',
+                'bg-amber-500'   => $unifState === 'warn',
+                'bg-red-600'     => $unifState === 'bad',
+            ])><i class="fa-solid fa-scale-unbalanced text-lg"></i></div>
+            <div class="text-left leading-none">
+                <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1 italic">{{ __("Uniformité") }} <span class="opacity-60">/ ≥ {{ number_format($uniformityTarget, 0) }} %</span></p>
+                @if($uniformityPct !== null)
+                <h4 @class([
+                    'text-xl font-black tracking-tighter',
+                    'text-emerald-600' => $unifState === 'ok',
+                    'text-amber-600'   => $unifState === 'warn',
+                    'text-red-700'     => $unifState === 'bad',
+                ])>{{ rtrim(rtrim(number_format((float) $uniformityPct, 1), '0'), '.') }} %</h4>
+                <p class="text-[7px] font-black text-slate-300 mt-1 uppercase italic">{{ __("Pesée du") }} {{ $lastUniformityCheck->check_date->format('d/m') }}</p>
+                @else
+                <h4 class="text-sm font-black text-slate-300 uppercase">—</h4>
+                <p class="text-[7px] font-black text-slate-300 mt-1 uppercase italic">{{ __("À saisir à la pesée hebdo") }}</p>
+                @endif
+            </div>
+        </div>
+        @endif
 
         @if($isChair)
         <div @class(['p-5 rounded-[2rem] shadow-xl border flex items-center gap-4 group transition-transform hover:scale-[1.02]', 'bg-white border-orange-50' => ! $fcrBad, 'bg-red-50 border-red-100 animate-pulse' => $fcrBad])>
@@ -334,7 +473,7 @@
                 <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1 italic">{{ __("Fumier Ramassé") }}</p>
                 <h4 class="text-xl font-black text-slate-800 tracking-tighter">{{ number_format($stats['manure_collected_kg'], 0) }} <small class="text-xs opacity-50">kg</small></h4>
                 @if($stats['estimated_manure_revenue'] > 0)
-                <p class="text-[7px] font-black text-amber-500 uppercase mt-1">{{ __("Revenu Estimé") }} : {{ number_format($stats['estimated_manure_revenue'], 0) }} {{ __("GNF") }}</p>
+                <p class="text-[7px] font-black text-amber-500 uppercase mt-1">{{ __("Revenu Estimé") }} : {{ number_format($stats['estimated_manure_revenue'], 0) }} {{ currency() }}</p>
                 @endif
             </div>
         </div>
@@ -623,39 +762,24 @@
                 </div>
             </div>
 
-            {{-- STOCKS DYNAMIQUES (phases d'aliment du secteur du lot) --}}
+            {{-- STOCKS DYNAMIQUES (phases d'aliment du secteur du lot) —
+                 données précalculées dans BatchController::show ($feedStocks). --}}
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 text-left">
-                @foreach($batch->feedPhases() as $phaseName)
-                    @php
-                        $stockItem = \App\Models\Stock::where('item_name', $phaseName)
-                                        ->where('category', \App\Models\Stock::CAT_CONSO)
-                                        ->first();
-
-                        if (!$stockItem) {
-                            $stockItem = \App\Models\Stock::where('item_name', 'LIKE', "%$phaseName%")
-                                            ->where('category', \App\Models\Stock::CAT_CONSO)
-                                            ->first();
-                        }
-                        $qty = $stockItem ? (float)$stockItem->current_quantity : 0;
-                        $unit = $stockItem ? $stockItem->unit : 'KG';
-                        $isSac = ($unit === 'Sac');
-                        $availableKg = $isSac ? ($qty * 50) : $qty;
-                    @endphp
-
+                @foreach($feedStocks as $feedStock)
                     <div @class([
                         'bg-white p-6 rounded-[2.5rem] border shadow-sm relative overflow-hidden group transition-all',
-                        'border-emerald-200 bg-emerald-50/20' => $stockItem && $stockItem->current_quantity > 0,
-                        'border-slate-100 opacity-60' => !$stockItem || $stockItem->current_quantity <= 0
+                        'border-emerald-200 bg-emerald-50/20' => $feedStock['exists'] && $feedStock['qty'] > 0,
+                        'border-slate-100 opacity-60' => !$feedStock['exists'] || $feedStock['qty'] <= 0
                     ])>
                         <p class="text-[8px] uppercase text-slate-400 mb-2 tracking-widest italic font-black">
-                            {{ str_replace($batch->feedSector() . ' ', '', $phaseName) }}
+                            {{ $feedStock['label'] }}
                         </p>
-                        @if($stockItem)
+                        @if($feedStock['exists'])
                             <h4 class="text-xl font-black text-slate-800 leading-none tracking-tighter">
-                                {{ number_format($availableKg, 1) }} <small class="text-[10px] text-slate-400">kg</small>
+                                {{ number_format($feedStock['available_kg'], 1) }} <small class="text-[10px] text-slate-400">kg</small>
                             </h4>
-                            <p class="text-[7px] {{ $isSac ? 'text-emerald-600' : 'text-blue-500' }} mt-2 font-black uppercase italic">
-                                {{ $isSac ? __('Soit') . ' ' . number_format($qty, 1) . ' ' . __('Sacs') : __('Stock en Vrac') }}
+                            <p class="text-[7px] {{ $feedStock['is_sac'] ? 'text-emerald-600' : 'text-blue-500' }} mt-2 font-black uppercase italic">
+                                {{ $feedStock['is_sac'] ? __('Soit') . ' ' . number_format($feedStock['qty'], 1) . ' ' . __('Sacs') : __('Stock en Vrac') }}
                             </p>
                         @else
                             <h4 class="text-sm font-black text-slate-300 italic leading-none">{{ __("Non créé") }}</h4>
@@ -711,7 +835,7 @@
                                         <span class="bg-emerald-100 text-emerald-700 text-[7px] px-2 py-1 rounded-md uppercase font-black italic">{{ __("Achat") }}</span>
                                     </td>
                                     <td class="px-8 py-4 text-center text-emerald-600 font-black">+ {{ number_format($purchase->quantity, 1) }} kg</td>
-                                    <td class="px-8 py-4 text-right"><span class="text-slate-900 font-black">{{ number_format($purchase->unit_price, 0) }} GNF</span></td>
+                                    <td class="px-8 py-4 text-right"><span class="text-slate-900 font-black">{{ number_format($purchase->unit_price, 0) }} {{ currency() }}</span></td>
                                     <td class="px-8 py-4 text-right">
                                         <div class="flex justify-end gap-3">
                                             @if($batch->isActive())
@@ -742,8 +866,8 @@
                                     <td class="px-8 py-4 text-center text-rose-600 font-black">- {{ number_format($line->qty, 1) }} kg</td>
                                     <td class="px-8 py-4 text-right">
                                         @if($line->amount > 0)
-                                            <span class="text-slate-900 font-black">{{ number_format($line->amount, 0) }} GNF</span>
-                                            <br><span class="text-[8px] text-slate-400 italic">{{ number_format($line->unit_cost, 0) }} GNF/kg</span>
+                                            <span class="text-slate-900 font-black">{{ number_format($line->amount, 0) }} {{ currency() }}</span>
+                                            <br><span class="text-[8px] text-slate-400 italic">{{ number_format($line->unit_cost, 0) }} {{ currency() }}/kg</span>
                                         @else
                                             <span class="text-slate-300 italic text-[8px] uppercase">{{ __("Non valorisé") }}</span>
                                         @endif
@@ -770,7 +894,7 @@
                                     <span class="text-slate-400 ml-2 normal-case">{{ __("(achat + production interne, au CMP)") }}</span>
                                 </td>
                                 <td colspan="2" class="px-8 py-4 text-right text-orange-400 font-black text-sm">
-                                    {{ number_format($stats['feed_cogs'], 0) }} GNF
+                                    {{ number_format($stats['feed_cogs'], 0) }} {{ currency() }}
                                 </td>
                             </tr>
                         </tfoot>
@@ -779,19 +903,40 @@
                 </div>
             </div>
 
-            {{-- COÛTS EAU & ÉNERGIE (si des relevés sont taggés sur ce bâtiment) --}}
-            @if(($stats['utility_cost'] ?? 0) > 0)
-            <div class="bg-cyan-50 border border-cyan-200 rounded-[2rem] p-5 mb-8 flex items-center justify-between text-left italic font-bold">
+            {{-- COÛTS EAU & ÉNERGIE — deux lignes distinctes, jamais additionnées :
+                 1. FACTURÉ (relevés compteur taggés bâtiment) → entre dans la marge ;
+                 2. EAU BUE aux pointages, valorisée au prix m³ → estimation
+                    analytique qui bouge à CHAQUE pointage (informatif). --}}
+            @php $waterDrunk = (float) ($stats['water_drunk_liters'] ?? 0); @endphp
+            @if(($stats['utility_cost'] ?? 0) > 0 || $waterDrunk > 0)
+            <div class="bg-cyan-50 border border-cyan-200 rounded-[2rem] p-5 mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-left italic font-bold">
                 <div class="flex items-center gap-4">
                     <div class="w-10 h-10 bg-cyan-500 rounded-xl flex items-center justify-center text-white shadow-sm">
                         <i class="fa-solid fa-bolt text-sm"></i>
                     </div>
                     <div>
-                        <p class="text-[9px] font-black text-cyan-700 uppercase tracking-widest">{{ __("Eau & Énergie imputés à ce bâtiment") }}</p>
-                        <p class="text-[8px] font-black text-cyan-400 uppercase tracking-widest mt-0.5 normal-case italic">{{ __("Relevés taggés sur ce bâtiment sur la période d'élevage") }}</p>
+                        <p class="text-[9px] font-black text-cyan-700 uppercase tracking-widest">{{ __("Eau & Énergie du bâtiment") }}</p>
+                        <p class="text-[8px] font-black text-cyan-400 uppercase tracking-widest mt-0.5 normal-case italic">{{ __("Facturé = relevés compteur imputés (compte dans la marge) · Eau bue = pointages (estimation)") }}</p>
                     </div>
                 </div>
-                <p class="text-xl font-black text-cyan-700">{{ number_format($stats['utility_cost'], 0) }} <span class="text-[9px] opacity-60">GNF</span></p>
+                <div class="flex items-center gap-6 shrink-0">
+                    <div class="text-right" title="{{ __('Somme des relevés eau/énergie taggés sur ce bâtiment pendant la période d\'élevage — saisis au module Ressources. Entre dans la marge nette du lot.') }}">
+                        <p class="text-[8px] font-black text-cyan-400 uppercase tracking-widest mb-0.5">{{ __("Facturé (relevés)") }}</p>
+                        <p class="text-xl font-black text-cyan-700 leading-none">{{ number_format($stats['utility_cost'], 0) }} <span class="text-[9px] opacity-60">{{ currency() }}</span></p>
+                    </div>
+                    @if($waterDrunk > 0)
+                    <div class="text-right border-l border-cyan-200 pl-6"
+                         title="{{ __('Litres saisis aux pointages quotidiens, valorisés au prix du m³ paramétré (Réglages › Énergie). Estimation analytique : ne s\'additionne PAS au facturé (ce serait compter le même m³ deux fois).') }}">
+                        <p class="text-[8px] font-black text-blue-400 uppercase tracking-widest mb-0.5">{{ __("Eau bue (pointages)") }}</p>
+                        <p class="text-xl font-black text-blue-600 leading-none">
+                            {{ number_format($waterDrunk, 0, ',', ' ') }} <span class="text-[9px] opacity-60">L</span>
+                            @if(($stats['water_price_m3'] ?? 0) > 0)
+                                <span class="text-[10px] text-blue-400 ml-1">≈ {{ money($waterDrunk / 1000 * $stats['water_price_m3']) }}</span>
+                            @endif
+                        </p>
+                    </div>
+                    @endif
+                </div>
             </div>
             @endif
 
@@ -822,16 +967,27 @@
                                     <p class="font-black text-slate-700">{{ number_format($check->water_consumed, 1) }}L</p>
                                     <p class="text-blue-500 font-black">{{ number_format($check->feed_consumed, 1) }}kg</p>
                                 </td>
-                                <td class="px-4 py-5 text-center font-black text-slate-700">{{ $check->avg_temperature ? number_format($check->avg_temperature, 1).'°C' : '--' }}</td>
+                                <td class="px-4 py-5 text-center font-black text-slate-700">
+                                    {{ $check->avg_temperature ? number_format($check->avg_temperature, 1).'°C' : '--' }}
+                                    @if($check->avg_temperature && $check->temp_source)
+                                        {{-- Origine de la donnée : capteur IoT ou saisie manuelle (opérateur) --}}
+                                        <i @class([
+                                            'ml-1 text-[9px]',
+                                            'fa-solid fa-microchip text-emerald-500' => $check->temp_source === 'iot',
+                                            'fa-solid fa-user text-slate-300'        => $check->temp_source !== 'iot',
+                                        ]) title="{{ $check->temp_source === 'iot' ? __('Capteur') : __('Saisie manuelle') }}{{ $check->temp_recorded_by ? ' — ' . $check->temp_recorded_by : '' }}"></i>
+                                    @endif
+                                </td>
                                 <td class="px-4 py-5 text-center font-black text-emerald-600">
                                     @if($check->avg_weight)
                                         {{ $batch->isGmqTracked() ? number_format($check->avg_weight, 2).' kg' : number_format($check->avg_weight * 1000, 0).' g' }}
                                     @else -- @endif
                                 </td>
                                 <td class="px-4 py-5 text-center leading-none">
-                                    @if($check->qty_quarantine_in > 0) <span class="text-orange-500 font-black text-[8px] block">+{{ $check->qty_quarantine_in }}</span> @endif
-                                    @if($check->qty_quarantine_out > 0) <span class="text-emerald-500 font-black text-[8px] block">-{{ $check->qty_quarantine_out }}</span> @endif
-                                    @if(!$check->qty_quarantine_in && !$check->qty_quarantine_out) <span class="text-slate-200">-</span> @endif
+                                    @if($check->qty_quarantine_in > 0) <span class="text-orange-500 font-black text-[8px] block" title="{{ __('Mises en infirmerie') }}">+{{ $check->qty_quarantine_in }}</span> @endif
+                                    @if($check->qty_quarantine_out > 0) <span class="text-emerald-500 font-black text-[8px] block" title="{{ __('Rétablis') }}">-{{ $check->qty_quarantine_out }}</span> @endif
+                                    @if(($check->mortality_infirmary ?? 0) > 0) <span class="text-rose-600 font-black text-[8px] block" title="{{ __('Morts en infirmerie') }}">✝{{ $check->mortality_infirmary }}</span> @endif
+                                    @if(!$check->qty_quarantine_in && !$check->qty_quarantine_out && !($check->mortality_infirmary ?? 0)) <span class="text-slate-200">-</span> @endif
                                 </td>
                                 <td class="px-8 py-4 text-right flex justify-end items-center gap-3">
                                     @if($check->extension && ($check->extension->qty_born > 0 || $check->extension->water_ph !== null))
@@ -1006,17 +1162,37 @@
     @include('batches.partials.feed-modal')
     @endcan
 
+    {{-- MODALE DÉCLARATION D'ANOMALIE (lot verrouillé sur la fiche) --}}
+    @can('elevage.C')
+    @include('health.partials.declare-incident', ['fixedBatch' => $batch])
+    @endcan
+
     @include('batches.partials.building-compatibility')
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
         // GESTION DE LA MODALE STOCK/ALIMENT
-        function openFeedModal() { 
-            document.getElementById('feedModal').classList.remove('hidden'); 
+        function openFeedModal() {
+            document.getElementById('feedModal').classList.remove('hidden');
         }
-        function closeFeedModal() { 
-            document.getElementById('feedModal').classList.add('hidden'); 
+        function closeFeedModal() {
+            document.getElementById('feedModal').classList.add('hidden');
         }
+
+        // MENU « GÉRER » (header) : toggle + fermeture au clic extérieur / Échap
+        function toggleManageMenu(e) {
+            e.stopPropagation();
+            document.getElementById('manage-menu')?.classList.toggle('hidden');
+        }
+        document.addEventListener('click', function (e) {
+            const menu = document.getElementById('manage-menu');
+            if (menu && !menu.classList.contains('hidden') && !menu.contains(e.target)) {
+                menu.classList.add('hidden');
+            }
+        });
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') document.getElementById('manage-menu')?.classList.add('hidden');
+        });
         
         document.addEventListener('DOMContentLoaded', function() {
             

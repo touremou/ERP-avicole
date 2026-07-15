@@ -6,19 +6,8 @@
         $df = setting('general.date_format', 'd/m/Y');
     @endphp
     <x-slot name="header">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 text-left">
-            <div>
-                <h2 class="text-2xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">
-                    {{ __("💰 Analyse Financière Santé") }}
-                </h2>
-                <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-3 italic leading-none">
-                    {{ __("Performance Économique Prophylactique") }} • {{ $batches->count() }} {{ __("Lot(s)") }}
-                </p>
-            </div>
-            <a href="{{ route('reports.index') }}" class="group flex items-center gap-3 px-6 py-3 bg-white border border-slate-200 text-slate-500 hover:text-slate-900 rounded-2xl text-[10px] font-black uppercase italic transition-all shadow-sm no-underline">
-                <i class="fa-solid fa-chevron-left group-hover:-translate-x-1 transition-transform"></i> {{ __("Retour aux rapports") }}
-            </a>
-        </div>
+        {{-- Retour assuré par <x-hub-back> (layout) → pas de :back. --}}
+        <x-page-header :title="__('💰 Analyse Financière Santé')" :subtitle="__('Performance Économique Prophylactique') . ' • ' . $batches->count() . ' ' . __('Lot(s)')" icon="fa-notes-medical" accent="slate" />
     </x-slot>
 
     <div class="py-12 italic font-bold text-slate-700">
@@ -178,8 +167,8 @@
                         <tr class="bg-slate-100 text-slate-900 font-black italic uppercase text-[11px]">
                             <td class="px-12 py-8 border-t border-slate-200">{{ __("Consolidé de la Période") }}</td>
                             <td class="px-8 py-8 text-center border-t border-slate-200">{{ number_format($totalBirdsInTable, 0, ',', ' ') }} {{ __("Têtes traitées") }}</td>
-                            <td class="px-8 py-8 text-right border-t border-slate-200 text-blue-600 text-lg tracking-tighter">{{ number_format($totalGlobalCost, 0, ',', ' ') }} GNF</td>
-                            <td class="px-12 py-8 text-right border-t border-slate-200 bg-slate-200/50">{{ __("Moy. de référence :") }} {{ number_format($averageCostPerHead, 0) }} GNF</td>
+                            <td class="px-8 py-8 text-right border-t border-slate-200 text-blue-600 text-lg tracking-tighter">{{ number_format($totalGlobalCost, 0, ',', ' ') }} {{ currency() }}</td>
+                            <td class="px-12 py-8 text-right border-t border-slate-200 bg-slate-200/50">{{ __("Moy. de référence :") }} {{ number_format($averageCostPerHead, 0) }} {{ currency() }}</td>
                         </tr>
                     </tfoot>
                 </table>

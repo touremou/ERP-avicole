@@ -1,41 +1,30 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 text-left">
-            <div class="flex items-center gap-5">
-                <a href="{{ route('clients.index') }}" class="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-900 hover:text-white transition-all no-underline">
-                    <i class="fa-solid fa-arrow-left"></i>
-                </a>
-                <div>
-                    <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">{{ $client->name }}</h2>
-                    <p class="text-[10px] font-black text-teal-600 uppercase tracking-[0.2em] mt-2 italic">
-                        {{ $client->client_id }} — {{ ucfirst(str_replace('_', '/', $client->category)) }}
-                    </p>
-                </div>
-            </div>
-            <div class="flex gap-3">
+        <x-page-header :title="$client->name" :subtitle="$client->client_id . ' — ' . ucfirst(str_replace('_', '/', $client->category))" icon="fa-users" accent="teal" :back="route('clients.index')">
+            <x-slot name="actions">
                 @can('commerce.C')
                 <a href="{{ route('sales.create', ['client_id' => $client->id]) }}" class="bg-teal-500 text-white px-6 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-teal-600 transition-all shadow-lg italic no-underline flex items-center gap-2">
                     <i class="fa-solid fa-cart-plus"></i> {{ __("Nouvelle Vente") }}
                 </a>
                 @endcan
                 
+                <a href="{{ route('clients.statement', $client) }}" class="bg-white border border-slate-200 px-6 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest text-slate-600 hover:bg-slate-50 transition-all no-underline flex items-center gap-2">
+                    <i class="fa-solid fa-file-invoice-dollar"></i> {{ __("Relevé") }}
+                </a>
+
                 @can('commerce.M')
                 <a href="{{ route('clients.edit', $client) }}" class="bg-white border border-slate-200 px-6 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest text-slate-600 hover:bg-slate-50 transition-all no-underline flex items-center gap-2">
                     <i class="fa-solid fa-pen"></i> {{ __("Modifier") }}
                 </a>
                 @endcan
-            </div>
-        </div>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-10">
         <div class="max-w-5xl mx-auto sm:px-6 lg:px-8 italic font-bold text-left">
 
-            @if(session('success'))
-                <div class="mb-8 p-5 bg-emerald-500 text-white rounded-[2rem] font-black text-[10px] uppercase tracking-[0.2em] shadow-xl flex items-center italic">
-                    <i class="fa-solid fa-check-double mr-3 text-lg"></i> {{ session('success') }}
-                </div>
-            @endif
+            <x-flash />
 
             {{-- STATS --}}
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">

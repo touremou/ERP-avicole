@@ -24,8 +24,9 @@ class ProvenderieDashboardController extends Controller
             return redirect()->route('dashboard')->with('error', 'Accès restreint.');
         }
 
-        // 1. Valorisation financière des matières premières
-        $rawMaterialsValue = RawMaterial::selectRaw('SUM(stock_qty * unit_cost) as total')
+        // 1. Valorisation financière des matières premières (CMUP × stock actif)
+        $rawMaterialsValue = RawMaterial::where('is_active', true)
+            ->selectRaw('COALESCE(SUM(stock_qty * COALESCE(unit_cost, 0)), 0) as total')
             ->value('total') ?? 0;
 
         // 2. Alertes de rupture

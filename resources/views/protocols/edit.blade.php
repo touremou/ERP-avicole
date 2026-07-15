@@ -1,19 +1,10 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <div class="flex items-center gap-4 text-left">
-                {{-- RETOUR DYNAMIQUE --}}
-                <a href="{{ route('protocols.index') }}" class="group flex items-center px-4 py-2 bg-white border border-slate-200 text-slate-500 hover:text-slate-800 rounded-xl transition-all shadow-sm no-underline italic">
-                    <i class="fas fa-chevron-left group-hover:-translate-x-1 transition-transform mr-2"></i>
-                    <span class="text-[10px] font-black uppercase tracking-widest">{{ __("Retour") }}</span>
-                </a>
-                <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">
-                    🛠️ {{ __("Architecte :") }} {{ $protocol->name }}
-                </h2>
-            </div>
-            <div class="flex items-center gap-3">
+        <x-page-header :title="'🛠️ ' . __('Architecte :') . ' ' . $protocol->name" icon="fa-scroll" accent="purple" :back="route('protocols.index')">
+            <x-slot name="actions">
                 <span class="px-4 py-2 bg-slate-900 text-yellow-500 rounded-xl text-[10px] font-black uppercase italic tracking-widest shadow-xl ring-1 ring-white/20">{{ __("Édition Master") }}</span>
-            </div>
+            </x-slot>
+        </x-page-header>
         </div>
     </x-slot>
 

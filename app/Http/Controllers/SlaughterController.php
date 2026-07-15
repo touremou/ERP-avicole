@@ -38,7 +38,41 @@ class SlaughterController extends Controller
         $finishedProducts = FinishedProduct::where('current_quantity_kg', '>', 0)->get();
         $expiring = FinishedProduct::expiringSoon()->get();
 
-        return view('slaughter.dashboard', compact('kpi', 'pendingOrders', 'recentResults', 'finishedProducts', 'expiring'));
+        // Transformations engagées sans pesée de sortie (fumage/grillage en
+        // cours) : à terminer depuis le dashboard dès la sortie du fumoir.
+        $ongoingTransformations = Transformation::where('status', 'en_cours')
+            ->latest('production_date')
+            ->get();
+
+        // Lots bloqués (RG-02/RG-03) : hors circuit jusqu'à libération
+        // explicite par le niveau qualité (abattoir.S), motif obligatoire.
+        $blockedOrders = SlaughterOrder::where('status', 'bloque')
+            ->with(['batch', 'reception.provider', 'blockedBy'])
+            ->latest('blocked_at')
+            ->get();
+
+        // ── Indicateurs HACCP (spec E10) sur la période KPI ──
+        $days = (int) setting('abattoir.kpi_days', 30);
+        $since = now()->subDays($days);
+
+        $receptionStats = \App\Models\SlaughterReception::where('reception_date', '>=', $since->toDateString())
+            ->selectRaw('COALESCE(SUM(received_quantity),0) as received, COALESCE(SUM(rejected_quantity),0) as rejected')
+            ->first();
+
+        $haccp = [
+            'temp_today'    => \App\Models\TemperatureLog::whereDate('releve_at', today())->count(),
+            'temp_required' => (int) setting('abattoir.temp_readings_per_day', 2),
+            'ccp_nc'        => \App\Models\CcpRecord::where('conforme', false)->where('releve_at', '>=', $since)->count(),
+            'ccp_total'     => \App\Models\CcpRecord::where('releve_at', '>=', $since)->count(),
+            // Taux d'écart réception = sujets écartés / reçus (inspection ante-mortem).
+            'reject_rate'   => $receptionStats->received > 0
+                ? round(100 * $receptionStats->rejected / $receptionStats->received, 1)
+                : null,
+            'blocked'       => $blockedOrders->count(),
+            'days'          => $days,
+        ];
+
+        return view('slaughter.dashboard', compact('kpi', 'pendingOrders', 'recentResults', 'finishedProducts', 'expiring', 'ongoingTransformations', 'blockedOrders', 'haccp'));
     }
 
     // ──────────────────────────────────────────────
@@ -51,35 +85,133 @@ class SlaughterController extends Controller
 
         // Tous les lots actifs sont éligibles à l'abattage/la transformation,
         // quelle que soit l'espèce (volaille, ruminants, porcins, lapins...).
+        // Les lots en quarantaine restent listés mais VERROUILLÉS (le refus
+        // serveur est dans storeOrder + executeSlaughter).
         $batches = Batch::active()
             ->where('current_quantity', '>', 0)
             ->with(['building', 'productionType'])
+            ->withExists(['healthIncidents as is_under_quarantine' => fn ($q) => $q
+                ->where('is_quarantined', true)
+                ->where('status', '!=', \App\Models\HealthIncident::STATUS_RESOLVED)])
             ->get()
             ->sortBy(fn (Batch $batch) => $batch->type . $batch->code)
             ->values();
 
         $clients = Client::active()->orderBy('name')->get();
 
-        return view('slaughter.create-order', compact('batches', 'clients'));
+        // Réceptions externes (volailles hors élevage interne) éligibles :
+        // décision ≠ refuse (RG-04), 7 derniers jours.
+        $receptions = \App\Models\SlaughterReception::with('provider')
+            ->where('decision', '!=', 'refuse')
+            ->whereDate('reception_date', '>=', now()->subDays(7)->toDateString())
+            ->latest('reception_date')->latest('id')
+            ->get();
+
+        return view('slaughter.create-order', compact('batches', 'clients', 'receptions'));
+    }
+
+    /**
+     * Dossier de lot — traçabilité complète de l'ordre (exigence n°1 de la
+     * spec Transformation : remonter d'un produit livré à l'éleveur
+     * d'origine en < 5 minutes) : réception/lot amont → contrôles CCP →
+     * exécution → découpes → produits finis → sous-produits, avec les
+     * décisions qualité (blocage/libération). ?format=pdf → dossier
+     * imprimable (rappel ciblé, inspection vétérinaire).
+     */
+    public function traceability(Request $request, SlaughterOrder $order)
+    {
+        if (Gate::denies('abattoir.L')) return redirect()->route('dashboard')->with('error', 'Accès restreint.');
+
+        $order->load([
+            'batch.building', 'reception.provider', 'client',
+            'requester', 'executor', 'blockedBy', 'releasedBy',
+            'result',
+            'ccpRecords' => fn ($q) => $q->with('operator')->orderBy('releve_at'),
+            'cuttingSessions.products',
+            'byproducts' => fn ($q) => $q->with('operator')->orderBy('collected_at'),
+        ]);
+
+        if ($request->query('format') === 'pdf') {
+            $pdf = \Pdf::loadView('slaughter.pdf.dossier-lot', [
+                'order'       => $order,
+                'generatedAt' => now(),
+                'farm'        => \App\Models\Farm::find(session('current_farm_id'))?->name
+                    ?? setting('general.company_name', config('app.name')),
+            ])->setPaper('a4');
+
+            return $pdf->download("dossier-lot-{$order->order_number}.pdf");
+        }
+
+        return view('slaughter.traceability', compact('order'));
     }
 
     public function storeOrder(Request $request)
     {
         if (Gate::denies('abattoir.C')) return back()->with('error', 'Action non autorisée.');
 
+        // Volailles externes : un ordre peut naître d'une RÉCEPTION VIF
+        // (sans lot interne). batch_id devient alors optionnel.
+        // Façon (E8) : volailles DU CLIENT — le contrôle ante-mortem (CCP 1)
+        // s'applique à l'identique (la responsabilité sanitaire reste la
+        // nôtre) → réception obligatoire, client et modèle de facturation
+        // obligatoires, tarif figé sur l'ordre.
         $validated = $request->validate([
-            'batch_id'         => 'required|exists:batches,id',
+            'batch_id'         => 'required_without:reception_id|nullable|exists:batches,id',
+            'reception_id'     => 'nullable|integer|exists:slaughter_receptions,id',
             'planned_date'     => 'required|date',
             'planned_quantity' => 'required|integer|min:1',
             'client_id'        => 'nullable|exists:clients,id',
             'notes'            => 'nullable|string|max:1000',
+            'service_type'     => 'nullable|in:propre,facon',
+            'billing_model'    => 'required_if:service_type,facon|nullable|in:' . implode(',', array_keys(SlaughterOrder::BILLING_MODELS)),
+            'billing_rate'     => 'nullable|numeric|min:0',
         ]);
 
-        $batch = Batch::findOrFail($validated['batch_id']);
-        if ($batch->current_quantity < $validated['planned_quantity']) {
-            return back()->withErrors([
-                'planned_quantity' => "Le lot {$batch->code} n'a que {$batch->current_quantity} sujets (demandé: {$validated['planned_quantity']})."
-            ])->withInput();
+        if (($validated['service_type'] ?? 'propre') === 'facon') {
+            if (empty($validated['client_id'])) {
+                return back()->withErrors(['client_id' => __('Un abattage à façon exige le client propriétaire des volailles.')])->withInput();
+            }
+            if (empty($validated['reception_id'])) {
+                return back()->withErrors(['reception_id' => __("Un abattage à façon exige une réception du vif (le contrôle ante-mortem s'applique aussi aux volailles des clients).")])->withInput();
+            }
+            // Tarif figé à la création : celui saisi, sinon le réglage du modèle.
+            $validated['billing_rate'] = $validated['billing_rate']
+                ?? (float) setting(SlaughterOrder::BILLING_RATE_SETTINGS[$validated['billing_model']], 0);
+        } else {
+            unset($validated['billing_model'], $validated['billing_rate']);
+        }
+
+        // RG-04 : une réception REFUSÉE ne peut jamais donner d'ordre d'abattage.
+        if (! empty($validated['reception_id'])) {
+            $reception = \App\Models\SlaughterReception::findOrFail($validated['reception_id']);
+
+            if ($reception->isRefused()) {
+                return back()->withErrors([
+                    'reception_id' => "La réception n°{$reception->id} du "
+                        . $reception->reception_date->format('d/m/Y')
+                        . " a été REFUSÉE au contrôle ante-mortem — aucun ordre d'abattage ne peut être créé sur ce lot (RG-04).",
+                ])->withInput();
+            }
+        }
+
+        $batch = null;
+        if (! empty($validated['batch_id'])) {
+            $batch = Batch::findOrFail($validated['batch_id']);
+            if ($batch->current_quantity < $validated['planned_quantity']) {
+                return back()->withErrors([
+                    'planned_quantity' => "Le lot {$batch->code} n'a que {$batch->current_quantity} sujets (demandé: {$validated['planned_quantity']})."
+                ])->withInput();
+            }
+
+            // Biosécurité : pas d'ordre d'abattage sur un lot en quarantaine
+            // (délai d'attente médicamenteux — la garde est re-jouée sous verrou
+            // à l'exécution, une quarantaine pouvant être posée entre-temps).
+            if ($quarantine = $batch->activeQuarantine()) {
+                return back()->withErrors([
+                    'batch_id' => "Le lot {$batch->code} est en QUARANTAINE sanitaire (incident n°{$quarantine->id}) — "
+                        . "abattage interdit jusqu'à la levée par le circuit santé."
+                ])->withInput();
+            }
         }
 
         SlaughterOrder::create(array_merge($validated, [
@@ -88,7 +220,81 @@ class SlaughterController extends Controller
         ]));
 
         return redirect()->route('slaughter.dashboard')
-            ->with('success', "Ordre d'abattage créé — {$validated['planned_quantity']} sujets du lot {$batch->code}.");
+            ->with('success', "Ordre d'abattage créé — {$validated['planned_quantity']} sujets "
+                . ($batch ? "du lot {$batch->code}." : "(réception externe n°{$validated['reception_id']})."));
+    }
+
+    /**
+     * Annule un ordre encore planifié (erreur de saisie, changement de plan).
+     * Un ordre exécuté ne s'annule pas — l'abattage est irréversible.
+     */
+    public function cancelOrder(SlaughterOrder $order)
+    {
+        if (Gate::denies('abattoir.M')) return back()->with('error', 'Action non autorisée.');
+
+        try {
+            \Illuminate\Support\Facades\DB::transaction(function () use ($order) {
+                $order = SlaughterOrder::lockForUpdate()->findOrFail($order->id);
+
+                if ($order->status !== 'planifie') {
+                    throw new \Exception("Seul un ordre planifié peut être annulé (statut : {$order->status}).");
+                }
+
+                $order->update([
+                    'status' => 'annule',
+                    'notes'  => trim(($order->notes ? $order->notes . ' | ' : '')
+                        . '[ANNULÉ par ' . (Auth::user()?->name ?? 'Système') . ' le ' . now()->format('d/m/Y H:i') . ']'),
+                ]);
+            });
+        } catch (\Exception $e) {
+            return back()->with('error', $e->getMessage());
+        }
+
+        return back()->with('success', "Ordre {$order->order_number} annulé.");
+    }
+
+    /**
+     * Blocage qualité d'un ordre (RG-02/RG-03) — motif obligatoire,
+     * le lot sort du circuit jusqu'à libération explicite.
+     */
+    public function blockOrder(Request $request, SlaughterOrder $order)
+    {
+        if (Gate::denies('abattoir.M')) return back()->with('error', 'Action non autorisée.');
+
+        $validated = $request->validate([
+            'reason' => 'required|string|max:1000',
+        ]);
+
+        if ($order->isBlocked()) {
+            return back()->with('error', __('L\'ordre :number est déjà bloqué.', ['number' => $order->order_number]));
+        }
+
+        app(\App\Actions\Slaughter\BlockSlaughterOrder::class)
+            ->execute($order, $validated['reason'], Auth::id());
+
+        return back()->with('success', __('Ordre :number BLOQUÉ — le lot est sorti du circuit.', ['number' => $order->order_number]));
+    }
+
+    /**
+     * Libération d'un ordre bloqué — réservée au niveau QUALITÉ (abattoir.S),
+     * motif obligatoire (traçabilité de la décision).
+     */
+    public function releaseOrder(Request $request, SlaughterOrder $order)
+    {
+        if (Gate::denies('abattoir.S')) return back()->with('error', 'Action non autorisée — la libération est réservée au niveau qualité.');
+
+        $validated = $request->validate([
+            'reason' => 'required|string|max:1000',
+        ]);
+
+        if (! $order->isBlocked()) {
+            return back()->with('error', __('L\'ordre :number n\'est pas bloqué.', ['number' => $order->order_number]));
+        }
+
+        app(\App\Actions\Slaughter\ReleaseSlaughterOrder::class)
+            ->execute($order, $validated['reason'], Auth::id());
+
+        return back()->with('success', __('Ordre :number libéré — il reprend son cours.', ['number' => $order->order_number]));
     }
 
     // ──────────────────────────────────────────────
@@ -119,7 +325,33 @@ class SlaughterController extends Controller
             'condemned_reason'        => 'nullable|string|max:500',
             'execution_date'          => 'required|date',
             'inspector_notes'         => 'nullable|string|max:1000',
+            // Anti-corvée : le CCP 3 se saisit ICI, dans le même geste que
+            // l'abattage (sinon : second écran + alerte « CCP 3 manquant »
+            // le soir). Optionnel — le registre reste saisissable à part.
+            'ccp3_core_temp'          => 'nullable|numeric|min:-10|max:60',
+            'ccp3_corrective_action'  => 'nullable|string|max:2000',
         ]);
+
+        // Pré-évaluation du CCP 3 AVANT d'abattre : un constat non conforme
+        // sans action corrective doit bloquer la soumission entière (on ne
+        // veut pas d'un abattage fait mais d'un CCP rejeté après coup).
+        if (($validated['ccp3_core_temp'] ?? null) !== null && $validated['ccp3_core_temp'] !== '') {
+            $ccpAction = app(\App\Actions\Slaughter\RecordCcp::class);
+            $conforme = $ccpAction->evaluate(
+                \App\Models\CcpRecord::CCP3,
+                ['temperature_coeur' => (float) $validated['ccp3_core_temp']],
+                null,
+            );
+
+            if (! $conforme && blank($validated['ccp3_corrective_action'] ?? null)) {
+                return back()->withErrors([
+                    'ccp3_corrective_action' => __('T° à cœur hors seuil (:temp °C > :max °C) : une action corrective est obligatoire — le lot sera bloqué automatiquement.', [
+                        'temp' => $validated['ccp3_core_temp'],
+                        'max'  => setting('abattoir.ccp3_core_temp_max'),
+                    ]),
+                ])->withInput();
+            }
+        }
 
         // ── Cohérence des pesées ──
         // Une carcasse ne peut jamais peser plus que l'animal vivant, quelle
@@ -143,8 +375,30 @@ class SlaughterController extends Controller
         try {
             $result = $service->executeSlaughter($order, $validated);
 
+            // CCP 3 dans le même geste (pré-validé plus haut) : relevé créé,
+            // blocage automatique si hors seuil (RG-02) — best-effort, un
+            // échec ici ne défait pas l'abattage (le registre reste saisissable).
+            $ccpNote = '';
+            if (($validated['ccp3_core_temp'] ?? null) !== null && $validated['ccp3_core_temp'] !== '') {
+                try {
+                    $record = app(\App\Actions\Slaughter\RecordCcp::class)->execute([
+                        'ccp'                => \App\Models\CcpRecord::CCP3,
+                        'slaughter_order_id' => $order->id,
+                        'mesures'            => ['temperature_coeur' => (float) $validated['ccp3_core_temp']],
+                        'corrective_action'  => $validated['ccp3_corrective_action'] ?? null,
+                        'operator_id'        => Auth::id(),
+                        'releve_at'          => now(),
+                    ]);
+                    $ccpNote = $record->conforme
+                        ? ' ' . __('CCP 3 conforme enregistré (:temp °C).', ['temp' => $validated['ccp3_core_temp']])
+                        : ' ' . __('CCP 3 NON CONFORME — lot bloqué automatiquement.');
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning("CCP3 intégré non enregistré pour {$order->order_number} : {$e->getMessage()}");
+                }
+            }
+
             return redirect()->route('slaughter.dashboard')
-                ->with('success', "Abattage {$order->order_number} terminé — Rendement carcasse: {$result->carcass_yield_percent}%.");
+                ->with('success', "Abattage {$order->order_number} terminé — Rendement carcasse: {$result->carcass_yield_percent}%." . $ccpNote);
         } catch (\Exception $e) {
             return back()->with('error', $e->getMessage())->withInput();
         }
@@ -157,6 +411,15 @@ class SlaughterController extends Controller
     public function showCuttingForm(SlaughterOrder $order)
     {
         if (Gate::denies('abattoir.C')) return back()->with('error', 'Action non autorisée.');
+
+        // La découpe consomme la carcasse « entier frais » mise en stock par
+        // l'abattage. Tant que l'ordre n'est pas terminé, aucune carcasse n'existe
+        // → on bloque (sinon la découpe créerait des morceaux « fantômes »).
+        if ($order->status !== 'termine') {
+            return redirect()->route('slaughter.dashboard')
+                ->with('error', "L'abattage de l'ordre {$order->order_number} doit être terminé avant la découpe.");
+        }
+
         $order->load(['result', 'cuttingSessions.products', 'batch.species']);
 
         // Morceaux de découpe adaptés à l'espèce du lot abattu.
@@ -168,6 +431,14 @@ class SlaughterController extends Controller
     public function storeCutting(Request $request, SlaughterOrder $order, SlaughterService $service)
     {
         if (Gate::denies('abattoir.C')) return back()->with('error', 'Action non autorisée.');
+
+        // Enforcement serveur : pas de découpe tant que l'abattage n'est pas
+        // terminé (carcasse en stock). removeFromFinishedStock() est silencieux
+        // sur un stock absent — sans cette garde, on créerait des morceaux sans
+        // jamais consommer de carcasse.
+        if ($order->status !== 'termine') {
+            return back()->with('error', "L'abattage doit être terminé avant d'enregistrer une découpe.")->withInput();
+        }
 
         $order->loadMissing('batch.species');
         $allowedTypes = \App\Services\ButcheryNomenclature::cutCodesForSpecies($order->batch?->species);
@@ -249,6 +520,30 @@ class SlaughterController extends Controller
         }
     }
 
+    /**
+     * Termine une transformation « en cours » : pesée de sortie connue
+     * (fumage/grillage terminé) → rendement + entrée en stock produits finis.
+     */
+    public function completeTransformation(Request $request, Transformation $transformation, SlaughterService $service)
+    {
+        if (Gate::denies('abattoir.M')) return back()->with('error', 'Action non autorisée.');
+
+        $validated = $request->validate([
+            'output_kg' => 'required|numeric|min:0.1',
+        ]);
+
+        try {
+            $result = $service->completeTransformation($transformation, (float) $validated['output_kg']);
+
+            return back()->with('success',
+                "Transformation {$result->batch_number} terminée — rendement {$result->yield_percent} %, "
+                . number_format((float) $result->output_kg, 1) . " kg entrés en stock."
+            );
+        } catch (\Exception $e) {
+            return back()->with('error', $e->getMessage())->withInput();
+        }
+    }
+
     // ──────────────────────────────────────────────
     // STOCK PRODUITS FINIS
     // ──────────────────────────────────────────────
@@ -261,6 +556,12 @@ class SlaughterController extends Controller
         $expiring = FinishedProduct::expiringSoon()->get();
         $lowStock = FinishedProduct::lowStock()->get();
 
+        // Journal des dernières corrections/destructions (traçabilité).
+        $recentAdjustments = \App\Models\FinishedProductAdjustment::with(['finishedProduct', 'user'])
+            ->latest()
+            ->take(10)
+            ->get();
+
         $kpi = [
             'total_kg'       => $products->sum('current_quantity_kg'),
             'total_pieces'   => $products->sum('current_quantity_pieces'),
@@ -269,7 +570,7 @@ class SlaughterController extends Controller
             'types_count'    => $products->where('current_quantity_kg', '>', 0)->groupBy('product_type')->count(),
         ];
 
-        return view('slaughter.finished-products', compact('products', 'expiring', 'lowStock', 'kpi'));
+        return view('slaughter.finished-products', compact('products', 'expiring', 'lowStock', 'kpi', 'recentAdjustments'));
     }
 
     public function updateProduct(Request $request, FinishedProduct $product)
@@ -293,50 +594,67 @@ class SlaughterController extends Controller
         if (Gate::denies('abattoir.M')) return back()->with('error', 'Action non autorisée.');
 
         $validated = $request->validate([
-            'quantity_kg' => 'required|numeric|min:0.1|max:' . $product->current_quantity_kg,
+            'quantity_kg' => 'required|numeric|min:0.1',
         ]);
 
         $qty = (float) $validated['quantity_kg'];
 
-        $stockData = [
-            'item_name'        => $product->product_name,
-            'category'         => 'produits_finis',
-        ];
+        try {
+            \Illuminate\Support\Facades\DB::transaction(function () use ($product, $qty) {
+                // Disponibilité contrôlée SOUS verrou (la règle max:… de la
+                // validation lisait un stock non verrouillé — course possible
+                // entre deux transferts, motif C1).
+                $product = FinishedProduct::lockForUpdate()->findOrFail($product->id);
+                if ($qty > (float) $product->current_quantity_kg) {
+                    throw new \Exception(
+                        "Stock insuffisant : " . number_format((float) $product->current_quantity_kg, 1)
+                        . " kg disponibles pour \"{$product->product_name}\" (demandé : " . number_format($qty, 1) . " kg)."
+                    );
+                }
 
-        $farmId = session('current_farm_id');
-        if ($farmId && \Illuminate\Support\Facades\Schema::hasColumn('stocks', 'farm_id')) {
-            $stockData['farm_id'] = $farmId;
+                $stockData = [
+                    'item_name'        => $product->product_name,
+                    'category'         => 'produits_finis',
+                ];
+
+                $farmId = session('current_farm_id');
+                if ($farmId && \Illuminate\Support\Facades\Schema::hasColumn('stocks', 'farm_id')) {
+                    $stockData['farm_id'] = $farmId;
+                }
+
+                $stock = \App\Models\Stock::firstOrCreate(
+                    $stockData,
+                    [
+                        // Utilisation de l'unité de poids configurée globalement
+                        'unit'             => setting('general.weight_unit', 'KG'),
+                        'current_quantity' => 0,
+                        'alert_threshold'  => (int) setting('stocks.default_alert_threshold', 0),
+                        'last_unit_price'  => $product->unit_price ?? 0,
+                    ]
+                );
+
+                $stock->increment('current_quantity', $qty);
+
+                $movementData = [
+                    'stock_id'     => $stock->id,
+                    'type'         => 'in',
+                    'quantity'     => $qty,
+                    'unit'         => setting('general.weight_unit', 'KG'),
+                    'notes'        => "Transfert abattoir → magasin ({$product->product_name})",
+                    'user_id'      => \Illuminate\Support\Facades\Auth::id(),
+                ];
+
+                if ($farmId && \Illuminate\Support\Facades\Schema::hasColumn('stock_movements', 'farm_id')) {
+                    $movementData['farm_id'] = $farmId;
+                }
+
+                \App\Models\StockMovement::create($movementData);
+
+                $product->decrement('current_quantity_kg', $qty);
+            });
+        } catch (\Exception $e) {
+            return back()->with('error', $e->getMessage());
         }
-
-        $stock = \App\Models\Stock::firstOrCreate(
-            $stockData,
-            [
-                // Utilisation de l'unité de poids configurée globalement
-                'unit'             => setting('general.weight_unit', 'KG'),
-                'current_quantity' => 0,
-                'alert_threshold'  => (int) setting('stocks.default_alert_threshold', 0),
-                'last_unit_price'  => $product->unit_price ?? 0,
-            ]
-        );
-
-        $stock->increment('current_quantity', $qty);
-
-        $movementData = [
-            'stock_id'     => $stock->id,
-            'type'         => 'in',
-            'quantity'     => $qty,
-            'unit'         => setting('general.weight_unit', 'KG'),
-            'notes'        => "Transfert abattoir → magasin ({$product->product_name})",
-            'user_id'      => \Illuminate\Support\Facades\Auth::id(),
-        ];
-
-        if ($farmId && \Illuminate\Support\Facades\Schema::hasColumn('stock_movements', 'farm_id')) {
-            $movementData['farm_id'] = $farmId;
-        }
-
-        \App\Models\StockMovement::create($movementData);
-
-        $product->decrement('current_quantity_kg', $qty);
 
         return back()->with('success', number_format($qty, 1) . " kg de \"{$product->product_name}\" transférés au stock magasin (onglet Produits Finis).");
     }
@@ -350,10 +668,26 @@ class SlaughterController extends Controller
             'reason'          => 'required|string|max:500',
         ]);
 
-        $oldQty = (float) $product->current_quantity_kg;
+        // Écriture atomique + JOURNAL EN BASE (le log fichier seul n'était
+        // pas requêtable — même exigence de traçabilité que la démarque).
+        $oldQty = 0.0;
         $newQty = (float) $validated['new_quantity_kg'];
 
-        $product->update(['current_quantity_kg' => $newQty]);
+        \Illuminate\Support\Facades\DB::transaction(function () use ($product, $newQty, $validated, &$oldQty) {
+            $product = FinishedProduct::lockForUpdate()->findOrFail($product->id);
+            $oldQty  = (float) $product->current_quantity_kg;
+
+            $product->update(['current_quantity_kg' => $newQty]);
+
+            \App\Models\FinishedProductAdjustment::create([
+                'finished_product_id' => $product->id,
+                'user_id'             => Auth::id(),
+                'type'                => \App\Models\FinishedProductAdjustment::TYPE_ADJUSTMENT,
+                'old_kg'              => $oldQty,
+                'new_kg'              => $newQty,
+                'reason'              => $validated['reason'],
+            ]);
+        });
 
         \Illuminate\Support\Facades\Log::info("Ajustement stock produit fini \"{$product->product_name}\" : {$oldQty} → {$newQty} kg — Raison : {$validated['reason']} — Par : " . auth()->user()->name);
 
@@ -371,11 +705,27 @@ class SlaughterController extends Controller
             'reason' => 'required|string|max:500',
         ]);
 
-        $qty = (float) $product->current_quantity_kg;
+        // Écriture atomique + JOURNAL EN BASE (traçabilité des destructions —
+        // péremption, saisie sanitaire... — exigence sanitaire ET comptable).
+        $qty = 0.0;
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($product, $validated, &$qty) {
+            $product = FinishedProduct::lockForUpdate()->findOrFail($product->id);
+            $qty     = (float) $product->current_quantity_kg;
+
+            $product->update(['current_quantity_kg' => 0, 'current_quantity_pieces' => 0]);
+
+            \App\Models\FinishedProductAdjustment::create([
+                'finished_product_id' => $product->id,
+                'user_id'             => Auth::id(),
+                'type'                => \App\Models\FinishedProductAdjustment::TYPE_DISPOSAL,
+                'old_kg'              => $qty,
+                'new_kg'              => 0,
+                'reason'              => $validated['reason'],
+            ]);
+        });
 
         \Illuminate\Support\Facades\Log::warning("ÉLIMINATION produit fini \"{$product->product_name}\" : {$qty} kg — Raison : {$validated['reason']} — Par : " . auth()->user()->name);
-
-        $product->update(['current_quantity_kg' => 0, 'current_quantity_pieces' => 0]);
 
         return back()->with('success', "{$qty} kg de \"{$product->product_name}\" éliminés. Raison : {$validated['reason']}");
     }

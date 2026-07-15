@@ -12,7 +12,7 @@ class SaleItem extends Model
     protected $fillable = [
         'farm_id',
         'sale_id', 'product_type', 'product_name',
-        'product_id', 'batch_id',
+        'product_id', 'product_ref_id', 'batch_id',
         'quantity', 'unit', 'unit_price', 'total',
     ];
 
@@ -46,7 +46,29 @@ class SaleItem extends Model
      * sont des articles physiques réels : ils doivent être sélectionnés
      * depuis le stock et décrémentés à la vente, pas saisis manuellement.
      */
-    public const STOCK_TYPES = ['oeufs', 'lait', 'aliment', 'produits_finis', 'materiel'];
+    public const STOCK_TYPES = ['oeufs', 'lait', 'aliment', 'produits_finis', 'materiel', 'litieres'];
+
+    /**
+     * SOURCE UNIQUE des types de produits vendables et de leurs libellés.
+     *
+     * Partagée par le formulaire de vente (sélecteur de type) ET par les
+     * groupes de prix (tarif de repli par catégorie) afin que les deux ne
+     * dérivent jamais l'un de l'autre. `volaille_vivante`/`volaille_abattue`
+     * restent acceptés à la validation (rétrocompatibilité) mais ne sont plus
+     * proposés : `animal_vif` / `produits_finis` les remplacent.
+     */
+    public const SELLABLE_TYPE_LABELS = [
+        'oeufs'          => 'Œufs',
+        'animal_vif'     => 'Animal vivant',
+        'carcasse'       => 'Carcasse / Viande',
+        'lait'           => 'Lait',
+        'aliment'        => 'Aliment',
+        'produits_finis' => 'Produits finis',
+        'fumier'         => 'Fumier',
+        'litieres'       => 'Litière',
+        'materiel'       => 'Matériel',
+        'autre'          => 'Autre',
+    ];
 
     /**
      * Types de lignes adossées à un lot d'animaux vivants (toute espèce).
@@ -61,12 +83,27 @@ class SaleItem extends Model
      */
     public const COUNT_UNITS = ['tete', 'piece', 'unite'];
 
+    /** Libellé canonique du type de produit (source : SELLABLE_TYPE_LABELS). */
+    public function getTypeLabelAttribute(): string
+    {
+        return self::SELLABLE_TYPE_LABELS[$this->product_type] ?? match ($this->product_type) {
+            'volaille_vivante' => 'Volaille vivante',
+            'volaille_abattue' => 'Volaille abattue',
+            default            => ucfirst(str_replace('_', ' ', (string) $this->product_type)),
+        };
+    }
+
     /**
      * Détermine si cette ligne déstocke un article physique.
      */
     public function requiresDestock(): bool
     {
-        return in_array($this->product_type, self::STOCK_TYPES);
+        // Déstockage dès qu'un STOCK est explicitement lié (article du catalogue,
+        // toute catégorie : litière, matériel, etc.), OU si le type est
+        // intrinsèquement stocké (compat ventes en saisie libre).
+        // (Les lignes adossées à un LOT portent batch_id, pas product_id —
+        // gérées séparément par decrementsBatchCount, sans double comptage.)
+        return $this->product_id !== null || in_array($this->product_type, self::STOCK_TYPES);
     }
 
     /**

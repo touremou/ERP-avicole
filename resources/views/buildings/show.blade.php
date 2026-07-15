@@ -1,18 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div class="flex items-center gap-4 text-left">
-                <a href="{{ route('buildings.index') }}" class="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-500 hover:text-slate-800 rounded-xl transition-all shadow-sm group no-underline">
-                    <i class="fas fa-chevron-left group-hover:-translate-x-1 transition-transform"></i>
-                    <span class="text-[10px] font-black uppercase italic tracking-widest">{{ __("Retour") }}</span>
-                </a>
-
-                <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none m-0">
-                    {{ __('Unité de Production :') }} {{ $building->name }}
-                </h2>
-            </div>
-
-            <div class="flex items-center gap-3">
+        <x-page-header :title="__('Unité de Production :') . ' ' . $building->name" icon="fa-warehouse" accent="indigo" :back="route('buildings.index')">
+            <x-slot name="actions">
                 @can('elevage.M')
                 <a href="{{ route('buildings.edit', $building->id) }}" class="bg-white border border-slate-200 px-6 py-2.5 rounded-xl text-[10px] font-black uppercase text-slate-600 hover:bg-blue-600 hover:text-white transition shadow-sm tracking-widest italic no-underline">
                     <i class="fas fa-tools mr-2"></i> {{ __("Configurer") }}
@@ -41,8 +30,8 @@
                         </form>
                     @endif
                 @endcan
-            </div>
-        </div>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-12 italic font-bold text-left">
@@ -74,15 +63,21 @@
                         $statusClass = "from-red-500 to-red-600 shadow-red-500/20";
                         $statusIcon = "fa-biohazard";
                     }
-                } elseif($building->status === 'En désinfection' || ($occupation == 0 && $building->status !== 'Vide')) {
+                } elseif($building->status === 'En désinfection') {
+                    // Vide sanitaire RÉEL : compte à rebours basé sur la date de
+                    // début de désinfection (accesseur modèle), et non sur
+                    // updated_at qui se réinitialisait à chaque modification.
                     $statusLabel = __("Vide Sanitaire");
                     $statusClass = "from-purple-600 to-indigo-700 shadow-purple-500/20 animate-pulse";
                     $statusIcon = "fa-biohazard";
                     $showCountdown = true;
-                    $hoursSinceUpdate = $building->updated_at->diffInHours(now());
-                    $daysRemainingDisplay = ceil(max(0, 14 - ($hoursSinceUpdate / 24)));
+                    $daysRemainingDisplay = $building->sanitary_break_remaining_days;
+                } elseif($building->status === 'Maintenance') {
+                    $statusLabel = __("Maintenance");
+                    $statusClass = "from-rose-500 to-rose-600 shadow-rose-500/20";
+                    $statusIcon = "fa-screwdriver-wrench";
                 } else {
-                    $statusLabel = __("Prêt / Repos");
+                    $statusLabel = __("Prêt / Disponible");
                     $statusClass = "from-emerald-500 to-emerald-600 shadow-emerald-500/20";
                     $statusIcon = "fa-check-circle";
                 }
@@ -152,7 +147,10 @@
                             </h3>
 
                             @can('elevage.C')
-                                @if($building->status === 'Vide')
+                                {{-- isAvailable() = statut Vide OU Disponible ET aucun lot
+                                     actif : un bâtiment « Disponible » (ex. après vide
+                                     sanitaire) peut recevoir un lot, pas seulement « Vide ». --}}
+                                @if($building->isAvailable())
                                     <a href="{{ route('batches.create', ['building_id' => $building->id]) }}" class="text-[8px] font-black uppercase text-blue-600 hover:text-blue-700 bg-blue-50 px-4 py-2 rounded-xl transition no-underline">
                                         {{ __("Lancer un nouveau lot") }}
                                     </a>

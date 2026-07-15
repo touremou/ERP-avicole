@@ -320,19 +320,91 @@ class NotificationHub
     // ──────────────────────────────────────────────
 
     /**
+     * Construit le corps d'un message à partir d'un modèle éditable
+     * (NotificationTemplate) ou de son défaut livré, puis substitue les
+     * variables {{ clé }}.
+     */
+    /**
+     * Alerte sanitaire HACCP (CCP non conforme, température hors seuil,
+     * blocage/libération de lot) — type 'alert_haccp' inconnu de
+     * typeRecipients() → diffusée à TOUS les utilisateurs actifs : la
+     * sécurité sanitaire ne dépend pas d'un abonnement individuel.
+     */
+    public function alertHaccp(string $message, string $title, string $severity = 'normal'): void
+    {
+        $this->broadcast('alert_haccp', $message, $title, $severity);
+    }
+
+    private function tpl(string $key, array $vars): string
+    {
+        return \App\Models\NotificationTemplate::interpolate(
+            \App\Models\NotificationTemplate::bodyFor($key),
+            $vars
+        );
+    }
+
+    /**
      * Alerte mortalité pic.
      */
     public function alertMortality(Batch $batch, int $mortality, float $rate): void
     {
-        $emoji = $rate > 1 ? '🔴' : '⚠️';
-        $message = "{$emoji} *ALERTE MORTALITÉ*\n\n"
-            . "Lot : *{$batch->code}*\n"
-            . "Bâtiment : {$batch->building->name}\n"
-            . "Morts : *{$mortality}* ({$rate}%)\n"
-            . "Effectif restant : {$batch->current_quantity}\n\n"
-            . "Action requise immédiatement.";
+        $message = $this->tpl('alert_mortality', [
+            'emoji'     => $rate > 1 ? '🔴' : '⚠️',
+            'batch_code' => $batch->code,
+            'building'  => $batch->building->name,
+            'deaths'    => $mortality,
+            'rate'      => $rate,
+            'remaining' => $batch->current_quantity,
+        ]);
 
         $this->broadcast('alert_mortality', $message, 'Mortalité ' . $batch->code, 'critique');
+    }
+
+    /**
+     * Alerte INCIDENT SANITAIRE déclaré (anomalie/crise). Diffusée sur le canal
+     * sanitaire (alert_mortality) ; sévérité « critique » → escalade (admin
+     * WhatsApp/e-mail), sinon « normal ». Le vétérinaire/responsable est ainsi
+     * prévenu dès la déclaration terrain pour accélérer le diagnostic.
+     */
+    public function alertHealthIncident(\App\Models\HealthIncident $incident): void
+    {
+        $batchCode = $incident->batch?->code ?? '—';
+        $building  = $incident->building?->name ?? '—';
+
+        // Message via template éditable (Notifications › Modèles), à variables réelles.
+        $message = $this->tpl('alert_incident', [
+            'severity'   => $incident->severity_label,
+            'batch_code' => $batchCode,
+            'building'   => $building,
+            'deaths'     => $incident->mortality_count,
+            'symptoms'   => \Illuminate\Support\Str::limit((string) $incident->symptoms, 180),
+        ]);
+
+        $severity = $incident->severity === \App\Models\HealthIncident::SEVERITY_CRITICAL ? 'critique' : 'normal';
+
+        $this->broadcast('alert_mortality', $message, 'Incident sanitaire ' . $batchCode, $severity);
+    }
+
+    /**
+     * Alerte PIC de mortalité QUOTIDIEN (early-warning maladie), par bâtiment.
+     *
+     * Complète l'alerte de mortalité CUMULÉE (seuil 5 %, qui arrive tard) : un
+     * pic journalier anormal (≥ seuil quotidien en nombre ET en %) signale une
+     * maladie, un problème d'eau/température ou une intoxication AVANT que le
+     * cumul ne devienne critique. Déclenchée à la saisie du pointage.
+     */
+    public function alertDailyMortalitySpike(Batch $batch, int $deaths, float $dailyRate): void
+    {
+        $building = $batch->building->name ?? 'Bâtiment ?';
+        $message = $this->tpl('daily_mortality_spike', [
+            'batch_code' => $batch->code,
+            'building'   => $building,
+            'deaths'     => $deaths,
+            'daily_rate' => $dailyRate,
+            'remaining'  => $batch->current_quantity,
+        ]);
+
+        $this->broadcast('alert_mortality', $message, 'Pic mortalité ' . $batch->code, 'critique');
     }
 
     /**
@@ -340,14 +412,82 @@ class NotificationHub
      */
     public function alertStockCritical(Stock $stock): void
     {
-        $message = "🔴 *RUPTURE STOCK*\n\n"
-            . "Article : *{$stock->item_name}*\n"
-            . "Catégorie : {$stock->category}\n"
-            . "Restant : *{$stock->current_quantity} {$stock->unit}*\n"
-            . "Seuil alerte : {$stock->alert_threshold} {$stock->unit}\n\n"
-            . "Commander immédiatement.";
+        $message = $this->tpl('alert_stock', [
+            'item_name' => $stock->item_name,
+            'category'  => $stock->category,
+            'quantity'  => $stock->current_quantity,
+            'unit'      => $stock->unit,
+            'threshold' => $stock->alert_threshold,
+        ]);
 
         $this->broadcast('alert_stock', $message, 'Stock ' . $stock->item_name, 'critique');
+    }
+
+    /**
+     * Relance de paiement adressée AU CLIENT (et non au staff) pour une vente
+     * impayée échue. Envoie sur le téléphone du client et journalise la relance
+     * (PaymentReminder) pour l'historique de recouvrement et l'anti-doublon.
+     *
+     * @return bool  Vrai si un message a été émis (client joignable + texte rendu).
+     */
+    public function remindClientPayment(Sale $sale, ?int $userId = null): bool
+    {
+        $client = $sale->client;
+        $phone  = $client?->phone;
+
+        $message = $this->tpl('payment_reminder', [
+            'client'    => $client?->name ?? 'Client',
+            'reference' => $sale->reference,
+            'amount'    => number_format($sale->remaining_amount, 0, ',', ' '),
+            'days'      => $sale->days_overdue,
+            'farm'      => config('whatsapp.farm_name', 'AviSmart'),
+        ]);
+
+        $sent = false;
+        if ($phone) {
+            $sent = (bool) $this->whatsapp->send($phone, $message, [
+                'type'  => 'payment_reminder',
+                'title' => 'Relance ' . $sale->reference,
+            ]);
+        }
+
+        \App\Models\PaymentReminder::create([
+            'farm_id'   => $sale->farm_id,
+            'sale_id'   => $sale->id,
+            'client_id' => $sale->client_id,
+            'user_id'   => $userId,
+            'channel'   => 'whatsapp',
+            'message'   => $message,
+            'sent_at'   => $sent ? now() : null,
+        ]);
+
+        return $sent;
+    }
+
+    /**
+     * Alerte de péremption des consommables (vaccins, médicaments, intrants…).
+     * Reçoit la collection d'articles périmés ou périmant bientôt.
+     */
+    public function alertStockExpiry($items): void
+    {
+        if ($items->isEmpty()) return;
+
+        $hasExpired = false;
+        $lines = $items->map(function ($s) use (&$hasExpired) {
+            $left = $s->days_until_expiry;
+            if ($left < 0) $hasExpired = true;
+            $when = $left < 0 ? 'PÉRIMÉ' : "J-{$left}";
+            $date = optional($s->expiry_date)->format('d/m/Y');
+            return "• {$s->item_name} ({$date} — {$when})";
+        })->join("\n");
+
+        $message = $this->tpl('stock_expiry', [
+            'farm'  => config('whatsapp.farm_name', 'AviSmart'),
+            'count' => $items->count(),
+            'items' => $lines,
+        ]);
+
+        $this->broadcast('alert_stock', $message, 'Péremption consommables', $hasExpired ? 'critique' : 'attention');
     }
 
     /**
@@ -359,13 +499,37 @@ class NotificationHub
             ? "{$source->fuel_autonomy_hours}h de fonctionnement"
             : "{$source->fuel_autonomy_days} jour(s)";
 
-        $message = "⛽ *CARBURANT CRITIQUE*\n\n"
-            . "Groupe : *{$source->name}*\n"
-            . "Autonomie : *{$autonomyLabel}*\n"
-            . "Niveau cuve : {$source->current_fuel_level}L / {$source->fuel_tank_capacity}L\n\n"
-            . "Commander du carburant AUJOURD'HUI.";
+        $message = $this->tpl('alert_fuel', [
+            'source'   => $source->name,
+            'autonomy' => $autonomyLabel,
+            'level'    => $source->current_fuel_level,
+            'capacity' => $source->fuel_tank_capacity,
+        ]);
 
         $this->broadcast('alert_energy', $message, 'Carburant ' . $source->name, 'critique');
+    }
+
+    /**
+     * Alerte de DÉPASSEMENT BUDGÉTAIRE : le cumul des dépenses validées d'un
+     * poste a franchi son budget mensuel. Déclenchée au moment du franchissement
+     * (cf. App\Services\BudgetMonitor), une seule fois par poste/mois.
+     */
+    public function alertBudgetOverrun(string $category, int $year, int $month, float $spent, float $budget): void
+    {
+        $label = \App\Models\Expense::CATEGORIES[$category] ?? ucfirst($category);
+        $monthLabel = \Carbon\Carbon::create($year, $month, 1)->locale('fr')->isoFormat('MMMM YYYY');
+        $pct  = $budget > 0 ? round($spent / $budget * 100) : 0;
+        $over = $spent - $budget;
+
+        $message = "📊 *DÉPASSEMENT BUDGET*\n\n"
+            . "Poste : *{$label}*\n"
+            . "Mois : {$monthLabel}\n"
+            . "Budget : " . number_format($budget, 0, ',', ' ') . " GNF\n"
+            . "Dépensé : *" . number_format($spent, 0, ',', ' ') . " GNF* ({$pct}%)\n"
+            . "Dépassement : " . number_format($over, 0, ',', ' ') . " GNF\n\n"
+            . "Vérifier les dépenses de ce poste.";
+
+        $this->broadcast('alert_budget', $message, "Budget {$label}", 'critique');
     }
 
     /**
@@ -382,18 +546,22 @@ class NotificationHub
         $isLarge = $threshold > 0 && (float) $sale->total_amount >= $threshold;
         $afterHours = $this->isAfterHours();
 
-        $message = ($isLarge ? "💰🔴 *GROSSE VENTE*" : "💰 *NOUVELLE VENTE*") . "\n\n"
-            . "Réf : *{$sale->reference}*\n"
-            . "Client : {$sale->client->name}\n"
-            . "Total : *" . number_format($sale->total_amount, 0, ',', '.') . " GNF*\n"
-            . "Statut : {$sale->payment_status}";
-
+        $flags = '';
         if ($isLarge) {
-            $message .= "\n\n⚠️ Montant au-delà du seuil de " . number_format($threshold, 0, ',', '.') . " GNF.";
+            $flags .= "\n\n⚠️ Montant au-delà du seuil de " . number_format($threshold, 0, ',', '.') . " GNF.";
         }
         if ($afterHours) {
-            $message .= "\n\n🌙 Enregistrée HORS heures ouvrées (" . now()->format('H:i') . ").";
+            $flags .= "\n\n🌙 Enregistrée HORS heures ouvrées (" . now()->format('H:i') . ").";
         }
+
+        $message = $this->tpl('sale_created', [
+            'header'    => $isLarge ? "💰🔴 *GROSSE VENTE*" : "💰 *NOUVELLE VENTE*",
+            'reference' => $sale->reference,
+            'client'    => $sale->client?->name ?? 'Client',
+            'total'     => number_format($sale->total_amount, 0, ',', '.'),
+            'status'    => $sale->payment_status,
+            'flags'     => $flags,
+        ]);
 
         $this->broadcast('alert_sales', $message, 'Vente ' . $sale->reference, ($isLarge || $afterHours) ? 'critique' : 'normal');
     }
@@ -411,7 +579,7 @@ class NotificationHub
 
         $message = "{$emoji} *VENTE ANNULÉE*\n\n"
             . "Réf : *{$sale->reference}*\n"
-            . "Client : " . ($sale->client->name ?? 'N/A') . "\n"
+            . "Client : " . ($sale->client?->name ?? 'N/A') . "\n"
             . "Montant : *" . number_format($sale->total_amount, 0, ',', '.') . " GNF*\n"
             . "Statut avant annulation : *{$status}*\n"
             . "Par : " . (\Illuminate\Support\Facades\Auth::user()?->name ?? 'Système') . "\n"
@@ -452,16 +620,19 @@ class NotificationHub
         $sale = $payment->sale;
         $afterHours = $this->isAfterHours();
 
-        $message = ($afterHours ? "🌙 *ENCAISSEMENT HORS HORAIRES*" : "✅ *PAIEMENT REÇU*") . "\n\n"
-            . "Montant : *" . number_format($payment->amount, 0, ',', '.') . " GNF*\n"
-            . "Mode : {$payment->method_label}\n"
-            . "Vente : {$sale->reference}\n"
-            . "Client : {$sale->client->name}\n"
-            . "Reste dû : " . number_format($sale->remaining_amount, 0, ',', '.') . " GNF";
+        $flags = $afterHours
+            ? "\n\n⚠️ Enregistré à " . now()->format('H:i') . ", hors heures ouvrées — à vérifier."
+            : '';
 
-        if ($afterHours) {
-            $message .= "\n\n⚠️ Enregistré à " . now()->format('H:i') . ", hors heures ouvrées — à vérifier.";
-        }
+        $message = $this->tpl('payment_received', [
+            'header'    => $afterHours ? "🌙 *ENCAISSEMENT HORS HORAIRES*" : "✅ *PAIEMENT REÇU*",
+            'amount'    => number_format($payment->amount, 0, ',', '.'),
+            'method'    => $payment->method_label,
+            'reference' => $sale->reference,
+            'client'    => $sale->client?->name ?? 'Client',
+            'remaining' => number_format($sale->remaining_amount, 0, ',', '.'),
+            'flags'     => $flags,
+        ]);
 
         $this->broadcast('alert_sales', $message, 'Paiement ' . $sale->reference, $afterHours ? 'critique' : 'normal');
     }
@@ -923,6 +1094,73 @@ class NotificationHub
                 'title' => $title,
             ]);
         }
+
+        // Filet E-MAIL admin : pendant du filet WhatsApp ci-dessus. Sur une
+        // alerte critique, on prévient aussi l'adresse admin (whatsapp.admin_email)
+        // par e-mail, même si personne n'est abonné à ce type. Vide = inactif.
+        $adminEmail = (string) setting('whatsapp.admin_email', '');
+        if ($severity === 'critique' && $adminEmail !== '') {
+            \Illuminate\Support\Facades\Notification::route('mail', $adminEmail)
+                ->notify(new \App\Notifications\AlertNotification(
+                    ['type' => $type, 'title' => $title, 'message' => $message, 'severity' => $severity],
+                    ['mail']
+                ));
+        }
+
+        // ─── Canaux IN-APP (cloche) + E-MAIL (file d'attente) ───
+        // Même alerte, autres canaux : on touche aussi les abonnés sans WhatsApp.
+        // Les canaux retenus dépendent des préférences de chaque destinataire ;
+        // la décision est centralisée ici, AlertNotification ne fait que les porter.
+        foreach ($this->typeRecipients($type) as $user) {
+            $prefs = $user->notificationPreference;
+            if (! $prefs || ! $prefs->is_active) {
+                continue;
+            }
+
+            $channels = [];
+
+            // In-app : notification silencieuse → on ignore les heures calmes.
+            if ($prefs->channel_database) {
+                $channels[] = 'database';
+            }
+
+            // E-mail : intrusif comme le WhatsApp → on respecte les heures
+            // silencieuses (sauf alerte critique).
+            $emailAllowedNow = $severity === 'critique' || ! $prefs->isQuietHour();
+            if ($prefs->channel_email && $user->email && $emailAllowedNow) {
+                $channels[] = 'mail';
+            }
+
+            if ($channels !== []) {
+                $user->notify(new \App\Notifications\AlertNotification(
+                    ['type' => $type, 'title' => $title, 'message' => $message, 'severity' => $severity],
+                    $channels
+                ));
+            }
+        }
+    }
+
+    /**
+     * Destinataires d'un type d'alerte pour les canaux in-app / e-mail :
+     * tout utilisateur dont les préférences sont actives et qui n'a pas
+     * désactivé ce type — indépendamment du canal WhatsApp (on peut ne
+     * recevoir que la cloche et/ou l'e-mail).
+     */
+    private function typeRecipients(string $type)
+    {
+        $column = match ($type) {
+            'daily_summary', 'alert_mortality', 'alert_stock',
+            'alert_energy', 'alert_sales', 'alert_fraud' => $type,
+            'alert_budget' => 'alert_fraud', // contrôle financier (cf. getSubscribers)
+            default => null,
+        };
+
+        return User::whereHas('notificationPreference', function ($q) use ($column) {
+            $q->where('is_active', true);
+            if ($column) {
+                $q->where($column, true);
+            }
+        })->get();
     }
 
     /**
@@ -937,6 +1175,9 @@ class NotificationHub
             'alert_energy'               => 'alert_energy',
             'alert_sales'                => 'alert_sales',
             'alert_fraud'                => 'alert_fraud',
+            // Dépassement budgétaire = contrôle financier : on réutilise la
+            // souscription « fraude/anomalies » plutôt qu'une nouvelle colonne.
+            'alert_budget'               => 'alert_fraud',
             default                      => null,
         };
 

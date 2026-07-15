@@ -1,23 +1,15 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-            <div class="text-left">
-                <h2 class="text-3xl font-black text-slate-800 tracking-tighter uppercase italic leading-none">
-                    {{ __('Annuaire Partenaires') }}
-                </h2>
-                <div class="flex items-center gap-2 mt-2">
-                    <span class="w-8 h-1 bg-blue-600 rounded-full"></span>
-                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] italic">{{ __("Gestion des Accouveurs & Fournisseurs") }}</p>
-                </div>
-            </div>
-            
-            {{-- Permission C : Ajout de partenaire --}}
-            @can('annuaire.C')
-            <a href="{{ route('providers.create') }}" class="bg-slate-900 text-white px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-600 transition-all shadow-xl shadow-slate-900/20 group italic no-underline">
-                <i class="fas fa-plus-circle mr-2 group-hover:rotate-90 transition-transform text-blue-400"></i> {{ __("Nouveau Partenaire") }}
-            </a>
-            @endcan
-        </div>
+        <x-page-header :title="__('Annuaire Partenaires')" :subtitle="__('Gestion des Accouveurs & Fournisseurs')" icon="fa-handshake" accent="blue">
+            <x-slot name="actions">
+                {{-- Permission C : Ajout de partenaire --}}
+                @can('annuaire.C')
+                <a href="{{ route('providers.create') }}" class="bg-slate-900 text-white px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-600 transition-all shadow-xl shadow-slate-900/20 group italic no-underline">
+                    <i class="fas fa-plus-circle mr-2 group-hover:rotate-90 transition-transform text-blue-400"></i> {{ __("Nouveau Partenaire") }}
+                </a>
+                @endcan
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-12 italic font-bold">

@@ -1,39 +1,37 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 text-left">
-            <div class="flex items-center gap-5">
-                <div class="w-14 h-14 bg-teal-500 rounded-[1.5rem] flex items-center justify-center text-white shadow-2xl rotate-3">
-                    <i class="fa-solid fa-file-invoice text-xl"></i>
-                </div>
-                <div>
-                    <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">{{ __("Registre des Ventes") }}</h2>
-                    <p class="text-[10px] font-black text-teal-600 uppercase tracking-[0.2em] mt-2 italic">
-                        {{ $stats['today_count'] }} {{ __("vente(s) aujourd'hui") }} — {{ number_format($stats['today_total'], 0, ',', ' ') }} GNF
-                    </p>
-                </div>
-            </div>
-            <div class="flex gap-4">
+        <x-page-header :title="__('Registre des Ventes')"
+                       :subtitle="$stats['today_count'] . ' ' . __('vente(s) aujourd\'hui') . ' — ' . number_format($stats['today_total'], 0, ',', ' ') . ' ' . currency()"
+                       icon="fa-file-invoice" accent="teal">
+            <x-slot name="actions">
                 <div class="bg-white px-5 py-3 rounded-[1.5rem] border border-slate-100 text-right shadow-sm">
                     <p class="text-[8px] font-black text-rose-400 uppercase italic mb-1">{{ __("Impayés") }}</p>
-                    <p class="text-sm font-black text-slate-900">{{ number_format($stats['unpaid_total'], 0, ',', ' ') }} <small class="text-[8px] opacity-40">GNF</small></p>
+                    <p class="text-sm font-black text-slate-900">{{ number_format($stats['unpaid_total'], 0, ',', ' ') }} <small class="text-[8px] opacity-40">{{ currency() }}</small></p>
                 </div>
+                <a href="{{ route('products.index') }}" class="bg-white border border-slate-200 text-slate-600 px-6 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:border-teal-500 hover:text-teal-600 transition-all shadow-sm italic flex items-center gap-2 no-underline" title="{{ __('Catalogue d\'articles') }}">
+                    <i class="fa-solid fa-box-open"></i> {{ __("Catalogue") }}
+                </a>
+                <a href="{{ route('sales.receivables') }}" class="bg-white border border-slate-200 text-slate-600 px-6 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:border-rose-500 hover:text-rose-600 transition-all shadow-sm italic flex items-center gap-2 no-underline" title="{{ __('Recouvrement / relances') }}">
+                    <i class="fa-solid fa-hand-holding-dollar"></i> {{ __("Recouvrement") }}
+                </a>
+                @can('commerce.M')
+                <a href="{{ route('sales.price-lists') }}" class="bg-white border border-slate-200 text-slate-600 px-6 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:border-teal-500 hover:text-teal-600 transition-all shadow-sm italic flex items-center gap-2 no-underline" title="{{ __('Groupes de prix (tarifs)') }}">
+                    <i class="fa-solid fa-tags"></i> {{ __("Tarifs") }}
+                </a>
+                @endcan
                 @can('commerce.C')
                 <a href="{{ route('sales.create') }}" class="bg-slate-900 text-white px-8 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-teal-600 transition-all shadow-2xl italic flex items-center gap-2 no-underline">
                     <i class="fa-solid fa-plus"></i> {{ __("Nouvelle Vente") }}
                 </a>
                 @endcan
-            </div>
-        </div>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-10">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 italic font-bold text-left">
 
-            @if(session('success'))
-                <div class="mb-8 p-5 bg-emerald-500 text-white rounded-[2rem] font-black text-[10px] uppercase tracking-[0.2em] shadow-xl flex items-center italic">
-                    <i class="fa-solid fa-check-double mr-3 text-lg"></i> {{ session('success') }}
-                </div>
-            @endif
+            <x-flash />
 
             {{-- FILTRES --}}
             <form method="GET" class="mb-8 flex flex-wrap gap-3 items-center">
@@ -82,7 +80,7 @@
                                 <td class="px-6 py-4">
                                     <a href="{{ route('sales.show', $sale) }}" class="no-underline">
                                         <p class="text-xs font-black text-slate-900 uppercase">{{ $sale->reference }}</p>
-                                        <p class="text-[8px] text-slate-400 font-black uppercase">{{ $sale->type === 'facture' ? __("Facture TVA") : __("BL") }}</p>
+                                        <p class="text-[8px] text-slate-400 font-black uppercase">{{ __($sale->type_short_label) }}</p>
                                     </a>
                                 </td>
                                 <td class="px-4 py-4 text-[10px] font-black text-slate-700 uppercase">{{ $sale->client->name }}</td>

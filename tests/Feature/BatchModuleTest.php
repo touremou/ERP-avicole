@@ -567,3 +567,36 @@ test('une vache peut être transférée vers une étable', function () {
     expect($batch->type)->toBe('laitiere');
     expect($batch->building_id)->toBe($etable2->id);
 });
+
+// ── PALIER SANS ANNUAIRE (employé / fournisseur optionnels) ──
+
+test('un lot se crée SANS employé ni fournisseur (palier basic, module Annuaire exclu)', function () {
+    // Régression : sur un palier n'incluant pas le module Annuaire, aucune ferme
+    // ne peut créer d'employé ni de fournisseur. La création de lot — fonction
+    // pourtant incluse (module élevage) — ne doit PAS être bloquée.
+    // Calqué sur le test de création caprin, sans employee_id ni provider_id.
+    $chevre = \App\Models\Species::firstOrCreate(
+        ['slug' => 'chevre'],
+        ['name_fr' => 'Chèvre / Caprin', 'family' => 'petit_ruminant', 'is_active' => true]
+    );
+    $chevrerie = Building::factory()->create(['type' => 'chevrerie']);
+
+    $this->actingAs($this->managerUser)
+        ->post(route('batches.store'), [
+            'code'               => 'BASIC-001',
+            'building_id'        => $chevrerie->id,
+            'type'               => 'engraissement',
+            'model_name'         => 'Souche Test',
+            'species_id'         => $chevre->id,
+            'arrival_date'       => now()->toDateString(),
+            'buy_price_per_unit' => 5000,
+            'qty_alive'          => 10,
+            // Volontairement : ni employee_id ni provider_id.
+        ])
+        ->assertSessionDoesntHaveErrors();
+
+    $batch = Batch::where('code', 'BASIC-001')->first();
+    expect($batch)->not->toBeNull();
+    expect($batch->employee_id)->toBeNull();
+    expect($batch->provider_id)->toBeNull();
+});

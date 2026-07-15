@@ -1,16 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <div class="flex flex-col text-left">
-                <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">
-                    {{ __("🏢 Nouveau Bâtiment / Unité") }}
-                </h2>
-                <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">{{ __("Extension du parc de production") }}</p>
-            </div>
-            <a href="{{ route('buildings.index') }}" class="text-[10px] font-black uppercase text-slate-400 hover:text-slate-800 transition italic tracking-widest no-underline">
-                <i class="fas fa-arrow-left mr-1"></i> {{ __("Retour à la liste") }}
-            </a>
-        </div>
+        <x-page-header :title="__('🏢 Nouveau Bâtiment / Unité')" :subtitle="__('Extension du parc de production')" icon="fa-warehouse" accent="indigo" :back="route('buildings.index')" />
     </x-slot>
 
     <div class="py-12 italic font-bold">
@@ -58,7 +48,7 @@
                         <div>
                             <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 tracking-widest">{{ __("Surface Totale (m²)") }}</label>
                             <div class="relative">
-                                <input type="number" name="surface" value="{{ old('surface') }}" step="0.01" min="0" required 
+                                <input type="number" name="surface" value="{{ old('surface') }}" step="0.01" min="1" required
                                        class="w-full p-4 bg-slate-50 rounded-2xl border-none font-black text-slate-700 shadow-inner focus:ring-2 focus:ring-emerald-500 outline-none pr-12">
                                 <span class="absolute right-4 top-4 text-slate-300 text-[10px] font-black uppercase">m²</span>
                             </div>
@@ -67,7 +57,7 @@
                         <div>
                             <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 tracking-widest">{{ __("Capacité Max (Sujets)") }}</label>
                             <div class="relative">
-                                <input type="number" min="0" name="capacity" value="{{ old('capacity') }}" required 
+                                <input type="number" min="1" name="capacity" value="{{ old('capacity') }}" required
                                        class="w-full p-4 bg-slate-50 rounded-2xl border-none font-black text-slate-700 shadow-inner focus:ring-2 focus:ring-emerald-500 outline-none pr-16">
                                 <span class="absolute right-4 top-4 text-slate-300 text-[10px] font-black uppercase italic">{{ __("Têtes") }}</span>
                             </div>

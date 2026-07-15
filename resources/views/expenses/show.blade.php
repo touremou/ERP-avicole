@@ -1,26 +1,8 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 w-full text-left">
-            <div class="flex items-center gap-5">
-                <a href="{{ route('expenses.index') }}" class="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-900 hover:text-white transition-all no-underline">
-                    <i class="fa-solid fa-arrow-left"></i>
-                </a>
-                <div>
-                    <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter truncate">{{ $expense->label }}</h2>
-                    <p class="text-[10px] font-black text-rose-600 uppercase tracking-[0.2em] mt-2 italic">
-                        {{ $expense->reference }} ·
-                        <span @class([
-                            'px-2 py-0.5 rounded-full',
-                            'bg-amber-100 text-amber-700'   => $expense->status === 'en_attente',
-                            'bg-emerald-100 text-emerald-700' => $expense->status === 'valide',
-                            'bg-slate-200 text-slate-500'   => $expense->status === 'annule',
-                        ])>{{ str_replace('_', ' ', $expense->status) }}</span>
-                    </p>
-                </div>
-            </div>
-
-            @can('depenses.M')
-            <div class="flex flex-wrap gap-3">
+        <x-page-header :title="$expense->label" :subtitle="$expense->reference . ' · ' . str_replace('_', ' ', $expense->status)" icon="fa-receipt" accent="rose" :back="route('expenses.index')">
+            <x-slot name="actions">
+                @can('depenses.M')
                 @if($expense->status === 'en_attente')
                     <form method="POST" action="{{ route('expenses.approve', $expense) }}">
                         @csrf @method('PUT')
@@ -40,24 +22,15 @@
                         </button>
                     </form>
                 @endif
-            </div>
-            @endcan
-        </div>
+                @endcan
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-10">
         <div class="max-w-3xl mx-auto sm:px-6 lg:px-8 italic font-bold text-left">
 
-            @if(session('success'))
-                <div class="mb-8 p-5 bg-emerald-500 text-white rounded-[2rem] font-black text-[10px] uppercase tracking-[0.2em] shadow-xl flex items-center italic">
-                    <i class="fa-solid fa-check-double mr-3 text-lg"></i> {{ session('success') }}
-                </div>
-            @endif
-            @if(session('error'))
-                <div class="mb-8 p-5 bg-red-500 text-white rounded-[2rem] font-black text-[10px] uppercase tracking-[0.2em] shadow-xl flex items-center italic">
-                    <i class="fa-solid fa-triangle-exclamation mr-3 text-lg"></i> {{ session('error') }}
-                </div>
-            @endif
+            <x-flash />
 
             {{-- MONTANT --}}
             <div class="bg-slate-900 text-white p-8 rounded-[3rem] shadow-2xl mb-6 text-center">

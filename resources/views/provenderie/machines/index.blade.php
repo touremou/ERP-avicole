@@ -1,34 +1,21 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex flex-col md:flex-row justify-between items-center gap-6">
-            <div class="flex items-center gap-4 italic font-black uppercase tracking-tighter">
-                <div class="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-amber-500 shadow-xl">
-                    <i class="fa-solid fa-gears"></i>
-                </div>
-                <div class="text-left">
-                    <h2 class="text-2xl text-slate-800 leading-none">{{ __("Parc Machines") }}</h2>
-                    <p class="text-[10px] text-slate-400 mt-1 tracking-[0.3em]">{{ __("Maintenance & Performance") }}</p>
-                </div>
-            </div>
-
-            {{-- Permission C : Ajout de machine --}}
-            @can('provenderie.C')
-            <button onclick="openModal('modal-add')" class="bg-slate-900 text-white px-8 py-4 rounded-[2rem] text-[10px] font-black uppercase italic tracking-widest shadow-2xl hover:bg-emerald-500 transition-all active:scale-95">
-                <i class="fa-solid fa-plus mr-2 text-emerald-400"></i> {{ __("Nouvelle Machine") }}
-            </button>
-            @endcan
-        </div>
+        <x-page-header :title="__('Parc Machines')" :subtitle="__('Maintenance & Performance')" icon="fa-gears" accent="amber">
+            <x-slot name="actions">
+                {{-- Permission C : Ajout de machine --}}
+                @can('provenderie.C')
+                <button onclick="openModal('modal-add')" class="bg-slate-900 text-white px-8 py-4 rounded-[2rem] text-[10px] font-black uppercase italic tracking-widest shadow-2xl hover:bg-amber-500 transition-all active:scale-95">
+                    <i class="fa-solid fa-plus mr-2 text-amber-400"></i> {{ __("Nouvelle Machine") }}
+                </button>
+                @endcan
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-12 italic font-bold text-left">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             {{-- BLOC ERREURS --}}
-            @if(session('error'))
-                <div class="mb-8 p-4 bg-red-600 text-white rounded-2xl shadow-lg text-[10px] font-black uppercase italic flex items-center gap-3 animate-pulse">
-                    <i class="fa-solid fa-circle-exclamation text-lg"></i>
-                    {{ session('error') }}
-                </div>
-            @endif
+            <x-flash />
 
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 @foreach($machines as $machine)

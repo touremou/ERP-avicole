@@ -1,22 +1,18 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div class="flex items-center gap-4 text-left">
-                {{-- RETOUR DYNAMIQUE (L) --}}
-                <a href="{{ route('providers.index') }}" class="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-500 hover:text-slate-800 rounded-xl transition-all shadow-sm group no-underline">
-                    <i class="fas fa-chevron-left group-hover:-translate-x-1 transition-transform"></i>
-                    <span class="text-[10px] font-black uppercase italic tracking-widest">{{ __("Retour") }}</span>
+        <x-page-header :title="__('Fiche Partenaire :') . ' ' . $provider->name" icon="fa-handshake" accent="blue" :back="route('providers.index')">
+            <x-slot name="actions">
+                {{-- ACTION : RELEVÉ / DETTES (module Finance) --}}
+                @can('depenses.L')
+                <a href="{{ route('purchases.statement', $provider->id) }}"
+                   class="bg-white border border-slate-200 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase text-slate-600 hover:bg-rose-600 hover:text-white hover:border-rose-600 transition shadow-sm tracking-widest flex items-center italic no-underline">
+                    <i class="fas fa-file-invoice-dollar mr-2 text-rose-500 group-hover:text-white"></i> {{ __("Relevé / dettes") }}
                 </a>
+                @endcan
 
-                <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">
-                    {{ __('Fiche Partenaire :') }} {{ $provider->name }}
-                </h2>
-            </div>
-
-            <div class="flex flex-wrap items-center gap-3">
                 {{-- ACTION : MODIFIER (M) --}}
                 @can('annuaire.M')
-                <a href="{{ route('providers.edit', $provider->id) }}" 
+                <a href="{{ route('providers.edit', $provider->id) }}"
                    class="bg-white border border-slate-200 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase text-slate-600 hover:bg-blue-600 hover:text-white hover:border-blue-600 transition shadow-sm tracking-widest flex items-center italic no-underline">
                     <i class="fas fa-edit mr-2 text-blue-500 group-hover:text-white"></i> {{ __("Modifier") }}
                 </a>
@@ -64,8 +60,8 @@
                         </form>
                     @endif
                 @endcan
-            </div>
-        </div>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-12 italic font-bold">

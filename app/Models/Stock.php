@@ -22,6 +22,8 @@ class Stock extends Model
         'unit_price',
         'alert_threshold',
         'last_unit_price',
+        'expiry_date',      // Péremption (consommables : vaccins, médicaments…)
+        'lot_number',       // N° de lot fournisseur (optionnel)
         'metadata'          // JSON: poultry_type, conso_type, supplier, bag_weight
     ];
 
@@ -35,6 +37,7 @@ class Stock extends Model
         'alert_threshold'  => 'decimal:3',
         'unit_price'       => 'decimal:2',
         'last_unit_price'  => 'decimal:2',
+        'expiry_date'      => 'date',
         'created_at'       => 'datetime',
     ];
 
@@ -74,6 +77,13 @@ class Stock extends Model
         self::CAT_RECOLTES       => ['label' => 'Récoltes',        'icon' => 'fa-wheat-awn',          'color' => 'green',   'emoji' => '🌽'],
         self::CAT_INTRANTS       => ['label' => 'Intrants',        'icon' => 'fa-spray-can',          'color' => 'lime',    'emoji' => '🌱'],
     ];
+
+    /** Libellé canonique de la catégorie (source : CATEGORY_META). */
+    public function getCategoryLabelAttribute(): string
+    {
+        return self::CATEGORY_META[$this->category]['label']
+            ?? ucfirst(str_replace('_', ' ', (string) $this->category));
+    }
 
     /**
      * Catégories de stock actives, pilotées par le paramètre
@@ -133,7 +143,45 @@ class Stock extends Model
         'aliment'        => self::CAT_CONSO,
         'produits_finis' => self::CAT_PRODUITS_FINIS,
         'materiel'       => self::CAT_MATERIELS,
+        'litieres'       => self::CAT_LITIERES,
+        'recoltes'       => self::CAT_RECOLTES,
+        'intrants'       => self::CAT_INTRANTS,
     ];
+
+    /**
+     * Inverse de PRODUCT_TYPE_TO_CATEGORY : pour une catégorie de stock, le
+     * product_type d'expédition/vente correspondant. Permet d'aligner la liste
+     * des articles expédiables sur les catégories de stock réellement actives
+     * (cf. activeCategories) au lieu d'une liste codée en dur.
+     */
+    public const CATEGORY_TO_PRODUCT_TYPE = [
+        self::CAT_OEUFS          => 'oeufs',
+        self::CAT_LAIT           => 'lait',
+        self::CAT_CONSO          => 'aliment',
+        self::CAT_PRODUITS_FINIS => 'produits_finis',
+        self::CAT_MATERIELS      => 'materiel',
+        self::CAT_LITIERES       => 'litieres',
+        self::CAT_RECOLTES       => 'recoltes',
+        self::CAT_INTRANTS       => 'intrants',
+    ];
+
+    /**
+     * Types d'articles « stock » expédiables, alignés sur les catégories de
+     * stock ACTIVES (paramètre stocks.categories). Chaque entrée : product_type
+     * + libellé d'affichage. Source unique pour le formulaire d'expédition.
+     *
+     * @return array<int, array{type: string, label: string}>
+     */
+    public static function shippableStockTypes(): array
+    {
+        $out = [];
+        foreach (self::activeCategories() as $slug => $meta) {
+            if (isset(self::CATEGORY_TO_PRODUCT_TYPE[$slug])) {
+                $out[] = ['type' => self::CATEGORY_TO_PRODUCT_TYPE[$slug], 'label' => $meta['label']];
+            }
+        }
+        return $out;
+    }
 
     /**
      * Catégorie de stock correspondant à un product_type de ligne de
@@ -184,7 +232,7 @@ class Stock extends Model
 
         $totalQty = (float) $this->current_quantity;
         $fullTrays = floor($totalQty);
-        $remainingEggs = round(($totalQty - $fullTrays) * 30);
+        $remainingEggs = \App\Services\UnitConverter::traysToEggs($totalQty - $fullTrays);
 
         return [
             'trays' => (int) $fullTrays,
@@ -200,9 +248,11 @@ class Stock extends Model
     public function getSacksEstimateAttribute(): float
     {
         if ($this->unit !== 'KG' || $this->category !== self::CAT_CONSO) return 0;
-        
-        $bagWeight = $this->metadata['bag_weight'] ?? 50;
-        return round((float) $this->current_quantity / $bagWeight, 1);
+
+        return \App\Services\UnitConverter::kgToSacks(
+            (float) $this->current_quantity,
+            $this->metadata['bag_weight'] ?? null
+        );
     }
 
     // -----------------------
@@ -212,6 +262,40 @@ class Stock extends Model
     public function scopeCategory($query, $type)
     {
         return $query->where('category', $type);
+    }
+
+    // -----------------------
+    // PÉREMPTION
+    // -----------------------
+
+    /** Articles dont la péremption est passée (et qu'il reste en stock). */
+    public function scopeExpired($query)
+    {
+        return $query->whereNotNull('expiry_date')
+            ->whereDate('expiry_date', '<', now())
+            ->where('current_quantity', '>', 0);
+    }
+
+    /** Articles qui périment dans les $days prochains jours (pas encore périmés). */
+    public function scopeExpiringSoon($query, int $days = 30)
+    {
+        return $query->whereNotNull('expiry_date')
+            ->whereDate('expiry_date', '>=', now())
+            ->whereDate('expiry_date', '<=', now()->addDays($days))
+            ->where('current_quantity', '>', 0);
+    }
+
+    public function getIsExpiredAttribute(): bool
+    {
+        return $this->expiry_date !== null && $this->expiry_date->isPast();
+    }
+
+    /** Jours restants avant péremption (négatif si déjà périmé), ou null. */
+    public function getDaysUntilExpiryAttribute(): ?int
+    {
+        return $this->expiry_date
+            ? (int) now()->startOfDay()->diffInDays($this->expiry_date->startOfDay(), false)
+            : null;
     }
 
     /**

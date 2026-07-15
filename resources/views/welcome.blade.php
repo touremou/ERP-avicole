@@ -59,7 +59,7 @@
             </div>
             <p class="text-slate-400 text-[9px] font-black uppercase tracking-widest mb-1 italic leading-none">{{ __("Estimation Actif Cir.") }}</p>
             <p class="text-3xl font-black text-slate-900 tracking-tighter italic">
-                {{ number_format($stockValue) }} <small class="text-xs font-black text-slate-400">GNF</small>
+                {{ number_format($stockValue) }} <small class="text-xs font-black text-slate-400">{{ currency() }}</small>
             </p>
             <p class="mt-4 text-[9px] font-black text-slate-300 uppercase italic tracking-widest border-t border-slate-50 pt-3">{{ __("Cotation Marché Actuelle") }}</p>
         </div>
@@ -103,7 +103,7 @@
                                     <i class="fas fa-location-dot mr-2 text-blue-500"></i> {{ $batch->building->name }}
                                 </span>
                                 <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest italic flex items-center border-l border-slate-200 pl-4">
-                                    <i class="fas fa-user-gear mr-2 text-slate-400"></i> {{ $batch->employee->last_name ?? 'STAFF' }}
+                                    <i class="fas fa-user-gear mr-2 text-slate-400"></i> {{ $batch->employee?->last_name ?? 'STAFF' }}
                                 </span>
                             </div>
                         </div>

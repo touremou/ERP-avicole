@@ -146,3 +146,45 @@ test('un encaissement supérieur au reste dû est refusé', function () {
 
     expect(Payment::where('sale_id', $sale->id)->count())->toBe(0);
 });
+
+test('un article du catalogue passe la cohérence unité↔type (unité de l\'article)', function () {
+    // Article litière "type fumier" mais unité 'unite' (cas réel signalé).
+    $product = \App\Models\Product::create([
+        'name' => 'Litières', 'product_type' => 'fumier', 'unit' => 'unite',
+        'base_price' => 45000, 'is_active' => true,
+    ]);
+
+    $this->actingAs($this->adminUser)->post(route('sales.store'), [
+        'client_id' => $this->client->id, 'sale_date' => now()->toDateString(), 'type' => 'bon_livraison', 'tax_rate' => 0,
+        'items' => [[
+            'product_type' => 'fumier', 'product_name' => 'Litières', 'product_ref_id' => $product->id,
+            'quantity' => 1, 'unit' => 'unite', 'unit_price' => 45000,
+        ]],
+    ])->assertSessionHasNoErrors()->assertRedirect();
+
+    expect((float) \App\Models\Sale::latest('id')->first()->total_amount)->toBe(45000.0);
+});
+
+test('une vente en livraison ajoute les frais de livraison au total', function () {
+    $this->actingAs($this->adminUser)->post(route('sales.store'), [
+        'client_id' => $this->client->id, 'sale_date' => now()->toDateString(), 'type' => 'bon_livraison', 'tax_rate' => 0,
+        'delivery_mode' => 'livraison', 'delivery_fee' => 5000,
+        'items' => [['product_type' => 'oeufs', 'product_name' => 'Œuf M', 'quantity' => 10, 'unit' => 'alveole', 'unit_price' => 2000]],
+    ])->assertSessionHasNoErrors()->assertRedirect();
+
+    $sale = \App\Models\Sale::latest('id')->first();
+    expect((float) $sale->subtotal)->toBe(20000.0)
+        ->and((float) $sale->delivery_fee)->toBe(5000.0)
+        ->and((float) $sale->total_amount)->toBe(25000.0); // 20 000 + 5 000
+});
+
+test('les frais de livraison sont ignorés hors mode livraison', function () {
+    $this->actingAs($this->adminUser)->post(route('sales.store'), [
+        'client_id' => $this->client->id, 'sale_date' => now()->toDateString(), 'type' => 'bon_livraison', 'tax_rate' => 0,
+        'delivery_mode' => 'sur_place', 'delivery_fee' => 9999,
+        'items' => [['product_type' => 'oeufs', 'product_name' => 'Œuf M', 'quantity' => 1, 'unit' => 'alveole', 'unit_price' => 2000]],
+    ])->assertRedirect();
+
+    $sale = \App\Models\Sale::latest('id')->first();
+    expect((float) $sale->delivery_fee)->toBe(0.0)->and((float) $sale->total_amount)->toBe(2000.0);
+});

@@ -1,36 +1,22 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex justify-between items-center text-left">
-            <div class="flex items-center gap-4">
-                <div class="w-12 h-12 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg"><i class="fa-solid fa-clipboard-check text-lg"></i></div>
-                <div>
-                    <h2 class="text-lg font-black text-slate-800 uppercase italic tracking-tighter leading-none">{{ __("Planning Opérationnel") }}</h2>
-                    <p class="text-[9px] font-bold text-slate-400 uppercase mt-1 tracking-widest italic">{{ $date->translatedFormat('l d F Y') }}</p>
-                </div>
-            </div>
-            @can('annuaire.M')
-            <div class="flex gap-2">
+        <x-page-header :title="__('Planning Opérationnel')" :subtitle="$date->translatedFormat('l d F Y')" icon="fa-clipboard-check" accent="indigo">
+            <x-slot name="actions">
+                @can('annuaire.M')
                 <a href="{{ route('tasks.templates') }}" class="bg-white border border-slate-200 px-4 py-2 rounded-xl text-[9px] font-black uppercase italic text-slate-600 hover:bg-slate-50 no-underline"><i class="fa-solid fa-gear text-slate-400 mr-1"></i> {{ __("Templates") }}</a>
                 <form method="POST" action="{{ route('tasks.generate') }}">@csrf
                     <input type="hidden" name="date" value="{{ $date->toDateString() }}">
                     <button class="bg-indigo-600 text-white px-5 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-indigo-700 border-none cursor-pointer shadow-lg italic"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i> {{ __("Générer") }}</button>
                 </form>
-            </div>
-            @endcan
-        </div>
+                @endcan
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-6 italic font-bold" x-data="taskBoard()">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
 
-            @foreach(['success', 'error'] as $msg)
-                @if(session($msg))
-                    <div @class(['mb-4 p-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg flex items-center italic',
-                        'bg-emerald-500 text-white' => $msg === 'success', 'bg-red-500 text-white' => $msg === 'error'])>
-                        <i class="fa-solid fa-{{ $msg === 'success' ? 'check-double' : 'circle-xmark' }} mr-3"></i> {{ session($msg) }}
-                    </div>
-                @endif
-            @endforeach
+            <x-flash />
 
             {{-- BARRE DE FILTRES --}}
             <form method="GET" action="{{ route('tasks.index') }}" id="filterForm" class="mb-4 flex flex-wrap items-center gap-2">

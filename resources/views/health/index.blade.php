@@ -1,16 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div class="text-left">
-                <h2 class="font-black text-2xl text-slate-800 uppercase italic tracking-tighter leading-none">
-                    🩺 {{ __("Registre Sanitaire & Prophylaxie") }}
-                </h2>
-                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2 italic">
-                    {{ __("Historique des soins, vaccins et interventions techniques") }}
-                </p>
-            </div>
-
-            <div class="flex flex-wrap gap-3">
+        <x-page-header :title="__('🩺 Registre Sanitaire & Prophylaxie')" :subtitle="__('Historique des soins, vaccins et interventions techniques')" icon="fa-stethoscope" accent="purple">
+            <x-slot name="actions">
                 {{-- Permission L : Protocoles --}}
                 @can('elevage.M')
                 <a href="{{ route('protocols.index') }}" class="px-5 py-3 bg-white text-slate-600 border border-slate-200 rounded-2xl text-[10px] font-black uppercase italic tracking-widest hover:bg-slate-50 transition-all shadow-sm no-underline">
@@ -32,8 +23,8 @@
                     <i class="fa-solid fa-plus-circle mr-2 text-blue-400"></i> {{ __("Nouvelle Intervention") }}
                 </a>
                 @endcan
-            </div>
-        </div>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-12 italic font-bold">
@@ -102,7 +93,7 @@
                 </div>
                 <div class="bg-blue-600 p-7 rounded-[2.5rem] text-white shadow-xl shadow-blue-200 relative overflow-hidden border-b-4 border-blue-800">
                     <p class="text-[9px] text-blue-200 tracking-widest mb-2 leading-none">{{ __("Budget (Page)") }}</p>
-                    <h3 class="text-3xl leading-none tracking-tighter">{{ number_format($checks->sum('cost'), 0, ',', ' ') }} <small class="text-[10px]">GNF</small></h3>
+                    <h3 class="text-3xl leading-none tracking-tighter">{{ number_format($checks->sum('cost'), 0, ',', ' ') }} <small class="text-[10px]">{{ currency() }}</small></h3>
                     <i class="fa-solid fa-vial absolute -right-3 -bottom-3 text-white/10 text-7xl"></i>
                 </div>
 
@@ -218,7 +209,7 @@
                                         <p class="font-black text-slate-900 text-base leading-none italic tracking-tighter">
                                             {{ number_format($check->cost, 0, ',', ' ') }}
                                         </p>
-                                        <p class="text-[9px] text-slate-300 font-black italic tracking-[0.2em] leading-none mt-1">GNF</p>
+                                        <p class="text-[9px] text-slate-300 font-black italic tracking-[0.2em] leading-none mt-1">{{ currency() }}</p>
                                     </div>
                                     
                                     {{-- Permission M/S : Actions --}}
@@ -264,60 +255,6 @@
         </div>
     </div>
 
-    {{-- MODALE ALPINE POUR LE SIGNALEMENT SANITAIRE --}}
-    <div x-data="{ showHealthModal: false }" 
-         @open-pathology-modal.window="showHealthModal = true"
-         x-show="showHealthModal" 
-         class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm px-4" 
-         style="display: none;"
-         x-transition>
-        
-        <div @click.away="showHealthModal = false" class="bg-white rounded-[3rem] shadow-2xl w-full max-w-lg overflow-hidden text-left border border-slate-100 transform transition-all">
-            
-            <div class="bg-rose-600 p-8 text-white flex justify-between items-center relative overflow-hidden">
-                <i class="fa-solid fa-virus absolute -left-4 -top-4 text-[6rem] opacity-10"></i>
-                <div class="relative z-10">
-                    <h3 class="text-xl font-black uppercase tracking-tighter italic leading-none">{{ __("Signalement Sanitaire") }}</h3>
-                    <p class="text-[10px] text-rose-200 font-bold uppercase tracking-widest mt-1">{{ __("Alerte Vétérinaire & Autopsie") }}</p>
-                </div>
-                <button @click="showHealthModal = false" class="text-white hover:text-rose-200 relative z-10"><i class="fa-solid fa-xmark text-2xl"></i></button>
-            </div>
-
-            <form action="{{ route('health.incidents.store') }}" method="POST" enctype="multipart/form-data" class="p-8 space-y-6">
-                @csrf
-                
-                <div>
-                    <label class="text-[9px] uppercase text-slate-400 block tracking-widest font-black mb-1 italic">{{ __("Lot concerné *") }}</label>
-                    <select name="batch_id" required class="w-full bg-slate-50 border-none rounded-xl p-4 font-black text-xs uppercase shadow-inner cursor-pointer text-slate-700">
-                        <option value="">{{ __("Sélectionner un lot en cours...") }}</option>
-                        @foreach($batches as $batch)
-                            <option value="{{ $batch->id }}">{{ __("LOT #") }}{{ $batch->code }} ({{ __("Bât:") }} {{ $batch->building->name ?? __("N/A") }})</option>
-                        @endforeach
-                    </select>
-                </div>
-
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="text-[9px] uppercase text-slate-400 block tracking-widest font-black mb-1 italic">{{ __("Cadavres *") }}</label>
-                        <input type="number" name="mortality_count" required min="1" placeholder="{{ __('Nb.') }}" class="w-full bg-slate-50 border-none rounded-xl p-4 font-black text-xs text-rose-600 shadow-inner focus:ring-2 focus:ring-rose-500 text-center">
-                    </div>
-                    <div>
-                        <label class="text-[9px] uppercase text-slate-400 block tracking-widest font-black mb-1 italic">{{ __("Photo Autopsie") }}</label>
-                        <input type="file" name="photo" accept="image/jpeg, image/png" capture="environment" class="w-full bg-slate-50 border-none rounded-xl p-3 text-[10px] shadow-inner file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:font-black file:bg-rose-100 file:text-rose-700 hover:file:bg-rose-200 cursor-pointer">
-                    </div>
-                </div>
-
-                <div>
-                    <label class="text-[9px] uppercase text-slate-400 block tracking-widest font-black mb-1 italic">{{ __("Symptômes & Observations *") }}</label>
-                    <textarea name="symptoms" required rows="3" placeholder="{{ __('Ex: Diarrhée sanguinolente, prostration, râles respiratoires...') }}" class="w-full bg-slate-50 border-none rounded-xl p-4 text-xs font-bold text-slate-700 focus:ring-2 focus:ring-rose-500 shadow-inner"></textarea>
-                </div>
-
-                <div class="pt-2">
-                    <button type="submit" class="w-full bg-slate-900 text-white py-5 rounded-xl font-black uppercase tracking-widest transition-all hover:bg-rose-600 text-[10px] shadow-lg flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-paper-plane"></i> {{ __("Transmettre au Vétérinaire") }}
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
+    {{-- MODALE DE SIGNALEMENT SANITAIRE (partagée — health/partials) --}}
+    @include('health.partials.declare-incident', ['batches' => $batches])
 </x-app-layout>

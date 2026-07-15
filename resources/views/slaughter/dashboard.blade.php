@@ -1,16 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 text-left">
-            <div class="flex items-center gap-5">
-                <div class="w-14 h-14 bg-rose-500 rounded-[1.5rem] flex items-center justify-center text-white shadow-2xl rotate-3">
-                    <i class="fa-solid fa-industry text-xl"></i>
-                </div>
-                <div>
-                    <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">{{ __("Abattoir") }}</h2>
-                    <p class="text-[10px] font-black text-rose-600 uppercase tracking-[0.2em] mt-2 italic">{{ __("Abattage, Découpe & Transformation") }}</p>
-                </div>
-            </div>
-            <div class="flex gap-3">
+        <x-page-header :title="__('Abattoir')" :subtitle="__('Abattage, Découpe & Transformation')" icon="fa-industry" accent="rose">
+            <x-slot name="actions">
                 @can('abattoir.C')
                 <a href="{{ route('slaughter.orders.create') }}" class="bg-slate-900 text-white px-6 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-rose-600 transition-all shadow-xl italic no-underline flex items-center gap-2">
                     <i class="fa-solid fa-plus"></i> {{ __("Nouvel Ordre") }}
@@ -19,20 +10,101 @@
                     <i class="fa-solid fa-fire"></i> {{ __("Transformation") }}
                 </a>
                 @endcan
-            </div>
-        </div>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
-    <div class="py-10">
+    <div class="py-10" x-data="haccpBlocking()" x-cloak>
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 italic font-bold text-left">
 
-            @foreach(['success', 'error'] as $msg)
-                @if(session($msg))
-                    <div @class(['mb-8 p-5 rounded-[2rem] font-black text-[10px] uppercase tracking-[0.2em] shadow-xl flex items-center italic', 'bg-emerald-500 text-white' => $msg === 'success', 'bg-red-500 text-white' => $msg === 'error'])>
-                        <i class="fa-solid fa-{{ $msg === 'success' ? 'check-double' : 'circle-xmark' }} mr-3 text-lg"></i> {{ session($msg) }}
+            {{-- ACCÈS GROUPÉS (hub-cartes) : toutes les sous-sections du module. --}}
+            @can('abattoir.L')
+            <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm mb-8 not-italic">
+                <p class="text-[10px] font-black uppercase tracking-widest text-rose-600 mb-4">{{ __("Atelier d'abattage") }}</p>
+                <div class="grid grid-cols-3 gap-3">
+                    @foreach([
+                        ['label' => "Ordre d'abattage", 'icon' => 'fa-clipboard-list', 'route' => 'slaughter.orders.create', 'can' => 'abattoir.C'],
+                        ['label' => 'Transformation', 'icon' => 'fa-fire', 'route' => 'slaughter.transform.form', 'can' => 'abattoir.C'],
+                        ['label' => 'Produits finis', 'icon' => 'fa-drumstick-bite', 'route' => 'slaughter.finished', 'can' => 'abattoir.L'],
+                        ['label' => 'Réceptions vif', 'icon' => 'fa-truck-ramp-box', 'route' => 'slaughter.receptions.index', 'can' => 'abattoir.L'],
+                        ['label' => 'Registre CCP', 'icon' => 'fa-shield-halved', 'route' => 'slaughter.registres.ccp', 'can' => 'abattoir.L'],
+                        ['label' => 'Températures', 'icon' => 'fa-temperature-half', 'route' => 'slaughter.registres.temperatures', 'can' => 'abattoir.L'],
+                        ['label' => 'Nettoyage', 'icon' => 'fa-broom', 'route' => 'slaughter.registres.nettoyage', 'can' => 'abattoir.L'],
+                    ] as $it)
+                        @can($it['can'])
+                        @if(\Illuminate\Support\Facades\Route::has($it['route']))
+                        <a href="{{ route($it['route']) }}" class="flex flex-col items-center justify-center gap-2 p-4 bg-slate-50 rounded-2xl hover:bg-rose-50 hover:text-rose-600 transition-all no-underline text-slate-600 text-center">
+                            <i class="fa-solid {{ $it['icon'] }} text-lg"></i>
+                            <span class="text-[8px] font-black uppercase tracking-widest leading-tight">{{ __($it['label']) }}</span>
+                        </a>
+                        @endif
+                        @endcan
+                    @endforeach
+                </div>
+            </div>
+            @endcan
+
+            <x-flash />
+
+            {{-- INDICATEURS HACCP (E10) — complétude & non-conformités --}}
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                <div class="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm">
+                    <p class="text-[8px] font-black uppercase text-slate-400 tracking-widest m-0">{{ __("Relevés T° aujourd'hui") }}</p>
+                    <p class="text-xl font-black m-0 {{ $haccp['temp_today'] >= $haccp['temp_required'] ? 'text-emerald-600' : 'text-amber-600' }}">
+                        {{ $haccp['temp_today'] }} <span class="text-[10px] text-slate-400">/ {{ $haccp['temp_required'] }} {{ __("requis") }}</span>
+                    </p>
+                </div>
+                <div class="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm">
+                    <p class="text-[8px] font-black uppercase text-slate-400 tracking-widest m-0">{{ __("CCP non conformes (:days j)", ['days' => $haccp['days']]) }}</p>
+                    <p class="text-xl font-black m-0 {{ $haccp['ccp_nc'] === 0 ? 'text-emerald-600' : 'text-red-600' }}">
+                        {{ $haccp['ccp_nc'] }} <span class="text-[10px] text-slate-400">/ {{ $haccp['ccp_total'] }} {{ __("relevés") }}</span>
+                    </p>
+                </div>
+                <div class="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm">
+                    <p class="text-[8px] font-black uppercase text-slate-400 tracking-widest m-0">{{ __("Taux d'écart réception (:days j)", ['days' => $haccp['days']]) }}</p>
+                    <p class="text-xl font-black text-slate-800 m-0">{{ $haccp['reject_rate'] !== null ? $haccp['reject_rate'] . ' %' : '—' }}</p>
+                </div>
+                <div class="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm">
+                    <p class="text-[8px] font-black uppercase text-slate-400 tracking-widest m-0">{{ __("Lots bloqués") }}</p>
+                    <p class="text-xl font-black m-0 {{ $haccp['blocked'] === 0 ? 'text-emerald-600' : 'text-red-600' }}">{{ $haccp['blocked'] }}</p>
+                </div>
+            </div>
+
+            {{-- LOTS BLOQUÉS (RG-02/RG-03) — hors circuit jusqu'à libération qualité --}}
+            @if($blockedOrders->isNotEmpty())
+            <div class="mb-8 bg-white rounded-[2.5rem] border-2 border-red-200 shadow-sm overflow-hidden">
+                <div class="px-6 py-4 bg-red-50 border-b border-red-100">
+                    <h3 class="text-[10px] font-black uppercase text-red-700 tracking-widest flex items-center gap-2">
+                        <i class="fa-solid fa-ban"></i> {{ __("Lots bloqués — hors circuit (RG-03)") }}
+                    </h3>
+                </div>
+                <div class="divide-y divide-slate-50">
+                    @foreach($blockedOrders as $blocked)
+                    <div class="px-6 py-4 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+                        <div>
+                            <p class="text-xs font-black text-slate-900 uppercase m-0">
+                                <a href="{{ route('slaughter.orders.traceability', $blocked) }}" class="text-slate-900 no-underline hover:text-rose-600">{{ $blocked->order_number }}</a>
+                                <span class="text-[7px] font-black text-red-700 bg-red-100 px-2 py-0.5 rounded-full ml-1 animate-pulse">{{ __("BLOQUÉ") }}</span>
+                            </p>
+                            <p class="text-[8px] text-slate-400 font-black uppercase m-0 mt-1">
+                                {{ $blocked->batch?->code ?? ($blocked->reception ? __('Réception externe — :provider', ['provider' => $blocked->reception->provider?->name ?? '—']) : '—') }}
+                                — {{ __(":qty sujets", ['qty' => $blocked->planned_quantity]) }}
+                                @if($blocked->blocked_at) — {{ __("bloqué le") }} {{ $blocked->blocked_at->format('d/m/Y H:i') }}@endif
+                                @if($blocked->blockedBy) {{ __("par") }} {{ $blocked->blockedBy->name }}@endif
+                            </p>
+                            <p class="text-[9px] text-red-600 font-bold m-0 mt-1"><i class="fa-solid fa-quote-left mr-1"></i>{{ $blocked->blocked_reason }}</p>
+                        </div>
+                        @can('abattoir.S')
+                        <button @click="openRelease({{ $blocked->id }}, '{{ addslashes($blocked->order_number) }}')"
+                            class="bg-emerald-500 text-white px-5 py-3 rounded-xl font-black text-[8px] uppercase tracking-widest hover:bg-emerald-600 transition-all border-none cursor-pointer italic whitespace-nowrap">
+                            <i class="fa-solid fa-lock-open mr-1"></i> {{ __("Libérer") }}
+                        </button>
+                        @endcan
                     </div>
-                @endif
-            @endforeach
+                    @endforeach
+                </div>
+            </div>
+            @endif
 
             {{-- ALERTES PÉREMPTION --}}
             @if($expiring->count() > 0)
@@ -98,13 +170,63 @@
                                 <p class="text-[8px] text-slate-400 font-black">{{ $order->batch->code ?? '—' }} — {{ __(":qty sujets", ['qty' => $order->planned_quantity]) }} — {{ $order->planned_date->format(setting('general.date_format', 'd/m/Y')) }}</p>
                             </div>
                             @can('abattoir.M')
-                            <a href="{{ route('slaughter.execute.form', $order) }}" class="bg-rose-500 text-white px-4 py-2 rounded-xl font-black text-[8px] uppercase tracking-widest no-underline hover:bg-rose-600">{{ __("Exécuter") }}</a>
+                            <div class="flex items-center gap-2">
+                                <a href="{{ route('slaughter.execute.form', $order) }}" class="bg-rose-500 text-white px-4 py-2 rounded-xl font-black text-[8px] uppercase tracking-widest no-underline hover:bg-rose-600">{{ __("Exécuter") }}</a>
+                                <button @click="openBlock({{ $order->id }}, '{{ addslashes($order->order_number) }}')"
+                                        class="bg-white text-red-500 border border-red-200 px-3 py-2 rounded-xl font-black text-[8px] uppercase tracking-widest hover:bg-red-50 transition-colors cursor-pointer"
+                                        title="{{ __('Blocage qualité (motif obligatoire)') }}">
+                                    <i class="fa-solid fa-ban"></i>
+                                </button>
+                                @if($order->status === 'planifie')
+                                <form action="{{ route('slaughter.orders.cancel', $order) }}" method="POST"
+                                      onsubmit="return confirm(@json(__('Annuler cet ordre d\'abattage ?')))">
+                                    @csrf @method('PATCH')
+                                    <button type="submit" class="bg-white text-slate-400 border border-slate-200 px-3 py-2 rounded-xl font-black text-[8px] uppercase tracking-widest hover:text-red-600 hover:border-red-200 transition-colors cursor-pointer"
+                                            title="{{ __('Annuler l\'ordre (planifié uniquement)') }}">
+                                        <i class="fa-solid fa-ban"></i>
+                                    </button>
+                                </form>
+                                @endif
+                            </div>
                             @endcan
                         </div>
                         @empty
                         <div class="px-6 py-8 text-center"><p class="text-[10px] text-slate-400 uppercase font-black">{{ __("Aucun ordre en attente") }}</p></div>
                         @endforelse
                     </div>
+
+                    {{-- TRANSFORMATIONS EN COURS (pesée de sortie attendue) --}}
+                    @if($ongoingTransformations->isNotEmpty())
+                    <div class="px-6 py-4 bg-amber-50 border-t border-amber-100">
+                        <h3 class="text-[10px] font-black uppercase text-amber-600 tracking-widest flex items-center gap-2 mb-3">
+                            <i class="fa-solid fa-fire-burner"></i> {{ __("Transformations en cours — pesée de sortie attendue") }}
+                        </h3>
+                        <div class="space-y-3">
+                            @foreach($ongoingTransformations as $ongoing)
+                            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 bg-white rounded-2xl px-4 py-3 border border-amber-100">
+                                <div>
+                                    <p class="text-xs font-black text-slate-900 uppercase m-0">{{ $ongoing->batch_number }} — {{ $ongoing->type_label }}</p>
+                                    <p class="text-[8px] text-slate-400 font-black uppercase m-0 mt-1">
+                                        {{ $ongoing->product_source }} — {{ number_format((float) $ongoing->input_kg, 1) }} kg {{ __("engagés le") }}
+                                        {{ \Carbon\Carbon::parse($ongoing->production_date)->format(setting('general.date_format', 'd/m/Y')) }}
+                                    </p>
+                                </div>
+                                @can('abattoir.M')
+                                <form action="{{ route('slaughter.transform.complete', $ongoing) }}" method="POST" class="flex items-center gap-2">
+                                    @csrf @method('PATCH')
+                                    <input type="number" name="output_kg" step="0.1" min="0.1" required
+                                           placeholder="{{ __('kg sortis') }}"
+                                           class="w-28 bg-slate-50 border-none rounded-xl p-3 font-black text-xs text-center shadow-inner focus:ring-2 focus:ring-amber-400 outline-none">
+                                    <button type="submit" class="bg-amber-500 text-white px-4 py-3 rounded-xl font-black text-[8px] uppercase tracking-widest hover:bg-amber-600 transition-colors cursor-pointer border-none whitespace-nowrap">
+                                        <i class="fa-solid fa-scale-balanced mr-1"></i>{{ __("Terminer") }}
+                                    </button>
+                                </form>
+                                @endcan
+                            </div>
+                            @endforeach
+                        </div>
+                    </div>
+                    @endif
                 </div>
 
                 {{-- STOCK PRODUITS FINIS --}}
@@ -158,7 +280,9 @@
                     <tbody class="divide-y divide-slate-50">
                         @foreach($recentResults as $order)
                         <tr class="hover:bg-slate-50/50">
-                            <td class="px-6 py-3 text-xs font-black text-slate-900 uppercase">{{ $order->order_number }}</td>
+                            <td class="px-6 py-3 text-xs font-black text-slate-900 uppercase">
+                                <a href="{{ route('slaughter.orders.traceability', $order) }}" class="text-slate-900 no-underline hover:text-rose-600" title="{{ __('Dossier de lot (traçabilité)') }}">{{ $order->order_number }} <i class="fa-solid fa-route text-[8px] text-slate-300"></i></a>
+                            </td>
                             <td class="px-4 py-3 text-[10px] font-black text-slate-700">{{ $order->batch->code ?? '—' }}</td>
                             <td class="px-4 py-3 text-center text-sm font-black text-slate-900">{{ $order->actual_quantity }}</td>
                             <td class="px-4 py-3 text-right text-[10px] font-black text-slate-600">{{ number_format($order->total_live_weight_kg, 1) }} kg</td>
@@ -182,5 +306,60 @@
                 </table>
             </div>
         </div>
+
+        {{-- ═══ MODAL BLOCAGE QUALITÉ ═══ --}}
+        @can('abattoir.M')
+        <div x-show="blockModal" x-transition class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" x-cloak>
+            <div class="bg-white rounded-[2.5rem] w-full max-w-md shadow-2xl p-8 text-left italic font-bold" @click.outside="blockModal = false">
+                <h3 class="text-lg font-black text-red-600 uppercase tracking-tighter mb-2">⛔ {{ __("Blocage qualité") }}</h3>
+                <p class="text-[9px] text-slate-500 mb-6 normal-case" x-text="blockNumber + {{ Js::from(__(' — le lot sortira du circuit (exécution, découpe, stock refusés).')) }}"></p>
+                <form :action="'/slaughter/orders/' + blockId + '/block'" method="POST">
+                    @csrf @method('PATCH')
+                    <div class="space-y-2 mb-4">
+                        <label class="text-[9px] font-black uppercase text-red-500 tracking-widest ml-2">{{ __("Motif du blocage") }} *</label>
+                        <textarea name="reason" rows="3" required maxlength="1000" placeholder="{{ __('Suspicion sanitaire, CCP non conforme, décision vétérinaire...') }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-bold shadow-inner outline-none"></textarea>
+                    </div>
+                    <button type="submit" class="w-full bg-red-600 text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-red-700 transition-all border-none cursor-pointer italic">
+                        <i class="fa-solid fa-ban mr-2"></i> {{ __("Bloquer le lot") }}
+                    </button>
+                </form>
+            </div>
+        </div>
+        @endcan
+
+        {{-- ═══ MODAL LIBÉRATION (niveau qualité, double confirmation) ═══ --}}
+        @can('abattoir.S')
+        <div x-show="releaseModal" x-transition class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" x-cloak>
+            <div class="bg-white rounded-[2.5rem] w-full max-w-md shadow-2xl p-8 text-left italic font-bold" @click.outside="releaseModal = false">
+                <h3 class="text-lg font-black text-emerald-600 uppercase tracking-tighter mb-2">🔓 {{ __("Libération d'un lot bloqué") }}</h3>
+                <p class="text-[9px] text-slate-500 mb-4 normal-case" x-text="releaseNumber + {{ Js::from(__(' — décision réservée au niveau qualité, tracée au registre.')) }}"></p>
+                <form :action="'/slaughter/orders/' + releaseId + '/release'" method="POST"
+                      onsubmit="return confirm(@json(__('CONFIRMATION FINALE : libérer ce lot et le réintégrer au circuit ?')))">
+                    @csrf @method('PATCH')
+                    <div class="p-4 bg-emerald-50 rounded-2xl mb-4">
+                        <p class="text-[9px] font-black text-emerald-700 m-0"><i class="fa-solid fa-triangle-exclamation mr-1"></i> {{ __("Le lot réintègre le circuit (abattage, découpe, stock). Assurez-vous que la non-conformité est levée.") }}</p>
+                    </div>
+                    <div class="space-y-2 mb-4">
+                        <label class="text-[9px] font-black uppercase text-emerald-600 tracking-widest ml-2">{{ __("Motif de la libération") }} *</label>
+                        <textarea name="reason" rows="3" required maxlength="1000" placeholder="{{ __('Analyse conforme, avis vétérinaire favorable...') }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-bold shadow-inner outline-none"></textarea>
+                    </div>
+                    <button type="submit" class="w-full bg-emerald-500 text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-600 transition-all border-none cursor-pointer italic">
+                        <i class="fa-solid fa-lock-open mr-2"></i> {{ __("Libérer le lot") }}
+                    </button>
+                </form>
+            </div>
+        </div>
+        @endcan
     </div>
+
+    <script>
+    function haccpBlocking() {
+        return {
+            blockModal: false, blockId: 0, blockNumber: '',
+            openBlock(id, number) { this.blockId = id; this.blockNumber = number; this.blockModal = true; },
+            releaseModal: false, releaseId: 0, releaseNumber: '',
+            openRelease(id, number) { this.releaseId = id; this.releaseNumber = number; this.releaseModal = true; },
+        }
+    }
+    </script>
 </x-app-layout>

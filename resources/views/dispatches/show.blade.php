@@ -1,17 +1,12 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 text-left">
-            <div class="flex items-center gap-5">
-                <a href="{{ route('dispatches.index') }}" class="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-900 hover:text-white transition-all no-underline">
-                    <i class="fa-solid fa-arrow-left"></i>
+        <x-page-header :title="$dispatch->dispatch_number" :subtitle="$dispatch->destination . ' — ' . $dispatch->dispatch_date->translatedFormat('d F Y')" icon="fa-truck-fast" accent="orange" :back="route('dispatches.index')">
+            <x-slot name="actions">
+                <a href="{{ route('dispatches.label', $dispatch->id) }}" target="_blank"
+                   class="bg-indigo-50 text-indigo-700 px-6 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all italic flex items-center gap-2 no-underline"
+                   title="{{ __("Étiquette QR de traçabilité") }}">
+                    <i class="fa-solid fa-qrcode"></i> {{ __("Étiquette") }}
                 </a>
-                <div>
-                    <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">{{ $dispatch->dispatch_number }}</h2>
-                    <p class="text-[10px] font-black text-orange-600 uppercase tracking-[0.2em] mt-2 italic">
-                        {{ $dispatch->destination }} — {{ $dispatch->dispatch_date->translatedFormat('d F Y') }}
-                    </p>
-                </div>
-            </div>
             @if(!$dispatch->reception && in_array($dispatch->status, ['expedie', 'en_route']))
                 {{-- Réception ouverte au RÉCEPTEUR DÉSIGNÉ ou à un responsable
                      logistique (droit M) en secours. L'anti-fraude (expéditeur ≠
@@ -22,21 +17,14 @@
                 </a>
                 @endif
             @endif
-        </div>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-10">
         <div class="max-w-5xl mx-auto sm:px-6 lg:px-8 italic font-bold text-left">
 
-            @foreach(['success', 'warning', 'error'] as $msg)
-                @if(session($msg))
-                    <div @class(['mb-8 p-5 rounded-[2rem] font-black text-[10px] uppercase tracking-[0.2em] shadow-xl flex items-center italic',
-                        'bg-emerald-500 text-white' => $msg === 'success',
-                        'bg-amber-500 text-white' => $msg === 'warning',
-                        'bg-red-500 text-white' => $msg === 'error',
-                    ])>{{ session($msg) }}</div>
-                @endif
-            @endforeach
+            <x-flash />
 
             {{-- INFOS TRANSPORT --}}
             <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm mb-6">
@@ -100,7 +88,7 @@
                         <tr @class(['bg-red-50/30' => $recItem && $recItem->quantity_missing > 0])>
                             <td class="px-6 py-4">
                                 <p class="text-xs font-black text-slate-800 uppercase">{{ $item->product_name }}</p>
-                                <p class="text-[8px] text-slate-400 uppercase tracking-widest">{{ str_replace('_', ' ', $item->product_type) }}</p>
+                                <p class="text-[8px] text-slate-400 uppercase tracking-widest">{{ $item->type_label }}</p>
                             </td>
                             <td class="px-4 py-4 text-center text-sm font-black text-slate-900">{{ $item->quantity_dispatched }}</td>
                             <td class="px-4 py-4 text-center text-[9px] font-black text-slate-500 uppercase">{{ $item->unit }}</td>

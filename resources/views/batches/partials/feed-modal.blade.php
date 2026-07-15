@@ -108,6 +108,15 @@
                     </select>
                 </div>
 
+                {{-- 03b. RÈGLEMENT (comptant = soldé ; crédit = dette fournisseur) --}}
+                <div>
+                    <label class="text-[9px] uppercase text-slate-400 ml-4 mb-2 block tracking-widest font-black">{{ __("Règlement") }}</label>
+                    <select name="payment_mode" class="w-full bg-slate-50 border-none rounded-xl p-4 font-black text-xs uppercase shadow-inner italic outline-none">
+                        <option value="comptant">{{ __("Payé comptant (soldé)") }}</option>
+                        <option value="credit">{{ __("À crédit (dette fournisseur)") }}</option>
+                    </select>
+                </div>
+
                 {{-- 04. QUANTITÉ + COÛT --}}
                 <div class="grid grid-cols-2 gap-4">
                     <div class="bg-slate-50 p-5 rounded-[2rem] border border-slate-100">
@@ -135,12 +144,12 @@
                     </div>
 
                     <div class="bg-slate-900 p-5 rounded-[2rem] shadow-xl text-white flex flex-col justify-center">
-                        <label class="text-[8px] uppercase text-emerald-400 mb-2 block font-black tracking-widest text-center">{{ __("Coût total (GNF)") }}</label>
+                        <label class="text-[8px] uppercase text-emerald-400 mb-2 block font-black tracking-widest text-center">{{ __("Coût total") }} ({{ currency() }})</label>
                         <input type="number" min="0" step="1" name="unit_price" x-model.number="unitPrice" required
                             class="w-full bg-white/10 border-none rounded-xl p-3 text-center font-black text-white text-xl shadow-inner outline-none focus:ring-2 focus:ring-emerald-500" placeholder="0">
                         <template x-if="computedUnitPrice > 0">
                             <p class="text-[8px] text-emerald-400 text-center mt-2 font-black">
-                                = <span x-text="computedUnitPrice.toLocaleString('fr-FR')"></span> GNF/<span x-text="finalUnit"></span>
+                                = <span x-text="computedUnitPrice.toLocaleString('fr-FR')"></span> {{ currency() }}/<span x-text="finalUnit"></span>
                             </p>
                         </template>
                     </div>
@@ -152,7 +161,7 @@
                         <span x-text="inputQty"></span> <span x-text="unit"></span>
                         <template x-if="unit === 'Sac'"><span> (<span x-text="finalQuantity"></span> KG)</span></template>
                         →
-                        <span x-text="unitPrice.toLocaleString('fr-FR')"></span> GNF
+                        <span x-text="unitPrice.toLocaleString('fr-FR')"></span> {{ currency() }}
                         → {{ __("Imputé au lot") }} {{ $batch->code }}
                     </p>
                 </div>

@@ -1,18 +1,12 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 text-left italic font-bold">
-            <div>
-                <h2 class="text-3xl font-black text-slate-800 tracking-tighter uppercase italic leading-none">
-                    {{ __('Référentiel des Normes') }}
-                </h2>
-                <p class="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] mt-3 italic leading-none">
-                    {{ __("Objectifs de performance par espèce et souche génétique") }}
-                </p>
-            </div>
-            <a href="{{ route('batches.index') }}" class="group flex items-center justify-center w-12 h-12 bg-white border border-slate-200 text-slate-400 hover:text-slate-900 rounded-2xl transition-all shadow-sm no-underline">
-                <i class="fas fa-times group-hover:rotate-90 transition-transform"></i>
-            </a>
-        </div>
+        <x-page-header :title="__('Référentiel des Normes')" :subtitle="__('Objectifs de performance par espèce et souche génétique')" icon="fa-scroll" accent="slate">
+            <x-slot name="actions">
+                <a href="{{ route('batches.index') }}" class="group flex items-center justify-center w-12 h-12 bg-white border border-slate-200 text-slate-400 hover:text-slate-900 rounded-2xl transition-all shadow-sm no-underline">
+                    <i class="fas fa-times group-hover:rotate-90 transition-transform"></i>
+                </a>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <style>[x-cloak] { display: none !important; }</style>
@@ -236,7 +230,7 @@
                 <h3 class="text-2xl md:text-3xl font-black text-slate-900 uppercase italic tracking-tighter mb-8 md:mb-10 leading-none pr-10"
                     x-text="openEdit ? @json(__('Audit & Mise à jour')) : @json(__('Initialiser une Norme'))"></h3>
                 
-                <form :action="openEdit ? '{{ url('admin/norms') }}/' + currentNorm.id : '{{ route('admin.norms.store') }}'" method="POST" class="space-y-8">
+                <form :action="openEdit ? '{{ url('batches/norms') }}/' + currentNorm.id : '{{ route('batches.norms.store') }}'" method="POST" class="space-y-8">
                     @csrf
                     <template x-if="openEdit">
                         <input type="hidden" name="_method" value="PUT">
@@ -326,7 +320,7 @@
                     <button @click="openDelete = false" type="button" class="flex-1 bg-slate-100 text-slate-500 py-5 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition border-none cursor-pointer italic">
                         {{ __("Annuler") }}
                     </button>
-                    <form :action="'{{ url('admin/norms') }}/' + currentNorm.id" method="POST" class="flex-1">
+                    <form :action="'{{ url('batches/norms') }}/' + currentNorm.id" method="POST" class="flex-1">
                         @csrf
                         @method('DELETE')
                         <button type="submit" class="w-full bg-rose-600 text-white py-5 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-700 transition shadow-xl border-none cursor-pointer italic">
@@ -352,7 +346,7 @@
                     {{ __("Fichier .csv : week_number, phase_name, target_weight, target_laying_rate, target_feed_daily, target_water_daily, model_name") }}
                 </p>
                 
-                <form action="{{ route('admin.norms.import') }}" method="POST" enctype="multipart/form-data" class="space-y-8">
+                <form action="{{ route('batches.norms.import') }}" method="POST" enctype="multipart/form-data" class="space-y-8">
                     @csrf
                     <input type="hidden" name="batch_type" value="{{ $type }}">
                     <div class="border-4 border-dashed border-slate-100 rounded-[3rem] p-12 text-center hover:border-emerald-400 hover:bg-emerald-50 transition-all group cursor-pointer relative">

@@ -1,21 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex justify-between items-center text-left">
-            <div class="flex items-center gap-4">
-                <div class="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-lg rotate-3">
-                    <i class="fa-solid fa-pen-to-square text-xl"></i>
-                </div>
-                <div>
-                    <h2 class="text-2xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">{{ __("Ajustement Fiche") }}</h2>
-                    <p class="text-[9px] font-bold text-slate-400 uppercase mt-1 tracking-widest italic leading-none">
-                        {{ strtoupper($stock->category) }} • {{ $stock->item_name }}
-                    </p>
-                </div>
-            </div>
-            <a href="{{ route('stocks.index', ['category' => $stock->category]) }}" class="text-[10px] font-black uppercase italic text-slate-400 hover:text-slate-800 transition-all no-underline">
-                <i class="fa-solid fa-arrow-left mr-1"></i> {{ __("Annuler") }}
-            </a>
-        </div>
+        <x-page-header :title="__('Ajustement Fiche')" :subtitle="strtoupper($stock->category) . ' • ' . $stock->item_name" icon="fa-boxes-stacked" accent="orange" :back="route('stocks.index', ['category' => $stock->category])" />
     </x-slot>
 
     {{-- Initialisation AlpineJS --}}
@@ -144,10 +129,23 @@
 
                             {{-- PRIX UNITAIRE (NOUVEAU) --}}
                             <div>
-                                <label class="text-[10px] uppercase text-slate-400 ml-6 mb-2 block tracking-widest font-black italic">{{ __("Prix Unitaire (GNF)") }}</label>
+                                <label class="text-[10px] uppercase text-slate-400 ml-6 mb-2 block tracking-widest font-black italic">{{ __("Prix Unitaire") }} ({{ currency() }})</label>
                                 {{-- On utilise last_unit_price ou unit_price selon le nom de ta colonne en BDD --}}
                                 <input type="number" name="unit_price" step="1" value="{{ old('unit_price', $stock->unit_price ?? $stock->last_unit_price ?? 0) }}" required
                                         class="w-full bg-slate-50 border-none rounded-[2rem] p-5 font-black text-blue-500 focus:ring-2 focus:ring-blue-500 shadow-inner text-center italic">
+                            </div>
+
+                            {{-- PÉREMPTION (optionnel — consommables périssables) --}}
+                            <div>
+                                <label class="text-[10px] uppercase text-slate-400 ml-6 mb-2 block tracking-widest font-black italic">{{ __("Péremption") }} <span class="text-slate-300 normal-case">({{ __('optionnel') }})</span></label>
+                                <input type="date" name="expiry_date" value="{{ old('expiry_date', optional($stock->expiry_date)->format('Y-m-d')) }}"
+                                        class="w-full bg-slate-50 border-none rounded-[2rem] p-5 font-black text-rose-500 focus:ring-2 focus:ring-rose-500 shadow-inner text-center italic">
+                            </div>
+                            <div>
+                                <label class="text-[10px] uppercase text-slate-400 ml-6 mb-2 block tracking-widest font-black italic">{{ __("N° de lot") }} <span class="text-slate-300 normal-case">({{ __('optionnel') }})</span></label>
+                                <input type="text" name="lot_number" maxlength="100" value="{{ old('lot_number', $stock->lot_number) }}"
+                                        class="w-full bg-slate-50 border-none rounded-[2rem] p-5 font-black focus:ring-2 focus:ring-slate-400 shadow-inner text-center italic"
+                                        placeholder="{{ __('Ex: VAC-2026-08') }}">
                             </div>
                         </div>
 

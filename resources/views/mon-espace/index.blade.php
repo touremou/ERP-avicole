@@ -1,16 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center gap-5 text-left">
-            <div class="w-14 h-14 bg-slate-900 rounded-[1.5rem] flex items-center justify-center text-white shadow-2xl rotate-3">
-                <i class="fa-solid fa-user-gear text-xl"></i>
-            </div>
-            <div>
-                <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">{{ __("Mon Espace") }}</h2>
-                <p class="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] mt-2 italic">
-                    {{ __("Bonjour") }} {{ $user->name }} · {{ $user->userRole->display_name ?? $user->userRole->name ?? __("Sans rôle") }}
-                </p>
-            </div>
-        </div>
+        <x-page-header :title="__('Mon Espace')" :subtitle="__('Bonjour') . ' ' . $user->name . ' · ' . ($user->userRole->display_name ?? $user->userRole->name ?? __('Sans rôle'))" icon="fa-user-gear" accent="blue" />
     </x-slot>
 
     <div class="py-10">

@@ -1,18 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 text-left">
-            <div class="flex items-center gap-5">
-                <div class="w-14 h-14 bg-orange-500 rounded-[1.5rem] flex items-center justify-center text-white shadow-2xl rotate-3">
-                    <i class="fa-solid fa-boxes-stacked text-xl"></i>
-                </div>
-                <div>
-                    <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">{{ __("Inventaire Global") }}</h2>
-                    <p class="text-[10px] font-black text-orange-600 uppercase tracking-[0.2em] mt-2 italic">
-                        {{ __("Gestion des stocks multi-catégories") }}
-                    </p>
-                </div>
-            </div>
-            <div class="flex gap-3">
+        <x-page-header :title="__('Inventaire Global')" :subtitle="__('Gestion des stocks multi-catégories')" icon="fa-boxes-stacked" accent="orange">
+            <x-slot name="actions">
                 @can('logistique.M')
                 <a href="{{ route('stocks.export', ['category' => request('category', 'oeufs')]) }}" class="bg-white border border-slate-200 px-5 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest text-slate-600 hover:bg-slate-50 transition-all no-underline flex items-center gap-2">
                     <i class="fa-solid fa-file-excel text-emerald-500"></i> {{ __("Export") }}
@@ -23,24 +12,14 @@
                     <i class="fa-solid fa-plus"></i> {{ __("Nouvel Article") }}
                 </a>
                 @endcan
-            </div>
-        </div>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-10" x-data="{ activeTab: '{{ request('category', 'oeufs') }}' }">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 italic font-bold text-left">
 
-            @foreach(['success', 'error'] as $msg)
-                @if(session($msg))
-                    <div @class(['mb-8 p-5 rounded-[2rem] font-black text-[10px] uppercase tracking-[0.2em] shadow-xl flex items-center italic',
-                        'bg-emerald-500 text-white' => $msg === 'success',
-                        'bg-red-500 text-white' => $msg === 'error',
-                    ])>
-                        <i class="fa-solid fa-{{ $msg === 'success' ? 'check-double' : 'circle-xmark' }} mr-3 text-lg"></i>
-                        {{ session($msg) }}
-                    </div>
-                @endif
-            @endforeach
+            <x-flash />
 
             {{-- ONGLETS CATÉGORIES — pilotés par le paramètre « stocks.categories » (Paramètres > Stocks) --}}
             @php

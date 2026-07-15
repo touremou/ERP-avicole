@@ -1,18 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 w-full text-left">
-            <div class="flex items-center gap-5">
-                <div class="w-14 h-14 bg-rose-500 rounded-[1.5rem] flex items-center justify-center text-white shadow-2xl rotate-3">
-                    <i class="fa-solid fa-receipt text-xl"></i>
-                </div>
-                <div>
-                    <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">{{ __("Registre des Dépenses") }}</h2>
-                    <p class="text-[10px] font-black text-rose-600 uppercase tracking-[0.2em] mt-2 italic">
-                        {{ __("Du") }} {{ $from->format('d/m/Y') }} {{ __("au") }} {{ $to->format('d/m/Y') }}
-                    </p>
-                </div>
-            </div>
-            <div class="flex flex-wrap gap-3 w-full sm:w-auto">
+        <x-page-header :title="__('Registre des Dépenses')" :subtitle="__('Du') . ' ' . $from->format('d/m/Y') . ' ' . __('au') . ' ' . $to->format('d/m/Y')" icon="fa-receipt" accent="rose">
+            <x-slot name="actions">
                 <div class="bg-white px-6 py-4 rounded-[1.5rem] border border-slate-100 text-right shadow-sm">
                     <p class="text-[8px] font-black text-emerald-400 uppercase italic mb-1">{{ __("Validées (période)") }}</p>
                     <p class="text-base font-black text-slate-900 leading-none">{{ number_format($stats['total_valide'], 0, ',', ' ') }} <small class="text-[9px] opacity-40">{{ setting('general.currency', 'GNF') }}</small></p>
@@ -21,28 +10,22 @@
                     <p class="text-[8px] font-black text-amber-400 uppercase italic mb-1">{{ __("En attente") }} ({{ $stats['count_attente'] }})</p>
                     <p class="text-base font-black text-amber-600 leading-none">{{ number_format($stats['total_attente'], 0, ',', ' ') }} <small class="text-[9px] opacity-40">{{ setting('general.currency', 'GNF') }}</small></p>
                 </div>
+                <a href="{{ route('budgets.index') }}" class="bg-indigo-50 text-indigo-600 px-6 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-indigo-100 transition-all italic flex items-center gap-2 no-underline">
+                    <i class="fa-solid fa-scale-balanced"></i> {{ __("Suivi budgétaire") }}
+                </a>
                 @can('depenses.C')
                 <a href="{{ route('expenses.create') }}" class="bg-slate-900 text-white px-8 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-rose-600 transition-all shadow-2xl italic flex items-center gap-2 no-underline">
                     <i class="fa-solid fa-plus"></i> {{ __("Nouvelle Dépense") }}
                 </a>
                 @endcan
-            </div>
-        </div>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-10">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 italic font-bold text-left">
 
-            @if(session('success'))
-                <div class="mb-8 p-5 bg-emerald-500 text-white rounded-[2rem] font-black text-[10px] uppercase tracking-[0.2em] shadow-xl flex items-center italic">
-                    <i class="fa-solid fa-check-double mr-3 text-lg"></i> {{ session('success') }}
-                </div>
-            @endif
-            @if(session('error'))
-                <div class="mb-8 p-5 bg-red-500 text-white rounded-[2rem] font-black text-[10px] uppercase tracking-[0.2em] shadow-xl flex items-center italic">
-                    <i class="fa-solid fa-triangle-exclamation mr-3 text-lg"></i> {{ session('error') }}
-                </div>
-            @endif
+            <x-flash />
 
             {{-- FILTRES --}}
             <form method="GET" class="mb-8 flex flex-wrap gap-3 items-center">

@@ -10,6 +10,7 @@ use App\Actions\DailyCheck\SyncManureCollection;
 use App\Http\Requests\DailyCheck\StoreDailyCheckRequest;
 use App\Http\Requests\DailyCheck\UpdateDailyCheckRequest;
 use App\Services\StockIntegrationService;
+use App\Services\UnitConverter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -22,7 +23,7 @@ use Illuminate\View\View;
  * Bugs corrigés :
  * - S-10 : suppression du try/catch PDO (le faux mode offline)
  * - B-13 : l'Action utilise updateOrCreate avec UNIQUE index garanti (Phase 1)
- * - S-11 : lockForUpdate géré par DailyCheckObserver (Phase 2)
+ * - S-11 : lockForUpdate géré par DailyCheck::booted() (Phase 2)
  */
 class DailyCheckController extends Controller
 {
@@ -72,9 +73,12 @@ class DailyCheckController extends Controller
                 
             // 2. Conversion automatique en KG
             if ($item) {
-                $stockData[$phase] = (strtolower($item->unit) === 'sac') 
-                    ? (float) $item->current_quantity * 50 
-                    : (float) $item->current_quantity;
+                $stockData[$phase] = UnitConverter::toStockBase(
+                    (float) $item->current_quantity,
+                    $item->unit,
+                    Stock::CAT_CONSO,
+                    $item->metadata['bag_weight'] ?? null
+                );
             } else {
                 $stockData[$phase] = 0;
             }
@@ -85,7 +89,29 @@ class DailyCheckController extends Controller
         // cache. Sert à fiabiliser le THI (BatchAdvisorService::environment).
         $weather = $this->suggestedWeather($batch);
 
-        return view('daily-checks.create', compact('batch', 'stockData', 'phases', 'weather'));
+        // Dose recommandée du jour : barème de la souche interpolé à la semaine
+        // d'âge puis ajusté à l'environnement (chaleur/saison), identique à la
+        // « Recommandation du jour » de la fiche lot. Source unique de vérité
+        // (BatchAdvisorService) au lieu d'une moyenne glissante approximative.
+        $advisor = new \App\Services\BatchAdvisorService();
+        $recommendation = $advisor->recommendation($batch);
+        $suggestedFeed  = $recommendation['total']['feed_kg'] ?? null;
+
+        // Dose d'eau recommandée du jour : même barème de souche interpolé à
+        // l'âge puis ajusté à l'environnement (chaleur → soif majorée). C'est
+        // le pendant hydrique de $suggestedFeed, pour pré-remplir le champ Eau.
+        $suggestedWater = $recommendation['total']['water_l'] ?? null;
+
+        // Température CAPTEUR du bâtiment (IoT) : min/max des relevés du jour
+        // en zone tampon. Prioritaire sur la météo régionale quand un capteur
+        // équipe le bâtiment — la source est tracée (temp_source = iot).
+        $iotTemp = $this->iotTemperature($batch);
+
+        // Solde d'infirmerie courant : affiché dans le bloc Soins & Mouvements
+        // (ces sujets sont hors effectif sain — cheptel réel = effectif + solde).
+        $infirmaryCount = $batch->infirmary_count;
+
+        return view('daily-checks.create', compact('batch', 'stockData', 'phases', 'weather', 'suggestedFeed', 'suggestedWater', 'iotTemp', 'infirmaryCount'));
     }
 
     /**
@@ -124,17 +150,90 @@ class DailyCheckController extends Controller
     }
 
     /**
+     * Température IoT du jour pour le bâtiment du lot : min/max des relevés
+     * capteur en zone tampon (telemetry_logs), avec l'identité du capteur.
+     *
+     * Retourne null si AUCUN capteur n'est enrôlé pour le bâtiment (rien à
+     * afficher). Si un capteur est enrôlé mais sans relevé aujourd'hui :
+     * count = 0 — la vue affiche l'état « aucun relevé » plutôt que rien
+     * (l'opérateur sait que le canal IoT existe).
+     *
+     * @return array{temp_min: ?float, temp_max: ?float, sensor: string, count: int}|null
+     */
+    private function iotTemperature(Batch $batch): ?array
+    {
+        if (! $batch->building_id) {
+            return null;
+        }
+
+        $sensor = \App\Models\TelemetrySensor::where('building_id', $batch->building_id)
+            ->where('is_active', true)
+            ->first();
+
+        if (! $sensor) {
+            return null; // pas de capteur enrôlé : le canal IoT n'existe pas ici
+        }
+
+        $today = \App\Models\TelemetryLog::where('building_id', $batch->building_id)
+            ->where('metric', 'temperature')
+            ->whereDate('recorded_at', now()->toDateString())
+            ->selectRaw('MIN(value) as tmin, MAX(value) as tmax, COUNT(*) as n')
+            ->first();
+
+        return [
+            'temp_min' => $today?->n ? (float) $today->tmin : null,
+            'temp_max' => $today?->n ? (float) $today->tmax : null,
+            'sensor'   => $sensor->label ?: $sensor->sensor_id,
+            'count'    => (int) ($today->n ?? 0),
+        ];
+    }
+
+    /**
      * Enregistrement d'un pointage.
      *
      * La logique métier (stock aliment, updateOrCreate, compensation) est dans RecordDailyCheck.
-     * L'impact sur current_quantity est dans DailyCheckObserver.
+     * L'impact sur current_quantity est dans DailyCheck::booted().
      */
     public function store(StoreDailyCheckRequest $request, RecordDailyCheck $action): RedirectResponse
     {
         if (Gate::denies('elevage.C')) {
             return back()->with('error', 'Action non autorisée.');
         }
-        $check = $action->execute($request->validated());
+
+        // ── Traçabilité de la SOURCE de température (IoT vs manuel) ──
+        // Le champ temp_source vient du formulaire ('iot' si l'opérateur a
+        // appliqué la valeur capteur sans la retoucher, 'manuel' sinon).
+        // temp_recorded_by = capteur OU nom de l'opérateur.
+        $validated = $request->validated();
+        $calibrationWarning = null;
+
+        if (($validated['temp_min'] ?? null) !== null || ($validated['temp_max'] ?? null) !== null) {
+            $source = $validated['temp_source'] ?? 'manuel';
+            $validated['temp_source']      = $source;
+            $validated['temp_recorded_by'] = $source === 'iot'
+                ? ($validated['temp_recorded_by'] ?? 'capteur')
+                : (\Illuminate\Support\Facades\Auth::user()?->name ?? 'Opérateur');
+
+            // Règle de conflit : la saisie MANUELLE prime, mais un écart
+            // significatif avec le capteur du jour signale une calibration à
+            // vérifier (non bloquant).
+            if ($source === 'manuel') {
+                $batch = Batch::find($validated['batch_id'] ?? null);
+                $iot   = $batch ? $this->iotTemperature($batch) : null;
+                $manualMax = (float) ($validated['temp_max'] ?? $validated['temp_min']);
+                if ($iot && abs($manualMax - $iot['temp_max']) > (float) setting('telemetry.calibration_gap_c', 2)) {
+                    $calibrationWarning = 'Écart de ' . number_format(abs($manualMax - $iot['temp_max']), 1)
+                        . ' °C entre la saisie manuelle et le capteur ' . $iot['sensor']
+                        . ' — vérifier la calibration (saisie manuelle conservée).';
+                }
+            }
+        }
+
+        $check = $action->execute($validated);
+
+        if ($calibrationWarning) {
+            session()->flash('warning', $calibrationWarning);
+        }
 
         // Save species-specific extension if applicable
         if ($check->batch->isGmqTracked() || $check->batch->isAquaculture()) {
@@ -198,22 +297,29 @@ class DailyCheckController extends Controller
                 ->first();
                 
             if ($item) {
-                $stockData[$phase] = (strtolower($item->unit) === 'sac') 
-                    ? (float) $item->current_quantity * 50 
-                    : (float) $item->current_quantity;
+                $stockData[$phase] = UnitConverter::toStockBase(
+                    (float) $item->current_quantity,
+                    $item->unit,
+                    Stock::CAT_CONSO,
+                    $item->metadata['bag_weight'] ?? null
+                );
             } else {
                 $stockData[$phase] = 0;
             }
         }
 
-        return view('daily-checks.edit', compact('check', 'phases', 'stockData'));
+        // Solde d'infirmerie SANS ce pointage : c'est le disponible réel pour
+        // les sorties (rétablis/morts) que l'opérateur peut ressaisir ici.
+        $infirmaryCount = $check->batch->infirmaryCountExcluding($check->id);
+
+        return view('daily-checks.edit', compact('check', 'phases', 'stockData', 'infirmaryCount'));
     }
 
     /**
      * Mise à jour d'un pointage.
      *
      * Gère la compensation de stock aliment et le recalcul d'impact sur le lot.
-     * Le DailyCheckObserver gère la mise à jour de current_quantity.
+     * Les hooks de DailyCheck::booted() gèrent la mise à jour de current_quantity.
      */
     public function update(UpdateDailyCheckRequest $request, DailyCheck $daily_check): RedirectResponse
     {
@@ -221,6 +327,21 @@ class DailyCheckController extends Controller
         $batch = $check->batch;
 
         $validated = $request->validated();
+
+        // Uniformité AUTOMATISÉE : mêmes règles que le store (le serveur
+        // recalcule moyenne + uniformité depuis les pesées fournies).
+        if (! empty($validated['weight_samples']) && is_array($validated['weight_samples'])) {
+            $stats = DailyCheck::computeSampleStats($validated['weight_samples']);
+            if ($stats) {
+                $validated['weight_samples'] = $stats['samples'];
+                $validated['avg_weight']     = $stats['avg_weight'];
+                if ($stats['uniformity_pct'] !== null) {
+                    $validated['uniformity_pct'] = $stats['uniformity_pct'];
+                }
+            } else {
+                unset($validated['weight_samples']);
+            }
+        }
 
         // Vérification effectif
         $oldImpact = $check->calculateNetImpact();
@@ -230,6 +351,21 @@ class DailyCheckController extends Controller
 
         if (($batch->current_quantity - $diff) < 0) {
             return back()->withErrors(['mortality' => "L'effectif du lot deviendrait négatif."])->withInput();
+        }
+
+        // Cohérence infirmerie : sorties (rétablis + morts isolés) ≤ solde
+        // disponible — le pointage corrigé ne se compte pas lui-même.
+        $infirmaryOutflow = (int) ($validated['qty_quarantine_out'] ?? 0)
+                          + (int) ($validated['mortality_infirmary'] ?? 0);
+        if ($infirmaryOutflow > 0) {
+            $available = $batch->infirmaryCountExcluding($check->id)
+                       + (int) ($validated['qty_quarantine_in'] ?? 0);
+            if ($infirmaryOutflow > $available) {
+                return back()->withErrors([
+                    'qty_quarantine_out' => "Infirmerie : {$infirmaryOutflow} sortie(s) déclarée(s) "
+                        . "(rétablis + morts) mais seulement {$available} sujet(s) isolé(s) disponible(s).",
+                ])->withInput();
+            }
         }
 
         // Vérification stock aliment
@@ -247,7 +383,11 @@ class DailyCheckController extends Controller
         $oldManure = (float) $check->manure_collected_kg;
         $newManure = (float) ($validated['manure_collected_kg'] ?? 0);
 
-        return DB::transaction(function () use ($request, $check, $batch, $validated, $oldManure, $newManure) {
+        // Eau : litres avant rectification, pour réajuster le niveau de la citerne.
+        $oldWater = (float) $check->water_consumed;
+        $newWater = (float) ($validated['water_consumed'] ?? 0);
+
+        return DB::transaction(function () use ($request, $check, $batch, $validated, $oldManure, $newManure, $oldWater, $newWater) {
             // Restitution de l'ancien stock
             if ((float) $check->feed_consumed > 0) {
                 StockIntegrationService::syncMovement(
@@ -279,12 +419,15 @@ class DailyCheckController extends Controller
                 $validated['feed_unit_cost'] = 0;
             }
 
-            // L'observer DailyCheckObserver gère le diff sur current_quantity
+            // Les hooks de DailyCheck::booted() gèrent le diff sur current_quantity
             $check->update($validated);
 
             // Compensation du stock fumier (restitue l'ancien ramassage,
             // applique le nouveau) pour ne pas double-compter le fertilisant.
             app(SyncManureCollection::class)->execute($batch, $oldManure, $newManure);
+
+            // Réajuste le niveau de la citerne selon le delta d'eau consommée.
+            app(\App\Actions\DailyCheck\SyncWaterConsumption::class)->execute($batch, $oldWater, $newWater);
 
             // Save species-specific extension if applicable
             if ($check->batch->isGmqTracked() || $check->batch->isAquaculture()) {
@@ -349,7 +492,12 @@ class DailyCheckController extends Controller
                 app(SyncManureCollection::class)->execute($check->batch, (float) $check->manure_collected_kg, 0);
             }
 
-            // L'observer DailyCheckObserver gère la restitution de current_quantity
+            // Restitution du niveau de citerne (la conso d'eau supprimée est rendue).
+            if ((float) $check->water_consumed > 0 && $check->batch) {
+                app(\App\Actions\DailyCheck\SyncWaterConsumption::class)->execute($check->batch, (float) $check->water_consumed, 0);
+            }
+
+            // Les hooks de DailyCheck::booted() gèrent la restitution de current_quantity
             $check->delete();
 
             return redirect()->route('batches.show', $batchId)
@@ -371,9 +519,12 @@ class DailyCheckController extends Controller
             return 0;
         }
 
-        // 2. Conversion en KG
-        return (strtolower($stock->unit) === 'sac') 
-            ? (float) $stock->current_quantity * 50 
-            : (float) $stock->current_quantity;
+        // 2. Conversion en KG (poids du sac configuré)
+        return UnitConverter::toStockBase(
+            (float) $stock->current_quantity,
+            $stock->unit,
+            Stock::CAT_CONSO,
+            $stock->metadata['bag_weight'] ?? null
+        );
     }
 }

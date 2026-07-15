@@ -1,18 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 text-left">
-            <div class="flex items-center gap-5">
-                <div class="w-14 h-14 bg-teal-500 rounded-[1.5rem] flex items-center justify-center text-white shadow-2xl rotate-3">
-                    <i class="fa-solid fa-users text-xl"></i>
-                </div>
-                <div>
-                    <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">{{ __("Fichier Clients") }}</h2>
-                    <p class="text-[10px] font-black text-teal-600 uppercase tracking-[0.2em] mt-2 italic">
-                        {{ __(":count clients enregistrés", ['count' => $stats['total_clients']]) }}
-                    </p>
-                </div>
-            </div>
-            <div class="flex gap-4">
+        <x-page-header :title="__('Fichier Clients')" :subtitle="__(':count clients enregistrés', ['count' => $stats['total_clients']])" icon="fa-users" accent="teal">
+            <x-slot name="actions">
                 <div class="bg-white px-6 py-4 rounded-[1.5rem] border border-slate-100 text-right shadow-sm">
                     <p class="text-[8px] font-black text-rose-400 uppercase italic mb-1">{{ __("Créances Totales") }}</p>
                     <p class="text-base font-black text-slate-900 leading-none">{{ number_format($stats['total_debt'], 0, ',', ' ') }} <small class="text-[9px] opacity-40">{{ setting('general.currency', 'GNF') }}</small></p>
@@ -22,18 +11,14 @@
                     <i class="fa-solid fa-user-plus"></i> {{ __("Nouveau Client") }}
                 </a>
                 @endcan
-            </div>
-        </div>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-10">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 italic font-bold text-left">
 
-            @if(session('success'))
-                <div class="mb-8 p-5 bg-emerald-500 text-white rounded-[2rem] font-black text-[10px] uppercase tracking-[0.2em] shadow-xl flex items-center italic">
-                    <i class="fa-solid fa-check-double mr-3 text-lg"></i> {{ session('success') }}
-                </div>
-            @endif
+            <x-flash />
 
             {{-- FILTRES --}}
             <form method="GET" class="mb-8 flex flex-wrap gap-3 items-center">

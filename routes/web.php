@@ -28,7 +28,7 @@ use App\Http\Controllers\{
     FeedPurchaseController, EggProductionController, EggMovementController,
     IncubationController, IncubatorController, BatchTransferController, StockController,
     RawMaterialController, FormulaController, MillProductionController, MillMachineController,
-    ProvenderieDashboardController, ProductionController, SyncController,
+    ProvenderieDashboardController, ProductionController, SyncGatewayController,
     ClientController, SaleController, PaymentController, DispatchController,
     UtilityController,
     NotificationController,
@@ -58,7 +58,9 @@ use App\Http\Controllers\{
     CropProtocolController,
     CropReportController,
     CropCalendarEventController,
-    WeatherController
+    WeatherController,
+    TraceabilityController,
+    NotificationTemplateController
 };
 
 Route::redirect('/', '/login');
@@ -98,10 +100,27 @@ Route::get('/media/{path}', [MediaController::class, 'show'])
     ->name('media.show');
 
 // ──────────────────────────────────────────────
+// TRAÇABILITÉ PUBLIQUE (scan du QR d'un lot / carton d'œufs)
+// ──────────────────────────────────────────────
+// Volontairement publique : un client, un inspecteur ou un distributeur doit
+// pouvoir vérifier l'origine d'un lot en scannant le QR de l'étiquette, sans
+// compte. N'expose que des informations d'origine (aucune donnée financière).
+Route::get('/trace/lot/{code}', [TraceabilityController::class, 'batch'])->name('trace.batch');
+Route::get('/trace/op/{number}', [TraceabilityController::class, 'mill'])->name('trace.mill');
+Route::get('/trace/transformation/{number}', [TraceabilityController::class, 'crop'])->name('trace.crop');
+Route::get('/trace/expedition/{number}', [TraceabilityController::class, 'dispatch'])->name('trace.dispatch');
+Route::get('/trace/recolte/{uuid}', [TraceabilityController::class, 'harvest'])->name('trace.harvest');
+
+// ──────────────────────────────────────────────
 // PROFIL & DASHBOARD (tout utilisateur connecté)
 // ──────────────────────────────────────────────
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/dashboard/analytics', [DashboardController::class, 'analytics'])->name('dashboard.analytics');
+
+    // Personnalisation du tableau de bord (par utilisateur, aucun droit module requis).
+    Route::get('/dashboard/preferences', [\App\Http\Controllers\DashboardConfigurationController::class, 'edit'])->name('dashboard.config');
+    Route::put('/dashboard/preferences', [\App\Http\Controllers\DashboardConfigurationController::class, 'update'])->name('dashboard.config.update');
 
     // Espace personnel de l'utilisateur connecté (lecture seule).
     Route::get('/mon-espace', [EmployeeSelfController::class, 'index'])->name('mon-espace');
@@ -133,6 +152,7 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('batches')->name('batches.')->controller(BatchController::class)->group(function () {
         Route::get('/', 'index')->name('index')->middleware('can:L');
         Route::get('/archives', 'archives')->name('archives')->middleware('can:L');
+        Route::get('/{batch}/label', [TraceabilityController::class, 'batchLabel'])->name('label')->where('batch', '[0-9]+')->middleware('can:L');
         Route::get('/{batch}', 'show')->name('show')->where('batch', '[0-9]+')->middleware('can:L');
 
         Route::get('/create', 'create')->name('create')->middleware('can:C');
@@ -168,6 +188,7 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('inventory')->name('stocks.')->controller(StockController::class)->group(function () {
         Route::get('/', 'index')->name('index')->middleware('can:L');
         Route::get('/item/{id}', 'show')->name('show')->middleware('can:L');
+        Route::get('/item/{id}/label', [TraceabilityController::class, 'stockLabel'])->name('label')->middleware('can:L');
         Route::get('/export/{category}', 'export')->name('export')->middleware('can:L');
 
         Route::get('/create', 'create')->name('create')->middleware('can:C');
@@ -182,6 +203,15 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/item/{id}/threshold', 'updateThreshold')->name('update_threshold')->middleware('can:M');
 
         Route::delete('/{id}', 'destroy')->name('destroy')->middleware('can:S');
+    });
+
+    // ─── DÉMARQUE & AJUSTEMENTS D'INVENTAIRE (module: logistique) ───
+    Route::prefix('stock-adjustments')->name('stock-adjustments.')->controller(\App\Http\Controllers\StockAdjustmentController::class)->group(function () {
+        Route::get('/', 'index')->name('index')->middleware('can:L');
+        Route::get('/csv', 'exportCsv')->name('csv')->middleware('can:L');
+        Route::get('/pdf', 'exportPdf')->name('pdf')->middleware('can:L');
+        Route::get('/create', 'create')->name('create')->middleware('can:C');
+        Route::post('/', 'store')->name('store')->middleware('can:C');
     });
 
     // ─── MAINTENANCE TECHNIQUE STOCKS (inventaire physique des œufs) ───
@@ -214,8 +244,10 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/', 'index')->name('index')->middleware('can:L');
             Route::get('/create', 'create')->name('create')->middleware('can:C');
             Route::post('/', 'store')->name('store')->middleware('can:C');
+            Route::get('/{id}/label', [TraceabilityController::class, 'millLabel'])->name('label')->middleware('can:L');
             Route::get('/{id}', 'show')->name('show')->middleware('can:L');
             Route::put('/{id}/complete', 'complete')->name('complete')->middleware('can:M');
+            Route::put('/{id}/cancel', 'cancel')->name('cancel')->middleware('can:M');
         });
 
         Route::prefix('machines')->name('machines.')->controller(MillMachineController::class)->group(function () {
@@ -253,6 +285,7 @@ Route::middleware(['auth'])->group(function () {
         // Récoltes (sous-ressource du cycle)
         Route::get('/{cropCycle}/harvests/create', 'createHarvest')->name('harvests.create')->middleware('can:C');
         Route::post('/{cropCycle}/harvests', 'storeHarvest')->name('harvests.store')->middleware('can:C');
+        Route::get('/{cropCycle}/harvests/{harvest}/label', [TraceabilityController::class, 'harvestLabel'])->name('harvests.label')->middleware('can:L');
         Route::get('/{cropCycle}/harvests/{harvest}/edit', 'editHarvest')->name('harvests.edit')->middleware('can:M');
         Route::put('/{cropCycle}/harvests/{harvest}', 'updateHarvest')->name('harvests.update')->middleware('can:M');
         Route::delete('/{cropCycle}/harvests/{harvest}', 'destroyHarvest')->name('harvests.destroy')->middleware('can:S');
@@ -262,12 +295,17 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{cropCycle}/inputs/{input}/edit', 'editInput')->name('inputs.edit')->middleware('can:M');
         Route::put('/{cropCycle}/inputs/{input}', 'updateInput')->name('inputs.update')->middleware('can:M');
         Route::delete('/{cropCycle}/inputs/{input}', 'destroyInput')->name('inputs.destroy')->middleware('can:S');
+
+        // Validation des étapes de l'itinéraire technique appliqué au cycle.
+        Route::post('/{cropCycle}/protocol-steps/{item}/complete', 'completeStep')->name('steps.complete')->middleware('can:M');
+        Route::delete('/{cropCycle}/protocol-steps/{item}/complete', 'uncompleteStep')->name('steps.uncomplete')->middleware('can:M');
     });
 
     Route::prefix('cultures/transformations')->name('crop-transformations.')->controller(CropTransformationController::class)->group(function () {
         Route::get('/', 'index')->name('index')->middleware('can:L');
         Route::get('/create', 'create')->name('create')->middleware('can:C');
         Route::post('/', 'store')->name('store')->middleware('can:C');
+        Route::get('/{cropTransformation}/label', [TraceabilityController::class, 'cropLabel'])->name('label')->where('cropTransformation', '[0-9]+')->middleware('can:L');
         Route::get('/{cropTransformation}', 'show')->name('show')->where('cropTransformation', '[0-9]+')->middleware('can:L');
         Route::get('/{cropTransformation}/edit', 'edit')->name('edit')->where('cropTransformation', '[0-9]+')->middleware('can:M');
         Route::put('/{cropTransformation}', 'update')->name('update')->middleware('can:M');
@@ -389,7 +427,11 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/', 'index')->name('index')->middleware('can:L');
         Route::get('/create', 'create')->name('create')->middleware('can:C');
         Route::post('/store', 'store')->name('store')->middleware('can:C');
+        // Feuille de tournée multi-lots (déclarée AVANT les routes {eggProduction})
+        Route::get('/tour', 'tour')->name('tour')->middleware('can:C');
+        Route::post('/tour', 'tourStore')->name('tour.store')->middleware('can:C');
         Route::get('/{eggProduction}/tri', 'tri')->name('tri')->middleware('can:L');
+        Route::get('/{eggProduction}/label', [TraceabilityController::class, 'eggLabel'])->name('label')->middleware('can:L');
         Route::get('/{eggProduction}/edit', 'edit')->name('edit')->middleware('can:M');
         Route::put('/{eggProduction}', 'update')->name('update')->middleware('can:M');
         Route::put('/{eggProduction}/tri', 'updateTri')->name('update-tri')->middleware('can:M');
@@ -420,10 +462,12 @@ Route::middleware(['auth'])->group(function () {
         // Incidents sanitaires → HealthIncidentController dédié
         Route::get('/incidents', [\App\Http\Controllers\HealthIncidentController::class, 'index'])->name('incidents.index')->middleware('can:L');
         Route::get('/incidents/create', [\App\Http\Controllers\HealthIncidentController::class, 'index'])->name('incidents.create')->middleware('can:C');
+        Route::get('/incidents/{incident}', [\App\Http\Controllers\HealthIncidentController::class, 'show'])->name('incidents.show')->where('incident', '[0-9]+')->middleware('can:L');
         Route::post('/incidents', [\App\Http\Controllers\HealthIncidentController::class, 'store'])->name('incidents.store')->middleware('can:C');
         Route::put('/incidents/{incident}/diagnose', [\App\Http\Controllers\HealthIncidentController::class, 'diagnose'])->name('incidents.diagnose')->middleware('can:M');
         Route::patch('/incidents/{incident}/resolve', [\App\Http\Controllers\HealthIncidentController::class, 'resolve'])->name('incidents.resolve')->middleware('can:M');
         Route::patch('/incidents/{incident}/close-fast', [\App\Http\Controllers\HealthIncidentController::class, 'closeFast'])->name('incidents.closeFast')->middleware('can:M');
+        Route::patch('/incidents/{incident}/quarantine', [\App\Http\Controllers\HealthIncidentController::class, 'toggleQuarantine'])->name('incidents.quarantine')->middleware('can:M');
     });
 
     Route::middleware('can:L')->resource('daily-checks', DailyCheckController::class);
@@ -446,8 +490,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/buildings', [BuildingController::class, 'getOfflineBuildings'])->name('buildings');
 
         // Closures pour les référentiels simples (colonnes déjà limitées ou petites tables)
-        Route::get('/employees', fn() => \App\Models\Employee::where('is_active', true)
-            ->get(['id', 'first_name', 'last_name', 'position']))->name('employees');
+        Route::get('/employees', fn() => \App\Models\Employee::active()
+            ->get(['id', 'first_name', 'last_name', 'job_title as position']))->name('employees');
         Route::get('/providers', fn() => \App\Models\Provider::where('status', 'Actif')
             ->get(['id', 'name', 'phone']))->name('providers');
         Route::get('/protocols', fn() => \App\Models\Protocol::all(['id', 'name', 'type']))->name('protocols');
@@ -457,10 +501,12 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/clients', [ClientController::class, 'getOfflineClients'])->name('clients');
     });
 
-    // ─── SYNCHRONISATION OFFLINE → SERVEUR ───
+    // ─── SYNCHRONISATION OFFLINE → SERVEUR (porte LEGACY, session web) ───
     // Endpoints appelés par sync-engine.js quand le réseau revient.
-    // Auth obligatoire + Gate checks dans le controller.
-    Route::middleware(['force.json', 'auth'])->prefix('api/sync')->name('sync.')->controller(SyncController::class)->group(function () {
+    // Depuis la fusion A2, la logique vit dans App\Services\Sync\SyncService ;
+    // cette passerelle ne fait que traduire l'ancien contrat HTTP.
+    // @deprecated → basculera sur /api/v1/sync/push avec la PWA.
+    Route::middleware(['force.json', 'auth'])->prefix('api/sync')->name('sync.')->controller(SyncGatewayController::class)->group(function () {
         Route::post('/reconcile', 'reconcile')->name('reconcile');
         Route::post('/daily-checks', 'reconcileDailyCheck')->name('daily_checks');
         Route::post('/egg-collections', 'reconcileEggCollection')->name('egg_collections');
@@ -488,6 +534,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/profit-loss/pdf', 'profitLossPdf')->name('profit_loss.pdf');
         Route::get('/nursery', 'nurseryReport')->name('nursery');
         Route::get('/nursery/pdf', 'nurseryReportPdf')->name('nursery.pdf');
+        Route::get('/health-incidents', 'healthIncidentsReport')->name('health_incidents');
         Route::get('/health-finance', 'healthFinancialReport')->name('health_finance');
         Route::get('/health-finance/pdf', 'healthFinancialReportPdf')->name('health_finance.pdf');
         Route::get('/monthly', 'monthlyExpenses')->name('monthly');
@@ -507,6 +554,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/', 'index')->name('index')->middleware('can:L');
         Route::get('/create', 'create')->name('create')->middleware('can:C');
         Route::post('/', 'store')->name('store')->middleware('can:C');
+        Route::get('/{client}/statement', 'statement')->name('statement')->middleware('can:L');
+        Route::get('/{client}/statement/pdf', 'statementPdf')->name('statement.pdf')->middleware('can:L');
         Route::get('/{client}', 'show')->name('show')->middleware('can:L');
         Route::get('/{client}/edit', 'edit')->name('edit')->middleware('can:M');
         Route::put('/{client}', 'update')->name('update')->middleware('can:M');
@@ -514,15 +563,67 @@ Route::middleware(['auth'])->group(function () {
     });
 
     // ─── VENTES & BONS DE LIVRAISON ───
+    // ─── HUB COMMERCE (point d'entrée unifié du module) ───
+    Route::get('/commerce', [\App\Http\Controllers\CommerceController::class, 'index'])->name('commerce.index')->middleware('can:L');
+
+    // ─── POINT DE VENTE (POS / caisse, module: commerce) ───
+    Route::prefix('pos')->name('pos.')->controller(\App\Http\Controllers\PosController::class)->group(function () {
+        Route::get('/', 'index')->name('index')->middleware('can:C');
+        Route::post('/checkout', 'checkout')->name('checkout')->middleware('can:C');
+        Route::post('/clients', 'storeClient')->name('clients.store'); // autorisation gérée dans le contrôleur (JSON 403)
+        Route::get('/receipt/{sale}', 'receipt')->name('receipt')->middleware('can:C');
+        Route::post('/encash/{sale}', 'encash')->name('encash')->middleware('can:C');
+        Route::get('/report', 'report')->name('report')->middleware('can:L');
+    });
+
+    // ─── SESSIONS DE CAISSE (ouverture/clôture + comptage, module: commerce) ───
+    Route::prefix('cash-register')->name('cash-register.')->controller(\App\Http\Controllers\CashRegisterController::class)->group(function () {
+        Route::get('/', 'index')->name('index')->middleware('can:L');
+        Route::post('/open', 'open')->name('open')->middleware('can:C');
+        Route::post('/{session}/close', 'close')->name('close')->middleware('can:C');
+    });
+
+    // ─── JOURNAL DES AVOIRS (retours, module: commerce) ───
+    Route::prefix('returns')->name('returns.')->controller(\App\Http\Controllers\SaleReturnController::class)->group(function () {
+        Route::get('/', 'index')->name('index')->middleware('can:L');
+        Route::get('/csv', 'exportCsv')->name('csv')->middleware('can:L');
+        Route::get('/pdf', 'exportPdf')->name('pdf')->middleware('can:L');
+    });
+
+    // Catalogue d'articles vendables (commerce).
+    Route::prefix('products')->name('products.')->controller(\App\Http\Controllers\ProductController::class)->group(function () {
+        Route::get('/', 'index')->name('index')->middleware('can:commerce.L');
+        Route::get('/create', 'create')->name('create')->middleware('can:commerce.C');
+        Route::post('/', 'store')->name('store')->middleware('can:commerce.C');
+        Route::get('/{product}/edit', 'edit')->name('edit')->middleware('can:commerce.M');
+        Route::put('/{product}', 'update')->name('update')->middleware('can:commerce.M');
+        Route::delete('/{product}', 'destroy')->name('destroy')->middleware('can:commerce.S');
+    });
+
     Route::prefix('sales')->name('sales.')->controller(SaleController::class)->group(function () {
         Route::get('/', 'index')->name('index')->middleware('can:L');
         Route::get('/create', 'create')->name('create')->middleware('can:C');
         Route::post('/', 'store')->name('store')->middleware('can:C');
+
+        // Recouvrement : encours en retard + relances de paiement.
+        Route::get('/receivables', [\App\Http\Controllers\ReceivablesController::class, 'index'])->name('receivables')->middleware('can:L');
+        Route::post('/receivables/{sale}/remind', [\App\Http\Controllers\ReceivablesController::class, 'remind'])->name('receivables.remind')->where('sale', '[0-9]+')->middleware('can:M');
+
+        // Groupes de prix (tarifs) — gestion + suggestion de prix pour le formulaire.
+        Route::get('/price-lists', [\App\Http\Controllers\SalePriceListController::class, 'index'])->name('price-lists')->middleware('can:M');
+        Route::post('/price-lists', [\App\Http\Controllers\SalePriceListController::class, 'store'])->name('price-lists.store')->middleware('can:M');
+        Route::put('/price-lists/{priceList}', [\App\Http\Controllers\SalePriceListController::class, 'updateItems'])->name('price-lists.update')->middleware('can:M');
+        Route::get('/suggest-price', [\App\Http\Controllers\SalePriceListController::class, 'suggest'])->name('suggest-price')->middleware('can:L');
+        Route::get('/catalog-prices', [\App\Http\Controllers\SalePriceListController::class, 'catalogPrices'])->name('catalog-prices')->middleware('can:L');
+
         Route::get('/{sale}', 'show')->name('show')->middleware('can:L');
         Route::get('/{sale}/print', 'print')->name('print')->middleware('can:L');
         Route::put('/{sale}/validate', 'validate')->name('validate')->middleware('can:M');
         Route::put('/{sale}/deliver', 'deliver')->name('deliver')->middleware('can:M');
         Route::put('/{sale}/cancel', 'cancel')->name('cancel')->middleware('can:S');
+        // Retours client & remboursements (avoirs).
+        Route::get('/{sale}/return', [\App\Http\Controllers\SaleReturnController::class, 'create'])->name('return.create')->middleware('can:M');
+        Route::post('/{sale}/return', [\App\Http\Controllers\SaleReturnController::class, 'store'])->name('return.store')->middleware('can:M');
     });
 
     // ─── PAIEMENTS / ENCAISSEMENTS ───
@@ -532,6 +633,41 @@ Route::middleware(['auth'])->group(function () {
     });
 
     // ─── REGISTRE DES DÉPENSES (module: depenses) ───
+    // ─── TRÉSORERIE (comptes Caisse / Mobile Money / Banque, module: depenses) ───
+    Route::prefix('treasury')->name('treasury.')->controller(\App\Http\Controllers\TreasuryController::class)->group(function () {
+        Route::get('/', 'index')->name('index')->middleware('can:L');
+        Route::get('/report', 'report')->name('report')->middleware('can:L');
+        Route::get('/report/csv', 'reportCsv')->name('report.csv')->middleware('can:L');
+        Route::get('/report/pdf', 'reportPdf')->name('report.pdf')->middleware('can:L');
+        Route::post('/account', 'storeAccount')->name('account.store')->middleware('can:C');
+        Route::post('/mapping', 'updateMapping')->name('mapping')->middleware('can:C');
+        Route::post('/transfer', 'transfer')->name('transfer')->middleware('can:C');
+        Route::get('/{account}', 'show')->name('show')->middleware('can:L');
+        Route::post('/{account}/movement', 'storeMovement')->name('movement')->middleware('can:C');
+    });
+
+    // ─── HUB FINANCE (point d'entrée unifié du module depenses) ───
+    Route::get('/finance', [\App\Http\Controllers\FinanceController::class, 'index'])->name('finance.index')->middleware('can:L');
+
+    // ─── HUBS DE MODULES (points d'entrée unifiés : KPIs + accès groupés) ───
+    Route::get('/elevage', [\App\Http\Controllers\ElevageHubController::class, 'index'])->name('elevage.index')->middleware('can:L');
+    Route::get('/productions', [\App\Http\Controllers\ProductionHubController::class, 'index'])->name('productions.index')->middleware('can:L');
+    Route::get('/annuaire', [\App\Http\Controllers\AnnuaireHubController::class, 'index'])->name('annuaire.index')->middleware('can:L');
+    Route::get('/logistique', [\App\Http\Controllers\LogistiqueHubController::class, 'index'])->name('logistique.index')->middleware('can:L');
+
+    // ─── ACHATS FOURNISSEURS & DETTES (compte à payer, module: depenses) ───
+    Route::prefix('purchases')->name('purchases.')->controller(\App\Http\Controllers\SupplierInvoiceController::class)->group(function () {
+        Route::get('/', 'index')->name('index')->middleware('can:L');
+        Route::get('/create', 'create')->name('create')->middleware('can:C');
+        Route::post('/', 'store')->name('store')->middleware('can:C');
+        Route::get('/provider/{provider}/statement', 'statement')->name('statement')->middleware('can:L');
+        Route::get('/provider/{provider}/statement/pdf', 'statementPdf')->name('statement.pdf')->middleware('can:L');
+        Route::get('/{invoice}', 'show')->name('show')->middleware('can:L');
+        Route::put('/{invoice}/validate', 'validateInvoice')->name('validate')->middleware('can:M');
+        Route::put('/{invoice}/cancel', 'cancel')->name('cancel')->middleware('can:M');
+        Route::post('/{invoice}/pay', 'pay')->name('pay')->middleware('can:C');
+    });
+
     Route::prefix('expenses')->name('expenses.')->controller(ExpenseController::class)->group(function () {
         Route::get('/', 'index')->name('index')->middleware('can:L');
         Route::get('/create', 'create')->name('create')->middleware('can:C');
@@ -543,6 +679,15 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/{expense}/approve', 'approve')->name('approve')->middleware('can:M');
         Route::put('/{expense}/cancel', 'cancel')->name('cancel')->middleware('can:M');
         Route::delete('/{expense}', 'destroy')->name('destroy')->middleware('can:S');
+    });
+
+    // ─── SUIVI BUDGÉTAIRE (module: depenses — contrôle d'accès dans le contrôleur) ───
+    Route::prefix('budgets')->name('budgets.')->controller(\App\Http\Controllers\BudgetController::class)->group(function () {
+        Route::get('/', 'index')->name('index');
+        Route::get('/export', 'export')->name('export');
+        Route::get('/export-pdf', 'exportPdf')->name('export-pdf');
+        Route::post('/', 'store')->name('store');
+        Route::post('/copy-previous', 'copyPrevious')->name('copy-previous');
     });
 
     // ──────────────────────────────────────────────
@@ -559,6 +704,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/', 'index')->name('index')->middleware('can:L');
         Route::get('/create', 'create')->name('create')->middleware('can:C');
         Route::post('/', 'store')->name('store')->middleware('can:C');
+        Route::get('/{dispatch}/label', [TraceabilityController::class, 'dispatchLabel'])->name('label')->where('dispatch', '[0-9]+')->middleware('can:L');
         Route::get('/{dispatch}', 'show')->name('show')->middleware('can:L');
 
         // Réception (saisie par le magasin). L'accès est gouverné DANS le
@@ -609,7 +755,18 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/preferences', 'preferences')->name('preferences')->middleware('can:L');
         Route::put('/preferences', 'updatePreferences')->name('preferences.update')->middleware('can:L');
         Route::post('/test', 'sendTest')->name('test')->middleware('can:L');
+        Route::post('/test-sms', 'sendTestSms')->name('test_sms')->middleware('can:L');
+        Route::post('/test-mail', 'sendTestMail')->name('test_mail')->middleware('can:L');
         Route::get('/logs', 'logs')->name('logs')->middleware('can:S');
+        // Journal d'audit (qui a modifié quoi) — lecture seule, admin.
+        Route::get('/audit', [\App\Http\Controllers\AuditLogController::class, 'index'])->name('audit');
+        // Modèles de messages éditables (admin).
+        Route::get('/templates', [NotificationTemplateController::class, 'index'])->name('templates')->middleware('can:S');
+        Route::put('/templates/{template}', [NotificationTemplateController::class, 'update'])->name('templates.update')->middleware('can:S');
+        Route::put('/templates/{template}/reset', [NotificationTemplateController::class, 'reset'])->name('templates.reset')->middleware('can:S');
+        // Cloche in-app : gérer ses propres notifications (aucun droit module requis).
+        Route::post('/read-all', 'markAllRead')->name('read-all');
+        Route::get('/{id}/read', 'markRead')->name('read');
     });
 
     // ──────────────────────────────────────────────
@@ -636,6 +793,31 @@ Route::middleware(['auth'])->group(function () {
         // Ordres d'abattage
         Route::get('/orders/create', 'createOrder')->name('orders.create')->middleware('can:C');
         Route::post('/orders', 'storeOrder')->name('orders.store')->middleware('can:C');
+        Route::patch('/orders/{order}/cancel', 'cancelOrder')->name('orders.cancel')->middleware('can:M');
+
+        // Blocage / libération qualité (RG-02/RG-03) — libération réservée
+        // au niveau QUALITÉ (S), motif obligatoire dans les deux sens.
+        Route::get('/orders/{order}/tracabilite', 'traceability')->name('orders.traceability')->middleware('can:L');
+        Route::patch('/orders/{order}/block', 'blockOrder')->name('orders.block')->middleware('can:M');
+        Route::patch('/orders/{order}/release', 'releaseOrder')->name('orders.release')->middleware('can:S');
+
+        // Réception du vif (CCP 1) — registre IMMUABLE : pas d'edit/update/destroy.
+        Route::get('/receptions', [\App\Http\Controllers\SlaughterReceptionController::class, 'index'])->name('receptions.index')->middleware('can:L');
+        Route::get('/receptions/create', [\App\Http\Controllers\SlaughterReceptionController::class, 'create'])->name('receptions.create')->middleware('can:C');
+        Route::post('/receptions', [\App\Http\Controllers\SlaughterReceptionController::class, 'store'])->name('receptions.store')->middleware('can:C');
+
+        // Registres HACCP (CCP, températures, nettoyage) — INSERT-ONLY (RG-06).
+        Route::get('/registres', [\App\Http\Controllers\HaccpRegisterController::class, 'registersHub'])->name('registres.index')->middleware('can:L');
+        Route::get('/registres/ccp', [\App\Http\Controllers\HaccpRegisterController::class, 'ccpIndex'])->name('registres.ccp')->middleware('can:L');
+        Route::get('/registres/ccp/create', [\App\Http\Controllers\HaccpRegisterController::class, 'ccpCreate'])->name('registres.ccp.create')->middleware('can:C');
+        Route::post('/registres/ccp', [\App\Http\Controllers\HaccpRegisterController::class, 'ccpStore'])->name('registres.ccp.store')->middleware('can:C');
+        Route::get('/registres/temperatures', [\App\Http\Controllers\HaccpRegisterController::class, 'temperatureIndex'])->name('registres.temperatures')->middleware('can:L');
+        Route::post('/registres/temperatures', [\App\Http\Controllers\HaccpRegisterController::class, 'temperatureStore'])->name('registres.temperatures.store')->middleware('can:C');
+        Route::get('/registres/nettoyage', [\App\Http\Controllers\HaccpRegisterController::class, 'cleaningIndex'])->name('registres.nettoyage')->middleware('can:L');
+        Route::post('/registres/nettoyage', [\App\Http\Controllers\HaccpRegisterController::class, 'cleaningStore'])->name('registres.nettoyage.store')->middleware('can:C');
+        Route::get('/registres/sous-produits', [\App\Http\Controllers\HaccpRegisterController::class, 'byproductsIndex'])->name('registres.sous_produits')->middleware('can:L');
+        Route::post('/registres/sous-produits', [\App\Http\Controllers\HaccpRegisterController::class, 'byproductsStore'])->name('registres.sous_produits.store')->middleware('can:C');
+        Route::get('/registres/export', [\App\Http\Controllers\HaccpRegisterController::class, 'export'])->name('registres.export')->middleware('can:L');
 
         // Exécution abattage
         Route::get('/orders/{order}/execute', 'showExecuteForm')->name('execute.form')->middleware('can:M');
@@ -648,6 +830,7 @@ Route::middleware(['auth'])->group(function () {
         // Transformation
         Route::get('/transform', 'showTransformForm')->name('transform.form')->middleware('can:C');
         Route::post('/transform', 'storeTransformation')->name('transform.store')->middleware('can:C');
+        Route::patch('/transform/{transformation}/complete', 'completeTransformation')->name('transform.complete')->middleware('can:M');
 
         // Stock produits finis
         Route::get('/finished-products', 'finishedProducts')->name('finished')->middleware('can:L');
@@ -681,22 +864,31 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware('can:S')->group(function () {
         Route::resource('users', UserController::class)->only(['index', 'store', 'destroy']);
         Route::patch('/users/{user}/role', [UserController::class, 'updateRole'])->name('users.update_role');
+        Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update');
+        Route::patch('/users/{user}/toggle-active', [UserController::class, 'toggleActive'])->name('users.toggle_active');
+        Route::put('/users/{user}/password', [UserController::class, 'resetPassword'])->name('users.reset_password');
         Route::post('/roles', [UserController::class, 'storeRole'])->name('roles.store');
         Route::delete('/roles/{role}', [UserController::class, 'destroyRole'])->name('roles.destroy');
-        Route::post('/roles/matrix', [UserController::class, 'updateMatrix'])->name('roles.update_matrix');
         Route::post('/roles/module-matrix', [UserController::class, 'updateModuleMatrix'])->name('roles.update_module_matrix');
+
+        // Référentiel des NORMES zootechniques : rattaché à l'ÉLEVAGE (il est
+        // consulté depuis les lots, « Référentiel Normes »), donc préfixe/nom
+        // batches.norms.* → fil d'Ariane « Lots › Normes » et retour vers les
+        // lots, et NON vers l'admin. Gestion réservée aux admins (can:S, hérité).
+        Route::prefix('batches/norms')->name('batches.norms.')->controller(ProductionNormController::class)->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::post('/import', 'import')->name('import');
+            Route::post('/', 'store')->name('store');
+            Route::put('/{norm}', 'update')->name('update');
+            Route::delete('/{norm}', 'destroy')->name('destroy');
+        });
 
         // B-19 corrigé : ProductionNormController (pas NormController)
         Route::prefix('admin')->name('admin.')->group(function () {
-            Route::get('/norms', [ProductionNormController::class, 'index'])->name('norms.index');
-            Route::post('/norms/import', [ProductionNormController::class, 'import'])->name('norms.import');
-            Route::post('/norms', [ProductionNormController::class, 'store'])->name('norms.store');
-            Route::put('/norms/{norm}', [ProductionNormController::class, 'update'])->name('norms.update');
-            Route::delete('/norms/{norm}', [ProductionNormController::class, 'destroy'])->name('norms.destroy');
-
-            // Gestion des espèces (multiespèces)
+            // Gestion des espèces (multiespèces) — relève bien de l'administration.
             Route::get('/species', [SpeciesController::class, 'index'])->name('species.index');
             Route::patch('/species/{species}/toggle', [SpeciesController::class, 'toggle'])->name('species.toggle');
+            Route::delete('/species/{species}', [SpeciesController::class, 'destroy'])->name('species.destroy');
         });
 
         // API espèces — endpoint JSON pour sélecteur dynamique
@@ -725,6 +917,15 @@ Route::middleware(['auth'])->group(function () {
     });
 
     // ─── PAIE & CONGÉS (RH) ───
+    // ─── POINTAGE DE PRÉSENCE (RH léger, module: annuaire) ───
+    Route::prefix('attendance')->name('attendance.')->controller(\App\Http\Controllers\AttendanceController::class)->group(function () {
+        Route::get('/', 'index')->name('index')->middleware('can:L');
+        Route::post('/', 'store')->name('store')->middleware('can:C');
+        Route::get('/report', 'report')->name('report')->middleware('can:L');
+        Route::get('/report/csv', 'exportCsv')->name('report.csv')->middleware('can:L');
+        Route::get('/report/pdf', 'exportPdf')->name('report.pdf')->middleware('can:L');
+    });
+
     Route::prefix('payroll')->name('payroll.')->controller(PayrollController::class)->group(function () {
         Route::get('/', 'index')->name('index')->middleware('can:L');
         Route::post('/period', 'createPeriod')->name('create-period')->middleware('can:C');
@@ -751,6 +952,17 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index')->middleware('can:S');
     Route::put('/settings', [SettingsController::class, 'update'])->name('settings.update')->middleware('can:S');
     Route::get('/settings/logs', [SettingsController::class, 'logs'])->name('settings.logs')->middleware('can:S');
+
+    // ─── LICENCE / ABONNEMENT ───
+    // edit : accessible à tout utilisateur connecté (écran de renouvellement) ;
+    // update : activation réservée à l'administrateur (contrôle dans le contrôleur).
+    Route::get('/license', [\App\Http\Controllers\LicenseController::class, 'edit'])->name('license.edit');
+    Route::put('/license', [\App\Http\Controllers\LicenseController::class, 'update'])->name('license.update');
+
+    // ─── SAUVEGARDES (admin) ───
+    Route::get('/backups', [\App\Http\Controllers\BackupController::class, 'index'])->name('backups.index');
+    Route::post('/backups/run', [\App\Http\Controllers\BackupController::class, 'run'])->name('backups.run');
+    Route::get('/backups/download/{name}', [\App\Http\Controllers\BackupController::class, 'download'])->name('backups.download');
 
     // ─── MULTI-FERME / MULTI-SITE ───
     Route::prefix('farms')->name('farms.')->controller(FarmController::class)->group(function () {

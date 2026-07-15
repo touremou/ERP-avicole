@@ -1,25 +1,12 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <div class="flex items-center gap-4 text-left">
-                <a href="{{ route('employees.show', $employee->id) }}" class="group text-slate-400 hover:text-slate-800 transition no-underline">
-                    <i class="fas fa-arrow-left group-hover:-translate-x-1 transition-transform text-xl"></i>
-                </a>
-                <div>
-                    <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">
-                        {{ __('Édition du profil') }}
-                    </h2>
-                    <p class="text-[10px] font-black text-blue-500 uppercase tracking-widest mt-2 italic leading-none">
-                        {{ $employee->first_name }} {{ $employee->last_name }} • {{ $employee->employee_id }}
-                    </p>
-                </div>
-            </div>
-            <div class="hidden md:block">
-                <span class="px-4 py-2 bg-blue-50 text-blue-600 rounded-xl text-[10px] font-black uppercase italic tracking-widest border border-blue-100 shadow-sm">
+        <x-page-header :title="__('Édition du profil')" :subtitle="$employee->first_name . ' ' . $employee->last_name . ' • ' . $employee->employee_id" icon="fa-id-card" accent="blue" :back="route('employees.show', $employee->id)">
+            <x-slot name="actions">
+                <span class="hidden md:inline px-4 py-2 bg-blue-50 text-blue-600 rounded-xl text-[10px] font-black uppercase italic tracking-widest border border-blue-100 shadow-sm">
                     <i class="fas fa-pen-nib mr-2"></i> {{ __("Mode Modification (M)") }}
                 </span>
-            </div>
-        </div>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-12 italic font-bold">

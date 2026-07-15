@@ -27,6 +27,20 @@ beforeEach(function () {
     $this->managerUser = User::factory()->create(['role_id' => $manager->id]);
 });
 
+test('créer un bâtiment redirige vers l\'index', function () {
+    $this->actingAs($this->managerUser)
+        ->post(route('buildings.store'), [
+            'name'     => 'Hangar Test X',
+            'type'     => 'chair',
+            'surface'  => 200,
+            'capacity' => 3000,
+        ])
+        ->assertSessionHasNoErrors()
+        ->assertRedirect(route('buildings.index'));
+
+    expect(Building::where('name', 'Hangar Test X')->exists())->toBeTrue();
+});
+
 test('réduire la capacité sous l\'effectif logé est refusé', function () {
     $building = Building::factory()->create(['type' => 'chair', 'capacity' => 1000, 'status' => Building::STATUS_OCCUPE]);
     Batch::factory()->create([

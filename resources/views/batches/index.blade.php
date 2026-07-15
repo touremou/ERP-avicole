@@ -1,16 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div>
-                <h2 class="text-3xl font-black text-slate-800 tracking-tighter uppercase italic leading-none">
-                    {{ __("Suivi des Bandes") }}
-                </h2>
-                <p class="text-slate-400 text-[10px] font-black uppercase tracking-widest mt-2 italic">
-                    <i class="fas fa-microchip mr-1 text-blue-500"></i> {{ __("Gestion des cycles de production en cours") }}
-                </p>
-            </div>
-            
-            <div class="flex items-center gap-3">
+        <x-page-header :title="__('Suivi des Bandes')" :subtitle="__('Gestion des cycles de production en cours')" icon="fa-microchip" accent="indigo">
+            <x-slot name="actions">
                 {{-- PERMISSION L : ACCÈS AUX ARCHIVES ET NORMES --}}
                 @can('elevage.L')
                 <a href="{{ route('daily-checks.index') }}" class="bg-white text-slate-600 border border-slate-200 px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-50 transition-all shadow-sm flex items-center italic">
@@ -25,7 +16,7 @@
 
                 {{-- PERMISSION C : CRÉATION D'UN NOUVEAU LOT --}}
                 @can('elevage.C')
-                <a href="{{ route('admin.norms.index') }}" class="bg-white text-slate-600 border border-slate-200 px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-50 transition-all shadow-sm flex items-center italic">
+                <a href="{{ route('batches.norms.index') }}" class="bg-white text-slate-600 border border-slate-200 px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-50 transition-all shadow-sm flex items-center italic">
                     <i class="fas fa-scroll mr-2 text-blue-500"></i>
                     {{ __("Référentiel Normes") }}
                 </a>
@@ -34,8 +25,8 @@
                     {{ __("Nouvel Arrivage") }}
                 </a>
                 @endcan
-            </div>
-        </div>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-12 italic" >
@@ -139,7 +130,15 @@
                                         @endif
                                     </div>
                                     <div>
-                                        <p class="font-black text-slate-800 uppercase tracking-tighter leading-none mb-1 text-sm">{{ $batch->code }}</p>
+                                        <p class="font-black text-slate-800 uppercase tracking-tighter leading-none mb-1 text-sm">
+                                            {{ $batch->code }}
+                                            @if($batch->is_under_quarantine ?? false)
+                                                <span class="ml-1 text-[7px] font-black px-2 py-0.5 rounded uppercase italic bg-rose-600 text-white animate-pulse align-middle"
+                                                      title="{{ __('Quarantaine sanitaire active — vente, mutation et collecte suspendues') }}">
+                                                    <i class="fa-solid fa-biohazard mr-0.5"></i>{{ __("Quarantaine") }}
+                                                </span>
+                                            @endif
+                                        </p>
                                         <div class="flex gap-1 items-center">
                                             <span @class([
                                                 'text-[7px] font-black px-2 py-0.5 rounded uppercase italic border',

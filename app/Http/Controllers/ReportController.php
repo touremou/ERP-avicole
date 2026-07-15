@@ -6,13 +6,13 @@ use App\Models\Batch;
 use App\Models\CropCycle;
 use App\Models\CropInput;
 use App\Models\HealthCheck;
+use App\Models\HealthIncident;
 use App\Models\DailyCheck;
 use App\Models\SaleItem;
 use App\Models\MilkProduction;
 use App\Models\FeedPurchase;
 use App\Models\WaterReading;
 use App\Models\EnergyReading;
-use App\Models\FuelPurchase;
 use App\Models\Payslip;
 use App\Models\Species;
 use App\Models\Expense;
@@ -180,14 +180,29 @@ class ReportController extends Controller
 
         // ─── CHARGES ───
         $costAcquisition = (float) Batch::live()->whereBetween('arrival_date', [$from, $to])->sum('total_acquisition_cost');
-        $costFeed   = (float) FeedPurchase::whereBetween('purchase_date', [$from, $to])
-            ->sum(DB::raw('COALESCE(total_price, quantity * unit_price)'));
+
+        // Aliment : on impute la charge à la CONSOMMATION réelle (principe de
+        // rattachement) et non aux achats — un sujet qui mange génère une charge,
+        // que l'aliment soit acheté OU produit en interne (provenderie). Source de
+        // valorisation unique partagée avec la fiche lot (feed_cogs) : coût figé à
+        // la saisie, repli sur le CMP courant de l'article.
+        $costFeed = $this->feedConsumedCost($from, $to);
         $costHealth = (float) HealthCheck::whereBetween('intervention_date', [$from, $to])->sum('cost');
         $costLabor  = (float) Payslip::whereHas('period', fn ($q) => $q->whereBetween('start_date', [$from, $to]))
             ->sum('net_salary');
         $costWater  = (float) WaterReading::whereBetween('reading_date', [$from, $to])->sum('cost');
-        $costEnergy = (float) EnergyReading::whereBetween('reading_date', [$from, $to])->sum('cost');
-        $costFuel   = (float) FuelPurchase::whereBetween('purchase_date', [$from, $to])->sum('total_cost');
+
+        // Énergie : on ne compte au P&L que l'énergie ACHETÉE en cash hors carburant
+        // — l'électricité réseau (EDG) et l'appoint solaire. Le coût des relevés de
+        // GROUPES électrogènes est une estimation du gasoil brûlé : ce gasoil est
+        // déjà porté par la ligne « Carburant » (registre des dépenses, base achats).
+        // On exclut donc les groupes ici pour ne pas compter le carburant deux fois.
+        // (Le coût estimé des groupes reste exploité côté analytique : coût/kWh, coût/h.)
+        $costEnergy = (float) EnergyReading::query()
+            ->join('energy_sources', 'energy_sources.id', '=', 'energy_readings.energy_source_id')
+            ->whereBetween('energy_readings.reading_date', [$from, $to])
+            ->where('energy_sources.type', '!=', 'groupe')
+            ->sum('energy_readings.cost');
 
         // Dépenses diverses validées (registre des dépenses), ventilées par catégorie.
         $expensesByCategory = Expense::validated()
@@ -196,18 +211,28 @@ class ReportController extends Controller
             ->groupBy('category')
             ->pluck('total', 'category');
 
+        // Gasoil : tenu dans le registre des dépenses (catégorie « carburant »),
+        // posté automatiquement par le module Énergie à chaque achat de cuve. On
+        // le lit ici comme poste dédié et on l'exclut de la ventilation générique
+        // plus bas pour ne JAMAIS le compter deux fois.
+        $costFuel = (float) ($expensesByCategory['carburant'] ?? 0);
+
         $costs = [
             'Achats animaux (lots)'   => $costAcquisition,
             'Aliment'                 => $costFeed,
             'Santé / prophylaxie'     => $costHealth,
             'Main d\'œuvre (paie)'    => $costLabor,
             'Eau'                     => $costWater,
-            'Énergie'                 => $costEnergy,
-            'Gasoil'                  => $costFuel,
+            'Énergie réseau (EDG)'    => $costEnergy,
+            'Carburant'               => $costFuel,
         ];
 
-        // Chaque catégorie de dépense devient une ligne de charge dédiée.
+        // Chaque catégorie de dépense devient une ligne de charge dédiée
+        // (le carburant est déjà porté par la ligne « Carburant » ci-dessus).
         foreach ($expensesByCategory as $category => $total) {
+            if ($category === 'carburant') {
+                continue;
+            }
             $label = 'Dépenses : ' . (Expense::CATEGORIES[$category] ?? ucfirst((string) $category));
             $costs[$label] = ($costs[$label] ?? 0) + (float) $total;
         }
@@ -237,6 +262,39 @@ class ReportController extends Controller
             'from', 'to', 'revenue', 'totalRevenue',
             'costs', 'totalCosts', 'netResult', 'marginPct', 'speciesMargin', 'cropMargin'
         );
+    }
+
+    /**
+     * Coût de l'aliment CONSOMMÉ sur la période (COGS aliment) — principe de
+     * rattachement des charges. Chaque consommation de pointage est valorisée au
+     * coût figé à la saisie (feed_unit_cost, cohérent avec la fiche lot) ; à
+     * défaut (données antérieures au snapshot), au CMP courant de l'article. Ne
+     * dépend donc PAS des achats : l'aliment produit en interne est bien compté.
+     */
+    private function feedConsumedCost(Carbon $from, Carbon $to): float
+    {
+        // Carte de repli : CMP courant par nom d'article / type d'aliment.
+        $cmpByName = [];
+        foreach (\App\Models\Stock::where('category', \App\Models\Stock::CAT_CONSO)->get() as $s) {
+            $cmp = (float) ($s->last_unit_price ?? $s->unit_price ?? 0);
+            if ($cmp <= 0) continue;
+            if ($s->item_name) $cmpByName[trim($s->item_name)] = $cmp;
+            if ($s->feed_type) $cmpByName[trim($s->feed_type)] = $cmp;
+        }
+
+        $total = 0.0;
+        \App\Models\DailyCheck::whereBetween('check_date', [$from, $to])
+            ->where('feed_consumed', '>', 0)
+            ->get(['feed_consumed', 'feed_unit_cost', 'feed_type'])
+            ->each(function ($f) use (&$total, $cmpByName) {
+                $snapshot = (float) ($f->feed_unit_cost ?? 0);
+                $unitCost = $snapshot > 0
+                    ? $snapshot
+                    : (float) ($cmpByName[trim((string) $f->feed_type)] ?? 0);
+                $total += (float) $f->feed_consumed * $unitCost;
+            });
+
+        return round($total, 2);
     }
 
     /**
@@ -335,6 +393,49 @@ class ReportController extends Controller
         if (Gate::denies('elevage.L')) return back()->with('error', 'Accès restreint.');
 
         return view('reports.health_finance', $this->buildHealthFinanceStats($request));
+    }
+
+    /**
+     * Rapport sanitaire : analyse des incidents par maladie, gravité, bâtiment
+     * et par mois (saisonnalité) sur une période. Aide à repérer les pathologies
+     * récurrentes et les foyers (bâtiments à risque).
+     */
+    public function healthIncidentsReport(Request $request): View
+    {
+        if (Gate::denies('elevage.L')) return back()->with('error', 'Accès restreint.');
+
+        $from = $request->filled('from') ? Carbon::parse($request->from)->startOfDay() : now()->subDays(90)->startOfDay();
+        $to   = $request->filled('to') ? Carbon::parse($request->to)->endOfDay() : now()->endOfDay();
+
+        $incidents = HealthIncident::with(['building', 'batch'])
+            ->whereBetween('incident_date', [$from->toDateString(), $to->toDateString()])
+            ->get();
+
+        $byDisease = $incidents
+            ->groupBy(fn ($i) => $i->suspected_disease ?: 'Non diagnostiqué')
+            ->map(fn ($g) => [
+                'count'     => $g->count(),
+                'mortality' => (int) $g->sum('mortality_count'),
+                'cost'      => (float) $g->sum('treatment_cost'),
+            ])
+            ->sortByDesc('count');
+
+        $bySeverity = $incidents->groupBy('severity')->map->count();
+        $byBuilding = $incidents->groupBy(fn ($i) => $i->building->name ?? '—')->map->count()->sortDesc();
+        $byMonth    = $incidents->groupBy(fn ($i) => optional($i->incident_date)->format('Y-m'))->map->count()->sortKeys();
+
+        $resolvedTimes = $incidents->where('status', 'resolu')->filter(fn ($i) => $i->resolved_at && $i->incident_date)
+            ->map(fn ($i) => $i->incident_date->startOfDay()->diffInDays($i->resolved_at->startOfDay()));
+
+        $summary = [
+            'total'               => $incidents->count(),
+            'open'                => $incidents->where('status', '!=', 'resolu')->count(),
+            'mortality'           => (int) $incidents->sum('mortality_count'),
+            'cost'                => (float) $incidents->sum('treatment_cost'),
+            'avg_resolution_days' => $resolvedTimes->isNotEmpty() ? round($resolvedTimes->avg(), 1) : null,
+        ];
+
+        return view('reports.health-incidents', compact('from', 'to', 'incidents', 'byDisease', 'bySeverity', 'byBuilding', 'byMonth', 'summary'));
     }
 
     /**

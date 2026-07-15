@@ -1,6 +1,6 @@
 <x-app-layout>
     <div class="max-w-3xl mx-auto py-12 px-6 italic font-bold text-left">
-        <a href="{{ route('utilities.water.sources') }}" class="text-xs text-slate-400 uppercase tracking-widest hover:text-slate-900 mb-6 inline-block"><i class="fa-solid fa-arrow-left mr-2"></i>{{ __("Retour") }}</a>
+        <x-back :to="route('utilities.water.sources')" class="mb-6" />
 
         <div class="bg-cyan-50 p-10 rounded-[3rem] border border-cyan-200">
             <h2 class="text-2xl font-black text-cyan-700 uppercase tracking-tighter mb-8"><i class="fa-solid fa-pen mr-2"></i> {{ __("Modifier la source d'eau") }}</h2>

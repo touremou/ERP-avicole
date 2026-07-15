@@ -75,10 +75,14 @@ class ProductionNormSeeder extends Seeder
 
     /**
      * Fabrique une ligne de norme.
+     *
+     * $guide (optionnel) : colonnes détaillées issues des fiches officielles
+     * de souche — fourchettes conso/poids, uniformité cible, programme
+     * lumineux (heures + lux), températures bâtiment.
      */
-    private function norm(string $type, int $week, string $phase, string $model, float $weight, ?float $feed, ?float $water, float $laying = 0): array
+    private function norm(string $type, int $week, string $phase, string $model, float $weight, ?float $feed, ?float $water, float $laying = 0, array $guide = []): array
     {
-        return [
+        return array_merge([
             'batch_type'         => $type,
             'week_number'        => $week,
             'phase_name'         => $phase,
@@ -87,6 +91,64 @@ class ProductionNormSeeder extends Seeder
             'target_feed_daily'  => $feed,
             'target_water_daily' => $water,
             'target_laying_rate' => $laying,
+        ], $guide);
+    }
+
+    /**
+     * Merge un guide de CONDUITE STANDARD dans des lignes de normes, sans
+     * écraser une valeur déjà posée (la fiche officielle de la souche prime —
+     * cf. layerISABrown, calé sur le guide Hendrix).
+     *
+     * Sources : schémas communs aux guides commerciaux (programme lumineux
+     * dégressif pondeuse, 23L:1D broiler première semaine, dégression de
+     * température −2 à −3 °C/semaine, homogénéité ≥ 80 %). À CALER sur la
+     * fiche officielle de chaque souche dès réception (même motif qu'ISA).
+     */
+    private function applyGuide(array $rows, string $guideType): array
+    {
+        return array_map(function (array $row) use ($guideType) {
+            $guide = $guideType === 'broiler'
+                ? $this->standardBroilerGuide((int) $row['week_number'])
+                : $this->standardLayerGuide((int) $row['week_number']);
+
+            return array_merge($guide, $row);
+        }, $rows);
+    }
+
+    /** Conduite standard PONDEUSE commerciale (élevage dégressif puis stimulation). */
+    private function standardLayerGuide(int $week): array
+    {
+        [$hours, $luxMin, $luxMax, $tMin, $tMax] = match (true) {
+            $week === 1  => [18.0, 30, 40, 31, 33],
+            $week <= 3   => [15.0, 10, 20, 26, 30],
+            $week <= 6   => [12.0, 10, 10, 17, 23],
+            $week <= 16  => [10.0, 10, 10, 17, 20],
+            $week === 17 => [12.0, 10, 20, 17, 20],
+            $week <= 19  => [13.0, 15, 20, 17, 20],
+            $week <= 21  => [15.0, 15, 20, 17, 25],
+            default      => [16.0, 15, 20, 17, 25],
+        };
+
+        return [
+            'light_hours' => $hours, 'light_lux_min' => $luxMin, 'light_lux_max' => $luxMax,
+            'temp_min_c' => $tMin, 'temp_max_c' => $tMax, 'uniformity_target' => 80,
+        ];
+    }
+
+    /** Conduite standard BROILER (23L:1D en démarrage, lumière réduite ensuite). */
+    private function standardBroilerGuide(int $week): array
+    {
+        [$hours, $luxMin, $luxMax, $tMin, $tMax] = match (true) {
+            $week === 1 => [23.0, 30, 40, 30, 32],
+            $week === 2 => [20.0, 20, 25, 27, 29],
+            $week === 3 => [18.0, 10, 15, 24, 26],
+            $week === 4 => [18.0, 5, 10, 21, 23],
+            default     => [18.0, 5, 10, 18, 21],
+        };
+
+        return [
+            'light_hours' => $hours, 'light_lux_min' => $luxMin, 'light_lux_max' => $luxMax,
+            'temp_min_c' => $tMin, 'temp_max_c' => $tMax, 'uniformity_target' => 80,
         ];
     }
 
@@ -94,11 +156,11 @@ class ProductionNormSeeder extends Seeder
     // VOLAILLE — CHAIR
     // ─────────────────────────────────────────────────────────────
 
-    /** Poulet de chair Ross 308 (objectifs « tel qu'éclos »). */
+    /** Poulet de chair Ross 308 (objectifs « tel qu'éclos ») + conduite standard broiler. */
     private function broilerRoss308(): array
     {
         $m = 'Ross 308';
-        return [
+        return $this->applyGuide([
             $this->norm('chair', 1, 'Démarrage',  $m, 190,  26, 50),
             $this->norm('chair', 2, 'Démarrage',  $m, 490,  56, 105),
             $this->norm('chair', 3, 'Croissance', $m, 960,  95, 175),
@@ -106,14 +168,14 @@ class ProductionNormSeeder extends Seeder
             $this->norm('chair', 5, 'Finition',   $m, 2200, 175, 320),
             $this->norm('chair', 6, 'Finition',   $m, 2850, 200, 365),
             $this->norm('chair', 7, 'Finition',   $m, 3400, 215, 390),
-        ];
+        ], 'broiler');
     }
 
-    /** Poulet de chair Cobb 500. */
+    /** Poulet de chair Cobb 500 + conduite standard broiler. */
     private function broilerCobb500(): array
     {
         $m = 'Cobb 500';
-        return [
+        return $this->applyGuide([
             $this->norm('chair', 1, 'Démarrage',  $m, 185,  25, 48),
             $this->norm('chair', 2, 'Démarrage',  $m, 470,  54, 100),
             $this->norm('chair', 3, 'Croissance', $m, 940,  92, 170),
@@ -121,7 +183,7 @@ class ProductionNormSeeder extends Seeder
             $this->norm('chair', 5, 'Finition',   $m, 2150, 172, 315),
             $this->norm('chair', 6, 'Finition',   $m, 2800, 198, 360),
             $this->norm('chair', 7, 'Finition',   $m, 3350, 212, 385),
-        ];
+        ], 'broiler');
     }
 
     /** Poulet local « Cou Nu » (souche rustique, croissance lente, Guinée). */
@@ -155,31 +217,92 @@ class ProductionNormSeeder extends Seeder
     // VOLAILLE — PONTE
     // ─────────────────────────────────────────────────────────────
 
-    /** Pondeuse ISA Brown : élevage poulette + cycle de ponte. */
+    /**
+     * Pondeuse ISA Brown : élevage poulette S1-18 d'après le TABLEAU D'ÉLEVAGE
+     * officiel Hendrix Genetics (fiche L-71-50-1) — fourchettes conso/poids
+     * exactes, programme lumineux dégressif (paliers puis stimulation +2 h au
+     * poids seuil ~1 350 g), intensités lumineuses et températures bâtiment.
+     * Uniformité cible : ≥ 80 % des sujets à ±10 % du poids moyen.
+     * Cycle de ponte 18-90 sem : pic 96 %, 50 % de ponte à 144 j, viabilité
+     * 94 %, 417 œufs/poule départ (fiche produit ISA Brown).
+     */
     private function layerISABrown(): array
     {
         $m = 'ISA Brown';
-        return [
-            $this->norm('ponte', 1,  'Démarrage',  $m, 70,   13,  26,  0),
-            $this->norm('ponte', 6,  'Croissance', $m, 480,  42,  85,  0),
-            $this->norm('ponte', 12, 'Croissance', $m, 950,  62,  125, 0),
-            $this->norm('ponte', 17, 'Pré-ponte',  $m, 1380, 75,  150, 0),
-            $this->norm('ponte', 18, 'Pré-ponte',  $m, 1450, 82,  165, 5),
-            $this->norm('ponte', 20, 'Ponte',      $m, 1550, 95,  190, 25),
-            $this->norm('ponte', 22, 'Ponte',      $m, 1620, 110, 220, 75),
-            $this->norm('ponte', 25, 'Ponte',      $m, 1750, 115, 230, 92),
-            $this->norm('ponte', 30, 'Ponte',      $m, 1850, 118, 236, 95),
-            $this->norm('ponte', 40, 'Ponte',      $m, 1920, 120, 240, 93),
-            $this->norm('ponte', 52, 'Ponte',      $m, 1960, 122, 244, 88),
-            $this->norm('ponte', 72, 'Réforme',    $m, 2000, 120, 240, 78),
+
+        // [sem, phase, conso min-max g/j, poids min-max g, h lumière, lux min-max, T° min-max]
+        $rearing = [
+            [1,  'Démarrage',  10, 12, 65,   68,   18.0, 30, 40, 31, 33],
+            [2,  'Démarrage',  17, 19, 132,  138,  16.0, 20, 30, 28, 30],
+            [3,  'Démarrage',  24, 26, 209,  219,  15.0, 10, 20, 26, 28],
+            [4,  'Croissance', 30, 32, 294,  309,  14.0, 10, 10, 23, 25],
+            [5,  'Croissance', 36, 38, 386,  406,  13.0, 10, 10, 21, 23],
+            [6,  'Croissance', 41, 43, 482,  507,  12.0, 10, 10, 17, 20],
+            [7,  'Croissance', 46, 48, 582,  611,  11.0, 10, 10, 17, 20],
+            [8,  'Croissance', 50, 52, 682,  717,  10.0, 10, 10, 17, 20],
+            [9,  'Croissance', 53, 55, 783,  823,  10.0, 10, 10, 17, 20],
+            [10, 'Croissance', 57, 59, 882,  928,  10.0, 10, 10, 17, 20],
+            [11, 'Croissance', 60, 62, 980,  1030, 10.0, 10, 10, 17, 20],
+            [12, 'Croissance', 63, 65, 1074, 1129, 10.0, 10, 10, 17, 20],
+            [13, 'Croissance', 66, 68, 1163, 1223, 10.0, 10, 10, 17, 20],
+            [14, 'Croissance', 69, 71, 1248, 1312, 10.0, 10, 10, 17, 20],
+            [15, 'Croissance', 72, 74, 1327, 1396, 10.0, 10, 10, 17, 20],
+            [16, 'Croissance', 77, 79, 1401, 1473, 10.0, 10, 10, 17, 20],
+            // Stimulation lumineuse (+2 h) dès le poids idéal (~1 350 g standard).
+            [17, 'Pré-ponte',  80, 82, 1468, 1543, 12.0, 10, 20, 17, 20],
+            [18, 'Pré-ponte',  84, 86, 1528, 1607, 13.0, 15, 20, 17, 20],
         ];
+
+        $rows = [];
+        foreach ($rearing as [$week, $phase, $feedMin, $feedMax, $wMin, $wMax, $hours, $luxMin, $luxMax, $tMin, $tMax]) {
+            $feed   = round(($feedMin + $feedMax) / 2, 1);
+            $weight = round(($wMin + $wMax) / 2);
+
+            $rows[] = $this->norm('ponte', $week, $phase, $m, $weight, $feed, $feed * 2, $week >= 18 ? 5 : 0, [
+                'feed_min_daily'    => $feedMin,
+                'feed_max_daily'    => $feedMax,
+                'weight_min'        => $wMin,
+                'weight_max'        => $wMax,
+                'uniformity_target' => 80,
+                'light_hours'       => $hours,
+                'light_lux_min'     => $luxMin,
+                'light_lux_max'     => $luxMax,
+                'temp_min_c'        => $tMin,
+                'temp_max_c'        => $tMax,
+            ]);
+        }
+
+        // Cycle de ponte : montée 14 → 16 h de lumière, 15-20 lux, bâtiment
+        // tempéré. Courbe calée sur la fiche produit (50 % à 144 j ≈ S20-21,
+        // pic 96 % vers S25-30, persistance longue).
+        $laying = [
+            [20, 'Ponte',   1550, 95,  25, 14.0],
+            [22, 'Ponte',   1620, 110, 75, 15.0],
+            [25, 'Ponte',   1750, 115, 96, 16.0],
+            [30, 'Ponte',   1850, 118, 95, 16.0],
+            [40, 'Ponte',   1920, 120, 93, 16.0],
+            [52, 'Ponte',   1960, 122, 88, 16.0],
+            [72, 'Réforme', 2000, 120, 78, 16.0],
+        ];
+        foreach ($laying as [$week, $phase, $weight, $feed, $rate, $hours]) {
+            $rows[] = $this->norm('ponte', $week, $phase, $m, $weight, $feed, $feed * 2, $rate, [
+                'uniformity_target' => 80,
+                'light_hours'       => $hours,
+                'light_lux_min'     => 15,
+                'light_lux_max'     => 20,
+                'temp_min_c'        => 17,
+                'temp_max_c'        => 25,
+            ]);
+        }
+
+        return $rows;
     }
 
-    /** Pondeuse Lohmann Brown : élevage poulette + cycle de ponte. */
+    /** Pondeuse Lohmann Brown : élevage poulette + cycle de ponte + conduite standard. */
     private function layerLohmannBrown(): array
     {
         $m = 'Lohmann Brown';
-        return [
+        return $this->applyGuide([
             $this->norm('ponte', 1,  'Démarrage',  $m, 70,   13,  26,  0),
             $this->norm('ponte', 6,  'Croissance', $m, 480,  42,  85,  0),
             $this->norm('ponte', 12, 'Croissance', $m, 980,  63,  126, 0),
@@ -191,14 +314,14 @@ class ProductionNormSeeder extends Seeder
             $this->norm('ponte', 40, 'Ponte',      $m, 1950, 121, 242, 92),
             $this->norm('ponte', 52, 'Ponte',      $m, 1980, 122, 244, 87),
             $this->norm('ponte', 72, 'Réforme',    $m, 2020, 120, 240, 76),
-        ];
+        ], 'layer');
     }
 
-    /** Pondeuse Lohmann LSL (œuf blanc, format léger). */
+    /** Pondeuse Lohmann LSL (œuf blanc, format léger) + conduite standard. */
     private function layerLohmannLSL(): array
     {
         $m = 'Lohmann LSL';
-        return [
+        return $this->applyGuide([
             $this->norm('ponte', 1,  'Démarrage',  $m, 65,   12,  24,  0),
             $this->norm('ponte', 6,  'Croissance', $m, 420,  38,  76,  0),
             $this->norm('ponte', 12, 'Croissance', $m, 870,  58,  116, 0),
@@ -210,7 +333,7 @@ class ProductionNormSeeder extends Seeder
             $this->norm('ponte', 40, 'Ponte',      $m, 1620, 114, 228, 93),
             $this->norm('ponte', 52, 'Ponte',      $m, 1680, 115, 230, 88),
             $this->norm('ponte', 72, 'Réforme',    $m, 1750, 113, 226, 77),
-        ];
+        ], 'layer');
     }
 
     /** Caille japonaise (Coturnix) : ponte précoce. */

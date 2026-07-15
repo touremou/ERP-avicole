@@ -1,18 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 text-left">
-            <div class="flex items-center gap-5">
-                <a href="{{ route('sales.index') }}" class="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-900 hover:text-white transition-all no-underline">
-                    <i class="fa-solid fa-arrow-left"></i>
-                </a>
-                <div>
-                    <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">{{ $sale->reference }}</h2>
-                    <p class="text-[10px] font-black uppercase tracking-[0.2em] mt-2 italic {{ $sale->type === 'facture' ? 'text-purple-600' : 'text-teal-600' }}">
-                        {{ $sale->type === 'facture' ? __("Facture TVA") : __("Bon de Livraison") }} — {{ $sale->sale_date->translatedFormat('d F Y') }}
-                    </p>
-                </div>
-            </div>
-            <div class="flex gap-3">
+        <x-page-header :title="$sale->reference" :subtitle="__($sale->type_label) . ' — ' . $sale->sale_date->translatedFormat('d F Y')" icon="fa-file-invoice" accent="teal" :back="route('sales.index')">
+            <x-slot name="actions">
                 @if($sale->status === 'brouillon')
                     <form method="POST" action="{{ route('sales.validate', $sale) }}">
                         @csrf @method('PUT')
@@ -29,28 +18,27 @@
                         </button>
                     </form>
                 @endif
-                <a href="{{ route('sales.print', $sale) }}" target="_blank" class="bg-white border border-slate-200 px-6 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest text-slate-600 hover:bg-slate-50 transition-all no-underline flex items-center gap-2">
-                    <i class="fa-solid fa-print"></i> {{ __("Imprimer") }}
+                @if(in_array($sale->status, ['valide', 'livre']))
+                    @can('commerce.M')
+                    <a href="{{ route('sales.return.create', $sale) }}" class="bg-orange-50 border border-orange-200 text-orange-600 px-6 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-orange-100 transition-all no-underline flex items-center gap-2">
+                        <i class="fa-solid fa-rotate-left"></i> {{ __("Retour") }}
+                    </a>
+                    @endcan
+                @endif
+                <a href="{{ route('sales.print', ['sale' => $sale, 'format' => 'a4']) }}" target="_blank" class="bg-white border border-slate-200 px-6 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest text-slate-600 hover:bg-slate-50 transition-all no-underline flex items-center gap-2">
+                    <i class="fa-solid fa-print"></i> {{ __("Imprimer A4") }}
                 </a>
-            </div>
-        </div>
+                <a href="{{ route('sales.print', ['sale' => $sale, 'format' => 'thermal']) }}" target="_blank" class="bg-white border border-slate-200 px-6 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest text-slate-600 hover:bg-slate-50 transition-all no-underline flex items-center gap-2">
+                    <i class="fa-solid fa-receipt"></i> {{ __("Ticket") }}
+                </a>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-10">
         <div class="max-w-5xl mx-auto sm:px-6 lg:px-8 italic font-bold text-left">
 
-            @foreach(['success', 'warning', 'error'] as $msg)
-                @if(session($msg))
-                    <div @class(['mb-8 p-5 rounded-[2rem] font-black text-[10px] uppercase tracking-[0.2em] shadow-xl flex items-center italic',
-                        'bg-emerald-500 text-white' => $msg === 'success',
-                        'bg-amber-500 text-white' => $msg === 'warning',
-                        'bg-red-500 text-white' => $msg === 'error',
-                    ])>
-                        <i class="fa-solid fa-{{ $msg === 'success' ? 'check-double' : ($msg === 'warning' ? 'triangle-exclamation' : 'circle-xmark') }} mr-3 text-lg"></i>
-                        {{ session($msg) }}
-                    </div>
-                @endif
-            @endforeach
+            <x-flash />
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
                 {{-- STATUT --}}
@@ -116,7 +104,7 @@
                         <tr>
                             <td class="px-6 py-4">
                                 <p class="text-xs font-black text-slate-800 uppercase">{{ $item->product_name }}</p>
-                                <p class="text-[8px] text-slate-400 font-black uppercase tracking-widest">{{ str_replace('_', ' ', $item->product_type) }}</p>
+                                <p class="text-[8px] text-slate-400 font-black uppercase tracking-widest">{{ $item->type_label }}</p>
                             </td>
                             <td class="px-4 py-4 text-center text-sm font-black text-slate-900">{{ $item->quantity }}</td>
                             <td class="px-4 py-4 text-center text-[9px] font-black text-slate-500 uppercase">{{ $item->unit }}</td>
@@ -166,8 +154,35 @@
 
                 {{-- Formulaire nouveau paiement --}}
                 @if($sale->payment_status !== 'solde' && !in_array($sale->status, ['brouillon', 'annule']))
+                @can('commerce.C')
+                @if($hasOpenCashSession ?? false)
+                {{-- Encaissement EXPRESS du solde complet → ticket (caisse). N'apparaît
+                     que si une session de caisse est ouverte (le paiement passe par la
+                     caisse). Sinon, utiliser l'enregistrement de paiement ci-dessous. --}}
+                <form method="POST" action="{{ route('pos.encash', $sale) }}" class="bg-teal-50 p-5 rounded-[2.5rem] border border-teal-200 mb-4">
+                    @csrf
+                    <h3 class="text-[10px] font-black uppercase text-teal-600 tracking-widest mb-2">{{ __("Encaissement express (caisse)") }}</h3>
+                    <p class="text-[9px] font-bold text-teal-500 mb-3">{{ __("Solde dû") }} : <span class="font-black">{{ number_format($sale->remaining_amount, 0, ',', ' ') }} {{ currency() }}</span></p>
+                    <div class="flex gap-2">
+                        <select name="method" required class="flex-1 bg-white border-none rounded-xl p-3 text-[10px] font-black uppercase shadow-sm outline-none">
+                            <option value="especes">{{ __("Espèces") }}</option>
+                            <option value="orange_money">{{ __("Orange Money") }}</option>
+                            <option value="virement">{{ __("Virement") }}</option>
+                            <option value="cheque">{{ __("Chèque") }}</option>
+                        </select>
+                        <button type="submit" class="bg-teal-600 text-white px-5 py-3 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-teal-700 transition-all border-none cursor-pointer shrink-0">
+                            <i class="fa-solid fa-cash-register mr-1"></i> {{ __("Solde → ticket") }}
+                        </button>
+                    </div>
+                </form>
+                @else
+                <a href="{{ route('cash-register.index') }}" class="block bg-slate-50 p-3 rounded-2xl border border-slate-200 mb-4 text-center text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-teal-600 transition-all no-underline italic">
+                    <i class="fa-solid fa-lock mr-1"></i> {{ __("Caisse fermée — ouvrir une session pour l'encaissement express") }}
+                </a>
+                @endif
+                @endcan
                 <div class="bg-emerald-50 p-6 rounded-[2.5rem] border border-emerald-200">
-                    <h3 class="text-[10px] font-black uppercase text-emerald-600 tracking-widest mb-4">{{ __("Enregistrer un paiement") }}</h3>
+                    <h3 class="text-[10px] font-black uppercase text-emerald-600 tracking-widest mb-4">{{ __("Enregistrer un paiement (partiel)") }}</h3>
                     <form method="POST" action="{{ route('payments.store') }}" class="space-y-4">
                         @csrf
                         <input type="hidden" name="sale_id" value="{{ $sale->id }}">
@@ -183,6 +198,12 @@
                             <input type="date" name="payment_date" value="{{ now()->toDateString() }}" required
                                 class="bg-white border-none rounded-2xl p-3 text-[10px] font-black shadow-sm outline-none">
                         </div>
+                        @if(!empty($treasuryAccounts) && $treasuryAccounts->isNotEmpty())
+                        <select name="treasury_account_id" class="w-full bg-white border-none rounded-2xl p-3 text-[10px] font-black uppercase shadow-sm outline-none">
+                            <option value="">{{ __("Compte : auto (selon le mode)") }}</option>
+                            @foreach($treasuryAccounts as $acc)<option value="{{ $acc->id }}">{{ $acc->name }}</option>@endforeach
+                        </select>
+                        @endif
                         <button type="submit" class="w-full bg-emerald-500 text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-600 transition-all border-none cursor-pointer">
                             <i class="fa-solid fa-check mr-1"></i> {{ __("Encaisser") }}
                         </button>

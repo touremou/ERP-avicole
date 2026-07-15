@@ -30,7 +30,7 @@
                         {{ __("Valeur Mat. Premières") }}
                         <i class="fa-solid fa-circle-info text-slate-300 group-hover:text-blue-500 transition-colors cursor-help" title="{{ __('Valorisation basée sur le Coût Moyen Unitaire Pondéré (CMUP) des derniers achats') }}"></i>
                     </p>
-                    <p class="text-base font-black text-slate-900 leading-none">{{ number_format($rawMaterialsValue ?? 0, 0, ',', ' ') }} <small class="text-[9px] opacity-40">GNF</small></p>
+                    <p class="text-base font-black text-slate-900 leading-none">{{ number_format($rawMaterialsValue ?? 0, 0, ',', ' ') }} <small class="text-[9px] opacity-40">{{ currency() }}</small></p>
                 </div>
                 @endcan
                 
@@ -41,7 +41,7 @@
                         {{ __("Encours Clients") }}
                         <i class="fa-solid fa-circle-info text-slate-300 group-hover:text-rose-500 transition-colors cursor-help" title="{{ __('Montant des ventes non soldées encore dû à la ferme (créances clients)') }}"></i>
                     </p>
-                    <p @class(['text-base font-black leading-none', 'text-rose-600' => ($encoursClients ?? 0) > 0, 'text-slate-900' => ($encoursClients ?? 0) <= 0])>{{ number_format($encoursClients ?? 0, 0, ',', ' ') }} <small class="text-[9px] opacity-40">GNF</small></p>
+                    <p @class(['text-base font-black leading-none', 'text-rose-600' => ($encoursClients ?? 0) > 0, 'text-slate-900' => ($encoursClients ?? 0) <= 0])>{{ number_format($encoursClients ?? 0, 0, ',', ' ') }} <small class="text-[9px] opacity-40">{{ currency() }}</small></p>
                 </div>
 
                 {{-- ENRICHI : Info bulle Marge + Changement de label --}}
@@ -50,18 +50,26 @@
                         {{ __("Marge Nette Mensuelle") }}
                         <i class="fa-solid fa-circle-info text-slate-600 group-hover:text-emerald-300 transition-colors cursor-help" title="{{ __('CA du mois (ventes validées + lait) − charges réelles (aliment + santé + dépenses validées)') }}"></i>
                     </p>
-                    <p class="text-base font-black text-white leading-none">{{ number_format($safeProfit ?? 0, 0, ',', ' ') }} <small class="text-[9px] opacity-40">GNF</small></p>
+                    <p class="text-base font-black text-white leading-none">{{ number_format($safeProfit ?? 0, 0, ',', ' ') }} <small class="text-[9px] opacity-40">{{ currency() }}</small></p>
                 </div>
                 @endcan
+
+                <a href="{{ route('dashboard.config') }}" title="{{ __('Personnaliser mon tableau de bord') }}"
+                   class="w-11 h-11 bg-white border border-slate-200 rounded-2xl flex items-center justify-center text-slate-400 hover:text-slate-900 hover:border-slate-300 transition-all no-underline shadow-sm shrink-0">
+                    <i class="fa-solid fa-sliders"></i>
+                </a>
             </div>
         </div>
     </x-slot>
 
     <div class="py-10">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 italic font-bold text-left">
-            
+
+            {{-- ABONNEMENT : carte « Durée de validité » (visible si licence armée) --}}
+            @include('dashboard._license-card')
+
             {{-- BANDEAU D'ALERTES PRIORISÉ (centre de contrôle unifié) --}}
-            @if(!empty($priorityAlerts) && $priorityAlerts->isNotEmpty())
+            @if(!empty($priorityAlerts) && $priorityAlerts->isNotEmpty() && dashboard_block_visible('priority_alerts'))
             @php
                 $alertStyles = [
                     'critique'  => ['dot' => 'bg-rose-500', 'badge' => 'bg-rose-50 text-rose-600 border-rose-100', 'icon' => 'text-rose-500'],
@@ -82,10 +90,10 @@
                                 <span class="relative inline-flex rounded-full h-3 w-3 {{ $critiqueCount > 0 ? 'bg-rose-500' : 'bg-amber-500' }}"></span>
                             </span>
                             <h3 class="text-[11px] font-black uppercase text-slate-800 tracking-[0.2em] italic">
-                                {{ __("Centre de Contrôle") }}
+                                {{ __("Alertes Critiques") }}
                             </h3>
-                            <span class="text-[9px] font-black uppercase px-3 py-1 rounded-full border {{ $critiqueCount > 0 ? 'bg-rose-50 text-rose-600 border-rose-100' : 'bg-amber-50 text-amber-600 border-amber-100' }}">
-                                {{ $priorityAlerts->count() }} {{ __("alerte(s)") }}@if($critiqueCount > 0) · {{ $critiqueCount }} {{ __("critique(s)") }}@endif
+                            <span class="text-[9px] font-black uppercase px-3 py-1 rounded-full border bg-rose-50 text-rose-600 border-rose-100">
+                                {{ $priorityAlerts->count() }} {{ __("critique(s)") }}
                             </span>
                         </div>
                         <i class="fa-solid fa-chevron-down text-slate-300 transition-transform" :class="{ 'rotate-180': open }"></i>
@@ -111,6 +119,7 @@
             @endif
 
             {{-- CENTRE DE CONTRÔLE DES ALERTES --}}
+            @if(dashboard_block_visible('control_center'))
             <div class="mb-10 space-y-4">
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
@@ -297,9 +306,10 @@
                     </div>
                 </div>
             </div>
+            @endif
 
             {{-- ALERTE STOCK SOUS SEUIL — tout article passé sous alert_threshold --}}
-            @if(($lowStocks ?? collect())->isNotEmpty())
+            @if(($lowStocks ?? collect())->isNotEmpty() && dashboard_block_visible('low_stock'))
             <div class="mb-10 bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
                 <div class="flex items-center justify-between mb-4">
                     <h4 class="text-[10px] font-black uppercase text-slate-400 tracking-wider flex items-center gap-2">
@@ -322,6 +332,39 @@
                             <div class="text-right shrink-0 ml-2">
                                 <p class="text-xs font-black uppercase tracking-tight leading-none">{{ number_format($s->current_quantity, 0) }} {{ $s->unit }}</p>
                                 <p class="text-[8px] font-black opacity-60 mt-1">{{ number_format($ratio, 0) }}%</p>
+                            </div>
+                        </a>
+                    @endforeach
+                </div>
+            </div>
+            @endif
+
+            {{-- ALERTE PÉREMPTION — consommables périmés ou périmant bientôt --}}
+            @if(($expiringStocks ?? collect())->isNotEmpty() && dashboard_block_visible('stock_expiry'))
+            <div class="mb-10 bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
+                <div class="flex items-center justify-between mb-4">
+                    <h4 class="text-[10px] font-black uppercase text-slate-400 tracking-wider flex items-center gap-2">
+                        <i class="fa-solid fa-hourglass-end text-rose-500"></i> {{ __("Péremption des Consommables") }}
+                    </h4>
+                    <span class="text-[8px] font-black bg-rose-600 text-white px-2 py-1 rounded-md uppercase">{{ $expiringStocks->count() }}</span>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    @foreach($expiringStocks->take(9) as $s)
+                        @php $left = $s->days_until_expiry; @endphp
+                        <a href="{{ route('stocks.index', ['category' => $s->category]) }}" @class([
+                            'flex items-center justify-between p-4 rounded-2xl border transition-all hover:scale-[1.02] no-underline',
+                            'bg-rose-50 border-rose-200 text-rose-900 animate-pulse' => $left < 0,
+                            'bg-amber-50 border-amber-200 text-amber-900' => $left >= 0,
+                        ])>
+                            <div class="min-w-0">
+                                <h5 class="text-[11px] font-black uppercase leading-none truncate">{{ $s->item_name }}</h5>
+                                <p class="text-[9px] opacity-70 uppercase font-black mt-1">
+                                    {{ $s->expiry_date?->format('d/m/Y') }}{{ $s->lot_number ? ' · '.__('Lot').' '.$s->lot_number : '' }}
+                                </p>
+                            </div>
+                            <div class="text-right shrink-0 ml-2">
+                                <p class="text-xs font-black uppercase tracking-tight leading-none">{{ $left < 0 ? __('Périmé') : $left.' j' }}</p>
+                                <p class="text-[8px] font-black opacity-60 mt-1">{{ number_format($s->current_quantity, 0) }} {{ $s->unit }}</p>
                             </div>
                         </a>
                     @endforeach
@@ -447,6 +490,7 @@
             @endif
 
             {{-- KPI ROW --}}
+            @if(dashboard_block_visible('kpi_row'))
             <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-10">
                 <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm">
                     <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 italic">{{ __("Effectif Actif") }}</p>
@@ -502,9 +546,10 @@
                 </div>
                 @endif
             </div>
+            @endif
 
             {{-- PERFORMANCE TECHNIQUE (zootechnie) --}}
-            @if(($technical['has_data'] ?? false))
+            @if(($technical['has_data'] ?? false) && dashboard_block_visible('technical'))
             <div class="mb-10">
                 <h3 class="text-[11px] font-black uppercase text-slate-800 tracking-[0.2em] italic flex items-center mb-5 px-2">
                     <span class="w-2 h-6 bg-indigo-600 rounded-full mr-3"></span> {{ __("Performance Technique") }}
@@ -536,7 +581,7 @@
                     <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
                         <p class="text-[8px] font-black text-orange-500 uppercase tracking-widest mb-2 italic">{{ __("Coût alim / kg") }}</p>
                         <p class="text-3xl font-black text-slate-900 tracking-tighter italic">{{ $technical['feed_cost_per_kg'] !== null ? number_format($technical['feed_cost_per_kg'], 0, ',', ' ') : '—' }}</p>
-                        <p class="text-[8px] text-slate-400 mt-2 uppercase font-black">GNF / kg vif</p>
+                        <p class="text-[8px] text-slate-400 mt-2 uppercase font-black">{{ currency() }} / kg vif</p>
                     </div>
                     {{-- Prix de revient œuf --}}
                     <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
@@ -545,13 +590,21 @@
                             <i class="fa-solid fa-circle-info text-slate-200 cursor-help" title="{{ __('Indicatif : (aliment + santé des lots de ponte ce mois) / œufs collectés.') }}"></i>
                         </p>
                         <p class="text-3xl font-black text-slate-900 tracking-tighter italic">{{ $technical['cost_per_egg'] !== null ? number_format($technical['cost_per_egg'], 0, ',', ' ') : '—' }}</p>
-                        <p class="text-[8px] text-slate-400 mt-2 uppercase font-black">GNF / œuf</p>
+                        <p class="text-[8px] text-slate-400 mt-2 uppercase font-black">{{ currency() }} / œuf</p>
                     </div>
                 </div>
             </div>
             @endif
 
+            {{-- Accès à la vue analytique consolidée (eau + énergie + mortalité) --}}
+            <div class="mb-4 flex justify-end">
+                <a href="{{ route('dashboard.analytics') }}" class="inline-flex items-center gap-2 px-5 py-2.5 bg-slate-900 text-white rounded-2xl text-[9px] font-black uppercase tracking-widest hover:bg-blue-600 transition-all no-underline shadow-lg italic">
+                    <i class="fa-solid fa-magnifying-glass-chart"></i> {{ __("Vue analytique consolidée") }}
+                </a>
+            </div>
+
             {{-- TENDANCES 30 JOURS (graphiques Chart.js) --}}
+            @if(dashboard_block_visible('trends'))
             <div class="mb-10 grid grid-cols-1 lg:grid-cols-3 gap-6"
                  x-data="dashboardTrends({{ Illuminate\Support\Js::from($trends ?? ['labels' => [], 'mortality' => [], 'eggs' => [], 'feed' => []]) }})">
                 <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm">
@@ -569,10 +622,11 @@
                     <div class="relative h-40"><canvas x-ref="feedChart"></canvas></div>
                 </div>
             </div>
+            @endif
 
             {{-- SYNTHÈSE FINANCIÈRE DU MOIS (droits commerce) --}}
             @can('commerce.L')
-            @if(!empty($financial))
+            @if(!empty($financial) && dashboard_block_visible('financial'))
             <div class="mb-10 bg-slate-900 rounded-[2.5rem] p-7 shadow-2xl">
                 <div class="flex items-center justify-between mb-6">
                     <h3 class="text-[11px] font-black uppercase text-white tracking-[0.2em] italic flex items-center">
@@ -583,22 +637,22 @@
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                     <div class="bg-slate-800/60 rounded-2xl p-5">
                         <p class="text-[8px] font-black text-blue-300 uppercase tracking-widest italic mb-2">{{ __("Chiffre d'affaires") }}</p>
-                        <p class="text-xl font-black text-white tracking-tighter italic">{{ number_format($financial['ca_total'], 0, ',', ' ') }}<small class="text-[9px] ml-1 opacity-40">GNF</small></p>
+                        <p class="text-xl font-black text-white tracking-tighter italic">{{ number_format($financial['ca_total'], 0, ',', ' ') }}<small class="text-[9px] ml-1 opacity-40">{{ currency() }}</small></p>
                         <p class="text-[8px] text-slate-500 mt-1 uppercase font-black">{{ number_format($financial['ca_ventes'], 0, ',', ' ') }} ventes @if($financial['ca_lait'] > 0)· {{ number_format($financial['ca_lait'], 0, ',', ' ') }} lait @endif</p>
                     </div>
                     <div class="bg-slate-800/60 rounded-2xl p-5">
                         <p class="text-[8px] font-black text-rose-300 uppercase tracking-widest italic mb-2">{{ __("Charges totales") }}</p>
-                        <p class="text-xl font-black text-white tracking-tighter italic">{{ number_format($financial['cost_total'], 0, ',', ' ') }}<small class="text-[9px] ml-1 opacity-40">GNF</small></p>
+                        <p class="text-xl font-black text-white tracking-tighter italic">{{ number_format($financial['cost_total'], 0, ',', ' ') }}<small class="text-[9px] ml-1 opacity-40">{{ currency() }}</small></p>
                         <p class="text-[8px] text-slate-500 mt-1 uppercase font-black">{{ __("Alim + santé + dépenses") }}</p>
                     </div>
                     <div class="bg-slate-800/60 rounded-2xl p-5 border-l-4 {{ $financial['net_margin'] >= 0 ? 'border-emerald-500' : 'border-rose-500' }}">
                         <p class="text-[8px] font-black text-emerald-300 uppercase tracking-widest italic mb-2">{{ __("Marge nette") }}</p>
-                        <p class="text-xl font-black {{ $financial['net_margin'] >= 0 ? 'text-emerald-400' : 'text-rose-400' }} tracking-tighter italic">{{ number_format($financial['net_margin'], 0, ',', ' ') }}<small class="text-[9px] ml-1 opacity-40">GNF</small></p>
+                        <p class="text-xl font-black {{ $financial['net_margin'] >= 0 ? 'text-emerald-400' : 'text-rose-400' }} tracking-tighter italic">{{ number_format($financial['net_margin'], 0, ',', ' ') }}<small class="text-[9px] ml-1 opacity-40">{{ currency() }}</small></p>
                         <p class="text-[8px] text-slate-500 mt-1 uppercase font-black">{{ $financial['ca_total'] > 0 ? number_format($financial['net_margin'] / $financial['ca_total'] * 100, 1) : 0 }}% {{ __("du CA") }}</p>
                     </div>
                     <div class="bg-slate-800/60 rounded-2xl p-5">
                         <p class="text-[8px] font-black text-amber-300 uppercase tracking-widest italic mb-2">{{ __("Trésorerie due") }}</p>
-                        <p class="text-xl font-black text-white tracking-tighter italic">{{ number_format($financial['receivables'], 0, ',', ' ') }}<small class="text-[9px] ml-1 opacity-40">GNF</small></p>
+                        <p class="text-xl font-black text-white tracking-tighter italic">{{ number_format($financial['receivables'], 0, ',', ' ') }}<small class="text-[9px] ml-1 opacity-40">{{ currency() }}</small></p>
                         <p class="text-[8px] text-slate-500 mt-1 uppercase font-black">{{ __("Encours clients") }}</p>
                     </div>
                 </div>

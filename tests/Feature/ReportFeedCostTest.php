@@ -70,3 +70,36 @@ test('le rapport mensuel valorise l\'aliment produit en interne (sans achat) au 
     $response->assertSee('Prix moyen/kg');
     $response->assertSee('437'); // CMP figé restitué
 });
+
+test('le compte de résultat impute l\'aliment CONSOMMÉ (pas les achats)', function () {
+    $poulet = Species::where('slug', 'poulet')->first();
+
+    $batch = Batch::factory()->create([
+        'production_type_id' => ProductionType::resolveOrCreate('chair', $poulet->id)->id,
+        'species_id'         => $poulet->id,
+        'arrival_date'       => now()->subDays(10),
+        'status'             => 'Actif',
+        'current_quantity'   => 500,
+    ]);
+
+    // Aucun achat d'aliment (FeedPurchase vide) — l'aliment vient de la
+    // provenderie. Avant le correctif, la charge « Aliment » du compte de
+    // résultat valait 0 (elle ne sommait que les achats).
+    foreach ([2, 1] as $d) {
+        DailyCheck::factory()->create([
+            'batch_id'       => $batch->id,
+            'check_date'     => now()->subDays($d),
+            'feed_consumed'  => 20,
+            'feed_type'      => 'Chair Démarrage',
+            'feed_unit_cost' => 437,
+            'mortality'      => 0,
+        ]);
+    }
+
+    // 2 × 20 kg × 437 = 17 480 GNF d'aliment consommé.
+    $this->actingAs($this->adminUser)
+        ->get(route('reports.profit_loss'))
+        ->assertOk()
+        ->assertSee('Aliment', false)
+        ->assertSee('17,480', false);
+});

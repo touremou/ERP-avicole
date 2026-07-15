@@ -9,7 +9,7 @@ class RecordMirageRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return Gate::allows('M');
+        return Gate::allows('production.M');
     }
 
     public function rules(): array
@@ -40,7 +40,7 @@ class RecordMirageRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return Gate::allows('M'); // Nécessite les droits de modification
+        return Gate::allows('production.M'); // Nécessite les droits de modification
     }
 
     public function rules(): array

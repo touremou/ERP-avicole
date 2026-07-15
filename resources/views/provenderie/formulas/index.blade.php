@@ -1,21 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex flex-col md:flex-row justify-between items-center gap-6">
-            <div class="flex items-center gap-4 text-left">
-                <div class="w-14 h-14 bg-blue-600 rounded-[1.5rem] flex items-center justify-center text-white shadow-2xl rotate-3">
-                    <i class="fa-solid fa-flask-vial text-xl"></i>
-                </div>
-                <div>
-                    <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">
-                        {{ __("Bibliothèque des Formules") }}
-                    </h2>
-                    <p class="text-[10px] font-bold text-blue-500 uppercase tracking-[0.3em] mt-2 italic leading-none">
-                        {{ __("Provenderie • Recettes & Référentiels Normés") }}
-                    </p>
-                </div>
-            </div>
-
-            <div class="flex gap-4">
+        <x-page-header :title="__('Bibliothèque des Formules')" :subtitle="__('Provenderie • Recettes & Référentiels Normés')" icon="fa-flask-vial" accent="amber">
+            <x-slot name="actions">
                 {{-- Permission L : Consultation du référentiel --}}
                 @can('provenderie.L')
                 <button onclick="document.getElementById('modalNormes').classList.remove('hidden')" 
@@ -31,8 +17,8 @@
                     <i class="fa-solid fa-plus mr-2 text-blue-400"></i> {{ __("Nouvelle Recette") }}
                 </a>
                 @endcan
-            </div>
-        </div>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-12">
@@ -48,7 +34,7 @@
                         </div>
                         <div class="text-left">
                             <p class="text-[8px] font-black text-blue-400 uppercase leading-none mb-1">{{ $norm->name }}</p>
-                            <p class="text-[10px] font-black text-slate-700 uppercase italic">{{ __("Cible") }} : {{ number_format($norm->target_price_kg, 0, ',', ' ') }} GNF/kg</p>
+                            <p class="text-[10px] font-black text-slate-700 uppercase italic">{{ __("Cible") }} : {{ number_format($norm->target_price_kg, 0, ',', ' ') }} {{ currency() }}/kg</p>
                         </div>
                     </div>
                     @empty
@@ -130,13 +116,13 @@
                                 <div class="flex justify-between items-end px-2 text-left">
                                     <span class="text-[9px] font-black text-slate-400 uppercase italic">{{ __("Coût théorique") }}</span>
                                     <div class="text-right">
-                                        <p class="text-xl font-black text-slate-900 italic tracking-tighter leading-none">{{ number_format($theoreticalCost, 0, ',', ' ') }} <small class="text-[10px]">GNF</small></p>
+                                        <p class="text-xl font-black text-slate-900 italic tracking-tighter leading-none">{{ number_format($theoreticalCost, 0, ',', ' ') }} <small class="text-[10px]">{{ currency() }}</small></p>
                                         <p @class([
                                             'text-[7px] font-black uppercase mt-1 italic',
                                             'text-emerald-600' => $diffPrice <= 0,
                                             'text-red-500' => $diffPrice > 0
                                         ])>
-                                            {{ $diffPrice <= 0 ? __('Sous la norme (-') : __('Surcoût (+') }}{{ number_format(abs($diffPrice), 0, ',', ' ') }} GNF/kg)
+                                            {{ $diffPrice <= 0 ? __('Sous la norme (-') : __('Surcoût (+') }}{{ number_format(abs($diffPrice), 0, ',', ' ') }} {{ currency() }}/kg)
                                         </p>
                                     </div>
                                 </div>
@@ -198,7 +184,7 @@
                         </div>
                         <div class="flex flex-col border-t border-slate-100 pt-2 text-left">
                             <span class="text-[8px] text-blue-500 uppercase font-black mb-1 italic">{{ __("Prix Cible") }}</span>
-                            <span class="text-sm font-black text-slate-900 italic">{{ number_format($norm->target_price_kg, 0, ',', ' ') }} GNF/kg</span>
+                            <span class="text-sm font-black text-slate-900 italic">{{ number_format($norm->target_price_kg, 0, ',', ' ') }} {{ currency() }}/kg</span>
                         </div>
                     </div>
                 </div>

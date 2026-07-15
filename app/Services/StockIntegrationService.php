@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Stock;
 use App\Models\StockMovement;
+use App\Services\UnitConverter;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -52,7 +53,8 @@ class StockIntegrationService
         string $type,
         string $notes,
         ?string $inputUnit = null,
-        ?float $unitCost = null
+        ?float $unitCost = null,
+        bool   $strictOut = false
     ): StockMovement|false {
 
         // ─── 1. RECHERCHE DE L'ARTICLE ───
@@ -64,7 +66,7 @@ class StockIntegrationService
             return false;
         }
 
-        return DB::transaction(function () use ($stock, $itemName, $category, $quantity, $type, $notes, $inputUnit, $unitCost) {
+        return DB::transaction(function () use ($stock, $itemName, $category, $quantity, $type, $notes, $inputUnit, $unitCost, $strictOut) {
 
             // ─── 2. DÉTERMINATION DE L'UNITÉ ───
             // B-17 corrigé : si $inputUnit n'est pas fourni, on logge un warning
@@ -102,6 +104,19 @@ class StockIntegrationService
                 }
                 $stock->increment('current_quantity', $quantityBase, $extra);
             } elseif ($type === 'out') {
+                // Mode STRICT (audit C — conservation de matière) : la sortie
+                // est contrôlée SOUS le verrou pris ci-dessus. Sans lui, le
+                // plafonnement à zéro faisait « disparaître » silencieusement
+                // la matière manquante (ex. transformer 500 kg avec 100 kg en
+                // stock) : aucune erreur, comptabilité matière faussée.
+                if ($strictOut && $quantityBase > (float) $stock->current_quantity + 0.0001) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'input_quantity' => "Stock insuffisant pour « {$stock->item_name} » : "
+                            . number_format((float) $stock->current_quantity, 1) . " {$stock->unit} disponibles, "
+                            . number_format($quantityBase, 1) . " {$stock->unit} demandés.",
+                    ]);
+                }
+
                 // Sécurité : ne pas descendre sous zéro
                 $newQty = max(0, (float) $stock->current_quantity - $quantityBase);
                 $stock->update(['current_quantity' => $newQty]);
@@ -209,31 +224,15 @@ class StockIntegrationService
     /**
      * Convertit la quantité saisie vers l'unité pivot du stock.
      *
-     * Unités pivots :
-     * - Catégorie 'conso'/'Aliment' : KG (1 Sac = 50 KG)
-     * - Catégorie 'oeufs' : Alvéole (1 Alvéole = 30 unités)
+     * Délègue à UnitConverter (source de vérité unique des facteurs de
+     * conversion, pilotés par les Réglages) :
+     * - Catégorie 'conso'/'Aliment' : KG (Sac → × poids du sac configuré)
+     * - Catégorie 'oeufs' : Alvéole (Unité → ÷ œufs par alvéole configuré)
      * - Autres : pas de conversion
      */
     private static function normalizeQuantity(float $quantity, string $inputUnit, string $category): float
     {
-        $inputUnit = trim($inputUnit);
-
-        if (in_array($category, [Stock::CAT_CONSO, 'Aliment'])) {
-            if (strtolower($inputUnit) === 'sac') {
-                return $quantity * 50; // 1 Sac = 50 KG
-            }
-            return $quantity; // Déjà en KG
-        }
-
-        if ($category === Stock::CAT_OEUFS) {
-            $unit = strtolower($inputUnit);
-            if (in_array($unit, ['unité', 'unite', 'piece', 'pièce'])) {
-                return $quantity / 30; // Conversion en alvéoles
-            }
-            return $quantity; // Déjà en alvéoles
-        }
-
-        return $quantity; // Litières, matériels : pas de conversion
+        return UnitConverter::toStockBase($quantity, $inputUnit, $category);
     }
 
     /**

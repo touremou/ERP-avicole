@@ -133,6 +133,15 @@ class EggProductionController extends Controller
             );
         }
 
+        // Biosécurité : quarantaine active → pas de formulaire de collecte
+        // (l'invariant serveur vit dans RecordEggCollection ; ici, UX claire).
+        if ($quarantine = $batch->activeQuarantine()) {
+            return back()->with('error',
+                "Lot {$batch->code} en QUARANTAINE sanitaire — collecte suspendue "
+                . "jusqu'à la levée (incident n°{$quarantine->id})."
+            );
+        }
+
         $today = now()->toDateString();
         $existingToday = EggProduction::where('batch_id', $batch->id)
             ->where('production_date', $today)
@@ -151,6 +160,118 @@ class EggProductionController extends Controller
 
         return redirect()->route('egg-productions.index')
             ->with('success', 'Collecte brute enregistrée.');
+    }
+
+    // ─────────────────────────────────────────────
+    // FEUILLE DE TOURNÉE (collecte multi-lots)
+    // ─────────────────────────────────────────────
+
+    /**
+     * Feuille de tournée du matin : une ligne par bande pondeuse active en âge
+     * de ponte — saisie alvéoles + unités par ligne, un seul enregistrement.
+     * (Audit UX 2026-07-03 : supprime la navigation lot par lot.)
+     */
+    public function tour(): View|RedirectResponse
+    {
+        if (Gate::denies('production.C')) {
+            return back()->with('error', 'Privilèges insuffisants.');
+        }
+
+        $today     = now()->toDateString();
+        $yesterday = now()->subDay()->toDateString();
+
+        $batches = Batch::active()
+            ->where('initial_quantity', '>', 0)
+            ->with(['building', 'productionType'])
+            ->withExists(['healthIncidents as is_under_quarantine' => fn ($q) => $q
+                ->where('is_quarantined', true)
+                ->where('status', '!=', \App\Models\HealthIncident::STATUS_RESOLVED)])
+            ->get()
+            ->filter(fn (Batch $b) => $b->tracksEggs() && $b->age >= $b->minLayingAgeDays())
+            ->sortBy(fn (Batch $b) => $b->building->name ?? '')
+            ->values();
+
+        // Collectes du jour et de la veille en DEUX requêtes (pas de N+1).
+        $todayRows = EggProduction::whereIn('batch_id', $batches->pluck('id'))
+            ->where('production_date', $today)->get()->keyBy('batch_id');
+        $yesterdayRows = EggProduction::whereIn('batch_id', $batches->pluck('id'))
+            ->where('production_date', $yesterday)->get()->keyBy('batch_id');
+
+        $lines = $batches->map(function (Batch $batch) use ($todayRows, $yesterdayRows) {
+            $norm = \App\Models\ProductionNorm::where('batch_type', $batch->type)
+                ->where('model_name', $batch->model_name)
+                ->where('week_number', (int) ceil($batch->age / 7))
+                ->first();
+
+            return [
+                'batch'          => $batch,
+                'existing'       => $todayRows->get($batch->id),
+                'yesterday_rate' => $yesterdayRows->get($batch->id)?->laying_rate,
+                'target_rate'    => (float) ($norm->target_laying_rate ?? 0),
+                'quarantined'    => (bool) $batch->is_under_quarantine,
+            ];
+        });
+
+        return view('egg-productions.tour', compact('lines'));
+    }
+
+    /**
+     * Enregistre la tournée : chaque ligne saisie passe par RecordEggCollection
+     * (cumul du jour, gardes âge/quarantaine/100 % — mêmes invariants que la
+     * saisie unitaire). Les lignes refusées n'annulent pas les lignes valides :
+     * l'agent corrige uniquement celles en erreur.
+     */
+    public function tourStore(Request $request, RecordEggCollection $action): RedirectResponse
+    {
+        if (Gate::denies('production.C')) {
+            return back()->with('error', 'Privilèges insuffisants.');
+        }
+
+        $perTray = (int) setting('general.eggs_per_tray', 30) ?: 30;
+
+        $validated = $request->validate([
+            'lines'            => 'required|array|min:1',
+            'lines.*.batch_id' => 'required|integer|exists:batches,id',
+            'lines.*.trays'    => 'nullable|integer|min:0',
+            'lines.*.units'    => 'nullable|integer|min:0|max:' . ($perTray - 1),
+        ]);
+
+        $saved  = 0;
+        $errors = [];
+
+        foreach ($validated['lines'] as $line) {
+            $total = ((int) ($line['trays'] ?? 0)) * $perTray + (int) ($line['units'] ?? 0);
+            if ($total <= 0) {
+                continue; // ligne non saisie : pas une erreur
+            }
+
+            try {
+                $action->execute([
+                    'batch_id'             => $line['batch_id'],
+                    'production_date'      => now()->toDateString(),
+                    'total_eggs_collected' => $total,
+                    'broken_eggs'          => 0,
+                    'small_eggs'           => 0,
+                ]);
+                $saved++;
+            } catch (\Illuminate\Validation\ValidationException $e) {
+                $code     = Batch::find($line['batch_id'])?->code ?? "#{$line['batch_id']}";
+                $errors[] = "Lot {$code} : " . collect($e->errors())->flatten()->first();
+            }
+        }
+
+        $redirect = redirect()->route('egg-productions.tour');
+        if ($saved > 0) {
+            $redirect->with('success', "{$saved} collecte(s) enregistrée(s).");
+        }
+        if ($errors !== []) {
+            $redirect->with('error', implode(' | ', $errors));
+        }
+        if ($saved === 0 && $errors === []) {
+            $redirect->with('error', 'Aucune quantité saisie — rien à enregistrer.');
+        }
+
+        return $redirect;
     }
 
     // ─────────────────────────────────────────────
@@ -274,7 +395,7 @@ class EggProductionController extends Controller
                     }
                 }
                 foreach (['broken_eggs' => 'Cassé', 'small_eggs' => 'Anomalie'] as $field => $name) {
-                    $qtyAlv = (float) $eggProduction->$field / 30;
+                    $qtyAlv = \App\Services\UnitConverter::eggsToTrays((float) $eggProduction->$field);
                     if ($qtyAlv > 0) {
                         StockIntegrationService::syncMovement(
                             $name, 'oeufs', $qtyAlv, 'out',

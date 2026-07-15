@@ -1,32 +1,12 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center gap-5 text-left">
-            <div class="w-14 h-14 bg-emerald-500 rounded-[1.5rem] flex items-center justify-center text-white shadow-2xl rotate-3">
-                <i class="fa-brands fa-whatsapp text-2xl"></i>
-            </div>
-            <div>
-                <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">{{ __("Notifications") }}</h2>
-                <p class="text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em] mt-2 italic">
-                    {{ __("Configuration des alertes WhatsApp & SMS") }}
-                </p>
-            </div>
-        </div>
+        <x-page-header :title="__('Notifications')" :subtitle="__('Configuration des alertes WhatsApp & SMS')" icon="fa-whatsapp" icon-style="fa-brands" accent="emerald" />
     </x-slot>
 
     <div class="py-10">
         <div class="max-w-4xl mx-auto sm:px-6 lg:px-8 italic font-bold text-left">
 
-            @foreach(['success', 'error'] as $msg)
-                @if(session($msg))
-                    <div @class(['mb-8 p-5 rounded-[2rem] font-black text-[10px] uppercase tracking-[0.2em] shadow-xl flex items-center italic',
-                        'bg-emerald-500 text-white' => $msg === 'success',
-                        'bg-red-500 text-white' => $msg === 'error',
-                    ])>
-                        <i class="fa-solid fa-{{ $msg === 'success' ? 'check-double' : 'circle-xmark' }} mr-3 text-lg"></i>
-                        {{ session($msg) }}
-                    </div>
-                @endif
-            @endforeach
+            <x-flash />
 
             {{-- STATS --}}
             <div class="grid grid-cols-3 gap-4 mb-8">
@@ -76,11 +56,23 @@
                                 placeholder="+224 620 00 00 00"
                                 class="w-full bg-white border-none rounded-2xl p-4 text-lg font-black shadow-sm outline-none focus:ring-4 focus:ring-emerald-500/10">
                         </div>
-                        <a href="{{ route('notifications.test') }}"
-                           onclick="event.preventDefault(); document.getElementById('test-form').submit();"
-                           class="bg-emerald-500 text-white px-6 py-4 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-lg no-underline flex items-center gap-2 shrink-0">
-                            <i class="fa-solid fa-paper-plane"></i> {{ __("Tester") }}
-                        </a>
+                        <div class="flex flex-wrap items-center gap-2 shrink-0">
+                            <a href="{{ route('notifications.test') }}"
+                               onclick="event.preventDefault(); document.getElementById('test-form').submit();"
+                               class="bg-emerald-500 text-white px-5 py-4 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-lg no-underline flex items-center gap-2">
+                                <i class="fa-brands fa-whatsapp"></i> {{ __("WhatsApp") }}
+                            </a>
+                            <a href="{{ route('notifications.test_sms') }}"
+                               onclick="event.preventDefault(); document.getElementById('test-sms-form').submit();"
+                               class="bg-blue-500 text-white px-5 py-4 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-blue-600 transition-all shadow-lg no-underline flex items-center gap-2">
+                                <i class="fa-solid fa-comment-sms"></i> {{ __("SMS") }}
+                            </a>
+                            <a href="{{ route('notifications.test_mail') }}"
+                               onclick="event.preventDefault(); document.getElementById('test-mail-form').submit();"
+                               class="bg-slate-700 text-white px-5 py-4 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-slate-900 transition-all shadow-lg no-underline flex items-center gap-2">
+                                <i class="fa-solid fa-envelope"></i> {{ __("E-mail") }}
+                            </a>
+                        </div>
                     </div>
                     <p class="text-[8px] text-emerald-600 mt-3 italic">
                         {{ __("Le numéro doit être enregistré sur WhatsApp. Format : +224XXXXXXXXX") }}
@@ -121,7 +113,7 @@
                                 ['name' => 'daily_summary', 'label' => __("Résumé quotidien (7h)"), 'desc' => __("Mortalité nuit, stocks, CA veille, tâches du jour"), 'icon' => 'fa-sun', 'color' => 'amber'],
                                 ['name' => 'alert_mortality', 'label' => __("Alertes mortalité"), 'desc' => __("Pic de mortalité au-delà du seuil normal"), 'icon' => 'fa-skull', 'color' => 'red'],
                                 ['name' => 'alert_stock', 'label' => __("Alertes stock"), 'desc' => __("Rupture ou stock sous le seuil d'alerte"), 'icon' => 'fa-boxes-stacked', 'color' => 'orange'],
-                                ['name' => 'alert_energy', 'label' => __("Alertes eau & énergie"), 'desc' => __("Gasoil bas, citerne basse, maintenance groupe"), 'icon' => 'fa-bolt', 'color' => 'cyan'],
+                                ['name' => 'alert_energy', 'label' => __("Alertes eau & énergie"), 'desc' => __("Carburant bas, citerne basse, maintenance groupe"), 'icon' => 'fa-bolt', 'color' => 'cyan'],
                                 ['name' => 'alert_sales', 'label' => __("Notifications ventes"), 'desc' => __("Nouvelle vente validée, paiement reçu"), 'icon' => 'fa-cash-register', 'color' => 'teal'],
                                 ['name' => 'alert_fraud', 'label' => __("Alertes anti-fraude"), 'desc' => __("Écart détecté entre expédition et réception"), 'icon' => 'fa-shield-halved', 'color' => 'purple'],
                             ];
@@ -154,7 +146,7 @@
                     <h3 class="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-6 flex items-center gap-2">
                         <i class="fa-solid fa-tower-broadcast text-blue-500"></i> {{ __("Canaux de diffusion") }}
                     </h3>
-                    <div class="grid grid-cols-3 gap-4">
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <label class="p-4 bg-slate-50 rounded-2xl cursor-pointer text-center group">
                             <input type="hidden" name="channel_whatsapp" value="0">
                             <input type="checkbox" name="channel_whatsapp" value="1" {{ $prefs->channel_whatsapp ? 'checked' : '' }} class="sr-only peer">
@@ -169,6 +161,14 @@
                             </div>
                             <p class="text-[9px] font-black uppercase text-slate-400">In-App</p>
                             <p class="text-[7px] text-slate-300">{{ __("Toujours actif") }}</p>
+                        </label>
+                        <label class="p-4 bg-slate-50 rounded-2xl cursor-pointer text-center group">
+                            <input type="hidden" name="channel_email" value="0">
+                            <input type="checkbox" name="channel_email" value="1" {{ $prefs->channel_email ? 'checked' : '' }} class="sr-only peer">
+                            <div class="peer-checked:bg-amber-500 peer-checked:text-white bg-slate-200 text-slate-400 w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-2 transition-all">
+                                <i class="fa-solid fa-envelope text-xl"></i>
+                            </div>
+                            <p class="text-[9px] font-black uppercase peer-checked:text-amber-600 text-slate-400">E-mail</p>
                         </label>
                         <label class="p-4 bg-slate-50 rounded-2xl cursor-pointer text-center group">
                             <input type="hidden" name="channel_sms" value="0">
@@ -206,19 +206,34 @@
                 </button>
             </form>
 
-            {{-- Formulaire test caché --}}
+            {{-- Formulaires de test cachés (WhatsApp / SMS / E-mail) --}}
             <form id="test-form" method="POST" action="{{ route('notifications.test') }}" class="hidden">@csrf</form>
+            <form id="test-sms-form" method="POST" action="{{ route('notifications.test_sms') }}" class="hidden">@csrf</form>
+            <form id="test-mail-form" method="POST" action="{{ route('notifications.test_mail') }}" class="hidden">@csrf</form>
 
             {{-- HISTORIQUE RÉCENT --}}
             @if($recentLogs->count() > 0)
             <div class="mt-10 bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
                 <div class="px-8 py-5 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
                     <h3 class="text-[10px] font-black uppercase text-slate-400 tracking-widest">{{ __("Dernières notifications") }}</h3>
-                    @can('notifications.S')
-                        <a href="{{ route('notifications.logs') }}" class="text-[8px] font-black text-blue-500 uppercase tracking-widest no-underline hover:text-blue-700">
-                            {{ __("Historique complet") }} →
-                        </a>
-                    @endcan
+                    <div class="flex items-center gap-4">
+                        @can('admin.S')
+                            <a href="{{ route('notifications.templates') }}" class="text-[8px] font-black text-emerald-600 uppercase tracking-widest no-underline hover:text-emerald-800">
+                                <i class="fa-solid fa-comment-dots mr-1"></i>{{ __("Modèles de messages") }}
+                            </a>
+                            <a href="{{ route('notifications.audit') }}" class="text-[8px] font-black text-slate-600 uppercase tracking-widest no-underline hover:text-slate-900">
+                                <i class="fa-solid fa-clipboard-list mr-1"></i>{{ __("Journal d'audit") }}
+                            </a>
+                            <a href="{{ route('backups.index') }}" class="text-[8px] font-black text-slate-600 uppercase tracking-widest no-underline hover:text-slate-900">
+                                <i class="fa-solid fa-database mr-1"></i>{{ __("Sauvegardes") }}
+                            </a>
+                        @endcan
+                        @can('notifications.S')
+                            <a href="{{ route('notifications.logs') }}" class="text-[8px] font-black text-blue-500 uppercase tracking-widest no-underline hover:text-blue-700">
+                                {{ __("Historique complet") }} →
+                            </a>
+                        @endcan
+                    </div>
                 </div>
                 <div class="divide-y divide-slate-50">
                     @foreach($recentLogs as $log)

@@ -1,16 +1,11 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex justify-between items-center text-left">
-            <div class="flex items-center gap-4">
-                <a href="{{ route('payroll.index') }}" class="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-900 hover:text-white transition-all no-underline"><i class="fa-solid fa-arrow-left"></i></a>
-                <div>
-                    <h2 class="text-lg font-black text-slate-800 uppercase italic tracking-tighter leading-none">{{ $period->label }}</h2>
-                    <p class="text-[9px] font-bold text-slate-400 uppercase mt-1 tracking-widest italic">
-                        {{ $period->start_date->format('d/m') }} → {{ $period->end_date->format('d/m/Y') }} — {{ __(ucfirst($period->status)) }}
-                    </p>
-                </div>
-            </div>
-            <div class="flex gap-2">
+        <x-page-header :title="$period->label" :subtitle="$period->start_date->format('d/m') . ' → ' . $period->end_date->format('d/m/Y') . ' — ' . __(ucfirst($period->status))" icon="fa-money-check-dollar" accent="blue" :back="route('payroll.index')">
+            <x-slot name="actions">
+                {{-- Vérifier la présence qui sous-tend la paie (drill-down). --}}
+                <a href="{{ route('attendance.report', ['from' => $period->start_date->toDateString(), 'to' => $period->end_date->toDateString()]) }}"
+                   class="bg-white border border-slate-200 text-slate-600 px-5 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-violet-50 hover:text-violet-600 transition-all no-underline shadow-sm italic"><i class="fa-solid fa-user-check mr-1"></i> {{ __("Présence du mois") }}</a>
+
                 {{-- Générer = Modification (M) --}}
                 @can('annuaire.M')
                     @if($period->status === 'brouillon')
@@ -28,21 +23,14 @@
                     </form>
                     @endif
                 @endcan
-            </div>
-        </div>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-8 italic font-bold" x-data="payrollUI()">
         <div class="max-w-6xl mx-auto sm:px-6 lg:px-8">
 
-            @foreach(['success', 'error'] as $msg)
-                @if(session($msg))
-                    <div @class(['mb-6 p-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg flex items-center italic',
-                        'bg-emerald-500 text-white' => $msg === 'success', 'bg-red-500 text-white' => $msg === 'error'])>
-                        <i class="fa-solid fa-{{ $msg === 'success' ? 'check-double' : 'circle-xmark' }} mr-3"></i> {{ session($msg) }}
-                    </div>
-                @endif
-            @endforeach
+            <x-flash />
 
             {{-- KPI --}}
             <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
@@ -93,6 +81,7 @@
                             <td class="px-3 py-3 text-center text-[9px] font-black text-slate-500">
                                 {{ $slip->days_worked }}{{ __("j") }}
                                 @if($slip->days_absent > 0)<span class="text-red-500 ml-1">-{{ $slip->days_absent }}{{ __("abs") }}</span>@endif
+                                @if($slip->days_leave > 0)<span class="text-violet-500 ml-1">{{ $slip->days_leave }}{{ __("cg") }}</span>@endif
                             </td>
                             <td class="px-3 py-3 text-center">
                                 <span @class(['text-[8px] font-black uppercase px-2 py-1 rounded-full',
@@ -177,7 +166,7 @@
                             <div class="peer-checked:bg-red-50 peer-checked:border-red-400 bg-slate-50 border-2 border-transparent rounded-xl p-3 text-center transition-all text-[9px] font-black uppercase">➖ {{ __("Déduction") }}</div></label>
                     </div>
                     <input type="text" name="label" required placeholder="{{ __("Ex: Prime performance, Avance...") }}" class="w-full bg-slate-50 border-none rounded-xl p-3 text-xs font-black shadow-inner outline-none">
-                    <input type="number" name="amount" required min="1" placeholder="{{ __("Montant GNF") }}" class="w-full bg-slate-50 border-none rounded-xl p-3 text-lg font-black shadow-inner outline-none text-center">
+                    <input type="number" name="amount" required min="1" placeholder="{{ __("Montant") }} {{ currency() }}" class="w-full bg-slate-50 border-none rounded-xl p-3 text-lg font-black shadow-inner outline-none text-center">
                     <select name="category" class="w-full bg-slate-50 border-none rounded-xl p-3 text-xs font-black uppercase shadow-inner outline-none italic">
                         <option value="performance">{{ __("Performance") }}</option>
                         <option value="nuit">{{ __("Nuit / Astreinte") }}</option>
@@ -209,7 +198,7 @@
         <div x-show="payModal" x-transition class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" x-cloak>
             <div class="bg-white rounded-2xl w-full max-w-md p-8 text-left font-bold italic" @click.outside="payModal = false">
                 <h3 class="text-lg font-black text-emerald-600 uppercase tracking-tighter mb-2">💰 {{ __("Paiement") }}</h3>
-                <p class="text-[9px] text-slate-500 mb-4" x-text="payEmployee + ' — ' + payAmount.toLocaleString('fr-FR') + ' GNF'"></p>
+                <p class="text-[9px] text-slate-500 mb-4" x-text="payEmployee + ' — ' + payAmount.toLocaleString('fr-FR') + ' {{ currency() }}'"></p>
                 <form :action="'/payroll/payslip/' + paySlipId + '/pay'" method="POST" class="space-y-4">
                     @csrf
                     @php

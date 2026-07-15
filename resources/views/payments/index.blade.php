@@ -1,49 +1,33 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 text-left">
-            <div class="flex items-center gap-5">
-                <div class="w-14 h-14 bg-emerald-500 rounded-[1.5rem] flex items-center justify-center text-white shadow-2xl rotate-3">
-                    <i class="fa-solid fa-money-bill-wave text-xl"></i>
-                </div>
-                <div>
-                    <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">{{ __("Encaissements") }}</h2>
-                    <p class="text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em] mt-2 italic">
-                        {{ __("Caisse du") }} {{ now()->translatedFormat('l d F Y') }}
-                    </p>
-                </div>
-            </div>
-        </div>
+        <x-page-header :title="__('Encaissements')" :subtitle="__('Caisse du') . ' ' . now()->translatedFormat('l d F Y')" icon="fa-money-bill-wave" accent="emerald" />
     </x-slot>
 
     <div class="py-10">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 italic font-bold text-left">
 
-            @if(session('success'))
-                <div class="mb-8 p-5 bg-emerald-500 text-white rounded-[2rem] font-black text-[10px] uppercase tracking-[0.2em] shadow-xl flex items-center italic">
-                    <i class="fa-solid fa-check-double mr-3 text-lg"></i> {{ session('success') }}
-                </div>
-            @endif
+            <x-flash />
 
             {{-- STATS CAISSE DU JOUR --}}
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                 <div class="bg-slate-900 p-6 rounded-[2rem] text-white text-center shadow-2xl">
                     <p class="text-[8px] font-black text-emerald-400 uppercase tracking-widest mb-2">{{ __("Total du jour") }}</p>
                     <p class="text-2xl font-black tracking-tighter">{{ number_format($stats['today_total'], 0, ',', ' ') }}</p>
-                    <p class="text-[8px] opacity-50">GNF</p>
+                    <p class="text-[8px] opacity-50">{{ currency() }}</p>
                 </div>
                 <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm text-center">
                     <p class="text-[8px] font-black text-emerald-500 uppercase tracking-widest mb-2">
                         <i class="fa-solid fa-money-bills mr-1"></i> {{ __("Espèces") }}
                     </p>
                     <p class="text-xl font-black text-slate-900">{{ number_format($stats['today_cash'], 0, ',', ' ') }}</p>
-                    <p class="text-[8px] text-slate-400">GNF</p>
+                    <p class="text-[8px] text-slate-400">{{ currency() }}</p>
                 </div>
                 <div class="bg-white p-6 rounded-[2rem] border border-orange-200 shadow-sm text-center">
                     <p class="text-[8px] font-black text-orange-500 uppercase tracking-widest mb-2">
                         <i class="fa-solid fa-mobile-screen mr-1"></i> {{ __("Orange Money") }}
                     </p>
                     <p class="text-xl font-black text-slate-900">{{ number_format($stats['today_om'], 0, ',', ' ') }}</p>
-                    <p class="text-[8px] text-slate-400">GNF</p>
+                    <p class="text-[8px] text-slate-400">{{ currency() }}</p>
                 </div>
                 <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm text-center">
                     <p class="text-[8px] font-black text-blue-500 uppercase tracking-widest mb-2">
@@ -129,7 +113,7 @@
                                 </td>
                                 <td class="px-4 py-4 text-right">
                                     <p class="text-sm font-black text-emerald-600">+{{ number_format($payment->amount, 0, ',', ' ') }}</p>
-                                    <p class="text-[8px] text-slate-400">GNF</p>
+                                    <p class="text-[8px] text-slate-400">{{ currency() }}</p>
                                 </td>
                                 <td class="px-6 py-4 text-[10px] font-black text-slate-500">
                                     {{ $payment->receiver->name ?? '—' }}

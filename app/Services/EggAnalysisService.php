@@ -45,12 +45,12 @@ class EggAnalysisService
         }
 
         // Collectes d'hier
-        $yesterdayCollections = EggProduction::whereDate('collection_date', $yesterday)
+        $yesterdayCollections = EggProduction::whereDate('production_date', $yesterday)
             ->with('batch.building')
             ->get();
 
         // Collectes avant-hier (pour comparaison)
-        $dayBeforeCollections = EggProduction::whereDate('collection_date', $dayBefore)->get();
+        $dayBeforeCollections = EggProduction::whereDate('production_date', $dayBefore)->get();
 
         // Analyse
         $irregularities = [];
@@ -87,22 +87,22 @@ class EggAnalysisService
                 continue;
             }
 
-            // Calcul HDP
-            $totalCollected = (float) ($collection->total_collected ?? 0);
+            // Calcul HDP (sur l'effectif vivant courant)
+            $totalCollected = (float) ($collection->total_eggs_collected ?? 0);
             $hens = (int) $batch->current_quantity;
             $hdp = ($hens > 0) ? round(($totalCollected / $hens) * 100, 1) : 0;
 
             // HDP de la veille
-            $prevTotal = $prevCollection ? (float) ($prevCollection->total_collected ?? 0) : null;
+            $prevTotal = $prevCollection ? (float) ($prevCollection->total_eggs_collected ?? 0) : null;
             $prevHdp = ($prevTotal !== null && $hens > 0) ? round(($prevTotal / $hens) * 100, 1) : null;
 
-            // Œufs cassés et anomalies
-            $broken = (float) ($collection->broken ?? $collection->qty_broken ?? 0);
-            $anomalies = (float) ($collection->anomalies ?? $collection->qty_anomaly ?? 0);
+            // Œufs cassés (le modèle ne trace pas d'« anomalies » distinctes).
+            $broken = (float) ($collection->broken_eggs ?? 0);
+            $anomalies = 0.0;
             $brokenRate = ($totalCollected > 0) ? round((($broken + $anomalies) / $totalCollected) * 100, 1) : 0;
 
-            // Calibres
-            $qtyS = (float) ($collection->qty_small ?? $collection->calibre_s ?? 0);
+            // Calibres (petits œufs).
+            $qtyS = (float) ($collection->small_eggs ?? 0);
             $smallRate = ($totalCollected > 0) ? round(($qtyS / $totalCollected) * 100, 1) : 0;
 
             $totalEggs += $totalCollected;
@@ -171,9 +171,9 @@ class EggAnalysisService
         }
 
         // ─── IRRÉGULARITÉ 6 : CHUTE PRODUCTION GLOBALE ───
-        $avg7days = EggProduction::where('collection_date', '>=', now()->subDays(8))
-            ->where('collection_date', '<', $yesterday)
-            ->avg('total_collected');
+        $avg7days = EggProduction::where('production_date', '>=', now()->subDays(8))
+            ->where('production_date', '<', $yesterday)
+            ->avg('total_eggs_collected');
 
         if ($avg7days && $avg7days > 0 && $totalEggs < ($avg7days * 0.7 * $layingBatches->count())) {
             $irregularities[] = [

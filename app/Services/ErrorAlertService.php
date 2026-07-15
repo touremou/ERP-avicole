@@ -42,6 +42,15 @@ class ErrorAlertService
      */
     public static function handle(Throwable $e): void
     {
+        // Jamais pendant les tests (la CI ne doit pas tenter d'envoyer du
+        // WhatsApp) ; pilotable par ERROR_ALERTS_ENABLED (défaut : actif
+        // hors environnement local). Audit P2-⑪.
+        if (app()->runningUnitTests()) return;
+        if (! (bool) env('ERROR_ALERTS_ENABLED', ! app()->environment('local'))) return;
+
+        // Refus métier propres (machines à états) : pas un incident serveur.
+        if ($e instanceof \DomainException) return;
+
         // Ne pas alerter pour les erreurs HTTP classiques (404, 419, 429)
         $httpCode = method_exists($e, 'getStatusCode') ? $e->getStatusCode() : 500;
         $ignoredCodes = [404, 419, 429, 403, 401];
@@ -72,11 +81,14 @@ class ErrorAlertService
             $whatsapp = app(WhatsAppService::class);
 
             // Envoyer aux admins qui ont activé les alertes
+            // Relation correcte : userRole (et non 'role', inexistante — un
+            // whereHas('role') lèverait une BadMethodCallException qui sauterait
+            // directement au catch, neutralisant même le fallback ci-dessous).
             $admins = User::whereNotNull('whatsapp_phone')
-                ->whereHas('role', fn($q) => $q->where('name', 'admin'))
+                ->whereHas('userRole', fn($q) => $q->where('name', 'admin'))
                 ->get();
 
-            // Fallback : si pas d'admin avec relation role, chercher par role_id
+            // Fallback : si pas d'admin trouvé, chercher par role_id
             if ($admins->isEmpty()) {
                 $adminRoleId = \App\Models\Role::where('name', 'admin')->value('id');
                 if ($adminRoleId) {

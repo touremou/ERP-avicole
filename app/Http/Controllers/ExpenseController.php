@@ -78,6 +78,7 @@ class ExpenseController extends Controller
             'categories'     => Expense::CATEGORIES,
             'paymentMethods' => Expense::PAYMENT_METHODS,
             'batches'        => Batch::active()->live()->orderBy('code')->get(['id', 'code']),
+            'treasuryAccounts' => \App\Models\TreasuryAccount::active()->orderBy('name')->get(['id', 'name']),
         ]);
     }
 

@@ -14,6 +14,7 @@ use App\Services\NotificationHub;
 use App\Services\UtilityService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
 class UtilityController extends Controller
@@ -59,7 +60,12 @@ class UtilityController extends Controller
         if (Gate::denies('ressources.L')) return back()->with('error', 'Accès restreint.');
 
         $sources = WaterSource::withCount('readings')->get();
-        return view('utilities.water-sources', compact('sources'));
+        $buildings = Building::physical()->orderBy('name')->get();
+        $lastWater = WaterReading::whereIn('water_source_id', $sources->pluck('id'))
+            ->get()->sortByDesc('reading_date')->groupBy('water_source_id')
+            ->map(fn ($r) => $r->first()->only(['volume_consumed_liters', 'volume_added_liters', 'quality_ph', 'chlorine_level', 'cost', 'building_id']));
+
+        return view('utilities.water-sources', compact('sources', 'buildings', 'lastWater'));
     }
 
     public function storeWaterSource(Request $request)
@@ -70,12 +76,20 @@ class UtilityController extends Controller
             'name'             => 'required|string|max:255',
             'type'             => 'required|in:seeg,forage,citerne,camion',
             'capacity_liters'  => 'nullable|numeric|min:0',
+            'is_default'       => 'nullable|boolean',
             'notes'            => 'nullable|string|max:1000',
         ]);
+
+        $validated['is_default'] = $request->boolean('is_default');
 
         if ($validated['type'] === 'citerne' && ! empty($validated['capacity_liters'])) {
             $validated['current_level_liters'] = $validated['capacity_liters'];
             $validated['current_level_percent'] = 100;
+        }
+
+        // Une seule source « par défaut » par ferme : on retire le drapeau des autres.
+        if ($validated['is_default']) {
+            WaterSource::where('is_default', true)->update(['is_default' => false]);
         }
 
         WaterSource::create($validated);
@@ -135,7 +149,12 @@ class UtilityController extends Controller
         if (Gate::denies('ressources.L')) return back()->with('error', 'Accès restreint.');
 
         $sources = EnergySource::withCount('readings')->get();
-        return view('utilities.energy-sources', compact('sources'));
+        $buildings = Building::physical()->orderBy('name')->get();
+        $lastEnergy = EnergyReading::whereIn('energy_source_id', $sources->pluck('id'))
+            ->get()->sortByDesc('reading_date')->groupBy('energy_source_id')
+            ->map(fn ($r) => $r->first()->only(['building_id']));
+
+        return view('utilities.energy-sources', compact('sources', 'buildings', 'lastEnergy'));
     }
 
     public function storeEnergySource(Request $request)
@@ -252,6 +271,7 @@ class UtilityController extends Controller
         ]);
 
         $validated['user_id'] = Auth::id();
+        $validated['outage_hours'] = $validated['outage_hours'] ?? 0;
 
         $source = EnergySource::find($validated['energy_source_id']);
 
@@ -267,7 +287,7 @@ class UtilityController extends Controller
             $litersPerHour = $source->averageLitersPerHour();
             if ($litersPerHour) {
                 $validated['fuel_consumed_liters'] = round((float) $validated['hours_run'] * $litersPerHour, 1);
-                $autoNotes[] = "carburant estimé " . number_format($validated['fuel_consumed_liters'], 1, ',', ' ') . " L";
+                $autoNotes[] = "gasoil estimé " . number_format($validated['fuel_consumed_liters'], 1, ',', ' ') . " L";
             }
         }
 
@@ -356,12 +376,19 @@ class UtilityController extends Controller
         }
 
         $validated['fuel_level_after'] = $newLevel;
-        $source->update(['current_fuel_level' => $newLevel]);
 
-        FuelPurchase::create($validated);
+        // Achat = mouvement de cuve (opérationnel) + sortie de trésorerie : on
+        // tient les deux de façon atomique, et l'achat poste sa dépense carburant.
+        DB::transaction(function () use ($validated, $source, $newLevel) {
+            $source->update(['current_fuel_level' => $newLevel]);
+
+            $purchase = FuelPurchase::create($validated);
+            $purchase->setRelation('source', $source);
+            $purchase->syncLedgerExpense();
+        });
 
         return back()->with('success',
-            number_format($validated['quantity_liters']) . "L de gasoil enregistrés. " .
+            number_format($validated['quantity_liters']) . "L de carburant enregistrés (dépense générée). " .
             "Cuve {$source->name} : {$newLevel}L."
         );
     }
@@ -386,10 +413,28 @@ class UtilityController extends Controller
             'capacity_liters'  => 'nullable|numeric|min:0',
             'quality_status'   => 'nullable|in:bon,acceptable,traitement_requis',
             'is_active'        => 'boolean',
+            'is_default'       => 'nullable|boolean',
             'notes'            => 'nullable|string|max:1000',
         ]);
 
+        $validated['is_default'] = $request->boolean('is_default');
+
+        // Une seule source « par défaut » par ferme.
+        if ($validated['is_default']) {
+            WaterSource::where('is_default', true)->where('id', '!=', $source->id)->update(['is_default' => false]);
+        }
+
         $source->update($validated);
+
+        // Anti-débordement : si la capacité passe sous le niveau actuel, on recale
+        // le niveau (et le %) pour qu'une citerne ne dépasse jamais sa capacité.
+        if (! empty($validated['capacity_liters']) && (float) $source->current_level_liters > (float) $validated['capacity_liters']) {
+            $source->update([
+                'current_level_liters'  => (float) $validated['capacity_liters'],
+                'current_level_percent' => 100,
+            ]);
+        }
+
         return redirect()->route('utilities.water.sources')->with('success', "Source \"{$source->name}\" mise à jour.");
     }
 
@@ -462,7 +507,11 @@ class UtilityController extends Controller
         ]);
 
         $validated['total_cost'] = (float) $validated['quantity_liters'] * (float) $validated['unit_price'];
-        $purchase->update($validated);
+
+        DB::transaction(function () use ($purchase, $validated) {
+            $purchase->update($validated);
+            $purchase->syncLedgerExpense(); // répercute le nouveau montant sur la dépense liée
+        });
 
         return redirect()->route('utilities.fuel.index')->with('success', 'Achat carburant mis à jour.');
     }
@@ -470,7 +519,12 @@ class UtilityController extends Controller
     public function destroyFuelPurchase(FuelPurchase $purchase)
     {
         if (Gate::denies('ressources.S')) return back()->with('error', 'Suppression réservée aux administrateurs.');
-        $purchase->delete();
-        return back()->with('success', 'Achat supprimé.');
+
+        DB::transaction(function () use ($purchase) {
+            $purchase->expense?->delete(); // retire aussi l'écriture du registre des dépenses
+            $purchase->delete();
+        });
+
+        return back()->with('success', 'Achat et dépense liée supprimés.');
     }
 }

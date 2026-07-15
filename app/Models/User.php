@@ -8,10 +8,25 @@ use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class User extends Authenticatable
 {
-    use HasApiTokens, HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable, LogsActivity;
+
+    /**
+     * Audit des comptes : on journalise les changements sensibles (rôle, email,
+     * activation…) MAIS jamais le mot de passe ni le token (logExcept).
+     */
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['name', 'email', 'role_id', 'whatsapp_phone', 'is_active'])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs()
+            ->useLogName('audit');
+    }
 
     protected $fillable = [
         'name', 'email', 'password', 'role_id', 'whatsapp_phone', 'is_active', 'locale',
@@ -50,21 +65,27 @@ class User extends Authenticatable
         return $this->hasOne(NotificationPreference::class);
     }
 
+    public function dashboardConfiguration(): HasOne
+    {
+        return $this->hasOne(DashboardConfiguration::class);
+    }
+
     // ─── RBAC GLOBAL (rétrocompatible) ───
 
     /**
-     * Vérifie une permission globale (L, C, M, S).
-     * Utilisé par Gate::define('L'), etc.
+     * Vérifie une permission « globale » (L, C, M, S) — déléguée au rôle, dont
+     * la SOURCE UNIQUE est la matrice `module_permissions`. L'administrateur a
+     * un accès total (cohérent avec Gate::before / AppServiceProvider).
      */
     public function hasPermission(string $permissionName): bool
     {
         if (! $this->role_id) return false;
 
+        if ($this->hasRole('admin')) return true;
+
         $this->loadMissing('userRole');
 
-        if (! $this->userRole) return false;
-
-        return $this->userRole->hasPermission($permissionName);
+        return $this->userRole?->hasPermission($permissionName) ?? false;
     }
 
     // ─── RBAC PAR MODULE ───
@@ -103,14 +124,23 @@ class User extends Authenticatable
         if (! $this->role_id) return collect();
 
         if ($this->hasRole('admin')) {
-            return Module::active()->get();
+            $modules = Module::active()->get();
+        } else {
+            $explicitModuleIds = ModulePermission::where('role_id', $this->role_id)
+                ->where('can_read', true)
+                ->pluck('module_id');
+
+            $modules = Module::active()->whereIn('id', $explicitModuleIds)->get();
         }
 
-        $explicitModuleIds = ModulePermission::where('role_id', $this->role_id)
-            ->where('can_read', true)
-            ->pluck('module_id');
+        // Verrou d'abonnement : on masque les modules hors licence (tuiles du
+        // lanceur, navigation). Sans effet si le système de licence est inactif.
+        $licenses = app(\App\Services\LicenseService::class);
+        if ($licenses->isEnabled()) {
+            $modules = $modules->filter(fn ($m) => $licenses->allowsModule($m->slug))->values();
+        }
 
-        return Module::active()->whereIn('id', $explicitModuleIds)->get();
+        return $modules;
     }
 
     /**

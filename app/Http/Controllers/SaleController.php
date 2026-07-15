@@ -6,6 +6,7 @@ use App\Models\Sale;
 use App\Models\Client;
 use App\Models\Stock;
 use App\Models\Batch;
+use App\Models\CashRegisterSession;
 use App\Models\PriceList;
 use App\Http\Requests\Sale\StoreSaleRequest;
 use App\Actions\Sale\CreateSale;
@@ -73,12 +74,28 @@ class SaleController extends Controller
         $stocks  = Stock::where('current_quantity', '>', 0)->get();
         $prices  = PriceList::where('is_active', true)->get();
 
+        // Catalogue d'articles vendables (sélection guidée + photo + prix).
+        $catalog = \App\Models\Product::active()->with('stock')->orderBy('name')->get()
+            ->map(fn ($p) => [
+                'id'           => $p->id,
+                'name'         => $p->name,
+                'product_type' => $p->product_type,
+                'unit'         => $p->unit,
+                'base_price'   => (float) $p->base_price,
+                'photo'        => $p->photo_url,
+                'stock_id'     => $p->stock_id,                                   // pour le déstockage
+                'available'    => $p->stock ? (float) $p->stock->current_quantity : null,
+            ])->values();
+
         // Pré-sélection client si passé en query string
         $selectedClient = $request->filled('client_id')
             ? Client::find($request->client_id)
             : null;
 
-        return view('sales.create', compact('clients', 'batches', 'stocks', 'prices', 'selectedClient'));
+        // Types vendables (source unique partagée avec les groupes de prix).
+        $sellableTypes = \App\Models\SaleItem::SELLABLE_TYPE_LABELS;
+
+        return view('sales.create', compact('clients', 'batches', 'stocks', 'prices', 'selectedClient', 'catalog', 'sellableTypes'));
     }
 
     public function store(StoreSaleRequest $request, CreateSale $action)
@@ -99,7 +116,12 @@ class SaleController extends Controller
 
         $sale->load(['client', 'items', 'payments.receiver', 'user']);
 
-        return view('sales.show', compact('sale'));
+        // L'encaissement express passe par la caisse → n'est proposé que si une
+        // session de caisse est ouverte (cohérent avec le verrou du PosController).
+        $hasOpenCashSession = CashRegisterSession::open()->exists();
+        $treasuryAccounts = \App\Models\TreasuryAccount::active()->orderBy('name')->get(['id', 'name']);
+
+        return view('sales.show', compact('sale', 'hasOpenCashSession', 'treasuryAccounts'));
     }
 
     public function validate(Sale $sale, ValidateSale $action) // Note: "validate" est un mot réservé en PHP, attention si vous rencontrez des bugs, préférez "approve" ou "validateSale"
@@ -153,6 +175,11 @@ class SaleController extends Controller
 
         $sale->load(['client', 'items', 'payments']);
 
-        return view('sales.print', compact('sale'));
+        // Format d'impression : ?format= prioritaire, sinon paramètre par défaut.
+        // 'thermal' → ticket 80 mm ; 'a4' (défaut) → facture/BL classique.
+        $format = request('format', setting('ventes.print_format', 'a4'));
+        $view   = $format === 'thermal' ? 'sales.ticket' : 'sales.print';
+
+        return view($view, compact('sale'));
     }
 }

@@ -9,19 +9,21 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Traits\HasStandardUuid;
 use App\Traits\BelongsToFarm;
+use App\Traits\AuditsChanges;
 
 class Sale extends Model
 {
-    use HasFactory, SoftDeletes, HasStandardUuid, BelongsToFarm;
+    use HasFactory, SoftDeletes, HasStandardUuid, BelongsToFarm, AuditsChanges;
 
     protected $fillable = [
         'farm_id',
         'uuid', 'is_synced', 'last_sync_at',
-        'reference', 'client_id', 'user_id', 'sale_date',
+        'reference', 'client_id', 'user_id', 'seller_employee_id', 'sale_date',
         'type', 'status',
-        'subtotal', 'tax_rate', 'tax_amount', 'total_amount',
+        'subtotal', 'discount_type', 'discount_value', 'discount_amount',
+        'tax_rate', 'tax_amount', 'total_amount', 'rounding_adjustment',
         'paid_amount', 'payment_status',
-        'delivery_mode', 'delivery_address', 'delivery_notes',
+        'delivery_mode', 'delivery_address', 'delivery_notes', 'delivery_fee',
         'notes', 'validated_at', 'delivered_at',
     ];
 
@@ -33,6 +35,8 @@ class Sale extends Model
         'tax_rate'     => 'decimal:2',
         'tax_amount'   => 'decimal:2',
         'total_amount' => 'decimal:2',
+        'rounding_adjustment' => 'decimal:2',
+        'delivery_fee' => 'decimal:2',
         'paid_amount'  => 'decimal:2',
         'validated_at' => 'datetime',
         'delivered_at' => 'datetime',
@@ -43,6 +47,12 @@ class Sale extends Model
     public function client(): BelongsTo
     {
         return $this->belongsTo(Client::class);
+    }
+
+    /** Vendeur (employé) à qui la vente POS est attribuée nominativement. */
+    public function sellerEmployee(): BelongsTo
+    {
+        return $this->belongsTo(Employee::class, 'seller_employee_id');
     }
 
     public function user(): BelongsTo
@@ -77,6 +87,23 @@ class Sale extends Model
         return $query->whereIn('status', ['valide', 'livre']);
     }
 
+    /**
+     * Ventes en RETARD de paiement : impayées et dont l'échéance
+     * (date de vente + délai de paiement paramétré) est dépassée.
+     */
+    public function scopeOverdue($query, ?int $delayDays = null)
+    {
+        $delayDays = $delayDays ?? (int) setting('ventes.payment_delay_days', 30);
+
+        return $query->unpaid()
+            ->whereDate('sale_date', '<=', today()->subDays($delayDays));
+    }
+
+    public function reminders(): HasMany
+    {
+        return $this->hasMany(PaymentReminder::class);
+    }
+
     // ─── ACCESSORS ───
 
     public function getRemainingAmountAttribute(): float
@@ -89,6 +116,18 @@ class Sale extends Model
         return $this->payment_status === 'solde';
     }
 
+    /** Échéance = date de vente + délai de paiement paramétré. */
+    public function getDueDateAttribute(): \Illuminate\Support\Carbon
+    {
+        return $this->sale_date->copy()->addDays((int) setting('ventes.payment_delay_days', 30));
+    }
+
+    /** Jours de retard (positif si échéance dépassée, 0 sinon). */
+    public function getDaysOverdueAttribute(): int
+    {
+        return max(0, (int) $this->due_date->startOfDay()->diffInDays(today(), false));
+    }
+
     // ─── METHODS ───
 
     /**
@@ -97,13 +136,67 @@ class Sale extends Model
     public function recalculateTotals(): void
     {
         $subtotal = round((float) $this->items()->sum('total'), 2);
-        $taxAmount = $this->tax_rate > 0 ? round($subtotal * ($this->tax_rate / 100), 2) : 0;
+
+        // Remise globale appliquée au sous-total (jamais > sous-total).
+        $discount = $this->computeDiscount($subtotal);
+        $net = max(0, round($subtotal - $discount, 2));
+
+        // La TVA porte sur la base APRÈS remise (les frais de livraison ne sont
+        // pas taxés ici : ils s'ajoutent au TTC marchandise).
+        $taxAmount = $this->tax_rate > 0 ? round($net * ($this->tax_rate / 100), 2) : 0;
+
+        $deliveryFee = max(0, (float) $this->delivery_fee);
+
+        // Total brut marchandise (avant arrondi de caisse).
+        $rawTotal = round($net + $taxAmount + $deliveryFee, 2);
+
+        // Arrondi à la coupure de caisse disponible (cf. cash_round). En Guinée,
+        // un total de 55 100 sur des coupures de 1 000 devient 55 000 payable :
+        // plus d'écart ni de dette fantôme entre la vente et l'encaissement.
+        $total = cash_round($rawTotal);
 
         $this->update([
-            'subtotal'     => $subtotal,
-            'tax_amount'   => $taxAmount,
-            'total_amount' => round($subtotal + $taxAmount, 2),
+            'subtotal'            => $subtotal,
+            'discount_amount'     => $discount,
+            'tax_amount'          => $taxAmount,
+            'total_amount'        => $total,
+            'rounding_adjustment' => round($total - $rawTotal, 2),
         ]);
+    }
+
+    /** Libellé humain du type de document (facture / BL / ticket comptant). */
+    public function getTypeLabelAttribute(): string
+    {
+        return match ($this->type) {
+            'facture'  => 'Facture TVA',
+            'comptant' => 'Ticket de caisse',
+            default    => 'Bon de Livraison',
+        };
+    }
+
+    /** Libellé court pour listes/badges (FAC / TKT / BL). */
+    public function getTypeShortLabelAttribute(): string
+    {
+        return match ($this->type) {
+            'facture'  => 'Facture TVA',
+            'comptant' => 'Comptant',
+            default    => 'BL',
+        };
+    }
+
+    /** Montant de remise effectif pour un sous-total donné. */
+    public function computeDiscount(float $subtotal): float
+    {
+        $value = (float) $this->discount_value;
+        if ($value <= 0) return 0.0;
+
+        $discount = match ($this->discount_type) {
+            'percent' => $subtotal * (min($value, 100) / 100),
+            'amount'  => $value,
+            default   => 0.0,
+        };
+
+        return round(min($discount, $subtotal), 2); // jamais négatif, ni > sous-total
     }
 
     /**

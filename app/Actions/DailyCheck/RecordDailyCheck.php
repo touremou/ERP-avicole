@@ -18,7 +18,7 @@ use Illuminate\Validation\ValidationException;
  * 3. La compensation stock si c'est une mise à jour (annule l'ancien mouvement)
  * 4. Le mouvement de sortie stock (via StockIntegrationService)
  *
- * L'impact sur Batch::current_quantity est géré par DailyCheckObserver.
+ * L'impact sur Batch::current_quantity est géré par DailyCheck::booted().
  */
 class RecordDailyCheck
 {
@@ -46,6 +46,23 @@ class RecordDailyCheck
             $existing = DailyCheck::where('batch_id', $data['batch_id'])
                 ->where('check_date', $data['check_date'])
                 ->first();
+
+            // ─── Cohérence INFIRMERIE : on ne peut pas sortir (rétablis) ni
+            //     déclarer morts plus de sujets qu'il n'y en a d'isolés. Le
+            //     solde disponible exclut le pointage en cours de correction.
+            $infirmaryOutflow = (int) ($data['qty_quarantine_out'] ?? 0)
+                              + (int) ($data['mortality_infirmary'] ?? 0);
+            $infirmaryInflow = (int) ($data['qty_quarantine_in'] ?? 0);
+
+            if ($infirmaryOutflow > 0) {
+                $available = $batch->infirmaryCountExcluding($existing?->id) + $infirmaryInflow;
+                if ($infirmaryOutflow > $available) {
+                    throw ValidationException::withMessages([
+                        'qty_quarantine_out' => "Infirmerie : {$infirmaryOutflow} sortie(s) déclarée(s) "
+                            . "(rétablis + morts) mais seulement {$available} sujet(s) isolé(s) disponible(s).",
+                    ]);
+                }
+            }
 
             // ─── Vérification stock aliment ───
             $feedType = trim($data['feed_type']);
@@ -75,6 +92,10 @@ class RecordDailyCheck
             $oldManure = (float) ($existing->manure_collected_kg ?? 0);
             $newManure = (float) ($data['manure_collected_kg'] ?? 0);
 
+            // Eau : litres avant/après pour imputer le delta à la citerne.
+            $oldWater = (float) ($existing->water_consumed ?? 0);
+            $newWater = (float) ($data['water_consumed'] ?? 0);
+
             // ─── Coût de revient de l'aliment consommé (snapshot CMP) ───
             // On fige le coût moyen pondéré courant de l'article aliment afin
             // de valoriser cette consommation dans la marge du lot, qu'il
@@ -83,8 +104,25 @@ class RecordDailyCheck
                 $data['feed_unit_cost'] = $this->resolveFeedUnitCost($feedType);
             }
 
+            // ─── Uniformité AUTOMATISÉE depuis les pesées d'échantillon ───
+            // Si des pesées individuelles sont fournies, le SERVEUR recalcule
+            // poids moyen + taux d'uniformité et écrase les valeurs client
+            // (formule documentée : DailyCheck::computeSampleStats).
+            if (! empty($data['weight_samples']) && is_array($data['weight_samples'])) {
+                $stats = DailyCheck::computeSampleStats($data['weight_samples']);
+                if ($stats) {
+                    $data['weight_samples'] = $stats['samples'];
+                    $data['avg_weight']     = $stats['avg_weight'];
+                    if ($stats['uniformity_pct'] !== null) {
+                        $data['uniformity_pct'] = $stats['uniformity_pct'];
+                    }
+                } else {
+                    unset($data['weight_samples']);
+                }
+            }
+
             // ─── Création ou mise à jour du pointage ───
-            // Note : l'observer DailyCheckObserver gère l'impact sur current_quantity
+            // Note : DailyCheck::booted() gère l'impact sur current_quantity
             $check = DailyCheck::updateOrCreate(
                 [
                     'batch_id'   => $data['batch_id'],
@@ -107,6 +145,9 @@ class RecordDailyCheck
 
             // ─── Valorisation du fumier ramassé (sous-produit fertilisant) ───
             app(SyncManureCollection::class)->execute($batch, $oldManure, $newManure);
+
+            // ─── Imputation de la consommation d'eau à la citerne du bâtiment ───
+            app(SyncWaterConsumption::class)->execute($batch, $oldWater, $newWater);
 
             return $check;
         });
@@ -147,9 +188,12 @@ class RecordDailyCheck
         // 2. Conversion automatique en KG si le stock est géré en Sacs
         $availableKg = 0;
         if ($stock) {
-            $availableKg = (strtolower($stock->unit) === 'sac') 
-                ? (float) $stock->current_quantity * 50 
-                : (float) $stock->current_quantity;
+            $availableKg = \App\Services\UnitConverter::toStockBase(
+                (float) $stock->current_quantity,
+                $stock->unit,
+                \App\Models\Stock::CAT_CONSO,
+                $stock->metadata['bag_weight'] ?? null
+            );
         }
 
         // Si c'est une mise à jour du même type d'aliment, on "rend" l'ancien stock virtuellement

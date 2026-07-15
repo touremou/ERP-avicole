@@ -1,21 +1,30 @@
 <?php
 namespace App\Notifications\Channels;
 
+use App\Services\SmsService;
 use Illuminate\Notifications\Notification;
-use Illuminate\Support\Facades\Http;
 
+/**
+ * Canal SMS : délègue à SmsService (passerelle configurable, journalisée et
+ * tolérante aux pannes — ne casse jamais la chaîne de notification). La
+ * notification doit exposer toSms($notifiable) => ['to' => numéro, 'message' => texte].
+ */
 class SmsGuineeChannel
 {
-    public function send($notifiable, Notification $notification)
+    public function __construct(private SmsService $sms) {}
+
+    public function send($notifiable, Notification $notification): void
     {
+        if (! method_exists($notification, 'toSms')) {
+            return;
+        }
+
         $data = $notification->toSms($notifiable);
 
-        // Exemple d'appel API vers un fournisseur local (ex: Sirocco ou API Orange)
-        return Http::post('https://api.sirocco.gn/v1/sms/send', [
-            'api_key' => config('services.sms.key'),
-            'to' => $data['to'],
-            'text' => $data['message'],
-            'sender' => 'AVISMART'
-        ]);
+        $this->sms->send(
+            (string) ($data['to'] ?? ''),
+            (string) ($data['message'] ?? ''),
+            ['user_id' => $notifiable->id ?? null, 'type' => 'alert']
+        );
     }
 }

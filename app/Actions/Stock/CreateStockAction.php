@@ -38,6 +38,8 @@ class CreateStockAction
                 'current_quantity' => $quantity,
                 'unit_price'       => $unitPrice,
                 'last_unit_price'  => $unitPrice,
+                'expiry_date'      => $data['expiry_date'] ?? null,
+                'lot_number'       => $data['lot_number'] ?? null,
                 'metadata'         => $data['metadata'] ?? [],
             ]);
 

@@ -58,10 +58,24 @@ return [
             'prefix' => '',
             'prefix_indexes' => true,
             'strict' => true,
-            'engine' => null,
+            // AUDIT C1 (trouvaille majeure) : avec 'engine' => null, le moteur
+            // dépend du DÉFAUT DU SERVEUR — un MySQL configuré en MyISAM (cas
+            // constaté sur WAMP dev : 118 tables MyISAM) rend transactions,
+            // verrous (lockForUpdate) ET clés étrangères SILENCIEUSEMENT
+            // inopérants. On impose InnoDB à la création, quel que soit le
+            // serveur du client (tri-mode).
+            'engine' => 'InnoDB',
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 (PHP_VERSION_ID >= 80500 ? Mysql::ATTR_SSL_CA : PDO::MYSQL_ATTR_SSL_CA) => env('MYSQL_ATTR_SSL_CA'),
             ]) : [],
+
+            // spatie/laravel-backup (audit P2-⑨) : chemin du binaire mysqldump
+            // quand il n'est pas dans le PATH (WAMP Windows, certains mutualisés)
+            // + dump InnoDB sans verrouiller les tables (prod en ligne).
+            'dump' => [
+                'dump_binary_path'     => env('DB_DUMP_BINARY_PATH', ''),
+                'useSingleTransaction' => true,
+            ],
         ],
 
         'mariadb' => [

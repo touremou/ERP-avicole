@@ -82,12 +82,12 @@ class SyncBatchStocks extends Command
             $totalProduit = EggProduction::sum($prodField);
 
             // 3. Conversion intelligente :
-            // Si le champ est 'broken_eggs' ou 'small_eggs', la valeur est en UNITÉS (ex: 45).
-            // Si l'unité du stock est 'Alvéole', on divise par 30 (ex: 45 / 30 = 1.50).
+            // Si le champ est 'broken_eggs' ou 'small_eggs', la valeur est en UNITÉS.
+            // Si l'unité du stock est 'Alvéole', on convertit (œufs par alvéole configuré).
             $finalQty = $totalProduit;
 
             if (in_array($prodField, ['broken_eggs', 'small_eggs']) && $stock->unit === 'Alvéole') {
-                $finalQty = $totalProduit / 30;
+                $finalQty = \App\Services\UnitConverter::eggsToTrays((float) $totalProduit);
             }
 
             // 4. Mise à jour du stock

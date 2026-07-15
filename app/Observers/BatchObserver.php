@@ -20,9 +20,10 @@ class BatchObserver
         }
 
         // Seuil unique d'alerte mortalité : même source que le filtre « surmortalité »
-        // de l'index (BatchController) et le scope Batch::critical(), pour éviter
-        // qu'une alerte se déclenche à un taux différent de celui affiché à l'écran.
-        $threshold = (float) setting('elevage.mortality_alert', 5);
+        // de l'index (BatchController), le scope Batch::critical() et le tableau de
+        // bord, pour éviter qu'une alerte se déclenche à un taux différent de celui
+        // affiché — et pour que le réglage éditable « mortalité cumulée » pilote tout.
+        $threshold = Batch::cumulativeMortalityThreshold();
 
         // Calcul du taux de mortalité ACTUEL
         $currentMortality = (($batch->initial_quantity - $batch->current_quantity) / $batch->initial_quantity) * 100;
@@ -84,8 +85,11 @@ class BatchObserver
     private function notifyAdmins(Batch $batch, float $mortalityRate): void
     {
         try {
-            // Requête unique et optimisée : cherche les utilisateurs ayant un rôle nommé 'admin'
-            $admins = User::whereHas('role', function ($query) {
+            // Requête unique : utilisateurs ayant le rôle nommé 'admin'.
+            // Correction : la relation est `userRole` (et non `role`) — l'ancien
+            // `whereHas('role')` levait une BadMethodCallException avalée par le
+            // catch, si bien que l'alerte de surmortalité n'était JAMAIS envoyée.
+            $admins = User::whereHas('userRole', function ($query) {
                 $query->where('name', 'admin');
             })->get();
 

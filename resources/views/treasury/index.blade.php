@@ -1,0 +1,116 @@
+<x-app-layout>
+    <x-slot name="header">
+        <x-page-header :title="__('💰 Trésorerie')" :subtitle="__('Caisse · Mobile Money · Banque')" icon="fa-wallet" accent="emerald">
+            <x-slot name="actions">
+                <a href="{{ route('treasury.report') }}" class="inline-flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-2xl text-[9px] font-black uppercase tracking-widest hover:bg-slate-50 transition-all no-underline shadow-sm italic">
+                    <i class="fa-solid fa-chart-line"></i> {{ __("Flux") }}
+                </a>
+                <div class="text-right">
+                    <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest">{{ __("Total disponible") }}</p>
+                    <p class="text-2xl font-black text-emerald-600 leading-none">{{ number_format($total, 0, ',', ' ') }} <span class="text-xs">{{ currency() }}</span></p>
+                </div>
+            </x-slot>
+        </x-page-header>
+    </x-slot>
+
+    <div class="py-10">
+        <div class="max-w-5xl mx-auto sm:px-6 lg:px-8 italic font-bold text-left space-y-8">
+
+            <x-flash />
+
+            {{-- COMPTES --}}
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                @forelse($accounts as $account)
+                <a href="{{ route('treasury.show', $account) }}" class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-md hover:border-emerald-200 transition-all no-underline">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-10 h-10 bg-slate-900 rounded-2xl flex items-center justify-center text-white shadow-lg shrink-0">
+                            <i class="fa-solid {{ $account->type_icon }}"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-xs font-black text-slate-800 uppercase truncate">{{ $account->name }}</p>
+                            <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest">{{ $account->type_label }}</p>
+                        </div>
+                    </div>
+                    <p class="text-2xl font-black {{ $account->current_balance < 0 ? 'text-red-600' : 'text-slate-900' }} leading-none">
+                        {{ number_format($account->current_balance, 0, ',', ' ') }} <span class="text-[10px] text-slate-400">{{ currency() }}</span>
+                    </p>
+                </a>
+                @empty
+                <p class="md:col-span-3 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest py-8 bg-white rounded-[2rem] border border-slate-100">
+                    {{ __("Aucun compte. Créez votre caisse, votre compte Mobile Money et votre banque ci-dessous.") }}
+                </p>
+                @endforelse
+            </div>
+
+            @can('depenses.C')
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {{-- NOUVEAU COMPTE --}}
+                <form method="POST" action="{{ route('treasury.account.store') }}" class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-4">
+                    @csrf
+                    <h3 class="text-[10px] font-black uppercase text-slate-500 tracking-widest"><i class="fa-solid fa-plus mr-1"></i> {{ __("Nouveau compte") }}</h3>
+                    <input type="text" name="name" required placeholder="{{ __('Nom (ex. Caisse principale)') }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black shadow-inner outline-none">
+                    <select name="type" required class="w-full bg-slate-50 border-none rounded-2xl p-4 text-[10px] font-black uppercase shadow-inner outline-none appearance-none cursor-pointer">
+                        @foreach($types as $key => $label)<option value="{{ $key }}">{{ $label }}</option>@endforeach
+                    </select>
+                    <input type="number" name="opening_balance" min="0" step="1" value="0" placeholder="{{ __('Solde d\'ouverture') }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black shadow-inner outline-none text-right">
+                    <button type="submit" class="w-full bg-slate-900 text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-600 transition-all border-none cursor-pointer">{{ __("Créer le compte") }}</button>
+                </form>
+
+                {{-- TRANSFERT --}}
+                <form method="POST" action="{{ route('treasury.transfer') }}" class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-4">
+                    @csrf
+                    <h3 class="text-[10px] font-black uppercase text-slate-500 tracking-widest"><i class="fa-solid fa-right-left mr-1"></i> {{ __("Transfert entre comptes") }}</h3>
+                    <div class="grid grid-cols-2 gap-3">
+                        <select name="from_id" required class="bg-slate-50 border-none rounded-2xl p-3 text-[10px] font-black uppercase shadow-inner outline-none">
+                            <option value="">{{ __("Depuis…") }}</option>
+                            @foreach($accounts as $a)<option value="{{ $a->id }}">{{ $a->name }}</option>@endforeach
+                        </select>
+                        <select name="to_id" required class="bg-slate-50 border-none rounded-2xl p-3 text-[10px] font-black uppercase shadow-inner outline-none">
+                            <option value="">{{ __("Vers…") }}</option>
+                            @foreach($accounts as $a)<option value="{{ $a->id }}">{{ $a->name }}</option>@endforeach
+                        </select>
+                    </div>
+                    <input type="number" name="amount" required min="1" step="1" placeholder="{{ __('Montant') }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black shadow-inner outline-none text-right">
+                    <input type="date" name="date" value="{{ now()->toDateString() }}" max="{{ date('Y-m-d') }}" required class="w-full bg-slate-50 border-none rounded-2xl p-3 text-xs font-black shadow-inner outline-none">
+                    <button type="submit" {{ $accounts->count() < 2 ? 'disabled' : '' }} class="w-full bg-slate-900 text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-600 transition-all border-none cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">{{ __("Transférer") }}</button>
+                    @if($accounts->count() < 2)<p class="text-[8px] text-slate-400 uppercase tracking-widest text-center">{{ __("Il faut au moins 2 comptes.") }}</p>@endif
+                </form>
+            </div>
+
+            {{-- AFFECTATION MODE DE PAIEMENT → COMPTE (mapping par défaut) --}}
+            @if($accounts->isNotEmpty())
+            @php
+                $channels = [
+                    'especes'      => ['Espèces', 'fa-coins'],
+                    'mobile_money' => ['Mobile Money (OM / MoMo)', 'fa-mobile-screen-button'],
+                    'virement'     => ['Virement bancaire', 'fa-building-columns'],
+                    'cheque'       => ['Chèque', 'fa-money-check'],
+                ];
+                $defaults = $accounts->whereNotNull('default_for_method')->keyBy('default_for_method');
+            @endphp
+            <form method="POST" action="{{ route('treasury.mapping') }}" class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-4">
+                @csrf
+                <div>
+                    <h3 class="text-[10px] font-black uppercase text-slate-500 tracking-widest"><i class="fa-solid fa-diagram-project mr-1"></i> {{ __("Affectation des encaissements / décaissements") }}</h3>
+                    <p class="text-[9px] font-bold text-slate-400 italic mt-1">{{ __("Compte crédité/débité par défaut selon le mode de paiement. Surchargeable au cas par cas.") }}</p>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    @foreach($channels as $key => [$label, $icon])
+                    <div class="flex items-center justify-between gap-3 p-3 rounded-2xl bg-slate-50">
+                        <span class="text-[10px] font-black text-slate-600 uppercase italic flex items-center gap-2"><i class="fa-solid {{ $icon }} text-emerald-500"></i> {{ __($label) }}</span>
+                        <select name="mapping[{{ $key }}]" class="bg-white border-none rounded-xl p-2 text-[10px] font-black uppercase shadow-inner outline-none">
+                            <option value="">{{ __("Auto (par type)") }}</option>
+                            @foreach($accounts as $a)
+                                <option value="{{ $a->id }}" @selected(optional($defaults->get($key))->id === $a->id)>{{ $a->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    @endforeach
+                </div>
+                <button type="submit" class="w-full bg-slate-900 text-white py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-600 transition-all border-none cursor-pointer"><i class="fa-solid fa-floppy-disk mr-1"></i> {{ __("Enregistrer l'affectation") }}</button>
+            </form>
+            @endif
+            @endcan
+        </div>
+    </div>
+</x-app-layout>

@@ -1,26 +1,33 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex justify-between items-center text-left">
-            <div class="flex items-center gap-4">
-                <div class="w-12 h-12 bg-rose-600 rounded-2xl flex items-center justify-center text-white shadow-lg rotate-3">
-                    <i class="fa-solid fa-microscope text-xl"></i>
-                </div>
-                <div>
-                    <h2 class="text-2xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">{{ __("Laboratoire & Diagnostics") }}</h2>
-                    <p class="text-[10px] font-bold text-slate-400 uppercase mt-1 tracking-widest italic leading-none">
-                        {{ __("Suivi des anomalies sanitaires et autopsies") }}
-                    </p>
-                </div>
-            </div>
-            <a href="{{ route('health.index') }}" class="text-[10px] font-black uppercase italic text-slate-400 hover:text-slate-800 transition-all no-underline">
-                <i class="fa-solid fa-arrow-left mr-1"></i> {{ __("Retour au Registre") }}
-            </a>
-        </div>
+        <x-page-header :title="__('Laboratoire & Diagnostics')" :subtitle="__('Suivi des anomalies sanitaires et autopsies')" icon="fa-microscope" accent="purple" />
     </x-slot>
 
     <div class="py-12 italic font-bold text-left">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            
+
+            {{-- KPIs sanitaires --}}
+            @isset($stats)
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
+                    <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Incidents ouverts") }}</p>
+                    <p class="text-3xl font-black text-slate-800 tracking-tighter">{{ $stats['open'] }}</p>
+                </div>
+                <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
+                    <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Critiques ouverts") }}</p>
+                    <p class="text-3xl font-black {{ $stats['critical'] > 0 ? 'text-rose-600' : 'text-slate-800' }} tracking-tighter">{{ $stats['critical'] }}</p>
+                </div>
+                <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
+                    <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Diagnostic en retard") }} <span class="text-slate-300">(>{{ $stats['sla_days'] }}j)</span></p>
+                    <p class="text-3xl font-black {{ $stats['overdue'] > 0 ? 'text-amber-600' : 'text-slate-800' }} tracking-tighter">{{ $stats['overdue'] }}</p>
+                </div>
+                <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
+                    <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Coût traitements") }}</p>
+                    <p class="text-2xl font-black text-slate-800 tracking-tighter">{{ number_format($stats['cost'], 0, ',', ' ') }} <span class="text-[10px] text-slate-400">{{ currency() }}</span></p>
+                </div>
+            </div>
+            @endisset
+
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 @forelse($incidents as $incident)
                     <div class="bg-white rounded-[2.5rem] border border-slate-100 shadow-xl overflow-hidden flex flex-col">
@@ -32,24 +39,38 @@
                             'bg-amber-50 border-amber-100' => $incident->status === 'diagnostique',
                             'bg-emerald-50 border-emerald-100' => $incident->status === 'resolu',
                         ])>
-                            <span @class([
-                                'px-3 py-1 rounded-xl text-[9px] font-black uppercase tracking-widest border',
-                                'bg-rose-600 text-white border-rose-700 animate-pulse' => $incident->status === 'en_attente',
-                                'bg-amber-100 text-amber-700 border-amber-200' => $incident->status === 'diagnostique',
-                                'bg-emerald-100 text-emerald-700 border-emerald-200' => $incident->status === 'resolu',
-                            ])>
-                                {{ str_replace('_', ' ', $incident->status) }}
-                            </span>
-                            <span class="text-[10px] text-slate-400 font-black">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span @class([
+                                    'px-3 py-1 rounded-xl text-[9px] font-black uppercase tracking-widest border',
+                                    'bg-rose-600 text-white border-rose-700 animate-pulse' => $incident->status === 'en_attente',
+                                    'bg-amber-100 text-amber-700 border-amber-200' => $incident->status === 'diagnostique',
+                                    'bg-emerald-100 text-emerald-700 border-emerald-200' => $incident->status === 'resolu',
+                                ])>
+                                    {{ str_replace('_', ' ', $incident->status) }}
+                                </span>
+                                {{-- Gravité --}}
+                                <span class="px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest bg-{{ $incident->severity_color }}-100 text-{{ $incident->severity_color }}-700 border border-{{ $incident->severity_color }}-200">
+                                    {{ $incident->severity_label }}
+                                </span>
+                                @if($incident->is_quarantined)
+                                    <span class="px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest bg-purple-100 text-purple-700 border border-purple-200" title="{{ __('Lot isolé') }}">
+                                        <i class="fa-solid fa-shield-virus mr-1"></i>{{ __('Quarantaine') }}
+                                    </span>
+                                @endif
+                            </div>
+                            <a href="{{ route('health.incidents.show', $incident->id) }}" class="text-[10px] text-slate-400 font-black no-underline hover:text-slate-700 flex items-center gap-1" title="{{ __('Voir le détail') }}">
                                 {{ $incident->created_at->format('d/m/Y H:i') }}
-                            </span>
+                                <i class="fa-solid fa-up-right-from-square text-[8px]"></i>
+                            </a>
                         </div>
 
-                        {{-- Photo d'autopsie --}}
+                        {{-- Photo d'autopsie — object-contain : la preuve visuelle doit
+                             être montrée ENTIÈRE (une lésion recadrée hors champ est
+                             inutile au diagnostic). Fond sombre = letterboxing propre. --}}
                         @if($incident->photo_path)
-                            <div class="h-48 w-full bg-slate-900 relative group overflow-hidden">
-                                <img src="{{ media_url($incident->photo_path) }}" alt="Autopsie" class="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all duration-500">
-                                <div class="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex items-end p-4">
+                            <div class="h-48 w-full bg-slate-900 relative group overflow-hidden flex items-center justify-center">
+                                <img src="{{ media_url($incident->photo_path) }}" alt="Autopsie" loading="lazy" class="max-w-full max-h-full object-contain opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500">
+                                <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent flex items-end p-4 pointer-events-none">
                                     <span class="text-white text-[9px] uppercase tracking-widest font-black"><i class="fa-solid fa-camera mr-1"></i> {{ __("Preuve visuelle jointe") }}</span>
                                 </div>
                             </div>
@@ -65,6 +86,9 @@
                                 <div>
                                     <p class="text-[9px] uppercase tracking-widest text-slate-400 font-black mb-1">{{ __("Localisation") }}</p>
                                     <h3 class="text-lg font-black text-slate-800 tracking-tighter leading-none">{{ $incident->building->name ?? __("Bâtiment Inconnu") }}</h3>
+                                    @if($incident->batch)
+                                        <p class="text-[9px] font-black text-blue-500 uppercase tracking-widest mt-1">{{ __("Lot") }} #{{ $incident->batch->code }}</p>
+                                    @endif
                                 </div>
                                 <div class="text-right">
                                     <p class="text-[9px] uppercase tracking-widest text-slate-400 font-black mb-1">{{ __("Mortalité") }}</p>
@@ -75,6 +99,9 @@
                             <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100">
                                 <p class="text-[9px] uppercase tracking-widest text-slate-400 font-black mb-2">{{ __("Symptômes observés par") }} {{ $incident->user->name ?? __("l'agent") }}</p>
                                 <p class="text-xs text-slate-700 font-medium leading-relaxed">{{ $incident->symptoms }}</p>
+                                @if($incident->daily_check_id)
+                                    <p class="text-[8px] uppercase tracking-widest text-blue-400 font-black mt-2"><i class="fa-solid fa-clipboard-list mr-1"></i>{{ __("Issu du pointage du") }} {{ optional($incident->dailyCheck)->check_date?->format('d/m/Y') }}</p>
+                                @endif
                             </div>
 
                             {{-- Bloc Diagnostic Vétérinaire (Si rempli) --}}
@@ -94,22 +121,34 @@
                             
                             {{-- 🔒 Sécurisation des actions de diagnostic et résolution --}}
                             @can('elevage.M')
-                                @if($incident->status === 'en_attente')
+                                @if($incident->status !== 'resolu')
                                     <div class="flex gap-2">
-                                        <button type="button" x-data @click="$dispatch('open-diagnosis-modal', {{ $incident->id }})" class="flex-1 py-3 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 transition-colors flex justify-center items-center gap-2 shadow-md">
-                                            <i class="fa-solid fa-stethoscope"></i> {{ __("Diagnostic") }}
-                                        </button>
-                                        <button type="button" x-data @click="$dispatch('open-fast-close-modal', {{ $incident->id }})" title="{{ __("Clôturer sans diagnostic (Cause technique/Erreur)") }}" class="w-12 py-3 bg-slate-100 text-slate-400 rounded-xl text-[10px] hover:bg-slate-200 hover:text-slate-800 transition-colors flex justify-center items-center shadow-sm">
-                                            <i class="fa-solid fa-power-off text-sm"></i>
-                                        </button>
+                                        @if($incident->status === 'en_attente')
+                                            <button type="button" x-data @click="$dispatch('open-diagnosis-modal', {{ $incident->id }})" class="flex-1 py-3 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 transition-colors flex justify-center items-center gap-2 shadow-md">
+                                                <i class="fa-solid fa-stethoscope"></i> {{ __("Diagnostic") }}
+                                            </button>
+                                            <button type="button" x-data @click="$dispatch('open-fast-close-modal', {{ $incident->id }})" title="{{ __("Clôturer sans diagnostic (Cause technique/Erreur)") }}" class="w-12 py-3 bg-slate-100 text-slate-400 rounded-xl text-[10px] hover:bg-slate-200 hover:text-slate-800 transition-colors flex justify-center items-center shadow-sm">
+                                                <i class="fa-solid fa-power-off text-sm"></i>
+                                            </button>
+                                        @elseif($incident->status === 'diagnostique')
+                                            <button type="button" x-data @click="$dispatch('open-resolve-modal', {{ $incident->id }})" class="flex-1 py-3 bg-emerald-100 text-emerald-700 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-500 hover:text-white transition-colors flex justify-center items-center gap-2 shadow-sm border border-emerald-200">
+                                                <i class="fa-solid fa-check-double"></i> {{ __("Marquer comme résolu") }}
+                                            </button>
+                                        @endif
+
+                                        {{-- Quarantaine : isoler / réintégrer le lot --}}
+                                        <form action="{{ route('health.incidents.quarantine', $incident->id) }}" method="POST" class="shrink-0">
+                                            @csrf @method('PATCH')
+                                            <button type="submit" title="{{ $incident->is_quarantined ? __('Lever la quarantaine') : __('Mettre en quarantaine') }}"
+                                                @class([
+                                                    'w-12 py-3 rounded-xl text-sm flex justify-center items-center shadow-sm transition-colors border-none cursor-pointer',
+                                                    'bg-purple-600 text-white hover:bg-purple-700' => $incident->is_quarantined,
+                                                    'bg-slate-100 text-slate-400 hover:bg-purple-100 hover:text-purple-600' => ! $incident->is_quarantined,
+                                                ])>
+                                                <i class="fa-solid fa-shield-virus"></i>
+                                            </button>
+                                        </form>
                                     </div>
-                                @elseif($incident->status === 'diagnostique')
-                                    <form action="{{ route('health.incidents.resolve', $incident->id) }}" method="POST" onsubmit="return confirm('{{ __("Confirmez-vous que l'état de santé du lot est revenu à la normale ?") }}')">
-                                        @csrf @method('PATCH')
-                                        <button type="submit" class="w-full py-3 bg-emerald-100 text-emerald-700 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-500 hover:text-white transition-colors flex justify-center items-center gap-2 shadow-sm border border-emerald-200">
-                                            <i class="fa-solid fa-check-double"></i> {{ __("Marquer comme résolu") }}
-                                        </button>
-                                    </form>
                                 @endif
                             @endcan
 
@@ -170,6 +209,11 @@
                     <textarea name="vet_prescription" rows="3" placeholder="Traitement recommandé, isolement, etc." class="w-full bg-slate-50 border-none rounded-xl p-4 text-xs font-bold text-slate-700 focus:ring-2 focus:ring-blue-500 shadow-inner"></textarea>
                 </div>
 
+                <div>
+                    <label class="text-[9px] uppercase text-slate-400 block tracking-widest font-black mb-1 italic">Coût du traitement ({{ currency() }})</label>
+                    <input type="number" name="treatment_cost" min="0" step="any" placeholder="0" class="w-full bg-slate-50 border-none rounded-xl p-4 font-black text-xs text-slate-800 shadow-inner focus:ring-2 focus:ring-blue-500">
+                </div>
+
                 <div class="pt-2">
                     <button type="submit" class="w-full bg-blue-600 text-white py-5 rounded-xl font-black uppercase tracking-widest transition-all hover:bg-slate-900 text-[10px] shadow-lg flex items-center justify-center gap-2">
                         <i class="fa-solid fa-file-medical"></i> Enregistrer la prescription
@@ -209,6 +253,43 @@
                 <div class="pt-2">
                     <button type="submit" class="w-full bg-slate-800 text-white py-5 rounded-xl font-black uppercase tracking-widest transition-all hover:bg-slate-900 text-[10px] shadow-lg flex items-center justify-center gap-2">
                         <i class="fa-solid fa-power-off"></i> Confirmer la clôture
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {{-- MODALE DE RÉSOLUTION (note de clôture obligatoire) --}}
+    <div x-data="{ showResolveModal: false, incidentId: null, formUrl: '' }"
+         @open-resolve-modal.window="incidentId = $event.detail; formUrl = '{{ url('health/incidents') }}/' + incidentId + '/resolve'; showResolveModal = true;"
+         x-show="showResolveModal"
+         class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm px-4"
+         style="display: none;"
+         x-transition>
+
+        <div @click.away="showResolveModal = false" class="bg-white rounded-[3rem] shadow-2xl w-full max-w-lg overflow-hidden text-left border border-slate-100">
+
+            <div class="bg-emerald-600 p-8 text-white flex justify-between items-center relative overflow-hidden">
+                <i class="fa-solid fa-check-double absolute -right-4 -top-4 text-[6rem] opacity-10"></i>
+                <div class="relative z-10">
+                    <h3 class="text-xl font-black uppercase tracking-tighter italic leading-none">Résolution du cas</h3>
+                    <p class="text-[10px] text-emerald-200 font-bold uppercase tracking-widest mt-1">Clôture médicale</p>
+                </div>
+                <button @click="showResolveModal = false" class="text-white hover:text-emerald-200 relative z-10"><i class="fa-solid fa-xmark text-2xl"></i></button>
+            </div>
+
+            <form :action="formUrl" method="POST" class="p-8 space-y-6">
+                @csrf
+                @method('PATCH')
+
+                <div>
+                    <label class="text-[9px] uppercase text-slate-400 block tracking-widest font-black mb-1 italic">Conclusion / mesures prises *</label>
+                    <textarea name="resolution_notes" required rows="3" placeholder="Ex: Traitement terminé, mortalité revenue à la normale, lot réintégré..." class="w-full bg-slate-50 border-none rounded-xl p-4 font-black text-xs text-slate-800 shadow-inner focus:ring-2 focus:ring-emerald-500"></textarea>
+                </div>
+
+                <div class="pt-2">
+                    <button type="submit" class="w-full bg-emerald-600 text-white py-5 rounded-xl font-black uppercase tracking-widest transition-all hover:bg-emerald-700 text-[10px] shadow-lg flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-check-double"></i> Confirmer la résolution
                     </button>
                 </div>
             </form>

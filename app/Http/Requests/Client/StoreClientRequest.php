@@ -19,7 +19,8 @@ class StoreClientRequest extends FormRequest
             'name'         => 'required|string|max:255|unique:clients,name',
             'type'         => 'required|in:particulier,entreprise',
             'category'     => 'required|in:grossiste,detaillant,hotel_restaurant,revendeur,autre',
-            
+            'price_list_id' => 'nullable|exists:sale_price_lists,id',
+
             // Unicité suggérée sur le téléphone et l'email (à adapter selon vos besoins métiers)
             'phone'        => 'nullable|string|max:30|unique:clients,phone',
             'email'        => 'nullable|email|max:255|unique:clients,email',

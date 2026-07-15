@@ -34,10 +34,10 @@ class DailyCheck extends Model
     protected $fillable = [
         'farm_id', 'batch_id', 'check_date',
         'mortality', 'feed_consumed', 'feed_type', 'feed_unit_cost', 'water_consumed',
-        'temp_min', 'temp_max', 'humidity',
-        'avg_weight', 'health_status',
+        'temp_min', 'temp_max', 'temp_source', 'temp_recorded_by', 'humidity',
+        'avg_weight', 'uniformity_pct', 'weight_samples', 'health_status',
         'treatment_type', 'treatment_name',
-        'qty_quarantine_in', 'qty_quarantine_out', 'qty_sorted_out',
+        'qty_quarantine_in', 'qty_quarantine_out', 'mortality_infirmary', 'qty_sorted_out',
         'observations', 'litter_changed', 'manure_collected_kg',
         'lame_count', 'pecking_injury_count',
     ];
@@ -48,6 +48,8 @@ class DailyCheck extends Model
         'feed_unit_cost'     => 'decimal:2',
         'water_consumed'     => 'decimal:2',
         'avg_weight'         => 'decimal:3',
+        'uniformity_pct'     => 'decimal:2',
+        'weight_samples'     => 'array',
         'temp_min'           => 'decimal:1',
         'temp_max'           => 'decimal:1',
         'humidity'           => 'decimal:1',
@@ -71,6 +73,49 @@ class DailyCheck extends Model
         return $this->hasOne(\App\Models\DailyCheckExtension::class);
     }
 
+    /**
+     * Calcule poids moyen et TAUX D'UNIFORMITÉ depuis les pesées individuelles
+     * de l'échantillon (kg) — CÔTÉ SERVEUR, source de vérité (la valeur
+     * calculée par le navigateur n'est jamais crue sur parole).
+     *
+     * FORMULE (guides de souche) :
+     *   uniformité (%) = 100 × (nb de pesées dans [0,9 × m̄ ; 1,1 × m̄]) / n
+     *   avec m̄ = moyenne arithmétique de l'échantillon.
+     *
+     * Retourne null si aucune pesée exploitable ; l'uniformité n'est calculée
+     * qu'à partir de 2 pesées (sur 1 seul sujet elle vaudrait trivialement
+     * 100 % — sans signification).
+     *
+     * @param  array $samples  Poids en kg (valeurs non numériques ignorées)
+     * @return array{samples: float[], count: int, avg_weight: float, uniformity_pct: ?float}|null
+     */
+    public static function computeSampleStats(array $samples): ?array
+    {
+        $clean = collect($samples)
+            ->filter(fn ($v) => is_numeric($v) && (float) $v > 0)
+            ->map(fn ($v) => round((float) $v, 3))
+            ->values();
+
+        if ($clean->isEmpty()) {
+            return null;
+        }
+
+        $avg = $clean->avg();
+        $uniformity = null;
+
+        if ($clean->count() >= 2 && $avg > 0) {
+            $inRange = $clean->filter(fn (float $w) => $w >= $avg * 0.9 && $w <= $avg * 1.1)->count();
+            $uniformity = round($inRange / $clean->count() * 100, 2);
+        }
+
+        return [
+            'samples'        => $clean->all(),
+            'count'          => $clean->count(),
+            'avg_weight'     => round($avg, 3),
+            'uniformity_pct' => $uniformity,
+        ];
+    }
+
     public function calculateNetImpact(): int
     {
         return (
@@ -89,6 +134,7 @@ class DailyCheck extends Model
                 static::applyBatchImpact($check->batch_id, -$impact);
             }
             static::autoCompleteTasks($check);
+            static::checkDailyMortalitySpike($check);
         });
 
         // Avant update → calculer le diff et le stocker dans le tableau statique
@@ -191,5 +237,46 @@ class DailyCheck extends Model
     {
         if ($this->temp_min === null || $this->temp_max === null) return null;
         return round(((float) $this->temp_min + (float) $this->temp_max) / 2, 1);
+    }
+
+    /**
+     * Détecte un PIC de mortalité QUOTIDIEN anormal et alerte (par bâtiment) —
+     * early-warning maladie, complémentaire de l'alerte de mortalité CUMULÉE
+     * (5 %, qui arrive trop tard). Garde-fou double (cf. paramètres
+     * elevage.daily_mortality_alert_min/pct) : on exige un MINIMUM de morts en
+     * valeur absolue ET un taux quotidien élevé, pour ne pas alerter sur un
+     * décès isolé. L'envoi est isolé (rescue) : une panne de notification ne
+     * casse jamais la saisie du pointage.
+     */
+    protected static function checkDailyMortalitySpike(self $check): void
+    {
+        $deaths = (int) $check->mortality;
+        if ($deaths <= 0) {
+            return;
+        }
+
+        $minDeaths = (int) setting('elevage.daily_mortality_alert_min', 3);
+        if ($deaths < $minDeaths) {
+            return;
+        }
+
+        $batch = Batch::with('building')->find($check->batch_id);
+        if (! $batch || $batch->status !== Batch::STATUS_ACTIF) {
+            return;
+        }
+
+        // Effectif AVANT le pointage du jour = effectif courant + impact net appliqué.
+        $effectifBefore = max(1, (int) $batch->current_quantity + $check->calculateNetImpact());
+        $dailyRate = round($deaths / $effectifBefore * 100, 2);
+
+        if ($dailyRate < (float) setting('elevage.daily_mortality_alert_pct', 0.5)) {
+            return;
+        }
+
+        rescue(
+            fn () => app(\App\Services\NotificationHub::class)->alertDailyMortalitySpike($batch, $deaths, $dailyRate),
+            fn ($e) => \Illuminate\Support\Facades\Log::warning("Alerte pic mortalité non émise (pointage #{$check->id}) : {$e->getMessage()}"),
+            report: false
+        );
     }
 }

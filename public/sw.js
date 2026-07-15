@@ -13,7 +13,7 @@
 //
 // CACHE_NAME est versionné : tout changement de version purge les anciens
 // caches à l'activation (cf. handler `activate`).
-const CACHE_NAME = 'avismart-v3';
+const CACHE_NAME = 'avismart-v4';
 const OFFLINE_URL = '/offline';
 
 self.addEventListener('install', (event) => {
@@ -22,7 +22,10 @@ self.addEventListener('install', (event) => {
             .then((cache) => cache.add(OFFLINE_URL))
             .catch(() => {}) // ne jamais faire échouer l'installation
     );
-    self.skipWaiting();
+    // ⚠️ PAS de skipWaiting() ici : un nouveau SW ne doit pas s'activer et
+    // recharger la page en plein milieu d'une navigation (symptôme « double-clic »
+    // / « la redirection ne prend pas »). L'activation est pilotée par
+    // l'utilisateur via le toast de mise à jour (message 'skipWaiting' ci-dessous).
 });
 
 self.addEventListener('activate', (event) => {

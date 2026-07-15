@@ -32,6 +32,26 @@ class CropProtocolItem extends Model
         return $this->belongsTo(CropProtocol::class, 'crop_protocol_id');
     }
 
+    /**
+     * Correspondance type d'étape → type d'intrant de cycle (CropInput::TYPES),
+     * pour comptabiliser une étape réalisée comme charge du cycle. Les étapes
+     * sans contrepartie de charge (observation, récolte) renvoient null.
+     */
+    public const INPUT_TYPE_MAP = [
+        'semis'         => 'semence',
+        'fertilisation' => 'engrais',
+        'traitement'    => 'phyto',
+        'irrigation'    => 'irrigation',
+        'sarclage'      => 'main_doeuvre',
+        'autre'         => 'autre',
+    ];
+
+    /** Type d'intrant suggéré pour comptabiliser cette étape (ou null). */
+    public function suggestedInputType(): ?string
+    {
+        return self::INPUT_TYPE_MAP[$this->type] ?? null;
+    }
+
     // ─── ACCESSEURS ───
 
     public function getTypeLabelAttribute(): string

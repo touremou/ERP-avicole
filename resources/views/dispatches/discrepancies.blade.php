@@ -1,28 +1,14 @@
 <x-app-layout>
     <x-slot name="header">
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 text-left">
-            <div class="flex items-center gap-5">
-                <div class="w-14 h-14 bg-red-500 rounded-[1.5rem] flex items-center justify-center text-white shadow-2xl rotate-3">
-                    <i class="fa-solid fa-triangle-exclamation text-xl"></i>
-                </div>
-                <div>
-                    <h2 class="font-black text-2xl text-slate-800 leading-none uppercase italic tracking-tighter">{{ __("Écarts & Litiges") }}</h2>
-                    <p class="text-[10px] font-black text-red-600 uppercase tracking-[0.2em] mt-2 italic">
-                        {{ __("Rapports de réconciliation — Three-Way Matching") }}
-                    </p>
-                </div>
-            </div>
+            <x-page-header :title="__('Écarts & Litiges')" :subtitle="__('Rapports de réconciliation — Three-Way Matching')" icon="fa-triangle-exclamation" accent="orange" />
         </div>
     </x-slot>
 
     <div class="py-10">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 italic font-bold text-left">
 
-            @if(session('success'))
-                <div class="mb-8 p-5 bg-emerald-500 text-white rounded-[2rem] font-black text-[10px] uppercase tracking-[0.2em] shadow-xl flex items-center italic">
-                    <i class="fa-solid fa-check-double mr-3 text-lg"></i> {{ session('success') }}
-                </div>
-            @endif
+            <x-flash />
 
             {{-- STATS --}}
             <div class="grid grid-cols-3 gap-4 mb-8">

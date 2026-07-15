@@ -1,13 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex justify-between items-center text-left">
-            <h2 class="text-2xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">
-                <i class="fa-solid fa-plus-circle text-emerald-500 mr-2"></i> {{ __("Nouvel Article") }}
-            </h2>
-            <a href="{{ route('stocks.index', ['category' => $category ?? 'oeufs']) }}" class="text-[10px] font-black uppercase italic text-slate-400 hover:text-slate-800 transition-all leading-none no-underline">
-                <i class="fa-solid fa-arrow-left mr-1"></i> {{ __("Retour au Stock") }}
-            </a>
-        </div>
+        <x-page-header :title="__('Nouvel Article')" icon="fa-boxes-stacked" accent="orange" :back="route('stocks.index', ['category' => $category ?? 'oeufs'])" />
     </x-slot>
 
     {{-- Initialisation AlpineJS --}}
@@ -161,10 +154,23 @@
 
                                 {{-- PRIX UNITAIRE (NOUVEAU) --}}
                                 <div>
-                                    <label class="text-[10px] uppercase text-slate-400 ml-6 mb-2 block tracking-widest font-black italic">06. {{ __("Prix Unitaire (GNF)") }}</label>
+                                    <label class="text-[10px] uppercase text-slate-400 ml-6 mb-2 block tracking-widest font-black italic">06. {{ __("Prix Unitaire") }} ({{ currency() }})</label>
                                     <input type="number" min="0" name="unit_price" step="1" required
                                         class="w-full bg-slate-50 border-none rounded-[2rem] p-5 font-black shadow-inner text-center text-blue-500 italic focus:ring-2 focus:ring-blue-500"
                                         placeholder="{{ __('Ex: 1500') }}">
+                                </div>
+
+                                {{-- PÉREMPTION (optionnel — vaccins, médicaments, intrants…) --}}
+                                <div>
+                                    <label class="text-[10px] uppercase text-slate-400 ml-6 mb-2 block tracking-widest font-black italic">07. {{ __("Péremption") }} <span class="text-slate-300 normal-case">({{ __('optionnel') }})</span></label>
+                                    <input type="date" name="expiry_date"
+                                        class="w-full bg-slate-50 border-none rounded-[2rem] p-5 font-black shadow-inner text-center text-rose-500 italic focus:ring-2 focus:ring-rose-500">
+                                </div>
+                                <div>
+                                    <label class="text-[10px] uppercase text-slate-400 ml-6 mb-2 block tracking-widest font-black italic">08. {{ __("N° de lot") }} <span class="text-slate-300 normal-case">({{ __('optionnel') }})</span></label>
+                                    <input type="text" name="lot_number" maxlength="100"
+                                        class="w-full bg-slate-50 border-none rounded-[2rem] p-5 font-black shadow-inner text-center italic focus:ring-2 focus:ring-slate-400"
+                                        placeholder="{{ __('Ex: VAC-2026-08') }}">
                                 </div>
 
                                 {{-- STOCK INITIAL --}}

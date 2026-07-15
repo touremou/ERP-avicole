@@ -1,21 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex justify-between items-center">
-            <div class="flex items-center gap-4 text-left">
-                <div class="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-white shadow-lg rotate-3">
-                    <i class="fa-solid fa-pen-nib text-lg text-amber-500"></i>
-                </div>
-                <div>
-                    <h2 class="font-black text-2xl text-slate-800 uppercase italic tracking-tighter leading-none">
-                        {{ __("Édition") }} : {{ $formula->name }}
-                    </h2>
-                    <p class="text-[10px] font-bold text-blue-600 uppercase tracking-widest mt-1 italic leading-none">{{ __("Optimisation de la recette • Labo") }}</p>
-                </div>
-            </div>
-            <a href="{{ route('formulas.show', $formula->id) }}" class="text-[10px] font-black uppercase text-slate-400 hover:text-slate-900 transition no-underline">
-                <i class="fa-solid fa-xmark mr-2"></i> {{ __("Annuler") }}
-            </a>
-        </div>
+        <x-page-header :title="__('Édition') . ' : ' . $formula->name" :subtitle="__('Optimisation de la recette • Labo')" icon="fa-pen-nib" accent="amber" :back="route('formulas.show', $formula->id)" />
     </x-slot>
 
     <div class="py-12 italic font-bold text-left">

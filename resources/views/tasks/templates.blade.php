@@ -1,24 +1,12 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex justify-between items-center text-left">
-            <div class="flex items-center gap-4">
-                <a href="{{ route('tasks.index') }}" class="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-900 hover:text-white transition-all no-underline"><i class="fa-solid fa-arrow-left"></i></a>
-                <div>
-                    <h2 class="text-lg font-black text-slate-800 uppercase italic tracking-tighter leading-none">{{ __("Templates de Tâches") }}</h2>
-                    <p class="text-[9px] font-bold text-slate-400 uppercase mt-1 tracking-widest italic">{{ __("Configuration des routines automatisées") }}</p>
-                </div>
-            </div>
-        </div>
+        <x-page-header :title="__('Templates de Tâches')" :subtitle="__('Configuration des routines automatisées')" icon="fa-gear" accent="indigo" />
     </x-slot>
 
     <div class="py-8 italic font-bold" x-data="{ showForm: false, perBuilding: true, perPlot: false }">
         <div class="max-w-5xl mx-auto sm:px-6 lg:px-8">
 
-            @if(session('success'))
-                <div class="mb-6 p-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg flex items-center italic bg-emerald-500 text-white">
-                    <i class="fa-solid fa-check-double mr-3"></i> {{ session('success') }}
-                </div>
-            @endif
+            <x-flash />
 
             {{-- BOUTON + FORMULAIRE CRÉATION --}}
             <div class="mb-6">

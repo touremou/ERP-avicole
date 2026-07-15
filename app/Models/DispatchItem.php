@@ -40,10 +40,24 @@ class DispatchItem extends Model
         return $this->belongsTo(Batch::class);
     }
 
-    // Taxonomie alignée sur SaleItem (multiespèces).
-    public const STOCK_TYPES = ['oeufs', 'lait', 'aliment', 'produits_finis', 'materiel'];
+    // Taxonomie alignée sur SaleItem (multiespèces) + catégories de stock
+    // expédiables (litières, récoltes, intrants) — cf. Stock::CATEGORY_TO_PRODUCT_TYPE.
+    public const STOCK_TYPES = ['oeufs', 'lait', 'aliment', 'produits_finis', 'materiel', 'litieres', 'recoltes', 'intrants'];
     public const BATCH_TYPES = ['animal_vif', 'carcasse', 'volaille_vivante', 'volaille_abattue'];
     public const COUNT_UNITS = ['tete', 'piece', 'unite'];
+
+    /** Libellé canonique du type de produit (aligné sur SaleItem). */
+    public function getTypeLabelAttribute(): string
+    {
+        return SaleItem::SELLABLE_TYPE_LABELS[$this->product_type] ?? match ($this->product_type) {
+            'volaille_vivante' => 'Volaille vivante',
+            'volaille_abattue' => 'Volaille abattue',
+            'litieres'         => 'Litières',
+            'recoltes'         => 'Récoltes',
+            'intrants'         => 'Intrants',
+            default            => ucfirst(str_replace('_', ' ', (string) $this->product_type)),
+        };
+    }
 
     /** Ligne adossée au magasin (déstockage Stock). */
     public function requiresDestock(): bool

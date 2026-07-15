@@ -171,3 +171,227 @@ test('le seeder de protocoles crée des itinéraires de référence et reste ide
     expect(CropProtocol::count())->toBe($countFirst)
         ->and(CropProtocol::where('crop_name', 'Maïs')->first()->items()->count())->toBe($maisItems);
 });
+
+test('un manager peut valider une étape d\'itinéraire, qui passe à « done »', function () {
+    $protocol = CropProtocol::create(['name' => 'Proto valid', 'crop_name' => 'Maïs']);
+    // Sarclage sans intrant associé : l'inférence ne le détecterait jamais.
+    $item = $protocol->items()->create(['day_number' => 15, 'action_name' => 'Sarclage manuel', 'type' => 'sarclage', 'stage' => 'Levée']);
+
+    $cycle = protocolCycle($this->farm->id, $protocol->id, now()->subDays(20)->toDateString());
+
+    // Avant validation : étape en retard (J+15 dépassé), non faite.
+    $before = collect((new CropProtocolAlertService())->getCycleSchedule($cycle->fresh()))
+        ->firstWhere('item.id', $item->id);
+    expect($before['status'])->toBe('overdue');
+
+    $this->actingAs($this->managerUser)
+        ->post(route('crop-cycles.steps.complete', [$cycle, $item]), ['notes' => 'Fait par l\'équipe'])
+        ->assertRedirect();
+
+    $this->assertDatabaseHas('crop_protocol_completions', [
+        'crop_cycle_id' => $cycle->id, 'crop_protocol_item_id' => $item->id, 'notes' => 'Fait par l\'équipe',
+    ]);
+
+    $after = collect((new CropProtocolAlertService())->getCycleSchedule($cycle->fresh()))
+        ->firstWhere('item.id', $item->id);
+    expect($after['status'])->toBe('done')
+        ->and($after['completion'])->not->toBeNull()
+        ->and($after['completion']->completed_by)->toBe($this->managerUser->id);
+});
+
+test('valider deux fois la même étape ne crée pas de doublon (idempotent)', function () {
+    $protocol = CropProtocol::create(['name' => 'Proto idemp', 'crop_name' => 'Maïs']);
+    $item = $protocol->items()->create(['day_number' => 5, 'action_name' => 'Observation', 'type' => 'observation']);
+    $cycle = protocolCycle($this->farm->id, $protocol->id, now()->subDays(10)->toDateString());
+
+    $this->actingAs($this->managerUser)->post(route('crop-cycles.steps.complete', [$cycle, $item]));
+    $this->actingAs($this->managerUser)->post(route('crop-cycles.steps.complete', [$cycle, $item]));
+
+    expect(\App\Models\CropProtocolCompletion::where('crop_cycle_id', $cycle->id)->where('crop_protocol_item_id', $item->id)->count())->toBe(1);
+});
+
+test('un manager peut annuler la validation d\'une étape (réouverture)', function () {
+    $protocol = CropProtocol::create(['name' => 'Proto annul', 'crop_name' => 'Maïs']);
+    $item = $protocol->items()->create(['day_number' => 5, 'action_name' => 'Irrigation', 'type' => 'irrigation']);
+    $cycle = protocolCycle($this->farm->id, $protocol->id, now()->subDays(10)->toDateString());
+
+    $this->actingAs($this->managerUser)->post(route('crop-cycles.steps.complete', [$cycle, $item]));
+    $this->actingAs($this->managerUser)->delete(route('crop-cycles.steps.uncomplete', [$cycle, $item]))->assertRedirect();
+
+    $this->assertDatabaseMissing('crop_protocol_completions', [
+        'crop_cycle_id' => $cycle->id, 'crop_protocol_item_id' => $item->id,
+    ]);
+});
+
+test('on ne peut pas valider une étape étrangère à l\'itinéraire du cycle', function () {
+    $protoA = CropProtocol::create(['name' => 'Proto A', 'crop_name' => 'Maïs']);
+    $cycle  = protocolCycle($this->farm->id, $protoA->id, now()->subDays(10)->toDateString());
+
+    // Étape appartenant à un AUTRE protocole.
+    $protoB = CropProtocol::create(['name' => 'Proto B', 'crop_name' => 'Riz']);
+    $alien  = $protoB->items()->create(['day_number' => 2, 'action_name' => 'Repiquage', 'type' => 'semis']);
+
+    $this->actingAs($this->managerUser)
+        ->post(route('crop-cycles.steps.complete', [$cycle, $alien]))
+        ->assertSessionHas('error');
+
+    $this->assertDatabaseMissing('crop_protocol_completions', ['crop_protocol_item_id' => $alien->id]);
+});
+
+test('valider une étape collecte coût / quantité / notes sur la complétion', function () {
+    $protocol = CropProtocol::create(['name' => 'Proto data', 'crop_name' => 'Maïs']);
+    $item = $protocol->items()->create(['day_number' => 15, 'action_name' => 'Sarclage', 'type' => 'sarclage']);
+    $cycle = protocolCycle($this->farm->id, $protocol->id, now()->subDays(20)->toDateString());
+
+    $this->actingAs($this->managerUser)
+        ->post(route('crop-cycles.steps.complete', [$cycle, $item]), [
+            'completed_at' => now()->subDays(2)->toDateString(),
+            'cost' => 50000, 'quantity' => 3, 'unit' => 'jour-homme', 'notes' => 'Équipe de 3',
+        ])->assertRedirect();
+
+    $c = \App\Models\CropProtocolCompletion::where('crop_cycle_id', $cycle->id)
+        ->where('crop_protocol_item_id', $item->id)->first();
+
+    expect((float) $c->cost)->toBe(50000.0)
+        ->and((float) $c->quantity)->toBe(3.0)
+        ->and($c->unit)->toBe('jour-homme')
+        ->and($c->crop_input_id)->toBeNull(); // pas comptabilisé comme intrant
+});
+
+test('valider une étape « comptabiliser comme intrant » alimente la marge du cycle', function () {
+    $protocol = CropProtocol::create(['name' => 'Proto intrant', 'crop_name' => 'Maïs']);
+    $item = $protocol->items()->create([
+        'day_number' => 30, 'action_name' => 'Apport urée', 'type' => 'fertilisation',
+        'product_suggested' => 'Urée 46%',
+    ]);
+    $cycle = protocolCycle($this->farm->id, $protocol->id, now()->subDays(40)->toDateString());
+
+    $this->actingAs($this->managerUser)
+        ->post(route('crop-cycles.steps.complete', [$cycle, $item]), [
+            'cost' => 80000, 'quantity' => 100, 'unit' => 'kg', 'record_as_input' => 1,
+        ])->assertRedirect();
+
+    $c = \App\Models\CropProtocolCompletion::where('crop_cycle_id', $cycle->id)->first();
+    expect($c->crop_input_id)->not->toBeNull();
+
+    $input = \App\Models\CropInput::find($c->crop_input_id);
+    expect($input->type)->toBe('engrais')              // fertilisation → engrais
+        ->and($input->name)->toBe('Urée 46%')          // product_suggested
+        ->and((float) $input->total_cost)->toBe(80000.0)
+        ->and((float) $input->unit_cost)->toBe(800.0)  // 80 000 / 100
+        ->and((float) $cycle->fresh()->inputs_cost)->toBe(80000.0); // coût dans la marge
+});
+
+test('annuler une étape comptabilisée retire l\'intrant créé (marge restaurée)', function () {
+    $protocol = CropProtocol::create(['name' => 'Proto annul intrant', 'crop_name' => 'Maïs']);
+    $item = $protocol->items()->create(['day_number' => 30, 'action_name' => 'Traitement', 'type' => 'traitement']);
+    $cycle = protocolCycle($this->farm->id, $protocol->id, now()->subDays(40)->toDateString());
+
+    $this->actingAs($this->managerUser)->post(route('crop-cycles.steps.complete', [$cycle, $item]), [
+        'cost' => 30000, 'record_as_input' => 1,
+    ]);
+    expect((float) $cycle->fresh()->inputs_cost)->toBe(30000.0);
+
+    $this->actingAs($this->managerUser)->delete(route('crop-cycles.steps.uncomplete', [$cycle, $item]))->assertRedirect();
+
+    expect((float) $cycle->fresh()->inputs_cost)->toBe(0.0)                                  // intrant retiré
+        ->and(\App\Models\CropProtocolCompletion::where('crop_cycle_id', $cycle->id)->exists())->toBeFalse();
+});
+
+test('re-valider une étape ne double pas l\'intrant comptabilisé', function () {
+    $protocol = CropProtocol::create(['name' => 'Proto redo', 'crop_name' => 'Maïs']);
+    $item = $protocol->items()->create(['day_number' => 30, 'action_name' => 'Apport NPK', 'type' => 'fertilisation']);
+    $cycle = protocolCycle($this->farm->id, $protocol->id, now()->subDays(40)->toDateString());
+
+    $this->actingAs($this->managerUser)->post(route('crop-cycles.steps.complete', [$cycle, $item]), [
+        'cost' => 40000, 'record_as_input' => 1,
+    ]);
+    // Correction : coût revu à 25 000.
+    $this->actingAs($this->managerUser)->post(route('crop-cycles.steps.complete', [$cycle, $item]), [
+        'cost' => 25000, 'record_as_input' => 1,
+    ]);
+
+    expect(\App\Models\CropInput::where('crop_cycle_id', $cycle->id)->count())->toBe(1)
+        ->and((float) $cycle->fresh()->inputs_cost)->toBe(25000.0); // remplacé, pas cumulé
+});
+
+test('valider une étape en déstockant un intrant décrémente le stock et valorise le coût', function () {
+    $stock = \App\Models\Stock::create([
+        'category' => \App\Models\Stock::CAT_INTRANTS, 'item_name' => 'Urée 46%', 'unit' => 'kg',
+        'current_quantity' => 200, 'unit_price' => 900, 'last_unit_price' => 900, 'alert_threshold' => 0,
+    ]);
+    $protocol = CropProtocol::create(['name' => 'Proto conso', 'crop_name' => 'Maïs']);
+    $item = $protocol->items()->create(['day_number' => 30, 'action_name' => 'Apport urée', 'type' => 'fertilisation']);
+    $cycle = protocolCycle($this->farm->id, $protocol->id, now()->subDays(40)->toDateString());
+
+    // 50 kg consommés, sans coût saisi → valorisé au prix du stock (50 × 900).
+    $this->actingAs($this->managerUser)
+        ->post(route('crop-cycles.steps.complete', [$cycle, $item]), [
+            'quantity' => 50, 'consume_stock_id' => $stock->id,
+        ])->assertRedirect();
+
+    expect((float) $stock->fresh()->current_quantity)->toBe(150.0)        // 200 − 50 déstocké
+        ->and((float) $cycle->fresh()->inputs_cost)->toBe(45000.0);       // 50 × 900 → marge
+
+    $c = \App\Models\CropProtocolCompletion::where('crop_cycle_id', $cycle->id)->first();
+    expect($c->consumed_stock_id)->toBe($stock->id);
+});
+
+test('annuler une étape ayant déstocké restitue la quantité au stock', function () {
+    $stock = \App\Models\Stock::create([
+        'category' => \App\Models\Stock::CAT_INTRANTS, 'item_name' => 'NPK', 'unit' => 'kg',
+        'current_quantity' => 100, 'unit_price' => 1000, 'last_unit_price' => 1000, 'alert_threshold' => 0,
+    ]);
+    $protocol = CropProtocol::create(['name' => 'Proto restitue', 'crop_name' => 'Maïs']);
+    $item = $protocol->items()->create(['day_number' => 10, 'action_name' => 'NPK fond', 'type' => 'fertilisation']);
+    $cycle = protocolCycle($this->farm->id, $protocol->id, now()->subDays(20)->toDateString());
+
+    $this->actingAs($this->managerUser)->post(route('crop-cycles.steps.complete', [$cycle, $item]), [
+        'quantity' => 30, 'consume_stock_id' => $stock->id,
+    ]);
+    expect((float) $stock->fresh()->current_quantity)->toBe(70.0);
+
+    $this->actingAs($this->managerUser)->delete(route('crop-cycles.steps.uncomplete', [$cycle, $item]))->assertRedirect();
+
+    expect((float) $stock->fresh()->current_quantity)->toBe(100.0)        // restitué
+        ->and((float) $cycle->fresh()->inputs_cost)->toBe(0.0);
+});
+
+test('re-valider en changeant la quantité consommée ne déséquilibre pas le stock', function () {
+    $stock = \App\Models\Stock::create([
+        'category' => \App\Models\Stock::CAT_INTRANTS, 'item_name' => 'Compost', 'unit' => 'kg',
+        'current_quantity' => 100, 'unit_price' => 500, 'last_unit_price' => 500, 'alert_threshold' => 0,
+    ]);
+    $protocol = CropProtocol::create(['name' => 'Proto requantite', 'crop_name' => 'Maïs']);
+    $item = $protocol->items()->create(['day_number' => 5, 'action_name' => 'Compost', 'type' => 'fertilisation']);
+    $cycle = protocolCycle($this->farm->id, $protocol->id, now()->subDays(10)->toDateString());
+
+    $this->actingAs($this->managerUser)->post(route('crop-cycles.steps.complete', [$cycle, $item]), [
+        'quantity' => 40, 'consume_stock_id' => $stock->id,
+    ]);
+    // Correction 40 → 25 : restitution des 40, puis sortie de 25.
+    $this->actingAs($this->managerUser)->post(route('crop-cycles.steps.complete', [$cycle, $item]), [
+        'quantity' => 25, 'consume_stock_id' => $stock->id,
+    ]);
+
+    expect((float) $stock->fresh()->current_quantity)->toBe(75.0)         // 100 − 25 (pas −65)
+        ->and(\App\Models\CropInput::where('crop_cycle_id', $cycle->id)->count())->toBe(1);
+});
+
+test('on ne peut pas consommer plus que le stock disponible', function () {
+    $stock = \App\Models\Stock::create([
+        'category' => \App\Models\Stock::CAT_INTRANTS, 'item_name' => 'Semence', 'unit' => 'kg',
+        'current_quantity' => 10, 'unit_price' => 2000, 'last_unit_price' => 2000, 'alert_threshold' => 0,
+    ]);
+    $protocol = CropProtocol::create(['name' => 'Proto rupture', 'crop_name' => 'Maïs']);
+    $item = $protocol->items()->create(['day_number' => 0, 'action_name' => 'Semis', 'type' => 'semis']);
+    $cycle = protocolCycle($this->farm->id, $protocol->id, now()->subDays(2)->toDateString());
+
+    $this->actingAs($this->managerUser)
+        ->post(route('crop-cycles.steps.complete', [$cycle, $item]), [
+            'quantity' => 50, 'consume_stock_id' => $stock->id,
+        ])->assertSessionHas('error');
+
+    expect((float) $stock->fresh()->current_quantity)->toBe(10.0)         // intact
+        ->and(\App\Models\CropProtocolCompletion::where('crop_cycle_id', $cycle->id)->exists())->toBeFalse();
+});

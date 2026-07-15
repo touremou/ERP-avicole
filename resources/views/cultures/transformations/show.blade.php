@@ -1,20 +1,13 @@
 @php $currency = setting('general.currency', 'GNF'); @endphp
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <div class="flex items-center gap-4">
-                <div class="w-12 h-12 bg-green-600 rounded-2xl flex items-center justify-center text-white shadow-lg -rotate-3">
-                    <i class="fa-solid fa-industry text-lg"></i>
-                </div>
-                <div class="text-left">
-                    <h2 class="font-black text-2xl text-slate-800 uppercase italic tracking-tighter leading-none">{{ $transformation->input_product }} → {{ $transformation->output_product }}</h2>
-                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1 italic">{{ $transformation->batch_number }} · {{ $transformation->type_label }}</p>
-                </div>
-            </div>
-            <div class="flex items-center gap-3">
-                <a href="{{ route('crop-transformations.index') }}" class="text-[10px] font-black uppercase text-slate-400 hover:text-slate-900 transition no-underline">
-                    <i class="fa-solid fa-arrow-left mr-2"></i> {{ __("Retour") }}
+        <x-page-header :title="$transformation->input_product . ' → ' . $transformation->output_product" :subtitle="$transformation->batch_number . ' · ' . $transformation->type_label" icon="fa-industry" accent="green" :back="route('crop-transformations.index')">
+            <x-slot name="actions">
+                @if($transformation->batch_number)
+                <a href="{{ route('crop-transformations.label', $transformation) }}" target="_blank" class="bg-green-50 text-green-700 px-5 py-2.5 rounded-2xl font-black text-[9px] uppercase tracking-widest italic no-underline flex items-center gap-2 hover:bg-green-600 hover:text-white transition" title="{{ __('Étiquette QR de traçabilité') }}">
+                    <i class="fa-solid fa-qrcode"></i> {{ __("Étiquette") }}
                 </a>
+                @endif
                 @can('cultures.M')
                 <a href="{{ route('crop-transformations.edit', $transformation) }}" class="bg-white border border-slate-100 text-slate-600 px-5 py-2.5 rounded-2xl font-black text-[9px] uppercase tracking-widest italic no-underline flex items-center gap-2 hover:bg-slate-50">
                     <i class="fa-solid fa-pen text-green-500"></i> {{ __("Modifier") }}
@@ -26,8 +19,8 @@
                     <button class="text-rose-400 hover:text-rose-600 text-[10px] font-black uppercase italic"><i class="fa-solid fa-trash mr-1"></i>{{ __("Supprimer") }}</button>
                 </form>
                 @endcan
-            </div>
-        </div>
+            </x-slot>
+        </x-page-header>
     </x-slot>
 
     <div class="py-10">

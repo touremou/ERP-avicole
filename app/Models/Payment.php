@@ -5,13 +5,14 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Traits\BelongsToFarm;
+use App\Traits\AuditsChanges;
 
 class Payment extends Model
 {
-    use BelongsToFarm;
+    use BelongsToFarm, AuditsChanges;
     protected $fillable = [
         'farm_id', 'sale_id', 'amount', 'payment_date',
-        'method', 'reference', 'received_by', 'notes',
+        'method', 'treasury_account_id', 'reference', 'received_by', 'notes',
     ];
 
     protected $casts = [

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Services\Discrepancy\DiscrepancyEvaluator;
 use App\Traits\BelongsToFarm;
 
 class ReceptionItem extends Model
@@ -32,20 +33,22 @@ class ReceptionItem extends Model
     }
 
     /**
-     * Calcule automatiquement le manquant :
-     * missing = dispatched - received - damaged
+     * Manquant calculé par le moteur d'écart (source unique) :
+     * missing = max(0, expédié - reçu - endommagé)
      */
     public function calculateMissing(): float
     {
-        $dispatched = (float) $this->dispatchItem->quantity_dispatched;
-        $received   = (float) $this->quantity_received;
-        $damaged    = (float) $this->quantity_damaged;
-
-        return max(0, $dispatched - $received - $damaged);
+        return app(DiscrepancyEvaluator::class)->evaluateLine(
+            $this->dispatchItem->product_type,
+            (float) $this->dispatchItem->quantity_dispatched,
+            (float) $this->quantity_received,
+            (float) $this->quantity_damaged,
+        )->missing;
     }
 
+    /** Un écart existe si du manquant OU de l'endommagé est constaté. */
     public function getHasDiscrepancyAttribute(): bool
     {
-        return (float) $this->quantity_missing > 0;
+        return (float) $this->quantity_missing > 0 || (float) $this->quantity_damaged > 0;
     }
 }

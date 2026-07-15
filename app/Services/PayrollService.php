@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Employee;
+use App\Models\EmployeeAttendance;
 use App\Models\EmployeeLeave;
 use App\Models\PayrollPeriod;
 use App\Models\Payslip;
@@ -61,6 +62,21 @@ class PayrollService
                         }
                     }
                 }
+
+                // Absences RÉELLEMENT pointées (statut « absent ») non justifiées :
+                // elles s'ajoutent aux absences et sont déduites (non payées). Les
+                // jours NON pointés sont présumés travaillés (bénéfice du doute),
+                // pour ne pas pénaliser un pointage incomplet. Les jours de congé
+                // sont pré-pointés « conge » (cf. AttendanceController), donc ils ne
+                // remontent pas ici en « absent » → pas de double comptage.
+                $pointedAbsent = EmployeeAttendance::where('employee_id', $emp->id)
+                    ->whereDate('attendance_date', '>=', $period->start_date->toDateString())
+                    ->whereDate('attendance_date', '<=', $period->end_date->toDateString())
+                    ->where('status', 'absent')
+                    ->count();
+
+                $daysAbsent += $pointedAbsent;
+                $unpaidDays += $pointedAbsent;
 
                 $daysWorked = max(0, $workingDays - $daysLeave - $daysAbsent);
 

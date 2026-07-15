@@ -1,18 +1,8 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <div class="text-left">
-                <h2 class="text-xl font-black text-slate-800 uppercase italic tracking-tighter leading-none">
-                    {{ __("Modifier l'acte :") }} {{ $health->product_name }}
-                </h2>
-                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2 italic leading-none">
-                    {{ __("Affecté au lot") }} • <span class="text-blue-500 font-black">{{ $health->batch->code }}</span>
-                </p>
-            </div>
-            <a href="{{ route('health.index') }}" class="group flex items-center text-slate-400 hover:text-rose-500 transition text-[10px] font-black uppercase tracking-widest leading-none no-underline">
-                <i class="fas fa-arrow-left mr-2 group-hover:-translate-x-1 transition-transform text-xs"></i> {{ __("Revenir au registre") }}
-            </a>
-        </div>
+        <x-page-header :title="__('Modifier l\'acte :') . ' ' . $health->product_name"
+                       :subtitle="__('Affecté au lot') . ' • ' . $health->batch->code"
+                       icon="fa-stethoscope" accent="purple" :back="route('health.index')" />
     </x-slot>
 
     <div class="py-12 italic font-bold text-slate-700">
@@ -107,11 +97,11 @@
                                 </div>
 
                                 <div>
-                                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-3 ml-2 italic tracking-widest leading-none">{{ __("Coût total (GNF)") }}</label>
+                                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-3 ml-2 italic tracking-widest leading-none">{{ __("Coût total") }} ({{ currency() }})</label>
                                     <div class="relative">
                                         <input type="number" name="cost" value="{{ old('cost', (float)$health->cost) }}" min="0" step="0.01" required
                                                class="w-full p-5 bg-slate-50 rounded-2xl font-black text-3xl border-none text-emerald-600 shadow-inner italic focus:ring-4 focus:ring-emerald-500/10 transition outline-none pr-16">
-                                        <span class="absolute right-6 top-1/2 -translate-y-1/2 text-slate-300 font-black italic uppercase leading-none text-xs">GNF</span>
+                                        <span class="absolute right-6 top-1/2 -translate-y-1/2 text-slate-300 font-black italic uppercase leading-none text-xs">{{ currency() }}</span>
                                     </div>
                                 </div>
 

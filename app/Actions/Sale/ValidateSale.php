@@ -66,16 +66,25 @@ class ValidateSale
      */
     private function destockItem($item): void
     {
-        if (! $item->product_id) {
-            Log::warning("ValidateSale: ligne #{$item->id} sans product_id, déstockage par nom.");
-        }
-
+        // AUDIT C1 (prouvé par drill parallèle) : sans verrou, deux validations
+        // simultanées du même dernier stock passaient TOUTES LES DEUX le
+        // contrôle ci-dessous (sur-vente silencieuse). lockForUpdate sérialise
+        // le contrôle de disponibilité — la transaction de execute() l'englobe.
         $stock = $item->product_id
-            ? Stock::find($item->product_id)
-            : Stock::where('item_name', $item->product_name)->first();
+            ? Stock::lockForUpdate()->find($item->product_id)
+            : Stock::where('item_name', $item->product_name)->lockForUpdate()->first();
 
         if (! $stock) {
-            throw new Exception("Stock introuvable pour '{$item->product_name}'. Impossible de valider.");
+            // product_id explicite mais stock disparu → vraie anomalie (FK), on bloque.
+            if ($item->product_id) {
+                throw new Exception("Stock introuvable pour '{$item->product_name}'. Impossible de valider.");
+            }
+
+            // Aucun stock cible (article catalogue NON suivi en stock, ou ligne en
+            // saisie libre sans article de stock) : la vente est permise, on ne
+            // décrémente simplement aucun stock.
+            Log::warning("ValidateSale: ligne #{$item->id} ('{$item->product_name}') sans stock lié — vente sans déstockage.");
+            return;
         }
 
         if ((float) $stock->current_quantity < (float) $item->quantity) {
@@ -85,10 +94,14 @@ class ValidateSale
             );
         }
 
-        // Utiliser StockIntegrationService pour la traçabilité
+        // Utiliser StockIntegrationService pour la traçabilité.
+        // On passe l'IDENTITÉ RÉELLE du stock déjà résolu ($stock->item_name +
+        // $stock->category) — et non des valeurs dérivées du product_type — afin
+        // que findStock() retrouve exactement cet article, quelle que soit sa
+        // catégorie (œufs, lait, aliment… mais aussi litière, matériel, etc.).
         StockIntegrationService::syncMovement(
-            $item->product_name,
-            Stock::categoryForProductType($item->product_type),
+            $stock->item_name,
+            $stock->category,
             (float) $item->quantity,
             'out',
             "Vente {$item->sale->reference} — Client: {$item->sale->client->name}",
@@ -107,7 +120,9 @@ class ValidateSale
      */
     private function destockBatch($item): void
     {
-        $batch = Batch::find($item->batch_id);
+        // AUDIT C1 : même motif que destockItem — le contrôle d'effectif doit
+        // être sérialisé (deux ventes parallèles du dernier sujet, sinon).
+        $batch = Batch::lockForUpdate()->find($item->batch_id);
 
         if (! $batch) {
             throw new Exception("Lot introuvable (id={$item->batch_id}) pour la ligne '{$item->product_name}'.");
@@ -115,6 +130,16 @@ class ValidateSale
 
         if ($batch->status !== 'Actif') {
             throw new Exception("Le lot {$batch->code} n'est pas actif (statut: {$batch->status}).");
+        }
+
+        // Biosécurité : lot sous quarantaine sanitaire → vente à la tête
+        // interdite (délai d'attente médicamenteux). Levée via le module Santé.
+        if ($quarantine = $batch->activeQuarantine()) {
+            throw new Exception(
+                "Le lot {$batch->code} est en QUARANTAINE sanitaire"
+                . ($quarantine->quarantine_started_at ? ' depuis le ' . $quarantine->quarantine_started_at->format('d/m/Y') : '')
+                . " — vente interdite jusqu'à la levée (incident santé n°{$quarantine->id})."
+            );
         }
 
         $qty = (int) $item->quantity;
