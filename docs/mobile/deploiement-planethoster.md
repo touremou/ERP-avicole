@@ -33,6 +33,12 @@ CSRF cross-site à gérer.
 2. **Base MySQL** : *N0C → Bases de données MySQL* → créer une base + un
    utilisateur, lui donner tous les droits. Noter **hôte** (souvent
    `localhost`), **nom**, **utilisateur**, **mot de passe**.
+   > ⚠️ **Créez la base AVANT de lancer `/install`.** Sur mutualisé,
+   > l'utilisateur MySQL est limité à sa base et n'a pas le privilège global
+   > `CREATE` : le `CREATE DATABASE IF NOT EXISTS` tenté par l'assistant peut
+   > alors renvoyer *« Access denied »* même si la base existe déjà. En créant
+   > la base au préalable, l'assistant se contente de s'y connecter. (Voir le
+   > REX §11.4 pour la voie CLI de secours.)
 3. **SSH** : *N0C → Accès SSH* → activer (fortement recommandé — sans SSH,
    `composer`/`artisan` deviennent pénibles via le gestionnaire de fichiers).
 4. **Sur votre poste** : PHP 8.3, Composer, Node 20 (pour préparer les
@@ -61,6 +67,17 @@ cd ..
 
 > Le build PWA **échoue si le TypeScript ne compile pas** (tsc en amont) :
 > un build vert = un bundle sain.
+
+> ⚠️ **Windows / PowerShell** : la syntaxe `VITE_API_BASE_URL=... ./script.sh`
+> (variable en préfixe + `\` de continuation de ligne) est du **bash** et
+> échoue sous PowerShell. Faire à la place, en deux temps :
+> ```powershell
+> $env:VITE_API_BASE_URL = "https://votre-domaine.tld/api/v1"
+> cd mobile ; npm ci ; npm run build
+> ```
+> Plus simple encore : **ne rien construire en local** et laisser la CI/CD
+> (§10) faire tous les builds — c'est le mode recommandé après la première
+> mise en ligne.
 
 ---
 
@@ -312,6 +329,144 @@ correctif urgent : commit sur `main` (ou PR + merge) → déploiement.
 
 ---
 
+## 11. Retour d'expérience — pièges réels rencontrés (pilote `biocrest.fr`)
+
+> Cette section consigne **les problèmes effectivement rencontrés** lors de la
+> première mise en ligne du pilote, avec leur cause et le correctif appliqué.
+> À lire **avant** un nouveau déploiement : chacun de ces points nous a coûté
+> du temps.
+
+### 11.1 — La racine du domaine ne pointe pas là où l'app est déployée
+
+**Symptôme** : après avoir extrait l'app dans `~/files/erp`, le domaine
+affichait un **« Index of / »** ne listant que `.well-known/`, pas l'app.
+
+**Cause** : chez N0C, chaque (sous-)domaine a un **dossier racine** propre,
+déjà créé (avec un `.well-known/` pour le SSL). Ici `erp.biocrest.fr` servait
+`~/erp` alors que l'app avait été mise dans `~/files/erp` → deux dossiers
+différents.
+
+**Diagnostic** — lister les racines réelles (une par domaine) :
+```bash
+find ~ -maxdepth 5 -type d -name ".well-known"
+#  ~/public_html/.well-known        → domaine principal
+#  ~/erp/.well-known                → erp.biocrest.fr   (racine réelle !)
+#  ~/dist/.well-known               → app.biocrest.fr   (PWA)
+```
+
+**Fix retenu** (le plus propre) : *N0C → Domaines → `erp.biocrest.fr` →
+Éditer → Dossier racine* = **`files/erp/public`**. L'app reste hors du web,
+seul `public/` est exposé. Puis aligner les secrets CI :
+`PILOT_WEB_PATH=/home/USER/files/erp`, `PILOT_PWA_PATH=/home/USER/dist`.
+
+> **Règle** : décidez la racine du domaine AVANT d'extraire l'app, et faites
+> correspondre `PILOT_WEB_PATH` / `PILOT_PWA_PATH` à ces chemins exacts, sinon
+> le déploiement continu poussera dans le vide.
+
+### 11.2 — `/install` renvoie vers `/login` alors que la base est vide
+
+**Symptôme** : base MySQL toute neuve, mais `https://…/install` redirige
+aussitôt vers la page de connexion (impossible de lancer l'assistant).
+
+**Cause** : le marqueur **`storage/installed`** avait été **embarqué dans
+l'archive** (créé dans l'environnement de build). Le middleware
+`EnsureAppIsInstalled` le voit et considère l'app déjà installée.
+
+**Fix** :
+```bash
+cd <racine app>
+rm -f storage/installed
+php artisan optimize:clear
+# puis rouvrir /install
+```
+
+> Prévention : le `storage/` ne devrait jamais être copié depuis un poste de
+> build. La CI/CD (§10) l'exclut déjà du rsync ; en manuel, **exclure
+> `storage/`** de l'archive ou supprimer `storage/installed` après extraction.
+
+### 11.3 — Erreur SQL 1067 « Invalid default value for 'expires_at' » à la migration
+
+**Symptôme** : l'étape *migration* de l'assistant s'arrête sur :
+```
+SQLSTATE[42000]: … 1067 Invalid default value for 'expires_at'
+(SQL: create table `licenses` … `expires_at` timestamp not null …)
+```
+
+**Cause** : le MySQL/MariaDB de N0C tourne avec le mode strict `NO_ZERO_DATE`.
+Une colonne `timestamp NOT NULL` **sans valeur par défaut** y reçoit le défaut
+implicite `0000-00-00` (rejeté) **dès qu'elle n'est pas la première colonne
+`timestamp` de la table** — cas de `licenses.expires_at`, précédée de
+`issued_at`/`starts_at` nullable.
+
+**Fix (à la source, déjà dans le dépôt)** : rendre ces colonnes `nullable()`.
+Corrigé sur `licenses.expires_at` **et** — par prévention — sur les autres
+timestamps d'événement (`releve_at`, `done_at`, `recorded_at`, `collected_at`,
+`opened_at`), qui recevaient sinon un `ON UPDATE CURRENT_TIMESTAMP` implicite
+écrasant l'heure réelle du relevé à chaque mise à jour de la ligne.
+
+> Si vous ajoutez une migration : **jamais** de `timestamp('x')` nu. Utilisez
+> `->nullable()`, `->useCurrent()`, ou un `->default(...)` explicite. La
+> vérification tourne aussi en CI (SQLite strict), mais SQLite ne reproduit
+> pas ce cas MySQL — testez sur MySQL avant un gros déploiement.
+
+### 11.4 — Voie CLI de secours (si l'assistant coince sur la base)
+
+Base **déjà créée dans le panneau** (cf. §1.2), puis en SSH :
+```bash
+cd <racine app>
+nano .env        # DB_DATABASE / DB_USERNAME / DB_PASSWORD ; DB_HOST=localhost
+php artisan config:clear
+php artisan migrate:fresh --force --seed     # base pilote vide → repart propre
+```
+Créer l'admin sans l'assistant :
+```bash
+php artisan tinker --execute="
+\$r = App\Models\Role::firstOrCreate(['name'=>'admin'],['display_name'=>'Administrateur','label'=>'Administrateur','icon'=>'👑','permissions'=>['L','C','M','S']]);
+App\Models\User::updateOrCreate(['email'=>'ADMIN_EMAIL'],['name'=>'Admin','password'=>bcrypt('MDP_FORT'),'role_id'=>\$r->id]);
+App\Models\User::where('email','user@users.com')->delete();
+"
+# Basculer en production + poser le marqueur d'installation
+sed -i 's/^APP_ENV=.*/APP_ENV=production/'   .env
+sed -i 's/^APP_DEBUG=.*/APP_DEBUG=false/'    .env
+touch storage/installed
+php artisan optimize
+```
+
+### 11.5 — SSH : port 5022, et `scp -P` majuscule
+
+**Symptôme** : `ssh user@hote` → *Connection refused* (port 22).
+
+**Cause** : PlanetHoster N0C écoute le SSH sur le **port 5022**, pas 22.
+
+**Fix** :
+```bash
+ssh -p 5022 user@node118-eu.n0c.com
+scp -P 5022 fichier user@node118-eu.n0c.com:~/     # -P MAJUSCULE pour scp
+```
+(Le secret CI `PILOT_SSH_PORT` doit donc valoir `5022`.)
+
+### 11.6 — Le déploiement PWA (`rsync --delete`) effaçait `.well-known/`
+
+**Symptôme potentiel** : renouvellement du certificat SSL du sous-domaine
+cassé après un déploiement.
+
+**Cause** : `rsync --delete` de `mobile/dist/` vers `~/dist` supprime tout ce
+qui n'est pas dans la source — dont le `.well-known/` de validation
+Let's Encrypt, absent du build.
+
+**Fix (déjà dans le workflow)** : `--exclude='.well-known/'` sur le rsync PWA.
+Ne retirez jamais cette exclusion.
+
+### 11.7 — Fausses alertes bénignes (ne pas paniquer)
+
+- `ls: cannot access 'avismart-web.tar.gz'` **après** une commande
+  `tar -xzf … && rm …` : c'est **normal**, l'archive a été supprimée par le
+  `&& rm` une fois l'extraction réussie. Vérifiez plutôt le contenu extrait.
+- « dossier vide sur le serveur » juste après extraction : vérifiez que vous
+  regardez bien la **racine du domaine** (§11.1) et non le dossier d'extraction.
+
+---
+
 ## Aide-mémoire des pièges mutualisé
 
 | Symptôme | Cause probable | Fix |
@@ -322,3 +477,10 @@ correctif urgent : commit sur `main` (ou PR + merge) → déploiement.
 | PWA non installable | pas de HTTPS ou SW en cache | activer SSL ; `.htaccess` no-cache sur `sw.js` (§4) |
 | Tâches planifiées absentes | cron non configuré | §3.e ; vérifier `storage/logs/laravel.log` |
 | Mise à jour app non prise sur les tél. | `sw.js` mis en cache | régler le `.htaccess` (§4) puis relancer l'app |
+| « Index of / » avec seulement `.well-known/` | racine du domaine ≠ dossier de l'app | §11.1 : régler la racine sur `.../public`, aligner `PILOT_WEB_PATH` |
+| `/install` renvoie à `/login`, base vide | marqueur `storage/installed` livré par erreur | §11.2 : `rm -f storage/installed && php artisan optimize:clear` |
+| Erreur SQL **1067** *Invalid default value* à la migration | `timestamp NOT NULL` sans défaut + MySQL `NO_ZERO_DATE` | §11.3 : colonne `->nullable()` (corrigé à la source) |
+| `/install` : *Access denied* à l'étape base | user MySQL sans privilège `CREATE` global | §1.2 : créer la base dans le panneau AVANT ; sinon voie CLI §11.4 |
+| `ssh` *Connection refused* | port SSH 22 au lieu de **5022** | §11.5 : `ssh -p 5022` ; `scp -P 5022` |
+| SSL du sous-domaine cassé après déploiement | `rsync --delete` a effacé `.well-known/` | §11.6 : garder `--exclude='.well-known/'` dans le workflow |
+| `VITE_…=… ./script.sh` échoue sous Windows | syntaxe bash en PowerShell | §2 : `$env:VITE_API_BASE_URL="…"` puis `npm run build`, ou laisser la CI builder |

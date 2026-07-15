@@ -93,9 +93,45 @@ export function HomeScreen() {
     (!canAbattoir || slaughterOrders.length === 0) &&
     (!canProvenderie || millProductions.length === 0)
 
+  // Ruban KPI adaptatif : on ne montre que les tuiles pertinentes au rôle.
+  const totalTodo =
+    (canElevage ? checksTodo.length : 0) +
+    (canProduction ? eggsTodo.length : 0) +
+    (canAbattoir ? slaughterOrders.length : 0) +
+    (canProvenderie ? millProductions.length : 0) +
+    (canCultures ? cropCycles.length : 0)
+  const kpis: { val: number | string; lab: string }[] = []
+  kpis.push({ val: totalTodo, lab: t('À faire') })
+  if (canElevage || canProduction) kpis.push({ val: batches.length, lab: t('Lots actifs') })
+  if (canAbattoir) kpis.push({ val: slaughterOrders.length, lab: t('Abattages') })
+  else if (canProvenderie) kpis.push({ val: millProductions.length, lab: t('OP') })
+  else if (canCultures) kpis.push({ val: cropCycles.length, lab: t('Cultures') })
+
+  const today = new Date()
+  const dateLabel = today.toLocaleDateString(dateLocale(), { weekday: 'long', day: 'numeric', month: 'long' })
+
   return (
     <div className="screen">
-      <h2>{t('Bonjour')} {me?.user.name?.split(' ')[0]} 👋</h2>
+      <div className="welcome">
+        <span className="welcome-eyebrow">{dateLabel}</span>
+        <h2>{t('Bonjour')} {me?.user.name?.split(' ')[0]} 👋</h2>
+        <span className="welcome-sub">
+          {totalTodo > 0
+            ? t(':count tâche(s) à traiter aujourd’hui', { count: totalTodo })
+            : t('Rien d’urgent — bonne journée sur le terrain.')}
+        </span>
+      </div>
+
+      {kpis.length >= 2 && (
+        <div className="kpi-row" style={{ gridTemplateColumns: `repeat(${kpis.length}, 1fr)` }}>
+          {kpis.map((k) => (
+            <div className="kpi" key={k.lab}>
+              <div className="kpi-val">{k.val}</div>
+              <div className="kpi-lab">{k.lab}</div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {(canElevage || canProduction) && (
         <Link to="/scan" className="task-card scan-card">
@@ -106,7 +142,7 @@ export function HomeScreen() {
 
       {canElevage && checksTodo.length > 0 && (
         <section>
-          <h3>{t('Pointages du jour')}</h3>
+          <div className="section-head"><h3>{t('Pointages du jour')}</h3><span className="section-count">{checksTodo.length}</span></div>
           {checksTodo.map((batch) => (
             <Link key={batch.id} to={`/elevage/pointage/${batch.id}`} className="task-card">
               <span className="task-title">{t('Pointage')} — {batch.code}</span>
@@ -118,7 +154,7 @@ export function HomeScreen() {
 
       {canProduction && eggsTodo.length > 0 && (
         <section>
-          <h3>{t("Collectes d'œufs")}</h3>
+          <div className="section-head"><h3>{t("Collectes d'œufs")}</h3><span className="section-count">{eggsTodo.length}</span></div>
           {eggsTodo.map((batch) => (
             <Link key={batch.id} to={`/elevage/collecte/${batch.id}`} className="task-card">
               <span className="task-title">🥚 {t('Collecte')} — {batch.code}</span>
@@ -130,7 +166,7 @@ export function HomeScreen() {
 
       {canAbattoir && slaughterOrders.length > 0 && (
         <section>
-          <h3>{t('Abattages à exécuter')}</h3>
+          <div className="section-head"><h3>{t('Abattages à exécuter')}</h3><span className="section-count">{slaughterOrders.length}</span></div>
           {slaughterOrders.map((order) => (
             <Link key={order.id} to={`/abattoir/execution/${order.id}`} className="task-card">
               <span className="task-title">🔪 {order.order_number}</span>
@@ -142,7 +178,7 @@ export function HomeScreen() {
 
       {canProvenderie && millProductions.length > 0 && (
         <section>
-          <h3>{t('OP provenderie à clôturer')}</h3>
+          <div className="section-head"><h3>{t('OP provenderie à clôturer')}</h3><span className="section-count">{millProductions.length}</span></div>
           {millProductions.map((op) => (
             <Link key={op.id} to={`/provenderie/cloture/${op.id}`} className="task-card">
               <span className="task-title">🏭 {op.batch_number}</span>
@@ -154,7 +190,7 @@ export function HomeScreen() {
 
       {canCultures && cropCycles.length > 0 && (
         <section>
-          <h3>{t('Cultures en cours')}</h3>
+          <div className="section-head"><h3>{t('Cultures en cours')}</h3><span className="section-count">{cropCycles.length}</span></div>
           {cropCycles.map((cycle) => (
             <Link key={cycle.id} to={`/cultures/recolte/${cycle.id}`} className="task-card">
               <span className="task-title">🌾 {cycle.crop_name} — {cycle.code}</span>
@@ -225,6 +261,9 @@ export function HomeScreen() {
           {t("Votre rôle n'a pas encore d'action terrain dans cette version — consultez « Mon espace ».")}
         </p>
       )}
+
+      {/* Dégagement pour que la dernière carte ne passe pas sous le FAB. */}
+      <div style={{ height: 64 }} aria-hidden="true" />
     </div>
   )
 }

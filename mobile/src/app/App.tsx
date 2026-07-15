@@ -1,7 +1,7 @@
 import { useEffect, useSyncExternalStore } from 'react'
-import { HashRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { HashRouter, Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './AuthContext'
-import { getLocale, subscribeLocale } from '../i18n'
+import { getLocale, subscribeLocale, t } from '../i18n'
 import { startSyncLoop } from '../offline/sync'
 import { LoginScreen } from '../features/auth/LoginScreen'
 import { HomeScreen } from '../features/home/HomeScreen'
@@ -31,6 +31,8 @@ function Shell() {
   const { me, loading } = useAuth()
   // Changement de langue → re-rendu complet (t() lit un état module).
   const locale = useSyncExternalStore(subscribeLocale, getLocale)
+  const onHome = useLocation().pathname === '/'
+  const navigate = useNavigate()
 
   useEffect(() => {
     if (me) startSyncLoop()
@@ -42,9 +44,28 @@ function Shell() {
   return (
     <div className="app-shell" key={locale}>
       <header className="app-header">
-        <span className="app-title">AviTerrain</span>
+        <div className="brand">
+          <span className="brand-mark" aria-hidden="true">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z" />
+              <path d="M2 21c0-3 1.85-5.36 5.08-6" />
+            </svg>
+          </span>
+          <span className="brand-name">Bio<b>crest</b></span>
+        </div>
         <SyncBadge />
       </header>
+      {/* Barre de retour — présente sur tout écran hors accueil (cible pouce). */}
+      {!onHome && (
+        <div className="subbar">
+          <button type="button" className="subbar-back" onClick={() => navigate(-1)}>
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m15 18-6-6 6-6" />
+            </svg>
+            {t('Retour')}
+          </button>
+        </div>
+      )}
       <main className="app-main">
         <Routes>
           <Route path="/" element={<HomeScreen />} />
@@ -70,6 +91,15 @@ function Shell() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
+      {/* FAB « + » — ajout rapide par scan universel (accueil seulement :
+          sur un écran de saisie on ajoute déjà, il ferait doublon). */}
+      {onHome && (
+        <Link to="/scan" className="fab" aria-label="Ajouter une saisie (scanner)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.6" strokeLinecap="round">
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+        </Link>
+      )}
       <BottomNav />
     </div>
   )

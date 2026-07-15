@@ -587,6 +587,12 @@ dans le `.env` Laravel — cf. `docs/mobile/deploiement-staging.md`.)
 > 🚀 **Déploiement pilote pas-à-pas** (offre *The World*, web + PWA en ~1 h) :
 > `docs/mobile/deploiement-planethoster.md` — parcours linéaire prêt à
 > suivre le jour J, qui renvoie à cette section pour les détails.
+>
+> 🧭 **Retour d'expérience** (pièges réels rencontrés sur le premier pilote :
+> racine de domaine, marqueur `installed` livré par erreur, erreur MySQL 1067
+> `NO_ZERO_DATE`, port SSH 5022, `.well-known` effacé par `rsync --delete`,
+> PowerShell) : voir la **§11 du même document**. À lire avant tout nouveau
+> déploiement mutualisé.
 
 Contraintes du mutualisé : pas de root ni de démon (supervisor/systemd),
 Apache/LiteSpeed (`.htaccess` au lieu de nginx), Node souvent absent ou
