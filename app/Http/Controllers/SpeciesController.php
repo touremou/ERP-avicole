@@ -34,6 +34,21 @@ class SpeciesController extends Controller
     {
         if (Gate::denies('admin.S')) abort(403);
 
+        // Garde métier : on ne désactive pas une espèce encore EN PRODUCTION.
+        // Désactiver la masque des sélecteurs (création de lot, normes, POS…) —
+        // laisser des lots actifs orphelins d'une espèce cachée casse les KPI,
+        // le pointage et l'abattage. Même esprit que Plot::isOccupied côté
+        // cultures : on protège la donnée vivante.
+        if ($species->is_active) {
+            $activeBatches = $species->batches()->active()->count();
+            if ($activeBatches > 0) {
+                return back()->with('error',
+                    "Impossible de désactiver « {$species->name_fr} » : {$activeBatches} lot(s) encore actif(s). "
+                    . "Terminez ou transférez ces lots avant de désactiver l'espèce."
+                );
+            }
+        }
+
         $species->update(['is_active' => ! $species->is_active]);
 
         $status = $species->is_active ? 'activée' : 'désactivée';
