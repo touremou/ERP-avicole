@@ -584,6 +584,10 @@ dans le `.env` Laravel — cf. `docs/mobile/deploiement-staging.md`.)
 
 ### 11.C — Hébergement mutualisé (PlanetHoster et similaires)
 
+> 🚀 **Déploiement pilote pas-à-pas** (offre *The World*, web + PWA en ~1 h) :
+> `docs/mobile/deploiement-planethoster.md` — parcours linéaire prêt à
+> suivre le jour J, qui renvoie à cette section pour les détails.
+
 Contraintes du mutualisé : pas de root ni de démon (supervisor/systemd),
 Apache/LiteSpeed (`.htaccess` au lieu de nginx), Node souvent absent ou
 limité → **les assets se construisent sur votre poste** et on téléverse le
