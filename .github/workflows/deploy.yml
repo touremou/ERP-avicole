@@ -96,9 +96,14 @@ jobs:
             ./ "${{ secrets.PILOT_SSH_USER }}@${{ secrets.PILOT_SSH_HOST }}:${{ secrets.PILOT_WEB_PATH }}/"
 
       # ── Déploiement de la PWA (dist propre : --delete) ──
+      # On EXCLUT .well-known/ : c'est le dossier de validation SSL du
+      # sous-domaine (Let's Encrypt), présent sur le serveur mais absent de
+      # mobile/dist. Sans cette exclusion, --delete l'effacerait à chaque
+      # déploiement et casserait le renouvellement du certificat.
       - name: Deploy PWA
         run: |
           rsync -az --delete --no-perms --no-owner --no-group \
+            --exclude='.well-known/' \
             -e "ssh -p ${{ secrets.PILOT_SSH_PORT }} -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes" \
             mobile/dist/ "${{ secrets.PILOT_SSH_USER }}@${{ secrets.PILOT_SSH_HOST }}:${{ secrets.PILOT_PWA_PATH }}/"
 
