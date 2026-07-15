@@ -13,6 +13,7 @@ class SpeciesController extends Controller
         if (Gate::denies('admin.S')) return redirect()->route('dashboard')->with('error', 'Accès réservé aux super-admins.');
 
         $species = Species::with('productionTypes')
+            ->withCount('batches')   // pour n'autoriser la suppression que si 0 lot
             ->orderBy('sort_order')
             ->get()
             ->groupBy('family');
@@ -53,6 +54,31 @@ class SpeciesController extends Controller
 
         $status = $species->is_active ? 'activée' : 'désactivée';
         return back()->with('success', "Espèce « {$species->name_fr} » {$status} sur ce site.");
+    }
+
+    /**
+     * Suppression définitive d'une espèce — réservée aux cas de MÉNAGE :
+     * ligne orpheline (créée à la main / reliquat d'un ancien prototype) sans
+     * aucun lot. Toute espèce référencée par au moins un lot (même terminé)
+     * est protégée : la supprimer nierait l'historique et casserait les clés
+     * étrangères. Ses types de production partent avec elle (cascade).
+     */
+    public function destroy(Species $species)
+    {
+        if (Gate::denies('admin.S')) abort(403);
+
+        if ($species->batches()->exists()) {
+            return back()->with('error',
+                "Impossible de supprimer « {$species->name_fr} » : des lots y sont rattachés. "
+                . "Une espèce utilisée se désactive (elle reste dans l'historique), elle ne se supprime pas."
+            );
+        }
+
+        $name = $species->name_fr;
+        $species->productionTypes()->delete();
+        $species->delete();
+
+        return back()->with('success', "Espèce « {$name} » supprimée (aucun lot n'y était rattaché).");
     }
 
     public function productionTypesForSpecies(Species $species)

@@ -66,3 +66,28 @@ test('une espèce déjà désactivée peut être RÉactivée même avec des lots
 
     expect($species->fresh()->is_active)->toBeTrue();
 });
+
+test('une espèce orpheline (0 lot) est supprimable, y compris ses types de production', function () {
+    // Reliquat type « Aqua » : famille aquaculture, aucun lot, aucun type utile.
+    $orphan = Species::create(['slug' => 'aqua', 'name_fr' => 'Aqua', 'family' => 'aquaculture', 'is_active' => true]);
+    \App\Models\ProductionType::resolveOrCreate('grossissement', $orphan->id);
+
+    $this->actingAs($this->adminUser)
+        ->delete(route('admin.species.destroy', $orphan))
+        ->assertRedirect()
+        ->assertSessionHas('success');
+
+    expect(Species::whereKey($orphan->id)->exists())->toBeFalse()
+        ->and(\App\Models\ProductionType::where('species_id', $orphan->id)->exists())->toBeFalse();
+});
+
+test('une espèce AVEC des lots ne peut PAS être supprimée (historique protégé)', function () {
+    $species = speciesWithBatch($this->farm->id, 'Terminé'); // lot terminé = historique
+
+    $this->actingAs($this->adminUser)
+        ->delete(route('admin.species.destroy', $species))
+        ->assertRedirect()
+        ->assertSessionHas('error');
+
+    expect(Species::whereKey($species->id)->exists())->toBeTrue();
+});

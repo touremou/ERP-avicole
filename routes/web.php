@@ -888,6 +888,7 @@ Route::middleware(['auth'])->group(function () {
             // Gestion des espèces (multiespèces) — relève bien de l'administration.
             Route::get('/species', [SpeciesController::class, 'index'])->name('species.index');
             Route::patch('/species/{species}/toggle', [SpeciesController::class, 'toggle'])->name('species.toggle');
+            Route::delete('/species/{species}', [SpeciesController::class, 'destroy'])->name('species.destroy');
         });
 
         // API espèces — endpoint JSON pour sélecteur dynamique
