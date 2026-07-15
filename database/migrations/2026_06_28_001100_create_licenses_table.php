@@ -29,7 +29,7 @@ return new class extends Migration
             $table->string('fingerprint')->nullable();     // liaison domaine optionnelle
             $table->timestamp('issued_at')->nullable();
             $table->timestamp('starts_at')->nullable();
-            $table->timestamp('expires_at');
+            $table->timestamp('expires_at')->nullable(); // toujours renseigné via le jeton signé ; nullable pour compat MySQL strict (NO_ZERO_DATE)
             $table->timestamp('activated_at')->nullable();
             $table->timestamp('last_seen_at')->nullable(); // anti-recul d'horloge
             $table->text('token');                         // jeton signé brut

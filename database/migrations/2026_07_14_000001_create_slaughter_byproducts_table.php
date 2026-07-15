@@ -25,7 +25,7 @@ return new class extends Migration
             $t->string('destination', 30);              // equarrissage | vente | compost | dechets | autre
             $t->text('notes')->nullable();
             $t->foreignId('operator_id')->constrained('users');
-            $t->timestamp('collected_at');              // heure réelle (client)
+            $t->timestamp('collected_at')->nullable();   // heure réelle (client) ; nullable = pas de ON UPDATE implicite
             $t->timestamp('synced_at')->nullable();
             $t->timestamps();
             $t->index(['type', 'collected_at']);

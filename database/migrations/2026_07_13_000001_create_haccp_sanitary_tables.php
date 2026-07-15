@@ -65,7 +65,7 @@ return new class extends Migration
             $t->boolean('conforme');                    // calculé SERVEUR selon les seuils Settings
             $t->text('corrective_action')->nullable();  // OBLIGATOIRE si non conforme
             $t->foreignId('operator_id')->constrained('users');
-            $t->timestamp('releve_at');
+            $t->timestamp('releve_at')->nullable();      // heure client ; nullable = pas de ON UPDATE CURRENT_TIMESTAMP implicite
             $t->timestamp('synced_at')->nullable();
             // Correction = écriture d'annulation, l'historique reste intact.
             $t->foreignId('corrected_by_id')->nullable()->constrained('users');
@@ -85,7 +85,7 @@ return new class extends Migration
             $t->boolean('conforme');                    // calculé SERVEUR (seuils Settings)
             $t->text('corrective_action')->nullable();
             $t->foreignId('operator_id')->constrained('users');
-            $t->timestamp('releve_at');
+            $t->timestamp('releve_at')->nullable();      // heure client ; nullable = pas de ON UPDATE CURRENT_TIMESTAMP implicite
             $t->timestamp('synced_at')->nullable();
             $t->timestamps();
             $t->index(['point', 'releve_at']);
@@ -101,7 +101,7 @@ return new class extends Migration
             $t->text('notes')->nullable();
             $t->string('photo_path')->nullable();
             $t->foreignId('operator_id')->constrained('users');
-            $t->timestamp('done_at');                   // heure réelle (client)
+            $t->timestamp('done_at')->nullable();        // heure réelle (client) ; nullable = pas de ON UPDATE implicite
             $t->timestamp('synced_at')->nullable();
             $t->timestamps();
             $t->index(['zone', 'done_at']);

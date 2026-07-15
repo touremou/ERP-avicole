@@ -19,7 +19,7 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->foreignId('treasury_account_id')->nullable()->constrained()->nullOnDelete();
             $table->string('status', 10)->default('open'); // open | closed
-            $table->timestamp('opened_at');
+            $table->timestamp('opened_at')->nullable();  // nullable = pas de ON UPDATE CURRENT_TIMESTAMP implicite (écrasé à la clôture sinon)
             $table->decimal('opening_float', 14, 2)->default(0);
             $table->timestamp('closed_at')->nullable();
             $table->decimal('expected_cash', 14, 2)->nullable(); // théorique à la clôture

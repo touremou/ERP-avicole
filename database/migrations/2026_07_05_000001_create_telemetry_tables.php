@@ -40,7 +40,7 @@ return new class extends Migration
             $table->string('metric', 30)->default('temperature');
             $table->decimal('value', 6, 2);
             $table->string('unit', 15)->default('celsius');
-            $table->timestamp('recorded_at');            // heure EXACTE du relevé (ISO 8601)
+            $table->timestamp('recorded_at')->nullable(); // heure EXACTE du relevé (ISO 8601) ; nullable = pas de ON UPDATE implicite (le status évolue)
             $table->foreignId('building_id')->nullable();
             $table->foreignId('batch_id')->nullable();
             $table->string('status', 20)->default('pending'); // pending | linked | orphan
