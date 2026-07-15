@@ -1,0 +1,26 @@
+# PWA terrain « AviTerrain » — servie sur le sous-domaine app.* (Apache/LiteSpeed).
+# Copié tel quel dans dist/ par Vite → le déploiement du sous-domaine est
+# AUTONOME (rien à créer à la main sur le serveur).
+
+AddType application/manifest+json .webmanifest
+
+# Assets fingerprintés (hash dans le nom de fichier) : cache long immuable.
+<FilesMatch "\.(js|css|png|svg|woff2|ico)$">
+  Header set Cache-Control "public, max-age=31536000, immutable"
+</FilesMatch>
+
+# …SAUF le service worker, qui ne doit JAMAIS être mis en cache — sinon les
+# mises à jour de l'app n'atteignent plus les téléphones. Déclaré APRÈS pour
+# primer sur la règle ci-dessus.
+<Files "sw.js">
+  Header set Cache-Control "no-cache, no-store, must-revalidate"
+</Files>
+
+# Fallback SPA : l'app route en hash (#/…), mais on sert index.html pour toute
+# route inconnue (deep-link, rafraîchissement) par sécurité.
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule . /index.html [L]
+</IfModule>

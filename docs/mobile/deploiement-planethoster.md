@@ -237,6 +237,81 @@ php artisan up
 
 ---
 
+## 10. Déploiement continu : push sur GitHub → mise à jour automatique
+
+Le workflow **`.github/workflows/deploy.yml`** met à jour l'instance à chaque
+fois que `main` est mis à jour ET que la CI passe. Modèle :
+
+```
+Installation initiale = MANUELLE, une seule fois (§1 à §7 ci-dessus).
+Ensuite : merge vers main  →  CI verte  →  déploiement automatique.
+```
+
+Le build (Composer sans dev + assets web + PWA) se fait **dans GitHub
+Actions** — l'hébergement n'a donc besoin ni de Node ni de Composer. Les
+fichiers sont poussés par `rsync`/SSH ; `.env`, `storage/` et la base ne
+sont **jamais** touchés ; `migrate --force` puis `optimize` s'exécutent à
+distance dans une courte fenêtre de maintenance (l'app est toujours remise
+en ligne, même si une migration échoue).
+
+### 10.1 — Générer une clé de déploiement (sur votre poste)
+
+```bash
+ssh-keygen -t ed25519 -f ~/.ssh/avismart_deploy -N "" -C "github-deploy-avismart"
+```
+
+- **Clé publique** (`~/.ssh/avismart_deploy.pub`) → à ajouter sur le serveur :
+  *N0C → SSH → clés autorisées*, OU en SSH :
+  ```bash
+  cat ~/.ssh/avismart_deploy.pub >> ~/.ssh/authorized_keys
+  ```
+- **Clé privée** (`~/.ssh/avismart_deploy`, tout le contenu, y compris les
+  lignes `BEGIN/END`) → à coller dans le secret `PILOT_SSH_KEY` (ci-dessous).
+
+Vérifier qu'elle ouvre bien une session :
+```bash
+ssh -p <PORT> -i ~/.ssh/avismart_deploy <USER>@<HOTE> "php -v"
+```
+
+### 10.2 — Définir les secrets GitHub
+
+*GitHub → repo → Settings → Secrets and variables → Actions → New repository secret* :
+
+| Secret | Valeur |
+|---|---|
+| `PILOT_SSH_HOST` | hôte SSH (ex. `node42.n0c.com`) |
+| `PILOT_SSH_PORT` | port SSH (souvent **5022** chez PlanetHoster) |
+| `PILOT_SSH_USER` | utilisateur SSH du compte |
+| `PILOT_SSH_KEY` | **clé privée** générée en 10.1 (contenu intégral) |
+| `PILOT_WEB_PATH` | chemin de l'app web, ex. `/home/USER/apps/avismart` |
+| `PILOT_PWA_PATH` | chemin du sous-domaine app.*, ex. `/home/USER/apps/aviterrain` |
+| `PILOT_API_BASE_URL` | `https://votre-domaine.tld/api/v1` |
+
+> Le workflow se contente de **mettre à jour** une instance déjà installée :
+> faites l'installation initiale (§1–§7) une fois à la main. Les dossiers
+> `PILOT_WEB_PATH` (avec son `.env`) et `PILOT_PWA_PATH` doivent donc exister.
+
+### 10.3 — Déclencher
+
+- **Automatique** : mergez votre travail vers `main` (par ex. en **fusionnant
+  la Pull Request** de la branche pilote). La CI se lance sur `main` ; si elle
+  est verte, le déploiement part dans la foulée.
+- **Manuel** : *GitHub → Actions → « Deploy pilot (PlanetHoster) » → Run
+  workflow*. Utile pour re-déployer sans nouveau commit.
+
+Suivi : *Actions* montre chaque étape (build, rsync web, rsync PWA, migrate).
+En cas d'échec rsync, vérifier que **rsync est installé côté serveur**
+(`ssh … "which rsync"`) — sinon demander son activation au support, ou
+basculer sur le parcours archive manuel du §9.
+
+### 10.4 — La branche `main` devient le miroir du serveur
+
+À partir de là, `main` = ce qui tourne en pilote. Continuez à développer sur
+des branches, ouvrez une PR, et **le merge vers `main` déploie**. Pour un
+correctif urgent : commit sur `main` (ou PR + merge) → déploiement.
+
+---
+
 ## Aide-mémoire des pièges mutualisé
 
 | Symptôme | Cause probable | Fix |
