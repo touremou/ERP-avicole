@@ -48,6 +48,10 @@ class LabelConfig
         }
 
         $symbology = (string) setting('etiquettes.symbology', 'qr');
+        $barcodeFormat = (string) setting('etiquettes.barcode_format', 'code128');
+        if (! in_array($barcodeFormat, ['code128', 'code39', 'ean13'], true)) {
+            $barcodeFormat = 'code128';
+        }
 
         // Dimensions : gabarit standard, ou personnalisé (custom).
         $preset = (string) setting('etiquettes.label_preset', '90x50');
@@ -64,6 +68,7 @@ class LabelConfig
             'format'        => $format,
             'pageSize'      => self::PAGE_SIZES[$format],
             'symbology'     => $symbology,
+            'barcodeFormat' => $barcodeFormat,
             'showQr'        => in_array($symbology, ['qr', 'both'], true),
             'showBarcode'   => in_array($symbology, ['barcode', 'both'], true),
             'showFarm'      => (bool) setting('etiquettes.show_farm', true),

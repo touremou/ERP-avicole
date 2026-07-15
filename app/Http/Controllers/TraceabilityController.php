@@ -55,7 +55,7 @@ class TraceabilityController extends Controller
         $traceUrl = route('trace.batch', $batch->code);
         $qr = QrCodeService::dataUri($traceUrl);
         $symbology = setting('etiquettes.symbology', 'qr');
-        $barcode = \App\Services\BarcodeService::code128Svg($batch->code);
+        $barcode = \App\Services\BarcodeService::render($batch->code, setting('etiquettes.barcode_format', 'code128'));
 
         return view('traceability.batch-label', compact('batch', 'qr', 'traceUrl', 'symbology', 'barcode'));
     }
@@ -76,7 +76,7 @@ class TraceabilityController extends Controller
         $traceUrl = $batch ? route('trace.batch', $batch->code) : url('/');
         $qr = QrCodeService::dataUri($traceUrl);
         $symbology = setting('etiquettes.symbology', 'qr');
-        $barcode = \App\Services\BarcodeService::code128Svg($batch?->code ?? 'OEUFS');
+        $barcode = \App\Services\BarcodeService::render($batch?->code ?? 'OEUFS', setting('etiquettes.barcode_format', 'code128'));
 
         return view('traceability.egg-label', compact('eggProduction', 'batch', 'qr', 'traceUrl', 'symbology', 'barcode'));
     }
@@ -340,7 +340,7 @@ class TraceabilityController extends Controller
     {
         $data['qr'] = QrCodeService::dataUri($data['traceUrl']);
         $data['symbology'] = setting('etiquettes.symbology', 'qr');
-        $data['barcode'] = \App\Services\BarcodeService::code128Svg((string) ($data['code'] ?? ''));
+        $data['barcode'] = \App\Services\BarcodeService::render((string) ($data['code'] ?? ''), setting('etiquettes.barcode_format', 'code128'));
 
         return view('traceability.document-label', $data);
     }

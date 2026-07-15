@@ -33,6 +33,26 @@ class BarcodeService
     private const STOP    = 106;
 
     /**
+     * Point d'entrée unique : rend le code-barres au format choisi
+     * (Réglages > Étiquettes > Format de code-barres). Repli sûr : un format
+     * inconnu OU un EAN-13 sur une valeur non numérique retombe sur Code128,
+     * de sorte qu'une étiquette n'est JAMAIS vide.
+     *
+     * @param string $value   Donnée à encoder.
+     * @param string $format  code128 | code39 | ean13.
+     */
+    public static function render(string $value, string $format = 'code128', int $height = 60, int $module = 2, bool $showText = true): string
+    {
+        return match ($format) {
+            'code39' => self::code39Svg($value, $height, $module, $showText),
+            'ean13'  => self::isEan13($value)
+                ? self::ean13Svg($value, $height, $module, $showText)
+                : self::code128Svg($value, $height, $module, $showText),
+            default  => self::code128Svg($value, $height, $module, $showText),
+        };
+    }
+
+    /**
      * Code-barres Code128-B en SVG.
      *
      * @param string $value     Donnée à encoder (ASCII 32–126).
@@ -86,5 +106,140 @@ class BarcodeService
             . 'viewBox="0 0 ' . $barWidthTotal . ' ' . $totalH . '" shape-rendering="crispEdges">'
             . '<rect width="' . $barWidthTotal . '" height="' . $totalH . '" fill="#fff"/>'
             . '<g fill="#000">' . $rects . '</g>' . $text . '</svg>';
+    }
+
+    // ── Code 39 ───────────────────────────────────────────────────────────
+
+    /**
+     * Table Code 39 : caractère → 9 éléments (barre,espace,… en alternance,
+     * barre en premier), 'n' étroit / 'w' large. '*' = start/stop.
+     */
+    private const CODE39 = [
+        '0' => 'nnnwwnwnn', '1' => 'wnnwnnnnw', '2' => 'nnwwnnnnw', '3' => 'wnwwnnnnn',
+        '4' => 'nnnwwnnnw', '5' => 'wnnwwnnnn', '6' => 'nnwwwnnnn', '7' => 'nnnwnnwnw',
+        '8' => 'wnnwnnwnn', '9' => 'nnwwnnwnn', 'A' => 'wnnnnwnnw', 'B' => 'nnwnnwnnw',
+        'C' => 'wnwnnwnnn', 'D' => 'nnnnwwnnw', 'E' => 'wnnnwwnnn', 'F' => 'nnwnwwnnn',
+        'G' => 'nnnnnwwnw', 'H' => 'wnnnnwwnn', 'I' => 'nnwnnwwnn', 'J' => 'nnnnwwwnn',
+        'K' => 'wnnnnnnww', 'L' => 'nnwnnnnww', 'M' => 'wnwnnnnwn', 'N' => 'nnnnwnnww',
+        'O' => 'wnnnwnnwn', 'P' => 'nnwnwnnwn', 'Q' => 'nnnnnnwww', 'R' => 'wnnnnnwwn',
+        'S' => 'nnwnnnwwn', 'T' => 'nnnnwnwwn', 'U' => 'wwnnnnnnw', 'V' => 'nwwnnnnnw',
+        'W' => 'wwwnnnnnn', 'X' => 'nwnnwnnnw', 'Y' => 'wwnnwnnnn', 'Z' => 'nwwnwnnnn',
+        '-' => 'nwnnnnwnw', '.' => 'wwnnnnwnn', ' ' => 'nwwnnnwnn', '$' => 'nwnwnwnnn',
+        '/' => 'nwnwnnnwn', '+' => 'nwnnnwnwn', '%' => 'nnnwnwnwn', '*' => 'nwnnwnwnn',
+    ];
+
+    /**
+     * Code 39 en SVG — alphanumérique MAJUSCULE + « -. $/+% », auto-vérifiant.
+     * Lu nativement par la quasi-totalité des lecteurs, y compris bas de gamme.
+     * Les caractères non supportés sont ignorés (jamais d'encodage invalide).
+     */
+    public static function code39Svg(string $value, int $height = 60, int $module = 2, bool $showText = true): string
+    {
+        $value = strtoupper($value);
+        $value = preg_replace('/[^0-9A-Z\-. $\/+%]/', '', $value) ?? '';
+        if ($value === '') {
+            $value = '0';
+        }
+
+        // Séquence complète : *  <chars>  * — séparés par un espace étroit.
+        $chars = array_merge(['*'], str_split($value), ['*']);
+        $narrow = $module;
+        $wide = $module * 3;
+
+        $x = 0;
+        $rects = '';
+        foreach ($chars as $ci => $char) {
+            $pattern = self::CODE39[$char] ?? self::CODE39['*'];
+            for ($i = 0; $i < 9; $i++) {
+                $w = $pattern[$i] === 'w' ? $wide : $narrow;
+                if ($i % 2 === 0) { // éléments pairs = barres
+                    $rects .= '<rect x="' . $x . '" y="0" width="' . $w . '" height="' . $height . '"/>';
+                }
+                $x += $w;
+            }
+            // Espace inter-caractères étroit (sauf après le dernier).
+            if ($ci < count($chars) - 1) {
+                $x += $narrow;
+            }
+        }
+
+        return self::wrapSvg($rects, $x, $height, $showText ? $value : null);
+    }
+
+    // ── EAN-13 ────────────────────────────────────────────────────────────
+
+    private const EAN_L = ['0001101','0011001','0010011','0111101','0100011','0110001','0101111','0111011','0110111','0001011'];
+    private const EAN_G = ['0100111','0110011','0011011','0100001','0011101','0111001','0000101','0010001','0001001','0010111'];
+    private const EAN_R = ['1110010','1100110','1101100','1000010','1011100','1001110','1010000','1000100','1001000','1110100'];
+    /** Parité des 6 chiffres de gauche selon le 1er chiffre (L=impair, G=pair). */
+    private const EAN_PARITY = ['LLLLLL','LLGLGG','LLGGLG','LLGGGL','LGLLGG','LGGLLG','LGGGLL','LGLGLG','LGLGGL','LGGLGL'];
+
+    /** Vrai si $value peut être encodé en EAN-13 (12 ou 13 chiffres). */
+    public static function isEan13(string $value): bool
+    {
+        $v = preg_replace('/\D/', '', $value) ?? '';
+        return strlen($v) === 12 || strlen($v) === 13;
+    }
+
+    /** Clé de contrôle EAN-13 (modulo 10 sur les 12 premiers chiffres). */
+    private static function ean13Check(string $digits12): int
+    {
+        $sum = 0;
+        for ($i = 0; $i < 12; $i++) {
+            $sum += (int) $digits12[$i] * ($i % 2 === 0 ? 1 : 3);
+        }
+        return (10 - $sum % 10) % 10;
+    }
+
+    /**
+     * EAN-13 en SVG — standard caisse/retail. Accepte 12 chiffres (la clé est
+     * calculée) ou 13 (la clé fournie est ré-écrite pour garantir la validité).
+     */
+    public static function ean13Svg(string $value, int $height = 60, int $module = 2, bool $showText = true): string
+    {
+        $digits = preg_replace('/\D/', '', $value) ?? '';
+        $base = substr(str_pad($digits, 12, '0', STR_PAD_LEFT), 0, 12);
+        $full = $base . self::ean13Check($base);
+
+        $first = (int) $full[0];
+        $parity = self::EAN_PARITY[$first];
+
+        // 101 (garde) + 6 gauche + 01010 (garde centrale) + 6 droite + 101.
+        $bits = '101';
+        for ($i = 1; $i <= 6; $i++) {
+            $d = (int) $full[$i];
+            $bits .= $parity[$i - 1] === 'L' ? self::EAN_L[$d] : self::EAN_G[$d];
+        }
+        $bits .= '01010';
+        for ($i = 7; $i <= 12; $i++) {
+            $bits .= self::EAN_R[(int) $full[$i]];
+        }
+        $bits .= '101';
+
+        $x = 0;
+        $rects = '';
+        $len = strlen($bits);
+        for ($i = 0; $i < $len; $i++) {
+            if ($bits[$i] === '1') {
+                $rects .= '<rect x="' . $x . '" y="0" width="' . $module . '" height="' . $height . '"/>';
+            }
+            $x += $module;
+        }
+
+        return self::wrapSvg($rects, $x, $height, $showText ? $full : null);
+    }
+
+    /** Enveloppe SVG commune (fond blanc + barres noires + texte optionnel). */
+    private static function wrapSvg(string $rects, int|float $width, int $height, ?string $text): string
+    {
+        $totalH = $text !== null ? $height + 16 : $height;
+        $label = $text !== null
+            ? '<text x="' . ($width / 2) . '" y="' . ($height + 13) . '" text-anchor="middle" font-family="monospace" font-size="12" fill="#0f172a">' . e($text) . '</text>'
+            : '';
+
+        return '<svg xmlns="http://www.w3.org/2000/svg" width="' . $width . '" height="' . $totalH . '" '
+            . 'viewBox="0 0 ' . $width . ' ' . $totalH . '" shape-rendering="crispEdges">'
+            . '<rect width="' . $width . '" height="' . $totalH . '" fill="#fff"/>'
+            . '<g fill="#000">' . $rects . '</g>' . $label . '</svg>';
     }
 }
