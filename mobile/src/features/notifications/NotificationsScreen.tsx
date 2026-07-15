@@ -9,10 +9,10 @@ import { db } from '../../offline/db'
 import { dateLocale, t } from '../../i18n'
 import type { ApiNotification } from '../../api/types'
 
-const SEVERITY_ICON: Record<string, string> = {
-  critical: '🔴',
-  warning: '🟠',
-  normal: '🔵',
+const SEVERITY_CLASS: Record<string, string> = {
+  critical: 'notif-critical',
+  warning: 'notif-warning',
+  normal: 'notif-normal',
 }
 
 export function NotificationsScreen() {
@@ -61,8 +61,8 @@ export function NotificationsScreen() {
       )}
 
       {notifications.map((n) => (
-        <div key={n.id} className={`notif-card ${n.read_at ? 'notif-read' : ''}`}>
-          <span className="notif-icon">{SEVERITY_ICON[n.severity] ?? '🔵'}</span>
+        <div key={n.id} className={`notif-card ${SEVERITY_CLASS[n.severity] ?? 'notif-normal'} ${n.read_at ? 'notif-read' : ''}`}>
+          <span className="notif-dot" aria-hidden="true" />
           <div className="notif-body">
             <span className="task-title">{n.title}</span>
             <span className="muted">{n.message}</span>

@@ -24,6 +24,19 @@ export function MonEspaceScreen() {
     synced: t('✓ Synchronisé'),
     review: t('⚠️ À corriger'),
   }
+  const statusClass: Record<MyRecord['sync_status'], string> = {
+    pending: 'act-warn',
+    synced: 'act-ok',
+    review: 'act-crit',
+  }
+
+  const initials = (me?.user.name ?? '?')
+    .split(' ')
+    .map((w) => w[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join('')
+    .toUpperCase()
 
   async function refresh() {
     setRecords(await db.my_records.orderBy('created_at').reverse().limit(30).toArray())
@@ -44,10 +57,13 @@ export function MonEspaceScreen() {
 
   return (
     <div className="screen">
-      <h2>{t('Mon espace')}</h2>
-      <p className="muted">
-        {me?.user.name} — {me?.role.label ?? me?.role.slug}
-      </p>
+      <div className="profile-card">
+        <span className="avatar" aria-hidden="true">{initials}</span>
+        <div>
+          <div className="profile-name">{me?.user.name}</div>
+          <div className="profile-role">{me?.role.label ?? me?.role.slug}</div>
+        </div>
+      </div>
 
       {review.length > 0 && (
         <section>
@@ -76,7 +92,7 @@ export function MonEspaceScreen() {
         {records.map((record) => (
           <div key={record.uuid} className="record-row">
             <span>{record.label}</span>
-            <span className="task-meta">{statusLabel[record.sync_status]}</span>
+            <span className={`act-status ${statusClass[record.sync_status]}`}>{statusLabel[record.sync_status]}</span>
           </div>
         ))}
       </section>

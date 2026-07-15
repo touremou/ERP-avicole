@@ -289,14 +289,69 @@ input:focus, textarea:focus, select:focus {
   box-shadow: var(--shadow-card);
 }
 
+/* ── Login (marque Biocrest) ── */
+.login-bg {
+  background:
+    radial-gradient(120% 80% at 50% -10%, var(--primary-50) 0%, transparent 60%),
+    var(--bg);
+}
+.login-brand { display: flex; align-items: center; gap: 13px; margin-bottom: 4px; }
+.login-logo {
+  width: 52px; height: 52px; flex: none; border-radius: 15px;
+  display: grid; place-items: center;
+  background: linear-gradient(145deg, var(--primary) 0%, var(--primary-600) 100%);
+  box-shadow: 0 6px 16px rgb(27 67 50 / 0.28);
+}
+.login-title { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1; }
+.login-title b { color: var(--accent); font-weight: 800; }
+.login-tag {
+  font-size: 0.72rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--muted); margin-top: 4px;
+}
+
+/* ── Mon espace : carte profil ── */
+.profile-card {
+  display: flex; align-items: center; gap: 14px;
+  background: linear-gradient(100deg, var(--primary) 0%, var(--primary-600) 100%);
+  color: #fff; border-radius: var(--radius-card); padding: 16px;
+}
+.avatar {
+  width: 46px; height: 46px; flex: none; border-radius: 50%;
+  display: grid; place-items: center;
+  background: rgb(255 255 255 / 0.16);
+  font-weight: 800; font-size: 1.05rem; letter-spacing: 0.02em;
+}
+.profile-name { font-weight: 800; font-size: 1.05rem; letter-spacing: -0.01em; }
+.profile-role {
+  font-size: 0.78rem; font-weight: 600; opacity: 0.85; margin-top: 2px;
+  text-transform: capitalize;
+}
+
+/* Pastilles de statut d'activité (Mon espace) */
+.act-status {
+  font-size: 0.72rem; font-weight: 700; white-space: nowrap;
+  padding: 4px 10px; border-radius: 999px;
+}
+.act-ok   { color: var(--success); background: var(--success-bg); }
+.act-warn { color: var(--warning); background: var(--warning-bg); }
+.act-crit { color: var(--danger);  background: var(--danger-bg); }
+
 /* ── Notifications ── */
 .notif-card {
   display: flex; gap: 12px; align-items: flex-start;
   background: var(--surface); border: 1px solid var(--line);
+  border-left: 4px solid var(--line);
   border-radius: var(--radius-card); padding: 14px;
 }
+.notif-critical { border-left-color: var(--danger); }
+.notif-warning  { border-left-color: var(--warning); }
+.notif-normal   { border-left-color: var(--primary-600); }
 .notif-read { opacity: 0.55; }
 .notif-icon { font-size: 20px; line-height: 1.4; }
+.notif-dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 6px; flex: none; background: var(--muted); }
+.notif-critical .notif-dot { background: var(--danger); }
+.notif-warning  .notif-dot { background: var(--warning); }
+.notif-normal   .notif-dot { background: var(--primary-600); }
 .notif-body { display: flex; flex-direction: column; gap: 2px; }
 
 /* ── Chips (symptômes, gravité) ── */
