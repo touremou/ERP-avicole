@@ -632,6 +632,7 @@ class SyncService
             'input_date'      => 'required|date|before_or_equal:today',
             'quantity'        => 'nullable|numeric|min:0',
             'unit'            => 'nullable|string|max:20',
+            'provider_id'     => 'nullable|integer|exists:providers,id',
             'unit_cost'       => 'nullable|numeric|min:0',
             'total_cost'      => 'nullable|numeric|min:0',
             'synced_to_stock' => 'nullable|boolean',

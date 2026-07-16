@@ -10,7 +10,7 @@ import { db } from '../../offline/db'
 import { enqueue } from '../../offline/sync'
 import { dateLocale, t } from '../../i18n'
 import { NumberStepper } from '../../ui/NumberStepper'
-import type { RefCropCycle } from '../../api/types'
+import type { RefCropCycle, RefProvider } from '../../api/types'
 
 /** Miroir de CropInput::TYPES (référentiel serveur). */
 const TYPES = [
@@ -28,8 +28,10 @@ export function CropInputScreen() {
   const navigate = useNavigate()
 
   const [cycle, setCycle] = useState<RefCropCycle | null>(null)
+  const [providers, setProviders] = useState<RefProvider[]>([])
   const [type, setType] = useState<string>('engrais')
   const [name, setName] = useState('')
+  const [providerId, setProviderId] = useState('')
   const [quantity, setQuantity] = useState(0)
   const [unit, setUnit] = useState('kg')
   const [unitCost, setUnitCost] = useState(0)
@@ -38,6 +40,7 @@ export function CropInputScreen() {
 
   useEffect(() => {
     if (cycleId) void db.ref_crop_cycles.get(Number(cycleId)).then((c) => setCycle(c ?? null))
+    void db.ref_providers.orderBy('name').toArray().then(setProviders)
   }, [cycleId])
 
   async function onSubmit(event: FormEvent) {
@@ -51,6 +54,7 @@ export function CropInputScreen() {
         type,
         name: name.trim(),
         input_date: new Date().toISOString().slice(0, 10),
+        provider_id: providerId ? Number(providerId) : null,
         quantity: quantity || null,
         unit: unit || null,
         unit_cost: unitCost || null,
@@ -112,6 +116,18 @@ export function CropInputScreen() {
         onChange={(e) => setName(e.target.value)}
         placeholder={t('ex. Urée 46%')}
       />
+
+      {providers.length > 0 && (
+        <>
+          <label htmlFor="provider">{t('Fournisseur — optionnel')}</label>
+          <select id="provider" value={providerId} onChange={(e) => setProviderId(e.target.value)}>
+            <option value="">{t('— Aucun —')}</option>
+            {providers.map((p) => (
+              <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+          </select>
+        </>
+      )}
 
       <NumberStepper label={t('Quantité (:unit)', { unit: unit || '—' })} value={quantity} onChange={setQuantity} min={0} />
 

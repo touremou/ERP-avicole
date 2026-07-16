@@ -4,12 +4,13 @@
  * Dexie → upload au retour réseau → photo_path → justificatif).
  * Contrat : SyncService::expenseCreate (gate depenses.C).
  */
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { db } from '../../offline/db'
 import { enqueue } from '../../offline/sync'
 import { platform, compressImage } from '../../platform'
 import { t } from '../../i18n'
+import type { RefBatch } from '../../api/types'
 
 /** Miroir de App\Models\Expense::CATEGORIES (référentiel stable). */
 const CATEGORIES: Record<string, string> = {
@@ -35,9 +36,15 @@ export function ExpenseScreen() {
   const [paymentMethod, setPaymentMethod] = useState('especes')
   const [supplierName, setSupplierName] = useState('')
   const [notes, setNotes] = useState('')
+  const [batchId, setBatchId] = useState('')
+  const [batches, setBatches] = useState<RefBatch[]>([])
   const [photoBlob, setPhotoBlob] = useState<Blob | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
+
+  useEffect(() => {
+    void db.ref_batches.where('status').equals('Actif').toArray().then(setBatches)
+  }, [])
 
   async function attachPhoto() {
     const file = await platform.takePhoto()
@@ -58,6 +65,7 @@ export function ExpenseScreen() {
       expense_date: new Date().toISOString().slice(0, 10),
       payment_method: paymentMethod,
       supplier_name: supplierName.trim() || null,
+      batch_id: batchId ? Number(batchId) : null,
       notes: notes.trim() || null,
     }
 
@@ -146,6 +154,18 @@ export function ExpenseScreen() {
 
       <label htmlFor="supplier">{t('Fournisseur / bénéficiaire — optionnel')}</label>
       <input id="supplier" maxLength={255} value={supplierName} onChange={(e) => setSupplierName(e.target.value)} />
+
+      {batches.length > 0 && (
+        <>
+          <label htmlFor="batch">{t('Imputer à un lot — optionnel')}</label>
+          <select id="batch" value={batchId} onChange={(e) => setBatchId(e.target.value)}>
+            <option value="">{t('— Aucun (frais général) —')}</option>
+            {batches.map((b) => (
+              <option key={b.id} value={b.id}>{b.code}</option>
+            ))}
+          </select>
+        </>
+      )}
 
       <label htmlFor="notes">{t('Observations — optionnel')}</label>
       <textarea id="notes" rows={2} maxLength={2000} value={notes} onChange={(e) => setNotes(e.target.value)} />
