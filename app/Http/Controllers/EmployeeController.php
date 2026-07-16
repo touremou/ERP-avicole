@@ -18,8 +18,11 @@ class EmployeeController extends Controller
     {
         if (Gate::denies('annuaire.L')) return redirect()->route('dashboard')->with('error', 'Accès restreint au personnel.');
 
-        $employees = Employee::orderBy('last_name', 'asc')->get();
-        return view('employees.index', compact('employees'));
+        $employees = Employee::with('user')->orderBy('last_name', 'asc')->get();
+        // Rôles proposés pour la création d'accès en masse (outil admin.S).
+        $roles = \App\Models\Role::orderBy('display_name')->get(['id', 'display_name', 'label', 'name']);
+
+        return view('employees.index', compact('employees', 'roles'));
     }
 
     public function create() 
