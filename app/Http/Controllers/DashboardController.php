@@ -25,23 +25,35 @@ class DashboardController extends Controller
         $today = now()->startOfDay();
         $startOfMonth = now()->startOfMonth();
 
+        // ─────────────────────────────────────────────────────────
+        // CLOISONNEMENT RBAC : la donnée d'un module n'est NI calculée NI
+        // transmise à la vue sans la permission Lecture du module. La vue
+        // masque (confort) ; ICI on refuse (sécurité) — un vendeur ne
+        // déclenche même pas les requêtes SQL d'élevage.
+        // ─────────────────────────────────────────────────────────
+        $canElevage    = \Illuminate\Support\Facades\Gate::allows('elevage.L');
+        $canProduction = \Illuminate\Support\Facades\Gate::allows('production.L');
+        $canLogistique = \Illuminate\Support\Facades\Gate::allows('logistique.L');
+        $canCommerce   = \Illuminate\Support\Facades\Gate::allows('commerce.L');
+        $canCultures   = \Illuminate\Support\Facades\Gate::allows('cultures.L');
+
         // ---------------------------------------------------------
-        // 1. EFFECTIFS & MORTALITÉ GLOBALE
+        // 1. EFFECTIFS & MORTALITÉ GLOBALE (elevage.L — socle partagé
+        //    avec les KPI de ponte, donc calculé aussi pour production.L)
         // ---------------------------------------------------------
         // ->live() exclut les lots virtuels (œufs externes, initial_quantity=0) :
         // scope canonique partagé par tous les calculs ci-dessous (cohérence).
-        $allActiveBatches = Batch::active()
-            ->live()
-            ->with(['species', 'productionType'])
-            ->get();
+        $allActiveBatches = ($canElevage || $canProduction)
+            ? Batch::active()->live()->with(['species', 'productionType'])->get()
+            : collect();
 
         // Les KPI de ponte (HDP, stock calibré) ne sont pertinents que si
         // au moins un lot actif fait l'objet d'un suivi d'œufs. Sinon (ferme
         // 100% ovins/poisson/lapins...) on affiche des KPI génériques.
-        $showEggKpis    = $allActiveBatches->contains(fn ($b) => $b->tracksEggs());
+        $showEggKpis    = $canProduction && $allActiveBatches->contains(fn ($b) => $b->tracksEggs());
         $activeLotsCount = $allActiveBatches->count();
 
-        $totalBirds = $allActiveBatches->sum('current_quantity');
+        $totalBirds = $canElevage ? $allActiveBatches->sum('current_quantity') : 0;
         $totalInitial = $allActiveBatches->sum('initial_quantity');
 
         // Mortalité réelle = morts d'arrivage (qty_dead) + mortalité d'élevage
@@ -50,41 +62,51 @@ class DashboardController extends Controller
         // ventes, qui ne sont pas des morts. La base inclut qty_dead, cohérente
         // avec Batch::getMortalityRateAttribute().
         $batchIds = $allActiveBatches->pluck('id');
-        $totalQtyDead = (int) $allActiveBatches->sum('qty_dead');
-        $totalElevageMortality = (int) DailyCheck::whereIn('batch_id', $batchIds)->sum('mortality');
-        $totalMortaliteCumulee = $totalQtyDead + $totalElevageMortality;
-        $mortalityBase = $totalInitial + $totalQtyDead;
-        $globalMortalityRate = $mortalityBase > 0 ? ($totalMortaliteCumulee / $mortalityBase) * 100 : 0;
+        $globalMortalityRate = 0;
+        if ($canElevage) {
+            $totalQtyDead = (int) $allActiveBatches->sum('qty_dead');
+            $totalElevageMortality = (int) DailyCheck::whereIn('batch_id', $batchIds)->sum('mortality');
+            $totalMortaliteCumulee = $totalQtyDead + $totalElevageMortality;
+            $mortalityBase = $totalInitial + $totalQtyDead;
+            $globalMortalityRate = $mortalityBase > 0 ? ($totalMortaliteCumulee / $mortalityBase) * 100 : 0;
+        }
 
         // ---------------------------------------------------------
-        // 2. TAUX DE PONTE (HDP) DU JOUR
+        // 2. TAUX DE PONTE (HDP) DU JOUR (production.L)
         // ---------------------------------------------------------
-        $totalEggsToday = EggProduction::whereDate('production_date', $today)->sum('total_eggs_collected');
-        $totalBrokenToday = EggProduction::whereDate('production_date', $today)->sum('broken_eggs');
+        $totalEggsToday = $canProduction ? EggProduction::whereDate('production_date', $today)->sum('total_eggs_collected') : 0;
+        $totalBrokenToday = $canProduction ? EggProduction::whereDate('production_date', $today)->sum('broken_eggs') : 0;
 
         // HDP (Hen-Day Production) : œufs du jour rapportés au SEUL effectif des
         // lots en ponte. L'ancien calcul diluait par TOUT le cheptel (chair,
         // poussinières incluses), écrasant artificiellement le taux d'une ferme
         // mixte. On se base sur l'effectif des lots assurant un suivi d'œufs.
-        $layingBirds = $allActiveBatches
-            ->filter(fn ($b) => $b->tracksEggs())
-            ->sum('current_quantity');
-        $hdp = $layingBirds > 0 ? ($totalEggsToday / $layingBirds) * 100 : 0;
+        $hdp = 0;
+        if ($canProduction) {
+            $layingBirds = $allActiveBatches
+                ->filter(fn ($b) => $b->tracksEggs())
+                ->sum('current_quantity');
+            $hdp = $layingBirds > 0 ? ($totalEggsToday / $layingBirds) * 100 : 0;
+        }
 
         // ---------------------------------------------------------
-        // 3. STOCKS & VALORISATION (CMUP)
+        // 3. STOCKS & VALORISATION (CMUP) — production.L / logistique.L
         // ---------------------------------------------------------
-        $totalEggsStock = Stock::where('category', Stock::CAT_OEUFS)
-            ->whereIn('item_name', \App\Models\EggProduction::gradeCodes())
-            ->sum('current_quantity');
+        $totalEggsStock = $canProduction
+            ? Stock::where('category', Stock::CAT_OEUFS)
+                ->whereIn('item_name', \App\Models\EggProduction::gradeCodes())
+                ->sum('current_quantity')
+            : 0;
 
         // Valeur des matières premières au coût moyen pondéré (CMP) porté par
         // l'article (last_unit_price, mis à jour à chaque achat/production —
         // cf. StockIntegrationService). Remplace l'ancien calcul N+1 (1 requête
         // feed_purchases par article) qui valorisait au seul dernier prix d'achat.
-        $rawMaterialsValue = (float) Stock::where('category', Stock::CAT_CONSO)
-            ->selectRaw('COALESCE(SUM(current_quantity * COALESCE(last_unit_price, 0)), 0) AS v')
-            ->value('v');
+        $rawMaterialsValue = $canLogistique
+            ? (float) Stock::where('category', Stock::CAT_CONSO)
+                ->selectRaw('COALESCE(SUM(current_quantity * COALESCE(last_unit_price, 0)), 0) AS v')
+                ->value('v')
+            : 0.0;
 
         // ---------------------------------------------------------
         // 4. SYNTHÈSE FINANCIÈRE DU MOIS (source unique : service)
@@ -97,10 +119,11 @@ class DashboardController extends Controller
         $monthEnd   = now()->endOfMonth();
 
         $insights  = new \App\Services\DashboardInsightsService();
-        $financial = $insights->financial($monthStart, $monthEnd);
+        // commerce.L : CA, marge, créances — jamais exposés à un rôle terrain.
+        $financial = $canCommerce ? $insights->financial($monthStart, $monthEnd) : null;
 
-        $safeProfit     = $financial['net_margin'];
-        $encoursClients = $financial['receivables'];
+        $safeProfit     = $financial['net_margin'] ?? 0;
+        $encoursClients = $financial['receivables'] ?? 0;
 
         // ---------------------------------------------------------
         // 5. GESTION DES ALERTES (Centre de contrôle)
@@ -125,9 +148,12 @@ class DashboardController extends Controller
         $protocolWindowDays    = (int) setting('elevage.protocol_overdue_window_days', 30);
 
         $criticalTypes = [];
-        $silos = Stock::where('category', Stock::CAT_CONSO)->get()->filter(function($item) {
-            return ($item->metadata['conso_type'] ?? 'Aliment') === 'Aliment';
-        });
+        // logistique.L : autonomie silos & angles morts d'alimentation.
+        $silos = $canLogistique
+            ? Stock::where('category', Stock::CAT_CONSO)->get()->filter(function($item) {
+                return ($item->metadata['conso_type'] ?? 'Aliment') === 'Aliment';
+            })
+            : collect();
 
         foreach ($silos as $silo) {
             // Silo vide → épuisé.
@@ -170,12 +196,14 @@ class DashboardController extends Controller
         // Angle mort : lots actifs consommant un aliment sans article de stock
         // correspondant. Le silo n'existe pas → boucle précédente ne le voit
         // pas → "tout va bien" affiché à tort. On alerte avec days = -1.
-        $activeFeedTypes = DailyCheck::whereIn('batch_id', $batchIds)
-            ->where('check_date', '>=', now()->subDays($periodDays))
-            ->whereNotNull('feed_type')
-            ->where('feed_consumed', '>', 0)
-            ->distinct()
-            ->pluck('feed_type');
+        $activeFeedTypes = $canLogistique
+            ? DailyCheck::whereIn('batch_id', $batchIds)
+                ->where('check_date', '>=', now()->subDays($periodDays))
+                ->whereNotNull('feed_type')
+                ->where('feed_consumed', '>', 0)
+                ->distinct()
+                ->pluck('feed_type')
+            : collect();
 
         $configuredFeedNames = $silos->pluck('item_name');
         foreach ($activeFeedTypes as $feedType) {
@@ -187,7 +215,7 @@ class DashboardController extends Controller
         // B. Urgences Sanitaires (pic de mortalité du jour > seuil paramétré).
         // Base = effectif de DÉBUT de journée (effectif courant + morts du jour,
         // déjà décomptés par l'observer) pour ne pas surévaluer le taux.
-        $emergencyBatches = $allActiveBatches->filter(function($batch) use ($today, $dailyMortalityPct, $dailyMortalityMin) {
+        $emergencyBatches = (! $canElevage ? collect() : $allActiveBatches)->filter(function($batch) use ($today, $dailyMortalityPct, $dailyMortalityMin) {
             $todayCheck = $batch->dailyChecks()->whereDate('check_date', $today)->first();
             if (!$todayCheck) return false;
             $morts = (int) $todayCheck->mortality;
@@ -202,7 +230,7 @@ class DashboardController extends Controller
         // C. Dérive Technique (mortalité CUMULÉE réelle > seuil paramétré).
         // S'appuie sur l'accessor mortality_rate (qty_dead + Σ mortalité / base
         // initiale), et non sur initial − current qui mêlait tris & quarantaines.
-        $underperformingBatches = $allActiveBatches->filter(function($batch) use ($cumulMortalityPct) {
+        $underperformingBatches = (! $canElevage ? collect() : $allActiveBatches)->filter(function($batch) use ($cumulMortalityPct) {
             return $batch->mortality_rate > $cumulMortalityPct;
         });
 
@@ -211,29 +239,35 @@ class DashboardController extends Controller
         // (cf. Building::getSanitaryBreakRemainingDaysAttribute) est écoulé.
         // Un bâtiment simplement vide/disponible, ou en désinfection depuis
         // moins de 14 jours, n'est PAS une alerte.
-        $sanitaryAlertsCount = Building::where('name', '!=', 'Zone Fournisseurs Externes')
-            ->inSanitaryBreak()
-            ->whereNotNull('disinfection_started_at')
-            ->where('disinfection_started_at', '<=', now()->subDays($sanitaryDays))
-            ->count();
+        $sanitaryAlertsCount = $canElevage
+            ? Building::where('name', '!=', 'Zone Fournisseurs Externes')
+                ->inSanitaryBreak()
+                ->whereNotNull('disinfection_started_at')
+                ->where('disinfection_started_at', '<=', now()->subDays($sanitaryDays))
+                ->count()
+            : 0;
 
         // E. Stock sous le seuil de réapprovisionnement (alert_threshold).
         // Indépendant de l'autonomie silos (qui ne couvre que l'aliment et la
         // vitesse de consommation) : ici on alerte sur TOUT article passé sous
         // son seuil, y compris à consommation lente (vaccins, litière, matériel).
-        $lowStocks = Stock::where('alert_threshold', '>', 0)
-            ->whereColumn('current_quantity', '<=', 'alert_threshold')
-            ->orderByRaw('current_quantity / NULLIF(alert_threshold, 0) ASC')
-            ->get(['id', 'item_name', 'category', 'current_quantity', 'alert_threshold', 'unit']);
+        $lowStocks = $canLogistique
+            ? Stock::where('alert_threshold', '>', 0)
+                ->whereColumn('current_quantity', '<=', 'alert_threshold')
+                ->orderByRaw('current_quantity / NULLIF(alert_threshold, 0) ASC')
+                ->get(['id', 'item_name', 'category', 'current_quantity', 'alert_threshold', 'unit'])
+            : collect();
 
         // Péremption des consommables (vaccins, médicaments, intrants…) :
         // articles déjà périmés OU périmant dans la fenêtre d'alerte configurée.
         $expiryWindow = (int) setting('stocks.expiry_alert_days', 30);
-        $expiringStocks = Stock::where(function ($q) use ($expiryWindow) {
-                $q->expired()->orWhere(fn ($q2) => $q2->expiringSoon($expiryWindow));
-            })
-            ->orderBy('expiry_date')
-            ->get(['id', 'item_name', 'category', 'current_quantity', 'unit', 'expiry_date', 'lot_number']);
+        $expiringStocks = $canLogistique
+            ? Stock::where(function ($q) use ($expiryWindow) {
+                    $q->expired()->orWhere(fn ($q2) => $q2->expiringSoon($expiryWindow));
+                })
+                ->orderBy('expiry_date')
+                ->get(['id', 'item_name', 'category', 'current_quantity', 'unit', 'expiry_date', 'lot_number'])
+            : collect();
 
         // F. Prophylaxie en retard : étapes de protocole échues mais non tracées.
         // Réutilise EXACTEMENT la convention de la fiche lot (date prévue =
@@ -241,10 +275,12 @@ class DashboardController extends Controller
         // de l'étape). Bornée aux échéances des $protocolWindowDays derniers
         // jours pour rester actionnable et éviter le bruit d'anciens lots.
         $vaccineAlerts = collect();
-        $protocolBatches = Batch::active()->live()
-            ->whereNotNull('protocol_id')
-            ->with(['protocol.steps', 'healthChecks'])
-            ->get();
+        $protocolBatches = $canElevage
+            ? Batch::active()->live()
+                ->whereNotNull('protocol_id')
+                ->with(['protocol.steps', 'healthChecks'])
+                ->get()
+            : collect();
 
         foreach ($protocolBatches as $batch) {
             if (! $batch->protocol) continue;
@@ -283,9 +319,7 @@ class DashboardController extends Controller
         $lamenessPct   = (float) setting('elevage.lameness_alert_pct', 5);
         $peckingPct    = (float) setting('elevage.pecking_alert_pct', 2);
 
-        $welfareAlerts = Batch::active()->live()
-            ->with('latestDailyCheck')
-            ->get()
+        $welfareAlerts = ($canElevage ? Batch::active()->live()->with('latestDailyCheck')->get() : collect())
             ->map(function ($batch) use ($welfareWindow, $lamenessPct, $peckingPct) {
                 $check = $batch->latestDailyCheck;
                 if (! $check || (int) $batch->current_quantity <= 0) return null;
@@ -311,13 +345,15 @@ class DashboardController extends Controller
         // ---------------------------------------------------------
         // 6. DONNÉES D'AFFICHAGE (Bâtiments & Pagination)
         // ---------------------------------------------------------
-        $buildings = Building::where('name', '!=', 'Zone Fournisseurs Externes')
-            ->withCount(['batches' => function($q) {
-                $q->active()->live();
-            }])
-            ->with(['batches' => function($q) {
-                $q->active()->live();
-            }])->get();
+        $buildings = $canElevage
+            ? Building::where('name', '!=', 'Zone Fournisseurs Externes')
+                ->withCount(['batches' => function($q) {
+                    $q->active()->live();
+                }])
+                ->with(['batches' => function($q) {
+                    $q->active()->live();
+                }])->get()
+            : collect();
 
         $occupiedBuildingsCount = $buildings->where('batches_count', '>', 0)->count();
         $totalBuildingsCount    = $buildings->count();
@@ -328,6 +364,7 @@ class DashboardController extends Controller
         $activeBatches = Batch::with(['building', 'latestDailyCheck'])
             ->active()
             ->live()
+            ->when(! $canElevage, fn ($q) => $q->whereRaw('1 = 0')) // paginator vide hors elevage.L
             ->paginate((int) setting('general.items_per_page', 20));
 
         // ---------------------------------------------------------
@@ -338,11 +375,13 @@ class DashboardController extends Controller
         // sinon le widget s'affiche même quand aucune campagne n'a été
         // planifiée (fausse alerte).
         $tabaskiWidget = null;
-        $tabaskiCampaign = \App\Models\Campaign::active()
-            ->where('type', 'tabaski')
-            ->with('batches')
-            ->orderBy('target_date')
-            ->first();
+        $tabaskiCampaign = $canElevage
+            ? \App\Models\Campaign::active()
+                ->where('type', 'tabaski')
+                ->with('batches')
+                ->orderBy('target_date')
+                ->first()
+            : null;
 
         if ($tabaskiCampaign) {
             $today = now()->startOfDay();
@@ -364,11 +403,13 @@ class DashboardController extends Controller
         // 8. ALERTES QUALITÉ EAU (Pisciculture)
         // ---------------------------------------------------------
         $waterAlerts = collect();
-        $aquaBatches = Batch::active()
-            ->live()
-            ->whereHas('species', function($q) {
-                $q->where('family', 'aquaculture');
-            })->with(['species', 'building'])->get();
+        $aquaBatches = $canElevage
+            ? Batch::active()
+                ->live()
+                ->whereHas('species', function($q) {
+                    $q->where('family', 'aquaculture');
+                })->with(['species', 'building'])->get()
+            : collect();
 
         foreach ($aquaBatches as $aquaBatch) {
             $lastExt = \App\Models\DailyCheck::where('batch_id', $aquaBatch->id)
@@ -426,7 +467,7 @@ class DashboardController extends Controller
         // Bloc affiché uniquement si l'exploitation gère des parcelles, pour ne
         // pas encombrer le tableau de bord d'une ferme 100% élevage.
         $plantProduction = null;
-        if (Plot::exists()) {
+        if ($canCultures && Plot::exists()) {
             $plantProduction = [
                 'cycles_active'   => CropCycle::inProgress()->count(),
                 'area_cultivated' => (float) CropCycle::inProgress()->sum('area_used_ha'),
@@ -439,8 +480,8 @@ class DashboardController extends Controller
         // ---------------------------------------------------------
         // 11. ENRICHISSEMENT INDUSTRIEL (KPI techniques + tendances)
         // ---------------------------------------------------------
-        $technical = $insights->technical($allActiveBatches, $globalMortalityRate);
-        $trends    = $insights->trends($batchIds->all(), 30);
+        $technical = $canElevage ? $insights->technical($allActiveBatches, $globalMortalityRate) : null;
+        $trends    = $canElevage ? $insights->trends($batchIds->all(), 30) : null;
 
         // ---------------------------------------------------------
         // 12. BANDEAU D'ALERTES PRIORISÉ (centre de contrôle unifié)
@@ -471,6 +512,9 @@ class DashboardController extends Controller
      */
     public function analytics(Request $request)
     {
+        // Séries mortalité/eau/énergie = données d'élevage : lecture requise.
+        \Illuminate\Support\Facades\Gate::authorize('elevage.L');
+
         $days = (int) $request->input('days', 30);
         $days = max(7, min(90, $days)); // borné 7-90 j
 

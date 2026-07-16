@@ -118,7 +118,8 @@
             </div>
             @endif
 
-            {{-- CENTRE DE CONTRÔLE DES ALERTES --}}
+            {{-- CENTRE DE CONTRÔLE DES ALERTES (silos = logistique, sanitaire = élevage) --}}
+            @canany(['elevage.L', 'logistique.L'])
             @if(dashboard_block_visible('control_center'))
             <div class="mb-10 space-y-4">
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -307,6 +308,7 @@
                 </div>
             </div>
             @endif
+            @endcanany
 
             {{-- ALERTE STOCK SOUS SEUIL — tout article passé sous alert_threshold --}}
             @if(($lowStocks ?? collect())->isNotEmpty() && dashboard_block_visible('low_stock'))
@@ -489,7 +491,8 @@
             </a>
             @endif
 
-            {{-- KPI ROW --}}
+            {{-- KPI ROW (effectifs & mortalité = élevage ; les KPI ponte internes relèvent de production.L via showEggKpis) --}}
+            @can('elevage.L')
             @if(dashboard_block_visible('kpi_row'))
             <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-10">
                 <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm">
@@ -547,6 +550,7 @@
                 @endif
             </div>
             @endif
+            @endcan
 
             {{-- PERFORMANCE TECHNIQUE (zootechnie) --}}
             @if(($technical['has_data'] ?? false) && dashboard_block_visible('technical'))
@@ -596,7 +600,8 @@
             </div>
             @endif
 
-            {{-- Accès à la vue analytique consolidée (eau + énergie + mortalité) --}}
+            {{-- Analytique consolidée + tendances : données d'élevage (elevage.L) --}}
+            @can('elevage.L')
             <div class="mb-4 flex justify-end">
                 <a href="{{ route('dashboard.analytics') }}" class="inline-flex items-center gap-2 px-5 py-2.5 bg-slate-900 text-white rounded-2xl text-[9px] font-black uppercase tracking-widest hover:bg-blue-600 transition-all no-underline shadow-lg italic">
                     <i class="fa-solid fa-magnifying-glass-chart"></i> {{ __("Vue analytique consolidée") }}
@@ -623,6 +628,7 @@
                 </div>
             </div>
             @endif
+            @endcan
 
             {{-- SYNTHÈSE FINANCIÈRE DU MOIS (droits commerce) --}}
             @can('commerce.L')
@@ -673,7 +679,8 @@
             @endcan
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-10 text-left">
-                {{-- SUIVI DES BANDES --}}
+                {{-- SUIVI DES BANDES (elevage.L) --}}
+                @can('elevage.L')
                 <div class="lg:col-span-2 space-y-6">
                     <div class="flex justify-between items-center px-6">
                         <h3 class="text-[11px] font-black uppercase text-slate-800 tracking-[0.2em] italic flex items-center">
@@ -723,6 +730,7 @@
                         <div class="mt-6">{{ $activeBatches->links() }}</div>
                     @endif
                 </div>
+                @endcan
 
                 {{-- SIDEBAR --}}
                 <div class="space-y-8">
