@@ -2,6 +2,9 @@
     <x-slot name="header">
         <x-page-header :title="$sale->reference" :subtitle="__($sale->type_label) . ' — ' . $sale->sale_date->translatedFormat('d F Y')" icon="fa-file-invoice" accent="teal" :back="route('sales.index')">
             <x-slot name="actions">
+                {{-- Valider & Livrer = actions M : jamais présentées à un
+                     vendeur L+C (le serveur refuse déjà — ici on ne fuit pas l'UI). --}}
+                @can('commerce.M')
                 @if($sale->status === 'brouillon')
                     <form method="POST" action="{{ route('sales.validate', $sale) }}">
                         @csrf @method('PUT')
@@ -18,6 +21,7 @@
                         </button>
                     </form>
                 @endif
+                @endcan
                 @if(in_array($sale->status, ['valide', 'livre']))
                     @can('commerce.M')
                     <a href="{{ route('sales.return.create', $sale) }}" class="bg-orange-50 border border-orange-200 text-orange-600 px-6 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-orange-100 transition-all no-underline flex items-center gap-2">
