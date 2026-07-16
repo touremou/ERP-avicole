@@ -30,6 +30,8 @@ export function SaleScreen() {
   const [quantity, setQuantity] = useState(1)
   const [unitPrice, setUnitPrice] = useState('')
   const [immediatePayment, setImmediatePayment] = useState('')
+  const [paymentMethod, setPaymentMethod] = useState('especes')
+  const [notes, setNotes] = useState('')
   const [saved, setSaved] = useState(false)
 
   useEffect(() => {
@@ -80,7 +82,8 @@ export function SaleScreen() {
         type: 'bon_livraison',
         items,
         immediate_payment: immediatePayment ? Number(immediatePayment) : null,
-        payment_method: immediatePayment ? 'especes' : null,
+        payment_method: immediatePayment ? paymentMethod : null,
+        notes: notes.trim() || null,
       },
       t('Vente :name (:count art.)', { name: client?.name ?? '', count: items.length }),
     )
@@ -171,7 +174,7 @@ export function SaleScreen() {
 
       {items.length > 0 && (
         <>
-          <label htmlFor="immediate_payment">{t('Acompte encaissé (espèces) — optionnel')}</label>
+          <label htmlFor="immediate_payment">{t('Acompte encaissé — optionnel')}</label>
           <input
             id="immediate_payment"
             type="number"
@@ -180,6 +183,28 @@ export function SaleScreen() {
             value={immediatePayment}
             onChange={(e) => setImmediatePayment(e.target.value)}
           />
+          {Number(immediatePayment) > 0 && (
+            <div className="chip-row">
+              {([
+                ['especes', `💵 ${t('Espèces')}`],
+                ['mobile_money', `📱 ${t('Mobile Money')}`],
+                ['virement', `🏦 ${t('Virement')}`],
+                ['cheque', `🧾 ${t('Chèque')}`],
+              ] as const).map(([value, lbl]) => (
+                <button
+                  key={value}
+                  type="button"
+                  className={`chip ${paymentMethod === value ? 'chip-on' : ''}`}
+                  onClick={() => setPaymentMethod(value)}
+                >
+                  {lbl}
+                </button>
+              ))}
+            </div>
+          )}
+
+          <label htmlFor="sale_notes">{t('Observations — optionnel')}</label>
+          <textarea id="sale_notes" rows={2} maxLength={2000} value={notes} onChange={(e) => setNotes(e.target.value)} />
         </>
       )}
 

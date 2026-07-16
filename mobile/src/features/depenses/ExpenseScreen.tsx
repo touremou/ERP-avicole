@@ -32,7 +32,9 @@ export function ExpenseScreen() {
   const [category, setCategory] = useState('')
   const [label, setLabel] = useState('')
   const [amount, setAmount] = useState('')
+  const [paymentMethod, setPaymentMethod] = useState('especes')
   const [supplierName, setSupplierName] = useState('')
+  const [notes, setNotes] = useState('')
   const [photoBlob, setPhotoBlob] = useState<Blob | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
@@ -54,8 +56,9 @@ export function ExpenseScreen() {
       label: label.trim(),
       amount: Number(amount),
       expense_date: new Date().toISOString().slice(0, 10),
-      payment_method: 'especes',
+      payment_method: paymentMethod,
       supplier_name: supplierName.trim() || null,
+      notes: notes.trim() || null,
     }
 
     if (photoBlob) {
@@ -122,8 +125,30 @@ export function ExpenseScreen() {
         onChange={(e) => setAmount(e.target.value)}
       />
 
+      <label>{t('Mode de paiement')}</label>
+      <div className="chip-row">
+        {([
+          ['especes', `💵 ${t('Espèces')}`],
+          ['mobile_money', `📱 ${t('Mobile Money')}`],
+          ['virement', `🏦 ${t('Virement')}`],
+          ['cheque', `🧾 ${t('Chèque')}`],
+        ] as const).map(([value, lbl]) => (
+          <button
+            key={value}
+            type="button"
+            className={`chip ${paymentMethod === value ? 'chip-on' : ''}`}
+            onClick={() => setPaymentMethod(value)}
+          >
+            {lbl}
+          </button>
+        ))}
+      </div>
+
       <label htmlFor="supplier">{t('Fournisseur / bénéficiaire — optionnel')}</label>
       <input id="supplier" maxLength={255} value={supplierName} onChange={(e) => setSupplierName(e.target.value)} />
+
+      <label htmlFor="notes">{t('Observations — optionnel')}</label>
+      <textarea id="notes" rows={2} maxLength={2000} value={notes} onChange={(e) => setNotes(e.target.value)} />
 
       <button type="button" className="btn-secondary" onClick={() => void attachPhoto()}>
         📷 {photoBlob ? t('Reprendre le reçu') : t('Photographier le reçu')}
