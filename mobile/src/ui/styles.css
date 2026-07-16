@@ -225,6 +225,24 @@ h3 {
   box-shadow: 0 4px 12px rgb(0 0 0 / 0.18);
 }
 
+/* ── Tâches assignées (accueil) ── */
+.task-row {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius-card); padding: 12px 14px;
+  box-shadow: var(--shadow-card);
+}
+.task-row__body { flex: 1 1 auto; min-width: 0; }
+.task-row .task-title { display: block; font-weight: 700; font-size: 0.95rem; }
+.task-done {
+  flex: none; border: none; border-radius: 999px;
+  min-height: 40px; padding: 8px 16px;
+  background: var(--primary); color: #fff; font-weight: 800; font-size: 14px;
+  cursor: pointer; white-space: nowrap;
+}
+.task-done:active { background: var(--primary-600); }
+.task-overdue { color: var(--danger); font-weight: 700; }
+
 /* État « tout est à jour » */
 .ok-card {
   background: var(--primary-50); border: 1px solid #cfe6d5;

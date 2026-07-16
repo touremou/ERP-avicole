@@ -82,6 +82,8 @@ class SyncService
             'temperature_log.create'     => 'temperatureLogCreate',
             'cleaning_log.create'        => 'cleaningLogCreate',
             'byproduct.create'           => 'byproductCreate',
+            // Tâches assignées : cocher « faite » depuis le terrain.
+            'task.complete'              => 'taskComplete',
         ];
     }
 
@@ -1058,6 +1060,51 @@ class SyncService
 
             return ['status' => 'success', 'server_id' => $byproduct->id];
         });
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    //  TÂCHE ASSIGNÉE — cocher « faite » depuis le terrain. Autorisé pour
+    //  SA propre tâche (employé rattaché) ou pour un superviseur (annuaire.M).
+    //  Idempotent : re-cocher une tâche déjà faite = already_synced.
+    // ─────────────────────────────────────────────────────────────
+    private function taskComplete(array $payload): array
+    {
+        $v = Validator::make($payload, [
+            'uuid'    => 'required|uuid',
+            'task_id' => 'required|integer|exists:task_assignments,id',
+            'notes'   => 'nullable|string|max:500',
+        ]);
+
+        if ($v->fails()) {
+            return $this->invalid($v->errors()->toArray());
+        }
+
+        $data = $v->validated();
+
+        /** @var \App\Models\TaskAssignment $task */
+        $task = \App\Models\TaskAssignment::find($data['task_id']);
+
+        $myEmployeeId = Auth::user()?->employee?->id;
+        $isOwner = $task->employee_id !== null && $task->employee_id === $myEmployeeId;
+
+        if (! $isOwner && Gate::denies('annuaire.M')) {
+            return $this->denied();
+        }
+
+        if ($task->status === 'fait') {
+            return ['status' => 'already_synced'];
+        }
+
+        $task->update([
+            'status'           => 'fait',
+            'completed_at'     => now(),
+            'completed_by'     => Auth::id(),
+            'completion_notes' => $data['notes'] ?? null,
+        ]);
+
+        Log::info("Sync: tâche #{$task->id} terminée (uuid: {$data['uuid']}).");
+
+        return ['status' => 'success', 'server_id' => $task->id];
     }
 
     private function denied(): array

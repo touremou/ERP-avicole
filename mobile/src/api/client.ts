@@ -17,6 +17,7 @@ import type {
   PushOperation,
   PushResponse,
   PullResponse,
+  TasksResponse,
 } from './types'
 
 // Base de l'API. En dev et en même-origine (PWA servie par le même hôte que
@@ -98,6 +99,8 @@ export const api = {
     request<PullResponse>(`/sync/pull${since ? `?since=${encodeURIComponent(since)}` : ''}`),
 
   notifications: () => request<NotificationsResponse>('/notifications'),
+
+  tasks: () => request<TasksResponse>('/tasks'),
 
   markNotificationRead: (id: string) =>
     request<{ message: string }>(`/notifications/${id}/read`, { method: 'POST' }),

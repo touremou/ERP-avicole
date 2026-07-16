@@ -27,6 +27,7 @@ import type {
   RefProvider,
   RefSlaughterOrder,
   RefStock,
+  RefTask,
 } from '../api/types'
 
 export interface OutboxEntry {
@@ -83,6 +84,7 @@ class ErpMobileDb extends Dexie {
   ref_providers!: Table<RefProvider, number>
   ref_formulas!: Table<RefFormula, number>
   ref_mill_productions!: Table<RefMillProduction, number>
+  tasks!: Table<RefTask, number>
   meta!: Table<MetaEntry, string>
 
   constructor() {
@@ -116,6 +118,10 @@ class ErpMobileDb extends Dexie {
     // v4 (Phase 3 — HACCP abattoir) : éleveurs livreurs pour la réception du vif.
     this.version(4).stores({
       ref_providers: 'id, name',
+    })
+    // v5 : tâches assignées (miroir « Mes tâches », remplacement complet à la sync).
+    this.version(5).stores({
+      tasks: 'id, scheduled_date, status, batch_id',
     })
   }
 }
