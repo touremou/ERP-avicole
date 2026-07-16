@@ -72,12 +72,12 @@ class SyncController extends Controller
         'crop_cycles' => [
             'model'   => \App\Models\CropCycle::class,
             'columns' => ['id', 'uuid', 'plot_id', 'code', 'crop_name', 'variety', 'status',
-                          'planting_date', 'updated_at'],
+                          'employee_id', 'planting_date', 'updated_at'],
         ],
         'slaughter_orders' => [
             'model'   => \App\Models\SlaughterOrder::class,
             'columns' => ['id', 'order_number', 'batch_id', 'planned_date', 'planned_quantity',
-                          'status', 'updated_at'],
+                          'status', 'requested_by', 'executed_by', 'updated_at'],
         ],
         'formulas' => [
             'model'   => \App\Models\Formula::class,
@@ -94,7 +94,7 @@ class SyncController extends Controller
         'mill_productions' => [
             'model'   => \App\Models\MillProduction::class,
             'columns' => ['id', 'batch_number', 'formula_id', 'quantity_produced', 'status',
-                          'started_at', 'updated_at'],
+                          'operator_id', 'supervisor_id', 'started_at', 'updated_at'],
         ],
     ];
 

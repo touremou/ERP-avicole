@@ -224,6 +224,8 @@ export interface RefCropCycle {
   crop_name: string
   variety: string | null
   status: string
+  /** Responsable du cycle (employees.id) — scoping « mes cultures ». */
+  employee_id: number | null
   planting_date: string | null
   updated_at: string
 }
@@ -235,6 +237,9 @@ export interface RefSlaughterOrder {
   planned_date: string
   planned_quantity: number
   status: string
+  /** Utilisateurs concernés (users.id) — scoping « mes abattages ». */
+  requested_by: number | null
+  executed_by: number | null
   updated_at: string
 }
 
@@ -262,6 +267,9 @@ export interface RefMillProduction {
   formula_id: number | null
   quantity_produced: string | number
   status: string
+  /** Opérateur / superviseur (users.id) — scoping « mes OP ». */
+  operator_id: number | null
+  supervisor_id: number | null
   started_at: string | null
   updated_at: string
 }
