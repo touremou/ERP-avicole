@@ -5,7 +5,7 @@
  */
 import { useEffect, useState } from 'react'
 import { t } from '../i18n'
-import { onSyncChange, syncNow, type SyncState } from '../offline/sync'
+import { getLastSyncError, onSyncChange, syncNow, type SyncState } from '../offline/sync'
 
 const LABELS: Record<SyncState, string> = {
   idle: '✓ Synchronisé',
@@ -32,8 +32,22 @@ export function SyncBadge() {
       ? t(':label · :count en attente', { label: t(LABELS[state]), count: pending })
       : t(LABELS[state])
 
+  const onTap = () => {
+    // En erreur, on révèle la raison exacte AVANT de retenter (diagnostic terrain).
+    if (state === 'error') {
+      const reason = getLastSyncError()
+      if (reason) window.alert(reason)
+    }
+    void syncNow()
+  }
+
   return (
-    <button type="button" className={`sync-badge sync-${state}`} onClick={() => void syncNow()}>
+    <button
+      type="button"
+      className={`sync-badge sync-${state}`}
+      title={state === 'error' ? getLastSyncError() ?? undefined : undefined}
+      onClick={onTap}
+    >
       {label}
     </button>
   )
