@@ -21,6 +21,7 @@ export function DailyCheckScreen() {
 
   const [batch, setBatch] = useState<RefBatch | null>(null)
   const [feedStocks, setFeedStocks] = useState<RefStock[]>([])
+  const [healthStatus, setHealthStatus] = useState<'Normal' | 'Alerte' | 'Critique'>('Normal')
   const [mortality, setMortality] = useState(0)
   const [feedConsumed, setFeedConsumed] = useState(0)
   const [feedType, setFeedType] = useState('')
@@ -28,6 +29,20 @@ export function DailyCheckScreen() {
   const [observations, setObservations] = useState('')
   const [prefilled, setPrefilled] = useState(false)
   const [saved, setSaved] = useState(false)
+
+  // Détails optionnels (repliés par défaut : la saisie rapide reste 3 taps).
+  const [showDetails, setShowDetails] = useState(false)
+  const [waterConsumed, setWaterConsumed] = useState('')
+  const [tempMin, setTempMin] = useState('')
+  const [tempMax, setTempMax] = useState('')
+  const [humidity, setHumidity] = useState('')
+  const [mortInfirmary, setMortInfirmary] = useState('')
+  const [quarantineIn, setQuarantineIn] = useState('')
+  const [quarantineOut, setQuarantineOut] = useState('')
+  const [lameCount, setLameCount] = useState('')
+  const [peckingCount, setPeckingCount] = useState('')
+  const [litterChanged, setLitterChanged] = useState(false)
+  const [manureKg, setManureKg] = useState('')
 
   useEffect(() => {
     if (batchId) void db.ref_batches.get(Number(batchId)).then((b) => setBatch(b ?? null))
@@ -61,15 +76,29 @@ export function DailyCheckScreen() {
     event.preventDefault()
     if (!batch) return
 
+    const num = (v: string) => (v.trim() !== '' ? Number(v) : null)
+
     await enqueue(
       'daily_check.create',
       {
         batch_id: batch.id,
         check_date: new Date().toISOString().slice(0, 10),
+        health_status: healthStatus,
         mortality,
         feed_consumed: feedConsumed || null,
         feed_type: feedConsumed > 0 ? feedType : null,
-        avg_weight: avgWeight ? Number(avgWeight) : null,
+        avg_weight: num(avgWeight),
+        water_consumed: num(waterConsumed),
+        temp_min: num(tempMin),
+        temp_max: num(tempMax),
+        humidity: num(humidity),
+        mortality_infirmary: num(mortInfirmary),
+        qty_quarantine_in: num(quarantineIn),
+        qty_quarantine_out: num(quarantineOut),
+        lame_count: num(lameCount),
+        pecking_injury_count: num(peckingCount),
+        litter_changed: litterChanged,
+        manure_collected_kg: litterChanged ? num(manureKg) : null,
         observations: observations || null,
       },
       t('Pointage :code', { code: batch.code }),
@@ -103,6 +132,24 @@ export function DailyCheckScreen() {
       <p className="muted">
         {batch.current_quantity} {t('sujets')} · {new Date().toLocaleDateString(dateLocale())}
       </p>
+
+      <label>{t('État sanitaire')}</label>
+      <div className="chip-row">
+        {([
+          ['Normal', `🟢 ${t('Normal')}`],
+          ['Alerte', `🟡 ${t('Alerte')}`],
+          ['Critique', `🔴 ${t('Critique')}`],
+        ] as const).map(([value, label]) => (
+          <button
+            key={value}
+            type="button"
+            className={`chip ${healthStatus === value ? 'chip-on' : ''}`}
+            onClick={() => setHealthStatus(value)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
 
       <NumberStepper label={t('Mortalité (sujets)')} value={mortality} onChange={setMortality} min={0} />
 
@@ -149,6 +196,55 @@ export function DailyCheckScreen() {
         onChange={(e) => setAvgWeight(e.target.value)}
         placeholder={t('ex. 1.25')}
       />
+
+      <button
+        type="button"
+        className="btn-secondary"
+        onClick={() => setShowDetails((s) => !s)}
+      >
+        {showDetails ? t('▲ Masquer les détails') : t('▼ Plus de détails (optionnel)')}
+      </button>
+
+      {showDetails && (
+        <>
+          <h3>{t('Ambiance')}</h3>
+          <label htmlFor="water">{t('Eau consommée (L)')}</label>
+          <input id="water" type="number" inputMode="decimal" min="0" value={waterConsumed} onChange={(e) => setWaterConsumed(e.target.value)} placeholder={t('ex. 120')} />
+          <label htmlFor="tmin">{t('Température min (°C)')}</label>
+          <input id="tmin" type="number" inputMode="decimal" value={tempMin} onChange={(e) => setTempMin(e.target.value)} placeholder={t('ex. 22')} />
+          <label htmlFor="tmax">{t('Température max (°C)')}</label>
+          <input id="tmax" type="number" inputMode="decimal" value={tempMax} onChange={(e) => setTempMax(e.target.value)} placeholder={t('ex. 31')} />
+          <label htmlFor="hum">{t('Humidité (%)')}</label>
+          <input id="hum" type="number" inputMode="decimal" min="0" max="100" value={humidity} onChange={(e) => setHumidity(e.target.value)} placeholder={t('ex. 60')} />
+
+          <h3>{t('Infirmerie & tri')}</h3>
+          <label htmlFor="infin">{t('Mise en infirmerie (sujets)')}</label>
+          <input id="infin" type="number" inputMode="numeric" min="0" value={quarantineIn} onChange={(e) => setQuarantineIn(e.target.value)} placeholder="0" />
+          <label htmlFor="infout">{t('Rétablis (sortis d’infirmerie)')}</label>
+          <input id="infout" type="number" inputMode="numeric" min="0" value={quarantineOut} onChange={(e) => setQuarantineOut(e.target.value)} placeholder="0" />
+          <label htmlFor="morti">{t('Morts en infirmerie')}</label>
+          <input id="morti" type="number" inputMode="numeric" min="0" value={mortInfirmary} onChange={(e) => setMortInfirmary(e.target.value)} placeholder="0" />
+          <label htmlFor="lame">{t('Boiteux observés')}</label>
+          <input id="lame" type="number" inputMode="numeric" min="0" value={lameCount} onChange={(e) => setLameCount(e.target.value)} placeholder="0" />
+          <label htmlFor="peck">{t('Picage / blessés')}</label>
+          <input id="peck" type="number" inputMode="numeric" min="0" value={peckingCount} onChange={(e) => setPeckingCount(e.target.value)} placeholder="0" />
+
+          <h3>{t('Litière')}</h3>
+          <button
+            type="button"
+            className={`chip ${litterChanged ? 'chip-on' : ''}`}
+            onClick={() => setLitterChanged((v) => !v)}
+          >
+            {litterChanged ? `✓ ${t('Litière changée')}` : t('Litière changée ?')}
+          </button>
+          {litterChanged && (
+            <>
+              <label htmlFor="manure">{t('Fumier ramassé (kg)')}</label>
+              <input id="manure" type="number" inputMode="decimal" min="0" value={manureKg} onChange={(e) => setManureKg(e.target.value)} placeholder={t('ex. 40')} />
+            </>
+          )}
+        </>
+      )}
 
       <label htmlFor="observations">{t('Observations — optionnel')}</label>
       <textarea

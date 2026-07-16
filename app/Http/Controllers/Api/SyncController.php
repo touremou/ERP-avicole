@@ -36,7 +36,10 @@ class SyncController extends Controller
         'batches' => [
             'model'   => Batch::class,
             'columns' => ['id', 'uuid', 'code', 'status', 'building_id', 'species_id', 'production_type_id',
-                          'initial_quantity', 'current_quantity', 'qty_dead', 'arrival_date', 'updated_at'],
+                          'employee_id', 'initial_quantity', 'current_quantity', 'qty_dead', 'arrival_date', 'updated_at'],
+            // Attribut dérivé (calculé serveur) : le terrain ne peut pas
+            // reproduire la règle d'éligibilité ponte (normes de souche, âge).
+            'append'  => ['can_collect_eggs'],
         ],
         'buildings' => [
             'model'   => Building::class,
@@ -155,10 +158,32 @@ class SyncController extends Controller
 
             // Upserts : enregistrements (de la ferme courante — FarmScope actif)
             // créés/modifiés depuis `since`. Bootstrap complet si since absent.
-            $upserts = $model::query()
+            $query = $model::query()
                 ->when($since, fn ($q) => $q->where('updated_at', '>', $since))
-                ->orderBy('id')
-                ->get($config['columns']);
+                ->orderBy('id');
+
+            if (! empty($config['append'])) {
+                // Attribut(s) dérivé(s) : on hydrate le modèle complet (la règle
+                // peut dépendre de colonnes hors liste blanche), puis on ne
+                // sérialise que la liste blanche + les attributs calculés.
+                $upserts = $query->get()->map(function ($record) use ($config) {
+                    $row = [];
+                    foreach ($config['columns'] as $column) {
+                        $row[$column] = $record->getAttribute($column);
+                    }
+                    foreach ($config['append'] as $attribute) {
+                        // camelCase → méthode (can_collect_eggs → canCollectEggs).
+                        $method = \Illuminate\Support\Str::camel($attribute);
+                        $row[$attribute] = method_exists($record, $method)
+                            ? $record->{$method}()
+                            : $record->getAttribute($attribute);
+                    }
+
+                    return $row;
+                });
+            } else {
+                $upserts = $query->get($config['columns']);
+            }
 
             // Tombstones : ids soft-supprimés depuis `since`, pour purger le
             // miroir local. Entités sans SoftDeletes → liste vide.

@@ -23,7 +23,7 @@ export interface FieldTasks {
 }
 
 export function useFieldTasks(): FieldTasks {
-  const { can } = useAuth()
+  const { can, me } = useAuth()
   const [batches, setBatches] = useState<RefBatch[]>([])
   const [ponteIds, setPonteIds] = useState<Set<number>>(new Set())
   const [doneToday, setDoneToday] = useState<{ checks: Set<number>; eggs: Set<number> }>({
@@ -85,8 +85,20 @@ export function useFieldTasks(): FieldTasks {
     return onSyncChange(() => void load())
   }, [])
 
-  const checksTodo = batches.filter((b) => !doneToday.checks.has(b.id))
-  const eggsTodo = batches.filter((b) => ponteIds.has(b.id) && !doneToday.eggs.has(b.id))
+  // Scoping « mes lots » : on ne montre que les lots dont l'utilisateur est
+  // responsable (batches.employee_id == son employee_id). Repli : s'il n'est
+  // rattaché à AUCUN lot (superviseur, admin, ou employé sans affectation),
+  // on montre tout — sinon il ne verrait rien.
+  const myEmployeeId = me?.scope.employee_id ?? null
+  const mine = myEmployeeId != null ? batches.filter((b) => b.employee_id === myEmployeeId) : []
+  const scopedBatches = mine.length > 0 ? mine : batches
 
-  return { batches, checksTodo, eggsTodo, slaughterOrders, millProductions, cropCycles, savedToday, can }
+  const checksTodo = scopedBatches.filter((b) => !doneToday.checks.has(b.id))
+  // Éligibilité collecte : booléen calculé serveur (âge/phase de ponte selon la
+  // souche). Repli sur le slug 'ponte' si le serveur ne l'a pas encore fourni.
+  const eggsTodo = scopedBatches.filter(
+    (b) => (b.can_collect_eggs ?? ponteIds.has(b.id)) && !doneToday.eggs.has(b.id),
+  )
+
+  return { batches: scopedBatches, checksTodo, eggsTodo, slaughterOrders, millProductions, cropCycles, savedToday, can }
 }

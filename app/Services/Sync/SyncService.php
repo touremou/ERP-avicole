@@ -115,19 +115,28 @@ class SyncService
         }
 
         $v = Validator::make($payload, [
-            'uuid'               => 'required|uuid',
-            'batch_id'           => 'required|integer|exists:batches,id',
-            'check_date'         => 'required|date',
-            'mortality'          => 'nullable|integer|min:0',
-            'avg_weight'         => 'nullable|numeric|min:0',
-            'water_consumed'     => 'nullable|numeric|min:0',
-            'feed_consumed'      => 'nullable|numeric|min:0',
-            'feed_type'          => 'nullable|string|max:100',
-            'humidity'           => 'nullable|numeric|min:0|max:100',
-            'observations'       => 'nullable|string|max:1000',
-            'qty_quarantine_in'  => 'nullable|integer|min:0',
-            'qty_quarantine_out' => 'nullable|integer|min:0',
-            'qty_sorted_out'     => 'nullable|integer|min:0',
+            'uuid'                 => 'required|uuid',
+            'batch_id'             => 'required|integer|exists:batches,id',
+            'check_date'           => 'required|date',
+            'mortality'            => 'nullable|integer|min:0',
+            'avg_weight'           => 'nullable|numeric|min:0',
+            'water_consumed'       => 'nullable|numeric|min:0',
+            'feed_consumed'        => 'nullable|numeric|min:0',
+            'feed_type'            => 'nullable|string|max:100',
+            'humidity'             => 'nullable|numeric|min:0|max:100',
+            'observations'         => 'nullable|string|max:1000',
+            'qty_quarantine_in'    => 'nullable|integer|min:0',
+            'qty_quarantine_out'   => 'nullable|integer|min:0',
+            'qty_sorted_out'       => 'nullable|integer|min:0',
+            // ── Parité avec le formulaire web (RecordDailyCheck sait les gérer) ──
+            'health_status'        => 'nullable|in:Normal,Alerte,Critique',
+            'temp_min'             => 'nullable|numeric|between:-10,50',
+            'temp_max'             => 'nullable|numeric|between:-10,50|gte:temp_min',
+            'mortality_infirmary'  => 'nullable|integer|min:0',
+            'litter_changed'       => 'nullable|boolean',
+            'manure_collected_kg'  => 'nullable|numeric|min:0|max:100000',
+            'lame_count'           => 'nullable|integer|min:0|max:1000000',
+            'pecking_injury_count' => 'nullable|integer|min:0|max:1000000',
         ]);
 
         if ($v->fails()) {
@@ -136,6 +145,9 @@ class SyncService
 
         $data = $v->validated();
         $data['feed_type'] = $data['feed_type'] ?? '';
+        // health_status est obligatoire côté web : on garantit une valeur par
+        // défaut sûre si le terrain ne l'a pas renseigné (RAS).
+        $data['health_status'] = $data['health_status'] ?? 'Normal';
         $data['check_date'] = Carbon::parse($data['check_date'])->startOfDay();
 
         return DB::transaction(function () use ($data) {
