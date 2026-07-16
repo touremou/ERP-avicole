@@ -13,7 +13,7 @@
  *   permission_denied → idem review (les droits ont changé depuis le cache)
  *   error (5xx serveur) → RESTE pending, retenté au prochain cycle (backoff)
  */
-import { api } from '../api/client'
+import { api, ApiError } from '../api/client'
 import { db, getMeta, setMeta, type OutboxEntry } from './db'
 import type { OperationType, PullResponse } from '../api/types'
 
@@ -23,6 +23,13 @@ type Listener = (state: SyncState, pendingCount: number) => void
 const listeners = new Set<Listener>()
 let currentState: SyncState = 'idle'
 let running = false
+
+// Dernière raison d'échec de sync — affichée au tap du badge pour diagnostic
+// terrain (sinon « Erreur réseau » est trop opaque pour trancher).
+let lastError: string | null = null
+export function getLastSyncError(): string | null {
+  return lastError
+}
 
 export function onSyncChange(listener: Listener): () => void {
   listeners.add(listener)
@@ -89,9 +96,19 @@ export async function syncNow(): Promise<void> {
     await pushOutbox()
     await pullDelta()
     await refreshNotifications()
+    lastError = null
     await notify('idle')
-  } catch {
+  } catch (e) {
     // Réseau tombé en plein cycle : l'outbox est intacte, on retentera.
+    // On garde la RAISON exacte pour la révéler au tap du badge.
+    if (e instanceof ApiError) {
+      lastError =
+        e.status === 401
+          ? 'Session expirée — reconnectez-vous (Mon espace → Se déconnecter).'
+          : `Réponse serveur ${e.status} : ${e.message}`
+    } else {
+      lastError = "Échec réseau : le téléphone n'a pas pu joindre le serveur (erp.biocrest.fr). Vérifiez la connexion / le certificat."
+    }
     await notify(navigator.onLine ? 'error' : 'offline')
   } finally {
     running = false
