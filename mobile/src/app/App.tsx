@@ -5,6 +5,7 @@ import { getLocale, subscribeLocale, t } from '../i18n'
 import { startSyncLoop } from '../offline/sync'
 import { LoginScreen } from '../features/auth/LoginScreen'
 import { HomeScreen } from '../features/home/HomeScreen'
+import { NouvelleSaisieScreen } from '../features/saisie/NouvelleSaisieScreen'
 import { DailyCheckScreen } from '../features/elevage/DailyCheckScreen'
 import { EggCollectionScreen } from '../features/elevage/EggCollectionScreen'
 import { IncidentScreen } from '../features/elevage/IncidentScreen'
@@ -69,6 +70,7 @@ function Shell() {
       <main className="app-main">
         <Routes>
           <Route path="/" element={<HomeScreen />} />
+          <Route path="/nouvelle" element={<NouvelleSaisieScreen />} />
           <Route path="/elevage/pointage/:batchId?" element={<DailyCheckScreen />} />
           <Route path="/elevage/collecte/:batchId" element={<EggCollectionScreen />} />
           <Route path="/elevage/incident/:batchId" element={<IncidentScreen />} />
@@ -94,8 +96,8 @@ function Shell() {
       {/* FAB « + » — ajout rapide par scan universel (accueil seulement :
           sur un écran de saisie on ajoute déjà, il ferait doublon). */}
       {onHome && (
-        <Link to="/scan" className="fab" aria-label="Ajouter une saisie (scanner)">
-          <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.6" strokeLinecap="round">
+        <Link to="/nouvelle" className="fab" aria-label="Nouvelle saisie">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round">
             <path d="M12 5v14M5 12h14" />
           </svg>
         </Link>

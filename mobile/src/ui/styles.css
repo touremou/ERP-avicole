@@ -11,13 +11,13 @@
   --muted: #67766e;
   --line: #e7ebe8;
 
-  --primary: #1b4332;      /* Vert Forêt — marque, boutons primaires, nav active */
-  --primary-600: #2d6a4f;  /* vert de dégradé */
-  --primary-50: #e9f1ec;   /* fond vert très pâle */
+  --primary: #1e7d33;      /* Vert Biocrest — marque, boutons primaires, nav active */
+  --primary-600: #14632a;  /* vert foncé — dégradés, états actifs, texte sur or */
+  --primary-50: #e9f4eb;   /* fond vert très pâle */
 
-  --accent: #e07a5f;       /* Terre cuite — action (FAB), accents, sélection */
-  --accent-600: #cf6b51;
-  --accent-50: #fbede8;
+  --accent: #e3b23c;       /* Or blé Biocrest — action (FAB), accents, sélection */
+  --accent-600: #c6962a;
+  --accent-50: #faf2da;
 
   --success: #2f855a;
   --success-bg: #e6f4ec;
@@ -132,8 +132,8 @@ body {
   width: 56px; height: 56px; border-radius: 50%;
   border: none; z-index: 50;
   background: linear-gradient(145deg, var(--accent) 0%, var(--accent-600) 100%);
-  color: #fff;
-  box-shadow: 0 8px 20px rgb(224 122 95 / 0.45);
+  color: var(--primary-600); /* icône vert foncé sur or = contraste fort */
+  box-shadow: 0 8px 20px rgb(227 178 60 / 0.5);
   display: grid; place-items: center; cursor: pointer;
   transition: transform 0.12s ease;
 }
@@ -193,6 +193,46 @@ h3 {
   font-size: 12px; font-weight: 700; color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
+.section-link {
+  font-size: 12.5px; font-weight: 700; color: var(--primary);
+  text-decoration: none;
+}
+
+/* ── Dashboard : carte « À traiter » (renvoi vers le +) ── */
+.cta-card {
+  display: flex; align-items: center; gap: 14px;
+  background: linear-gradient(100deg, var(--primary) 0%, var(--primary-600) 100%);
+  color: #fff; border-radius: var(--radius-card); padding: 16px 18px;
+  text-decoration: none; box-shadow: var(--shadow-card);
+  transition: transform 0.1s ease;
+}
+.cta-card:active { transform: scale(0.99); }
+.cta-body { flex: 1 1 auto; min-width: 0; }
+.cta-title { font-weight: 800; font-size: 1.15rem; letter-spacing: -0.02em; }
+.cta-breakdown { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.cta-chip {
+  font-size: 0.72rem; font-weight: 700; white-space: nowrap;
+  padding: 3px 9px; border-radius: 999px;
+  background: rgb(255 255 255 / 0.16); color: #fff;
+}
+.cta-plus {
+  width: 44px; height: 44px; flex: none; border-radius: 50%;
+  display: grid; place-items: center;
+  background: linear-gradient(145deg, var(--accent) 0%, var(--accent-600) 100%);
+  color: var(--primary-600);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.18);
+}
+
+/* État « tout est à jour » */
+.ok-card {
+  background: var(--primary-50); border: 1px solid #cfe6d5;
+  border-radius: var(--radius-card); padding: 16px;
+  color: var(--primary-600); font-weight: 700; text-align: center;
+}
+.ok-card.ok-muted {
+  background: var(--surface); border-color: var(--line);
+  color: var(--muted); font-weight: 600;
+}
 
 /* ── Cartes de tâches (home) ── */
 .task-card {
@@ -223,7 +263,7 @@ h3 {
 /* Carte scan — action de tête, accent terre cuite */
 .scan-card {
   background: linear-gradient(100deg, #fff 0%, var(--accent-50) 100%);
-  border-color: #f3d8ce;
+  border-color: #efe0b0;
 }
 .scan-card .task-title { color: var(--accent-600); }
 .scan-card::after { border-color: var(--accent); }
