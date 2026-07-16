@@ -90,10 +90,42 @@
             </div>
             @endif
 
+            <form method="POST" action="{{ route('batches.bulkAssign') }}"
+                  x-data="{ selected: [], allIds: {{ $batches->pluck('id')->map(fn($id) => (string) $id)->values()->toJson() }} }">
+                @csrf
+
+                {{-- BARRE D'AFFECTATION EN MASSE (responsable) — elevage.M --}}
+                @can('elevage.M')
+                <div x-show="selected.length > 0" x-cloak
+                     class="mb-4 flex flex-wrap items-center gap-3 bg-white rounded-2xl border-2 border-biocrest/40 shadow-sm p-4 italic">
+                    <span class="text-[10px] font-black uppercase text-slate-600 tracking-widest">
+                        <span x-text="selected.length"></span> {{ __("lot(s) sélectionné(s)") }}
+                    </span>
+                    <select name="employee_id" class="p-3 bg-slate-50 rounded-xl font-bold border-none shadow-inner text-slate-700 text-xs italic">
+                        <option value="">{{ __("— Retirer le responsable —") }}</option>
+                        @foreach($employees as $e)
+                            <option value="{{ $e->id }}">{{ $e->first_name }} {{ $e->last_name }}</option>
+                        @endforeach
+                    </select>
+                    <button type="submit" class="bg-biocrest text-white px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-biocrest-600 transition-all shadow-md flex items-center">
+                        <i class="fa-solid fa-user-check mr-2"></i>{{ __("Affecter le responsable") }}
+                    </button>
+                    <button type="button" @click="selected = []" class="text-slate-400 hover:text-slate-600 text-[10px] font-black uppercase tracking-widest">{{ __("Annuler") }}</button>
+                </div>
+                @endcan
+
             <div class="bg-white rounded-[3rem] shadow-sm border border-slate-100 overflow-hidden font-bold text-left">
                 <table class="w-full text-left border-collapse">
                     <thead>
                         <tr class="bg-slate-50/50 border-b border-slate-100 font-black italic uppercase text-slate-400 text-[9px] tracking-widest">
+                            @can('elevage.M')
+                            <th class="px-6 py-5 w-8">
+                                <input type="checkbox"
+                                       @change="selected = $event.target.checked ? [...allIds] : []"
+                                       :checked="allIds.length > 0 && selected.length === allIds.length"
+                                       class="w-4 h-4 rounded accent-biocrest cursor-pointer" title="{{ __('Tout sélectionner') }}">
+                            </th>
+                            @endcan
                             <th class="px-8 py-5">{{ __("Identité & Souche") }}</th>
                             <th class="hidden md:table-cell px-6 py-5">{{ __("Responsable") }}</th>
                             <th class="hidden md:table-cell px-6 py-5 text-center">{{ __("Bâtiment") }}</th>
@@ -116,6 +148,12 @@
                         @endphp
 
                         <tr class="group hover:bg-slate-50/50 transition-all relative italic">
+                            @can('elevage.M')
+                            <td class="px-6 py-6">
+                                <input type="checkbox" name="batch_ids[]" value="{{ $batch->id }}" x-model="selected"
+                                       class="w-4 h-4 rounded accent-biocrest cursor-pointer">
+                            </td>
+                            @endcan
                             <td class="px-8 py-6">
                                 <div class="flex items-start">
                                     <div @class([
@@ -221,7 +259,7 @@
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="7" class="px-8 py-24 text-center">
+                            <td colspan="{{ auth()->user()?->can('elevage.M') ? 8 : 7 }}" class="px-8 py-24 text-center">
                                 <i class="fas fa-layer-group text-slate-200 text-3xl mb-4"></i>
                                 <p class="text-slate-300 font-black uppercase tracking-[0.3em] text-[10px] italic">{{ __("Aucun lot actif trouvé") }}</p>
                             </td>
@@ -230,6 +268,7 @@
                     </tbody>
                 </table>
             </div>
+            </form>
         </div>
     </div>
 </x-app-layout>
