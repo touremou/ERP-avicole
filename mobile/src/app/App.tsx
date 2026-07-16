@@ -1,5 +1,5 @@
 import { useEffect, useSyncExternalStore } from 'react'
-import { HashRouter, Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
+import { BrowserRouter, Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './AuthContext'
 import { getLocale, subscribeLocale, t } from '../i18n'
 import { startSyncLoop } from '../offline/sync'
@@ -47,10 +47,7 @@ function Shell() {
       <header className="app-header">
         <div className="brand">
           <span className="brand-mark" aria-hidden="true">
-            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z" />
-              <path d="M2 21c0-3 1.85-5.36 5.08-6" />
-            </svg>
+            <img src="/biocrest-mark.svg" alt="" />
           </span>
           <span className="brand-name">Bio<b>crest</b></span>
         </div>
@@ -110,10 +107,11 @@ function Shell() {
 export function App() {
   return (
     <AuthProvider>
-      {/* HashRouter : aucune config serveur requise pour un hébergement statique. */}
-      <HashRouter>
+      {/* BrowserRouter : URL propres (sans #). Le rewrite SPA vers index.html
+          est assuré par mobile/public/.htaccess sur l'hébergement. */}
+      <BrowserRouter>
         <Shell />
-      </HashRouter>
+      </BrowserRouter>
     </AuthProvider>
   )
 }

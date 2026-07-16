@@ -11,9 +11,9 @@
   --muted: #67766e;
   --line: #e7ebe8;
 
-  --primary: #1e7d33;      /* Vert Biocrest — marque, boutons primaires, nav active */
-  --primary-600: #14632a;  /* vert foncé — dégradés, états actifs, texte sur or */
-  --primary-50: #e9f4eb;   /* fond vert très pâle */
+  --primary: #349937;      /* Vert Biocrest (charte) — marque, boutons, nav active */
+  --primary-600: #26722a;  /* vert foncé — dégradés, états actifs, texte sur or */
+  --primary-50: #ebf6ec;   /* fond vert très pâle */
 
   --accent: #e3b23c;       /* Or blé Biocrest — action (FAB), accents, sélection */
   --accent-600: #c6962a;
@@ -63,11 +63,13 @@ body {
 /* Marque Biocrest (feuille + mot) */
 .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .brand-mark {
-  width: 32px; height: 32px; flex: none;
+  width: 34px; height: 34px; flex: none;
   display: grid; place-items: center;
-  background: rgb(255 255 255 / 0.14);
+  background: #fff;               /* fond blanc : le coq vert de la marque ressort */
   border-radius: 9px;
+  padding: 4px;
 }
+.brand-mark img { width: 100%; height: 100%; object-fit: contain; }
 .brand-name {
   font-weight: 800; font-size: 1.12rem; letter-spacing: -0.02em; line-height: 1;
   white-space: nowrap;
@@ -348,6 +350,8 @@ input:focus, textarea:focus, select:focus {
   font-size: 0.72rem; font-weight: 600; text-transform: uppercase;
   letter-spacing: 0.06em; color: var(--muted); margin-top: 4px;
 }
+/* Logo complet (coq + mot) sur la carte de connexion blanche */
+.login-logo-full { width: 100%; max-width: 230px; height: auto; margin: 2px auto 6px; display: block; }
 
 /* ── Mon espace : carte profil ── */
 .profile-card {

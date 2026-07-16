@@ -19,14 +19,14 @@ export default defineConfig({
         runtimeCaching: [],
       },
       manifest: {
-        name: 'ERP Avicole — Terrain',
-        short_name: 'AviTerrain',
+        name: 'Biocrest — AviTerrain',
+        short_name: 'Biocrest',
         description: 'Application compagnon terrain (pointages, ventes, stocks) — hors-ligne par défaut',
         lang: 'fr',
         display: 'standalone',
         orientation: 'portrait',
-        theme_color: '#0f172a',
-        background_color: '#f8fafc',
+        theme_color: '#349937',
+        background_color: '#f4f6f5',
         icons: [
           { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
