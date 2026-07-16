@@ -30,6 +30,13 @@ export function HarvestScreen() {
   const [notes, setNotes] = useState('')
   const [saved, setSaved] = useState(false)
 
+  // Détails optionnels (repliés) : parité web — pesée précise, pertes, stock.
+  const [showDetails, setShowDetails] = useState(false)
+  const [netWeightKg, setNetWeightKg] = useState('')
+  const [lossQuantity, setLossQuantity] = useState('')
+  const [syncToStock, setSyncToStock] = useState(false)
+  const [stockItemName, setStockItemName] = useState('')
+
   useEffect(() => {
     if (cycleId) void db.ref_crop_cycles.get(Number(cycleId)).then((c) => setCycle(c ?? null))
   }, [cycleId])
@@ -37,6 +44,8 @@ export function HarvestScreen() {
   async function onSubmit(event: FormEvent) {
     event.preventDefault()
     if (!cycle || quantity <= 0) return
+
+    const num = (v: string) => (v.trim() !== '' ? Number(v) : null)
 
     await enqueue(
       'harvest.create',
@@ -46,6 +55,10 @@ export function HarvestScreen() {
         quantity,
         unit,
         quality,
+        net_weight_kg: num(netWeightKg),
+        loss_quantity: num(lossQuantity),
+        sync_to_stock: syncToStock,
+        stock_item_name: syncToStock && stockItemName.trim() ? stockItemName.trim() : null,
         notes: notes || null,
       },
       t('Récolte :crop — :code (:qty :unit)', { crop: cycle.crop_name, code: cycle.code, qty: quantity, unit }),
@@ -114,6 +127,34 @@ export function HarvestScreen() {
           </button>
         ))}
       </div>
+
+      <button type="button" className="btn-secondary" onClick={() => setShowDetails((s) => !s)}>
+        {showDetails ? t('▲ Masquer les détails') : t('▼ Plus de détails (optionnel)')}
+      </button>
+
+      {showDetails && (
+        <>
+          <label htmlFor="netw">{t('Poids net pesé (kg) — optionnel')}</label>
+          <input id="netw" type="number" inputMode="decimal" min="0" value={netWeightKg} onChange={(e) => setNetWeightKg(e.target.value)} placeholder={t('pesée précise pour le rendement')} />
+
+          <label htmlFor="loss">{t('Pertes / déchets (:unit)', { unit })}</label>
+          <input id="loss" type="number" inputMode="decimal" min="0" value={lossQuantity} onChange={(e) => setLossQuantity(e.target.value)} placeholder="0" />
+
+          <button
+            type="button"
+            className={`chip ${syncToStock ? 'chip-on' : ''}`}
+            onClick={() => setSyncToStock((v) => !v)}
+          >
+            {syncToStock ? `✓ ${t('Versé au stock')}` : t('Verser cette récolte au stock ?')}
+          </button>
+          {syncToStock && (
+            <>
+              <label htmlFor="stockname">{t('Nom en stock — optionnel')}</label>
+              <input id="stockname" maxLength={255} value={stockItemName} onChange={(e) => setStockItemName(e.target.value)} placeholder={cycle.crop_name} />
+            </>
+          )}
+        </>
+      )}
 
       <label htmlFor="notes">{t('Observations — optionnel')}</label>
       <textarea id="notes" rows={2} maxLength={1000} value={notes} onChange={(e) => setNotes(e.target.value)} />
