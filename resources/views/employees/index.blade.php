@@ -53,11 +53,59 @@
                 </div>
             </div>
 
+            {{-- RÉSULTATS DE LIAISON EN MASSE (identifiants créés — affichés une seule fois) --}}
+            @if(session('bulk_access_results') && count(session('bulk_access_results')) > 0)
+            <div class="mb-6 bg-white rounded-[2rem] border-2 border-biocrest/40 shadow-sm p-6 text-left">
+                <p class="text-[10px] font-black uppercase tracking-widest text-biocrest mb-1"><i class="fa-solid fa-key mr-2"></i>{{ __("Accès créés — notez ces identifiants (affichés une seule fois)") }}</p>
+                <p class="text-[9px] font-black text-slate-400 uppercase mb-4 italic">{{ __("Communiquez à chaque agent son identifiant et son mot de passe temporaire.") }}</p>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs">
+                        <thead><tr class="text-[8px] font-black uppercase tracking-widest text-slate-400"><th class="py-2 pr-4">{{ __("Agent") }}</th><th class="py-2 pr-4">{{ __("Identifiant") }}</th><th class="py-2">{{ __("Mot de passe") }}</th></tr></thead>
+                        <tbody class="font-mono">
+                            @foreach(session('bulk_access_results') as $r)
+                            <tr class="border-t border-slate-50"><td class="py-2 pr-4 font-black not-italic uppercase">{{ $r['name'] }}</td><td class="py-2 pr-4 select-all">{{ $r['login'] }}</td><td class="py-2 font-black select-all text-biocrest">{{ $r['password'] }}</td></tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+                @if(session('bulk_access_linked') && count(session('bulk_access_linked')) > 0)
+                <p class="mt-4 text-[9px] font-black text-slate-500 uppercase italic">{{ __("Comptes existants rattachés :") }} {{ implode(', ', session('bulk_access_linked')) }}</p>
+                @endif
+            </div>
+            @endif
+
             {{-- TABLEAU DES EMPLOYÉS (L) --}}
+            <form method="POST" action="{{ route('employees.access.bulk') }}"
+                  x-data="{ selected: [], allIds: {{ $employees->whereNull('user_id')->pluck('id')->map(fn($id) => (string) $id)->values()->toJson() }} }">
+                @csrf
+
+                {{-- BARRE DE LIAISON EN MASSE (admin.S) --}}
+                @can('admin.S')
+                <div x-show="selected.length > 0" x-cloak
+                     class="mb-4 flex flex-wrap items-center gap-3 bg-white rounded-2xl border-2 border-biocrest/40 shadow-sm p-4 italic">
+                    <span class="text-[10px] font-black uppercase text-slate-600 tracking-widest"><span x-text="selected.length"></span> {{ __("agent(s) sans accès sélectionné(s)") }}</span>
+                    <select name="role_id" required class="p-3 bg-slate-50 rounded-xl font-bold border-none shadow-inner text-slate-700 text-xs italic">
+                        <option value="" disabled selected>{{ __("— Rôle du compte —") }}</option>
+                        @foreach($roles as $role)
+                            <option value="{{ $role->id }}">{{ $role->display_name ?? $role->label ?? $role->name }}</option>
+                        @endforeach
+                    </select>
+                    <button type="submit" class="bg-biocrest text-white px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-biocrest-600 transition-all shadow-md flex items-center">
+                        <i class="fa-solid fa-user-check mr-2"></i>{{ __("Créer / lier les accès") }}
+                    </button>
+                    <button type="button" @click="selected = []" class="text-slate-400 hover:text-slate-600 text-[10px] font-black uppercase tracking-widest">{{ __("Annuler") }}</button>
+                </div>
+                @endcan
+
             <div class="bg-white rounded-[3.5rem] shadow-sm border border-slate-100 overflow-hidden text-left">
                 <table class="w-full text-left border-collapse">
                     <thead>
                         <tr class="bg-slate-50/50 border-b border-slate-100 uppercase italic">
+                            @can('admin.S')
+                            <th class="pl-8 py-6 w-8">
+                                <input type="checkbox" @change="selected = $event.target.checked ? [...allIds] : []" :checked="allIds.length > 0 && selected.length === allIds.length" class="w-4 h-4 rounded accent-biocrest cursor-pointer" title="{{ __('Tout sélectionner (sans accès)') }}">
+                            </th>
+                            @endcan
                             <th class="px-10 py-6 text-[9px] font-black text-slate-400 tracking-widest">Collaborateur</th>
                             <th class="px-6 py-6 text-[9px] font-black text-slate-400 tracking-widest">Poste & Département</th>
                             <th class="px-6 py-6 text-[9px] font-black text-slate-400 tracking-widest text-center">Statut</th>
@@ -68,6 +116,15 @@
                     <tbody class="divide-y divide-slate-50 font-bold italic">
                         @forelse($employees as $emp)
                         <tr class="group/row hover:bg-slate-50 transition-all">
+                            @can('admin.S')
+                            <td class="pl-8 py-7">
+                                @unless($emp->user_id)
+                                <input type="checkbox" name="employee_ids[]" value="{{ $emp->id }}" x-model="selected" class="w-4 h-4 rounded accent-biocrest cursor-pointer">
+                                @else
+                                <i class="fa-solid fa-lock text-slate-200 text-xs" title="{{ __('Déjà un accès') }}"></i>
+                                @endunless
+                            </td>
+                            @endcan
                             <td class="px-10 py-7">
                                 <div class="flex items-center space-x-5">
                                     <div class="relative">
@@ -88,6 +145,11 @@
                                     <div>
                                         <p class="font-black text-slate-800 text-base leading-tight tracking-tighter uppercase">{{ $emp->first_name }} {{ $emp->last_name }}</p>
                                         <p class="text-[9px] font-mono font-black text-slate-400 uppercase tracking-tighter mt-1">{{ $emp->employee_id }}</p>
+                                        @if($emp->user_id)
+                                        <span class="inline-block mt-1 text-[7px] font-black px-2 py-0.5 rounded bg-emerald-50 text-emerald-600 border border-emerald-100 uppercase italic"><i class="fa-solid fa-circle-check mr-0.5"></i>{{ __("Compte lié") }}</span>
+                                        @else
+                                        <span class="inline-block mt-1 text-[7px] font-black px-2 py-0.5 rounded bg-amber-50 text-amber-600 border border-amber-100 uppercase italic">{{ __("Sans accès") }}</span>
+                                        @endif
                                     </div>
                                 </div>
                             </td>
@@ -133,7 +195,7 @@
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="5" class="px-8 py-32 text-center">
+                            <td colspan="{{ auth()->user()?->can('admin.S') ? 6 : 5 }}" class="px-8 py-32 text-center">
                                 <div class="w-20 h-20 bg-slate-50 rounded-[2.5rem] flex items-center justify-center mx-auto mb-6 border border-slate-100 opacity-50">
                                     <i class="fas fa-users-slash text-2xl text-slate-200"></i>
                                 </div>
@@ -144,6 +206,7 @@
                     </tbody>
                 </table>
             </div>
+            </form>
 
             {{-- ZONE DE MAINTENANCE (S) --}}
             @can('annuaire.S')

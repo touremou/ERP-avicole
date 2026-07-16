@@ -853,6 +853,8 @@ Route::middleware(['auth'])->group(function () {
 
     // ─── ESPACE EMPLOYÉ : gestion du compte de connexion (réservé admin.S) ───
     Route::controller(EmployeeAccessController::class)->group(function () {
+        // Liaison en masse (littérale, avant les routes {employee}).
+        Route::post('/employees/access/bulk', 'bulkStore')->name('employees.access.bulk');
         Route::post('/employees/{employee}/access', 'store')->name('employees.access.store');
         Route::put('/employees/{employee}/access', 'update')->name('employees.access.update');
         Route::put('/employees/{employee}/access/password', 'resetPassword')->name('employees.access.password');
