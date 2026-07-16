@@ -96,6 +96,7 @@ export async function syncNow(): Promise<void> {
     await pushOutbox()
     await pullDelta()
     await refreshNotifications()
+    await refreshTasks()
     lastError = null
     await notify('idle')
   } catch (e) {
@@ -262,6 +263,16 @@ async function refreshNotifications(): Promise<void> {
     await db.notifications.bulkPut(response.notifications)
   })
   window.dispatchEvent(new CustomEvent('notifications:updated'))
+}
+
+/** Miroir local des tâches assignées (remplacement complet, comme les notifs). */
+async function refreshTasks(): Promise<void> {
+  const response = await api.tasks()
+  await db.transaction('rw', db.tasks, async () => {
+    await db.tasks.clear()
+    await db.tasks.bulkPut(response.tasks)
+  })
+  window.dispatchEvent(new CustomEvent('tasks:updated'))
 }
 
 /** À appeler une fois au démarrage de l'app. */

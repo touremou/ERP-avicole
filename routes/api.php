@@ -49,6 +49,9 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
             ->whereNumber('deviceId')
             ->name('devices.destroy');
 
+        // Tâches assignées (miroir mobile de « Mes tâches »).
+        Route::get('/tasks', [\App\Http\Controllers\Api\TaskController::class, 'index'])->name('tasks.index');
+
         // Centre de notifications (miroir mobile de la cloche web).
         Route::get('/notifications', [\App\Http\Controllers\Api\NotificationController::class, 'index'])->name('notifications.index');
         Route::post('/notifications/read-all', [\App\Http\Controllers\Api\NotificationController::class, 'markAllRead'])->name('notifications.read_all');

@@ -8,10 +8,10 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../app/AuthContext'
 import { db } from '../../offline/db'
-import { onSyncChange } from '../../offline/sync'
+import { onSyncChange, enqueue } from '../../offline/sync'
 import { t, dateLocale } from '../../i18n'
 import { useFieldTasks } from './useFieldTasks'
-import type { ApiNotification } from '../../api/types'
+import type { ApiNotification, RefTask } from '../../api/types'
 
 const SEVERITY_CLASS: Record<string, string> = {
   critical: 'notif-critical',
@@ -19,23 +19,47 @@ const SEVERITY_CLASS: Record<string, string> = {
   normal: 'notif-normal',
 }
 
+const CATEGORY_ICON: Record<string, string> = {
+  alimentation: '🌾',
+  collecte: '🥚',
+  nettoyage: '🧽',
+  sante: '🩺',
+  controle: '📋',
+  maintenance: '🔧',
+}
+
 export function HomeScreen() {
   const { me, can } = useAuth()
   const { batches, checksTodo, eggsTodo, slaughterOrders, millProductions, cropCycles, savedToday } = useFieldTasks()
   const [alerts, setAlerts] = useState<ApiNotification[]>([])
+  const [tasks, setTasks] = useState<RefTask[]>([])
 
   useEffect(() => {
-    const load = async () =>
+    const load = async () => {
       setAlerts(await db.notifications.orderBy('created_at').reverse().limit(3).toArray())
+      // Tâches assignées « du jour » : à faire aujourd'hui ou en retard.
+      const today = new Date().toISOString().slice(0, 10)
+      const all = await db.tasks.toArray()
+      setTasks(all.filter((t) => t.scheduled_date <= today).sort((a, b) => a.scheduled_date.localeCompare(b.scheduled_date)))
+    }
     void load()
     const onUpdate = () => void load()
     window.addEventListener('notifications:updated', onUpdate)
+    window.addEventListener('tasks:updated', onUpdate)
     const off = onSyncChange(() => void load())
     return () => {
       window.removeEventListener('notifications:updated', onUpdate)
+      window.removeEventListener('tasks:updated', onUpdate)
       off()
     }
   }, [])
+
+  async function completeTask(task: RefTask) {
+    // Optimiste : on retire la tâche localement et on pousse l'opération.
+    await enqueue('task.complete', { task_id: task.id }, t('Tâche : :title', { title: task.title }))
+    await db.tasks.delete(task.id)
+    window.dispatchEvent(new CustomEvent('tasks:updated'))
+  }
 
   const canElevage = can('elevage', 'C')
   const canProduction = can('production', 'C')
@@ -53,6 +77,7 @@ export function HomeScreen() {
   const totalTodo = breakdown.reduce((sum, b) => sum + b.count, 0)
 
   const today = new Date()
+  const todayStr = today.toISOString().slice(0, 10)
   const dateLabel = today.toLocaleDateString(dateLocale(), { weekday: 'long', day: 'numeric', month: 'long' })
 
   return (
@@ -72,6 +97,30 @@ export function HomeScreen() {
         <div className="kpi"><div className="kpi-val">{totalTodo}</div><div className="kpi-lab">{t('À faire')}</div></div>
         <div className="kpi"><div className="kpi-val">{savedToday}</div><div className="kpi-lab">{t('Saisies auj.')}</div></div>
       </div>
+
+      {/* Mes tâches assignées du jour (planifiées par le responsable) */}
+      {tasks.length > 0 && (
+        <section>
+          <div className="section-head"><h3>{t('Mes tâches du jour')}</h3><span className="section-count">{tasks.length}</span></div>
+          {tasks.map((task) => {
+            const overdue = task.scheduled_date < todayStr
+            return (
+              <div key={task.id} className="task-row">
+                <div className="task-row__body">
+                  <span className="task-title">{CATEGORY_ICON[task.category] ?? '📌'} {task.title}</span>
+                  <span className="task-meta">
+                    {task.scheduled_time ? task.scheduled_time.slice(0, 5) + ' · ' : ''}
+                    {overdue ? <span className="task-overdue">{t('En retard')}</span> : t(task.category)}
+                  </span>
+                </div>
+                <button type="button" className="task-done" onClick={() => void completeTask(task)}>
+                  ✓ {t('Fait')}
+                </button>
+              </div>
+            )
+          })}
+        </section>
+      )}
 
       {/* À traiter → renvoie vers le + (écran Nouvelle saisie) */}
       {totalTodo > 0 ? (

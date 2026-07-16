@@ -57,6 +57,8 @@ export type OperationType =
   | 'temperature_log.create'
   | 'cleaning_log.create'
   | 'byproduct.create'
+  // Tâches assignées : cocher « faite » depuis le terrain.
+  | 'task.complete'
 
 export interface PushOperation {
   op_uuid: string
@@ -194,6 +196,26 @@ export interface ApiNotification {
 export interface NotificationsResponse {
   notifications: ApiNotification[]
   unread_count: number
+  server_time: string
+}
+
+// ── Tâches assignées (miroir « Mes tâches ») ───────────────────────────
+
+export interface RefTask {
+  id: number
+  title: string
+  category: string
+  priority: string | null
+  status: string
+  scheduled_date: string
+  scheduled_time: string | null
+  batch_id: number | null
+  building_id: number | null
+  plot_id: number | null
+}
+
+export interface TasksResponse {
+  tasks: RefTask[]
   server_time: string
 }
 
