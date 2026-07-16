@@ -98,28 +98,38 @@ export function HomeScreen() {
         <div className="kpi"><div className="kpi-val">{savedToday}</div><div className="kpi-lab">{t('Saisies auj.')}</div></div>
       </div>
 
-      {/* Mes tâches assignées du jour (planifiées par le responsable) */}
-      {tasks.length > 0 && (
+      {/* Mes tâches assignées du jour (planifiées par le responsable).
+          On ne l'affiche QUE si le compte est rattaché à une fiche employé —
+          sinon on explique pourquoi aucune tâche ne peut apparaître. */}
+      {me?.scope.employee_id != null ? (
         <section>
           <div className="section-head"><h3>{t('Mes tâches du jour')}</h3><span className="section-count">{tasks.length}</span></div>
-          {tasks.map((task) => {
-            const overdue = task.scheduled_date < todayStr
-            return (
-              <div key={task.id} className="task-row">
-                <div className="task-row__body">
-                  <span className="task-title">{CATEGORY_ICON[task.category] ?? '📌'} {task.title}</span>
-                  <span className="task-meta">
-                    {task.scheduled_time ? task.scheduled_time.slice(0, 5) + ' · ' : ''}
-                    {overdue ? <span className="task-overdue">{t('En retard')}</span> : t(task.category)}
-                  </span>
+          {tasks.length > 0 ? (
+            tasks.map((task) => {
+              const overdue = task.scheduled_date < todayStr
+              return (
+                <div key={task.id} className="task-row">
+                  <div className="task-row__body">
+                    <span className="task-title">{CATEGORY_ICON[task.category] ?? '📌'} {task.title}</span>
+                    <span className="task-meta">
+                      {task.scheduled_time ? task.scheduled_time.slice(0, 5) + ' · ' : ''}
+                      {overdue ? <span className="task-overdue">{t('En retard')}</span> : t(task.category)}
+                    </span>
+                  </div>
+                  <button type="button" className="task-done" onClick={() => void completeTask(task)}>
+                    ✓ {t('Fait')}
+                  </button>
                 </div>
-                <button type="button" className="task-done" onClick={() => void completeTask(task)}>
-                  ✓ {t('Fait')}
-                </button>
-              </div>
-            )
-          })}
+              )
+            })
+          ) : (
+            <div className="ok-card">✓ {t('Aucune tâche assignée aujourd’hui.')}</div>
+          )}
         </section>
+      ) : (
+        <div className="ok-card ok-muted">
+          {t('ℹ️ Votre compte n’est pas rattaché à une fiche employé : vos tâches assignées n’apparaîtront pas ici. Demandez à l’administrateur de créer votre accès depuis la fiche employé.')}
+        </div>
       )}
 
       {/* À traiter → renvoie vers le + (écran Nouvelle saisie) */}
