@@ -28,6 +28,8 @@ export interface MeResponse {
   scope: {
     farm_id: number | null
     farms: { id: number; name: string; is_default: boolean }[]
+    /** Employé rattaché : sert à ne montrer que les lots qui me sont affectés. */
+    employee_id?: number | null
   }
   server_time: string
 }
@@ -117,11 +119,15 @@ export interface RefBatch {
   building_id: number
   species_id: number | null
   production_type_id: number | null
+  /** Responsable du lot (employees.id) — pour le scoping « mes lots ». */
+  employee_id: number | null
   initial_quantity: number
   current_quantity: number
   qty_dead: number
   arrival_date: string
   updated_at: string
+  /** Calculé serveur : le lot est en âge/phase de collecte d'œufs (règle de souche). */
+  can_collect_eggs?: boolean
 }
 
 export interface RefBuilding {

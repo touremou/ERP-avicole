@@ -140,6 +140,11 @@ class AuthController extends Controller
         return [
             'farm_id' => session('current_farm_id') ? (int) session('current_farm_id') : null,
             'farms'   => $farms,
+            // Employé rattaché à l'utilisateur (lien users → employees.user_id) :
+            // permet à la PWA de ne montrer que les lots/opérations qui LUI sont
+            // affectés (batches.employee_id). Null si l'utilisateur n'est pas
+            // rattaché à un employé (admin, superviseur) → le terrain voit tout.
+            'employee_id' => $user->employee?->id,
         ];
     }
 }

@@ -389,6 +389,13 @@ test('pull renvoie les données de référence de la ferme, les tombstones, et r
     expect($response->json('entities'))->toHaveKeys(['batches', 'buildings', 'stocks', 'clients', 'products']);
     expect($response->json('server_time'))->not->toBeNull();
 
+    // Le lot expose l'affectation (scoping « mes lots ») et l'éligibilité ponte
+    // calculée serveur (le terrain ne peut pas reproduire la règle de souche).
+    $batchRow = collect($response->json('entities.batches.upserts'))
+        ->firstWhere('code', $this->batch->code);
+    expect($batchRow)->toHaveKeys(['employee_id', 'can_collect_eggs'])
+        ->and($batchRow['can_collect_eggs'])->toBeBool();
+
     // Delta : rien de plus récent que « maintenant + 1 min ».
     $empty = $this->getJson('/api/v1/sync/pull?since=' . urlencode(now()->addMinute()->toIso8601String()))
         ->assertOk();
