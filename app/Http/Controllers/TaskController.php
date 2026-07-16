@@ -22,6 +22,41 @@ class TaskController extends Controller
         return session('current_farm_id') ?: null;
     }
 
+    /**
+     * Départements autorisés par catégorie de tâche. Empêche d'affecter une
+     * tâche d'élevage à un employé d'un autre service (ex. un vendeur) — la
+     * cohérence métier du planning. Une catégorie absente d'ici n'est pas
+     * contrainte ; un employé sans département renseigné n'est jamais bloqué.
+     */
+    private const CATEGORY_DEPARTMENTS = [
+        'alimentation' => ['Elevage'],
+        'collecte'     => ['Elevage'],
+        'nettoyage'    => ['Elevage'],
+        'sante'        => ['Elevage'],
+        'controle'     => ['Elevage'],
+        'maintenance'  => ['Elevage', 'Logistique'],
+    ];
+
+    /**
+     * Renvoie un message d'erreur si l'employé n'est pas du bon service pour
+     * la catégorie de tâche, sinon null.
+     */
+    private function departmentMismatch(?Employee $employee, ?string $category): ?string
+    {
+        if (! $employee || ! $category) {
+            return null;
+        }
+
+        $allowed = self::CATEGORY_DEPARTMENTS[$category] ?? null;
+        if ($allowed === null || empty($employee->department) || in_array($employee->department, $allowed, true)) {
+            return null;
+        }
+
+        $services = implode(' / ', $allowed);
+
+        return "{$employee->first_name} ({$employee->department}) n'est pas du service concerné : une tâche « {$category} » revient au service {$services}. Choisissez un employé de ce service.";
+    }
+
     public function index(Request $request, TaskSchedulerService $service)
     {
         if (Gate::denies('annuaire.L')) return redirect()->route('dashboard')->with('error', 'Accès restreint.');
@@ -158,6 +193,10 @@ class TaskController extends Controller
             return back()->with('error', "{$employee->first_name} est en congé le {$date->format('d/m/Y')}. Choisissez un collègue disponible.");
         }
 
+        if ($mismatch = $this->departmentMismatch($employee, $task->category)) {
+            return back()->with('error', $mismatch);
+        }
+
         $task->update($validated);
 
         return back()->with('success', "Tâche assignée à {$task->fresh()->employee->first_name}.");
@@ -184,6 +223,9 @@ class TaskController extends Controller
             $date = \Illuminate\Support\Carbon::parse($validated['scheduled_date']);
             if ($employee && $employee->isOnLeaveOn($date)) {
                 return back()->with('error', "{$employee->first_name} est en congé le {$date->format('d/m/Y')}. Choisissez un collègue disponible.")->withInput();
+            }
+            if ($mismatch = $this->departmentMismatch($employee, $validated['category'])) {
+                return back()->with('error', $mismatch)->withInput();
             }
         }
 
