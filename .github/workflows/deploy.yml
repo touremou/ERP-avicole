@@ -78,7 +78,18 @@ jobs:
           mkdir -p ~/.ssh
           printf '%s\n' "${{ secrets.PILOT_SSH_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -p "${{ secrets.PILOT_SSH_PORT }}" -H "${{ secrets.PILOT_SSH_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+          # ssh-keyscan peut renvoyer un code non-zéro sur un aléa réseau (le
+          # shell tourne en bash -e → l'étape planterait). On réessaie, et on
+          # n'échoue que si l'empreinte n'a VRAIMENT pas pu être récupérée.
+          for attempt in 1 2 3 4 5; do
+            if ssh-keyscan -p "${{ secrets.PILOT_SSH_PORT }}" "${{ secrets.PILOT_SSH_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null && [ -s ~/.ssh/known_hosts ]; then
+              echo "Empreinte hôte récupérée (tentative $attempt)."
+              break
+            fi
+            echo "ssh-keyscan tentative $attempt échouée — nouvel essai dans 5 s…"
+            sleep 5
+          done
+          test -s ~/.ssh/known_hosts
 
       # ── Déploiement de l'application web ──
       # Pas de --delete côté web : on préserve tout ce qui vit sur le serveur
