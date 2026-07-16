@@ -85,13 +85,26 @@ export function useFieldTasks(): FieldTasks {
     return onSyncChange(() => void load())
   }, [])
 
-  // Scoping « mes lots » : on ne montre que les lots dont l'utilisateur est
-  // responsable (batches.employee_id == son employee_id). Repli : s'il n'est
-  // rattaché à AUCUN lot (superviseur, admin, ou employé sans affectation),
-  // on montre tout — sinon il ne verrait rien.
+  // Scoping « mes opérations » : on ne montre que ce dont l'utilisateur est
+  // responsable. Repli par catégorie : s'il n'a AUCUN élément affecté dans
+  // une catégorie, on montre tout (superviseur/admin/non affecté) — sinon il
+  // ne verrait rien. Clés : lots & cultures par employé, abattages & OP par
+  // utilisateur (voir colonnes exposées au pull).
   const myEmployeeId = me?.scope.employee_id ?? null
-  const mine = myEmployeeId != null ? batches.filter((b) => b.employee_id === myEmployeeId) : []
-  const scopedBatches = mine.length > 0 ? mine : batches
+  const myUserId = me?.user.id ?? null
+  const scoped = <T,>(items: T[], mineOf: (i: T) => boolean): T[] => {
+    const mine = items.filter(mineOf)
+    return mine.length > 0 ? mine : items
+  }
+
+  const scopedBatches = myEmployeeId != null ? scoped(batches, (b) => b.employee_id === myEmployeeId) : batches
+  const scopedCrops = myEmployeeId != null ? scoped(cropCycles, (c) => c.employee_id === myEmployeeId) : cropCycles
+  const scopedOrders = myUserId != null
+    ? scoped(slaughterOrders, (o) => o.requested_by === myUserId || o.executed_by === myUserId)
+    : slaughterOrders
+  const scopedMill = myUserId != null
+    ? scoped(millProductions, (m) => m.operator_id === myUserId || m.supervisor_id === myUserId)
+    : millProductions
 
   const checksTodo = scopedBatches.filter((b) => !doneToday.checks.has(b.id))
   // Éligibilité collecte : booléen calculé serveur (âge/phase de ponte selon la
@@ -100,5 +113,14 @@ export function useFieldTasks(): FieldTasks {
     (b) => (b.can_collect_eggs ?? ponteIds.has(b.id)) && !doneToday.eggs.has(b.id),
   )
 
-  return { batches: scopedBatches, checksTodo, eggsTodo, slaughterOrders, millProductions, cropCycles, savedToday, can }
+  return {
+    batches: scopedBatches,
+    checksTodo,
+    eggsTodo,
+    slaughterOrders: scopedOrders,
+    millProductions: scopedMill,
+    cropCycles: scopedCrops,
+    savedToday,
+    can,
+  }
 }
