@@ -134,7 +134,41 @@ class BatchController extends Controller
         $batches = $query->orderBy('arrival_date', 'desc')->paginate((int) setting('general.items_per_page', 20));
         $batches->appends($request->all());
 
-        return view('batches.index', compact('batches', 'counts', 'familyCounts', 'familyFilter'));
+        // Employés actifs pour l'affectation en masse du responsable (barre
+        // d'action de la liste, réservée à elevage.M).
+        $employees = \App\Models\Employee::where('status', 'Actif')->orderBy('last_name')->get();
+
+        return view('batches.index', compact('batches', 'counts', 'familyCounts', 'familyFilter', 'employees'));
+    }
+
+    /**
+     * Affectation EN MASSE d'un responsable (employee_id) à plusieurs lots
+     * depuis la liste. Bornée à la ferme courante par FarmScope (un manager
+     * ne peut pas toucher les lots d'un autre site). employee_id nullable :
+     * on peut aussi RETIRER le responsable des lots sélectionnés.
+     */
+    public function bulkAssign(Request $request): RedirectResponse
+    {
+        if (Gate::denies('elevage.M')) abort(403);
+
+        $data = $request->validate([
+            'batch_ids'   => ['required', 'array', 'min:1'],
+            'batch_ids.*' => ['integer'],
+            'employee_id' => ['nullable', 'exists:employees,id'],
+        ]);
+
+        $employeeId = $data['employee_id'] ?: null;
+
+        // FarmScope actif sur Batch : whereIn est automatiquement borné au site.
+        $count = Batch::whereIn('id', $data['batch_ids'])->update(['employee_id' => $employeeId]);
+
+        if ($employeeId) {
+            $employee = \App\Models\Employee::find($employeeId);
+            $who = trim(($employee->first_name ?? '') . ' ' . ($employee->last_name ?? ''));
+            return back()->with('success', __(':count lot(s) affecté(s) à :who.', ['count' => $count, 'who' => $who]));
+        }
+
+        return back()->with('success', __('Responsable retiré de :count lot(s).', ['count' => $count]));
     }
     /**
      * Archives des lots clôturés.

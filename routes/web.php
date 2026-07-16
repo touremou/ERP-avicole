@@ -158,6 +158,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/create', 'create')->name('create')->middleware('can:C');
         Route::post('/', 'store')->name('store')->middleware('can:C');
 
+        Route::post('/bulk-assign', 'bulkAssign')->name('bulkAssign')->middleware('can:M');
+
         Route::get('/{batch}/edit', 'edit')->name('edit')->middleware('can:M');
         Route::put('/{batch}', 'update')->name('update')->middleware('can:M');
         Route::get('/{batch}/close', 'showCloseForm')->name('close_form')->middleware('can:M');
