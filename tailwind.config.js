@@ -43,6 +43,24 @@ export default {
                     700: '#26722a',
                     gold: '#e3b23c',
                 },
+                // Harmonisation : le bleu était l'accent générique historique de
+                // toute l'app (~1000 usages). On le remappe vers une échelle de
+                // vert Biocrest → tous les accents `blue-*` passent au vert d'un
+                // coup, sans toucher aux 100+ vues, et réversible en une ligne.
+                // (Le bleu sémantique « eau » utilise `cyan`, non impacté.)
+                blue: {
+                    50: '#ecf7ed',
+                    100: '#d2ecd4',
+                    200: '#a9dcac',
+                    300: '#74c578',
+                    400: '#4bb04f',
+                    500: '#349937',
+                    600: '#2b7f2e',
+                    700: '#26722a',
+                    800: '#1f5c22',
+                    900: '#1a4b1d',
+                    950: '#0f2e12',
+                },
             },
         },
     },
