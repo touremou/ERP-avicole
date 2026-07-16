@@ -121,6 +121,21 @@ test("l'API est bornée à la ferme de l'utilisateur (étanchéité multi-sites)
         ->assertStatus(403);
 });
 
+test("un utilisateur SANS affectation ferme n'est pas bloqué par X-Farm-Id (mono-ferme / admin CLI)", function () {
+    // Cas réel du pilote : admin créé en ligne de commande, donc aucune ligne
+    // farm_user. Sa session pointe pourtant sur la ferme par défaut et la PWA
+    // envoie X-Farm-Id → le 403 « Accès refusé à cette ferme » ne doit PAS
+    // tomber (le contrôle ne vaut que pour un utilisateur qui a un périmètre).
+    $orphan = User::factory()->create(['role_id' => $this->manager->role_id]);
+    // Volontairement AUCUN insert dans farm_user pour cet utilisateur.
+
+    Sanctum::actingAs($orphan);
+
+    $this->withHeader('X-Farm-Id', (string) $this->farmA->id)
+        ->getJson('/api/v1/batches')
+        ->assertOk();
+});
+
 // ─── POINTAGE : succès, idempotence, conflit, permission ───
 
 test('daily_check.create : succès, effet observer, uuid persisté', function () {
