@@ -38,15 +38,39 @@ export function BatchScreen() {
     )
   }
 
-  const isPonte = productionType?.slug === 'ponte'
+  // Éligibilité collecte : booléen calculé serveur (âge/phase de ponte selon
+  // la souche) ; repli sur le slug 'ponte' si le serveur ne l'a pas fourni.
+  const canCollect = batch.can_collect_eggs ?? productionType?.slug === 'ponte'
+
+  const ageDays = Math.max(
+    0,
+    Math.floor((Date.now() - new Date(batch.arrival_date).getTime()) / 86_400_000) + 1,
+  )
+  const ageWeeks = Math.floor(ageDays / 7)
+  const mortalityRate =
+    batch.initial_quantity > 0 ? (batch.qty_dead / batch.initial_quantity) * 100 : 0
 
   return (
     <div className="screen">
       <h2>{batch.code}</h2>
       <p className="muted">
-        {productionType?.name_fr ?? t('Lot')} · {building?.name ?? t('Bâtiment #:id', { id: batch.building_id })} ·{' '}
-        {batch.current_quantity} {t('sujets')}
+        {productionType?.name_fr ?? t('Lot')} · {building?.name ?? t('Bâtiment #:id', { id: batch.building_id })}
       </p>
+
+      <div className="kpi-row">
+        <div className="kpi">
+          <div className="kpi-val">{ageWeeks}</div>
+          <div className="kpi-lab">{t(':days j · sem.', { days: ageDays })}</div>
+        </div>
+        <div className="kpi">
+          <div className="kpi-val">{batch.current_quantity}</div>
+          <div className="kpi-lab">{t('Effectif')}</div>
+        </div>
+        <div className="kpi">
+          <div className="kpi-val">{mortalityRate.toFixed(1)}%</div>
+          <div className="kpi-lab">{t('Mortalité')}</div>
+        </div>
+      </div>
 
       {can('elevage', 'C') && (
         <Link to={`/elevage/pointage/${batch.id}`} className="task-card">
@@ -55,7 +79,7 @@ export function BatchScreen() {
         </Link>
       )}
 
-      {isPonte && can('production', 'C') && (
+      {canCollect && can('production', 'C') && (
         <Link to={`/elevage/collecte/${batch.id}`} className="task-card">
           <span className="task-title">🥚 {t("Collecte d'œufs")}</span>
           <span className="task-meta">{t('par passage')}</span>
