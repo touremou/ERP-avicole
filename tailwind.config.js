@@ -33,6 +33,17 @@ export default {
             fontFamily: {
                 sans: ['Figtree', ...defaultTheme.fontFamily.sans],
             },
+            // Charte Biocrest : vert de marque + or blé (identiques à la PWA).
+            colors: {
+                biocrest: {
+                    DEFAULT: '#349937',
+                    50: '#ebf6ec',
+                    500: '#349937',
+                    600: '#2b7f2e',
+                    700: '#26722a',
+                    gold: '#e3b23c',
+                },
+            },
         },
     },
 

@@ -10,7 +10,7 @@ it('sert un manifest PWA valide sans authentification', function () {
     $response->assertOk();
     $response->assertJson([
         'display' => 'standalone',
-        'theme_color' => '#16a34a',
+        'theme_color' => '#349937',
     ]);
 
     expect($response->json('icons'))->not->toBeEmpty()

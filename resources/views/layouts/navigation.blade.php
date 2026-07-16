@@ -12,13 +12,13 @@
 
                 {{-- LOGO --}}
                 <a href="{{ route('dashboard') }}" class="shrink-0 flex items-center mr-4 hover:scale-105 transition-transform">
-                    <x-application-logo class="block h-8 w-auto fill-current text-blue-600" />
+                    <x-application-logo class="block h-8 w-auto" />
                 </a>
 
                 {{-- APP DRAWER (grille modules) --}}
                 <x-menu align="left" width="w-[22rem]" panel="bg-white rounded-2xl shadow-2xl border border-slate-100 p-4" class="hidden sm:block">
                     <x-slot name="trigger">
-                        <span class="flex items-center px-3 py-2 bg-slate-900 text-white rounded-xl text-[9px] font-black uppercase tracking-widest transition-all hover:bg-blue-600 shadow-md">
+                        <span class="flex items-center px-3 py-2 bg-slate-900 text-white rounded-xl text-[9px] font-black uppercase tracking-widest transition-all hover:bg-biocrest shadow-md">
                             <i class="fa-solid fa-grip text-xs mr-1.5"></i> {{ __("Modules") }} <i class="fa-solid fa-chevron-down ms-1.5 text-[6px] opacity-40"></i>
                         </span>
                     </x-slot>

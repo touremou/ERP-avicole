@@ -37,7 +37,7 @@ class PwaController extends Controller
             'scope' => '/',
             'display' => 'standalone',
             'orientation' => 'portrait',
-            'theme_color' => '#16a34a',
+            'theme_color' => '#349937',
             'background_color' => '#ffffff',
             'icons' => $icons,
         ], 200, [], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
