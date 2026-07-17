@@ -516,6 +516,16 @@ input:focus, textarea:focus, select:focus {
 .notif-critical .notif-dot { background: var(--danger); }
 .notif-warning  .notif-dot { background: var(--warning); }
 .notif-normal   .notif-dot { background: var(--primary-600); }
+/* Avatar iconographique par famille de notification (teinté par la sévérité).
+   Teintes rgba fixes : rendu garanti sur les WebView Android d'entrée de gamme. */
+.notif-avatar {
+  width: 36px; height: 36px; flex: none; border-radius: 50%;
+  display: grid; place-items: center; font-size: 1rem; margin-top: 2px;
+  background: rgb(100 116 139 / 0.14);
+}
+.notif-critical .notif-avatar { background: rgb(220 38 38 / 0.14); }
+.notif-warning  .notif-avatar { background: rgb(217 119 6 / 0.16); }
+.notif-normal   .notif-avatar { background: rgb(22 163 74 / 0.14); }
 .notif-body { display: flex; flex-direction: column; gap: 2px; }
 
 /* ── Chips (symptômes, gravité) ── */
