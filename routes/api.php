@@ -40,6 +40,9 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
     Route::middleware(['auth:sanctum', 'farm.api'])->group(function () {
         Route::get('/auth/me', [AuthController::class, 'me'])->name('auth.me');
         Route::post('/auth/logout', [AuthController::class, 'logout'])->name('auth.logout');
+        // Gestion du profil depuis « Mon espace » (mobile).
+        Route::patch('/auth/profile', [AuthController::class, 'updateProfile'])->name('auth.profile.update');
+        Route::patch('/auth/password', [AuthController::class, 'updatePassword'])->name('auth.password.update');
 
         // Appareils connectés (un token Sanctum = un device) : liste +
         // révocation à distance (téléphone perdu). L'appareil courant se

@@ -9,6 +9,7 @@
  */
 import { db } from '../offline/db'
 import type {
+  ApiUser,
   DeviceInfo,
   LoginResponse,
   MeResponse,
@@ -89,6 +90,18 @@ export const api = {
   me: () => request<MeResponse>('/auth/me'),
 
   logout: () => request<{ message: string }>('/auth/logout', { method: 'POST' }),
+
+  updateProfile: (body: { name: string; email: string; phone: string | null; locale: string | null }) =>
+    request<{ user: ApiUser; server_time: string }>('/auth/profile', {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }),
+
+  changePassword: (body: { current_password: string; password: string; password_confirmation: string }) =>
+    request<{ message: string }>('/auth/password', {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }),
 
   devices: () => request<{ devices: DeviceInfo[] }>('/devices'),
 

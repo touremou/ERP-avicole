@@ -22,6 +22,8 @@ interface AuthContextValue {
   loading: boolean
   login: (email: string, password: string, deviceName: string) => Promise<void>
   logout: () => Promise<void>
+  /** Rafraîchit le payload `me` depuis le serveur (après édition du profil). */
+  refreshMe: () => Promise<void>
   /** Gate hors-ligne : lit le cache de permissions. Le serveur re-vérifie au push. */
   can: (module: string, level: PermissionLevel) => boolean
 }
@@ -81,6 +83,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setMe(null)
   }, [])
 
+  const refreshMe = useCallback(async () => {
+    const fresh = await api.me()
+    await setMeta('me', fresh)
+    await adoptProfileLocale(fresh.user.locale)
+    setMe(fresh)
+  }, [])
+
   const can = useCallback(
     (module: string, level: PermissionLevel) =>
       me?.permissions[module]?.includes(level) ?? false,
@@ -88,7 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   )
 
   return (
-    <AuthContext.Provider value={{ me, loading, login, logout, can }}>
+    <AuthContext.Provider value={{ me, loading, login, logout, refreshMe, can }}>
       {children}
     </AuthContext.Provider>
   )

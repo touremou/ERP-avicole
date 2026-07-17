@@ -8,6 +8,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -78,6 +80,59 @@ class AuthController extends Controller
         return response()->json(['message' => __('Déconnecté.')]);
     }
 
+    /**
+     * Mise à jour du profil depuis « Mon espace » (mobile) : nom, e-mail de
+     * connexion (unique), téléphone WhatsApp et langue du profil serveur.
+     * Le mot de passe passe par updatePassword (vérification de l'ancien).
+     */
+    public function updateProfile(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $data = $request->validate([
+            'name'   => ['required', 'string', 'max:255'],
+            'email'  => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
+            'phone'  => ['nullable', 'string', 'max:30'],
+            'locale' => ['nullable', 'in:fr,en'],
+        ]);
+
+        $user->update([
+            'name'           => $data['name'],
+            'email'          => $data['email'],
+            'whatsapp_phone' => $data['phone'] ?? null,
+            'locale'         => $data['locale'] ?? $user->locale,
+        ]);
+
+        return response()->json([
+            'user'        => $this->userPayload($user->fresh()),
+            'server_time' => now()->toIso8601String(),
+        ]);
+    }
+
+    /**
+     * Changement de mot de passe : exige l'ancien (défense contre un appareil
+     * laissé déverrouillé) et une politique de complexité minimale.
+     */
+    public function updatePassword(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $request->validate([
+            'current_password' => ['required', 'string'],
+            'password'         => ['required', 'confirmed', Password::min(8)->letters()->numbers()],
+        ]);
+
+        if (! Hash::check($request->input('current_password'), $user->password)) {
+            throw ValidationException::withMessages([
+                'current_password' => [__('Mot de passe actuel incorrect.')],
+            ]);
+        }
+
+        $user->update(['password' => Hash::make($request->input('password'))]);
+
+        return response()->json(['message' => __('Mot de passe mis à jour.')]);
+    }
+
     private function userPayload(User $user): array
     {
         $user->loadMissing('userRole');
@@ -86,6 +141,8 @@ class AuthController extends Controller
             'id' => $user->id,
             'name' => $user->name,
             'email' => $user->email,
+            // Téléphone WhatsApp : sert à préremplir l'éditeur de profil mobile.
+            'phone' => $user->whatsapp_phone,
             'role' => $user->userRole?->name,
             // Langue du profil web : la PWA l'adopte (sauf choix manuel local).
             'locale' => $user->locale,

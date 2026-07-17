@@ -14,6 +14,8 @@ export interface ApiUser {
   id: number
   name: string
   email: string
+  /** Téléphone WhatsApp (users.whatsapp_phone) — préremplit l'éditeur de profil. */
+  phone?: string | null
   role: string | null
   /** Langue du profil web (users.locale) — adoptée par la PWA au login. */
   locale?: string | null
