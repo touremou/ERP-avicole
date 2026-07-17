@@ -3,8 +3,10 @@
 use App\Models\Farm;
 use App\Models\Role;
 use App\Models\User;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 
 uses(Tests\TestCase::class, Illuminate\Foundation\Testing\RefreshDatabase::class);
@@ -103,4 +105,52 @@ test('PATCH /auth/password refuse un mot de passe faible ou non confirmé', func
         'current_password' => 'secret-actuel1',
         'password' => 'nouveau-pass1', 'password_confirmation' => 'autre-pass1',
     ])->assertStatus(422);
+});
+
+test('POST /auth/avatar téléverse la photo, la remplace et nettoie l\'ancienne', function () {
+    Storage::fake('public');
+    Sanctum::actingAs($this->user);
+
+    $first = $this->postJson('/api/v1/auth/avatar', [
+        'photo' => UploadedFile::fake()->image('moi.jpg', 300, 300),
+    ])->assertOk()->json('user');
+
+    expect($first['avatar_url'])->not->toBeNull();
+    $oldPath = $this->user->fresh()->avatar_path;
+    Storage::disk('public')->assertExists($oldPath);
+
+    // Remplacement : nouvelle photo, l'ancienne est supprimée du disque.
+    $this->postJson('/api/v1/auth/avatar', [
+        'photo' => UploadedFile::fake()->image('moi2.jpg', 300, 300),
+    ])->assertOk();
+
+    $newPath = $this->user->fresh()->avatar_path;
+    expect($newPath)->not->toBe($oldPath);
+    Storage::disk('public')->assertMissing($oldPath);
+    Storage::disk('public')->assertExists($newPath);
+});
+
+test('POST /auth/avatar refuse un fichier non-image', function () {
+    Storage::fake('public');
+    Sanctum::actingAs($this->user);
+
+    $this->postJson('/api/v1/auth/avatar', [
+        'photo' => UploadedFile::fake()->create('doc.pdf', 100, 'application/pdf'),
+    ])->assertStatus(422);
+});
+
+test('DELETE /auth/avatar retire la photo et le fichier', function () {
+    Storage::fake('public');
+    Sanctum::actingAs($this->user);
+
+    $this->postJson('/api/v1/auth/avatar', [
+        'photo' => UploadedFile::fake()->image('moi.jpg', 300, 300),
+    ])->assertOk();
+    $path = $this->user->fresh()->avatar_path;
+
+    $json = $this->deleteJson('/api/v1/auth/avatar')->assertOk()->json('user');
+
+    expect($json['avatar_url'])->toBeNull()
+        ->and($this->user->fresh()->avatar_path)->toBeNull();
+    Storage::disk('public')->assertMissing($path);
 });

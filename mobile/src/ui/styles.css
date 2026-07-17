@@ -451,6 +451,15 @@ input:focus, textarea:focus, select:focus {
   background: rgb(255 255 255 / 0.16);
   font-weight: 800; font-size: 1.05rem; letter-spacing: 0.02em;
 }
+.avatar-img { object-fit: cover; background: rgb(255 255 255 / 0.16); }
+.profile-card__info { min-width: 0; flex: 1; }
+.avatar-actions { display: flex; gap: 12px; margin-top: 6px; }
+.link-btn {
+  background: none; border: none; padding: 0; cursor: pointer;
+  color: #fff; font-size: 0.76rem; font-weight: 700; text-decoration: underline; opacity: 0.9;
+}
+.link-btn:disabled { opacity: 0.5; cursor: default; }
+.link-btn--danger { color: #ffd7d7; }
 .profile-name { font-weight: 800; font-size: 1.05rem; letter-spacing: -0.01em; }
 .profile-role {
   font-size: 0.78rem; font-weight: 600; opacity: 0.85; margin-top: 2px;

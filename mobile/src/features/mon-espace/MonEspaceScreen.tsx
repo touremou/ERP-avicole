@@ -4,10 +4,11 @@
  * corriger » (refus définitifs avec motif serveur), ma session et le choix
  * de langue local (prioritaire sur la langue du profil web, cf. i18n).
  */
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../app/AuthContext'
 import { api, ApiError } from '../../api/client'
+import { compressImage } from '../../platform'
 import { db, type MyRecord, type OutboxEntry } from '../../offline/db'
 import { syncNow } from '../../offline/sync'
 import { getLocale, setLocale, t, type Locale } from '../../i18n'
@@ -31,6 +32,11 @@ export function MonEspaceScreen() {
   const [records, setRecords] = useState<MyRecord[]>([])
   const [review, setReview] = useState<OutboxEntry[]>([])
   const [online, setOnline] = useState(navigator.onLine)
+
+  // Photo de profil.
+  const fileInput = useRef<HTMLInputElement>(null)
+  const [avatarBusy, setAvatarBusy] = useState(false)
+  const [avatarMsg, setAvatarMsg] = useState<string | null>(null)
 
   // Édition du profil.
   const [editProfile, setEditProfile] = useState(false)
@@ -135,6 +141,37 @@ export function MonEspaceScreen() {
     }
   }
 
+  async function onPickAvatar(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
+    event.target.value = '' // permet de re-choisir le même fichier
+    if (!file || avatarBusy) return
+    setAvatarBusy(true)
+    setAvatarMsg(null)
+    try {
+      const blob = await compressImage(file, 512, 0.85)
+      await api.updateAvatar(blob)
+      await refreshMe()
+    } catch (error) {
+      setAvatarMsg(error instanceof ApiError ? error.message : t('Une erreur est survenue.'))
+    } finally {
+      setAvatarBusy(false)
+    }
+  }
+
+  async function removeAvatar() {
+    if (avatarBusy) return
+    setAvatarBusy(true)
+    setAvatarMsg(null)
+    try {
+      await api.deleteAvatar()
+      await refreshMe()
+    } catch (error) {
+      setAvatarMsg(error instanceof ApiError ? error.message : t('Une erreur est survenue.'))
+    } finally {
+      setAvatarBusy(false)
+    }
+  }
+
   async function discard(opUuid: string) {
     // Abandon d'une opération refusée : on la retire de la file ET de
     // l'activité locale (elle n'a jamais existé côté serveur).
@@ -146,10 +183,28 @@ export function MonEspaceScreen() {
   return (
     <div className="screen">
       <div className="profile-card">
-        <span className="avatar" aria-hidden="true">{initials}</span>
-        <div>
+        {me?.user.avatar_url ? (
+          <img className="avatar avatar-img" src={me.user.avatar_url} alt={me?.user.name ?? ''} />
+        ) : (
+          <span className="avatar" aria-hidden="true">{initials}</span>
+        )}
+        <div className="profile-card__info">
           <div className="profile-name">{me?.user.name}</div>
           <div className="profile-role">{me?.role.label ?? me?.role.slug}</div>
+          {online && (
+            <div className="avatar-actions">
+              <input ref={fileInput} type="file" accept="image/*" hidden onChange={onPickAvatar} />
+              <button type="button" className="link-btn" disabled={avatarBusy} onClick={() => fileInput.current?.click()}>
+                {avatarBusy ? t('Envoi…') : me?.user.avatar_url ? t('Changer la photo') : t('Ajouter une photo')}
+              </button>
+              {me?.user.avatar_url && (
+                <button type="button" className="link-btn link-btn--danger" disabled={avatarBusy} onClick={() => void removeAvatar()}>
+                  {t('Retirer')}
+                </button>
+              )}
+            </div>
+          )}
+          {avatarMsg && <p className="error">{avatarMsg}</p>}
         </div>
       </div>
 
