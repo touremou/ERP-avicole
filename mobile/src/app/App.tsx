@@ -26,6 +26,7 @@ import { CcpScreen } from '../features/abattoir/CcpScreen'
 import { CleaningScreen } from '../features/abattoir/CleaningScreen'
 import { ByproductScreen } from '../features/abattoir/ByproductScreen'
 import { MillCompleteScreen } from '../features/provenderie/MillCompleteScreen'
+import { MillJournalScreen } from '../features/provenderie/MillJournalScreen'
 import { MonEspaceScreen } from '../features/mon-espace/MonEspaceScreen'
 import { TachesScreen } from '../features/taches/TachesScreen'
 import { NotificationsScreen } from '../features/notifications/NotificationsScreen'
@@ -80,6 +81,7 @@ function Shell() {
           <Route path="/commerce/vente" element={<SaleScreen />} />
           <Route path="/commerce/journal" element={<SalesJournalScreen />} />
           <Route path="/tresorerie/journal" element={<TreasuryJournalScreen />} />
+          <Route path="/provenderie/journal" element={<MillJournalScreen />} />
           <Route path="/logistique/mouvement" element={<StockMovementScreen />} />
           <Route path="/logistique/stocks" element={<StocksScreen />} />
           <Route path="/depenses/nouvelle" element={<ExpenseScreen />} />

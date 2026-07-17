@@ -1,0 +1,97 @@
+/**
+ * Journal de production Provenderie du jour — consultation mobile.
+ *
+ * Récap (produits / en cours / planifiés, total kg) + liste des ordres de
+ * production du jour. Rafraîchi en ligne, dernier instantané en cache (meta)
+ * pour rester consultable hors-ligne.
+ */
+import { useEffect, useState } from 'react'
+import { api } from '../../api/client'
+import { getMeta, setMeta } from '../../offline/db'
+import { t, dateLocale } from '../../i18n'
+import type { MillJournalResponse, MillProductionEntry } from '../../api/types'
+
+const CACHE_KEY = 'mill_journal_today'
+
+const STATUS_CLASS: Record<string, string> = {
+  'Terminé': 'pay-paid',
+  'En cours': 'pay-partial',
+  'Planifié': 'pay-unpaid',
+  'Annulé': '',
+}
+
+function nf(value: number): string {
+  return new Intl.NumberFormat('fr-FR').format(Math.round(value))
+}
+
+export function MillJournalScreen() {
+  const [data, setData] = useState<MillJournalResponse | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [offline, setOffline] = useState(false)
+
+  useEffect(() => {
+    void (async () => {
+      const cached = await getMeta<MillJournalResponse>(CACHE_KEY)
+      if (cached) setData(cached)
+      if (navigator.onLine) {
+        try {
+          const fresh = await api.provenderieToday()
+          setData(fresh)
+          await setMeta(CACHE_KEY, fresh)
+          setOffline(false)
+        } catch {
+          setOffline(true)
+        }
+      } else {
+        setOffline(true)
+      }
+      setLoading(false)
+    })()
+  }, [])
+
+  const summary = data?.summary
+  const productions: MillProductionEntry[] = data?.productions ?? []
+
+  return (
+    <div className="screen">
+      <div className="welcome">
+        <h2>{t('Production du jour')} 🌾</h2>
+        <span className="welcome-sub">
+          {new Date().toLocaleDateString(dateLocale(), { weekday: 'long', day: 'numeric', month: 'long' })}
+          {offline ? ' · ' + t('hors-ligne (dernier instantané)') : ''}
+        </span>
+      </div>
+
+      {summary && (
+        <div className="kpi-grid">
+          <div className="kpi"><div className="kpi-val">{nf(summary.total_kg)}</div><div className="kpi-lab">{t('kg produits')}</div></div>
+          <div className="kpi"><div className="kpi-val">{summary.done}</div><div className="kpi-lab">{t('OP terminées')}</div></div>
+          {summary.in_progress > 0 && <div className="kpi kpi--alert"><div className="kpi-val">{summary.in_progress}</div><div className="kpi-lab">{t('En cours')}</div></div>}
+          {summary.planned > 0 && <div className="kpi"><div className="kpi-val">{summary.planned}</div><div className="kpi-lab">{t('Planifiées')}</div></div>}
+        </div>
+      )}
+
+      {loading && !data ? (
+        <div className="ok-card ok-muted">{t('Chargement…')}</div>
+      ) : productions.length === 0 ? (
+        <div className="ok-card">✓ {t('Aucune production aujourd’hui.')}</div>
+      ) : (
+        productions.map((op) => (
+          <div key={op.id} className="task-row">
+            <div className="task-row__body">
+              <span className="task-title">{op.batch_number} · {op.formula ?? t('Formule')}</span>
+              <span className="task-meta">
+                {op.started_at ? new Date(op.started_at).toLocaleTimeString(dateLocale(), { hour: '2-digit', minute: '2-digit' }) + ' · ' : ''}
+                <span className={`pay-badge ${STATUS_CLASS[op.status] ?? ''}`}>{t(op.status)}</span>
+              </span>
+            </div>
+            <div className="stock-qty">
+              <span className="stock-qty__val">{nf(op.quantity_produced)}</span>
+              <span className="stock-qty__unit">kg</span>
+            </div>
+          </div>
+        ))
+      )}
+    </div>
+  )
+}

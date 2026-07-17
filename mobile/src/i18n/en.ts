@@ -5,6 +5,16 @@
  * orpheline des deux côtés au moment de la génération).
  */
 export const en: Record<string, string> = {
+  // Journal de production Provenderie
+  'Production du jour': "Today's production",
+  'kg produits': 'kg produced',
+  'OP terminées': 'Completed runs',
+  'Planifiées': 'Planned',
+  'Aucune production aujourd’hui.': 'No production today.',
+  'Formule': 'Formula',
+  'Terminé': 'Completed',
+  'Planifié': 'Planned',
+  'Annulé': 'Cancelled',
   // Journal de trésorerie + section Consultation
   'Trésorerie du jour': "Today's cash flow",
   'Décaissé': 'Paid out',

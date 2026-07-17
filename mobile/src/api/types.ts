@@ -241,6 +241,22 @@ export interface SalesJournalResponse {
   server_time: string
 }
 
+export interface MillProductionEntry {
+  id: number
+  batch_number: string
+  formula: string | null
+  quantity_produced: number
+  status: string
+  started_at: string | null
+  created_at: string | null
+}
+
+export interface MillJournalResponse {
+  productions: MillProductionEntry[]
+  summary: { total: number; done: number; in_progress: number; planned: number; total_kg: number }
+  server_time: string
+}
+
 export interface TreasuryMovement {
   id: number
   account: string | null
