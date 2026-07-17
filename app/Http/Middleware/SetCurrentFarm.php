@@ -97,6 +97,17 @@ class SetCurrentFarm
 
         if ($first) {
             session(['current_farm_id' => $first]);
+            return;
+        }
+
+        // Repli mono-ferme (aucune affectation pivot) : ferme par défaut du
+        // site — miroir de SetApiFarmContext. ÉTANCHÉITÉ : sans ce repli, un
+        // utilisateur authentifié sans affectation n'aurait AUCUNE ferme en
+        // session → FarmScope ne filtrerait plus rien (fuite inter-fermes en
+        // « fail-open »). On borne toujours à une ferme, jamais « toutes ».
+        $default = \App\Models\Farm::defaultId();
+        if ($default) {
+            session(['current_farm_id' => $default]);
         }
     }
 }
