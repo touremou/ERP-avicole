@@ -20,7 +20,7 @@ class PayrollController extends Controller
 
     public function index()
     {
-        if (Gate::denies('annuaire.L')) return redirect()->route('dashboard')->with('error', 'Accès restreint.');
+        if (Gate::denies('rh.L')) return redirect()->route('dashboard')->with('error', 'Accès restreint.');
 
         $periods = PayrollPeriod::withCount('payslips')
             ->orderByDesc('year')->orderByDesc('month')
@@ -34,7 +34,7 @@ class PayrollController extends Controller
 
     public function createPeriod(Request $request)
     {
-        if (Gate::denies('annuaire.C')) return back()->with('error', 'Non autorisé.');
+        if (Gate::denies('rh.C')) return back()->with('error', 'Non autorisé.');
 
         $validated = $request->validate([
             'year'  => 'required|integer|min:2024|max:2030',
@@ -60,7 +60,7 @@ class PayrollController extends Controller
 
     public function show(PayrollPeriod $period)
     {
-        if (Gate::denies('annuaire.L')) return back()->with('error', 'Accès restreint.');
+        if (Gate::denies('rh.L')) return back()->with('error', 'Accès restreint.');
 
         $period->load(['payslips.employee', 'payslips.lines']);
 
@@ -79,7 +79,7 @@ class PayrollController extends Controller
 
     public function generate(PayrollPeriod $period, PayrollService $service)
     {
-        if (Gate::denies('annuaire.M')) return back()->with('error', 'Non autorisé.');
+        if (Gate::denies('rh.M')) return back()->with('error', 'Non autorisé.');
 
         if ($period->status === 'paye') {
             return back()->with('error', 'Cette période est déjà payée et verrouillée.');
@@ -92,7 +92,7 @@ class PayrollController extends Controller
 
     public function addLine(Request $request, Payslip $payslip)
     {
-        if (Gate::denies('annuaire.M')) return back()->with('error', 'Non autorisé.');
+        if (Gate::denies('rh.M')) return back()->with('error', 'Non autorisé.');
 
         if ($payslip->isLocked()) {
             return back()->with('error', 'Bulletin déjà payé : aucune prime ni déduction ne peut être ajoutée.');
@@ -119,7 +119,7 @@ class PayrollController extends Controller
      */
     public function recordOvertime(Request $request, Payslip $payslip)
     {
-        if (Gate::denies('annuaire.M')) return back()->with('error', 'Non autorisé.');
+        if (Gate::denies('rh.M')) return back()->with('error', 'Non autorisé.');
 
         if ($payslip->isLocked()) {
             return back()->with('error', 'Bulletin déjà payé : impossible d\'enregistrer des heures supplémentaires.');
@@ -154,7 +154,7 @@ class PayrollController extends Controller
 
     public function removeLine(PayslipLine $line)
     {
-        if (Gate::denies('annuaire.M')) return back()->with('error', 'Non autorisé.');
+        if (Gate::denies('rh.M')) return back()->with('error', 'Non autorisé.');
 
         $payslip = $line->payslip;
 
@@ -170,7 +170,7 @@ class PayrollController extends Controller
 
     public function markPaid(Request $request, Payslip $payslip)
     {
-        if (Gate::denies('annuaire.M')) return back()->with('error', 'Non autorisé.');
+        if (Gate::denies('rh.M')) return back()->with('error', 'Non autorisé.');
 
         $validated = $request->validate([
             'payment_method'    => 'required|in:especes,orange_money,virement',
@@ -189,7 +189,7 @@ class PayrollController extends Controller
 
     public function validatePeriod(PayrollPeriod $period)
     {
-        if (Gate::denies('annuaire.S')) return back()->with('error', 'Validation réservée aux administrateurs.');
+        if (Gate::denies('rh.S')) return back()->with('error', 'Validation réservée aux administrateurs.');
 
         // Garde de machine à états (audit W1) : brouillon (jamais calculée),
         // déjà validée ou payée → refus ; on ne ré-horodate jamais une validation.
@@ -210,7 +210,7 @@ class PayrollController extends Controller
 
     public function leaves()
     {
-        if (Gate::denies('annuaire.L')) return back()->with('error', 'Accès restreint.');
+        if (Gate::denies('rh.L')) return back()->with('error', 'Accès restreint.');
 
         $leaves = EmployeeLeave::with('employee')
             ->orderByDesc('start_date')
@@ -230,7 +230,7 @@ class PayrollController extends Controller
 
     public function storeLeave(Request $request)
     {
-        if (Gate::denies('annuaire.C')) return back()->with('error', 'Non autorisé.');
+        if (Gate::denies('rh.C')) return back()->with('error', 'Non autorisé.');
 
         $validated = $request->validate([
             'employee_id' => 'required|exists:employees,id',
@@ -242,9 +242,9 @@ class PayrollController extends Controller
 
         $days = Carbon::parse($validated['start_date'])->diffInDays(Carbon::parse($validated['end_date'])) + 1;
 
-        // Habilité (RH / Manager / Admin = droit annuaire.S) : la saisie vaut
+        // Habilité (RH / Manager / Admin = droit rh.S) : la saisie vaut
         // approbation immédiate. Sinon, c'est une simple demande à valider.
-        $autoApprove = Gate::allows('annuaire.S');
+        $autoApprove = Gate::allows('rh.S');
 
         $leave = EmployeeLeave::create(array_merge($validated, [
             'days_count'   => $days,
@@ -270,7 +270,7 @@ class PayrollController extends Controller
      */
     public function approveLeave(EmployeeLeave $leave)
     {
-        if (Gate::denies('annuaire.S')) return back()->with('error', "Approbation réservée aux responsables RH (droit S).");
+        if (Gate::denies('rh.S')) return back()->with('error', "Approbation réservée aux responsables RH (droit S).");
 
         if ($leave->status !== 'demande') {
             return back()->with('error', 'Cette demande a déjà été traitée.');
@@ -293,7 +293,7 @@ class PayrollController extends Controller
      */
     public function rejectLeave(Request $request, EmployeeLeave $leave)
     {
-        if (Gate::denies('annuaire.S')) return back()->with('error', "Refus réservé aux responsables RH (droit S).");
+        if (Gate::denies('rh.S')) return back()->with('error', "Refus réservé aux responsables RH (droit S).");
 
         if ($leave->status !== 'demande') {
             return back()->with('error', 'Cette demande a déjà été traitée.');
@@ -336,8 +336,8 @@ class PayrollController extends Controller
      */
     public function delegateLeaveTasks(Request $request, EmployeeLeave $leave)
     {
-        // Un gestionnaire (annuaire.M) OU l'employé absent lui-même peut déléguer.
-        $isManager  = Gate::allows('annuaire.M');
+        // Un gestionnaire (rh.M) OU l'employé absent lui-même peut déléguer.
+        $isManager  = Gate::allows('rh.M');
         $isOwnLeave = $leave->employee?->user_id === Auth::id();
 
         if (! $isManager && ! $isOwnLeave) {
@@ -366,7 +366,7 @@ class PayrollController extends Controller
 
     public function endLeave(EmployeeLeave $leave)
     {
-        if (Gate::denies('annuaire.M')) return back()->with('error', 'Non autorisé.');
+        if (Gate::denies('rh.M')) return back()->with('error', 'Non autorisé.');
 
         $leave->update(['status' => 'termine']);
         $leave->employee->update(['status' => 'Actif']);
@@ -379,7 +379,7 @@ class PayrollController extends Controller
      */
     public function printPayslip(Payslip $payslip, Request $request)
     {
-        if (Gate::denies('annuaire.L')) return back()->with('error', 'Accès restreint.');
+        if (Gate::denies('rh.L')) return back()->with('error', 'Accès restreint.');
 
         $payslip->load(['employee', 'period', 'lines']);
         $type = $request->input('type', $payslip->payment_status === 'paye' ? 'fiche' : 'bon');
@@ -392,7 +392,7 @@ class PayrollController extends Controller
      */
     public function employeeHistory(Employee $employee)
     {
-        if (Gate::denies('annuaire.L')) return back()->with('error', 'Accès restreint.');
+        if (Gate::denies('rh.L')) return back()->with('error', 'Accès restreint.');
 
         $payslips = Payslip::where('employee_id', $employee->id)
             ->with(['period', 'lines'])

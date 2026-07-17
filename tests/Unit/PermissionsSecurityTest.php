@@ -177,10 +177,12 @@ test('la matrice RBAC est cohérente', function () {
 });
 
 test('les Gates module utilisent des slugs réels (régression rh/couvoir/stocks)', function () {
-    // Régression : StockController/PayrollController/IncubationController
-    // utilisaient des slugs inexistants (stocks/rh/couvoir) → Gates non définis
-    // refusant l'accès à tous les non-admins. Les slugs réels sont
-    // logistique (stock), annuaire (RH/paie) et production (couvoir/incubation).
+    // Régression : StockController/IncubationController utilisaient des slugs
+    // inexistants (stocks/couvoir) → Gates non définis refusant l'accès à tous
+    // les non-admins. Les slugs réels sont logistique (stock), annuaire (tiers),
+    // rh (personnel/paie) et production (couvoir/incubation).
+    // NB : « rh » est désormais un module RÉEL (cloisonnement Annuaire/RH), il
+    // ne fait donc plus partie des slugs interdits plus bas.
     foreach (['logistique', 'annuaire', 'production'] as $slug) {
         expect(Gate::forUser($this->managerUser)->allows("{$slug}.L"))
             ->toBeTrue("Le manager doit pouvoir lire le module {$slug}.");
@@ -194,7 +196,7 @@ test('les Gates module utilisent des slugs réels (régression rh/couvoir/stocks
         foreach ($rii as $file) {
             if ($file->isDir() || ! in_array($file->getExtension(), ['php'])) continue;
             $code = file_get_contents($file->getPathname());
-            if (preg_match("/'(rh|couvoir|stocks)\\.[LCMS]'/", $code)) {
+            if (preg_match("/'(couvoir|stocks)\\.[LCMS]'/", $code)) {
                 $offenders[] = str_replace(base_path() . '/', '', $file->getPathname());
             }
         }

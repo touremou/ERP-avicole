@@ -1066,7 +1066,7 @@ class SyncService
 
     // ─────────────────────────────────────────────────────────────
     //  TÂCHE ASSIGNÉE — cocher « faite » depuis le terrain. Autorisé pour
-    //  SA propre tâche (employé rattaché) ou pour un superviseur (annuaire.M).
+    //  SA propre tâche (employé rattaché) ou pour un superviseur (rh.M).
     //  Idempotent : re-cocher une tâche déjà faite = already_synced.
     // ─────────────────────────────────────────────────────────────
     private function taskComplete(array $payload): array
@@ -1089,7 +1089,7 @@ class SyncService
         $myEmployeeId = Auth::user()?->employee?->id;
         $isOwner = $task->employee_id !== null && $task->employee_id === $myEmployeeId;
 
-        if (! $isOwner && Gate::denies('annuaire.M')) {
+        if (! $isOwner && Gate::denies('rh.M')) {
             return $this->denied();
         }
 

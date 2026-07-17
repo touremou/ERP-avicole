@@ -7,7 +7,7 @@
                    class="bg-white border border-slate-200 text-slate-600 px-5 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-violet-50 hover:text-violet-600 transition-all no-underline shadow-sm italic"><i class="fa-solid fa-user-check mr-1"></i> {{ __("Présence du mois") }}</a>
 
                 {{-- Générer = Modification (M) --}}
-                @can('annuaire.M')
+                @can('rh.M')
                     @if($period->status === 'brouillon')
                     <form method="POST" action="{{ route('payroll.generate', $period) }}">@csrf
                         <button class="bg-blue-600 text-white px-5 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-blue-700 border-none cursor-pointer shadow-lg italic"><i class="fa-solid fa-calculator mr-1"></i> {{ __("Générer les fiches") }}</button>
@@ -15,8 +15,8 @@
                     @endif
                 @endcan
                 
-                {{-- Valider = Superviseur/Admin (S) (Correction du 'S' en 'annuaire.S') --}}
-                @can('annuaire.S')
+                {{-- Valider = Superviseur/Admin (S) (Correction du 'S' en 'rh.S') --}}
+                @can('rh.S')
                     @if($period->status === 'calcule')
                     <form method="POST" action="{{ route('payroll.validate', $period) }}">@csrf
                         <button class="bg-emerald-600 text-white px-5 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-emerald-700 border-none cursor-pointer shadow-lg italic"><i class="fa-solid fa-check-double mr-1"></i> {{ __("Valider la période") }}</button>
@@ -99,7 +99,7 @@
                                             <i class="fa-solid fa-print text-[9px]"></i>
                                         </a>
                                         {{-- Ajouter prime/déduction (bloqué si bulletin payé ou période soldée) --}}
-                                        @can('annuaire.M')
+                                        @can('rh.M')
                                             @if(! $slip->isLocked())
                                             <button @click="openLineModal({{ $slip->id }}, '{{ addslashes($slip->employee->first_name) }}')"
                                                 class="w-7 h-7 rounded-lg bg-slate-50 text-slate-400 hover:bg-blue-50 hover:text-blue-600 flex items-center justify-center border-none cursor-pointer transition-all" title="{{ __("Ajouter prime/déduction") }}">
@@ -113,7 +113,7 @@
                                         @endcan
 
                                         {{-- Marquer payé --}}
-                                        @can('annuaire.M')
+                                        @can('rh.M')
                                             @if($slip->payment_status !== 'paye' && in_array($period->status, ['calcule', 'valide']))
                                             <button @click="openPayModal({{ $slip->id }}, '{{ addslashes($slip->employee->first_name) }}', {{ $slip->net_salary }}, '{{ $slip->employee->orange_money_number ?? '' }}')"
                                                 class="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-500 hover:bg-emerald-100 hover:text-emerald-700 flex items-center justify-center border-none cursor-pointer transition-all" title="{{ __("Payer") }}">
@@ -134,7 +134,7 @@
                                         'bg-emerald-50 text-emerald-600' => $line->type === 'prime',
                                         'bg-red-50 text-red-500' => $line->type === 'deduction'])>
                                         {{ $line->type === 'prime' ? '+' : '-' }}{{ number_format($line->amount, 0, ',', '.') }} {{ $line->label }}
-                                        @can('annuaire.M')
+                                        @can('rh.M')
                                             @if(! $slip->isLocked())
                                             <form method="POST" action="{{ route('payroll.remove-line', $line) }}" class="inline">@csrf @method('DELETE')
                                                 <button class="text-slate-300 hover:text-red-500 border-none bg-transparent cursor-pointer ml-1"><i class="fa-solid fa-xmark text-[8px]"></i></button>

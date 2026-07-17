@@ -2,16 +2,16 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Employee;
-use App\Models\EmployeeAttendance;
 use App\Models\Provider;
 use Illuminate\Support\Facades\Gate;
 
 /**
- * AnnuaireHubController — HUB du module Annuaire / RH.
+ * AnnuaireHubController — HUB du module Annuaire / TIERS.
  *
- * Effectif, présence du jour, masse salariale et fournisseurs, + accès groupés
- * (équipe / présence-paie / partenaires). Même pattern que les autres hubs.
+ * Cloisonnement (moindre privilège) : ce hub ne concerne QUE les tiers
+ * externes (fournisseurs / partenaires). La RH interne (employés, paie,
+ * pointage, congés) vit dans le module `rh` (RhHubController) — un accès
+ * Annuaire n'ouvre donc plus les données du personnel ni les salaires.
  */
 class AnnuaireHubController extends Controller
 {
@@ -21,23 +21,11 @@ class AnnuaireHubController extends Controller
             return redirect()->route('dashboard')->with('error', 'Accès restreint au module Annuaire.');
         }
 
-        $today = now()->toDateString();
-
-        $todayAttendance = EmployeeAttendance::whereDate('attendance_date', $today)->get();
-
         $kpis = [
-            'headcount'  => (int) Employee::where('status', 'Actif')->count(),
-            'present'    => (int) $todayAttendance->whereIn('status', EmployeeAttendance::WORKED)->count(),
-            'payroll'    => (float) Employee::where('status', 'Actif')->sum('salary'),
-            'providers'  => (int) Provider::active()->count(),
+            'providers'        => (int) Provider::count(),
+            'providers_active' => (int) Provider::active()->count(),
         ];
 
-        // Répartition de la présence du jour par statut.
-        $presence = [];
-        foreach (EmployeeAttendance::STATUSES as $key => $label) {
-            $presence[$label] = (int) $todayAttendance->where('status', $key)->count();
-        }
-
-        return view('annuaire.index', compact('kpis', 'presence'));
+        return view('annuaire.index', compact('kpis'));
     }
 }

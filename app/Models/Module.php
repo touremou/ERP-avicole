@@ -127,12 +127,17 @@ class Module extends Model
             'slaughter.'        => 'abattoir',
 
             // Annuaire / RH (hub, employés, présence, fournisseurs, paie, tâches)
+            // Annuaire = TIERS (fournisseurs) uniquement.
             'annuaire.'         => 'annuaire',
-            'employees.'        => 'annuaire',
-            'attendance.'       => 'annuaire',
             'providers.'        => 'annuaire',
-            'payroll.'          => 'annuaire',
-            'tasks.'            => 'annuaire',
+
+            // RH INTERNE = employés, paie, pointage, congés, tâches — module
+            // distinct (cloisonnement : un accès Tiers n'ouvre pas la RH).
+            'rh.'               => 'rh',
+            'employees.'        => 'rh',
+            'attendance.'       => 'rh',
+            'payroll.'          => 'rh',
+            'tasks.'            => 'rh',
 
             // Administration
             'users.'            => 'admin',
@@ -176,6 +181,7 @@ class Module extends Model
             'ressources'    => 'utilities.dashboard',
             'notifications' => 'notifications.preferences',
             'annuaire'      => 'annuaire.index',
+            'rh'            => 'rh.index',
             'admin'         => 'users.index',
             'depenses'      => 'finance.index',
         ][$slug] ?? null;

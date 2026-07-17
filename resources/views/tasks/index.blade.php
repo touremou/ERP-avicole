@@ -2,7 +2,7 @@
     <x-slot name="header">
         <x-page-header :title="__('Planning Opérationnel')" :subtitle="$date->translatedFormat('l d F Y')" icon="fa-clipboard-check" accent="indigo">
             <x-slot name="actions">
-                @can('annuaire.M')
+                @can('rh.M')
                 <a href="{{ route('tasks.templates') }}" class="bg-white border border-slate-200 px-4 py-2 rounded-xl text-[9px] font-black uppercase italic text-slate-600 hover:bg-slate-50 no-underline"><i class="fa-solid fa-gear text-slate-400 mr-1"></i> {{ __("Templates") }}</a>
                 <form method="POST" action="{{ route('tasks.generate') }}">@csrf
                     <input type="hidden" name="date" value="{{ $date->toDateString() }}">
@@ -330,7 +330,7 @@
                             @empty
                             <div class="px-8 py-12 text-center">
                                 <p class="text-[10px] text-slate-400 uppercase tracking-widest mb-3">Aucune tâche pour cette date</p>
-                                @can('annuaire.M')
+                                @can('rh.M')
                                 <form method="POST" action="{{ route('tasks.generate') }}">@csrf
                                     <input type="hidden" name="date" value="{{ $date->toDateString() }}">
                                     <button class="bg-indigo-600 text-white px-6 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-indigo-700 border-none cursor-pointer italic"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i> Générer automatiquement</button>

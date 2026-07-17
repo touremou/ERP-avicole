@@ -21,10 +21,16 @@
 @if(request()->routeIs('dashboard'))
     <span class="{{ $sectionClass }}"><i class="fa-solid fa-house mr-1 text-blue-500"></i> {{ __("Accueil") }}</span>
 
-@elseif(request()->routeIs(['annuaire.*', 'employees.*', 'payroll.*', 'tasks.*', 'providers.*', 'attendance.*']))
-    <span class="{{ $sectionClass }}"><i class="fa-solid fa-users text-slate-500 mr-1"></i> {{ __("Annuaire") }}</span>
+@elseif(request()->routeIs(['annuaire.*', 'providers.*']))
+    <span class="{{ $sectionClass }}"><i class="fa-solid fa-address-book text-orange-500 mr-1"></i> {{ __("Annuaire / Tiers") }}</span>
     @can('annuaire.L')
     <a href="{{ route('annuaire.index') }}" class="{{ $linkClass }} {{ request()->routeIs('annuaire.*') ? $activeClass : $inactiveClass }}">{{ __("Tableau de bord") }}</a>
+    @endcan
+
+@elseif(request()->routeIs(['rh.*', 'employees.*', 'payroll.*', 'tasks.*', 'attendance.*']))
+    <span class="{{ $sectionClass }}"><i class="fa-solid fa-user-tie text-violet-500 mr-1"></i> {{ __("Ressources Humaines") }}</span>
+    @can('rh.L')
+    <a href="{{ route('rh.index') }}" class="{{ $linkClass }} {{ request()->routeIs('rh.*') ? $activeClass : $inactiveClass }}">{{ __("Tableau de bord") }}</a>
     @endcan
 
 @elseif(request()->routeIs(['elevage.*', 'buildings.*','batches.*', 'daily-checks.*', 'health.*', 'protocols.*', 'reports.*', 'campaigns.*', 'planning.*']))

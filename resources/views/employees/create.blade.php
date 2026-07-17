@@ -7,7 +7,7 @@
         <div class="max-w-4xl mx-auto sm:px-6 lg:px-8 italic font-bold">
             
             {{-- Permission C : Accès à la création --}}
-            @can('annuaire.C')
+            @can('rh.C')
                 @if ($errors->any())
                     <div class="mb-8 p-6 bg-rose-600 text-white rounded-[2.5rem] shadow-xl animate-pulse text-left">
                         <p class="text-[10px] font-black uppercase italic mb-2">❌ {{ __("Erreurs de validation :") }}</p>

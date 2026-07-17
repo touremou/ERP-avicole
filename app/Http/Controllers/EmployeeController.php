@@ -16,7 +16,7 @@ class EmployeeController extends Controller
 {
     public function index() 
     {
-        if (Gate::denies('annuaire.L')) return redirect()->route('dashboard')->with('error', 'Accès restreint au personnel.');
+        if (Gate::denies('rh.L')) return redirect()->route('dashboard')->with('error', 'Accès restreint au personnel.');
 
         $employees = Employee::with('user')->orderBy('last_name', 'asc')->get();
         // Rôles proposés pour la création d'accès en masse (outil admin.S).
@@ -27,13 +27,13 @@ class EmployeeController extends Controller
 
     public function create() 
     {
-        if (Gate::denies('annuaire.C')) return back()->with('error', 'Privilèges de recrutement insuffisants.');
+        if (Gate::denies('rh.C')) return back()->with('error', 'Privilèges de recrutement insuffisants.');
         return view('employees.create');
     }
 
     public function store(StoreEmployeeRequest $request, CreateEmployee $createEmployee) 
     {
-        if (Gate::denies('annuaire.C')) return back()->with('error', 'Privilèges de recrutement insuffisants.');
+        if (Gate::denies('rh.C')) return back()->with('error', 'Privilèges de recrutement insuffisants.');
         $employee = $createEmployee->execute(
             $request->validated(),
             $request->file('photo'),
@@ -46,7 +46,7 @@ class EmployeeController extends Controller
 
     public function show($id) 
     {
-        if (Gate::denies('annuaire.L') && Gate::denies('annuaire.L')) return back()->with('error', 'Accès restreint.');
+        if (Gate::denies('rh.L') && Gate::denies('rh.L')) return back()->with('error', 'Accès restreint.');
         // On conserve $id ici car le withTrashed() est requis pour voir les archives
         $employee = Employee::withTrashed()->with('batches')->findOrFail($id);
         return view('employees.show', compact('employee'));
@@ -54,7 +54,7 @@ class EmployeeController extends Controller
 
     public function edit(Employee $employee) 
     {
-        if (Gate::denies('annuaire.M')) return back()->with('error', 'Modification de profil interdite.');
+        if (Gate::denies('rh.M')) return back()->with('error', 'Modification de profil interdite.');
         return view('employees.edit', compact('employee'));
     }
 
@@ -72,7 +72,7 @@ class EmployeeController extends Controller
 
     public function destroy(Employee $employee, ArchiveEmployee $archiveEmployee) 
     {
-        if (Gate::denies('annuaire.S')) return back()->with('error', 'Seul un administrateur peut archiver un employé.');
+        if (Gate::denies('rh.S')) return back()->with('error', 'Seul un administrateur peut archiver un employé.');
         
         try {
             $archiveEmployee->execute($employee);
@@ -84,7 +84,7 @@ class EmployeeController extends Controller
 
     public function updateStatus(Request $request, Employee $employee) 
     {
-        if (Gate::denies('annuaire.M')) return back()->with('error', 'Action non autorisée.');
+        if (Gate::denies('rh.M')) return back()->with('error', 'Action non autorisée.');
         
         $request->validate(['status' => 'required|in:Actif,Suspendu,Congé']);
         $employee->update(['status' => $request->status]);

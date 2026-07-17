@@ -59,7 +59,7 @@ class TaskController extends Controller
 
     public function index(Request $request, TaskSchedulerService $service)
     {
-        if (Gate::denies('annuaire.L')) return redirect()->route('dashboard')->with('error', 'Accès restreint.');
+        if (Gate::denies('rh.L')) return redirect()->route('dashboard')->with('error', 'Accès restreint.');
 
         $date = Carbon::parse($request->input('date', now()->toDateString()));
         $view = $request->input('view', 'day');
@@ -77,7 +77,7 @@ class TaskController extends Controller
         // ?mine=1 pour présélectionner l'utilisateur courant — y compris pour
         // un encadrant, qui peut ensuite élargir à toute l'équipe.
         $myEmployeeId = Auth::user()?->employee?->id;
-        $canSeeAll    = Gate::allows('annuaire.M');
+        $canSeeAll    = Gate::allows('rh.M');
 
         if (! $canSeeAll) {
             $employeeId = $myEmployeeId;
@@ -158,7 +158,7 @@ class TaskController extends Controller
 
     public function generate(Request $request, TaskSchedulerService $service)
     {
-        if (Gate::denies('annuaire.M')) return back()->with('error', 'Non autorisé.');
+        if (Gate::denies('rh.M')) return back()->with('error', 'Non autorisé.');
 
         $date = Carbon::parse($request->input('date', now()->toDateString()));
         $result = $service->generateForDate($date, $this->farmId());
@@ -168,7 +168,7 @@ class TaskController extends Controller
 
     public function complete(Request $request, TaskAssignment $task)
     {
-        if (Gate::denies('annuaire.M')) return back()->with('error', 'Non autorisé.');
+        if (Gate::denies('rh.M')) return back()->with('error', 'Non autorisé.');
 
         $task->update([
             'status'           => 'fait',
@@ -182,7 +182,7 @@ class TaskController extends Controller
 
     public function assign(Request $request, TaskAssignment $task)
     {
-        if (Gate::denies('annuaire.M')) return back()->with('error', 'Non autorisé.');
+        if (Gate::denies('rh.M')) return back()->with('error', 'Non autorisé.');
 
         $validated = $request->validate(['employee_id' => 'required|exists:employees,id']);
 
@@ -204,7 +204,7 @@ class TaskController extends Controller
 
     public function storeManual(Request $request)
     {
-        if (Gate::denies('annuaire.C')) return back()->with('error', 'Non autorisé.');
+        if (Gate::denies('rh.C')) return back()->with('error', 'Non autorisé.');
 
         $validated = $request->validate([
             'title'           => 'required|string|max:255',
@@ -240,7 +240,7 @@ class TaskController extends Controller
 
     public function edit(TaskAssignment $task)
     {
-        if (Gate::denies('annuaire.M')) return back()->with('error', 'Non autorisé.');
+        if (Gate::denies('rh.M')) return back()->with('error', 'Non autorisé.');
         if ($task->status === 'fait') return back()->with('error', 'Impossible de modifier une tâche terminée.');
 
         $employees = Employee::where('status', 'Actif')->orderBy('first_name')->get();
@@ -251,7 +251,7 @@ class TaskController extends Controller
 
     public function update(Request $request, TaskAssignment $task)
     {
-        if (Gate::denies('annuaire.M')) return back()->with('error', 'Non autorisé.');
+        if (Gate::denies('rh.M')) return back()->with('error', 'Non autorisé.');
         if ($task->status === 'fait') return back()->with('error', 'Impossible de modifier une tâche terminée.');
 
         $validated = $request->validate([
@@ -274,7 +274,7 @@ class TaskController extends Controller
 
     public function destroy(TaskAssignment $task)
     {
-        if (Gate::denies('annuaire.S')) return back()->with('error', 'Non autorisé.');
+        if (Gate::denies('rh.S')) return back()->with('error', 'Non autorisé.');
 
         $date = $task->scheduled_date->toDateString();
         $task->delete();
@@ -286,7 +286,7 @@ class TaskController extends Controller
 
     public function templates()
     {
-        if (Gate::denies('annuaire.M')) return back()->with('error', 'Non autorisé.');
+        if (Gate::denies('rh.M')) return back()->with('error', 'Non autorisé.');
 
         // Templates = globaux (withoutGlobalScopes)
         $templates = TaskTemplate::withoutGlobalScopes()
@@ -300,7 +300,7 @@ class TaskController extends Controller
 
     public function storeTemplate(Request $request)
     {
-        if (Gate::denies('annuaire.M')) return back()->with('error', 'Non autorisé.');
+        if (Gate::denies('rh.M')) return back()->with('error', 'Non autorisé.');
 
         $validated = $request->validate([
             'name'             => 'required|string|max:255',
@@ -358,14 +358,14 @@ class TaskController extends Controller
 
     public function editTemplate(TaskTemplate $template)
     {
-        if (Gate::denies('annuaire.M')) return back()->with('error', 'Non autorisé.');
+        if (Gate::denies('rh.M')) return back()->with('error', 'Non autorisé.');
         $batchTypeOptions = TaskTemplate::batchTypeOptions();
         return view('tasks.edit-template', compact('template', 'batchTypeOptions'));
     }
 
     public function updateTemplate(Request $request, TaskTemplate $template)
     {
-        if (Gate::denies('annuaire.M')) return back()->with('error', 'Non autorisé.');
+        if (Gate::denies('rh.M')) return back()->with('error', 'Non autorisé.');
 
         $validated = $request->validate([
             'name'             => 'required|string|max:255',
@@ -412,7 +412,7 @@ class TaskController extends Controller
 
     public function destroyTemplate(TaskTemplate $template)
     {
-        if (Gate::denies('annuaire.S')) return back()->with('error', 'Non autorisé.');
+        if (Gate::denies('rh.S')) return back()->with('error', 'Non autorisé.');
 
         $name = $template->name;
         $template->delete();
@@ -422,7 +422,7 @@ class TaskController extends Controller
 
     public function toggleTemplate(TaskTemplate $template)
     {
-        if (Gate::denies('annuaire.M')) return back()->with('error', 'Non autorisé.');
+        if (Gate::denies('rh.M')) return back()->with('error', 'Non autorisé.');
 
         $template->update(['is_active' => ! $template->is_active]);
         $state = $template->is_active ? 'activé' : 'désactivé';
