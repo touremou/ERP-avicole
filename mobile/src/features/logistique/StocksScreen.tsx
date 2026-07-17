@@ -12,6 +12,8 @@ import { onSyncChange } from '../../offline/sync'
 import { t } from '../../i18n'
 import { FilterChips } from '../../ui/FilterChips'
 import { BarBreakdown } from '../../ui/BarBreakdown'
+import { ExportButton } from '../../ui/ExportButton'
+import { toCsv, exportOrShare, dateStamp } from '../../ui/exportShare'
 import type { RefStock } from '../../api/types'
 
 const CATEGORY_ICON: Record<string, string> = {
@@ -90,6 +92,18 @@ export function StocksScreen() {
 
       {stocks.length > 0 && <BarBreakdown items={byCategory} />}
       {stocks.length > 0 && <FilterChips options={chips} active={cat} onChange={setCat} />}
+      {stocks.length > 0 && (
+        <ExportButton
+          onExport={() => {
+            const csv = toCsv(
+              [t('Article'), t('Catégorie'), t('Quantité'), t('Unité'), t('Seuil')],
+              filtered.map((s) => [s.item_name, t(s.category), s.current_quantity, s.unit, s.alert_threshold ?? '']),
+            )
+            void exportOrShare(`stocks_${dateStamp()}.csv`, csv, t('Stocks'))
+          }}
+          disabled={filtered.length === 0}
+        />
+      )}
 
       {stocks.length === 0 ? (
         <div className="ok-card ok-muted">

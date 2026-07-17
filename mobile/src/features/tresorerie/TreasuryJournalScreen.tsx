@@ -12,6 +12,8 @@ import { t, dateLocale } from '../../i18n'
 import { FilterChips } from '../../ui/FilterChips'
 import { BarBreakdown } from '../../ui/BarBreakdown'
 import { PeriodSelector } from '../../ui/PeriodSelector'
+import { ExportButton } from '../../ui/ExportButton'
+import { toCsv, exportOrShare, dateStamp } from '../../ui/exportShare'
 import type { TreasuryJournalResponse, TreasuryMovement } from '../../api/types'
 
 const CACHE_KEY = 'treasury_journal_today'
@@ -74,6 +76,14 @@ export function TreasuryJournalScreen() {
     { key: 'out', label: t('Sorties'), count: allMovements.filter((m) => m.direction === 'out').length },
   ]
 
+  function handleExport() {
+    const csv = toCsv(
+      [t('Compte'), t('Sens'), t('Montant'), t('Catégorie'), t('Description')],
+      movements.map((m) => [m.account ?? '', m.direction === 'in' ? t('Entrées') : t('Sorties'), m.amount, m.category ?? '', m.description ?? '']),
+    )
+    void exportOrShare(`tresorerie_${period}_${dateStamp()}.csv`, csv, t('Trésorerie du jour'))
+  }
+
   return (
     <div className="screen">
       <div className="welcome">
@@ -85,6 +95,7 @@ export function TreasuryJournalScreen() {
       </div>
 
       <PeriodSelector period={period} onChange={setPeriod} />
+      <ExportButton onExport={handleExport} disabled={movements.length === 0} />
 
       {summary && (
         <div className="kpi-grid">

@@ -5,6 +5,20 @@
  * orpheline des deux côtés au moment de la génération).
  */
 export const en: Record<string, string> = {
+  // Export / partage des journaux
+  'Exporter / Partager': 'Export / Share',
+  'Référence': 'Reference',
+  'Statut': 'Status',
+  'Total': 'Total',
+  'Payé': 'Paid',
+  'Paiement': 'Payment',
+  'Compte': 'Account',
+  'Sens': 'Direction',
+  'Description': 'Description',
+  'Ordre': 'Order',
+  'Variété': 'Variety',
+  'Cycle': 'Cycle',
+  'Seuil': 'Threshold',
   // Filtres des journaux
   'Hier': 'Yesterday',
   '7 jours': '7 days',
