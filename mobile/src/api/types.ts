@@ -241,6 +241,22 @@ export interface SalesJournalResponse {
   server_time: string
 }
 
+export interface SlaughterOrderEntry {
+  id: number
+  order_number: string
+  batch: string | null
+  client: string | null
+  planned_quantity: number
+  actual_quantity: number | null
+  status: string
+}
+
+export interface SlaughterJournalResponse {
+  orders: SlaughterOrderEntry[]
+  summary: { total: number; done: number; planned: number; blocked: number; slaughtered: number; live_weight_kg: number }
+  server_time: string
+}
+
 export interface MillProductionEntry {
   id: number
   batch_number: string

@@ -71,6 +71,9 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         // Journal de production Provenderie du jour (consultation provenderie.L).
         Route::get('/provenderie/today', [\App\Http\Controllers\Api\MillJournalController::class, 'today'])->name('provenderie.today');
 
+        // Journal d'abattage du jour (consultation abattoir.L).
+        Route::get('/abattoir/today', [\App\Http\Controllers\Api\SlaughterJournalController::class, 'today'])->name('abattoir.today');
+
         // Photos terrain (téléversées AVANT le push de l'op qui les référence).
         Route::post('/photos', [\App\Http\Controllers\Api\PhotoController::class, 'store'])
             ->middleware('throttle:30,1')

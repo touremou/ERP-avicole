@@ -154,7 +154,7 @@ export function HomeScreen() {
       )}
 
       {/* Consultation : journaux du jour + états, selon les droits (lecture). */}
-      {(can('commerce', 'L') || can('tresorerie', 'L') || can('logistique', 'L') || can('provenderie', 'L')) && (
+      {(can('commerce', 'L') || can('tresorerie', 'L') || can('logistique', 'L') || can('provenderie', 'L') || can('abattoir', 'L')) && (
         <section>
           <div className="section-head"><h3>{t('Consultation')}</h3></div>
           <div className="consult-grid">
@@ -169,6 +169,9 @@ export function HomeScreen() {
             )}
             {can('provenderie', 'L') && (
               <Link to="/provenderie/journal" className="consult-card"><span className="consult-ico">🌾</span>{t('Production du jour')}</Link>
+            )}
+            {can('abattoir', 'L') && (
+              <Link to="/abattoir/journal" className="consult-card"><span className="consult-ico">🔪</span>{t('Abattage du jour')}</Link>
             )}
           </div>
         </section>
