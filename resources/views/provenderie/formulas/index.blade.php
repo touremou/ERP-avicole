@@ -193,8 +193,9 @@
                 @endforelse
             </div>
 
-            {{-- IMPORT EXCEL : Permission M (Modification du référentiel) --}}
-            @can('provenderie.M')
+            {{-- IMPORT EXCEL : réservé au niveau S (référentiel normé), aligné
+                 sur la route norms.import et FormulaController::importNorms. --}}
+            @can('provenderie.S')
             <div class="bg-blue-50/50 p-6 rounded-[2.5rem] border border-blue-100 flex flex-col md:flex-row items-center justify-between gap-6">
                 <div class="text-left">
                     <h4 class="text-xs font-black uppercase text-blue-600 italic tracking-tighter mb-1">{{ __("Mettre à jour le Référentiel") }}</h4>
