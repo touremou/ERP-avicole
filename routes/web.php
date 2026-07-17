@@ -868,11 +868,17 @@ Route::middleware(['auth'])->group(function () {
     //   EmployeeController::index() → Gate::denies('L')
     //   EmployeeController::store() → Form Request authorize() → Gate::allows('C')
     //   EmployeeController::destroy() → Gate::denies('S')
-    Route::resource('employees', EmployeeController::class);
-    Route::put('/employees/{id}/status', [EmployeeController::class, 'updateStatus'])->name('employees.status');
+    // Verrou de route par verbe (défense en profondeur, en plus des gates du
+    // contrôleur/FormRequests) : L/C/M/S sur le module annuaire.
+    Route::middleware('can:L')->resource('employees', EmployeeController::class)
+        ->middlewareFor(['create', 'store'], 'can:C')
+        ->middlewareFor(['edit', 'update'], 'can:M')
+        ->middlewareFor('destroy', 'can:S');
+    Route::put('/employees/{id}/status', [EmployeeController::class, 'updateStatus'])->name('employees.status')->middleware('can:M');
 
     // ─── ESPACE EMPLOYÉ : gestion du compte de connexion (réservé admin.S) ───
-    Route::controller(EmployeeAccessController::class)->group(function () {
+    // Verrou de route explicite : création/gestion d'identités = admin.S.
+    Route::controller(EmployeeAccessController::class)->middleware('can:admin.S')->group(function () {
         // Liaison en masse (littérale, avant les routes {employee}).
         Route::post('/employees/access/bulk', 'bulkStore')->name('employees.access.bulk');
         Route::post('/employees/{employee}/access', 'store')->name('employees.access.store');
@@ -880,9 +886,13 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/employees/{employee}/access/password', 'resetPassword')->name('employees.access.password');
     });
 
-    Route::resource('providers', ProviderController::class);
+    // Verrou de route par verbe (annuaire) : L/C/M/S en défense en profondeur.
+    Route::middleware('can:L')->resource('providers', ProviderController::class)
+        ->middlewareFor(['create', 'store'], 'can:C')
+        ->middlewareFor(['edit', 'update'], 'can:M')
+        ->middlewareFor('destroy', 'can:S');
     // S-18 corrigé : une seule route PUT (sémantiquement correct pour changement d'état)
-    Route::put('/providers/{provider}/blacklist', [ProviderController::class, 'blacklist'])->name('providers.blacklist');
+    Route::put('/providers/{provider}/blacklist', [ProviderController::class, 'blacklist'])->name('providers.blacklist')->middleware('can:M');
 
     // ─── ADMINISTRATION (S requis) ───
     Route::middleware('can:S')->group(function () {
