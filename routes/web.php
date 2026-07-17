@@ -241,7 +241,13 @@ Route::middleware(['auth'])->group(function () {
             Route::delete('/{id}', 'destroy')->name('destroy')->middleware('can:S');
         });
 
-        Route::middleware('can:L')->resource('formulas', FormulaController::class);
+        // Verrou de route par verbe (défense en profondeur, aligné sur les
+        // FormRequests/gates du contrôleur) : lecture = L, création = C,
+        // édition = M, suppression = S. Le référentiel normé s'importe en S.
+        Route::middleware('can:L')->resource('formulas', FormulaController::class)
+            ->middlewareFor(['create', 'store'], 'can:C')
+            ->middlewareFor(['edit', 'update'], 'can:M')
+            ->middlewareFor('destroy', 'can:S');
         Route::post('/formulas/norms/import', [FormulaController::class, 'importNorms'])->name('norms.import')->middleware('can:S');
 
         Route::prefix('production')->name('production.')->controller(MillProductionController::class)->group(function () {
