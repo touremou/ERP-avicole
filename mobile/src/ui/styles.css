@@ -403,6 +403,10 @@ input:focus, textarea:focus, select:focus {
 .btn-primary:disabled { opacity: 0.55; }
 .btn-secondary { background: var(--surface); color: var(--ink); border: 1px solid var(--line); }
 .btn-danger { background: var(--danger-bg); color: var(--danger); margin-top: 8px; }
+/* Variante compacte pour un bouton aligné dans une ligne (ex. révoquer un appareil). */
+.btn-slim { width: auto; min-height: 0; margin-top: 0; padding: 8px 14px; font-size: 0.8rem; border-radius: 999px; flex: none; }
+/* Un <a> (react-router Link) rendu comme un bouton pleine largeur. */
+.btn-link-row { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 56px; text-decoration: none; }
 
 /* ── Login ── */
 .login-card {

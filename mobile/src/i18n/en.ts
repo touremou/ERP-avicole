@@ -367,6 +367,18 @@ export const en: Record<string, string> = {
   'Modéré': 'Moderate',
   'Mon activité': 'My activity',
   'Mon espace': 'My space',
+  // Appareils connectés
+  'Appareils connectés': 'Connected devices',
+  'Gérer mes appareils': 'Manage my devices',
+  'Révoquez un appareil perdu ou inutilisé.': 'Revoke a lost or unused device.',
+  'Connexion requise pour gérer les appareils.': 'Connection required to manage devices.',
+  'Aucun appareil connecté.': 'No connected device.',
+  'Cet appareil': 'This device',
+  'Dernier accès': 'Last access',
+  'jamais': 'never',
+  'Révoquer': 'Revoke',
+  'Confirmer': 'Confirm',
+  'Révocation…': 'Revoking…',
   // Édition du profil (Mon espace)
   'Mon profil': 'My profile',
   'Téléphone': 'Phone',
