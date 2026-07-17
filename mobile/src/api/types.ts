@@ -149,6 +149,7 @@ export interface RefStock {
   category: string
   unit: string
   current_quantity: number
+  alert_threshold: number | null
   updated_at: string
 }
 

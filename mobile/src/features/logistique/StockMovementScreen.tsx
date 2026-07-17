@@ -5,7 +5,7 @@
  * Contrat : SyncService::stockMovementCreate (gate logistique.M).
  */
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { db } from '../../offline/db'
 import { enqueue } from '../../offline/sync'
 import { NumberStepper } from '../../ui/NumberStepper'
@@ -64,6 +64,9 @@ export function StockMovementScreen() {
   return (
     <form className="screen" onSubmit={onSubmit}>
       <h2>{t('📦 Mouvement de stock')}</h2>
+      <Link to="/logistique/stocks" className="section-link" style={{ display: 'inline-block', marginBottom: 8 }}>
+        {t('Voir l’état des stocks')} →
+      </Link>
 
       <label htmlFor="stock">{t('Article')}</label>
       <select id="stock" required value={stockId} onChange={(e) => setStockId(e.target.value)}>
