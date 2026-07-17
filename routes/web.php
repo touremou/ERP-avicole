@@ -472,7 +472,12 @@ Route::middleware(['auth'])->group(function () {
         Route::patch('/incidents/{incident}/quarantine', [\App\Http\Controllers\HealthIncidentController::class, 'toggleQuarantine'])->name('incidents.quarantine')->middleware('can:M');
     });
 
-    Route::middleware('can:L')->resource('daily-checks', DailyCheckController::class);
+    // Verrou de route par verbe (défense en profondeur, en plus des gates du
+    // contrôleur) : lecture = L, création = C, édition = M, suppression = S.
+    Route::middleware('can:L')->resource('daily-checks', DailyCheckController::class)
+        ->middlewareFor(['create', 'store'], 'can:C')
+        ->middlewareFor(['edit', 'update'], 'can:M')
+        ->middlewareFor('destroy', 'can:S');
 
     // ─── PROTOCOLES ───
     Route::middleware(['auth', 'can:C'])->group(function () {
@@ -483,7 +488,12 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/step/{step}', [ProtocolController::class, 'destroyStep'])->name('protocols.destroyStep');
     });
 
-    Route::middleware(['auth', 'can:L'])->resource('protocols', ProtocolController::class);
+    // Verrou de route par verbe (défense en profondeur) : store = C, édition = M,
+    // suppression = S ; lecture (index/show) au niveau L.
+    Route::middleware(['auth', 'can:L'])->resource('protocols', ProtocolController::class)
+        ->middlewareFor('store', 'can:C')
+        ->middlewareFor(['edit', 'update'], 'can:M')
+        ->middlewareFor('destroy', 'can:S');
 
     // ─── API INDEXEDDB (données du mode terrain) ───
     Route::middleware(['force.json', 'auth'])->prefix('api/offline')->name('offline.')->group(function () {
