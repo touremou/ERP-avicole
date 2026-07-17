@@ -19,6 +19,14 @@ export const en: Record<string, string> = {
   'Variété': 'Variety',
   'Cycle': 'Cycle',
   'Seuil': 'Threshold',
+  // Courbes temporelles 7 jours des journaux
+  '7 derniers jours': 'Last 7 days',
+  'Courbe 7 jours': '7-day trend',
+  'CA · 7 jours': 'Revenue · 7 days',
+  'Net · 7 jours': 'Net · 7 days',
+  'Production · 7 jours': 'Output · 7 days',
+  'Abattus · 7 jours': 'Slaughtered · 7 days',
+  'Récoltes · 7 jours': 'Harvests · 7 days',
   // Filtres des journaux
   'Hier': 'Yesterday',
   '7 jours': '7 days',

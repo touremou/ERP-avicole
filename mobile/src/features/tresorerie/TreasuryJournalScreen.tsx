@@ -11,6 +11,7 @@ import { getMeta, setMeta } from '../../offline/db'
 import { t, dateLocale } from '../../i18n'
 import { FilterChips } from '../../ui/FilterChips'
 import { BarBreakdown } from '../../ui/BarBreakdown'
+import { TimeSeriesChart } from '../../ui/TimeSeriesChart'
 import { PeriodSelector } from '../../ui/PeriodSelector'
 import { ExportButton } from '../../ui/ExportButton'
 import { toCsv, exportOrShare, dateStamp } from '../../ui/exportShare'
@@ -121,6 +122,7 @@ export function TreasuryJournalScreen() {
       )}
 
       <div className="section-head"><h3>{t('Mouvements du jour')}</h3><span className="section-count">{movements.length}</span></div>
+      {period === '7days' && data?.series && <TimeSeriesChart points={data.series} title={t('Net · 7 jours')} />}
       {allMovements.length > 0 && <BarBreakdown items={breakdown} />}
       {allMovements.length > 0 && <FilterChips options={chips} active={dir} onChange={setDir} />}
       {loading && !data ? (

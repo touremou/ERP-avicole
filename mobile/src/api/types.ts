@@ -235,9 +235,15 @@ export interface SaleJournalEntry {
   created_at: string | null
 }
 
+export interface SeriesPoint {
+  date: string
+  value: number
+}
+
 export interface SalesJournalResponse {
   sales: SaleJournalEntry[]
   summary: { count: number; total: number; paid: number; remaining: number }
+  series?: SeriesPoint[]
   server_time: string
 }
 
@@ -255,6 +261,7 @@ export interface HarvestEntry {
 export interface HarvestJournalResponse {
   harvests: HarvestEntry[]
   summary: { count: number; total_weight_kg: number }
+  series?: SeriesPoint[]
   server_time: string
 }
 
@@ -271,6 +278,7 @@ export interface SlaughterOrderEntry {
 export interface SlaughterJournalResponse {
   orders: SlaughterOrderEntry[]
   summary: { total: number; done: number; planned: number; blocked: number; slaughtered: number; live_weight_kg: number }
+  series?: SeriesPoint[]
   server_time: string
 }
 
@@ -287,6 +295,7 @@ export interface MillProductionEntry {
 export interface MillJournalResponse {
   productions: MillProductionEntry[]
   summary: { total: number; done: number; in_progress: number; planned: number; total_kg: number }
+  series?: SeriesPoint[]
   server_time: string
 }
 
@@ -313,6 +322,7 @@ export interface TreasuryJournalResponse {
   summary: { in: number; out: number; net: number }
   accounts: TreasuryAccountBalance[]
   total_balance: number
+  series?: SeriesPoint[]
   server_time: string
 }
 

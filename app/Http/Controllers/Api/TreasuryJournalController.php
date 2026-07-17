@@ -37,6 +37,15 @@ class TreasuryJournalController extends Controller
         $in = (float) $movements->where('direction', 'in')->sum('amount');
         $out = (float) $movements->where('direction', 'out')->sum('amount');
 
+        // Série journalière : flux net (entrées − sorties) par jour.
+        $buckets = JournalPeriod::dailyBuckets($period['start'], $period['end']);
+        foreach ($movements as $tx) {
+            $day = $tx->transaction_date?->toDateString();
+            if ($day !== null && isset($buckets[$day])) {
+                $buckets[$day] += ($tx->direction === 'in' ? 1 : -1) * (float) $tx->amount;
+            }
+        }
+
         $accounts = TreasuryAccount::query()
             ->orderByDesc('is_active')
             ->orderBy('name')
@@ -65,6 +74,7 @@ class TreasuryJournalController extends Controller
                 'is_active' => (bool) $account->is_active,
             ])->values(),
             'total_balance' => (float) $accounts->where('is_active', true)->sum('current_balance'),
+            'series'        => JournalPeriod::series($buckets),
             'period'        => ['key' => $period['key'], 'label' => $period['label']],
             'server_time'   => now()->toIso8601String(),
         ]);

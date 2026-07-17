@@ -41,6 +41,15 @@ class SaleJournalController extends Controller
         // livrées), les brouillons/annulées n'entrent pas dans le chiffre.
         $counted = $sales->whereIn('status', ['valide', 'livre']);
 
+        // Série journalière : CA par jour (ventes engagées) sur la plage.
+        $buckets = JournalPeriod::dailyBuckets($period['start'], $period['end']);
+        foreach ($counted as $sale) {
+            $day = $sale->sale_date?->toDateString();
+            if ($day !== null && isset($buckets[$day])) {
+                $buckets[$day] += (float) $sale->total_amount;
+            }
+        }
+
         return response()->json([
             'sales' => $sales->map(fn (Sale $sale) => [
                 'id'             => $sale->id,
@@ -60,6 +69,7 @@ class SaleJournalController extends Controller
                 'paid'      => (float) $counted->sum('paid_amount'),
                 'remaining' => (float) $counted->sum(fn (Sale $s) => $s->remaining_amount),
             ],
+            'series'      => JournalPeriod::series($buckets),
             'period'      => ['key' => $period['key'], 'label' => $period['label']],
             'server_time' => now()->toIso8601String(),
         ]);

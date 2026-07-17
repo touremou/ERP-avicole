@@ -10,6 +10,7 @@ import { getMeta, setMeta } from '../../offline/db'
 import { t, dateLocale } from '../../i18n'
 import { FilterChips } from '../../ui/FilterChips'
 import { BarBreakdown } from '../../ui/BarBreakdown'
+import { TimeSeriesChart } from '../../ui/TimeSeriesChart'
 import { PeriodSelector } from '../../ui/PeriodSelector'
 import { ExportButton } from '../../ui/ExportButton'
 import { toCsv, exportOrShare, dateStamp } from '../../ui/exportShare'
@@ -103,6 +104,7 @@ export function HarvestJournalScreen() {
         </div>
       )}
 
+      {period === '7days' && data?.series && <TimeSeriesChart points={data.series} unit="kg" title={t('Récoltes · 7 jours')} />}
       {byCrop.length > 0 && <BarBreakdown items={byCrop} unit="kg" />}
       {chips.length > 1 && <FilterChips options={chips} active={crop} onChange={setCrop} />}
 

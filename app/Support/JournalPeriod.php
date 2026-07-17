@@ -41,4 +41,36 @@ class JournalPeriod
             ],
         };
     }
+
+    /**
+     * Série journalière (Y-m-d) couvrant la plage, valeurs à 0. Sert à
+     * construire les graphiques temporels : on la remplit ensuite par jour.
+     *
+     * @return array<string, float>
+     */
+    public static function dailyBuckets(Carbon $start, Carbon $end): array
+    {
+        $buckets = [];
+        for ($day = $start->copy()->startOfDay(); $day->lte($end); $day->addDay()) {
+            $buckets[$day->toDateString()] = 0.0;
+        }
+
+        return $buckets;
+    }
+
+    /**
+     * Sérialise des buckets {date => valeur} en liste [{date, value}] ordonnée.
+     *
+     * @param array<string, float> $buckets
+     * @return list<array{date: string, value: float}>
+     */
+    public static function series(array $buckets): array
+    {
+        $out = [];
+        foreach ($buckets as $date => $value) {
+            $out[] = ['date' => $date, 'value' => round((float) $value, 2)];
+        }
+
+        return $out;
+    }
 }

@@ -254,6 +254,11 @@ h3 {
 }
 .sparkline { display: block; width: 100%; height: auto; margin-top: 6px; }
 
+/* Courbe temporelle 7 jours (SVG) des journaux */
+.tschart { display: block; width: 100%; height: auto; margin-top: 6px; }
+.tschart-x { font-size: 8px; fill: var(--muted, #94a3b8); font-weight: 700; }
+.tschart-val { font-size: 10px; fill: #2563eb; font-weight: 800; }
+
 /* Bouton Exporter / Partager des journaux */
 .export-btn {
   align-self: flex-start; border: 1px solid var(--line); background: var(--surface);

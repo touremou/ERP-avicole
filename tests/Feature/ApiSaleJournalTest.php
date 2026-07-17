@@ -115,4 +115,12 @@ test('le paramètre period sélectionne la fenêtre (today / yesterday / 7days)'
 
     $week = $this->getJson('/api/v1/sales/today?period=7days')->assertOk()->json();
     expect($week['sales'])->toHaveCount(2)->and($week['period']['key'])->toBe('7days');
+
+    // Série journalière sur 7 jours : un point par jour, CA ventilé.
+    expect($week['series'])->toHaveCount(7);
+    $today = now()->toDateString();
+    $yesterday = now()->subDay()->toDateString();
+    $byDate = collect($week['series'])->keyBy('date');
+    expect((float) $byDate[$today]['value'])->toEqual(10000.0)
+        ->and((float) $byDate[$yesterday]['value'])->toEqual(20000.0);
 });
