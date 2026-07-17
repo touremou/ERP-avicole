@@ -5,6 +5,19 @@
  * orpheline des deux côtés au moment de la génération).
  */
 export const en: Record<string, string> = {
+  // Fiche lot enrichie (Élevage)
+  'Performance': 'Performance',
+  'GMQ g/j': 'ADG g/d',
+  'Poids kg': 'Weight kg',
+  'Morts cumul': 'Deaths total',
+  'Taux mort.': 'Mortality',
+  'Courbe de poids (kg)': 'Weight curve (kg)',
+  'Courbe de poids': 'Weight curve',
+  'Derniers pointages': 'Recent checks',
+  ':n mort(s)': ':n death(s)',
+  '0 mort': '0 death',
+  ':n kg alim.': ':n kg feed',
+  'hors-ligne': 'offline',
   // Journal des ventes (Commerce)
   'Ventes du jour': "Today's sales",
   'Voir le journal du jour': "View today's journal",

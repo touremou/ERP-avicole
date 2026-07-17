@@ -9,6 +9,7 @@ import { useAuth } from '../../app/AuthContext'
 import { db } from '../../offline/db'
 import { t } from '../../i18n'
 import type { RefBatch, RefBuilding, RefProductionType } from '../../api/types'
+import { BatchHistory } from './BatchHistory'
 
 export function BatchScreen() {
   const { batchId } = useParams()
@@ -92,6 +93,9 @@ export function BatchScreen() {
           <span className="task-meta">{t('symptômes · photo')}</span>
         </Link>
       )}
+
+      {/* Consultation enrichie : indicateurs + courbe de poids + historique. */}
+      <BatchHistory batchId={batch.id} />
     </div>
   )
 }

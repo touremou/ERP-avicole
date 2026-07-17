@@ -241,6 +241,35 @@ export interface SalesJournalResponse {
   server_time: string
 }
 
+export interface BatchCheck {
+  date: string | null
+  weight: number | null
+  mortality: number
+  feed: number | null
+  water: number | null
+  health: string | null
+}
+
+export interface BatchHistoryResponse {
+  batch: {
+    id: number
+    code: string
+    status: string
+    building: string | null
+    age: number
+    initial_quantity: number
+    current_quantity: number
+    total_mortality: number
+    mortality_rate: number
+    avg_weight_start: number | null
+    latest_weight: number | null
+    gmq: number | null
+    is_gmq_tracked: boolean
+  }
+  checks: BatchCheck[]
+  server_time: string
+}
+
 export interface RefProductionType {
   id: number
   slug: string
