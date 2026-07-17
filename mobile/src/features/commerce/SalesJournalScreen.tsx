@@ -12,6 +12,8 @@ import { t, dateLocale } from '../../i18n'
 import { FilterChips } from '../../ui/FilterChips'
 import { BarBreakdown } from '../../ui/BarBreakdown'
 import { PeriodSelector } from '../../ui/PeriodSelector'
+import { ExportButton } from '../../ui/ExportButton'
+import { toCsv, exportOrShare, dateStamp } from '../../ui/exportShare'
 import type { SalesJournalResponse, SaleJournalEntry } from '../../api/types'
 
 const CACHE_KEY = 'sales_journal_today'
@@ -80,6 +82,14 @@ export function SalesJournalScreen() {
     { key: 'impaye', label: t('Impayé'), count: allSales.filter((s) => s.payment_status === 'impaye').length },
   ]
 
+  function handleExport() {
+    const csv = toCsv(
+      [t('Référence'), t('Client'), t('Statut'), t('Total'), t('Payé'), t('Reste dû'), t('Paiement')],
+      sales.map((s) => [s.reference, s.client_name ?? '', t(s.status), s.total_amount, s.paid_amount, s.remaining, s.payment_status]),
+    )
+    void exportOrShare(`ventes_${period}_${dateStamp()}.csv`, csv, t('Ventes du jour'))
+  }
+
   return (
     <div className="screen">
       <div className="welcome">
@@ -91,6 +101,7 @@ export function SalesJournalScreen() {
       </div>
 
       <PeriodSelector period={period} onChange={setPeriod} />
+      <ExportButton onExport={handleExport} disabled={sales.length === 0} />
 
       {summary && (
         <div className="kpi-grid">

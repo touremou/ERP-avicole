@@ -12,6 +12,8 @@ import { t, dateLocale } from '../../i18n'
 import { FilterChips } from '../../ui/FilterChips'
 import { BarBreakdown } from '../../ui/BarBreakdown'
 import { PeriodSelector } from '../../ui/PeriodSelector'
+import { ExportButton } from '../../ui/ExportButton'
+import { toCsv, exportOrShare, dateStamp } from '../../ui/exportShare'
 import type { MillJournalResponse, MillProductionEntry } from '../../api/types'
 
 const CACHE_KEY = 'mill_journal_today'
@@ -80,6 +82,14 @@ export function MillJournalScreen() {
     { key: 'Planifié', label: t('Planifié'), count: countBy('Planifié') },
   ]
 
+  function handleExport() {
+    const csv = toCsv(
+      [t('OP'), t('Formule'), t('Statut'), t('kg produits')],
+      productions.map((op) => [op.batch_number, op.formula ?? '', t(op.status), op.quantity_produced]),
+    )
+    void exportOrShare(`provenderie_${period}_${dateStamp()}.csv`, csv, t('Production du jour'))
+  }
+
   return (
     <div className="screen">
       <div className="welcome">
@@ -91,6 +101,7 @@ export function MillJournalScreen() {
       </div>
 
       <PeriodSelector period={period} onChange={setPeriod} />
+      <ExportButton onExport={handleExport} disabled={productions.length === 0} />
 
       {summary && (
         <div className="kpi-grid">

@@ -11,6 +11,8 @@ import { t, dateLocale } from '../../i18n'
 import { FilterChips } from '../../ui/FilterChips'
 import { BarBreakdown } from '../../ui/BarBreakdown'
 import { PeriodSelector } from '../../ui/PeriodSelector'
+import { ExportButton } from '../../ui/ExportButton'
+import { toCsv, exportOrShare, dateStamp } from '../../ui/exportShare'
 import type { HarvestJournalResponse, HarvestEntry } from '../../api/types'
 
 const CACHE_KEY = 'harvest_journal_today'
@@ -73,6 +75,14 @@ export function HarvestJournalScreen() {
     ]
   }, [allHarvests])
 
+  function handleExport() {
+    const csv = toCsv(
+      [t('Culture'), t('Variété'), t('Cycle'), t('Quantité'), t('Unité'), t('Qualité')],
+      harvests.map((h) => [h.crop ?? '', h.variety ?? '', h.cycle_code ?? '', h.quantity, h.unit, h.quality ?? '']),
+    )
+    void exportOrShare(`recoltes_${period}_${dateStamp()}.csv`, csv, t('Récoltes du jour'))
+  }
+
   return (
     <div className="screen">
       <div className="welcome">
@@ -84,6 +94,7 @@ export function HarvestJournalScreen() {
       </div>
 
       <PeriodSelector period={period} onChange={setPeriod} />
+      <ExportButton onExport={handleExport} disabled={harvests.length === 0} />
 
       {summary && (
         <div className="kpi-grid">

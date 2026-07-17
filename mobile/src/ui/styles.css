@@ -254,6 +254,14 @@ h3 {
 }
 .sparkline { display: block; width: 100%; height: auto; margin-top: 6px; }
 
+/* Bouton Exporter / Partager des journaux */
+.export-btn {
+  align-self: flex-start; border: 1px solid var(--line); background: var(--surface);
+  color: var(--text, inherit); border-radius: 999px; padding: 7px 14px;
+  font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.03em; cursor: pointer;
+}
+.export-btn:disabled { opacity: 0.4; cursor: default; }
+
 /* Mini-graphique en barres (répartition des journaux) */
 .bars {
   background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-card);

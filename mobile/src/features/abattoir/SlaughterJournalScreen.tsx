@@ -12,6 +12,8 @@ import { t, dateLocale } from '../../i18n'
 import { FilterChips } from '../../ui/FilterChips'
 import { BarBreakdown } from '../../ui/BarBreakdown'
 import { PeriodSelector } from '../../ui/PeriodSelector'
+import { ExportButton } from '../../ui/ExportButton'
+import { toCsv, exportOrShare, dateStamp } from '../../ui/exportShare'
 import type { SlaughterJournalResponse, SlaughterOrderEntry } from '../../api/types'
 
 const CACHE_KEY = 'slaughter_journal_today'
@@ -85,6 +87,14 @@ export function SlaughterJournalScreen() {
     { key: 'bloque', label: t('Bloqué'), count: countBy('bloque') },
   ]
 
+  function handleExport() {
+    const csv = toCsv(
+      [t('Ordre'), t('Lot'), t('Client'), t('Statut'), t('prévus'), t('abattus')],
+      orders.map((o) => [o.order_number, o.batch ?? '', o.client ?? '', t(STATUS_LABEL[o.status] ?? o.status), o.planned_quantity, o.actual_quantity ?? '']),
+    )
+    void exportOrShare(`abattoir_${period}_${dateStamp()}.csv`, csv, t('Abattage du jour'))
+  }
+
   return (
     <div className="screen">
       <div className="welcome">
@@ -96,6 +106,7 @@ export function SlaughterJournalScreen() {
       </div>
 
       <PeriodSelector period={period} onChange={setPeriod} />
+      <ExportButton onExport={handleExport} disabled={orders.length === 0} />
 
       {summary && (
         <div className="kpi-grid">
