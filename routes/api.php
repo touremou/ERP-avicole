@@ -65,6 +65,9 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         // Journal des ventes du jour (consultation commerce.L).
         Route::get('/sales/today', [\App\Http\Controllers\Api\SaleJournalController::class, 'today'])->name('sales.today');
 
+        // Journal de trésorerie du jour (consultation tresorerie.L).
+        Route::get('/treasury/today', [\App\Http\Controllers\Api\TreasuryJournalController::class, 'today'])->name('treasury.today');
+
         // Photos terrain (téléversées AVANT le push de l'op qui les référence).
         Route::post('/photos', [\App\Http\Controllers\Api\PhotoController::class, 'store'])
             ->middleware('throttle:30,1')

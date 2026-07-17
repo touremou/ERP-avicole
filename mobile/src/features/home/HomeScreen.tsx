@@ -153,6 +153,24 @@ export function HomeScreen() {
         </div>
       )}
 
+      {/* Consultation : journaux du jour + états, selon les droits (lecture). */}
+      {(can('commerce', 'L') || can('tresorerie', 'L') || can('logistique', 'L')) && (
+        <section>
+          <div className="section-head"><h3>{t('Consultation')}</h3></div>
+          <div className="consult-grid">
+            {can('commerce', 'L') && (
+              <Link to="/commerce/journal" className="consult-card"><span className="consult-ico">🧾</span>{t('Ventes du jour')}</Link>
+            )}
+            {can('tresorerie', 'L') && (
+              <Link to="/tresorerie/journal" className="consult-card"><span className="consult-ico">💰</span>{t('Trésorerie du jour')}</Link>
+            )}
+            {can('logistique', 'L') && (
+              <Link to="/logistique/stocks" className="consult-card"><span className="consult-ico">📦</span>{t('Stocks')}</Link>
+            )}
+          </div>
+        </section>
+      )}
+
       {/* Aperçu des dernières alertes */}
       {alerts.length > 0 && (
         <section>

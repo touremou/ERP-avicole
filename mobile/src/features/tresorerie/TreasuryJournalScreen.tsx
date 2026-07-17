@@ -1,0 +1,113 @@
+/**
+ * Journal de trésorerie du jour (Trésorerie) — consultation mobile.
+ *
+ * Récap (encaissé / décaissé / net) + soldes courants par compte + liste des
+ * mouvements du jour. Rafraîchi en ligne ; dernier instantané en cache (meta)
+ * pour rester consultable hors-ligne.
+ */
+import { useEffect, useState } from 'react'
+import { api } from '../../api/client'
+import { getMeta, setMeta } from '../../offline/db'
+import { t, dateLocale } from '../../i18n'
+import type { TreasuryJournalResponse, TreasuryMovement } from '../../api/types'
+
+const CACHE_KEY = 'treasury_journal_today'
+
+const TYPE_ICON: Record<string, string> = {
+  caisse: '💵',
+  mobile_money: '📱',
+  banque: '🏦',
+  autre: '💼',
+}
+
+function nf(value: number): string {
+  return new Intl.NumberFormat('fr-FR').format(Math.round(value))
+}
+
+export function TreasuryJournalScreen() {
+  const [data, setData] = useState<TreasuryJournalResponse | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [offline, setOffline] = useState(false)
+
+  useEffect(() => {
+    void (async () => {
+      const cached = await getMeta<TreasuryJournalResponse>(CACHE_KEY)
+      if (cached) setData(cached)
+      if (navigator.onLine) {
+        try {
+          const fresh = await api.treasuryToday()
+          setData(fresh)
+          await setMeta(CACHE_KEY, fresh)
+          setOffline(false)
+        } catch {
+          setOffline(true)
+        }
+      } else {
+        setOffline(true)
+      }
+      setLoading(false)
+    })()
+  }, [])
+
+  const summary = data?.summary
+  const movements: TreasuryMovement[] = data?.movements ?? []
+
+  return (
+    <div className="screen">
+      <div className="welcome">
+        <h2>{t('Trésorerie du jour')} 💰</h2>
+        <span className="welcome-sub">
+          {new Date().toLocaleDateString(dateLocale(), { weekday: 'long', day: 'numeric', month: 'long' })}
+          {offline ? ' · ' + t('hors-ligne (dernier instantané)') : ''}
+        </span>
+      </div>
+
+      {summary && (
+        <div className="kpi-grid">
+          <div className="kpi"><div className="kpi-val">{nf(summary.in)}</div><div className="kpi-lab">{t('Encaissé')}</div></div>
+          <div className="kpi"><div className="kpi-val">{nf(summary.out)}</div><div className="kpi-lab">{t('Décaissé')}</div></div>
+          <div className={`kpi ${summary.net < 0 ? 'kpi--alert' : ''}`}><div className="kpi-val">{nf(summary.net)}</div><div className="kpi-lab">{t('Net du jour')}</div></div>
+          {data && <div className="kpi"><div className="kpi-val">{nf(data.total_balance)}</div><div className="kpi-lab">{t('Solde total')}</div></div>}
+        </div>
+      )}
+
+      {data && data.accounts.length > 0 && (
+        <section>
+          <div className="section-head"><h3>{t('Soldes par compte')}</h3></div>
+          {data.accounts.map((account) => (
+            <div key={account.id} className={`task-row ${account.is_active ? '' : 'task-muted'}`}>
+              <div className="task-row__body">
+                <span className="task-title">{TYPE_ICON[account.type] ?? '💼'} {account.name}</span>
+              </div>
+              <div className="stock-qty"><span className="stock-qty__val">{nf(account.balance)}</span></div>
+            </div>
+          ))}
+        </section>
+      )}
+
+      <div className="section-head"><h3>{t('Mouvements du jour')}</h3><span className="section-count">{movements.length}</span></div>
+      {loading && !data ? (
+        <div className="ok-card ok-muted">{t('Chargement…')}</div>
+      ) : movements.length === 0 ? (
+        <div className="ok-card">✓ {t('Aucun mouvement aujourd’hui.')}</div>
+      ) : (
+        movements.map((mv) => (
+          <div key={mv.id} className="task-row">
+            <div className="task-row__body">
+              <span className="task-title">{mv.account ?? '—'}</span>
+              <span className="task-meta">
+                {mv.created_at ? new Date(mv.created_at).toLocaleTimeString(dateLocale(), { hour: '2-digit', minute: '2-digit' }) + ' · ' : ''}
+                {mv.description || t(mv.category ?? 'divers')}
+              </span>
+            </div>
+            <div className="stock-qty">
+              <span className={`stock-qty__val ${mv.direction === 'in' ? 'amount-in' : 'amount-out'}`}>
+                {mv.direction === 'in' ? '+' : '−'}{nf(mv.amount)}
+              </span>
+            </div>
+          </div>
+        ))
+      )}
+    </div>
+  )
+}

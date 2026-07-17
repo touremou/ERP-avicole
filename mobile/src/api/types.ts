@@ -241,6 +241,32 @@ export interface SalesJournalResponse {
   server_time: string
 }
 
+export interface TreasuryMovement {
+  id: number
+  account: string | null
+  direction: 'in' | 'out'
+  amount: number
+  category: string | null
+  description: string | null
+  created_at: string | null
+}
+
+export interface TreasuryAccountBalance {
+  id: number
+  name: string
+  type: string
+  balance: number
+  is_active: boolean
+}
+
+export interface TreasuryJournalResponse {
+  movements: TreasuryMovement[]
+  summary: { in: number; out: number; net: number }
+  accounts: TreasuryAccountBalance[]
+  total_balance: number
+  server_time: string
+}
+
 export interface BatchCheck {
   date: string | null
   weight: number | null

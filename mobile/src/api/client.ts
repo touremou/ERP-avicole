@@ -15,6 +15,7 @@ import type {
   BatchHistoryResponse,
   NotificationsResponse,
   SalesJournalResponse,
+  TreasuryJournalResponse,
   PhotoUploadResponse,
   PushOperation,
   PushResponse,
@@ -105,6 +106,8 @@ export const api = {
   tasks: () => request<TasksResponse>('/tasks'),
 
   salesToday: () => request<SalesJournalResponse>('/sales/today'),
+
+  treasuryToday: () => request<TreasuryJournalResponse>('/treasury/today'),
 
   batchHistory: (id: number) => request<BatchHistoryResponse>(`/batches/${id}/history`),
 
