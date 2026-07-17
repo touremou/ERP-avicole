@@ -43,6 +43,8 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         // Gestion du profil depuis « Mon espace » (mobile).
         Route::patch('/auth/profile', [AuthController::class, 'updateProfile'])->name('auth.profile.update');
         Route::patch('/auth/password', [AuthController::class, 'updatePassword'])->name('auth.password.update');
+        Route::post('/auth/avatar', [AuthController::class, 'updateAvatar'])->name('auth.avatar.update');
+        Route::delete('/auth/avatar', [AuthController::class, 'deleteAvatar'])->name('auth.avatar.delete');
 
         // Appareils connectés (un token Sanctum = un device) : liste +
         // révocation à distance (téléphone perdu). L'appareil courant se

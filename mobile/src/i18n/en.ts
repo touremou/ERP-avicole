@@ -379,6 +379,11 @@ export const en: Record<string, string> = {
   'Révoquer': 'Revoke',
   'Confirmer': 'Confirm',
   'Révocation…': 'Revoking…',
+  // Photo de profil (Mon espace)
+  'Ajouter une photo': 'Add a photo',
+  'Changer la photo': 'Change photo',
+  'Retirer': 'Remove',
+  'Envoi…': 'Uploading…',
   // Édition du profil (Mon espace)
   'Mon profil': 'My profile',
   'Téléphone': 'Phone',

@@ -103,6 +103,23 @@ export const api = {
       body: JSON.stringify(body),
     }),
 
+  /** Photo de profil — multipart (le navigateur pose le boundary). */
+  updateAvatar: async (blob: Blob): Promise<{ user: ApiUser }> => {
+    const token = (await db.meta.get('token'))?.value as string | undefined
+    const form = new FormData()
+    form.append('photo', blob, 'avatar.jpg')
+    const response = await fetch(`${BASE}/auth/avatar`, {
+      method: 'POST',
+      headers: { Accept: 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      body: form,
+    })
+    const body = await response.json().catch(() => ({}))
+    if (!response.ok) throw new ApiError(response.status, body.message ?? `Erreur ${response.status}`, body.errors)
+    return body as { user: ApiUser }
+  },
+
+  deleteAvatar: () => request<{ user: ApiUser }>('/auth/avatar', { method: 'DELETE' }),
+
   devices: () => request<{ devices: DeviceInfo[] }>('/devices'),
 
   revokeDevice: (id: number) =>

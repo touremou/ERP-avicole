@@ -8,6 +8,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
@@ -133,6 +134,49 @@ class AuthController extends Controller
         return response()->json(['message' => __('Mot de passe mis à jour.')]);
     }
 
+    /**
+     * Photo de profil : téléverse une image, remplace l'ancienne (nettoyage du
+     * fichier précédent) et renvoie le profil à jour (avatar_url).
+     */
+    public function updateAvatar(Request $request): JsonResponse
+    {
+        $request->validate([
+            // 5 Mo max ; le client compresse déjà (avatar ~512 px).
+            'photo' => ['required', 'image', 'max:5120'],
+        ]);
+
+        $user = $request->user();
+        $old = $user->avatar_path;
+
+        $path = $request->file('photo')->store('avatars', 'public');
+        $user->update(['avatar_path' => $path]);
+
+        if ($old && $old !== $path) {
+            Storage::disk('public')->delete($old);
+        }
+
+        return response()->json([
+            'user'        => $this->userPayload($user->fresh()),
+            'server_time' => now()->toIso8601String(),
+        ]);
+    }
+
+    /** Retrait de la photo de profil (retour aux initiales). */
+    public function deleteAvatar(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        if ($user->avatar_path) {
+            Storage::disk('public')->delete($user->avatar_path);
+            $user->update(['avatar_path' => null]);
+        }
+
+        return response()->json([
+            'user'        => $this->userPayload($user->fresh()),
+            'server_time' => now()->toIso8601String(),
+        ]);
+    }
+
     private function userPayload(User $user): array
     {
         $user->loadMissing('userRole');
@@ -143,6 +187,8 @@ class AuthController extends Controller
             'email' => $user->email,
             // Téléphone WhatsApp : sert à préremplir l'éditeur de profil mobile.
             'phone' => $user->whatsapp_phone,
+            // Photo de profil (null → le client retombe sur les initiales).
+            'avatar_url' => $user->avatar_path ? asset('storage/' . $user->avatar_path) : null,
             'role' => $user->userRole?->name,
             // Langue du profil web : la PWA l'adopte (sauf choix manuel local).
             'locale' => $user->locale,

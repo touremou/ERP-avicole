@@ -29,7 +29,7 @@ class User extends Authenticatable
     }
 
     protected $fillable = [
-        'name', 'email', 'password', 'role_id', 'whatsapp_phone', 'is_active', 'locale',
+        'name', 'email', 'password', 'role_id', 'whatsapp_phone', 'is_active', 'locale', 'avatar_path',
     ];
 
     protected $hidden = [

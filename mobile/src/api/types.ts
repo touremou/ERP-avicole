@@ -16,6 +16,8 @@ export interface ApiUser {
   email: string
   /** Téléphone WhatsApp (users.whatsapp_phone) — préremplit l'éditeur de profil. */
   phone?: string | null
+  /** URL de la photo de profil (null → le client affiche les initiales). */
+  avatar_url?: string | null
   role: string | null
   /** Langue du profil web (users.locale) — adoptée par la PWA au login. */
   locale?: string | null
