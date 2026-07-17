@@ -5,10 +5,12 @@
  * mouvements du jour. Rafraîchi en ligne ; dernier instantané en cache (meta)
  * pour rester consultable hors-ligne.
  */
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { api } from '../../api/client'
 import { getMeta, setMeta } from '../../offline/db'
 import { t, dateLocale } from '../../i18n'
+import { FilterChips } from '../../ui/FilterChips'
+import { BarBreakdown } from '../../ui/BarBreakdown'
 import type { TreasuryJournalResponse, TreasuryMovement } from '../../api/types'
 
 const CACHE_KEY = 'treasury_journal_today'
@@ -28,6 +30,7 @@ export function TreasuryJournalScreen() {
   const [data, setData] = useState<TreasuryJournalResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [offline, setOffline] = useState(false)
+  const [dir, setDir] = useState('all')
 
   useEffect(() => {
     void (async () => {
@@ -50,7 +53,22 @@ export function TreasuryJournalScreen() {
   }, [])
 
   const summary = data?.summary
-  const movements: TreasuryMovement[] = data?.movements ?? []
+  const allMovements: TreasuryMovement[] = data?.movements ?? []
+  const movements = useMemo(
+    () => (dir === 'all' ? allMovements : allMovements.filter((m) => m.direction === dir)),
+    [allMovements, dir],
+  )
+  const breakdown = summary
+    ? [
+        { label: t('Encaissé'), value: summary.in, color: '#16a34a' },
+        { label: t('Décaissé'), value: summary.out, color: '#dc2626' },
+      ]
+    : []
+  const chips = [
+    { key: 'all', label: t('Tous'), count: allMovements.length },
+    { key: 'in', label: t('Entrées'), count: allMovements.filter((m) => m.direction === 'in').length },
+    { key: 'out', label: t('Sorties'), count: allMovements.filter((m) => m.direction === 'out').length },
+  ]
 
   return (
     <div className="screen">
@@ -86,6 +104,8 @@ export function TreasuryJournalScreen() {
       )}
 
       <div className="section-head"><h3>{t('Mouvements du jour')}</h3><span className="section-count">{movements.length}</span></div>
+      {allMovements.length > 0 && <BarBreakdown items={breakdown} />}
+      {allMovements.length > 0 && <FilterChips options={chips} active={dir} onChange={setDir} />}
       {loading && !data ? (
         <div className="ok-card ok-muted">{t('Chargement…')}</div>
       ) : movements.length === 0 ? (

@@ -4,10 +4,12 @@
  * Récap (nombre, poids net cumulé) + liste des récoltes du jour. Rafraîchi en
  * ligne, dernier instantané en cache (meta) pour rester consultable hors-ligne.
  */
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { api } from '../../api/client'
 import { getMeta, setMeta } from '../../offline/db'
 import { t, dateLocale } from '../../i18n'
+import { FilterChips } from '../../ui/FilterChips'
+import { BarBreakdown } from '../../ui/BarBreakdown'
 import type { HarvestJournalResponse, HarvestEntry } from '../../api/types'
 
 const CACHE_KEY = 'harvest_journal_today'
@@ -20,6 +22,7 @@ export function HarvestJournalScreen() {
   const [data, setData] = useState<HarvestJournalResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [offline, setOffline] = useState(false)
+  const [crop, setCrop] = useState('all')
 
   useEffect(() => {
     void (async () => {
@@ -42,7 +45,29 @@ export function HarvestJournalScreen() {
   }, [])
 
   const summary = data?.summary
-  const harvests: HarvestEntry[] = data?.harvests ?? []
+  const allHarvests: HarvestEntry[] = data?.harvests ?? []
+  const harvests = useMemo(
+    () => (crop === 'all' ? allHarvests : allHarvests.filter((h) => (h.crop ?? '') === crop)),
+    [allHarvests, crop],
+  )
+
+  // Répartition du poids récolté par culture (graphique).
+  const byCrop = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const h of allHarvests) {
+      const key = h.crop ?? t('Culture')
+      map.set(key, (map.get(key) ?? 0) + h.weight_kg)
+    }
+    return [...map.entries()].map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value)
+  }, [allHarvests])
+
+  const chips = useMemo(() => {
+    const crops = [...new Set(allHarvests.map((h) => h.crop ?? '').filter(Boolean))]
+    return [
+      { key: 'all', label: t('Tous'), count: allHarvests.length },
+      ...crops.map((c) => ({ key: c, label: c, count: allHarvests.filter((h) => h.crop === c).length })),
+    ]
+  }, [allHarvests])
 
   return (
     <div className="screen">
@@ -60,6 +85,9 @@ export function HarvestJournalScreen() {
           <div className="kpi"><div className="kpi-val">{summary.count}</div><div className="kpi-lab">{t('Récoltes')}</div></div>
         </div>
       )}
+
+      {byCrop.length > 0 && <BarBreakdown items={byCrop} unit="kg" />}
+      {chips.length > 1 && <FilterChips options={chips} active={crop} onChange={setCrop} />}
 
       {loading && !data ? (
         <div className="ok-card ok-muted">{t('Chargement…')}</div>

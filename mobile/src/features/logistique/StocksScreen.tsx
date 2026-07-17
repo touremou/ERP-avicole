@@ -10,6 +10,8 @@ import { useAuth } from '../../app/AuthContext'
 import { db } from '../../offline/db'
 import { onSyncChange } from '../../offline/sync'
 import { t } from '../../i18n'
+import { FilterChips } from '../../ui/FilterChips'
+import { BarBreakdown } from '../../ui/BarBreakdown'
 import type { RefStock } from '../../api/types'
 
 const CATEGORY_ICON: Record<string, string> = {
@@ -27,6 +29,7 @@ export function StocksScreen() {
   const { can } = useAuth()
   const [stocks, setStocks] = useState<RefStock[]>([])
   const [query, setQuery] = useState('')
+  const [cat, setCat] = useState('all') // 'all' | 'low' | <catégorie>
 
   useEffect(() => {
     const load = async () => setStocks(await db.ref_stocks.orderBy('item_name').toArray())
@@ -35,14 +38,32 @@ export function StocksScreen() {
     return off
   }, [])
 
+  const lowCount = useMemo(() => stocks.filter(isLow).length, [stocks])
+
+  // Répartition du nombre d'articles par catégorie (graphique).
+  const byCategory = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const s of stocks) map.set(s.category, (map.get(s.category) ?? 0) + 1)
+    return [...map.entries()].map(([label, value]) => ({ label: t(label), value })).sort((a, b) => b.value - a.value)
+  }, [stocks])
+
+  const chips = useMemo(() => {
+    const cats = [...new Set(stocks.map((s) => s.category))]
+    return [
+      { key: 'all', label: t('Tous'), count: stocks.length },
+      { key: 'low', label: t('Seuil bas'), count: lowCount },
+      ...cats.map((c) => ({ key: c, label: t(c), count: stocks.filter((s) => s.category === c).length })),
+    ]
+  }, [stocks, lowCount])
+
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase()
-    const list = needle ? stocks.filter((s) => s.item_name.toLowerCase().includes(needle)) : stocks
+    let list = needle ? stocks.filter((s) => s.item_name.toLowerCase().includes(needle)) : stocks
+    if (cat === 'low') list = list.filter(isLow)
+    else if (cat !== 'all') list = list.filter((s) => s.category === cat)
     // Seuils bas d'abord (les plus urgents en tête).
     return [...list].sort((a, b) => Number(isLow(b)) - Number(isLow(a)))
-  }, [stocks, query])
-
-  const lowCount = useMemo(() => stocks.filter(isLow).length, [stocks])
+  }, [stocks, query, cat])
 
   return (
     <div className="screen">
@@ -66,6 +87,9 @@ export function StocksScreen() {
         onChange={(event) => setQuery(event.target.value)}
         placeholder={t('Rechercher un article…')}
       />
+
+      {stocks.length > 0 && <BarBreakdown items={byCategory} />}
+      {stocks.length > 0 && <FilterChips options={chips} active={cat} onChange={setCat} />}
 
       {stocks.length === 0 ? (
         <div className="ok-card ok-muted">

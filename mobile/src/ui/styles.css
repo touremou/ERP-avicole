@@ -254,6 +254,17 @@ h3 {
 }
 .sparkline { display: block; width: 100%; height: auto; margin-top: 6px; }
 
+/* Mini-graphique en barres (répartition des journaux) */
+.bars {
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-card);
+  padding: 12px 14px; box-shadow: var(--shadow-card); display: flex; flex-direction: column; gap: 8px;
+}
+.bar-row { display: flex; align-items: center; gap: 8px; }
+.bar-label { flex: 0 0 30%; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bar-track { flex: 1 1 auto; height: 10px; background: var(--line); border-radius: 999px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 999px; transition: width 0.3s; }
+.bar-value { flex: none; font-size: 0.72rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+
 /* Section Consultation (accueil) : cartes d'accès aux journaux/états */
 .consult-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; }
 .consult-card {

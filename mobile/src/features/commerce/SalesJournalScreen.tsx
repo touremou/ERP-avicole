@@ -5,10 +5,12 @@
  * Vue en ligne rafraîchie à l'ouverture ; dernier instantané mis en cache
  * (meta) pour rester consultable hors-ligne, à l'image des autres écrans.
  */
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { api } from '../../api/client'
 import { getMeta, setMeta } from '../../offline/db'
 import { t, dateLocale } from '../../i18n'
+import { FilterChips } from '../../ui/FilterChips'
+import { BarBreakdown } from '../../ui/BarBreakdown'
 import type { SalesJournalResponse, SaleJournalEntry } from '../../api/types'
 
 const CACHE_KEY = 'sales_journal_today'
@@ -27,6 +29,7 @@ export function SalesJournalScreen() {
   const [data, setData] = useState<SalesJournalResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [offline, setOffline] = useState(false)
+  const [pay, setPay] = useState('all')
 
   useEffect(() => {
     void (async () => {
@@ -52,7 +55,28 @@ export function SalesJournalScreen() {
   }, [])
 
   const summary = data?.summary
-  const sales: SaleJournalEntry[] = data?.sales ?? []
+  const allSales: SaleJournalEntry[] = data?.sales ?? []
+  const sales = useMemo(
+    () => (pay === 'all' ? allSales : allSales.filter((s) => s.payment_status === pay)),
+    [allSales, pay],
+  )
+
+  // Répartition du CA par statut de paiement (graphique).
+  const breakdown = useMemo(
+    () => [
+      { label: t('Soldé'), value: allSales.filter((s) => s.payment_status === 'solde').reduce((n, s) => n + s.total_amount, 0), color: '#16a34a' },
+      { label: t('Partiel'), value: allSales.filter((s) => s.payment_status === 'partiel').reduce((n, s) => n + s.total_amount, 0), color: '#d97706' },
+      { label: t('Impayé'), value: allSales.filter((s) => s.payment_status === 'impaye').reduce((n, s) => n + s.total_amount, 0), color: '#dc2626' },
+    ],
+    [allSales],
+  )
+
+  const chips = [
+    { key: 'all', label: t('Tous'), count: allSales.length },
+    { key: 'solde', label: t('Soldé'), count: allSales.filter((s) => s.payment_status === 'solde').length },
+    { key: 'partiel', label: t('Partiel'), count: allSales.filter((s) => s.payment_status === 'partiel').length },
+    { key: 'impaye', label: t('Impayé'), count: allSales.filter((s) => s.payment_status === 'impaye').length },
+  ]
 
   return (
     <div className="screen">
@@ -74,6 +98,9 @@ export function SalesJournalScreen() {
           )}
         </div>
       )}
+
+      {allSales.length > 0 && <BarBreakdown items={breakdown} />}
+      {allSales.length > 0 && <FilterChips options={chips} active={pay} onChange={setPay} />}
 
       {loading && !data ? (
         <div className="ok-card ok-muted">{t('Chargement…')}</div>

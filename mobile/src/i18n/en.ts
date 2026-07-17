@@ -5,6 +5,10 @@
  * orpheline des deux côtés au moment de la génération).
  */
 export const en: Record<string, string> = {
+  // Filtres des journaux
+  'Tous': 'All',
+  'Entrées': 'In',
+  'Sorties': 'Out',
   // Journal des récoltes (Cultures)
   'Récoltes du jour': "Today's harvests",
   'kg récoltés': 'kg harvested',
