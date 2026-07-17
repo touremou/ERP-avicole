@@ -10,7 +10,10 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // 'prompt' : on informe le terrain via un toast « Recharger » plutôt
+      // qu'un rechargement silencieux. La nouvelle version s'active de toute
+      // façon au prochain lancement complet si l'utilisateur ne recharge pas.
+      registerType: 'prompt',
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
         // Jamais de cache HTTP sur l'API : la vérité offline vit dans Dexie

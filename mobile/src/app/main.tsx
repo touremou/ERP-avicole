@@ -1,6 +1,6 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import { registerSW } from 'virtual:pwa-register'
+import { initSwUpdate } from './swUpdate'
 import { App } from './App'
 import { initLocale } from '../i18n'
 // Inter auto-hébergée (bundlée par Vite) : rendu identique hors-ligne, sans CDN.
@@ -11,9 +11,10 @@ import '@fontsource/inter/700.css'
 import '@fontsource/inter/800.css'
 import '../ui/styles.css'
 
-// Service worker : mise à jour silencieuse (autoUpdate) — le terrain a
-// toujours la dernière version au prochain lancement, sans store.
-registerSW({ immediate: true })
+// Service worker en mode « prompt » : un toast « Recharger » signale la
+// nouvelle version (cf. UpdateToast). La version s'active de toute façon au
+// prochain lancement complet — le terrain reste à jour sans store.
+initSwUpdate()
 
 // La langue persistée doit être restaurée AVANT le premier rendu (sinon un
 // flash français précède l'anglais). Offline-safe : simple lecture Dexie.
