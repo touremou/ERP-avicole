@@ -127,8 +127,9 @@ test('sync : pousser un pointage sur le lot d\'une autre ferme n\'affecte PAS ce
         ]],
     ])->assertOk();
 
-    // L'op n'est pas appliquée (lot introuvable dans le périmètre ferme A).
-    expect($response->json('results.0.status'))->not->toBe('success');
+    // Rejet DÈS LA VALIDATION (FK bornée à la ferme courante), pas seulement
+    // en aval : première ligne explicite. L'op n'est jamais appliquée.
+    expect($response->json('results.0.status'))->toBe('validation_failed');
     expect(\App\Models\DailyCheck::withoutGlobalScopes()->where('batch_id', $this->batchB->id)->count())->toBe(0);
 });
 
