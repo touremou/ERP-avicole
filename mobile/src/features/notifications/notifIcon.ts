@@ -7,7 +7,7 @@
 
 const TYPE_ICON: { match: RegExp; icon: string }[] = [
   { match: /mortalit|mortality/, icon: '💀' },
-  { match: /stock|min|threshold/, icon: '📦' },
+  { match: /stock|threshold|alert_min/, icon: '📦' },
   { match: /weather|meteo/, icon: '🌦️' },
   { match: /temperature|temp/, icon: '🌡️' },
   { match: /haccp|ccp|cleaning|hygien/, icon: '🧪' },

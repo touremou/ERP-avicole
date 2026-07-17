@@ -122,6 +122,46 @@ if (! function_exists('media_url')) {
     }
 }
 
+if (! function_exists('notif_icon')) {
+    /**
+     * Icône iconographique d'une notification (cloche web), miroir de la logique
+     * mobile (features/notifications/notifIcon.ts). Le `type` est une chaîne
+     * libre (alert_mortality, stock_low, weather_forecast…) : classement par
+     * mot-clé, avec repli sur l'icône de sévérité.
+     */
+    function notif_icon(?string $type, ?string $severity = null): string
+    {
+        $map = [
+            '/mortalit|mortality/'          => '💀',
+            '/stock|threshold|alert_min/'   => '📦',
+            '/weather|meteo/'               => '🌦️',
+            '/temperature|temp/'            => '🌡️',
+            '/haccp|ccp|cleaning|hygien/'   => '🧪',
+            '/health|sante|vaccin/'         => '🩺',
+            '/leave|conge/'                 => '🌴',
+            '/maintenance|energy|fuel/'     => '🔧',
+            '/payment|paiement|fraud/'      => '💰',
+            '/sale|vente|invoice|bl|pos|dispatch/' => '🧾',
+            '/expense|depense|budget/'      => '💸',
+            '/incident/'                    => '⚠️',
+            '/task|tache/'                  => '📋',
+        ];
+
+        foreach ($map as $pattern => $icon) {
+            if ($type && preg_match($pattern, $type)) {
+                return $icon;
+            }
+        }
+
+        // Repli par sévérité (accepte les libellés web ET mobile).
+        return match ($severity) {
+            'critique', 'critical' => '🔴',
+            'attention', 'warning' => '🟠',
+            default                => '🔔',
+        };
+    }
+}
+
 if (! function_exists('dashboard_block_visible')) {
     /**
      * Indique si un bloc du tableau de bord doit être affiché pour l'utilisateur
