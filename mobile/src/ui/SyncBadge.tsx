@@ -7,11 +7,18 @@ import { useEffect, useState } from 'react'
 import { t } from '../i18n'
 import { getLastSyncError, onSyncChange, syncNow, type SyncState } from '../offline/sync'
 
+const ICONS: Record<SyncState, string> = {
+  idle: '✅',
+  syncing: '🔄',
+  offline: '📴',
+  error: '⚠️',
+}
+
 const LABELS: Record<SyncState, string> = {
-  idle: '✓ Synchronisé',
-  syncing: '⟳ Synchronisation…',
-  offline: '📡 Hors-ligne',
-  error: '⚠️ Erreur réseau',
+  idle: 'Synchronisé',
+  syncing: 'Synchronisation…',
+  offline: 'Hors-ligne',
+  error: 'Erreur réseau',
 }
 
 export function SyncBadge() {
@@ -32,6 +39,8 @@ export function SyncBadge() {
       ? t(':label · :count en attente', { label: t(LABELS[state]), count: pending })
       : t(LABELS[state])
 
+  const icon = ICONS[state]
+
   const onTap = () => {
     // En erreur, on révèle la raison exacte AVANT de retenter (diagnostic terrain).
     if (state === 'error') {
@@ -48,7 +57,8 @@ export function SyncBadge() {
       title={state === 'error' ? getLastSyncError() ?? undefined : undefined}
       onClick={onTap}
     >
-      {label}
+      <span className={`sync-badge__ico ${state === 'syncing' ? 'sync-spin' : ''}`} aria-hidden="true">{icon}</span>
+      <span className="sync-badge__label">{label}</span>
     </button>
   )
 }

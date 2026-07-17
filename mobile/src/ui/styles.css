@@ -117,7 +117,11 @@ body {
   border: none; border-radius: 999px; padding: 8px 13px;
   font-size: 12.5px; font-weight: 700; cursor: pointer;
   min-height: 34px; white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 6px;
 }
+.sync-badge__ico { font-size: 0.95em; line-height: 1; flex: none; }
+.sync-spin { animation: sync-spin 1s linear infinite; }
+@keyframes sync-spin { to { transform: rotate(360deg); } }
 .sync-idle    { background: rgb(255 255 255 / 0.16); color: #fff; }
 .sync-syncing { background: #dbeafe; color: #1e40af; }
 .sync-offline { background: #fef3c7; color: #92400e; }
