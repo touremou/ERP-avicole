@@ -35,6 +35,7 @@ import { TachesScreen } from '../features/taches/TachesScreen'
 import { NotificationsScreen } from '../features/notifications/NotificationsScreen'
 import { BottomNav } from '../ui/BottomNav'
 import { SyncBadge } from '../ui/SyncBadge'
+import { UpdateToast } from '../ui/UpdateToast'
 
 function headerInitials(name: string | null | undefined): string {
   return (name ?? '?')
@@ -146,6 +147,7 @@ export function App() {
           est assuré par mobile/public/.htaccess sur l'hébergement. */}
       <BrowserRouter>
         <Shell />
+        <UpdateToast />
       </BrowserRouter>
     </AuthProvider>
   )

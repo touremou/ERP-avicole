@@ -195,6 +195,10 @@ export const en: Record<string, string> = {
   'Autre': 'Other',
   'Ajouter un article': 'Add an item',
   'Alertes': 'Alerts',
+  // Toast de mise à jour du service worker
+  'Mise à jour disponible': 'Update available',
+  'Recharger': 'Reload',
+  'Fermer': 'Close',
   'Aliment consommé (kg)': 'Feed consumed (kg)',
   'Article': 'Item',
   'Aucun lot local — la synchronisation les rapatriera au premier passage réseau.': 'No local batches — sync will fetch them at the first network window.',
