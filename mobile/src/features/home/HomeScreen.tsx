@@ -97,6 +97,15 @@ export function HomeScreen() {
     window.dispatchEvent(new CustomEvent('tasks:updated'))
   }
 
+  // Initiales de repli quand l'utilisateur n'a pas de photo de profil.
+  const initials = (me?.user.name ?? '?')
+    .split(' ')
+    .map((w) => w[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join('')
+    .toUpperCase()
+
   const canElevage = can('elevage', 'C')
   const canProduction = can('production', 'C')
   const canCultures = can('cultures', 'C')
@@ -199,8 +208,16 @@ export function HomeScreen() {
             const status = ACTIVITY_STATUS[record.sync_status]
             return (
               <div key={record.uuid} className="task-row">
+                <span className="act-avatar" aria-hidden="true">
+                  {me?.user.avatar_url ? (
+                    <img src={me.user.avatar_url} alt="" />
+                  ) : (
+                    <span className="act-avatar__initials">{initials}</span>
+                  )}
+                  <span className="act-avatar__badge">{ACTIVITY_ICON[record.type] ?? '•'}</span>
+                </span>
                 <div className="task-row__body">
-                  <span className="task-title">{ACTIVITY_ICON[record.type] ?? '•'} {record.label}</span>
+                  <span className="task-title">{record.label}</span>
                   <span className="task-meta">{new Date(record.created_at).toLocaleTimeString(dateLocale(), { hour: '2-digit', minute: '2-digit' })}</span>
                 </div>
                 <span className={`act-status ${status.cls}`}>{status.label}</span>

@@ -476,6 +476,21 @@ input:focus, textarea:focus, select:focus {
   text-transform: capitalize;
 }
 
+/* Avatar de l'acteur dans le fil « Activité du jour » (photo + badge de type) */
+.act-avatar {
+  position: relative; width: 38px; height: 38px; flex: none; border-radius: 50%;
+  display: grid; place-items: center; overflow: visible;
+  background: var(--primary); color: #fff;
+}
+.act-avatar img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+.act-avatar__initials { font-size: 0.78rem; font-weight: 800; letter-spacing: 0.02em; }
+.act-avatar__badge {
+  position: absolute; right: -3px; bottom: -3px;
+  width: 18px; height: 18px; border-radius: 50%;
+  display: grid; place-items: center; font-size: 0.62rem;
+  background: var(--surface); box-shadow: 0 0 0 1.5px var(--surface);
+}
+
 /* Pastilles de statut d'activité (Mon espace) */
 .act-status {
   font-size: 0.72rem; font-weight: 700; white-space: nowrap;
