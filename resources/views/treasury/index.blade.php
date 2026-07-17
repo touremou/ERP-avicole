@@ -42,7 +42,7 @@
                 @endforelse
             </div>
 
-            @can('depenses.C')
+            @can('tresorerie.C')
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {{-- NOUVEAU COMPTE --}}
                 <form method="POST" action="{{ route('treasury.account.store') }}" class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-4">
