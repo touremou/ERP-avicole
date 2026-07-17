@@ -5,6 +5,13 @@
  * orpheline des deux côtés au moment de la génération).
  */
 export const en: Record<string, string> = {
+  // Journal des récoltes (Cultures)
+  'Récoltes du jour': "Today's harvests",
+  'kg récoltés': 'kg harvested',
+  'Récoltes': 'Harvests',
+  'Aucune récolte aujourd’hui.': 'No harvest today.',
+  'Culture': 'Crop',
+  'bonne': 'good',
   // Journal d'abattage
   'Abattage du jour': "Today's slaughter",
   'Poids vif kg': 'Live weight kg',

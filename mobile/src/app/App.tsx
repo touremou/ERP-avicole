@@ -18,6 +18,7 @@ import { StockMovementScreen } from '../features/logistique/StockMovementScreen'
 import { StocksScreen } from '../features/logistique/StocksScreen'
 import { ExpenseScreen } from '../features/depenses/ExpenseScreen'
 import { HarvestScreen } from '../features/cultures/HarvestScreen'
+import { HarvestJournalScreen } from '../features/cultures/HarvestJournalScreen'
 import { CropInputScreen } from '../features/cultures/CropInputScreen'
 import { SlaughterScreen } from '../features/abattoir/SlaughterScreen'
 import { SlaughterJournalScreen } from '../features/abattoir/SlaughterJournalScreen'
@@ -84,6 +85,7 @@ function Shell() {
           <Route path="/tresorerie/journal" element={<TreasuryJournalScreen />} />
           <Route path="/provenderie/journal" element={<MillJournalScreen />} />
           <Route path="/abattoir/journal" element={<SlaughterJournalScreen />} />
+          <Route path="/cultures/journal" element={<HarvestJournalScreen />} />
           <Route path="/logistique/mouvement" element={<StockMovementScreen />} />
           <Route path="/logistique/stocks" element={<StocksScreen />} />
           <Route path="/depenses/nouvelle" element={<ExpenseScreen />} />
