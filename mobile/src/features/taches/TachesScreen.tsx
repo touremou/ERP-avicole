@@ -33,6 +33,7 @@ export function TachesScreen() {
 
   const [tasks, setTasks] = useState<RefTask[]>([])
   const [doneToday, setDoneToday] = useState(0)
+  const [win, setWin] = useState('week')
   const [cat, setCat] = useState('all')
   const [showForm, setShowForm] = useState(false)
   const [title, setTitle] = useState('')
@@ -69,17 +70,31 @@ export function TachesScreen() {
     high: tasks.filter((task) => task.priority === 'haute' || task.priority === 'critique').length,
   }), [tasks, todayStr])
 
+  // Fenêtre de consultation (le récap au-dessus reste global, lui) : tout
+  // (7 jours), aujourd'hui seul, ou seulement le retard à rattraper.
+  const periodChips = useMemo(() => [
+    { key: 'week', label: t('7 jours'), count: tasks.length },
+    { key: 'today', label: t("Aujourd'hui"), count: tasks.filter((task) => task.scheduled_date === todayStr).length },
+    { key: 'overdue', label: t('En retard'), count: tasks.filter((task) => task.scheduled_date < todayStr).length },
+  ], [tasks, todayStr])
+
+  const inWindow = useMemo(() => {
+    if (win === 'today') return tasks.filter((task) => task.scheduled_date === todayStr)
+    if (win === 'overdue') return tasks.filter((task) => task.scheduled_date < todayStr)
+    return tasks
+  }, [tasks, win, todayStr])
+
   const catChips = useMemo(() => {
-    const cats = [...new Set(tasks.map((task) => task.category).filter(Boolean))]
+    const cats = [...new Set(inWindow.map((task) => task.category).filter(Boolean))]
     return [
-      { key: 'all', label: t('Toutes'), count: tasks.length },
-      ...cats.map((c) => ({ key: c, label: `${CATEGORY_ICON[c] ?? '📌'} ${t(c)}`, count: tasks.filter((task) => task.category === c).length })),
+      { key: 'all', label: t('Toutes'), count: inWindow.length },
+      ...cats.map((c) => ({ key: c, label: `${CATEGORY_ICON[c] ?? '📌'} ${t(c)}`, count: inWindow.filter((task) => task.category === c).length })),
     ]
-  }, [tasks])
+  }, [inWindow])
 
   const visible = useMemo(
-    () => (cat === 'all' ? tasks : tasks.filter((task) => task.category === cat)),
-    [tasks, cat],
+    () => (cat === 'all' ? inWindow : inWindow.filter((task) => task.category === cat)),
+    [inWindow, cat],
   )
 
   const groups = useMemo(() => {
@@ -185,10 +200,11 @@ export function TachesScreen() {
         </form>
       )}
 
+      <FilterChips options={periodChips} active={win} onChange={(value) => { setWin(value); setCat('all') }} />
       {catChips.length > 1 && <FilterChips options={catChips} active={cat} onChange={setCat} />}
 
       {groups.length === 0 ? (
-        <div className="ok-card">✓ {cat === 'all' ? t('Aucune tâche en cours. Bonne journée !') : t('Aucune tâche dans cette catégorie.')}</div>
+        <div className="ok-card">✓ {win === 'week' && cat === 'all' ? t('Aucune tâche en cours. Bonne journée !') : t('Aucune tâche pour ce filtre.')}</div>
       ) : (
         groups.map((group) => (
           <section key={group.key}>
