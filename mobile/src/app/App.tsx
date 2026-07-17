@@ -36,6 +36,16 @@ import { NotificationsScreen } from '../features/notifications/NotificationsScre
 import { BottomNav } from '../ui/BottomNav'
 import { SyncBadge } from '../ui/SyncBadge'
 
+function headerInitials(name: string | null | undefined): string {
+  return (name ?? '?')
+    .split(' ')
+    .map((w) => w[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join('')
+    .toUpperCase()
+}
+
 function Shell() {
   const { me, loading } = useAuth()
   // Changement de langue → re-rendu complet (t() lit un état module).
@@ -59,7 +69,16 @@ function Shell() {
           </span>
           <span className="brand-name">Bio<b>crest</b></span>
         </div>
-        <SyncBadge />
+        <div className="header-actions">
+          <SyncBadge />
+          <Link to="/mon-espace" className="header-avatar" aria-label={t('Mon espace')}>
+            {me.user.avatar_url ? (
+              <img src={me.user.avatar_url} alt="" />
+            ) : (
+              <span className="header-avatar__initials">{headerInitials(me.user.name)}</span>
+            )}
+          </Link>
+        </div>
       </header>
       {/* Barre de retour — présente sur tout écran hors accueil (cible pouce). */}
       {!onHome && (
