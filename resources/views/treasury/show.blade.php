@@ -8,6 +8,45 @@
 
             <x-flash />
 
+            {{-- ÉDITION / SUPPRESSION DU COMPTE --}}
+            @can('tresorerie.M')
+            <div x-data="{ open: false }" class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm">
+                <button type="button" @click="open = !open" class="w-full flex justify-between items-center border-none bg-transparent cursor-pointer outline-none">
+                    <span class="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2"><i class="fa-solid fa-gear text-emerald-500"></i> {{ __("Paramètres du compte") }}</span>
+                    <i class="fa-solid fa-chevron-down text-slate-300 transition-transform" :class="open && 'rotate-180'"></i>
+                </button>
+                <div x-show="open" x-transition class="mt-5 space-y-4">
+                    <form method="POST" action="{{ route('treasury.account.update', $account) }}" class="space-y-3">
+                        @csrf @method('PUT')
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <input type="text" name="name" value="{{ old('name', $account->name) }}" required class="bg-slate-50 border-none rounded-2xl p-3 text-xs font-black shadow-inner outline-none" placeholder="{{ __('Libellé') }}">
+                            <select name="type" required class="bg-slate-50 border-none rounded-2xl p-3 text-xs font-black shadow-inner outline-none uppercase">
+                                @foreach(\App\Models\TreasuryAccount::TYPES as $k => $label)
+                                    <option value="{{ $k }}" @selected($account->type === $k)>{{ __($label) }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <input type="text" name="notes" value="{{ old('notes', $account->notes) }}" class="w-full bg-slate-50 border-none rounded-2xl p-3 text-[10px] font-black shadow-inner outline-none uppercase italic" placeholder="{{ __('Notes (optionnel)') }}">
+                        <label class="flex items-center gap-2 text-[10px] font-black uppercase text-slate-500 tracking-widest">
+                            <input type="hidden" name="is_active" value="0">
+                            <input type="checkbox" name="is_active" value="1" @checked($account->is_active) class="rounded"> {{ __("Compte actif") }}
+                        </label>
+                        <button type="submit" class="bg-slate-900 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-600 transition-all border-none cursor-pointer">{{ __("Enregistrer") }}</button>
+                    </form>
+
+                    @can('tresorerie.S')
+                    <div class="pt-4 border-t border-slate-100">
+                        <form method="POST" action="{{ route('treasury.account.destroy', $account) }}" onsubmit="return confirm('{{ __('Supprimer définitivement ce compte ? (impossible s\'il porte des mouvements)') }}')">
+                            @csrf @method('DELETE')
+                            <button type="submit" class="text-[9px] font-black uppercase tracking-widest text-rose-500 hover:text-rose-700 bg-transparent border-none cursor-pointer p-0"><i class="fa-solid fa-trash-can mr-1"></i> {{ __("Supprimer ce compte") }}</button>
+                            <p class="text-[8px] text-slate-400 mt-1 italic">{{ __("Un compte avec mouvements ne peut pas être supprimé — désactivez-le plutôt.") }}</p>
+                        </form>
+                    </div>
+                    @endcan
+                </div>
+            </div>
+            @endcan
+
             {{-- MOUVEMENT MANUEL --}}
             @can('tresorerie.C')
             <form method="POST" action="{{ route('treasury.movement', $account) }}" class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm">
