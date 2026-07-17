@@ -129,6 +129,26 @@ file puis s'arrête. Alternative minimale : `QUEUE_CONNECTION=sync` dans
 **f. Notifications** (optionnel pour tester les alertes) : renseigner dans
 `.env` le SMTP du panneau E-mail, et éventuellement WhatsApp/SMS (cf. §9).
 
+SMTP PlanetHoster (mutualisé) — valeurs qui fonctionnent, à adapter au domaine :
+
+```env
+MAIL_MAILER=smtp
+MAIL_HOST=mail.biocrest.fr        # ou le serveur mail indiqué dans cPanel > Comptes de messagerie > Connecter des appareils
+MAIL_PORT=465
+MAIL_SCHEME=smtps                 # 465 = SSL. Pour 587 : MAIL_SCHEME=null (STARTTLS)
+MAIL_USERNAME=s.avismart@biocrest.fr
+MAIL_PASSWORD="le-mot-de-passe-de-la-boite"   # GUILLEMETS obligatoires si caractères spéciaux (#, @, espace…)
+MAIL_FROM_ADDRESS=s.avismart@biocrest.fr      # DOIT être identique à MAIL_USERNAME (l'hôte rejette sinon)
+MAIL_FROM_NAME="AviSmart"
+```
+
+Erreur « Failed to authenticate on SMTP server » → dans 99 % des cas :
+mot de passe erroné/non quoté, `MAIL_FROM_ADDRESS` ≠ `MAIL_USERNAME`, ou
+mauvais couple port/chiffrement (465↔smtps, 587↔null). Le bouton
+« Tester l'e-mail » (Paramètres › Notifications) affiche désormais la config
+effective entre crochets pour repérer le décalage. Après modification du
+`.env` : `php artisan config:clear`.
+
 ---
 
 ## 4. Déployer la PWA terrain

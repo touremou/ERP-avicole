@@ -228,7 +228,27 @@ class NotificationController extends Controller
                 ['mail']
             ));
         } catch (\Throwable $e) {
-            return back()->with('error', "Échec e-mail : " . Str::limit($e->getMessage(), 160) . ' — vérifiez MAIL_* / le serveur SMTP.');
+            // Diagnostic : on renvoie la config SMTP EFFECTIVE (sans mot de passe)
+            // pour repérer un décalage host/port/scheme/username/expéditeur — cause
+            // n°1 des « Failed to authenticate » (identifiants ou chiffrement).
+            $smtp = config('mail.mailers.smtp');
+            $ctx = sprintf(
+                'host=%s:%s scheme=%s user=%s from=%s',
+                $smtp['host'] ?? '?', $smtp['port'] ?? '?',
+                $smtp['scheme'] ?? 'auto', $smtp['username'] ?? '(vide)',
+                config('mail.from.address') ?? '?'
+            );
+
+            $hint = '';
+            if (Str::contains($e->getMessage(), ['authenticate', 'Authenticator', '535', '534'])) {
+                // Hôte mutualisé (PlanetHoster) : port 465 + SSL, et l'expéditeur
+                // (MAIL_FROM_ADDRESS) doit correspondre à la boîte authentifiée.
+                $hint = ' — Auth SMTP refusée : vérifiez MAIL_PASSWORD (guillemets si caractères spéciaux),'
+                    . ' que MAIL_FROM_ADDRESS = MAIL_USERNAME, et le couple port/chiffrement'
+                    . ' (465→MAIL_SCHEME=smtps, ou 587→MAIL_SCHEME=null + TLS).';
+            }
+
+            return back()->with('error', 'Échec e-mail : ' . Str::limit($e->getMessage(), 140) . " [{$ctx}]{$hint}");
         }
 
         $hint = config('mail.default') === 'log' ? " (mailer « log » : voir storage/logs/laravel.log)" : '';
