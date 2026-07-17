@@ -673,6 +673,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/elevage', [\App\Http\Controllers\ElevageHubController::class, 'index'])->name('elevage.index')->middleware('can:L');
     Route::get('/productions', [\App\Http\Controllers\ProductionHubController::class, 'index'])->name('productions.index')->middleware('can:L');
     Route::get('/annuaire', [\App\Http\Controllers\AnnuaireHubController::class, 'index'])->name('annuaire.index')->middleware('can:L');
+    Route::get('/rh', [\App\Http\Controllers\RhHubController::class, 'index'])->name('rh.index')->middleware('can:L');
     Route::get('/logistique', [\App\Http\Controllers\LogistiqueHubController::class, 'index'])->name('logistique.index')->middleware('can:L');
 
     // ─── ACHATS FOURNISSEURS & DETTES (compte à payer, module: depenses) ───

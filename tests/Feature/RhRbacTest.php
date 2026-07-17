@@ -38,10 +38,10 @@ beforeEach(function () {
     $this->setUpRbac();
     session(['current_farm_id' => $this->farm->id]);
 
-    // Gestionnaire RH : annuaire L+C+M, PAS de annuaire.S ni admin.S.
-    $this->rh = User::factory()->create(['role_id' => annuaireRole('gestionnaire_rh', ['annuaire' => ['L', 'C', 'M']])->id]);
-    // Lecteur annuaire seul.
-    $this->lecteur = User::factory()->create(['role_id' => annuaireRole('lecteur_rh', ['annuaire' => ['L']])->id]);
+    // Gestionnaire RH : rh L+C+M, PAS de rh.S ni admin.S (cloisonnement Annuaire/RH).
+    $this->rh = User::factory()->create(['role_id' => annuaireRole('gestionnaire_rh', ['rh' => ['L', 'C', 'M']])->id]);
+    // Lecteur RH seul.
+    $this->lecteur = User::factory()->create(['role_id' => annuaireRole('lecteur_rh', ['rh' => ['L']])->id]);
 
     $this->employee = Employee::factory()->create(['farm_id' => $this->farm->id]);
 });

@@ -271,12 +271,14 @@ class AppServiceProvider extends ServiceProvider
         }
 
         // ─── C. GATES PAR MODULE (elevage.L, commerce.C, annuaire.M, ...) ───
-        // Slugs réels de la base (13 modules actifs). Ce tableau ne sert que
-        // de repli si la table `modules` est indisponible (installation/offline).
+        // Slugs réels de la base. Ce tableau ne sert que de repli si la table
+        // `modules` est indisponible (installation/offline) — il DOIT rester
+        // synchronisé avec ModuleSeeder (dont le module « rh », cloisonnement
+        // Annuaire/RH), sinon les gates du module manquant ne sont pas définies.
         $fallbackSlugs = [
             'dashboard', 'elevage', 'production', 'provenderie', 'planning',
             'abattoir', 'commerce', 'logistique', 'ressources', 'notifications',
-            'annuaire', 'admin', 'depenses', 'cultures',
+            'annuaire', 'rh', 'admin', 'depenses', 'cultures',
         ];
 
         try {

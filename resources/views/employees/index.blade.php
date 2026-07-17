@@ -3,21 +3,21 @@
         <x-page-header :title="__('Personnel')" :subtitle="__('Gestion des collaborateurs & Effectifs')" icon="fa-id-card" accent="blue">
             <x-slot name="actions">
                 {{-- MODULE ANNUAIRE : Recrutement (C) --}}
-                @can('annuaire.C')
+                @can('rh.C')
                 <a href="{{ route('employees.create') }}" class="group bg-slate-900 text-white px-8 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-blue-600 transition-all shadow-xl shadow-slate-900/10 italic no-underline">
                     <i class="fas fa-user-plus mr-2 group-hover:rotate-12 transition-transform"></i> {{ __("Recruter") }}
                 </a>
                 @endcan
 
                 {{-- MODULE RH : Accès à la Paie (L) --}}
-                @can('annuaire.L')
+                @can('rh.L')
                 <a href="{{ route('payroll.index') }}" class="bg-blue-600 text-white px-6 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-blue-700 transition-all shadow-lg italic no-underline">
                     <i class="fas fa-money-bill-wave mr-2"></i> {{ __("Paie") }}
                 </a>
                 @endcan
 
                 {{-- MODULE RH : Accès aux Congés (L) --}}
-                @can('annuaire.L')
+                @can('rh.L')
                 <a href="{{ route('payroll.leaves') }}" class="bg-white border border-slate-200 text-slate-600 px-6 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-amber-50 transition-all shadow-sm italic no-underline">
                     <i class="fas fa-calendar-xmark mr-2 text-amber-500"></i> {{ __("Congés") }}
                 </a>
@@ -185,7 +185,7 @@
                                     </a>
                                     
                                     {{-- Permission M : Édition --}}
-                                    @can('annuaire.M')
+                                    @can('rh.M')
                                     <a href="{{ route('employees.edit', $emp->id) }}" class="w-11 h-11 flex items-center justify-center text-slate-300 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all border border-transparent hover:border-blue-100">
                                         <i class="fas fa-pen-nib text-xs"></i>
                                     </a>
@@ -209,7 +209,7 @@
             </form>
 
             {{-- ZONE DE MAINTENANCE (S) --}}
-            @can('annuaire.S')
+            @can('rh.S')
             <div class="mt-24 py-12 border-t border-slate-100 flex justify-center">
                 <a href="{{ route('trash.index') }}" class="group flex items-center gap-6 bg-slate-50 px-8 py-4 rounded-[2.5rem] hover:bg-slate-900 transition-all duration-700 border border-dashed border-slate-200 hover:border-slate-800 no-underline text-left">
                     <div class="flex flex-col items-start leading-none italic">

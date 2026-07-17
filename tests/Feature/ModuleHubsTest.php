@@ -60,9 +60,17 @@ test('le hub Production répond et expose ses KPIs', function () {
     expect($kpis)->toHaveKeys(['eggs_today', 'eggs_month', 'milk_today', 'incub_open']);
 });
 
-test('le hub Annuaire répond et expose ses KPIs', function () {
+test('le hub Annuaire (Tiers) répond et expose ses KPIs fournisseurs', function () {
+    // Cloisonnement : le hub Annuaire ne concerne QUE les tiers (fournisseurs) —
+    // aucune donnée du personnel ni de masse salariale ici.
     $kpis = $this->get(route('annuaire.index'))->assertOk()->viewData('kpis');
-    expect($kpis)->toHaveKeys(['headcount', 'present', 'payroll', 'providers']);
+    expect($kpis)->toHaveKeys(['providers', 'providers_active'])
+        ->and($kpis)->not->toHaveKey('payroll');
+});
+
+test('le hub RH répond et expose ses KPIs personnel/paie', function () {
+    $kpis = $this->get(route('rh.index'))->assertOk()->viewData('kpis');
+    expect($kpis)->toHaveKeys(['headcount', 'present', 'payroll']);
 });
 
 test('les hubs Provenderie/Cultures/Abattoir donnent accès à leurs sous-sections', function () {

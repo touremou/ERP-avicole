@@ -21,7 +21,7 @@
                 <button type="submit" class="px-5 py-3 bg-slate-900 text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-violet-600 transition-all border-none cursor-pointer">{{ __("Charger") }}</button>
             </form>
 
-            @can('annuaire.C')
+            @can('rh.C')
             <form method="POST" action="{{ route('attendance.store') }}">
                 @csrf
                 <input type="hidden" name="date" value="{{ $date }}">

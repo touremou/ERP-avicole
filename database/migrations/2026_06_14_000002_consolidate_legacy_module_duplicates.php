@@ -24,9 +24,15 @@ use Illuminate\Support\Facades\Schema;
  * fraîche déjà propre), la migration ne fait rien.
  */
 return new class extends Migration {
-    /** Doublon legacy (slug) → module canonique cible (slug). */
+    /**
+     * Doublon legacy (slug) → module canonique cible (slug).
+     *
+     * NB : « rh » a été RETIRÉ de cette carte depuis l'introduction du module
+     * RH canonique (cloisonnement Annuaire/RH, migration 2026_07_17). Ce n'est
+     * plus un doublon d'« annuaire » mais un module à part entière — la
+     * consolidation ne doit donc jamais le fusionner.
+     */
     private array $map = [
-        'rh'      => 'annuaire',
         'couvoir' => 'production',
         'stocks'  => 'logistique',
     ];

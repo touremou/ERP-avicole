@@ -64,7 +64,7 @@
                                     </span>
                                 </td>
                                 <td class="px-5 py-3 text-center">
-                                    @can('annuaire.M')
+                                    @can('rh.M')
                                     <div class="flex items-center justify-center gap-1.5">
                                         {{-- Bon de paie (avant paiement) --}}
                                         @if($slip->payment_status !== 'paye')

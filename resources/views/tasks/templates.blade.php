@@ -201,7 +201,7 @@
                                         <i class="fa-solid {{ $tpl->is_active ? 'fa-toggle-on' : 'fa-toggle-off' }} text-[10px]"></i>
                                     </button>
                                 </form>
-                                @can('annuaire.S')
+                                @can('rh.S')
                                 <form method="POST" action="{{ route('tasks.templates.destroy', $tpl) }}" onsubmit="return confirm('{{ __("Supprimer ce template ?") }}')">@csrf @method('DELETE')
                                     <button class="w-7 h-7 rounded-lg bg-transparent text-slate-200 hover:text-red-500 flex items-center justify-center border-none cursor-pointer transition-all" title="{{ __("Supprimer") }}"><i class="fa-solid fa-trash-can text-[8px]"></i></button>
                                 </form>

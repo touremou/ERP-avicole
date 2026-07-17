@@ -38,9 +38,10 @@ class ModuleSeeder extends Seeder
             ['name' => 'Finance',        'slug' => 'depenses',      'icon' => 'fa-coins',           'color' => 'rose',    'display_order' => 6],
             ['name' => 'Logistique',     'slug' => 'logistique',    'icon' => 'fa-truck',           'color' => 'orange',  'display_order' => 7],
             ['name' => 'Eau & Énergie',  'slug' => 'ressources',    'icon' => 'fa-bolt',            'color' => 'cyan',    'display_order' => 8],
-            ['name' => 'Annuaire',       'slug' => 'annuaire',      'icon' => 'fa-users',           'color' => 'slate',   'display_order' => 9],
-            ['name' => 'Production Végétale', 'slug' => 'cultures', 'icon' => 'fa-seedling',        'color' => 'green',   'display_order' => 10],
-            ['name' => 'Administration', 'slug' => 'admin',         'icon' => 'fa-shield-halved',   'color' => 'purple',  'display_order' => 11],
+            ['name' => 'Annuaire / Tiers', 'slug' => 'annuaire',    'icon' => 'fa-address-book',     'color' => 'slate',   'display_order' => 9],
+            ['name' => 'Ressources Humaines', 'slug' => 'rh',       'icon' => 'fa-user-tie',         'color' => 'violet',  'display_order' => 10],
+            ['name' => 'Production Végétale', 'slug' => 'cultures', 'icon' => 'fa-seedling',        'color' => 'green',   'display_order' => 11],
+            ['name' => 'Administration', 'slug' => 'admin',         'icon' => 'fa-shield-halved',   'color' => 'purple',  'display_order' => 12],
 
             // Hors lanceur (intégrés ailleurs) :
             ['name' => 'Planning',       'slug' => 'planning',      'icon' => 'fa-calendar-days',   'color' => 'indigo',  'display_order' => 90],

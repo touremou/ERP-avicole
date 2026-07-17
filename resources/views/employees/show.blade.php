@@ -10,19 +10,19 @@
                 @endcan
 
                 {{-- MODULE RH : Accès à l'historique de paie --}}
-                @can('annuaire.L')
+                @can('rh.L')
                 <a href="{{ route('payroll.employee-history', $employee) }}" class="bg-blue-50 border border-blue-100 px-4 py-2 rounded-xl text-[9px] font-black uppercase text-blue-600 hover:bg-blue-600 hover:text-white transition shadow-sm italic no-underline">
                     <i class="fas fa-money-bill-wave mr-1"></i> {{ __("Paie") }}
                 </a>
                 @endcan
 
                 {{-- MODULE ANNUAIRE : Modification de la fiche --}}
-                @can('annuaire.M')
+                @can('rh.M')
                 <a href="{{ route('employees.edit', $employee) }}" class="bg-white border border-slate-200 px-4 py-2 rounded-xl text-[9px] font-black uppercase text-slate-600 hover:bg-slate-900 hover:text-white transition shadow-sm italic no-underline">
                     <i class="fas fa-pen mr-1"></i> {{ __("Modifier") }}
                 </a>
                 @endcan
-                @can('annuaire.S')
+                @can('rh.S')
                 @php $isLocked = $employee->batches()->where('status', 'Actif')->exists(); @endphp
                 @if(!$isLocked)
                 <form action="{{ route('employees.destroy', $employee) }}" method="POST" onsubmit="return confirm('{{ __("Archiver cet employé ?") }}')">

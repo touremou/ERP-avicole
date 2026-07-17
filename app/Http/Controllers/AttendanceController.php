@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Gate;
 /**
  * AttendanceController — pointage de présence quotidien de l'équipe (RH léger).
  *
- * Module : annuaire (RH). Saisie d'une grille jour (présent/absent/retard/congé),
+ * Module : rh (Ressources Humaines). Saisie d'une grille jour (présent/absent/retard/congé),
  * avec pré-remplissage « congé » depuis les congés validés, puis rapport de
  * présence par employé sur une période.
  */
@@ -22,7 +22,7 @@ class AttendanceController extends Controller
     /** Grille de pointage du jour (ou d'une date choisie). */
     public function index(Request $request)
     {
-        if (Gate::denies('annuaire.L')) {
+        if (Gate::denies('rh.L')) {
             return redirect()->route('dashboard')->with('error', 'Accès restreint.');
         }
 
@@ -62,7 +62,7 @@ class AttendanceController extends Controller
     /** Enregistre/met à jour la grille de pointage d'une date. */
     public function store(Request $request)
     {
-        if (Gate::denies('annuaire.C')) {
+        if (Gate::denies('rh.C')) {
             return back()->with('error', 'Action non autorisée.');
         }
 
@@ -106,7 +106,7 @@ class AttendanceController extends Controller
     /** Rapport de présence par employé sur une période. */
     public function report(Request $request)
     {
-        if (Gate::denies('annuaire.L')) {
+        if (Gate::denies('rh.L')) {
             return redirect()->route('dashboard')->with('error', 'Accès restreint.');
         }
 
@@ -122,7 +122,7 @@ class AttendanceController extends Controller
     /** Export CSV du rapport (séparateur « ; » + BOM UTF-8 pour Excel). */
     public function exportCsv(Request $request): \Symfony\Component\HttpFoundation\StreamedResponse
     {
-        if (Gate::denies('annuaire.L')) {
+        if (Gate::denies('rh.L')) {
             abort(403, 'Accès restreint.');
         }
 
@@ -149,7 +149,7 @@ class AttendanceController extends Controller
     /** Export PDF du rapport. */
     public function exportPdf(Request $request)
     {
-        if (Gate::denies('annuaire.L')) {
+        if (Gate::denies('rh.L')) {
             abort(403, 'Accès restreint.');
         }
 

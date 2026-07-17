@@ -13,7 +13,7 @@
         <div class="max-w-4xl mx-auto sm:px-6 lg:px-8">
 
             {{-- Permission M : Accès à la modification --}}
-            @can('annuaire.M')
+            @can('rh.M')
                 @if ($errors->any())
                     <div class="bg-rose-600 text-white p-6 rounded-[2.5rem] mb-8 shadow-xl animate-pulse text-left italic">
                         <h3 class="font-black uppercase text-xs mb-2 italic">⚠️ {{ __("Erreur de validation détectée") }}</h3>
