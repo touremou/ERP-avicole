@@ -30,6 +30,7 @@ import { ByproductScreen } from '../features/abattoir/ByproductScreen'
 import { MillCompleteScreen } from '../features/provenderie/MillCompleteScreen'
 import { MillJournalScreen } from '../features/provenderie/MillJournalScreen'
 import { MonEspaceScreen } from '../features/mon-espace/MonEspaceScreen'
+import { AppareilsScreen } from '../features/appareils/AppareilsScreen'
 import { TachesScreen } from '../features/taches/TachesScreen'
 import { NotificationsScreen } from '../features/notifications/NotificationsScreen'
 import { BottomNav } from '../ui/BottomNav'
@@ -101,6 +102,7 @@ function Shell() {
           <Route path="/alertes" element={<NotificationsScreen />} />
           <Route path="/taches" element={<TachesScreen />} />
           <Route path="/mon-espace" element={<MonEspaceScreen />} />
+          <Route path="/appareils" element={<AppareilsScreen />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>

@@ -5,6 +5,7 @@
  * de langue local (prioritaire sur la langue du profil web, cf. i18n).
  */
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../../app/AuthContext'
 import { api, ApiError } from '../../api/client'
 import { db, type MyRecord, type OutboxEntry } from '../../offline/db'
@@ -251,6 +252,13 @@ export function MonEspaceScreen() {
             <span className={`act-status ${statusClass[record.sync_status]}`}>{statusLabel[record.sync_status]}</span>
           </div>
         ))}
+      </section>
+
+      <section>
+        <div className="section-head"><h3>{t('Appareils connectés')}</h3></div>
+        <Link to="/appareils" className="btn-secondary btn-link-row">
+          📱 {t('Gérer mes appareils')}
+        </Link>
       </section>
 
       <section>
