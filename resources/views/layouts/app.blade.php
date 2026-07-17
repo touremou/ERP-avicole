@@ -138,12 +138,12 @@
                                         @forelse($unreadNotifications as $notification)
                                             <a href="{{ route('notifications.read', $notification->id) }}" class="block p-5 border-b border-slate-50 hover:bg-slate-50 transition-colors relative no-underline">
                                                 <div class="flex items-start gap-3">
-                                                    <div @class([
-                                                        'w-2 h-2 rounded-full mt-1',
-                                                        'bg-rose-600' => ($notification->data['severity'] ?? '') === 'critique',
-                                                        'bg-amber-500' => ($notification->data['severity'] ?? '') === 'attention',
-                                                        'bg-blue-500' => ! in_array($notification->data['severity'] ?? '', ['critique', 'attention']),
-                                                    ])></div>
+                                                    <span @class([
+                                                        'w-9 h-9 rounded-full flex items-center justify-center text-base shrink-0',
+                                                        'bg-rose-100' => ($notification->data['severity'] ?? '') === 'critique',
+                                                        'bg-amber-100' => ($notification->data['severity'] ?? '') === 'attention',
+                                                        'bg-blue-100' => ! in_array($notification->data['severity'] ?? '', ['critique', 'attention']),
+                                                    ])>{{ notif_icon($notification->data['type'] ?? null, $notification->data['severity'] ?? null) }}</span>
                                                     <div class="text-left">
                                                         <p class="text-[10px] font-black text-slate-800 uppercase italic mb-1">{{ $notification->data['title'] ?? __("Alerte") }}</p>
                                                         <p class="text-[9px] text-slate-400 font-bold uppercase leading-tight">{{ $notification->data['message'] ?? '' }}</p>
