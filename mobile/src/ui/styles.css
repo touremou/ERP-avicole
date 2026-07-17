@@ -1,7 +1,8 @@
 /* Design system terrain — AviTerrain / Biocrest.
    Règles d'or RFC §4 : thème CLAIR unique (lisible au plein soleil),
    contrastes forts, cibles ≥48px, texte ≥16px, actions en zone du pouce.
-   Identité : Vert Forêt (marque) + Terre cuite (action), police Inter. */
+   Identité : Vert Forêt (marque) + Terre cuite (action), police Figtree
+   (même famille que le web pour une identité typographique unifiée). */
 
 :root {
   --bg: #f4f6f5;            /* gris très clair à légère dérive verte (choisi) */
@@ -39,7 +40,7 @@
 html, body, #root { height: 100%; margin: 0; }
 
 body {
-  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Figtree', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   font-size: 16px;
   background: var(--bg);
   color: var(--ink);

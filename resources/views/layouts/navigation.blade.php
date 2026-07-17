@@ -133,8 +133,8 @@
             </div>
 
             {{-- HAMBURGER --}}
-            <button @click="mobileOpen = !mobileOpen" class="sm:hidden p-2 rounded-lg text-slate-400 hover:bg-slate-100 outline-none border-none bg-transparent cursor-pointer">
-                <i class="fa-solid text-lg" :class="mobileOpen ? 'fa-xmark' : 'fa-bars'"></i>
+            <button @click="mobileOpen = !mobileOpen" class="sm:hidden p-2 rounded-lg text-slate-500 hover:bg-slate-100 outline-none border-none bg-transparent cursor-pointer" :aria-label="mobileOpen ? @js(__('Fermer')) : @js(__('Menu'))">
+                <span class="text-lg leading-none" aria-hidden="true" x-text="mobileOpen ? '✕' : '☰'"></span>
             </button>
         </div>
     </div>
