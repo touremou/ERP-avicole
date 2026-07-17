@@ -7,41 +7,13 @@ import { useEffect, useState } from 'react'
 import { api } from '../../api/client'
 import { db } from '../../offline/db'
 import { dateLocale, t } from '../../i18n'
+import { notifIcon } from './notifIcon'
 import type { ApiNotification } from '../../api/types'
 
 const SEVERITY_CLASS: Record<string, string> = {
   critical: 'notif-critical',
   warning: 'notif-warning',
   normal: 'notif-normal',
-}
-
-// Avatar iconographique par famille de notification (le type est une chaîne
-// libre côté serveur : on classe par mot-clé, repli sur l'icône de sévérité).
-const TYPE_ICON: { match: RegExp; icon: string }[] = [
-  { match: /mortalit|mortality/, icon: '💀' },
-  { match: /stock|min|threshold/, icon: '📦' },
-  { match: /weather|meteo/, icon: '🌦️' },
-  { match: /temperature|temp/, icon: '🌡️' },
-  { match: /haccp|ccp|cleaning|hygien/, icon: '🧪' },
-  { match: /health|sante|vaccin/, icon: '🩺' },
-  { match: /leave|conge/, icon: '🌴' },
-  { match: /maintenance|energy|fuel|fuel/, icon: '🔧' },
-  { match: /payment|paiement|fraud/, icon: '💰' },
-  { match: /sale|vente|invoice|bl|pos|dispatch/, icon: '🧾' },
-  { match: /expense|depense|budget/, icon: '💸' },
-  { match: /incident/, icon: '⚠️' },
-  { match: /task|tache/, icon: '📋' },
-]
-
-const SEVERITY_ICON: Record<string, string> = {
-  critical: '🔴',
-  warning: '🟠',
-  normal: '🔔',
-}
-
-function notifIcon(type: string, severity: string): string {
-  const found = TYPE_ICON.find((entry) => entry.match.test(type ?? ''))
-  return found?.icon ?? SEVERITY_ICON[severity] ?? '🔔'
 }
 
 export function NotificationsScreen() {

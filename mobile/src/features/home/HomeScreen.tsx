@@ -12,6 +12,7 @@ import { onSyncChange, enqueue } from '../../offline/sync'
 import { t, dateLocale } from '../../i18n'
 import { useFieldTasks } from './useFieldTasks'
 import { DashboardKpis } from './DashboardKpis'
+import { notifIcon } from '../notifications/notifIcon'
 import type { ApiNotification, RefTask } from '../../api/types'
 import type { OperationType } from '../../api/types'
 
@@ -263,7 +264,7 @@ export function HomeScreen() {
           </div>
           {alerts.map((n) => (
             <div key={n.id} className={`notif-card ${SEVERITY_CLASS[n.severity] ?? 'notif-normal'} ${n.read_at ? 'notif-read' : ''}`}>
-              <span className="notif-dot" aria-hidden="true" />
+              <span className="notif-avatar" aria-hidden="true">{notifIcon(n.type, n.severity)}</span>
               <div className="notif-body">
                 <span className="task-title">{n.title}</span>
                 <span className="task-meta">{new Date(n.created_at).toLocaleString(dateLocale())}</span>
