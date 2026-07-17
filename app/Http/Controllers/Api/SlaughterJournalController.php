@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\SlaughterOrder;
+use App\Support\JournalPeriod;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 
 /**
@@ -17,17 +19,18 @@ use Illuminate\Support\Facades\Gate;
  */
 class SlaughterJournalController extends Controller
 {
-    public function today(): JsonResponse
+    public function today(Request $request): JsonResponse
     {
         if (Gate::denies('abattoir.L')) {
             abort(403, 'Lecture de l’Abattoir non autorisée.');
         }
 
-        $today = today()->toDateString();
+        $period = JournalPeriod::resolve($request);
+        $range = [$period['start'], $period['end']];
 
         $orders = SlaughterOrder::query()
             ->with(['batch:id,code', 'client:id,name'])
-            ->where(fn ($q) => $q->whereDate('planned_date', $today)->orWhereDate('actual_date', $today))
+            ->where(fn ($q) => $q->whereBetween('planned_date', $range)->orWhereBetween('actual_date', $range))
             ->orderByDesc('created_at')
             ->get(['id', 'order_number', 'batch_id', 'client_id', 'planned_quantity', 'actual_quantity', 'total_live_weight_kg', 'status']);
 
@@ -51,6 +54,7 @@ class SlaughterJournalController extends Controller
                 'slaughtered'      => (int) $done->sum('actual_quantity'),
                 'live_weight_kg'   => (float) $done->sum('total_live_weight_kg'),
             ],
+            'period'      => ['key' => $period['key'], 'label' => $period['label']],
             'server_time' => now()->toIso8601String(),
         ]);
     }

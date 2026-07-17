@@ -6,6 +6,8 @@
  */
 export const en: Record<string, string> = {
   // Filtres des journaux
+  'Hier': 'Yesterday',
+  '7 jours': '7 days',
   'Tous': 'All',
   'Entrées': 'In',
   'Sorties': 'Out',

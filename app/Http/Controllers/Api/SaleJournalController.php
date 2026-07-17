@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Sale;
+use App\Support\JournalPeriod;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 
 /**
@@ -18,15 +20,17 @@ use Illuminate\Support\Facades\Gate;
  */
 class SaleJournalController extends Controller
 {
-    public function today(): JsonResponse
+    public function today(Request $request): JsonResponse
     {
         if (Gate::denies('commerce.L')) {
             abort(403, 'Lecture du module Commerce non autorisée.');
         }
 
+        $period = JournalPeriod::resolve($request);
+
         $sales = Sale::query()
             ->with('client:id,name')
-            ->today()
+            ->whereBetween('sale_date', [$period['start'], $period['end']])
             ->orderByDesc('created_at')
             ->get([
                 'id', 'reference', 'client_id', 'type', 'status',
@@ -56,6 +60,7 @@ class SaleJournalController extends Controller
                 'paid'      => (float) $counted->sum('paid_amount'),
                 'remaining' => (float) $counted->sum(fn (Sale $s) => $s->remaining_amount),
             ],
+            'period'      => ['key' => $period['key'], 'label' => $period['label']],
             'server_time' => now()->toIso8601String(),
         ]);
     }

@@ -10,6 +10,7 @@ import { getMeta, setMeta } from '../../offline/db'
 import { t, dateLocale } from '../../i18n'
 import { FilterChips } from '../../ui/FilterChips'
 import { BarBreakdown } from '../../ui/BarBreakdown'
+import { PeriodSelector } from '../../ui/PeriodSelector'
 import type { HarvestJournalResponse, HarvestEntry } from '../../api/types'
 
 const CACHE_KEY = 'harvest_journal_today'
@@ -23,16 +24,19 @@ export function HarvestJournalScreen() {
   const [loading, setLoading] = useState(true)
   const [offline, setOffline] = useState(false)
   const [crop, setCrop] = useState('all')
+  const [period, setPeriod] = useState('today')
 
   useEffect(() => {
     void (async () => {
-      const cached = await getMeta<HarvestJournalResponse>(CACHE_KEY)
-      if (cached) setData(cached)
+      setLoading(true)
+      const cacheKey = `${CACHE_KEY}_${period}`
+      const cached = await getMeta<HarvestJournalResponse>(cacheKey)
+      setData(cached ?? null)
       if (navigator.onLine) {
         try {
-          const fresh = await api.culturesToday()
+          const fresh = await api.culturesToday(period)
           setData(fresh)
-          await setMeta(CACHE_KEY, fresh)
+          await setMeta(cacheKey, fresh)
           setOffline(false)
         } catch {
           setOffline(true)
@@ -42,7 +46,7 @@ export function HarvestJournalScreen() {
       }
       setLoading(false)
     })()
-  }, [])
+  }, [period])
 
   const summary = data?.summary
   const allHarvests: HarvestEntry[] = data?.harvests ?? []
@@ -78,6 +82,8 @@ export function HarvestJournalScreen() {
           {offline ? ' · ' + t('hors-ligne (dernier instantané)') : ''}
         </span>
       </div>
+
+      <PeriodSelector period={period} onChange={setPeriod} />
 
       {summary && (
         <div className="kpi-grid">

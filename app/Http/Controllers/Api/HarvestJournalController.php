@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Harvest;
+use App\Support\JournalPeriod;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 
 /**
@@ -17,15 +19,17 @@ use Illuminate\Support\Facades\Gate;
  */
 class HarvestJournalController extends Controller
 {
-    public function today(): JsonResponse
+    public function today(Request $request): JsonResponse
     {
         if (Gate::denies('cultures.L')) {
             abort(403, 'Lecture du module Cultures non autorisée.');
         }
 
+        $period = JournalPeriod::resolve($request);
+
         $harvests = Harvest::query()
             ->with('cropCycle:id,code,crop_name,variety')
-            ->whereDate('harvest_date', today())
+            ->whereBetween('harvest_date', [$period['start'], $period['end']])
             ->orderByDesc('created_at')
             ->get();
 
@@ -44,6 +48,7 @@ class HarvestJournalController extends Controller
                 'count'           => $harvests->count(),
                 'total_weight_kg' => round($harvests->sum(fn (Harvest $h) => $h->effective_weight_kg), 2),
             ],
+            'period'      => ['key' => $period['key'], 'label' => $period['label']],
             'server_time' => now()->toIso8601String(),
         ]);
     }
