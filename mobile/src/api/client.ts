@@ -16,6 +16,7 @@ import type {
   MillJournalResponse,
   NotificationsResponse,
   SalesJournalResponse,
+  SlaughterJournalResponse,
   TreasuryJournalResponse,
   PhotoUploadResponse,
   PushOperation,
@@ -111,6 +112,8 @@ export const api = {
   treasuryToday: () => request<TreasuryJournalResponse>('/treasury/today'),
 
   provenderieToday: () => request<MillJournalResponse>('/provenderie/today'),
+
+  abattoirToday: () => request<SlaughterJournalResponse>('/abattoir/today'),
 
   batchHistory: (id: number) => request<BatchHistoryResponse>(`/batches/${id}/history`),
 

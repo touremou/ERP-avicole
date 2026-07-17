@@ -5,6 +5,14 @@
  * orpheline des deux côtés au moment de la génération).
  */
 export const en: Record<string, string> = {
+  // Journal d'abattage
+  'Abattage du jour': "Today's slaughter",
+  'Poids vif kg': 'Live weight kg',
+  'Bloqués': 'Blocked',
+  'Bloqué': 'Blocked',
+  'Aucun abattage prévu aujourd’hui.': 'No slaughter planned today.',
+  'abattus': 'slaughtered',
+  'prévus': 'planned',
   // Journal de production Provenderie
   'Production du jour': "Today's production",
   'kg produits': 'kg produced',
