@@ -11,6 +11,7 @@ import { getMeta, setMeta } from '../../offline/db'
 import { t, dateLocale } from '../../i18n'
 import { FilterChips } from '../../ui/FilterChips'
 import { BarBreakdown } from '../../ui/BarBreakdown'
+import { TimeSeriesChart } from '../../ui/TimeSeriesChart'
 import { PeriodSelector } from '../../ui/PeriodSelector'
 import { ExportButton } from '../../ui/ExportButton'
 import { toCsv, exportOrShare, dateStamp } from '../../ui/exportShare'
@@ -114,6 +115,7 @@ export function SalesJournalScreen() {
         </div>
       )}
 
+      {period === '7days' && data?.series && <TimeSeriesChart points={data.series} title={t('CA · 7 jours')} />}
       {allSales.length > 0 && <BarBreakdown items={breakdown} />}
       {allSales.length > 0 && <FilterChips options={chips} active={pay} onChange={setPay} />}
 

@@ -36,6 +36,15 @@ class SlaughterJournalController extends Controller
 
         $done = $orders->where('status', 'termine');
 
+        // Série journalière : sujets abattus par jour (date d'exécution).
+        $buckets = JournalPeriod::dailyBuckets($period['start'], $period['end']);
+        foreach ($done as $order) {
+            $day = $order->actual_date?->toDateString();
+            if ($day !== null && isset($buckets[$day])) {
+                $buckets[$day] += (float) $order->actual_quantity;
+            }
+        }
+
         return response()->json([
             'orders' => $orders->map(fn (SlaughterOrder $order) => [
                 'id'               => $order->id,
@@ -54,6 +63,7 @@ class SlaughterJournalController extends Controller
                 'slaughtered'      => (int) $done->sum('actual_quantity'),
                 'live_weight_kg'   => (float) $done->sum('total_live_weight_kg'),
             ],
+            'series'      => JournalPeriod::series($buckets),
             'period'      => ['key' => $period['key'], 'label' => $period['label']],
             'server_time' => now()->toIso8601String(),
         ]);

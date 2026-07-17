@@ -35,6 +35,15 @@ class MillJournalController extends Controller
 
         $done = $productions->where('status', 'Terminé');
 
+        // Série journalière : kg produits (OP terminées) par jour.
+        $buckets = JournalPeriod::dailyBuckets($period['start'], $period['end']);
+        foreach ($done as $op) {
+            $day = $op->created_at?->toDateString();
+            if ($day !== null && isset($buckets[$day])) {
+                $buckets[$day] += (float) $op->quantity_produced;
+            }
+        }
+
         return response()->json([
             'productions' => $productions->map(fn (MillProduction $op) => [
                 'id'                => $op->id,
@@ -52,6 +61,7 @@ class MillJournalController extends Controller
                 'planned'     => $productions->where('status', 'Planifié')->count(),
                 'total_kg'    => (float) $done->sum('quantity_produced'),
             ],
+            'series'      => JournalPeriod::series($buckets),
             'period'      => ['key' => $period['key'], 'label' => $period['label']],
             'server_time' => now()->toIso8601String(),
         ]);

@@ -33,6 +33,15 @@ class HarvestJournalController extends Controller
             ->orderByDesc('created_at')
             ->get();
 
+        // Série journalière : poids net récolté par jour.
+        $buckets = JournalPeriod::dailyBuckets($period['start'], $period['end']);
+        foreach ($harvests as $h) {
+            $day = $h->harvest_date?->toDateString();
+            if ($day !== null && isset($buckets[$day])) {
+                $buckets[$day] += $h->effective_weight_kg;
+            }
+        }
+
         return response()->json([
             'harvests' => $harvests->map(fn (Harvest $h) => [
                 'id'         => $h->id,
@@ -48,6 +57,7 @@ class HarvestJournalController extends Controller
                 'count'           => $harvests->count(),
                 'total_weight_kg' => round($harvests->sum(fn (Harvest $h) => $h->effective_weight_kg), 2),
             ],
+            'series'      => JournalPeriod::series($buckets),
             'period'      => ['key' => $period['key'], 'label' => $period['label']],
             'server_time' => now()->toIso8601String(),
         ]);
