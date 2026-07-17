@@ -51,7 +51,7 @@ class SyncController extends Controller
         'stocks' => [
             'model'   => Stock::class,
             'gate'    => 'logistique.L',
-            'columns' => ['id', 'item_name', 'category', 'unit', 'current_quantity', 'updated_at'],
+            'columns' => ['id', 'item_name', 'category', 'unit', 'current_quantity', 'alert_threshold', 'updated_at'],
         ],
         'clients' => [
             'model'   => Client::class,

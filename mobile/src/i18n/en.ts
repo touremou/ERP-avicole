@@ -5,6 +5,18 @@
  * orpheline des deux côtés au moment de la génération).
  */
 export const en: Record<string, string> = {
+  // Écran Stocks (consultation)
+  'Stocks': 'Stock',
+  ':count article(s)': ':count item(s)',
+  ':count sous le seuil': ':count below threshold',
+  'Rechercher un article…': 'Search an item…',
+  'Seuil : :n :u': 'Threshold: :n :u',
+  'Voir l’état des stocks': 'View stock levels',
+  'Aucun stock local — la synchronisation les rapatriera au premier passage réseau.': 'No local stock — syncing will fetch them on the next network connection.',
+  'oeufs': 'eggs',
+  'conso': 'feed',
+  'litieres': 'litter',
+  'materiels': 'equipment',
   // Écran Tâches
   'Mes tâches': 'My tasks',
   ':count tâche(s) en cours': ':count task(s) in progress',

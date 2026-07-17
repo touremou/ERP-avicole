@@ -13,6 +13,7 @@ import { BatchScreen } from '../features/elevage/BatchScreen'
 import { ScanScreen } from '../features/scan/ScanScreen'
 import { SaleScreen } from '../features/commerce/SaleScreen'
 import { StockMovementScreen } from '../features/logistique/StockMovementScreen'
+import { StocksScreen } from '../features/logistique/StocksScreen'
 import { ExpenseScreen } from '../features/depenses/ExpenseScreen'
 import { HarvestScreen } from '../features/cultures/HarvestScreen'
 import { CropInputScreen } from '../features/cultures/CropInputScreen'
@@ -76,6 +77,7 @@ function Shell() {
           <Route path="/scan" element={<ScanScreen />} />
           <Route path="/commerce/vente" element={<SaleScreen />} />
           <Route path="/logistique/mouvement" element={<StockMovementScreen />} />
+          <Route path="/logistique/stocks" element={<StocksScreen />} />
           <Route path="/depenses/nouvelle" element={<ExpenseScreen />} />
           <Route path="/cultures/recolte/:cycleId" element={<HarvestScreen />} />
           <Route path="/cultures/intrant/:cycleId" element={<CropInputScreen />} />

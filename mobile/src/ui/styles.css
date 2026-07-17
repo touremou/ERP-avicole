@@ -234,6 +234,13 @@ h3 {
 }
 .task-row__body { flex: 1 1 auto; min-width: 0; }
 .task-row .task-title { display: block; font-weight: 700; font-size: 0.95rem; }
+
+/* Consultation stocks : quantité + seuil bas */
+.task-row.stock-low { border-color: #fca5a5; background: #fef2f2; }
+.stock-qty { flex: none; text-align: right; line-height: 1.05; }
+.stock-qty__val { display: block; font-weight: 800; font-size: 1.1rem; }
+.stock-qty__val--low { color: #dc2626; }
+.stock-qty__unit { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: var(--muted, #94a3b8); }
 .task-done {
   flex: none; border: none; border-radius: 999px;
   min-height: 40px; padding: 8px 16px;
