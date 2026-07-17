@@ -12,6 +12,7 @@ import type {
   DeviceInfo,
   LoginResponse,
   MeResponse,
+  BatchHistoryResponse,
   NotificationsResponse,
   SalesJournalResponse,
   PhotoUploadResponse,
@@ -104,6 +105,8 @@ export const api = {
   tasks: () => request<TasksResponse>('/tasks'),
 
   salesToday: () => request<SalesJournalResponse>('/sales/today'),
+
+  batchHistory: (id: number) => request<BatchHistoryResponse>(`/batches/${id}/history`),
 
   markNotificationRead: (id: string) =>
     request<{ message: string }>(`/notifications/${id}/read`, { method: 'POST' }),

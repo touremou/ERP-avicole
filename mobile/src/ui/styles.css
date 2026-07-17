@@ -247,6 +247,13 @@ h3 {
 .stock-qty__val--low { color: #dc2626; }
 .stock-qty__unit { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: var(--muted, #94a3b8); }
 
+/* Fiche lot : carte simple + courbe de poids */
+.card-plain {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius-card); padding: 12px 14px; box-shadow: var(--shadow-card);
+}
+.sparkline { display: block; width: 100%; height: auto; margin-top: 6px; }
+
 /* Journal des ventes : badge de statut de paiement */
 .pay-badge { margin-left: 6px; padding: 1px 6px; border-radius: 999px; font-size: 0.62rem; font-weight: 800; text-transform: uppercase; }
 .pay-badge.pay-paid { background: #dcfce7; color: #166534; }

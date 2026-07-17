@@ -59,6 +59,8 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
 
         Route::get('/batches', [BatchController::class, 'index'])->name('batches.index');
         Route::get('/batches/{batch}', [BatchController::class, 'show'])->name('batches.show');
+        // Fiche enrichie : indicateurs + historique des pointages (courbe de poids).
+        Route::get('/batches/{batch}/history', [BatchController::class, 'history'])->name('batches.history');
 
         // Journal des ventes du jour (consultation commerce.L).
         Route::get('/sales/today', [\App\Http\Controllers\Api\SaleJournalController::class, 'today'])->name('sales.today');
