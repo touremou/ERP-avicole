@@ -187,8 +187,8 @@ class AuthController extends Controller
             'email' => $user->email,
             // Téléphone WhatsApp : sert à préremplir l'éditeur de profil mobile.
             'phone' => $user->whatsapp_phone,
-            // Photo de profil (null → le client retombe sur les initiales).
-            'avatar_url' => $user->avatar_path ? asset('storage/' . $user->avatar_path) : null,
+            // Photo de profil partagée web/mobile (null → repli sur les initiales).
+            'avatar_url' => $user->avatar_url,
             'role' => $user->userRole?->name,
             // Langue du profil web : la PWA l'adopte (sauf choix manuel local).
             'locale' => $user->locale,

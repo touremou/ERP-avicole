@@ -47,6 +47,15 @@ class User extends Authenticatable
 
     // ─── RELATIONS ───
 
+    /**
+     * URL publique de la photo de profil (disque public via /media), partagée
+     * par le web ET le mobile. Null si aucune photo → repli sur les initiales.
+     */
+    public function getAvatarUrlAttribute(): ?string
+    {
+        return $this->avatar_path ? media_url($this->avatar_path) : null;
+    }
+
     public function userRole(): BelongsTo
     {
         return $this->belongsTo(Role::class, 'role_id');
