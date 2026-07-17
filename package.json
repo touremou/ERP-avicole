@@ -19,6 +19,7 @@
         "vite": "^7.0.7"
     },
     "dependencies": {
+        "@fontsource/figtree": "^5.2.10",
         "dexie": "^4.4.2"
     }
 }
