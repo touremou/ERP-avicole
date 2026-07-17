@@ -241,6 +241,23 @@ export interface SalesJournalResponse {
   server_time: string
 }
 
+export interface HarvestEntry {
+  id: number
+  crop: string | null
+  variety: string | null
+  cycle_code: string | null
+  quantity: number
+  unit: string
+  weight_kg: number
+  quality: string | null
+}
+
+export interface HarvestJournalResponse {
+  harvests: HarvestEntry[]
+  summary: { count: number; total_weight_kg: number }
+  server_time: string
+}
+
 export interface SlaughterOrderEntry {
   id: number
   order_number: string

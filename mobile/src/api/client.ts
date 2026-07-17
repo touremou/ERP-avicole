@@ -13,6 +13,7 @@ import type {
   LoginResponse,
   MeResponse,
   BatchHistoryResponse,
+  HarvestJournalResponse,
   MillJournalResponse,
   NotificationsResponse,
   SalesJournalResponse,
@@ -114,6 +115,8 @@ export const api = {
   provenderieToday: () => request<MillJournalResponse>('/provenderie/today'),
 
   abattoirToday: () => request<SlaughterJournalResponse>('/abattoir/today'),
+
+  culturesToday: () => request<HarvestJournalResponse>('/cultures/today'),
 
   batchHistory: (id: number) => request<BatchHistoryResponse>(`/batches/${id}/history`),
 
