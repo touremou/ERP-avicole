@@ -222,6 +222,25 @@ export interface TasksResponse {
   server_time: string
 }
 
+export interface SaleJournalEntry {
+  id: number
+  reference: string
+  client_name: string | null
+  type: string
+  status: string
+  total_amount: number
+  paid_amount: number
+  remaining: number
+  payment_status: string
+  created_at: string | null
+}
+
+export interface SalesJournalResponse {
+  sales: SaleJournalEntry[]
+  summary: { count: number; total: number; paid: number; remaining: number }
+  server_time: string
+}
+
 export interface RefProductionType {
   id: number
   slug: string
