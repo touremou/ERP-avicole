@@ -210,11 +210,13 @@ export function HomeScreen() {
             return (
               <div key={record.uuid} className="task-row">
                 <span className="act-avatar" aria-hidden="true">
-                  {me?.user.avatar_url ? (
-                    <img src={me.user.avatar_url} alt="" />
-                  ) : (
-                    <span className="act-avatar__initials">{initials}</span>
-                  )}
+                  <span className="act-avatar__photo">
+                    {me?.user.avatar_url ? (
+                      <img src={me.user.avatar_url} alt="" />
+                    ) : (
+                      <span className="act-avatar__initials">{initials}</span>
+                    )}
+                  </span>
                   <span className="act-avatar__badge">{ACTIVITY_ICON[record.type] ?? '•'}</span>
                 </span>
                 <div className="task-row__body">

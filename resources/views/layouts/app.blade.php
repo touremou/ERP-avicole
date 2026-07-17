@@ -44,8 +44,8 @@
             @if(session('error'))
                 <div class="fixed top-24 right-6 z-[100] animate-slide-in" x-data x-init="setTimeout(() => $el.remove(), 8000)">
                     <div class="bg-slate-900 border-l-4 border-rose-600 p-5 rounded-2xl shadow-2xl flex items-center gap-4 min-w-[300px]">
-                        <div class="w-10 h-10 bg-rose-600/20 rounded-xl flex items-center justify-center text-rose-500">
-                            <i class="fas fa-shield-alt"></i>
+                        <div class="w-10 h-10 bg-rose-600/20 rounded-xl flex items-center justify-center text-lg leading-none">
+                            🔴
                         </div>
                         <div class="text-left">
                             <p class="text-[8px] font-black text-rose-500 uppercase tracking-[0.2em] mb-1">{{ __("Alerte Système") }}</p>
@@ -59,8 +59,8 @@
             @if(session('success'))
                 <div class="fixed top-24 right-6 z-[100] animate-slide-in" x-data x-init="setTimeout(() => $el.remove(), 6000)">
                     <div class="bg-slate-900 border-l-4 border-emerald-500 p-5 rounded-2xl shadow-2xl flex items-center gap-4 min-w-[300px]">
-                        <div class="w-10 h-10 bg-emerald-500/20 rounded-xl flex items-center justify-center text-emerald-400">
-                            <i class="fas fa-check"></i>
+                        <div class="w-10 h-10 bg-emerald-500/20 rounded-xl flex items-center justify-center text-lg leading-none">
+                            ✅
                         </div>
                         <div class="text-left">
                             <p class="text-[8px] font-black text-emerald-400 uppercase tracking-[0.2em] mb-1">{{ __("Opération Réussie") }}</p>
@@ -74,8 +74,8 @@
             @if($errors->any())
                 <div class="fixed top-24 right-6 z-[100] animate-slide-in" x-data x-init="setTimeout(() => $el.remove(), 8000)">
                     <div class="bg-slate-900 border-l-4 border-amber-500 p-5 rounded-2xl shadow-2xl flex items-start gap-4 min-w-[300px] max-w-md">
-                        <div class="w-10 h-10 shrink-0 bg-amber-500/20 rounded-xl flex items-center justify-center text-amber-400">
-                            <i class="fas fa-triangle-exclamation"></i>
+                        <div class="w-10 h-10 shrink-0 bg-amber-500/20 rounded-xl flex items-center justify-center text-lg leading-none">
+                            ⚠️
                         </div>
                         <div class="text-left">
                             <p class="text-[8px] font-black text-amber-400 uppercase tracking-[0.2em] mb-1">{{ __("Saisie Refusée") }}</p>
