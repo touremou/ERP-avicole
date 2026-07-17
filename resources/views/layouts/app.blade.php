@@ -337,7 +337,7 @@
              class="fixed bottom-5 right-5 z-50 flex items-center gap-3 bg-slate-900 text-white rounded-2xl shadow-2xl px-5 py-4
                     translate-y-24 opacity-0 transition-all duration-500 ease-out"
              aria-live="polite">
-            <i class="fa-solid fa-rotate text-blue-400 text-base"></i>
+            <span class="text-base leading-none" aria-hidden="true">🔄</span>
             <span class="text-[11px] font-black uppercase tracking-widest">{{ __("Mise à jour disponible") }}</span>
             <button id="sw-reload-btn"
                     class="ml-1 px-4 py-2 bg-blue-500 hover:bg-blue-400 rounded-xl text-[10px] font-black uppercase tracking-wider transition-colors">
