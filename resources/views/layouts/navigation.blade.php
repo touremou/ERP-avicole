@@ -61,7 +61,7 @@
                 <x-menu align="right" width="w-64" panel="bg-white rounded-2xl shadow-2xl border border-slate-100 p-3">
                     <x-slot name="trigger">
                         <span class="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl bg-violet-50 text-violet-600 hover:bg-violet-100 transition-all">
-                            <i class="fa-solid fa-building text-[8px]"></i>
+                            <span class="text-xs leading-none" aria-hidden="true">🏡</span>
                             {{ ($currentFarm->code ?? 'SITE') }}
                             <i class="fa-solid fa-chevron-down text-[5px] opacity-30"></i>
                         </span>
@@ -83,7 +83,9 @@
                         @endforeach
                 </x-menu>
                 @elseif($currentFarm ?? null)
-                <span class="text-[8px] font-black text-slate-400 uppercase tracking-widest px-2">{{ $currentFarm->name }}</span>
+                <span class="flex items-center gap-1.5 text-[8px] font-black text-slate-400 uppercase tracking-widest px-2">
+                    <span class="text-xs leading-none" aria-hidden="true">🏡</span>{{ $currentFarm->name }}
+                </span>
                 @endif
 
                 {{-- STATUT RÉSEAU (pendant du badge de sync mobile) --}}
