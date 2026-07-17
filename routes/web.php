@@ -195,7 +195,9 @@ Route::middleware(['auth'])->group(function () {
 
         Route::get('/create', 'create')->name('create')->middleware('can:C');
         Route::post('/store', 'store')->name('store')->middleware('can:C');
-        Route::post('/move', 'move')->name('move')->middleware('can:C');
+        // Mouvement (Entrée/Sortie/Ajustement) = modification du stock : niveau M,
+        // cohérent avec MoveStockRequest::authorize() et le bouton @can('logistique.M').
+        Route::post('/move', 'move')->name('move')->middleware('can:M');
 
         // S-16 corrigé : syncAll = opération de maintenance admin
         Route::post('/sync-all', 'syncAll')->name('syncAll')->middleware('can:S');
