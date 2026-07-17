@@ -5,6 +5,20 @@
  * orpheline des deux côtés au moment de la génération).
  */
 export const en: Record<string, string> = {
+  // Journal des ventes (Commerce)
+  'Ventes du jour': "Today's sales",
+  'Voir le journal du jour': "View today's journal",
+  'hors-ligne (dernier instantané)': 'offline (last snapshot)',
+  'Ventes': 'Sales',
+  'CA du jour': "Today's revenue",
+  'Encaissé': 'Collected',
+  'Reste dû': 'Outstanding',
+  'Chargement…': 'Loading…',
+  'Aucune vente enregistrée aujourd’hui.': 'No sales recorded today.',
+  'Client comptoir': 'Walk-in customer',
+  'Soldé': 'Paid',
+  'Partiel': 'Partial',
+  'Impayé': 'Unpaid',
   // Tableau de bord — KPIs par rôle
   'Effectif actif': 'Live headcount',
   'Articles stock': 'Stock items',

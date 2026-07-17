@@ -60,6 +60,9 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::get('/batches', [BatchController::class, 'index'])->name('batches.index');
         Route::get('/batches/{batch}', [BatchController::class, 'show'])->name('batches.show');
 
+        // Journal des ventes du jour (consultation commerce.L).
+        Route::get('/sales/today', [\App\Http\Controllers\Api\SaleJournalController::class, 'today'])->name('sales.today');
+
         // Photos terrain (téléversées AVANT le push de l'op qui les référence).
         Route::post('/photos', [\App\Http\Controllers\Api\PhotoController::class, 'store'])
             ->middleware('throttle:30,1')

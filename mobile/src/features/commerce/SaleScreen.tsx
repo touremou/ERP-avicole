@@ -4,7 +4,7 @@
  * Contrat : SyncService::saleCreate (gate commerce.C).
  */
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { db } from '../../offline/db'
 import { enqueue } from '../../offline/sync'
 import { NumberStepper } from '../../ui/NumberStepper'
@@ -104,6 +104,9 @@ export function SaleScreen() {
   return (
     <form className="screen" onSubmit={onSubmit}>
       <h2>{t('💰 Vente rapide')}</h2>
+      <Link to="/commerce/journal" className="section-link" style={{ display: 'inline-block', marginBottom: 8 }}>
+        {t('Voir le journal du jour')} →
+      </Link>
 
       <label htmlFor="client">{t('Client')}</label>
       <select id="client" required value={clientId} onChange={(e) => setClientId(e.target.value)}>

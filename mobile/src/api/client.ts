@@ -13,6 +13,7 @@ import type {
   LoginResponse,
   MeResponse,
   NotificationsResponse,
+  SalesJournalResponse,
   PhotoUploadResponse,
   PushOperation,
   PushResponse,
@@ -101,6 +102,8 @@ export const api = {
   notifications: () => request<NotificationsResponse>('/notifications'),
 
   tasks: () => request<TasksResponse>('/tasks'),
+
+  salesToday: () => request<SalesJournalResponse>('/sales/today'),
 
   markNotificationRead: (id: string) =>
     request<{ message: string }>(`/notifications/${id}/read`, { method: 'POST' }),
