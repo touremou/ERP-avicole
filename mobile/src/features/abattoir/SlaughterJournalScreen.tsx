@@ -5,10 +5,12 @@
  * jour. Rafraîchi en ligne, dernier instantané en cache (meta) pour rester
  * consultable hors-ligne.
  */
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { api } from '../../api/client'
 import { getMeta, setMeta } from '../../offline/db'
 import { t, dateLocale } from '../../i18n'
+import { FilterChips } from '../../ui/FilterChips'
+import { BarBreakdown } from '../../ui/BarBreakdown'
 import type { SlaughterJournalResponse, SlaughterOrderEntry } from '../../api/types'
 
 const CACHE_KEY = 'slaughter_journal_today'
@@ -36,6 +38,7 @@ export function SlaughterJournalScreen() {
   const [data, setData] = useState<SlaughterJournalResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [offline, setOffline] = useState(false)
+  const [st, setSt] = useState('all')
 
   useEffect(() => {
     void (async () => {
@@ -58,7 +61,25 @@ export function SlaughterJournalScreen() {
   }, [])
 
   const summary = data?.summary
-  const orders: SlaughterOrderEntry[] = data?.orders ?? []
+  const allOrders: SlaughterOrderEntry[] = data?.orders ?? []
+  const orders = useMemo(
+    () => (st === 'all' ? allOrders : allOrders.filter((o) => o.status === st)),
+    [allOrders, st],
+  )
+
+  const countBy = (status: string) => allOrders.filter((o) => o.status === status).length
+  const breakdown = [
+    { label: t('Terminé'), value: countBy('termine'), color: '#16a34a' },
+    { label: t('Planifié'), value: countBy('planifie'), color: '#dc2626' },
+    { label: t('En cours'), value: countBy('en_cours'), color: '#d97706' },
+    { label: t('Bloqué'), value: countBy('bloque'), color: '#7c3aed' },
+  ]
+  const chips = [
+    { key: 'all', label: t('Tous'), count: allOrders.length },
+    { key: 'termine', label: t('Terminé'), count: countBy('termine') },
+    { key: 'planifie', label: t('Planifié'), count: countBy('planifie') },
+    { key: 'bloque', label: t('Bloqué'), count: countBy('bloque') },
+  ]
 
   return (
     <div className="screen">
@@ -78,6 +99,9 @@ export function SlaughterJournalScreen() {
           {summary.blocked > 0 && <div className="kpi kpi--alert"><div className="kpi-val">{summary.blocked}</div><div className="kpi-lab">{t('Bloqués')}</div></div>}
         </div>
       )}
+
+      {allOrders.length > 0 && <BarBreakdown items={breakdown} />}
+      {allOrders.length > 0 && <FilterChips options={chips} active={st} onChange={setSt} />}
 
       {loading && !data ? (
         <div className="ok-card ok-muted">{t('Chargement…')}</div>
