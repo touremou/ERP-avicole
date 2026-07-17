@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\TreasuryAccount;
 use App\Models\TreasuryTransaction;
+use App\Support\JournalPeriod;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 
 /**
@@ -18,15 +20,17 @@ use Illuminate\Support\Facades\Gate;
  */
 class TreasuryJournalController extends Controller
 {
-    public function today(): JsonResponse
+    public function today(Request $request): JsonResponse
     {
         if (Gate::denies('tresorerie.L')) {
             abort(403, 'Lecture de la Trésorerie non autorisée.');
         }
 
+        $period = JournalPeriod::resolve($request);
+
         $movements = TreasuryTransaction::query()
             ->with('account:id,name')
-            ->whereDate('transaction_date', today())
+            ->whereBetween('transaction_date', [$period['start'], $period['end']])
             ->orderByDesc('created_at')
             ->get(['id', 'treasury_account_id', 'direction', 'amount', 'category', 'description', 'created_at']);
 
@@ -61,6 +65,7 @@ class TreasuryJournalController extends Controller
                 'is_active' => (bool) $account->is_active,
             ])->values(),
             'total_balance' => (float) $accounts->where('is_active', true)->sum('current_balance'),
+            'period'        => ['key' => $period['key'], 'label' => $period['label']],
             'server_time'   => now()->toIso8601String(),
         ]);
     }

@@ -11,6 +11,7 @@ import { getMeta, setMeta } from '../../offline/db'
 import { t, dateLocale } from '../../i18n'
 import { FilterChips } from '../../ui/FilterChips'
 import { BarBreakdown } from '../../ui/BarBreakdown'
+import { PeriodSelector } from '../../ui/PeriodSelector'
 import type { SlaughterJournalResponse, SlaughterOrderEntry } from '../../api/types'
 
 const CACHE_KEY = 'slaughter_journal_today'
@@ -39,16 +40,19 @@ export function SlaughterJournalScreen() {
   const [loading, setLoading] = useState(true)
   const [offline, setOffline] = useState(false)
   const [st, setSt] = useState('all')
+  const [period, setPeriod] = useState('today')
 
   useEffect(() => {
     void (async () => {
-      const cached = await getMeta<SlaughterJournalResponse>(CACHE_KEY)
-      if (cached) setData(cached)
+      setLoading(true)
+      const cacheKey = `${CACHE_KEY}_${period}`
+      const cached = await getMeta<SlaughterJournalResponse>(cacheKey)
+      setData(cached ?? null)
       if (navigator.onLine) {
         try {
-          const fresh = await api.abattoirToday()
+          const fresh = await api.abattoirToday(period)
           setData(fresh)
-          await setMeta(CACHE_KEY, fresh)
+          await setMeta(cacheKey, fresh)
           setOffline(false)
         } catch {
           setOffline(true)
@@ -58,7 +62,7 @@ export function SlaughterJournalScreen() {
       }
       setLoading(false)
     })()
-  }, [])
+  }, [period])
 
   const summary = data?.summary
   const allOrders: SlaughterOrderEntry[] = data?.orders ?? []
@@ -90,6 +94,8 @@ export function SlaughterJournalScreen() {
           {offline ? ' · ' + t('hors-ligne (dernier instantané)') : ''}
         </span>
       </div>
+
+      <PeriodSelector period={period} onChange={setPeriod} />
 
       {summary && (
         <div className="kpi-grid">

@@ -100,3 +100,19 @@ test('le journal est borné à la ferme courante', function () {
 
     expect($refs)->toContain(33000.0)->not->toContain(88000.0);
 });
+
+test('le paramètre period sélectionne la fenêtre (today / yesterday / 7days)', function () {
+    jrnSale($this->farm->id, $this->client->id, $this->user->id, 'valide', 10000, 10000, now()->toDateString());
+    jrnSale($this->farm->id, $this->client->id, $this->user->id, 'valide', 20000, 20000, now()->subDay()->toDateString());
+
+    Sanctum::actingAs($this->user);
+
+    $today = $this->getJson('/api/v1/sales/today')->assertOk()->json();
+    expect($today['sales'])->toHaveCount(1)->and($today['period']['key'])->toBe('today');
+
+    $yesterday = $this->getJson('/api/v1/sales/today?period=yesterday')->assertOk()->json();
+    expect($yesterday['sales'])->toHaveCount(1)->and($yesterday['period']['key'])->toBe('yesterday');
+
+    $week = $this->getJson('/api/v1/sales/today?period=7days')->assertOk()->json();
+    expect($week['sales'])->toHaveCount(2)->and($week['period']['key'])->toBe('7days');
+});

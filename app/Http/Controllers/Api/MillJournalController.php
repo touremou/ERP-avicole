@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\MillProduction;
+use App\Support\JournalPeriod;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 
 /**
@@ -17,15 +19,17 @@ use Illuminate\Support\Facades\Gate;
  */
 class MillJournalController extends Controller
 {
-    public function today(): JsonResponse
+    public function today(Request $request): JsonResponse
     {
         if (Gate::denies('provenderie.L')) {
             abort(403, 'Lecture de la Provenderie non autorisée.');
         }
 
+        $period = JournalPeriod::resolve($request);
+
         $productions = MillProduction::query()
             ->with('formula:id,name')
-            ->today()
+            ->whereBetween('created_at', [$period['start'], $period['end']])
             ->orderByDesc('created_at')
             ->get(['id', 'batch_number', 'formula_id', 'quantity_produced', 'status', 'started_at', 'created_at']);
 
@@ -48,6 +52,7 @@ class MillJournalController extends Controller
                 'planned'     => $productions->where('status', 'Planifié')->count(),
                 'total_kg'    => (float) $done->sum('quantity_produced'),
             ],
+            'period'      => ['key' => $period['key'], 'label' => $period['label']],
             'server_time' => now()->toIso8601String(),
         ]);
     }

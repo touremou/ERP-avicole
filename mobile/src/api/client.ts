@@ -108,15 +108,15 @@ export const api = {
 
   tasks: () => request<TasksResponse>('/tasks'),
 
-  salesToday: () => request<SalesJournalResponse>('/sales/today'),
+  salesToday: (period = 'today') => request<SalesJournalResponse>(`/sales/today?period=${period}`),
 
-  treasuryToday: () => request<TreasuryJournalResponse>('/treasury/today'),
+  treasuryToday: (period = 'today') => request<TreasuryJournalResponse>(`/treasury/today?period=${period}`),
 
-  provenderieToday: () => request<MillJournalResponse>('/provenderie/today'),
+  provenderieToday: (period = 'today') => request<MillJournalResponse>(`/provenderie/today?period=${period}`),
 
-  abattoirToday: () => request<SlaughterJournalResponse>('/abattoir/today'),
+  abattoirToday: (period = 'today') => request<SlaughterJournalResponse>(`/abattoir/today?period=${period}`),
 
-  culturesToday: () => request<HarvestJournalResponse>('/cultures/today'),
+  culturesToday: (period = 'today') => request<HarvestJournalResponse>(`/cultures/today?period=${period}`),
 
   batchHistory: (id: number) => request<BatchHistoryResponse>(`/batches/${id}/history`),
 
