@@ -59,6 +59,8 @@ export type OperationType =
   | 'byproduct.create'
   // Tâches assignées : cocher « faite » depuis le terrain.
   | 'task.complete'
+  // Tâche personnelle créée depuis le terrain (auto-assignée).
+  | 'task.create'
 
 export interface PushOperation {
   op_uuid: string

@@ -5,6 +5,26 @@
  * orpheline des deux côtés au moment de la génération).
  */
 export const en: Record<string, string> = {
+  // Écran Tâches
+  'Mes tâches': 'My tasks',
+  ':count tâche(s) en cours': ':count task(s) in progress',
+  'Nouvelle tâche': 'New task',
+  'Nouvelle tâche : :title': 'New task: :title',
+  'Annuler': 'Cancel',
+  'Intitulé': 'Title',
+  'Ex. Vérifier les abreuvoirs B2': 'E.g. Check drinkers in B2',
+  'Échéance': 'Due date',
+  'Priorité': 'Priority',
+  'Basse': 'Low',
+  'Normale': 'Normal',
+  'Haute': 'High',
+  'Enregistrement…': 'Saving…',
+  'Créer la tâche': 'Create task',
+  "Aujourd'hui": 'Today',
+  'À venir': 'Upcoming',
+  'Aucune tâche en cours. Bonne journée !': 'No tasks in progress. Have a good day!',
+  'à synchroniser': 'to sync',
+  'autre': 'other',
   '📷 Scanner une étiquette': '📷 Scan a label',
   'Scanner indisponible sur cet appareil — saisissez le code (imprimé sous le QR).': 'Scanner unavailable on this device — type the code (printed under the QR).',
   'Code (lot, ordre, OP, cycle)': 'Code (batch, order, feed-mill order, cycle)',

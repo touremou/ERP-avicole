@@ -85,3 +85,50 @@ test("task.complete refuse la tâche d'un autre employé (non superviseur)", fun
     expect($res['status'])->toBe('permission_denied');
     expect($task->fresh()->status)->toBe('a_faire');
 });
+
+test('task.create crée une tâche PERSONNELLE (auto-assignée), idempotente', function () {
+    Sanctum::actingAs($this->user);
+
+    $uuid = Str::uuid()->toString();
+    $op = [
+        'op_uuid' => Str::uuid()->toString(),
+        'type'    => 'task.create',
+        'payload' => [
+            'uuid'           => $uuid,
+            'title'          => 'Vérifier abreuvoirs B2',
+            'category'       => 'controle',
+            'scheduled_date' => now()->toDateString(),
+            'priority'       => 'haute',
+        ],
+    ];
+
+    $res = $this->postJson('/api/v1/sync/push', ['operations' => [$op]])->assertOk()->json('results.0');
+    expect($res['status'])->toBe('success');
+
+    $task = TaskAssignment::where('uuid', $uuid)->first();
+    expect($task)->not->toBeNull()
+        ->and($task->employee_id)->toBe($this->employee->id) // auto-assignée à MOI
+        ->and($task->status)->toBe('a_faire');
+
+    // Rejeu réseau → already_synced (pas de doublon).
+    $res2 = $this->postJson('/api/v1/sync/push', ['operations' => [$op]])->assertOk()->json('results.0');
+    expect($res2['status'])->toBe('already_synced');
+    expect(TaskAssignment::where('uuid', $uuid)->count())->toBe(1);
+});
+
+test('task.create est refusée à un utilisateur sans employé rattaché', function () {
+    $orphan = User::factory()->create(['role_id' => $this->user->role_id]); // pas d'Employee lié
+    DB::table('farm_user')->insert([
+        'farm_id' => $this->farm->id, 'user_id' => $orphan->id,
+        'is_default' => true, 'is_owner' => false, 'created_at' => now(), 'updated_at' => now(),
+    ]);
+    Sanctum::actingAs($orphan);
+
+    $res = $this->postJson('/api/v1/sync/push', ['operations' => [[
+        'op_uuid' => Str::uuid()->toString(),
+        'type'    => 'task.create',
+        'payload' => ['uuid' => Str::uuid()->toString(), 'title' => 'X', 'category' => 'controle', 'scheduled_date' => now()->toDateString()],
+    ]]])->assertOk()->json('results.0');
+
+    expect($res['status'])->toBe('permission_denied');
+});
