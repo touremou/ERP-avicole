@@ -570,15 +570,18 @@ Route::middleware(['auth'])->group(function () {
     // ──────────────────────────────────────────────
 
     // ─── CLIENTS ───
+    // Clients = TIERS partagés : lecture/création/édition ouvertes au module
+    // Commerce OU Annuaire (gates composites clients.*). Le relevé (financier),
+    // la suppression et le crédit restent gardés par commerce.* .
     Route::prefix('clients')->name('clients.')->controller(ClientController::class)->group(function () {
-        Route::get('/', 'index')->name('index')->middleware('can:L');
-        Route::get('/create', 'create')->name('create')->middleware('can:C');
-        Route::post('/', 'store')->name('store')->middleware('can:C');
+        Route::get('/', 'index')->name('index')->middleware('can:clients.read');
+        Route::get('/create', 'create')->name('create')->middleware('can:clients.create');
+        Route::post('/', 'store')->name('store')->middleware('can:clients.create');
         Route::get('/{client}/statement', 'statement')->name('statement')->middleware('can:L');
         Route::get('/{client}/statement/pdf', 'statementPdf')->name('statement.pdf')->middleware('can:L');
-        Route::get('/{client}', 'show')->name('show')->middleware('can:L');
-        Route::get('/{client}/edit', 'edit')->name('edit')->middleware('can:M');
-        Route::put('/{client}', 'update')->name('update')->middleware('can:M');
+        Route::get('/{client}', 'show')->name('show')->middleware('can:clients.read');
+        Route::get('/{client}/edit', 'edit')->name('edit')->middleware('can:clients.modify');
+        Route::put('/{client}', 'update')->name('update')->middleware('can:clients.modify');
         Route::delete('/{client}', 'destroy')->name('destroy')->middleware('can:S');
     });
 

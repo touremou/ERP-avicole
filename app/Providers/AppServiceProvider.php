@@ -231,8 +231,17 @@ class AppServiceProvider extends ServiceProvider
                 }
             }
 
+            // Gates COMPOSITES (clients.*) : on NE court-circuite PAS l'admin ici.
+            // Leur closure délègue aux gates modules (commerce.*/annuaire.*) qui
+            // gèrent déjà admin ET verrou licence — sinon l'admin contournerait la
+            // licence sur ces tiers partagés (le slug composite est invisible du
+            // résolveur de licence ci-dessus).
+            $composite = ['clients.read', 'clients.create', 'clients.modify'];
+
             try {
-                if (($user->userRole?->name ?? '') === 'admin') return true;
+                if (! in_array($ability, $composite, true) && ($user->userRole?->name ?? '') === 'admin') {
+                    return true;
+                }
             } catch (\Exception) {
                 return null;
             }
@@ -306,5 +315,20 @@ class AppServiceProvider extends ServiceProvider
                 });
             }
         }
+
+        // ─── D. GATES COMPOSITES « TIERS PARTAGÉS » ───
+        // Le client est un TIERS : consultable/créable/éditable depuis le
+        // module Commerce (ventes) OU l'Annuaire (répertoire des tiers). La
+        // gestion strictement commerciale (crédit, relevé, suppression) reste,
+        // elle, gardée par commerce.* (cf. routes clients + ClientController).
+        $clientsGate = fn (string $level) => function (?User $user) use ($level) {
+            if (! $user) return false;
+
+            return Gate::forUser($user)->allows("commerce.{$level}")
+                || Gate::forUser($user)->allows("annuaire.{$level}");
+        };
+        Gate::define('clients.read', $clientsGate('L'));
+        Gate::define('clients.create', $clientsGate('C'));
+        Gate::define('clients.modify', $clientsGate('M'));
     }
 }

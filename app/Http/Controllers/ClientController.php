@@ -13,7 +13,7 @@ class ClientController extends Controller
 {
     public function index(Request $request)
     {
-        if (Gate::denies('commerce.L')) return redirect()->route('dashboard')->with('error', 'Accès restreint au module Commerce.');
+        if (Gate::denies('clients.read')) return redirect()->route('dashboard')->with('error', 'Accès restreint au module Commerce.');
 
         $query = Client::query();
 
@@ -43,7 +43,7 @@ class ClientController extends Controller
 
     public function create()
     {
-        if (Gate::denies('commerce.C')) return back()->with('error', 'Création de client non autorisée.');
+        if (Gate::denies('clients.create')) return back()->with('error', 'Création de client non autorisée.');
         return view('clients.create', ['priceLists' => \App\Models\SalePriceList::orderBy('name')->get()]);
     }
 
@@ -51,6 +51,13 @@ class ClientController extends Controller
     {
         // La vérification Gate est gérée dans la FormRequest
         $validated = $request->validated();
+
+        // Le plafond de crédit est une donnée COMMERCIALE : un créateur venu de
+        // l'Annuaire (sans commerce.C) ne peut pas le fixer, même en forgeant la
+        // requête → on l'ignore (défaut 0 = pas de plafond).
+        if (Gate::denies('commerce.C')) {
+            unset($validated['credit_limit']);
+        }
 
         $lastId = Client::withTrashed()->max('id') ?? 0;
         $validated['client_id'] = sprintf('CLI-%04d', $lastId + 1);
@@ -63,7 +70,7 @@ class ClientController extends Controller
 
     public function show(Client $client)
     {
-        if (Gate::denies('commerce.L')) return back()->with('error', 'Accès restreint à la fiche client.');
+        if (Gate::denies('clients.read')) return back()->with('error', 'Accès restreint à la fiche client.');
 
         $client->load(['sales' => fn($q) => $q->latest('sale_date')->take(20), 'sales.payments']);
 
@@ -165,14 +172,22 @@ class ClientController extends Controller
 
     public function edit(Client $client)
     {
-        if (Gate::denies('commerce.M')) return back()->with('error', 'Modification de client non autorisée.');
+        if (Gate::denies('clients.modify')) return back()->with('error', 'Modification de client non autorisée.');
         return view('clients.edit', ['client' => $client, 'priceLists' => \App\Models\SalePriceList::orderBy('name')->get()]);
     }
 
     public function update(UpdateClientRequest $request, Client $client)
     {
         // La validation et le Gate sont gérés dans UpdateClientRequest
-        $client->update($request->validated());
+        $validated = $request->validated();
+
+        // Crédit = donnée commerciale : un éditeur venu de l'Annuaire (sans
+        // commerce.M) ne peut pas le modifier, même en forgeant la requête.
+        if (Gate::denies('commerce.M')) {
+            unset($validated['credit_limit']);
+        }
+
+        $client->update($validated);
 
         return redirect()->route('clients.show', $client)
             ->with('success', 'Fiche client mise à jour.');
