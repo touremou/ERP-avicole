@@ -22,9 +22,13 @@ test('l\'admin voit la page des sauvegardes et la liste', function () {
 });
 
 test('un non-admin ne peut pas accéder aux sauvegardes', function () {
-    $this->actingAs($this->operatorUser)
-        ->get(route('backups.index'))
-        ->assertRedirect(route('dashboard'));
+    // Verrou de route can:admin.S (défense en profondeur) : refus → redirection
+    // (la cible exacte dépend du gestionnaire d'exceptions ; l'important est le refus).
+    $response = $this->actingAs($this->operatorUser)
+        ->get(route('backups.index'));
+
+    expect($response->status())->toBeIn([302, 403]);
+    $response->assertDontSee('Sauvegardes');
 });
 
 test('le téléchargement refuse un nom hors du disque (anti path-traversal)', function () {

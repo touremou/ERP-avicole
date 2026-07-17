@@ -781,7 +781,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/test-mail', 'sendTestMail')->name('test_mail')->middleware('can:L');
         Route::get('/logs', 'logs')->name('logs')->middleware('can:S');
         // Journal d'audit (qui a modifié quoi) — lecture seule, admin.
-        Route::get('/audit', [\App\Http\Controllers\AuditLogController::class, 'index'])->name('audit');
+        Route::get('/audit', [\App\Http\Controllers\AuditLogController::class, 'index'])->name('audit')->middleware('can:admin.S');
         // Modèles de messages éditables (admin).
         Route::get('/templates', [NotificationTemplateController::class, 'index'])->name('templates')->middleware('can:S');
         Route::put('/templates/{template}', [NotificationTemplateController::class, 'update'])->name('templates.update')->middleware('can:S');
@@ -994,9 +994,15 @@ Route::middleware(['auth'])->group(function () {
     Route::put('/license', [\App\Http\Controllers\LicenseController::class, 'update'])->name('license.update');
 
     // ─── SAUVEGARDES (admin) ───
-    Route::get('/backups', [\App\Http\Controllers\BackupController::class, 'index'])->name('backups.index');
-    Route::post('/backups/run', [\App\Http\Controllers\BackupController::class, 'run'])->name('backups.run');
-    Route::get('/backups/download/{name}', [\App\Http\Controllers\BackupController::class, 'download'])->name('backups.download');
+    // Verrou de route explicite admin.S (le préfixe 'backups.' n'est pas dans
+    // routePrefixMap : un 'can:S' générique retomberait sur le fallback
+    // « au moins un module » — on cible donc admin.S nommément). En défense en
+    // profondeur des gates admin.S déjà présentes dans BackupController.
+    Route::middleware('can:admin.S')->group(function () {
+        Route::get('/backups', [\App\Http\Controllers\BackupController::class, 'index'])->name('backups.index');
+        Route::post('/backups/run', [\App\Http\Controllers\BackupController::class, 'run'])->name('backups.run');
+        Route::get('/backups/download/{name}', [\App\Http\Controllers\BackupController::class, 'download'])->name('backups.download');
+    });
 
     // ─── MULTI-FERME / MULTI-SITE ───
     Route::prefix('farms')->name('farms.')->controller(FarmController::class)->group(function () {

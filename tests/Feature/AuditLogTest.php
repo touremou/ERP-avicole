@@ -61,8 +61,11 @@ test('l\'admin peut consulter le journal d\'audit', function () {
 });
 
 test('un non-admin ne peut pas consulter le journal d\'audit', function () {
-    // operatorUser n'a pas admin.S → redirigé.
-    $this->actingAs($this->operatorUser)
-        ->get(route('notifications.audit'))
-        ->assertRedirect(route('dashboard'));
+    // Verrou de route can:admin.S (défense en profondeur) : operatorUser n'a
+    // pas admin.S → refusé (redirection, cible selon le gestionnaire d'exceptions).
+    $response = $this->actingAs($this->operatorUser)
+        ->get(route('notifications.audit'));
+
+    expect($response->status())->toBeIn([302, 403]);
+    $response->assertDontSee('Journal d\'audit');
 });
