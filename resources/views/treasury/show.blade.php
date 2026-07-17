@@ -9,7 +9,7 @@
             <x-flash />
 
             {{-- MOUVEMENT MANUEL --}}
-            @can('depenses.C')
+            @can('tresorerie.C')
             <form method="POST" action="{{ route('treasury.movement', $account) }}" class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm">
                 @csrf
                 <h3 class="text-[10px] font-black uppercase text-slate-500 tracking-widest mb-4">{{ __("Mouvement manuel") }}</h3>

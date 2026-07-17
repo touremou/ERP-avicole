@@ -114,11 +114,17 @@ class Module extends Model
             'cash-register.'    => 'caisse',
 
             // Finance (hub + registre dépenses + trésorerie + achats fournisseurs + budgets)
+            // Dépenses / Achats = saisie (registre des dépenses, achats
+            // fournisseurs, budgets).
             'finance.'          => 'depenses',
             'expenses.'         => 'depenses',
-            'treasury.'         => 'depenses',
             'purchases.'        => 'depenses',
             'budgets.'          => 'depenses',
+
+            // Trésorerie = comptes/soldes/mouvements/virements — module distinct
+            // (un saisisseur de dépenses ne voit pas les soldes bancaires).
+            'tresorerie.'       => 'tresorerie',
+            'treasury.'         => 'tresorerie',
 
             // Ressources (eau & énergie)
             'utilities.'        => 'ressources',
@@ -191,6 +197,7 @@ class Module extends Model
             'rh'            => 'rh.index',
             'admin'         => 'users.index',
             'depenses'      => 'finance.index',
+            'tresorerie'    => 'treasury.index',
         ][$slug] ?? null;
     }
 }

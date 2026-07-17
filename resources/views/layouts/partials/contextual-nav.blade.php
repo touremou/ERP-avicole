@@ -94,9 +94,16 @@
     <a href="{{ route('commerce.index') }}" class="{{ $linkClass }} {{ request()->routeIs('commerce.*') ? $activeClass : $inactiveClass }}">{{ __("Tableau de bord") }}</a>
     @endcan
 
-@elseif(request()->routeIs(['finance.*', 'expenses.*', 'budgets.*', 'treasury.*', 'purchases.*']))
-    {{-- Module Finance : hub d'abord (Tableau de bord), puis les grands livres. --}}
-    <span class="{{ $sectionClass }}"><i class="fa-solid fa-coins text-rose-500 mr-1"></i> {{ __("Finance") }}</span>
+@elseif(request()->routeIs(['treasury.*', 'tresorerie.*']))
+    {{-- Module Trésorerie : distinct de Dépenses/Achats (cloisonnement). --}}
+    <span class="{{ $sectionClass }}"><i class="fa-solid fa-wallet text-emerald-500 mr-1"></i> {{ __("Trésorerie") }}</span>
+    @can('tresorerie.L')
+    <a href="{{ route('treasury.index') }}" class="{{ $linkClass }} {{ request()->routeIs('treasury.*') ? $activeClass : $inactiveClass }}">{{ __("Comptes & mouvements") }}</a>
+    @endcan
+
+@elseif(request()->routeIs(['finance.*', 'expenses.*', 'budgets.*', 'purchases.*']))
+    {{-- Module Dépenses / Achats : hub d'abord (Tableau de bord), puis les grands livres. --}}
+    <span class="{{ $sectionClass }}"><i class="fa-solid fa-coins text-rose-500 mr-1"></i> {{ __("Dépenses / Achats") }}</span>
     @can('depenses.L')
     <a href="{{ route('finance.index') }}" class="{{ $linkClass }} {{ request()->routeIs('finance.*') ? $activeClass : $inactiveClass }}">{{ __("Tableau de bord") }}</a>
     @endcan

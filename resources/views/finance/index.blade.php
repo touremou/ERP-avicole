@@ -16,11 +16,14 @@
 
             {{-- KPI --}}
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {{-- Solde de trésorerie : donnée sensible, réservée au module Trésorerie. --}}
+                @can('tresorerie.L')
                 <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm text-center">
                     <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Trésorerie") }}</p>
                     <p class="text-2xl font-black text-slate-800 leading-none">{{ number_format($kpis['treasury'], 0, ',', ' ') }}</p>
                     <p class="text-[8px] text-slate-300 font-black uppercase mt-1">{{ currency() }}</p>
                 </div>
+                @endcan
                 <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm text-center">
                     <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Dépenses (mois)") }}</p>
                     <p class="text-2xl font-black text-amber-600 leading-none">{{ number_format($kpis['month_expenses'], 0, ',', ' ') }}</p>
@@ -31,19 +34,21 @@
                     <p class="text-2xl font-black {{ $kpis['supplier_debt'] > 0 ? 'text-rose-600' : 'text-slate-800' }} leading-none">{{ number_format($kpis['supplier_debt'], 0, ',', ' ') }}</p>
                     <p class="text-[8px] text-slate-300 font-black uppercase mt-1">{{ currency() }}</p>
                 </div>
+                @can('tresorerie.L')
                 <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm text-center">
                     <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Comptes trésorerie") }}</p>
                     <p class="text-2xl font-black text-slate-800 leading-none">{{ $kpis['accounts_count'] }}</p>
                     <p class="text-[8px] text-slate-300 font-black uppercase mt-1">{{ __("actifs") }}</p>
                 </div>
+                @endcan
             </div>
 
             {{-- Accès par intention --}}
             @php
                 $groups = [
                     ['title' => 'Trésorerie', 'color' => 'emerald', 'items' => [
-                        ['label' => 'Comptes & mouvements', 'icon' => 'fa-wallet', 'route' => 'treasury.index', 'can' => 'depenses.L'],
-                        ['label' => 'Flux de trésorerie', 'icon' => 'fa-chart-line', 'route' => 'treasury.report', 'can' => 'depenses.L'],
+                        ['label' => 'Comptes & mouvements', 'icon' => 'fa-wallet', 'route' => 'treasury.index', 'can' => 'tresorerie.L'],
+                        ['label' => 'Flux de trésorerie', 'icon' => 'fa-chart-line', 'route' => 'treasury.report', 'can' => 'tresorerie.L'],
                     ]],
                     ['title' => 'Dépenses', 'color' => 'amber', 'items' => [
                         ['label' => 'Registre', 'icon' => 'fa-receipt', 'route' => 'expenses.index', 'can' => 'depenses.L'],
@@ -77,6 +82,8 @@
                 @endforeach
             </div>
 
+            {{-- Soldes & mouvements de trésorerie : réservés au module Trésorerie. --}}
+            @can('tresorerie.L')
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {{-- Soldes par compte --}}
                 <div class="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
@@ -117,6 +124,7 @@
                     </table>
                 </div>
             </div>
+            @endcan
         </div>
     </div>
 </x-app-layout>

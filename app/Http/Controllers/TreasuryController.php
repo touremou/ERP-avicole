@@ -17,7 +17,7 @@ class TreasuryController extends Controller
 {
     public function index()
     {
-        if (Gate::denies('depenses.L')) {
+        if (Gate::denies('tresorerie.L')) {
             return redirect()->route('dashboard')->with('error', 'Accès restreint.');
         }
 
@@ -32,7 +32,7 @@ class TreasuryController extends Controller
 
     public function show(TreasuryAccount $account)
     {
-        if (Gate::denies('depenses.L')) {
+        if (Gate::denies('tresorerie.L')) {
             return redirect()->route('dashboard')->with('error', 'Accès restreint.');
         }
 
@@ -46,7 +46,7 @@ class TreasuryController extends Controller
 
     public function storeAccount(Request $request)
     {
-        if (Gate::denies('depenses.C')) {
+        if (Gate::denies('tresorerie.C')) {
             return back()->with('error', 'Action non autorisée.');
         }
 
@@ -70,7 +70,7 @@ class TreasuryController extends Controller
     /** État des flux de trésorerie : entrées/sorties par catégorie sur une période. */
     public function report(Request $request)
     {
-        if (Gate::denies('depenses.L')) {
+        if (Gate::denies('tresorerie.L')) {
             return redirect()->route('dashboard')->with('error', 'Accès restreint.');
         }
 
@@ -80,7 +80,7 @@ class TreasuryController extends Controller
     /** Export PDF de l'état des flux (même agrégation que l'écran). */
     public function reportPdf(Request $request)
     {
-        if (Gate::denies('depenses.L')) {
+        if (Gate::denies('tresorerie.L')) {
             return redirect()->route('dashboard')->with('error', 'Accès restreint.');
         }
 
@@ -139,7 +139,7 @@ class TreasuryController extends Controller
     /** Export CSV des mouvements de trésorerie de la période (filtre compte optionnel). */
     public function reportCsv(Request $request)
     {
-        if (Gate::denies('depenses.L')) {
+        if (Gate::denies('tresorerie.L')) {
             return redirect()->route('dashboard')->with('error', 'Accès restreint.');
         }
 
@@ -186,7 +186,7 @@ class TreasuryController extends Controller
     /** Mapping mode de paiement → compte par défaut (espèces→Caisse, OM→Mobile…). */
     public function updateMapping(Request $request)
     {
-        if (Gate::denies('depenses.C')) {
+        if (Gate::denies('tresorerie.C')) {
             return back()->with('error', 'Action non autorisée.');
         }
 
@@ -213,7 +213,7 @@ class TreasuryController extends Controller
 
     public function storeMovement(Request $request, TreasuryAccount $account, TreasuryService $service)
     {
-        if (Gate::denies('depenses.C')) {
+        if (Gate::denies('tresorerie.C')) {
             return back()->with('error', 'Action non autorisée.');
         }
 
@@ -241,7 +241,7 @@ class TreasuryController extends Controller
 
     public function transfer(Request $request, TreasuryService $service)
     {
-        if (Gate::denies('depenses.C')) {
+        if (Gate::denies('tresorerie.C')) {
             return back()->with('error', 'Action non autorisée.');
         }
 

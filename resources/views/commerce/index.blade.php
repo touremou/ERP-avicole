@@ -79,7 +79,7 @@
                     ]],
                     ['title' => 'Relations', 'color' => 'indigo', 'items' => [
                         ['label' => 'Clients', 'icon' => 'fa-users', 'route' => 'clients.index', 'can' => 'commerce.L'],
-                        ['label' => 'Trésorerie', 'icon' => 'fa-wallet', 'route' => 'treasury.index', 'can' => 'depenses.L'],
+                        ['label' => 'Trésorerie', 'icon' => 'fa-wallet', 'route' => 'treasury.index', 'can' => 'tresorerie.L'],
                     ]],
                 ];
             @endphp
