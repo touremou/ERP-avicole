@@ -5,6 +5,16 @@
  * orpheline des deux côtés au moment de la génération).
  */
 export const en: Record<string, string> = {
+  // Journal de trésorerie + section Consultation
+  'Trésorerie du jour': "Today's cash flow",
+  'Décaissé': 'Paid out',
+  'Net du jour': 'Net today',
+  'Solde total': 'Total balance',
+  'Soldes par compte': 'Balances by account',
+  'Mouvements du jour': "Today's movements",
+  'Aucun mouvement aujourd’hui.': 'No movements today.',
+  'Consultation': 'Overview',
+  'divers': 'misc',
   // Fiche lot enrichie (Élevage)
   'Performance': 'Performance',
   'GMQ g/j': 'ADG g/d',

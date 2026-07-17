@@ -13,6 +13,7 @@ import { BatchScreen } from '../features/elevage/BatchScreen'
 import { ScanScreen } from '../features/scan/ScanScreen'
 import { SaleScreen } from '../features/commerce/SaleScreen'
 import { SalesJournalScreen } from '../features/commerce/SalesJournalScreen'
+import { TreasuryJournalScreen } from '../features/tresorerie/TreasuryJournalScreen'
 import { StockMovementScreen } from '../features/logistique/StockMovementScreen'
 import { StocksScreen } from '../features/logistique/StocksScreen'
 import { ExpenseScreen } from '../features/depenses/ExpenseScreen'
@@ -78,6 +79,7 @@ function Shell() {
           <Route path="/scan" element={<ScanScreen />} />
           <Route path="/commerce/vente" element={<SaleScreen />} />
           <Route path="/commerce/journal" element={<SalesJournalScreen />} />
+          <Route path="/tresorerie/journal" element={<TreasuryJournalScreen />} />
           <Route path="/logistique/mouvement" element={<StockMovementScreen />} />
           <Route path="/logistique/stocks" element={<StocksScreen />} />
           <Route path="/depenses/nouvelle" element={<ExpenseScreen />} />

@@ -254,6 +254,21 @@ h3 {
 }
 .sparkline { display: block; width: 100%; height: auto; margin-top: 6px; }
 
+/* Section Consultation (accueil) : cartes d'accès aux journaux/états */
+.consult-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; }
+.consult-card {
+  display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-card);
+  padding: 14px 8px; text-decoration: none; color: inherit; font-weight: 700; font-size: 0.72rem;
+  text-transform: uppercase; letter-spacing: 0.04em;
+}
+.consult-ico { font-size: 1.4rem; }
+
+/* Journal trésorerie : montants entrée/sortie + compte inactif */
+.amount-in { color: #16a34a; }
+.amount-out { color: #dc2626; }
+.task-muted { opacity: 0.55; }
+
 /* Journal des ventes : badge de statut de paiement */
 .pay-badge { margin-left: 6px; padding: 1px 6px; border-radius: 999px; font-size: 0.62rem; font-weight: 800; text-transform: uppercase; }
 .pay-badge.pay-paid { background: #dcfce7; color: #166534; }
