@@ -59,6 +59,38 @@ test('GET /tasks renvoie les tâches actionnables de mon employé', function () 
     expect($ids)->toContain($task->id);
 });
 
+test('GET /tasks renvoie un récap « ma journée » (aujourd\'hui, retard, prioritaires, faites)', function () {
+    // Aujourd'hui (dont une prioritaire), une en retard, une à venir.
+    makeTask($this->farm->id, $this->employee->id); // aujourd'hui, nettoyage
+    $today = now()->toDateString();
+    TaskAssignment::create([
+        'farm_id' => $this->farm->id, 'employee_id' => $this->employee->id, 'title' => 'Contrôle urgent',
+        'category' => 'controle', 'scheduled_date' => $today, 'priority' => 'critique', 'status' => 'a_faire',
+    ]);
+    TaskAssignment::create([
+        'farm_id' => $this->farm->id, 'employee_id' => $this->employee->id, 'title' => 'Retard',
+        'category' => 'nettoyage', 'scheduled_date' => now()->subDay()->toDateString(), 'status' => 'a_faire',
+    ]);
+    TaskAssignment::create([
+        'farm_id' => $this->farm->id, 'employee_id' => $this->employee->id, 'title' => 'Demain',
+        'category' => 'nettoyage', 'scheduled_date' => now()->addDay()->toDateString(), 'status' => 'a_faire',
+    ]);
+    // Une tâche déjà faite aujourd'hui (hors liste, comptée dans le récap).
+    TaskAssignment::create([
+        'farm_id' => $this->farm->id, 'employee_id' => $this->employee->id, 'title' => 'Déjà faite',
+        'category' => 'nettoyage', 'scheduled_date' => $today, 'status' => 'fait', 'completed_at' => now(),
+    ]);
+
+    Sanctum::actingAs($this->user);
+    $summary = $this->getJson('/api/v1/tasks')->assertOk()->json('summary');
+
+    expect($summary['today'])->toBe(2)
+        ->and($summary['overdue'])->toBe(1)
+        ->and($summary['upcoming'])->toBe(1)
+        ->and($summary['high_priority'])->toBe(1)
+        ->and($summary['done_today'])->toBe(1);
+});
+
 test('task.complete termine MA tâche puis renvoie already_synced au rejeu', function () {
     $task = makeTask($this->farm->id, $this->employee->id);
     Sanctum::actingAs($this->user);

@@ -272,6 +272,9 @@ async function refreshTasks(): Promise<void> {
     await db.tasks.clear()
     await db.tasks.bulkPut(response.tasks)
   })
+  // Récap « ma journée » (dont le « fait aujourd'hui », absent de la liste) —
+  // conservé en meta pour rester affichable hors-ligne.
+  if (response.summary) await setMeta('tasks_summary', response.summary)
   window.dispatchEvent(new CustomEvent('tasks:updated'))
 }
 

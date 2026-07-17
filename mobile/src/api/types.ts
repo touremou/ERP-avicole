@@ -217,8 +217,18 @@ export interface RefTask {
   plot_id: number | null
 }
 
+export interface TaskSummary {
+  today: number
+  overdue: number
+  upcoming: number
+  high_priority: number
+  done_today: number
+}
+
 export interface TasksResponse {
   tasks: RefTask[]
+  /** Récap « ma journée » — optionnel : un serveur antérieur ne le renvoie pas. */
+  summary?: TaskSummary
   server_time: string
 }
 

@@ -9,10 +9,11 @@
  */
 import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../../app/AuthContext'
-import { db } from '../../offline/db'
+import { db, getMeta } from '../../offline/db'
 import { onSyncChange, enqueue } from '../../offline/sync'
 import { t } from '../../i18n'
-import type { RefTask } from '../../api/types'
+import { FilterChips } from '../../ui/FilterChips'
+import type { RefTask, TaskSummary } from '../../api/types'
 
 const CATEGORY_ICON: Record<string, string> = {
   alimentation: '🌾',
@@ -31,6 +32,8 @@ export function TachesScreen() {
   const hasEmployee = me?.scope.employee_id != null
 
   const [tasks, setTasks] = useState<RefTask[]>([])
+  const [doneToday, setDoneToday] = useState(0)
+  const [cat, setCat] = useState('all')
   const [showForm, setShowForm] = useState(false)
   const [title, setTitle] = useState('')
   const [category, setCategory] = useState<string>('controle')
@@ -42,6 +45,8 @@ export function TachesScreen() {
     const load = async () => {
       const all = await db.tasks.orderBy('scheduled_date').toArray()
       setTasks(all.filter((task) => task.status !== 'fait'))
+      const summary = await getMeta<TaskSummary>('tasks_summary')
+      setDoneToday(summary?.done_today ?? 0)
     }
     void load()
     const onUpdate = () => void load()
@@ -55,16 +60,38 @@ export function TachesScreen() {
 
   const todayStr = new Date().toISOString().slice(0, 10)
 
+  // Récap « ma journée » — dérivé de la liste (donc juste même hors-ligne) ;
+  // « fait aujourd'hui » vient du dernier récap serveur en cache.
+  const kpis = useMemo(() => ({
+    today: tasks.filter((task) => task.scheduled_date === todayStr).length,
+    overdue: tasks.filter((task) => task.scheduled_date < todayStr).length,
+    upcoming: tasks.filter((task) => task.scheduled_date > todayStr).length,
+    high: tasks.filter((task) => task.priority === 'haute' || task.priority === 'critique').length,
+  }), [tasks, todayStr])
+
+  const catChips = useMemo(() => {
+    const cats = [...new Set(tasks.map((task) => task.category).filter(Boolean))]
+    return [
+      { key: 'all', label: t('Toutes'), count: tasks.length },
+      ...cats.map((c) => ({ key: c, label: `${CATEGORY_ICON[c] ?? '📌'} ${t(c)}`, count: tasks.filter((task) => task.category === c).length })),
+    ]
+  }, [tasks])
+
+  const visible = useMemo(
+    () => (cat === 'all' ? tasks : tasks.filter((task) => task.category === cat)),
+    [tasks, cat],
+  )
+
   const groups = useMemo(() => {
-    const overdue = tasks.filter((task) => task.scheduled_date < todayStr)
-    const today = tasks.filter((task) => task.scheduled_date === todayStr)
-    const upcoming = tasks.filter((task) => task.scheduled_date > todayStr)
+    const overdue = visible.filter((task) => task.scheduled_date < todayStr)
+    const today = visible.filter((task) => task.scheduled_date === todayStr)
+    const upcoming = visible.filter((task) => task.scheduled_date > todayStr)
     return [
       { key: 'overdue', label: t('En retard'), items: overdue, cls: 'task-overdue' },
       { key: 'today', label: t("Aujourd'hui"), items: today, cls: '' },
       { key: 'upcoming', label: t('À venir'), items: upcoming, cls: '' },
     ].filter((group) => group.items.length > 0)
-  }, [tasks, todayStr])
+  }, [visible, todayStr])
 
   async function completeTask(task: RefTask) {
     // Une tâche pas encore synchronisée (id temporaire négatif) n'a pas d'id
@@ -118,6 +145,13 @@ export function TachesScreen() {
         <span className="welcome-sub">{t(':count tâche(s) en cours', { count: tasks.length })}</span>
       </div>
 
+      <div className="kpi-grid">
+        <div className="kpi"><div className="kpi-val">{kpis.today}</div><div className="kpi-lab">{t("Aujourd'hui")}</div></div>
+        {kpis.overdue > 0 && <div className="kpi kpi--alert"><div className="kpi-val">{kpis.overdue}</div><div className="kpi-lab">{t('En retard')}</div></div>}
+        {kpis.high > 0 && <div className="kpi"><div className="kpi-val">{kpis.high}</div><div className="kpi-lab">{t('Prioritaires')}</div></div>}
+        <div className="kpi"><div className="kpi-val">{doneToday}</div><div className="kpi-lab">{t('Faites aujourd’hui')}</div></div>
+      </div>
+
       <button type="button" className="btn-primary" onClick={() => setShowForm((value) => !value)}>
         {showForm ? t('Annuler') : '＋ ' + t('Nouvelle tâche')}
       </button>
@@ -151,8 +185,10 @@ export function TachesScreen() {
         </form>
       )}
 
+      {catChips.length > 1 && <FilterChips options={catChips} active={cat} onChange={setCat} />}
+
       {groups.length === 0 ? (
-        <div className="ok-card">✓ {t('Aucune tâche en cours. Bonne journée !')}</div>
+        <div className="ok-card">✓ {cat === 'all' ? t('Aucune tâche en cours. Bonne journée !') : t('Aucune tâche dans cette catégorie.')}</div>
       ) : (
         groups.map((group) => (
           <section key={group.key}>
