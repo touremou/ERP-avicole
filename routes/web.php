@@ -685,11 +685,13 @@ Route::middleware(['auth'])->group(function () {
 
     // ─── SUIVI BUDGÉTAIRE (module: depenses — contrôle d'accès dans le contrôleur) ───
     Route::prefix('budgets')->name('budgets.')->controller(\App\Http\Controllers\BudgetController::class)->group(function () {
-        Route::get('/', 'index')->name('index');
-        Route::get('/export', 'export')->name('export');
-        Route::get('/export-pdf', 'exportPdf')->name('export-pdf');
-        Route::post('/', 'store')->name('store');
-        Route::post('/copy-previous', 'copyPrevious')->name('copy-previous');
+        // Verrou de route explicite (module depenses) en plus des gates du
+        // contrôleur : défense en profondeur, aucune route ouverte.
+        Route::get('/', 'index')->name('index')->middleware('can:depenses.L');
+        Route::get('/export', 'export')->name('export')->middleware('can:depenses.L');
+        Route::get('/export-pdf', 'exportPdf')->name('export-pdf')->middleware('can:depenses.L');
+        Route::post('/', 'store')->name('store')->middleware('can:depenses.M');
+        Route::post('/copy-previous', 'copyPrevious')->name('copy-previous')->middleware('can:depenses.M');
     });
 
     // ──────────────────────────────────────────────
