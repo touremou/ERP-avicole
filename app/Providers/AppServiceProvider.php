@@ -277,7 +277,7 @@ class AppServiceProvider extends ServiceProvider
         // Annuaire/RH), sinon les gates du module manquant ne sont pas définies.
         $fallbackSlugs = [
             'dashboard', 'elevage', 'production', 'provenderie', 'planning',
-            'abattoir', 'commerce', 'logistique', 'ressources', 'notifications',
+            'abattoir', 'commerce', 'caisse', 'logistique', 'ressources', 'notifications',
             'annuaire', 'rh', 'admin', 'depenses', 'cultures',
         ];
 

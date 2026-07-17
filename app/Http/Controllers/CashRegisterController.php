@@ -20,7 +20,7 @@ class CashRegisterController extends Controller
 {
     public function index()
     {
-        if (Gate::denies('commerce.L')) {
+        if (Gate::denies('caisse.L')) {
             return redirect()->route('dashboard')->with('error', 'Accès restreint au module Commerce.');
         }
 
@@ -39,7 +39,7 @@ class CashRegisterController extends Controller
 
     public function open(Request $request)
     {
-        if (Gate::denies('commerce.C')) {
+        if (Gate::denies('caisse.C')) {
             return back()->with('error', 'Action non autorisée.');
         }
 
@@ -68,7 +68,7 @@ class CashRegisterController extends Controller
 
     public function close(Request $request, CashRegisterSession $session, TreasuryService $treasury)
     {
-        if (Gate::denies('commerce.C')) {
+        if (Gate::denies('caisse.C')) {
             return back()->with('error', 'Action non autorisée.');
         }
 

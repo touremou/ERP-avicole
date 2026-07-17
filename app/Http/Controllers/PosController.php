@@ -25,7 +25,7 @@ class PosController extends Controller
     /** Écran caisse : grille produits (stock vendable) + clients + tarifs par palier. */
     public function index()
     {
-        if (Gate::denies('commerce.C')) {
+        if (Gate::denies('caisse.C')) {
             return redirect()->route('dashboard')->with('error', 'Accès restreint au module Commerce.');
         }
 
@@ -83,7 +83,7 @@ class PosController extends Controller
     /** Encaissement : crée une vente validée, livrée et soldée en une transaction. */
     public function checkout(Request $request, CreateSale $create, ValidateSale $validate)
     {
-        if (Gate::denies('commerce.C')) {
+        if (Gate::denies('caisse.C')) {
             return back()->with('error', 'Action non autorisée.');
         }
 
@@ -202,7 +202,7 @@ class PosController extends Controller
     /** Ticket de caisse (reçu compact 80 mm), auto-imprimé. */
     public function receipt(Sale $sale)
     {
-        if (Gate::denies('commerce.C')) {
+        if (Gate::denies('caisse.C')) {
             return redirect()->route('dashboard')->with('error', 'Accès restreint au module Commerce.');
         }
 
@@ -218,7 +218,7 @@ class PosController extends Controller
      */
     public function encash(Request $request, Sale $sale, RecordPayment $payment)
     {
-        if (Gate::denies('commerce.C')) {
+        if (Gate::denies('caisse.C')) {
             return back()->with('error', 'Action non autorisée.');
         }
 
@@ -255,7 +255,7 @@ class PosController extends Controller
     /** Z de caisse : récap des encaissements/remboursements du jour par mode. */
     public function report(Request $request)
     {
-        if (Gate::denies('commerce.L')) {
+        if (Gate::denies('caisse.L')) {
             return redirect()->route('dashboard')->with('error', 'Accès restreint au module Commerce.');
         }
 
@@ -328,7 +328,7 @@ class PosController extends Controller
      */
     public function storeClient(Request $request)
     {
-        if (Gate::denies('commerce.C')) {
+        if (Gate::denies('caisse.C')) {
             return response()->json(['message' => 'Action non autorisée.'], 403);
         }
 

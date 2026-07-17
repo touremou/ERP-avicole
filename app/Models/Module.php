@@ -98,14 +98,20 @@ class Module extends Model
             'milk-productions.' => 'production',
 
             // Commerce (vente, caisse, après-vente — un seul module intégré)
+            // Commerce = VENTES back-office (clients, factures, recouvrement,
+            // tarifs, avoirs, catalogue).
             'commerce.'         => 'commerce',
             'clients.'          => 'commerce',
             'sales.'            => 'commerce',
             'payments.'         => 'commerce',
-            'pos.'              => 'commerce',
-            'cash-register.'    => 'commerce',
             'returns.'          => 'commerce',
             'products.'         => 'commerce',
+
+            // Caisse = POS front-office (point de vente, sessions de caisse) —
+            // module distinct (un caissier n'accède pas au back-office ventes).
+            'caisse.'           => 'caisse',
+            'pos.'              => 'caisse',
+            'cash-register.'    => 'caisse',
 
             // Finance (hub + registre dépenses + trésorerie + achats fournisseurs + budgets)
             'finance.'          => 'depenses',
@@ -177,6 +183,7 @@ class Module extends Model
             'planning'      => 'planning.index',
             'abattoir'      => 'slaughter.dashboard',
             'commerce'      => 'commerce.index',
+            'caisse'        => 'pos.index',
             'logistique'    => 'logistique.index',
             'ressources'    => 'utilities.dashboard',
             'notifications' => 'notifications.preferences',

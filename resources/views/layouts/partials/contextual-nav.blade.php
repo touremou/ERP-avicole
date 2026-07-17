@@ -75,11 +75,21 @@
     <a href="{{ route('slaughter.registres.index') }}" class="{{ $linkClass }} {{ request()->routeIs('slaughter.registres.*') ? $activeClass : $inactiveClass }}"><i class="fa-solid fa-clipboard-check mr-1"></i>{{ __("Registres HACCP") }}</a>
     @endcan
 
-@elseif(request()->routeIs(['commerce.*', 'sales.*', 'clients.*', 'payments.*', 'pos.*', 'returns.*', 'cash-register.*']))
-    {{-- Module Commerce : entrée UNIFIÉE (hub-only). Tous les accès (Caisse, Session,
-         Ventes, Clients, Paiements, Avoirs) vivent dans les cartes du hub ; chaque
+@elseif(request()->routeIs(['pos.*', 'cash-register.*']))
+    {{-- Module Caisse (POS) : distinct du back-office Ventes (cloisonnement). --}}
+    <span class="{{ $sectionClass }}"><i class="fa-solid fa-cash-register text-teal-500 mr-1"></i> {{ __("Caisse / POS") }}</span>
+    @can('caisse.C')
+    <a href="{{ route('pos.index') }}" class="{{ $linkClass }} {{ request()->routeIs('pos.*') ? $activeClass : $inactiveClass }}">{{ __("Point de vente") }}</a>
+    @endcan
+    @can('caisse.L')
+    <a href="{{ route('cash-register.index') }}" class="{{ $linkClass }} {{ request()->routeIs('cash-register.*') ? $activeClass : $inactiveClass }}">{{ __("Sessions de caisse") }}</a>
+    @endcan
+
+@elseif(request()->routeIs(['commerce.*', 'sales.*', 'clients.*', 'payments.*', 'returns.*', 'products.*']))
+    {{-- Module Commerce / Ventes : entrée UNIFIÉE (hub-only). Ventes, Clients,
+         Paiements, Avoirs, Catalogue vivent dans les cartes du hub ; chaque
          sous-page porte une ancre de retour <x-hub-back/> vers le tableau de bord. --}}
-    <span class="{{ $sectionClass }}"><i class="fa-solid fa-cash-register text-teal-500 mr-1"></i> {{ __("Commerce") }}</span>
+    <span class="{{ $sectionClass }}"><i class="fa-solid fa-file-invoice-dollar text-teal-500 mr-1"></i> {{ __("Commerce / Ventes") }}</span>
     @can('commerce.L')
     <a href="{{ route('commerce.index') }}" class="{{ $linkClass }} {{ request()->routeIs('commerce.*') ? $activeClass : $inactiveClass }}">{{ __("Tableau de bord") }}</a>
     @endcan
