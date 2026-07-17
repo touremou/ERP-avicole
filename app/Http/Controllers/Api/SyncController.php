@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -35,6 +36,7 @@ class SyncController extends Controller
     private const PULL_ENTITIES = [
         'batches' => [
             'model'   => Batch::class,
+            'gate'    => 'elevage.L',
             'columns' => ['id', 'uuid', 'code', 'status', 'building_id', 'species_id', 'production_type_id',
                           'employee_id', 'initial_quantity', 'current_quantity', 'qty_dead', 'arrival_date', 'updated_at'],
             // Attribut dérivé (calculé serveur) : le terrain ne peut pas
@@ -43,18 +45,22 @@ class SyncController extends Controller
         ],
         'buildings' => [
             'model'   => Building::class,
+            'gate'    => 'elevage.L',
             'columns' => ['id', 'name', 'type', 'capacity', 'status', 'updated_at'],
         ],
         'stocks' => [
             'model'   => Stock::class,
+            'gate'    => 'logistique.L',
             'columns' => ['id', 'item_name', 'category', 'unit', 'current_quantity', 'updated_at'],
         ],
         'clients' => [
             'model'   => Client::class,
+            'gate'    => 'commerce.L',
             'columns' => ['id', 'client_id', 'name', 'category', 'phone', 'balance', 'status', 'updated_at'],
         ],
         'products' => [
             'model'   => Product::class,
+            'gate'    => 'commerce.L',
             'columns' => ['id', 'name', 'sku', 'product_type', 'unit', 'base_price', 'is_active', 'updated_at'],
         ],
         // Référentiel global (non borné ferme) : permet au client de savoir
@@ -67,32 +73,40 @@ class SyncController extends Controller
         // ── Phase 3 : cultures, abattoir, provenderie ──
         'plots' => [
             'model'   => \App\Models\Plot::class,
+            'gate'    => 'cultures.L',
             'columns' => ['id', 'code', 'name', 'status', 'area_ha', 'updated_at'],
         ],
         'crop_cycles' => [
             'model'   => \App\Models\CropCycle::class,
+            'gate'    => 'cultures.L',
             'columns' => ['id', 'uuid', 'plot_id', 'code', 'crop_name', 'variety', 'status',
                           'employee_id', 'planting_date', 'updated_at'],
         ],
         'slaughter_orders' => [
             'model'   => \App\Models\SlaughterOrder::class,
+            'gate'    => 'abattoir.L',
             'columns' => ['id', 'order_number', 'batch_id', 'planned_date', 'planned_quantity',
                           'status', 'requested_by', 'executed_by', 'updated_at'],
         ],
         'formulas' => [
             'model'   => \App\Models\Formula::class,
+            'gate'    => 'provenderie.L',
             'columns' => ['id', 'name', 'code', 'target_type', 'is_active', 'updated_at'],
         ],
         // Éleveurs livreurs pour la réception du vif (CCP 1) — pas de
-        // données financières ni de coordonnées complètes.
+        // données financières ni de coordonnées complètes. Référentiel
+        // partagé : accessible à qui lit un module qui l'utilise (arrivée de
+        // lot, réception abattoir, achats aliment, commerce).
         'providers' => [
             'model'   => \App\Models\Provider::class,
+            'gate'    => ['annuaire.L', 'elevage.L', 'abattoir.L', 'provenderie.L', 'commerce.L'],
             'columns' => ['id', 'name', 'type', 'status', 'updated_at'],
         ],
         // Pas de SoftDeletes sur mill_productions/formulas : jamais de
         // tombstones — un OP annulé reste visible avec son statut « Annulé ».
         'mill_productions' => [
             'model'   => \App\Models\MillProduction::class,
+            'gate'    => 'provenderie.L',
             'columns' => ['id', 'batch_number', 'formula_id', 'quantity_produced', 'status',
                           'operator_id', 'supervisor_id', 'started_at', 'updated_at'],
         ],
@@ -153,6 +167,22 @@ class SyncController extends Controller
         $entities = [];
 
         foreach (self::PULL_ENTITIES as $key => $config) {
+            // Cloisonnement RBAC : on ne descend au terrain QUE les référentiels
+            // des modules que l'utilisateur a le droit de lire (L). Un vendeur ne
+            // reçoit ainsi ni les lots (élevage) ni les formules (provenderie)…
+            // 'gate' peut être un slug ou une liste (accès si l'un au moins passe).
+            if (isset($config['gate'])) {
+                $gates = (array) $config['gate'];
+                $allowed = false;
+                foreach ($gates as $gate) {
+                    if (Gate::allows($gate)) { $allowed = true; break; }
+                }
+                if (! $allowed) {
+                    $entities[$key] = ['upserts' => [], 'deletes' => []];
+                    continue;
+                }
+            }
+
             /** @var class-string<\Illuminate\Database\Eloquent\Model> $model */
             $model = $config['model'];
 
