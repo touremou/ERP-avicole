@@ -11,6 +11,7 @@ class TaskAssignment extends Model
     use BelongsToFarm;
 
     protected $fillable = [
+        'uuid',
         'farm_id', 'task_template_id', 'employee_id', 'title', 'description',
         'category', 'building_id', 'plot_id', 'batch_id', 'scheduled_date', 'scheduled_time',
         'duration_minutes', 'priority', 'status', 'started_at', 'completed_at',

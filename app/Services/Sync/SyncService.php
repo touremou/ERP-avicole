@@ -85,6 +85,8 @@ class SyncService
             'byproduct.create'           => 'byproductCreate',
             // Tâches assignées : cocher « faite » depuis le terrain.
             'task.complete'              => 'taskComplete',
+            // Tâche PERSONNELLE créée depuis le terrain (auto-assignée).
+            'task.create'                => 'taskCreate',
         ];
     }
 
@@ -1127,6 +1129,55 @@ class SyncService
         }
 
         return $rule;
+    }
+
+    /**
+     * Création d'une tâche PERSONNELLE depuis le terrain : auto-assignée à
+     * l'employé connecté (comme le fait le web « Mes tâches »). L'affectation à
+     * autrui reste une opération web (rh.C) — ici, aucun droit RH requis, un
+     * agent gère sa propre liste de tâches, à l'image de task.complete.
+     */
+    private function taskCreate(array $payload): array
+    {
+        $employeeId = Auth::user()?->employee?->id;
+        if (! $employeeId) {
+            return $this->denied();
+        }
+
+        $v = Validator::make($payload, [
+            'uuid'           => 'required|uuid',
+            'title'          => 'required|string|max:255',
+            'category'       => 'required|string|max:50',
+            'scheduled_date' => 'required|date',
+            'priority'       => 'nullable|in:basse,normale,haute,critique',
+            'description'    => 'nullable|string|max:500',
+        ]);
+
+        if ($v->fails()) {
+            return $this->invalid($v->errors()->toArray());
+        }
+
+        $data = $v->validated();
+
+        return DB::transaction(function () use ($data, $employeeId) {
+            if (\App\Models\TaskAssignment::withoutGlobalScopes()->where('uuid', $data['uuid'])->exists()) {
+                return ['status' => 'already_synced'];
+            }
+
+            $task = \App\Models\TaskAssignment::create([
+                'uuid'              => $data['uuid'],
+                'title'             => $data['title'],
+                'category'          => $data['category'],
+                'employee_id'       => $employeeId,
+                'scheduled_date'    => $data['scheduled_date'],
+                'priority'          => $data['priority'] ?? 'normale',
+                'description'       => $data['description'] ?? null,
+                'status'            => 'a_faire',
+                'is_auto_generated' => false,
+            ]);
+
+            return ['status' => 'success', 'server_id' => $task->id];
+        });
     }
 
     private function denied(): array

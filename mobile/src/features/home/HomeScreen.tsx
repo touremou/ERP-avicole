@@ -103,7 +103,7 @@ export function HomeScreen() {
           sinon on explique pourquoi aucune tâche ne peut apparaître. */}
       {me?.scope.employee_id != null ? (
         <section>
-          <div className="section-head"><h3>{t('Mes tâches du jour')}</h3><span className="section-count">{tasks.length}</span></div>
+          <div className="section-head"><h3>{t('Mes tâches du jour')}</h3><Link to="/taches" className="section-link">{t('Voir tout')}</Link></div>
           {tasks.length > 0 ? (
             tasks.map((task) => {
               const overdue = task.scheduled_date < todayStr
