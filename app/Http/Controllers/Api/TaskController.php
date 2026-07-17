@@ -24,13 +24,21 @@ class TaskController extends Controller
 
         // Sans employé rattaché (admin/superviseur), pas de liste personnelle.
         if (! $employeeId) {
-            return response()->json(['tasks' => [], 'server_time' => now()->toIso8601String()]);
+            return response()->json([
+                'tasks'       => [],
+                'summary'     => ['today' => 0, 'overdue' => 0, 'upcoming' => 0, 'high_priority' => 0, 'done_today' => 0],
+                'server_time' => now()->toIso8601String(),
+            ]);
         }
+
+        $today    = now()->toDateString();
+        $horizon  = now()->addDays(7)->toDateString();
+        $doable   = ['a_faire', 'en_cours', 'en_retard'];
 
         $tasks = TaskAssignment::query()
             ->where('employee_id', $employeeId)
-            ->whereIn('status', ['a_faire', 'en_cours', 'en_retard'])
-            ->where('scheduled_date', '<=', now()->addDays(7)->toDateString())
+            ->whereIn('status', $doable)
+            ->where('scheduled_date', '<=', $horizon)
             ->orderBy('scheduled_date')
             ->orderByRaw('scheduled_time IS NULL, scheduled_time')
             ->get([
@@ -38,8 +46,23 @@ class TaskController extends Controller
                 'scheduled_date', 'scheduled_time', 'batch_id', 'building_id', 'plot_id',
             ]);
 
+        // Récap « ma journée » : l'en-cours vient de la liste (mêmes bornes), le
+        // « fait aujourd'hui » se calcule à part (les tâches closes en sont exclues).
+        $doneToday = TaskAssignment::query()
+            ->where('employee_id', $employeeId)
+            ->where('status', 'fait')
+            ->whereDate('completed_at', $today)
+            ->count();
+
         return response()->json([
-            'tasks'       => $tasks,
+            'tasks'   => $tasks,
+            'summary' => [
+                'today'         => $tasks->filter(fn ($t) => $t->scheduled_date->toDateString() === $today)->count(),
+                'overdue'       => $tasks->filter(fn ($t) => $t->scheduled_date->toDateString() < $today)->count(),
+                'upcoming'      => $tasks->filter(fn ($t) => $t->scheduled_date->toDateString() > $today)->count(),
+                'high_priority' => $tasks->whereIn('priority', ['haute', 'critique'])->count(),
+                'done_today'    => $doneToday,
+            ],
             'server_time' => now()->toIso8601String(),
         ]);
     }
