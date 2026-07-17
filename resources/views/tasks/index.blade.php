@@ -303,7 +303,10 @@
                                 {{-- ASSIGNÉ + ACTIONS --}}
                                 <div class="text-right shrink-0 flex items-center gap-2">
                                     @if($task->employee)
-                                        <span class="text-[8px] font-black text-slate-500 uppercase">{{ $task->employee->first_name }}</span>
+                                        <span class="flex items-center gap-1.5" title="{{ $task->employee->first_name }} {{ $task->employee->last_name }}">
+                                            <img src="{{ $task->employee->photo_url }}" alt="" class="w-5 h-5 rounded-full object-cover ring-1 ring-slate-200 bg-slate-100">
+                                            <span class="text-[8px] font-black text-slate-500 uppercase">{{ $task->employee->first_name }}</span>
+                                        </span>
                                     @else
                                         <form method="POST" action="{{ route('tasks.assign', $task) }}" class="inline">@csrf
                                             <select name="employee_id" onchange="this.form.submit()" class="text-[8px] bg-amber-50 border-none rounded-lg px-2 py-1 font-black text-amber-600 cursor-pointer outline-none">
