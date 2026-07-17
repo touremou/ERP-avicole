@@ -13,6 +13,8 @@ import { db, getMeta } from '../../offline/db'
 import { onSyncChange, enqueue } from '../../offline/sync'
 import { t } from '../../i18n'
 import { FilterChips } from '../../ui/FilterChips'
+import { ExportButton } from '../../ui/ExportButton'
+import { toCsv, exportOrShare, dateStamp } from '../../ui/exportShare'
 import type { RefTask, TaskSummary } from '../../api/types'
 
 const CATEGORY_ICON: Record<string, string> = {
@@ -26,6 +28,13 @@ const CATEGORY_ICON: Record<string, string> = {
 }
 
 const CATEGORIES = ['controle', 'nettoyage', 'alimentation', 'sante', 'maintenance', 'autre'] as const
+
+const PRIORITY_LABEL: Record<string, string> = {
+  basse: 'Basse', normale: 'Normale', haute: 'Haute', critique: 'Critique',
+}
+const STATUS_LABEL: Record<string, string> = {
+  a_faire: 'À faire', en_cours: 'En cours', en_retard: 'En retard', fait: 'Fait',
+}
 
 export function TachesScreen() {
   const { me } = useAuth()
@@ -142,6 +151,17 @@ export function TachesScreen() {
     }
   }
 
+  function handleExport() {
+    const csv = toCsv(
+      [t('Intitulé'), t('Catégorie'), t('Priorité'), t('Échéance'), t('Heure'), t('Statut')],
+      visible.map((task) => [
+        task.title, t(task.category), t(PRIORITY_LABEL[task.priority ?? 'normale'] ?? task.priority ?? ''),
+        task.scheduled_date, task.scheduled_time?.slice(0, 5) ?? '', t(STATUS_LABEL[task.status] ?? task.status),
+      ]),
+    )
+    void exportOrShare(`taches_${win}_${dateStamp()}.csv`, csv, t('Mes tâches'))
+  }
+
   if (!hasEmployee) {
     return (
       <div className="screen">
@@ -202,6 +222,7 @@ export function TachesScreen() {
 
       <FilterChips options={periodChips} active={win} onChange={(value) => { setWin(value); setCat('all') }} />
       {catChips.length > 1 && <FilterChips options={catChips} active={cat} onChange={setCat} />}
+      <ExportButton onExport={handleExport} disabled={visible.length === 0} />
 
       {groups.length === 0 ? (
         <div className="ok-card">✓ {win === 'week' && cat === 'all' ? t('Aucune tâche en cours. Bonne journée !') : t('Aucune tâche pour ce filtre.')}</div>

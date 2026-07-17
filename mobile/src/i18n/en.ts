@@ -135,6 +135,8 @@ export const en: Record<string, string> = {
   'À venir': 'Upcoming',
   'Aucune tâche en cours. Bonne journée !': 'No tasks in progress. Have a good day!',
   'Aucune tâche pour ce filtre.': 'No tasks for this filter.',
+  'Heure': 'Time',
+  'En cours': 'In progress',
   'Toutes': 'All',
   'Prioritaires': 'Priority',
   'Faites aujourd’hui': 'Done today',
