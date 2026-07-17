@@ -86,6 +86,16 @@
                 <span class="text-[8px] font-black text-slate-400 uppercase tracking-widest px-2">{{ $currentFarm->name }}</span>
                 @endif
 
+                {{-- STATUT RÉSEAU (pendant du badge de sync mobile) --}}
+                <div x-data="{ online: navigator.onLine }"
+                     x-init="window.addEventListener('online', () => online = true); window.addEventListener('offline', () => online = false)"
+                     class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[8px] font-black uppercase tracking-widest transition-colors"
+                     :class="online ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'"
+                     :title="online ? @js(__('En ligne')) : @js(__('Hors-ligne'))">
+                    <span class="text-sm leading-none" x-text="online ? '📡' : '📴'"></span>
+                    <span class="hidden xl:inline" x-text="online ? @js(__('En ligne')) : @js(__('Hors-ligne'))"></span>
+                </div>
+
                 {{-- RÔLE --}}
                 <div class="px-3 py-1.5 bg-slate-50 rounded-xl text-right hidden xl:block">
                     <span class="text-[7px] font-black uppercase text-slate-400 tracking-widest block leading-none">{{ __("Rôle") }}</span>
