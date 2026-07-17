@@ -22,7 +22,7 @@
             @if(! $session)
                 {{-- CAISSE FERMÉE → ouverture OBLIGATOIRE via la session avant toute vente.
                      L'ouverture passe par la session (fond de caisse), pas par l'écran POS. --}}
-                @can('commerce.C')
+                @can('caisse.C')
                 <div class="max-w-md mx-auto bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm text-center not-italic">
                     <div class="w-14 h-14 mx-auto mb-4 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-400 text-xl"><i class="fa-solid fa-lock"></i></div>
                     <h3 class="text-[12px] font-black uppercase tracking-widest text-slate-700 italic">{{ __("Caisse fermée") }}</h3>

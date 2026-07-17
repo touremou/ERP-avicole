@@ -158,7 +158,9 @@
 
                 {{-- Formulaire nouveau paiement --}}
                 @if($sale->payment_status !== 'solde' && !in_array($sale->status, ['brouillon', 'annule']))
-                @can('commerce.C')
+                {{-- Encaissement express = action CAISSE (POS) : gardé par caisse.C,
+                     distinct de l'enregistrement de paiement (commerce) plus bas. --}}
+                @can('caisse.C')
                 @if($hasOpenCashSession ?? false)
                 {{-- Encaissement EXPRESS du solde complet → ticket (caisse). N'apparaît
                      que si une session de caisse est ouverte (le paiement passe par la

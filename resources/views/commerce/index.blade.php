@@ -2,6 +2,8 @@
     <x-slot name="header">
         <x-page-header :title="'🛍️ ' . __('Commerce')" :subtitle="__('Vendre · Encaisser · Après-vente')" icon="fa-bag-shopping" accent="teal">
             <x-slot name="actions">
+                {{-- Raccourcis Caisse/POS : visibles uniquement si le rôle a le module Caisse. --}}
+                @can('caisse.C')
                 @if($session)
                     <a href="{{ route('pos.index') }}" class="inline-flex items-center gap-2 px-6 py-3 bg-teal-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-teal-600 transition-all no-underline shadow-lg italic">
                         <i class="fa-solid fa-cash-register"></i> {{ __("Vendre (POS)") }}
@@ -11,6 +13,7 @@
                         <i class="fa-solid fa-unlock"></i> {{ __("Ouvrir la caisse") }}
                     </a>
                 @endif
+                @endcan
             </x-slot>
         </x-page-header>
     </x-slot>
@@ -18,7 +21,8 @@
     <div class="py-10">
         <div class="max-w-6xl mx-auto sm:px-6 lg:px-8 italic font-bold text-left space-y-8">
 
-            {{-- Alerte session de caisse --}}
+            {{-- Alerte session de caisse (réservée au module Caisse) --}}
+            @can('caisse.L')
             @if($session)
             <div class="bg-slate-900 text-white p-5 rounded-[2rem] flex flex-col md:flex-row md:items-center justify-between gap-4 not-italic">
                 <div class="flex items-center gap-3">
@@ -31,6 +35,7 @@
                 <a href="{{ route('cash-register.index') }}" class="shrink-0 px-5 py-2.5 bg-white text-slate-900 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-teal-100 transition-all no-underline">{{ __("Clôturer / compter") }}</a>
             </div>
             @endif
+            @endcan
 
             {{-- KPI du jour --}}
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -60,13 +65,13 @@
             @php
                 $groups = [
                     ['title' => 'Vendre', 'color' => 'teal', 'items' => [
-                        ['label' => 'Caisse (POS)', 'icon' => 'fa-cash-register', 'route' => 'pos.index', 'can' => 'commerce.C'],
+                        ['label' => 'Caisse (POS)', 'icon' => 'fa-cash-register', 'route' => 'pos.index', 'can' => 'caisse.C'],
                         ['label' => 'Nouvelle vente', 'icon' => 'fa-file-invoice', 'route' => 'sales.create', 'can' => 'commerce.C'],
                         ['label' => 'Liste des ventes', 'icon' => 'fa-list', 'route' => 'sales.index', 'can' => 'commerce.L'],
                     ]],
                     ['title' => 'Encaisser', 'color' => 'emerald', 'items' => [
-                        ['label' => 'Session de caisse', 'icon' => 'fa-box-archive', 'route' => 'cash-register.index', 'can' => 'commerce.L'],
-                        ['label' => 'Z de caisse', 'icon' => 'fa-receipt', 'route' => 'pos.report', 'can' => 'commerce.L'],
+                        ['label' => 'Session de caisse', 'icon' => 'fa-box-archive', 'route' => 'cash-register.index', 'can' => 'caisse.L'],
+                        ['label' => 'Z de caisse', 'icon' => 'fa-receipt', 'route' => 'pos.report', 'can' => 'caisse.L'],
                         ['label' => 'Paiements', 'icon' => 'fa-money-bill-wave', 'route' => 'payments.index', 'can' => 'commerce.L'],
                     ]],
                     ['title' => 'Après-vente', 'color' => 'orange', 'items' => [

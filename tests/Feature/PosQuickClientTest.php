@@ -31,7 +31,7 @@ test('le nom du client est requis', function () {
         ->assertStatus(422);
 });
 
-test('un utilisateur sans droit commerce.C ne peut pas créer de client au POS', function () {
+test('un utilisateur sans droit caisse.C ne peut pas créer de client au POS', function () {
     $viewer = \App\Models\User::factory()->create([
         'role_id' => \App\Models\Role::where('name', 'viewer')->value('id'),
     ]);

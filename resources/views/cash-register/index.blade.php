@@ -2,9 +2,12 @@
     <x-slot name="header">
         <x-page-header :title="__('🧰 Session de caisse')" :subtitle="__('Ouverture · comptage · écart')" icon="fa-cash-register" accent="teal">
             <x-slot name="actions">
+                {{-- Retour au hub Commerce : visible seulement si le rôle a le back-office ventes. --}}
+                @can('commerce.L')
                 <a href="{{ route('commerce.index') }}" class="inline-flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-2xl text-[9px] font-black uppercase tracking-widest hover:bg-slate-50 transition-all no-underline shadow-sm italic">
-                    <i class="fa-solid fa-table-columns"></i> {{ __("Tableau de bord") }}
+                    <i class="fa-solid fa-table-columns"></i> {{ __("Commerce") }}
                 </a>
+                @endcan
                 <a href="{{ route('pos.index') }}" class="inline-flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-2xl text-[9px] font-black uppercase tracking-widest hover:bg-slate-50 transition-all no-underline shadow-sm italic">
                     <i class="fa-solid fa-cash-register"></i> {{ __("Caisse (POS)") }}
                 </a>
@@ -67,7 +70,7 @@
                 </div>
             @else
                 {{-- AUCUNE SESSION → ouverture --}}
-                @can('commerce.C')
+                @can('caisse.C')
                 <form method="POST" action="{{ route('cash-register.open') }}" class="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
                     @csrf
                     <h3 class="text-[10px] font-black uppercase text-slate-500 tracking-widest mb-4"><i class="fa-solid fa-unlock mr-1"></i> {{ __("Ouvrir la caisse") }}</h3>
