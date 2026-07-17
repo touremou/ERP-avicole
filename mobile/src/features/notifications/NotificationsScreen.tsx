@@ -15,6 +15,35 @@ const SEVERITY_CLASS: Record<string, string> = {
   normal: 'notif-normal',
 }
 
+// Avatar iconographique par famille de notification (le type est une chaîne
+// libre côté serveur : on classe par mot-clé, repli sur l'icône de sévérité).
+const TYPE_ICON: { match: RegExp; icon: string }[] = [
+  { match: /mortalit|mortality/, icon: '💀' },
+  { match: /stock|min|threshold/, icon: '📦' },
+  { match: /weather|meteo/, icon: '🌦️' },
+  { match: /temperature|temp/, icon: '🌡️' },
+  { match: /haccp|ccp|cleaning|hygien/, icon: '🧪' },
+  { match: /health|sante|vaccin/, icon: '🩺' },
+  { match: /leave|conge/, icon: '🌴' },
+  { match: /maintenance|energy|fuel|fuel/, icon: '🔧' },
+  { match: /payment|paiement|fraud/, icon: '💰' },
+  { match: /sale|vente|invoice|bl|pos|dispatch/, icon: '🧾' },
+  { match: /expense|depense|budget/, icon: '💸' },
+  { match: /incident/, icon: '⚠️' },
+  { match: /task|tache/, icon: '📋' },
+]
+
+const SEVERITY_ICON: Record<string, string> = {
+  critical: '🔴',
+  warning: '🟠',
+  normal: '🔔',
+}
+
+function notifIcon(type: string, severity: string): string {
+  const found = TYPE_ICON.find((entry) => entry.match.test(type ?? ''))
+  return found?.icon ?? SEVERITY_ICON[severity] ?? '🔔'
+}
+
 export function NotificationsScreen() {
   const [notifications, setNotifications] = useState<ApiNotification[]>([])
 
@@ -62,7 +91,7 @@ export function NotificationsScreen() {
 
       {notifications.map((n) => (
         <div key={n.id} className={`notif-card ${SEVERITY_CLASS[n.severity] ?? 'notif-normal'} ${n.read_at ? 'notif-read' : ''}`}>
-          <span className="notif-dot" aria-hidden="true" />
+          <span className="notif-avatar" aria-hidden="true">{notifIcon(n.type, n.severity)}</span>
           <div className="notif-body">
             <span className="task-title">{n.title}</span>
             <span className="muted">{n.message}</span>
