@@ -119,15 +119,15 @@
                         </span>
                     </x-slot>
                         @can('rh.L')
-                        <a href="{{ route('tasks.index', ['mine' => 1]) }}" class="block rounded-lg p-2 text-[9px] font-black uppercase italic tracking-widest hover:bg-blue-50 text-slate-500 no-underline"><i class="fa-solid fa-list-check text-blue-500 w-4 text-center mr-1"></i> {{ __("Mes Tâches") }}</a>
+                        <a href="{{ route('tasks.index', ['mine' => 1]) }}" class="block rounded-lg p-2 text-[9px] font-black uppercase italic tracking-widest hover:bg-blue-50 text-slate-500 no-underline"><span class="inline-block w-4 text-center mr-1" aria-hidden="true">📋</span> {{ __("Mes Tâches") }}</a>
                         @endcan
-                        <a href="{{ route('profile.edit') }}" class="block rounded-lg p-2 text-[9px] font-black uppercase italic tracking-widest hover:bg-blue-50 text-slate-500 no-underline"><i class="fa-solid fa-user-gear text-blue-500 w-4 text-center mr-1"></i> {{ __("Profil") }}</a>
+                        <a href="{{ route('profile.edit') }}" class="block rounded-lg p-2 text-[9px] font-black uppercase italic tracking-widest hover:bg-blue-50 text-slate-500 no-underline"><span class="inline-block w-4 text-center mr-1" aria-hidden="true">👤</span> {{ __("Profil") }}</a>
                         @if(\Illuminate\Support\Facades\Route::has('notifications.preferences'))
-                        <a href="{{ route('notifications.preferences') }}" class="block rounded-lg p-2 text-[9px] font-black uppercase italic tracking-widest hover:bg-blue-50 text-slate-500 no-underline"><i class="fa-solid fa-bell text-blue-500 w-4 text-center mr-1"></i> {{ __("Notifications") }}</a>
+                        <a href="{{ route('notifications.preferences') }}" class="block rounded-lg p-2 text-[9px] font-black uppercase italic tracking-widest hover:bg-blue-50 text-slate-500 no-underline"><span class="inline-block w-4 text-center mr-1" aria-hidden="true">🔔</span> {{ __("Notifications") }}</a>
                         @endif
                         <div class="border-t border-slate-100 my-1.5"></div>
                         <form method="POST" action="{{ route('logout') }}">@csrf
-                            <button type="submit" class="w-full text-left rounded-lg p-2 text-[9px] font-black uppercase italic tracking-widest hover:bg-red-50 text-red-500 border-none bg-transparent cursor-pointer"><i class="fa-solid fa-right-from-bracket w-4 text-center mr-1"></i> {{ __("Déconnexion") }}</button>
+                            <button type="submit" class="w-full text-left rounded-lg p-2 text-[9px] font-black uppercase italic tracking-widest hover:bg-red-50 text-red-500 border-none bg-transparent cursor-pointer"><span class="inline-block w-4 text-center mr-1" aria-hidden="true">🚪</span> {{ __("Déconnexion") }}</button>
                         </form>
                 </x-menu>
             </div>
@@ -167,9 +167,9 @@
                 @endif
             @endforeach
             <div class="border-t border-slate-100 my-2"></div>
-            <a href="{{ route('profile.edit') }}" class="block px-3 py-2 rounded-lg text-[10px] font-black uppercase italic text-slate-600 hover:bg-slate-50 no-underline"><i class="fa-solid fa-user-gear mr-1 text-slate-400"></i> {{ __("Profil") }}</a>
+            <a href="{{ route('profile.edit') }}" class="block px-3 py-2 rounded-lg text-[10px] font-black uppercase italic text-slate-600 hover:bg-slate-50 no-underline"><span class="mr-1" aria-hidden="true">👤</span> {{ __("Profil") }}</a>
             <form method="POST" action="{{ route('logout') }}">@csrf
-                <button type="submit" class="w-full text-left px-3 py-2 rounded-lg text-[10px] font-black uppercase italic text-red-500 hover:bg-red-50 border-none bg-transparent cursor-pointer"><i class="fa-solid fa-right-from-bracket mr-1"></i> {{ __("Déconnexion") }}</button>
+                <button type="submit" class="w-full text-left px-3 py-2 rounded-lg text-[10px] font-black uppercase italic text-red-500 hover:bg-red-50 border-none bg-transparent cursor-pointer"><span class="mr-1" aria-hidden="true">🚪</span> {{ __("Déconnexion") }}</button>
             </form>
         </div>
     </div>
