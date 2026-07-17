@@ -11,6 +11,7 @@ import { db } from '../../offline/db'
 import { onSyncChange, enqueue } from '../../offline/sync'
 import { t, dateLocale } from '../../i18n'
 import { useFieldTasks } from './useFieldTasks'
+import { DashboardKpis } from './DashboardKpis'
 import type { ApiNotification, RefTask } from '../../api/types'
 
 const SEVERITY_CLASS: Record<string, string> = {
@@ -30,7 +31,7 @@ const CATEGORY_ICON: Record<string, string> = {
 
 export function HomeScreen() {
   const { me, can } = useAuth()
-  const { batches, checksTodo, eggsTodo, slaughterOrders, millProductions, cropCycles, savedToday } = useFieldTasks()
+  const { batches, checksTodo, eggsTodo, slaughterOrders, millProductions, cropCycles } = useFieldTasks()
   const [alerts, setAlerts] = useState<ApiNotification[]>([])
   const [tasks, setTasks] = useState<RefTask[]>([])
 
@@ -92,11 +93,8 @@ export function HomeScreen() {
         </span>
       </div>
 
-      <div className="kpi-row">
-        <div className="kpi"><div className="kpi-val">{batches.length}</div><div className="kpi-lab">{t('Lots actifs')}</div></div>
-        <div className="kpi"><div className="kpi-val">{totalTodo}</div><div className="kpi-lab">{t('À faire')}</div></div>
-        <div className="kpi"><div className="kpi-val">{savedToday}</div><div className="kpi-lab">{t('Saisies auj.')}</div></div>
-      </div>
+      {/* KPIs consolidés, adaptés au rôle (gate hors-ligne par module). */}
+      <DashboardKpis todo={totalTodo} />
 
       {/* Mes tâches assignées du jour (planifiées par le responsable).
           On ne l'affiche QUE si le compte est rattaché à une fiche employé —

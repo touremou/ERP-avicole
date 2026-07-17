@@ -5,6 +5,15 @@
  * orpheline des deux côtés au moment de la génération).
  */
 export const en: Record<string, string> = {
+  // Tableau de bord — KPIs par rôle
+  'Effectif actif': 'Live headcount',
+  'Articles stock': 'Stock items',
+  'Seuil bas': 'Low stock',
+  'Clients': 'Customers',
+  'Créances': 'Receivables',
+  'Ordres à exécuter': 'Orders to run',
+  'OP en cours': 'Runs in progress',
+  'Cycles en cours': 'Active crop cycles',
   // Écran Stocks (consultation)
   'Stocks': 'Stock',
   ':count article(s)': ':count item(s)',
