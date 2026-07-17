@@ -133,6 +133,14 @@ class User extends Authenticatable
             $modules = Module::active()->whereIn('id', $explicitModuleIds)->get();
         }
 
+        // Le module Administration n'a AUCUNE fonction en lecture seule : toutes
+        // ses routes exigent admin.S. On ne présente donc sa tuile qu'aux
+        // utilisateurs réellement habilités (admin.S) — sinon un simple droit
+        // admin.L afficherait une tuile morte et trompeuse dans le lanceur.
+        if (\Illuminate\Support\Facades\Gate::forUser($this)->denies('admin.S')) {
+            $modules = $modules->reject(fn ($m) => $m->slug === 'admin')->values();
+        }
+
         // Verrou d'abonnement : on masque les modules hors licence (tuiles du
         // lanceur, navigation). Sans effet si le système de licence est inactif.
         $licenses = app(\App\Services\LicenseService::class);
@@ -140,7 +148,7 @@ class User extends Authenticatable
             $modules = $modules->filter(fn ($m) => $licenses->allowsModule($m->slug))->values();
         }
 
-        return $modules;
+        return $modules->values();
     }
 
     /**

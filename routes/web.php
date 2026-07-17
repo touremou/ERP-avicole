@@ -667,6 +667,9 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/transfer', 'transfer')->name('transfer')->middleware('can:C');
         Route::get('/{account}', 'show')->name('show')->middleware('can:L');
         Route::post('/{account}/movement', 'storeMovement')->name('movement')->middleware('can:C');
+        // Édition / suppression d'un compte (module Trésorerie).
+        Route::put('/{account}', 'updateAccount')->name('account.update')->middleware('can:M');
+        Route::delete('/{account}', 'destroyAccount')->name('account.destroy')->middleware('can:S');
     });
 
     // ─── HUB FINANCE (point d'entrée unifié du module depenses) ───

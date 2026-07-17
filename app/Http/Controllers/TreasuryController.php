@@ -67,6 +67,49 @@ class TreasuryController extends Controller
         return back()->with('success', "Compte « {$data['name']} » créé.");
     }
 
+    /** Modification d'un compte (libellé, type, activation, notes). Le solde
+     *  n'est PAS modifié ici — il découle des mouvements. */
+    public function updateAccount(Request $request, TreasuryAccount $account)
+    {
+        if (Gate::denies('tresorerie.M')) {
+            return back()->with('error', 'Modification non autorisée.');
+        }
+
+        $data = $request->validate([
+            'name'      => 'required|string|max:255',
+            'type'      => 'required|in:' . implode(',', array_keys(TreasuryAccount::TYPES)),
+            'is_active' => 'nullable|boolean',
+            'notes'     => 'nullable|string|max:1000',
+        ]);
+
+        $account->update([
+            'name'      => $data['name'],
+            'type'      => $data['type'],
+            'is_active' => (bool) ($data['is_active'] ?? $account->is_active),
+            'notes'     => $data['notes'] ?? $account->notes,
+        ]);
+
+        return back()->with('success', "Compte « {$account->name} » mis à jour.");
+    }
+
+    /** Suppression d'un compte. Refusée s'il porte des mouvements (intégrité de
+     *  l'historique) : on invite alors à le DÉSACTIVER. */
+    public function destroyAccount(TreasuryAccount $account)
+    {
+        if (Gate::denies('tresorerie.S')) {
+            return back()->with('error', 'Suppression réservée au responsable trésorerie.');
+        }
+
+        if ($account->transactions()->exists()) {
+            return back()->with('error', "Compte « {$account->name} » non supprimable : il porte des mouvements. Désactivez-le plutôt pour préserver l'historique.");
+        }
+
+        $name = $account->name;
+        $account->delete();
+
+        return redirect()->route('treasury.index')->with('success', "Compte « {$name} » supprimé.");
+    }
+
     /** État des flux de trésorerie : entrées/sorties par catégorie sur une période. */
     public function report(Request $request)
     {
