@@ -96,9 +96,13 @@
                 <x-menu align="right" width="w-52" panel="bg-white rounded-2xl shadow-2xl border border-slate-100 p-2.5">
                     <x-slot name="trigger">
                         <span class="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl hover:bg-slate-200 transition-all">
-                            <span class="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center text-white text-xs font-black shadow">
-                                {{ strtoupper(substr(Auth::user()->name ?? 'U', 0, 1)) }}
-                            </span>
+                            @if(Auth::user()->avatar_url)
+                                <img src="{{ Auth::user()->avatar_url }}" alt="{{ Auth::user()->name }}" class="w-8 h-8 rounded-lg object-cover shadow">
+                            @else
+                                <span class="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center text-white text-xs font-black shadow">
+                                    {{ strtoupper(substr(Auth::user()->name ?? 'U', 0, 1)) }}
+                                </span>
+                            @endif
                             <i class="fa-solid fa-chevron-down text-[6px] text-slate-400 mr-1.5"></i>
                         </span>
                     </x-slot>
