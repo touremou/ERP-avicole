@@ -12,7 +12,7 @@
     <div class="py-10">
         <div class="max-w-6xl mx-auto sm:px-6 lg:px-8 italic font-bold text-left space-y-8">
 
-            <div class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
                 <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm text-center">
                     <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Fournisseurs") }}</p>
                     <p class="text-2xl font-black text-slate-800 leading-none">{{ $kpis['providers'] }}</p>
@@ -21,15 +21,26 @@
                     <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Actifs") }}</p>
                     <p class="text-2xl font-black text-emerald-600 leading-none">{{ $kpis['providers_active'] }}</p>
                 </div>
+                <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm text-center">
+                    <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Clients") }}</p>
+                    <p class="text-2xl font-black text-slate-800 leading-none">{{ $kpis['clients'] }}</p>
+                </div>
             </div>
 
             <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm">
-                <p class="text-[10px] font-black uppercase tracking-widest text-orange-500 mb-4">{{ __("Partenaires") }}</p>
+                <p class="text-[10px] font-black uppercase tracking-widest text-orange-500 mb-4">{{ __("Répertoire des tiers") }}</p>
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
                     @can('annuaire.L')
                     <a href="{{ route('providers.index') }}" class="flex flex-col items-center justify-center gap-2 p-6 bg-slate-50 rounded-2xl hover:bg-orange-50 hover:text-orange-600 transition-all no-underline text-slate-600 text-center">
                         <i class="fa-solid fa-truck-field text-lg"></i>
                         <span class="text-[8px] font-black uppercase tracking-widest leading-tight">{{ __("Fournisseurs") }}</span>
+                    </a>
+                    @endcan
+                    {{-- Clients = tiers partagés : accessible via annuaire OU commerce. --}}
+                    @can('clients.read')
+                    <a href="{{ route('clients.index') }}" class="flex flex-col items-center justify-center gap-2 p-6 bg-slate-50 rounded-2xl hover:bg-teal-50 hover:text-teal-600 transition-all no-underline text-slate-600 text-center">
+                        <i class="fa-solid fa-users text-lg"></i>
+                        <span class="text-[8px] font-black uppercase tracking-widest leading-tight">{{ __("Clients") }}</span>
                     </a>
                     @endcan
                 </div>

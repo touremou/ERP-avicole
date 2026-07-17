@@ -6,7 +6,7 @@
                     <p class="text-[8px] font-black text-rose-400 uppercase italic mb-1">{{ __("Créances Totales") }}</p>
                     <p class="text-base font-black text-slate-900 leading-none">{{ number_format($stats['total_debt'], 0, ',', ' ') }} <small class="text-[9px] opacity-40">{{ setting('general.currency', 'GNF') }}</small></p>
                 </div>
-                @can('commerce.C')
+                @can('clients.create')
                 <a href="{{ route('clients.create') }}" class="bg-slate-900 text-white px-8 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-teal-600 transition-all shadow-2xl italic flex items-center gap-2 no-underline">
                     <i class="fa-solid fa-user-plus"></i> {{ __("Nouveau Client") }}
                 </a>

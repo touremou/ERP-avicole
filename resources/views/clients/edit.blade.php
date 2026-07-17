@@ -99,11 +99,15 @@
                                 class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black shadow-inner outline-none">
                         </div>
                     </div>
+                    {{-- Plafond de crédit : donnée COMMERCIALE (module Commerce). Un
+                         éditeur depuis l'Annuaire (tiers) ne modifie pas le crédit. --}}
+                    @can('commerce.M')
                     <div class="space-y-2">
                         <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Plafond crédit") }} ({{ setting('general.currency', 'GNF') }})</label>
                         <input type="number" name="credit_limit" value="{{ old('credit_limit', $client->credit_limit) }}" min="0" step="100000"
                             class="w-full bg-slate-50 border-none rounded-2xl p-4 text-lg font-black text-purple-600 shadow-inner outline-none text-right">
                     </div>
+                    @endcan
                 </div>
 
                 {{-- STATUT --}}

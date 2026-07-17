@@ -9,7 +9,7 @@ class StoreClientRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return Gate::allows('commerce.C');
+        return Gate::allows('clients.create');
     }
 
     public function rules(): array

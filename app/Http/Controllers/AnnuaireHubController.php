@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Client;
 use App\Models\Provider;
 use Illuminate\Support\Facades\Gate;
 
@@ -24,6 +25,8 @@ class AnnuaireHubController extends Controller
         $kpis = [
             'providers'        => (int) Provider::count(),
             'providers_active' => (int) Provider::active()->count(),
+            // Clients = tiers partagés (visibles via annuaire OU commerce).
+            'clients'          => Gate::allows('clients.read') ? (int) Client::count() : 0,
         ];
 
         return view('annuaire.index', compact('kpis'));

@@ -12,7 +12,7 @@
                     <i class="fa-solid fa-file-invoice-dollar"></i> {{ __("Relevé") }}
                 </a>
 
-                @can('commerce.M')
+                @can('clients.modify')
                 <a href="{{ route('clients.edit', $client) }}" class="bg-white border border-slate-200 px-6 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest text-slate-600 hover:bg-slate-50 transition-all no-underline flex items-center gap-2">
                     <i class="fa-solid fa-pen"></i> {{ __("Modifier") }}
                 </a>
@@ -26,7 +26,10 @@
 
             <x-flash />
 
-            {{-- STATS --}}
+            {{-- STATS : chiffres COMMERCIAUX (achats, soldes, ventes) — réservés
+                 au module Commerce. Un profil Annuaire (tiers) voit la fiche
+                 contact, pas la situation financière. --}}
+            @can('commerce.L')
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                 <div class="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm text-center">
                     <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Total achats") }}</p>
@@ -48,6 +51,7 @@
                     <p class="text-xl font-black text-slate-900">{{ $stats['sales_count'] }}</p>
                 </div>
             </div>
+            @endcan
 
             {{-- FICHE CLIENT --}}
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
@@ -108,6 +112,8 @@
                             <span class="text-[9px] font-black text-slate-400 uppercase">{{ __("RCCM") }}</span>
                             <span class="text-xs font-black text-slate-800">{{ $client->rccm ?? '—' }}</span>
                         </div>
+                        {{-- Crédit = donnée commerciale (module Commerce). --}}
+                        @can('commerce.L')
                         <div class="flex justify-between">
                             <span class="text-[9px] font-black text-slate-400 uppercase">{{ __("Plafond crédit") }}</span>
                             <span class="text-xs font-black text-purple-600">
@@ -129,6 +135,7 @@
                             <p class="text-[8px] font-black text-slate-400 mt-1 text-right">{{ round($pct) }}% {{ __("utilisé") }}</p>
                         </div>
                         @endif
+                        @endcan
                     </div>
 
                     @if($client->notes)
@@ -140,7 +147,8 @@
                 </div>
             </div>
 
-            {{-- HISTORIQUE VENTES --}}
+            {{-- HISTORIQUE VENTES : commercial, réservé au module Commerce. --}}
+            @can('commerce.L')
             <div class="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
                 <div class="px-8 py-5 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
                     <h3 class="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
@@ -200,6 +208,7 @@
                     </tbody>
                 </table>
             </div>
+            @endcan
         </div>
     </div>
 </x-app-layout>

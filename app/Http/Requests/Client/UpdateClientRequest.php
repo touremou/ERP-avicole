@@ -11,7 +11,7 @@ class UpdateClientRequest extends FormRequest
     public function authorize(): bool
     {
         // On vérifie la permission M (Modification)
-        return Gate::allows('commerce.M');
+        return Gate::allows('clients.modify');
     }
 
     public function rules(): array
