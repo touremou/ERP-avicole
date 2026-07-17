@@ -234,6 +234,7 @@ export const en: Record<string, string> = {
   'Verser cette récolte au stock ?': 'Add this harvest to stock?',
   'Nom en stock — optionnel': 'Stock item name — optional',
   'Mes tâches du jour': 'My tasks today',
+  'Activité du jour': "Today's activity",
   'Aucune tâche assignée aujourd’hui.': 'No task assigned today.',
   'ℹ️ Votre compte n’est pas rattaché à une fiche employé : vos tâches assignées n’apparaîtront pas ici. Demandez à l’administrateur de créer votre accès depuis la fiche employé.':
     'ℹ️ Your account is not linked to an employee record: your assigned tasks won’t show here. Ask the administrator to create your access from the employee record.',

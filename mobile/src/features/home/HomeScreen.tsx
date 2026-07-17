@@ -7,12 +7,13 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../app/AuthContext'
-import { db } from '../../offline/db'
+import { db, type MyRecord } from '../../offline/db'
 import { onSyncChange, enqueue } from '../../offline/sync'
 import { t, dateLocale } from '../../i18n'
 import { useFieldTasks } from './useFieldTasks'
 import { DashboardKpis } from './DashboardKpis'
 import type { ApiNotification, RefTask } from '../../api/types'
+import type { OperationType } from '../../api/types'
 
 const SEVERITY_CLASS: Record<string, string> = {
   critical: 'notif-critical',
@@ -29,11 +30,40 @@ const CATEGORY_ICON: Record<string, string> = {
   maintenance: '🔧',
 }
 
+// Icône par type de saisie pour le fil « Activité du jour ».
+const ACTIVITY_ICON: Partial<Record<OperationType, string>> = {
+  'daily_check.create': '📋',
+  'egg_collection.create': '🥚',
+  'stock_movement.create': '📦',
+  'sale.create': '🧾',
+  'expense.create': '💸',
+  'batch.upsert': '🐔',
+  'health_incident.create': '🩺',
+  'harvest.create': '🌱',
+  'crop_input.create': '💧',
+  'slaughter.execute': '🔪',
+  'mill_production.complete': '🌾',
+  'slaughter_reception.create': '🚚',
+  'ccp_record.create': '🌡️',
+  'temperature_log.create': '🌡️',
+  'cleaning_log.create': '🧽',
+  'byproduct.create': '♻️',
+  'task.complete': '✓',
+  'task.create': '➕',
+}
+
+const ACTIVITY_STATUS: Record<MyRecord['sync_status'], { label: string; cls: string }> = {
+  pending: { label: '⏳', cls: 'act-warn' },
+  synced: { label: '✓', cls: 'act-ok' },
+  review: { label: '⚠️', cls: 'act-crit' },
+}
+
 export function HomeScreen() {
   const { me, can } = useAuth()
   const { batches, checksTodo, eggsTodo, slaughterOrders, millProductions, cropCycles } = useFieldTasks()
   const [alerts, setAlerts] = useState<ApiNotification[]>([])
   const [tasks, setTasks] = useState<RefTask[]>([])
+  const [activity, setActivity] = useState<MyRecord[]>([])
 
   useEffect(() => {
     const load = async () => {
@@ -42,11 +72,16 @@ export function HomeScreen() {
       const today = new Date().toISOString().slice(0, 10)
       const all = await db.tasks.toArray()
       setTasks(all.filter((t) => t.scheduled_date <= today).sort((a, b) => a.scheduled_date.localeCompare(b.scheduled_date)))
+      // Fil « Activité du jour » : mes saisies d'aujourd'hui, plus récentes d'abord.
+      const recs = await db.my_records.orderBy('created_at').reverse().toArray()
+      setActivity(recs.filter((r) => r.created_at.slice(0, 10) === today).slice(0, 6))
     }
     void load()
     const onUpdate = () => void load()
     window.addEventListener('notifications:updated', onUpdate)
     window.addEventListener('tasks:updated', onUpdate)
+    // onSyncChange couvre l'ajout d'une saisie (enqueue → notify) : le fil
+    // d'activité se rafraîchit donc dès qu'une op est mise en file.
     const off = onSyncChange(() => void load())
     return () => {
       window.removeEventListener('notifications:updated', onUpdate)
@@ -151,6 +186,28 @@ export function HomeScreen() {
         <div className="ok-card ok-muted">
           {t('Aucun lot local — la synchronisation les rapatriera au premier passage réseau.')}
         </div>
+      )}
+
+      {/* Journal d'activité : mes saisies du jour (ce qui a déjà été fait). */}
+      {activity.length > 0 && (
+        <section>
+          <div className="section-head">
+            <h3>{t('Activité du jour')}</h3>
+            <Link to="/mon-espace" className="section-link">{t('Voir tout')}</Link>
+          </div>
+          {activity.map((record) => {
+            const status = ACTIVITY_STATUS[record.sync_status]
+            return (
+              <div key={record.uuid} className="task-row">
+                <div className="task-row__body">
+                  <span className="task-title">{ACTIVITY_ICON[record.type] ?? '•'} {record.label}</span>
+                  <span className="task-meta">{new Date(record.created_at).toLocaleTimeString(dateLocale(), { hour: '2-digit', minute: '2-digit' })}</span>
+                </div>
+                <span className={`act-status ${status.cls}`}>{status.label}</span>
+              </div>
+            )
+          })}
+        </section>
       )}
 
       {/* Consultation : journaux du jour + états, selon les droits (lecture). */}
