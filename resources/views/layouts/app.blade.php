@@ -33,6 +33,7 @@
         
         {{-- 🛰️ INDICATEUR DE SYNCHRONISATION/CONNEXION --}}
         <div id="sync-indicator" class="fixed bottom-6 right-6 z-[100] flex items-center gap-3 bg-slate-900 text-white px-5 py-3 rounded-2xl shadow-2xl transform translate-y-24 transition-transform duration-500">
+            <span id="connectivity-icon" class="text-sm leading-none" aria-hidden="true">📡</span>
             <div id="connectivity-status" class="w-2 h-2 rounded-full online"></div>
             <p id="sync-text" class="text-[9px] font-black uppercase tracking-widest italic leading-none">{{ __("Système Synchronisé") }}</p>
         </div>
@@ -183,6 +184,7 @@
             // --- 🛰️ LOGIQUE OFFLINE-FIRST SÉCURISÉE ---
             const syncIndicator = document.getElementById('sync-indicator');
             const connectivityStatus = document.getElementById('connectivity-status');
+            const connectivityIcon = document.getElementById('connectivity-icon');
             const syncText = document.getElementById('sync-text');
 
             function updateConnectivity() {
@@ -190,6 +192,7 @@
                     if (navigator.onLine) {
                         document.body.classList.remove('offline-mode');
                         if (connectivityStatus) connectivityStatus.className = "w-2 h-2 rounded-full online";
+                        if (connectivityIcon) connectivityIcon.textContent = "📡";
                         if (syncText) syncText.innerText = @json(__("Système en ligne"));
                         if (syncIndicator) {
                             syncIndicator.classList.remove('translate-y-24');
@@ -198,6 +201,7 @@
                     } else {
                         document.body.classList.add('offline-mode');
                         if (connectivityStatus) connectivityStatus.className = "w-2 h-2 rounded-full offline";
+                        if (connectivityIcon) connectivityIcon.textContent = "📴";
                         if (syncText) syncText.innerText = @json(__("Mode Hors-Ligne Actif"));
                         if (syncIndicator) syncIndicator.classList.remove('translate-y-24');
                     }
