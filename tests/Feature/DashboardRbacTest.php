@@ -73,7 +73,9 @@ test('un vendeur (commerce.L) ne voit pas les widgets élevage/stocks du dashboa
     $response->assertDontSee('Effectif Actif')
         ->assertDontSee('Mortalité Période')
         ->assertDontSee('Bandes Actives')
-        ->assertDontSee('Vue analytique consolidée');
+        ->assertDontSee('Vue analytique consolidée')
+        // Pas de carte « Densités Bâtiments » vide pour un profil non-élevage.
+        ->assertDontSee('Densités Bâtiments');
 
     // La donnée d'effectif elle-même ne transite pas (1 234 sujets).
     $response->assertDontSee('1 234');

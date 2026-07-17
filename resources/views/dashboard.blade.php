@@ -760,6 +760,11 @@
                     </div>
                     @endif
 
+                    {{-- Densités Bâtiments : donnée d'élevage. Cloisonné (elevage.L)
+                         ET masqué si aucun bâtiment, pour ne pas afficher une carte
+                         vide à un profil non-élevage (ex. logistique seul). --}}
+                    @can('elevage.L')
+                    @if(($buildings ?? collect())->isNotEmpty())
                     <div>
                         <h3 class="text-[11px] font-black uppercase text-slate-800 tracking-[0.2em] ml-6 mb-5 italic flex items-center">
                             <span class="w-2 h-6 bg-emerald-500 rounded-full mr-3"></span> {{ __("Densités Bâtiments") }}
@@ -783,6 +788,8 @@
                             @endforeach
                         </div>
                     </div>
+                    @endif
+                    @endcan
 
                     {{-- Actions Rapides --}}
                     <div class="grid grid-cols-1 gap-3">
