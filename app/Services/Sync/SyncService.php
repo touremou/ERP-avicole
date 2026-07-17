@@ -31,6 +31,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 /**
  * SyncService — porte d'entrée UNIQUE de la réconciliation offline (API v1).
@@ -118,7 +119,7 @@ class SyncService
 
         $v = Validator::make($payload, [
             'uuid'                 => 'required|uuid',
-            'batch_id'             => 'required|integer|exists:batches,id',
+            'batch_id'             => ['required', 'integer', $this->farmScopedExists('batches')],
             'check_date'           => 'required|date',
             'mortality'            => 'nullable|integer|min:0',
             'avg_weight'           => 'nullable|numeric|min:0',
@@ -205,7 +206,7 @@ class SyncService
 
         $v = Validator::make($payload, [
             'uuid'                 => 'required|uuid',
-            'batch_id'             => 'required|integer|exists:batches,id',
+            'batch_id'             => ['required', 'integer', $this->farmScopedExists('batches')],
             'production_date'      => 'required|date|before_or_equal:today',
             'total_eggs_collected' => 'required|integer|min:0',
             'broken_eggs'          => 'nullable|integer|min:0',
@@ -269,7 +270,7 @@ class SyncService
 
         $v = Validator::make($payload, [
             'uuid'     => 'required|uuid',
-            'stock_id' => 'required|integer|exists:stocks,id',
+            'stock_id' => ['required', 'integer', $this->farmScopedExists('stocks')],
             'type'     => 'required|in:in,out,adjustment',
             'quantity' => 'required|numeric|min:0.001',
             'notes'    => 'nullable|string|max:500',
@@ -323,7 +324,7 @@ class SyncService
 
         $v = Validator::make($payload, [
             'uuid'                 => 'required|uuid',
-            'client_id'            => 'required|integer|exists:clients,id',
+            'client_id'            => ['required', 'integer', $this->farmScopedExists('clients')],
             'sale_date'            => 'required|date|before_or_equal:today',
             'type'                 => 'required|in:bon_livraison,facture',
             'tax_rate'             => 'nullable|numeric|min:0',
@@ -377,7 +378,7 @@ class SyncService
             'amount'         => 'required|numeric|min:1',
             'expense_date'   => 'required|date|before_or_equal:today',
             'payment_method' => 'nullable|string|max:30',
-            'batch_id'       => 'nullable|integer|exists:batches,id',
+            'batch_id'       => ['nullable', 'integer', $this->farmScopedExists('batches')],
             'supplier_name'  => 'nullable|string|max:255',
             'notes'          => 'nullable|string|max:2000',
             // Photo du reçu téléversée au préalable via POST /api/v1/photos.
@@ -418,13 +419,13 @@ class SyncService
             'uuid'                   => 'required|uuid',
             'code'                   => 'required|string|max:50',
             'type'                   => 'required|string',
-            'building_id'            => 'required|integer|exists:buildings,id',
+            'building_id'            => ['required', 'integer', $this->farmScopedExists('buildings')],
             'initial_quantity'       => 'required|integer|min:1',
             'current_quantity'       => 'required|integer|min:0',
             'status'                 => 'nullable|string|in:Actif,Terminé',
             'arrival_date'           => 'required|date',
-            'employee_id'            => 'nullable|integer|exists:employees,id',
-            'provider_id'            => 'nullable|integer|exists:providers,id',
+            'employee_id'            => ['nullable', 'integer', $this->farmScopedExists('employees')],
+            'provider_id'            => ['nullable', 'integer', $this->farmScopedExists('providers')],
             'qty_dead'               => 'nullable|integer|min:0',
             'arrival_mortality_rate' => 'nullable|numeric|min:0',
             'buy_price_per_unit'     => 'nullable|numeric|min:0',
@@ -502,7 +503,7 @@ class SyncService
 
         $v = Validator::make($payload, [
             'uuid'            => 'required|uuid',
-            'batch_id'        => 'required|integer|exists:batches,id',
+            'batch_id'        => ['required', 'integer', $this->farmScopedExists('batches')],
             'incident_date'   => 'required|date|before_or_equal:today',
             'mortality_count' => 'required|integer|min:0',
             'symptoms'        => 'required|string|max:2000',
@@ -561,7 +562,7 @@ class SyncService
 
         $v = Validator::make($payload, [
             'uuid'            => 'required|uuid',
-            'crop_cycle_id'   => 'required|integer|exists:crop_cycles,id',
+            'crop_cycle_id'   => ['required', 'integer', $this->farmScopedExists('crop_cycles')],
             'harvest_date'    => 'required|date|before_or_equal:today',
             'quantity'        => 'required|numeric|min:0.001',
             'unit'            => 'nullable|string|max:20',
@@ -626,13 +627,13 @@ class SyncService
 
         $v = Validator::make($payload, [
             'uuid'            => 'required|uuid',
-            'crop_cycle_id'   => 'required|integer|exists:crop_cycles,id',
+            'crop_cycle_id'   => ['required', 'integer', $this->farmScopedExists('crop_cycles')],
             'type'            => 'required|in:' . implode(',', array_keys(CropInput::TYPES)),
             'name'            => 'required|string|max:255',
             'input_date'      => 'required|date|before_or_equal:today',
             'quantity'        => 'nullable|numeric|min:0',
             'unit'            => 'nullable|string|max:20',
-            'provider_id'     => 'nullable|integer|exists:providers,id',
+            'provider_id'     => ['nullable', 'integer', $this->farmScopedExists('providers')],
             'unit_cost'       => 'nullable|numeric|min:0',
             'total_cost'      => 'nullable|numeric|min:0',
             'synced_to_stock' => 'nullable|boolean',
@@ -691,7 +692,7 @@ class SyncService
 
         $v = Validator::make($payload, [
             'uuid'                    => 'required|uuid',
-            'slaughter_order_id'      => 'required|integer|exists:slaughter_orders,id',
+            'slaughter_order_id'      => ['required', 'integer', $this->farmScopedExists('slaughter_orders')],
             'execution_date'          => 'required|date|before_or_equal:today',
             'actual_quantity'         => 'required|integer|min:1',
             'total_live_weight_kg'    => 'required|numeric|min:0.1',
@@ -754,7 +755,7 @@ class SyncService
 
         $v = Validator::make($payload, [
             'uuid'               => 'required|uuid',
-            'mill_production_id' => 'required|integer|exists:mill_productions,id',
+            'mill_production_id' => ['required', 'integer', $this->farmScopedExists('mill_productions')],
         ]);
 
         if ($v->fails()) {
@@ -812,7 +813,7 @@ class SyncService
 
         $v = Validator::make($payload, [
             'uuid'                 => 'required|uuid',
-            'provider_id'          => 'required|integer|exists:providers,id',
+            'provider_id'          => ['required', 'integer', $this->farmScopedExists('providers')],
             'reception_date'       => 'required|date|before_or_equal:today',
             'announced_quantity'   => 'nullable|integer|min:0',
             'received_quantity'    => 'required|integer|min:1',
@@ -872,7 +873,7 @@ class SyncService
         $v = Validator::make($payload, [
             'uuid'               => 'required|uuid',
             'ccp'                => 'required|in:' . implode(',', \App\Models\CcpRecord::CCPS),
-            'slaughter_order_id' => 'nullable|integer|exists:slaughter_orders,id',
+            'slaughter_order_id' => ['nullable', 'integer', $this->farmScopedExists('slaughter_orders')],
             'equipment_ref'      => 'nullable|string|max:50',
             'mesures'            => 'required|array|min:1',
             'conforme'           => 'nullable|boolean',
@@ -1028,7 +1029,7 @@ class SyncService
 
         $v = Validator::make($payload, [
             'uuid'               => 'required|uuid',
-            'slaughter_order_id' => 'nullable|integer|exists:slaughter_orders,id',
+            'slaughter_order_id' => ['nullable', 'integer', $this->farmScopedExists('slaughter_orders')],
             'type'               => 'required|in:' . implode(',', array_keys(\App\Models\SlaughterByproduct::TYPES)),
             'quantity_kg'        => 'required|numeric|min:0.01',
             'destination'        => 'required|in:' . implode(',', array_keys(\App\Models\SlaughterByproduct::DESTINATIONS)),
@@ -1072,7 +1073,7 @@ class SyncService
     {
         $v = Validator::make($payload, [
             'uuid'    => 'required|uuid',
-            'task_id' => 'required|integer|exists:task_assignments,id',
+            'task_id' => ['required', 'integer', $this->farmScopedExists('task_assignments')],
             'notes'   => 'nullable|string|max:500',
         ]);
 
@@ -1106,6 +1107,26 @@ class SyncService
         Log::info("Sync: tâche #{$task->id} terminée (uuid: {$data['uuid']}).");
 
         return ['status' => 'success', 'server_id' => $task->id];
+    }
+
+    /**
+     * Règle « exists » bornée à la ferme courante (étanchéité multi-fermes).
+     *
+     * La validation Laravel `exists:` ignore les global scopes Eloquent : sans
+     * borne explicite, un appareil pourrait référencer l'id d'une entité d'une
+     * AUTRE ferme (FK croisée). On restreint donc à session('current_farm_id')
+     * — première ligne, en complément du findOrFail scopé en aval.
+     */
+    private function farmScopedExists(string $table): \Illuminate\Validation\Rules\Exists
+    {
+        $rule = Rule::exists($table, 'id');
+        $farmId = session('current_farm_id');
+
+        if ($farmId) {
+            $rule->where('farm_id', $farmId);
+        }
+
+        return $rule;
     }
 
     private function denied(): array
