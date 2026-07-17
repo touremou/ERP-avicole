@@ -172,10 +172,15 @@ h3 {
 
 /* ── Ruban KPI ── */
 .kpi-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+/* Grille KPI adaptative (tableau de bord par rôle) : autant de colonnes que la
+   largeur le permet, min 96px par carte. */
+.kpi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; }
 .kpi {
   background: var(--surface); border: 1px solid var(--line);
   border-radius: var(--radius-card); padding: 12px 8px; text-align: center;
 }
+.kpi--alert { border-color: #fca5a5; background: #fef2f2; }
+.kpi--alert .kpi-val { color: #dc2626; }
 .kpi-val {
   font-size: 1.3rem; font-weight: 800; letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums; line-height: 1;
