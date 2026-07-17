@@ -3,12 +3,13 @@ import ReactDOM from 'react-dom/client'
 import { initSwUpdate } from './swUpdate'
 import { App } from './App'
 import { initLocale } from '../i18n'
-// Inter auto-hébergée (bundlée par Vite) : rendu identique hors-ligne, sans CDN.
-import '@fontsource/inter/400.css'
-import '@fontsource/inter/500.css'
-import '@fontsource/inter/600.css'
-import '@fontsource/inter/700.css'
-import '@fontsource/inter/800.css'
+// Figtree auto-hébergée (bundlée par Vite) : même police que le web, rendu
+// identique hors-ligne, sans CDN (le web la charge via fonts.bunny.net).
+import '@fontsource/figtree/400.css'
+import '@fontsource/figtree/500.css'
+import '@fontsource/figtree/600.css'
+import '@fontsource/figtree/700.css'
+import '@fontsource/figtree/800.css'
 import '../ui/styles.css'
 
 // Service worker en mode « prompt » : un toast « Recharger » signale la
