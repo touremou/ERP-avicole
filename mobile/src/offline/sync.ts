@@ -126,6 +126,11 @@ export async function syncNow(): Promise<void> {
   }
 }
 
+// Au-delà de ce nombre d'échecs 'error' (5xx interne), une op sort de la file
+// vers « À corriger » : assez de tentatives pour absorber un déploiement/incident
+// serveur transitoire, sans laisser une op fantôme « en attente » à l'infini.
+const MAX_OP_ATTEMPTS = 10
+
 async function pushOutbox(): Promise<void> {
   const pending = await db.outbox.where('status').equals('pending').sortBy('created_at')
   if (pending.length === 0) return
@@ -134,30 +139,46 @@ async function pushOutbox(): Promise<void> {
   // ne part qu'une fois la photo téléversée et son chemin serveur substitué.
   // Rejouable : le chemin est persisté sur la photo ET dans le payload — un
   // échec de push ultérieur ne re-téléverse pas.
+  //
+  // RÉSILIENCE : un téléversement de photo qui échoue (réseau/5xx) NE DOIT PAS
+  // bloquer toute la file. On isole l'op concernée (elle reste `pending`, sera
+  // retentée) et on continue avec les AUTRES — sinon une op à photo coincée
+  // gèlerait toutes les saisies suivantes, même sans photo (ex. ravitaillement).
+  const blocked = new Set<string>()
   for (const entry of pending) {
     const photoUuid = entry.payload.photo_uuid as string | undefined
     if (!photoUuid) continue
 
-    const photo = await db.photos.get(photoUuid)
-    if (!photo) {
-      // Photo disparue (purge navigateur) : l'op part sans photo plutôt
-      // que de bloquer la file.
+    try {
+      const photo = await db.photos.get(photoUuid)
+      if (!photo) {
+        // Photo disparue (purge navigateur) : l'op part sans photo plutôt
+        // que de bloquer la file.
+        delete entry.payload.photo_uuid
+        await db.outbox.update(entry.op_uuid, { payload: entry.payload })
+        continue
+      }
+
+      const path = photo.uploaded_path ?? (await api.uploadPhoto(photo.blob, photo.context)).path
+      await db.photos.update(photoUuid, { uploaded_path: path })
+
+      entry.payload.photo_path = path
       delete entry.payload.photo_uuid
       await db.outbox.update(entry.op_uuid, { payload: entry.payload })
-      continue
+    } catch (error) {
+      // Téléversement KO : on saute CETTE op ce tour-ci (photo pas encore
+      // substituée), sans faire échouer les autres.
+      console.error('[sync:photo]', entry.op_uuid, error)
+      blocked.add(entry.op_uuid)
     }
-
-    const path = photo.uploaded_path ?? (await api.uploadPhoto(photo.blob, photo.context)).path
-    await db.photos.update(photoUuid, { uploaded_path: path })
-
-    entry.payload.photo_path = path
-    delete entry.payload.photo_uuid
-    await db.outbox.update(entry.op_uuid, { payload: entry.payload })
   }
 
+  // On ne pousse que les ops prêtes (photo substituée ou sans photo).
+  const ready = pending.filter((e) => !blocked.has(e.op_uuid))
+
   // Lots de 50 (le serveur accepte max 100) pour borner la taille de requête.
-  for (let i = 0; i < pending.length; i += 50) {
-    const batch = pending.slice(i, i + 50)
+  for (let i = 0; i < ready.length; i += 50) {
+    const batch = ready.slice(i, i + 50)
     const response = await api.syncPush(
       batch.map(({ op_uuid, type, payload }) => ({ op_uuid, type, payload })),
     )
@@ -190,12 +211,24 @@ async function pushOutbox(): Promise<void> {
           await db.my_records.update(result.op_uuid, { sync_status: 'review' })
           break
 
-        default:
-          // 'error' (5xx interne) : reste pending, sera retenté.
-          await db.outbox.update(result.op_uuid, {
-            attempts: entry.attempts + 1,
-            last_error: result.message ?? 'Erreur serveur',
-          } satisfies Partial<OutboxEntry>)
+        default: {
+          // 'error' (5xx interne) : reste pending, sera retenté — MAIS pas
+          // indéfiniment. Au-delà de MAX_OP_ATTEMPTS, on la sort vers « À
+          // corriger » avec le motif, pour qu'elle cesse d'être une op fantôme
+          // « en attente » et que l'utilisateur puisse l'abandonner.
+          const attempts = entry.attempts + 1
+          const msg = result.message ?? 'Erreur serveur'
+          if (attempts >= MAX_OP_ATTEMPTS) {
+            await db.outbox.update(result.op_uuid, {
+              status: 'review', attempts, last_error: msg,
+            } satisfies Partial<OutboxEntry>)
+            await db.my_records.update(result.op_uuid, { sync_status: 'review' })
+          } else {
+            await db.outbox.update(result.op_uuid, {
+              attempts, last_error: msg,
+            } satisfies Partial<OutboxEntry>)
+          }
+        }
       }
     }
   }
