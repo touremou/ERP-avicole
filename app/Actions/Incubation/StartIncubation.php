@@ -79,13 +79,13 @@ class StartIncubation
             $provider = \App\Models\Provider::findOrFail($data['provider_id']);
         }
 
-        // 3. Détermination de l'employé responsable (Traçabilité ERP)
-        // Logique en cascade : on cherche l'employé lié au compte, 
-        // sinon on utilise l'ID du compte, sinon le tout premier employé de l'usine.
-        $employeeId = auth()->user()->employee_id 
-                      ?? auth()->id() 
-                      ?? \App\Models\Employee::first()->id 
-                      ?? 1;
+        // 3. Détermination de l'employé responsable (Traçabilité ERP).
+        // On lit la fiche employé RATTACHÉE au compte (relation users→employees),
+        // sinon le premier employé disponible ; à défaut null (colonne nullable).
+        // NB : ne jamais retomber sur auth()->id() (c'est un users.id, pas un
+        // employees.id → violation de clé étrangère batches.employee_id).
+        $employeeId = auth()->user()?->employee?->id
+                      ?? \App\Models\Employee::query()->value('id');
 
         /// 4. Création du lot externe rattaché (Blindage absolu)
         $batch = \App\Models\Batch::firstOrCreate(
