@@ -38,7 +38,12 @@ export function useFieldTasks(): FieldTasks {
 
   useEffect(() => {
     const load = async () => {
-      const active = await db.ref_batches.where('status').equals('Actif').toArray()
+      // Lots actifs RÉELS (volaille) : on exclut les lots « virtuels » de
+      // traçabilité créés pour l'incubation (source d'œufs externe) — quantités
+      // initiale ET courante à 0. Ils fausseraient le compte « Lots actifs » et
+      // apparaîtraient à tort en pointage/collecte.
+      const active = (await db.ref_batches.where('status').equals('Actif').toArray())
+        .filter((b) => (b.initial_quantity ?? 0) > 0 || (b.current_quantity ?? 0) > 0)
       setBatches(active)
 
       const ponteTypes = await db.ref_production_types.where('slug').equals('ponte').toArray()
