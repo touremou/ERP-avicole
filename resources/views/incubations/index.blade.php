@@ -213,7 +213,7 @@
                         <div class="flex items-center gap-4 ml-auto" x-data="{ openAction: false }">
                             @if($inc->status == 'incubation')
                                 <button @click.stop="openAction = true" class="px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white text-[10px] font-black uppercase rounded-2xl transition-all flex items-center gap-3 shadow-xl border-none cursor-pointer italic">
-                                    <i class="fa-solid fa-magnifying-glass"></i> {{ __("Mirage J-10") }}
+                                    <span aria-hidden="true">🔦</span> {{ __("Mirage J-10") }}
                                 </button>
                                 {{-- Modal Mirage --}}
                                 <div x-show="openAction" x-cloak x-transition.opacity class="fixed inset-0 z-[150] flex items-center justify-center bg-slate-900/90 backdrop-blur-md p-4">

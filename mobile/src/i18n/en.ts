@@ -371,6 +371,10 @@ export const en: Record<string, string> = {
   'Modéré': 'Moderate',
   'Mon activité': 'My activity',
   'Mon espace': 'My space',
+  // Sélecteur de ferme (multi-sites)
+  'Ferme / site': 'Farm / site',
+  'Les données terrain (lots, stocks, tâches…) sont celles du site sélectionné.':
+    'Field data (batches, stock, tasks…) is that of the selected site.',
   // Appareils connectés
   'Appareils connectés': 'Connected devices',
   'Gérer mes appareils': 'Manage my devices',

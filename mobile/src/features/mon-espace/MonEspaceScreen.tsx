@@ -10,7 +10,7 @@ import { useAuth } from '../../app/AuthContext'
 import { api, ApiError } from '../../api/client'
 import { compressImage } from '../../platform'
 import { db, type MyRecord, type OutboxEntry } from '../../offline/db'
-import { syncNow } from '../../offline/sync'
+import { syncNow, switchFarm } from '../../offline/sync'
 import { getLocale, setLocale, t, type Locale } from '../../i18n'
 
 const LOCALES: { value: Locale; label: string }[] = [
@@ -32,6 +32,9 @@ export function MonEspaceScreen() {
   const [records, setRecords] = useState<MyRecord[]>([])
   const [review, setReview] = useState<OutboxEntry[]>([])
   const [online, setOnline] = useState(navigator.onLine)
+
+  // Sélecteur de ferme (multi-sites).
+  const [switchingFarm, setSwitchingFarm] = useState<number | null>(null)
 
   // Photo de profil.
   const fileInput = useRef<HTMLInputElement>(null)
@@ -172,6 +175,17 @@ export function MonEspaceScreen() {
     }
   }
 
+  async function onSwitchFarm(farmId: number) {
+    if (switchingFarm || farmId === me?.scope.farm_id) return
+    setSwitchingFarm(farmId)
+    try {
+      await switchFarm(farmId)   // purge + re-synchro complète pour le nouveau site
+      await refreshMe()          // met à jour scope.farm_id + permissions du site
+    } finally {
+      setSwitchingFarm(null)
+    }
+  }
+
   async function discard(opUuid: string) {
     // Abandon d'une opération refusée : on la retire de la file ET de
     // l'activité locale (elle n'a jamais existé côté serveur).
@@ -308,6 +322,26 @@ export function MonEspaceScreen() {
           </div>
         ))}
       </section>
+
+      {me && me.scope.farms.length > 1 && (
+        <section>
+          <div className="section-head"><h3>{t('Ferme / site')}</h3></div>
+          <p className="muted">{t('Les données terrain (lots, stocks, tâches…) sont celles du site sélectionné.')}</p>
+          <div className="chip-row">
+            {me.scope.farms.map((farm) => (
+              <button
+                key={farm.id}
+                type="button"
+                className={`chip ${farm.id === me.scope.farm_id ? 'chip-on' : ''}`}
+                disabled={switchingFarm !== null}
+                onClick={() => void onSwitchFarm(farm.id)}
+              >
+                🏡 {farm.name}{switchingFarm === farm.id ? ' · ' + t('Synchronisation…') : ''}
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section>
         <div className="section-head"><h3>{t('Appareils connectés')}</h3></div>
