@@ -234,7 +234,7 @@
 
                             @if($inc->status == 'mirage_fait')
                                 <button @click.stop="openAction = true" class="px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] font-black uppercase rounded-2xl transition-all flex items-center gap-3 shadow-xl border-none cursor-pointer italic">
-                                    <i class="fa-solid fa-egg"></i> {{ __("Clôture Éclosion") }}
+                                    <span aria-hidden="true">🐣</span> {{ __("Clôture Éclosion") }}
                                 </button>
                                 {{-- Modal Éclosion --}}
                                 <div x-show="openAction" x-cloak x-transition.opacity class="fixed inset-0 z-[150] flex items-center justify-center bg-slate-900/90 backdrop-blur-md p-4">
