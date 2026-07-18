@@ -27,8 +27,13 @@
                             {{-- Lanceur de modules PILOTÉ PAR LA MATRICE : tout module sur
                                  lequel l'utilisateur a la lecture (can_read) apparaît ici,
                                  sans liste codée en dur. Source : getAccessibleModules()
-                                 (matrice module_permissions) + Module::landingRoute(). --}}
-                            @foreach(auth()->user()->getAccessibleModules()->whereNotIn('slug', \App\Models\Module::nonLauncherSlugs()) as $module)
+                                 (matrice module_permissions) + Module::landingRoute().
+                                 « depenses » et « tresorerie » sont fusionnés en une seule
+                                 tuile transverse « Finance » (cf. plus bas) pour un point
+                                 d'entrée unique — le cloisonnement reste porté par les gates
+                                 de chaque section du hub. --}}
+                            @php $financeSlugs = ['depenses', 'tresorerie']; @endphp
+                            @foreach(auth()->user()->getAccessibleModules()->whereNotIn('slug', \App\Models\Module::nonLauncherSlugs())->whereNotIn('slug', $financeSlugs) as $module)
                                 @php
                                     $landing = \App\Models\Module::landingRoute($module->slug);
                                     $color   = $module->color ?: 'slate';
@@ -43,6 +48,18 @@
                                     </a>
                                 @endif
                             @endforeach
+
+                            {{-- FINANCE : tuile unique fusionnant Dépenses/Achats et
+                                 Trésorerie — un seul point d'entrée (hub finance.index),
+                                 visible dès qu'on a la lecture de l'un OU l'autre. --}}
+                            @canany(['depenses.L', 'tresorerie.L'])
+                            <a href="{{ route('finance.index') }}" class="flex flex-col items-center p-2.5 rounded-xl hover:bg-rose-50 transition-all group no-underline">
+                                <div class="w-9 h-9 rounded-lg bg-rose-50 text-rose-500 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform">
+                                    <i class="fa-solid fa-wallet text-sm"></i>
+                                </div>
+                                <span class="text-[7px] font-black uppercase tracking-widest text-slate-500 text-center">{{ __("Finance") }}</span>
+                            </a>
+                            @endcanany
 
                             {{-- RAPPORTS : entrée transverse (pas un module de la
                                  matrice) — le centre de rapports est accessible
@@ -167,7 +184,8 @@
             {{-- Lanceur de modules mobile, PILOTÉ PAR LA MATRICE : même source
                  que le drawer desktop (getAccessibleModules() + landingRoute()),
                  pour une couverture identique sur mobile et desktop. --}}
-            @foreach(auth()->user()->getAccessibleModules()->whereNotIn('slug', \App\Models\Module::nonLauncherSlugs()) as $module)
+            @php $financeSlugs = ['depenses', 'tresorerie']; @endphp
+            @foreach(auth()->user()->getAccessibleModules()->whereNotIn('slug', \App\Models\Module::nonLauncherSlugs())->whereNotIn('slug', $financeSlugs) as $module)
                 @php
                     $landing = \App\Models\Module::landingRoute($module->slug);
                     $color   = $module->color ?: 'slate';
@@ -179,6 +197,12 @@
                     </a>
                 @endif
             @endforeach
+            {{-- FINANCE : tuile unique fusionnée (même logique que le drawer desktop). --}}
+            @canany(['depenses.L', 'tresorerie.L'])
+            <a href="{{ route('finance.index') }}" class="flex items-center px-3 py-2 rounded-lg text-[10px] font-black uppercase italic text-slate-600 hover:bg-rose-50 no-underline">
+                <i class="fa-solid fa-wallet mr-2 text-rose-500 w-4 text-center"></i> {{ __("Finance") }}
+            </a>
+            @endcanany
             {{-- RAPPORTS : même entrée transverse que le drawer desktop. --}}
             @canany(['elevage.L', 'depenses.L', 'admin.L'])
             <a href="{{ route('reports.index') }}" class="flex items-center px-3 py-2 rounded-lg text-[10px] font-black uppercase italic text-slate-600 hover:bg-slate-100 no-underline">

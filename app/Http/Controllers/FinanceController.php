@@ -20,7 +20,10 @@ class FinanceController extends Controller
 {
     public function index()
     {
-        if (Gate::denies('depenses.L')) {
+        // Point d'entrée unifié Finance : accessible à qui a la lecture Dépenses
+        // OU Trésorerie. Le cloisonnement reste porté par chaque section (les
+        // soldes/mouvements exigent tresorerie.L, les dépenses/dettes depenses.L).
+        if (Gate::denies('depenses.L') && Gate::denies('tresorerie.L')) {
             return redirect()->route('dashboard')->with('error', 'Accès restreint au module Finance.');
         }
 
