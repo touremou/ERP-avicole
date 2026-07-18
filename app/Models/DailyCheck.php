@@ -63,6 +63,16 @@ class DailyCheck extends Model
         'pecking_injury_count' => 'integer',
     ];
 
+    /**
+     * Garde-fou anti-500 : `feed_consumed` est NOT NULL (défaut 0). Un pointage
+     * hors-ligne sans aliment consommé peut transmettre `null` : on coalesce à 0
+     * pour ne jamais violer la contrainte à l'INSERT (web, sync et tout appelant).
+     */
+    public function setFeedConsumedAttribute($value): void
+    {
+        $this->attributes['feed_consumed'] = $value ?? 0;
+    }
+
     public function batch(): BelongsTo
     {
         return $this->belongsTo(Batch::class);

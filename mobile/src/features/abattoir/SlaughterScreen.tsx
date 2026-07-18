@@ -57,7 +57,7 @@ export function SlaughterScreen() {
         actual_quantity: actualQuantity,
         total_live_weight_kg: live,
         total_carcass_weight_kg: carcass,
-        condemned_count: condemned || null,
+        condemned_count: condemned,
         inspector_notes: notes || null,
       },
       t('Abattage :order (:qty sujets)', { order: order.order_number, qty: actualQuantity }),

@@ -220,16 +220,20 @@ h3 {
 .kpi-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 /* Grille KPI adaptative (tableau de bord par rôle) : autant de colonnes que la
    largeur le permet, min 96px par carte. */
-.kpi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; }
+.kpi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 10px; }
 .kpi {
   background: var(--surface); border: 1px solid var(--line);
-  border-radius: var(--radius-card); padding: 12px 8px; text-align: center;
+  border-radius: var(--radius-card); padding: 12px 6px; text-align: center;
+  min-width: 0; /* autorise la tuile à rétrécir → l'ellipsis peut opérer */
 }
 .kpi--alert { border-color: #fca5a5; background: #fef2f2; }
 .kpi--alert .kpi-val { color: #dc2626; }
 .kpi-val {
-  font-size: 1.3rem; font-weight: 800; letter-spacing: -0.02em;
+  /* Taille responsive : les gros montants (ex. 15 000 000) ne débordent plus
+     la tuile sur petit écran — la police se réduit au lieu d'être coupée. */
+  font-size: clamp(0.82rem, 3.6vw, 1.3rem); font-weight: 800; letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums; line-height: 1;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .kpi-lab {
   font-size: 0.64rem; font-weight: 600; text-transform: uppercase;

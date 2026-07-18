@@ -164,6 +164,28 @@ test('daily_check.create : succès, effet observer, uuid persisté', function ()
     expect($this->batch->fresh()->current_quantity)->toBe(497); // observer effectif
 });
 
+test('daily_check.create : feed_consumed null (0 aliment) réussit — pas de 500', function () {
+    // Régression même classe que la réception vif : le terrain envoyait null
+    // pour 0 aliment consommé, violant la contrainte NOT NULL. Le garde-fou
+    // modèle (setFeedConsumedAttribute) coalesce à 0.
+    Sanctum::actingAs($this->manager);
+
+    $uuid = (string) Str::uuid();
+    $response = $this->postJson('/api/v1/sync/push', pushOps([[
+        'type'    => 'daily_check.create',
+        'payload' => [
+            'uuid'          => $uuid,
+            'batch_id'      => $this->batch->id,
+            'check_date'    => '2026-07-02',
+            'mortality'     => 0,
+            'feed_consumed' => null,   // 0 aliment → null envoyé par le terrain
+        ],
+    ]]))->assertOk();
+
+    expect($response->json('results.0.status'))->toBe('success');
+    expect((float) DailyCheck::withoutGlobalScopes()->where('uuid', $uuid)->value('feed_consumed'))->toBe(0.0);
+});
+
 test('daily_check.create : le rejeu du même uuid renvoie already_synced sans double comptage', function () {
     Sanctum::actingAs($this->manager);
 

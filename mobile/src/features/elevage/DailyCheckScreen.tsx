@@ -85,7 +85,7 @@ export function DailyCheckScreen() {
         check_date: new Date().toISOString().slice(0, 10),
         health_status: healthStatus,
         mortality,
-        feed_consumed: feedConsumed || null,
+        feed_consumed: feedConsumed,
         feed_type: feedConsumed > 0 ? feedType : null,
         avg_weight: num(avgWeight),
         water_consumed: num(waterConsumed),

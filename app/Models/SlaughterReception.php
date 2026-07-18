@@ -42,6 +42,17 @@ class SlaughterReception extends Model
         'last_sync_at'         => 'datetime',
     ];
 
+    /**
+     * Garde-fou anti-500 : la colonne `rejected_quantity` est NOT NULL (défaut
+     * 0). Un client hors-ligne peut envoyer `null` quand aucun sujet n'est
+     * écarté (0 écarté). On coalesce ici pour que TOUT appelant (web, sync,
+     * futur) écrive 0 plutôt que de violer la contrainte à l'INSERT.
+     */
+    public function setRejectedQuantityAttribute($value): void
+    {
+        $this->attributes['rejected_quantity'] = $value ?? 0;
+    }
+
     public function provider(): BelongsTo
     {
         return $this->belongsTo(Provider::class);

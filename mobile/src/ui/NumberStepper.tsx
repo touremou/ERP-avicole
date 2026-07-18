@@ -34,6 +34,9 @@ export function NumberStepper({ label, value, onChange, min = 0, max = 99999, st
           min={min}
           max={max}
           aria-label={label}
+          // Sélectionne le « 0 » au focus : taper le remplace directement, au
+          // lieu de devoir l'effacer d'abord (0 qui « persiste » dans le champ).
+          onFocus={(e) => e.target.select()}
           onChange={(e) => onChange(clamp(Number(e.target.value) || 0))}
         />
         <button

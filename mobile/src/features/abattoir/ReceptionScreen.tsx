@@ -77,7 +77,9 @@ export function ReceptionScreen() {
       reception_date: new Date().toISOString().slice(0, 10),
       announced_quantity: announced || null,
       received_quantity: received,
-      rejected_quantity: rejected || null,
+      // Champ NOT NULL côté serveur : on envoie 0 (valeur réelle « aucun
+      // écarté »), jamais null — un null violait la contrainte (500).
+      rejected_quantity: rejected,
       total_live_weight_kg: weight,
       sanitary_state: sanitaryState,
       fasting_respected: fasting,
