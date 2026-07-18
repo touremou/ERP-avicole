@@ -123,7 +123,7 @@ class SlaughterController extends Controller
         if (Gate::denies('abattoir.L')) return redirect()->route('dashboard')->with('error', 'Accès restreint.');
 
         $order->load([
-            'batch.building', 'reception.provider', 'client',
+            'batch.building', 'reception.provider', 'reception.supplierInvoice', 'client',
             'requester', 'executor', 'blockedBy', 'releasedBy',
             'result',
             'ccpRecords' => fn ($q) => $q->with('operator')->orderBy('releve_at'),

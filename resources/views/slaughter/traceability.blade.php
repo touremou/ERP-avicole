@@ -52,6 +52,24 @@
                         @if($order->reception->decision_reason) — {{ $order->reception->decision_reason }} @endif
                     </p>
                     <p class="text-[9px] text-slate-400 m-0">{{ __("Contrôleur") }} : {{ $order->reception->controller?->name ?? '—' }} · {{ __("relevé") }} {{ $order->reception->releve_at?->format('d/m/Y H:i') }}</p>
+                    <p class="text-[10px] m-0 mt-1">
+                        @if($order->reception->origin === 'facon')
+                            <span class="text-[8px] font-black uppercase px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600">🤝 {{ __("À façon") }}</span>
+                            <span class="text-slate-400">{{ __("— sujets du client, sans coût matière") }}</span>
+                        @else
+                            <span class="text-[8px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600">🛒 {{ __("Achat") }}</span>
+                            @if($order->reception->purchase_total_cost)
+                                <span class="font-black text-slate-800">{{ number_format($order->reception->purchase_total_cost, 0, ',', ' ') }} {{ currency() }}</span>
+                                @if($order->reception->supplierInvoice)
+                                    @can('depenses.L')
+                                    · <a href="{{ route('purchases.show', $order->reception->supplierInvoice->id) }}" class="no-underline {{ $order->reception->supplierInvoice->status === 'valide' ? 'text-emerald-600' : 'text-amber-600' }} hover:underline"><i class="fa-solid fa-file-invoice-dollar"></i> {{ $order->reception->supplierInvoice->reference }} ({{ __($order->reception->supplierInvoice->status) }})</a>
+                                    @endcan
+                                @endif
+                            @else
+                                <span class="text-slate-400">{{ __("— prix à saisir au bureau") }}</span>
+                            @endif
+                        @endif
+                    </p>
                 @elseif($order->batch)
                     <p class="text-xs m-0"><span class="font-black">{{ __("Lot interne") }} {{ $order->batch->code }}</span> — {{ $order->batch->building?->name ?? '—' }}</p>
                     <p class="text-[10px] text-slate-500 m-0">{{ __("Arrivée du lot") }} : {{ $order->batch->arrival_date }} · {{ __("effectif actuel") }} : {{ $order->batch->current_quantity }}</p>

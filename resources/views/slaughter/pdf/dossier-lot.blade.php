@@ -41,7 +41,21 @@
             {{ $order->reception->received_quantity }} sujets reçus ({{ $order->reception->rejected_quantity }} écartés) · {{ number_format((float) $order->reception->total_live_weight_kg, 1, ',', ' ') }} kg vif ·
             état {{ $order->reception->sanitary_state }} · diète {{ $order->reception->fasting_respected }} ·
             décision <strong>{{ strtoupper(str_replace('_', ' ', $order->reception->decision)) }}</strong>@if($order->reception->decision_reason) — {{ $order->reception->decision_reason }}@endif<br>
-            <span class="muted">Contrôleur : {{ $order->reception->controller?->name ?? '—' }} · relevé {{ $order->reception->releve_at?->format('d/m/Y H:i') }} · synchronisé {{ $order->reception->synced_at?->format('d/m/Y H:i') ?? '—' }}</span></p>
+            <span class="muted">Contrôleur : {{ $order->reception->controller?->name ?? '—' }} · relevé {{ $order->reception->releve_at?->format('d/m/Y H:i') }} · synchronisé {{ $order->reception->synced_at?->format('d/m/Y H:i') ?? '—' }}</span><br>
+            @php
+                $rec = $order->reception;
+                if ($rec->origin === 'facon') {
+                    $originLine = 'Origine : à façon — sujets propriété du client, sans coût matière.';
+                } elseif ($rec->purchase_total_cost) {
+                    $originLine = 'Origine : achat — coût ' . number_format((float) $rec->purchase_total_cost, 0, ',', ' ')
+                        . ' ' . setting('general.currency', 'GNF')
+                        . ($rec->supplierInvoice ? ' · facture ' . $rec->supplierInvoice->reference . ' (' . $rec->supplierInvoice->status . ')' : '') . '.';
+                } else {
+                    $originLine = 'Origine : achat — prix à saisir au bureau.';
+                }
+            @endphp
+            <strong>{{ $originLine }}</strong>
+        </p>
     @elseif($order->batch)
         <p style="margin:0">Lot interne <strong>{{ $order->batch->code }}</strong> — {{ $order->batch->building?->name ?? '—' }} · arrivée {{ $order->batch->arrival_date }}</p>
     @else
