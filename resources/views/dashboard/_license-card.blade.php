@@ -14,16 +14,16 @@
             default                                     => 'bg-rose-500',
         };
         $badge = match ($st) {
-            \App\Services\LicenseService::STATUS_ACTIVE => ['Actif', 'bg-emerald-100 text-emerald-600'],
-            \App\Services\LicenseService::STATUS_GRACE  => ['Échéance proche', 'bg-amber-100 text-amber-700'],
-            default                                     => ['Terminé', 'bg-rose-100 text-rose-600'],
+            \App\Services\LicenseService::STATUS_ACTIVE => ['Actif', 'bg-emerald-100 text-emerald-600', '✅'],
+            \App\Services\LicenseService::STATUS_GRACE  => ['Échéance proche', 'bg-amber-100 text-amber-700', '⚠️'],
+            default                                     => ['Terminé', 'bg-rose-100 text-rose-600', '⛔'],
         };
     @endphp
     <div class="mb-8">
         <div class="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-6 max-w-md not-italic">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="text-lg font-black text-slate-800">{{ __('Durée de validité') }}</h3>
-                <span class="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider {{ $badge[1] }}">{{ __($badge[0]) }}</span>
+                <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider {{ $badge[1] }}"><span aria-hidden="true">{{ $badge[2] }}</span> {{ __($badge[0]) }}</span>
             </div>
 
             @if($lic)
