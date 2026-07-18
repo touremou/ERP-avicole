@@ -278,6 +278,38 @@ async function refreshTasks(): Promise<void> {
   window.dispatchEvent(new CustomEvent('tasks:updated'))
 }
 
+/**
+ * Bascule le terrain sur une autre ferme : purge les miroirs référentiels
+ * (bornés ferme) + les tâches, puis force une resynchronisation COMPLÈTE
+ * (bootstrap) pour la nouvelle ferme. Les saisies non poussées (outbox /
+ * my_records, propriété de l'appareil) sont préservées. À utiliser depuis le
+ * sélecteur de ferme de « Mon espace » — corrige le cas « je ne vois pas mon
+ * stock » quand la marchandise vit sur un autre site que la ferme par défaut.
+ */
+export async function switchFarm(farmId: number): Promise<void> {
+  await setMeta('farm_id', farmId)
+  await db.meta.delete('last_pull_at') // → prochain pull = bootstrap complet
+  await db.transaction(
+    'rw',
+    [
+      db.ref_batches, db.ref_buildings, db.ref_stocks, db.ref_clients, db.ref_products,
+      db.ref_production_types, db.ref_plots, db.ref_crop_cycles, db.ref_slaughter_orders,
+      db.ref_providers, db.ref_formulas, db.ref_mill_productions, db.tasks,
+    ],
+    async () => {
+      await Promise.all([
+        db.ref_batches.clear(), db.ref_buildings.clear(), db.ref_stocks.clear(),
+        db.ref_clients.clear(), db.ref_products.clear(), db.ref_production_types.clear(),
+        db.ref_plots.clear(), db.ref_crop_cycles.clear(), db.ref_slaughter_orders.clear(),
+        db.ref_providers.clear(), db.ref_formulas.clear(), db.ref_mill_productions.clear(),
+        db.tasks.clear(),
+      ])
+    },
+  )
+  window.dispatchEvent(new CustomEvent('tasks:updated'))
+  await syncNow()
+}
+
 /** À appeler une fois au démarrage de l'app. */
 export function startSyncLoop(): void {
   window.addEventListener('online', () => void syncNow())
