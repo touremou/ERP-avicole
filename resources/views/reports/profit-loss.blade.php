@@ -84,6 +84,58 @@
                 </div>
             </div>
 
+            {{-- REGROUPEMENT SYSCOHADA (OHADA) — vue « par nature » --}}
+            <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm">
+                <h3 class="text-[11px] font-black uppercase text-slate-800 tracking-[0.2em] italic flex items-center mb-2">
+                    <span class="w-2 h-6 bg-indigo-500 rounded-full mr-3"></span> {{ __("Regroupement SYSCOHADA") }}
+                </h3>
+                <p class="text-[9px] font-black text-slate-300 uppercase tracking-widest italic mb-6 ml-5">{{ __("Compte de résultat par nature — plan comptable OHADA révisé") }}</p>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    {{-- Produits (classe 7) --}}
+                    <div>
+                        <p class="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-3">{{ __("Classe 7 — Produits") }}</p>
+                        @forelse($syscohadaProduits as $cls)
+                            <div class="mb-3">
+                                <div class="flex justify-between items-center text-[10px] font-black text-slate-500 uppercase tracking-widest bg-slate-50 rounded-xl px-3 py-2">
+                                    <span>{{ $cls['class'] }} · {{ __($cls['class_label']) }}</span>
+                                    <span>{{ number_format($cls['total']) }}</span>
+                                </div>
+                                @foreach($cls['accounts'] as $acc)
+                                <div class="flex justify-between items-center py-2 px-3 border-b border-slate-50 text-xs">
+                                    <span class="text-slate-500"><span class="font-black text-slate-400">{{ $acc['account'] }}</span> {{ __($acc['label']) }}</span>
+                                    <span class="font-black text-slate-800">{{ number_format($acc['amount']) }}</span>
+                                </div>
+                                @endforeach
+                            </div>
+                        @empty
+                            <p class="text-center text-slate-300 text-[10px] font-black uppercase tracking-widest italic py-6">{{ __("Aucun produit sur la période.") }}</p>
+                        @endforelse
+                    </div>
+
+                    {{-- Charges (classe 6) --}}
+                    <div>
+                        <p class="text-[10px] font-black text-rose-600 uppercase tracking-widest mb-3">{{ __("Classe 6 — Charges") }}</p>
+                        @forelse($syscohadaCharges as $cls)
+                            <div class="mb-3">
+                                <div class="flex justify-between items-center text-[10px] font-black text-slate-500 uppercase tracking-widest bg-slate-50 rounded-xl px-3 py-2">
+                                    <span>{{ $cls['class'] }} · {{ __($cls['class_label']) }}</span>
+                                    <span>{{ number_format($cls['total']) }}</span>
+                                </div>
+                                @foreach($cls['accounts'] as $acc)
+                                <div class="flex justify-between items-center py-2 px-3 border-b border-slate-50 text-xs">
+                                    <span class="text-slate-500"><span class="font-black text-slate-400">{{ $acc['account'] }}</span> {{ __($acc['label']) }}</span>
+                                    <span class="font-black text-slate-800">{{ number_format($acc['amount']) }}</span>
+                                </div>
+                                @endforeach
+                            </div>
+                        @empty
+                            <p class="text-center text-slate-300 text-[10px] font-black uppercase tracking-widest italic py-6">{{ __("Aucune charge sur la période.") }}</p>
+                        @endforelse
+                    </div>
+                </div>
+            </div>
+
             {{-- MARGE PAR ESPÈCE --}}
             <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm">
                 <h3 class="text-[11px] font-black uppercase text-slate-800 tracking-[0.2em] italic flex items-center mb-2">

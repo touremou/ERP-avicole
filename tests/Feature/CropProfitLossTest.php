@@ -56,3 +56,18 @@ test('un cycle non clôturé n\'est pas compté dans le compte de résultat', fu
     $response->assertOk()
         ->assertDontSee('Marge directe par culture');
 });
+
+test('le compte de résultat expose le regroupement SYSCOHADA (classes 6 et 7)', function () {
+    // Un cycle clôturé génère des produits (→ classe 7) et des coûts (→ classe 6).
+    closedCycle($this->farm->id, 1_500_000, now()->subDays(5)->toDateString());
+
+    $data = $this->actingAs($this->adminUser)->get(route('reports.profit_loss'))
+        ->assertOk()
+        ->assertSee('Regroupement SYSCOHADA')
+        ->assertSee('Classe 7 — Produits', false)
+        ->assertSee('Classe 6 — Charges', false)
+        ->viewData('syscohadaCharges');
+
+    // La production végétale (coûts) doit apparaître dans la classe 60 (Achats).
+    expect(collect($data)->pluck('class'))->toContain('60');
+});
