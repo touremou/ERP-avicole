@@ -424,6 +424,23 @@ class NotificationHub
     }
 
     /**
+     * Alerte niveau de citerne bas (< 30 %) — ravitaillement à prévoir. Émise
+     * une seule fois, au FRANCHISSEMENT du seuil (cf. WaterSource observer), via
+     * la souscription « ressources / énergie » (alert_energy).
+     */
+    public function alertCiterneLow(\App\Models\WaterSource $source): void
+    {
+        $pct   = round((float) $source->current_level_percent);
+        $level = number_format((float) $source->current_level_liters);
+        $cap   = number_format((float) $source->capacity_liters);
+
+        $message = "💧 Citerne « {$source->name} » à {$pct}% ({$level} / {$cap} L). "
+            . "Ravitaillement à prévoir.";
+
+        $this->broadcast('alert_energy', $message, 'Citerne basse — ' . $source->name, 'attention');
+    }
+
+    /**
      * Relance de paiement adressée AU CLIENT (et non au staff) pour une vente
      * impayée échue. Envoie sur le téléphone du client et journalise la relance
      * (PaymentReminder) pour l'historique de recouvrement et l'anti-doublon.
