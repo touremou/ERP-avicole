@@ -26,6 +26,28 @@ class WaterSource extends Model
         'is_default'            => 'boolean',
     ];
 
+    /** Seuil d'alerte « citerne basse » (%) — ravitaillement à prévoir. */
+    public const LOW_LEVEL_PERCENT = 30;
+
+    protected static function booted(): void
+    {
+        // Alerte automatique au FRANCHISSEMENT du seuil bas (≥30% → <30%) : une
+        // seule notification par descente, quel que soit le chemin qui a baissé
+        // le niveau (relevé de consommation, pointage journalier…). Un
+        // ravitaillement qui repasse au-dessus « réarme » l'alerte suivante.
+        static::updated(function (WaterSource $source) {
+            if ($source->type !== 'citerne' || ! $source->capacity_liters) return;
+            if (! $source->wasChanged('current_level_percent')) return;
+
+            $old = (float) $source->getOriginal('current_level_percent');
+            $new = (float) $source->current_level_percent;
+
+            if ($old >= self::LOW_LEVEL_PERCENT && $new < self::LOW_LEVEL_PERCENT) {
+                app(\App\Services\NotificationHub::class)->alertCiterneLow($source);
+            }
+        });
+    }
+
     public function readings(): HasMany
     {
         return $this->hasMany(WaterReading::class);
