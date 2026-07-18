@@ -275,8 +275,8 @@
 
                             <form action="{{ route('incubations.destroy', $inc->id) }}" method="POST" onsubmit="return confirm(@json(__("DÉCISION CRITIQUE : Annuler définitivement ce cycle ?")))">
                                 @csrf @method('DELETE')
-                                <button type="submit" class="text-slate-200 hover:text-rose-500 transition-all hover:scale-110 border-none bg-transparent cursor-pointer">
-                                    <i class="fa-solid fa-trash-can text-xl"></i>
+                                <button type="submit" aria-label="{{ __('Supprimer') }}" class="text-slate-200 hover:text-rose-500 transition-all hover:scale-110 border-none bg-transparent cursor-pointer text-xl leading-none">
+                                    🗑️
                                 </button>
                             </form>
                         </div>
