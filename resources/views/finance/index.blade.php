@@ -1,6 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <x-page-header :title="'💰 ' . __('Finance')" :subtitle="__('Trésorerie · Dépenses · Achats · Budgets')" icon="fa-wallet" accent="rose">
+        <x-page-header :title="'💰 ' . __('Finance')" :subtitle="__('Trésorerie · Dépenses · Achats · Budgets · Comptabilité')" icon="fa-wallet" accent="rose">
             <x-slot name="actions">
                 @can('depenses.C')
                 <a href="{{ route('expenses.create') }}" class="inline-flex items-center gap-2 px-6 py-3 bg-rose-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-600 transition-all no-underline shadow-lg italic">
@@ -24,6 +24,9 @@
                     <p class="text-[8px] text-slate-300 font-black uppercase mt-1">{{ currency() }}</p>
                 </div>
                 @endcan
+                {{-- Dépenses & dettes : données du périmètre Dépenses/Achats
+                     (masquées à un profil Trésorerie seule). --}}
+                @can('depenses.L')
                 <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm text-center">
                     <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Dépenses (mois)") }}</p>
                     <p class="text-2xl font-black text-amber-600 leading-none">{{ number_format($kpis['month_expenses'], 0, ',', ' ') }}</p>
@@ -34,6 +37,7 @@
                     <p class="text-2xl font-black {{ $kpis['supplier_debt'] > 0 ? 'text-rose-600' : 'text-slate-800' }} leading-none">{{ number_format($kpis['supplier_debt'], 0, ',', ' ') }}</p>
                     <p class="text-[8px] text-slate-300 font-black uppercase mt-1">{{ currency() }}</p>
                 </div>
+                @endcan
                 @can('tresorerie.L')
                 <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm text-center">
                     <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Comptes trésorerie") }}</p>

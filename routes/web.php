@@ -680,8 +680,11 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/{account}', 'destroyAccount')->name('account.destroy')->middleware('can:S');
     });
 
-    // ─── HUB FINANCE (point d'entrée unifié du module depenses) ───
-    Route::get('/finance', [\App\Http\Controllers\FinanceController::class, 'index'])->name('finance.index')->middleware('can:L');
+    // ─── HUB FINANCE (point d'entrée unifié Dépenses/Achats + Trésorerie) ───
+    // Pas de can:L de groupe : il inférerait « depenses » du préfixe et
+    // fermerait la porte aux profils Trésorerie seule. Le gate any-of
+    // (depenses.L OU tresorerie.L) est porté par le contrôleur.
+    Route::get('/finance', [\App\Http\Controllers\FinanceController::class, 'index'])->name('finance.index');
 
     // ─── HUBS DE MODULES (points d'entrée unifiés : KPIs + accès groupés) ───
     Route::get('/elevage', [\App\Http\Controllers\ElevageHubController::class, 'index'])->name('elevage.index')->middleware('can:L');
