@@ -60,6 +60,25 @@ function reqEnum(p: P, k: string, label: string, allowed: string[], e: string[])
   if (!allowed.includes(String(p[k]))) e.push(`${label} : valeur non autorisée.`)
 }
 
+/** Numérique requis avec borne min ET max (ex. température). */
+function reqNumRange(p: P, k: string, label: string, e: string[], min: number, max: number): void {
+  const n = num(p[k])
+  if (n === null || Number.isNaN(n)) { e.push(`${label} : valeur requise.`); return }
+  if (n < min) e.push(`${label} : doit être ≥ ${min}.`)
+  if (n > max) e.push(`${label} : doit être ≤ ${max}.`)
+}
+
+/** Requiert un objet OU un tableau NON vide (ex. `mesures` CCP = objet côté JS,
+ *  tableau associatif côté PHP). Éviter Array.isArray seul → faux rejet. */
+function reqFilled(p: P, k: string, label: string, e: string[]): void {
+  const v = p[k]
+  const empty =
+    v === null || v === undefined ||
+    (Array.isArray(v) && v.length === 0) ||
+    (typeof v === 'object' && !Array.isArray(v) && Object.keys(v as object).length === 0)
+  if (empty) e.push(`${label} : au moins une valeur requise.`)
+}
+
 type Validator = (p: P) => string[]
 
 const RULES: Partial<Record<OperationType, Validator>> = {
@@ -147,11 +166,71 @@ const RULES: Partial<Record<OperationType, Validator>> = {
     reqDate(p, 'refill_date', 'Date', e, true)
     return e
   },
+  'task.complete': (p) => {
+    const e: string[] = []
+    reqId(p, 'task_id', 'Tâche', e)
+    return e
+  },
   'task.create': (p) => {
     const e: string[] = []
     reqStr(p, 'title', 'Intitulé', e)
     reqStr(p, 'category', 'Catégorie', e)
     reqDate(p, 'scheduled_date', 'Échéance', e)
+    return e
+  },
+  // ── HACCP abattoir + provenderie (énumérations laissées au serveur/formulaire :
+  //    on ne vérifie que présence / bornes / dates — zéro faux rejet). ──
+  'mill_production.complete': (p) => {
+    const e: string[] = []
+    reqId(p, 'mill_production_id', 'Ordre de production', e)
+    return e
+  },
+  'slaughter_reception.create': (p) => {
+    const e: string[] = []
+    reqId(p, 'provider_id', 'Fournisseur', e)
+    reqDate(p, 'reception_date', 'Date', e, true)
+    reqNum(p, 'received_quantity', 'Sujets reçus', e, 1)
+    reqNum(p, 'total_live_weight_kg', 'Poids vif', e, 0.1)
+    reqStr(p, 'sanitary_state', 'État sanitaire', e)
+    reqStr(p, 'fasting_respected', 'Jeûne', e)
+    reqStr(p, 'decision', 'Décision', e)
+    optNum(p, 'announced_quantity', 'Sujets annoncés', e, 0)
+    optNum(p, 'rejected_quantity', 'Sujets refusés', e, 0)
+    const rec = num(p.received_quantity)
+    const rej = num(p.rejected_quantity)
+    if (rec !== null && rej !== null && rej > rec) e.push('Sujets refusés : ne peut pas dépasser les reçus.')
+    if (has(p, 'decision') && String(p.decision) !== 'accepte' && !has(p, 'decision_reason')) {
+      e.push('Motif de la décision : requis sauf si accepté.')
+    }
+    return e
+  },
+  'ccp_record.create': (p) => {
+    const e: string[] = []
+    reqStr(p, 'ccp', 'CCP', e)
+    reqFilled(p, 'mesures', 'Mesures', e)
+    reqDate(p, 'releve_at', 'Date du relevé', e)
+    return e
+  },
+  'temperature_log.create': (p) => {
+    const e: string[] = []
+    reqStr(p, 'point', 'Point de mesure', e)
+    reqNumRange(p, 'temperature', 'Température', e, -60, 120)
+    reqDate(p, 'releve_at', 'Date du relevé', e)
+    return e
+  },
+  'cleaning_log.create': (p) => {
+    const e: string[] = []
+    reqStr(p, 'zone', 'Zone', e)
+    reqStr(p, 'product_used', 'Produit', e)
+    reqDate(p, 'done_at', 'Date', e)
+    return e
+  },
+  'byproduct.create': (p) => {
+    const e: string[] = []
+    reqStr(p, 'type', 'Type', e)
+    reqNum(p, 'quantity_kg', 'Quantité (kg)', e, 0.01)
+    reqStr(p, 'destination', 'Destination', e)
+    reqDate(p, 'collected_at', 'Date', e)
     return e
   },
 }
