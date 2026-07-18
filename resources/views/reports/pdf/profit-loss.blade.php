@@ -84,6 +84,27 @@
         </tbody>
     </table>
 
+    <h2 class="section">{{ __("Regroupement SYSCOHADA") }} — {{ __("Compte de résultat par nature (OHADA)") }}</h2>
+    <table class="data">
+        <thead>
+            <tr><th>{{ __("Compte") }}</th><th class="amount" style="text-align:right;">{{ __("Montant") }}</th></tr>
+        </thead>
+        <tbody>
+            @foreach($syscohadaProduits as $cls)
+            <tr class="total-row"><td>{{ $cls['class'] }} · {{ __($cls['class_label']) }}</td><td class="amount text-pos">{{ number_format($cls['total']) }}</td></tr>
+                @foreach($cls['accounts'] as $acc)
+                <tr><td style="padding-left:18px;"><span class="muted">{{ $acc['account'] }}</span> {{ __($acc['label']) }}</td><td class="amount">{{ number_format($acc['amount']) }}</td></tr>
+                @endforeach
+            @endforeach
+            @foreach($syscohadaCharges as $cls)
+            <tr class="total-row"><td>{{ $cls['class'] }} · {{ __($cls['class_label']) }}</td><td class="amount text-neg">{{ number_format($cls['total']) }}</td></tr>
+                @foreach($cls['accounts'] as $acc)
+                <tr><td style="padding-left:18px;"><span class="muted">{{ $acc['account'] }}</span> {{ __($acc['label']) }}</td><td class="amount">{{ number_format($acc['amount']) }}</td></tr>
+                @endforeach
+            @endforeach
+        </tbody>
+    </table>
+
     <h2 class="section">{{ __("Marge directe par espèce") }}</h2>
     <table class="data">
         <thead>

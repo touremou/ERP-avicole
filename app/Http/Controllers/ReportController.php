@@ -265,9 +265,18 @@ class ReportController extends Controller
         // ─── MARGE DIRECTE PAR CULTURE (cycles clôturés sur la période) ───
         $cropMargin = $this->cropDirectMargin($from, $to);
 
+        // ─── REGROUPEMENT SYSCOHADA (OHADA) ───
+        // Vue « par nature » : chaque produit/charge rattaché à un compte de
+        // classe 7/6, regroupé par classe à 2 chiffres. Rend le P&L présentable
+        // à un comptable sans introduire d'écritures en partie double.
+        $mapper = new \App\Services\Accounting\SyscohadaMapper();
+        $syscohadaProduits = $mapper->group($revenue, 'produit');
+        $syscohadaCharges  = $mapper->group($costs, 'charge');
+
         return compact(
             'from', 'to', 'revenue', 'totalRevenue',
-            'costs', 'totalCosts', 'netResult', 'marginPct', 'speciesMargin', 'cropMargin'
+            'costs', 'totalCosts', 'netResult', 'marginPct', 'speciesMargin', 'cropMargin',
+            'syscohadaProduits', 'syscohadaCharges'
         );
     }
 
