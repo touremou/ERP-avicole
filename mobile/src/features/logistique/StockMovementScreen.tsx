@@ -7,6 +7,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { db } from '../../offline/db'
+import { safeLoad } from '../../offline/safeLoad'
 import { enqueue } from '../../offline/sync'
 import { NumberStepper } from '../../ui/NumberStepper'
 import { t } from '../../i18n'
@@ -30,9 +31,10 @@ export function StockMovementScreen() {
   useEffect(() => {
     // item_name n'est pas un index de ref_stocks (id, category) : on trie en JS,
     // sinon Dexie orderBy('item_name') jette et la liste des articles reste vide.
-    void db.ref_stocks.toArray().then((all) =>
-      setStocks(all.sort((a, b) => a.item_name.localeCompare(b.item_name))),
-    )
+    void safeLoad('mouvement-stock', async () => {
+      const all = await db.ref_stocks.toArray()
+      setStocks(all.sort((a, b) => a.item_name.localeCompare(b.item_name)))
+    })
   }, [])
 
   const selected = useMemo(() => stocks.find((s) => s.id === Number(stockId)), [stocks, stockId])

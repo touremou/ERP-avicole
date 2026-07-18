@@ -8,6 +8,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { db } from '../../offline/db'
+import { safeLoad } from '../../offline/safeLoad'
 import { enqueue } from '../../offline/sync'
 import { platform, compressImage } from '../../platform'
 import { t } from '../../i18n'
@@ -50,7 +51,7 @@ export function ReceptionScreen() {
   const [saved, setSaved] = useState(false)
 
   useEffect(() => {
-    void db.ref_providers.orderBy('name').toArray().then(setProviders)
+    void safeLoad('reception:fournisseurs', async () => setProviders(await db.ref_providers.orderBy('name').toArray()))
   }, [])
 
   async function attachPhoto() {

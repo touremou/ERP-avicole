@@ -9,6 +9,7 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '../../app/AuthContext'
 import { db } from '../../offline/db'
 import { onSyncChange } from '../../offline/sync'
+import { safeLoad } from '../../offline/safeLoad'
 import type { RefBatch, RefCropCycle, RefMillProduction, RefSlaughterOrder } from '../../api/types'
 
 export interface FieldTasks {
@@ -81,8 +82,8 @@ export function useFieldTasks(): FieldTasks {
       setMillProductions(ops.filter((op) => !completedOps.has(op.id)))
     }
 
-    void load()
-    return onSyncChange(() => void load())
+    void safeLoad('champ:taches', load)
+    return onSyncChange(() => void safeLoad('champ:taches', load))
   }, [])
 
   // Scoping « mes opérations » : on ne montre que ce dont l'utilisateur est

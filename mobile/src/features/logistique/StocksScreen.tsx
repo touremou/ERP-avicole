@@ -9,6 +9,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../../app/AuthContext'
 import { db } from '../../offline/db'
 import { onSyncChange } from '../../offline/sync'
+import { safeLoad } from '../../offline/safeLoad'
 import { t } from '../../i18n'
 import { FilterChips } from '../../ui/FilterChips'
 import { BarBreakdown } from '../../ui/BarBreakdown'
@@ -41,8 +42,8 @@ export function StocksScreen() {
       const all = await db.ref_stocks.toArray()
       setStocks(all.sort((a, b) => a.item_name.localeCompare(b.item_name)))
     }
-    void load()
-    const off = onSyncChange(() => void load())
+    void safeLoad('stocks', load)
+    const off = onSyncChange(() => void safeLoad('stocks', load))
     return off
   }, [])
 

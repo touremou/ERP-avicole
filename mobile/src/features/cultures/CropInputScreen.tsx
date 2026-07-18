@@ -7,6 +7,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { db } from '../../offline/db'
+import { safeLoad } from '../../offline/safeLoad'
 import { enqueue } from '../../offline/sync'
 import { dateLocale, t } from '../../i18n'
 import { NumberStepper } from '../../ui/NumberStepper'
@@ -40,7 +41,7 @@ export function CropInputScreen() {
 
   useEffect(() => {
     if (cycleId) void db.ref_crop_cycles.get(Number(cycleId)).then((c) => setCycle(c ?? null))
-    void db.ref_providers.orderBy('name').toArray().then(setProviders)
+    void safeLoad('intrant:fournisseurs', async () => setProviders(await db.ref_providers.orderBy('name').toArray()))
   }, [cycleId])
 
   async function onSubmit(event: FormEvent) {

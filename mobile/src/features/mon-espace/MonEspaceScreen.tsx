@@ -10,6 +10,7 @@ import { useAuth } from '../../app/AuthContext'
 import { api, ApiError } from '../../api/client'
 import { compressImage } from '../../platform'
 import { db, type MyRecord, type OutboxEntry } from '../../offline/db'
+import { safeLoad } from '../../offline/safeLoad'
 import { syncNow, switchFarm } from '../../offline/sync'
 import { getLocale, setLocale, t, type Locale } from '../../i18n'
 
@@ -83,7 +84,7 @@ export function MonEspaceScreen() {
   }
 
   useEffect(() => {
-    void refresh()
+    void safeLoad('mon-espace', refresh)
     const on = () => setOnline(true)
     const off = () => setOnline(false)
     window.addEventListener('online', on)

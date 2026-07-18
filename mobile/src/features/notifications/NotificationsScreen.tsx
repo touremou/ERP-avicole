@@ -6,6 +6,7 @@
 import { useEffect, useState } from 'react'
 import { api } from '../../api/client'
 import { db } from '../../offline/db'
+import { safeLoad } from '../../offline/safeLoad'
 import { dateLocale, t } from '../../i18n'
 import { notifIcon } from './notifIcon'
 import type { ApiNotification } from '../../api/types'
@@ -24,8 +25,8 @@ export function NotificationsScreen() {
   }
 
   useEffect(() => {
-    void refresh()
-    const onUpdate = () => void refresh()
+    void safeLoad('alertes', refresh)
+    const onUpdate = () => void safeLoad('alertes', refresh)
     window.addEventListener('notifications:updated', onUpdate)
     return () => window.removeEventListener('notifications:updated', onUpdate)
   }, [])
