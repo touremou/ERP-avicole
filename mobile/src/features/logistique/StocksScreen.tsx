@@ -60,7 +60,7 @@ export function StocksScreen() {
     const cats = [...new Set(stocks.map((s) => s.category))]
     return [
       { key: 'all', label: t('Tous'), count: stocks.length },
-      { key: 'low', label: t('Seuil bas'), count: lowCount },
+      { key: 'low', label: '⚠️ ' + t('Seuil bas'), count: lowCount },
       ...cats.map((c) => ({ key: c, label: t(c), count: stocks.filter((s) => s.category === c).length })),
     ]
   }, [stocks, lowCount])
@@ -123,7 +123,7 @@ export function StocksScreen() {
               <span className="task-title">{CATEGORY_ICON[stock.category] ?? '📦'} {stock.item_name}</span>
               <span className="task-meta">
                 {t(stock.category)}
-                {isLow(stock) ? ' · ' + t('Seuil : :n :u', { n: stock.alert_threshold ?? 0, u: stock.unit }) : ''}
+                {isLow(stock) ? ' · ⚠️ ' + t('Seuil : :n :u', { n: stock.alert_threshold ?? 0, u: stock.unit }) : ''}
               </span>
             </div>
             <div className="stock-qty">

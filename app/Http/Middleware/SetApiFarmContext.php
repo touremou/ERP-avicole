@@ -48,23 +48,23 @@ class SetApiFarmContext
             ->map(fn ($id) => (int) $id);
 
         // 1. Choix explicite de ferme par l'appareil (multi-sites).
-        //    Le contrôle d'accès (403) ne vaut QUE pour un utilisateur qui a
-        //    des affectations : il ne peut alors sortir de son périmètre. Un
-        //    utilisateur SANS aucune affectation (mono-ferme, ou admin créé
-        //    hors assistant) n'est pas bloqué — il retombe sur le repli site
-        //    ci-dessous, exactement comme le fait SetCurrentFarm côté web.
+        //    Si l'en-tête cible une ferme du périmètre de l'utilisateur, on
+        //    l'adopte. SINON, on NE bloque PAS (sinon un X-Farm-Id périmé —
+        //    ferme renommée/recréée avec un nouvel id, affectation retirée —
+        //    « bricke » toute l'app : chaque requête, y compris /auth/me qui
+        //    permettrait de se réaligner, tombe en 403). On retombe donc sur la
+        //    ferme par défaut ci-dessous. L'étanchéité tient (la ferme demandée
+        //    n'est JAMAIS servie), et le client se recale via /auth/me
+        //    (scope.farm_id). Sécurité équivalente au 403, mais récupérable.
         if ($request->hasHeader('X-Farm-Id') && $userFarmIds->isNotEmpty()) {
             $requested = (int) $request->header('X-Farm-Id');
 
-            if (! $userFarmIds->contains($requested)) {
-                return response()->json([
-                    'message' => "Accès refusé à cette ferme.",
-                ], 403);
+            if ($userFarmIds->contains($requested)) {
+                session(['current_farm_id' => $requested]);
+
+                return $next($request);
             }
-
-            session(['current_farm_id' => $requested]);
-
-            return $next($request);
+            // X-Farm-Id hors périmètre → ignoré, repli sur la ferme par défaut.
         }
 
         // 2-3. Ferme par défaut puis première ferme de l'utilisateur.
