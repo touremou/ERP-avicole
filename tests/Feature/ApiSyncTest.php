@@ -115,10 +115,13 @@ test("l'API est bornée à la ferme de l'utilisateur (étanchéité multi-sites)
     expect($codes)->toContain($this->batch->code)
         ->not->toContain($batchB->code);
 
-    // En-tête X-Farm-Id vers une ferme non affectée → refus explicite.
-    $this->withHeader('X-Farm-Id', (string) $this->farmB->id)
-        ->getJson('/api/v1/batches')
-        ->assertStatus(403);
+    // En-tête X-Farm-Id vers une ferme non affectée → IGNORÉ (repli ferme par
+    // défaut) plutôt que 403 : un id périmé ne doit pas bricker l'app. La ferme
+    // demandée n'est jamais servie (étanchéité préservée).
+    $codesHdr = collect($this->withHeader('X-Farm-Id', (string) $this->farmB->id)
+        ->getJson('/api/v1/batches')->assertOk()->json('data'))->pluck('code');
+    expect($codesHdr)->toContain($this->batch->code)
+        ->not->toContain($batchB->code);
 });
 
 test("un utilisateur SANS affectation ferme n'est pas bloqué par X-Farm-Id (mono-ferme / admin CLI)", function () {

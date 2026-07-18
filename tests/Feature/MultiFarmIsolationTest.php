@@ -97,11 +97,17 @@ test('pull API : ne descend que les lots de la ferme de l\'utilisateur', functio
     expect($codes)->not->toContain('LOT-B-ISO');
 });
 
-test('API : X-Farm-Id vers une ferme non affectée est refusé (403)', function () {
+test('API : X-Farm-Id hors périmètre est IGNORÉ (repli ferme par défaut, aucune fuite)', function () {
+    // On ne bloque plus par 403 (qui brickait l'app sur un id périmé) : la
+    // ferme demandée n'est jamais servie, on retombe sur la ferme de l'user.
     Sanctum::actingAs($this->userA);
-    $this->withHeader('X-Farm-Id', (string) $this->farmB->id)
-        ->getJson('/api/v1/batches')
-        ->assertStatus(403);
+
+    $refs = collect($this->withHeader('X-Farm-Id', (string) $this->farmB->id)
+        ->getJson('/api/v1/sync/pull')->assertOk()->json('entities.batches.upserts'))
+        ->pluck('code');
+
+    // Étanchéité préservée : les lots de la ferme B ne remontent jamais.
+    expect($refs)->toContain('LOT-A-ISO')->not->toContain('LOT-B-ISO');
 });
 
 test('commutation web : ?farm_id vers une ferme non affectée est ignorée', function () {

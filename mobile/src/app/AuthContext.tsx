@@ -45,6 +45,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           const fresh = await api.me()
           await setMeta('me', fresh)
+          // Recale la ferme courante sur celle RÉSOLUE par le serveur : si le
+          // X-Farm-Id local était périmé (ferme renommée/recréée), le serveur a
+          // replié sur la ferme par défaut → on adopte ce farm_id pour ne plus
+          // envoyer l'ancien (auto-guérison du contexte multi-ferme).
+          if (fresh.scope.farm_id) await setMeta('farm_id', fresh.scope.farm_id)
           await adoptProfileLocale(fresh.user.locale)
           setMe(fresh)
         } catch {
@@ -86,6 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refreshMe = useCallback(async () => {
     const fresh = await api.me()
     await setMeta('me', fresh)
+    if (fresh.scope.farm_id) await setMeta('farm_id', fresh.scope.farm_id)
     await adoptProfileLocale(fresh.user.locale)
     setMe(fresh)
   }, [])
