@@ -187,8 +187,9 @@ test('le dossier de lot retrace la chaîne complète (amont → CCP → produits
     $provider = Provider::factory()->create(['name' => 'Élevage Camara']);
     $reception = SlaughterReception::create([
         'provider_id' => $provider->id, 'reception_date' => now()->toDateString(),
-        'received_quantity' => 100, 'rejected_quantity' => 2, 'total_live_weight_kg' => 180,
+        'origin' => 'achat', 'received_quantity' => 100, 'rejected_quantity' => 2, 'total_live_weight_kg' => 180,
         'sanitary_state' => 'conforme', 'fasting_respected' => 'oui',
+        'purchase_basis' => 'par_sujet', 'purchase_unit_price' => 3000, 'purchase_total_cost' => 300000,
         'decision' => 'accepte', 'controller_id' => $this->manager->id, 'validated_at' => now(),
     ]);
 
@@ -219,6 +220,8 @@ test('le dossier de lot retrace la chaîne complète (amont → CCP → produits
         ->get(route('slaughter.orders.traceability', $order))
         ->assertOk()
         ->assertSee('Élevage Camara')            // amont : l'éleveur d'origine
+        ->assertSee('Achat', false)              // origine captée
+        ->assertSee('300 000', false)            // coût d'achat tracé
         ->assertSee('CCP 3')                     // contrôle tracé
         ->assertSee('Plumes');                   // aval : sous-produit
 
