@@ -195,7 +195,7 @@ async function pushOutbox(): Promise<void> {
 // (ex. water_sources) : un pull delta (`updated_at > since`) ne rapatrie jamais
 // les enregistrements PRÉEXISTANTS d'une entité nouvelle, donc on force un
 // bootstrap complet (since=null) une fois quand la version change.
-const PULL_SCHEMA = 2
+const PULL_SCHEMA = 3
 
 async function pullDelta(): Promise<void> {
   // Nouvelle entité côté serveur → on repart d'un bootstrap complet une fois.
@@ -214,14 +214,24 @@ async function pullDelta(): Promise<void> {
     water_sources,
   } = response.entities
 
+  const refTables = [
+    db.ref_batches, db.ref_buildings, db.ref_stocks, db.ref_clients, db.ref_products,
+    db.ref_production_types, db.ref_plots, db.ref_crop_cycles, db.ref_slaughter_orders,
+    db.ref_providers, db.ref_formulas, db.ref_mill_productions, db.ref_water_sources,
+  ]
+
   await db.transaction(
     'rw',
-    [
-      db.ref_batches, db.ref_buildings, db.ref_stocks, db.ref_clients, db.ref_products,
-      db.ref_production_types, db.ref_plots, db.ref_crop_cycles, db.ref_slaughter_orders,
-      db.ref_providers, db.ref_formulas, db.ref_mill_productions, db.ref_water_sources,
-    ],
+    refTables,
     async () => {
+      // Bootstrap complet (since=null) : on PURGE d'abord les miroirs de
+      // référence. Un delta ne supprime que les tombstones ; il laisse donc
+      // traîner des enregistrements PÉRIMÉS (ex. citernes d'un ancien contexte
+      // de ferme après renommage) → water_source_id « invalide » au push. Le
+      // bootstrap réécrit un miroir propre et cohérent avec la ferme courante.
+      if (since === null) {
+        await Promise.all(refTables.map((table) => table.clear()))
+      }
       await db.ref_batches.bulkPut(batches.upserts)
       await db.ref_batches.bulkDelete(batches.deletes)
       await db.ref_buildings.bulkPut(buildings.upserts)
