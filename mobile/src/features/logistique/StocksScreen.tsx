@@ -86,7 +86,7 @@ export function StocksScreen() {
 
       {can('logistique', 'M') && (
         <Link to="/logistique/mouvement" className="btn-primary" style={{ display: 'block', textAlign: 'center' }}>
-          ＋ {t('Mouvement de stock')}
+          ➕ {t('Mouvement de stock')}
         </Link>
       )}
 
