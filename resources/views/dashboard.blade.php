@@ -24,13 +24,20 @@
                 {{-- Données financières/stock masquées selon les droits modules :
                      valorisation stock → logistique.L ; marge & encours → commerce.L. --}}
                 @can('logistique.L')
-                {{-- ENRICHI : Info bulle CMUP --}}
+                {{-- Valorisation CMUP du stock global, ventilée par catégorie en info-bulle --}}
+                @php
+                    $stockTooltip = __('Valorisation CMUP de tout le stock.');
+                    foreach (($stockValueByCategory ?? collect()) as $cat => $val) {
+                        $catLabel = \App\Models\Stock::CATEGORY_META[$cat]['label'] ?? ucfirst((string) $cat);
+                        $stockTooltip .= "\n" . __($catLabel) . ' : ' . number_format($val, 0, ',', ' ') . ' ' . currency();
+                    }
+                @endphp
                 <div class="bg-white px-6 py-4 rounded-[1.5rem] border border-slate-100 text-right shadow-sm group">
                     <p class="text-[8px] font-black text-slate-400 uppercase italic mb-1 flex items-center justify-end gap-1.5">
-                        {{ __("Valeur Mat. Premières") }}
-                        <i class="fa-solid fa-circle-info text-slate-300 group-hover:text-blue-500 transition-colors cursor-help" title="{{ __('Valorisation basée sur le Coût Moyen Unitaire Pondéré (CMUP) des derniers achats') }}"></i>
+                        {{ __("Valeur du Stock") }}
+                        <i class="fa-solid fa-circle-info text-slate-300 group-hover:text-blue-500 transition-colors cursor-help" title="{{ $stockTooltip }}"></i>
                     </p>
-                    <p class="text-base font-black text-slate-900 leading-none">{{ number_format($rawMaterialsValue ?? 0, 0, ',', ' ') }} <small class="text-[9px] opacity-40">{{ currency() }}</small></p>
+                    <p class="text-base font-black text-slate-900 leading-none">{{ number_format($stockValue ?? 0, 0, ',', ' ') }} <small class="text-[9px] opacity-40">{{ currency() }}</small></p>
                 </div>
                 @endcan
                 

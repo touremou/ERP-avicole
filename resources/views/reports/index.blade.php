@@ -13,8 +13,10 @@
         <div class="max-w-5xl mx-auto sm:px-6 lg:px-8">
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 text-left">
 
-                {{-- COMPTE DE RÉSULTAT (P&L) --}}
-                @can('elevage.L')
+                {{-- COMPTE DE RÉSULTAT (P&L) — admin.L, aligné sur le contrôleur
+                     (donnée financière sensible : la tuile ne s'affiche qu'à ceux
+                     qui peuvent réellement ouvrir le rapport). --}}
+                @can('admin.L')
                 <a href="{{ route('reports.profit_loss') }}" class="group bg-slate-900 p-8 rounded-2xl shadow-lg hover:bg-slate-800 transition-all no-underline relative overflow-hidden border-b-4 border-amber-500">
                     <div class="w-12 h-12 bg-amber-500 text-white rounded-xl flex items-center justify-center mb-5 shadow-lg group-hover:scale-110 transition-transform"><i class="fa-solid fa-scale-balanced text-lg"></i></div>
                     <h3 class="text-base font-black text-white uppercase tracking-tighter mb-2 italic">{{ __("Compte de Résultat") }}</h3>
@@ -82,7 +84,9 @@
                 @can('elevage.L')
                 <a href="{{ route('reports.monthly') }}" class="group bg-white p-8 rounded-2xl border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all no-underline relative overflow-hidden">
                     <div class="w-12 h-12 bg-orange-500 text-white rounded-xl flex items-center justify-center mb-5 shadow-lg group-hover:scale-110 transition-transform"><i class="fa-solid fa-calendar-check text-lg"></i></div>
-                    <h3 class="text-base font-black text-slate-800 uppercase tracking-tighter mb-2 italic">{{ __("Flux de Trésorerie") }}</h3>
+                    {{-- « Flux Mensuel » (charges) — ne pas confondre avec le vrai
+                         Flux de trésorerie (comptes), qui vit sous Finance › Trésorerie. --}}
+                    <h3 class="text-base font-black text-slate-800 uppercase tracking-tighter mb-2 italic">{{ __("Flux Mensuel (charges)") }}</h3>
                     <p class="text-[9px] text-slate-400 uppercase tracking-widest font-black mb-6">{{ __("Charges aliment + santé,") }} {{ setting('general.currency', 'GNF') }} {{ __("mensuel") }}</p>
                     <div class="flex items-center gap-2 text-orange-500 text-[9px] font-black uppercase tracking-widest border-t border-slate-50 pt-4">
                         {{ __("Analyse") }} <i class="fa-solid fa-arrow-right group-hover:translate-x-1 transition-transform text-[8px]"></i>

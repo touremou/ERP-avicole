@@ -98,15 +98,22 @@ class DashboardController extends Controller
                 ->sum('current_quantity')
             : 0;
 
-        // Valeur des matières premières au coût moyen pondéré (CMP) porté par
+        // Valorisation du STOCK GLOBAL au coût moyen pondéré (CMUP) porté par
         // l'article (last_unit_price, mis à jour à chaque achat/production —
-        // cf. StockIntegrationService). Remplace l'ancien calcul N+1 (1 requête
-        // feed_purchases par article) qui valorisait au seul dernier prix d'achat.
-        $rawMaterialsValue = $canLogistique
-            ? (float) Stock::where('category', Stock::CAT_CONSO)
-                ->selectRaw('COALESCE(SUM(current_quantity * COALESCE(last_unit_price, 0)), 0) AS v')
-                ->value('v')
-            : 0.0;
+        // cf. StockIntegrationService). Toutes catégories confondues — l'ancien
+        // KPI, étiqueté « Matières premières », ne valorisait en réalité que la
+        // catégorie « Aliment & Santé » (CAT_CONSO). La ventilation par
+        // catégorie alimente l'info-bulle du KPI.
+        $stockValueByCategory = $canLogistique
+            ? Stock::query()
+                ->selectRaw('category, COALESCE(SUM(current_quantity * COALESCE(last_unit_price, 0)), 0) AS v')
+                ->groupBy('category')
+                ->pluck('v', 'category')
+                ->map(fn ($v) => (float) $v)
+                ->filter(fn ($v) => $v > 0)
+                ->sortDesc()
+            : collect();
+        $stockValue = (float) $stockValueByCategory->sum();
 
         // ---------------------------------------------------------
         // 4. SYNTHÈSE FINANCIÈRE DU MOIS (source unique : service)
@@ -495,7 +502,7 @@ class DashboardController extends Controller
 
         return view('dashboard', compact(
             'totalBirds', 'globalMortalityRate', 'hdp', 'plantProduction',
-            'totalEggsStock', 'totalBrokenToday', 'rawMaterialsValue', 'safeProfit',
+            'totalEggsStock', 'totalBrokenToday', 'stockValue', 'stockValueByCategory', 'safeProfit',
             'encoursClients', 'financial', 'technical', 'trends', 'priorityAlerts',
             'criticalTypes', 'emergencyBatches', 'underperformingBatches', 'sanitaryAlertsCount',
             'lowStocks', 'expiringStocks', 'vaccineAlerts', 'welfareAlerts', 'criticalDaysThreshold',
