@@ -15,6 +15,7 @@
  */
 import { api, ApiError } from '../api/client'
 import { db, getMeta, setMeta, type OutboxEntry } from './db'
+import { validateOp, OpValidationError } from './opRules'
 import type { OperationType, PullResponse } from '../api/types'
 
 export type SyncState = 'idle' | 'syncing' | 'offline' | 'error'
@@ -49,6 +50,15 @@ export async function enqueue(
   payload: Record<string, unknown>,
   label: string,
 ): Promise<string> {
+  // Garde-fou : les règles de champ (miroir du serveur) sont validées AVANT la
+  // mise en file. Une saisie invalide ne part JAMAIS (pas de « À corriger »
+  // après un aller-retour) ; on signale l'erreur via un événement global.
+  const errors = validateOp(type, payload)
+  if (errors.length > 0) {
+    window.dispatchEvent(new CustomEvent('op:rejected', { detail: { errors } }))
+    throw new OpValidationError(errors)
+  }
+
   const opUuid = crypto.randomUUID()
   // Le payload porte son propre uuid métier = op_uuid (idempotence serveur).
   const fullPayload = { uuid: opUuid, ...payload }

@@ -37,6 +37,7 @@ import { NotificationsScreen } from '../features/notifications/NotificationsScre
 import { BottomNav } from '../ui/BottomNav'
 import { SyncBadge } from '../ui/SyncBadge'
 import { UpdateToast } from '../ui/UpdateToast'
+import { OpErrorBanner } from '../ui/OpErrorBanner'
 
 function headerInitials(name: string | null | undefined): string {
   return (name ?? '?')
@@ -150,6 +151,7 @@ export function App() {
       <BrowserRouter>
         <Shell />
         <UpdateToast />
+        <OpErrorBanner />
       </BrowserRouter>
     </AuthProvider>
   )

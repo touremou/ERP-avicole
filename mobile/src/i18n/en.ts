@@ -212,6 +212,7 @@ export const en: Record<string, string> = {
   'Autre': 'Other',
   'Ajouter un article': 'Add an item',
   'Alertes': 'Alerts',
+  'Saisie incomplète ou invalide': 'Incomplete or invalid entry',
   // Toast de mise à jour du service worker
   'Mise à jour disponible': 'Update available',
   'Recharger': 'Reload',
