@@ -11,6 +11,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../../app/AuthContext'
 import { db, getMeta } from '../../offline/db'
 import { onSyncChange, enqueue } from '../../offline/sync'
+import { safeLoad } from '../../offline/safeLoad'
 import { t } from '../../i18n'
 import { FilterChips } from '../../ui/FilterChips'
 import { ExportButton } from '../../ui/ExportButton'
@@ -58,10 +59,10 @@ export function TachesScreen() {
       const summary = await getMeta<TaskSummary>('tasks_summary')
       setDoneToday(summary?.done_today ?? 0)
     }
-    void load()
-    const onUpdate = () => void load()
+    void safeLoad('taches', load)
+    const onUpdate = () => void safeLoad('taches', load)
     window.addEventListener('tasks:updated', onUpdate)
-    const off = onSyncChange(() => void load())
+    const off = onSyncChange(() => void safeLoad('taches', load))
     return () => {
       window.removeEventListener('tasks:updated', onUpdate)
       off()

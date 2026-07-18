@@ -9,6 +9,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../../app/AuthContext'
 import { db, type MyRecord } from '../../offline/db'
 import { onSyncChange, enqueue } from '../../offline/sync'
+import { safeLoad } from '../../offline/safeLoad'
 import { t, dateLocale } from '../../i18n'
 import { useFieldTasks } from './useFieldTasks'
 import { DashboardKpis } from './DashboardKpis'
@@ -77,13 +78,13 @@ export function HomeScreen() {
       const recs = await db.my_records.orderBy('created_at').reverse().toArray()
       setActivity(recs.filter((r) => r.created_at.slice(0, 10) === today).slice(0, 6))
     }
-    void load()
-    const onUpdate = () => void load()
+    void safeLoad('accueil', load)
+    const onUpdate = () => void safeLoad('accueil', load)
     window.addEventListener('notifications:updated', onUpdate)
     window.addEventListener('tasks:updated', onUpdate)
     // onSyncChange couvre l'ajout d'une saisie (enqueue → notify) : le fil
     // d'activité se rafraîchit donc dès qu'une op est mise en file.
-    const off = onSyncChange(() => void load())
+    const off = onSyncChange(() => void safeLoad('accueil', load))
     return () => {
       window.removeEventListener('notifications:updated', onUpdate)
       window.removeEventListener('tasks:updated', onUpdate)

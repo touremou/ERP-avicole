@@ -6,6 +6,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { db } from '../../offline/db'
+import { safeLoad } from '../../offline/safeLoad'
 import { enqueue } from '../../offline/sync'
 import { NumberStepper } from '../../ui/NumberStepper'
 import { t, dateLocale } from '../../i18n'
@@ -35,7 +36,7 @@ export function SaleScreen() {
   const [saved, setSaved] = useState(false)
 
   useEffect(() => {
-    void db.ref_clients.orderBy('name').toArray().then(setClients)
+    void safeLoad('vente:clients', async () => setClients(await db.ref_clients.orderBy('name').toArray()))
     void db.ref_products.filter((p) => p.is_active).toArray().then(setProducts)
   }, [])
 
