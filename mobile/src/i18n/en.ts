@@ -31,6 +31,8 @@ export const en: Record<string, string> = {
   'Note — optionnel': 'Note — optional',
   'Camion-citerne, fournisseur…': 'Water truck, supplier…',
   'Enregistrer le ravitaillement': 'Save refill',
+  '⚠️ Dépasse la capacité : il reste :n L disponibles.': '⚠️ Exceeds capacity: :n L available.',
+  'Reste :n L avant le plein.': ':n L left to full.',
   'Aucune citerne — la synchronisation les rapatriera au premier passage réseau.': 'No tank — sync will fetch them on the next network pass.',
   'appoint d’eau': 'water top-up',
   'Date': 'Date',

@@ -41,9 +41,18 @@ export function WaterRefillScreen() {
   const selected = useMemo(() => sources.find((s) => s.id === Number(sourceId)), [sources, sourceId])
   const today = new Date().toISOString().slice(0, 10)
 
+  // Règle miroir du web : une citerne ne se remplit pas au-delà de sa capacité.
+  // On valide AVANT de mettre en file → pas de « À corriger » côté serveur.
+  const remaining = useMemo(() => {
+    if (!selected || selected.capacity_liters == null) return null
+    return Math.max(0, Number(selected.capacity_liters) - Number(selected.current_level_liters ?? 0))
+  }, [selected])
+  const overCapacity = remaining != null && volume > remaining
+  const canSubmit = !!selected && volume > 0 && !overCapacity
+
   async function onSubmit(event: FormEvent) {
     event.preventDefault()
-    if (!selected || volume <= 0) return
+    if (!canSubmit) return
 
     await enqueue(
       'water_refill.create',
@@ -89,6 +98,13 @@ export function WaterRefillScreen() {
           </select>
 
           <NumberStepper label={t('Volume ajouté (L)')} value={volume} onChange={setVolume} min={0} step={100} />
+          {remaining != null && (
+            <p className={overCapacity ? 'error' : 'muted'}>
+              {overCapacity
+                ? t('⚠️ Dépasse la capacité : il reste :n L disponibles.', { n: Math.round(remaining) })
+                : t('Reste :n L avant le plein.', { n: Math.round(remaining) })}
+            </p>
+          )}
 
           <label htmlFor="rf-date">{t('Date')}</label>
           <input id="rf-date" type="date" required value={date} max={today} onChange={(e) => setDate(e.target.value)} />
@@ -98,7 +114,7 @@ export function WaterRefillScreen() {
           <label htmlFor="rf-notes">{t('Note — optionnel')}</label>
           <input id="rf-notes" maxLength={500} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder={t('Camion-citerne, fournisseur…')} />
 
-          <button type="submit" className="btn-primary" disabled={!selected || volume <= 0}>
+          <button type="submit" className="btn-primary" disabled={!canSubmit}>
             {t('Enregistrer le ravitaillement')}
           </button>
         </>
