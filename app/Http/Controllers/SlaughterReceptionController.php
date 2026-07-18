@@ -20,7 +20,7 @@ class SlaughterReceptionController extends Controller
     {
         if (Gate::denies('abattoir.L')) return redirect()->route('dashboard')->with('error', 'Accès restreint.');
 
-        $receptions = SlaughterReception::with(['provider', 'controller'])
+        $receptions = SlaughterReception::with(['provider', 'controller', 'supplierInvoice'])
             ->when($request->filled('from'), fn ($q) => $q->whereDate('reception_date', '>=', $request->input('from')))
             ->when($request->filled('to'), fn ($q) => $q->whereDate('reception_date', '<=', $request->input('to')))
             ->when($request->filled('provider_id'), fn ($q) => $q->where('provider_id', $request->input('provider_id')))
