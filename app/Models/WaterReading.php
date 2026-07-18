@@ -11,6 +11,7 @@ class WaterReading extends Model
 {
     use BelongsToFarm;
     protected $fillable = [
+        'uuid',
         'farm_id', 'water_source_id', 'building_id', 'reading_date', 'user_id',
         'volume_consumed_liters', 'volume_added_liters',
         'quality_ph', 'chlorine_level', 'cost', 'notes',

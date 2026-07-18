@@ -25,8 +25,9 @@ export function NouvelleSaisieScreen() {
     (canAbattoir && slaughterOrders.length > 0) ||
     (canProvenderie && millProductions.length > 0) ||
     (canCultures && cropCycles.length > 0)
+  const canRessources = can('ressources', 'C')
   const hasQuick =
-    can('commerce', 'C') || can('logistique', 'M') || can('depenses', 'C') || abattoirC
+    can('commerce', 'C') || can('logistique', 'M') || can('depenses', 'C') || abattoirC || canRessources
   const nothing = !hasContextual && !hasQuick && !(canElevage || canProduction)
 
   return (
@@ -120,6 +121,12 @@ export function NouvelleSaisieScreen() {
             <Link to="/depenses/nouvelle" className="task-card">
               <span className="task-title">🧾 {t('Dépense')}</span>
               <span className="task-meta">{t('reçu photo')}</span>
+            </Link>
+          )}
+          {canRessources && (
+            <Link to="/ressources/ravitaillement" className="task-card">
+              <span className="task-title">💧 {t('Ravitaillement citerne')}</span>
+              <span className="task-meta">{t('appoint d’eau')}</span>
             </Link>
           )}
           {abattoirC && (

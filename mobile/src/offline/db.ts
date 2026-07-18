@@ -21,6 +21,7 @@ import type {
   RefCropCycle,
   RefFormula,
   RefMillProduction,
+  RefWaterSource,
   RefPlot,
   RefProduct,
   RefProductionType,
@@ -84,6 +85,7 @@ class ErpMobileDb extends Dexie {
   ref_providers!: Table<RefProvider, number>
   ref_formulas!: Table<RefFormula, number>
   ref_mill_productions!: Table<RefMillProduction, number>
+  ref_water_sources!: Table<RefWaterSource, number>
   tasks!: Table<RefTask, number>
   meta!: Table<MetaEntry, string>
 
@@ -122,6 +124,10 @@ class ErpMobileDb extends Dexie {
     // v5 : tâches assignées (miroir « Mes tâches », remplacement complet à la sync).
     this.version(5).stores({
       tasks: 'id, scheduled_date, status, batch_id',
+    })
+    // v6 : citernes / sources d'eau (ravitaillement terrain hors-ligne).
+    this.version(6).stores({
+      ref_water_sources: 'id, type',
     })
   }
 }

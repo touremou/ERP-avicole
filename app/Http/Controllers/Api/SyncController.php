@@ -58,6 +58,13 @@ class SyncController extends Controller
             'gate'    => 'commerce.L',
             'columns' => ['id', 'client_id', 'name', 'category', 'phone', 'balance', 'status', 'updated_at'],
         ],
+        // Citernes / sources d'eau : pour le ravitaillement terrain hors-ligne.
+        'water_sources' => [
+            'model'   => \App\Models\WaterSource::class,
+            'gate'    => 'ressources.L',
+            'columns' => ['id', 'name', 'type', 'capacity_liters', 'current_level_liters',
+                          'current_level_percent', 'is_active', 'updated_at'],
+        ],
         'products' => [
             'model'   => Product::class,
             'gate'    => 'commerce.L',
