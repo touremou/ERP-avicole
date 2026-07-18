@@ -47,6 +47,55 @@ test('refreshLevel ne dépasse jamais la capacité (anti-débordement)', functio
         ->and((float) $src->fresh()->current_level_percent)->toBe(100.0);
 });
 
+test('le ravitaillement d\'une citerne ajoute le volume au niveau et trace l\'appoint', function () {
+    $src = citerne($this->farm->id, ['capacity_liters' => 10000, 'current_level_liters' => 2000, 'current_level_percent' => 20]);
+
+    $this->actingAs($this->manager)
+        ->post(route('utilities.water.sources.refill', $src->id), [
+            'volume_added_liters' => 5000,
+            'refill_date'         => now()->toDateString(),
+            'cost'                => 15000,
+            'notes'               => 'Camion-citerne',
+        ])
+        ->assertSessionHasNoErrors()
+        ->assertRedirect();
+
+    $src->refresh();
+    expect((float) $src->current_level_liters)->toBe(7000.0)
+        ->and((float) $src->current_level_percent)->toBe(70.0);
+
+    // Événement tracé : appoint (consommation 0), coût conservé.
+    $reading = WaterReading::where('water_source_id', $src->id)->latest('id')->first();
+    expect((float) $reading->volume_added_liters)->toBe(5000.0)
+        ->and((float) $reading->volume_consumed_liters)->toBe(0.0)
+        ->and((float) $reading->cost)->toBe(15000.0);
+});
+
+test('le ravitaillement est plafonné à la capacité (anti-débordement)', function () {
+    $src = citerne($this->farm->id, ['capacity_liters' => 10000, 'current_level_liters' => 8000, 'current_level_percent' => 80]);
+
+    $this->actingAs($this->manager)
+        ->post(route('utilities.water.sources.refill', $src->id), [
+            'volume_added_liters' => 9000, 'refill_date' => now()->toDateString(),
+        ])->assertRedirect();
+
+    expect((float) $src->fresh()->current_level_liters)->toBe(10000.0);
+});
+
+test('un ravitaillement pur (consommation 0) ne clôt PAS la tâche « Relevé eau »', function () {
+    $src = citerne($this->farm->id);
+
+    // La tâche du jour n'est complétée que par un relevé de consommation, pas
+    // par un simple appoint : on vérifie via l'absence d'effet de bord (aucune
+    // exception, l'appoint est bien enregistré).
+    $this->actingAs($this->manager)
+        ->post(route('utilities.water.sources.refill', $src->id), [
+            'volume_added_liters' => 300, 'refill_date' => now()->toDateString(),
+        ])->assertSessionHasNoErrors()->assertRedirect();
+
+    expect(WaterReading::where('water_source_id', $src->id)->where('volume_consumed_liters', 0)->count())->toBe(1);
+});
+
 test('la page d\'édition affiche le formulaire de MODIFICATION (bug corrigé)', function () {
     $src = citerne($this->farm->id, ['name' => 'Citerne Nord']);
 

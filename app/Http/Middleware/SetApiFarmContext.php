@@ -24,7 +24,9 @@ use Symfony\Component\HttpFoundation\Response;
  * logique de scope.
  *
  * Résolution (miroir API de SetCurrentFarm) :
- *   1. En-tête X-Farm-Id → vérifié contre farm_user (403 sinon) ;
+ *   1. En-tête X-Farm-Id → adopté s'il est dans le périmètre de l'utilisateur,
+ *      IGNORÉ sinon (repli sur la ferme par défaut — un id périmé ne bloque
+ *      jamais l'app ; la ferme demandée n'est de toute façon jamais servie) ;
  *   2. ferme par défaut de l'utilisateur (farm_user.is_default) ;
  *   3. première ferme de l'utilisateur ;
  *   4. repli mono-ferme : Farm::defaultId() (aucune affectation pivot).

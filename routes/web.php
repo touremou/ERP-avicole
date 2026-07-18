@@ -763,6 +763,7 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/water-sources/{source}', 'updateWaterSource')->name('water.sources.update')->middleware('can:M');
         Route::delete('/water-sources/{source}', 'destroyWaterSource')->name('water.sources.destroy')->middleware('can:S');
         Route::post('/water-readings', 'storeWaterReading')->name('water.readings.store')->middleware('can:C');
+        Route::post('/water-sources/{source}/refill', 'refillWaterSource')->name('water.sources.refill')->middleware('can:C');
 
         // Sources d'énergie
         Route::get('/energy-sources', 'energySources')->name('energy.sources')->middleware('can:L');

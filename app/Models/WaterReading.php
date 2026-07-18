@@ -27,8 +27,12 @@ class WaterReading extends Model
 
     protected static function booted(): void
     {
-        // À la saisie d'un relevé, clôt la tâche planifiée « Relevé eau » du jour.
+        // À la saisie d'un RELEVÉ (consommation), clôt la tâche « Relevé eau »
+        // du jour. Un ravitaillement pur (appoint, consommation 0) n'est PAS un
+        // relevé : il ne doit pas clôturer cette tâche.
         static::created(function (WaterReading $reading) {
+            if ((float) $reading->volume_consumed_liters <= 0) return;
+
             app(\App\Services\ReleveTaskService::class)
                 ->complete((int) $reading->farm_id, $reading->reading_date, 'releve_eau');
         });

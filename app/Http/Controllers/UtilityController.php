@@ -140,6 +140,51 @@ class UtilityController extends Controller
         return back()->with('success', "Relevé eau enregistré pour le {$validated['reading_date']}.");
     }
 
+    /**
+     * Ravitaillement d'une citerne : appoint d'eau INDÉPENDANT du relevé de
+     * consommation. On trace l'événement (volume, coût, date) et on ajoute le
+     * volume au niveau courant (plafonné à la capacité). Un ravitaillement pur
+     * (consommation 0) ne clôt PAS la tâche « Relevé eau » du jour (cf.
+     * WaterReading::booted) — c'est un appoint, pas un relevé.
+     */
+    public function refillWaterSource(Request $request, WaterSource $source)
+    {
+        if (Gate::denies('ressources.C')) return back()->with('error', 'Action non autorisée.');
+
+        $validated = $request->validate([
+            'volume_added_liters' => 'required|numeric|min:1',
+            'refill_date'         => 'required|date|before_or_equal:today',
+            'cost'                => 'nullable|numeric|min:0',
+            'notes'               => 'nullable|string|max:500',
+        ]);
+
+        // Trace l'appoint comme un événement (consommation 0) — plusieurs
+        // ravitaillements le même jour sont possibles (create, pas updateOrCreate).
+        WaterReading::create([
+            'water_source_id'        => $source->id,
+            'reading_date'           => $validated['refill_date'],
+            'user_id'                => Auth::id(),
+            'volume_consumed_liters' => 0,
+            'volume_added_liters'    => $validated['volume_added_liters'],
+            'cost'                   => $validated['cost'] ?? 0,
+            'notes'                  => $validated['notes'] ?? null,
+        ]);
+
+        // Niveau : on ajoute directement le volume ravitaillé (plafonné à la
+        // capacité). Direct plutôt que refreshLevel() pour rester exact quel que
+        // soit le nombre d'appoints/relevés du jour.
+        if ($source->type === 'citerne' && $source->capacity_liters) {
+            $newLevel = min((float) $source->capacity_liters,
+                (float) $source->current_level_liters + (float) $validated['volume_added_liters']);
+            $source->update([
+                'current_level_liters'  => $newLevel,
+                'current_level_percent' => min(100, $newLevel / (float) $source->capacity_liters * 100),
+            ]);
+        }
+
+        return back()->with('success', 'Ravitaillement de ' . number_format((float) $validated['volume_added_liters']) . " L enregistré pour « {$source->name} ».");
+    }
+
     // ──────────────────────────────────────────────
     // SOURCES D'ÉNERGIE
     // ──────────────────────────────────────────────
