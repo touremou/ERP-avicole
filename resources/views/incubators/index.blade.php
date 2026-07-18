@@ -4,7 +4,7 @@
             <x-slot name="actions">
                 {{-- Permission C : Ajout de machine --}}
                 @can('production.C')
-                <button @click="$dispatch('open-add-modal')" class="bg-blue-600 text-white px-7 py-3 rounded-[1.5rem] text-[10px] font-black uppercase italic shadow-xl shadow-blue-200 hover:bg-blue-500 transition-all border-none cursor-pointer">
+                <button x-data @click="$dispatch('open-add-modal')" class="bg-blue-600 text-white px-7 py-3 rounded-[1.5rem] text-[10px] font-black uppercase italic shadow-xl shadow-blue-200 hover:bg-blue-500 transition-all border-none cursor-pointer">
                     + {{ __("Ajouter une Unité") }}
                 </button>
                 @endcan
