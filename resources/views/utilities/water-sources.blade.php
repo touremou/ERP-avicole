@@ -58,6 +58,46 @@
                             <div @class(['h-4 rounded-full transition-all', $pct < 30 ? 'bg-red-500' : ($pct < 50 ? 'bg-amber-500' : 'bg-cyan-500')]) style="width: {{ $pct }}%"></div>
                         </div>
                         <p class="text-[8px] text-slate-400">{{ number_format($source->current_level_liters ?? 0) }} / {{ number_format($source->capacity_liters) }} L ({{ round($pct) }}%)</p>
+
+                        @can('ressources.C')
+                        <div x-data="{ openRefill: false }" class="mt-3">
+                            <button @click="openRefill = true" type="button" class="w-full inline-flex items-center justify-center gap-2 px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-[9px] font-black uppercase tracking-widest transition-all border-none cursor-pointer">
+                                💧 {{ __('Ravitailler') }}
+                            </button>
+
+                            <div x-show="openRefill" x-cloak x-transition.opacity class="fixed inset-0 z-[999] flex items-center justify-center bg-slate-900/90 backdrop-blur-sm p-4 text-slate-800">
+                                <div @click.away="openRefill = false" class="bg-white w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl relative text-left not-italic">
+                                    <button @click="openRefill = false" type="button" class="absolute top-6 right-8 text-slate-300 hover:text-rose-500 border-none bg-transparent cursor-pointer text-xl leading-none">✕</button>
+                                    <h3 class="text-sm font-black text-cyan-600 uppercase italic mb-1">💧 {{ __('Ravitaillement') }}</h3>
+                                    <p class="text-[9px] font-bold text-slate-400 uppercase mb-5">{{ $source->name }} — {{ number_format($source->current_level_liters ?? 0) }} / {{ number_format($source->capacity_liters) }} L</p>
+                                    <form method="POST" action="{{ route('utilities.water.sources.refill', $source->id) }}" class="space-y-3">
+                                        @csrf
+                                        <div>
+                                            <label class="text-[8px] font-black text-slate-400 uppercase tracking-widest">{{ __('Volume ajouté (L)') }}</label>
+                                            <input type="number" name="volume_added_liters" required min="1" step="0.1" placeholder="{{ __('Ex: 5000') }}" class="w-full bg-slate-50 border border-slate-100 rounded-xl p-3 text-[11px] font-black shadow-inner outline-none">
+                                        </div>
+                                        <div class="grid grid-cols-2 gap-3">
+                                            <div>
+                                                <label class="text-[8px] font-black text-slate-400 uppercase tracking-widest">{{ __('Date') }}</label>
+                                                <input type="date" name="refill_date" required value="{{ now()->toDateString() }}" max="{{ now()->toDateString() }}" class="w-full bg-slate-50 border border-slate-100 rounded-xl p-3 text-[10px] font-black shadow-inner outline-none">
+                                            </div>
+                                            <div>
+                                                <label class="text-[8px] font-black text-slate-400 uppercase tracking-widest">{{ __('Coût') }}</label>
+                                                <input type="number" name="cost" min="0" step="0.01" placeholder="{{ __('Optionnel') }}" class="w-full bg-slate-50 border border-slate-100 rounded-xl p-3 text-[10px] font-black shadow-inner outline-none">
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label class="text-[8px] font-black text-slate-400 uppercase tracking-widest">{{ __('Note') }}</label>
+                                            <input type="text" name="notes" maxlength="500" placeholder="{{ __('Camion-citerne, fournisseur…') }}" class="w-full bg-slate-50 border border-slate-100 rounded-xl p-3 text-[10px] font-bold shadow-inner outline-none">
+                                        </div>
+                                        <button type="submit" class="w-full bg-cyan-600 hover:bg-cyan-500 text-white py-4 rounded-2xl font-black uppercase text-[10px] italic tracking-[0.15em] border-none cursor-pointer transition-all">
+                                            {{ __('Enregistrer le ravitaillement') }}
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        @endcan
                     @endif
                 </div>
                 @endforeach

@@ -73,7 +73,13 @@ class WaterSource extends Model
     {
         if ($this->type !== 'citerne' || ! $this->capacity_liters) return;
 
-        $todayReading = $this->readings()->whereDate('reading_date', today())->first();
+        // Prend le RELEVÉ du jour (consommation la plus élevée) plutôt qu'un
+        // simple appoint (ravitaillement, consommation 0) qui a déjà mis à jour
+        // le niveau directement — évite de re-compter un ravitaillement.
+        $todayReading = $this->readings()
+            ->whereDate('reading_date', today())
+            ->orderByDesc('volume_consumed_liters')
+            ->first();
         if (! $todayReading) return;
 
         $newLevel = max(0, (float) $this->current_level_liters
