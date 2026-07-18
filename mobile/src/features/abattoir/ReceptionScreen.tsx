@@ -34,6 +34,17 @@ const DECISIONS = [
   { value: 'refuse', label: '⛔ Refusé' },
 ] as const
 
+const ORIGINS = [
+  { value: 'achat', label: '🛒 Achat' },
+  { value: 'facon', label: '🤝 À façon' },
+] as const
+
+const PURCHASE_BASES = [
+  { value: 'par_sujet', label: 'Par sujet' },
+  { value: 'par_kg_vif', label: 'Au kg vif' },
+  { value: 'forfait', label: 'Forfait' },
+] as const
+
 export function ReceptionScreen() {
   const navigate = useNavigate()
   const [providers, setProviders] = useState<RefProvider[]>([])
@@ -46,6 +57,9 @@ export function ReceptionScreen() {
   const [fasting, setFasting] = useState<(typeof FASTING)[number]['value']>('oui')
   const [decision, setDecision] = useState<(typeof DECISIONS)[number]['value']>('accepte')
   const [reason, setReason] = useState('')
+  const [origin, setOrigin] = useState<(typeof ORIGINS)[number]['value']>('achat')
+  const [purchaseBasis, setPurchaseBasis] = useState<(typeof PURCHASE_BASES)[number]['value']>('par_sujet')
+  const [unitPrice, setUnitPrice] = useState('')
   const [photoBlob, setPhotoBlob] = useState<Blob | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
@@ -72,8 +86,10 @@ export function ReceptionScreen() {
     event.preventDefault()
     if (!valid) return
 
+    const price = Number(unitPrice)
     const payload: Record<string, unknown> = {
       provider_id: Number(providerId),
+      origin,
       reception_date: new Date().toISOString().slice(0, 10),
       announced_quantity: announced || null,
       received_quantity: received,
@@ -85,6 +101,10 @@ export function ReceptionScreen() {
       fasting_respected: fasting,
       decision,
       decision_reason: reasonRequired ? reason.trim() : null,
+      // Achat : prix connu → facture fournisseur générée serveur ; sinon null
+      // (l'achat se complète au bureau). Le façon n'a pas de coût matière.
+      purchase_basis: origin === 'achat' && price > 0 ? purchaseBasis : null,
+      purchase_unit_price: origin === 'achat' && price > 0 ? price : null,
       releve_at: new Date().toISOString(),
     }
 
@@ -139,6 +159,23 @@ export function ReceptionScreen() {
         <p className="muted">{t("Aucun éleveur local — synchronisez d'abord.")}</p>
       )}
 
+      <label>{t('Origine des sujets')}</label>
+      <div className="chip-row">
+        {ORIGINS.map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            className={`chip ${origin === option.value ? 'chip-on' : ''}`}
+            onClick={() => setOrigin(option.value)}
+          >
+            {t(option.label)}
+          </button>
+        ))}
+      </div>
+      {origin === 'facon' && (
+        <p className="muted">{t('À façon : sujets propriété du client, facturés en prestation — aucun coût d\'achat.')}</p>
+      )}
+
       <NumberStepper label={t('Sujets annoncés — optionnel')} value={announced} onChange={setAnnounced} min={0} />
       <NumberStepper label={t('Sujets reçus')} value={received} onChange={setReceived} min={0} />
       <NumberStepper label={t('Sujets écartés')} value={rejected} onChange={setRejected} min={0} />
@@ -156,6 +193,53 @@ export function ReceptionScreen() {
         onChange={(e) => setLiveWeight(e.target.value)}
         placeholder={t('ex. 120.5')}
       />
+
+      {origin === 'achat' && (
+        <>
+          <label>{t('Prix d\'achat — optionnel (sinon complété au bureau)')}</label>
+          <div className="chip-row">
+            {PURCHASE_BASES.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                className={`chip ${purchaseBasis === option.value ? 'chip-on' : ''}`}
+                onClick={() => setPurchaseBasis(option.value)}
+              >
+                {t(option.label)}
+              </button>
+            ))}
+          </div>
+          <input
+            type="number"
+            inputMode="decimal"
+            min={0}
+            step="1"
+            value={unitPrice}
+            onFocus={(e) => e.target.select()}
+            onChange={(e) => setUnitPrice(e.target.value)}
+            placeholder={
+              purchaseBasis === 'forfait'
+                ? t('Montant total (GNF)')
+                : purchaseBasis === 'par_kg_vif'
+                  ? t('Prix / kg vif (GNF)')
+                  : t('Prix / sujet (GNF)')
+            }
+          />
+          {Number(unitPrice) > 0 && (
+            <p className="muted">
+              {t('Facture fournisseur générée : :total GNF (dette envers l\'éleveur).', {
+                total: Math.round(
+                  purchaseBasis === 'forfait'
+                    ? Number(unitPrice)
+                    : purchaseBasis === 'par_kg_vif'
+                      ? weight * Number(unitPrice)
+                      : received * Number(unitPrice),
+                ).toLocaleString('fr-FR'),
+              })}
+            </p>
+          )}
+        </>
+      )}
 
       <label>{t('État sanitaire (inspection visuelle)')}</label>
       <div className="chip-row">

@@ -58,6 +58,9 @@ class SlaughterReceptionController extends Controller
             'fasting_respected'    => 'required|in:' . implode(',', SlaughterReception::FASTING),
             'decision'             => 'required|in:' . implode(',', SlaughterReception::DECISIONS),
             'decision_reason'      => 'required_unless:decision,accepte|nullable|string|max:1000',
+            'origin'               => 'nullable|in:' . implode(',', SlaughterReception::ORIGINS),
+            'purchase_basis'       => 'nullable|in:' . implode(',', array_keys(SlaughterReception::PURCHASE_BASES)),
+            'purchase_unit_price'  => 'nullable|numeric|min:0',
             'photo'                => 'nullable|image|mimes:jpg,jpeg,png|max:5120',
         ], [
             'decision_reason.required_unless' => __('Le motif est obligatoire lorsque la décision n\'est pas « Accepté ».'),
@@ -69,6 +72,7 @@ class SlaughterReceptionController extends Controller
 
         $reception = app(RecordSlaughterReception::class)->execute([
             'provider_id'          => $validated['provider_id'],
+            'origin'               => $validated['origin'] ?? 'achat',
             'reception_date'       => $validated['reception_date'],
             'announced_quantity'   => $validated['announced_quantity'] ?? null,
             'received_quantity'    => $validated['received_quantity'],
@@ -78,6 +82,8 @@ class SlaughterReceptionController extends Controller
             'fasting_respected'    => $validated['fasting_respected'],
             'decision'             => $validated['decision'],
             'decision_reason'      => $validated['decision_reason'] ?? null,
+            'purchase_basis'       => $validated['purchase_basis'] ?? null,
+            'purchase_unit_price'  => $validated['purchase_unit_price'] ?? null,
             'doc_photo_path'       => $photoPath,
             'controller_id'        => Auth::id(),
             'arrived_at'           => now(),

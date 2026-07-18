@@ -596,6 +596,21 @@ export const en: Record<string, string> = {
   '✓ Relevé CCP enregistré': '✓ CCP record saved',
   '✓ Relevé enregistré': '✓ Reading saved',
   '✓ Réception enregistrée': '✓ Reception saved',
+  'Origine des sujets': 'Origin of the birds',
+  '🛒 Achat': '🛒 Purchase',
+  '🤝 À façon': '🤝 Toll',
+  'À façon : sujets propriété du client, facturés en prestation — aucun coût d\'achat.':
+    'Toll: birds owned by the client, billed as a service — no purchase cost.',
+  'Prix d\'achat — optionnel (sinon complété au bureau)':
+    'Purchase price — optional (otherwise completed at the office)',
+  'Par sujet': 'Per bird',
+  'Au kg vif': 'Per kg live',
+  'Forfait': 'Flat',
+  'Montant total (GNF)': 'Total amount (GNF)',
+  'Prix / kg vif (GNF)': 'Price / kg live (GNF)',
+  'Prix / sujet (GNF)': 'Price / bird (GNF)',
+  'Facture fournisseur générée : :total GNF (dette envers l\'éleveur).':
+    'Supplier invoice generated: :total GNF (debt to the farmer).',
   '✓ Récolte enregistrée': '✓ Harvest saved',
   'Synchronisé': 'Synced',
   '✓ Synchronisé': '✓ Synced',

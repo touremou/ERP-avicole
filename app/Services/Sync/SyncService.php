@@ -826,6 +826,9 @@ class SyncService
             'fasting_respected'    => 'required|in:' . implode(',', \App\Models\SlaughterReception::FASTING),
             'decision'             => 'required|in:' . implode(',', \App\Models\SlaughterReception::DECISIONS),
             'decision_reason'      => 'required_unless:decision,accepte|nullable|string|max:1000',
+            'origin'               => 'nullable|in:' . implode(',', \App\Models\SlaughterReception::ORIGINS),
+            'purchase_basis'       => 'nullable|in:' . implode(',', array_keys(\App\Models\SlaughterReception::PURCHASE_BASES)),
+            'purchase_unit_price'  => 'nullable|numeric|min:0',
             'photo_path'           => 'nullable|string|max:255',
             'releve_at'            => 'nullable|date',
         ]);
