@@ -266,9 +266,9 @@
                                     'bg-slate-400 hover:bg-slate-500' => $chickRemaining === 0,
                                 ])>
                                     @if($chickRemaining > 0)
-                                        <i class="fa-solid fa-paper-plane"></i> {{ __("Dispatcher") }} ({{ $chickRemaining }})
+                                        <span aria-hidden="true">🐥</span> {{ __("Dispatcher") }} ({{ $chickRemaining }})
                                     @else
-                                        <i class="fa-solid fa-check-double"></i> {{ __("Dispatches") }} ({{ $alreadyDispatched }})
+                                        <span aria-hidden="true">✅</span> {{ __("Dispatches") }} ({{ $alreadyDispatched }})
                                     @endif
                                 </a>
                             @endif
