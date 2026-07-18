@@ -1154,6 +1154,21 @@ class SyncService
 
             $source = \App\Models\WaterSource::lockForUpdate()->find($data['water_source_id']);
 
+            // Anti-débordement : une citerne ne se remplit pas au-delà de sa
+            // capacité → conflict (bac « À corriger »), message explicite.
+            if ($source->type === 'citerne' && $source->capacity_liters) {
+                $remaining = (float) $source->capacity_liters - (float) $source->current_level_liters;
+                if ((float) $data['volume_added_liters'] > $remaining + 0.01) {
+                    return [
+                        'status'  => 'conflict',
+                        'message' => __('Ravitaillement supérieur à la capacité : il reste :qty L dans :name.', [
+                            'qty'  => number_format(max(0, $remaining), 0, ',', ' '),
+                            'name' => $source->name,
+                        ]),
+                    ];
+                }
+            }
+
             \App\Models\WaterReading::create([
                 'uuid'                   => $data['uuid'],
                 'water_source_id'        => $source->id,
