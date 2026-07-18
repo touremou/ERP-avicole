@@ -196,6 +196,7 @@ const RULES: Partial<Record<OperationType, Validator>> = {
     reqStr(p, 'decision', 'Décision', e)
     optNum(p, 'announced_quantity', 'Sujets annoncés', e, 0)
     optNum(p, 'rejected_quantity', 'Sujets refusés', e, 0)
+    optNum(p, 'purchase_unit_price', 'Prix d\'achat', e, 0)
     const rec = num(p.received_quantity)
     const rej = num(p.rejected_quantity)
     if (rec !== null && rej !== null && rej > rec) e.push('Sujets refusés : ne peut pas dépasser les reçus.')

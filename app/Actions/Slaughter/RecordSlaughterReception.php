@@ -27,6 +27,13 @@ class RecordSlaughterReception
                 $this->alert($reception);
             }
 
+            // Achat vif au prix connu → facture fournisseur brouillon (dette
+            // envers l'éleveur, charge au P&L à la validation). Sans effet pour
+            // un façon ou un achat sans prix.
+            if ($reception->isPurchase()) {
+                $reception = app(BillLivePurchase::class)->execute($reception);
+            }
+
             return $reception;
         });
     }

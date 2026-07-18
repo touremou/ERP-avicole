@@ -38,6 +38,7 @@ class SyscohadaMapper
         'taxes'         => ['646', 'Impôts et taxes'],
         'location'      => ['622', 'Locations et charges locatives'],
         'main_oeuvre'   => ['661', 'Rémunérations directes versées au personnel'],
+        'achat_animaux' => ['602', 'Achats de matières premières et fournitures liées'],
         'sante_animale' => ['604', 'Achats stockés de matières et fournitures consommables'],
         'eau_energie'   => ['605', 'Autres achats (eau, énergie, carburant)'],
         'divers'        => ['658', 'Charges diverses de gestion courante'],

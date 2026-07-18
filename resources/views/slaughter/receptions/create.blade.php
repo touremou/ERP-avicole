@@ -32,6 +32,38 @@
                                 </div>
                             </div>
 
+                            {{-- ORIGINE : achat (dette éleveur + charge P&L) ou façon (prestation, sans coût matière) --}}
+                            <div class="space-y-2">
+                                <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Origine des sujets *") }}</label>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <label class="cursor-pointer">
+                                        <input type="radio" name="origin" value="achat" x-model="origin" class="peer sr-only">
+                                        <div class="p-3 rounded-2xl bg-slate-50 text-center text-[10px] font-black uppercase peer-checked:bg-emerald-500 peer-checked:text-white transition-all">🛒 {{ __("Achat") }}</div>
+                                    </label>
+                                    <label class="cursor-pointer">
+                                        <input type="radio" name="origin" value="facon" x-model="origin" class="peer sr-only">
+                                        <div class="p-3 rounded-2xl bg-slate-50 text-center text-[10px] font-black uppercase peer-checked:bg-indigo-500 peer-checked:text-white transition-all">🤝 {{ __("À façon") }}</div>
+                                    </label>
+                                </div>
+                                <p class="text-[9px] font-bold text-slate-400 ml-2" x-show="origin === 'facon'" x-transition>{{ __("À façon : sujets propriété du client, facturés en prestation — aucun coût d'achat.") }}</p>
+                            </div>
+
+                            {{-- ACHAT : prix connu → facture fournisseur brouillon générée (dette + charge). Optionnel : sinon complété au bureau. --}}
+                            <div class="grid grid-cols-2 gap-6 p-4 bg-emerald-50/50 rounded-2xl" x-show="origin === 'achat'" x-transition>
+                                <div class="space-y-2">
+                                    <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Base de prix") }}</label>
+                                    <select name="purchase_basis" x-model="basis" class="w-full bg-white border-none rounded-2xl p-4 text-xs font-black uppercase shadow-inner outline-none">
+                                        <option value="par_sujet">{{ __("Par sujet") }}</option>
+                                        <option value="par_kg_vif">{{ __("Au kg vif") }}</option>
+                                        <option value="forfait">{{ __("Forfait") }}</option>
+                                    </select>
+                                </div>
+                                <div class="space-y-2">
+                                    <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2" x-text="basis === 'forfait' ? @js(__('Montant total (GNF)')) : (basis === 'par_kg_vif' ? @js(__('Prix / kg vif (GNF)')) : @js(__('Prix / sujet (GNF)')))"></label>
+                                    <input type="number" name="purchase_unit_price" value="{{ old('purchase_unit_price') }}" step="0.01" min="0" class="w-full bg-white border-none rounded-2xl p-4 text-lg font-black shadow-inner outline-none text-center" placeholder="{{ __('optionnel') }}">
+                                </div>
+                            </div>
+
                             <div class="grid grid-cols-3 gap-4">
                                 <div class="space-y-2">
                                     <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Qté annoncée") }}</label>
@@ -132,7 +164,11 @@
 
     <script>
     function receptionForm() {
-        return { decision: @json(old('decision', '')) }
+        return {
+            decision: @json(old('decision', '')),
+            origin: @json(old('origin', 'achat')),
+            basis: @json(old('purchase_basis', 'par_sujet')),
+        }
     }
     </script>
 </x-app-layout>
