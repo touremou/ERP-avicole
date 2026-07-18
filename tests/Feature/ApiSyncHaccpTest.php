@@ -171,6 +171,33 @@ test('une réception refusée exige un motif (validation_failed sans lui)', func
     expect($avec->json('results.0.status'))->toBe('success');
 });
 
+test('une réception SANS écarté (rejected_quantity null) réussit — pas de 500', function () {
+    // Régression « Erreur interne lors de la réconciliation » : le client
+    // envoyait null pour 0 écarté, violant la contrainte NOT NULL. Le garde-fou
+    // modèle coalesce à 0.
+    $provider = Provider::factory()->create();
+    Sanctum::actingAs($this->manager);
+
+    $uuid = (string) Str::uuid();
+    $res = $this->postJson('/api/v1/sync/push', haccpOps([[
+        'type'    => 'slaughter_reception.create',
+        'payload' => [
+            'uuid'                 => $uuid,
+            'provider_id'          => $provider->id,
+            'reception_date'       => now()->toDateString(),
+            'received_quantity'    => 20,
+            'rejected_quantity'    => null,          // 0 écarté → null envoyé par le terrain
+            'total_live_weight_kg' => 40,
+            'sanitary_state'       => 'conforme',
+            'fasting_respected'    => 'oui',
+            'decision'             => 'accepte',
+        ],
+    ]]))->assertOk();
+
+    expect($res->json('results.0.status'))->toBe('success');
+    expect((int) SlaughterReception::withoutGlobalScopes()->where('uuid', $uuid)->value('rejected_quantity'))->toBe(0);
+});
+
 // ─── CCP : CONFORMITÉ SERVEUR + BLOCAGE AUTOMATIQUE (RG-02) ───
 
 test('ccp3 hors seuil → conformité recalculée serveur, ordre bloqué automatiquement', function () {
