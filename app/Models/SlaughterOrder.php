@@ -83,4 +83,57 @@ class SlaughterOrder extends Model
     {
         return \App\Services\DocumentNumberingService::generate('slaughter_order');
     }
+
+    /**
+     * Résultat économique du lot d'abattage (marge directe) :
+     *
+     *  - façon : les produits appartiennent au client (RG-07) — le « produit »
+     *    est la PRESTATION facturée (service_fee), sans coût matière ;
+     *  - achat : coût = achat vif (reception.purchase_total_cost) ; produit =
+     *    valeur des découpes valorisées (Σ quantity_kg × unit_price) ;
+     *  - interne : coût d'acquisition suivi au niveau du LOT (P&L) — non
+     *    reventilé ici ; on n'affiche que la valeur produite.
+     *
+     * `has_unpriced` signale des produits de découpe sans prix (valeur
+     * partielle — la marge est un plancher, pas un chiffre définitif).
+     * Suppose cuttingSessions.products chargés (dossier de lot).
+     */
+    public function economicSummary(): array
+    {
+        if ($this->isFacon()) {
+            return [
+                'mode' => 'facon', 'cost' => 0.0, 'cost_label' => null,
+                'output_value' => (float) $this->service_fee,
+                'margin' => (float) $this->service_fee, 'has_unpriced' => false,
+            ];
+        }
+
+        $outputValue = 0.0;
+        $hasUnpriced = false;
+        foreach ($this->cuttingSessions as $session) {
+            foreach ($session->products as $product) {
+                $price = (float) ($product->unit_price ?? 0);
+                if ($price > 0) {
+                    $outputValue += (float) $product->quantity_kg * $price;
+                } else {
+                    $hasUnpriced = true;
+                }
+            }
+        }
+
+        $cost = 0.0;
+        $costLabel = null;
+        $mode = 'interne';
+        if ($this->reception && $this->reception->origin === 'achat' && $this->reception->purchase_total_cost) {
+            $cost = (float) $this->reception->purchase_total_cost;
+            $costLabel = 'Achat vif';
+            $mode = 'achat';
+        }
+
+        return [
+            'mode' => $mode, 'cost' => $cost, 'cost_label' => $costLabel,
+            'output_value' => $outputValue, 'margin' => $outputValue - $cost,
+            'has_unpriced' => $hasUnpriced,
+        ];
+    }
 }

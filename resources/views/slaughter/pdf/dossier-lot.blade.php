@@ -120,6 +120,16 @@
         prestation : <strong>{{ $order->service_fee ? number_format((float) $order->service_fee, 0, ',', ' ') . ' GNF' : 'à l\'exécution' }}</strong>
         @if($order->serviceSale) · facture {{ $order->serviceSale->reference }} ({{ $order->serviceSale->status }})@endif<br>
         <span class="muted">Les produits restent propriété du client (RG-07) — aucun n'entre au stock vendable.</span></p>
+    @else
+        @php $eco = $order->economicSummary(); @endphp
+        @if($eco['cost'] > 0 || $eco['output_value'] > 0)
+        <h2>5. Économie du lot (marge directe)</h2>
+        <p style="margin:0">Valeur produite (découpes valorisées) : <strong>{{ number_format((float) $eco['output_value'], 0, ',', ' ') }} {{ setting('general.currency', 'GNF') }}</strong>
+        @if($eco['cost'] > 0) · − {{ $eco['cost_label'] ?? 'coût direct' }} : <strong>{{ number_format((float) $eco['cost'], 0, ',', ' ') }} {{ setting('general.currency', 'GNF') }}</strong>@endif<br>
+        Marge directe : <strong>{{ number_format((float) $eco['margin'], 0, ',', ' ') }} {{ setting('general.currency', 'GNF') }}</strong>
+        @if($eco['mode'] === 'interne') · <span class="muted">lot interne : coût d'acquisition suivi au niveau du lot (P&L).</span>@endif
+        @if($eco['has_unpriced']) · <span class="muted">des découpes sans prix ne sont pas valorisées — marge plancher.</span>@endif</p>
+        @endif
     @endif
 
     <div class="footer">Document généré par AviSmart — dossier de lot HACCP (horodatages relevé/synchronisation conservés). {{ $farm }} — {{ $generatedAt->format('d/m/Y H:i') }}</div>
