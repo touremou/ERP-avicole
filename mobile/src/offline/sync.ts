@@ -191,7 +191,20 @@ async function pushOutbox(): Promise<void> {
   }
 }
 
+// Version du JEU d'entités du pull. À incrémenter dès qu'on AJOUTE une entité
+// (ex. water_sources) : un pull delta (`updated_at > since`) ne rapatrie jamais
+// les enregistrements PRÉEXISTANTS d'une entité nouvelle, donc on force un
+// bootstrap complet (since=null) une fois quand la version change.
+const PULL_SCHEMA = 2
+
 async function pullDelta(): Promise<void> {
+  // Nouvelle entité côté serveur → on repart d'un bootstrap complet une fois.
+  const schema = await getMeta<number>('pull_schema')
+  if (schema !== PULL_SCHEMA) {
+    await db.meta.delete('last_pull_at')
+    await setMeta('pull_schema', PULL_SCHEMA)
+  }
+
   const since = (await getMeta<string>('last_pull_at')) ?? null
   const response: PullResponse = await api.syncPull(since)
 

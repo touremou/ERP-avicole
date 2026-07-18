@@ -105,3 +105,19 @@ test('le pull expose les citernes de la ferme (ressources.L)', function () {
 
     expect($names)->toContain('Citerne A');
 });
+
+test('un utilisateur qui peut ravitailler (ressources.C sans L) reçoit AUSSI les citernes', function () {
+    // C sans L : le gate any-of du pull doit quand même descendre les citernes,
+    // sinon l'écran de ravitaillement afficherait « Aucune citerne ».
+    $creator = User::factory()->create(['role_id' => refillRole('createur_eau', ['C'])->id]);
+    DB::table('farm_user')->insert([
+        'farm_id' => $this->farm->id, 'user_id' => $creator->id,
+        'is_default' => true, 'is_owner' => false, 'created_at' => now(), 'updated_at' => now(),
+    ]);
+    Sanctum::actingAs($creator);
+
+    $names = collect($this->getJson('/api/v1/sync/pull')->assertOk()->json('entities.water_sources.upserts'))
+        ->pluck('name');
+
+    expect($names)->toContain('Citerne A');
+});
