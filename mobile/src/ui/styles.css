@@ -61,6 +61,18 @@ body {
   color: #fff;
 }
 
+/* Bandeau d'erreur de validation d'une saisie (rejet avant mise en file) */
+.op-error-banner {
+  position: fixed; left: 12px; right: 12px; z-index: 70;
+  bottom: calc(var(--nav-h, 64px) + 12px + env(safe-area-inset-bottom));
+  background: #fef2f2; border: 1px solid #fca5a5; border-radius: 16px;
+  padding: 12px 14px; box-shadow: 0 12px 30px rgb(0 0 0 / 0.18); color: #991b1b;
+}
+.op-error-banner__head { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 0.82rem; }
+.op-error-banner__close { margin-left: auto; border: none; background: none; color: #991b1b; font-size: 0.95rem; cursor: pointer; padding: 0 2px; }
+.op-error-banner__list { margin: 6px 0 0; padding-left: 20px; font-size: 0.78rem; font-weight: 600; }
+.op-error-banner__list li { margin-top: 2px; }
+
 /* Toast « Mise à jour disponible » (pendant mobile du bandeau SW web) */
 .update-toast {
   position: fixed; left: 12px; right: 12px; z-index: 60;
