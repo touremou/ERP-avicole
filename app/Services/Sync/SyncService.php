@@ -68,6 +68,7 @@ class SyncService
             'daily_check.create'     => 'dailyCheckCreate',
             'egg_collection.create'  => 'eggCollectionCreate',
             'stock_movement.create'  => 'stockMovementCreate',
+            'water_refill.create'    => 'waterRefillCreate',
             'sale.create'            => 'saleCreate',
             'expense.create'         => 'expenseCreate',
             'batch.upsert'           => 'batchUpsert',
@@ -1119,6 +1120,66 @@ class SyncService
      * AUTRE ferme (FK croisée). On restreint donc à session('current_farm_id')
      * — première ligne, en complément du findOrFail scopé en aval.
      */
+    /**
+     * Ravitaillement d'une citerne saisi hors-ligne : appoint d'eau
+     * INDÉPENDANT du relevé (consommation 0). Enregistre l'événement + ajoute
+     * le volume au niveau courant (plafonné). Miroir de
+     * UtilityController::refillWaterSource, idempotent par uuid.
+     */
+    private function waterRefillCreate(array $payload): array
+    {
+        if (Gate::denies('ressources.C')) {
+            return $this->denied();
+        }
+
+        $v = Validator::make($payload, [
+            'uuid'                => 'required|uuid',
+            'water_source_id'     => ['required', 'integer', $this->farmScopedExists('water_sources')],
+            'volume_added_liters' => 'required|numeric|min:1',
+            'refill_date'         => 'required|date|before_or_equal:today',
+            'cost'                => 'nullable|numeric|min:0',
+            'notes'               => 'nullable|string|max:500',
+        ]);
+
+        if ($v->fails()) {
+            return $this->invalid($v->errors()->toArray());
+        }
+
+        $data = $v->validated();
+
+        return DB::transaction(function () use ($data) {
+            if (\App\Models\WaterReading::withoutGlobalScopes()->where('uuid', $data['uuid'])->exists()) {
+                return ['status' => 'already_synced'];
+            }
+
+            $source = \App\Models\WaterSource::lockForUpdate()->find($data['water_source_id']);
+
+            \App\Models\WaterReading::create([
+                'uuid'                   => $data['uuid'],
+                'water_source_id'        => $source->id,
+                'reading_date'           => $data['refill_date'],
+                'user_id'                => Auth::id(),
+                'volume_consumed_liters' => 0,
+                'volume_added_liters'    => $data['volume_added_liters'],
+                'cost'                   => $data['cost'] ?? 0,
+                'notes'                  => $data['notes'] ?? null,
+            ]);
+
+            if ($source->type === 'citerne' && $source->capacity_liters) {
+                $newLevel = min((float) $source->capacity_liters,
+                    (float) $source->current_level_liters + (float) $data['volume_added_liters']);
+                $source->update([
+                    'current_level_liters'  => $newLevel,
+                    'current_level_percent' => min(100, $newLevel / (float) $source->capacity_liters * 100),
+                ]);
+            }
+
+            Log::info("Sync: ravitaillement citerne réconcilié (uuid: {$data['uuid']}, source: {$source->id}).");
+
+            return ['status' => 'success'];
+        });
+    }
+
     private function farmScopedExists(string $table): \Illuminate\Validation\Rules\Exists
     {
         $rule = Rule::exists($table, 'id');

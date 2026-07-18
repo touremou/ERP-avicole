@@ -30,6 +30,7 @@ import { ByproductScreen } from '../features/abattoir/ByproductScreen'
 import { MillCompleteScreen } from '../features/provenderie/MillCompleteScreen'
 import { MillJournalScreen } from '../features/provenderie/MillJournalScreen'
 import { MonEspaceScreen } from '../features/mon-espace/MonEspaceScreen'
+import { WaterRefillScreen } from '../features/ressources/WaterRefillScreen'
 import { AppareilsScreen } from '../features/appareils/AppareilsScreen'
 import { TachesScreen } from '../features/taches/TachesScreen'
 import { NotificationsScreen } from '../features/notifications/NotificationsScreen'
@@ -108,6 +109,7 @@ function Shell() {
           <Route path="/abattoir/journal" element={<SlaughterJournalScreen />} />
           <Route path="/cultures/journal" element={<HarvestJournalScreen />} />
           <Route path="/logistique/mouvement" element={<StockMovementScreen />} />
+          <Route path="/ressources/ravitaillement" element={<WaterRefillScreen />} />
           <Route path="/logistique/stocks" element={<StocksScreen />} />
           <Route path="/depenses/nouvelle" element={<ExpenseScreen />} />
           <Route path="/cultures/recolte/:cycleId" element={<HarvestScreen />} />

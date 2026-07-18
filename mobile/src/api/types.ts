@@ -65,6 +65,8 @@ export type OperationType =
   | 'task.complete'
   // Tâche personnelle créée depuis le terrain (auto-assignée).
   | 'task.create'
+  // Ravitaillement d'une citerne d'eau (appoint) depuis le terrain.
+  | 'water_refill.create'
 
 export interface PushOperation {
   op_uuid: string
@@ -114,6 +116,7 @@ export interface PullResponse {
     providers?: PullEntity<RefProvider>
     formulas?: PullEntity<RefFormula>
     mill_productions?: PullEntity<RefMillProduction>
+    water_sources?: PullEntity<RefWaterSource>
   }
 }
 
@@ -429,6 +432,18 @@ export interface RefFormula {
   name: string
   code: string | null
   target_type: string | null
+  is_active: boolean
+  updated_at: string
+}
+
+/** Citerne / source d'eau — pour le ravitaillement terrain (type 'citerne'). */
+export interface RefWaterSource {
+  id: number
+  name: string
+  type: string
+  capacity_liters: string | number | null
+  current_level_liters: string | number | null
+  current_level_percent: string | number | null
   is_active: boolean
   updated_at: string
 }
