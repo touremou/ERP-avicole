@@ -26,11 +26,18 @@ class ReportController extends Controller
 {
     /**
      * HUB DES RAPPORTS
-     * Gate : elevage.L — accessible à tout utilisateur avec accès élevage
+     *
+     * Gate any-of : le centre de rapports est une entrée transverse (menu de
+     * premier niveau), accessible aux profils élevage (rapports techniques),
+     * finance (P&L, flux) et admin — chaque tuile reste ensuite filtrée par
+     * son propre droit.
      */
     public function index()
     {
-        if (Gate::denies('elevage.L')) return redirect()->route('dashboard')->with('error', 'Accès restreint.');
+        if (Gate::denies('elevage.L') && Gate::denies('depenses.L') && Gate::denies('admin.L')) {
+            return redirect()->route('dashboard')->with('error', 'Accès restreint.');
+        }
+
         return view('reports.index');
     }
 

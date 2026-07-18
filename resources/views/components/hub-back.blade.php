@@ -35,6 +35,16 @@
         'slaughter.registres.temperatures' => 'slaughter.registres.index',
         'slaughter.registres.nettoyage'    => 'slaughter.registres.index',
         'slaughter.registres.sous_produits' => 'slaughter.registres.index',
+        // La Trésorerie est une SECTION du hub Finance dans le parcours
+        // utilisateur (tuile « Comptes & mouvements ») : son retour remonte au
+        // hub Finance, pas à sa propre racine — sinon l'utilisateur venu du hub
+        // tourne en boucle dans le module Trésorerie.
+        'treasury.index' => 'finance.index',
+        // Le centre de rapports est une entrée TRANSVERSE (menu de premier
+        // niveau, accessible aux profils élevage/finance/admin) : son retour
+        // remonte au tableau de bord, pas au hub Élevage — un profil finance
+        // sans droit élevage y serait rejeté.
+        'reports.index' => 'dashboard',
     ];
 
     $target = null;

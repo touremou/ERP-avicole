@@ -549,12 +549,17 @@ Route::middleware(['auth'])->group(function () {
     });
 
     // ─── RAPPORTS ───
-    Route::prefix('reports')->name('reports.')->controller(ReportController::class)->middleware('can:L')->group(function () {
+    Route::prefix('reports')->name('reports.')->controller(ReportController::class)->group(function () {
+        // Hub (any-of élevage/finance/admin) + P&L (admin.L) : entrée TRANSVERSE,
+        // gates portés par le contrôleur — pas par le can:L de groupe, qui
+        // infère « elevage » du préfixe et fermerait la porte aux profils finance.
         Route::get('/', 'index')->name('index');
-        Route::get('/technical', 'technicalPerformance')->name('technical');
-        Route::get('/technical/pdf', 'technicalPerformancePdf')->name('technical.pdf');
         Route::get('/profit-loss', 'profitLoss')->name('profit_loss');
         Route::get('/profit-loss/pdf', 'profitLossPdf')->name('profit_loss.pdf');
+    });
+    Route::prefix('reports')->name('reports.')->controller(ReportController::class)->middleware('can:L')->group(function () {
+        Route::get('/technical', 'technicalPerformance')->name('technical');
+        Route::get('/technical/pdf', 'technicalPerformancePdf')->name('technical.pdf');
         Route::get('/nursery', 'nurseryReport')->name('nursery');
         Route::get('/nursery/pdf', 'nurseryReportPdf')->name('nursery.pdf');
         Route::get('/health-incidents', 'healthIncidentsReport')->name('health_incidents');
