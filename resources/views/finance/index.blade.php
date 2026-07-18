@@ -14,35 +14,56 @@
     <div class="py-10">
         <div class="max-w-6xl mx-auto sm:px-6 lg:px-8 italic font-bold text-left space-y-8">
 
-            {{-- KPI --}}
+            {{-- KPI — chaque carte porte une mesure principale + un indicateur
+                 de pilotage (Δ, autonomie, délai). Gating par périmètre :
+                 trésorerie → tresorerie.L, charges/dettes → depenses.L. --}}
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {{-- Solde de trésorerie : donnée sensible, réservée au module Trésorerie. --}}
+                {{-- Trésorerie + nombre de comptes actifs --}}
                 @can('tresorerie.L')
                 <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm text-center">
                     <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Trésorerie") }}</p>
                     <p class="text-2xl font-black text-slate-800 leading-none">{{ number_format($kpis['treasury'], 0, ',', ' ') }}</p>
-                    <p class="text-[8px] text-slate-300 font-black uppercase mt-1">{{ currency() }}</p>
+                    <p class="text-[8px] text-slate-300 font-black uppercase mt-1">{{ currency() }} · {{ $kpis['accounts_count'] }} {{ __("comptes") }}</p>
                 </div>
                 @endcan
-                {{-- Dépenses & dettes : données du périmètre Dépenses/Achats
-                     (masquées à un profil Trésorerie seule). --}}
+
+                {{-- Charges de fonctionnement du mois + Δ vs mois précédent --}}
                 @can('depenses.L')
                 <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm text-center">
-                    <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Dépenses (mois)") }}</p>
-                    <p class="text-2xl font-black text-amber-600 leading-none">{{ number_format($kpis['month_expenses'], 0, ',', ' ') }}</p>
-                    <p class="text-[8px] text-slate-300 font-black uppercase mt-1">{{ currency() }}</p>
+                    <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Charges (mois)") }}</p>
+                    <p class="text-2xl font-black text-amber-600 leading-none">{{ number_format($kpis['opex_month'], 0, ',', ' ') }}</p>
+                    @if($kpis['opex_delta'] === null)
+                        <p class="text-[8px] text-slate-300 font-black uppercase mt-1">{{ currency() }}</p>
+                    @else
+                        <p @class(['text-[8px] font-black uppercase mt-1', 'text-rose-500' => $kpis['opex_delta'] > 0, 'text-emerald-500' => $kpis['opex_delta'] <= 0])>
+                            {{ $kpis['opex_delta'] > 0 ? '▲' : '▼' }} {{ number_format(abs($kpis['opex_delta']), 1, ',', ' ') }}% {{ __("vs m-1") }}
+                        </p>
+                    @endif
                 </div>
+                @endcan
+
+                {{-- Dettes fournisseurs + DPO (délai moyen de paiement) --}}
+                @can('depenses.L')
                 <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm text-center">
                     <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Dettes fournisseurs") }}</p>
                     <p class="text-2xl font-black {{ $kpis['supplier_debt'] > 0 ? 'text-rose-600' : 'text-slate-800' }} leading-none">{{ number_format($kpis['supplier_debt'], 0, ',', ' ') }}</p>
-                    <p class="text-[8px] text-slate-300 font-black uppercase mt-1">{{ currency() }}</p>
+                    <p class="text-[8px] text-slate-300 font-black uppercase mt-1">
+                        {{ currency() }}@if($kpis['dpo_days'] !== null) · {{ __("DPO") }} ~{{ $kpis['dpo_days'] }} {{ __("j") }}@endif
+                    </p>
                 </div>
                 @endcan
+
+                {{-- Autonomie de caisse (burn rate) : mois couverts par la trésorerie --}}
                 @can('tresorerie.L')
                 <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm text-center">
-                    <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Comptes trésorerie") }}</p>
-                    <p class="text-2xl font-black text-slate-800 leading-none">{{ $kpis['accounts_count'] }}</p>
-                    <p class="text-[8px] text-slate-300 font-black uppercase mt-1">{{ __("actifs") }}</p>
+                    <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ __("Autonomie de caisse") }}</p>
+                    @if($kpis['runway_months'] === null)
+                        <p class="text-2xl font-black text-slate-300 leading-none">—</p>
+                        <p class="text-[8px] text-slate-300 font-black uppercase mt-1">{{ __("sans charge de réf.") }}</p>
+                    @else
+                        <p @class(['text-2xl font-black leading-none', 'text-rose-600' => $kpis['runway_months'] < 1, 'text-amber-600' => $kpis['runway_months'] >= 1 && $kpis['runway_months'] < 3, 'text-emerald-600' => $kpis['runway_months'] >= 3])>{{ number_format($kpis['runway_months'], 1, ',', ' ') }}</p>
+                        <p class="text-[8px] text-slate-300 font-black uppercase mt-1">{{ __("mois de charges") }}</p>
+                    @endif
                 </div>
                 @endcan
             </div>

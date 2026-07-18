@@ -54,7 +54,7 @@ test('un profil Dépenses SEULE atteint le hub Finance mais SANS les soldes de t
 
     $this->actingAs($user)->get(route('finance.index'))
         ->assertOk()
-        ->assertSee('Dépenses (mois)', false)      // son périmètre
+        ->assertSee('Charges (mois)', false)       // son périmètre
         ->assertDontSee('Soldes par compte', false); // trésorerie masquée
 });
 
