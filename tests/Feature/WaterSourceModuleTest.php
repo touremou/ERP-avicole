@@ -71,13 +71,29 @@ test('le ravitaillement d\'une citerne ajoute le volume au niveau et trace l\'ap
         ->and((float) $reading->cost)->toBe(15000.0);
 });
 
-test('le ravitaillement est plafonné à la capacité (anti-débordement)', function () {
+test('un ravitaillement au-delà de la capacité est refusé avec un message (pas de crash)', function () {
+    $src = citerne($this->farm->id, ['capacity_liters' => 10000, 'current_level_liters' => 8000, 'current_level_percent' => 80]);
+
+    $this->actingAs($this->manager)
+        ->from(route('utilities.water.sources'))
+        ->post(route('utilities.water.sources.refill', $src->id), [
+            'volume_added_liters' => 9000, 'refill_date' => now()->toDateString(),
+        ])
+        ->assertRedirect(route('utilities.water.sources'))
+        ->assertSessionHas('error');
+
+    // Niveau inchangé, aucun appoint enregistré.
+    expect((float) $src->fresh()->current_level_liters)->toBe(8000.0);
+    expect(WaterReading::where('water_source_id', $src->id)->count())->toBe(0);
+});
+
+test('un ravitaillement pile jusqu\'à la capacité est accepté', function () {
     $src = citerne($this->farm->id, ['capacity_liters' => 10000, 'current_level_liters' => 8000, 'current_level_percent' => 80]);
 
     $this->actingAs($this->manager)
         ->post(route('utilities.water.sources.refill', $src->id), [
-            'volume_added_liters' => 9000, 'refill_date' => now()->toDateString(),
-        ])->assertRedirect();
+            'volume_added_liters' => 2000, 'refill_date' => now()->toDateString(),
+        ])->assertSessionHasNoErrors()->assertRedirect();
 
     expect((float) $src->fresh()->current_level_liters)->toBe(10000.0);
 });
@@ -90,7 +106,7 @@ test('un ravitaillement pur (consommation 0) ne clôt PAS la tâche « Relevé e
     // exception, l'appoint est bien enregistré).
     $this->actingAs($this->manager)
         ->post(route('utilities.water.sources.refill', $src->id), [
-            'volume_added_liters' => 300, 'refill_date' => now()->toDateString(),
+            'volume_added_liters' => 100, 'refill_date' => now()->toDateString(), // ≤ capacité restante (200)
         ])->assertSessionHasNoErrors()->assertRedirect();
 
     expect(WaterReading::where('water_source_id', $src->id)->where('volume_consumed_liters', 0)->count())->toBe(1);

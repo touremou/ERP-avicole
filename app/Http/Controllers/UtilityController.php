@@ -165,6 +165,16 @@ class UtilityController extends Controller
             'notes'               => 'nullable|string|max:500',
         ]);
 
+        // Une citerne ne peut pas être remplie au-delà de sa capacité : message
+        // clair plutôt qu'un dépassement/erreur silencieuse.
+        if ($source->type === 'citerne' && $source->capacity_liters) {
+            $remaining = (float) $source->capacity_liters - (float) $source->current_level_liters;
+            if ((float) $validated['volume_added_liters'] > $remaining + 0.01) {
+                return back()->with('error', 'Ravitaillement supérieur à la capacité : il reste '
+                    . number_format(max(0, $remaining), 0, ',', ' ') . " L disponibles dans « {$source->name} ».");
+            }
+        }
+
         // Trace l'appoint comme un événement (consommation 0) — plusieurs
         // ravitaillements le même jour sont possibles (create, pas updateOrCreate).
         WaterReading::create([
