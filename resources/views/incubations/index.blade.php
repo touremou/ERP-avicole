@@ -44,7 +44,7 @@
                 <a href="{{ route('incubators.index') }}" class="inline-flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-2xl text-[9px] font-black uppercase tracking-widest hover:bg-slate-50 transition-all no-underline shadow-sm italic">
                     <i class="fa-solid fa-gear"></i> {{ __("Parc") }}
                 </a>
-                <button @click.stop="$dispatch('open-launch-modal')" class="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-500 transition-all shadow-lg italic border-none cursor-pointer">
+                <button x-data @click.stop="$dispatch('open-launch-modal')" class="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-500 transition-all shadow-lg italic border-none cursor-pointer">
                     <i class="fa-solid fa-plus-circle"></i> {{ __("Nouveau Lancement") }}
                 </button>
             </x-slot>
