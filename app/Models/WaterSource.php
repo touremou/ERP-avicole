@@ -95,11 +95,11 @@ class WaterSource extends Model
     {
         if ($this->type !== 'citerne' || ! $this->capacity_liters) return;
 
-        // Prend le RELEVÉ du jour (consommation la plus élevée) plutôt qu'un
-        // simple appoint (ravitaillement, consommation 0) qui a déjà mis à jour
-        // le niveau directement — évite de re-compter un ravitaillement.
+        // Prend le RELEVÉ de consommation du jour (is_refill=false) : les lignes
+        // de ravitaillement (appoints) ont déjà mis à jour le niveau directement.
         $todayReading = $this->readings()
             ->whereDate('reading_date', today())
+            ->where('is_refill', false)
             ->orderByDesc('volume_consumed_liters')
             ->first();
         if (! $todayReading) return;

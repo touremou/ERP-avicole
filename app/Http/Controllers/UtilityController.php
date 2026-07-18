@@ -68,7 +68,7 @@ class UtilityController extends Controller
         // Historique des ravitaillements (appoints) par citerne : tout relevé qui
         // a ajouté de l'eau (volume_added > 0), le plus récent d'abord.
         $refills = WaterReading::whereIn('water_source_id', $sources->pluck('id'))
-            ->where('volume_added_liters', '>', 0)
+            ->where('is_refill', true)
             ->orderByDesc('reading_date')->orderByDesc('id')
             ->get()->groupBy('water_source_id');
 
@@ -135,9 +135,11 @@ class UtilityController extends Controller
             $validated['cost'] = round(($validated['volume_consumed_liters'] / 1000) * $pricePerM3, 2);
         }
 
+        // Relevé de consommation : un seul par (citerne, jour) — clé explicite
+        // is_refill=false pour ne pas heurter les lignes de ravitaillement.
         WaterReading::updateOrCreate(
-            ['water_source_id' => $validated['water_source_id'], 'reading_date' => $validated['reading_date']],
-            $validated
+            ['water_source_id' => $validated['water_source_id'], 'reading_date' => $validated['reading_date'], 'is_refill' => false],
+            array_merge($validated, ['is_refill' => false])
         );
 
         // Mettre à jour le niveau de la citerne
@@ -183,6 +185,7 @@ class UtilityController extends Controller
             'user_id'                => Auth::id(),
             'volume_consumed_liters' => 0,
             'volume_added_liters'    => $validated['volume_added_liters'],
+            'is_refill'              => true,
             'cost'                   => $validated['cost'] ?? 0,
             'notes'                  => $validated['notes'] ?? null,
         ]);
