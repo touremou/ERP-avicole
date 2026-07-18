@@ -34,7 +34,13 @@ export function StocksScreen() {
   const [cat, setCat] = useState('all') // 'all' | 'low' | <catégorie>
 
   useEffect(() => {
-    const load = async () => setStocks(await db.ref_stocks.orderBy('item_name').toArray())
+    // NB : trier en JS, pas via Dexie orderBy('item_name') — item_name n'est PAS
+    // un index du store ref_stocks (id, category), donc orderBy jetait et la
+    // liste restait vide même avec des stocks bien synchronisés (« 0 article »).
+    const load = async () => {
+      const all = await db.ref_stocks.toArray()
+      setStocks(all.sort((a, b) => a.item_name.localeCompare(b.item_name)))
+    }
     void load()
     const off = onSyncChange(() => void load())
     return off

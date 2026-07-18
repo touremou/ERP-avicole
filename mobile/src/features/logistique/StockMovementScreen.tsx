@@ -28,7 +28,11 @@ export function StockMovementScreen() {
   const [saved, setSaved] = useState(false)
 
   useEffect(() => {
-    void db.ref_stocks.orderBy('item_name').toArray().then(setStocks)
+    // item_name n'est pas un index de ref_stocks (id, category) : on trie en JS,
+    // sinon Dexie orderBy('item_name') jette et la liste des articles reste vide.
+    void db.ref_stocks.toArray().then((all) =>
+      setStocks(all.sort((a, b) => a.item_name.localeCompare(b.item_name))),
+    )
   }, [])
 
   const selected = useMemo(() => stocks.find((s) => s.id === Number(stockId)), [stocks, stockId])
