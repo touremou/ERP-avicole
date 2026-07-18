@@ -83,6 +83,25 @@ test('water_refill.create relève le niveau, trace l\'appoint, puis already_sync
     expect((float) $this->citerne->fresh()->current_level_liters)->toBe(7000.0);
 });
 
+test('water_refill.create passe même si un relevé du jour existe déjà (pas de collision unique)', function () {
+    // Régression « Erreur interne lors de la réconciliation » : un relevé du jour
+    // existant ne doit PAS bloquer le push d'un ravitaillement le même jour.
+    Sanctum::actingAs($this->user);
+
+    WaterReading::create([
+        'farm_id' => $this->farm->id, 'water_source_id' => $this->citerne->id, 'user_id' => $this->user->id,
+        'reading_date' => now()->toDateString(), 'volume_consumed_liters' => 300, 'volume_added_liters' => 0,
+        'is_refill' => false,
+    ]);
+
+    $res = $this->postJson('/api/v1/sync/push', ['operations' => [refillOp($this->citerne->id, 5000)]])
+        ->assertOk()->json('results.0');
+
+    expect($res['status'])->toBe('success');
+    expect((float) $this->citerne->fresh()->current_level_liters)->toBe(7000.0);
+    expect(WaterReading::where('water_source_id', $this->citerne->id)->where('is_refill', true)->count())->toBe(1);
+});
+
 test('water_refill.create est refusé sans ressources.C', function () {
     $viewer = User::factory()->create(['role_id' => refillRole('lecteur_eau', ['L'])->id]);
     DB::table('farm_user')->insert([

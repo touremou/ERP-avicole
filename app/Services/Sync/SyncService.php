@@ -1176,6 +1176,7 @@ class SyncService
                 'user_id'                => Auth::id(),
                 'volume_consumed_liters' => 0,
                 'volume_added_liters'    => $data['volume_added_liters'],
+                'is_refill'              => true,
                 'cost'                   => $data['cost'] ?? 0,
                 'notes'                  => $data['notes'] ?? null,
             ]);

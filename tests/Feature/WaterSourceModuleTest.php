@@ -112,6 +112,28 @@ test('un ravitaillement pur (consommation 0) ne clôt PAS la tâche « Relevé e
     expect(WaterReading::where('water_source_id', $src->id)->where('volume_consumed_liters', 0)->count())->toBe(1);
 });
 
+test('un ravitaillement coexiste avec le relevé du jour (pas de collision unique)', function () {
+    // Régression : la contrainte unique (source, date) faisait échouer le second
+    // enregistrement du jour (« Erreur interne lors de la réconciliation »). Un
+    // relevé PUIS un ravitaillement le même jour doivent tous deux passer.
+    $src = citerne($this->farm->id, ['capacity_liters' => 10000, 'current_level_liters' => 5000, 'current_level_percent' => 50]);
+
+    WaterReading::create([
+        'farm_id' => $this->farm->id, 'water_source_id' => $src->id, 'user_id' => $this->manager->id,
+        'reading_date' => now()->toDateString(), 'volume_consumed_liters' => 500, 'volume_added_liters' => 0,
+        'is_refill' => false,
+    ]);
+
+    $this->actingAs($this->manager)
+        ->post(route('utilities.water.sources.refill', $src->id), [
+            'volume_added_liters' => 2000, 'refill_date' => now()->toDateString(),
+        ])->assertSessionHasNoErrors()->assertRedirect();
+
+    // Deux lignes le même jour : le relevé (is_refill=false) et l'appoint (is_refill=true).
+    expect(WaterReading::where('water_source_id', $src->id)->count())->toBe(2);
+    expect(WaterReading::where('water_source_id', $src->id)->where('is_refill', true)->count())->toBe(1);
+});
+
 test('la page Sources d\'eau affiche l\'historique des ravitaillements d\'une citerne', function () {
     $src = citerne($this->farm->id, ['capacity_liters' => 10000, 'current_level_liters' => 2000]);
 

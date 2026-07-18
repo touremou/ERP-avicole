@@ -13,7 +13,7 @@ class WaterReading extends Model
     protected $fillable = [
         'uuid',
         'farm_id', 'water_source_id', 'building_id', 'reading_date', 'user_id',
-        'volume_consumed_liters', 'volume_added_liters',
+        'volume_consumed_liters', 'volume_added_liters', 'is_refill',
         'quality_ph', 'chlorine_level', 'cost', 'notes',
     ];
 
@@ -21,6 +21,7 @@ class WaterReading extends Model
         'reading_date'           => 'date',
         'volume_consumed_liters' => 'decimal:2',
         'volume_added_liters'    => 'decimal:2',
+        'is_refill'              => 'boolean',
         'quality_ph'             => 'decimal:2',
         'chlorine_level'         => 'decimal:2',
         'cost'                   => 'decimal:2',
