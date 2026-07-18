@@ -53,6 +53,7 @@
                         <tr class="bg-slate-50 text-[8px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 italic">
                             <th class="px-5 py-4 text-left">{{ __("Date") }}</th>
                             <th class="px-3 py-4 text-left">{{ __("Éleveur") }}</th>
+                            <th class="px-3 py-4 text-left">{{ __("Origine / Coût") }}</th>
                             <th class="px-3 py-4 text-center">{{ __("Annoncé / Reçu / Écarté") }}</th>
                             <th class="px-3 py-4 text-right">{{ __("Poids vif") }}</th>
                             <th class="px-3 py-4 text-center">{{ __("État sanitaire") }}</th>
@@ -71,6 +72,25 @@
                                 @if($r->arrived_at)<p class="text-[7px] text-slate-400">{{ __("Arrivée") }} {{ $r->arrived_at->format('H:i') }}</p>@endif
                             </td>
                             <td class="px-3 py-4 text-[10px] font-black text-slate-700 uppercase">{{ $r->provider?->name ?? '—' }}</td>
+                            <td class="px-3 py-4">
+                                @if($r->origin === 'facon')
+                                    <span class="text-[8px] font-black uppercase px-2 py-1 rounded-full bg-indigo-50 text-indigo-600">🤝 {{ __("À façon") }}</span>
+                                @else
+                                    <span class="text-[8px] font-black uppercase px-2 py-1 rounded-full bg-emerald-50 text-emerald-600">🛒 {{ __("Achat") }}</span>
+                                    @if($r->purchase_total_cost)
+                                        <p class="text-[10px] font-black text-slate-900 mt-1">{{ number_format($r->purchase_total_cost, 0, ',', ' ') }} {{ currency() }}</p>
+                                        @if($r->supplierInvoice)
+                                            @can('depenses.L')
+                                            <a href="{{ route('purchases.show', $r->supplierInvoice->id) }}" class="text-[7px] font-black uppercase tracking-widest no-underline {{ $r->supplierInvoice->status === 'valide' ? 'text-emerald-600' : 'text-amber-600' }} hover:underline">
+                                                <i class="fa-solid fa-file-invoice-dollar"></i> {{ $r->supplierInvoice->reference }} · {{ __($r->supplierInvoice->status) }}
+                                            </a>
+                                            @endcan
+                                        @endif
+                                    @else
+                                        <p class="text-[7px] text-slate-400 uppercase tracking-widest mt-1">{{ __("prix à saisir au bureau") }}</p>
+                                    @endif
+                                @endif
+                            </td>
                             <td class="px-3 py-4 text-center text-[10px] font-black text-slate-600">
                                 {{ $r->announced_quantity ?? '—' }} / <span class="text-slate-900">{{ $r->received_quantity }}</span> / <span class="{{ $r->rejected_quantity > 0 ? 'text-red-600' : 'text-slate-400' }}">{{ $r->rejected_quantity }}</span>
                             </td>
@@ -107,7 +127,7 @@
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="10" class="px-8 py-16 text-center">
+                            <td colspan="11" class="px-8 py-16 text-center">
                                 <i class="fa-solid fa-truck-ramp-box text-slate-200 text-3xl mb-4 block"></i>
                                 <p class="text-[10px] text-slate-400 uppercase tracking-widest font-black">{{ __("Aucune réception enregistrée") }}</p>
                             </td>

@@ -106,3 +106,24 @@ test('la catégorie achat_animaux est rattachée au compte SYSCOHADA 602', funct
 
     expect($mapper->chargeAccount($label)[0])->toBe('602');
 });
+
+test('le registre des réceptions affiche l\'origine et le coût d\'achat', function () {
+    recordReception($this->provider->id, $this->adminUser->id, [
+        'purchase_basis'      => 'par_sujet',
+        'purchase_unit_price' => 3000, // 20 × 3000 = 60 000
+    ]);
+
+    $this->get(route('slaughter.receptions.index'))
+        ->assertOk()
+        ->assertSee('Origine / Coût', false)
+        ->assertSee('Achat', false)
+        ->assertSee('60 000', false); // coût d'achat affiché
+});
+
+test('le registre affiche « À façon » sans coût pour une réception façon', function () {
+    recordReception($this->provider->id, $this->adminUser->id, ['origin' => 'facon']);
+
+    $this->get(route('slaughter.receptions.index'))
+        ->assertOk()
+        ->assertSee('À façon', false);
+});
