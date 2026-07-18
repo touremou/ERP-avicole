@@ -94,7 +94,7 @@ export function StocksScreen() {
         type="search"
         value={query}
         onChange={(event) => setQuery(event.target.value)}
-        placeholder={t('Rechercher un article…')}
+        placeholder={'🔍 ' + t('Rechercher un article…')}
       />
 
       {stocks.length > 0 && <BarBreakdown items={byCategory} />}
