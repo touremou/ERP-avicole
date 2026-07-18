@@ -59,6 +59,29 @@
                         </div>
                         <p class="text-[8px] text-slate-400">{{ number_format($source->current_level_liters ?? 0) }} / {{ number_format($source->capacity_liters) }} L ({{ round($pct) }}%)</p>
 
+                        @php $sourceRefills = ($refills[$source->id] ?? collect()); @endphp
+                        @if($sourceRefills->isNotEmpty())
+                        <div x-data="{ openHistory: false }" class="mt-3">
+                            <button @click="openHistory = !openHistory" type="button" class="w-full flex items-center justify-between px-3 py-2 bg-slate-50 hover:bg-slate-100 rounded-xl text-[8px] font-black uppercase tracking-widest text-slate-500 transition-all border-none cursor-pointer">
+                                <span>📜 {{ __('Ravitaillements') }} ({{ $sourceRefills->count() }})</span>
+                                <span x-text="openHistory ? '▲' : '▼'"></span>
+                            </button>
+                            <div x-show="openHistory" x-cloak x-transition class="mt-2 space-y-1">
+                                @foreach($sourceRefills->take(10) as $r)
+                                <div class="flex items-center justify-between px-3 py-1.5 bg-white rounded-lg border border-slate-100">
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-[9px] font-black text-cyan-600">💧 +{{ number_format((float) $r->volume_added_liters, 0, ',', ' ') }} L</span>
+                                        <span class="text-[8px] font-bold text-slate-400">{{ optional($r->reading_date)->translatedFormat('d M Y') }}</span>
+                                    </div>
+                                    @if((float) $r->cost > 0)
+                                        <span class="text-[8px] font-black text-slate-500">{{ number_format((float) $r->cost, 0, ',', ' ') }}</span>
+                                    @endif
+                                </div>
+                                @endforeach
+                            </div>
+                        </div>
+                        @endif
+
                         @can('ressources.C')
                         <div x-data="{ openRefill: false }" class="mt-3">
                             <button @click="openRefill = true" type="button" class="w-full inline-flex items-center justify-center gap-2 px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-[9px] font-black uppercase tracking-widest transition-all border-none cursor-pointer">

@@ -65,7 +65,14 @@ class UtilityController extends Controller
             ->get()->sortByDesc('reading_date')->groupBy('water_source_id')
             ->map(fn ($r) => $r->first()->only(['volume_consumed_liters', 'volume_added_liters', 'quality_ph', 'chlorine_level', 'cost', 'building_id']));
 
-        return view('utilities.water-sources', compact('sources', 'buildings', 'lastWater'));
+        // Historique des ravitaillements (appoints) par citerne : tout relevé qui
+        // a ajouté de l'eau (volume_added > 0), le plus récent d'abord.
+        $refills = WaterReading::whereIn('water_source_id', $sources->pluck('id'))
+            ->where('volume_added_liters', '>', 0)
+            ->orderByDesc('reading_date')->orderByDesc('id')
+            ->get()->groupBy('water_source_id');
+
+        return view('utilities.water-sources', compact('sources', 'buildings', 'lastWater', 'refills'));
     }
 
     public function storeWaterSource(Request $request)

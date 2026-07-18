@@ -96,6 +96,21 @@ test('un ravitaillement pur (consommation 0) ne clôt PAS la tâche « Relevé e
     expect(WaterReading::where('water_source_id', $src->id)->where('volume_consumed_liters', 0)->count())->toBe(1);
 });
 
+test('la page Sources d\'eau affiche l\'historique des ravitaillements d\'une citerne', function () {
+    $src = citerne($this->farm->id, ['capacity_liters' => 10000, 'current_level_liters' => 2000]);
+
+    $this->actingAs($this->manager)
+        ->post(route('utilities.water.sources.refill', $src->id), [
+            'volume_added_liters' => 5000, 'refill_date' => now()->toDateString(),
+        ])->assertRedirect();
+
+    $this->actingAs($this->manager)
+        ->get(route('utilities.water.sources'))
+        ->assertOk()
+        ->assertSee('Ravitaillements')     // en-tête de l'historique
+        ->assertSee('+5 000 L', false);    // ligne de l'appoint
+});
+
 test('la page d\'édition affiche le formulaire de MODIFICATION (bug corrigé)', function () {
     $src = citerne($this->farm->id, ['name' => 'Citerne Nord']);
 
