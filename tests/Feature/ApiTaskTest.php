@@ -59,6 +59,65 @@ test('GET /tasks renvoie les tâches actionnables de mon employé', function () 
     expect($ids)->toContain($task->id);
 });
 
+test('GET /tasks expose l\'exigence de preuve (proof_type/label/unit)', function () {
+    $task = makeTask($this->farm->id, $this->employee->id);
+    $task->update(['proof_type' => 'valeur', 'proof_label' => 'Nombre de morts', 'proof_unit' => 'sujets']);
+
+    Sanctum::actingAs($this->user);
+    $row = collect($this->getJson('/api/v1/tasks')->assertOk()->json('tasks'))->firstWhere('id', $task->id);
+
+    expect($row['proof_type'])->toBe('valeur')
+        ->and($row['proof_label'])->toBe('Nombre de morts')
+        ->and($row['proof_unit'])->toBe('sujets');
+});
+
+test('preuve VALEUR : sans valeur → conflict (non clôturée) ; avec valeur → succès stocké', function () {
+    $task = makeTask($this->farm->id, $this->employee->id);
+    $task->update(['proof_type' => 'valeur', 'proof_label' => 'Nombre de morts']);
+    Sanctum::actingAs($this->user);
+
+    // Sans preuve → refus, tâche inchangée.
+    $res = $this->postJson('/api/v1/sync/push', ['operations' => [completeOp($task->id)]])
+        ->assertOk()->json('results.0');
+    expect($res['status'])->toBe('conflict');
+    expect($task->fresh()->status)->toBe('a_faire');
+
+    // Avec la valeur → clôturée, valeur stockée.
+    $op = completeOp($task->id);
+    $op['payload']['proof_value'] = 7;
+    $ok = $this->postJson('/api/v1/sync/push', ['operations' => [$op]])->assertOk()->json('results.0');
+    expect($ok['status'])->toBe('success');
+    expect($task->fresh()->status)->toBe('fait')
+        ->and((float) $task->fresh()->proof_value)->toBe(7.0);
+});
+
+test('preuve PHOTO : sans photo → conflict ; avec photo_path → succès stocké', function () {
+    $task = makeTask($this->farm->id, $this->employee->id);
+    $task->update(['proof_type' => 'photo', 'proof_label' => 'Photo du sac vidé']);
+    Sanctum::actingAs($this->user);
+
+    $res = $this->postJson('/api/v1/sync/push', ['operations' => [completeOp($task->id)]])
+        ->assertOk()->json('results.0');
+    expect($res['status'])->toBe('conflict');
+    expect($task->fresh()->status)->toBe('a_faire');
+
+    $op = completeOp($task->id);
+    $op['payload']['photo_path'] = 'field/task/preuve.jpg';
+    $ok = $this->postJson('/api/v1/sync/push', ['operations' => [$op]])->assertOk()->json('results.0');
+    expect($ok['status'])->toBe('success');
+    expect($task->fresh()->proof_photo_path)->toBe('field/task/preuve.jpg');
+});
+
+test('preuve AUCUNE : la tâche se valide d\'un clic (rétro-compatible)', function () {
+    $task = makeTask($this->farm->id, $this->employee->id); // proof_type par défaut = aucune
+    Sanctum::actingAs($this->user);
+
+    $ok = $this->postJson('/api/v1/sync/push', ['operations' => [completeOp($task->id)]])
+        ->assertOk()->json('results.0');
+    expect($ok['status'])->toBe('success');
+    expect($task->fresh()->status)->toBe('fait');
+});
+
 test('GET /tasks renvoie un récap « ma journée » (aujourd\'hui, retard, prioritaires, faites)', function () {
     // Aujourd'hui (dont une prioritaire), une en retard, une à venir.
     makeTask($this->farm->id, $this->employee->id); // aujourd'hui, nettoyage

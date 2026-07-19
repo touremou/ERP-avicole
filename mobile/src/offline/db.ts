@@ -62,7 +62,7 @@ export interface MetaEntry {
 export interface LocalPhoto {
   uuid: string
   blob: Blob
-  context: 'incident' | 'expense' | 'daily_check' | 'reception' | 'cleaning'
+  context: 'incident' | 'expense' | 'daily_check' | 'reception' | 'cleaning' | 'task'
   /** Chemin serveur une fois téléversée (le payload de l'op est alors mis à jour). */
   uploaded_path: string | null
   created_at: string

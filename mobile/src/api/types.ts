@@ -222,6 +222,10 @@ export interface RefTask {
   batch_id: number | null
   building_id: number | null
   plot_id: number | null
+  // Preuve d'exécution exigée à la complétion (miroir serveur).
+  proof_type?: 'aucune' | 'photo' | 'valeur'
+  proof_label?: string | null
+  proof_unit?: string | null
 }
 
 export interface TaskSummary {

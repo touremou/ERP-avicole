@@ -1078,9 +1078,11 @@ class SyncService
     private function taskComplete(array $payload): array
     {
         $v = Validator::make($payload, [
-            'uuid'    => 'required|uuid',
-            'task_id' => ['required', 'integer', $this->farmScopedExists('task_assignments')],
-            'notes'   => 'nullable|string|max:500',
+            'uuid'        => 'required|uuid',
+            'task_id'     => ['required', 'integer', $this->farmScopedExists('task_assignments')],
+            'notes'       => 'nullable|string|max:500',
+            'photo_path'  => 'nullable|string|max:255', // substitué par le pipeline photo
+            'proof_value' => 'nullable|numeric|min:0',
         ]);
 
         if ($v->fails()) {
@@ -1103,14 +1105,27 @@ class SyncService
             return ['status' => 'already_synced'];
         }
 
+        // Preuve d'exécution — VÉRIFICATION AUTORITAIRE serveur : une preuve
+        // manquante est un refus NON REJOUABLE (conflict → bac « À corriger »),
+        // pas un no-op. Empêche de clôturer sans la photo/valeur exigée, même si
+        // un client altéré tentait de passer outre.
+        if ($task->proof_type === 'photo' && empty($data['photo_path'])) {
+            return ['status' => 'conflict', 'message' => __('Cette tâche exige une photo pour être validée.')];
+        }
+        if ($task->proof_type === 'valeur' && ($data['proof_value'] ?? null) === null) {
+            return ['status' => 'conflict', 'message' => __('Cette tâche exige une valeur chiffrée pour être validée.')];
+        }
+
         $task->update([
             'status'           => 'fait',
             'completed_at'     => now(),
             'completed_by'     => Auth::id(),
             'completion_notes' => $data['notes'] ?? null,
+            'proof_photo_path' => $data['photo_path'] ?? null,
+            'proof_value'      => $data['proof_value'] ?? null,
         ]);
 
-        Log::info("Sync: tâche #{$task->id} terminée (uuid: {$data['uuid']}).");
+        Log::info("Sync: tâche #{$task->id} terminée (uuid: {$data['uuid']}, preuve: {$task->proof_type}).");
 
         return ['status' => 'success', 'server_id' => $task->id];
     }

@@ -16,6 +16,7 @@ import { t } from '../../i18n'
 import { FilterChips } from '../../ui/FilterChips'
 import { ExportButton } from '../../ui/ExportButton'
 import { toCsv, exportOrShare, dateStamp } from '../../ui/exportShare'
+import { TaskProofModal } from './TaskProofModal'
 import type { RefTask, TaskSummary } from '../../api/types'
 
 const CATEGORY_ICON: Record<string, string> = {
@@ -51,6 +52,7 @@ export function TachesScreen() {
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [priority, setPriority] = useState('normale')
   const [saving, setSaving] = useState(false)
+  const [proofTask, setProofTask] = useState<RefTask | null>(null)
 
   useEffect(() => {
     const load = async () => {
@@ -122,6 +124,11 @@ export function TachesScreen() {
     // Une tâche pas encore synchronisée (id temporaire négatif) n'a pas d'id
     // serveur : on ne peut pas la clôturer tant qu'elle n'est pas remontée.
     if (task.id < 0) return
+    // Preuve d'exécution requise → passer par la modale (photo/valeur).
+    if (task.proof_type === 'photo' || task.proof_type === 'valeur') {
+      setProofTask(task)
+      return
+    }
     await enqueue('task.complete', { task_id: task.id }, t('Tâche : :title', { title: task.title }))
     await db.tasks.delete(task.id)
     window.dispatchEvent(new CustomEvent('tasks:updated'))
@@ -238,6 +245,8 @@ export function TachesScreen() {
                   <span className="task-meta">
                     {task.scheduled_time ? task.scheduled_time.slice(0, 5) + ' · ' : ''}
                     {t(task.category)}
+                    {task.proof_type === 'photo' ? ' · 📸 ' + t('photo requise') : ''}
+                    {task.proof_type === 'valeur' ? ' · 🔢 ' + t('valeur requise') : ''}
                     {task.id < 0 ? ' · ' + t('à synchroniser') : ''}
                   </span>
                 </div>
@@ -248,6 +257,14 @@ export function TachesScreen() {
             ))}
           </section>
         ))
+      )}
+
+      {proofTask && (
+        <TaskProofModal
+          task={proofTask}
+          onDone={() => setProofTask(null)}
+          onCancel={() => setProofTask(null)}
+        />
       )}
     </div>
   )

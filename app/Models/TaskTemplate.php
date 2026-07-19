@@ -12,11 +12,15 @@ class TaskTemplate extends Model
 {
     use BelongsToFarm;
 
+    /** Types de preuve d'exécution exigée à la complétion d'une tâche. */
+    public const PROOF_TYPES = ['aucune', 'photo', 'valeur'];
+
     protected $fillable = [
         'farm_id', 'name', 'category', 'description', 'icon', 'color',
         'frequency', 'days_of_week', 'day_of_month', 'scheduled_time',
         'duration_minutes', 'target_type', 'per_building', 'batch_types',
         'plot_types', 'priority', 'is_active',
+        'proof_type', 'proof_label', 'proof_unit',
     ];
 
     protected $casts = [
