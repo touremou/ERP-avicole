@@ -14,7 +14,7 @@ class Transformation extends Model
         'batch_number', 'product_source', 'transformation_type',
         'input_kg', 'output_kg', 'yield_percent',
         'production_date', 'expiry_date',
-        'operator_id', 'production_cost', 'status', 'notes',
+        'operator_id', 'production_cost', 'source_unit_cost', 'status', 'notes',
     ];
 
     protected $casts = [
@@ -24,6 +24,7 @@ class Transformation extends Model
         'production_date' => 'date',
         'expiry_date'     => 'date',
         'production_cost' => 'decimal:2',
+        'source_unit_cost' => 'decimal:2',
     ];
 
     public function operator(): BelongsTo { return $this->belongsTo(User::class, 'operator_id'); }

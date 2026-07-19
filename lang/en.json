@@ -3264,5 +3264,9 @@
     "Co-produit": "Co-product",
     "Sous-produit": "By-product",
     "attendu": "expected",
-    "Nomenclature std": "Std nomenclature"
+    "Nomenclature std": "Std nomenclature",
+    "Coût de revient par produit de découpe": "Cost price per cut product",
+    "Coût/kg": "Cost/kg",
+    "Marge/kg": "Margin/kg",
+    "{1}:n transformation enfant créée (pesée de sortie au dashboard).|[2,*]:n transformations enfants créées (pesée de sortie au dashboard).": "{1}:n child transformation created (output weighing on the dashboard).|[2,*]:n child transformations created (output weighing on the dashboard)."
 }

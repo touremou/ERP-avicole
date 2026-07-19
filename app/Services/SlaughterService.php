@@ -188,33 +188,31 @@ class SlaughterService
             // RG-07 : un ordre à façon n'a RIEN mis en stock à l'abattage —
             // sa découpe ne touche donc pas le stock de l'entreprise (les
             // morceaux repartent avec le client, tracés en CutProduct).
-            // Coût de revient/kg propagé de la carcasse aux découpes. Le coût
-            // matière consommé (coût/kg carcasse × entrée) se répartit sur la
-            // SORTIE réelle → la perte de découpe renchérit le kg des morceaux.
-            $cutCostPerKg = 0.0;
+            $engagedCost = 0.0; // coût matière total engagé (carcasse consommée)
             if (! $order->isFacon()) {
                 $sourceProductName = $this->carcassProductName($order->batch);
                 $carcass = FinishedProduct::where('product_name', $sourceProductName)
                     ->where('product_type', 'entier_frais')->first();
-                $carcassCostPerKg = (float) ($carcass?->unit_cost ?? 0);
-                // Les DÉCHETS déclarés (balance de masse) ne portent aucun coût :
-                // le coût matière se répartit sur les seuls kg valorisables.
-                $totalOutputKg = array_sum(array_map(
-                    fn ($p) => ($p['destination'] ?? 'stock_frais') === 'dechet' ? 0.0 : (float) $p['kg'],
-                    $data['products']
-                ));
-                $cutCostPerKg = ($totalOutputKg > 0 && $carcassCostPerKg > 0)
-                    ? round(($carcassCostPerKg * (float) $data['total_input_kg']) / $totalOutputKg, 2)
-                    : 0.0;
+                $engagedCost = round((float) ($carcass?->unit_cost ?? 0) * (float) $data['total_input_kg'], 2);
 
                 $this->removeFromFinishedStock($sourceProductName, 'entier_frais', (float) $data['total_input_kg']);
             }
 
+            // ── RÉPARTITION DES COÛTS CONJOINTS ──
+            // Coût /kg attribué à chaque ligne : par VALEUR MARCHANDE relative
+            // quand chaque ligne valorisable a un coefficient (recette, repli
+            // prix de vente saisi) — 1 kg de filet absorbe alors plus de coût
+            // qu'1 kg de pattes. Sinon, repli au prorata du kg (comportement
+            // historique). Les DÉCHETS déclarés ne portent jamais de coût.
+            $lineCosts = $this->allocateJointCosts($order, $data['products'], $engagedCost);
+
             // Enregistrer chaque produit de découpe
-            foreach ($data['products'] as $product) {
-                $calibre   = $product['calibre'] ?? null;
-                $packaging = $product['packaging'] ?? 'vrac';
-                $packCount = isset($product['pack_count']) ? (int) $product['pack_count'] : null;
+            foreach ($data['products'] as $i => $product) {
+                $calibre     = $product['calibre'] ?? null;
+                $packaging   = $product['packaging'] ?? 'vrac';
+                $packCount   = isset($product['pack_count']) ? (int) $product['pack_count'] : null;
+                $destination = $product['destination'] ?? 'stock_frais';
+                $lineCost    = $lineCosts[$i]; // coût /kg attribué (0 pour un déchet)
 
                 CutProduct::create([
                     'cutting_session_id' => $session->id,
@@ -223,7 +221,8 @@ class SlaughterService
                     'quantity_kg'        => $product['kg'],
                     'quantity_pieces'    => $product['pieces'] ?? null,
                     'unit_price'         => $product['price'] ?? null,
-                    'destination'        => $product['destination'] ?? 'stock_frais',
+                    'unit_cost'          => $lineCost > 0 ? $lineCost : null,
+                    'destination'        => $destination,
                     'calibre'            => $calibre,
                     'packaging'          => $packaging,
                     'pack_count'         => $packCount,
@@ -232,8 +231,8 @@ class SlaughterService
                 // Entrer en stock produits finis selon destination.
                 // RG-07 : jamais pour la façon (propriété du client).
                 // « dechet » : pesé (balance de masse) mais jamais mis en stock.
-                if (! $order->isFacon() && ! in_array($product['destination'] ?? 'stock_frais', ['transformation', 'dechet'], true)) {
-                    $storage = match ($product['destination'] ?? 'stock_frais') {
+                if (! $order->isFacon() && ! in_array($destination, ['transformation', 'dechet'], true)) {
+                    $storage = match ($destination) {
                         'stock_congele' => 'congele',
                         'vente_directe' => 'vitrine',
                         default         => 'frais',
@@ -251,8 +250,33 @@ class SlaughterService
                         (float) $product['kg'],
                         (int) ($product['pieces'] ?? 0),
                         $storage,
-                        $cutCostPerKg
+                        $lineCost
                     );
+                }
+
+                // ── ROUTAGE POST-DÉCOUPE ──
+                // Destination « transformation » → ordre de transformation ENFANT
+                // créé « en cours », lié à l'ordre d'abattage (cascade) : la pesée
+                // de sortie se saisit au dashboard (fin de fumage/marinade). Le
+                // coût matière est FIGÉ (source_unit_cost) car ces kg ne passent
+                // jamais par le stock produits finis. Pas pour la façon (RG-07 :
+                // la matière du client ne devient pas un en-cours de l'entreprise).
+                if (! $order->isFacon() && $destination === 'transformation' && (float) $product['kg'] > 0) {
+                    Transformation::create([
+                        'batch_number'        => Transformation::generateBatchNumber(),
+                        'slaughter_order_id'  => $order->id,
+                        'product_source'      => $product['name'],
+                        'transformation_type' => 'autre', // précisé à la pesée de sortie
+                        'input_kg'            => (float) $product['kg'],
+                        'output_kg'           => 0,
+                        'yield_percent'       => 0,
+                        'production_date'     => $data['session_date'] ?? now()->toDateString(),
+                        'operator_id'         => Auth::id(),
+                        'production_cost'     => 0,
+                        'source_unit_cost'    => $lineCost > 0 ? $lineCost : null,
+                        'status'              => 'en_cours',
+                        'notes'               => "Routage découpe — ordre {$order->order_number}",
+                    ]);
                 }
             }
 
@@ -349,6 +373,9 @@ class SlaughterService
                 'expiry_date'         => $data['expiry_date'] ?? null,
                 'operator_id'         => Auth::id(),
                 'production_cost'     => $data['cost'] ?? 0,
+                // Coût matière figé à l'engagement (le CMUP du stock source peut
+                // bouger avant la pesée de sortie d'une transformation en cours).
+                'source_unit_cost'    => $sourceUnitCost > 0 ? $sourceUnitCost : null,
                 'status'              => $outputKg > 0 ? 'termine' : 'en_cours',
                 'notes'               => $data['notes'] ?? null,
             ]);
@@ -402,10 +429,14 @@ class SlaughterService
                 'status'        => 'termine',
             ]);
 
-            // Coût de revient (2 phases) : coût courant du produit source
-            // (CMUP, relu par le nom) × entrée + coût de production, / sortie.
-            $sourceUnitCost = (float) (FinishedProduct::where('product_name', $transformation->product_source)
-                ->value('unit_cost') ?? 0);
+            // Coût de revient (2 phases) : coût matière FIGÉ à la création
+            // (source_unit_cost — cas des transformations routées depuis la
+            // découpe, dont la matière n'est jamais passée par le stock),
+            // repli sur le coût courant du produit source (CMUP, relu par nom).
+            $sourceUnitCost = $transformation->source_unit_cost !== null
+                ? (float) $transformation->source_unit_cost
+                : (float) (FinishedProduct::where('product_name', $transformation->product_source)
+                    ->value('unit_cost') ?? 0);
             $transformedCostPerKg = $outputKg > 0
                 ? round((($sourceUnitCost * $inputKg) + (float) $transformation->production_cost) / $outputKg, 2)
                 : 0.0;
@@ -438,6 +469,71 @@ class SlaughterService
      *    (prix d'achat unitaire × quantité, repli sur total/effectif initial).
      * Ne compte QUE l'acquisition — l'aliment reste porté par le P&L des lots.
      */
+    /**
+     * Répartition des coûts conjoints d'une découpe : coût /kg attribué à
+     * chaque ligne (indexé comme $products).
+     *
+     * Méthode par VALEUR MARCHANDE relative (comptabilité des coûts conjoints) :
+     *   coût_ligne_i /kg = coût_engagé × coef_i / Σ(kg_j × coef_j)
+     * où coef_i = coefficient de valeur de la recette (prix de référence /kg),
+     * repli sur le prix de vente saisi. Appliquée UNIQUEMENT si chaque ligne
+     * valorisable (kg > 0, hors déchet) a un coefficient — sinon repli au
+     * prorata du kg (comportement historique, prévisible).
+     * Les déchets déclarés ne portent jamais de coût (valeur nulle).
+     *
+     * @param  array<int, array<string, mixed>>  $products
+     * @return array<int, float> coût /kg par index de ligne
+     */
+    private function allocateJointCosts(SlaughterOrder $order, array $products, float $engagedCost): array
+    {
+        $isWaste = fn (array $p): bool => ($p['destination'] ?? 'stock_frais') === 'dechet';
+
+        if ($engagedCost <= 0) {
+            return array_fill(0, count($products), 0.0);
+        }
+
+        // Coefficients de valeur de la recette active (par code de morceau).
+        $recipeCoefs = [];
+        foreach (ButcheryNomenclature::effectiveCutsForSpecies($order->batch?->species) as $cut) {
+            if (($cut['value_coefficient'] ?? null) !== null && $cut['value_coefficient'] > 0) {
+                $recipeCoefs[$cut['code']] = (float) $cut['value_coefficient'];
+            }
+        }
+
+        // Valeur relative de chaque ligne valorisable ; null dès qu'une ligne
+        // n'a ni coefficient recette ni prix saisi → mode valeur inapplicable.
+        $totalValue = 0.0;
+        $coefs = [];
+        $valueMode = true;
+        foreach ($products as $i => $p) {
+            $kg = (float) ($p['kg'] ?? 0);
+            if ($isWaste($p) || $kg <= 0) {
+                $coefs[$i] = 0.0;
+                continue;
+            }
+            $coef = $recipeCoefs[$p['type']] ?? ((float) ($p['price'] ?? 0) > 0 ? (float) $p['price'] : null);
+            if ($coef === null) {
+                $valueMode = false;
+                break;
+            }
+            $coefs[$i] = $coef;
+            $totalValue += $kg * $coef;
+        }
+
+        if ($valueMode && $totalValue > 0) {
+            return array_map(
+                fn ($i) => round($engagedCost * $coefs[$i] / $totalValue, 2),
+                array_keys($products)
+            );
+        }
+
+        // Repli : prorata du kg sur les seuls kg valorisables.
+        $valuableKg = array_sum(array_map(fn ($p) => $isWaste($p) ? 0.0 : (float) ($p['kg'] ?? 0), $products));
+        $perKg = $valuableKg > 0 ? round($engagedCost / $valuableKg, 2) : 0.0;
+
+        return array_map(fn ($p) => $isWaste($p) ? 0.0 : $perKg, $products);
+    }
+
     private function materialCost(SlaughterOrder $order, ?Batch $batch, int $actualQty): float
     {
         $reception = $order->reception;
