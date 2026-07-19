@@ -499,6 +499,51 @@ class SlaughterController extends Controller
     }
 
     // ──────────────────────────────────────────────
+    // CLÔTURE DE CYCLE (checklist HACCP / déchets)
+    // ──────────────────────────────────────────────
+
+    public function showClosureForm(SlaughterOrder $order)
+    {
+        if (Gate::denies('abattoir.M')) return back()->with('error', 'Action non autorisée.');
+
+        if ($order->status !== 'termine') {
+            return redirect()->route('slaughter.dashboard')
+                ->with('error', "L'ordre {$order->order_number} doit être exécuté (terminé) avant sa clôture.");
+        }
+
+        $order->load('batch.species', 'reception');
+        $autoChecks = $order->closureAutoChecks();
+
+        return view('slaughter.closure', compact('order', 'autoChecks'));
+    }
+
+    public function storeClosure(Request $request, SlaughterOrder $order)
+    {
+        if (Gate::denies('abattoir.M')) return back()->with('error', 'Action non autorisée.');
+
+        $data = $request->validate([
+            'waste_evacuated'   => 'accepted',
+            'zone_cleaned'      => 'accepted',
+            'marche_avant'      => 'accepted',
+            'waste_destination' => 'nullable|string|max:255',
+            'notes'             => 'nullable|string|max:1000',
+        ], [
+            'waste_evacuated.accepted' => __('Confirmez l\'évacuation des déchets pour clôturer.'),
+            'zone_cleaned.accepted'    => __('Confirmez le nettoyage/désinfection pour clôturer.'),
+            'marche_avant.accepted'    => __('Confirmez le respect de la marche en avant pour clôturer.'),
+        ]);
+
+        try {
+            app(\App\Actions\Slaughter\CloseSlaughterCycle::class)->execute($order, $data);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return back()->withErrors($e->errors())->withInput();
+        }
+
+        return redirect()->route('slaughter.orders.traceability', $order)
+            ->with('success', "Cycle {$order->order_number} clôturé — checklist HACCP/déchets enregistrée.");
+    }
+
+    // ──────────────────────────────────────────────
     // TRANSFORMATION (fumé, grillé)
     // ──────────────────────────────────────────────
 

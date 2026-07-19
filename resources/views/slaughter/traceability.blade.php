@@ -197,6 +197,31 @@
             </div>
             @endif
             @endcan
+
+            {{-- 6. CLÔTURE DE CYCLE (checklist HACCP / déchets) --}}
+            <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm">
+                <p class="text-[10px] font-black uppercase tracking-widest text-rose-600 mb-3"><i class="fa-solid fa-clipboard-check mr-1"></i> {{ __("6. Clôture de cycle") }}</p>
+                @if($order->isClosed())
+                    <p class="text-xs m-0">
+                        <span class="text-[8px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600">✅ {{ __("Clos") }}</span>
+                        {{ __("le") }} <span class="font-black">{{ $order->closed_at->format('d/m/Y H:i') }}</span> {{ __("par") }} {{ $order->closedBy?->name ?? '—' }}
+                    </p>
+                    <p class="text-[10px] text-slate-500 m-0 mt-1">
+                        🗑️ {{ __("Déchets évacués") }}@if(data_get($order->closure_checklist, 'waste_destination')) → {{ data_get($order->closure_checklist, 'waste_destination') }}@endif ·
+                        🧽 {{ __("Zones nettoyées") }} · ➡️ {{ __("Marche en avant respectée") }}
+                    </p>
+                    @if(data_get($order->closure_checklist, 'notes'))
+                        <p class="text-[10px] text-slate-400 m-0 mt-1">{{ data_get($order->closure_checklist, 'notes') }}</p>
+                    @endif
+                @elseif($order->status === 'termine')
+                    <p class="text-[10px] text-amber-600 m-0"><i class="fa-solid fa-triangle-exclamation mr-1"></i> {{ __("Cycle non clôturé — la checklist HACCP/déchets de fin de cycle reste à confirmer.") }}</p>
+                    @can('abattoir.M')
+                    <a href="{{ route('slaughter.closure.form', $order) }}" class="inline-block mt-2 bg-emerald-600 text-white px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest no-underline hover:bg-emerald-700"><i class="fa-solid fa-clipboard-check mr-1"></i> {{ __("Clôturer le cycle") }}</a>
+                    @endcan
+                @else
+                    <p class="text-[10px] text-slate-400 m-0">{{ __("Clôture possible après l'exécution de l'abattage.") }}</p>
+                @endif
+            </div>
         </div>
     </div>
 </x-app-layout>

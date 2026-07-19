@@ -78,6 +78,7 @@ class SyncService
             'harvest.create'          => 'harvestCreate',
             'crop_input.create'       => 'cropInputCreate',
             'slaughter.execute'       => 'slaughterExecute',
+            'slaughter.close'         => 'slaughterClose',
             'mill_production.complete' => 'millProductionComplete',
             // Cœur sanitaire HACCP (spec Transformation — E1/E3/E4/E7).
             'slaughter_reception.create' => 'slaughterReceptionCreate',
@@ -813,6 +814,50 @@ class SyncService
 
             return ['status' => 'success', 'server_id' => $result->id];
         });
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    //  CLÔTURE DE CYCLE (abattoir) — checklist HACCP / déchets de fin de
+    //  cycle. Exige les confirmations obligatoires ; idempotent (déjà clos).
+    // ─────────────────────────────────────────────────────────────
+    private function slaughterClose(array $payload): array
+    {
+        if (Gate::denies('abattoir.M')) {
+            return $this->denied();
+        }
+
+        $v = Validator::make($payload, [
+            'uuid'              => 'required|uuid',
+            'slaughter_order_id' => ['required', 'integer', $this->farmScopedExists('slaughter_orders')],
+            'waste_evacuated'   => 'accepted',
+            'zone_cleaned'      => 'accepted',
+            'marche_avant'      => 'accepted',
+            'waste_destination' => 'nullable|string|max:255',
+            'notes'             => 'nullable|string|max:1000',
+        ]);
+
+        if ($v->fails()) {
+            return $this->invalid($v->errors()->toArray());
+        }
+
+        $data = $v->validated();
+        $order = SlaughterOrder::find($data['slaughter_order_id']);
+        if (! $order) {
+            return ['status' => 'conflict', 'message' => __("Ordre d'abattage introuvable dans cette ferme.")];
+        }
+        if ($order->isClosed()) {
+            return ['status' => 'already_synced'];
+        }
+
+        try {
+            app(\App\Actions\Slaughter\CloseSlaughterCycle::class)->execute($order, $data);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return ['status' => 'conflict', 'message' => $e->getMessage()];
+        }
+
+        Log::info("Sync: cycle abattage clôturé (uuid: {$data['uuid']}, ordre: {$order->order_number}).");
+
+        return ['status' => 'success', 'server_id' => $order->id];
     }
 
     // ─────────────────────────────────────────────────────────────

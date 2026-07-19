@@ -140,6 +140,15 @@
         @endif
     @endif
 
+    <h2>6. Clôture de cycle (HACCP / déchets)</h2>
+    @if($order->isClosed())
+        <p style="margin:0"><strong>Clos</strong> le {{ $order->closed_at->format('d/m/Y H:i') }} par {{ $order->closedBy?->name ?? '—' }}.<br>
+        Déchets évacués @if(data_get($order->closure_checklist, 'waste_destination')) → {{ data_get($order->closure_checklist, 'waste_destination') }} @endif · zones nettoyées/désinfectées · marche en avant respectée.
+        @if(data_get($order->closure_checklist, 'notes'))<br><span class="muted">{{ data_get($order->closure_checklist, 'notes') }}</span>@endif</p>
+    @else
+        <p style="margin:0" class="muted">Cycle non clôturé — checklist HACCP/déchets de fin de cycle à confirmer.</p>
+    @endif
+
     <div class="footer">Document généré par AviSmart — dossier de lot HACCP (horodatages relevé/synchronisation conservés). {{ $farm }} — {{ $generatedAt->format('d/m/Y H:i') }}</div>
 </body>
 </html>

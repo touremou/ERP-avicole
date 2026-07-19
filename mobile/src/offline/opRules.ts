@@ -168,6 +168,15 @@ const RULES: Partial<Record<OperationType, Validator>> = {
     if (live !== null && carc !== null && carc > live) e.push('Poids carcasse : ne peut pas dépasser le poids vif.')
     return e
   },
+  'slaughter.close': (p) => {
+    const e: string[] = []
+    reqId(p, 'slaughter_order_id', 'Ordre', e)
+    // Les 3 confirmations sont OBLIGATOIRES (miroir serveur : accepted).
+    if (p.waste_evacuated !== true) e.push('Confirmez l\'évacuation des déchets.')
+    if (p.zone_cleaned !== true) e.push('Confirmez le nettoyage/désinfection.')
+    if (p.marche_avant !== true) e.push('Confirmez le respect de la marche en avant.')
+    return e
+  },
   'water_refill.create': (p) => {
     const e: string[] = []
     reqId(p, 'water_source_id', 'Citerne', e)

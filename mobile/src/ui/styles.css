@@ -492,6 +492,9 @@ input:focus, textarea:focus, select:focus {
 .modal-card h3 { margin: 0 0 2px; }
 .modal-actions { display: flex; gap: 10px; margin-top: 16px; }
 .proof-hint { font-weight: 700; margin: 8px 0; }
+/* Ligne de checklist (clôture de cycle) : case + libellé, cible tactile large. */
+.chk-row { display: flex; align-items: flex-start; gap: 12px; padding: 12px 4px; font-weight: 600; cursor: pointer; }
+.chk-row input[type="checkbox"] { width: 24px; height: 24px; margin-top: 2px; flex: none; }
 .proof-photo { width: 100%; max-height: 42vh; object-fit: cover; border-radius: var(--radius); margin-bottom: 10px; }
 
 /* ── Login ── */

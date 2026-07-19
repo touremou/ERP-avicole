@@ -57,6 +57,7 @@ export type OperationType =
   | 'task.start'
   | 'task.release'
   | 'slaughter.execute'
+  | 'slaughter.close'
   | 'mill_production.complete'
   // Phase 3 — cœur sanitaire HACCP abattoir.
   | 'slaughter_reception.create'

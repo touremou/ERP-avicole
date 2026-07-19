@@ -868,6 +868,10 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/orders/{order}/cutting', 'showCuttingForm')->name('cutting.form')->middleware('can:C');
         Route::post('/orders/{order}/cutting', 'storeCutting')->name('cutting.store')->middleware('can:C');
 
+        // Clôture de cycle (checklist HACCP / déchets de fin de cycle)
+        Route::get('/orders/{order}/closure', 'showClosureForm')->name('closure.form')->middleware('can:M');
+        Route::post('/orders/{order}/closure', 'storeClosure')->name('closure.store')->middleware('can:M');
+
         // Transformation
         Route::get('/transform', 'showTransformForm')->name('transform.form')->middleware('can:C');
         Route::post('/transform', 'storeTransformation')->name('transform.store')->middleware('can:C');
