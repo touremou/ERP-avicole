@@ -40,6 +40,11 @@ class SlaughterService
             $liveWeight = (float) $data['total_live_weight_kg'];
             $carcassWeight = (float) $data['total_carcass_weight_kg'];
             $condemned = (int) ($data['condemned_count'] ?? 0);
+            // Gamme de sortie carcasse (PAC / effilé / brut) — repli sur le défaut.
+            $presentation = $data['presentation'] ?? ButcheryNomenclature::defaultPresentation();
+            if (! array_key_exists($presentation, ButcheryNomenclature::presentations())) {
+                $presentation = ButcheryNomenclature::defaultPresentation();
+            }
 
             // Lot source relu SOUS verrou : l'effectif a pu changer depuis la
             // création de l'ordre (mortalité, ventes) et une quarantaine a pu
@@ -82,6 +87,7 @@ class SlaughterService
                 'condemned_reason'     => $data['condemned_reason'] ?? null,
                 'avg_live_weight_kg'   => $avgLive,
                 'avg_carcass_weight_kg' => $avgCarcass,
+                'presentation'         => $presentation,
                 'execution_date'       => $data['execution_date'] ?? now()->toDateString(),
                 'inspector_notes'      => $data['inspector_notes'] ?? null,
             ]);
@@ -113,7 +119,10 @@ class SlaughterService
             //    RG-07 : JAMAIS pour un abattage à façon — les produits restent
             //    propriété du client et ne rejoignent pas le stock vendable.
             if (! $order->isFacon()) {
-                $productName = $this->carcassProductName($batch);
+                // Le nom de l'article reflète la GAMME choisie (PAC / effilé /
+                // brut). Le type de stock reste 'entier_frais' (carcasse) — la
+                // distinction commerciale vit dans le nom (« Poulet PAC »…).
+                $productName = ButcheryNomenclature::presentationProductName($presentation, $batch?->species);
                 $this->addToFinishedStock($productName, 'entier_frais', $carcassWeight, $effectiveQty, 'frais');
             }
 
@@ -365,9 +374,10 @@ class SlaughterService
      */
     private function carcassProductName(?Batch $batch): string
     {
-        $speciesName = $batch?->species?->name_fr ?? 'Poulet';
-
-        return "{$speciesName} Entier Frais";
+        // Source de la découpe = carcasse « brute » (à découper). On délègue à
+        // la nomenclature pour rester cohérent avec le nom d'article produit à
+        // l'exécution d'un ordre brut.
+        return ButcheryNomenclature::presentationProductName('brut', $batch?->species);
     }
 
     /**

@@ -17,7 +17,7 @@ class SlaughterResult extends Model
     use BelongsToFarm;
     protected $fillable = [
         'farm_id',
-        'slaughter_order_id', 'total_carcass_weight_kg', 'carcass_yield_percent',
+        'slaughter_order_id', 'total_carcass_weight_kg', 'carcass_yield_percent', 'presentation',
         'condemned_count', 'condemned_reason',
         'avg_live_weight_kg', 'avg_carcass_weight_kg',
         'execution_date', 'inspector_notes',

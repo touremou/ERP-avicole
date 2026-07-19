@@ -103,4 +103,34 @@ return [
 
     // Famille de repli si l'espèce n'est pas renseignée (rétrocompat poulet).
     'default_family' => 'volaille',
+
+    /*
+    | Présentations de la carcasse choisies À L'EXÉCUTION (gammes de sortie).
+    | Chacune nomme l'article de stock produit et ajuste la bande de rendement
+    | attendue (yield_delta, en points, ajouté à la bande carcasse de l'espèce) :
+    |  - PAC / Brut : carcasse vidée standard → bande de base ;
+    |  - Effilé : têtes + pattes CONSERVÉES → plus de poids → rendement plus haut.
+    | `to_cut` = alimente la découpe (RG matière) ; sinon = article vendable direct.
+    */
+    'presentations' => [
+        'brut' => [
+            'label'       => 'Brut — carcasse à découper',
+            'name'        => 'Entier Frais',   // rétrocompat : nom historique
+            'yield_delta' => 0,
+            'to_cut'      => true,
+        ],
+        'pac' => [
+            'label'       => 'PAC — prêt-à-cuire (vidé, emballé)',
+            'name'        => 'PAC',
+            'yield_delta' => 0,
+            'to_cut'      => false,
+        ],
+        'effile' => [
+            'label'       => 'Effilé — têtes/pattes conservées',
+            'name'        => 'Effilé',
+            'yield_delta' => 12,
+            'to_cut'      => false,
+        ],
+    ],
+    'default_presentation' => 'brut',
 ];

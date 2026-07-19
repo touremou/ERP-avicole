@@ -97,4 +97,51 @@ class ButcheryNomenclature
             'alert_min'  => (int) $bands['alert_min'],
         ];
     }
+
+    /** Présentations disponibles (gammes de sortie carcasse), code => config. */
+    public static function presentations(): array
+    {
+        return config('butchery.presentations', []);
+    }
+
+    /** Code de présentation par défaut (repli si non renseigné). */
+    public static function defaultPresentation(): string
+    {
+        return (string) config('butchery.default_presentation', 'brut');
+    }
+
+    /** Configuration d'une présentation (repli sur le défaut si code inconnu). */
+    public static function presentation(?string $code): array
+    {
+        $all = static::presentations();
+
+        return $all[$code] ?? $all[static::defaultPresentation()] ?? [
+            'label' => 'Brut', 'name' => 'Entier Frais', 'yield_delta' => 0, 'to_cut' => true,
+        ];
+    }
+
+    /** Nom d'article de stock pour une présentation : « Poulet PAC », etc. */
+    public static function presentationProductName(?string $code, ?Species $species): string
+    {
+        $speciesName = $species?->name_fr ?? 'Poulet';
+
+        return trim("{$speciesName} " . static::presentation($code)['name']);
+    }
+
+    /**
+     * Bande de rendement ATTENDUE pour une présentation = bande carcasse de
+     * l'espèce décalée du yield_delta (l'effilé garde tête/pattes → rendement
+     * plus haut). Sert à l'alerte d'écart à l'exécution.
+     */
+    public static function presentationYieldBand(?string $code, ?Species $species): array
+    {
+        $base  = static::carcassYieldForSpecies($species);
+        $delta = (int) (static::presentation($code)['yield_delta'] ?? 0);
+
+        return [
+            'target_min' => $base['target_min'] + $delta,
+            'target_max' => min(99, $base['target_max'] + $delta),
+            'alert_min'  => $base['alert_min'] + $delta,
+        ];
+    }
 }

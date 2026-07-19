@@ -156,6 +156,46 @@ test('rejeu de l\'exécution (double-clic) : un seul décrément, une seule carc
     expect((float) $carcass->current_quantity_kg)->toEqual(90.0); // pas 180
 });
 
+// ─── GAMMES DE SORTIE (PRÉSENTATION À L'EXÉCUTION) ───
+
+test('la gamme choisie nomme l\'article de stock et est enregistrée (PAC / effilé / brut)', function () {
+    $service = app(SlaughterService::class);
+    $this->actingAs($this->managerUser);
+    // 20 sujets par ordre → 3 × 20 = 60 ≤ 100 (effectif du lot).
+    $payload = array_merge($this->executePayload, ['actual_quantity' => 20]);
+
+    // PAC
+    $result = $service->executeSlaughter(($this->makeOrder)(20), array_merge($payload, ['presentation' => 'pac']));
+    expect($result->presentation)->toBe('pac');
+    expect(FinishedProduct::where('product_name', 'like', '%PAC%')->exists())->toBeTrue();
+
+    // Effilé
+    $service->executeSlaughter(($this->makeOrder)(20), array_merge($payload, ['presentation' => 'effile']));
+    expect(FinishedProduct::where('product_name', 'like', '%Effilé%')->exists())->toBeTrue();
+
+    // Brut (défaut) → nom historique « Entier Frais »
+    $r3 = $service->executeSlaughter(($this->makeOrder)(20), $payload);
+    expect($r3->presentation)->toBe('brut');
+    expect(FinishedProduct::where('product_name', 'like', '%Entier Frais%')->exists())->toBeTrue();
+});
+
+test('la bande de rendement de l\'effilé est plus haute que celle du brut (têtes/pattes conservées)', function () {
+    $brut   = \App\Services\ButcheryNomenclature::presentationYieldBand('brut', null);
+    $effile = \App\Services\ButcheryNomenclature::presentationYieldBand('effile', null);
+
+    expect($effile['target_min'])->toBeGreaterThan($brut['target_min'])
+        ->and($effile['alert_min'])->toBeGreaterThan($brut['alert_min']);
+});
+
+test('le formulaire web accepte la présentation et le sync la valide', function () {
+    // Web : soumission avec présentation PAC.
+    $order = ($this->makeOrder)();
+    $this->actingAs($this->managerUser)
+        ->post(route('slaughter.execute.store', $order), array_merge($this->executePayload, ['presentation' => 'pac']))
+        ->assertRedirect();
+    expect($order->fresh()->result->presentation)->toBe('pac');
+});
+
 // ─── CONSERVATION DE MATIÈRE (DÉCOUPE) ───
 
 test('la somme des découpes ne peut pas dépasser la carcasse produite', function () {

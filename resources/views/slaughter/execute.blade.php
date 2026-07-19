@@ -26,6 +26,20 @@
                     @csrf
                     <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm mb-6">
                         <h3 class="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-6 flex items-center gap-2"><i class="fa-solid fa-scale-balanced text-rose-500"></i> {{ __("Pesées & Résultats") }}</h3>
+
+                        {{-- GAMME DE SORTIE : détermine l'article produit et la plage de rendement attendue --}}
+                        <div class="mb-6">
+                            <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2 block mb-2">{{ __("Gamme de sortie carcasse") }} *</label>
+                            <div class="grid grid-cols-3 gap-3">
+                                @foreach($presentations as $code => $cfg)
+                                    <label class="cursor-pointer">
+                                        <input type="radio" name="presentation" value="{{ $code }}" x-model="presentation" @checked($code === old('presentation', $defaultPresentation)) class="peer sr-only">
+                                        <div class="p-3 rounded-2xl bg-slate-50 text-center text-[10px] font-black uppercase peer-checked:bg-rose-500 peer-checked:text-white transition-all">{{ __($cfg['label']) }}</div>
+                                    </label>
+                                @endforeach
+                            </div>
+                        </div>
+
                         <div class="grid grid-cols-2 gap-6 mb-6">
                             <div class="space-y-2">
                                 <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Sujets abattus") }} *</label>
@@ -54,7 +68,7 @@
                                 <p class="text-[8px] font-black text-slate-400 uppercase">{{ __("Rendement carcasse") }}</p>
                                 {{-- ⚙️ PARAMÉTRAGE DYNAMIQUE (via Alpine) --}}
                                 <p class="text-xl font-black" :class="yieldPercent >= yieldTargetMin ? 'text-emerald-600' : (yieldPercent >= yieldAlertMin ? 'text-amber-600' : 'text-red-600')" x-text="yieldPercent + '%'"></p>
-                                <p class="text-[8px] text-slate-400">{{ __("norme") }} {{ $order->batch->species->name_fr ?? __('Poulet') }} : {{ $yield['target_min'] }}-{{ $yield['target_max'] }}%</p>
+                                <p class="text-[8px] text-slate-400">{{ __("norme") }} {{ $order->batch->species->name_fr ?? __('Poulet') }} : <span x-text="yieldTargetMin + '-' + yieldTargetMax + '%'"></span></p>
                             </div>
                             <div class="bg-slate-50 p-4 rounded-2xl text-center">
                                 <p class="text-[8px] font-black text-slate-400 uppercase">{{ __("Poids moyen vif") }}</p>
@@ -118,17 +132,20 @@
 
     <script>
     function slaughterForm() {
-        // ⚙️ BANDES DE RENDEMENT CARCASSE PROPRES À L'ESPÈCE (config/butchery.php)
-        const yieldTargetMin = {{ $yield['target_min'] }};
-        const yieldAlertMin = {{ $yield['alert_min'] }};
+        // ⚙️ BANDES DE RENDEMENT PAR GAMME (espèce + présentation, config/butchery.php)
+        const bands = @js($presentationBands);
 
         return {
-            actualQty: {{ $order->planned_quantity }}, 
-            liveWeight: 0, 
+            actualQty: {{ $order->planned_quantity }},
+            liveWeight: 0,
             carcassWeight: 0,
-            
-            yieldTargetMin: yieldTargetMin,
-            yieldAlertMin: yieldAlertMin,
+            presentation: @js(old('presentation', $defaultPresentation)),
+
+            // Bande active = celle de la gamme choisie (réactive au changement).
+            get band() { return bands[this.presentation] || { target_min: 0, target_max: 100, alert_min: 0 }; },
+            get yieldTargetMin() { return this.band.target_min; },
+            get yieldTargetMax() { return this.band.target_max; },
+            get yieldAlertMin() { return this.band.alert_min; },
 
             get yieldPercent() { return this.liveWeight > 0 ? (this.carcassWeight / this.liveWeight * 100).toFixed(1) : '—'; },
             get avgLive() { return this.actualQty > 0 ? (this.liveWeight / this.actualQty).toFixed(3) : '—'; },
