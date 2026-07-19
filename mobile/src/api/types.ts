@@ -120,6 +120,7 @@ export interface PullResponse {
     formulas?: PullEntity<RefFormula>
     mill_productions?: PullEntity<RefMillProduction>
     water_sources?: PullEntity<RefWaterSource>
+    crop_species?: PullEntity<RefCropSpecies>
   }
 }
 
@@ -460,6 +461,14 @@ export interface RefWaterSource {
   current_level_liters: string | number | null
   current_level_percent: string | number | null
   is_active: boolean
+  updated_at: string
+}
+
+export interface RefCropSpecies {
+  id: number
+  name: string
+  local_name: string | null
+  type: string | null
   updated_at: string
 }
 

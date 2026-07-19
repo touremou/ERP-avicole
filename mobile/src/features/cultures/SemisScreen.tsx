@@ -11,7 +11,7 @@ import { db } from '../../offline/db'
 import { safeLoad } from '../../offline/safeLoad'
 import { enqueue } from '../../offline/sync'
 import { t } from '../../i18n'
-import type { RefPlot, RefCropCycle } from '../../api/types'
+import type { RefPlot, RefCropCycle, RefCropSpecies } from '../../api/types'
 
 const SEED_UNITS = ['kg', 'g', 'sac', 'plant', 'unité'] as const
 
@@ -19,6 +19,7 @@ export function SemisScreen() {
   const navigate = useNavigate()
   const [plots, setPlots] = useState<RefPlot[]>([])
   const [cycles, setCycles] = useState<RefCropCycle[]>([])
+  const [species, setSpecies] = useState<RefCropSpecies[]>([])
   const [plotId, setPlotId] = useState('')
   const [cropName, setCropName] = useState('')
   const [variety, setVariety] = useState('')
@@ -32,6 +33,7 @@ export function SemisScreen() {
     void safeLoad('semis', async () => {
       setPlots(await db.ref_plots.where('status').notEqual('inactive').toArray())
       setCycles(await db.ref_crop_cycles.toArray())
+      setSpecies(await db.ref_crop_species.orderBy('name').toArray())
     })
   }, [])
 
@@ -104,7 +106,14 @@ export function SemisScreen() {
       )}
 
       <label htmlFor="crop">{t('Culture semée')}</label>
-      <input id="crop" type="text" required maxLength={255} value={cropName} onChange={(e) => setCropName(e.target.value)} placeholder={t('Ex. Tomate, Maïs, Oignon')} />
+      {/* Liste du catalogue agronomique (miroir ref_crop_species) — parité avec
+          le datalist du formulaire web ; saisie libre restant possible. */}
+      <input id="crop" type="text" required maxLength={255} list="crop-species-list" value={cropName} onChange={(e) => setCropName(e.target.value)} placeholder={t('Ex. Tomate, Maïs, Oignon')} />
+      <datalist id="crop-species-list">
+        {species.map((s) => (
+          <option key={s.id} value={s.name}>{s.local_name ? `${s.name} (${s.local_name})` : s.name}</option>
+        ))}
+      </datalist>
 
       <label htmlFor="variety">{t('Variété — optionnel')}</label>
       <input id="variety" type="text" maxLength={255} value={variety} onChange={(e) => setVariety(e.target.value)} placeholder={t('Ex. Roma, Local')} />

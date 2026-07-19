@@ -22,6 +22,7 @@ import type {
   RefFormula,
   RefMillProduction,
   RefWaterSource,
+  RefCropSpecies,
   RefPlot,
   RefProduct,
   RefProductionType,
@@ -86,6 +87,7 @@ class ErpMobileDb extends Dexie {
   ref_formulas!: Table<RefFormula, number>
   ref_mill_productions!: Table<RefMillProduction, number>
   ref_water_sources!: Table<RefWaterSource, number>
+  ref_crop_species!: Table<RefCropSpecies, number>
   tasks!: Table<RefTask, number>
   meta!: Table<MetaEntry, string>
 
@@ -128,6 +130,10 @@ class ErpMobileDb extends Dexie {
     // v6 : citernes / sources d'eau (ravitaillement terrain hors-ligne).
     this.version(6).stores({
       ref_water_sources: 'id, type',
+    })
+    // v7 : catalogue des cultures (espèces) — liste au pointage de semis.
+    this.version(7).stores({
+      ref_crop_species: 'id, name',
     })
   }
 }

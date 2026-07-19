@@ -119,6 +119,14 @@ class SyncController extends Controller
             'columns' => ['id', 'batch_number', 'formula_id', 'quantity_produced', 'status',
                           'operator_id', 'supervisor_id', 'started_at', 'updated_at'],
         ],
+        // Catalogue agronomique des cultures (espèces) — référentiel GLOBAL
+        // (non cloisonné par ferme), pour proposer la liste des cultures au
+        // pointage de semis mobile (parité avec le datalist du formulaire web).
+        'crop_species' => [
+            'model'   => \App\Models\CropSpecies::class,
+            'gate'    => 'cultures.L',
+            'columns' => ['id', 'name', 'local_name', 'type', 'updated_at'],
+        ],
     ];
 
     public function push(Request $request, SyncService $sync): JsonResponse

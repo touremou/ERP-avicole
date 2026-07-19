@@ -547,3 +547,17 @@ test('pull expose les référentiels cultures/abattoir/provenderie (liste blanch
     expect($pulledOp['status'])->toBe('En cours')
         ->and($pulledOp)->not->toHaveKey('real_cost_per_kg'); // idem coût
 });
+
+test('pull expose le catalogue des cultures (crop_species) pour le pointage de semis mobile', function () {
+    $species = \App\Models\CropSpecies::create([
+        'type' => 'maraichage', 'name' => 'Tomate', 'local_name' => 'Pomme d\'amour', 'is_active' => true,
+    ]);
+    Sanctum::actingAs($this->manager);
+
+    $response = $this->getJson('/api/v1/sync/pull')->assertOk();
+
+    $pulled = collect($response->json('entities.crop_species.upserts'))->firstWhere('id', $species->id);
+    expect($pulled)->not->toBeNull()
+        ->and($pulled)->toHaveKeys(['id', 'name', 'local_name', 'type'])
+        ->and($pulled['name'])->toBe('Tomate');
+});
