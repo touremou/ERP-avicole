@@ -318,6 +318,9 @@ class TaskController extends Controller
             'plot_types'       => 'nullable|array',
             'plot_types.*'     => 'string',
             'description'      => 'nullable|string|max:500',
+            'proof_type'       => 'nullable|in:aucune,photo,valeur',
+            'proof_label'      => 'nullable|string|max:255',
+            'proof_unit'       => 'nullable|string|max:20',
         ]);
 
         $icons = ['alimentation' => 'fa-bowl-food', 'collecte' => 'fa-egg', 'controle' => 'fa-clipboard-check',
@@ -347,6 +350,9 @@ class TaskController extends Controller
             'batch_types'      => !empty($validated['batch_types']) ? $validated['batch_types'] : null,
             'plot_types'       => !empty($validated['plot_types']) ? $validated['plot_types'] : null,
             'description'      => $validated['description'] ?? null,
+            'proof_type'       => $validated['proof_type'] ?? 'aucune',
+            'proof_label'      => ($validated['proof_type'] ?? 'aucune') !== 'aucune' ? ($validated['proof_label'] ?? null) : null,
+            'proof_unit'       => ($validated['proof_type'] ?? 'aucune') === 'valeur' ? ($validated['proof_unit'] ?? null) : null,
             'icon'             => $icons[$validated['category']] ?? 'fa-circle',
             'color'            => $colors[$validated['category']] ?? 'slate',
             'target_type'      => $targetType,
@@ -382,6 +388,9 @@ class TaskController extends Controller
             'plot_types'       => 'nullable|array',
             'plot_types.*'     => 'string',
             'description'      => 'nullable|string|max:500',
+            'proof_type'       => 'nullable|in:aucune,photo,valeur',
+            'proof_label'      => 'nullable|string|max:255',
+            'proof_unit'       => 'nullable|string|max:20',
         ]);
 
         if (isset($validated['per_building'])) {
@@ -404,6 +413,9 @@ class TaskController extends Controller
             'batch_types'      => !empty($validated['batch_types']) ? $validated['batch_types'] : null,
             'plot_types'       => !empty($validated['plot_types']) ? $validated['plot_types'] : null,
             'description'      => $validated['description'] ?? null,
+            'proof_type'       => $validated['proof_type'] ?? 'aucune',
+            'proof_label'      => ($validated['proof_type'] ?? 'aucune') !== 'aucune' ? ($validated['proof_label'] ?? null) : null,
+            'proof_unit'       => ($validated['proof_type'] ?? 'aucune') === 'valeur' ? ($validated['proof_unit'] ?? null) : null,
             'target_type'      => $targetType,
         ]);
 

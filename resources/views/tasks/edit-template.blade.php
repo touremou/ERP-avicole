@@ -103,6 +103,20 @@
                         <label class="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Description</label>
                         <textarea name="description" rows="2" class="w-full bg-slate-50 border-none rounded-xl p-3 text-xs font-bold shadow-inner outline-none">{{ old('description', $template->description) }}</textarea>
                     </div>
+
+                    {{-- PREUVE D'EXÉCUTION exigée pour valider une tâche de ce template --}}
+                    <div class="bg-indigo-50/50 rounded-2xl p-4 space-y-3" x-data="{ proofType: @js(old('proof_type', $template->proof_type ?? 'aucune')) }">
+                        <label class="text-[8px] font-black text-indigo-500 uppercase tracking-widest block">{{ __("Preuve d'exécution exigée") }}</label>
+                        <select name="proof_type" x-model="proofType" class="w-full bg-white border-none rounded-xl p-3 text-xs font-black uppercase shadow-inner outline-none">
+                            <option value="aucune">{{ __("Aucune — validation simple") }}</option>
+                            <option value="photo">{{ __("📸 Photo obligatoire") }}</option>
+                            <option value="valeur">{{ __("🔢 Valeur chiffrée obligatoire") }}</option>
+                        </select>
+                        <div class="grid grid-cols-2 gap-3" x-show="proofType !== 'aucune'" x-transition x-cloak>
+                            <input type="text" name="proof_label" maxlength="255" value="{{ old('proof_label', $template->proof_label) }}" placeholder="{{ __('Intitulé (ex. Nombre de morts)') }}" class="bg-white border-none rounded-xl p-3 text-xs font-bold shadow-inner outline-none">
+                            <input type="text" name="proof_unit" maxlength="20" x-show="proofType === 'valeur'" value="{{ old('proof_unit', $template->proof_unit) }}" placeholder="{{ __('Unité (ex. sujets, kg)') }}" class="bg-white border-none rounded-xl p-3 text-xs font-bold shadow-inner outline-none">
+                        </div>
+                    </div>
                 </div>
 
                 <div class="flex gap-4">
