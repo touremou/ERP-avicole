@@ -155,6 +155,75 @@ function makeMillProduction(float $stockQty = 2000, float $unitCost = 200): Mill
     ]);
 }
 
+// ─── CULTURES : crop_cycle.create (pointage des semis) ───
+
+function makeEmptyPlot(float $areaHa = 2.0): Plot
+{
+    return Plot::create([
+        'code' => 'PARC-' . Str::random(4), 'name' => 'Parcelle libre',
+        'area_ha' => $areaHa, 'status' => Plot::STATUS_DISPONIBLE,
+    ]);
+}
+
+test('crop_cycle.create déclare un semis, met la parcelle en culture, idempotent au rejeu', function () {
+    $plot = makeEmptyPlot(2.0);
+    Sanctum::actingAs($this->manager);
+
+    $uuid = (string) Str::uuid();
+    $payload = [
+        'uuid'          => $uuid,
+        'plot_id'       => $plot->id,
+        'crop_name'     => 'Tomate',
+        'variety'       => 'Roma',
+        'area_used_ha'  => 1.2,
+        'planting_date' => now()->toDateString(),
+        'seed_quantity' => 0.5,
+        'seed_unit'     => 'kg',
+    ];
+
+    $res = $this->postJson('/api/v1/sync/push', phase3Ops([['type' => 'crop_cycle.create', 'payload' => $payload]]))
+        ->assertOk()->json('results.0');
+    expect($res['status'])->toBe('success');
+
+    $cycle = CropCycle::withoutGlobalScopes()->where('uuid', $uuid)->first();
+    expect($cycle)->not->toBeNull()
+        ->and($cycle->crop_name)->toBe('Tomate')
+        ->and($cycle->status)->toBe(CropCycle::STATUS_EN_COURS)
+        ->and($cycle->is_synced)->toBeTrue();
+    expect($plot->fresh()->status)->toBe(Plot::STATUS_EN_CULTURE); // observer
+
+    // Rejeu → already_synced, pas de doublon.
+    $replay = $this->postJson('/api/v1/sync/push', phase3Ops([['type' => 'crop_cycle.create', 'payload' => $payload]]))
+        ->assertOk()->json('results.0');
+    expect($replay['status'])->toBe('already_synced');
+    expect(CropCycle::withoutGlobalScopes()->where('uuid', $uuid)->count())->toBe(1);
+});
+
+test('crop_cycle.create au-delà de la surface disponible → conflict', function () {
+    $plot = makeEmptyPlot(1.0);
+    Sanctum::actingAs($this->manager);
+
+    $res = $this->postJson('/api/v1/sync/push', phase3Ops([['type' => 'crop_cycle.create', 'payload' => [
+        'uuid' => (string) Str::uuid(), 'plot_id' => $plot->id, 'crop_name' => 'Maïs',
+        'area_used_ha' => 2.5, 'planting_date' => now()->toDateString(), // > 1 ha dispo
+    ]]]))->assertOk()->json('results.0');
+
+    expect($res['status'])->toBe('conflict');
+    expect(CropCycle::where('plot_id', $plot->id)->count())->toBe(0);
+});
+
+test('crop_cycle.create exige cultures.C (viewer → permission_denied)', function () {
+    $plot = makeEmptyPlot();
+    Sanctum::actingAs($this->viewer);
+
+    $res = $this->postJson('/api/v1/sync/push', phase3Ops([['type' => 'crop_cycle.create', 'payload' => [
+        'uuid' => (string) Str::uuid(), 'plot_id' => $plot->id, 'crop_name' => 'Maïs',
+        'area_used_ha' => 0.5, 'planting_date' => now()->toDateString(),
+    ]]]))->assertOk()->json('results.0');
+
+    expect($res['status'])->toBe('permission_denied');
+});
+
 // ─── CULTURES : harvest.create ───
 
 test('harvest.create enregistre la récolte et bascule le cycle en phase récolte', function () {

@@ -133,6 +133,15 @@ const RULES: Partial<Record<OperationType, Validator>> = {
     reqStr(p, 'symptoms', 'Symptômes', e)
     return e
   },
+  'crop_cycle.create': (p) => {
+    const e: string[] = []
+    reqId(p, 'plot_id', 'Parcelle', e)
+    reqStr(p, 'crop_name', 'Culture', e)
+    reqNum(p, 'area_used_ha', 'Surface semée', e, 0.001)
+    reqDate(p, 'planting_date', 'Date de semis', e, true)
+    optNum(p, 'seed_quantity', 'Quantité de semence', e, 0)
+    return e
+  },
   'harvest.create': (p) => {
     const e: string[] = []
     reqId(p, 'crop_cycle_id', 'Cycle', e)

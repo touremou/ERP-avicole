@@ -90,6 +90,16 @@ export function NouvelleSaisieScreen() {
         </section>
       )}
 
+      {canCultures && (
+        <section>
+          <h3>{t('Cultures')}</h3>
+          <Link to="/cultures/semis" className="task-card">
+            <span className="task-title">🌱 {t('Pointer un semis')}</span>
+            <span className="task-meta">{t('Déclarer une nouvelle culture sur une parcelle')}</span>
+          </Link>
+        </section>
+      )}
+
       {canCultures && cropCycles.length > 0 && (
         <section>
           <div className="section-head"><h3>{t('Cultures en cours')}</h3><span className="section-count">{cropCycles.length}</span></div>

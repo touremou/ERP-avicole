@@ -74,6 +74,7 @@ class SyncService
             'batch.upsert'           => 'batchUpsert',
             'health_incident.create' => 'healthIncidentCreate',
             // Phase 3 — cultures, abattoir, provenderie (rfc-cadrage §MoSCoW).
+            'crop_cycle.create'       => 'cropCycleCreate',
             'harvest.create'          => 'harvestCreate',
             'crop_input.create'       => 'cropInputCreate',
             'slaughter.execute'       => 'slaughterExecute',
@@ -556,6 +557,73 @@ class SyncService
     //  RÉCOLTE (cultures) — réutilise RecordHarvest (bascule du cycle en
     //  phase « recolte », intégration stock optionnelle au coût de production).
     // ─────────────────────────────────────────────────────────────
+
+    // ─────────────────────────────────────────────────────────────
+    //  POINTAGE DES SEMIS — déclaration d'un nouveau cycle de culture
+    //  depuis le terrain (hors-ligne). Garde de surface (parcelle) au
+    //  replay, idempotent par uuid. L'observer réconcilie la parcelle.
+    // ─────────────────────────────────────────────────────────────
+    private function cropCycleCreate(array $payload): array
+    {
+        if (Gate::denies('cultures.C')) {
+            return $this->denied();
+        }
+
+        $v = Validator::make($payload, [
+            'uuid'                  => 'required|uuid',
+            'plot_id'               => ['required', 'integer', $this->farmScopedExists('plots')],
+            'crop_name'             => 'required|string|max:255',
+            'variety'               => 'nullable|string|max:255',
+            'area_used_ha'          => 'required|numeric|min:0.001',
+            'planting_date'         => 'required|date|before_or_equal:today',
+            'expected_harvest_date' => 'nullable|date|after_or_equal:planting_date',
+            'seed_quantity'         => 'nullable|numeric|min:0',
+            'seed_unit'             => 'nullable|string|max:20',
+            'notes'                 => 'nullable|string|max:1000',
+        ]);
+
+        if ($v->fails()) {
+            return $this->invalid($v->errors()->toArray());
+        }
+
+        $data = $v->validated();
+
+        return DB::transaction(function () use ($data) {
+            if (CropCycle::withoutGlobalScopes()->where('uuid', $data['uuid'])->exists()) {
+                return ['status' => 'already_synced'];
+            }
+
+            /** @var \App\Models\Plot|null $plot */
+            $plot = \App\Models\Plot::find($data['plot_id']);
+            if (! $plot) {
+                return ['status' => 'conflict', 'message' => __('Parcelle introuvable dans cette ferme.')];
+            }
+
+            // Garde de surface : la surface semée ne peut pas dépasser le
+            // disponible sur la parcelle (cycles en cours). Refus définitif.
+            $usedByOthers = (float) CropCycle::where('plot_id', $plot->id)
+                ->whereIn('status', CropCycle::IN_PROGRESS_STATUSES)
+                ->sum('area_used_ha');
+            $remaining = max(0.0, (float) $plot->area_ha - $usedByOthers);
+            if ((float) $data['area_used_ha'] > $remaining + 0.0001) {
+                return ['status' => 'conflict', 'message' => __(
+                    'Surface semée (:req ha) dépasse le disponible sur la parcelle (:rem ha restant).',
+                    ['req' => number_format((float) $data['area_used_ha'], 2), 'rem' => number_format($remaining, 2)]
+                )];
+            }
+
+            $cycle = CropCycle::create(array_merge($data, [
+                'status'       => CropCycle::STATUS_EN_COURS,
+                'is_synced'    => true,
+                'last_sync_at' => now(),
+                'employee_id'  => Auth::user()?->employee?->id,
+            ]));
+
+            Log::info("Sync: semis réconcilié (uuid: {$data['uuid']}, parcelle: {$plot->code}, culture: {$cycle->crop_name}).");
+
+            return ['status' => 'success', 'server_id' => $cycle->id];
+        });
+    }
 
     private function harvestCreate(array $payload): array
     {

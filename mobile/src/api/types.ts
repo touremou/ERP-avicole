@@ -51,6 +51,7 @@ export type OperationType =
   | 'batch.upsert'
   | 'health_incident.create'
   // Phase 3 — cultures, abattoir, provenderie.
+  | 'crop_cycle.create'
   | 'harvest.create'
   | 'crop_input.create'
   | 'slaughter.execute'
@@ -406,6 +407,7 @@ export interface RefCropCycle {
   /** Responsable du cycle (employees.id) — scoping « mes cultures ». */
   employee_id: number | null
   planting_date: string | null
+  area_used_ha: string | number | null
   updated_at: string
 }
 
