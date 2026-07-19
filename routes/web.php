@@ -868,6 +868,14 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/orders/{order}/cutting', 'showCuttingForm')->name('cutting.form')->middleware('can:C');
         Route::post('/orders/{order}/cutting', 'storeCutting')->name('cutting.store')->middleware('can:C');
 
+        // Recettes de désassemblage (BOM inversée) — paramétrage par ferme.
+        Route::get('/recipes', [\App\Http\Controllers\CuttingRecipeController::class, 'index'])->name('recipes.index')->middleware('can:L');
+        Route::post('/recipes/seed/{family}', [\App\Http\Controllers\CuttingRecipeController::class, 'seed'])->name('recipes.seed')->middleware('can:M');
+        Route::get('/recipes/{recipe}', [\App\Http\Controllers\CuttingRecipeController::class, 'edit'])->name('recipes.edit')->middleware('can:M');
+        Route::put('/recipes/{recipe}', [\App\Http\Controllers\CuttingRecipeController::class, 'update'])->name('recipes.update')->middleware('can:M');
+        Route::post('/recipes/{recipe}/lines', [\App\Http\Controllers\CuttingRecipeController::class, 'storeLine'])->name('recipes.lines.store')->middleware('can:M');
+        Route::delete('/recipes/{recipe}/lines/{line}', [\App\Http\Controllers\CuttingRecipeController::class, 'destroyLine'])->name('recipes.lines.destroy')->middleware('can:M');
+
         // Clôture de cycle (checklist HACCP / déchets de fin de cycle)
         Route::get('/orders/{order}/closure', 'showClosureForm')->name('closure.form')->middleware('can:M');
         Route::post('/orders/{order}/closure', 'storeClosure')->name('closure.store')->middleware('can:M');

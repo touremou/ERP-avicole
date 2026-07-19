@@ -467,10 +467,14 @@ class SlaughterController extends Controller
 
         $order->load(['result', 'cuttingSessions.products', 'batch.species']);
 
-        // Morceaux de découpe adaptés à l'espèce du lot abattu.
-        $cuts = \App\Services\ButcheryNomenclature::cutsForSpecies($order->batch?->species);
+        // Morceaux EFFECTIFS : recette de désassemblage active de la ferme
+        // (rendements attendus, nature des extrants, conditionnements par
+        // défaut) — repli sur la nomenclature config/butchery.php sinon.
+        $cuts = \App\Services\ButcheryNomenclature::effectiveCutsForSpecies($order->batch?->species);
+        $family = \App\Services\ButcheryNomenclature::familyFor($order->batch?->species);
+        $hasRecipe = \App\Models\CuttingRecipe::activeFor($family) !== null;
 
-        return view('slaughter.cutting', compact('order', 'cuts'));
+        return view('slaughter.cutting', compact('order', 'cuts', 'family', 'hasRecipe'));
     }
 
     public function storeCutting(Request $request, SlaughterOrder $order, SlaughterService $service)
@@ -486,7 +490,7 @@ class SlaughterController extends Controller
         }
 
         $order->loadMissing('batch.species');
-        $allowedTypes = \App\Services\ButcheryNomenclature::cutCodesForSpecies($order->batch?->species);
+        $allowedTypes = \App\Services\ButcheryNomenclature::effectiveCutCodesForSpecies($order->batch?->species);
 
         $validated = $request->validate([
             'total_input_kg'          => 'required|numeric|min:0.1',
@@ -497,7 +501,8 @@ class SlaughterController extends Controller
             'products.*.kg'           => 'required|numeric|min:0',
             'products.*.pieces'       => 'nullable|integer|min:0',
             'products.*.price'        => 'nullable|numeric|min:0',
-            'products.*.destination'  => 'nullable|in:stock_frais,stock_congele,transformation,vente_directe',
+            // « dechet » : pesé pour la balance de masse (anti-fraude), jamais stocké.
+            'products.*.destination'  => 'nullable|in:stock_frais,stock_congele,transformation,vente_directe,dechet',
             'products.*.calibre'      => 'nullable|string|max:40',
             'products.*.packaging'    => 'nullable|in:' . implode(',', \App\Models\CutProduct::PACKAGINGS),
             'products.*.pack_count'   => 'nullable|integer|min:0',

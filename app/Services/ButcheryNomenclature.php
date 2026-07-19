@@ -42,6 +42,61 @@ class ButcheryNomenclature
     }
 
     /**
+     * Morceaux EFFECTIFS pour l'espèce : la recette de désassemblage ACTIVE de
+     * la ferme (BOM inversée paramétrable) prime sur la nomenclature de
+     * config/butchery.php — qui reste le repli si aucune recette n'existe.
+     * Enrichis des attributs recette (nature d'extrant, rendement attendu,
+     * coefficient de valeur, conditionnement/calibre par défaut).
+     *
+     * @return array<int, array{code:string,label:string,destination:string,default:bool,
+     *                          output_type:string,expected_yield_percent:float|null,
+     *                          value_coefficient:float|null,default_packaging:string|null,
+     *                          default_calibre:string|null}>
+     */
+    public static function effectiveCutsForSpecies(?Species $species): array
+    {
+        $family = static::familyFor($species);
+        $recipe = \App\Models\CuttingRecipe::activeFor($family);
+
+        if ($recipe && $recipe->lines->isNotEmpty()) {
+            return $recipe->lines->map(fn ($line) => [
+                'code'                   => $line->cut_code,
+                'label'                  => $line->label,
+                'destination'            => $line->default_destination,
+                'default'                => (bool) $line->is_default,
+                'output_type'            => $line->output_type,
+                'expected_yield_percent' => $line->expected_yield_percent !== null ? (float) $line->expected_yield_percent : null,
+                'value_coefficient'      => $line->value_coefficient !== null ? (float) $line->value_coefficient : null,
+                'default_packaging'      => $line->default_packaging,
+                'default_calibre'        => $line->default_calibre,
+            ])->values()->all();
+        }
+
+        // Repli nomenclature : mêmes clés, attributs recette neutres.
+        return array_map(fn (array $c) => $c + [
+            'output_type'            => \App\Models\CuttingRecipeLine::TYPE_CO_PRODUIT,
+            'expected_yield_percent' => null,
+            'value_coefficient'      => null,
+            'default_packaging'      => null,
+            'default_calibre'        => null,
+        ], static::cutsForSpecies($species));
+    }
+
+    /**
+     * Codes de découpe ADMISSIBLES (recette active OU nomenclature) + libres.
+     *
+     * @return array<int, string>
+     */
+    public static function effectiveCutCodesForSpecies(?Species $species): array
+    {
+        $codes = array_column(static::effectiveCutsForSpecies($species), 'code');
+        $codes[] = 'autre';
+        $codes[] = 'dechet';
+
+        return array_values(array_unique($codes));
+    }
+
+    /**
      * @return array<int, array{code:string,label:string,destination:string,default:bool}>
      */
     public static function cutsForFamily(string $family): array

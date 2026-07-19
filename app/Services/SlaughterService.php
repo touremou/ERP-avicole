@@ -197,7 +197,12 @@ class SlaughterService
                 $carcass = FinishedProduct::where('product_name', $sourceProductName)
                     ->where('product_type', 'entier_frais')->first();
                 $carcassCostPerKg = (float) ($carcass?->unit_cost ?? 0);
-                $totalOutputKg = array_sum(array_map(fn ($p) => (float) $p['kg'], $data['products']));
+                // Les DÉCHETS déclarés (balance de masse) ne portent aucun coût :
+                // le coût matière se répartit sur les seuls kg valorisables.
+                $totalOutputKg = array_sum(array_map(
+                    fn ($p) => ($p['destination'] ?? 'stock_frais') === 'dechet' ? 0.0 : (float) $p['kg'],
+                    $data['products']
+                ));
                 $cutCostPerKg = ($totalOutputKg > 0 && $carcassCostPerKg > 0)
                     ? round(($carcassCostPerKg * (float) $data['total_input_kg']) / $totalOutputKg, 2)
                     : 0.0;
@@ -226,7 +231,8 @@ class SlaughterService
 
                 // Entrer en stock produits finis selon destination.
                 // RG-07 : jamais pour la façon (propriété du client).
-                if (! $order->isFacon() && ($product['destination'] ?? 'stock_frais') !== 'transformation') {
+                // « dechet » : pesé (balance de masse) mais jamais mis en stock.
+                if (! $order->isFacon() && ! in_array($product['destination'] ?? 'stock_frais', ['transformation', 'dechet'], true)) {
                     $storage = match ($product['destination'] ?? 'stock_frais') {
                         'stock_congele' => 'congele',
                         'vente_directe' => 'vitrine',

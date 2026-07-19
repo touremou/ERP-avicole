@@ -30,6 +30,7 @@
                         ['label' => 'Registre CCP', 'icon' => 'fa-shield-halved', 'route' => 'slaughter.registres.ccp', 'can' => 'abattoir.L'],
                         ['label' => 'Températures', 'icon' => 'fa-temperature-half', 'route' => 'slaughter.registres.temperatures', 'can' => 'abattoir.L'],
                         ['label' => 'Nettoyage', 'icon' => 'fa-broom', 'route' => 'slaughter.registres.nettoyage', 'can' => 'abattoir.L'],
+                        ['label' => 'Recettes de découpe', 'icon' => 'fa-diagram-project', 'route' => 'slaughter.recipes.index', 'can' => 'abattoir.L'],
                     ] as $it)
                         @can($it['can'])
                         @if(\Illuminate\Support\Facades\Route::has($it['route']))
