@@ -168,6 +168,19 @@ const RULES: Partial<Record<OperationType, Validator>> = {
     if (live !== null && carc !== null && carc > live) e.push('Poids carcasse : ne peut pas dépasser le poids vif.')
     return e
   },
+  'slaughter.cutting': (p) => {
+    const e: string[] = []
+    reqId(p, 'slaughter_order_id', 'Ordre', e)
+    reqDate(p, 'session_date', 'Date', e, true)
+    reqNum(p, 'total_input_kg', 'Poids entré', e, 0.1)
+    const products = Array.isArray(p.products) ? (p.products as Array<Record<string, unknown>>) : []
+    if (products.length === 0) e.push('Au moins un produit de découpe est requis.')
+    // Conservation de matière : Σ morceaux ≤ poids entré (miroir serveur).
+    const input = num(p.total_input_kg)
+    const out = products.reduce((s, prod) => s + (num(prod.kg) ?? 0), 0)
+    if (input !== null && out > input + 0.001) e.push('Le total des morceaux dépasse le poids entré.')
+    return e
+  },
   'slaughter.close': (p) => {
     const e: string[] = []
     reqId(p, 'slaughter_order_id', 'Ordre', e)

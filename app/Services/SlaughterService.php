@@ -177,6 +177,7 @@ class SlaughterService
             }
 
             $session = CuttingSession::create([
+                'uuid'               => $data['uuid'] ?? null, // idempotence push mobile
                 'slaughter_order_id' => $order->id,
                 'session_date'       => $data['session_date'] ?? now()->toDateString(),
                 'operator_id'        => Auth::id(),

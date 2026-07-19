@@ -11,7 +11,7 @@ class CuttingSession extends Model
 {
     use BelongsToFarm;
     protected $fillable = [
-        'farm_id', 'slaughter_order_id', 'session_date', 'operator_id',
+        'farm_id', 'uuid', 'slaughter_order_id', 'session_date', 'operator_id',
         'total_input_kg', 'total_output_kg', 'loss_kg', 'loss_percent', 'notes',
     ];
 

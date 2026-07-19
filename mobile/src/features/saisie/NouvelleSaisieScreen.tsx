@@ -161,6 +161,10 @@ export function NouvelleSaisieScreen() {
                 <span className="task-title">♻️ {t('Sous-produit')}</span>
                 <span className="task-meta">{t('sang · plumes · viscères')}</span>
               </Link>
+              <Link to="/abattoir/decoupe" className="task-card">
+                <span className="task-title">✂️ {t('Découpe')}</span>
+                <span className="task-meta">{t('atelier de désassemblage')}</span>
+              </Link>
             </>
           )}
         </section>
