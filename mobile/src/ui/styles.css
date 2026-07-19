@@ -472,7 +472,9 @@ input:focus, textarea:focus, select:focus {
 /* Variante compacte pour un bouton aligné dans une ligne (ex. révoquer un appareil). */
 .btn-slim { width: auto; min-height: 0; margin-top: 0; padding: 8px 14px; font-size: 0.8rem; border-radius: 999px; flex: none; }
 /* Un <a> (react-router Link) rendu comme un bouton pleine largeur. */
-.btn-link-row { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 56px; text-decoration: none; }
+.btn-link-row { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 56px; text-decoration: none; }
+/* « + » d'action : hérite du blanc du bouton (au lieu d'un emoji coloré). */
+.btn-plus { font-size: 1.3em; font-weight: 900; line-height: 1; }
 .btn-ghost { min-height: 56px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); color: var(--muted); font-size: 17px; font-weight: 800; cursor: pointer; width: 100%; }
 
 /* ── Preuve d'exécution (modale) ── */
