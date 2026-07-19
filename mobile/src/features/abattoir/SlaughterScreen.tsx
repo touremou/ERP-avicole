@@ -110,6 +110,10 @@ export function SlaughterScreen() {
       <div className="screen-center">
         <p className="success big">{t('✓ Abattage enregistré')}</p>
         <p className="muted">{t('Quarantaine et effectif seront re-vérifiés par le serveur au push.')}</p>
+        {/* Fin de cycle : clôture HACCP/déchets (part APRÈS l'exécution au push). */}
+        <button type="button" className="btn-primary" onClick={() => navigate(`/abattoir/cloture/${order.id}`)}>
+          ✅ {t('Clôturer le cycle (checklist HACCP/déchets)')}
+        </button>
       </div>
     )
   }

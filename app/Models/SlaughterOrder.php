@@ -47,9 +47,14 @@ class SlaughterOrder extends Model
         'total_live_weight_kg' => 'decimal:2',
         'blocked_at'           => 'datetime',
         'released_at'          => 'datetime',
+        'closed_at'            => 'datetime',
+        'closure_checklist'    => 'array',
         'billing_rate'         => 'decimal:2',
         'service_fee'          => 'decimal:2',
     ];
+
+    /** Confirmations OBLIGATOIRES de la checklist de clôture (déchets + HACCP). */
+    public const CLOSURE_CONFIRMATIONS = ['waste_evacuated', 'zone_cleaned', 'marche_avant'];
 
     public function batch(): BelongsTo { return $this->belongsTo(Batch::class); }
     public function client(): BelongsTo { return $this->belongsTo(Client::class); }
@@ -62,6 +67,27 @@ class SlaughterOrder extends Model
     public function byproducts(): HasMany { return $this->hasMany(SlaughterByproduct::class); }
     public function blockedBy(): BelongsTo { return $this->belongsTo(User::class, 'blocked_by_id'); }
     public function releasedBy(): BelongsTo { return $this->belongsTo(User::class, 'released_by_id'); }
+    public function closedBy(): BelongsTo { return $this->belongsTo(User::class, 'closed_by'); }
+
+    public function isClosed(): bool { return $this->closed_at !== null; }
+
+    /**
+     * Contrôles AUTOMATIQUES de fin de cycle (informatifs) : ce que le système
+     * peut vérifier de lui-même avant la clôture. Chaque clé → bool.
+     *  - ccp3_recorded : relevé CCP 3 (refroidissement) présent ;
+     *  - byproducts_recorded : sous-produits (sang/plumes/viscères) tracés ;
+     *  - temperatures_recorded : au moins un relevé de température le jour même.
+     */
+    public function closureAutoChecks(): array
+    {
+        $date = $this->actual_date?->toDateString() ?? now()->toDateString();
+
+        return [
+            'ccp3_recorded'         => $this->ccpRecords()->where('ccp', CcpRecord::CCP3)->exists(),
+            'byproducts_recorded'   => $this->byproducts()->exists(),
+            'temperatures_recorded' => \App\Models\TemperatureLog::whereDate('releve_at', $date)->exists(),
+        ];
+    }
 
     public function scopePending($query) { return $query->whereIn('status', ['planifie', 'en_cours']); }
 
