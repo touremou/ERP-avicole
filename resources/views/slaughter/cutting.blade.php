@@ -28,7 +28,13 @@
 
                         <div class="flex justify-between items-center mb-4">
                             <h3 class="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2"><i class="fa-solid fa-scissors text-purple-500"></i> {{ __("Produits de découpe") }}</h3>
-                            <button type="button" @click="addProduct()" class="bg-slate-900 text-white px-4 py-2 rounded-xl font-black text-[9px] uppercase border-none cursor-pointer"><i class="fa-solid fa-plus mr-1"></i> {{ __("Ajouter") }}</button>
+                            <div class="flex items-center gap-2">
+                                {{-- RECETTE : source des lignes pré-remplies + rendements attendus --}}
+                                <a href="{{ route('slaughter.recipes.index') }}" class="text-[8px] font-black uppercase tracking-widest no-underline {{ $hasRecipe ? 'text-emerald-500' : 'text-slate-400' }}" title="{{ __('Recettes de désassemblage (BOM inversée)') }}">
+                                    <i class="fa-solid fa-diagram-project mr-1"></i>{{ $hasRecipe ? __("Recette active") : __("Nomenclature std") }}
+                                </a>
+                                <button type="button" @click="addProduct()" class="bg-slate-900 text-white px-4 py-2 rounded-xl font-black text-[9px] uppercase border-none cursor-pointer"><i class="fa-solid fa-plus mr-1"></i> {{ __("Ajouter") }}</button>
+                            </div>
                         </div>
 
                         <template x-for="(p, i) in products" :key="i">
@@ -49,6 +55,8 @@
                                 <div class="col-span-2">
                                     <label class="text-[8px] font-black uppercase text-slate-400">{{ __("Poids (kg)") }}</label>
                                     <input type="number" :name="'products['+i+'][kg]'" x-model.number="p.kg" step="0.1" min="0" class="w-full bg-white border-none rounded-xl p-3 text-sm font-black shadow-sm outline-none text-center">
+                                    {{-- RECETTE : rendement attendu de la ligne → attendu ≈ x kg pour l'entrée saisie --}}
+                                    <p class="text-[8px] font-black m-0 mt-1 text-center" x-show="expectedKg(p) !== null" :class="deviationClass(p)" x-text="'≈ ' + (expectedKg(p) ?? 0).toFixed(1) + ' kg ' + '{{ __('attendu') }}'"></p>
                                 </div>
                                 <div class="col-span-1">
                                     <label class="text-[8px] font-black uppercase text-slate-400">{{ __("Pièces") }}</label>
@@ -61,6 +69,7 @@
                                         <option value="stock_congele">{{ __("Congelé") }}</option>
                                         <option value="transformation">{{ __("Transformation") }}</option>
                                         <option value="vente_directe">{{ __("Vente Directe") }}</option>
+                                        <option value="dechet">{{ __("Déchet (pesé, non stocké)") }}</option>
                                     </select>
                                 </div>
                                 <div class="col-span-2 flex items-end gap-2">
@@ -120,18 +129,31 @@
 
     <script>
     function cuttingForm() {
-        // ⚙️ NOMENCLATURE DE DÉCOUPE PROPRE À L'ESPÈCE (config/butchery.php)
+        // ⚙️ RECETTE DE DÉSASSEMBLAGE ACTIVE (BOM inversée) ou repli sur la
+        // nomenclature de l'espèce (config/butchery.php).
         const cuts = {{ Js::from($cuts) }};
         const speciesEntierName = {{ Js::from(($order->batch->species?->name_fr ?? 'Poulet') . ' Entier') }};
 
-        // Table code → libellé (le morceau "entier" reprend le nom de l'espèce).
-        const names = {};
-        cuts.forEach(c => { names[c.code] = c.code === 'entier' ? speciesEntierName : c.label; });
+        // Table code → libellé / rendement attendu (le morceau "entier" reprend le nom de l'espèce).
+        const names = {}, expectedPct = {};
+        cuts.forEach(c => {
+            names[c.code] = c.code === 'entier' ? speciesEntierName : c.label;
+            if (c.expected_yield_percent) expectedPct[c.code] = c.expected_yield_percent;
+        });
 
-        // Lignes pré-remplies = morceaux marqués "default" dans la nomenclature.
+        // Lignes pré-remplies = lignes "default" de la recette (avec destination,
+        // conditionnement et calibre par défaut) ou de la nomenclature.
         const defaultProducts = cuts
             .filter(c => c.default)
-            .map(c => ({ type: c.code, name: (c.code === 'entier' ? speciesEntierName : c.label), kg: 0, pieces: 0, destination: c.destination, price: 0 }));
+            .map(c => ({
+                type: c.code,
+                name: (c.code === 'entier' ? speciesEntierName : c.label),
+                kg: 0, pieces: 0,
+                destination: c.destination, price: 0,
+                calibre: c.default_calibre || '',
+                packaging: c.default_packaging || 'vrac',
+                pack_count: 0,
+            }));
 
         // ⚙️ INJECTION DYNAMIQUE DES SETTINGS
         const lossTolerance = {{ setting('abattoir.tolerance_cutting_loss', 10) }};
@@ -145,6 +167,18 @@
             get totalOutput() { return this.products.reduce((s,p) => s + (p.kg||0), 0); },
             get loss() { return Math.max(0, this.inputKg - this.totalOutput); },
             get lossPercent() { return this.inputKg > 0 ? (this.loss / this.inputKg * 100).toFixed(1) : '0.0'; },
+            // RECETTE : poids attendu d'une ligne (rendement attendu × entrée).
+            expectedKg(p) {
+                const pct = expectedPct[p.type];
+                return (pct && this.inputKg > 0) ? this.inputKg * pct / 100 : null;
+            },
+            // Écart réel/attendu : vert < 10 %, orange < 25 %, rouge au-delà.
+            deviationClass(p) {
+                const exp = this.expectedKg(p);
+                if (exp === null || !(p.kg > 0)) return 'text-slate-400';
+                const dev = Math.abs(p.kg - exp) / exp;
+                return dev < 0.10 ? 'text-emerald-500' : (dev < 0.25 ? 'text-amber-500' : 'text-red-500');
+            },
             addProduct() { this.products.push({ type:'autre', name:'', kg:0, pieces:0, destination:'stock_frais', price:0, calibre:'', packaging:'vrac', pack_count:0 }); },
             onProductTypeChange(i) { this.products[i].name = names[this.products[i].type] || ''; },
         }
