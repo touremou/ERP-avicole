@@ -123,7 +123,7 @@
                 @forelse($order->cuttingSessions as $session)
                     <p class="text-xs font-black m-0">{{ __("Découpe du :date — :kg kg entrés", ['date' => $session->session_date?->format('d/m/Y') ?? '—', 'kg' => number_format((float) $session->total_input_kg, 1, ',', ' ')]) }}</p>
                     <p class="text-[10px] text-slate-500 mb-2">
-                        @foreach($session->products as $product){{ $product->product_name ?? $product->product_type }} : <span class="font-black">{{ number_format((float) $product->quantity_kg, 1, ',', ' ') }} kg</span>@if(!$loop->last) · @endif @endforeach
+                        @foreach($session->products as $product){{ $product->product_name ?? $product->product_type }}@if($product->calibre) <span class="text-slate-400">[{{ $product->calibre }}]</span>@endif : <span class="font-black">{{ number_format((float) $product->quantity_kg, 1, ',', ' ') }} kg</span>@if($product->packaging && $product->packaging !== 'vrac') <span class="text-indigo-500">{{ $product->pack_count ? $product->pack_count . '×' : '' }}{{ ucfirst($product->packaging) }}</span>@endif @if(!$loop->last) · @endif @endforeach
                     </p>
                 @empty
                     <p class="text-[10px] text-slate-400 mb-2">{{ __("Pas de découpe — carcasses entières.") }}</p>

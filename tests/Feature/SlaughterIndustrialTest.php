@@ -196,6 +196,46 @@ test('le formulaire web accepte la présentation et le sync la valide', function
     expect($order->fresh()->result->presentation)->toBe('pac');
 });
 
+// ─── CALIBRAGE & CONDITIONNEMENT (DÉCOUPE) ───
+
+test('une découpe calibrée et conditionnée est tracée et distingue l\'UVC en stock', function () {
+    $order = ($this->makeOrder)();
+    $this->actingAs($this->managerUser);
+    app(SlaughterService::class)->executeSlaughter($order, $this->executePayload); // carcasse 90 kg
+
+    $session = app(SlaughterService::class)->executeCutting($order->fresh(), [
+        'total_input_kg' => 40,
+        'products' => [
+            ['type' => 'cuisse', 'name' => 'Cuisses', 'kg' => 20, 'calibre' => 'M', 'packaging' => 'barquette', 'pack_count' => 12],
+            ['type' => 'gesier', 'name' => 'Gésiers', 'kg' => 5, 'packaging' => 'sachet', 'pack_count' => 20],
+        ],
+    ]);
+
+    // Traçabilité sur le produit de découpe.
+    $cuisse = $session->products->firstWhere('product_type', 'cuisse');
+    expect($cuisse->calibre)->toBe('M')
+        ->and($cuisse->packaging)->toBe('barquette')
+        ->and($cuisse->pack_count)->toBe(12);
+
+    // Stock produit fini : nom ENRICHI → UVC distincte (calibre + conditionnement).
+    expect(\App\Models\FinishedProduct::where('product_name', 'like', '%Cuisses · M · Barquette%')->exists())->toBeTrue();
+    // Abats ensachés = gamme à part entière.
+    expect(\App\Models\FinishedProduct::where('product_name', 'like', '%Gésiers · Sachet%')->exists())->toBeTrue();
+});
+
+test('le web accepte le calibre et le conditionnement à la découpe', function () {
+    $order = ($this->makeOrder)();
+    $this->actingAs($this->managerUser);
+    app(SlaughterService::class)->executeSlaughter($order, $this->executePayload);
+
+    $this->post(route('slaughter.cutting.store', $order->fresh()), [
+        'session_date' => now()->toDateString(), 'total_input_kg' => 30,
+        'products' => [['type' => 'cuisse', 'name' => 'Cuisses', 'kg' => 25, 'calibre' => 'S', 'packaging' => 'barquette', 'pack_count' => 10]],
+    ])->assertSessionHasNoErrors()->assertRedirect();
+
+    expect(\App\Models\CutProduct::where('calibre', 'S')->where('packaging', 'barquette')->exists())->toBeTrue();
+});
+
 // ─── CONSERVATION DE MATIÈRE (DÉCOUPE) ───
 
 test('la somme des découpes ne peut pas dépasser la carcasse produite', function () {

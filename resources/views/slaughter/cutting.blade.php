@@ -67,8 +67,29 @@
                                     <input type="number" :name="'products['+i+'][price]'" x-model.number="p.price" min="0" placeholder="{{ __('Prix/kg') }}" class="flex-1 bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none text-right">
                                     <button type="button" @click="products.splice(i,1)" x-show="products.length > 1" class="text-red-400 hover:text-red-600 border-none bg-transparent cursor-pointer"><i class="fa-solid fa-trash"></i></button>
                                 </div>
+
+                                {{-- CALIBRAGE & CONDITIONNEMENT (UVC) --}}
+                                <div class="col-span-4">
+                                    <label class="text-[8px] font-black uppercase text-slate-400">{{ __("Calibre — optionnel") }}</label>
+                                    <input type="text" :name="'products['+i+'][calibre]'" x-model="p.calibre" list="calibres" placeholder="{{ __('Ex. S, M, L') }}" class="w-full bg-white border-none rounded-xl p-3 text-[10px] font-black uppercase shadow-sm outline-none">
+                                </div>
+                                <div class="col-span-4">
+                                    <label class="text-[8px] font-black uppercase text-slate-400">{{ __("Conditionnement") }}</label>
+                                    <select :name="'products['+i+'][packaging]'" x-model="p.packaging" class="w-full bg-white border-none rounded-xl p-3 text-[10px] font-black uppercase shadow-sm outline-none">
+                                        <option value="vrac">{{ __("Vrac") }}</option>
+                                        <option value="barquette">{{ __("Barquette") }}</option>
+                                        <option value="sachet">{{ __("Sachet (abats ensachés)") }}</option>
+                                    </select>
+                                </div>
+                                <div class="col-span-4" x-show="p.packaging !== 'vrac'">
+                                    <label class="text-[8px] font-black uppercase text-slate-400">{{ __("Nb d'UVC (barquettes/sachets)") }}</label>
+                                    <input type="number" :name="'products['+i+'][pack_count]'" x-model.number="p.pack_count" min="0" placeholder="{{ __('ex. 12') }}" class="w-full bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none text-center">
+                                </div>
                             </div>
                         </template>
+                        <datalist id="calibres">
+                            <option value="S"></option><option value="M"></option><option value="L"></option><option value="XL"></option>
+                        </datalist>
 
                         {{-- RÉSUMÉ EN TEMPS RÉEL --}}
                         <div class="mt-6 p-4 bg-slate-900 rounded-2xl text-white grid grid-cols-3 gap-4 text-center">
@@ -120,11 +141,11 @@
             inputKg: 0,
             lossTolerance: lossTolerance,
             cuttingYieldTarget: cuttingYieldTarget,
-            products: defaultProducts.length ? defaultProducts : [{ type:'autre', name:'', kg:0, pieces:0, destination:'stock_frais', price:0 }],
+            products: defaultProducts.length ? defaultProducts : [{ type:'autre', name:'', kg:0, pieces:0, destination:'stock_frais', price:0, calibre:'', packaging:'vrac', pack_count:0 }],
             get totalOutput() { return this.products.reduce((s,p) => s + (p.kg||0), 0); },
             get loss() { return Math.max(0, this.inputKg - this.totalOutput); },
             get lossPercent() { return this.inputKg > 0 ? (this.loss / this.inputKg * 100).toFixed(1) : '0.0'; },
-            addProduct() { this.products.push({ type:'autre', name:'', kg:0, pieces:0, destination:'stock_frais', price:0 }); },
+            addProduct() { this.products.push({ type:'autre', name:'', kg:0, pieces:0, destination:'stock_frais', price:0, calibre:'', packaging:'vrac', pack_count:0 }); },
             onProductTypeChange(i) { this.products[i].name = names[this.products[i].type] || ''; },
         }
     }
