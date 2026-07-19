@@ -3286,5 +3286,8 @@
     "Aucune zone cochée — cochez les zones nettoyées.": "No zone ticked — tick the cleaned zones.",
     "Produit manquant pour : :zones": "Missing product for: :zones",
     "Tournée de nettoyage enregistrée : :n zones tracées.": "Cleaning round saved: :n zones recorded.",
-    "Saisie rapide (relevé isolé)": "Quick entry (single reading)"
+    "Saisie rapide (relevé isolé)": "Quick entry (single reading)",
+    "Le cycle :number est clôturé (checklist HACCP signée) — la découpe n'est plus possible.": "Cycle :number is closed (HACCP checklist signed) — cutting is no longer possible.",
+    "Le cycle :number est clôturé — il ne peut plus recevoir de transformation.": "Cycle :number is closed — it can no longer receive a transformation.",
+    "Le cycle :number est déjà clôturé — checklist consultable au dossier de lot.": "Cycle :number is already closed — checklist available in the batch record."
 }

@@ -663,6 +663,11 @@ export const en: Record<string, string> = {
   '✓ Tournée enregistrée (:n zones)': '✓ Round saved (:n zones)',
   'Relevé isolé →': 'Single reading →',
   'Saisie unitaire (photo, notes) →': 'Single entry (photo, notes) →',
+  // Verrou post-clôture
+  'Cycle :order déjà clôturé': 'Cycle :order already closed',
+  'La checklist HACCP/déchets de ce cycle est déjà signée.': 'The HACCP/waste checklist for this cycle is already signed.',
+  'Cycle clôturé — la checklist HACCP/déchets est déjà signée. Plus aucune action possible.':
+    'Cycle closed — the HACCP/waste checklist is already signed. No further action possible.',
   'Destination des déchets — optionnel': 'Waste destination — optional',
   'Preuve requise': 'Proof required',
   'photo requise': 'photo required',

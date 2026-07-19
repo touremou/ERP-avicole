@@ -162,6 +162,13 @@ class SlaughterService
                 throw new Exception("L'abattage de l'ordre {$order->order_number} doit être terminé avant la découpe.");
             }
 
+            // Cycle CLÔTURÉ = zone nettoyée, déchets évacués, checklist signée :
+            // plus aucune matière ne peut en sortir (sinon la clôture ne
+            // garantit plus rien). La découpe se fait AVANT la clôture.
+            if ($order->isClosed()) {
+                throw new Exception("Le cycle {$order->order_number} est clôturé (checklist HACCP signée) — la découpe n'est plus possible.");
+            }
+
             $carcassKg  = (float) ($order->result?->total_carcass_weight_kg ?? 0);
             $alreadyCut = (float) $order->cuttingSessions()->sum('total_input_kg');
             $inputKg    = (float) $data['total_input_kg'];

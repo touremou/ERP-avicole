@@ -116,17 +116,22 @@ export function SlaughterScreen() {
   // (statut serveur) ou déjà en file locale → on oriente vers la suite du
   // cycle (clôture) au lieu de laisser ressaisir un abattage en double.
   if (order.status !== 'planifie' || alreadyQueued) {
+    const closed = Boolean(order.closed_at)
     return (
       <div className="screen-center">
         <p className="big">🔒 {t('Ordre :order déjà exécuté', { order: order.order_number })}</p>
         <p className="muted">
-          {alreadyQueued && order.status === 'planifie'
-            ? t("L'exécution est déjà dans la file de synchronisation — elle partira au prochain push.")
-            : t('Cet ordre ne peut pas être ré-exécuté. Suite du cycle : clôture HACCP/déchets.')}
+          {closed
+            ? t('Cycle clôturé — la checklist HACCP/déchets est déjà signée. Plus aucune action possible.')
+            : alreadyQueued && order.status === 'planifie'
+              ? t("L'exécution est déjà dans la file de synchronisation — elle partira au prochain push.")
+              : t('Cet ordre ne peut pas être ré-exécuté. Suite du cycle : clôture HACCP/déchets.')}
         </p>
-        <button type="button" className="btn-primary" onClick={() => navigate(`/abattoir/cloture/${order.id}`)}>
-          ✅ {t('Clôturer le cycle (checklist HACCP/déchets)')}
-        </button>
+        {!closed && (
+          <button type="button" className="btn-primary" onClick={() => navigate(`/abattoir/cloture/${order.id}`)}>
+            ✅ {t('Clôturer le cycle (checklist HACCP/déchets)')}
+          </button>
+        )}
         <button type="button" className="btn-secondary" onClick={() => navigate('/')}>
           {t('Retour à l’accueil')}
         </button>

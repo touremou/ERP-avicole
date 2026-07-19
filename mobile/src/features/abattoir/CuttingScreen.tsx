@@ -40,8 +40,10 @@ export function CuttingScreen() {
   const [saved, setSaved] = useState(false)
 
   useEffect(() => {
+    // Cycle clôturé = plus de découpe (le serveur refuse aussi au push).
     void db.ref_slaughter_orders
       .where('status').equals('termine')
+      .filter((o) => !o.closed_at)
       .reverse().sortBy('planned_date')
       .then((found) => setOrders(found.slice(0, 30)))
   }, [])

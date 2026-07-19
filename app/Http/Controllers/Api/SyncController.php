@@ -95,7 +95,7 @@ class SyncController extends Controller
             'model'   => \App\Models\SlaughterOrder::class,
             'gate'    => 'abattoir.L',
             'columns' => ['id', 'order_number', 'batch_id', 'planned_date', 'planned_quantity',
-                          'status', 'requested_by', 'executed_by', 'updated_at'],
+                          'status', 'closed_at', 'requested_by', 'executed_by', 'updated_at'],
         ],
         'formulas' => [
             'model'   => \App\Models\Formula::class,

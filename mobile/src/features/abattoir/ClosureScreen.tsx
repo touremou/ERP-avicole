@@ -58,6 +58,20 @@ export function ClosureScreen() {
     )
   }
 
+  // Déjà clôturé (statut serveur) : pas de nouvelle clôture — le rejeu de
+  // l'op serait de toute façon absorbé (already_synced) côté serveur.
+  if (order?.closed_at) {
+    return (
+      <div className="screen-center">
+        <p className="big">✅ {t('Cycle :order déjà clôturé', { order: order.order_number })}</p>
+        <p className="muted">{t('La checklist HACCP/déchets de ce cycle est déjà signée.')}</p>
+        <button type="button" className="btn-secondary" onClick={() => navigate('/')}>
+          {t('Retour à l’accueil')}
+        </button>
+      </div>
+    )
+  }
+
   return (
     <form className="screen" onSubmit={onSubmit}>
       <h2>{t('✅ Clôture de cycle')}</h2>

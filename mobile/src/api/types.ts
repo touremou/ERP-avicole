@@ -430,6 +430,8 @@ export interface RefSlaughterOrder {
   planned_date: string
   planned_quantity: number
   status: string
+  /** Clôture de cycle (checklist HACCP signée) — plus aucune activité ensuite. */
+  closed_at?: string | null
   /** Utilisateurs concernés (users.id) — scoping « mes abattages ». */
   requested_by: number | null
   executed_by: number | null
