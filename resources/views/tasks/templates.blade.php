@@ -3,7 +3,7 @@
         <x-page-header :title="__('Templates de Tâches')" :subtitle="__('Configuration des routines automatisées')" icon="fa-gear" accent="indigo" />
     </x-slot>
 
-    <div class="py-8 italic font-bold" x-data="{ showForm: false, perBuilding: true, perPlot: false }">
+    <div class="py-8 italic font-bold" x-data="{ showForm: false, perBuilding: true, perPlot: false, proofType: 'aucune' }">
         <div class="max-w-5xl mx-auto sm:px-6 lg:px-8">
 
             <x-flash />
@@ -123,6 +123,20 @@
 
                         <textarea name="description" rows="2" placeholder="{{ __("Description optionnelle...") }}" class="w-full bg-slate-50 border-none rounded-xl p-3 text-xs font-bold shadow-inner outline-none"></textarea>
 
+                        {{-- PREUVE D'EXÉCUTION : ce que l'ouvrier devra fournir pour valider la tâche --}}
+                        <div class="bg-indigo-50/50 rounded-2xl p-4 space-y-3">
+                            <label class="text-[9px] font-black uppercase text-indigo-500 tracking-widest">{{ __("Preuve d'exécution exigée") }}</label>
+                            <select name="proof_type" x-model="proofType" class="w-full bg-white border-none rounded-xl p-3 text-xs font-black uppercase shadow-inner outline-none">
+                                <option value="aucune">{{ __("Aucune — validation simple") }}</option>
+                                <option value="photo">{{ __("📸 Photo obligatoire") }}</option>
+                                <option value="valeur">{{ __("🔢 Valeur chiffrée obligatoire") }}</option>
+                            </select>
+                            <div class="grid grid-cols-2 gap-3" x-show="proofType !== 'aucune'" x-transition x-cloak>
+                                <input type="text" name="proof_label" maxlength="255" placeholder="{{ __('Intitulé (ex. Nombre de morts)') }}" class="bg-white border-none rounded-xl p-3 text-xs font-bold shadow-inner outline-none">
+                                <input type="text" name="proof_unit" maxlength="20" x-show="proofType === 'valeur'" placeholder="{{ __('Unité (ex. sujets, kg)') }}" class="bg-white border-none rounded-xl p-3 text-xs font-bold shadow-inner outline-none">
+                            </div>
+                        </div>
+
                         <button type="submit" class="w-full bg-indigo-600 text-white py-3 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-indigo-700 border-none cursor-pointer shadow-lg italic">
                             <i class="fa-solid fa-plus mr-1"></i> {{ __("Créer le template") }}
                         </button>
@@ -173,6 +187,8 @@
                                     @if($tpl->target_type === 'plot')<span class="text-green-500">×parcelle</span>@endif
                                     @if($tpl->batch_types)<span class="text-purple-400">{{ implode(',', $tpl->batch_types) }}</span>@endif
                                     @if($tpl->plot_types)<span class="text-green-400">{{ implode(',', $tpl->plot_types) }}</span>@endif
+                                    @if($tpl->proof_type === 'photo')<span class="text-indigo-500">📸 {{ __("preuve photo") }}</span>@endif
+                                    @if($tpl->proof_type === 'valeur')<span class="text-indigo-500">🔢 {{ $tpl->proof_label ?: __("preuve valeur") }}</span>@endif
                                 </div>
                             </div>
 
