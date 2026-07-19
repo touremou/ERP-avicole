@@ -567,6 +567,8 @@
     "Cette opération sera logguée comme \"Ajustement Critique\" dans le journal de maintenance.": "This operation will be logged as \"Critical Adjustment\" in the maintenance log.",
     "Cette page n'existe pas ou a été déplacée.": "This page does not exist or has been moved.",
     "Cette planification a été annulée. Le bâtiment est libéré pour une nouvelle planification.": "This schedule has been cancelled. The building is now available for a new schedule.",
+    "Cette tâche exige une photo pour être validée.": "This task requires a photo to be completed.",
+    "Cette tâche exige une valeur chiffrée pour être validée.": "This task requires a numeric value to be completed.",
     "Cette étape crée les tables et charge les données de référence (espèces, normes de production, modules…).": "This step creates the tables and loads the reference data (species, production standards, modules...).",
     "Chair": "Broiler",
     "Chair Croissance": "Broiler Growth",

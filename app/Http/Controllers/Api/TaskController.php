@@ -44,6 +44,7 @@ class TaskController extends Controller
             ->get([
                 'id', 'title', 'category', 'priority', 'status',
                 'scheduled_date', 'scheduled_time', 'batch_id', 'building_id', 'plot_id',
+                'proof_type', 'proof_label', 'proof_unit',
             ]);
 
         // Récap « ma journée » : l'en-cours vient de la liste (mêmes bornes), le

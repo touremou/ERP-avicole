@@ -29,7 +29,7 @@ class PhotoController extends Controller
         $validated = $request->validate([
             // 5 Mo max : les clients compressent avant envoi (règle data faible).
             'photo'   => 'required|image|max:5120',
-            'context' => 'nullable|string|in:incident,expense,daily_check,reception,cleaning',
+            'context' => 'nullable|string|in:incident,expense,daily_check,reception,cleaning,task',
         ]);
 
         $folder = 'field/' . ($validated['context'] ?? 'incident');

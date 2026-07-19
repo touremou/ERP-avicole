@@ -14,6 +14,7 @@ import { t, dateLocale } from '../../i18n'
 import { useFieldTasks } from './useFieldTasks'
 import { DashboardKpis } from './DashboardKpis'
 import { notifIcon } from '../notifications/notifIcon'
+import { TaskProofModal } from '../taches/TaskProofModal'
 import type { ApiNotification, RefTask } from '../../api/types'
 import type { OperationType } from '../../api/types'
 
@@ -66,6 +67,7 @@ export function HomeScreen() {
   const [alerts, setAlerts] = useState<ApiNotification[]>([])
   const [tasks, setTasks] = useState<RefTask[]>([])
   const [activity, setActivity] = useState<MyRecord[]>([])
+  const [proofTask, setProofTask] = useState<RefTask | null>(null)
 
   useEffect(() => {
     const load = async () => {
@@ -93,6 +95,11 @@ export function HomeScreen() {
   }, [])
 
   async function completeTask(task: RefTask) {
+    // Preuve d'exécution requise → passer par la modale (photo/valeur).
+    if (task.proof_type === 'photo' || task.proof_type === 'valeur') {
+      setProofTask(task)
+      return
+    }
     // Optimiste : on retire la tâche localement et on pousse l'opération.
     await enqueue('task.complete', { task_id: task.id }, t('Tâche : :title', { title: task.title }))
     await db.tasks.delete(task.id)
@@ -158,6 +165,8 @@ export function HomeScreen() {
                     <span className="task-meta">
                       {task.scheduled_time ? task.scheduled_time.slice(0, 5) + ' · ' : ''}
                       {overdue ? <span className="task-overdue">{t('En retard')}</span> : t(task.category)}
+                      {task.proof_type === 'photo' ? ' · 📸' : ''}
+                      {task.proof_type === 'valeur' ? ' · 🔢' : ''}
                     </span>
                   </div>
                   <button type="button" className="task-done" onClick={() => void completeTask(task)}>
@@ -278,6 +287,14 @@ export function HomeScreen() {
       )}
 
       <div style={{ height: 64 }} aria-hidden="true" />
+
+      {proofTask && (
+        <TaskProofModal
+          task={proofTask}
+          onDone={() => setProofTask(null)}
+          onCancel={() => setProofTask(null)}
+        />
+      )}
     </div>
   )
 }

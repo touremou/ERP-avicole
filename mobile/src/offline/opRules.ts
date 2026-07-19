@@ -169,6 +169,10 @@ const RULES: Partial<Record<OperationType, Validator>> = {
   'task.complete': (p) => {
     const e: string[] = []
     reqId(p, 'task_id', 'Tâche', e)
+    // La preuve (photo via photo_uuid, ou valeur chiffrée) est optionnelle au
+    // niveau de l'op — son CARACTÈRE OBLIGATOIRE dépend du type de tâche et est
+    // garanti par l'UI (modale) + revérifié serveur (autoritaire).
+    optNum(p, 'proof_value', 'Valeur de preuve', e, 0)
     return e
   },
   'task.create': (p) => {

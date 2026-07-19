@@ -16,6 +16,7 @@ class TaskAssignment extends Model
         'category', 'building_id', 'plot_id', 'batch_id', 'scheduled_date', 'scheduled_time',
         'duration_minutes', 'priority', 'status', 'started_at', 'completed_at',
         'completed_by', 'completion_notes', 'is_auto_generated',
+        'proof_type', 'proof_label', 'proof_unit', 'proof_photo_path', 'proof_value',
     ];
 
     protected $casts = [
@@ -23,7 +24,14 @@ class TaskAssignment extends Model
         'started_at'       => 'datetime',
         'completed_at'     => 'datetime',
         'is_auto_generated' => 'boolean',
+        'proof_value'      => 'decimal:2',
     ];
+
+    /** La tâche exige-t-elle une preuve à la complétion ? */
+    public function requiresProof(): bool
+    {
+        return in_array($this->proof_type, ['photo', 'valeur'], true);
+    }
 
     public function template(): BelongsTo { return $this->belongsTo(TaskTemplate::class, 'task_template_id'); }
     public function employee(): BelongsTo { return $this->belongsTo(Employee::class); }
