@@ -373,7 +373,61 @@ class HaccpRegisterController extends Controller
         $recentOrders = SlaughterOrder::whereIn('status', ['termine', 'bloque'])
             ->latest('actual_date')->take(30)->get();
 
-        return view('slaughter.registres.sous-produits', compact('byproducts', 'totals', 'recentOrders'));
+        // Tournée : dernière destination utilisée par type (préremplissage).
+        $lastDestByType = \App\Models\SlaughterByproduct::latest('collected_at')->latest('id')
+            ->get(['type', 'destination'])
+            ->unique('type')
+            ->pluck('destination', 'type');
+
+        return view('slaughter.registres.sous-produits', compact('byproducts', 'totals', 'recentOrders', 'lastDestByType'));
+    }
+
+    /**
+     * TOURNÉE DE COLLECTE : tous les types de sous-produits en une validation
+     * (sang, plumes, viscères...) — un enregistrement par ligne pesée, ordre
+     * d'abattage commun optionnel.
+     */
+    public function byproductsStoreBatch(Request $request)
+    {
+        if (Gate::denies('abattoir.C')) return back()->with('error', 'Action non autorisée.');
+
+        $validated = $request->validate([
+            'slaughter_order_id'   => 'nullable|integer|exists:slaughter_orders,id',
+            'rows'                 => 'required|array',
+            'rows.*.quantity_kg'   => 'nullable|numeric|min:0.01',
+            'rows.*.destination'   => 'nullable|in:' . implode(',', array_keys(\App\Models\SlaughterByproduct::DESTINATIONS)),
+        ]);
+
+        $types = array_keys(\App\Models\SlaughterByproduct::TYPES);
+        $filled = collect($validated['rows'])
+            ->filter(fn ($row, $type) => in_array($type, $types, true) && (float) ($row['quantity_kg'] ?? 0) > 0);
+
+        if ($filled->isEmpty()) {
+            return back()->with('error', __('Aucune pesée saisie — remplissez au moins un type de sous-produit.'));
+        }
+
+        // Destination obligatoire pour chaque ligne pesée (registre E9).
+        $missing = $filled->filter(fn ($row) => blank($row['destination'] ?? null));
+        if ($missing->isNotEmpty()) {
+            return back()->withErrors(['rows' => __('Destination manquante pour : :types', [
+                'types' => $missing->keys()->map(fn ($t) => \App\Models\SlaughterByproduct::TYPES[$t] ?? $t)->implode(', '),
+            ])])->withInput();
+        }
+
+        foreach ($filled as $type => $row) {
+            \App\Models\SlaughterByproduct::create([
+                'slaughter_order_id' => $validated['slaughter_order_id'] ?? null,
+                'type'               => $type,
+                'quantity_kg'        => (float) $row['quantity_kg'],
+                'destination'        => $row['destination'],
+                'operator_id'        => Auth::id(),
+                'collected_at'       => now(),
+                'synced_at'          => now(),
+            ]);
+        }
+
+        return redirect()->route('slaughter.registres.sous_produits')
+            ->with('success', __('Tournée de collecte enregistrée : :n sous-produits tracés.', ['n' => $filled->count()]));
     }
 
     public function byproductsStore(Request $request)

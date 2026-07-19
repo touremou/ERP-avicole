@@ -32,9 +32,9 @@
 
             {{-- SAISIE EN TOURNÉE : tous les points en une validation (lignes vides ignorées). --}}
             @can('abattoir.C')
-            <form method="POST" action="{{ route('slaughter.registres.temperatures.batch') }}" class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm mb-8">
+            <x-collapsible-form :title="__('Tournée de températures')" icon="fa-route" :hint="__('tous les points · 1 validation')" :open="$errors->any()">
+            <form method="POST" action="{{ route('slaughter.registres.temperatures.batch') }}">
                 @csrf
-                <p class="text-[10px] font-black uppercase tracking-widest text-rose-600 mb-1"><i class="fa-solid fa-route mr-1"></i> {{ __("Tournée de températures") }}</p>
                 <p class="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-4">{{ __("Remplissez les points relevés, laissez vides les autres — une seule validation.") }}</p>
                 <div class="overflow-x-auto">
                     <table class="w-full">
@@ -67,13 +67,14 @@
                 </div>
                 <button type="submit" class="mt-4 w-full bg-rose-500 text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-rose-600 transition-all border-none cursor-pointer italic"><i class="fa-solid fa-route mr-2"></i> {{ __("Valider la tournée") }}</button>
             </form>
+            </x-collapsible-form>
             @endcan
 
             {{-- SAISIE RAPIDE (relevé isolé) --}}
             @can('abattoir.C')
-            <form method="POST" action="{{ route('slaughter.registres.temperatures.store') }}" class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm mb-8">
+            <x-collapsible-form :title="__('Saisie rapide (relevé isolé)')" icon="fa-bolt" :hint="__('un point · un relevé')">
+            <form method="POST" action="{{ route('slaughter.registres.temperatures.store') }}">
                 @csrf
-                <p class="text-[10px] font-black uppercase tracking-widest text-rose-600 mb-4"><i class="fa-solid fa-bolt mr-1"></i> {{ __("Saisie rapide") }}</p>
                 <div class="grid grid-cols-2 md:grid-cols-5 gap-3 items-end">
                     <div class="space-y-1">
                         <label class="text-[8px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Point de contrôle *") }}</label>
@@ -101,6 +102,7 @@
                     <button type="submit" class="bg-rose-500 text-white p-4 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-rose-600 transition-all border-none cursor-pointer italic"><i class="fa-solid fa-plus mr-1"></i> {{ __("Enregistrer") }}</button>
                 </div>
             </form>
+            </x-collapsible-form>
             @endcan
 
             {{-- FILTRES --}}
