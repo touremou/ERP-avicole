@@ -104,6 +104,15 @@
                         <textarea name="description" rows="2" class="w-full bg-slate-50 border-none rounded-xl p-3 text-xs font-bold shadow-inner outline-none">{{ old('description', $template->description) }}</textarea>
                     </div>
 
+                    {{-- LIBRE-SERVICE (pool) : tâche non assignée, prise par le premier disponible --}}
+                    <label class="flex items-center gap-3 bg-emerald-50/50 rounded-2xl p-4 cursor-pointer">
+                        <input type="checkbox" name="is_pool" value="1" @checked(old('is_pool', $template->is_pool)) class="rounded text-emerald-500">
+                        <span>
+                            <span class="block text-[11px] font-black text-slate-700 uppercase">🙌 {{ __("Libre-service (pool)") }}</span>
+                            <span class="block text-[9px] font-bold text-slate-400">{{ __("Non assignée : le premier ouvrier disponible la prend (anti-doublon).") }}</span>
+                        </span>
+                    </label>
+
                     {{-- PREUVE D'EXÉCUTION exigée pour valider une tâche de ce template --}}
                     <div class="bg-indigo-50/50 rounded-2xl p-4 space-y-3" x-data="{ proofType: @js(old('proof_type', $template->proof_type ?? 'aucune')) }">
                         <label class="text-[8px] font-black text-indigo-500 uppercase tracking-widest block">{{ __("Preuve d'exécution exigée") }}</label>

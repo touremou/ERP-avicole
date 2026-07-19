@@ -71,7 +71,9 @@ class TaskSchedulerService
                         TaskAssignment::create([
                             'farm_id'          => $farmId ?? $building->farm_id ?? null,
                             'task_template_id' => $tpl->id,
-                            'employee_id'      => $employee?->id,
+                            // Pool : pas de titulaire — le premier qui la prend se l'attribue.
+                            'employee_id'      => $tpl->is_pool ? null : $employee?->id,
+                            'is_pool'          => $tpl->is_pool,
                             'title'            => $tpl->name . ' — ' . $building->name,
                             'description'      => $tpl->description,
                             'category'         => $tpl->category,
@@ -114,7 +116,8 @@ class TaskSchedulerService
                         TaskAssignment::create([
                             'farm_id'           => $farmId ?? $plot->farm_id ?? null,
                             'task_template_id'  => $tpl->id,
-                            'employee_id'       => $employee?->id,
+                            'employee_id'       => $tpl->is_pool ? null : $employee?->id,
+                            'is_pool'           => $tpl->is_pool,
                             'title'             => $tpl->name . ' — ' . $plot->name,
                             'description'       => $tpl->description,
                             'category'          => $tpl->category,
@@ -137,6 +140,7 @@ class TaskSchedulerService
                     TaskAssignment::create([
                         'farm_id'          => $farmId,
                         'task_template_id' => $tpl->id,
+                        'is_pool'          => $tpl->is_pool,
                         'title'            => $tpl->name,
                         'description'      => $tpl->description,
                         'category'         => $tpl->category,

@@ -123,6 +123,15 @@
 
                         <textarea name="description" rows="2" placeholder="{{ __("Description optionnelle...") }}" class="w-full bg-slate-50 border-none rounded-xl p-3 text-xs font-bold shadow-inner outline-none"></textarea>
 
+                        {{-- LIBRE-SERVICE : tâche non assignée, prise par le premier ouvrier disponible --}}
+                        <label class="flex items-center gap-3 bg-emerald-50/50 rounded-2xl p-4 cursor-pointer">
+                            <input type="checkbox" name="is_pool" value="1" class="rounded text-emerald-500">
+                            <span>
+                                <span class="block text-[11px] font-black text-slate-700 uppercase">🙌 {{ __("Libre-service (pool)") }}</span>
+                                <span class="block text-[9px] font-bold text-slate-400">{{ __("Non assignée : le premier ouvrier disponible la prend (anti-doublon).") }}</span>
+                            </span>
+                        </label>
+
                         {{-- PREUVE D'EXÉCUTION : ce que l'ouvrier devra fournir pour valider la tâche --}}
                         <div class="bg-indigo-50/50 rounded-2xl p-4 space-y-3">
                             <label class="text-[9px] font-black uppercase text-indigo-500 tracking-widest">{{ __("Preuve d'exécution exigée") }}</label>

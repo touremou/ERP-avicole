@@ -599,6 +599,7 @@ export const en: Record<string, string> = {
   'Preuve requise': 'Proof required',
   'photo requise': 'photo required',
   'Prendre': 'Take',
+  'Libre': 'Free',
   'Terminer': 'Finish',
   'Libérer': 'Release',
   'Verrouillée': 'Locked',
