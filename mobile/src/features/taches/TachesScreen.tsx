@@ -262,6 +262,7 @@ export function TachesScreen() {
                   <span className="task-meta">
                     {task.scheduled_time ? task.scheduled_time.slice(0, 5) + ' · ' : ''}
                     {t(task.category)}
+                    {task.is_pool && task.status === 'a_faire' ? ' · 🙌 ' + t('Libre') : ''}
                     {task.proof_type === 'photo' ? ' · 📸 ' + t('photo requise') : ''}
                     {task.proof_type === 'valeur' ? ' · 🔢 ' + t('valeur requise') : ''}
                     {task.locked ? ' · 🔒 ' + t('en cours par :name', { name: task.claimant_name ?? '—' }) : ''}

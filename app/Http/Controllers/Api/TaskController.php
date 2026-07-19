@@ -37,7 +37,13 @@ class TaskController extends Controller
 
         $tasks = TaskAssignment::query()
             ->with('claimant:id,name')
-            ->where('employee_id', $employeeId)
+            // Mes tâches assignées + les tâches du POOL (libre-service) encore à
+            // prendre : le premier arrivé se les attribue. Bornées à la ferme
+            // courante par le FarmScope.
+            ->where(function ($q) use ($employeeId) {
+                $q->where('employee_id', $employeeId)
+                  ->orWhere(fn ($p) => $p->where('is_pool', true)->where('status', 'a_faire'));
+            })
             ->whereIn('status', $doable)
             ->where('scheduled_date', '<=', $horizon)
             ->orderBy('scheduled_date')
@@ -46,7 +52,7 @@ class TaskController extends Controller
                 'id', 'title', 'category', 'priority', 'status',
                 'scheduled_date', 'scheduled_time', 'batch_id', 'building_id', 'plot_id',
                 'proof_type', 'proof_label', 'proof_unit',
-                'started_at', 'claimed_by',
+                'started_at', 'claimed_by', 'is_pool',
             ]);
 
         // Verrou de tâche (anti-doublon) : on expose l'état de prise. `locked`

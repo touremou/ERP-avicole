@@ -234,6 +234,8 @@ export interface RefTask {
   locked?: boolean
   claimed_by_me?: boolean
   claimant_name?: string | null
+  // Libre-service : tâche du pool encore à prendre (badge « Libre »).
+  is_pool?: boolean
 }
 
 export interface TaskSummary {

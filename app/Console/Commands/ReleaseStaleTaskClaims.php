@@ -22,16 +22,21 @@ class ReleaseStaleTaskClaims extends Command
     {
         $cutoff = now()->subMinutes(TaskAssignment::CLAIM_TIMEOUT_MINUTES);
 
-        $released = TaskAssignment::withoutGlobalScopes()
+        $stale = fn () => TaskAssignment::withoutGlobalScopes()
             ->where('status', 'en_cours')
             ->where(function ($q) use ($cutoff) {
                 $q->whereNull('started_at')->orWhere('started_at', '<', $cutoff);
-            })
-            ->update([
-                'status'     => 'a_faire',
-                'started_at' => null,
-                'claimed_by' => null,
-            ]);
+            });
+
+        // Tâches de POOL expirées : retour au libre-service (sans titulaire).
+        $released = (clone $stale())->where('is_pool', true)->update([
+            'status' => 'a_faire', 'started_at' => null, 'claimed_by' => null, 'employee_id' => null,
+        ]);
+
+        // Tâches assignées expirées : rendues « à faire », titulaire conservé.
+        $released += (clone $stale())->where('is_pool', false)->update([
+            'status' => 'a_faire', 'started_at' => null, 'claimed_by' => null,
+        ]);
 
         if ($released > 0) {
             $this->info("Prises de tâche expirées libérées : {$released}.");

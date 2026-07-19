@@ -18,7 +18,7 @@ class TaskAssignment extends Model
         'farm_id', 'task_template_id', 'employee_id', 'title', 'description',
         'category', 'building_id', 'plot_id', 'batch_id', 'scheduled_date', 'scheduled_time',
         'duration_minutes', 'priority', 'status', 'started_at', 'claimed_by', 'completed_at',
-        'completed_by', 'completion_notes', 'is_auto_generated',
+        'completed_by', 'completion_notes', 'is_auto_generated', 'is_pool',
         'proof_type', 'proof_label', 'proof_unit', 'proof_photo_path', 'proof_value',
     ];
 
@@ -27,6 +27,7 @@ class TaskAssignment extends Model
         'started_at'       => 'datetime',
         'completed_at'     => 'datetime',
         'is_auto_generated' => 'boolean',
+        'is_pool'          => 'boolean',
         'proof_value'      => 'decimal:2',
     ];
 

@@ -19,7 +19,7 @@ class TaskTemplate extends Model
         'farm_id', 'name', 'category', 'description', 'icon', 'color',
         'frequency', 'days_of_week', 'day_of_month', 'scheduled_time',
         'duration_minutes', 'target_type', 'per_building', 'batch_types',
-        'plot_types', 'priority', 'is_active',
+        'plot_types', 'priority', 'is_active', 'is_pool',
         'proof_type', 'proof_label', 'proof_unit',
     ];
 
@@ -29,6 +29,7 @@ class TaskTemplate extends Model
         'plot_types'    => 'array',
         'per_building'  => 'boolean',
         'is_active'     => 'boolean',
+        'is_pool'       => 'boolean',
     ];
 
     public function assignments(): HasMany { return $this->hasMany(TaskAssignment::class); }

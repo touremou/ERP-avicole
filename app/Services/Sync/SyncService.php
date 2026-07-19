@@ -1242,7 +1242,10 @@ class SyncService
 
             $myEmployeeId = Auth::user()?->employee?->id;
             $isOwner = $task->employee_id !== null && $task->employee_id === $myEmployeeId;
-            if (! $isOwner && Gate::denies('rh.M')) {
+            // Tâche de POOL (libre-service) : tout ouvrier de la ferme (ayant une
+            // fiche employé) peut la prendre. Sinon, seul le titulaire ou rh.M.
+            $canPool = $task->is_pool && $myEmployeeId !== null;
+            if (! $isOwner && ! $canPool && Gate::denies('rh.M')) {
                 return $this->denied();
             }
 
@@ -1262,11 +1265,13 @@ class SyncService
                 ])];
             }
 
-            // Libre (ou prise expirée) → on la prend.
+            // Libre (ou prise expirée) → on la prend. Une tâche de pool s'ATTRIBUE
+            // au preneur (elle quitte le libre-service tant qu'il la détient).
             $task->update([
-                'status'     => 'en_cours',
-                'started_at' => now(),
-                'claimed_by' => Auth::id(),
+                'status'      => 'en_cours',
+                'started_at'  => now(),
+                'claimed_by'  => Auth::id(),
+                'employee_id' => ($task->is_pool && $myEmployeeId) ? $myEmployeeId : $task->employee_id,
             ]);
 
             $task->logLifecycle('claimed', ['statut' => 'en_cours', 'prise_a' => now()->toDateTimeString()]);
@@ -1301,7 +1306,14 @@ class SyncService
             return $this->denied();
         }
 
-        $task->update(['status' => 'a_faire', 'started_at' => null, 'claimed_by' => null]);
+        // Une tâche de pool retourne au LIBRE-SERVICE (sans titulaire) ; une
+        // tâche assignée reste attribuée à son employé.
+        $task->update([
+            'status'      => 'a_faire',
+            'started_at'  => null,
+            'claimed_by'  => null,
+            'employee_id' => $task->is_pool ? null : $task->employee_id,
+        ]);
 
         $task->logLifecycle('released', ['statut' => 'a_faire']);
         Log::info("Sync: tâche #{$task->id} libérée par user " . Auth::id() . '.');

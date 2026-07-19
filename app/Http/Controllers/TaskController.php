@@ -235,6 +235,9 @@ class TaskController extends Controller
             'farm_id'           => $this->farmId(),
             'status'            => 'a_faire',
             'is_auto_generated' => false,
+            // Sans employé désigné → tâche de POOL (libre-service) : le premier
+            // ouvrier qui la prend se l'attribue.
+            'is_pool'           => empty($validated['employee_id']),
         ]));
 
         return back()->with('success', "Tâche \"{$validated['title']}\" créée.");
@@ -320,6 +323,7 @@ class TaskController extends Controller
             'plot_types'       => 'nullable|array',
             'plot_types.*'     => 'string',
             'description'      => 'nullable|string|max:500',
+            'is_pool'          => 'nullable',
             'proof_type'       => 'nullable|in:aucune,photo,valeur',
             'proof_label'      => 'nullable|string|max:255',
             'proof_unit'       => 'nullable|string|max:20',
@@ -352,6 +356,7 @@ class TaskController extends Controller
             'batch_types'      => !empty($validated['batch_types']) ? $validated['batch_types'] : null,
             'plot_types'       => !empty($validated['plot_types']) ? $validated['plot_types'] : null,
             'description'      => $validated['description'] ?? null,
+            'is_pool'          => $request->boolean('is_pool'),
             'proof_type'       => $validated['proof_type'] ?? 'aucune',
             'proof_label'      => ($validated['proof_type'] ?? 'aucune') !== 'aucune' ? ($validated['proof_label'] ?? null) : null,
             'proof_unit'       => ($validated['proof_type'] ?? 'aucune') === 'valeur' ? ($validated['proof_unit'] ?? null) : null,
@@ -390,6 +395,7 @@ class TaskController extends Controller
             'plot_types'       => 'nullable|array',
             'plot_types.*'     => 'string',
             'description'      => 'nullable|string|max:500',
+            'is_pool'          => 'nullable',
             'proof_type'       => 'nullable|in:aucune,photo,valeur',
             'proof_label'      => 'nullable|string|max:255',
             'proof_unit'       => 'nullable|string|max:20',
@@ -415,6 +421,7 @@ class TaskController extends Controller
             'batch_types'      => !empty($validated['batch_types']) ? $validated['batch_types'] : null,
             'plot_types'       => !empty($validated['plot_types']) ? $validated['plot_types'] : null,
             'description'      => $validated['description'] ?? null,
+            'is_pool'          => $request->boolean('is_pool'),
             'proof_type'       => $validated['proof_type'] ?? 'aucune',
             'proof_label'      => ($validated['proof_type'] ?? 'aucune') !== 'aucune' ? ($validated['proof_label'] ?? null) : null,
             'proof_unit'       => ($validated['proof_type'] ?? 'aucune') === 'valeur' ? ($validated['proof_unit'] ?? null) : null,

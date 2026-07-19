@@ -46,7 +46,23 @@ beforeEach(function () {
         ]);
     }
     $this->workerEmp = Employee::factory()->create(['farm_id' => $this->farm->id, 'user_id' => $this->worker->id]);
+
+    // Second ouvrier (pour le libre-service : deux candidats sur la même tâche).
+    $this->worker2 = User::factory()->create(['role_id' => Role::where('name', 'ouvrier_lock')->value('id')]);
+    DB::table('farm_user')->insert([
+        'farm_id' => $this->farm->id, 'user_id' => $this->worker2->id,
+        'is_default' => true, 'is_owner' => false, 'created_at' => now(), 'updated_at' => now(),
+    ]);
+    $this->worker2Emp = Employee::factory()->create(['farm_id' => $this->farm->id, 'user_id' => $this->worker2->id]);
 });
+
+function poolTask(int $farmId): TaskAssignment
+{
+    return TaskAssignment::create([
+        'farm_id' => $farmId, 'employee_id' => null, 'is_pool' => true, 'title' => 'Nettoyage cour (libre)',
+        'category' => 'nettoyage', 'scheduled_date' => now()->toDateString(), 'status' => 'a_faire',
+    ]);
+}
 
 function lockTask(int $farmId, int $employeeId): TaskAssignment
 {
@@ -161,6 +177,66 @@ test('le cycle de vie d\'une tâche est tracé au journal d\'audit (prise, compl
     $completed = \Spatie\Activitylog\Models\Activity::where('event', 'completed')
         ->where('subject_id', $task->id)->first();
     expect($completed->causer_id)->toBe($this->worker->id);
+});
+
+test('POOL : une tâche libre-service est visible par tout ouvrier et prise par le premier', function () {
+    $task = poolTask($this->farm->id);
+
+    // Les deux ouvriers voient la tâche du pool.
+    Sanctum::actingAs($this->worker);
+    $seen1 = collect($this->getJson('/api/v1/tasks')->assertOk()->json('tasks'))->firstWhere('id', $task->id);
+    expect($seen1)->not->toBeNull()->and($seen1['is_pool'])->toBeTrue();
+
+    Sanctum::actingAs($this->worker2);
+    expect(collect($this->getJson('/api/v1/tasks')->assertOk()->json('tasks'))->firstWhere('id', $task->id))->not->toBeNull();
+
+    // Ouvrier 1 la prend → elle lui est attribuée.
+    Sanctum::actingAs($this->worker);
+    $res = $this->postJson('/api/v1/sync/push', ['operations' => [op('task.start', $task->id)]])
+        ->assertOk()->json('results.0');
+    expect($res['status'])->toBe('success');
+    $task->refresh();
+    expect($task->status)->toBe('en_cours')
+        ->and($task->claimed_by)->toBe($this->worker->id)
+        ->and($task->employee_id)->toBe($this->workerEmp->id); // sortie du pool, attribuée
+
+    // Ouvrier 2 tente de la prendre → refus (déjà prise), et ne la voit plus au pool.
+    Sanctum::actingAs($this->worker2);
+    $conflict = $this->postJson('/api/v1/sync/push', ['operations' => [op('task.start', $task->id)]])
+        ->assertOk()->json('results.0');
+    expect($conflict['status'])->toBe('conflict');
+    expect(collect($this->getJson('/api/v1/tasks')->assertOk()->json('tasks'))->firstWhere('id', $task->id))->toBeNull();
+});
+
+test('POOL : libérer une tâche prise la renvoie au libre-service (sans titulaire)', function () {
+    $task = poolTask($this->farm->id);
+    Sanctum::actingAs($this->worker);
+    $this->postJson('/api/v1/sync/push', ['operations' => [op('task.start', $task->id)]])->assertOk();
+    $this->postJson('/api/v1/sync/push', ['operations' => [op('task.release', $task->id)]])->assertOk();
+
+    $task->refresh();
+    expect($task->status)->toBe('a_faire')
+        ->and($task->employee_id)->toBeNull()   // retour au pool
+        ->and($task->is_pool)->toBeTrue();
+
+    // De nouveau visible par l'autre ouvrier.
+    Sanctum::actingAs($this->worker2);
+    expect(collect($this->getJson('/api/v1/tasks')->assertOk()->json('tasks'))->firstWhere('id', $task->id))->not->toBeNull();
+});
+
+test('POOL : une prise expirée retourne au libre-service (tasks:release-stale)', function () {
+    $task = poolTask($this->farm->id);
+    $task->update([
+        'status' => 'en_cours', 'claimed_by' => $this->worker->id, 'employee_id' => $this->workerEmp->id,
+        'started_at' => now()->subMinutes(TaskAssignment::CLAIM_TIMEOUT_MINUTES + 5),
+    ]);
+
+    $this->artisan('tasks:release-stale')->assertSuccessful();
+
+    $task->refresh();
+    expect($task->status)->toBe('a_faire')
+        ->and($task->claimed_by)->toBeNull()
+        ->and($task->employee_id)->toBeNull(); // pool → sans titulaire
 });
 
 test('GET /tasks expose le verrou (claimed_by_me pour le preneur)', function () {
