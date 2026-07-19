@@ -18,6 +18,7 @@ import { StockMovementScreen } from '../features/logistique/StockMovementScreen'
 import { StocksScreen } from '../features/logistique/StocksScreen'
 import { ExpenseScreen } from '../features/depenses/ExpenseScreen'
 import { HarvestScreen } from '../features/cultures/HarvestScreen'
+import { SemisScreen } from '../features/cultures/SemisScreen'
 import { HarvestJournalScreen } from '../features/cultures/HarvestJournalScreen'
 import { CropInputScreen } from '../features/cultures/CropInputScreen'
 import { SlaughterScreen } from '../features/abattoir/SlaughterScreen'
@@ -113,6 +114,7 @@ function Shell() {
           <Route path="/ressources/ravitaillement" element={<WaterRefillScreen />} />
           <Route path="/logistique/stocks" element={<StocksScreen />} />
           <Route path="/depenses/nouvelle" element={<ExpenseScreen />} />
+          <Route path="/cultures/semis" element={<SemisScreen />} />
           <Route path="/cultures/recolte/:cycleId" element={<HarvestScreen />} />
           <Route path="/cultures/intrant/:cycleId" element={<CropInputScreen />} />
           <Route path="/abattoir/execution/:orderId" element={<SlaughterScreen />} />

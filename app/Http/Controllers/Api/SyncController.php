@@ -89,7 +89,7 @@ class SyncController extends Controller
             'model'   => \App\Models\CropCycle::class,
             'gate'    => 'cultures.L',
             'columns' => ['id', 'uuid', 'plot_id', 'code', 'crop_name', 'variety', 'status',
-                          'employee_id', 'planting_date', 'updated_at'],
+                          'employee_id', 'planting_date', 'area_used_ha', 'updated_at'],
         ],
         'slaughter_orders' => [
             'model'   => \App\Models\SlaughterOrder::class,
