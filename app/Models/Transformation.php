@@ -10,7 +10,7 @@ class Transformation extends Model
 {
     use BelongsToFarm;
     protected $fillable = [
-        'farm_id',
+        'farm_id', 'slaughter_order_id',
         'batch_number', 'product_source', 'transformation_type',
         'input_kg', 'output_kg', 'yield_percent',
         'production_date', 'expiry_date',
@@ -27,6 +27,9 @@ class Transformation extends Model
     ];
 
     public function operator(): BelongsTo { return $this->belongsTo(User::class, 'operator_id'); }
+
+    /** Ordre d'abattage d'origine (traçabilité en cascade) — nullable. */
+    public function slaughterOrder(): BelongsTo { return $this->belongsTo(SlaughterOrder::class); }
 
     public function getTypeLabelAttribute(): string
     {

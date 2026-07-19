@@ -3212,5 +3212,17 @@
     "🧬 REPRODUCTEURS (RÉFORME)": "🧬 BREEDERS (CULLING)",
     "🧬 Reproducteurs": "🧬 Breeders",
     "🧹 Nettoyage": "🧹 Cleaning",
-    "🧼 Désinfection / Vide": "🧼 Disinfection / Downtime"
+    "🧼 Désinfection / Vide": "🧼 Disinfection / Downtime",
+    "L'ordre :number est déjà :status — il ne peut pas être ré-exécuté.": "Order :number is already :status — it cannot be executed again.",
+    "Suite du cycle : découpe ou clôture depuis le tableau de bord.": "Next step of the cycle: cutting or closure from the dashboard.",
+    "Carcasse restante : :kg kg": "Remaining carcass: :kg kg",
+    "Découper": "Cut",
+    "Clôturer": "Close",
+    "Cycle clôturé (checklist HACCP/déchets)": "Cycle closed (HACCP/waste checklist)",
+    "Checklist HACCP / déchets de fin de cycle": "End-of-cycle HACCP / waste checklist",
+    "Ordre d'abattage d'origine — optionnel (traçabilité)": "Source slaughter order — optional (traceability)",
+    "Non rattaché": "Not linked",
+    "La transformation apparaîtra au dossier de lot de cet ordre.": "The transformation will appear in this order's batch record.",
+    "Transformations rattachées": "Linked transformations",
+    "en cours": "in progress"
 }

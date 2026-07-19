@@ -136,6 +136,19 @@
                     </p>
                 @endif
 
+                {{-- Cascade : transformations rattachées à l'ordre (fumage, marinade...). --}}
+                @if($order->transformations->isNotEmpty())
+                    <p class="text-[9px] font-black uppercase text-slate-400 tracking-widest mt-3 mb-1">{{ __("Transformations rattachées") }}</p>
+                    @foreach($order->transformations as $tf)
+                    <p class="text-[10px] text-slate-500 m-0 mb-1">
+                        <span class="font-black">{{ $tf->batch_number }}</span> — {{ $tf->type_label }} · {{ $tf->product_source }} :
+                        {{ number_format((float) $tf->input_kg, 1, ',', ' ') }} kg →
+                        <span class="font-black">{{ $tf->output_kg !== null ? number_format((float) $tf->output_kg, 1, ',', ' ') . ' kg' : __('en cours') }}</span>
+                        @if($tf->yield_percent) <span class="text-slate-400">({{ $tf->yield_percent }} %)</span> @endif
+                    </p>
+                    @endforeach
+                @endif
+
                 @if($order->client)
                     <p class="text-[10px] text-slate-500 mt-2 m-0">{{ __("Client destinataire") }} : <span class="font-black">{{ $order->client->name }}</span></p>
                 @endif

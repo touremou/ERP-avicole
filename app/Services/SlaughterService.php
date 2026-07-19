@@ -331,6 +331,9 @@ class SlaughterService
 
             $transformation = Transformation::create([
                 'batch_number'        => Transformation::generateBatchNumber(),
+                // Traçabilité en cascade : rattachement à l'ordre d'abattage
+                // d'origine quand il est connu (dossier de lot complet).
+                'slaughter_order_id'  => $data['slaughter_order_id'] ?? null,
                 'product_source'      => $sourceName,
                 'transformation_type' => $data['type'],
                 'input_kg'            => $inputKg,

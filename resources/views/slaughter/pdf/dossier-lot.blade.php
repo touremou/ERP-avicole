@@ -110,6 +110,11 @@
         @foreach($order->byproducts as $byproduct){{ \App\Models\SlaughterByproduct::TYPES[$byproduct->type] ?? $byproduct->type }} {{ number_format((float) $byproduct->quantity_kg, 1, ',', ' ') }} kg → {{ \App\Models\SlaughterByproduct::DESTINATIONS[$byproduct->destination] ?? $byproduct->destination }}@if(!$loop->last), @endif @endforeach</p>
     @endif
 
+    @if($order->transformations->isNotEmpty())
+        <p style="margin:4px 0 0"><strong>Transformations rattachées :</strong>
+        @foreach($order->transformations as $tf){{ $tf->batch_number }} ({{ $tf->type_label }}, {{ $tf->product_source }}) {{ number_format((float) $tf->input_kg, 1, ',', ' ') }} kg → {{ $tf->output_kg !== null ? number_format((float) $tf->output_kg, 1, ',', ' ') . ' kg' : 'en cours' }}@if(!$loop->last), @endif @endforeach</p>
+    @endif
+
     @if($order->client)
         <p style="margin:4px 0 0">Client destinataire : <strong>{{ $order->client->name }}</strong></p>
     @endif

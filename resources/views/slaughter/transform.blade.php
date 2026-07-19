@@ -43,6 +43,20 @@
                                 </div>
                             </div>
 
+                            {{-- TRAÇABILITÉ EN CASCADE : rattachement à l'ordre d'abattage d'origine --}}
+                            <div class="space-y-2">
+                                <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Ordre d'abattage d'origine — optionnel (traçabilité)") }}</label>
+                                <select name="slaughter_order_id" class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black uppercase shadow-inner outline-none">
+                                    <option value="">{{ __("Non rattaché") }}</option>
+                                    @foreach($recentOrders as $ro)
+                                        <option value="{{ $ro->id }}">
+                                            {{ $ro->order_number }} — {{ $ro->batch->code ?? '—' }} ({{ $ro->actual_date?->format('d/m') }})
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <p class="text-[8px] text-slate-400 font-black uppercase ml-2">{{ __("La transformation apparaîtra au dossier de lot de cet ordre.") }}</p>
+                            </div>
+
                             {{-- INDICATEUR STOCK DISPONIBLE --}}
                             <div x-show="maxKg > 0" class="p-4 rounded-2xl flex items-center justify-between"
                                 :class="inputKg > maxKg ? 'bg-red-50 border border-red-200' : 'bg-emerald-50 border border-emerald-200'">
