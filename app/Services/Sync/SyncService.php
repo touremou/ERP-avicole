@@ -1206,6 +1206,14 @@ class SyncService
             'proof_value'      => $data['proof_value'] ?? null,
         ]);
 
+        // Audit RH : qui a terminé, avec quelle preuve.
+        $task->logLifecycle('completed', array_filter([
+            'statut' => 'fait',
+            'preuve' => $task->proof_type !== 'aucune' ? $task->proof_type : null,
+            'valeur' => $data['proof_value'] ?? null,
+            'photo'  => $data['photo_path'] ?? null,
+        ], fn ($v) => $v !== null));
+
         Log::info("Sync: tâche #{$task->id} terminée (uuid: {$data['uuid']}, preuve: {$task->proof_type}).");
 
         return ['status' => 'success', 'server_id' => $task->id];
@@ -1261,6 +1269,7 @@ class SyncService
                 'claimed_by' => Auth::id(),
             ]);
 
+            $task->logLifecycle('claimed', ['statut' => 'en_cours', 'prise_a' => now()->toDateTimeString()]);
             Log::info("Sync: tâche #{$task->id} prise par user " . Auth::id() . '.');
 
             return ['status' => 'success', 'server_id' => $task->id];
@@ -1294,6 +1303,7 @@ class SyncService
 
         $task->update(['status' => 'a_faire', 'started_at' => null, 'claimed_by' => null]);
 
+        $task->logLifecycle('released', ['statut' => 'a_faire']);
         Log::info("Sync: tâche #{$task->id} libérée par user " . Auth::id() . '.');
 
         return ['status' => 'success', 'server_id' => $task->id];

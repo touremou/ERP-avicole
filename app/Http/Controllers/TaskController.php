@@ -177,6 +177,8 @@ class TaskController extends Controller
             'completion_notes' => $request->input('notes'),
         ]);
 
+        $task->logLifecycle('completed', ['statut' => 'fait', 'origine' => 'bureau']);
+
         return back()->with('success', "✅ \"{$task->title}\" terminée.");
     }
 
