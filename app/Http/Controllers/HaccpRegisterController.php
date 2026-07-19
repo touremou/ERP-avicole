@@ -167,7 +167,58 @@ class HaccpRegisterController extends Controller
             ->groupBy('point')
             ->pluck('total', 'point');
 
-        return view('slaughter.registres.temperatures', compact('logs', 'requiredPerDay', 'todayCounts'));
+        // Tournée : dernier équipement relevé par point (préremplissage grille).
+        $lastEquipments = TemperatureLog::whereNotNull('equipment_ref')
+            ->latest('releve_at')->latest('id')
+            ->get(['point', 'equipment_ref'])
+            ->unique('point')
+            ->pluck('equipment_ref', 'point');
+
+        return view('slaughter.registres.temperatures', compact('logs', 'requiredPerDay', 'todayCounts', 'lastEquipments'));
+    }
+
+    /**
+     * SAISIE EN TOURNÉE : tous les points de contrôle en une validation —
+     * un enregistrement par ligne remplie (les lignes vides sont ignorées).
+     * La conformité reste évaluée ligne par ligne (RecordTemperatureLog).
+     */
+    public function temperatureStoreBatch(Request $request)
+    {
+        if (Gate::denies('abattoir.C')) return back()->with('error', 'Action non autorisée.');
+
+        $validated = $request->validate([
+            'rows'                      => 'required|array',
+            'rows.*.temperature'        => 'nullable|numeric|min:-60|max:120',
+            'rows.*.equipment_ref'      => 'nullable|string|max:50',
+            'rows.*.corrective_action'  => 'nullable|string|max:2000',
+        ]);
+
+        $points = array_keys(TemperatureLog::POINTS);
+        $saved = 0; $nonConformes = 0;
+        foreach ($validated['rows'] as $point => $row) {
+            if (! in_array($point, $points, true)) continue;
+            if (($row['temperature'] ?? null) === null || $row['temperature'] === '') continue;
+
+            $log = app(RecordTemperatureLog::class)->execute([
+                'point'             => $point,
+                'equipment_ref'     => $row['equipment_ref'] ?? null,
+                'temperature'       => (float) $row['temperature'],
+                'corrective_action' => $row['corrective_action'] ?? null,
+                'operator_id'       => Auth::id(),
+                'releve_at'         => now(),
+            ]);
+            $saved++;
+            if (! $log->conforme) $nonConformes++;
+        }
+
+        if ($saved === 0) {
+            return back()->with('error', __('Aucune température saisie — remplissez au moins un point de contrôle.'));
+        }
+
+        return redirect()->route('slaughter.registres.temperatures')
+            ->with($nonConformes > 0 ? 'error' : 'success', $nonConformes > 0
+                ? __('Tournée enregistrée : :n relevés, dont :nc HORS SEUIL — alertes déclenchées.', ['n' => $saved, 'nc' => $nonConformes])
+                : __('Tournée enregistrée : :n relevés, tous conformes.', ['n' => $saved]));
     }
 
     public function temperatureStore(Request $request)
@@ -208,7 +259,60 @@ class HaccpRegisterController extends Controller
             ->paginate((int) setting('general.items_per_page', 15))
             ->withQueryString();
 
-        return view('slaughter.registres.nettoyage', compact('logs'));
+        // Tournée : dernier produit/dosage utilisé par zone (le plan de
+        // nettoyage se répète — préremplissage de la grille).
+        $lastByZone = CleaningLog::latest('done_at')->latest('id')
+            ->get(['zone', 'product_used', 'dosage'])
+            ->unique('zone')
+            ->keyBy('zone');
+
+        return view('slaughter.registres.nettoyage', compact('logs', 'lastByZone'));
+    }
+
+    /**
+     * TOURNÉE DE NETTOYAGE : toutes les zones cochées en une validation —
+     * un enregistrement par zone cochée (produit obligatoire par zone).
+     */
+    public function cleaningStoreBatch(Request $request)
+    {
+        if (Gate::denies('abattoir.C')) return back()->with('error', 'Action non autorisée.');
+
+        $validated = $request->validate([
+            'rows'                => 'required|array',
+            'rows.*.done'         => 'nullable|boolean',
+            'rows.*.product_used' => 'nullable|string|max:100',
+            'rows.*.dosage'       => 'nullable|string|max:50',
+        ]);
+
+        $zones = array_keys(CleaningLog::ZONES);
+        $checked = collect($validated['rows'])
+            ->filter(fn ($row, $zone) => in_array($zone, $zones, true) && (bool) ($row['done'] ?? false));
+
+        if ($checked->isEmpty()) {
+            return back()->with('error', __('Aucune zone cochée — cochez les zones nettoyées.'));
+        }
+
+        // Produit obligatoire pour CHAQUE zone cochée (registre opposable).
+        $missing = $checked->filter(fn ($row) => blank($row['product_used'] ?? null));
+        if ($missing->isNotEmpty()) {
+            return back()->withErrors(['rows' => __('Produit manquant pour : :zones', [
+                'zones' => $missing->keys()->map(fn ($z) => CleaningLog::ZONES[$z] ?? $z)->implode(', '),
+            ])])->withInput();
+        }
+
+        foreach ($checked as $zone => $row) {
+            CleaningLog::create([
+                'zone'         => $zone,
+                'product_used' => $row['product_used'],
+                'dosage'       => $row['dosage'] ?? null,
+                'operator_id'  => Auth::id(),
+                'done_at'      => now(),
+                'synced_at'    => now(),
+            ]);
+        }
+
+        return redirect()->route('slaughter.registres.nettoyage')
+            ->with('success', __('Tournée de nettoyage enregistrée : :n zones tracées.', ['n' => $checked->count()]));
     }
 
     public function cleaningStore(Request $request)

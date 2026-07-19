@@ -16,7 +16,45 @@
                 <div class="mb-6 p-5 bg-red-50 text-red-700 rounded-[2rem] text-[10px] font-black uppercase tracking-widest border border-red-200"><i class="fa-solid fa-circle-exclamation mr-2"></i> {{ $errors->first() }}</div>
             @endif
 
-            {{-- SAISIE RAPIDE --}}
+            {{-- TOURNÉE DE NETTOYAGE : toutes les zones cochées en une validation. --}}
+            @can('abattoir.C')
+            <form method="POST" action="{{ route('slaughter.registres.nettoyage.batch') }}" class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm mb-8">
+                @csrf
+                <p class="text-[10px] font-black uppercase tracking-widest text-rose-600 mb-1"><i class="fa-solid fa-route mr-1"></i> {{ __("Tournée de nettoyage") }}</p>
+                <p class="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-4">{{ __("Cochez les zones nettoyées — produit/dosage rappelés de la dernière tournée.") }}</p>
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="text-[8px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
+                                <th class="px-2 py-2 text-center">{{ __("Fait") }}</th>
+                                <th class="px-2 py-2 text-left">{{ __("Zone") }}</th>
+                                <th class="px-2 py-2 text-left">{{ __("Produit utilisé") }}</th>
+                                <th class="px-2 py-2 text-left">{{ __("Dosage") }}</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-50">
+                            @foreach(\App\Models\CleaningLog::ZONES as $key => $label)
+                            @if($key !== 'autre')
+                            @php $last = $lastByZone[$key] ?? null; @endphp
+                            <tr>
+                                <td class="px-2 py-2 text-center">
+                                    <input type="hidden" name="rows[{{ $key }}][done]" value="0">
+                                    <input type="checkbox" name="rows[{{ $key }}][done]" value="1" @checked(old("rows.{$key}.done")) class="w-5 h-5 rounded">
+                                </td>
+                                <td class="px-2 py-2 text-[10px] font-black text-slate-700 uppercase whitespace-nowrap">{{ __($label) }}</td>
+                                <td class="px-2 py-2"><input type="text" name="rows[{{ $key }}][product_used]" value="{{ old("rows.{$key}.product_used", $last->product_used ?? '') }}" maxlength="100" placeholder="{{ __('Produit agréé...') }}" class="w-full bg-slate-50 border-none rounded-xl p-2 text-[10px] font-black shadow-inner outline-none"></td>
+                                <td class="px-2 py-2"><input type="text" name="rows[{{ $key }}][dosage]" value="{{ old("rows.{$key}.dosage", $last->dosage ?? '') }}" maxlength="50" placeholder="2%…" class="w-24 bg-slate-50 border-none rounded-xl p-2 text-[10px] font-black shadow-inner outline-none"></td>
+                            </tr>
+                            @endif
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+                <button type="submit" class="mt-4 w-full bg-rose-500 text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-rose-600 transition-all border-none cursor-pointer italic"><i class="fa-solid fa-route mr-2"></i> {{ __("Valider la tournée") }}</button>
+            </form>
+            @endcan
+
+            {{-- SAISIE RAPIDE (opération isolée, avec photo/notes) --}}
             @can('abattoir.C')
             <form method="POST" action="{{ route('slaughter.registres.nettoyage.store') }}" enctype="multipart/form-data" class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm mb-8">
                 @csrf

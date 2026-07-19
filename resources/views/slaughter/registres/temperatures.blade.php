@@ -30,7 +30,46 @@
                 @endforeach
             </div>
 
-            {{-- SAISIE RAPIDE --}}
+            {{-- SAISIE EN TOURNÉE : tous les points en une validation (lignes vides ignorées). --}}
+            @can('abattoir.C')
+            <form method="POST" action="{{ route('slaughter.registres.temperatures.batch') }}" class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm mb-8">
+                @csrf
+                <p class="text-[10px] font-black uppercase tracking-widest text-rose-600 mb-1"><i class="fa-solid fa-route mr-1"></i> {{ __("Tournée de températures") }}</p>
+                <p class="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-4">{{ __("Remplissez les points relevés, laissez vides les autres — une seule validation.") }}</p>
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="text-[8px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
+                                <th class="px-2 py-2 text-left">{{ __("Point de contrôle") }}</th>
+                                <th class="px-2 py-2 text-left">{{ __("Bornes") }}</th>
+                                <th class="px-2 py-2 text-center">{{ __("Aujourd'hui") }}</th>
+                                <th class="px-2 py-2 text-left">{{ __("Équipement") }}</th>
+                                <th class="px-2 py-2 text-center">{{ __("T° (°C)") }}</th>
+                                <th class="px-2 py-2 text-left">{{ __("Action corrective") }}</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-50">
+                            @foreach(\App\Models\TemperatureLog::POINT_LABELS as $pt => $label)
+                            @php $b = \App\Models\TemperatureLog::boundsFor($pt); $done = (int) ($todayCounts[$pt] ?? 0); @endphp
+                            <tr>
+                                <td class="px-2 py-2 text-[10px] font-black text-slate-700 uppercase whitespace-nowrap">{{ __($label) }}</td>
+                                <td class="px-2 py-2 text-[9px] font-black text-blue-500 whitespace-nowrap">{{ ($b['min'] !== null ? 'min '.$b['min'].'° ' : '') . ($b['max'] !== null ? 'max '.$b['max'].'°' : '—') }}</td>
+                                <td class="px-2 py-2 text-center">
+                                    <span class="text-[9px] font-black px-2 py-0.5 rounded-full {{ $done >= $requiredPerDay ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600' }}">{{ $done }}/{{ $requiredPerDay }}</span>
+                                </td>
+                                <td class="px-2 py-2"><input type="text" name="rows[{{ $pt }}][equipment_ref]" value="{{ old("rows.{$pt}.equipment_ref", $lastEquipments[$pt] ?? '') }}" maxlength="50" placeholder="CF-01…" class="w-24 bg-slate-50 border-none rounded-xl p-2 text-[10px] font-black shadow-inner outline-none"></td>
+                                <td class="px-2 py-2 text-center"><input type="number" name="rows[{{ $pt }}][temperature]" value="{{ old("rows.{$pt}.temperature") }}" step="0.1" min="-60" max="120" class="w-24 bg-slate-50 border-none rounded-xl p-2 text-base font-black shadow-inner outline-none text-center"></td>
+                                <td class="px-2 py-2"><input type="text" name="rows[{{ $pt }}][corrective_action]" value="{{ old("rows.{$pt}.corrective_action") }}" maxlength="2000" placeholder="{{ __('Si hors seuil…') }}" class="w-full bg-slate-50 border-none rounded-xl p-2 text-[10px] font-bold shadow-inner outline-none"></td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+                <button type="submit" class="mt-4 w-full bg-rose-500 text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-rose-600 transition-all border-none cursor-pointer italic"><i class="fa-solid fa-route mr-2"></i> {{ __("Valider la tournée") }}</button>
+            </form>
+            @endcan
+
+            {{-- SAISIE RAPIDE (relevé isolé) --}}
             @can('abattoir.C')
             <form method="POST" action="{{ route('slaughter.registres.temperatures.store') }}" class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm mb-8">
                 @csrf
