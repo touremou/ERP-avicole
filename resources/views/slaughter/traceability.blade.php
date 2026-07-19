@@ -140,6 +140,43 @@
                     <p class="text-[10px] text-slate-500 mt-2 m-0">{{ __("Client destinataire") }} : <span class="font-black">{{ $order->client->name }}</span></p>
                 @endif
             </div>
+
+            {{-- 5. ÉCONOMIE DU LOT — marge directe (coût d'achat vif vs valeur produite).
+                 Donnée financière : réservée au périmètre Dépenses. --}}
+            @can('depenses.L')
+            @php $eco = $order->economicSummary(); @endphp
+            @if($eco['mode'] === 'facon' || $eco['cost'] > 0 || $eco['output_value'] > 0)
+            <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm">
+                <p class="text-[10px] font-black uppercase tracking-widest text-rose-600 mb-3"><i class="fa-solid fa-scale-balanced mr-1"></i> {{ __("5. Économie du lot") }}</p>
+                @if($eco['mode'] === 'facon')
+                    <div class="flex justify-between items-center py-2 border-b border-slate-50">
+                        <span class="text-xs font-black text-slate-600">{{ __("Prestation d'abattage à façon") }}</span>
+                        <span class="text-sm font-black text-emerald-600">{{ number_format($eco['margin'], 0, ',', ' ') }} {{ currency() }}</span>
+                    </div>
+                    <p class="text-[9px] text-slate-400 m-0 mt-2">{{ __("Sujets propriété du client — aucun coût matière (RG-07).") }}</p>
+                @else
+                    <div class="flex justify-between items-center py-2 border-b border-slate-50">
+                        <span class="text-xs font-black text-slate-600">{{ __("Valeur produite (découpes valorisées)") }}</span>
+                        <span class="text-sm font-black text-slate-900">{{ number_format($eco['output_value'], 0, ',', ' ') }} {{ currency() }}</span>
+                    </div>
+                    <div class="flex justify-between items-center py-2 border-b border-slate-50">
+                        <span class="text-xs font-black text-slate-600">− {{ __($eco['cost_label'] ?? 'Coût direct') }}</span>
+                        <span class="text-sm font-black text-rose-500">{{ number_format($eco['cost'], 0, ',', ' ') }} {{ currency() }}</span>
+                    </div>
+                    <div class="flex justify-between items-center pt-3">
+                        <span class="text-[10px] font-black uppercase tracking-widest text-slate-500">{{ __("Marge directe") }}</span>
+                        <span class="text-lg font-black {{ $eco['margin'] >= 0 ? 'text-emerald-600' : 'text-rose-600' }}">{{ number_format($eco['margin'], 0, ',', ' ') }} {{ currency() }}</span>
+                    </div>
+                    @if($eco['mode'] === 'interne')
+                        <p class="text-[9px] text-slate-400 m-0 mt-2">{{ __("Lot interne : le coût d'acquisition est suivi au niveau du lot (P&L), non reventilé ici.") }}</p>
+                    @endif
+                    @if($eco['has_unpriced'])
+                        <p class="text-[9px] text-amber-600 m-0 mt-1"><i class="fa-solid fa-triangle-exclamation mr-1"></i> {{ __("Des découpes sans prix ne sont pas valorisées — la marge est un plancher.") }}</p>
+                    @endif
+                @endif
+            </div>
+            @endif
+            @endcan
         </div>
     </div>
 </x-app-layout>

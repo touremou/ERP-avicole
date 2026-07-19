@@ -127,3 +127,61 @@ test('le registre affiche « À façon » sans coût pour une réception façon'
         ->assertOk()
         ->assertSee('À façon', false);
 });
+
+test('la marge du lot d\'abattage déduit le coût d\'achat vif de la valeur produite', function () {
+    // Achat vif à 60 000 (20 × 3000).
+    $reception = recordReception($this->provider->id, $this->adminUser->id, [
+        'purchase_basis' => 'par_sujet', 'purchase_unit_price' => 3000,
+    ]);
+
+    $order = \App\Models\SlaughterOrder::create([
+        'order_number' => \App\Models\SlaughterOrder::generateNumber(),
+        'reception_id' => $reception->id, 'planned_date' => now()->toDateString(),
+        'planned_quantity' => 20, 'status' => 'termine', 'requested_by' => $this->adminUser->id,
+    ]);
+
+    // Découpe valorisée : 10 kg × 8 000 = 80 000 de valeur produite.
+    $session = \App\Models\CuttingSession::create([
+        'slaughter_order_id' => $order->id, 'session_date' => now()->toDateString(),
+        'operator_id' => $this->adminUser->id, 'total_input_kg' => 12,
+    ]);
+    \App\Models\CutProduct::create([
+        'cutting_session_id' => $session->id, 'product_type' => 'cuisse',
+        'product_name' => 'Cuisses', 'quantity_kg' => 10, 'unit_price' => 8000,
+        'destination' => 'stock_frais',
+    ]);
+
+    $order->load('reception', 'cuttingSessions.products');
+    $eco = $order->economicSummary();
+
+    expect($eco['mode'])->toBe('achat')
+        ->and($eco['cost'])->toBe(60000.0)
+        ->and($eco['output_value'])->toBe(80000.0)
+        ->and($eco['margin'])->toBe(20000.0); // 80 000 − 60 000
+});
+
+test('le dossier de lot affiche la marge (valeur produite − coût d\'achat)', function () {
+    $reception = recordReception($this->provider->id, $this->adminUser->id, [
+        'purchase_basis' => 'par_sujet', 'purchase_unit_price' => 3000, // 60 000
+    ]);
+    $order = \App\Models\SlaughterOrder::create([
+        'order_number' => \App\Models\SlaughterOrder::generateNumber(),
+        'reception_id' => $reception->id, 'planned_date' => now()->toDateString(),
+        'planned_quantity' => 20, 'status' => 'termine', 'requested_by' => $this->adminUser->id,
+    ]);
+    $session = \App\Models\CuttingSession::create([
+        'slaughter_order_id' => $order->id, 'session_date' => now()->toDateString(),
+        'operator_id' => $this->adminUser->id, 'total_input_kg' => 12,
+    ]);
+    \App\Models\CutProduct::create([
+        'cutting_session_id' => $session->id, 'product_type' => 'cuisse',
+        'product_name' => 'Cuisses', 'quantity_kg' => 10, 'unit_price' => 8000,
+        'destination' => 'stock_frais',
+    ]);
+
+    $this->get(route('slaughter.orders.traceability', $order))
+        ->assertOk()
+        ->assertSee('Économie du lot', false)
+        ->assertSee('Marge directe', false)
+        ->assertSee('20 000', false); // marge
+});
