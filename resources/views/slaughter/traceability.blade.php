@@ -199,6 +199,38 @@
                     </div>
                     @endif
 
+                    {{-- COÛT PAR PRODUIT DE DÉCOUPE (répartition par valeur — Lot 3) :
+                         1 kg de filet ne porte pas le coût d'1 kg de pattes. --}}
+                    @php $costedCuts = $order->cuttingSessions->flatMap->products->filter(fn ($p) => $p->unit_cost !== null); @endphp
+                    @if($costedCuts->isNotEmpty())
+                    <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest m-0 mt-3 mb-1">{{ __("Coût de revient par produit de découpe") }}</p>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead>
+                                <tr class="text-[8px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
+                                    <th class="pb-1">{{ __("Produit") }}</th>
+                                    <th class="pb-1 text-right">{{ __("Kg") }}</th>
+                                    <th class="pb-1 text-right">{{ __("Coût/kg") }}</th>
+                                    <th class="pb-1 text-right">{{ __("Prix/kg") }}</th>
+                                    <th class="pb-1 text-right">{{ __("Marge/kg") }}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($costedCuts as $cp)
+                                <tr class="text-[10px] font-black border-b border-slate-50">
+                                    <td class="py-1 text-slate-700">{{ $cp->product_name }}@if($cp->calibre) <span class="text-slate-400">[{{ $cp->calibre }}]</span> @endif</td>
+                                    <td class="py-1 text-right text-slate-600">{{ number_format((float) $cp->quantity_kg, 1, ',', ' ') }}</td>
+                                    <td class="py-1 text-right text-rose-500">{{ number_format((float) $cp->unit_cost, 0, ',', ' ') }}</td>
+                                    <td class="py-1 text-right text-slate-900">{{ $cp->unit_price ? number_format((float) $cp->unit_price, 0, ',', ' ') : '—' }}</td>
+                                    @php $mk = $cp->unit_price ? (float) $cp->unit_price - (float) $cp->unit_cost : null; @endphp
+                                    <td class="py-1 text-right {{ $mk === null ? 'text-slate-400' : ($mk >= 0 ? 'text-emerald-600' : 'text-rose-600') }}">{{ $mk === null ? '—' : number_format($mk, 0, ',', ' ') }}</td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                    @endif
+
                     <div class="flex justify-between items-center pt-3 mt-1 border-t border-slate-100">
                         <span class="text-[10px] font-black uppercase tracking-widest text-slate-500">{{ __("Marge directe du lot") }}</span>
                         <span class="text-lg font-black {{ $eco['margin'] >= 0 ? 'text-emerald-600' : 'text-rose-600' }}">{{ number_format($eco['margin'], 0, ',', ' ') }} {{ currency() }}</span>

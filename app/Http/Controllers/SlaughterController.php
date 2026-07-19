@@ -520,8 +520,16 @@ class SlaughterController extends Controller
         try {
             $session = $service->executeCutting($order, $validated);
 
+            // Routage : lignes parties en transformation → ordres enfants créés.
+            $routed = collect($validated['products'])
+                ->filter(fn ($p) => ($p['destination'] ?? '') === 'transformation' && (float) ($p['kg'] ?? 0) > 0)
+                ->count();
+            $routedNote = $routed > 0
+                ? ' ' . trans_choice('{1}:n transformation enfant créée (pesée de sortie au dashboard).|[2,*]:n transformations enfants créées (pesée de sortie au dashboard).', $routed, ['n' => $routed])
+                : '';
+
             return redirect()->route('slaughter.dashboard')
-                ->with('success', "Découpe terminée — Entrée: {$validated['total_input_kg']}kg, Perte: {$session->loss_percent}%.");
+                ->with('success', "Découpe terminée — Entrée: {$validated['total_input_kg']}kg, Perte: {$session->loss_percent}%." . $routedNote);
         } catch (\Exception $e) {
             return back()->with('error', $e->getMessage())->withInput();
         }

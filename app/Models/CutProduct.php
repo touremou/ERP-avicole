@@ -16,13 +16,14 @@ class CutProduct extends Model
     protected $fillable = [
         'farm_id',
         'cutting_session_id', 'product_type', 'product_name',
-        'quantity_kg', 'quantity_pieces', 'unit_price', 'destination',
+        'quantity_kg', 'quantity_pieces', 'unit_price', 'unit_cost', 'destination',
         'calibre', 'packaging', 'pack_count',
     ];
 
     protected $casts = [
         'quantity_kg' => 'decimal:2',
         'unit_price'  => 'decimal:2',
+        'unit_cost'   => 'decimal:2',
     ];
 
     public function session(): BelongsTo
