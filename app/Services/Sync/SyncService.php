@@ -79,6 +79,7 @@ class SyncService
             'crop_input.create'       => 'cropInputCreate',
             'slaughter.execute'       => 'slaughterExecute',
             'slaughter.close'         => 'slaughterClose',
+            'slaughter.cutting'       => 'slaughterCutting',
             'mill_production.complete' => 'millProductionComplete',
             // Cœur sanitaire HACCP (spec Transformation — E1/E3/E4/E7).
             'slaughter_reception.create' => 'slaughterReceptionCreate',
@@ -858,6 +859,92 @@ class SyncService
         Log::info("Sync: cycle abattage clôturé (uuid: {$data['uuid']}, ordre: {$order->order_number}).");
 
         return ['status' => 'success', 'server_id' => $order->id];
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    //  DÉCOUPE (abattoir) — atelier de désassemblage depuis le mobile.
+    //  Mêmes règles métier que le web (SlaughterService::executeCutting) :
+    //  ordre terminé, conservation de matière, déchets pesés hors stock,
+    //  répartition des coûts par valeur, routage transformation.
+    //  Idempotent par uuid de session.
+    // ─────────────────────────────────────────────────────────────
+    private function slaughterCutting(array $payload): array
+    {
+        if (Gate::denies('abattoir.C')) {
+            return $this->denied();
+        }
+
+        $v = Validator::make($payload, [
+            'uuid'                   => 'required|uuid',
+            'slaughter_order_id'     => ['required', 'integer', $this->farmScopedExists('slaughter_orders')],
+            'session_date'           => 'required|date|before_or_equal:today',
+            'total_input_kg'         => 'required|numeric|min:0.1',
+            'products'               => 'required|array|min:1',
+            'products.*.type'        => 'required|string|max:40',
+            'products.*.name'        => 'required|string|max:255',
+            'products.*.kg'          => 'required|numeric|min:0',
+            'products.*.pieces'      => 'nullable|integer|min:0',
+            'products.*.price'       => 'nullable|numeric|min:0',
+            'products.*.destination' => 'nullable|in:stock_frais,stock_congele,transformation,vente_directe,dechet',
+            'products.*.calibre'     => 'nullable|string|max:40',
+            'products.*.packaging'   => 'nullable|in:' . implode(',', \App\Models\CutProduct::PACKAGINGS),
+            'products.*.pack_count'  => 'nullable|integer|min:0',
+        ]);
+
+        if ($v->fails()) {
+            return $this->invalid($v->errors()->toArray());
+        }
+
+        $data = $v->validated();
+
+        // Conservation de matière côté validation (le service re-vérifie
+        // contre la carcasse restante sous verrou).
+        $totalOutput = collect($data['products'])->sum(fn ($p) => (float) ($p['kg'] ?? 0));
+        if ($totalOutput > (float) $data['total_input_kg'] + 0.001) {
+            return $this->invalid(['total_input_kg' => [
+                __('Le total des morceaux (:out kg) dépasse le poids entré (:in kg).', [
+                    'out' => number_format($totalOutput, 1), 'in' => number_format((float) $data['total_input_kg'], 1),
+                ]),
+            ]]);
+        }
+
+        return DB::transaction(function () use ($data) {
+            if (\App\Models\CuttingSession::withoutGlobalScopes()->where('uuid', $data['uuid'])->exists()) {
+                return ['status' => 'already_synced'];
+            }
+
+            $order = SlaughterOrder::find($data['slaughter_order_id']);
+            if (! $order) {
+                return ['status' => 'conflict', 'message' => __("Ordre d'abattage introuvable dans cette ferme.")];
+            }
+
+            // Codes admis = recette active OU nomenclature de l'espèce.
+            $order->loadMissing('batch.species');
+            $allowed = \App\Services\ButcheryNomenclature::effectiveCutCodesForSpecies($order->batch?->species);
+            $badTypes = collect($data['products'])->pluck('type')->unique()->diff($allowed);
+            if ($badTypes->isNotEmpty()) {
+                return $this->invalid(['products' => [
+                    __('Types de découpe inconnus pour cette espèce : :types', ['types' => $badTypes->implode(', ')]),
+                ]]);
+            }
+
+            try {
+                $session = app(SlaughterService::class)->executeCutting($order, $data);
+            } catch (\Exception $e) {
+                // Règles métier (ordre non terminé, carcasse insuffisante…) :
+                // refus définitif → bac « À corriger ». Les vraies pannes
+                // (SQL…) restent des erreurs rejouables.
+                if ($e instanceof \Illuminate\Database\QueryException || $e instanceof \PDOException) {
+                    throw $e;
+                }
+
+                return ['status' => 'conflict', 'message' => $e->getMessage()];
+            }
+
+            Log::info("Sync: découpe réconciliée (uuid: {$data['uuid']}, ordre: {$order->order_number}, {$data['total_input_kg']} kg).");
+
+            return ['status' => 'success', 'server_id' => $session->id];
+        });
     }
 
     // ─────────────────────────────────────────────────────────────

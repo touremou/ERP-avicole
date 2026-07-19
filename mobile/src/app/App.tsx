@@ -23,6 +23,7 @@ import { HarvestJournalScreen } from '../features/cultures/HarvestJournalScreen'
 import { CropInputScreen } from '../features/cultures/CropInputScreen'
 import { SlaughterScreen } from '../features/abattoir/SlaughterScreen'
 import { ClosureScreen } from '../features/abattoir/ClosureScreen'
+import { CuttingScreen } from '../features/abattoir/CuttingScreen'
 import { SlaughterJournalScreen } from '../features/abattoir/SlaughterJournalScreen'
 import { ReceptionScreen } from '../features/abattoir/ReceptionScreen'
 import { TemperatureScreen } from '../features/abattoir/TemperatureScreen'
@@ -120,6 +121,7 @@ function Shell() {
           <Route path="/cultures/intrant/:cycleId" element={<CropInputScreen />} />
           <Route path="/abattoir/execution/:orderId" element={<SlaughterScreen />} />
           <Route path="/abattoir/cloture/:orderId" element={<ClosureScreen />} />
+          <Route path="/abattoir/decoupe" element={<CuttingScreen />} />
           <Route path="/abattoir/reception" element={<ReceptionScreen />} />
           <Route path="/abattoir/temperature" element={<TemperatureScreen />} />
           <Route path="/abattoir/ccp" element={<CcpScreen />} />
