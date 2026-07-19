@@ -123,7 +123,13 @@ class SlaughterService
                 // brut). Le type de stock reste 'entier_frais' (carcasse) — la
                 // distinction commerciale vit dans le nom (« Poulet PAC »…).
                 $productName = ButcheryNomenclature::presentationProductName($presentation, $batch?->species);
-                $this->addToFinishedStock($productName, 'entier_frais', $carcassWeight, $effectiveQty, 'frais');
+
+                // Coût matière vif (achat OU coût du lot interne) porté par la
+                // carcasse → coût de revient/kg propagé ensuite à la découpe.
+                $materialCost = $this->materialCost($order, $batch, $actualQty);
+                $costPerKg = $carcassWeight > 0 ? $materialCost / $carcassWeight : 0;
+
+                $this->addToFinishedStock($productName, 'entier_frais', $carcassWeight, $effectiveQty, 'frais', $costPerKg);
             }
 
             // 5. Façon (E8) : calcul de la prestation selon le modèle figé sur
@@ -182,8 +188,20 @@ class SlaughterService
             // RG-07 : un ordre à façon n'a RIEN mis en stock à l'abattage —
             // sa découpe ne touche donc pas le stock de l'entreprise (les
             // morceaux repartent avec le client, tracés en CutProduct).
+            // Coût de revient/kg propagé de la carcasse aux découpes. Le coût
+            // matière consommé (coût/kg carcasse × entrée) se répartit sur la
+            // SORTIE réelle → la perte de découpe renchérit le kg des morceaux.
+            $cutCostPerKg = 0.0;
             if (! $order->isFacon()) {
                 $sourceProductName = $this->carcassProductName($order->batch);
+                $carcass = FinishedProduct::where('product_name', $sourceProductName)
+                    ->where('product_type', 'entier_frais')->first();
+                $carcassCostPerKg = (float) ($carcass?->unit_cost ?? 0);
+                $totalOutputKg = array_sum(array_map(fn ($p) => (float) $p['kg'], $data['products']));
+                $cutCostPerKg = ($totalOutputKg > 0 && $carcassCostPerKg > 0)
+                    ? round(($carcassCostPerKg * (float) $data['total_input_kg']) / $totalOutputKg, 2)
+                    : 0.0;
+
                 $this->removeFromFinishedStock($sourceProductName, 'entier_frais', (float) $data['total_input_kg']);
             }
 
@@ -213,7 +231,8 @@ class SlaughterService
                         $product['type'],
                         (float) $product['kg'],
                         (int) ($product['pieces'] ?? 0),
-                        $storage
+                        $storage,
+                        $cutCostPerKg
                     );
                 }
             }
@@ -272,6 +291,14 @@ class SlaughterService
                 );
             }
 
+            // Coût de revient du produit transformé : coût du produit source
+            // engagé + coût de production (charbon, épices…), rapporté au poids
+            // de sortie → « production_cost enfin dans la marge ».
+            $sourceUnitCost = (float) $sourceProduct->unit_cost;
+            $transformedCostPerKg = $outputKg > 0
+                ? round((($sourceUnitCost * $inputKg) + (float) ($data['cost'] ?? 0)) / $outputKg, 2)
+                : 0.0;
+
             // ═══ 2. DÉDUIRE DU STOCK SOURCE ═══
             $sourceProduct->decrement('current_quantity_kg', $inputKg);
 
@@ -312,7 +339,8 @@ class SlaughterService
                     $data['type'],
                     $outputKg,
                     0,
-                    $data['type'] === 'fume' ? 'fumoir' : 'vitrine'
+                    $data['type'] === 'fume' ? 'fumoir' : 'vitrine',
+                    $transformedCostPerKg
                 );
             }
 
@@ -352,13 +380,22 @@ class SlaughterService
                 'status'        => 'termine',
             ]);
 
+            // Coût de revient (2 phases) : coût courant du produit source
+            // (CMUP, relu par le nom) × entrée + coût de production, / sortie.
+            $sourceUnitCost = (float) (FinishedProduct::where('product_name', $transformation->product_source)
+                ->value('unit_cost') ?? 0);
+            $transformedCostPerKg = $outputKg > 0
+                ? round((($sourceUnitCost * $inputKg) + (float) $transformation->production_cost) / $outputKg, 2)
+                : 0.0;
+
             $productName = ucfirst($transformation->product_source) . ' ' . $transformation->type_label;
             $this->addToFinishedStock(
                 $productName,
                 $transformation->transformation_type,
                 $outputKg,
                 0,
-                $transformation->transformation_type === 'fume' ? 'fumoir' : 'vitrine'
+                $transformation->transformation_type === 'fume' ? 'fumoir' : 'vitrine',
+                $transformedCostPerKg
             );
 
             Log::info("Transformation {$transformation->batch_number} terminée : {$inputKg}kg → {$outputKg}kg ({$transformation->yield_percent}%)");
@@ -372,6 +409,33 @@ class SlaughterService
      * (multiespèces : "Poulet Entier Frais", "Chèvre Entier Frais"...).
      * Repli sur "Poulet" si le lot n'a pas d'espèce renseignée (rétrocompat).
      */
+    /**
+     * Coût matière du vif abattu (le coût que la carcasse doit recouvrer) :
+     *  - achat vif : coût d'achat total de la réception liée à l'ordre ;
+     *  - lot interne : coût d'acquisition du lot au prorata des sujets abattus
+     *    (prix d'achat unitaire × quantité, repli sur total/effectif initial).
+     * Ne compte QUE l'acquisition — l'aliment reste porté par le P&L des lots.
+     */
+    private function materialCost(SlaughterOrder $order, ?Batch $batch, int $actualQty): float
+    {
+        $reception = $order->reception;
+        if ($reception && $reception->origin === 'achat' && $reception->purchase_total_cost) {
+            return (float) $reception->purchase_total_cost;
+        }
+
+        if ($batch) {
+            $perBird = (float) ($batch->buy_price_per_unit ?? 0);
+            if ($perBird <= 0) {
+                $init = (int) ($batch->initial_quantity ?? 0);
+                $perBird = $init > 0 ? (float) $batch->total_acquisition_cost / $init : 0;
+            }
+
+            return round($perBird * $actualQty, 2);
+        }
+
+        return 0.0;
+    }
+
     private function carcassProductName(?Batch $batch): string
     {
         // Source de la découpe = carcasse « brute » (à découper). On délègue à
@@ -383,12 +447,25 @@ class SlaughterService
     /**
      * Ajoute au stock produits finis (upsert).
      */
-    private function addToFinishedStock(string $name, string $type, float $kg, int $pieces, string $location): void
+    private function addToFinishedStock(string $name, string $type, float $kg, int $pieces, string $location, float $unitCost = 0): void
     {
         $product = FinishedProduct::firstOrCreate(
             ['product_name' => $name, 'product_type' => $type, 'storage_location' => $location],
-            ['unit' => 'kg', 'unit_price' => 0]
+            ['unit' => 'kg', 'unit_price' => 0, 'unit_cost' => 0]
         );
+
+        // Coût de revient au kg en COÛT MOYEN PONDÉRÉ : une entrée à un coût
+        // donné se fond dans le stock existant au prorata des quantités. Sans
+        // coût fourni (0), on préserve le coût courant plutôt que de l'écraser.
+        if ($unitCost > 0 && $kg > 0) {
+            $oldQty  = (float) $product->current_quantity_kg;
+            $oldCost = (float) $product->unit_cost;
+            $newQty  = $oldQty + $kg;
+            $product->unit_cost = $newQty > 0
+                ? round((($oldQty * $oldCost) + ($kg * $unitCost)) / $newQty, 2)
+                : $unitCost;
+            $product->save();
+        }
 
         $product->increment('current_quantity_kg', $kg);
         if ($pieces > 0) {

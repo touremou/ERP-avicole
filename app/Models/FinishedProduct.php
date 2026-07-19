@@ -11,13 +11,14 @@ class FinishedProduct extends Model
     protected $fillable = [
         'farm_id', 'product_name', 'product_type',
         'current_quantity_kg', 'current_quantity_pieces', 'unit',
-        'unit_price', 'storage_location', 'expiry_date',
+        'unit_price', 'unit_cost', 'storage_location', 'expiry_date',
         'alert_threshold_kg', 'batch_reference',
     ];
 
     protected $casts = [
         'current_quantity_kg'     => 'decimal:2',
         'unit_price'              => 'decimal:2',
+        'unit_cost'               => 'decimal:2',
         'alert_threshold_kg'      => 'decimal:2',
         'expiry_date'             => 'date',
     ];
