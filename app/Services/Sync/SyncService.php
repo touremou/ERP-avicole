@@ -87,6 +87,9 @@ class SyncService
             'byproduct.create'           => 'byproductCreate',
             // Tâches assignées : cocher « faite » depuis le terrain.
             'task.complete'              => 'taskComplete',
+            // Verrouillage anti-doublon : prendre / libérer une tâche.
+            'task.start'                 => 'taskStart',
+            'task.release'               => 'taskRelease',
             // Tâche PERSONNELLE créée depuis le terrain (auto-assignée).
             'task.create'                => 'taskCreate',
         ];
@@ -1173,6 +1176,16 @@ class SyncService
             return ['status' => 'already_synced'];
         }
 
+        // Anti-doublon : une tâche PRISE (en cours, non expirée) par un AUTRE
+        // que celui qui clôture ne peut pas être terminée par lui — sinon le
+        // verrou serait contournable en sautant l'étape « prendre ». La prise
+        // du clôtureur (ou une prise expirée) ne bloque pas.
+        if ($task->isClaimedByOther(Auth::id())) {
+            return ['status' => 'conflict', 'message' => __('Tâche en cours par :name — impossible de la valider à sa place.', [
+                'name' => $task->claimant?->name ?? '—',
+            ])];
+        }
+
         // Preuve d'exécution — VÉRIFICATION AUTORITAIRE serveur : une preuve
         // manquante est un refus NON REJOUABLE (conflict → bac « À corriger »),
         // pas un no-op. Empêche de clôturer sans la photo/valeur exigée, même si
@@ -1194,6 +1207,94 @@ class SyncService
         ]);
 
         Log::info("Sync: tâche #{$task->id} terminée (uuid: {$data['uuid']}, preuve: {$task->proof_type}).");
+
+        return ['status' => 'success', 'server_id' => $task->id];
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    //  VERROU DE TÂCHE (anti-doublon) — prise / libération.
+    //  Modèle optimiste : la prise pose en_cours + started_at + claimed_by ;
+    //  le conflit « déjà prise » se résout à la synchro ; une prise expirée
+    //  (timeout) est reprenable.
+    // ─────────────────────────────────────────────────────────────
+    private function taskStart(array $payload): array
+    {
+        $v = Validator::make($payload, [
+            'uuid'    => 'required|uuid',
+            'task_id' => ['required', 'integer', $this->farmScopedExists('task_assignments')],
+        ]);
+
+        if ($v->fails()) {
+            return $this->invalid($v->errors()->toArray());
+        }
+
+        return DB::transaction(function () use ($v) {
+            /** @var \App\Models\TaskAssignment $task */
+            $task = \App\Models\TaskAssignment::whereKey($v->validated()['task_id'])->lockForUpdate()->first();
+
+            $myEmployeeId = Auth::user()?->employee?->id;
+            $isOwner = $task->employee_id !== null && $task->employee_id === $myEmployeeId;
+            if (! $isOwner && Gate::denies('rh.M')) {
+                return $this->denied();
+            }
+
+            if ($task->status === 'fait') {
+                return ['status' => 'conflict', 'message' => __('Tâche déjà terminée.')];
+            }
+
+            // Déjà prise par MOI (rejeu réseau) → succès idempotent.
+            if ($task->status === 'en_cours' && $task->claimed_by === Auth::id() && ! $task->isClaimStale()) {
+                return ['status' => 'already_synced'];
+            }
+
+            // Prise ACTIVE par un autre → refus (le terrain verra « en cours par X »).
+            if ($task->isClaimedByOther(Auth::id())) {
+                return ['status' => 'conflict', 'message' => __('Tâche déjà prise par :name.', [
+                    'name' => $task->claimant?->name ?? '—',
+                ])];
+            }
+
+            // Libre (ou prise expirée) → on la prend.
+            $task->update([
+                'status'     => 'en_cours',
+                'started_at' => now(),
+                'claimed_by' => Auth::id(),
+            ]);
+
+            Log::info("Sync: tâche #{$task->id} prise par user " . Auth::id() . '.');
+
+            return ['status' => 'success', 'server_id' => $task->id];
+        });
+    }
+
+    private function taskRelease(array $payload): array
+    {
+        $v = Validator::make($payload, [
+            'uuid'    => 'required|uuid',
+            'task_id' => ['required', 'integer', $this->farmScopedExists('task_assignments')],
+        ]);
+
+        if ($v->fails()) {
+            return $this->invalid($v->errors()->toArray());
+        }
+
+        /** @var \App\Models\TaskAssignment $task */
+        $task = \App\Models\TaskAssignment::find($v->validated()['task_id']);
+
+        if ($task->status === 'fait') {
+            return ['status' => 'already_synced']; // rien à libérer, déjà close
+        }
+
+        // On ne libère que SA propre prise (ou un superviseur rh.M). Une prise
+        // d'un autre n'est pas libérable ici (elle expirera au timeout).
+        $isMine = $task->claimed_by === Auth::id();
+        if (! $isMine && Gate::denies('rh.M')) {
+            return $this->denied();
+        }
+
+        $task->update(['status' => 'a_faire', 'started_at' => null, 'claimed_by' => null]);
+
+        Log::info("Sync: tâche #{$task->id} libérée par user " . Auth::id() . '.');
 
         return ['status' => 'success', 'server_id' => $task->id];
     }

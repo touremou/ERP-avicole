@@ -175,6 +175,16 @@ const RULES: Partial<Record<OperationType, Validator>> = {
     reqDate(p, 'refill_date', 'Date', e, true)
     return e
   },
+  'task.start': (p) => {
+    const e: string[] = []
+    reqId(p, 'task_id', 'Tâche', e)
+    return e
+  },
+  'task.release': (p) => {
+    const e: string[] = []
+    reqId(p, 'task_id', 'Tâche', e)
+    return e
+  },
   'task.complete': (p) => {
     const e: string[] = []
     reqId(p, 'task_id', 'Tâche', e)

@@ -120,6 +120,23 @@ export function TachesScreen() {
     ].filter((group) => group.items.length > 0)
   }, [visible, todayStr])
 
+  // Verrou anti-doublon : prendre une tâche (optimiste). Elle passe « en cours
+  // par moi » localement ; le serveur tranche à la synchro (2ᵉ preneur → « déjà
+  // prise »).
+  async function startTask(task: RefTask) {
+    if (task.id < 0 || task.locked) return
+    await enqueue('task.start', { task_id: task.id }, t('Tâche prise : :title', { title: task.title }))
+    await db.tasks.update(task.id, { status: 'en_cours', claimed_by_me: true, locked: false })
+    window.dispatchEvent(new CustomEvent('tasks:updated'))
+  }
+
+  async function releaseTask(task: RefTask) {
+    if (task.id < 0) return
+    await enqueue('task.release', { task_id: task.id }, t('Tâche libérée : :title', { title: task.title }))
+    await db.tasks.update(task.id, { status: 'a_faire', claimed_by_me: false })
+    window.dispatchEvent(new CustomEvent('tasks:updated'))
+  }
+
   async function completeTask(task: RefTask) {
     // Une tâche pas encore synchronisée (id temporaire négatif) n'a pas d'id
     // serveur : on ne peut pas la clôturer tant qu'elle n'est pas remontée.
@@ -239,7 +256,7 @@ export function TachesScreen() {
           <section key={group.key}>
             <div className="section-head"><h3 className={group.cls}>{group.label}</h3><span className="section-count">{group.items.length}</span></div>
             {group.items.map((task) => (
-              <div key={task.id} className="task-row">
+              <div key={task.id} className={`task-row ${task.locked ? 'task-locked' : ''}`}>
                 <div className="task-row__body">
                   <span className="task-title">{CATEGORY_ICON[task.category] ?? '📌'} {task.title}</span>
                   <span className="task-meta">
@@ -247,12 +264,20 @@ export function TachesScreen() {
                     {t(task.category)}
                     {task.proof_type === 'photo' ? ' · 📸 ' + t('photo requise') : ''}
                     {task.proof_type === 'valeur' ? ' · 🔢 ' + t('valeur requise') : ''}
+                    {task.locked ? ' · 🔒 ' + t('en cours par :name', { name: task.claimant_name ?? '—' }) : ''}
                     {task.id < 0 ? ' · ' + t('à synchroniser') : ''}
                   </span>
                 </div>
-                <button type="button" className="task-done" disabled={task.id < 0} onClick={() => void completeTask(task)}>
-                  ✓ {t('Fait')}
-                </button>
+                {task.locked ? (
+                  <button type="button" className="task-done" disabled title={t('Verrouillée')}>🔒</button>
+                ) : task.claimed_by_me ? (
+                  <div className="task-actions">
+                    <button type="button" className="task-ghost" onClick={() => void releaseTask(task)}>{t('Libérer')}</button>
+                    <button type="button" className="task-done" disabled={task.id < 0} onClick={() => void completeTask(task)}>✓ {t('Terminer')}</button>
+                  </div>
+                ) : (
+                  <button type="button" className="task-start" disabled={task.id < 0} onClick={() => void startTask(task)}>▶ {t('Prendre')}</button>
+                )}
               </div>
             ))}
           </section>

@@ -10,11 +10,14 @@ class TaskAssignment extends Model
 {
     use BelongsToFarm;
 
+    /** Délai au-delà duquel une prise (claim) non clôturée est libérée. */
+    public const CLAIM_TIMEOUT_MINUTES = 120;
+
     protected $fillable = [
         'uuid',
         'farm_id', 'task_template_id', 'employee_id', 'title', 'description',
         'category', 'building_id', 'plot_id', 'batch_id', 'scheduled_date', 'scheduled_time',
-        'duration_minutes', 'priority', 'status', 'started_at', 'completed_at',
+        'duration_minutes', 'priority', 'status', 'started_at', 'claimed_by', 'completed_at',
         'completed_by', 'completion_notes', 'is_auto_generated',
         'proof_type', 'proof_label', 'proof_unit', 'proof_photo_path', 'proof_value',
     ];
@@ -31,6 +34,25 @@ class TaskAssignment extends Model
     public function requiresProof(): bool
     {
         return in_array($this->proof_type, ['photo', 'valeur'], true);
+    }
+
+    public function claimant(): BelongsTo { return $this->belongsTo(User::class, 'claimed_by'); }
+
+    /** Une prise trop ancienne (timeout) est considérée expirée → libérable. */
+    public function isClaimStale(): bool
+    {
+        if (! $this->started_at) return true;
+
+        return $this->started_at->lt(now()->subMinutes(self::CLAIM_TIMEOUT_MINUTES));
+    }
+
+    /** Prise ACTIVE (en cours, non expirée) par un AUTRE utilisateur que $userId. */
+    public function isClaimedByOther(?int $userId): bool
+    {
+        return $this->status === 'en_cours'
+            && $this->claimed_by !== null
+            && $this->claimed_by !== $userId
+            && ! $this->isClaimStale();
     }
 
     public function template(): BelongsTo { return $this->belongsTo(TaskTemplate::class, 'task_template_id'); }

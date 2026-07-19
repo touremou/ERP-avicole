@@ -159,7 +159,7 @@ export function HomeScreen() {
             tasks.map((task) => {
               const overdue = task.scheduled_date < todayStr
               return (
-                <div key={task.id} className="task-row">
+                <div key={task.id} className={`task-row ${task.locked ? 'task-locked' : ''}`}>
                   <div className="task-row__body">
                     <span className="task-title">{CATEGORY_ICON[task.category] ?? '📌'} {task.title}</span>
                     <span className="task-meta">
@@ -167,10 +167,11 @@ export function HomeScreen() {
                       {overdue ? <span className="task-overdue">{t('En retard')}</span> : t(task.category)}
                       {task.proof_type === 'photo' ? ' · 📸' : ''}
                       {task.proof_type === 'valeur' ? ' · 🔢' : ''}
+                      {task.locked ? ' · 🔒 ' + t('en cours par :name', { name: task.claimant_name ?? '—' }) : ''}
                     </span>
                   </div>
-                  <button type="button" className="task-done" onClick={() => void completeTask(task)}>
-                    ✓ {t('Fait')}
+                  <button type="button" className="task-done" disabled={task.locked} onClick={() => void completeTask(task)}>
+                    {task.locked ? '🔒' : '✓ ' + t('Fait')}
                   </button>
                 </div>
               )
