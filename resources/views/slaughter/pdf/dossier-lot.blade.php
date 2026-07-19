@@ -123,12 +123,20 @@
     @else
         @php $eco = $order->economicSummary(); @endphp
         @if($eco['cost'] > 0 || $eco['output_value'] > 0)
-        <h2>5. Économie du lot (marge directe)</h2>
-        <p style="margin:0">Valeur produite (découpes valorisées) : <strong>{{ number_format((float) $eco['output_value'], 0, ',', ' ') }} {{ setting('general.currency', 'GNF') }}</strong>
-        @if($eco['cost'] > 0) · − {{ $eco['cost_label'] ?? 'coût direct' }} : <strong>{{ number_format((float) $eco['cost'], 0, ',', ' ') }} {{ setting('general.currency', 'GNF') }}</strong>@endif<br>
-        Marge directe : <strong>{{ number_format((float) $eco['margin'], 0, ',', ' ') }} {{ setting('general.currency', 'GNF') }}</strong>
-        @if($eco['mode'] === 'interne') · <span class="muted">lot interne : coût d'acquisition suivi au niveau du lot (P&L).</span>@endif
-        @if($eco['has_unpriced']) · <span class="muted">des découpes sans prix ne sont pas valorisées — marge plancher.</span>@endif</p>
+        <h2>5. Économie du lot (marge par gamme)</h2>
+        <p style="margin:0 0 4px">{{ $eco['cost_label'] ?? 'Coût matière' }} : <strong>{{ number_format((float) $eco['cost'], 0, ',', ' ') }} {{ setting('general.currency', 'GNF') }}</strong>@if($eco['cost_per_kg'] > 0) · {{ number_format((float) $eco['cost_per_kg'], 0, ',', ' ') }} {{ setting('general.currency', 'GNF') }} /kg @endif</p>
+        @if(count($eco['gammes'] ?? []))
+        <table class="data">
+            <thead><tr><th>Gamme</th><th class="amount" style="text-align:right;">Valeur</th><th class="amount" style="text-align:right;">Coût</th><th class="amount" style="text-align:right;">Marge</th></tr></thead>
+            <tbody>
+                @foreach($eco['gammes'] as $g)
+                <tr><td>{{ $g['label'] }}</td><td class="amount">{{ number_format((float) $g['value'], 0, ',', ' ') }}</td><td class="amount text-neg">{{ number_format((float) $g['cost'], 0, ',', ' ') }}</td><td class="amount">{{ number_format((float) $g['margin'], 0, ',', ' ') }}</td></tr>
+                @endforeach
+            </tbody>
+        </table>
+        @endif
+        <p style="margin:0">Marge directe du lot : <strong>{{ number_format((float) $eco['margin'], 0, ',', ' ') }} {{ setting('general.currency', 'GNF') }}</strong>
+        @if($eco['has_unpriced']) · <span class="muted">des sorties sans prix de vente ne sont pas valorisées — marge plancher.</span>@endif</p>
         @endif
     @endif
 

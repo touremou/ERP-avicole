@@ -155,23 +155,43 @@
                     </div>
                     <p class="text-[9px] text-slate-400 m-0 mt-2">{{ __("Sujets propriété du client — aucun coût matière (RG-07).") }}</p>
                 @else
-                    <div class="flex justify-between items-center py-2 border-b border-slate-50">
-                        <span class="text-xs font-black text-slate-600">{{ __("Valeur produite (découpes valorisées)") }}</span>
-                        <span class="text-sm font-black text-slate-900">{{ number_format($eco['output_value'], 0, ',', ' ') }} {{ currency() }}</span>
+                    <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest m-0 mb-2">
+                        {{ __($eco['cost_label'] ?? 'Coût matière') }} : {{ number_format($eco['cost'], 0, ',', ' ') }} {{ currency() }}
+                        @if($eco['cost_per_kg'] > 0) · {{ number_format($eco['cost_per_kg'], 0, ',', ' ') }} {{ currency() }}/kg @endif
+                    </p>
+
+                    {{-- MARGE PAR GAMME : chaque sortie (carcasse directe / découpes) valorisée moins son coût alloué au prorata du kg. --}}
+                    @if(count($eco['gammes'] ?? []))
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead>
+                                <tr class="text-[8px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
+                                    <th class="pb-2">{{ __("Gamme") }}</th>
+                                    <th class="pb-2 text-right">{{ __("Valeur") }}</th>
+                                    <th class="pb-2 text-right">{{ __("Coût") }}</th>
+                                    <th class="pb-2 text-right">{{ __("Marge") }}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($eco['gammes'] as $g)
+                                <tr class="text-xs font-black border-b border-slate-50">
+                                    <td class="py-2 text-slate-700 uppercase">{{ __($g['label']) }}</td>
+                                    <td class="py-2 text-right text-slate-900">{{ number_format($g['value'], 0, ',', ' ') }}</td>
+                                    <td class="py-2 text-right text-rose-500">{{ number_format($g['cost'], 0, ',', ' ') }}</td>
+                                    <td class="py-2 text-right {{ $g['margin'] >= 0 ? 'text-emerald-600' : 'text-rose-600' }}">{{ number_format($g['margin'], 0, ',', ' ') }}</td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
                     </div>
-                    <div class="flex justify-between items-center py-2 border-b border-slate-50">
-                        <span class="text-xs font-black text-slate-600">− {{ __($eco['cost_label'] ?? 'Coût direct') }}</span>
-                        <span class="text-sm font-black text-rose-500">{{ number_format($eco['cost'], 0, ',', ' ') }} {{ currency() }}</span>
-                    </div>
-                    <div class="flex justify-between items-center pt-3">
-                        <span class="text-[10px] font-black uppercase tracking-widest text-slate-500">{{ __("Marge directe") }}</span>
+                    @endif
+
+                    <div class="flex justify-between items-center pt-3 mt-1 border-t border-slate-100">
+                        <span class="text-[10px] font-black uppercase tracking-widest text-slate-500">{{ __("Marge directe du lot") }}</span>
                         <span class="text-lg font-black {{ $eco['margin'] >= 0 ? 'text-emerald-600' : 'text-rose-600' }}">{{ number_format($eco['margin'], 0, ',', ' ') }} {{ currency() }}</span>
                     </div>
-                    @if($eco['mode'] === 'interne')
-                        <p class="text-[9px] text-slate-400 m-0 mt-2">{{ __("Lot interne : le coût d'acquisition est suivi au niveau du lot (P&L), non reventilé ici.") }}</p>
-                    @endif
                     @if($eco['has_unpriced'])
-                        <p class="text-[9px] text-amber-600 m-0 mt-1"><i class="fa-solid fa-triangle-exclamation mr-1"></i> {{ __("Des découpes sans prix ne sont pas valorisées — la marge est un plancher.") }}</p>
+                        <p class="text-[9px] text-amber-600 m-0 mt-1"><i class="fa-solid fa-triangle-exclamation mr-1"></i> {{ __("Des sorties sans prix de vente ne sont pas valorisées — la marge est un plancher.") }}</p>
                     @endif
                 @endif
             </div>

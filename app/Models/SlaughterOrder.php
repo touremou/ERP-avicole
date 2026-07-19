@@ -108,32 +108,70 @@ class SlaughterOrder extends Model
             ];
         }
 
-        $outputValue = 0.0;
-        $hasUnpriced = false;
-        foreach ($this->cuttingSessions as $session) {
-            foreach ($session->products as $product) {
-                $price = (float) ($product->unit_price ?? 0);
-                if ($price > 0) {
-                    $outputValue += (float) $product->quantity_kg * $price;
-                } else {
-                    $hasUnpriced = true;
-                }
-            }
-        }
-
-        $cost = 0.0;
-        $costLabel = null;
-        $mode = 'interne';
+        // ─── Coût matière vif : achat OU lot interne (prorata sujets abattus) ───
+        $cost = 0.0; $costLabel = null; $mode = 'interne';
         if ($this->reception && $this->reception->origin === 'achat' && $this->reception->purchase_total_cost) {
             $cost = (float) $this->reception->purchase_total_cost;
             $costLabel = 'Achat vif';
             $mode = 'achat';
+        } elseif ($this->batch) {
+            $qty = (int) ($this->actual_quantity ?: $this->planned_quantity);
+            $perBird = (float) ($this->batch->buy_price_per_unit ?? 0);
+            if ($perBird <= 0) {
+                $init = (int) ($this->batch->initial_quantity ?? 0);
+                $perBird = $init > 0 ? (float) $this->batch->total_acquisition_cost / $init : 0;
+            }
+            $cost = round($perBird * $qty, 2);
+            $costLabel = 'Coût du lot (acquisition)';
         }
 
+        $carcassKg = (float) ($this->result?->total_carcass_weight_kg ?? 0);
+        $costPerKg = $carcassKg > 0 ? $cost / $carcassKg : 0.0;
+
+        // ─── Découpes : valeur (prix × kg) et carcasse consommée (kg entrés) ───
+        $cutValue = 0.0; $cutInputKg = 0.0; $hasUnpriced = false;
+        foreach ($this->cuttingSessions as $session) {
+            $cutInputKg += (float) $session->total_input_kg;
+            foreach ($session->products as $product) {
+                $price = (float) ($product->unit_price ?? 0);
+                if ($price > 0) $cutValue += (float) $product->quantity_kg * $price;
+                else $hasUnpriced = true;
+            }
+        }
+        $cutCost = round($costPerKg * $cutInputKg, 2);
+
+        // ─── Carcasse vendue DIRECTE (kg non découpé : PAC / effilé / reste) ───
+        $directKg = max(0.0, $carcassKg - $cutInputKg);
+        $directCost = round($costPerKg * $directKg, 2);
+        $directValue = 0.0;
+        if ($directKg > 0) {
+            $carcassName = \App\Services\ButcheryNomenclature::presentationProductName(
+                $this->result?->presentation, $this->batch?->species
+            );
+            $unitPrice = (float) (\App\Models\FinishedProduct::where('product_name', $carcassName)
+                ->where('product_type', 'entier_frais')->value('unit_price') ?? 0);
+            if ($unitPrice > 0) $directValue = round($unitPrice * $directKg, 2);
+            else $hasUnpriced = true;
+        }
+
+        // ─── Ventilation par gamme ───
+        $gammes = [];
+        if ($directKg > 0) {
+            $label = \App\Services\ButcheryNomenclature::presentation($this->result?->presentation)['label'] ?? 'Carcasse';
+            $gammes[] = ['label' => $label, 'value' => $directValue, 'cost' => $directCost, 'margin' => round($directValue - $directCost, 2)];
+        }
+        if ($cutInputKg > 0) {
+            $gammes[] = ['label' => 'Découpes', 'value' => $cutValue, 'cost' => $cutCost, 'margin' => round($cutValue - $cutCost, 2)];
+        }
+
+        $outputValue = round($directValue + $cutValue, 2);
+
         return [
-            'mode' => $mode, 'cost' => $cost, 'cost_label' => $costLabel,
-            'output_value' => $outputValue, 'margin' => $outputValue - $cost,
+            'mode' => $mode, 'cost' => round($cost, 2), 'cost_label' => $costLabel,
+            'cost_per_kg' => round($costPerKg, 2),
+            'output_value' => $outputValue, 'margin' => round($outputValue - $cost, 2),
             'has_unpriced' => $hasUnpriced,
+            'gammes' => $gammes,
         ];
     }
 }
