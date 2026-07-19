@@ -159,9 +159,9 @@ export function NouvelleSaisieScreen() {
                 <span className="task-title">📋 {t('Relevé CCP')}</span>
                 <span className="task-meta">{t('points critiques')}</span>
               </Link>
-              <Link to="/abattoir/sousproduit" className="task-card">
-                <span className="task-title">♻️ {t('Sous-produit')}</span>
-                <span className="task-meta">{t('sang · plumes · viscères')}</span>
+              <Link to="/abattoir/sousproduit/tournee" className="task-card">
+                <span className="task-title">♻️ {t('Tournée sous-produits')}</span>
+                <span className="task-meta">{t('sang · plumes · viscères · 1 validation')}</span>
               </Link>
               <Link to="/abattoir/decoupe" className="task-card">
                 <span className="task-title">✂️ {t('Découpe')}</span>

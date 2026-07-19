@@ -668,6 +668,17 @@ export const en: Record<string, string> = {
   'La checklist HACCP/déchets de ce cycle est déjà signée.': 'The HACCP/waste checklist for this cycle is already signed.',
   'Cycle clôturé — la checklist HACCP/déchets est déjà signée. Plus aucune action possible.':
     'Cycle closed — the HACCP/waste checklist is already signed. No further action possible.',
+  // Tournée sous-produits
+  'Tournée sous-produits': 'By-products round',
+  'sang · plumes · viscères · 1 validation': 'blood · feathers · viscera · 1 submit',
+  'Pesez ce qui a été collecté, laissez vide le reste — une seule validation.':
+    'Weigh what was collected, leave the rest empty — a single submit.',
+  "Ordre d'abattage — commun, optionnel": 'Slaughter order — shared, optional',
+  '🫀 Viscères non comestibles': '🫀 Inedible viscera',
+  'Valider la tournée (:n sous-produits)': 'Confirm round (:n by-products)',
+  '✓ Tournée enregistrée (:n sous-produits)': '✓ Round saved (:n by-products)',
+  'Volumes et destinations tracés au registre.': 'Volumes and destinations recorded in the register.',
+  'Saisie unitaire (notes, autre type) →': 'Single entry (notes, other type) →',
   'Destination des déchets — optionnel': 'Waste destination — optional',
   'Preuve requise': 'Proof required',
   'photo requise': 'photo required',

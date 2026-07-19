@@ -3294,5 +3294,18 @@
     "reste :left / :total sujets": ":left / :total subjects left",
     "Réceptions des 7 derniers jours non refusées et non épuisées — le solde tient compte des ordres déjà posés.": "Receptions from the last 7 days, not refused and not exhausted — the balance accounts for orders already placed.",
     "Solde réception": "Reception balance",
-    "sujets encore disponibles": "subjects still available"
+    "sujets encore disponibles": "subjects still available",
+    "Tournée de collecte (tous les types)": "Collection round (all types)",
+    "sang · plumes · viscères — 1 validation": "blood · feathers · viscera — 1 submit",
+    "Ordre d'abattage — commun, optionnel": "Slaughter order — shared, optional",
+    "Aucune pesée saisie — remplissez au moins un type de sous-produit.": "No weight entered — fill in at least one by-product type.",
+    "Destination manquante pour : :types": "Missing destination for: :types",
+    "Tournée de collecte enregistrée : :n sous-produits tracés.": "Collection round saved: :n by-products recorded.",
+    "Enregistrer un sous-produit (unitaire)": "Record a by-product (single)",
+    "un type · notes possibles": "one type · notes allowed",
+    "un point · un relevé": "one point · one reading",
+    "Enregistrer une opération (unitaire)": "Record an operation (single)",
+    "une zone · photo/notes possibles": "one zone · photo/notes allowed",
+    "tous les points · 1 validation": "all points · 1 submit",
+    "toutes les zones · 1 validation": "all zones · 1 submit"
 }

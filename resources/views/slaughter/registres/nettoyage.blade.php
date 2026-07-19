@@ -18,9 +18,9 @@
 
             {{-- TOURNÉE DE NETTOYAGE : toutes les zones cochées en une validation. --}}
             @can('abattoir.C')
-            <form method="POST" action="{{ route('slaughter.registres.nettoyage.batch') }}" class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm mb-8">
+            <x-collapsible-form :title="__('Tournée de nettoyage')" icon="fa-route" :hint="__('toutes les zones · 1 validation')" :open="$errors->has('rows')">
+            <form method="POST" action="{{ route('slaughter.registres.nettoyage.batch') }}">
                 @csrf
-                <p class="text-[10px] font-black uppercase tracking-widest text-rose-600 mb-1"><i class="fa-solid fa-route mr-1"></i> {{ __("Tournée de nettoyage") }}</p>
                 <p class="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-4">{{ __("Cochez les zones nettoyées — produit/dosage rappelés de la dernière tournée.") }}</p>
                 <div class="overflow-x-auto">
                     <table class="w-full">
@@ -52,13 +52,14 @@
                 </div>
                 <button type="submit" class="mt-4 w-full bg-rose-500 text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-rose-600 transition-all border-none cursor-pointer italic"><i class="fa-solid fa-route mr-2"></i> {{ __("Valider la tournée") }}</button>
             </form>
+            </x-collapsible-form>
             @endcan
 
             {{-- SAISIE RAPIDE (opération isolée, avec photo/notes) --}}
             @can('abattoir.C')
-            <form method="POST" action="{{ route('slaughter.registres.nettoyage.store') }}" enctype="multipart/form-data" class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm mb-8">
+            <x-collapsible-form :title="__('Enregistrer une opération (unitaire)')" icon="fa-broom" :hint="__('une zone · photo/notes possibles')" :open="$errors->any() && ! $errors->has('rows')">
+            <form method="POST" action="{{ route('slaughter.registres.nettoyage.store') }}" enctype="multipart/form-data">
                 @csrf
-                <p class="text-[10px] font-black uppercase tracking-widest text-rose-600 mb-4"><i class="fa-solid fa-broom mr-1"></i> {{ __("Enregistrer une opération") }}</p>
                 <div class="grid grid-cols-2 md:grid-cols-6 gap-3 items-end">
                     <div class="space-y-1">
                         <label class="text-[8px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Zone *") }}</label>
@@ -88,6 +89,7 @@
                     <button type="submit" class="bg-rose-500 text-white p-4 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-rose-600 transition-all border-none cursor-pointer italic"><i class="fa-solid fa-plus mr-1"></i> {{ __("Enregistrer") }}</button>
                 </div>
             </form>
+            </x-collapsible-form>
             @endcan
 
             {{-- FILTRES --}}

@@ -26,6 +26,7 @@ import { ClosureScreen } from '../features/abattoir/ClosureScreen'
 import { CuttingScreen } from '../features/abattoir/CuttingScreen'
 import { TemperatureRoundScreen } from '../features/abattoir/TemperatureRoundScreen'
 import { CleaningRoundScreen } from '../features/abattoir/CleaningRoundScreen'
+import { ByproductRoundScreen } from '../features/abattoir/ByproductRoundScreen'
 import { SlaughterJournalScreen } from '../features/abattoir/SlaughterJournalScreen'
 import { ReceptionScreen } from '../features/abattoir/ReceptionScreen'
 import { TemperatureScreen } from '../features/abattoir/TemperatureScreen'
@@ -131,6 +132,7 @@ function Shell() {
           <Route path="/abattoir/nettoyage" element={<CleaningScreen />} />
           <Route path="/abattoir/nettoyage/tournee" element={<CleaningRoundScreen />} />
           <Route path="/abattoir/sousproduit" element={<ByproductScreen />} />
+          <Route path="/abattoir/sousproduit/tournee" element={<ByproductRoundScreen />} />
           <Route path="/provenderie/cloture/:opId" element={<MillCompleteScreen />} />
           <Route path="/alertes" element={<NotificationsScreen />} />
           <Route path="/taches" element={<TachesScreen />} />

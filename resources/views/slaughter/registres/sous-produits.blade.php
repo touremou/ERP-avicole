@@ -24,11 +24,54 @@
             </div>
             @endif
 
-            {{-- SAISIE RAPIDE --}}
+            {{-- TOURNÉE DE COLLECTE : tous les types en une validation. --}}
             @can('abattoir.C')
-            <form method="POST" action="{{ route('slaughter.registres.sous_produits.store') }}" class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm mb-8">
+            <x-collapsible-form :title="__('Tournée de collecte (tous les types)')" icon="fa-route" :hint="__('sang · plumes · viscères — 1 validation')" :open="$errors->has('rows')">
+                <form method="POST" action="{{ route('slaughter.registres.sous_produits.batch') }}">
+                    @csrf
+                    <div class="space-y-1 mb-4 max-w-xs">
+                        <label class="text-[8px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Ordre d'abattage — commun, optionnel") }}</label>
+                        <select name="slaughter_order_id" class="w-full bg-slate-50 border-none rounded-2xl p-3 text-xs font-black uppercase shadow-inner outline-none">
+                            <option value="">{{ __("— Aucun —") }}</option>
+                            @foreach($recentOrders as $order)
+                                <option value="{{ $order->id }}" @selected(old('slaughter_order_id') == $order->id)>{{ $order->order_number }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead>
+                                <tr class="text-[8px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
+                                    <th class="px-2 py-2 text-left">{{ __("Type") }}</th>
+                                    <th class="px-2 py-2 text-center">{{ __("Quantité (kg)") }}</th>
+                                    <th class="px-2 py-2 text-left">{{ __("Destination") }}</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-50">
+                                @foreach(\App\Models\SlaughterByproduct::TYPES as $key => $label)
+                                <tr>
+                                    <td class="px-2 py-2 text-[10px] font-black text-slate-700 uppercase whitespace-nowrap">{{ __($label) }}</td>
+                                    <td class="px-2 py-2 text-center"><input type="number" name="rows[{{ $key }}][quantity_kg]" value="{{ old("rows.{$key}.quantity_kg") }}" step="0.01" min="0.01" placeholder="—" class="w-24 bg-slate-50 border-none rounded-xl p-2 text-base font-black shadow-inner outline-none text-center"></td>
+                                    <td class="px-2 py-2">
+                                        <select name="rows[{{ $key }}][destination]" class="bg-slate-50 border-none rounded-xl p-2 text-[9px] font-black uppercase shadow-inner outline-none">
+                                            @foreach(\App\Models\SlaughterByproduct::DESTINATIONS as $dKey => $dLabel)
+                                                <option value="{{ $dKey }}" @selected(old("rows.{$key}.destination", $lastDestByType[$key] ?? 'equarrissage') === $dKey)>{{ __($dLabel) }}</option>
+                                            @endforeach
+                                        </select>
+                                    </td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                    <button type="submit" class="mt-4 w-full bg-rose-500 text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-rose-600 transition-all border-none cursor-pointer italic"><i class="fa-solid fa-route mr-2"></i> {{ __("Valider la tournée") }}</button>
+                </form>
+            </x-collapsible-form>
+
+            {{-- SAISIE RAPIDE (unitaire, avec notes) --}}
+            <x-collapsible-form :title="__('Enregistrer un sous-produit (unitaire)')" icon="fa-recycle" :hint="__('un type · notes possibles')" :open="$errors->any() && ! $errors->has('rows')">
+            <form method="POST" action="{{ route('slaughter.registres.sous_produits.store') }}">
                 @csrf
-                <p class="text-[10px] font-black uppercase tracking-widest text-rose-600 mb-4"><i class="fa-solid fa-recycle mr-1"></i> {{ __("Enregistrer un sous-produit") }}</p>
                 <div class="grid grid-cols-2 md:grid-cols-6 gap-3 items-end">
                     <div class="space-y-1">
                         <label class="text-[8px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Type *") }}</label>
@@ -68,6 +111,7 @@
                     <button type="submit" class="bg-rose-500 text-white p-4 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-rose-600 transition-all border-none cursor-pointer italic"><i class="fa-solid fa-plus mr-1"></i> {{ __("Enregistrer") }}</button>
                 </div>
             </form>
+            </x-collapsible-form>
             @endcan
 
             {{-- FILTRES --}}

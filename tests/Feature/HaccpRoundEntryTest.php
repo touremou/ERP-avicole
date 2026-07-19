@@ -78,3 +78,41 @@ test('la grille de tournée prérempli produit/dosage depuis la dernière tourn�
         ->assertSee('Javel 12°', false)
         ->assertSee('20 ml/L', false);
 });
+
+test('tournée sous-produits : une ligne pesée = un enregistrement, ordre commun', function () {
+    $batch = \App\Models\Batch::factory()->create(['initial_quantity' => 50, 'current_quantity' => 50, 'qty_alive' => 50]);
+    $order = \App\Models\SlaughterOrder::create([
+        'order_number' => \App\Models\SlaughterOrder::generateNumber(), 'batch_id' => $batch->id,
+        'planned_date' => now()->toDateString(), 'planned_quantity' => 10,
+        'status' => 'termine', 'requested_by' => $this->managerUser->id,
+    ]);
+
+    $this->post(route('slaughter.registres.sous_produits.batch'), [
+        'slaughter_order_id' => $order->id,
+        'rows' => [
+            'sang'   => ['quantity_kg' => 4.5, 'destination' => 'equarrissage'],
+            'plumes' => ['quantity_kg' => 2,   'destination' => 'compost'],
+            'visceres' => ['quantity_kg' => ''], // vide → ignorée
+        ],
+    ])->assertRedirect(route('slaughter.registres.sous_produits'))->assertSessionHas('success');
+
+    expect(\App\Models\SlaughterByproduct::count())->toBe(2)
+        ->and(\App\Models\SlaughterByproduct::where('type', 'sang')->first()->slaughter_order_id)->toBe($order->id)
+        ->and(\App\Models\SlaughterByproduct::where('type', 'plumes')->first()->destination)->toBe('compost');
+});
+
+test('tournée sous-produits : destination obligatoire par ligne pesée', function () {
+    $this->post(route('slaughter.registres.sous_produits.batch'), [
+        'rows' => ['sang' => ['quantity_kg' => 3, 'destination' => '']],
+    ])->assertSessionHasErrors('rows');
+
+    expect(\App\Models\SlaughterByproduct::count())->toBe(0);
+});
+
+test('tournée sous-produits vide → erreur, aucun enregistrement', function () {
+    $this->post(route('slaughter.registres.sous_produits.batch'), [
+        'rows' => ['sang' => ['quantity_kg' => '']],
+    ])->assertSessionHas('error');
+
+    expect(\App\Models\SlaughterByproduct::count())->toBe(0);
+});
