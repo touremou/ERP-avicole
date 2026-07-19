@@ -355,7 +355,23 @@ h3 {
   cursor: pointer; white-space: nowrap;
 }
 .task-done:active { background: var(--primary-600); }
+.task-done:disabled { opacity: 0.5; }
 .task-overdue { color: var(--danger); font-weight: 700; }
+
+/* Verrou de tâche (anti-doublon) : prendre / libérer / grisée */
+.task-start {
+  flex: none; border: none; border-radius: 999px; min-height: 40px; padding: 8px 16px;
+  background: var(--surface); color: var(--primary); border: 1px solid var(--primary);
+  font-weight: 800; font-size: 14px; cursor: pointer; white-space: nowrap;
+}
+.task-start:disabled { opacity: 0.5; }
+.task-actions { display: flex; gap: 6px; flex: none; }
+.task-ghost {
+  flex: none; border: 1px solid var(--line); border-radius: 999px; min-height: 40px;
+  padding: 8px 12px; background: var(--surface); color: var(--muted);
+  font-weight: 800; font-size: 13px; cursor: pointer; white-space: nowrap;
+}
+.task-row.task-locked { opacity: 0.6; background: var(--surface); }
 
 /* État « tout est à jour » */
 .ok-card {

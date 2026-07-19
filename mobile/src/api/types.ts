@@ -54,6 +54,8 @@ export type OperationType =
   | 'crop_cycle.create'
   | 'harvest.create'
   | 'crop_input.create'
+  | 'task.start'
+  | 'task.release'
   | 'slaughter.execute'
   | 'mill_production.complete'
   // Phase 3 — cœur sanitaire HACCP abattoir.
@@ -227,6 +229,11 @@ export interface RefTask {
   proof_type?: 'aucune' | 'photo' | 'valeur'
   proof_label?: string | null
   proof_unit?: string | null
+  // Verrou anti-doublon (miroir serveur) : prise active par un autre (grisée),
+  // ou par moi (bouton « Terminer »).
+  locked?: boolean
+  claimed_by_me?: boolean
+  claimant_name?: string | null
 }
 
 export interface TaskSummary {

@@ -36,6 +36,7 @@ class TaskController extends Controller
         $doable   = ['a_faire', 'en_cours', 'en_retard'];
 
         $tasks = TaskAssignment::query()
+            ->with('claimant:id,name')
             ->where('employee_id', $employeeId)
             ->whereIn('status', $doable)
             ->where('scheduled_date', '<=', $horizon)
@@ -45,7 +46,20 @@ class TaskController extends Controller
                 'id', 'title', 'category', 'priority', 'status',
                 'scheduled_date', 'scheduled_time', 'batch_id', 'building_id', 'plot_id',
                 'proof_type', 'proof_label', 'proof_unit',
+                'started_at', 'claimed_by',
             ]);
+
+        // Verrou de tâche (anti-doublon) : on expose l'état de prise. `locked`
+        // = prise ACTIVE (non expirée) par un AUTRE utilisateur → l'UI grise la
+        // tâche. `claimed_by_me` = ma propre prise en cours (bouton « Terminer »).
+        $userId = $request->user()->id;
+        $tasks->each(function (TaskAssignment $task) use ($userId) {
+            $task->setAttribute('locked', $task->isClaimedByOther($userId));
+            $task->setAttribute('claimed_by_me',
+                $task->status === 'en_cours' && $task->claimed_by === $userId && ! $task->isClaimStale());
+            $task->setAttribute('claimant_name', $task->claimant?->name);
+            $task->unsetRelation('claimant');
+        });
 
         // Récap « ma journée » : l'en-cours vient de la liste (mêmes bornes), le
         // « fait aujourd'hui » se calcule à part (les tâches closes en sont exclues).
