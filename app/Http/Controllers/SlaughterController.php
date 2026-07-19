@@ -477,6 +477,9 @@ class SlaughterController extends Controller
             'products.*.pieces'       => 'nullable|integer|min:0',
             'products.*.price'        => 'nullable|numeric|min:0',
             'products.*.destination'  => 'nullable|in:stock_frais,stock_congele,transformation,vente_directe',
+            'products.*.calibre'      => 'nullable|string|max:40',
+            'products.*.packaging'    => 'nullable|in:' . implode(',', \App\Models\CutProduct::PACKAGINGS),
+            'products.*.pack_count'   => 'nullable|integer|min:0',
         ]);
 
         // Garde-fou cohérence : la somme des morceaux ne peut dépasser l'entrée

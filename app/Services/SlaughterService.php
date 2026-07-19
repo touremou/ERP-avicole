@@ -207,6 +207,10 @@ class SlaughterService
 
             // Enregistrer chaque produit de découpe
             foreach ($data['products'] as $product) {
+                $calibre   = $product['calibre'] ?? null;
+                $packaging = $product['packaging'] ?? 'vrac';
+                $packCount = isset($product['pack_count']) ? (int) $product['pack_count'] : null;
+
                 CutProduct::create([
                     'cutting_session_id' => $session->id,
                     'product_type'       => $product['type'],
@@ -215,6 +219,9 @@ class SlaughterService
                     'quantity_pieces'    => $product['pieces'] ?? null,
                     'unit_price'         => $product['price'] ?? null,
                     'destination'        => $product['destination'] ?? 'stock_frais',
+                    'calibre'            => $calibre,
+                    'packaging'          => $packaging,
+                    'pack_count'         => $packCount,
                 ]);
 
                 // Entrer en stock produits finis selon destination.
@@ -226,8 +233,14 @@ class SlaughterService
                         default         => 'frais',
                     };
 
+                    // Nom de stock ENRICHI : calibre + conditionnement distinguent
+                    // les UVC (« Cuisses · M · barquette » ≠ « Cuisses · L · vrac »).
+                    $stockName = $product['name']
+                        . ($calibre ? " · {$calibre}" : '')
+                        . ($packaging && $packaging !== 'vrac' ? ' · ' . ucfirst($packaging) : '');
+
                     $this->addToFinishedStock(
-                        $product['name'],
+                        $stockName,
                         $product['type'],
                         (float) $product['kg'],
                         (int) ($product['pieces'] ?? 0),

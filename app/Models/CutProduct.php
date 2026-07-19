@@ -10,10 +10,14 @@ class CutProduct extends Model
 {
     use BelongsToFarm;
     
+    /** Conditionnements (UVC) d'une découpe. */
+    public const PACKAGINGS = ['vrac', 'barquette', 'sachet'];
+
     protected $fillable = [
         'farm_id',
         'cutting_session_id', 'product_type', 'product_name',
         'quantity_kg', 'quantity_pieces', 'unit_price', 'destination',
+        'calibre', 'packaging', 'pack_count',
     ];
 
     protected $casts = [
