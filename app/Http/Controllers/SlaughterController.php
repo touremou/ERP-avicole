@@ -29,8 +29,11 @@ class SlaughterController extends Controller
         $pendingOrders = SlaughterOrder::pending()->with(['batch.building', 'requester'])->latest('planned_date')->get();
         
         // Application du paramètre dynamique pour la limite d'affichage
+        // `cuttingSessions` chargées pour matérialiser l'ÉTAPE SUIVANTE du
+        // cycle sur chaque résultat : Découper (carcasse restante en gamme
+        // brut) → Clôturer (checklist HACCP/déchets) → Clôturé ✓.
         $recentResults = SlaughterOrder::where('status', 'termine')
-            ->with(['batch', 'result'])
+            ->with(['batch', 'result', 'cuttingSessions'])
             ->latest('actual_date')
             ->take((int) setting('general.items_per_page', 10))
             ->get();
@@ -129,6 +132,8 @@ class SlaughterController extends Controller
             'ccpRecords' => fn ($q) => $q->with('operator')->orderBy('releve_at'),
             'cuttingSessions.products',
             'byproducts' => fn ($q) => $q->with('operator')->orderBy('collected_at'),
+            // Cascade : transformations rattachées à l'ordre (fumage, marinade...).
+            'transformations' => fn ($q) => $q->with('operator')->orderBy('production_date'),
         ]);
 
         if ($request->query('format') === 'pdf') {
@@ -304,6 +309,22 @@ class SlaughterController extends Controller
     public function showExecuteForm(SlaughterOrder $order)
     {
         if (Gate::denies('abattoir.M')) return back()->with('error', 'Action non autorisée.');
+
+        // Verrouillage du cycle : un ordre ne s'exécute qu'une fois. Le service
+        // refusait déjà à la soumission — on bloque désormais AVANT la saisie
+        // (sinon l'opérateur remplit tout le formulaire pour découvrir l'erreur
+        // à la fin). Un ordre terminé est orienté vers la suite du cycle.
+        if ($order->status !== 'planifie') {
+            $hint = $order->status === 'termine'
+                ? ' ' . __('Suite du cycle : découpe ou clôture depuis le tableau de bord.')
+                : '';
+            return redirect()->route('slaughter.dashboard')
+                ->with('error', __("L'ordre :number est déjà :status — il ne peut pas être ré-exécuté.", [
+                    'number' => $order->order_number,
+                    'status' => $order->status,
+                ]) . $hint);
+        }
+
         $order->load('batch.building', 'batch.species');
 
         // Bandes de rendement carcasse propres à l'espèce du lot (volaille,
@@ -556,7 +577,17 @@ class SlaughterController extends Controller
         $finishedProducts = FinishedProduct::where('current_quantity_kg', '>', 0)
             ->whereNotIn('product_type', ['fume', 'grille', 'marine'])
             ->get();
-        return view('slaughter.transform', compact('finishedProducts'));
+
+        // Traçabilité en cascade : rattachement (optionnel) à l'ordre
+        // d'abattage d'origine — la transformation apparaît alors au dossier
+        // de lot. Ordres terminés récents (30 j) seulement, pour une liste courte.
+        $recentOrders = SlaughterOrder::where('status', 'termine')
+            ->whereDate('actual_date', '>=', now()->subDays(30))
+            ->with('batch')
+            ->latest('actual_date')
+            ->get();
+
+        return view('slaughter.transform', compact('finishedProducts', 'recentOrders'));
     }
 
     public function storeTransformation(Request $request, SlaughterService $service)
@@ -565,6 +596,8 @@ class SlaughterController extends Controller
 
         $validated = $request->validate([
             'product_source'  => 'required|string|max:255',
+            // Rattachement optionnel à l'ordre d'origine (traçabilité cascade).
+            'slaughter_order_id' => 'nullable|exists:slaughter_orders,id',
             'type'            => 'required|in:fume,grille,marine,autre',
             'input_kg'        => 'required|numeric|min:0.1',
             'output_kg'       => 'nullable|numeric|min:0',

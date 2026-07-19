@@ -607,6 +607,13 @@ export const en: Record<string, string> = {
   'Checklist obligatoire': 'Required checklist',
   'Clôturer le cycle': 'Close the cycle',
   '✅ Clôturer le cycle (checklist HACCP/déchets)': '✅ Close the cycle (HACCP/waste checklist)',
+  'Clôturer le cycle (checklist HACCP/déchets)': 'Close the cycle (HACCP/waste checklist)',
+  'Ordre :order déjà exécuté': 'Order :order already executed',
+  "L'exécution est déjà dans la file de synchronisation — elle partira au prochain push.":
+    'The execution is already in the sync queue — it will be pushed on the next sync.',
+  'Cet ordre ne peut pas être ré-exécuté. Suite du cycle : clôture HACCP/déchets.':
+    'This order cannot be executed again. Next step of the cycle: HACCP/waste closure.',
+  'Retour à l’accueil': 'Back to home',
   'Destination des déchets — optionnel': 'Waste destination — optional',
   'Preuve requise': 'Proof required',
   'photo requise': 'photo required',

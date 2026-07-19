@@ -62,6 +62,8 @@ class SlaughterOrder extends Model
     public function executor(): BelongsTo { return $this->belongsTo(User::class, 'executed_by'); }
     public function result(): HasOne { return $this->hasOne(SlaughterResult::class); }
     public function cuttingSessions(): HasMany { return $this->hasMany(CuttingSession::class); }
+    /** Transformations (fumage, marinade...) rattachées à cet ordre (cascade). */
+    public function transformations(): HasMany { return $this->hasMany(Transformation::class); }
     public function reception(): BelongsTo { return $this->belongsTo(SlaughterReception::class, 'reception_id'); }
     public function ccpRecords(): HasMany { return $this->hasMany(CcpRecord::class); }
     public function byproducts(): HasMany { return $this->hasMany(SlaughterByproduct::class); }

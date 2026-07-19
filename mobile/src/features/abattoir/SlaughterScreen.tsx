@@ -40,6 +40,9 @@ export function SlaughterScreen() {
   const [coreTemp, setCoreTemp] = useState('')
   const [ccpAction, setCcpAction] = useState('')
   const [saved, setSaved] = useState(false)
+  // Verrouillage du cycle : une exécution déjà en file (offline, pas encore
+  // poussée) rend l'ordre non re-sélectionnable AVANT même le pull serveur.
+  const [alreadyQueued, setAlreadyQueued] = useState(false)
 
   useEffect(() => {
     if (!orderId) return
@@ -47,6 +50,10 @@ export function SlaughterScreen() {
       setOrder(found ?? null)
       setActualQuantity(found?.planned_quantity ?? 0)
       if (found?.batch_id) setBatch((await db.ref_batches.get(found.batch_id)) ?? null)
+      const queued = await db.outbox
+        .filter((op) => op.type === 'slaughter.execute' && op.payload.slaughter_order_id === Number(orderId))
+        .count()
+      setAlreadyQueued(queued > 0)
     })
   }, [orderId])
 
@@ -101,6 +108,28 @@ export function SlaughterScreen() {
     return (
       <div className="screen">
         <p className="muted">{t("Ordre d'abattage introuvable en local — synchronisez d'abord.")}</p>
+      </div>
+    )
+  }
+
+  // Verrouillage du cycle : un ordre ne s'exécute qu'une fois. Déjà terminé
+  // (statut serveur) ou déjà en file locale → on oriente vers la suite du
+  // cycle (clôture) au lieu de laisser ressaisir un abattage en double.
+  if (order.status !== 'planifie' || alreadyQueued) {
+    return (
+      <div className="screen-center">
+        <p className="big">🔒 {t('Ordre :order déjà exécuté', { order: order.order_number })}</p>
+        <p className="muted">
+          {alreadyQueued && order.status === 'planifie'
+            ? t("L'exécution est déjà dans la file de synchronisation — elle partira au prochain push.")
+            : t('Cet ordre ne peut pas être ré-exécuté. Suite du cycle : clôture HACCP/déchets.')}
+        </p>
+        <button type="button" className="btn-primary" onClick={() => navigate(`/abattoir/cloture/${order.id}`)}>
+          ✅ {t('Clôturer le cycle (checklist HACCP/déchets)')}
+        </button>
+        <button type="button" className="btn-secondary" onClick={() => navigate('/')}>
+          {t('Retour à l’accueil')}
+        </button>
       </div>
     )
   }

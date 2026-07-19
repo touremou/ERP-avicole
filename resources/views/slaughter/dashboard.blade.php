@@ -275,6 +275,7 @@
                             <th class="px-4 py-3 text-right">{{ __("Carcasse") }}</th>
                             <th class="px-4 py-3 text-center">{{ __("Rendement") }}</th>
                             <th class="px-6 py-3 text-center">{{ __("Date") }}</th>
+                            <th class="px-6 py-3 text-center">{{ __("Cycle") }}</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-50">
@@ -300,6 +301,30 @@
                             </td>
                             {{-- ⚙️ PARAMÉTRAGE DYNAMIQUE : Date --}}
                             <td class="px-6 py-3 text-center text-[10px] font-black text-slate-500">{{ $order->actual_date?->format(setting('general.date_format', 'd/m/Y')) }}</td>
+
+                            {{-- ÉTAPE SUIVANTE DU CYCLE : découpe (carcasse restante) → clôture HACCP → ✓ --}}
+                            <td class="px-6 py-3 text-center whitespace-nowrap">
+                                @php
+                                    $carcassKg = (float) ($order->result->total_carcass_weight_kg ?? 0);
+                                    $remainingKg = max(0, $carcassKg - (float) $order->cuttingSessions->sum('total_input_kg'));
+                                @endphp
+                                @can('abattoir.C')
+                                    @if($remainingKg > 0.05)
+                                    <a href="{{ route('slaughter.cutting.form', $order) }}" class="inline-block bg-purple-50 text-purple-600 px-3 py-1.5 rounded-xl font-black text-[8px] uppercase tracking-widest no-underline hover:bg-purple-100" title="{{ __('Carcasse restante : :kg kg', ['kg' => number_format($remainingKg, 1)]) }}">
+                                        <i class="fa-solid fa-scissors mr-1"></i>{{ __("Découper") }}
+                                    </a>
+                                    @endif
+                                @endcan
+                                @if($order->isClosed())
+                                    <span class="inline-block bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded-xl font-black text-[8px] uppercase tracking-widest" title="{{ __('Cycle clôturé (checklist HACCP/déchets)') }}">✓ {{ __("Clôturé") }}</span>
+                                @else
+                                    @can('abattoir.M')
+                                    <a href="{{ route('slaughter.closure.form', $order) }}" class="inline-block bg-amber-50 text-amber-600 px-3 py-1.5 rounded-xl font-black text-[8px] uppercase tracking-widest no-underline hover:bg-amber-100" title="{{ __('Checklist HACCP / déchets de fin de cycle') }}">
+                                        <i class="fa-solid fa-clipboard-check mr-1"></i>{{ __("Clôturer") }}
+                                    </a>
+                                    @endcan
+                                @endif
+                            </td>
                         </tr>
                         @endforeach
                     </tbody>
