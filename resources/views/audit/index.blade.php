@@ -8,9 +8,12 @@
 
             @php
                 $eventLabels = [
-                    'created' => ['Création',     'bg-emerald-50 text-emerald-600'],
-                    'updated' => ['Modification', 'bg-blue-50 text-blue-600'],
-                    'deleted' => ['Suppression',  'bg-rose-50 text-rose-600'],
+                    'created'   => ['Création',     'bg-emerald-50 text-emerald-600'],
+                    'updated'   => ['Modification', 'bg-blue-50 text-blue-600'],
+                    'deleted'   => ['Suppression',  'bg-rose-50 text-rose-600'],
+                    'claimed'   => ['Tâche prise',  'bg-indigo-50 text-indigo-600'],
+                    'released'  => ['Tâche libérée', 'bg-amber-50 text-amber-600'],
+                    'completed' => ['Tâche terminée', 'bg-emerald-50 text-emerald-600'],
                 ];
             @endphp
 

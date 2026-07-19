@@ -55,6 +55,23 @@ class TaskAssignment extends Model
             && ! $this->isClaimStale();
     }
 
+    /**
+     * Trace un événement de CYCLE DE VIE de la tâche (prise / libération /
+     * complétion) au journal d'audit — « qui a fait quoi, quand ». On journalise
+     * explicitement ces transitions métier (et NON toutes les écritures : la
+     * génération quotidienne en masse n'a pas sa place dans un journal lisible).
+     * L'auteur (causer) est l'utilisateur authentifié.
+     */
+    public function logLifecycle(string $event, array $attributes = []): void
+    {
+        activity('audit')
+            ->performedOn($this)
+            ->causedBy(\Illuminate\Support\Facades\Auth::user())
+            ->event($event)
+            ->withProperties(['attributes' => $attributes])
+            ->log("task.{$event}");
+    }
+
     public function template(): BelongsTo { return $this->belongsTo(TaskTemplate::class, 'task_template_id'); }
     public function employee(): BelongsTo { return $this->belongsTo(Employee::class); }
     public function building(): BelongsTo { return $this->belongsTo(Building::class); }

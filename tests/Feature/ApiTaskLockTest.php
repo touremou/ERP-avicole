@@ -143,6 +143,26 @@ test('les prises expirées sont réarmées par tasks:release-stale', function ()
     expect($task->status)->toBe('a_faire')->and($task->claimed_by)->toBeNull();
 });
 
+test('le cycle de vie d\'une tâche est tracé au journal d\'audit (prise, complétion)', function () {
+    $task = lockTask($this->farm->id, $this->workerEmp->id);
+    Sanctum::actingAs($this->worker);
+
+    $this->postJson('/api/v1/sync/push', ['operations' => [op('task.start', $task->id)]])->assertOk();
+    $this->postJson('/api/v1/sync/push', ['operations' => [op('task.complete', $task->id)]])->assertOk();
+
+    $events = \Spatie\Activitylog\Models\Activity::where('log_name', 'audit')
+        ->where('subject_type', TaskAssignment::class)
+        ->where('subject_id', $task->id)
+        ->pluck('event');
+
+    expect($events)->toContain('claimed')->toContain('completed');
+
+    // L'auteur (causer) est bien l'ouvrier qui a agi.
+    $completed = \Spatie\Activitylog\Models\Activity::where('event', 'completed')
+        ->where('subject_id', $task->id)->first();
+    expect($completed->causer_id)->toBe($this->worker->id);
+});
+
 test('GET /tasks expose le verrou (claimed_by_me pour le preneur)', function () {
     $task = lockTask($this->farm->id, $this->workerEmp->id);
     Sanctum::actingAs($this->worker);
