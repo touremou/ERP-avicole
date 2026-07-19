@@ -310,7 +310,16 @@ class SlaughterController extends Controller
         // ovin, bovin, porcin, lapin, poisson — cf. config/butchery.php).
         $yield = \App\Services\ButcheryNomenclature::carcassYieldForSpecies($order->batch?->species);
 
-        return view('slaughter.execute', compact('order', 'yield'));
+        // Gammes de sortie (PAC / effilé / brut) + leur bande de rendement
+        // attendue → le formulaire adapte la plage affichée au choix de gamme.
+        $presentations = \App\Services\ButcheryNomenclature::presentations();
+        $presentationBands = [];
+        foreach ($presentations as $code => $cfg) {
+            $presentationBands[$code] = \App\Services\ButcheryNomenclature::presentationYieldBand($code, $order->batch?->species);
+        }
+        $defaultPresentation = \App\Services\ButcheryNomenclature::defaultPresentation();
+
+        return view('slaughter.execute', compact('order', 'yield', 'presentations', 'presentationBands', 'defaultPresentation'));
     }
 
     public function executeSlaughter(Request $request, SlaughterOrder $order, SlaughterService $service)
@@ -330,6 +339,8 @@ class SlaughterController extends Controller
             // le soir). Optionnel — le registre reste saisissable à part.
             'ccp3_core_temp'          => 'nullable|numeric|min:-10|max:60',
             'ccp3_corrective_action'  => 'nullable|string|max:2000',
+            // Gamme de sortie carcasse : PAC / effilé / brut (à découper).
+            'presentation'            => 'nullable|in:' . implode(',', array_keys(\App\Services\ButcheryNomenclature::presentations())),
         ]);
 
         // Pré-évaluation du CCP 3 AVANT d'abattre : un constat non conforme
@@ -397,8 +408,21 @@ class SlaughterController extends Controller
                 }
             }
 
+            // Alerte d'écart de rendement selon la GAMME choisie : un rendement
+            // hors de la bande attendue signale une pesée ou une présentation à
+            // vérifier (non bloquant — le geste sanitaire est fait).
+            $band = \App\Services\ButcheryNomenclature::presentationYieldBand($result->presentation, $order->batch?->species);
+            $y = (float) $result->carcass_yield_percent;
+            $yieldWarn = '';
+            if ($y < $band['alert_min']) {
+                $yieldWarn = ' ⚠️ ' . __('Rendement anormalement bas (:y% < :min% attendu) — vérifiez la pesée.', ['y' => $y, 'min' => $band['alert_min']]);
+            } elseif ($y > $band['target_max']) {
+                $yieldWarn = ' ⚠️ ' . __('Rendement au-dessus de la plage (:y% > :max%) — présentation/pesée à vérifier.', ['y' => $y, 'max' => $band['target_max']]);
+            }
+
+            $flash = $yieldWarn !== '' ? 'warning' : 'success';
             return redirect()->route('slaughter.dashboard')
-                ->with('success', "Abattage {$order->order_number} terminé — Rendement carcasse: {$result->carcass_yield_percent}%." . $ccpNote);
+                ->with($flash, "Abattage {$order->order_number} terminé — Rendement carcasse: {$result->carcass_yield_percent}%." . $ccpNote . $yieldWarn);
         } catch (\Exception $e) {
             return back()->with('error', $e->getMessage())->withInput();
         }

@@ -774,6 +774,7 @@ class SyncService
             'condemned_count'         => 'nullable|integer|min:0',
             'condemned_reason'        => 'nullable|string|max:500',
             'inspector_notes'         => 'nullable|string|max:1000',
+            'presentation'            => 'nullable|in:' . implode(',', array_keys(\App\Services\ButcheryNomenclature::presentations())),
         ]);
 
         if ($v->fails()) {

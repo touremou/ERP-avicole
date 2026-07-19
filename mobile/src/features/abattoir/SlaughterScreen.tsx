@@ -14,6 +14,15 @@ import { NumberStepper } from '../../ui/NumberStepper'
 import { VoiceDictation } from '../../ui/VoiceDictation'
 import type { RefBatch, RefSlaughterOrder } from '../../api/types'
 
+// Gammes de sortie carcasse (miroir de config/butchery.php, volaille) : bande
+// de rendement attendue [alerte_min, cible_max] — l'effilé garde tête/pattes,
+// donc rendement plus haut. Le serveur reste l'autorité sur le nom d'article.
+const PRESENTATIONS = [
+  { value: 'brut', label: '🔪 Brut (à découper)', min: 65, max: 75 },
+  { value: 'pac', label: '📦 PAC (prêt-à-cuire)', min: 65, max: 75 },
+  { value: 'effile', label: '🍗 Effilé (têtes/pattes)', min: 77, max: 87 },
+] as const
+
 export function SlaughterScreen() {
   const { orderId } = useParams()
   const navigate = useNavigate()
@@ -24,6 +33,7 @@ export function SlaughterScreen() {
   const [liveWeight, setLiveWeight] = useState('')
   const [carcassWeight, setCarcassWeight] = useState('')
   const [condemned, setCondemned] = useState(0)
+  const [presentation, setPresentation] = useState<(typeof PRESENTATIONS)[number]['value']>('brut')
   const [notes, setNotes] = useState('')
   // Anti-corvée : le CCP 3 (T° à cœur) se saisit dans le MÊME geste —
   // une seconde opération part dans la file, pas de second écran.
@@ -44,6 +54,8 @@ export function SlaughterScreen() {
   const carcass = Number(carcassWeight)
   const weightsValid = live > 0 && carcass > 0 && carcass <= live
   const yieldPercent = weightsValid ? Math.round((carcass / live) * 1000) / 10 : null
+  const band = PRESENTATIONS.find((p) => p.value === presentation) ?? PRESENTATIONS[0]
+  const yieldOff = yieldPercent !== null && (yieldPercent < band.min || yieldPercent > band.max)
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault()
@@ -58,6 +70,7 @@ export function SlaughterScreen() {
         total_live_weight_kg: live,
         total_carcass_weight_kg: carcass,
         condemned_count: condemned,
+        presentation,
         inspector_notes: notes || null,
       },
       t('Abattage :order (:qty sujets)', { order: order.order_number, qty: actualQuantity }),
@@ -109,6 +122,15 @@ export function SlaughterScreen() {
         {t(':qty sujets planifiés', { qty: order.planned_quantity })} · {new Date().toLocaleDateString(dateLocale())}
       </p>
 
+      <label>{t('Gamme de sortie carcasse')}</label>
+      <div className="chip-row">
+        {PRESENTATIONS.map((p) => (
+          <button key={p.value} type="button" className={`chip ${presentation === p.value ? 'chip-on' : ''}`} onClick={() => setPresentation(p.value)}>
+            {t(p.label)}
+          </button>
+        ))}
+      </div>
+
       <NumberStepper label={t('Sujets abattus')} value={actualQuantity} onChange={setActualQuantity} min={0} />
       {batch && actualQuantity > batch.current_quantity && (
         <p className="error">
@@ -144,7 +166,12 @@ export function SlaughterScreen() {
       {live > 0 && carcass > live && (
         <p className="error">{t('⚠️ La carcasse ne peut pas peser plus que le vif.')}</p>
       )}
-      {yieldPercent !== null && <p className="muted">{t('Rendement carcasse : :pct %', { pct: yieldPercent })}</p>}
+      {yieldPercent !== null && (
+        <p className={yieldOff ? 'error' : 'muted'}>
+          {t('Rendement carcasse : :pct % (attendu :min–:max %)', { pct: yieldPercent, min: band.min, max: band.max })}
+          {yieldOff ? ' ⚠️' : ''}
+        </p>
+      )}
 
       <NumberStepper label={t('Saisies / condamnés')} value={condemned} onChange={setCondemned} min={0} />
 
