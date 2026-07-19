@@ -52,6 +52,10 @@
                         @if($order->reception->decision_reason) — {{ $order->reception->decision_reason }} @endif
                     </p>
                     <p class="text-[9px] text-slate-400 m-0">{{ __("Contrôleur") }} : {{ $order->reception->controller?->name ?? '—' }} · {{ __("relevé") }} {{ $order->reception->releve_at?->format('d/m/Y H:i') }}</p>
+                    {{-- Solde dérivé de la réception (les ordres partiels réservent leurs sujets). --}}
+                    <p class="text-[9px] text-slate-500 m-0 mt-1">
+                        {{ __("Solde réception") }} : <span class="font-black {{ $order->reception->remainingQuantity() > 0 ? 'text-emerald-600' : 'text-slate-500' }}">{{ $order->reception->remainingQuantity() }}</span> / {{ $order->reception->acceptedQuantity() }} {{ __("sujets encore disponibles") }}
+                    </p>
                     <p class="text-[10px] m-0 mt-1">
                         @if($order->reception->origin === 'facon')
                             <span class="text-[8px] font-black uppercase px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600">🤝 {{ __("À façon") }}</span>

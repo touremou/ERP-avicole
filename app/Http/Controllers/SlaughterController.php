@@ -104,11 +104,17 @@ class SlaughterController extends Controller
 
         // Réceptions externes (volailles hors élevage interne) éligibles :
         // décision ≠ refuse (RG-04), 7 derniers jours.
+        // Solde dérivé par réception (acceptés − ordres non annulés) : les
+        // réceptions ÉPUISÉES ne sont plus proposées — un ordre partiel
+        // réserve ses sujets, le reste seulement demeure sélectionnable.
         $receptions = \App\Models\SlaughterReception::with('provider')
             ->where('decision', '!=', 'refuse')
             ->whereDate('reception_date', '>=', now()->subDays(7)->toDateString())
             ->latest('reception_date')->latest('id')
-            ->get();
+            ->get()
+            ->each(fn ($rec) => $rec->setAttribute('remaining', $rec->remainingQuantity()))
+            ->filter(fn ($rec) => $rec->remaining > 0)
+            ->values();
 
         return view('slaughter.create-order', compact('batches', 'clients', 'receptions'));
     }
@@ -195,6 +201,19 @@ class SlaughterController extends Controller
                     'reception_id' => "La réception n°{$reception->id} du "
                         . $reception->reception_date->format('d/m/Y')
                         . " a été REFUSÉE au contrôle ante-mortem — aucun ordre d'abattage ne peut être créé sur ce lot (RG-04).",
+                ])->withInput();
+            }
+
+            // SOLDE DE RÉCEPTION : un ordre (même partiel) réserve ses sujets —
+            // la somme des ordres non annulés ne peut pas dépasser les acceptés.
+            $remaining = $reception->remainingQuantity();
+            if ((int) $validated['planned_quantity'] > $remaining) {
+                return back()->withErrors([
+                    'planned_quantity' => __("Il ne reste que :remaining sujet(s) disponible(s) sur la réception n°:id (:accepted acceptés, le reste est déjà réservé par d'autres ordres).", [
+                        'remaining' => $remaining,
+                        'id'        => $reception->id,
+                        'accepted'  => $reception->acceptedQuantity(),
+                    ]),
                 ])->withInput();
             }
         }

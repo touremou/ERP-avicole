@@ -72,6 +72,24 @@ class SlaughterService
                 }
             }
 
+            // SOLDE DE RÉCEPTION (ordre externe, sans lot interne) : le réel
+            // abattu ne peut pas dépasser ce qu'il reste sur la réception —
+            // registre immuable, solde dérivé des ordres liés. Réception
+            // verrouillée pour sérialiser deux exécutions concurrentes.
+            if (! $batch && $order->reception_id) {
+                $reception = \App\Models\SlaughterReception::lockForUpdate()->find($order->reception_id);
+                if ($reception) {
+                    $remaining = $reception->remainingQuantity($order->id);
+                    if ($actualQty > $remaining) {
+                        throw new Exception(
+                            "Effectif insuffisant : {$actualQty} sujets à abattre mais il ne reste que "
+                            . "{$remaining} sujet(s) sur la réception n°{$reception->id} "
+                            . "({$reception->acceptedQuantity()} acceptés, le reste déjà abattu ou réservé)."
+                        );
+                    }
+                }
+            }
+
             // Calculs
             $effectiveQty = $actualQty - $condemned;
             $yieldPercent = $liveWeight > 0 ? round(($carcassWeight / $liveWeight) * 100, 2) : 0;

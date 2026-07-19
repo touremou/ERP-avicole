@@ -43,12 +43,13 @@
                                     class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black uppercase shadow-inner outline-none">
                                     <option value="">{{ __("— Sélectionner la réception —") }}</option>
                                     @foreach($receptions as $rec)
+                                        {{-- Solde dérivé : « reste X / N acceptés » — un ordre partiel réserve ses sujets. --}}
                                         <option value="{{ $rec->id }}">
-                                            #{{ $rec->id }} — {{ $rec->provider?->name ?? '—' }} — {{ $rec->reception_date->format('d/m/Y') }} — {{ $rec->received_quantity }} {{ __("sujets") }} ({{ str_replace('_', ' ', $rec->decision) }})
+                                            #{{ $rec->id }} — {{ $rec->provider?->name ?? '—' }} — {{ $rec->reception_date->format('d/m/Y') }} — {{ __("reste :left / :total sujets", ['left' => $rec->remaining, 'total' => $rec->acceptedQuantity()]) }} ({{ str_replace('_', ' ', $rec->decision) }})
                                         </option>
                                     @endforeach
                                 </select>
-                                <p class="text-[8px] text-slate-400 ml-2"><i class="fa-solid fa-shield-halved mr-1"></i>{{ __("Réceptions des 7 derniers jours non refusées — une réception refusée ne peut jamais donner d'ordre (RG-04).") }}</p>
+                                <p class="text-[8px] text-slate-400 ml-2"><i class="fa-solid fa-shield-halved mr-1"></i>{{ __("Réceptions des 7 derniers jours non refusées et non épuisées — le solde tient compte des ordres déjà posés.") }}</p>
                             </div>
 
                             {{-- LOT SOURCE — tous types --}}

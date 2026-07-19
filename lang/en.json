@@ -3289,5 +3289,10 @@
     "Saisie rapide (relevé isolé)": "Quick entry (single reading)",
     "Le cycle :number est clôturé (checklist HACCP signée) — la découpe n'est plus possible.": "Cycle :number is closed (HACCP checklist signed) — cutting is no longer possible.",
     "Le cycle :number est clôturé — il ne peut plus recevoir de transformation.": "Cycle :number is closed — it can no longer receive a transformation.",
-    "Le cycle :number est déjà clôturé — checklist consultable au dossier de lot.": "Cycle :number is already closed — checklist available in the batch record."
+    "Le cycle :number est déjà clôturé — checklist consultable au dossier de lot.": "Cycle :number is already closed — checklist available in the batch record.",
+    "Il ne reste que :remaining sujet(s) disponible(s) sur la réception n°:id (:accepted acceptés, le reste est déjà réservé par d'autres ordres).": "Only :remaining subject(s) left on reception #:id (:accepted accepted, the rest is already reserved by other orders).",
+    "reste :left / :total sujets": ":left / :total subjects left",
+    "Réceptions des 7 derniers jours non refusées et non épuisées — le solde tient compte des ordres déjà posés.": "Receptions from the last 7 days, not refused and not exhausted — the balance accounts for orders already placed.",
+    "Solde réception": "Reception balance",
+    "sujets encore disponibles": "subjects still available"
 }

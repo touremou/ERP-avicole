@@ -116,4 +116,31 @@ class SlaughterReception extends Model
     {
         return $this->decision === 'refuse';
     }
+
+    /** Sujets exploitables de la réception (reçus − écartés à l'ante-mortem). */
+    public function acceptedQuantity(): int
+    {
+        return max(0, (int) $this->received_quantity - (int) $this->rejected_quantity);
+    }
+
+    /**
+     * SOLDE DÉRIVÉ de la réception : sujets encore disponibles pour un ordre
+     * d'abattage. Le registre étant IMMUABLE (RG-06), rien n'est décrémenté :
+     * le solde se calcule depuis les ordres liés —
+     *   restant = acceptés − Σ(exécutés en réel, en attente en planifié).
+     * Un ordre ANNULÉ libère automatiquement son quota. $excludeOrderId permet
+     * de re-valider un ordre donné sans compter sa propre demande deux fois.
+     */
+    public function remainingQuantity(?int $excludeOrderId = null): int
+    {
+        $consumed = $this->slaughterOrders()
+            ->where('status', '!=', 'annule')
+            ->when($excludeOrderId !== null, fn ($q) => $q->whereKeyNot($excludeOrderId))
+            ->get(['id', 'status', 'planned_quantity', 'actual_quantity'])
+            ->sum(fn (SlaughterOrder $order) => $order->status === 'termine'
+                ? (int) $order->actual_quantity
+                : (int) $order->planned_quantity);
+
+        return max(0, $this->acceptedQuantity() - $consumed);
+    }
 }
