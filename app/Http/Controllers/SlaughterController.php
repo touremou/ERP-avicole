@@ -465,6 +465,13 @@ class SlaughterController extends Controller
                 ->with('error', "L'abattage de l'ordre {$order->order_number} doit être terminé avant la découpe.");
         }
 
+        // Cycle clôturé → découpe verrouillée AVANT la saisie (le service
+        // refuse aussi à la soumission — défense en profondeur).
+        if ($order->isClosed()) {
+            return redirect()->route('slaughter.dashboard')
+                ->with('error', __("Le cycle :number est clôturé (checklist HACCP signée) — la découpe n'est plus possible.", ['number' => $order->order_number]));
+        }
+
         $order->load(['result', 'cuttingSessions.products', 'batch.species']);
 
         // Morceaux EFFECTIFS : recette de désassemblage active de la ferme
@@ -548,6 +555,12 @@ class SlaughterController extends Controller
                 ->with('error', "L'ordre {$order->order_number} doit être exécuté (terminé) avant sa clôture.");
         }
 
+        // Déjà clôturé → le dossier de lot montre la checklist signée.
+        if ($order->isClosed()) {
+            return redirect()->route('slaughter.orders.traceability', $order)
+                ->with('success', __('Le cycle :number est déjà clôturé — checklist consultable au dossier de lot.', ['number' => $order->order_number]));
+        }
+
         $order->load('batch.species', 'reception');
         $autoChecks = $order->closureAutoChecks();
 
@@ -593,8 +606,10 @@ class SlaughterController extends Controller
 
         // Traçabilité en cascade : rattachement (optionnel) à l'ordre
         // d'abattage d'origine — la transformation apparaît alors au dossier
-        // de lot. Ordres terminés récents (30 j) seulement, pour une liste courte.
+        // de lot. Ordres terminés récents (30 j) et NON CLÔTURÉS seulement
+        // (un cycle clôturé ne reçoit plus de nouvelle activité).
         $recentOrders = SlaughterOrder::where('status', 'termine')
+            ->whereNull('closed_at')
             ->whereDate('actual_date', '>=', now()->subDays(30))
             ->with('batch')
             ->latest('actual_date')
@@ -619,6 +634,17 @@ class SlaughterController extends Controller
             'cost'            => 'nullable|numeric|min:0',
             'notes'           => 'nullable|string|max:500',
         ]);
+
+        // Un cycle clôturé ne reçoit plus de nouvelle activité (défense en
+        // profondeur — la liste du formulaire exclut déjà les ordres clos).
+        if (! empty($validated['slaughter_order_id'])) {
+            $linked = SlaughterOrder::find($validated['slaughter_order_id']);
+            if ($linked?->isClosed()) {
+                return back()->withErrors([
+                    'slaughter_order_id' => __("Le cycle :number est clôturé — il ne peut plus recevoir de transformation.", ['number' => $linked->order_number]),
+                ])->withInput();
+            }
+        }
 
         $source = FinishedProduct::where('product_name', $validated['product_source'])->first();
         if (! $source || (float) $source->current_quantity_kg < (float) $validated['input_kg']) {

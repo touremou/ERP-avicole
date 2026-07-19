@@ -309,8 +309,9 @@
                                     $carcassKg = (float) ($order->result->total_carcass_weight_kg ?? 0);
                                     $remainingKg = max(0, $carcassKg - (float) $order->cuttingSessions->sum('total_input_kg'));
                                 @endphp
+                                {{-- Un cycle CLÔTURÉ ne se découpe plus (zone nettoyée, checklist signée). --}}
                                 @can('abattoir.C')
-                                    @if($remainingKg > 0.05)
+                                    @if($remainingKg > 0.05 && ! $order->isClosed())
                                     <a href="{{ route('slaughter.cutting.form', $order) }}" class="inline-block bg-purple-50 text-purple-600 px-3 py-1.5 rounded-xl font-black text-[8px] uppercase tracking-widest no-underline hover:bg-purple-100" title="{{ __('Carcasse restante : :kg kg', ['kg' => number_format($remainingKg, 1)]) }}">
                                         <i class="fa-solid fa-scissors mr-1"></i>{{ __("Découper") }}
                                     </a>
