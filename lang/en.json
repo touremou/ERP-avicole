@@ -3270,5 +3270,21 @@
     "Marge/kg": "Margin/kg",
     "{1}:n transformation enfant créée (pesée de sortie au dashboard).|[2,*]:n transformations enfants créées (pesée de sortie au dashboard).": "{1}:n child transformation created (output weighing on the dashboard).|[2,*]:n child transformations created (output weighing on the dashboard).",
     "Le total des morceaux (:out kg) dépasse le poids entré (:in kg).": "The total of the cuts (:out kg) exceeds the input weight (:in kg).",
-    "Types de découpe inconnus pour cette espèce : :types": "Unknown cut types for this species: :types"
+    "Types de découpe inconnus pour cette espèce : :types": "Unknown cut types for this species: :types",
+    "Tournée de températures": "Temperature round",
+    "Tournée de nettoyage": "Cleaning round",
+    "Remplissez les points relevés, laissez vides les autres — une seule validation.": "Fill in the points you measured, leave the rest empty — a single submit.",
+    "Cochez les zones nettoyées — produit/dosage rappelés de la dernière tournée.": "Tick the cleaned zones — product/dosage recalled from the last round.",
+    "Valider la tournée": "Confirm the round",
+    "T° (°C)": "T° (°C)",
+    "Bornes": "Bounds",
+    "Fait": "Done",
+    "Si hors seuil…": "If out of range…",
+    "Aucune température saisie — remplissez au moins un point de contrôle.": "No temperature entered — fill in at least one control point.",
+    "Tournée enregistrée : :n relevés, dont :nc HORS SEUIL — alertes déclenchées.": "Round saved: :n readings, :nc OUT OF RANGE — alerts triggered.",
+    "Tournée enregistrée : :n relevés, tous conformes.": "Round saved: :n readings, all compliant.",
+    "Aucune zone cochée — cochez les zones nettoyées.": "No zone ticked — tick the cleaned zones.",
+    "Produit manquant pour : :zones": "Missing product for: :zones",
+    "Tournée de nettoyage enregistrée : :n zones tracées.": "Cleaning round saved: :n zones recorded.",
+    "Saisie rapide (relevé isolé)": "Quick entry (single reading)"
 }

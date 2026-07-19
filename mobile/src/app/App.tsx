@@ -24,6 +24,8 @@ import { CropInputScreen } from '../features/cultures/CropInputScreen'
 import { SlaughterScreen } from '../features/abattoir/SlaughterScreen'
 import { ClosureScreen } from '../features/abattoir/ClosureScreen'
 import { CuttingScreen } from '../features/abattoir/CuttingScreen'
+import { TemperatureRoundScreen } from '../features/abattoir/TemperatureRoundScreen'
+import { CleaningRoundScreen } from '../features/abattoir/CleaningRoundScreen'
 import { SlaughterJournalScreen } from '../features/abattoir/SlaughterJournalScreen'
 import { ReceptionScreen } from '../features/abattoir/ReceptionScreen'
 import { TemperatureScreen } from '../features/abattoir/TemperatureScreen'
@@ -124,8 +126,10 @@ function Shell() {
           <Route path="/abattoir/decoupe" element={<CuttingScreen />} />
           <Route path="/abattoir/reception" element={<ReceptionScreen />} />
           <Route path="/abattoir/temperature" element={<TemperatureScreen />} />
+          <Route path="/abattoir/temperature/tournee" element={<TemperatureRoundScreen />} />
           <Route path="/abattoir/ccp" element={<CcpScreen />} />
           <Route path="/abattoir/nettoyage" element={<CleaningScreen />} />
+          <Route path="/abattoir/nettoyage/tournee" element={<CleaningRoundScreen />} />
           <Route path="/abattoir/sousproduit" element={<ByproductScreen />} />
           <Route path="/provenderie/cloture/:opId" element={<MillCompleteScreen />} />
           <Route path="/alertes" element={<NotificationsScreen />} />

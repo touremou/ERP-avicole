@@ -141,13 +141,15 @@ export function NouvelleSaisieScreen() {
           )}
           {abattoirC && (
             <>
-              <Link to="/abattoir/temperature" className="task-card">
-                <span className="task-title">🌡️ {t('Relevé température')}</span>
-                <span className="task-meta">{t('registre HACCP')}</span>
+              {/* Tournées : tous les points/zones en une validation (les
+                  écrans unitaires restent accessibles depuis les tournées). */}
+              <Link to="/abattoir/temperature/tournee" className="task-card">
+                <span className="task-title">🌡️ {t('Tournée températures')}</span>
+                <span className="task-meta">{t('tous les points · 1 validation')}</span>
               </Link>
-              <Link to="/abattoir/nettoyage" className="task-card">
-                <span className="task-title">🧽 {t('Nettoyage')}</span>
-                <span className="task-meta">{t('zone · produit')}</span>
+              <Link to="/abattoir/nettoyage/tournee" className="task-card">
+                <span className="task-title">🧽 {t('Tournée nettoyage')}</span>
+                <span className="task-meta">{t('toutes les zones · 1 validation')}</span>
               </Link>
               <Link to="/abattoir/reception" className="task-card">
                 <span className="task-title">🚚 {t('Réception vif')}</span>
