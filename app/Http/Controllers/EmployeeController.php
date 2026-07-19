@@ -18,7 +18,23 @@ class EmployeeController extends Controller
     {
         if (Gate::denies('rh.L')) return redirect()->route('dashboard')->with('error', 'Accès restreint au personnel.');
 
-        $employees = Employee::with('user')->orderBy('last_name', 'asc')->get();
+        // Employés RATTACHÉS à la ferme courante (farm_id) OU dont le compte a
+        // reçu l'ACCÈS à cette ferme (farm_user). Sans ce second volet, un
+        // employé affecté à un autre site pour y travailler obtenait les droits
+        // mais n'apparaissait pas dans la liste RH de ce site.
+        $farmId = session('current_farm_id');
+        $employees = Employee::withoutGlobalScopes()
+            ->with('user')
+            ->when($farmId, function ($q) use ($farmId) {
+                $accessUserIds = \Illuminate\Support\Facades\DB::table('farm_user')
+                    ->where('farm_id', $farmId)->pluck('user_id');
+                $q->where(function ($sub) use ($farmId, $accessUserIds) {
+                    $sub->where('farm_id', $farmId)
+                        ->orWhereIn('user_id', $accessUserIds);
+                });
+            })
+            ->orderBy('last_name', 'asc')
+            ->get();
         // Rôles proposés pour la création d'accès en masse (outil admin.S).
         $roles = \App\Models\Role::orderBy('display_name')->get(['id', 'display_name', 'label', 'name']);
 
