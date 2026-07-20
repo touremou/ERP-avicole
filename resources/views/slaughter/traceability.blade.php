@@ -136,7 +136,7 @@
                 @if($order->byproducts->isNotEmpty())
                     <p class="text-[9px] font-black uppercase text-slate-400 tracking-widest mt-3 mb-1">{{ __("Sous-produits") }}</p>
                     <p class="text-[10px] text-slate-500 m-0">
-                        @foreach($order->byproducts as $byproduct){{ \App\Models\SlaughterByproduct::TYPES[$byproduct->type] ?? $byproduct->type }} : <span class="font-black">{{ number_format((float) $byproduct->quantity_kg, 1, ',', ' ') }} kg</span> → {{ \App\Models\SlaughterByproduct::DESTINATIONS[$byproduct->destination] ?? $byproduct->destination }}@if(!$loop->last) · @endif @endforeach
+                        @foreach($order->byproducts as $byproduct){{ \App\Models\SlaughterByproduct::TYPES[$byproduct->type] ?? $byproduct->type }} : <span class="font-black">{{ number_format((float) $byproduct->quantity_kg, 1, ',', ' ') }} kg</span>@if($byproduct->method === 'estime') <span class="text-blue-500">({{ __('estimé') }})</span>@endif → {{ \App\Models\SlaughterByproduct::DESTINATIONS[$byproduct->destination] ?? $byproduct->destination }}@if(!$loop->last) · @endif @endforeach
                     </p>
                 @endif
 

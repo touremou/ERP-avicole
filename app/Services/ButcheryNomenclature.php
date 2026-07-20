@@ -97,6 +97,31 @@ class ButcheryNomenclature
     }
 
     /**
+     * Ratios de sous-produits non comestibles (% du poids VIF) pour l'espèce.
+     * Volaille : chaque ratio est surchargé par le réglage
+     * abattoir.byproduct_ratio_{type} s'il est défini (cohérent avec la
+     * surcharge des bandes de rendement).
+     *
+     * @return array<string, float> type => % du vif
+     */
+    public static function byproductRatiosForSpecies(?Species $species): array
+    {
+        $family = static::familyFor($species);
+        $ratios = config("butchery.byproduct_ratios.{$family}", []);
+
+        if ($family === 'volaille') {
+            foreach ($ratios as $type => $pct) {
+                $override = setting("abattoir.byproduct_ratio_{$type}");
+                if ($override !== null && $override !== '' && (float) $override >= 0) {
+                    $ratios[$type] = (float) $override;
+                }
+            }
+        }
+
+        return array_map('floatval', $ratios);
+    }
+
+    /**
      * @return array<int, array{code:string,label:string,destination:string,default:bool}>
      */
     public static function cutsForFamily(string $family): array

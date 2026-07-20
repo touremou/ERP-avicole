@@ -461,8 +461,12 @@ class SlaughterController extends Controller
             }
 
             $flash = $yieldWarn !== '' ? 'warning' : 'success';
+            // Registre E9 auto-alimenté à l'exécution (estimation zootechnique).
+            $byproductNote = $order->byproducts()->where('method', 'estime')->exists()
+                ? ' ' . __('Sous-produits estimés automatiquement au registre (ajustables par pesée réelle).')
+                : '';
             return redirect()->route('slaughter.dashboard')
-                ->with($flash, "Abattage {$order->order_number} terminé — Rendement carcasse: {$result->carcass_yield_percent}%." . $ccpNote . $yieldWarn);
+                ->with($flash, "Abattage {$order->order_number} terminé — Rendement carcasse: {$result->carcass_yield_percent}%." . $ccpNote . $byproductNote . $yieldWarn);
         } catch (\Exception $e) {
             return back()->with('error', $e->getMessage())->withInput();
         }

@@ -55,7 +55,9 @@ test('avec les 3 confirmations, le cycle se clôture et enregistre la checklist'
     expect($order->isClosed())->toBeTrue()
         ->and($order->closed_by)->toBe($this->managerUser->id)
         ->and(data_get($order->closure_checklist, 'waste_destination'))->toBe('Équarrissage')
-        ->and(data_get($order->closure_checklist, 'auto_checks.byproducts_recorded'))->toBeFalse();
+        // Registre E9 auto-alimenté à l'exécution (estimation zootechnique) →
+        // le contrôle automatique est désormais vert dès l'abattage fait.
+        ->and(data_get($order->closure_checklist, 'auto_checks.byproducts_recorded'))->toBeTrue();
 });
 
 test('la clôture est impossible avant exécution (ordre planifié)', function () {
