@@ -497,6 +497,12 @@ class SlaughterController extends Controller
 
         $order->load(['result', 'cuttingSessions.products', 'batch.species']);
 
+        // Carcasse RESTANTE à découper (produite − déjà découpée) : c'est le
+        // vrai plafond de saisie — l'afficher et le faire respecter côté
+        // client évite de découvrir le refus serveur après toute la saisie.
+        $carcassKg = (float) ($order->result?->total_carcass_weight_kg ?? 0);
+        $remainingKg = max(0, $carcassKg - (float) $order->cuttingSessions->sum('total_input_kg'));
+
         // Morceaux EFFECTIFS : recette de désassemblage active de la ferme
         // (rendements attendus, nature des extrants, conditionnements par
         // défaut) — repli sur la nomenclature config/butchery.php sinon.
@@ -504,7 +510,7 @@ class SlaughterController extends Controller
         $family = \App\Services\ButcheryNomenclature::familyFor($order->batch?->species);
         $hasRecipe = \App\Models\CuttingRecipe::activeFor($family) !== null;
 
-        return view('slaughter.cutting', compact('order', 'cuts', 'family', 'hasRecipe'));
+        return view('slaughter.cutting', compact('order', 'cuts', 'family', 'hasRecipe', 'remainingKg'));
     }
 
     public function storeCutting(Request $request, SlaughterOrder $order, SlaughterService $service)
