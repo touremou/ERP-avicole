@@ -29,8 +29,14 @@ class SlaughterByproduct extends Model
         'autre'        => 'Autre',
     ];
 
+    /** Méthodes de quantification (E9) : pesée réelle ou estimation par ratio. */
+    public const METHODS = [
+        'pese'   => 'Pesé',
+        'estime' => 'Estimé (ratio)',
+    ];
+
     protected $fillable = [
-        'farm_id', 'slaughter_order_id', 'type', 'quantity_kg',
+        'farm_id', 'slaughter_order_id', 'type', 'quantity_kg', 'method',
         'destination', 'notes', 'operator_id', 'collected_at', 'synced_at',
     ];
 

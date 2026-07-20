@@ -144,6 +144,7 @@
                         <tr class="bg-slate-50 text-[8px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 italic">
                             <th class="px-5 py-4 text-left">{{ __("Type") }}</th>
                             <th class="px-3 py-4 text-center">{{ __("Quantité (kg)") }}</th>
+                            <th class="px-3 py-4 text-center">{{ __("Méthode") }}</th>
                             <th class="px-3 py-4 text-left">{{ __("Destination") }}</th>
                             <th class="px-3 py-4 text-left">{{ __("Ordre") }}</th>
                             <th class="px-3 py-4 text-left">{{ __("Notes") }}</th>
@@ -157,6 +158,12 @@
                         <tr class="hover:bg-slate-50/50 transition-all">
                             <td class="px-5 py-4 text-[10px] font-black text-slate-800 uppercase">{{ __(\App\Models\SlaughterByproduct::TYPES[$byproduct->type] ?? $byproduct->type) }}</td>
                             <td class="px-3 py-4 text-center text-[10px] font-black text-slate-700">{{ number_format((float) $byproduct->quantity_kg, 1, ',', ' ') }}</td>
+                            {{-- Méthode tracée (E9) : estimé par ratio zootechnique ou pesé réel. --}}
+                            <td class="px-3 py-4 text-center">
+                                <span class="text-[8px] font-black px-2 py-1 rounded-full uppercase {{ $byproduct->method === 'estime' ? 'bg-blue-50 text-blue-600' : 'bg-emerald-50 text-emerald-600' }}">
+                                    {{ __(\App\Models\SlaughterByproduct::METHODS[$byproduct->method] ?? 'Pesé') }}
+                                </span>
+                            </td>
                             <td class="px-3 py-4 text-[9px] font-black text-slate-600 uppercase">{{ __(\App\Models\SlaughterByproduct::DESTINATIONS[$byproduct->destination] ?? $byproduct->destination) }}</td>
                             <td class="px-3 py-4 text-[9px] font-black text-slate-500">{{ $byproduct->slaughterOrder?->order_number ?? '—' }}</td>
                             <td class="px-3 py-4 text-[9px] text-slate-500 font-bold max-w-[200px]">{{ $byproduct->notes ?: '—' }}</td>
@@ -166,7 +173,7 @@
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="8" class="px-8 py-16 text-center">
+                            <td colspan="9" class="px-8 py-16 text-center">
                                 <i class="fa-solid fa-recycle text-slate-200 text-3xl mb-4 block"></i>
                                 <p class="text-[10px] text-slate-400 uppercase tracking-widest font-black">{{ __("Aucun sous-produit enregistré") }}</p>
                             </td>

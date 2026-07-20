@@ -6,6 +6,7 @@ use App\Models\Batch;
 use App\Models\CutProduct;
 use App\Models\CuttingSession;
 use App\Models\FinishedProduct;
+use App\Models\SlaughterByproduct;
 use App\Models\SlaughterOrder;
 use App\Models\SlaughterResult;
 use App\Models\Transformation;
@@ -155,6 +156,14 @@ class SlaughterService
             if ($order->isFacon()) {
                 app(\App\Actions\Slaughter\BillTollSlaughter::class)->execute($order->fresh());
             }
+
+            // 6. Registre E9 auto-alimenté : personne ne pèse le sang ou les
+            //    plumes après chaque cycle → ESTIMATION zootechnique
+            //    (poids vif × ratio d'espèce), méthode « estime » tracée,
+            //    ajustable/complétable au registre par une pesée réelle.
+            //    Vaut aussi pour la façon : les déchets restent NOTRE
+            //    responsabilité sanitaire même si la viande part au client.
+            $this->estimateByproducts($order, $batch, $liveWeight, $carcassWeight);
 
             Log::info("Abattage {$order->order_number} : {$actualQty} sujets, {$liveWeight}kg vif → {$carcassWeight}kg carcasse (rendement {$yieldPercent}%)" . ($order->isFacon() ? ' [FAÇON]' : ''));
 
@@ -558,6 +567,54 @@ class SlaughterService
         $perKg = $valuableKg > 0 ? round($engagedCost / $valuableKg, 2) : 0.0;
 
         return array_map(fn ($p) => $isWaste($p) ? 0.0 : $perKg, $products);
+    }
+
+    /**
+     * Estimation automatique des sous-produits non comestibles à l'exécution
+     * (registre E9) : quantité = poids vif × ratio d'espèce, méthode « estime ».
+     * Garde-fou balance de masse : la somme des estimations ne peut pas
+     * dépasser (vif − carcasse) — si des ratios paramétrés l'excèdent, tout
+     * est réduit proportionnellement. Best-effort : un échec ici ne défait
+     * jamais l'abattage (le registre reste saisissable à la main).
+     */
+    private function estimateByproducts(SlaughterOrder $order, ?Batch $batch, float $liveWeight, float $carcassWeight): void
+    {
+        try {
+            $ratios = ButcheryNomenclature::byproductRatiosForSpecies($batch?->species);
+            $ratios = array_filter($ratios, fn ($pct) => $pct > 0);
+            if ($ratios === [] || $liveWeight <= 0) {
+                return;
+            }
+
+            // Plafond physique : les sous-produits vivent dans (vif − carcasse).
+            $envelope = max(0.0, $liveWeight - $carcassWeight);
+            $totalPct = array_sum($ratios);
+            $estimated = array_map(fn ($pct) => $liveWeight * $pct / 100, $ratios);
+            $totalEstimated = array_sum($estimated);
+            if ($envelope > 0 && $totalEstimated > $envelope) {
+                $scale = $envelope / $totalEstimated;
+                $estimated = array_map(fn ($kg) => $kg * $scale, $estimated);
+            }
+
+            foreach ($estimated as $type => $kg) {
+                if ($kg < 0.01) continue;
+                SlaughterByproduct::create([
+                    'slaughter_order_id' => $order->id,
+                    'type'               => $type,
+                    'quantity_kg'        => round($kg, 2),
+                    'method'             => 'estime',
+                    'destination'        => 'equarrissage',
+                    'notes'              => "Estimation automatique ({$ratios[$type]} % du vif)",
+                    'operator_id'        => Auth::id(),
+                    'collected_at'       => now(),
+                    'synced_at'          => now(),
+                ]);
+            }
+
+            Log::info("Sous-produits estimés pour {$order->order_number} : " . round($totalEstimated, 1) . " kg ({$totalPct} % du vif, plafond " . round($envelope, 1) . " kg).");
+        } catch (\Throwable $e) {
+            Log::warning("Estimation des sous-produits non enregistrée pour {$order->order_number} : {$e->getMessage()}");
+        }
     }
 
     private function materialCost(SlaughterOrder $order, ?Batch $batch, int $actualQty): float

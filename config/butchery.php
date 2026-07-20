@@ -105,6 +105,23 @@ return [
     'default_family' => 'volaille',
 
     /*
+    | Ratios de sous-produits NON COMESTIBLES (% du poids VIF) par famille —
+    | références zootechniques. Personne ne pèse le sang ou les plumes après
+    | chaque cycle : le système ESTIME (vif × ratio) et trace la méthode
+    | (« estimé ») au registre E9 ; une pesée réelle reste possible et prime.
+    | Volaille : surchargés par les Réglages abattoir
+    | (abattoir.byproduct_ratio_sang / _plumes / _visceres) s'ils existent.
+    */
+    'byproduct_ratios' => [
+        'volaille'       => ['sang' => 3.5, 'plumes' => 7.0, 'visceres' => 10.0],
+        'petit_ruminant' => ['sang' => 4.0, 'visceres' => 14.0],
+        'grand_ruminant' => ['sang' => 4.0, 'visceres' => 12.0],
+        'porcin'         => ['sang' => 3.5, 'visceres' => 10.0],
+        'lagomorphe'     => ['sang' => 3.0, 'visceres' => 12.0],
+        'aquaculture'    => ['visceres' => 9.0],
+    ],
+
+    /*
     | Présentations de la carcasse choisies À L'EXÉCUTION (gammes de sortie).
     | Chacune nomme l'article de stock produit et ajuste la bande de rendement
     | attendue (yield_delta, en points, ajouté à la bande carcasse de l'espèce) :

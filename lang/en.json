@@ -3307,5 +3307,9 @@
     "Enregistrer une opération (unitaire)": "Record an operation (single)",
     "une zone · photo/notes possibles": "one zone · photo/notes allowed",
     "tous les points · 1 validation": "all points · 1 submit",
-    "toutes les zones · 1 validation": "all zones · 1 submit"
+    "toutes les zones · 1 validation": "all zones · 1 submit",
+    "Pesé": "Weighed",
+    "Estimé (ratio)": "Estimated (ratio)",
+    "estimé": "estimated",
+    "Sous-produits estimés automatiquement au registre (ajustables par pesée réelle).": "By-products automatically estimated in the register (adjustable with a real weighing)."
 }
