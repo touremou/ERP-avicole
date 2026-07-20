@@ -208,25 +208,36 @@
 
                             <div class="space-y-2">
                                 <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2" x-text="serviceType === 'facon' ? {{ Js::from(__('Client propriétaire des volailles *')) }} : {{ Js::from(__('Client (si sur commande)')) }}"></label>
-                                <select name="client_id" :required="serviceType === 'facon'" class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black uppercase shadow-inner outline-none">
-                                    <option value="">{{ __("Abattage standard (stock)") }}</option>
+                                <select name="client_id" x-model="clientId" :required="serviceType === 'facon'" class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black uppercase shadow-inner outline-none">
+                                    {{-- En façon, « Abattage standard (stock) » n'a aucun sens : l'option vide devient « Sélectionner le client ». --}}
+                                    <option value="" x-text="serviceType === 'facon' ? {{ Js::from(__('— Sélectionner le client —')) }} : {{ Js::from(__('Abattage standard (stock)')) }}"></option>
                                     @foreach($clients as $c)
                                         <option value="{{ $c->id }}">{{ $c->name }}</option>
                                     @endforeach
                                 </select>
+                                @if($clients->isEmpty())
+                                    <p class="text-[8px] text-amber-600 font-black uppercase ml-2 m-0" x-show="serviceType === 'facon'">
+                                        <i class="fa-solid fa-triangle-exclamation mr-1"></i>{{ __("Aucun client actif — créez d'abord le client propriétaire.") }}
+                                        @can('clients.create')
+                                            <a href="{{ route('clients.create') }}" class="text-rose-600 underline">{{ __("Créer un client") }}</a>
+                                        @endcan
+                                    </p>
+                                @endif
                             </div>
 
                             <textarea name="notes" rows="2" placeholder="{{ __("Instructions spéciales...") }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-bold shadow-inner outline-none"></textarea>
                         </div>
                     </div>
 
-                    <button type="submit" :disabled="(source === 'batch' && ((plannedQty > maxQty && maxQty > 0) || !selectedBatch)) || (source === 'reception' && !selectedReception)"
-                        :class="((source === 'batch' && ((plannedQty > maxQty && maxQty > 0) || !selectedBatch)) || (source === 'reception' && !selectedReception)) ? 'bg-slate-300 cursor-not-allowed' : 'bg-rose-500 hover:bg-rose-600 cursor-pointer'"
+                    <button type="submit" :disabled="(source === 'batch' && ((plannedQty > maxQty && maxQty > 0) || !selectedBatch)) || (source === 'reception' && !selectedReception) || faconNeedsClient"
+                        :class="((source === 'batch' && ((plannedQty > maxQty && maxQty > 0) || !selectedBatch)) || (source === 'reception' && !selectedReception) || faconNeedsClient) ? 'bg-slate-300 cursor-not-allowed' : 'bg-rose-500 hover:bg-rose-600 cursor-pointer'"
                         class="w-full text-white py-6 rounded-[2rem] font-black text-xs uppercase tracking-[0.3em] transition-all shadow-2xl italic border-none">
                         <i class="fa-solid fa-clipboard-list mr-2"></i>
-                        <span x-text="source === 'reception'
-                            ? (!selectedReception ? {{ Js::from(__('SÉLECTIONNER UNE RÉCEPTION')) }} : {{ Js::from(__('Créer l\'Ordre d\'Abattage')) }})
-                            : (plannedQty > maxQty && maxQty > 0 ? {{ Js::from(__('QUANTITÉ INSUFFISANTE')) }} : (!selectedBatch ? {{ Js::from(__('SÉLECTIONNER UN LOT')) }} : {{ Js::from(__('Créer l\'Ordre d\'Abattage')) }}))"></span>
+                        <span x-text="faconNeedsClient
+                            ? {{ Js::from(__('SÉLECTIONNER LE CLIENT PROPRIÉTAIRE')) }}
+                            : (source === 'reception'
+                                ? (!selectedReception ? {{ Js::from(__('SÉLECTIONNER UNE RÉCEPTION')) }} : {{ Js::from(__('Créer l\'Ordre d\'Abattage')) }})
+                                : (plannedQty > maxQty && maxQty > 0 ? {{ Js::from(__('QUANTITÉ INSUFFISANTE')) }} : (!selectedBatch ? {{ Js::from(__('SÉLECTIONNER UN LOT')) }} : {{ Js::from(__('Créer l\'Ordre d\'Abattage')) }})))"></span>
                     </button>
                 </form>
             @else
@@ -250,6 +261,9 @@
         return {
             source: 'batch', selectedReception: '',
             serviceType: 'propre',
+            clientId: '',
+            // Façon = client propriétaire OBLIGATOIRE (RG-07) — bloqué au bouton.
+            get faconNeedsClient() { return this.serviceType === 'facon' && !this.clientId; },
             billingModel: 'par_sujet',
             billingRate: {{ (float) setting('abattoir.facon_rate_per_bird', 0) }},
             billingDefaults: {

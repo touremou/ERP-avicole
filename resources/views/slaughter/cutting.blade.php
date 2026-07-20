@@ -1,6 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
-        <x-page-header :title="__('Découpe')" :subtitle="$order->order_number . ' — ' . __('Carcasses disponibles') . ' : ' . ($order->result ? number_format($order->result->total_carcass_weight_kg, 1) . ' kg' : '—')" icon="fa-scissors" accent="rose" :back="route('slaughter.dashboard')" />
+        {{-- Plafond réel = carcasse RESTANTE (produite − déjà découpée). --}}
+        <x-page-header :title="__('Découpe')" :subtitle="$order->order_number . ' — ' . __('Carcasse restante à découper') . ' : ' . number_format($remainingKg, 1) . ' kg / ' . ($order->result ? number_format($order->result->total_carcass_weight_kg, 1) : '—') . ' kg'" icon="fa-scissors" accent="rose" :back="route('slaughter.dashboard')" />
     </x-slot>
 
     <div class="py-10">
@@ -18,7 +19,12 @@
                         <div class="grid grid-cols-2 gap-6 mb-6">
                             <div class="space-y-2">
                                 <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Poids carcasses entrées (kg)") }} *</label>
-                                <input type="number" name="total_input_kg" x-model.number="inputKg" step="0.1" min="0.1" required class="w-full bg-slate-50 border-none rounded-2xl p-4 text-lg font-black shadow-inner outline-none text-center">
+                                <input type="number" name="total_input_kg" x-model.number="inputKg" step="0.1" min="0.1" required class="w-full bg-slate-50 border-none rounded-2xl p-4 text-lg font-black shadow-inner outline-none text-center" :class="inputExceeds ? 'ring-2 ring-red-400' : ''">
+                                {{-- Plafond client-side : carcasse restante (le serveur re-vérifie sous verrou). --}}
+                                <p class="text-[8px] font-black uppercase m-0 ml-2" :class="inputExceeds ? 'text-red-500' : 'text-slate-400'"
+                                   x-text="inputExceeds
+                                       ? {{ Js::from(__('Dépasse la carcasse restante (:kg kg max)')) }}.replace(':kg', remainingKg.toFixed(1))
+                                       : {{ Js::from(__('Restant : :kg kg')) }}.replace(':kg', remainingKg.toFixed(1))"></p>
                             </div>
                             <div class="space-y-2">
                                 <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Date") }} *</label>
@@ -112,8 +118,16 @@
                         </div>
                     </div>
 
-                    <button type="submit" class="w-full bg-purple-500 text-white py-6 rounded-[2rem] font-black text-xs uppercase tracking-[0.3em] hover:bg-purple-600 transition-all shadow-2xl italic border-none cursor-pointer">
-                        <i class="fa-solid fa-scissors mr-2"></i> {{ __("Valider la Découpe") }}
+                    {{-- Blocage client-side : entrée > carcasse restante OU sortie > entrée
+                         (une découpe ne crée pas de matière) — le serveur re-vérifie sous verrou. --}}
+                    <div x-show="outputExceeds" class="mb-4 p-4 bg-red-50 text-red-600 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-red-200">
+                        ⚠️ <span x-text="{{ Js::from(__('Le total des morceaux (:out kg) dépasse le poids entré (:in kg) — une découpe ne crée pas de matière.')) }}.replace(':out', totalOutput.toFixed(1)).replace(':in', (inputKg || 0).toFixed(1))"></span>
+                    </div>
+                    <button type="submit" :disabled="blocked"
+                        :class="blocked ? 'bg-slate-300 cursor-not-allowed' : 'bg-purple-500 hover:bg-purple-600 cursor-pointer'"
+                        class="w-full text-white py-6 rounded-[2rem] font-black text-xs uppercase tracking-[0.3em] transition-all shadow-2xl italic border-none">
+                        <i class="fa-solid fa-scissors mr-2"></i>
+                        <span x-text="inputExceeds ? {{ Js::from(__('CARCASSE RESTANTE INSUFFISANTE')) }} : (outputExceeds ? {{ Js::from(__('SORTIE > ENTRÉE')) }} : {{ Js::from(__('Valider la Découpe')) }})"></span>
                     </button>
                 </form>
             @else
@@ -158,9 +172,15 @@
         // ⚙️ INJECTION DYNAMIQUE DES SETTINGS
         const lossTolerance = {{ setting('abattoir.tolerance_cutting_loss', 10) }};
         const cuttingYieldTarget = {{ setting('abattoir.yield_cutting', 85) }};
+        // Plafond physique : carcasse restante à découper sur cet ordre.
+        const remainingKg = {{ Js::from(round((float) $remainingKg, 2)) }};
 
         return {
             inputKg: 0,
+            remainingKg: remainingKg,
+            get inputExceeds() { return this.inputKg > this.remainingKg + 0.001; },
+            get outputExceeds() { return this.totalOutput > this.inputKg + 0.001; },
+            get blocked() { return this.inputExceeds || this.outputExceeds || !(this.inputKg > 0); },
             lossTolerance: lossTolerance,
             cuttingYieldTarget: cuttingYieldTarget,
             products: defaultProducts.length ? defaultProducts : [{ type:'autre', name:'', kg:0, pieces:0, destination:'stock_frais', price:0, calibre:'', packaging:'vrac', pack_count:0 }],

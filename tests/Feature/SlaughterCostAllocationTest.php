@@ -192,3 +192,71 @@ test('le dossier de lot affiche le coût de revient par produit de découpe', fu
         ->assertSee('Coût de revient par produit de découpe', false)
         ->assertSee('Marge/kg', false);
 });
+
+/*
+ * Cohérence des coûts (rapport terrain) : les coûts de découpe du dossier
+ * doivent venir du coût de L'ORDRE, jamais du CMUP du stock que les lots
+ * précédents diluent — et le formulaire affiche la carcasse RESTANTE.
+ */
+
+test("le coût des découpes vient du coût de l'ordre, pas du CMUP dilué du stock", function () {
+    // Stock historique de carcasses à coût NUL (avant Lot B) : il dilue le CMUP.
+    FinishedProduct::create([
+        'product_name' => 'Poulet Entier Frais', 'product_type' => 'entier_frais',
+        'current_quantity_kg' => 100, 'current_quantity_pieces' => 50,
+        'unit_price' => 0, 'unit_cost' => 0, 'storage_location' => 'frais',
+    ]);
+
+    $order = makeExecutedOrder($this, 'CHAIR-CMUP'); // coût 600 000, carcasse 40 kg → 15 000/kg
+
+    $this->service->executeCutting($order, [
+        'total_input_kg' => 20, 'session_date' => now()->toDateString(),
+        'products' => [
+            ['type' => 'cuisse', 'name' => 'Cuisses', 'kg' => 16, 'destination' => 'stock_frais'],
+        ],
+    ]);
+
+    // Coût de l'ordre : 15 000/kg × 20 kg = 300 000 sur 16 kg = 18 750/kg —
+    // le CMUP dilué (600 000 / 140 kg ≈ 4 286/kg) ne doit PAS être utilisé.
+    $cp = $order->cuttingSessions()->first()->products()->first();
+    expect((float) $cp->unit_cost)->toEqualWithDelta(18750, 1);
+});
+
+test('cohérence dossier : Σ(coût ligne × kg) = coût gamme découpes', function () {
+    $order = makeExecutedOrder($this, 'CHAIR-COH');
+
+    $this->service->executeCutting($order, [
+        'total_input_kg' => 20, 'session_date' => now()->toDateString(),
+        'products' => [
+            ['type' => 'poitrine', 'name' => 'Poitrine', 'kg' => 10, 'price' => 30000, 'destination' => 'stock_frais'],
+            ['type' => 'abats',    'name' => 'Abats',    'kg' => 8,  'price' => 10000, 'destination' => 'stock_frais'],
+            ['type' => 'dechet',   'name' => 'Déchets',  'kg' => 2,  'destination' => 'dechet'],
+        ],
+    ]);
+
+    $order->load('cuttingSessions.products', 'result', 'reception', 'batch');
+    $eco = $order->economicSummary();
+    $decoupes = collect($eco['gammes'])->firstWhere('label', 'Découpes');
+
+    $sumLines = $order->cuttingSessions->flatMap->products
+        ->sum(fn ($p) => (float) $p->unit_cost * (float) $p->quantity_kg);
+
+    // Gamme découpes = coût/kg d'ordre × kg entrés = 15 000 × 20 = 300 000 ;
+    // la répartition par valeur redistribue ce même total entre les lignes.
+    expect($decoupes['cost'])->toEqualWithDelta(300000, 5)
+        ->and($sumLines)->toEqualWithDelta(300000, 5);
+});
+
+test('le formulaire de découpe affiche la carcasse RESTANTE (pas le total)', function () {
+    $order = makeExecutedOrder($this, 'CHAIR-REST'); // 40 kg de carcasse
+
+    $this->service->executeCutting($order, [
+        'total_input_kg' => 25, 'session_date' => now()->toDateString(),
+        'products' => [['type' => 'cuisse', 'name' => 'Cuisses', 'kg' => 20, 'destination' => 'stock_frais']],
+    ]);
+
+    $this->get(route('slaughter.cutting.form', $order))
+        ->assertOk()
+        ->assertSee('Carcasse restante à découper', false)
+        ->assertSee('15.0 kg / 40.0 kg', false);
+});

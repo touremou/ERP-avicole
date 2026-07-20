@@ -3311,5 +3311,15 @@
     "Pesé": "Weighed",
     "Estimé (ratio)": "Estimated (ratio)",
     "estimé": "estimated",
-    "Sous-produits estimés automatiquement au registre (ajustables par pesée réelle).": "By-products automatically estimated in the register (adjustable with a real weighing)."
+    "Sous-produits estimés automatiquement au registre (ajustables par pesée réelle).": "By-products automatically estimated in the register (adjustable with a real weighing).",
+    "Carcasse restante à découper": "Carcass left to cut",
+    "Dépasse la carcasse restante (:kg kg max)": "Exceeds the remaining carcass (:kg kg max)",
+    "Restant : :kg kg": "Remaining: :kg kg",
+    "Le total des morceaux (:out kg) dépasse le poids entré (:in kg) — une découpe ne crée pas de matière.": "The total of the cuts (:out kg) exceeds the input weight (:in kg) — cutting cannot create material.",
+    "CARCASSE RESTANTE INSUFFISANTE": "NOT ENOUGH CARCASS LEFT",
+    "SORTIE > ENTRÉE": "OUTPUT > INPUT",
+    "— Sélectionner le client —": "— Select the client —",
+    "Aucun client actif — créez d'abord le client propriétaire.": "No active client — create the owning client first.",
+    "Créer un client": "Create a client",
+    "SÉLECTIONNER LE CLIENT PROPRIÉTAIRE": "SELECT THE OWNING CLIENT"
 }

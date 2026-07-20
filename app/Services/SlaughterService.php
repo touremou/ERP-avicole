@@ -226,9 +226,21 @@ class SlaughterService
             $engagedCost = 0.0; // coût matière total engagé (carcasse consommée)
             if (! $order->isFacon()) {
                 $sourceProductName = $this->carcassProductName($order->batch);
-                $carcass = FinishedProduct::where('product_name', $sourceProductName)
-                    ->where('product_type', 'entier_frais')->first();
-                $engagedCost = round((float) ($carcass?->unit_cost ?? 0) * (float) $data['total_input_kg'], 2);
+
+                // Coût /kg de LA CARCASSE DE CET ORDRE (coût matière vif /
+                // kg carcasse produits) — PAS le CMUP du stock, que les lots
+                // précédents diluent : le dossier de lot doit montrer des
+                // coûts de découpe cohérents avec le coût d'achat de CE lot.
+                // Repli sur le CMUP si l'ordre n'a pas de coût (historique).
+                $order->loadMissing('reception', 'batch');
+                $orderCarcassKg = (float) ($order->result?->total_carcass_weight_kg ?? 0);
+                $orderCost = $this->materialCost($order, $order->batch, (int) ($order->actual_quantity ?? 0));
+                $carcassCostPerKg = ($orderCost > 0 && $orderCarcassKg > 0)
+                    ? $orderCost / $orderCarcassKg
+                    : (float) (FinishedProduct::where('product_name', $sourceProductName)
+                        ->where('product_type', 'entier_frais')->value('unit_cost') ?? 0);
+
+                $engagedCost = round($carcassCostPerKg * (float) $data['total_input_kg'], 2);
 
                 $this->removeFromFinishedStock($sourceProductName, 'entier_frais', (float) $data['total_input_kg']);
             }
