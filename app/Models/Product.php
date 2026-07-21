@@ -23,6 +23,26 @@ class Product extends Model
         'is_favorite' => 'boolean',
     ];
 
+    /**
+     * COHÉRENCE D'UNITÉ : un article adossé à un stock physique vend dans
+     * l'unité de CE stock (kg pour les découpes transférées de l'abattoir).
+     * Sans ce verrou, un article « unite » sur un stock en KG fait vendre au
+     * POS des pièces au prix du kilo (stock 0,4 « unités »...). Appliqué à
+     * CHAQUE sauvegarde — la source de vérité physique est le stock.
+     */
+    protected static function booted(): void
+    {
+        static::saving(function (Product $product) {
+            if (! $product->stock_id) {
+                return;
+            }
+            $stockUnit = Stock::whereKey($product->stock_id)->value('unit');
+            if ($stockUnit && $product->unit !== $stockUnit) {
+                $product->unit = $stockUnit;
+            }
+        });
+    }
+
     public function scopeActive($query)
     {
         return $query->where('is_active', true);

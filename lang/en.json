@@ -3321,5 +3321,6 @@
     "— Sélectionner le client —": "— Select the client —",
     "Aucun client actif — créez d'abord le client propriétaire.": "No active client — create the owning client first.",
     "Créer un client": "Create a client",
-    "SÉLECTIONNER LE CLIENT PROPRIÉTAIRE": "SELECT THE OWNING CLIENT"
+    "SÉLECTIONNER LE CLIENT PROPRIÉTAIRE": "SELECT THE OWNING CLIENT",
+    "Unité alignée sur le stock lié": "Unit aligned with the linked stock"
 }
