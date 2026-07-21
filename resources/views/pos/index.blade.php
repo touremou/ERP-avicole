@@ -362,22 +362,29 @@
                 get total() {
                     return this.cart.reduce((s, l) => s + (l.quantity || 0) * (l.unit_price || 0), 0);
                 },
+                // Pas des boutons −/+ : 1 pour les pièces, 0,1 kg pour le pesé
+                // (incrémenter des découpes kilo par kilo n'a pas de sens).
+                stepOf(line) { return this.isWeighable(line) ? 0.1 : 1; },
                 addToCart(p) {
                     if (p.qty !== null && p.qty <= 0) return;
                     const existing = this.cart.find(l => l.id === p.id);
                     if (existing) {
-                        if (existing.quantity < existing.max) existing.quantity = Math.round((existing.quantity + 1) * 100) / 100;
+                        existing.quantity = Math.min(existing.max, Math.round((existing.quantity + this.stepOf(existing)) * 100) / 100);
                     } else {
+                        const max = (p.qty === null ? Infinity : p.qty);
                         this.cart.push({
                             id: p.id, name: p.name, unit: p.unit,
-                            max: (p.qty === null ? Infinity : p.qty),
-                            quantity: 1, unit_price: this.priceFor(p),
+                            max: max,
+                            // CLAMP au stock disponible dès l'ajout : 0,4 kg en
+                            // stock → 0,4 au panier, jamais 1 (survente client-side).
+                            quantity: Math.min(1, max),
+                            unit_price: this.priceFor(p),
                             showWeigh: false, gross: null, tare: null,
                         });
                     }
                 },
-                inc(i) { const l = this.cart[i]; if (l.quantity < l.max) l.quantity = Math.round((l.quantity + 1) * 100) / 100; },
-                dec(i) { const l = this.cart[i]; l.quantity = Math.max(0.01, Math.round((l.quantity - 1) * 100) / 100); },
+                inc(i) { const l = this.cart[i]; l.quantity = Math.min(l.max, Math.round((l.quantity + this.stepOf(l)) * 100) / 100); },
+                dec(i) { const l = this.cart[i]; l.quantity = Math.max(0.01, Math.round((l.quantity - this.stepOf(l)) * 100) / 100); },
                 removeLine(i) { this.cart.splice(i, 1); },
                 formatMoney(v) { return new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Math.round(v || 0)) + ' {{ currency() }}'; },
             }));
