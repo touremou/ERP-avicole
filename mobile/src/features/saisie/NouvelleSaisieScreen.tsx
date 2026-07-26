@@ -27,7 +27,8 @@ export function NouvelleSaisieScreen() {
     (canCultures && cropCycles.length > 0)
   const canRessources = can('ressources', 'C')
   const hasQuick =
-    can('commerce', 'C') || can('logistique', 'M') || can('depenses', 'C') || abattoirC || canRessources
+    can('commerce', 'C') || can('commerce', 'M') || can('logistique', 'M') || can('logistique', 'C') ||
+    can('depenses', 'C') || abattoirC || canRessources || canElevage
   const nothing = !hasContextual && !hasQuick && !(canElevage || canProduction)
 
   return (
@@ -119,6 +120,18 @@ export function NouvelleSaisieScreen() {
             <Link to="/elevage/soin" className="task-card">
               <span className="task-title">💉 {t('Soin / vaccination')}</span>
               <span className="task-meta">{t('produit · dose · délai d’attente')}</span>
+            </Link>
+          )}
+          {can('logistique', 'C') && (
+            <Link to="/logistique/inventaire" className="task-card">
+              <span className="task-title">📋 {t('Inventaire physique')}</span>
+              <span className="task-meta">{t('comptage · écarts')}</span>
+            </Link>
+          )}
+          {can('logistique', 'C') && (
+            <Link to="/logistique/reception-aliment" className="task-card">
+              <span className="task-title">🚚 {t('Réception d’aliment')}</span>
+              <span className="task-meta">{t('au portail · fournisseur')}</span>
             </Link>
           )}
           {can('commerce', 'C') && (

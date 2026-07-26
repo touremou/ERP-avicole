@@ -62,6 +62,8 @@ export type OperationType =
   | 'health_check.create'
   | 'payment.create'
   | 'sale_return.create'
+  | 'inventory_count.create'
+  | 'feed_purchase.create'
   | 'mill_production.complete'
   // Phase 3 — cœur sanitaire HACCP abattoir.
   | 'slaughter_reception.create'

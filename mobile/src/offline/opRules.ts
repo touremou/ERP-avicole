@@ -125,6 +125,23 @@ const RULES: Partial<Record<OperationType, Validator>> = {
     reqDate(p, 'expense_date', 'Date', e, true)
     return e
   },
+  'inventory_count.create': (p) => {
+    const e: string[] = []
+    reqId(p, 'stock_id', 'Article', e)
+    reqNum(p, 'counted_quantity', 'Quantité comptée', e, 0)
+    reqDate(p, 'count_date', 'Date', e, true)
+    return e
+  },
+  'feed_purchase.create': (p) => {
+    const e: string[] = []
+    reqId(p, 'batch_id', 'Lot destinataire', e)
+    reqDate(p, 'purchase_date', 'Date', e, true)
+    reqStr(p, 'feed_type', 'Type d\'aliment', e)
+    reqNum(p, 'quantity', 'Quantité', e, 0.001)
+    reqNum(p, 'unit_price', 'Montant total', e, 0)
+    reqStr(p, 'unit', 'Unité', e)
+    return e
+  },
   'payment.create': (p) => {
     const e: string[] = []
     reqId(p, 'sale_id', 'Vente', e)
