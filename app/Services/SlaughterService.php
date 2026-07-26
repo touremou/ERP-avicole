@@ -65,6 +65,20 @@ class SlaughterService
                     );
                 }
 
+                // DÉLAI D'ATTENTE (résidus médicamenteux) : après un vaccin ou
+                // un traitement, la viande n'est pas consommable avant
+                // l'échéance de la notice. Levée AUTOMATIQUE à la date — pas
+                // de décision qualité à prendre, juste attendre.
+                if ($withdrawal = $batch->activeWithdrawal()) {
+                    throw new Exception(
+                        "Le lot {$batch->code} est sous DÉLAI D'ATTENTE jusqu'au "
+                        . $withdrawal->withdrawal_until->format('d/m/Y')
+                        . " ({$withdrawal->withdrawal_days_left} j restants) suite à « {$withdrawal->product_name} »"
+                        . " du " . $withdrawal->intervention_date->format('d/m/Y')
+                        . " — abattage interdit (résidus médicamenteux)."
+                    );
+                }
+
                 if ($actualQty > (int) $batch->current_quantity) {
                     throw new Exception(
                         "Effectif insuffisant : {$actualQty} sujets à abattre mais le lot {$batch->code} "

@@ -115,6 +115,12 @@ export function NouvelleSaisieScreen() {
       {hasQuick && (
         <section>
           <h3>{t('Actions rapides')}</h3>
+          {canElevage && (
+            <Link to="/elevage/soin" className="task-card">
+              <span className="task-title">💉 {t('Soin / vaccination')}</span>
+              <span className="task-meta">{t('produit · dose · délai d’attente')}</span>
+            </Link>
+          )}
           {can('commerce', 'C') && (
             <Link to="/commerce/vente" className="task-card">
               <span className="task-title">💰 {t('Vente rapide')}</span>

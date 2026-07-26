@@ -21,6 +21,7 @@ class HealthCheck extends Model
         'batch_number',        // Numéro de lot fabricant
         'expiry_date',         // Date de péremption du produit
         'mode_administration', // Eau, Injection, Pulvérisation, etc.
+        'withdrawal_days',     // Délai d'attente avant consommation (notice produit)
         'cost',
         'veterinary_name',
         'observations',
@@ -29,9 +30,46 @@ class HealthCheck extends Model
     protected $casts = [
         'intervention_date' => 'date',
         'expiry_date' => 'date',
+        'withdrawal_days' => 'integer',
         'cost' => 'decimal:2',
         'created_at' => 'datetime',
     ];
+
+    // -----------------------
+    // DÉLAI D'ATTENTE (sécurité alimentaire)
+    // -----------------------
+
+    /**
+     * Date de FIN du délai d'attente : à partir de ce jour, la viande/les œufs
+     * du lot redeviennent consommables. Null si le produit n'impose aucun délai.
+     */
+    public function getWithdrawalUntilAttribute(): ?Carbon
+    {
+        if (! $this->withdrawal_days || ! $this->intervention_date) {
+            return null;
+        }
+
+        return $this->intervention_date->copy()->addDays((int) $this->withdrawal_days);
+    }
+
+    /** Le délai d'attente court-il encore aujourd'hui ? */
+    public function isUnderWithdrawal(): bool
+    {
+        $until = $this->withdrawal_until;
+
+        return $until !== null && $until->isAfter(now()->startOfDay());
+    }
+
+    /** Jours restants avant la fin du délai d'attente (0 si purgé/sans délai). */
+    public function getWithdrawalDaysLeftAttribute(): int
+    {
+        $until = $this->withdrawal_until;
+        if ($until === null) {
+            return 0;
+        }
+
+        return max(0, now()->startOfDay()->diffInDays($until, false));
+    }
 
     // -----------------------
     // RELATIONS

@@ -3322,5 +3322,12 @@
     "Aucun client actif — créez d'abord le client propriétaire.": "No active client — create the owning client first.",
     "Créer un client": "Create a client",
     "SÉLECTIONNER LE CLIENT PROPRIÉTAIRE": "SELECT THE OWNING CLIENT",
-    "Unité alignée sur le stock lié": "Unit aligned with the linked stock"
+    "Unité alignée sur le stock lié": "Unit aligned with the linked stock",
+    "Délai d'attente (jours)": "Withdrawal period (days)",
+    "0 = aucun délai": "0 = no withdrawal",
+    "Notice du produit — l'abattage du lot sera refusé avant l'échéance (résidus).": "Product leaflet — slaughtering the batch will be refused before the deadline (residues).",
+    "Le lot :code est sous délai d'attente jusqu'au :date (« :product ») — planifiez l'abattage après cette échéance.": "Batch :code is under withdrawal until :date (\":product\") — schedule slaughter after that deadline.",
+    "Produit périmé au jour de l'intervention — administration interdite.": "Product expired on the intervention date — administration forbidden.",
+    "Délai d'attente": "Withdrawal period",
+    "sous délai d'attente": "under withdrawal"
 }

@@ -257,6 +257,31 @@ class Batch extends Model
             ->exists();
     }
 
+    /**
+     * DÉLAI D'ATTENTE EN COURS (sécurité alimentaire) : intervention sanitaire
+     * dont le délai avant consommation n'est pas purgé — la viande du lot ne
+     * peut pas partir à l'abattage. Renvoie l'intervention qui court le plus
+     * loin (celle qui contraint la date de sortie), null si le lot est libre.
+     * Distinct de la quarantaine : ici pas de décision qualité, juste le temps
+     * qui passe (la levée est automatique à l'échéance).
+     */
+    public function activeWithdrawal(): ?HealthCheck
+    {
+        return $this->healthChecks()
+            ->whereNotNull('withdrawal_days')
+            ->where('withdrawal_days', '>', 0)
+            ->get()
+            ->filter(fn (HealthCheck $check) => $check->isUnderWithdrawal())
+            ->sortByDesc(fn (HealthCheck $check) => $check->withdrawal_until)
+            ->first();
+    }
+
+    /** Le lot est-il sous délai d'attente (viande non consommable) ? */
+    public function isUnderWithdrawal(): bool
+    {
+        return $this->activeWithdrawal() !== null;
+    }
+
     public function feedPurchases(): HasMany
     {
         return $this->hasMany(FeedPurchase::class);

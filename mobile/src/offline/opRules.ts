@@ -125,6 +125,20 @@ const RULES: Partial<Record<OperationType, Validator>> = {
     reqDate(p, 'expense_date', 'Date', e, true)
     return e
   },
+  'health_check.create': (p) => {
+    const e: string[] = []
+    reqId(p, 'batch_id', 'Lot', e)
+    reqDate(p, 'intervention_date', 'Date', e, true)
+    reqStr(p, 'type', 'Type', e)
+    reqStr(p, 'product_name', 'Produit', e)
+    reqStr(p, 'mode_administration', 'Mode d\'administration', e)
+    // Produit périmé au jour de l'intervention : refus AVANT la file
+    // (miroir du garde-fou serveur — inutile de partir pour être rejeté).
+    const expiry = typeof p.expiry_date === 'string' ? p.expiry_date : null
+    const day = typeof p.intervention_date === 'string' ? p.intervention_date : null
+    if (expiry && day && expiry < day) e.push('Produit périmé au jour de l\'intervention.')
+    return e
+  },
   'health_incident.create': (p) => {
     const e: string[] = []
     reqId(p, 'batch_id', 'Lot', e)
