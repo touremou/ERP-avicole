@@ -20,7 +20,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Type *") }}</label>
-                        <select name="type" required class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-green-700 shadow-inner italic appearance-none cursor-pointer">
+                        <select name="type" x-model="type" required class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-green-700 shadow-inner italic appearance-none cursor-pointer">
                             @foreach($inputTypes as $key => $label)
                                 <option value="{{ $key }}" @selected(old('type', $input->type) == $key)>{{ $label }}</option>
                             @endforeach
@@ -48,6 +48,21 @@
                     <div>
                         <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Date d'application *") }}</label>
                         <input type="date" name="input_date" value="{{ old('input_date', $input->input_date?->format('Y-m-d')) }}" required class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic">
+                    </div>
+                    {{-- DÉLAI AVANT RÉCOLTE (DAR) — mis en avant dès qu'il s'agit d'un
+                         produit phytosanitaire : c'est lui qui bloquera la récolte
+                         tant qu'il court. Sans cette valeur, la garde sanitaire est
+                         décorative. --}}
+                    <div>
+                        <label class="block text-[9px] font-black uppercase ml-2 mb-1 italic" :class="type === 'phyto' ? 'text-rose-500' : 'text-slate-400'">
+                            {{ __("Délai avant récolte (jours)") }}
+                        </label>
+                        <input type="number" min="0" max="365" name="preharvest_days" value="{{ old('preharvest_days', $input->preharvest_days) }}"
+                               class="w-full border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic text-right"
+                               :class="type === 'phyto' ? 'bg-rose-50' : 'bg-slate-50'">
+                        <p class="text-[8px] font-bold text-slate-400 uppercase ml-2 mt-1 italic" x-show="type === 'phyto'" x-cloak>
+                            {{ __("Indiqué sur la notice du produit — la récolte sera refusée avant l'échéance") }}
+                        </p>
                     </div>
                     <div>
                         <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Fournisseur") }}</label>

@@ -64,12 +64,37 @@ class CropInput extends Model
         return $this->input_date->copy()->addDays((int) $this->preharvest_days);
     }
 
-    /** Le délai avant récolte court-il encore aujourd'hui ? */
-    public function blocksHarvest(): bool
+    /**
+     * Le délai avant récolte court-il encore À LA DATE DONNÉE (aujourd'hui par
+     * défaut) ?
+     *
+     * Le paramètre rend la garde EXACTE plutôt qu'approchée. Ce qui compte
+     * physiquement, ce sont les résidus dans le produit récolté : donc la date de
+     * RÉCOLTE comparée à date d'application + délai. Tant que la saisie est
+     * immédiate, les deux coïncident ; elles divergent dès qu'on enregistre une
+     * récolte de la veille ou qu'on reprend un historique — cas où comparer à
+     * « aujourd'hui » bloquerait une récolte qui a bel et bien eu lieu avant
+     * l'échéance… ou après le traitement.
+     */
+    public function blocksHarvest(?\Carbon\Carbon $harvestDate = null): bool
     {
         $from = $this->harvest_allowed_from;
 
-        return $from !== null && $from->isAfter(now()->startOfDay());
+        if ($from === null || $this->input_date === null) {
+            return false;
+        }
+
+        $date = ($harvestDate ?? now())->copy()->startOfDay();
+
+        // FENÊTRE BORNÉE DES DEUX CÔTÉS. Une récolte n'est concernée que si elle
+        // tombe entre l'application et l'échéance : [date_application, échéance[.
+        //
+        // La borne BASSE compte : une récolte faite AVANT le traitement n'en
+        // porte pas les résidus. Sans elle, reprendre un historique refuserait
+        // des récoltes parfaitement légitimes au seul motif qu'un traitement
+        // postérieur court encore.
+        return $date->gte($this->input_date->copy()->startOfDay())
+            && $date->lt($from->copy()->startOfDay());
     }
 
     /** Jours restants avant récolte autorisée (0 si purgé/sans délai). */

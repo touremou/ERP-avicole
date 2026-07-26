@@ -449,6 +449,10 @@ class CropCycleController extends Controller
             'unit_cost'       => 'nullable|numeric|min:0',
             'total_cost'      => 'nullable|numeric|min:0',
             'input_date'      => 'required|date',
+            // Délai avant récolte (DAR) de la notice : bloque la récolte tant
+            // qu'il court. Absent de la validation web jusqu'ici, il ne pouvait
+            // donc pas être saisi au bureau — seul le mobile l'envoyait.
+            'preharvest_days' => 'nullable|integer|min:0|max:365',
             'provider_id'     => 'nullable|exists:providers,id',
             'synced_to_stock' => 'nullable|boolean',
             'stock_item_name' => 'nullable|string|max:255',

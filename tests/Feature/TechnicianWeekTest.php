@@ -400,3 +400,28 @@ test('le comparatif écarte les techniciens sans tâche de la semaine', function
     expect($comparison)->toHaveCount(1);
     expect($comparison[0]['employee']->id)->toBe($active->id);
 });
+
+test('le rapport technique et la fiche hebdo affichent la MÊME mortalité', function () {
+    $employee = Employee::factory()->create(['status' => 'Actif']);
+    // 20 morts au transport (qty_dead) + 30 morts en élevage sur 1 000 reçus
+    // vivants : c'est le cas où les deux anciennes formules divergeaient.
+    $batch = Batch::factory()->create([
+        'employee_id' => $employee->id, 'initial_quantity' => 1000,
+        'qty_dead' => 20, 'current_quantity' => 970, 'status' => 'Actif',
+    ]);
+    DailyCheck::create([
+        'batch_id' => $batch->id, 'check_date' => now()->toDateString(),
+        'mortality' => 30, 'feed_consumed' => 500, 'avg_weight' => 1.2,
+    ]);
+
+    // Base = initial + qty_dead = 1 020. Numérateur = 20 + 30 = 50 → 4,90 %.
+    // L'ancienne formule du rapport donnait 50 / 1 000 = 5,00 %.
+    expect($batch->fresh()->mortality_rate)->toBe(4.9);
+
+    $sheetRate = weekSheet($employee)['batches'][0]['mortality_rate'];
+    expect($sheetRate)->toBe(4.9);
+
+    $this->get(route('reports.technical'))
+        ->assertOk()
+        ->assertSee(number_format((float) $sheetRate, 2));
+});
