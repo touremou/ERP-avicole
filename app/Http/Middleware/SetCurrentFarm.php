@@ -74,6 +74,16 @@ class SetCurrentFarm
         view()->share('userFarms', $userFarms);
         view()->share('isMultiFarm', $userFarms->count() > 1);
 
+        // Vue consolidée (S3) : réservée au PROPRIÉTAIRE de site (le promoteur,
+        // qui n'a pas forcément le rôle « admin ») ou à l'administrateur. On le
+        // partage ici pour ne pas afficher un lien qui redirigerait — is_owner
+        // est déjà chargé ci-dessus, aucune requête de plus.
+        view()->share(
+            'canConsolidate',
+            $userFarms->count() > 1
+                && ($userFarms->contains(fn ($f) => (bool) $f->is_owner) || \Illuminate\Support\Facades\Gate::allows('admin.L')),
+        );
+
         return $next($request);
     }
 
