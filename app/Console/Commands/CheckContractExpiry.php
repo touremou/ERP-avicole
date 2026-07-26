@@ -26,9 +26,15 @@ class CheckContractExpiry extends Command
 
         $employees = Employee::contractsToDecide($days)->get();
 
-        $hub->alertContractsToDecide($employees);
+        // Contrats à terme SANS terme : ils n'entrent dans aucune fenêtre, donc
+        // l'alerte d'échéance ne les verrait jamais. Ce sont pourtant les plus
+        // exposés — ils échappent totalement au suivi. On les signale à part.
+        $missing = Employee::missingContractTerm()->get();
+
+        $hub->alertContractsToDecide($employees, $missing);
 
         $this->info("{$employees->count()} contrat(s) à terme signalé(s).");
+        $this->info("{$missing->count()} contrat(s) sans terme renseigné.");
 
         return self::SUCCESS;
     }

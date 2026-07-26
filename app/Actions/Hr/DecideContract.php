@@ -64,6 +64,64 @@ class DecideContract
     }
 
     /**
+     * RÉGULARISATION — déclare le terme d'un contrat qui n'en portait pas.
+     *
+     * Cas des employés déjà en base avant l'introduction de la colonne : leur
+     * contrat est à durée déterminée, mais aucune date n'a jamais été
+     * enregistrée. Sans terme, ils n'entrent dans aucune fenêtre d'échéance et
+     * restent donc invisibles — le trou qu'on cherchait à fermer.
+     *
+     * Distinct de prolong() sur deux points :
+     *   - le terme peut être PASSÉ. C'est le cas normal ici : on régularise un
+     *     contrat qui a couru, parfois arrivé à échéance depuis des mois. Le
+     *     refuser reviendrait à interdire de dire la vérité sur le dossier.
+     *   - il n'y a pas de terme antérieur à comparer (previous_end_date null) :
+     *     c'est ce qui, dans la trace, distingue une déclaration d'une
+     *     prolongation.
+     */
+    public function declareTerm(Employee $employee, string $endDate, ?string $reason = null, ?int $userId = null): Employee
+    {
+        $this->assertFixedTerm($employee);
+
+        if ($employee->contract_end_date) {
+            throw ValidationException::withMessages([
+                'contract_end_date' => __('Ce contrat porte déjà un terme (:date) : utilisez une prolongation.', [
+                    'date' => $employee->contract_end_date->format('d/m/Y'),
+                ]),
+            ]);
+        }
+
+        $end = Carbon::parse($endDate)->startOfDay();
+
+        if ($employee->hire_date && $end->lte($employee->hire_date->copy()->startOfDay())) {
+            throw ValidationException::withMessages([
+                'contract_end_date' => __("Le terme doit être postérieur à la date d'embauche (:hire).", [
+                    'hire' => $employee->hire_date->format('d/m/Y'),
+                ]),
+            ]);
+        }
+
+        return DB::transaction(function () use ($employee, $end, $reason, $userId) {
+            EmployeeContractEvent::create([
+                'farm_id'           => $employee->farm_id,
+                'employee_id'       => $employee->id,
+                'type'              => 'prolongation',
+                'decided_on'        => now()->toDateString(),
+                // Null = aucun terme antérieur : c'est une DÉCLARATION, pas une
+                // prolongation. Le libellé de l'événement lit cette distinction.
+                'previous_end_date' => null,
+                'new_end_date'      => $end->toDateString(),
+                'reason'            => $reason,
+                'user_id'           => $userId,
+            ]);
+
+            $employee->update(['contract_end_date' => $end->toDateString()]);
+
+            return $employee->refresh();
+        });
+    }
+
+    /**
      * Émet le préavis : la fin est notifiée. `notice_given_at` prouve QUE le
      * préavis a été donné et QUAND — c'est la pièce qui manque le plus souvent
      * dans un dossier, et elle ne se reconstitue pas après coup.

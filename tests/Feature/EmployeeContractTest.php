@@ -313,3 +313,220 @@ test('la commande d’alerte compte les contrats à décider', function () {
         ->expectsOutputToContain('2 contrat(s) à terme signalé(s).')
         ->assertSuccessful();
 });
+
+// ── RÉGULARISATION DES CONTRATS EXISTANTS ──────────────────────────────────
+
+/*
+ * Les employés déjà en base avant l'introduction de `contract_end_date` sont
+ * en CDD ou Journalier SANS terme. C'est le trou le plus dangereux : sans date,
+ * ils n'entrent dans aucune fenêtre d'échéance — donc invisibles, donc jamais
+ * décidés, exactement la situation qu'on voulait supprimer.
+ */
+
+test('un contrat à terme sans terme est listé comme à régulariser', function () {
+    $missing = Employee::factory()->create([
+        'contract_type' => 'CDD', 'status' => 'Actif',
+        'hire_date' => now()->subMonths(8)->toDateString(),
+        'contract_end_date' => null,
+    ]);
+    $withTerm = fixedTermEmployee();
+    $cdi = Employee::factory()->create(['contract_type' => 'CDI', 'status' => 'Actif']);
+
+    $ids = Employee::missingContractTerm()->pluck('id')->all();
+
+    expect($ids)->toContain($missing->id);
+    expect($ids)->not->toContain($withTerm->id);
+    // Un CDI n'a pas de terme par nature : il n'y a rien à régulariser.
+    expect($ids)->not->toContain($cdi->id);
+});
+
+test('un contrat sans terme n’apparaît dans AUCUNE fenêtre d’échéance', function () {
+    // C'est ce qui justifie l'écran de régularisation : personne ne serait
+    // prévenu pour cet agent, à aucune date.
+    $missing = Employee::factory()->create([
+        'contract_type' => 'Journalier', 'status' => 'Actif',
+        'hire_date' => now()->subYear()->toDateString(),
+        'contract_end_date' => null,
+    ]);
+
+    expect(Employee::contractsToDecide(365)->pluck('id')->all())->not->toContain($missing->id);
+    expect($missing->contract_stage)->toBe('sans_terme');
+});
+
+test('la régularisation en lot déclare les termes et les trace', function () {
+    $a = Employee::factory()->create([
+        'contract_type' => 'CDD', 'status' => 'Actif',
+        'hire_date' => now()->subMonths(6)->toDateString(), 'contract_end_date' => null,
+    ]);
+    $b = Employee::factory()->create([
+        'contract_type' => 'Journalier', 'status' => 'Actif',
+        'hire_date' => now()->subMonths(3)->toDateString(), 'contract_end_date' => null,
+    ]);
+
+    $this->actingAs($this->adminUser)
+        ->post(route('employees.contracts.backfill'), [
+            'terms' => [
+                $a->id => now()->addMonths(2)->toDateString(),
+                $b->id => now()->addMonth()->toDateString(),
+            ],
+            'reason' => 'Reprise des contrats papier',
+        ])
+        ->assertRedirect();
+
+    expect($a->fresh()->contract_end_date->toDateString())->toBe(now()->addMonths(2)->toDateString());
+    expect($b->fresh()->contract_end_date->toDateString())->toBe(now()->addMonth()->toDateString());
+
+    // La trace distingue une DÉCLARATION d'une prolongation : pas de terme
+    // antérieur. La nuance compte en contrôle.
+    $event = EmployeeContractEvent::where('employee_id', $a->id)->first();
+    expect($event->previous_end_date)->toBeNull();
+    expect($event->label)->toBe('Terme déclaré');
+    expect($event->reason)->toBe('Reprise des contrats papier');
+    expect($event->user_id)->toBe($this->adminUser->id);
+});
+
+test('un terme DÉJÀ PASSÉ est accepté à la régularisation', function () {
+    // C'est le cas normal : on régularise un contrat qui a couru et dont
+    // l'échéance est derrière nous. Le refuser interdirait de dire la vérité
+    // sur le dossier — et laisserait l'agent hors de tout suivi.
+    $employee = Employee::factory()->create([
+        'contract_type' => 'CDD', 'status' => 'Actif',
+        'hire_date' => now()->subYear()->toDateString(), 'contract_end_date' => null,
+    ]);
+    $past = now()->subMonths(2)->toDateString();
+
+    $this->actingAs($this->adminUser)
+        ->post(route('employees.contracts.backfill'), ['terms' => [$employee->id => $past]])
+        ->assertRedirect();
+
+    $employee->refresh();
+    expect($employee->contract_end_date->toDateString())->toBe($past);
+    // Et il remonte aussitôt en tête du suivi : terme dépassé sans décision.
+    expect($employee->contract_stage)->toBe('expire');
+});
+
+test('les lignes laissées vides sont ignorées', function () {
+    $filled = Employee::factory()->create([
+        'contract_type' => 'CDD', 'status' => 'Actif',
+        'hire_date' => now()->subMonths(4)->toDateString(), 'contract_end_date' => null,
+    ]);
+    $skipped = Employee::factory()->create([
+        'contract_type' => 'CDD', 'status' => 'Actif',
+        'hire_date' => now()->subMonths(4)->toDateString(), 'contract_end_date' => null,
+    ]);
+
+    $this->actingAs($this->adminUser)
+        ->post(route('employees.contracts.backfill'), [
+            'terms' => [$filled->id => now()->addMonth()->toDateString(), $skipped->id => null],
+        ])
+        ->assertRedirect();
+
+    expect($filled->fresh()->contract_end_date)->not->toBeNull();
+    // On régularise ce qu'on sait, on revient pour le reste.
+    expect($skipped->fresh()->contract_end_date)->toBeNull();
+});
+
+test('une date antérieure à l’embauche fait échouer TOUT le lot', function () {
+    $good = Employee::factory()->create([
+        'contract_type' => 'CDD', 'status' => 'Actif',
+        'hire_date' => now()->subMonths(4)->toDateString(), 'contract_end_date' => null,
+    ]);
+    $bad = Employee::factory()->create([
+        'contract_type' => 'CDD', 'status' => 'Actif',
+        'hire_date' => now()->subMonth()->toDateString(), 'contract_end_date' => null,
+    ]);
+
+    $this->actingAs($this->adminUser)
+        ->post(route('employees.contracts.backfill'), [
+            'terms' => [
+                $good->id => now()->addMonth()->toDateString(),
+                $bad->id  => now()->subMonths(6)->toDateString(), // avant l'embauche
+            ],
+        ])
+        ->assertRedirect();
+
+    // Tout-ou-rien : un historique à moitié régularisé ferait perdre la trace
+    // de ce qui reste à faire.
+    expect($good->fresh()->contract_end_date)->toBeNull();
+    expect($bad->fresh()->contract_end_date)->toBeNull();
+    expect(EmployeeContractEvent::count())->toBe(0);
+});
+
+test('déclarer un terme sur un contrat qui en a déjà un est refusé', function () {
+    $employee = fixedTermEmployee();
+
+    expect(fn () => app(DecideContract::class)->declareTerm($employee, now()->addYear()->toDateString()))
+        ->toThrow(ValidationException::class);
+});
+
+test('un lecteur RH ne peut pas régulariser', function () {
+    DB::table('farm_user')->insert([
+        'farm_id' => $this->farm->id, 'user_id' => $this->readonlyUser->id,
+        'is_default' => true, 'is_owner' => false, 'created_at' => now(), 'updated_at' => now(),
+    ]);
+    $employee = Employee::factory()->create([
+        'contract_type' => 'CDD', 'status' => 'Actif',
+        'hire_date' => now()->subMonths(4)->toDateString(), 'contract_end_date' => null,
+    ]);
+
+    $this->actingAs($this->readonlyUser)
+        ->post(route('employees.contracts.backfill'), ['terms' => [$employee->id => now()->addMonth()->toDateString()]])
+        ->assertRedirect();
+
+    expect($employee->fresh()->contract_end_date)->toBeNull();
+});
+
+test('l’écran met la régularisation en tête et n’invente aucune date', function () {
+    $employee = Employee::factory()->create([
+        'contract_type' => 'CDD', 'status' => 'Actif',
+        'hire_date' => now()->subMonths(5)->toDateString(), 'contract_end_date' => null,
+    ]);
+
+    $response = $this->actingAs($this->adminUser)
+        ->get(route('employees.contracts.index'))
+        ->assertOk()
+        ->assertSee('Contrats sans terme renseigné', false)
+        ->assertSee(strtoupper($employee->last_name), false);
+
+    // Le champ doit être VIDE : un terme deviné fermerait l'alerte en donnant
+    // l'illusion que le dossier est en règle.
+    $response->assertSee('name="terms[' . $employee->id . ']"', false);
+    expect($response->getContent())
+        ->not->toContain('name="terms[' . $employee->id . ']" value="' . now()->toDateString() . '"');
+});
+
+test('le compteur du personnel inclut les contrats sans terme', function () {
+    // Sinon un compteur à zéro ferait croire que rien n'attend, alors que ce
+    // sont précisément eux qui échappent au suivi.
+    Employee::factory()->create([
+        'contract_type' => 'CDD', 'status' => 'Actif',
+        'hire_date' => now()->subMonths(5)->toDateString(), 'contract_end_date' => null,
+    ]);
+
+    $this->actingAs($this->adminUser)
+        ->get(route('employees.index'))
+        ->assertOk()
+        ->assertSee(route('employees.contracts.index'), false)
+        ->assertSee('Contrats à terme', false);
+
+    expect(Employee::contractsToDecide()->count() + Employee::missingContractTerm()->count())->toBe(1);
+});
+
+test('la commande signale à part les contrats sans terme', function () {
+    fixedTermEmployee(['contract_end_date' => now()->addDays(3)->toDateString()]);
+    Employee::factory()->create([
+        'contract_type' => 'CDD', 'status' => 'Actif',
+        'hire_date' => now()->subMonths(7)->toDateString(), 'contract_end_date' => null,
+    ]);
+    Employee::factory()->create([
+        'contract_type' => 'Journalier', 'status' => 'Actif',
+        'hire_date' => now()->subMonths(2)->toDateString(), 'contract_end_date' => null,
+    ]);
+
+    // Leur problème n'est pas une échéance qui approche mais l'absence de toute
+    // échéance : les fondre dans le même compteur cacherait le vrai risque.
+    $this->artisan('hr:check-contracts')
+        ->expectsOutputToContain('1 contrat(s) à terme signalé(s).')
+        ->expectsOutputToContain('2 contrat(s) sans terme renseigné.')
+        ->assertSuccessful();
+});

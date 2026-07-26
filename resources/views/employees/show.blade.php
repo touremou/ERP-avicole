@@ -246,6 +246,17 @@
                                 {{-- Le terme, avec le nombre de jours restants : c'est
                                      lui qui déclenche la décision, il doit se voir sur
                                      la fiche et pas seulement dans la liste de suivi. --}}
+                                {{-- Contrat à terme SANS terme : il n'entre dans
+                                     aucune échéance, donc personne ne sera
+                                     prévenu. On le dit sur la fiche. --}}
+                                @if($employee->hasFixedTerm() && ! $employee->contract_end_date)
+                                    <p class="text-[8px] font-black text-amber-600 uppercase mt-1 leading-relaxed">
+                                        <i class="fa-solid fa-triangle-exclamation mr-1"></i>{{ __("Fin de contrat non renseignée") }}
+                                    </p>
+                                    @can('rh.M')
+                                        <a href="{{ route('employees.contracts.index') }}" class="text-[7px] font-black text-blue-500 uppercase no-underline hover:underline">{{ __("Régulariser") }} →</a>
+                                    @endcan
+                                @endif
                                 @if($employee->contract_end_date)
                                     @php
                                         $left = $employee->days_until_contract_end;
