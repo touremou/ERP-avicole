@@ -48,6 +48,111 @@ class CropBackfillTemplate
     /** Onglets, dans l'ordre de remplissage (chaque onglet dépend du précédent). */
     public const SHEETS = ['Parcelles', 'Cycles', 'Intrants', 'Recoltes'];
 
+    /**
+     * DÉFINITION PARTAGÉE des onglets — colonnes et valeurs acceptées.
+     *
+     * Source unique consommée par DEUX sorties : le classeur Excel (ci-dessous)
+     * et la fiche papier (CropBackfillFieldSheet). Une fiche papier recopiée à
+     * la main divergerait au premier ajout de colonne, et le technicien
+     * remplirait un formulaire qui ne correspond plus au fichier — c'est
+     * exactement l'erreur qu'on a payée sur les formulaires employé.
+     *
+     * `choices` est indexé par NOM de colonne (pas par lettre) : la lettre est
+     * un détail d'Excel, le nom est ce que lit un humain sur le papier.
+     *
+     * @return array<string, array{
+     *   columns: array<int, array{0: string, 1: int, 2: bool}>,
+     *   choices: array<string, array{values: array<int, string>, strict: bool}>
+     * }>
+     */
+    public static function definition(): array
+    {
+        $species = CropSpecies::orderBy('name')->pluck('name')->filter()->take(200)->values()->all();
+
+        $employees = Employee::active()->orderBy('first_name')->get()
+            ->map(fn (Employee $e) => trim($e->first_name . ' ' . $e->last_name))
+            ->filter()->values()->all();
+
+        return [
+            'Parcelles' => [
+                'columns' => [
+                    ['code_parcelle', 22, true],
+                    ['nom', 26, true],
+                    ['surface_ha', 14, true],
+                    ['localisation', 24, false],
+                    ['type_sol', 18, false],
+                    ['irrigation', 18, false],
+                    ['statut', 16, false],
+                    ['notes', 34, false],
+                ],
+                'choices' => [
+                    'statut' => ['values' => Plot::STATUSES, 'strict' => true],
+                ],
+            ],
+            'Cycles' => [
+                'columns' => [
+                    ['code_parcelle', 22, true],
+                    ['code_cycle', 22, true],
+                    ['culture', 22, true],
+                    ['variete', 20, false],
+                    ['date_semis', 16, true],
+                    ['surface_utilisee_ha', 20, false],
+                    ['rendement_attendu_kg', 22, false],
+                    ['cout_semences_intrants_initial', 30, false],
+                    ['couts_additionnels', 22, false],
+                    ['responsable', 24, false],
+                    ['notes', 30, false],
+                ],
+                'choices' => [
+                    // Listes INDICATIVES : un producteur peut cultiver une espèce
+                    // absente du référentiel, et un journalier peut ne pas avoir
+                    // de fiche employé. Bloquer fermerait la saisie du réel.
+                    'culture'     => ['values' => $species, 'strict' => false],
+                    'responsable' => ['values' => $employees, 'strict' => false],
+                ],
+            ],
+            'Intrants' => [
+                'columns' => [
+                    ['code_cycle', 22, true],
+                    ['date', 16, true],
+                    ['type', 22, true],
+                    ['nom_produit', 28, true],
+                    ['quantite', 14, true],
+                    ['unite', 12, false],
+                    ['cout_unitaire', 16, false],
+                    ['cout_total', 16, false],
+                    ['delai_avant_recolte_jours', 26, false],
+                    ['notes', 30, false],
+                ],
+                'choices' => [
+                    'type'  => ['values' => array_keys(CropInput::TYPES), 'strict' => true],
+                    'unite' => ['values' => ['kg', 'g', 'l', 'ml', 'sac', 'unite', 'jour', 'heure'], 'strict' => false],
+                ],
+            ],
+            'Recoltes' => [
+                'columns' => [
+                    ['code_cycle', 22, true],
+                    ['date', 16, true],
+                    ['quantite', 14, true],
+                    ['unite', 12, false],
+                    ['poids_net_kg', 16, false],
+                    ['pertes', 12, false],
+                    ['qualite', 14, false],
+                    ['destination', 18, true],
+                    ['prix_unitaire_kg', 20, false],
+                    ['verser_au_stock', 18, false],
+                    ['notes', 30, false],
+                ],
+                'choices' => [
+                    'unite'           => ['values' => ['kg', 'sac', 'panier', 'caisse', 'botte', 'regime', 'unite'], 'strict' => false],
+                    'qualite'         => ['values' => Harvest::QUALITIES, 'strict' => true],
+                    'destination'     => ['values' => array_keys(Harvest::DESTINATIONS), 'strict' => true],
+                    'verser_au_stock' => ['values' => ['oui', 'non'], 'strict' => true],
+                ],
+            ],
+        ];
+    }
+
     private const HEADER_FILL = 'FF1E293B';
     private const KEY_FILL    = 'FFFEF3C7';
 
@@ -157,102 +262,53 @@ class CropBackfillTemplate
 
     private function buildPlots(Worksheet $sheet): void
     {
-        $sheet->setTitle('Parcelles');
-
-        $this->writeHeader($sheet, [
-            ['code_parcelle *', 22, true],
-            ['nom *', 26, true],
-            ['surface_ha *', 14, true],
-            ['localisation', 24, false],
-            ['type_sol', 18, false],
-            ['irrigation', 18, false],
-            ['statut', 16, false],
-            ['notes', 34, false],
-        ]);
-
-
-        $this->dropdown($sheet, 'G', Plot::STATUSES);
+        $this->buildDataSheet($sheet, 'Parcelles');
     }
 
     private function buildCycles(Worksheet $sheet): void
     {
-        $sheet->setTitle('Cycles');
-
-        $this->writeHeader($sheet, [
-            ['code_parcelle *', 22, true],
-            ['code_cycle *', 22, true],
-            ['culture *', 22, true],
-            ['variete', 20, false],
-            ['date_semis *', 16, true],
-            ['surface_utilisee_ha', 20, false],
-            ['rendement_attendu_kg', 22, false],
-            ['cout_semences_intrants_initial', 30, false],
-            ['couts_additionnels', 22, false],
-            ['responsable', 24, false],
-            ['notes', 30, false],
-        ]);
-
-
-        // Cultures du catalogue : liste indicative, la saisie libre reste permise
-        // (un producteur peut cultiver une espèce absente du référentiel).
-        $species = CropSpecies::orderBy('name')->pluck('name')->filter()->take(200)->values()->all();
-        if ($species !== []) {
-            $this->dropdown($sheet, 'C', $species, strict: false);
-        }
-
-        $employees = Employee::active()->orderBy('first_name')->get()
-            ->map(fn (Employee $e) => trim($e->first_name . ' ' . $e->last_name))
-            ->filter()->values()->all();
-        if ($employees !== []) {
-            $this->dropdown($sheet, 'J', $employees, strict: false);
-        }
+        $this->buildDataSheet($sheet, 'Cycles');
     }
 
     private function buildInputs(Worksheet $sheet): void
     {
-        $sheet->setTitle('Intrants');
-
-        $this->writeHeader($sheet, [
-            ['code_cycle *', 22, true],
-            ['date *', 16, true],
-            ['type *', 22, true],
-            ['nom_produit *', 28, true],
-            ['quantite *', 14, true],
-            ['unite', 12, false],
-            ['cout_unitaire', 16, false],
-            ['cout_total', 16, false],
-            ['delai_avant_recolte_jours', 26, false],
-            ['notes', 30, false],
-        ]);
-
-
-        $this->dropdown($sheet, 'C', array_keys(CropInput::TYPES));
-        $this->dropdown($sheet, 'F', ['kg', 'g', 'l', 'ml', 'sac', 'unite', 'jour', 'heure'], strict: false);
+        $this->buildDataSheet($sheet, 'Intrants');
     }
 
     private function buildHarvests(Worksheet $sheet): void
     {
-        $sheet->setTitle('Recoltes');
+        $this->buildDataSheet($sheet, 'Recoltes');
+    }
 
-        $this->writeHeader($sheet, [
-            ['code_cycle *', 22, true],
-            ['date *', 16, true],
-            ['quantite *', 14, true],
-            ['unite', 12, false],
-            ['poids_net_kg', 16, false],
-            ['pertes', 12, false],
-            ['qualite', 14, false],
-            ['destination *', 18, true],
-            ['prix_unitaire_kg', 20, false],
-            ['verser_au_stock', 18, false],
-            ['notes', 30, false],
-        ]);
+    /**
+     * Onglet de saisie, monté depuis la définition partagée : en-têtes (l'astérisque
+     * des colonnes obligatoires est ajouté ici, il n'appartient pas au nom de la
+     * colonne) puis listes déroulantes, la lettre étant déduite du RANG du nom.
+     */
+    private function buildDataSheet(Worksheet $sheet, string $name): void
+    {
+        $sheet->setTitle($name);
 
+        $definition = static::definition()[$name];
 
-        $this->dropdown($sheet, 'D', ['kg', 'sac', 'panier', 'caisse', 'botte', 'regime', 'unite'], strict: false);
-        $this->dropdown($sheet, 'G', Harvest::QUALITIES);
-        $this->dropdown($sheet, 'H', array_keys(Harvest::DESTINATIONS));
-        $this->dropdown($sheet, 'J', ['oui', 'non']);
+        $this->writeHeader($sheet, array_map(
+            fn (array $column) => [$column[0] . ($column[2] ? ' *' : ''), $column[1], $column[2]],
+            $definition['columns']
+        ));
+
+        $letters = [];
+        $letter = 'A';
+        foreach ($definition['columns'] as $column) {
+            $letters[$column[0]] = $letter;
+            $letter = chr(ord($letter) + 1);
+        }
+
+        foreach ($definition['choices'] as $columnName => $choice) {
+            if ($choice['values'] === []) {
+                continue;
+            }
+            $this->dropdown($sheet, $letters[$columnName], $choice['values'], strict: $choice['strict']);
+        }
     }
 
     private function buildReferences(Worksheet $sheet): void

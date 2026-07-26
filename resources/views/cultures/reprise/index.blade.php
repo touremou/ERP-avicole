@@ -44,10 +44,23 @@
                 <p class="text-[9px] font-bold text-slate-400 uppercase italic leading-relaxed mb-6">
                     {{ __("Le modèle est généré à la demande : il contient VOS employés et VOS cultures au moment du téléchargement. Re-téléchargez-le si vous ajoutez du personnel.") }}
                 </p>
-                <a href="{{ route('crop-backfill.template') }}"
-                   class="inline-block bg-slate-900 text-white px-10 py-5 rounded-[2rem] font-black uppercase italic tracking-[0.2em] text-[11px] shadow-2xl hover:bg-green-600 transition-all no-underline">
-                    <i class="fa-solid fa-file-excel mr-2 text-green-400"></i> {{ __("Télécharger le modèle Excel") }}
-                </a>
+                <div class="flex flex-wrap gap-4">
+                    <a href="{{ route('crop-backfill.template') }}"
+                       class="inline-block bg-slate-900 text-white px-10 py-5 rounded-[2rem] font-black uppercase italic tracking-[0.2em] text-[11px] shadow-2xl hover:bg-green-600 transition-all no-underline">
+                        <i class="fa-solid fa-file-excel mr-2 text-green-400"></i> {{ __("Télécharger le modèle Excel") }}
+                    </a>
+                    {{-- FICHE PAPIER : le technicien qui connaît l'historique est au
+                         champ, sans ordinateur. Lui demander de remplir un classeur
+                         revient à faire remplir le classeur par quelqu'un d'autre,
+                         de mémoire — donc à fabriquer des données fausses. --}}
+                    <a href="{{ route('crop-backfill.sheet') }}"
+                       class="inline-block bg-white border-2 border-slate-900 text-slate-900 px-10 py-5 rounded-[2rem] font-black uppercase italic tracking-[0.2em] text-[11px] hover:bg-slate-900 hover:text-white transition-all no-underline">
+                        <i class="fa-solid fa-print mr-2"></i> {{ __("Fiche papier à imprimer") }}
+                    </a>
+                </div>
+                <p class="text-[9px] font-bold text-slate-400 uppercase italic leading-relaxed mt-5">
+                    {{ __("La fiche papier porte EXACTEMENT les mêmes colonnes, dans le même ordre, avec les valeurs acceptées imprimées. Le technicien la remplit au stylo sur la parcelle, la photographie et l'envoie par WhatsApp ; il ne reste qu'à recopier dans le modèle, ligne par ligne.") }}
+                </p>
             </div>
 
             {{-- ÉTAPE 2 : téléverser --}}

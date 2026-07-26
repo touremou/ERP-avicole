@@ -1016,6 +1016,10 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('cultures/reprise')->name('crop-backfill.')->controller(\App\Http\Controllers\CropBackfillController::class)->group(function () {
         Route::get('/', 'index')->name('index')->middleware('can:C');
         Route::get('/modele', 'template')->name('template')->middleware('can:C');
+        // Fiche PAPIER : le technicien qui connaît l'historique est au champ,
+        // sans ordinateur. Elle s'imprime, se remplit au stylo et revient en
+        // photo ; le bureau recopie ensuite dans le classeur.
+        Route::get('/fiche', 'fieldSheet')->name('sheet')->middleware('can:L');
         Route::post('/analyse', 'analyse')->name('analyse')->middleware('can:C');
         Route::post('/importer', 'commit')->name('commit')->middleware('can:C');
     });
