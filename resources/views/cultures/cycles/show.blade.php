@@ -312,9 +312,19 @@
                     <p class="text-[8px] font-black text-green-500 uppercase tracking-widest italic mb-2">{{ __("Rendement/ha") }}</p>
                     <p class="text-2xl font-black text-slate-900 leading-none">{{ number_format($cycle->yield_per_ha, 0, ',', ' ') }} <small class="text-[10px] opacity-40">kg/ha</small></p>
                 </div>
+                @php $held = $cycle->heldValorisation(); @endphp
                 <div class="bg-slate-900 text-white p-6 rounded-[2rem] shadow-lg">
-                    <p class="text-[8px] font-black text-green-400 uppercase tracking-widest italic mb-2">{{ __("Marge nette") }}</p>
+                    <p class="text-[8px] font-black text-green-400 uppercase tracking-widest italic mb-2">{{ __("Marge réalisée") }}</p>
                     <p class="text-2xl font-black leading-none {{ $cycle->net_margin >= 0 ? '' : 'text-rose-400' }}">{{ number_format($cycle->net_margin, 0, ',', ' ') }} <small class="text-[10px] opacity-40">{{ $currency }}</small></p>
+                    {{-- La récolte conservée n'est PAS un revenu : elle est sortie du
+                         cycle en matière et en coût. On l'affiche à côté, jamais
+                         additionnée — sinon on recrée le revenu fictif corrigé. --}}
+                    @if($held['kg'] > 0)
+                        <p class="text-[8px] font-black text-amber-300 uppercase italic mt-3 leading-relaxed">
+                            + {{ number_format($held['kg'], 0, ',', ' ') }} kg {{ __("non vendus") }}
+                            ({{ number_format($held['value'], 0, ',', ' ') }} {{ $currency }} {{ __("au coût") }})
+                        </p>
+                    @endif
                 </div>
             </div>
 
@@ -383,8 +393,21 @@
                         <div class="flex justify-between"><span class="text-slate-400 uppercase italic">{{ __("Coûts additionnels") }}</span><span class="font-black text-slate-700">{{ number_format($add, 0, ',', ' ') }}</span></div>
                         <div class="flex justify-between"><span class="text-slate-400 uppercase italic">{{ __("Intrants itémisés") }}</span><span class="font-black text-slate-700">{{ number_format($inp, 0, ',', ' ') }}</span></div>
                         <div class="flex justify-between pt-3 border-t border-slate-100"><span class="text-slate-500 uppercase italic font-black">{{ __("Total coûts") }}</span><span class="font-black text-rose-500">{{ number_format($totalCost, 0, ',', ' ') }}</span></div>
-                        <div class="flex justify-between"><span class="text-slate-500 uppercase italic font-black">{{ __("Revenus") }}</span><span class="font-black text-green-600">{{ number_format($cycle->total_revenue, 0, ',', ' ') }}</span></div>
-                        <div class="flex justify-between pt-3 border-t border-slate-100"><span class="text-slate-700 uppercase italic font-black">{{ __("Marge nette") }}</span><span class="font-black {{ $cycle->net_margin >= 0 ? 'text-green-600' : 'text-rose-500' }}">{{ number_format($cycle->net_margin, 0, ',', ' ') }}</span></div>
+                        @if($held['kg'] > 0)
+                            {{-- Le coût des kg conservés suit la matière dans
+                                 l'inventaire : l'imputer au cycle afficherait une
+                                 marge catastrophique ce mois-ci, puis un profit sans
+                                 coût le mois de la vente. --}}
+                            <div class="flex justify-between"><span class="text-amber-500 uppercase italic">− {{ __("Coût transféré au stock") }}</span><span class="font-black text-amber-600">{{ number_format($held['value'], 0, ',', ' ') }}</span></div>
+                            <div class="flex justify-between"><span class="text-slate-500 uppercase italic font-black">{{ __("Coût des marchandises vendues") }}</span><span class="font-black text-rose-500">{{ number_format($cycle->costOfGoodsSold(), 0, ',', ' ') }}</span></div>
+                        @endif
+                        <div class="flex justify-between"><span class="text-slate-500 uppercase italic font-black">{{ __("Revenus encaissés") }}</span><span class="font-black text-green-600">{{ number_format($cycle->total_revenue, 0, ',', ' ') }}</span></div>
+                        <div class="flex justify-between pt-3 border-t border-slate-100"><span class="text-slate-700 uppercase italic font-black">{{ __("Marge réalisée") }}</span><span class="font-black {{ $cycle->net_margin >= 0 ? 'text-green-600' : 'text-rose-500' }}">{{ number_format($cycle->net_margin, 0, ',', ' ') }}</span></div>
+                        @if($held['kg'] > 0)
+                            <p class="text-[9px] font-bold text-slate-400 uppercase italic pt-2 leading-relaxed">
+                                {{ __("Les :kg kg conservés dégageront leur marge à la vente réelle (prix − coût moyen du stock), pas ici.", ['kg' => number_format($held['kg'], 0, ',', ' ')]) }}
+                            </p>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -405,6 +428,11 @@
                             <p class="text-[11px] font-black uppercase text-slate-800 italic leading-none">{{ number_format($h->quantity, 0, ',', ' ') }} {{ $h->unit }}
                                 <span class="text-[8px] px-2 py-0.5 rounded-full ml-2 {{ $h->quality === 'bon' ? 'bg-green-50 text-green-600' : ($h->quality === 'moyen' ? 'bg-amber-50 text-amber-600' : 'bg-rose-50 text-rose-600') }}">{{ ucfirst($h->quality) }}</span>
                                 @if($h->synced_to_stock)<i class="fa-solid fa-warehouse text-blue-400 ml-1 text-[9px]" title="{{ __('Intégré au stock') }}"></i>@endif
+                                {{-- Destination (T1) : dire d'un coup d'œil ce qui a
+                                     été encaissé et ce qui attend d'être valorisé. --}}
+                                @if($h->is_held)
+                                    <span class="text-[8px] px-2 py-0.5 rounded-full ml-1 bg-amber-100 text-amber-700 font-black">{{ __($h->destination_label) }}</span>
+                                @endif
                             </p>
                             <p class="text-[8px] text-slate-400 uppercase mt-1">{{ $h->harvest_date?->format('d/m/Y') }}
                                 @if($h->employee) · {{ $h->employee->first_name }} {{ $h->employee->last_name }}@endif
@@ -412,7 +440,13 @@
                             </p>
                         </div>
                         <div class="flex items-center gap-4">
-                            @if($h->unit_price)<p class="text-[10px] font-black text-slate-500">{{ number_format($h->estimated_value, 0, ',', ' ') }} {{ $currency }}</p>@endif
+                            @if($h->is_held)
+                                <p class="text-[10px] font-black text-amber-500" title="{{ __('Valeur au coût de production — aucun revenu encaissé') }}">
+                                    {{ number_format($h->effective_weight_kg * $cycle->productionCostPerKg(), 0, ',', ' ') }} {{ $currency }}
+                                </p>
+                            @elseif($h->unit_price)
+                                <p class="text-[10px] font-black text-slate-500">{{ number_format($h->estimated_value, 0, ',', ' ') }} {{ $currency }}</p>
+                            @endif
                             <a href="{{ route('crop-cycles.harvests.label', [$cycle, $h]) }}" target="_blank" class="text-slate-300 hover:text-green-600 text-xs no-underline" title="{{ __('Étiquette QR de traçabilité') }}"><i class="fa-solid fa-qrcode"></i></a>
                             @can('cultures.M')
                             <a href="{{ route('crop-cycles.harvests.edit', [$cycle, $h]) }}" class="text-slate-300 hover:text-green-600 text-xs no-underline"><i class="fa-solid fa-pen-to-square"></i></a>

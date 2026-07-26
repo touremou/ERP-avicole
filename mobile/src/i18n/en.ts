@@ -987,4 +987,59 @@ export const en: Record<string, string> = {
     '⚠️ :unit is sold in whole units — no decimals.',
   'épuisé': 'out of stock',
   '⚠️ :name est épuisé — rien à vendre.': '⚠️ :name is out of stock — nothing to sell.',
+  // ── T1 — récolte non vendue & atelier de transformation végétale ──
+  'Que devient cette récolte ?': 'What happens to this harvest?',
+  '💰 Vendue': '💰 Sold',
+  '🏭 À transformer': '🏭 To be processed',
+  '📦 Stockée': '📦 Stored',
+  'Aucun revenu inscrit au cycle : la récolte entre en stock, valorisée au coût de production. La marge se fera à la vente réelle.':
+    'No revenue booked on the cycle: the harvest enters stock at production cost. The margin will come from the actual sale.',
+  'Prix de vente encaissé (par kg) — optionnel': 'Sale price received (per kg) — optional',
+  'Poids net pesé (kg) *': 'Net weighed weight (kg) *',
+  'obligatoire — valorise le stock': 'required — values the stock',
+  '⚠️ Récolte non vendue : pesez-la en kg. Sans pesée, elle sort du revenu sans pouvoir être valorisée ni transformée.':
+    '⚠️ Unsold harvest: weigh it in kg. Without a weight it leaves revenue with no way to be valued or processed.',
+  '✓ Entrée en stock automatique (récolte conservée)': '✓ Automatic stock entry (harvest kept)',
+  '🏭 Atelier de transformation': '🏭 Processing workshop',
+  'Atelier de transformation': 'Processing workshop',
+  'séchage · mouture · rendement': 'drying · milling · yield',
+  'Récolte engagée': 'Harvest used',
+  '— Aucune (saisie libre) —': '— None (free entry) —',
+  '— Saisie libre —': '— Free entry —',
+  'Aucune récolte « à transformer » en local. Marquez la destination à la saisie de récolte pour la retrouver ici.':
+    'No harvest marked "to be processed" stored locally. Set the destination when recording a harvest to find it here.',
+  'Choisir la récolte porte la traçabilité au lot et le coût matière — rien à ressaisir.':
+    'Picking the harvest carries batch traceability and the material cost — nothing to re-enter.',
+  'Cycle :code — :crop': 'Cycle :code — :crop',
+  'Recette — optionnel': 'Recipe — optional',
+  'rdt': 'yield',
+  'Type de transformation': 'Processing type',
+  '☀️ Séchage': '☀️ Drying',
+  '⚙️ Mouture': '⚙️ Milling',
+  '🥤 Jus / pressage': '🥤 Juice / pressing',
+  '🫙 Fermentation': '🫙 Fermentation',
+  '🔥 Torréfaction': '🔥 Roasting',
+  '🥫 Conserverie': '🥫 Canning',
+  'Produit entrant': 'Input product',
+  'Gombo frais…': 'Fresh okra…',
+  'Produit fini': 'Finished product',
+  'Gombo séché…': 'Dried okra…',
+  'Quantité engagée (kg)': 'Quantity used (kg)',
+  'Quantité obtenue (:unit)': 'Quantity obtained (:unit)',
+  '⚠️ La sortie dépasse l’entrée : une transformation perd de la matière. Vérifiez les deux pesées (ou l’unité).':
+    '⚠️ Output exceeds input: processing always loses matter. Check both weights (or the unit).',
+  'Rendement : :rate %': 'Yield: :rate %',
+  '✓ Conforme à la recette (:expected % attendu)': '✓ Matches the recipe (:expected % expected)',
+  '⚠️ Écart de :drift % au rendement attendu (:expected %) — repesez si possible.':
+    '⚠️ :drift % off the expected yield (:expected %) — re-weigh if you can.',
+  'Coût de l’opération (GNF) — main d’œuvre, bois, emballage':
+    'Operation cost (GNF) — labour, firewood, packaging',
+  'Soit :n GNF/:unit pour la seule opération — la matière première s’y ajoutera (calcul serveur).':
+    'That is :n GNF/:unit for the operation alone — raw material will be added (computed server-side).',
+  'Prix de vente visé (GNF/:unit) — optionnel': 'Target sale price (GNF/:unit) — optional',
+  'Enregistrer le lot transformé': 'Save the processed batch',
+  '✓ Lot transformé enregistré': '✓ Processed batch saved',
+  'Le coût de revient et la valorisation du stock seront calculés par le serveur au push.':
+    'Cost price and stock valuation will be computed by the server on push.',
+  'Transformation :out — :n :unit': 'Processing :out — :n :unit',
 }

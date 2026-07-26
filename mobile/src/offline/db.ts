@@ -37,6 +37,8 @@ import type {
   RefSalePriceList,
   RefSalePriceListItem,
   RefEmployeeLeave,
+  RefCropRecipe,
+  RefPendingHarvest,
   RefStock,
   RefTask,
 } from '../api/types'
@@ -106,6 +108,8 @@ class ErpMobileDb extends Dexie {
   ref_sale_price_lists!: Table<RefSalePriceList, number>
   ref_sale_price_list_items!: Table<RefSalePriceListItem, number>
   ref_employee_leaves!: Table<RefEmployeeLeave, number>
+  ref_crop_recipes!: Table<RefCropRecipe, number>
+  ref_pending_harvests!: Table<RefPendingHarvest, number>
   tasks!: Table<RefTask, number>
   meta!: Table<MetaEntry, string>
 
@@ -175,6 +179,12 @@ class ErpMobileDb extends Dexie {
       ref_sale_price_lists: 'id, is_default',
       ref_sale_price_list_items: 'id, sale_price_list_id, product_id',
       ref_employee_leaves: 'id, employee_id',
+    })
+    // v12 (T1) : atelier de transformation végétale — recettes (rendement de
+    // référence) et récoltes en attente d'être séchées.
+    this.version(12).stores({
+      ref_crop_recipes: 'id, transformation_type',
+      ref_pending_harvests: 'id, crop_cycle_id',
     })
   }
 }

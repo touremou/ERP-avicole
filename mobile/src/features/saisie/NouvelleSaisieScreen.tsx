@@ -100,6 +100,10 @@ export function NouvelleSaisieScreen() {
             <span className="task-title">🌱 {t('Pointer un semis')}</span>
             <span className="task-meta">{t('Déclarer une nouvelle culture sur une parcelle')}</span>
           </Link>
+          <Link to="/cultures/transformation" className="task-card">
+            <span className="task-title">🏭 {t('Atelier de transformation')}</span>
+            <span className="task-meta">{t('séchage · mouture · rendement')}</span>
+          </Link>
         </section>
       )}
 

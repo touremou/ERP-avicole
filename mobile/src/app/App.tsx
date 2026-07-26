@@ -28,6 +28,7 @@ import { HarvestScreen } from '../features/cultures/HarvestScreen'
 import { SemisScreen } from '../features/cultures/SemisScreen'
 import { HarvestJournalScreen } from '../features/cultures/HarvestJournalScreen'
 import { CropInputScreen } from '../features/cultures/CropInputScreen'
+import { CropTransformationScreen } from '../features/cultures/CropTransformationScreen'
 import { SlaughterScreen } from '../features/abattoir/SlaughterScreen'
 import { ClosureScreen } from '../features/abattoir/ClosureScreen'
 import { CuttingScreen } from '../features/abattoir/CuttingScreen'
@@ -141,6 +142,7 @@ function Shell() {
           <Route path="/cultures/semis" element={<SemisScreen />} />
           <Route path="/cultures/recolte/:cycleId" element={<HarvestScreen />} />
           <Route path="/cultures/intrant/:cycleId" element={<CropInputScreen />} />
+          <Route path="/cultures/transformation" element={<CropTransformationScreen />} />
           <Route path="/abattoir/execution/:orderId" element={<SlaughterScreen />} />
           <Route path="/abattoir/cloture/:orderId" element={<ClosureScreen />} />
           <Route path="/abattoir/decoupe" element={<CuttingScreen />} />

@@ -415,6 +415,7 @@ class CropCycleController extends Controller
             'net_weight_kg'   => 'nullable|numeric|min:0',
             'loss_quantity'   => 'nullable|numeric|min:0',
             'quality'         => 'nullable|in:' . implode(',', Harvest::QUALITIES),
+            'destination'     => 'nullable|in:' . implode(',', array_keys(Harvest::DESTINATIONS)),
             'employee_id'     => 'nullable|exists:employees,id',
             'unit_price'      => 'nullable|numeric|min:0',
             'sync_to_stock'   => 'nullable|boolean',
@@ -539,6 +540,7 @@ class CropCycleController extends Controller
             'net_weight_kg' => 'nullable|numeric|min:0',
             'loss_quantity' => 'nullable|numeric|min:0',
             'quality'       => 'nullable|in:' . implode(',', Harvest::QUALITIES),
+            'destination'   => 'nullable|in:' . implode(',', array_keys(Harvest::DESTINATIONS)),
             'employee_id'   => 'nullable|exists:employees,id',
             'unit_price'    => 'nullable|numeric|min:0',
             'notes'         => 'nullable|string|max:500',
@@ -548,6 +550,24 @@ class CropCycleController extends Controller
         if (($validated['net_weight_kg'] ?? null) === null
             && strtolower($validated['unit'] ?? 'kg') === 'kg') {
             $validated['net_weight_kg'] = $validated['quantity'];
+        }
+
+        // Cohérence de destination (mêmes règles que RecordHarvest) : une
+        // récolte conservée doit être pesée, et ne porte aucun prix de vente.
+        $destination = $validated['destination'] ?? $harvest->destination ?? Harvest::DEST_VENTE;
+        if (in_array($destination, Harvest::DEST_HELD, true)) {
+            $kg = Harvest::effectiveWeightKgFrom(
+                $validated['net_weight_kg'] ?? null,
+                $validated['unit'] ?? 'kg',
+                $validated['quantity'],
+            );
+            if ($kg <= 0) {
+                return back()->withInput()->with('error', sprintf(
+                    'Une récolte « %s » doit être pesée en kg : c\'est cette pesée qui la valorise en stock.',
+                    Harvest::DESTINATIONS[$destination],
+                ));
+            }
+            $validated['unit_price'] = null;
         }
 
         $harvest->update($validated);
