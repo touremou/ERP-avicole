@@ -16,7 +16,9 @@
 import { api, ApiError } from '../api/client'
 import { db, getMeta, setMeta, type OutboxEntry } from './db'
 import { validateOp, OpValidationError } from './opRules'
-import type { OperationType, PullResponse } from '../api/types'
+import { allows, OP_ACCESS, OpForbiddenError } from './access'
+import { t } from '../i18n'
+import type { MeResponse, OperationType, PullResponse } from '../api/types'
 
 export type SyncState = 'idle' | 'syncing' | 'offline' | 'error'
 
@@ -58,11 +60,46 @@ export function declaredNow(): string {
   return new Date().toISOString()
 }
 
+/**
+ * Vérifie le droit d'exécuter une opération, d'après la matrice `me` en cache
+ * (donc HORS-LIGNE : c'est tout l'intérêt).
+ *
+ * Sans session en cache on laisse passer : le seul cas est un appareil dont le
+ * cache `me` a été purgé alors que des saisies restent à pousser. Bloquer
+ * détruirait des données de terrain déjà saisies ; le serveur, lui, tranchera.
+ */
+async function assertOpAllowed(type: OperationType): Promise<void> {
+  const me = await getMeta<MeResponse>('me')
+  if (!me) return
+
+  const spec = OP_ACCESS[type]
+  if (!spec) return // op inconnue du miroir : le serveur la refusera proprement
+
+  const ok = allows(spec, {
+    can: (module, level) => me.permissions[module]?.includes(level) ?? false,
+    hasEmployee: me.scope.employee_id != null,
+  })
+
+  if (!ok) {
+    const message = t("Vous n'avez pas le droit d'enregistrer cette opération.")
+    window.dispatchEvent(new CustomEvent('op:rejected', { detail: { errors: [message] } }))
+    throw new OpForbiddenError(type)
+  }
+}
+
 export async function enqueue(
   type: OperationType,
   payload: Record<string, unknown>,
   label: string,
 ): Promise<string> {
+  // GARDE DE DROITS — avant toute chose. Une op que le compte n'a pas le droit
+  // d'exécuter n'entre PAS en file : sinon elle monte, le serveur la refuse
+  // (permission_denied), et elle atterrit dans « À corriger » — un bac que
+  // l'agent ne peut pas vider, pour une chose qu'il n'a jamais eu le droit de
+  // faire. Le serveur reste l'autorité (il re-vérifie au push) ; ici on évite
+  // l'aller-retour inutile et le message incompréhensible.
+  await assertOpAllowed(type)
+
   // Garde-fou : les règles de champ (miroir du serveur) sont validées AVANT la
   // mise en file. Une saisie invalide ne part JAMAIS (pas de « À corriger »
   // après un aller-retour) ; on signale l'erreur via un événement global.

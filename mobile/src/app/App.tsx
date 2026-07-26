@@ -1,8 +1,9 @@
-import { useEffect, useSyncExternalStore } from 'react'
+import { useEffect, useSyncExternalStore, type ReactElement } from 'react'
 import { BrowserRouter, Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './AuthContext'
 import { getLocale, subscribeLocale, t } from '../i18n'
 import { startSyncLoop } from '../offline/sync'
+import { allows, ROUTE_ACCESS, type RoutePath } from '../offline/access'
 import { LoginScreen } from '../features/auth/LoginScreen'
 import { HomeScreen } from '../features/home/HomeScreen'
 import { NouvelleSaisieScreen } from '../features/saisie/NouvelleSaisieScreen'
@@ -57,6 +58,7 @@ import { BottomNav } from '../ui/BottomNav'
 import { SyncBadge } from '../ui/SyncBadge'
 import { UpdateToast } from '../ui/UpdateToast'
 import { OpErrorBanner } from '../ui/OpErrorBanner'
+import { AccessDenied } from '../ui/AccessDenied'
 
 function headerInitials(name: string | null | undefined): string {
   return (name ?? '?')
@@ -66,6 +68,80 @@ function headerInitials(name: string | null | undefined): string {
     .slice(0, 2)
     .join('')
     .toUpperCase()
+}
+
+/**
+ * TOUS les écrans de la PWA, avec le chemin qui porte leur droit d'accès.
+ *
+ * Le type `RoutePath` vient de ROUTE_ACCESS : ajouter un écran sans y déclarer
+ * son droit ne compile pas. Avant cette table, les 50 routes étaient posées
+ * une à une sans aucune garde — n'importe quel compte atteignait n'importe quel
+ * formulaire en tapant l'URL, et la saisie ne se faisait refuser qu'au serveur.
+ */
+const SCREENS: Array<[RoutePath, ReactElement]> = [
+  ['/', <HomeScreen />],
+  ['/nouvelle', <NouvelleSaisieScreen />],
+  ['/elevage/pointage/:batchId?', <DailyCheckScreen />],
+  ['/elevage/collecte/:batchId', <EggCollectionScreen />],
+  ['/elevage/incident/:batchId', <IncidentScreen />],
+  ['/elevage/soin/:batchId?', <HealthCareScreen />],
+  ['/elevage/couvoir/:incubationId?', <HatcheryScreen />],
+  ['/elevage/traite/:batchId?', <MilkingScreen />],
+  ['/lot/:batchId', <BatchScreen />],
+  ['/scan', <ScanScreen />],
+  ['/commerce/vente', <SaleScreen />],
+  ['/commerce/journal', <SalesJournalScreen />],
+  ['/commerce/encaisser/:saleId?', <PaymentScreen />],
+  ['/commerce/retour/:saleId?', <SaleReturnScreen />],
+  ['/tresorerie/journal', <TreasuryJournalScreen />],
+  ['/provenderie/journal', <MillJournalScreen />],
+  ['/abattoir/journal', <SlaughterJournalScreen />],
+  ['/cultures/journal', <HarvestJournalScreen />],
+  ['/logistique/mouvement', <StockMovementScreen />],
+  ['/ressources/ravitaillement', <WaterRefillScreen />],
+  ['/ressources/releve', <MeterReadingScreen />],
+  ['/rh/presence', <AttendanceScreen />],
+  ['/logistique/stocks', <StocksScreen />],
+  ['/logistique/inventaire', <InventoryCountScreen />],
+  ['/logistique/reception-aliment', <FeedReceptionScreen />],
+  ['/logistique/conservation/:lotId?', <StoredLotCheckScreen />],
+  ['/depenses/nouvelle', <ExpenseScreen />],
+  ['/cultures/semis', <SemisScreen />],
+  ['/cultures/recolte/:cycleId', <HarvestScreen />],
+  ['/cultures/intrant/:cycleId', <CropInputScreen />],
+  ['/cultures/transformation', <CropTransformationScreen />],
+  ['/abattoir/execution/:orderId', <SlaughterScreen />],
+  ['/abattoir/cloture/:orderId', <ClosureScreen />],
+  ['/abattoir/decoupe', <CuttingScreen />],
+  ['/abattoir/reception', <ReceptionScreen />],
+  ['/abattoir/temperature', <TemperatureScreen />],
+  ['/abattoir/temperature/tournee', <TemperatureRoundScreen />],
+  ['/abattoir/ccp', <CcpScreen />],
+  ['/abattoir/nettoyage', <CleaningScreen />],
+  ['/abattoir/nettoyage/tournee', <CleaningRoundScreen />],
+  ['/abattoir/sousproduit', <ByproductScreen />],
+  ['/abattoir/sousproduit/tournee', <ByproductRoundScreen />],
+  ['/provenderie/cloture/:opId', <MillCompleteScreen />],
+  ['/provenderie/lancer', <MillStartScreen />],
+  ['/alertes', <NotificationsScreen />],
+  ['/taches', <TachesScreen />],
+  ['/mon-espace', <MonEspaceScreen />],
+  ['/mon-espace/semaine', <MaSemaineScreen />],
+  ['/appareils', <AppareilsScreen />],
+]
+
+/**
+ * Garde d'écran. Le droit se lit dans le cache de permissions (hors-ligne) ;
+ * la portée personnelle ('@owner') repose sur la fiche employé rattachée.
+ */
+function Guarded({ path, children }: { path: RoutePath; children: ReactElement }) {
+  const { can, me } = useAuth()
+  const ok = allows(ROUTE_ACCESS[path], {
+    can,
+    hasEmployee: me?.scope.employee_id != null,
+  })
+
+  return ok ? children : <AccessDenied />
 }
 
 function Shell() {
@@ -115,55 +191,9 @@ function Shell() {
       )}
       <main className="app-main">
         <Routes>
-          <Route path="/" element={<HomeScreen />} />
-          <Route path="/nouvelle" element={<NouvelleSaisieScreen />} />
-          <Route path="/elevage/pointage/:batchId?" element={<DailyCheckScreen />} />
-          <Route path="/elevage/collecte/:batchId" element={<EggCollectionScreen />} />
-          <Route path="/elevage/incident/:batchId" element={<IncidentScreen />} />
-          <Route path="/elevage/soin/:batchId?" element={<HealthCareScreen />} />
-          <Route path="/elevage/couvoir/:incubationId?" element={<HatcheryScreen />} />
-          <Route path="/elevage/traite/:batchId?" element={<MilkingScreen />} />
-          <Route path="/lot/:batchId" element={<BatchScreen />} />
-          <Route path="/scan" element={<ScanScreen />} />
-          <Route path="/commerce/vente" element={<SaleScreen />} />
-          <Route path="/commerce/journal" element={<SalesJournalScreen />} />
-          <Route path="/commerce/encaisser/:saleId?" element={<PaymentScreen />} />
-          <Route path="/commerce/retour/:saleId?" element={<SaleReturnScreen />} />
-          <Route path="/tresorerie/journal" element={<TreasuryJournalScreen />} />
-          <Route path="/provenderie/journal" element={<MillJournalScreen />} />
-          <Route path="/abattoir/journal" element={<SlaughterJournalScreen />} />
-          <Route path="/cultures/journal" element={<HarvestJournalScreen />} />
-          <Route path="/logistique/mouvement" element={<StockMovementScreen />} />
-          <Route path="/ressources/ravitaillement" element={<WaterRefillScreen />} />
-          <Route path="/ressources/releve" element={<MeterReadingScreen />} />
-          <Route path="/rh/presence" element={<AttendanceScreen />} />
-          <Route path="/logistique/stocks" element={<StocksScreen />} />
-          <Route path="/logistique/inventaire" element={<InventoryCountScreen />} />
-          <Route path="/logistique/reception-aliment" element={<FeedReceptionScreen />} />
-          <Route path="/logistique/conservation/:lotId?" element={<StoredLotCheckScreen />} />
-          <Route path="/depenses/nouvelle" element={<ExpenseScreen />} />
-          <Route path="/cultures/semis" element={<SemisScreen />} />
-          <Route path="/cultures/recolte/:cycleId" element={<HarvestScreen />} />
-          <Route path="/cultures/intrant/:cycleId" element={<CropInputScreen />} />
-          <Route path="/cultures/transformation" element={<CropTransformationScreen />} />
-          <Route path="/abattoir/execution/:orderId" element={<SlaughterScreen />} />
-          <Route path="/abattoir/cloture/:orderId" element={<ClosureScreen />} />
-          <Route path="/abattoir/decoupe" element={<CuttingScreen />} />
-          <Route path="/abattoir/reception" element={<ReceptionScreen />} />
-          <Route path="/abattoir/temperature" element={<TemperatureScreen />} />
-          <Route path="/abattoir/temperature/tournee" element={<TemperatureRoundScreen />} />
-          <Route path="/abattoir/ccp" element={<CcpScreen />} />
-          <Route path="/abattoir/nettoyage" element={<CleaningScreen />} />
-          <Route path="/abattoir/nettoyage/tournee" element={<CleaningRoundScreen />} />
-          <Route path="/abattoir/sousproduit" element={<ByproductScreen />} />
-          <Route path="/abattoir/sousproduit/tournee" element={<ByproductRoundScreen />} />
-          <Route path="/provenderie/cloture/:opId" element={<MillCompleteScreen />} />
-          <Route path="/provenderie/lancer" element={<MillStartScreen />} />
-          <Route path="/alertes" element={<NotificationsScreen />} />
-          <Route path="/taches" element={<TachesScreen />} />
-          <Route path="/mon-espace" element={<MonEspaceScreen />} />
-          <Route path="/mon-espace/semaine" element={<MaSemaineScreen />} />
-          <Route path="/appareils" element={<AppareilsScreen />} />
+          {SCREENS.map(([path, element]) => (
+            <Route key={path} path={path} element={<Guarded path={path}>{element}</Guarded>} />
+          ))}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>

@@ -213,6 +213,13 @@ export const en: Record<string, string> = {
   'Ajouter un article': 'Add an item',
   'Alertes': 'Alerts',
   'Saisie incomplète ou invalide': 'Incomplete or invalid entry',
+  // Contrôle d'accès de la PWA (miroir hors-ligne du RBAC serveur).
+  'Accès refusé': 'Access denied',
+  "Votre profil ne donne pas accès à cet écran. Demandez le droit correspondant à votre responsable si vous en avez besoin.":
+    'Your profile does not grant access to this screen. Ask your supervisor for the matching permission if you need it.',
+  "Retour à l'accueil": 'Back to home',
+  "Vous n'avez pas le droit d'enregistrer cette opération.":
+    'You are not allowed to record this operation.',
   // Toast de mise à jour du service worker
   'Mise à jour disponible': 'Update available',
   'Recharger': 'Reload',
