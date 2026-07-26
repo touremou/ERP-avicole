@@ -106,6 +106,49 @@ class CropReportController extends Controller
         return $pdf->download('intrants-' . $request->get('year', now()->year) . '.pdf');
     }
 
+    // ── DÉLAI AVANT RÉCOLTE (DAR) ───────────────────────────────────────────
+
+    /**
+     * Confrontation traitement phyto ↔ récolte.
+     *
+     * `preharvest_days` était jeté par l'Action avant sa correction : le délai
+     * n'a jamais été enregistré sur les traitements passés. Aucun audit
+     * automatique n'est donc possible sur l'historique — on liste les cas à
+     * confronter à la notice du produit, et on dit lesquels sont établis
+     * (délai connu et dépassé) plutôt que de tout présenter comme certain.
+     */
+    public function withdrawal(Request $request, \App\Services\PhytoWithdrawalService $service): View
+    {
+        if (Gate::denies('cultures.L')) {
+            abort(403);
+        }
+
+        return view('cultures.reports.withdrawal', $this->buildWithdrawalStats($request, $service));
+    }
+
+    public function withdrawalPdf(Request $request, \App\Services\PhytoWithdrawalService $service)
+    {
+        if (Gate::denies('cultures.L')) {
+            abort(403);
+        }
+
+        $pdf = \Pdf::loadView('cultures.reports.pdf.withdrawal', $this->buildWithdrawalStats($request, $service))
+            ->setPaper('a4', 'landscape');
+
+        return $pdf->download('dar-' . now()->toDateString() . '.pdf');
+    }
+
+    private function buildWithdrawalStats(Request $request, \App\Services\PhytoWithdrawalService $service): array
+    {
+        $months = max(1, min((int) $request->integer('months', 6), 36));
+        $window = (int) $request->integer('window', \App\Services\PhytoWithdrawalService::DEFAULT_WINDOW);
+
+        return array_merge(
+            $service->confrontations(now()->subMonths($months)->startOfDay(), $window),
+            ['months' => $months]
+        );
+    }
+
     private function buildInputsStats(Request $request): array
     {
         $year = (int) $request->get('year', now()->year);

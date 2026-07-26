@@ -410,6 +410,11 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/campaigns/pdf', 'campaignsPdf')->name('campaigns.pdf');
         Route::get('/transformations', 'transformations')->name('transformations');
         Route::get('/transformations/pdf', 'transformationsPdf')->name('transformations.pdf');
+        // Confrontation délai avant récolte ↔ récoltes effectives : audit
+        // manuel, seul possible sur l'historique (le délai n'y a jamais été
+        // enregistré). Voir PhytoWithdrawalService.
+        Route::get('/dar', 'withdrawal')->name('withdrawal');
+        Route::get('/dar/pdf', 'withdrawalPdf')->name('withdrawal.pdf');
     });
 
     // ─── COUVOIR & INCUBATION ───
