@@ -136,7 +136,7 @@ class StoredLotController extends Controller
             'lot'        => $storedLot,
             'conditions' => StoredLotCheck::CONDITIONS,
             'actions'    => StoredLotCheck::ACTIONS,
-            'employees'  => Employee::active()->orderBy('first_name')->get(['id', 'first_name', 'last_name']),
+            'employees'  => Employee::assignableInCurrentFarm()->orderBy('first_name')->get(['id', 'first_name', 'last_name']),
         ]);
     }
 

@@ -600,7 +600,7 @@ class CropBackfillImporter
         $normalise = fn (string $s) => mb_strtolower(trim(preg_replace('/\s+/', ' ', $s)));
         $target = $normalise($needle);
 
-        foreach (Employee::active()->get(['id', 'first_name', 'last_name', 'employee_id']) as $employee) {
+        foreach (Employee::assignableInCurrentFarm()->get(['id', 'first_name', 'last_name', 'employee_id']) as $employee) {
             $candidates = [
                 $normalise($employee->first_name . ' ' . $employee->last_name),
                 $normalise($employee->last_name . ' ' . $employee->first_name),

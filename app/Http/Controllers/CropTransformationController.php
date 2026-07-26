@@ -45,7 +45,7 @@ class CropTransformationController extends Controller
             'types'     => CropTransformation::TYPES,
             'cycles'    => CropCycle::whereIn('status', [CropCycle::STATUS_EN_COURS, CropCycle::STATUS_RECOLTE, CropCycle::STATUS_TERMINE])
                 ->orderByDesc('planting_date')->get(['id', 'crop_name', 'code']),
-            'employees' => Employee::where('status', 'Actif')->orderBy('first_name')->get(['id', 'first_name', 'last_name']),
+            'employees' => Employee::assignableInCurrentFarm()->orderBy('first_name')->get(['id', 'first_name', 'last_name']),
             'recipes'   => CropRecipe::active()->with('items')->orderBy('name')->get(),
             // Récoltes EN ATTENTE de transformation : la liste de travail réelle
             // de l'atelier. On la propose d'abord — choisir la récolte donne à la
@@ -119,7 +119,7 @@ class CropTransformationController extends Controller
             'types'          => CropTransformation::TYPES,
             'cycles'         => CropCycle::whereIn('status', [CropCycle::STATUS_EN_COURS, CropCycle::STATUS_RECOLTE, CropCycle::STATUS_TERMINE])
                 ->orderByDesc('planting_date')->get(['id', 'crop_name', 'code']),
-            'employees'      => Employee::where('status', 'Actif')->orderBy('first_name')->get(['id', 'first_name', 'last_name']),
+            'employees'      => Employee::assignableInCurrentFarm()->orderBy('first_name')->get(['id', 'first_name', 'last_name']),
         ]);
     }
 

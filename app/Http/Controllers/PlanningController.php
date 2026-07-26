@@ -244,7 +244,7 @@ class PlanningController extends Controller
         if ($plan->actual_batch_id) return back()->with('error', 'Un lot actif existe déjà.');
 
         $plan->load(['building', 'provider']);
-        $employees = \App\Models\Employee::where('status', 'actif')->orderBy('first_name')->get();
+        $employees = \App\Models\Employee::assignableInCurrentFarm()->orderBy('first_name')->get();
 
         return view('planning.activate', compact('plan', 'employees'));
     }

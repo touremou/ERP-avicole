@@ -48,7 +48,7 @@ class ChickDispatchController extends Controller
                 $b->remaining_places = max(0, (int) $b->capacity - (int) $b->active_quantity);
             });
         $clients = Client::orderBy('name')->get();
-        $employees = Employee::where('status', 'actif')->orderBy('first_name')->get();
+        $employees = Employee::assignableInCurrentFarm()->orderBy('first_name')->get();
 
         return view('incubations.dispatch', compact(
             'incubation', 'remaining', 'dispatches', 'buildings', 'clients', 'employees'

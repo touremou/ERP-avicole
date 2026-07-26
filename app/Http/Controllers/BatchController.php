@@ -136,7 +136,7 @@ class BatchController extends Controller
 
         // Employés actifs pour l'affectation en masse du responsable (barre
         // d'action de la liste, réservée à elevage.M).
-        $employees = \App\Models\Employee::where('status', 'Actif')->orderBy('last_name')->get();
+        $employees = \App\Models\Employee::assignableInCurrentFarm()->orderBy('last_name')->get();
 
         return view('batches.index', compact('batches', 'counts', 'familyCounts', 'familyFilter', 'employees'));
     }
@@ -208,7 +208,7 @@ class BatchController extends Controller
         $normModels  = ProductionNorm::with('species:id,slug')
             ->select('species_id', 'model_name', 'batch_type')->distinct()->get();
         $protocols   = Protocol::all();
-        $employees   = Employee::where('status', 'Actif')->orderBy('last_name')->get();
+        $employees   = Employee::assignableInCurrentFarm()->orderBy('last_name')->get();
         $providers   = Provider::where('status', 'Actif')->orderBy('name')->get();
         $activeSpecies = Species::active()->with('productionTypes:id,species_id,slug,name_fr,cycle_days_default,kpi_primary')
             ->orderBy('sort_order')->get();
@@ -367,7 +367,7 @@ class BatchController extends Controller
         $batch->load('species.productionTypes');
 
         $buildings     = Building::physical()->orderBy('name')->get();
-        $employees     = Employee::where('status', 'Actif')->get();
+        $employees     = Employee::assignableInCurrentFarm()->get();
         $providers     = Provider::where('status', 'Actif')->get();
         $protocols     = Protocol::all();
         // Souches limitées à l'espèce du lot (+ souches génériques sans espèce).

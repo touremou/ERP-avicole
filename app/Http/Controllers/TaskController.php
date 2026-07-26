@@ -103,7 +103,7 @@ class TaskController extends Controller
         ]);
 
         // FarmScope s'applique automatiquement sur ces modèles
-        $employees = Employee::where('status', 'Actif')->orderBy('first_name')->get();
+        $employees = Employee::assignableInCurrentFarm()->orderBy('first_name')->get();
         $buildings = Building::physical()->orderBy('name')->get();
         $filteredEmployee = $employeeId ? Employee::find($employeeId) : null;
 
@@ -271,7 +271,7 @@ class TaskController extends Controller
         if (Gate::denies('rh.M')) return back()->with('error', 'Non autorisé.');
         if ($task->status === 'fait') return back()->with('error', 'Impossible de modifier une tâche terminée.');
 
-        $employees = Employee::where('status', 'Actif')->orderBy('first_name')->get();
+        $employees = Employee::assignableInCurrentFarm()->orderBy('first_name')->get();
         $buildings = Building::physical()->orderBy('name')->get();
 
         return view('tasks.edit', compact('task', 'employees', 'buildings'));
