@@ -135,6 +135,7 @@ export const en: Record<string, string> = {
   'materiels': 'equipment',
   // Écran Tâches
   'Mes tâches': 'My tasks',
+  'Tâches': 'Tasks', // entrée de la barre de navigation
   ':count tâche(s) en cours': ':count task(s) in progress',
   'Nouvelle tâche': 'New task',
   'Nouvelle tâche : :title': 'New task: :title',

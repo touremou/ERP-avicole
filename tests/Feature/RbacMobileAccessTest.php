@@ -144,3 +144,50 @@ test('chaque écran de la PWA déclare un droit d’accès', function () {
     expect(array_values($undeclared))->toBe([], "Écran(s) sans droit déclaré :\n  " . implode("\n  ", $undeclared));
     expect(count($screens[1]))->toBeGreaterThan(40); // garde-fou : la table n'a pas été vidée
 });
+
+test('chaque entrée de la barre de navigation mobile respecte le droit de sa route', function () {
+    /*
+     * Une entrée de menu qui mène à « Accès refusé » est pire qu'une entrée
+     * absente : l'agent la voit, la touche, et se croit privé d'un droit qu'on ne
+     * lui a jamais donné. La barre du bas doit donc consulter la MÊME table que
+     * la garde d'écran (ROUTE_ACCESS), pas recopier la condition.
+     *
+     * Ce test échoue si quelqu'un ajoute un onglet vers un écran gardé sans le
+     * conditionner — l'entrée « Tâches » (@owner : fiche employé requise) est le
+     * premier cas du genre.
+     */
+    $nav = file_get_contents(repoPath('mobile/src/ui/BottomNav.tsx'));
+    $access = file_get_contents(repoPath('mobile/src/offline/access.ts'));
+
+    $start = strpos($access, 'export const ROUTE_ACCESS');
+    preg_match_all(
+        "/'([^']+)':\s*'([^']+)'/",
+        substr($access, $start, strpos($access, '} as const', $start) - $start),
+        $rm,
+        PREG_SET_ORDER
+    );
+    $declared = array_column($rm, 2, 1);
+
+    preg_match_all('/<NavLink\s+to="([^"]+)"/', $nav, $m);
+    expect($m[1])->not->toBeEmpty('Aucune entrée de navigation trouvée : le test ne vérifierait rien.');
+
+    $problems = [];
+
+    foreach (array_unique($m[1]) as $path) {
+        if (! isset($declared[$path])) {
+            $problems[] = "{$path} : destination absente de ROUTE_ACCESS.";
+            continue;
+        }
+
+        // '@self' = ouvert à tout compte connecté : aucune condition nécessaire.
+        if ($declared[$path] === '@self') {
+            continue;
+        }
+
+        if (! str_contains($nav, "ROUTE_ACCESS['{$path}']")) {
+            $problems[] = "{$path} (droit « {$declared[$path]} ») : entrée affichée sans consulter ROUTE_ACCESS['{$path}'].";
+        }
+    }
+
+    expect($problems)->toBe([], "Barre de navigation mobile :\n  " . implode("\n  ", $problems));
+});
