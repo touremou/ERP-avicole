@@ -155,7 +155,26 @@
 
             {{-- LISTE DES TEMPLATES --}}
             @php
-                $grouped = $templates->groupBy('category');
+                /*
+                 * FILTRE ACTIFS / CATALOGUE. Les modèles d'activités de ferme
+                 * (traite, pisciculture, couvoir, moulin, caisse…) sont livrés
+                 * INACTIFS : les activer d'office remplirait le calendrier de
+                 * tâches pour des ateliers que la ferme n'a pas, et gonflerait le
+                 * dénominateur du taux de complétion au point de le rendre
+                 * inatteignable. Ils forment donc une bibliothèque à activer —
+                 * mais mélangés aux actifs, ils noient l'écran. D'où ce filtre.
+                 */
+                $view = request('vue', 'actifs');
+                $activeCount = $templates->where('is_active', true)->count();
+                $catalogueCount = $templates->where('is_active', false)->count();
+
+                $shown = match ($view) {
+                    'catalogue' => $templates->where('is_active', false),
+                    'tous'      => $templates,
+                    default     => $templates->where('is_active', true),
+                };
+
+                $grouped = $shown->groupBy('category');
                 $catMeta = [
                     'alimentation' => ['label' => __('Alimentation'),  'icon' => 'fa-bowl-food',          'color' => 'amber'],
                     'collecte'     => ['label' => __('Collecte'),      'icon' => 'fa-egg',                'color' => 'emerald'],
@@ -169,11 +188,47 @@
                     'fertilisation'=> ['label' => __('Fertilisation'), 'icon' => 'fa-flask',              'color' => 'green'],
                     'recolte'      => ['label' => __('Récolte'),       'icon' => 'fa-basket-shopping',    'color' => 'emerald'],
                     'semis'        => ['label' => __('Semis'),         'icon' => 'fa-seedling',           'color' => 'lime'],
+                    'releve_eau'    => ['label' => __('Relevés eau'),   'icon' => 'fa-water',              'color' => 'cyan'],
+                    'releve_energie'=> ['label' => __('Relevés énergie'), 'icon' => 'fa-bolt',             'color' => 'yellow'],
                 ];
                 $dayLabels = [1 => __('L'), 2 => __('M'), 3 => __('Me'), 4 => __('J'), 5 => __('V'), 6 => __('S'), 7 => __('D')];
             @endphp
 
+            {{-- Sélecteur de vue --}}
+            <div class="flex flex-wrap gap-2 mb-5 text-left">
+                @foreach([
+                    'actifs'    => [__('Actifs'), $activeCount, 'emerald'],
+                    'catalogue' => [__('Catalogue à activer'), $catalogueCount, 'amber'],
+                    'tous'      => [__('Tous'), $templates->count(), 'slate'],
+                ] as $key => [$label, $count, $colour])
+                    <a href="{{ route('tasks.templates', ['vue' => $key]) }}"
+                       class="no-underline px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all {{ $view === $key ? "bg-{$colour}-600 text-white shadow-lg" : 'bg-white text-slate-400 border border-slate-100 hover:bg-slate-50' }}">
+                        {{ $label }}
+                        <span class="ml-1 {{ $view === $key ? 'text-white/70' : 'text-slate-300' }}">{{ $count }}</span>
+                    </a>
+                @endforeach
+            </div>
+
+            @if($view === 'catalogue' && $catalogueCount > 0)
+                <div class="bg-amber-50 border border-amber-200 rounded-2xl p-5 mb-5 text-left">
+                    <p class="text-[10px] font-black text-amber-700 uppercase tracking-widest mb-2">
+                        <i class="fa-solid fa-lightbulb mr-1"></i>{{ __("Bibliothèque d'activités de ferme") }}
+                    </p>
+                    <p class="text-[9px] font-bold text-amber-600 leading-relaxed italic">
+                        {{ __("Activez seulement ce que votre site pratique réellement. Un modèle activé sans atelier correspondant crée des tâches que personne ne peut faire — et fait chuter le taux de complétion de vos techniciens sans qu'ils y soient pour rien.") }}
+                    </p>
+                    <p class="text-[9px] font-bold text-amber-600 leading-relaxed italic mt-2">
+                        {{ __("Les modèles ciblés par type de lot (traite, pisciculture, couvoir) restent silencieux tant qu'aucun lot du type concerné n'est actif : ceux-là sont sans risque.") }}
+                    </p>
+                </div>
+            @endif
+
             <div class="space-y-5 text-left">
+                @if($grouped->isEmpty())
+                    <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-10 text-center">
+                        <p class="text-[10px] font-black text-slate-400 uppercase italic">{{ __("Aucun modèle dans cette vue.") }}</p>
+                    </div>
+                @endif
                 @foreach($grouped as $cat => $items)
                 @php $meta = $catMeta[$cat] ?? ['label' => $cat, 'icon' => 'fa-circle', 'color' => 'slate']; @endphp
                 <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
