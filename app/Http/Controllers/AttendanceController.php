@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Hr\RecordAttendance;
 use App\Models\Employee;
 use App\Models\EmployeeAttendance;
 use App\Models\EmployeeLeave;
@@ -73,34 +74,17 @@ class AttendanceController extends Controller
         ]);
 
         $date = $data['date'];
-        $count = 0;
 
-        foreach ($data['status'] as $employeeId => $status) {
-            if (! Employee::whereKey($employeeId)->exists()) {
-                continue; // anti-injection
-            }
+        // La règle de pointage vit dans l'Action, partagée avec le terrain
+        // hors-ligne (SyncService::attendanceCreate) : une seule vérité.
+        $rows = collect($data['status'])
+            ->map(fn ($status, $employeeId) => ['employee_id' => (int) $employeeId, 'status' => $status])
+            ->values()->all();
 
-            // whereDate() compare la DATE seule : robuste que la colonne stocke
-            // « Y-m-d » (MySQL) ou « Y-m-d 00:00:00 » (sqlite via le cast date).
-            $record = EmployeeAttendance::where('employee_id', (int) $employeeId)
-                ->whereDate('attendance_date', $date)
-                ->first();
-
-            if ($record) {
-                $record->update(['status' => $status, 'recorded_by' => Auth::id()]);
-            } else {
-                EmployeeAttendance::create([
-                    'employee_id'     => (int) $employeeId,
-                    'attendance_date' => $date,
-                    'status'          => $status,
-                    'recorded_by'     => Auth::id(),
-                ]);
-            }
-            $count++;
-        }
+        $result = app(RecordAttendance::class)->execute($date, $rows, Auth::id());
 
         return redirect()->route('attendance.index', ['date' => $date])
-            ->with('success', "Présence enregistrée pour {$count} employé(s).");
+            ->with('success', "Présence enregistrée pour {$result['saved']} employé(s).");
     }
 
     /** Rapport de présence par employé sur une période. */

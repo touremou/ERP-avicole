@@ -31,6 +31,10 @@ class SyncController extends Controller
      * Colonnes exposées au terrain par entité (liste blanche stricte —
      * on ne sérialise JAMAIS un modèle entier vers l'extérieur).
      *
+     * Clés : model, columns (liste blanche), gate (slug ou liste any-of),
+     * scope (périmètre sur le modèle), append (attributs dérivés), with
+     * (relations préchargées pour ces attributs).
+     *
      * @var array<string, array{model: class-string, columns: array<int, string>}>
      */
     private const PULL_ENTITIES = [
@@ -56,7 +60,10 @@ class SyncController extends Controller
         'clients' => [
             'model'   => Client::class,
             'gate'    => 'commerce.L',
-            'columns' => ['id', 'client_id', 'name', 'category', 'phone', 'balance', 'status', 'updated_at'],
+            // price_list_id (M6) : le POS mobile re-tarife tout l'écran au
+            // changement de client, hors réseau — l'AJAX web ne peut pas.
+            'columns' => ['id', 'client_id', 'name', 'category', 'price_list_id', 'phone',
+                          'balance', 'status', 'updated_at'],
         ],
         // M5 — Couvoir : cycles d'incubation OUVERTS (mirage/éclosion se font
         // en salle). Les cycles clos ne servent plus au terrain.
@@ -82,12 +89,14 @@ class SyncController extends Controller
             'gate'    => 'provenderie.L',
             'columns' => ['id', 'name', 'type', 'capacity_per_hour', 'status', 'updated_at'],
         ],
-        // M4 — Employés actifs : superviseur d'un OP (et, plus tard, présence).
+        // M4/M6 — Employés actifs : superviseur d'un OP, et grille de présence.
         // Colonnes strictement nominatives : ni salaire, ni contrat, ni contact
         // d'urgence ne descendent sur un téléphone de terrain.
+        // Gate any-of : qui pointe la présence (rh.C) doit recevoir la liste,
+        // même sans lecture RH explicite (rh.L).
         'employees' => [
             'model'   => \App\Models\Employee::class,
-            'gate'    => ['provenderie.L', 'elevage.L'],
+            'gate'    => ['provenderie.L', 'elevage.L', 'rh.L', 'rh.C'],
             'columns' => ['id', 'employee_id', 'first_name', 'last_name', 'job_title', 'status', 'updated_at'],
             'scope'   => 'activeForSync',
         ],
@@ -121,7 +130,37 @@ class SyncController extends Controller
         'products' => [
             'model'   => Product::class,
             'gate'    => 'commerce.L',
-            'columns' => ['id', 'name', 'sku', 'product_type', 'unit', 'base_price', 'is_active', 'updated_at'],
+            'columns' => ['id', 'name', 'sku', 'product_type', 'unit', 'base_price',
+                          'stock_id', 'is_favorite', 'is_active', 'updated_at'],
+            // available_quantity (M6) : le stock vendable, pour clamper le
+            // panier au terrain. Descendu ICI et pas via `stocks` — un vendeur a
+            // commerce.L sans forcément logistique.L, il ne recevrait rien.
+            // null = article non suivi en stock (vendable librement).
+            'append'  => ['available_quantity'],
+            'with'    => ['stock'],
+        ],
+        // M6 — Tarifs par palier client (détail / demi-gros / grossiste). Le web
+        // les résout par AJAX (sales.catalog-prices) ; au terrain il faut la
+        // table pour appliquer la même cascade hors réseau.
+        'sale_price_lists' => [
+            'model'   => \App\Models\SalePriceList::class,
+            'gate'    => 'commerce.L',
+            'columns' => ['id', 'name', 'is_default', 'updated_at'],
+        ],
+        'sale_price_list_items' => [
+            'model'   => \App\Models\SalePriceListItem::class,
+            'gate'    => 'commerce.L',
+            'columns' => ['id', 'sale_price_list_id', 'product_id', 'product_type', 'unit_price', 'updated_at'],
+            'scope'   => 'forFarmSync',
+        ],
+        // M6 — Congés validés courants : le pointage mobile ne doit pas déclarer
+        // présent un employé en congé (parité avec le pré-remplissage web).
+        // Aucun motif ne descend : ni type, ni raison, ni validateur.
+        'employee_leaves' => [
+            'model'   => \App\Models\EmployeeLeave::class,
+            'gate'    => ['rh.L', 'rh.C'],
+            'columns' => ['id', 'employee_id', 'start_date', 'end_date', 'status', 'updated_at'],
+            'scope'   => 'currentForSync',
         ],
         // Référentiel global (non borné ferme) : permet au client de savoir
         // quel lot est en ponte (tâche « collecte d'œufs ») sans dupliquer la
@@ -266,6 +305,13 @@ class SyncController extends Controller
             // sur le modèle, jamais dans le contrôleur.
             if (! empty($config['scope'])) {
                 $query->{$config['scope']}();
+            }
+
+            // Relation(s) préchargée(s) : un attribut dérivé qui traverse une
+            // relation (ex. products.available_quantity → stock) ferait sinon
+            // une requête PAR enregistrement.
+            if (! empty($config['with'])) {
+                $query->with($config['with']);
             }
 
             if (! empty($config['append'])) {

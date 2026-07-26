@@ -26,10 +26,11 @@ export function NouvelleSaisieScreen() {
     (canProvenderie && millProductions.length > 0) ||
     (canCultures && cropCycles.length > 0)
   const canRessources = can('ressources', 'C')
+  const canRh = can('rh', 'C')
   const hasQuick =
     can('commerce', 'C') || can('commerce', 'M') || can('logistique', 'M') || can('logistique', 'C') ||
     can('depenses', 'C') || abattoirC || canRessources || canElevage || can('provenderie', 'C') ||
-    canProduction
+    canProduction || canRh
   const nothing = !hasContextual && !hasQuick && !(canElevage || canProduction)
 
   return (
@@ -133,6 +134,12 @@ export function NouvelleSaisieScreen() {
             <Link to="/elevage/traite" className="task-card">
               <span className="task-title">🥛 {t('Traite du jour')}</span>
               <span className="task-meta">{t('matin · soir')}</span>
+            </Link>
+          )}
+          {canRh && (
+            <Link to="/rh/presence" className="task-card">
+              <span className="task-title">🧑‍🌾 {t('Présence du jour')}</span>
+              <span className="task-meta">{t('toute l’équipe · 1 validation')}</span>
             </Link>
           )}
           {canRessources && (

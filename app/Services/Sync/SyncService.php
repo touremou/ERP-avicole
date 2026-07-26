@@ -80,6 +80,7 @@ class SyncService
             'milk_production.create' => 'milkProductionCreate',
             'energy_reading.create'  => 'energyReadingCreate',
             'water_reading.create'   => 'waterReadingCreate',
+            'attendance.create'      => 'attendanceCreate',
             'expense.create'         => 'expenseCreate',
             'batch.upsert'           => 'batchUpsert',
             'health_incident.create' => 'healthIncidentCreate',
@@ -577,6 +578,50 @@ class SyncService
         Log::info("Sync: relevé eau citerne #{$data['water_source_id']} du {$data['reading_date']}.");
 
         return ['status' => 'success', 'server_id' => $reading->id];
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    //  PRÉSENCE (M6) — grille de pointage du jour saisie AU RASSEMBLEMENT du
+    //  matin, où qu'il ait lieu (pas au bureau). Une op = une journée entière,
+    //  comme la grille web : c'est UN acte de pointage, pas N saisies.
+    //  Réutilise RecordAttendance ; idempotent par (employé, jour) — donc un
+    //  rejeu, ou une correction du soir, réécrit sans dupliquer.
+    // ─────────────────────────────────────────────────────────────
+    private function attendanceCreate(array $payload): array
+    {
+        if (Gate::denies('rh.C')) {
+            return $this->denied();
+        }
+
+        $v = Validator::make($payload, [
+            'uuid'                 => 'required|uuid',
+            'attendance_date'      => 'required|date|before_or_equal:today',
+            'rows'                 => 'required|array|min:1|max:300',
+            'rows.*.employee_id'   => ['required', 'integer', $this->farmScopedExists('employees')],
+            'rows.*.status'        => ['required', Rule::in(array_keys(\App\Models\EmployeeAttendance::STATUSES))],
+            'rows.*.check_in_time' => 'nullable|date_format:H:i',
+        ]);
+
+        if ($v->fails()) {
+            return $this->invalid($v->errors()->toArray());
+        }
+
+        $data = $v->validated();
+
+        // Un employé ne peut pas avoir deux statuts le même jour : le doublon
+        // vient d'une file corrompue, pas d'une intention — on refuse en bloc
+        // plutôt que de laisser le dernier gagner silencieusement.
+        $ids = array_column($data['rows'], 'employee_id');
+        if (count($ids) !== count(array_unique($ids))) {
+            return $this->invalid(['rows' => [__('Un employé apparaît deux fois dans la grille.')]]);
+        }
+
+        $result = app(\App\Actions\Hr\RecordAttendance::class)
+            ->execute($data['attendance_date'], $data['rows'], Auth::id());
+
+        Log::info("Sync: présence du {$data['attendance_date']} — {$result['saved']} employé(s) pointé(s).");
+
+        return ['status' => 'success', 'saved' => $result['saved']];
     }
 
     // ─────────────────────────────────────────────────────────────

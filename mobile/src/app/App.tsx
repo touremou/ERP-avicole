@@ -46,6 +46,7 @@ import { MillJournalScreen } from '../features/provenderie/MillJournalScreen'
 import { MonEspaceScreen } from '../features/mon-espace/MonEspaceScreen'
 import { WaterRefillScreen } from '../features/ressources/WaterRefillScreen'
 import { MeterReadingScreen } from '../features/ressources/MeterReadingScreen'
+import { AttendanceScreen } from '../features/rh/AttendanceScreen'
 import { AppareilsScreen } from '../features/appareils/AppareilsScreen'
 import { TachesScreen } from '../features/taches/TachesScreen'
 import { NotificationsScreen } from '../features/notifications/NotificationsScreen'
@@ -132,6 +133,7 @@ function Shell() {
           <Route path="/logistique/mouvement" element={<StockMovementScreen />} />
           <Route path="/ressources/ravitaillement" element={<WaterRefillScreen />} />
           <Route path="/ressources/releve" element={<MeterReadingScreen />} />
+          <Route path="/rh/presence" element={<AttendanceScreen />} />
           <Route path="/logistique/stocks" element={<StocksScreen />} />
           <Route path="/logistique/inventaire" element={<InventoryCountScreen />} />
           <Route path="/logistique/reception-aliment" element={<FeedReceptionScreen />} />

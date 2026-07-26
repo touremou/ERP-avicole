@@ -70,6 +70,7 @@ export type OperationType =
   | 'milk_production.create'
   | 'energy_reading.create'
   | 'water_reading.create'
+  | 'attendance.create'
   | 'mill_production.complete'
   // Phase 3 — cœur sanitaire HACCP abattoir.
   | 'slaughter_reception.create'
@@ -143,6 +144,10 @@ export interface PullResponse {
     // M5 — couvoir et sources d'énergie.
     incubations?: PullEntity<RefIncubation>
     energy_sources?: PullEntity<RefEnergySource>
+    // M6 — tarifs par palier client (POS hors réseau) et congés validés.
+    sale_price_lists?: PullEntity<RefSalePriceList>
+    sale_price_list_items?: PullEntity<RefSalePriceListItem>
+    employee_leaves?: PullEntity<RefEmployeeLeave>
   }
 }
 
@@ -266,6 +271,8 @@ export interface RefClient {
   client_id: string | null
   name: string
   category: string | null
+  /** Tarif rattaché au client (M6) — pilote la cascade de prix du POS. */
+  price_list_id?: number | null
   phone: string | null
   balance: number
   status: string | null
@@ -279,7 +286,42 @@ export interface RefProduct {
   product_type: string
   unit: string | null
   base_price: number
+  stock_id?: number | null
+  is_favorite?: boolean
+  /** Stock vendable (M6) — null = article non suivi, vendable librement. */
+  available_quantity?: number | null
   is_active: boolean
+  updated_at: string
+}
+
+/** Groupe de prix (tarif) rattachable à un client — M6. */
+export interface RefSalePriceList {
+  id: number
+  name: string
+  is_default: boolean
+  updated_at: string
+}
+
+/**
+ * Ligne de tarif : soit par ARTICLE (product_id défini), soit par CATÉGORIE
+ * (product_id null + product_type). La cascade est appliquée côté terrain.
+ */
+export interface RefSalePriceListItem {
+  id: number
+  sale_price_list_id: number
+  product_id: number | null
+  product_type: string | null
+  unit_price: number
+  updated_at: string
+}
+
+/** Congé validé courant — le pointage ne déclare pas présent un absent justifié. */
+export interface RefEmployeeLeave {
+  id: number
+  employee_id: number
+  start_date: string
+  end_date: string
+  status: string
   updated_at: string
 }
 

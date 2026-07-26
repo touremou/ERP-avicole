@@ -950,4 +950,41 @@ export const en: Record<string, string> = {
   '🧪 Intrant — :crop': '🧪 Input — :crop',
   '🧪 Saisir un intrant plutôt': '🧪 Record an input instead',
   '🧾 Dépense terrain': '🧾 Field expense',
+  // ── M6 — présence employés & parité POS ──
+  'Présence du jour': 'Today\u2019s attendance',
+  'toute l\u2019équipe · 1 validation': 'the whole team · 1 confirmation',
+  'Tout le monde est présent par défaut — ne touchez que les exceptions.':
+    'Everyone is present by default — only touch the exceptions.',
+  'Aucun employé en local — synchronisez d\u2019abord (droit RH requis).':
+    'No employees stored locally — sync first (HR permission required).',
+  ':worked présents · :absent absents · :conge en congé':
+    ':worked present · :absent absent · :conge on leave',
+  'congé validé': 'approved leave',
+  'Présent': 'Present',
+  'Retard': 'Late',
+  'Absent': 'Absent',
+  'Congé': 'On leave',
+  'Valider la présence (:n personnes)': 'Confirm attendance (:n people)',
+  '✓ Présence enregistrée (:n personnes)': '✓ Attendance saved (:n people)',
+  'Le registre RH sera consolidé au push.': 'The HR register will be consolidated on push.',
+  'Présence du :date — :n présents / :total': 'Attendance on :date — :n present / :total',
+  'Tarif appliqué : :name': 'Price list applied: :name',
+  'Code PLU ou nom d\u2019article…': 'PLU code or item name…',
+  'Code PLU ou nom d\u2019article': 'PLU code or item name',
+  'Aucun article ne correspond à « :q ».': 'No item matches \u201c:q\u201d.',
+  ':name — stock non suivi': ':name — stock not tracked',
+  ':name — :n :unit disponibles': ':name — :n :unit available',
+  'Pesée — brut − tare (:unit)': 'Weighing — gross − tare (:unit)',
+  'Brut': 'Gross',
+  'Tare (bac)': 'Tare (crate)',
+  'Diminuer': 'Decrease',
+  'Augmenter': 'Increase',
+  '⚠️ Stock insuffisant : :n :unit disponibles seulement.':
+    '⚠️ Not enough stock: only :n :unit available.',
+  'Prix unitaire (par :unit)': 'Unit price (per :unit)',
+  'Ligne : :amount': 'Line: :amount',
+  '⚠️ :unit se vend par unité entière — pas de décimale.':
+    '⚠️ :unit is sold in whole units — no decimals.',
+  'épuisé': 'out of stock',
+  '⚠️ :name est épuisé — rien à vendre.': '⚠️ :name is out of stock — nothing to sell.',
 }

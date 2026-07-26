@@ -164,6 +164,22 @@ const RULES: Partial<Record<OperationType, Validator>> = {
     optNum(p, 'chlorine_level', 'Chlore', e, 0, 10)
     return e
   },
+  'attendance.create': (p) => {
+    const e: string[] = []
+    reqDate(p, 'attendance_date', 'Date', e, true)
+    const rows = Array.isArray(p.rows) ? (p.rows as Array<Record<string, unknown>>) : []
+    if (rows.length === 0) e.push('Présence : au moins un employé requis.')
+    const allowed = ['present', 'retard', 'absent', 'conge']
+    if (rows.some((r) => !allowed.includes(String(r.status)))) {
+      e.push('Statut de présence invalide.')
+    }
+    if (rows.some((r) => !Number.isFinite(Number(r.employee_id)) || Number(r.employee_id) <= 0)) {
+      e.push('Employé : identifiant manquant.')
+    }
+    const ids = rows.map((r) => Number(r.employee_id))
+    if (new Set(ids).size !== ids.length) e.push('Un employé apparaît deux fois dans la grille.')
+    return e
+  },
   'mill_production.create': (p) => {
     const e: string[] = []
     reqId(p, 'formula_id', 'Formule', e)
