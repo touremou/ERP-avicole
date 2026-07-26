@@ -47,10 +47,26 @@
     };
 @endphp
 
+@php
+    /*
+     * Une page ne doit porter QU'UNE flèche de retour. Le layout rend déjà
+     * <x-hub-back /> à gauche de l'en-tête ; une page qui passe en plus `:back`
+     * en affichait DEUX, parfois vers des destinations différentes — le
+     * lecteur ne sait alors plus laquelle remonte où.
+     *
+     * On signale ici que cet en-tête porte sa propre flèche. Le contenu du slot
+     * `header` est rendu AVANT le corps du layout, donc hub-back lira ce drapeau
+     * et s'effacera : la flèche explicite de la page, plus précise, gagne.
+     */
+    if ($back) {
+        app()->instance('page-header.has-back', true);
+    }
+@endphp
+
 <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 text-left w-full">
     <div class="flex items-center gap-4">
         @if($back)
-            <a href="{{ $back }}" class="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 text-slate-500 hover:text-slate-800 rounded-xl transition-all shadow-sm no-underline flex-shrink-0">
+            <a href="{{ $back }}" data-back="page" class="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 text-slate-500 hover:text-slate-800 rounded-xl transition-all shadow-sm no-underline flex-shrink-0">
                 <i class="fas fa-chevron-left text-xs"></i>
             </a>
         @endif

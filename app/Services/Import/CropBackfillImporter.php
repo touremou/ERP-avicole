@@ -103,7 +103,8 @@ class CropBackfillImporter
             if (! in_array($row['plot_code'], $knownPlots, true)) {
                 $errors[] = [
                     'sheet' => 'Cycles', 'line' => $row['_line'],
-                    'message' => "code_parcelle « {$row['plot_code']} » inconnu : il n'est ni dans l'onglet Parcelles, ni déjà enregistré.",
+                    'message' => "code_parcelle « {$row['plot_code']} » inconnu. "
+                        . $this->howToFix('parcelle', 'Parcelles', $knownPlots),
                 ];
             }
         }
@@ -117,7 +118,8 @@ class CropBackfillImporter
                 if (! in_array($row['cycle_code'], $knownCycles, true)) {
                     $errors[] = [
                         'sheet' => $title, 'line' => $row['_line'],
-                        'message' => "code_cycle « {$row['cycle_code']} » inconnu : il n'est ni dans l'onglet Cycles, ni déjà enregistré.",
+                        'message' => "code_cycle « {$row['cycle_code']} » inconnu. "
+                            . $this->howToFix('cycle', 'Cycles', $knownCycles),
                     ];
                 }
             }
@@ -272,6 +274,42 @@ class CropBackfillImporter
      * @param  array<int, array{sheet: string, line: int, message: string}>  $errors
      * @return array<int, array<string, mixed>>
      */
+    /**
+     * Message d'erreur ACTIONNABLE pour un code de liaison introuvable.
+     *
+     * « code_cycle inconnu » ne dit pas quoi faire. Le cas observé sur le
+     * terrain : le technicien recopie un code depuis l'onglet EXEMPLES
+     * (GOM-2026-01), croit donc qu'il « existe bien dans le fichier », et ne
+     * voit pas qu'aucune ligne ne le déclare. On énonce donc les deux issues
+     * réelles, et on CITE les codes valides — c'est ce qui permet de corriger
+     * sans nous appeler.
+     *
+     * @param  array<int, string>  $known
+     */
+    private function howToFix(string $kind, string $sheet, array $known): string
+    {
+        $entity = $kind === 'cycle' ? 'ce cycle' : 'cette parcelle';
+
+        $message = "Deux façons de corriger : ajoutez une ligne dans l'onglet « {$sheet} » "
+            . "pour déclarer {$entity}, ou reprenez un code existant.";
+
+        $valid = array_values(array_filter($known));
+        sort($valid);
+
+        if ($valid === []) {
+            return $message . " Aucun code n'est encore enregistré : commencez par remplir l'onglet « {$sheet} ».";
+        }
+
+        $shown = array_slice($valid, 0, 8);
+        $message .= ' Codes disponibles : ' . implode(', ', $shown);
+        $message .= count($valid) > count($shown)
+            ? ' … (liste complète dans l\'onglet « References »).'
+            : '.';
+
+        // Le piège précis : les codes d'EXEMPLE ressemblent à de vrais codes.
+        return $message . " Attention : les codes de l'onglet « Exemples » ne sont pas des données, ils ne comptent pas.";
+    }
+
     private function readSheet(array $raw, string $title, string $key, array &$errors): array
     {
         $rows = [];
