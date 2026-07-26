@@ -76,7 +76,7 @@ class CropCycleController extends Controller
         return view('cultures.cycles.create', [
             'plots'     => $plots,
             'plotData'  => $plotData,
-            'employees' => Employee::where('status', 'Actif')->orderBy('first_name')->get(['id', 'first_name', 'last_name']),
+            'employees' => Employee::assignableInCurrentFarm()->orderBy('first_name')->get(['id', 'first_name', 'last_name']),
             'campaigns' => CropCampaign::where('status', '!=', CropCampaign::STATUS_CLOTUREE)->orderByDesc('start_date')->get(['id', 'name', 'year']),
             'species'   => CropSpecies::active()->with('varieties:id,crop_species_id,name,cycle_days,avg_yield_tha')->orderBy('name')->get(),
             'protocols' => CropProtocol::active()->orderBy('name')->get(['id', 'name', 'crop_name']),
@@ -180,7 +180,7 @@ class CropCycleController extends Controller
             'monitoring' => $monitoring,
             'qualities'  => Harvest::QUALITIES,
             'inputTypes' => CropInput::TYPES,
-            'employees'  => Employee::where('status', 'Actif')->orderBy('first_name')->get(['id', 'first_name', 'last_name']),
+            'employees'  => Employee::assignableInCurrentFarm()->orderBy('first_name')->get(['id', 'first_name', 'last_name']),
             'providers'  => Provider::orderBy('name')->get(['id', 'name']),
             // Intrants en stock proposables au déstockage depuis une étape.
             'intrantStocks' => Stock::where('category', Stock::CAT_INTRANTS)
@@ -483,7 +483,7 @@ class CropCycleController extends Controller
         return view('cultures.cycles.edit', [
             'cycle'     => $cropCycle,
             'campaigns' => CropCampaign::orderByDesc('start_date')->get(['id', 'name', 'year']),
-            'employees' => Employee::where('status', 'Actif')->orderBy('first_name')->get(['id', 'first_name', 'last_name']),
+            'employees' => Employee::assignableInCurrentFarm()->orderBy('first_name')->get(['id', 'first_name', 'last_name']),
             'statuses'  => CropCycle::EDITABLE_STATUSES,
             'species'   => CropSpecies::active()->with('varieties:id,crop_species_id,name,cycle_days,avg_yield_tha')->orderBy('name')->get(),
             'protocols' => CropProtocol::active()->orderBy('name')->get(['id', 'name', 'crop_name']),
@@ -506,7 +506,7 @@ class CropCycleController extends Controller
         return view('cultures.cycles.harvests.create', [
             'cycle'     => $cropCycle,
             'qualities' => Harvest::QUALITIES,
-            'employees' => Employee::where('status', 'Actif')->orderBy('first_name')->get(['id', 'first_name', 'last_name']),
+            'employees' => Employee::assignableInCurrentFarm()->orderBy('first_name')->get(['id', 'first_name', 'last_name']),
         ]);
     }
 
@@ -523,7 +523,7 @@ class CropCycleController extends Controller
             'cycle'     => $cropCycle,
             'harvest'   => $harvest,
             'qualities' => Harvest::QUALITIES,
-            'employees' => Employee::where('status', 'Actif')->orderBy('first_name')->get(['id', 'first_name', 'last_name']),
+            'employees' => Employee::assignableInCurrentFarm()->orderBy('first_name')->get(['id', 'first_name', 'last_name']),
         ]);
     }
 

@@ -66,7 +66,7 @@ class PosController extends Controller
 
         // Vendeurs nominatifs (façon balance : boutons prénom). Optionnel —
         // sans employés actifs (palier sans annuaire), la rangée est absente.
-        $sellers = \App\Models\Employee::where('status', 'Actif')
+        $sellers = \App\Models\Employee::assignableInCurrentFarm()
             ->orderBy('first_name')
             ->get()
             ->map(fn ($e) => ['id' => $e->id, 'name' => trim("{$e->first_name} " . mb_substr((string) $e->last_name, 0, 1) . '.')])

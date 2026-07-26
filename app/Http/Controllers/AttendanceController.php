@@ -29,7 +29,7 @@ class AttendanceController extends Controller
 
         $date = $this->resolveDate($request->input('date'));
 
-        $employees = Employee::active()->orderBy('first_name')->get();
+        $employees = Employee::assignableInCurrentFarm()->orderBy('first_name')->get();
 
         // Pointages déjà saisis ce jour, indexés par employé.
         $existing = EmployeeAttendance::whereDate('attendance_date', $date)
@@ -160,7 +160,7 @@ class AttendanceController extends Controller
      */
     private function buildReport(string $from, string $to): \Illuminate\Support\Collection
     {
-        $employees = Employee::active()->orderBy('first_name')->get();
+        $employees = Employee::assignableInCurrentFarm()->orderBy('first_name')->get();
 
         $attendance = EmployeeAttendance::between($from, $to)->get()->groupBy('employee_id');
 

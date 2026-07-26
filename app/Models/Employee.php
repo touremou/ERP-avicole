@@ -150,10 +150,15 @@ class Employee extends Model
     /**
      * Employés descendus au terrain (M4) : uniquement les ACTIFS — un mobile
      * n'a pas à connaître les sortants, et la liste reste courte.
+     *
+     * Même règle d'attribution que le web (assignableInCurrentFarm) : sans elle,
+     * un agent prêté serait sélectionnable sur l'ordinateur et absent du
+     * téléphone. Une divergence entre les deux supports est le pire des cas —
+     * le terrain conclut que « le mobile a perdu des employés ».
      */
     public function scopeActiveForSync($query)
     {
-        return $query->where('status', 'Actif');
+        return $query->assignableInCurrentFarm();
     }
 
     public function scopeByDepartment($query, $dept)
@@ -181,7 +186,12 @@ class Employee extends Model
     {
         $farmId = session('current_farm_id');
 
-        $query->withoutGlobalScopes();
+        // On retire le scope de FERME, et RIEN D'AUTRE. withoutGlobalScopes()
+        // emportait aussi SoftDeletes : les employés ARCHIVÉS réapparaissaient
+        // dans tous les sélecteurs « Responsable ». Les écrans qui doivent voir
+        // les archives (fiche, binding de route) le demandent explicitement par
+        // withTrashed().
+        $query->withoutGlobalScope(\App\Scopes\FarmScope::class);
 
         if (! $farmId) {
             return $query; // hors contexte multi-ferme : aucun filtre (cf. FarmScope)
@@ -194,6 +204,29 @@ class Employee extends Model
             $sub->where('farm_id', $farmId)
                 ->orWhereIn('user_id', $accessUserIds);
         });
+    }
+
+    /**
+     * Employés QUE L'ON PEUT DÉSIGNER dans les opérations de la ferme courante.
+     *
+     * Même règle que la visibilité de la fiche, restreinte aux actifs. C'est la
+     * liste des menus déroulants « Responsable », « Superviseur », « Opérateur »,
+     * « Vendeur »…
+     *
+     * Corrige la seconde moitié du défaut « agent prêté » : après avoir rendu sa
+     * fiche visible et ouvrable, il restait ABSENT de tous les sélecteurs, parce
+     * qu'ils reposaient sur le global scope de ferme. On le voyait dans
+     * l'annuaire du site où il travaille, et on ne pouvait lui attribuer aucune
+     * récolte, aucun lot, aucune tâche : visible mais inutilisable.
+     *
+     * NE CONCERNE PAS la paie ni les agrégats RH (effectif, masse salariale,
+     * indicateurs par site) : ceux-là restent strictement bornés à la ferme, car
+     * un agent prêté est payé et évalué par son site d'origine. Élargir la paie
+     * serait une décision financière, pas une correction d'affichage.
+     */
+    public function scopeAssignableInCurrentFarm($query)
+    {
+        return $query->visibleInCurrentFarm()->active();
     }
 
     // --- CONTRAT À DURÉE DÉTERMINÉE ---

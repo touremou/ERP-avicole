@@ -70,7 +70,7 @@ class CropBackfillTemplate
     {
         $species = CropSpecies::orderBy('name')->pluck('name')->filter()->take(200)->values()->all();
 
-        $employees = Employee::active()->orderBy('first_name')->get()
+        $employees = Employee::assignableInCurrentFarm()->orderBy('first_name')->get()
             ->map(fn (Employee $e) => trim($e->first_name . ' ' . $e->last_name))
             ->filter()->values()->all();
 
@@ -414,7 +414,7 @@ class CropBackfillTemplate
             ['Types d\'intrant', array_keys(CropInput::TYPES)],
             ['Qualités de récolte', Harvest::QUALITIES],
             ['Destinations de récolte', array_keys(Harvest::DESTINATIONS)],
-            ['Employés actifs', Employee::active()->orderBy('first_name')->get()
+            ['Employés actifs', Employee::assignableInCurrentFarm()->orderBy('first_name')->get()
                 ->map(fn (Employee $e) => trim($e->first_name . ' ' . $e->last_name))->filter()->values()->all()],
             ['Cultures du catalogue', CropSpecies::orderBy('name')->pluck('name')->filter()->take(200)->values()->all()],
             // CODES DÉJÀ EN BASE. Sans eux, on ne pouvait pas n'importer QUE des

@@ -44,7 +44,7 @@ class MillProductionController extends Controller
             ->orderBy('name')
             ->get();
         $machines = MillMachine::where('status', 'Opérationnel')->get();
-        $employees = Employee::where('status', 'Actif')->orderBy('last_name')->get();
+        $employees = Employee::assignableInCurrentFarm()->orderBy('last_name')->get();
 
         return view('provenderie.production.create', compact('formulas', 'machines', 'employees'));
     }

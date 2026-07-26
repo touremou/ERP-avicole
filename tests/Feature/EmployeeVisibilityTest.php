@@ -187,3 +187,97 @@ test('archiver deux fois est refusé proprement', function () {
         ->delete(route('employees.destroy', $employee->id))
         ->assertRedirect();
 });
+
+/*
+ * VISIBLE MAIS INUTILISABLE — la seconde moitié du défaut « agent prêté ».
+ *
+ * Rendre sa fiche visible et ouvrable ne suffisait pas : il restait ABSENT de
+ * tous les menus déroulants « Responsable », « Superviseur », « Opérateur »,
+ * parce qu'ils reposaient sur le global scope de ferme. On le voyait dans
+ * l'annuaire du site où il travaille, et on ne pouvait lui attribuer aucune
+ * récolte, aucun lot, aucune tâche.
+ *
+ * La frontière est nette et VOULUE : les sélecteurs d'ATTRIBUTION s'élargissent,
+ * la paie et les agrégats RH restent bornés à la ferme — un agent prêté est payé
+ * et évalué par son site d'origine.
+ */
+
+test('un agent prêté est sélectionnable dans les opérations de la ferme', function () {
+    $lent = lentEmployee(session('current_farm_id'));
+
+    // toContain() traite tout argument suivant comme une valeur ATTENDUE de plus,
+    // pas comme un message : le contexte reste donc en commentaire.
+    // Sans cette ligne : visible dans l'annuaire, absent de tous les sélecteurs.
+    expect(Employee::assignableInCurrentFarm()->pluck('id')->all())->toContain($lent->id);
+});
+
+test('les formulaires d’opération proposent bien l’agent prêté', function () {
+    $lent = lentEmployee(session('current_farm_id'));
+
+    // Un échantillon de formulaires couvrant plusieurs modules : c'est
+    // l'attribution du travail, pas de l'argent.
+    foreach ([
+        'batches.create',       // responsable de lot (élevage)
+        'crop-cycles.create',   // responsable de cycle (cultures)
+        'tasks.index',          // affectation de tâche (RH opérationnel)
+    ] as $routeName) {
+        $this->actingAs($this->adminUser)
+            ->get(route($routeName))
+            ->assertOk()
+            ->assertSee($lent->last_name, false);
+    }
+});
+
+test('un employé d’un autre site SANS accès n’est proposé nulle part', function () {
+    // Élargir l'attribution ne doit pas ouvrir les sélecteurs sur les autres
+    // sites : la règle reste celle de la visibilité, pas « tout le monde ».
+    $foreign = foreignEmployee();
+
+    expect(Employee::assignableInCurrentFarm()->pluck('id')->all())->not->toContain($foreign->id);
+
+    $this->actingAs($this->adminUser)
+        ->get(route('batches.create'))
+        ->assertOk()
+        ->assertDontSee($foreign->last_name, false);
+});
+
+test('un employé ARCHIVÉ ou inactif n’est proposé nulle part', function () {
+    $inactive = Employee::factory()->create([
+        'farm_id' => $this->farm->id, 'status' => 'Suspendu', 'contract_type' => 'CDI',
+    ]);
+    $archived = Employee::factory()->create([
+        'farm_id' => $this->farm->id, 'status' => 'Actif', 'contract_type' => 'CDI',
+    ]);
+    $archived->delete();
+
+    $assignable = Employee::assignableInCurrentFarm()->pluck('id')->all();
+
+    expect($assignable)->not->toContain($inactive->id);
+    expect($assignable)->not->toContain($archived->id);
+});
+
+test('la PAIE reste bornée à la ferme, elle ne suit pas l’attribution', function () {
+    // Frontière explicite : un agent prêté travaille ici mais est payé par son
+    // site d'origine. Élargir la paie serait une décision financière, pas une
+    // correction d'affichage — elle n'est pas prise ici.
+    $lent = lentEmployee(session('current_farm_id'));
+    $own = Employee::factory()->create([
+        'farm_id' => $this->farm->id, 'status' => 'Actif', 'contract_type' => 'CDI',
+    ]);
+
+    $paid = Employee::where('status', 'Actif')->pluck('id')->all();
+
+    expect($paid)->toContain($own->id);
+    expect($paid)->not->toContain($lent->id);
+});
+
+test('le mobile reçoit la MÊME liste que le web', function () {
+    // Une divergence entre les deux supports est le pire des cas : le terrain
+    // conclut que « le mobile a perdu des employés ».
+    $lent = lentEmployee(session('current_farm_id'));
+
+    expect(Employee::activeForSync()->pluck('id')->sort()->values()->all())
+        ->toBe(Employee::assignableInCurrentFarm()->pluck('id')->sort()->values()->all());
+
+    expect(Employee::activeForSync()->pluck('id')->all())->toContain($lent->id);
+});
