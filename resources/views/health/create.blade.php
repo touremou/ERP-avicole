@@ -104,6 +104,14 @@
                             <option value="Oculaire" {{ old('mode_administration') == 'Oculaire' ? 'selected' : '' }}>{{ __("👁️ Goutte oculaire") }}</option>
                         </select>
                     </div>
+                    {{-- DÉLAI D'ATTENTE : verrouille l'abattage du lot jusqu'à l'échéance
+                         (levée automatique à la date — cf. Batch::activeWithdrawal). --}}
+                    <div class="space-y-3">
+                        <label class="text-[10px] font-black text-rose-600 uppercase ml-2 italic tracking-widest">{{ __("Délai d'attente (jours)") }}</label>
+                        <input type="number" name="withdrawal_days" value="{{ old('withdrawal_days') }}" min="0" max="365" placeholder="{{ __('0 = aucun délai') }}"
+                               class="w-full p-5 bg-slate-50 rounded-2xl border-none font-black text-2xl text-rose-600 shadow-inner focus:ring-4 focus:ring-rose-500/10 transition italic">
+                        <p class="text-[9px] text-slate-400 font-black uppercase ml-2 italic">{{ __("Notice du produit — l'abattage du lot sera refusé avant l'échéance (résidus).") }}</p>
+                    </div>
                     <div class="space-y-3">
                         <label class="text-[10px] font-black text-emerald-600 uppercase ml-2 italic tracking-widest">{{ __("Coût de l'opération") }} ({{ currency() }})</label>
                         <div class="relative">

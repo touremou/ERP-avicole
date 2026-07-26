@@ -73,6 +73,7 @@ class SyncService
             'expense.create'         => 'expenseCreate',
             'batch.upsert'           => 'batchUpsert',
             'health_incident.create' => 'healthIncidentCreate',
+            'health_check.create'    => 'healthCheckCreate',
             // Phase 3 — cultures, abattoir, provenderie (rfc-cadrage §MoSCoW).
             'crop_cycle.create'       => 'cropCycleCreate',
             'harvest.create'          => 'harvestCreate',
@@ -504,6 +505,67 @@ class SyncService
      * multi-canaux part en best-effort, comme sur le web
      * (HealthIncidentController@store).
      */
+    // ─────────────────────────────────────────────────────────────
+    //  SOIN / VACCINATION (M1) — intervention sanitaire administrée au
+    //  bâtiment. Le DÉLAI D'ATTENTE saisi ici verrouille l'abattage du lot
+    //  jusqu'à son échéance (garde dans SlaughterService, levée automatique).
+    //  Réutilise RecordHealthIntervention (source unique avec le web).
+    // ─────────────────────────────────────────────────────────────
+    private function healthCheckCreate(array $payload): array
+    {
+        if (Gate::denies('elevage.C')) {
+            return $this->denied();
+        }
+
+        $v = Validator::make($payload, [
+            'uuid'                => 'required|uuid',
+            'batch_id'            => ['required', 'integer', $this->farmScopedExists('batches')],
+            'intervention_date'   => 'required|date|before_or_equal:today',
+            'type'                => 'required|in:Vaccin,Traitement,Vitamine,Désinfection',
+            'product_name'        => 'required|string|max:255',
+            'dosage'              => 'nullable|string|max:100',
+            'mode_administration' => 'required|string|max:100',
+            // Délai d'attente de la notice (jours) — 0/absent = pas de délai.
+            'withdrawal_days'     => 'nullable|integer|min:0|max:365',
+            'batch_number'        => 'nullable|string|max:100',
+            'expiry_date'         => 'nullable|date',
+            'cost'                => 'nullable|numeric|min:0',
+            'veterinary_name'     => 'nullable|string|max:255',
+            'observations'        => 'nullable|string|max:2000',
+        ]);
+
+        if ($v->fails()) {
+            return $this->invalid($v->errors()->toArray());
+        }
+
+        $data = $v->validated();
+
+        // Garde-fou sanitaire (miroir du web) : produit périmé au jour de
+        // l'intervention → refus définitif, pas une erreur rejouable.
+        if (! empty($data['expiry_date'])
+            && \Illuminate\Support\Carbon::parse($data['expiry_date'])->lt(\Illuminate\Support\Carbon::parse($data['intervention_date']))) {
+            return $this->invalid(['expiry_date' => [
+                __('Produit périmé au jour de l\'intervention — administration interdite.'),
+            ]]);
+        }
+
+        return DB::transaction(function () use ($data) {
+            if (\App\Models\HealthCheck::withoutGlobalScopes()->where('uuid', $data['uuid'])->exists()) {
+                return ['status' => 'already_synced'];
+            }
+
+            $check = app(\App\Actions\Health\RecordHealthIntervention::class)->execute($data);
+            $check->forceFill(['uuid' => $data['uuid']])->save();
+
+            $note = $check->isUnderWithdrawal()
+                ? " (délai d'attente jusqu'au {$check->withdrawal_until->toDateString()})"
+                : '';
+            Log::info("Sync: intervention sanitaire {$check->type} « {$check->product_name} » sur lot #{$check->batch_id}{$note}.");
+
+            return ['status' => 'success', 'server_id' => $check->id];
+        });
+    }
+
     private function healthIncidentCreate(array $payload): array
     {
         if (Gate::denies('elevage.C')) {

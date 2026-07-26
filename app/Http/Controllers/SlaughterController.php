@@ -236,6 +236,20 @@ class SlaughterController extends Controller
                         . "abattage interdit jusqu'à la levée par le circuit santé."
                 ])->withInput();
             }
+
+            // Délai d'attente en cours : on refuse l'ordre pour une date
+            // ANTÉRIEURE à l'échéance (planifier après le délai reste permis —
+            // la garde de l'exécution rejoue le contrôle à la date réelle).
+            $withdrawal = $batch->activeWithdrawal();
+            if ($withdrawal && \Illuminate\Support\Carbon::parse($validated['planned_date'])->lt($withdrawal->withdrawal_until)) {
+                return back()->withErrors([
+                    'planned_date' => __("Le lot :code est sous délai d'attente jusqu'au :date (« :product ») — planifiez l'abattage après cette échéance.", [
+                        'code'    => $batch->code,
+                        'date'    => $withdrawal->withdrawal_until->format('d/m/Y'),
+                        'product' => $withdrawal->product_name,
+                    ]),
+                ])->withInput();
+            }
         }
 
         SlaughterOrder::create(array_merge($validated, [

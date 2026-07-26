@@ -26,6 +26,9 @@ class StoreHealthCheckRequest extends FormRequest
             // antérieure au jour d'intervention ne peut pas être administré.
             'expiry_date'         => ['nullable', 'date', 'after_or_equal:intervention_date'],
             'mode_administration' => ['required', 'string', 'max:100'],
+            // Délai d'attente de la notice : verrouille l'abattage du lot
+            // jusqu'à l'échéance (0/absent = produit sans délai).
+            'withdrawal_days'     => ['nullable', 'integer', 'min:0', 'max:365'],
             'cost'                => ['nullable', 'numeric', 'min:0'],
             'veterinary_name'     => ['nullable', 'string', 'max:255'],
             'observations'        => ['nullable', 'string'],

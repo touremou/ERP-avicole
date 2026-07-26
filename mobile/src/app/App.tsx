@@ -9,6 +9,7 @@ import { NouvelleSaisieScreen } from '../features/saisie/NouvelleSaisieScreen'
 import { DailyCheckScreen } from '../features/elevage/DailyCheckScreen'
 import { EggCollectionScreen } from '../features/elevage/EggCollectionScreen'
 import { IncidentScreen } from '../features/elevage/IncidentScreen'
+import { HealthCareScreen } from '../features/elevage/HealthCareScreen'
 import { BatchScreen } from '../features/elevage/BatchScreen'
 import { ScanScreen } from '../features/scan/ScanScreen'
 import { SaleScreen } from '../features/commerce/SaleScreen'
@@ -107,6 +108,7 @@ function Shell() {
           <Route path="/elevage/pointage/:batchId?" element={<DailyCheckScreen />} />
           <Route path="/elevage/collecte/:batchId" element={<EggCollectionScreen />} />
           <Route path="/elevage/incident/:batchId" element={<IncidentScreen />} />
+          <Route path="/elevage/soin/:batchId?" element={<HealthCareScreen />} />
           <Route path="/lot/:batchId" element={<BatchScreen />} />
           <Route path="/scan" element={<ScanScreen />} />
           <Route path="/commerce/vente" element={<SaleScreen />} />

@@ -94,6 +94,13 @@ export function BatchScreen() {
         </Link>
       )}
 
+      {can('elevage', 'C') && (
+        <Link to={`/elevage/soin/${batch.id}`} className="task-card">
+          <span className="task-title">💉 {t('Soin / vaccination')}</span>
+          <span className="task-meta">{t('produit · dose · délai d’attente')}</span>
+        </Link>
+      )}
+
       {/* Consultation enrichie : indicateurs + courbe de poids + historique. */}
       <BatchHistory batchId={batch.id} />
     </div>
