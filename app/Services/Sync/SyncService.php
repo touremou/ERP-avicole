@@ -2119,6 +2119,11 @@ class SyncService
             'proof_value'      => $data['proof_value'] ?? null,
         ]);
 
+        // Boucle de retour itinéraire technique (S1) : une étape phénologique
+        // cochée au terrain est validée dans le registre du cycle — même point
+        // de vérité que le web.
+        $task->recordProtocolCompletion(Auth::id(), $data['notes'] ?? null);
+
         // Audit RH : qui a terminé, avec quelle preuve.
         $task->logLifecycle('completed', array_filter([
             'statut' => 'fait',
