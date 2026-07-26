@@ -64,9 +64,30 @@ class User extends Authenticatable
     /**
      * Fiche employé (RH) rattachée à ce compte de connexion, le cas échéant.
      */
+    /**
+     * Fiche employé rattachée à ce compte.
+     *
+     * HORS SCOPE DE FERME, et c'est le cœur du correctif : « suis-je un
+     * employé ? » est une propriété de la PERSONNE, pas du site actuellement
+     * sélectionné. Avec le scope, un technicien dont la fiche est rattachée à
+     * Kérouané perdait l'accès à SES tâches dès que l'application résolvait
+     * Kindia — le mobile affichait « votre compte n'est pas rattaché à une fiche
+     * employé » alors que le web, qui avait résolu l'autre ferme, l'affichait
+     * correctement. Même compte, même base, deux réponses.
+     *
+     * Aucune fuite : le lien est un `user_id` direct, on ne lit que SA propre
+     * fiche. Les données de la ferme (tâches, lots) restent bornées par leurs
+     * propres scopes.
+     *
+     * `employees.user_id` porte une contrainte UNIQUE : un compte n'a au plus
+     * qu'UNE fiche. Aucun départage n'est donc nécessaire — et si le mobile ne
+     * trouve rien alors que le web trouve, c'est qu'il s'agit de DEUX comptes
+     * différents pour la même personne (cf. `php artisan hr:diagnose-account`).
+     */
     public function employee(): HasOne
     {
-        return $this->hasOne(Employee::class);
+        return $this->hasOne(Employee::class)
+            ->withoutGlobalScope(\App\Scopes\FarmScope::class);
     }
 
     public function notificationPreference(): HasOne
