@@ -75,6 +75,11 @@ class SyncService
             'inventory_count.create' => 'inventoryCountCreate',
             'feed_purchase.create'   => 'feedPurchaseCreate',
             'mill_production.create' => 'millProductionCreate',
+            'incubation.mirage'      => 'incubationMirage',
+            'incubation.hatch'       => 'incubationHatch',
+            'milk_production.create' => 'milkProductionCreate',
+            'energy_reading.create'  => 'energyReadingCreate',
+            'water_reading.create'   => 'waterReadingCreate',
             'expense.create'         => 'expenseCreate',
             'batch.upsert'           => 'batchUpsert',
             'health_incident.create' => 'healthIncidentCreate',
@@ -330,6 +335,249 @@ class SyncService
     // ─────────────────────────────────────────────────────────────
     //  VENTE RAPIDE — créée en BROUILLON (validation/déstockage en ligne).
     // ─────────────────────────────────────────────────────────────
+
+    // ─────────────────────────────────────────────────────────────
+    //  COUVOIR — MIRAGE (M5) : le mirage se fait EN SALLE d'incubation,
+    //  œufs en main. Réutilise RecordMirage (taux de fertilité calculé,
+    //  statut → mirage_fait). Idempotent par mirage_uuid.
+    // ─────────────────────────────────────────────────────────────
+    private function incubationMirage(array $payload): array
+    {
+        if (Gate::denies('production.M')) {
+            return $this->denied();
+        }
+
+        $v = Validator::make($payload, [
+            'uuid'           => 'required|uuid',
+            'incubation_id'  => ['required', 'integer', $this->farmScopedExists('incubations')],
+            'fertile_eggs'   => 'required|integer|min:0',
+        ]);
+
+        if ($v->fails()) {
+            return $this->invalid($v->errors()->toArray());
+        }
+
+        $data = $v->validated();
+
+        return DB::transaction(function () use ($data) {
+            if (\App\Models\Incubation::withoutGlobalScopes()->where('mirage_uuid', $data['uuid'])->exists()) {
+                return ['status' => 'already_synced'];
+            }
+
+            $incubation = \App\Models\Incubation::find($data['incubation_id']);
+            if (! $incubation) {
+                return ['status' => 'conflict', 'message' => __('Cycle d\'incubation introuvable dans cette ferme.')];
+            }
+
+            // Plafond physique (miroir du web) : on ne peut pas mirer plus
+            // d'œufs fertiles qu'il n'y a d'œufs en machine.
+            if ($data['fertile_eggs'] > (int) $incubation->eggs_count) {
+                return $this->invalid(['fertile_eggs' => [
+                    __('Œufs fertiles (:n) supérieurs aux œufs mis à couver (:total).', [
+                        'n' => $data['fertile_eggs'], 'total' => $incubation->eggs_count,
+                    ]),
+                ]]);
+            }
+
+            try {
+                $updated = app(\App\Actions\Incubation\RecordMirage::class)->execute($incubation, $data);
+            } catch (\DomainException $e) {
+                return ['status' => 'conflict', 'message' => $e->getMessage()];
+            }
+
+            $updated->forceFill(['mirage_uuid' => $data['uuid']])->save();
+
+            Log::info("Sync: mirage {$updated->code_incubation} — {$updated->fertility_rate}% de fertilité.");
+
+            return ['status' => 'success', 'server_id' => $updated->id];
+        });
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    //  COUVOIR — ÉCLOSION (M5) : comptage des poussins à la sortie.
+    //  Réutilise RecordHatching (taux d'éclosabilité, cycle clos, incubateur
+    //  en maintenance). Idempotent par hatch_uuid.
+    // ─────────────────────────────────────────────────────────────
+    private function incubationHatch(array $payload): array
+    {
+        if (Gate::denies('production.M')) {
+            return $this->denied();
+        }
+
+        $v = Validator::make($payload, [
+            'uuid'           => 'required|uuid',
+            'incubation_id'  => ['required', 'integer', $this->farmScopedExists('incubations')],
+            'hatched_chicks' => 'required|integer|min:0',
+        ]);
+
+        if ($v->fails()) {
+            return $this->invalid($v->errors()->toArray());
+        }
+
+        $data = $v->validated();
+
+        return DB::transaction(function () use ($data) {
+            if (\App\Models\Incubation::withoutGlobalScopes()->where('hatch_uuid', $data['uuid'])->exists()) {
+                return ['status' => 'already_synced'];
+            }
+
+            $incubation = \App\Models\Incubation::find($data['incubation_id']);
+            if (! $incubation) {
+                return ['status' => 'conflict', 'message' => __('Cycle d\'incubation introuvable dans cette ferme.')];
+            }
+
+            // Plafond physique : pas plus de poussins que d'œufs fertiles.
+            if ($data['hatched_chicks'] > (int) $incubation->fertile_eggs) {
+                return $this->invalid(['hatched_chicks' => [
+                    __('Poussins éclos (:n) supérieurs aux œufs fertiles (:fertile) — faites d\'abord le mirage.', [
+                        'n' => $data['hatched_chicks'], 'fertile' => $incubation->fertile_eggs,
+                    ]),
+                ]]);
+            }
+
+            $updated = app(\App\Actions\Incubation\RecordHatching::class)->execute($incubation, $data);
+
+            // Compteurs de dispatch (colonnes optionnelles, comme le web).
+            $counters = [];
+            if (\Illuminate\Support\Facades\Schema::hasColumn('incubations', 'chicks_remaining')) {
+                $counters['chicks_remaining'] = $updated->hatched_chicks;
+            }
+            if (\Illuminate\Support\Facades\Schema::hasColumn('incubations', 'chicks_dispatched')) {
+                $counters['chicks_dispatched'] = 0;
+            }
+            $updated->forceFill($counters + ['hatch_uuid' => $data['uuid']])->save();
+
+            Log::info("Sync: éclosion {$updated->code_incubation} — {$updated->hatched_chicks} poussins ({$updated->hatchability_rate}%).");
+
+            return ['status' => 'success', 'server_id' => $updated->id];
+        });
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    //  TRAITE (M5) — collecte de lait matin/soir. total_liters est maintenu
+    //  par le modèle ; unit_price est un snapshot du cours du jour.
+    // ─────────────────────────────────────────────────────────────
+    private function milkProductionCreate(array $payload): array
+    {
+        if (Gate::denies('production.C')) {
+            return $this->denied();
+        }
+
+        $v = Validator::make($payload, [
+            'uuid'            => 'required|uuid',
+            'batch_id'        => ['required', 'integer', $this->farmScopedExists('batches')],
+            'production_date' => 'required|date|before_or_equal:today',
+            'morning_liters'  => 'nullable|numeric|min:0',
+            'evening_liters'  => 'nullable|numeric|min:0',
+            'unit_price'      => 'nullable|numeric|min:0',
+            'milking_females' => 'nullable|integer|min:0',
+            'notes'           => 'nullable|string|max:500',
+        ]);
+
+        if ($v->fails()) {
+            return $this->invalid($v->errors()->toArray());
+        }
+
+        $data = $v->validated();
+
+        if ((float) ($data['morning_liters'] ?? 0) + (float) ($data['evening_liters'] ?? 0) <= 0) {
+            return $this->invalid(['morning_liters' => [__('Renseignez au moins une traite (matin ou soir).')]]);
+        }
+
+        return DB::transaction(function () use ($data) {
+            if (\App\Models\MilkProduction::withoutGlobalScopes()->where('uuid', $data['uuid'])->exists()) {
+                return ['status' => 'already_synced'];
+            }
+
+            $milk = \App\Models\MilkProduction::create($data + [
+                'morning_liters' => $data['morning_liters'] ?? 0,
+                'evening_liters' => $data['evening_liters'] ?? 0,
+                'recorded_by'    => Auth::id(),
+            ]);
+
+            Log::info("Sync: traite lot #{$milk->batch_id} — {$milk->total_liters} L.");
+
+            return ['status' => 'success', 'server_id' => $milk->id];
+        });
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    //  RELEVÉ ÉNERGIE (M5) — compteur du groupe lu SUR PLACE. Réutilise
+    //  RecordEnergyReading (carburant/coût estimés, compteur d'heures, alerte
+    //  gasoil, bascule maintenance). Naturellement idempotent : un relevé par
+    //  (source, jour) — un rejeu met à jour la même ligne.
+    // ─────────────────────────────────────────────────────────────
+    private function energyReadingCreate(array $payload): array
+    {
+        if (Gate::denies('ressources.C')) {
+            return $this->denied();
+        }
+
+        $v = Validator::make($payload, [
+            'uuid'                 => 'required|uuid',
+            'energy_source_id'     => ['required', 'integer', $this->farmScopedExists('energy_sources')],
+            'building_id'          => ['nullable', 'integer', $this->farmScopedExists('buildings')],
+            'reading_date'         => 'required|date|before_or_equal:today',
+            'hours_run'            => 'required|numeric|min:0|max:24',
+            'fuel_consumed_liters' => 'nullable|numeric|min:0',
+            'kwh_produced'         => 'nullable|numeric|min:0',
+            'cost'                 => 'nullable|numeric|min:0',
+            'outage_hours'         => 'nullable|numeric|min:0|max:24',
+            'notes'                => 'nullable|string|max:500',
+        ]);
+
+        if ($v->fails()) {
+            return $this->invalid($v->errors()->toArray());
+        }
+
+        $data = $v->validated();
+        unset($data['uuid']); // pas de colonne : l'unicité vient de (source, jour)
+
+        $result = app(\App\Actions\Utility\RecordEnergyReading::class)->execute($data, Auth::id());
+
+        Log::info("Sync: relevé énergie source #{$data['energy_source_id']} du {$data['reading_date']}.");
+
+        return ['status' => 'success', 'server_id' => $result['reading']->id];
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    //  RELEVÉ EAU (M5) — consommation lue au compteur. Réutilise
+    //  RecordWaterReading ; idempotent par (citerne, jour, is_refill=false),
+    //  donc sans collision avec les ravitaillements (water_refill.create).
+    // ─────────────────────────────────────────────────────────────
+    private function waterReadingCreate(array $payload): array
+    {
+        if (Gate::denies('ressources.C')) {
+            return $this->denied();
+        }
+
+        $v = Validator::make($payload, [
+            'uuid'                   => 'required|uuid',
+            'water_source_id'        => ['required', 'integer', $this->farmScopedExists('water_sources')],
+            'building_id'            => ['nullable', 'integer', $this->farmScopedExists('buildings')],
+            'reading_date'           => 'required|date|before_or_equal:today',
+            'volume_consumed_liters' => 'required|numeric|min:0',
+            'quality_ph'             => 'nullable|numeric|min:0|max:14',
+            'chlorine_level'         => 'nullable|numeric|min:0|max:10',
+            'cost'                   => 'nullable|numeric|min:0',
+            'notes'                  => 'nullable|string|max:500',
+        ]);
+
+        if ($v->fails()) {
+            return $this->invalid($v->errors()->toArray());
+        }
+
+        $data = $v->validated();
+        $uuid = $data['uuid'];
+        unset($data['uuid']);
+
+        $reading = app(\App\Actions\Utility\RecordWaterReading::class)->execute($data, Auth::id());
+        $reading->forceFill(['uuid' => $uuid])->save();
+
+        Log::info("Sync: relevé eau citerne #{$data['water_source_id']} du {$data['reading_date']}.");
+
+        return ['status' => 'success', 'server_id' => $reading->id];
+    }
 
     // ─────────────────────────────────────────────────────────────
     //  LANCEMENT D'OP AU MOULIN (M4) — le meunier démarre la fabrication sur

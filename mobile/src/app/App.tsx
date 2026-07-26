@@ -10,6 +10,8 @@ import { DailyCheckScreen } from '../features/elevage/DailyCheckScreen'
 import { EggCollectionScreen } from '../features/elevage/EggCollectionScreen'
 import { IncidentScreen } from '../features/elevage/IncidentScreen'
 import { HealthCareScreen } from '../features/elevage/HealthCareScreen'
+import { HatcheryScreen } from '../features/elevage/HatcheryScreen'
+import { MilkingScreen } from '../features/elevage/MilkingScreen'
 import { BatchScreen } from '../features/elevage/BatchScreen'
 import { ScanScreen } from '../features/scan/ScanScreen'
 import { SaleScreen } from '../features/commerce/SaleScreen'
@@ -43,6 +45,7 @@ import { MillStartScreen } from '../features/provenderie/MillStartScreen'
 import { MillJournalScreen } from '../features/provenderie/MillJournalScreen'
 import { MonEspaceScreen } from '../features/mon-espace/MonEspaceScreen'
 import { WaterRefillScreen } from '../features/ressources/WaterRefillScreen'
+import { MeterReadingScreen } from '../features/ressources/MeterReadingScreen'
 import { AppareilsScreen } from '../features/appareils/AppareilsScreen'
 import { TachesScreen } from '../features/taches/TachesScreen'
 import { NotificationsScreen } from '../features/notifications/NotificationsScreen'
@@ -114,6 +117,8 @@ function Shell() {
           <Route path="/elevage/collecte/:batchId" element={<EggCollectionScreen />} />
           <Route path="/elevage/incident/:batchId" element={<IncidentScreen />} />
           <Route path="/elevage/soin/:batchId?" element={<HealthCareScreen />} />
+          <Route path="/elevage/couvoir/:incubationId?" element={<HatcheryScreen />} />
+          <Route path="/elevage/traite/:batchId?" element={<MilkingScreen />} />
           <Route path="/lot/:batchId" element={<BatchScreen />} />
           <Route path="/scan" element={<ScanScreen />} />
           <Route path="/commerce/vente" element={<SaleScreen />} />
@@ -126,6 +131,7 @@ function Shell() {
           <Route path="/cultures/journal" element={<HarvestJournalScreen />} />
           <Route path="/logistique/mouvement" element={<StockMovementScreen />} />
           <Route path="/ressources/ravitaillement" element={<WaterRefillScreen />} />
+          <Route path="/ressources/releve" element={<MeterReadingScreen />} />
           <Route path="/logistique/stocks" element={<StocksScreen />} />
           <Route path="/logistique/inventaire" element={<InventoryCountScreen />} />
           <Route path="/logistique/reception-aliment" element={<FeedReceptionScreen />} />

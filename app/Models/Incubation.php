@@ -17,6 +17,8 @@ class Incubation extends Model
     protected $fillable = [
         
         'uuid',
+        'mirage_uuid',
+        'hatch_uuid',
         'farm_id',
         'batch_id',
         'incubator_id',
@@ -45,6 +47,15 @@ class Incubation extends Model
         'created_at'          => 'datetime',
         'updated_at'          => 'datetime',
     ];
+
+    /**
+     * Cycles descendus au terrain (M5) : ceux encore OUVERTS — le mirage et
+     * l'éclosion se font en salle d'incubation. Un cycle clos ne sert plus.
+     */
+    public function scopeOpenForSync($query)
+    {
+        return $query->whereIn('status', ['incubation', 'mirage_fait']);
+    }
 
     /** Coût total des œufs mis à couver (eggs_count × coût unitaire). */
     public function eggsTotalCost(): float

@@ -28,7 +28,8 @@ export function NouvelleSaisieScreen() {
   const canRessources = can('ressources', 'C')
   const hasQuick =
     can('commerce', 'C') || can('commerce', 'M') || can('logistique', 'M') || can('logistique', 'C') ||
-    can('depenses', 'C') || abattoirC || canRessources || canElevage || can('provenderie', 'C')
+    can('depenses', 'C') || abattoirC || canRessources || canElevage || can('provenderie', 'C') ||
+    canProduction
   const nothing = !hasContextual && !hasQuick && !(canElevage || canProduction)
 
   return (
@@ -120,6 +121,24 @@ export function NouvelleSaisieScreen() {
             <Link to="/elevage/soin" className="task-card">
               <span className="task-title">💉 {t('Soin / vaccination')}</span>
               <span className="task-meta">{t('produit · dose · délai d’attente')}</span>
+            </Link>
+          )}
+          {canProduction && (
+            <Link to="/elevage/couvoir" className="task-card">
+              <span className="task-title">🥚 {t('Couvoir')}</span>
+              <span className="task-meta">{t('mirage · éclosion')}</span>
+            </Link>
+          )}
+          {canProduction && (
+            <Link to="/elevage/traite" className="task-card">
+              <span className="task-title">🥛 {t('Traite du jour')}</span>
+              <span className="task-meta">{t('matin · soir')}</span>
+            </Link>
+          )}
+          {canRessources && (
+            <Link to="/ressources/releve" className="task-card">
+              <span className="task-title">🔢 {t('Relevé de compteur')}</span>
+              <span className="task-meta">{t('eau · énergie')}</span>
             </Link>
           )}
           {can('provenderie', 'C') && (

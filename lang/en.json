@@ -3333,5 +3333,9 @@
     "Vente introuvable dans cette ferme.": "Sale not found in this farm.",
     "Ligne :id absente de la vente :ref.": "Line :id is not part of sale :ref.",
     "Le cycle :code est sous délai avant récolte jusqu'au :date (:n j restants) suite au traitement « :product » — récolte interdite (résidus).": "Cycle :code is under pre-harvest interval until :date (:n d left) after treatment \":product\" — harvest forbidden (residues).",
-    "Machine(s) déjà engagée(s) sur un ordre en cours : :names. Clôturez l'OP ouvert avant d'en lancer un nouveau.": "Machine(s) already busy on an open run: :names. Close the open run before starting a new one."
+    "Machine(s) déjà engagée(s) sur un ordre en cours : :names. Clôturez l'OP ouvert avant d'en lancer un nouveau.": "Machine(s) already busy on an open run: :names. Close the open run before starting a new one.",
+    "Cycle d'incubation introuvable dans cette ferme.": "Incubation cycle not found in this farm.",
+    "Œufs fertiles (:n) supérieurs aux œufs mis à couver (:total).": "Fertile eggs (:n) exceed eggs set (:total).",
+    "Poussins éclos (:n) supérieurs aux œufs fertiles (:fertile) — faites d'abord le mirage.": "Chicks hatched (:n) exceed fertile eggs (:fertile) — do the candling first.",
+    "Renseignez au moins une traite (matin ou soir).": "Enter at least one milking (morning or evening)."
 }

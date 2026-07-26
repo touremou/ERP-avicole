@@ -52,6 +52,12 @@ class EnergySource extends Model
         return $this->hasMany(AssetMaintenanceLog::class);
     }
 
+    /** Sources descendues au terrain (M5) : uniquement les actives. */
+    public function scopeActiveForSync($query)
+    {
+        return $query->where('is_active', true);
+    }
+
     public function scopeActive($query)
     {
         return $query->where('is_active', true);

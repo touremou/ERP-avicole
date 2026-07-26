@@ -259,6 +259,8 @@ async function pullDelta(): Promise<void> {
     sale_items,
     mill_machines,
     employees,
+    incubations,
+    energy_sources,
   } = response.entities
 
   const refTables = [
@@ -266,7 +268,7 @@ async function pullDelta(): Promise<void> {
     db.ref_production_types, db.ref_plots, db.ref_crop_cycles, db.ref_slaughter_orders,
     db.ref_providers, db.ref_formulas, db.ref_mill_productions, db.ref_water_sources,
     db.ref_crop_species, db.ref_sales, db.ref_sale_items,
-    db.ref_mill_machines, db.ref_employees,
+    db.ref_mill_machines, db.ref_employees, db.ref_incubations, db.ref_energy_sources,
   ]
 
   await db.transaction(
@@ -307,6 +309,14 @@ async function pullDelta(): Promise<void> {
       if (slaughter_orders) {
         await db.ref_slaughter_orders.bulkPut(slaughter_orders.upserts)
         await db.ref_slaughter_orders.bulkDelete(slaughter_orders.deletes)
+      }
+      if (incubations) {
+        await db.ref_incubations.bulkPut(incubations.upserts)
+        await db.ref_incubations.bulkDelete(incubations.deletes)
+      }
+      if (energy_sources) {
+        await db.ref_energy_sources.bulkPut(energy_sources.upserts)
+        await db.ref_energy_sources.bulkDelete(energy_sources.deletes)
       }
       if (mill_machines) {
         await db.ref_mill_machines.bulkPut(mill_machines.upserts)
@@ -393,6 +403,7 @@ export async function switchFarm(farmId: number): Promise<void> {
       db.ref_production_types, db.ref_plots, db.ref_crop_cycles, db.ref_slaughter_orders,
       db.ref_providers, db.ref_formulas, db.ref_mill_productions, db.tasks,
       db.ref_sales, db.ref_sale_items, db.ref_mill_machines, db.ref_employees,
+      db.ref_incubations, db.ref_energy_sources,
     ],
     async () => {
       await Promise.all([
@@ -402,6 +413,7 @@ export async function switchFarm(farmId: number): Promise<void> {
         db.ref_providers.clear(), db.ref_formulas.clear(), db.ref_mill_productions.clear(),
         db.tasks.clear(), db.ref_sales.clear(), db.ref_sale_items.clear(),
         db.ref_mill_machines.clear(), db.ref_employees.clear(),
+        db.ref_incubations.clear(), db.ref_energy_sources.clear(),
       ])
     },
   )
