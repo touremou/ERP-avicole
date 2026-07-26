@@ -44,6 +44,7 @@ use App\Http\Controllers\{
     MilkProductionController,
     ExpenseController,
     EmployeeAccessController,
+    EmployeeContractController,
     EmployeeSelfController,
     MediaController,
     InstallController,
@@ -908,6 +909,17 @@ Route::middleware(['auth'])->group(function () {
     //   EmployeeController::destroy() → Gate::denies('S')
     // Verrou de route par verbe (défense en profondeur, en plus des gates du
     // contrôleur/FormRequests) : L/C/M/S sur le module annuaire.
+    // ─── CONTRATS À TERME (CDD / Journalier) : prolonger ou notifier la fin ───
+    // Déclaré AVANT la resource : /employees/contracts serait sinon capté par
+    // /employees/{employee} (show), et « contracts » cherché comme un matricule.
+    // Lecture en L, décisions en M — décider de l'avenir d'un contrat n'est pas
+    // une consultation.
+    Route::controller(EmployeeContractController::class)->group(function () {
+        Route::get('/employees/contracts', 'index')->name('employees.contracts.index')->middleware('can:L');
+        Route::post('/employees/{employee}/contract/prolong', 'prolong')->name('employees.contracts.prolong')->middleware('can:M');
+        Route::post('/employees/{employee}/contract/notice', 'notice')->name('employees.contracts.notice')->middleware('can:M');
+    });
+
     Route::middleware('can:L')->resource('employees', EmployeeController::class)
         ->middlewareFor(['create', 'store'], 'can:C')
         ->middlewareFor(['edit', 'update'], 'can:M')

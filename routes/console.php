@@ -51,6 +51,11 @@ Schedule::command('haccp:check-registers')->dailyAt('18:00');
 // Péremption des consommables (vaccins, médicaments, intrants…) : alerte WhatsApp
 Schedule::command('stock:check-expiry')->dailyAt('06:15');
 
+// Contrats à terme (CDD / Journaliers) : rappel avant l'échéance, et alerte
+// critique dès que le terme est dépassé sans décision — le promoteur vit à
+// l'étranger, l'alerte doit venir à lui.
+Schedule::command('hr:check-contracts')->dailyAt('06:20');
+
 // Purge du journal d'audit au-delà de la rétention (config/activitylog.php,
 // défaut 365 j) — borne la croissance de la table activity_log.
 Schedule::command('activitylog:clean')->weekly();

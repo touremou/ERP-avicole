@@ -7,6 +7,8 @@ use Illuminate\Support\Facades\Gate;
 
 class UpdateEmployeeRequest extends FormRequest
 {
+    use EmployeeRules;
+
     public function authorize(): bool
     {
         return Gate::allows('M');
@@ -14,20 +16,18 @@ class UpdateEmployeeRequest extends FormRequest
 
     public function rules(): array
     {
-        // On récupère l'employé depuis la route pour exclure son propre numéro de la règle 'unique'
+        // L'employé vient de la route : on exclut son propre numéro de l'unicité.
         $employeeId = $this->route('employee')->id;
 
-        return [
-            'first_name'    => 'required|string|max:255',
-            'last_name'     => 'required|string|max:255',
-            'phone'         => 'required|string|max:20|unique:employees,phone,' . $employeeId,
-            'job_title'     => 'required|string|max:255',
-            'department'    => 'required|string|max:255',
-            'contract_type' => 'required|in:CDI,CDD,Journalier',
-            'status'        => 'required|in:Actif,Suspendu,Congé',
-            'salary'        => 'nullable|numeric|min:0',
-            'photo'         => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
-            'cv'            => 'nullable|mimes:pdf|max:2048',
-        ];
+        return array_merge($this->commonEmployeeRules(), [
+            'phone'  => 'required|string|max:20|unique:employees,phone,' . $employeeId,
+            // Le statut RH n'existe qu'après l'embauche (un entrant est Actif).
+            'status' => 'required|in:Actif,Suspendu,Congé',
+        ]);
+    }
+
+    public function messages(): array
+    {
+        return $this->employeeMessages();
     }
 }

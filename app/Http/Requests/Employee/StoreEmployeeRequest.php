@@ -7,6 +7,8 @@ use Illuminate\Support\Facades\Gate;
 
 class StoreEmployeeRequest extends FormRequest
 {
+    use EmployeeRules;
+
     public function authorize(): bool
     {
         return Gate::allows('C');
@@ -14,19 +16,15 @@ class StoreEmployeeRequest extends FormRequest
 
     public function rules(): array
     {
-        return [
-            'last_name'     => 'required|string|max:255',
-            'first_name'    => 'required|string|max:255',
-            'phone'         => 'required|string|max:20|unique:employees,phone',
-            'job_title'     => 'required|string|max:255',
-            'department'    => 'required|string|max:255',
-            'contract_type' => 'required|in:CDI,CDD,Journalier',
-            'hire_date'     => 'required|date',
-            'salary'        => 'nullable|numeric|min:0',
-            'gender'        => 'required|in:M,F',
-            'photo'         => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
-            'cv'            => 'nullable|mimes:pdf|max:2048',
-            'employee_id'   => 'nullable|string|max:255',
-        ];
+        return array_merge($this->commonEmployeeRules(), [
+            // Unicité : propre à l'embauche (à la mise à jour, on s'exclut).
+            'phone'       => 'required|string|max:20|unique:employees,phone',
+            'employee_id' => 'nullable|string|max:255',
+        ]);
+    }
+
+    public function messages(): array
+    {
+        return $this->employeeMessages();
     }
 }

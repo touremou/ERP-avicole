@@ -17,6 +17,7 @@ class Employee extends Model
     protected $fillable = [
         'farm_id', 'user_id', 'employee_id', 'last_name', 'first_name', 'gender', 'birth_date',
         'phone', 'email', 'job_title', 'department', 'contract_type',
+        'contract_end_date', 'notice_given_at', 'assigned_building_id',
         'hire_date', 'salary', 'emergency_contact_name', 'emergency_contact_phone',
         'photo_path', 'cv_path', 'status', 'annual_leave_balance', 'orange_money_number'
     ];
@@ -24,6 +25,8 @@ class Employee extends Model
     protected $casts = [
         'hire_date' => 'date',
         'birth_date' => 'date',
+        'contract_end_date' => 'date',
+        'notice_given_at' => 'date',
         'salary' => 'decimal:2',
         'created_at' => 'datetime',
     ];
@@ -156,5 +159,78 @@ class Employee extends Model
     public function scopeByDepartment($query, $dept)
     {
         return $query->where('department', $dept);
+    }
+
+    // --- CONTRAT À DURÉE DÉTERMINÉE ---
+
+    /** Types de contrat qui ont un TERME, donc une décision à prendre. */
+    public const FIXED_TERM = ['CDD', 'Journalier'];
+
+    public function contractEvents(): HasMany
+    {
+        return $this->hasMany(EmployeeContractEvent::class)->latest('decided_on');
+    }
+
+    public function hasFixedTerm(): bool
+    {
+        return in_array($this->contract_type, self::FIXED_TERM, true);
+    }
+
+    /**
+     * Jours restants avant le terme (négatif = terme dépassé). null si le
+     * contrat n'a pas de terme.
+     */
+    public function getDaysUntilContractEndAttribute(): ?int
+    {
+        if (! $this->contract_end_date) {
+            return null;
+        }
+
+        return (int) now()->startOfDay()->diffInDays($this->contract_end_date->copy()->startOfDay(), false);
+    }
+
+    /**
+     * État de la décision à prendre. C'est CE champ que la liste de suivi trie :
+     * l'urgence est le dépassement du terme sans acte, pas la proximité.
+     *
+     *   sans_terme  contrat sans échéance (CDI) ou terme non renseigné
+     *   preavis     un préavis a été émis : la décision est prise
+     *   expire      le terme est PASSÉ et rien n'a été décidé → requalification
+     *   a_decider   le terme approche dans la fenêtre configurée
+     *   en_cours    terme lointain
+     */
+    public function getContractStageAttribute(): string
+    {
+        if (! $this->hasFixedTerm() || ! $this->contract_end_date) {
+            return 'sans_terme';
+        }
+        if ($this->notice_given_at) {
+            return 'preavis';
+        }
+
+        $left = $this->days_until_contract_end;
+        if ($left < 0) {
+            return 'expire';
+        }
+
+        return $left <= (int) setting('rh.contract_notice_days', 30) ? 'a_decider' : 'en_cours';
+    }
+
+    /**
+     * Contrats à terme dont l'échéance tombe dans les $days jours — ou est déjà
+     * dépassée — et pour lesquels AUCUN préavis n'a été émis. Un préavis émis
+     * signifie que la décision est prise : le rappeler chaque jour transforme
+     * l'alerte en bruit, et une alerte bruyante n'est plus lue.
+     */
+    public function scopeContractsToDecide($query, ?int $days = null)
+    {
+        $days = $days ?? (int) setting('rh.contract_notice_days', 30);
+
+        return $query->active()
+            ->whereIn('contract_type', self::FIXED_TERM)
+            ->whereNotNull('contract_end_date')
+            ->whereNull('notice_given_at')
+            ->whereDate('contract_end_date', '<=', now()->addDays($days)->toDateString())
+            ->orderBy('contract_end_date');
     }
 }

@@ -75,6 +75,14 @@ class NotificationTemplate extends Model
                     . "Seuil alerte : {{threshold}} {{unit}}\n\n"
                     . "Commander immédiatement.",
             ],
+            'contract_expiry' => [
+                'label'     => 'Contrats à terme (CDD / Journaliers)',
+                'variables' => ['farm', 'count', 'employees'],
+                'default'   => "📄 *CONTRATS À TERME* — {{farm}}\n\n"
+                    . "{{count}} contrat(s) à décider :\n{{employees}}\n\n"
+                    . "Prolonger ou émettre le préavis (Annuaire › Employés › Contrats à terme). "
+                    . "Un contrat à durée déterminée qui continue au-delà de son terme sans acte se requalifie.",
+            ],
             'alert_fuel' => [
                 'label'     => 'Carburant critique',
                 'variables' => ['source', 'autonomy', 'level', 'capacity'],

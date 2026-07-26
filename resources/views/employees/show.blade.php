@@ -243,6 +243,27 @@
                             <div class="bg-slate-50 p-4 rounded-xl">
                                 <p class="text-[7px] font-black text-slate-400 uppercase tracking-widest">{{ __("Contrat") }}</p>
                                 <p class="text-sm font-black text-slate-800 uppercase mt-1">{{ $employee->contract_type ?? 'CDI' }}</p>
+                                {{-- Le terme, avec le nombre de jours restants : c'est
+                                     lui qui déclenche la décision, il doit se voir sur
+                                     la fiche et pas seulement dans la liste de suivi. --}}
+                                @if($employee->contract_end_date)
+                                    @php
+                                        $left = $employee->days_until_contract_end;
+                                    @endphp
+                                    <p class="text-[8px] font-black uppercase mt-1 {{ $left < 0 ? 'text-rose-600' : ($left <= 30 ? 'text-amber-600' : 'text-slate-500') }}">
+                                        {{ __("Fin") }} {{ $employee->contract_end_date->format('d/m/Y') }}
+                                        @if($employee->notice_given_at)
+                                            · {{ __("préavis émis") }}
+                                        @elseif($left < 0)
+                                            · {{ __("TERME DÉPASSÉ") }}
+                                        @else
+                                            · {{ __('J-:n', ['n' => $left]) }}
+                                        @endif
+                                    </p>
+                                    @can('rh.L')
+                                        <a href="{{ route('employees.contracts.index') }}" class="text-[7px] font-black text-blue-500 uppercase no-underline hover:underline">{{ __("Décider") }} →</a>
+                                    @endcan
+                                @endif
                             </div>
                             <div class="bg-slate-50 p-4 rounded-xl">
                                 <p class="text-[7px] font-black text-slate-400 uppercase tracking-widest">{{ __("Département") }}</p>

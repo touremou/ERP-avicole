@@ -508,6 +508,43 @@ class NotificationHub
     }
 
     /**
+     * Contrats à terme arrivant à échéance — ou déjà dépassés sans décision.
+     *
+     * Le terme dépassé passe en tête et fait basculer la sévérité en critique :
+     * c'est le seul cas qui expose juridiquement (un CDD qui court au-delà de
+     * son terme sans acte se requalifie), et « critique » déclenche l'escalade
+     * admin même hors heures silencieuses.
+     */
+    public function alertContractsToDecide($employees): void
+    {
+        if ($employees->isEmpty()) return;
+
+        $overdue = false;
+        $lines = $employees
+            ->sortBy(fn ($e) => $e->days_until_contract_end)
+            ->map(function ($e) use (&$overdue) {
+                $left = $e->days_until_contract_end;
+                if ($left < 0) $overdue = true;
+                $when = $left < 0 ? 'TERME DÉPASSÉ' : "J-{$left}";
+                $date = optional($e->contract_end_date)->format('d/m/Y');
+
+                return "• {$e->name} ({$e->contract_type}, {$date} — {$when})";
+            })
+            ->join("\n");
+
+        $message = $this->tpl('contract_expiry', [
+            'farm'      => config('whatsapp.farm_name', 'AviSmart'),
+            'count'     => $employees->count(),
+            'employees' => $lines,
+        ]);
+
+        // Réutilise la souscription « fraude/anomalies » — contrôle
+        // administratif — comme le fait déjà alert_budget, plutôt que d'ajouter
+        // une colonne de préférence pour un seul type d'alerte.
+        $this->broadcast('alert_hr_contract', $message, 'Contrats à terme', $overdue ? 'critique' : 'attention');
+    }
+
+    /**
      * Alerte carburant bas.
      */
     public function alertFuelLow(EnergySource $source): void
@@ -1195,6 +1232,8 @@ class NotificationHub
             // Dépassement budgétaire = contrôle financier : on réutilise la
             // souscription « fraude/anomalies » plutôt qu'une nouvelle colonne.
             'alert_budget'               => 'alert_fraud',
+            // Contrat à terme non décidé = anomalie administrative : même canal.
+            'alert_hr_contract'          => 'alert_fraud',
             default                      => null,
         };
 
