@@ -718,3 +718,26 @@ input:focus, textarea:focus, select:focus {
 .round-detail { display: flex; gap: 8px; margin: 4px 0 8px; }
 .round-detail input { flex: 1; font-size: 13px; }
 .center-link { display: block; text-align: center; margin-top: 12px; text-decoration: none; }
+
+/* ── Fiche hebdomadaire (S2) : un indicateur par bloc, cible visible ── */
+.kpi-row {
+  display: grid; gap: 2px;
+  padding: 14px; margin-bottom: 10px;
+  border-radius: var(--radius-card);
+  background: var(--surface); border: 1px solid var(--line);
+  border-left: 4px solid var(--line);
+}
+.kpi-label { font-size: 0.82rem; font-weight: 700; color: var(--muted); }
+.kpi-value { font-size: 1.6rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; }
+.kpi-na { font-size: 0.95rem; font-weight: 700; color: var(--muted); font-style: italic; }
+.kpi-target { font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; }
+/* La consigne passe à la ligne : un détail tronqué n'aide pas au débriefing. */
+.kpi-detail { font-size: 0.76rem; font-weight: 600; color: var(--muted); line-height: 1.35; margin-top: 4px; }
+.kpi-ok      { border-left-color: var(--success); }
+.kpi-ok .kpi-value, .kpi-ok .kpi-target { color: var(--success); }
+.kpi-warn    { border-left-color: var(--warning); }
+.kpi-warn .kpi-value, .kpi-warn .kpi-target { color: var(--warning); }
+.kpi-bad     { border-left-color: var(--danger); }
+.kpi-bad .kpi-value, .kpi-bad .kpi-target { color: var(--danger); }
+.kpi-neutral .kpi-value { color: var(--ink); }
+.kpi-neutral .kpi-target { color: var(--muted); }

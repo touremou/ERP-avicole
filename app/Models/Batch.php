@@ -891,6 +891,49 @@ class Batch extends Model
     }
 
     /**
+     * FCR CORRIGÉ — indice de consommation tenant compte de la biomasse PERDUE.
+     *
+     * Le FCR simple (getFcrAttribute) divise l'aliment par la seule biomasse
+     * vivante : il pénalise donc doublement un lot qui a subi de la mortalité,
+     * puisque les sujets morts ont mangé sans figurer au dénominateur. On leur
+     * impute conventionnellement la moitié du poids moyen courant (ils sont morts
+     * en cours de croissance, à un poids inférieur au poids final).
+     *
+     * IMPLÉMENTATION UNIQUE, extraite de ReportController::buildTechnicalStats et
+     * reproduite à l'IDENTIQUE — mêmes bases de calcul, donc mêmes valeurs
+     * affichées qu'avant. Deux nuances assumées, héritées de cette formule :
+     *  - la mortalité retenue est celle du TROUPEAU (daily_checks.mortality),
+     *    sans la mortalité en infirmerie ni les morts au transport que compte
+     *    l'accesseur total_mortality ;
+     *  - l'effectif de référence est initial − mortalité, et non current_quantity
+     *    (lequel intègre aussi ventes et transferts, hors périmètre du FCR).
+     */
+    public function getFcrCorrectedAttribute(): ?float
+    {
+        $totalFeedKg = (float) $this->dailyChecks()->sum('feed_consumed');
+        $mortality   = (int) $this->dailyChecks()->sum('mortality');
+
+        $lastCheck = $this->dailyChecks()
+            ->whereNotNull('avg_weight')
+            ->latest('check_date')
+            ->first();
+
+        $avgWeightGrams = $lastCheck ? (float) $lastCheck->avg_weight * 1000 : 0.0;
+        if ($avgWeightGrams <= 0) {
+            // Aucune pesée moyenne : le FCR n'est pas mesurable. On renvoie null
+            // (et non 0, qui se lirait comme une conversion parfaite).
+            return null;
+        }
+
+        $alive = max(0, (int) $this->initial_quantity - $mortality);
+
+        $biomassKg = ($alive * $avgWeightGrams / 1000)
+                   + ($mortality * ($avgWeightGrams * 0.5) / 1000);
+
+        return $biomassKg > 0 ? round($totalFeedKg / $biomassKg, 2) : null;
+    }
+
+    /**
      * Densité d'occupation COURANTE au sol (sujets/m²), calculée sur l'effectif
      * vivant réel — contrairement à `planned_density` figée à la mise en place.
      * Diminue avec la mortalité/les ventes. 0 si la surface n'est pas connue.

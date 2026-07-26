@@ -25,6 +25,7 @@ import type {
   PushResponse,
   PullResponse,
   TasksResponse,
+  MyWeekResponse,
 } from './types'
 
 // Base de l'API. En dev et en même-origine (PWA servie par le même hôte que
@@ -137,6 +138,10 @@ export const api = {
   notifications: () => request<NotificationsResponse>('/notifications'),
 
   tasks: () => request<TasksResponse>('/tasks'),
+
+  /** Ma semaine — auto-suivi du lundi (six indicateurs, calcul serveur). */
+  myWeek: (week?: string) =>
+    request<MyWeekResponse>(`/me/week${week ? `?week=${encodeURIComponent(week)}` : ''}`),
 
   salesToday: (period = 'today') => request<SalesJournalResponse>(`/sales/today?period=${period}`),
 

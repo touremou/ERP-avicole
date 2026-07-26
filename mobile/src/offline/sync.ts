@@ -45,6 +45,19 @@ async function notify(state?: SyncState): Promise<void> {
 }
 
 /** Enregistre une saisie : affichage immédiat + file d'attente. Offline-safe. */
+/**
+ * Horodatage DÉCLARÉ d'un acte terrain (S2).
+ *
+ * À joindre à toute opération dont la PONCTUALITÉ est mesurée. Sans lui, le
+ * serveur retient l'heure d'ARRIVÉE : une tâche faite lundi et poussée mercredi
+ * (site sans couverture réseau) compterait comme faite mercredi, donc en retard.
+ * L'indicateur punirait alors le réseau, pas un manquement — et un indicateur
+ * injuste n'est jamais utilisé.
+ */
+export function declaredNow(): string {
+  return new Date().toISOString()
+}
+
 export async function enqueue(
   type: OperationType,
   payload: Record<string, unknown>,

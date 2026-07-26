@@ -12,7 +12,7 @@
  */
 import { useState } from 'react'
 import { db } from '../../offline/db'
-import { enqueue } from '../../offline/sync'
+import { enqueue, declaredNow } from '../../offline/sync'
 import { platform, compressImage } from '../../platform'
 import { t } from '../../i18n'
 import type { RefTask } from '../../api/types'
@@ -45,7 +45,7 @@ export function TaskProofModal({ task, onDone, onCancel }: Props) {
     if (!canSubmit || saving || task.id < 0) return
     setSaving(true)
     try {
-      const payload: Record<string, unknown> = { task_id: task.id }
+      const payload: Record<string, unknown> = { task_id: task.id, done_at: declaredNow() }
 
       if (isPhoto && photoBlob) {
         const photoUuid = crypto.randomUUID()

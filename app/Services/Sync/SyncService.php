@@ -2067,6 +2067,14 @@ class SyncService
             'notes'       => 'nullable|string|max:500',
             'photo_path'  => 'nullable|string|max:255', // substitué par le pipeline photo
             'proof_value' => 'nullable|numeric|min:0',
+            // HORODATAGE DÉCLARÉ (S2) — l'instant réel de l'acte, saisi au champ.
+            // Sans lui, completed_at valait l'heure d'ARRIVÉE au serveur : une
+            // tâche faite lundi et poussée mercredi (site sans couverture réseau)
+            // comptait comme faite mercredi, donc « en retard ». L'indicateur de
+            // ponctualité punissait alors un problème de réseau, pas un
+            // manquement — et un indicateur injuste n'est jamais utilisé.
+            // Borné : ni dans le futur, ni au-delà de 30 jours en arrière.
+            'done_at'     => 'nullable|date|before_or_equal:now|after:-30 days',
         ]);
 
         if ($v->fails()) {
@@ -2110,9 +2118,11 @@ class SyncService
             return ['status' => 'conflict', 'message' => __('Cette tâche exige une valeur chiffrée pour être validée.')];
         }
 
+        $declared = ! empty($data['done_at']) ? Carbon::parse($data['done_at']) : null;
+
         $task->update([
             'status'           => 'fait',
-            'completed_at'     => now(),
+            'completed_at'     => $declared ?? now(),
             'completed_by'     => Auth::id(),
             'completion_notes' => $data['notes'] ?? null,
             'proof_photo_path' => $data['photo_path'] ?? null,
@@ -2124,12 +2134,16 @@ class SyncService
         // de vérité que le web.
         $task->recordProtocolCompletion(Auth::id(), $data['notes'] ?? null);
 
-        // Audit RH : qui a terminé, avec quelle preuve.
+        // Audit RH : qui a terminé, avec quelle preuve. On journalise AUSSI le
+        // décalage entre l'acte déclaré et son arrivée serveur : c'est la trace
+        // qui distingue « fait hors réseau » de « saisi en retard ».
         $task->logLifecycle('completed', array_filter([
-            'statut' => 'fait',
-            'preuve' => $task->proof_type !== 'aucune' ? $task->proof_type : null,
-            'valeur' => $data['proof_value'] ?? null,
-            'photo'  => $data['photo_path'] ?? null,
+            'statut'      => 'fait',
+            'preuve'      => $task->proof_type !== 'aucune' ? $task->proof_type : null,
+            'valeur'      => $data['proof_value'] ?? null,
+            'photo'       => $data['photo_path'] ?? null,
+            'fait_le'     => $declared?->toDateTimeString(),
+            'poussé_le'   => $declared ? now()->toDateTimeString() : null,
         ], fn ($v) => $v !== null));
 
         Log::info("Sync: tâche #{$task->id} terminée (uuid: {$data['uuid']}, preuve: {$task->proof_type}).");
