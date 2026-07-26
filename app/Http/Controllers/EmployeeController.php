@@ -22,17 +22,12 @@ class EmployeeController extends Controller
         // reçu l'ACCÈS à cette ferme (farm_user). Sans ce second volet, un
         // employé affecté à un autre site pour y travailler obtenait les droits
         // mais n'apparaissait pas dans la liste RH de ce site.
-        $farmId = session('current_farm_id');
-        $employees = Employee::withoutGlobalScopes()
+        // Règle de visibilité portée par le MODÈLE (scopeVisibleInCurrentFarm) :
+        // la même que celle du binding {employee}. Quand elle vivait ici, les
+        // routes à paramètre appliquaient le global scope de ferme et un employé
+        // prêté était listé sans être ouvrable (404 sur /employees/4).
+        $employees = Employee::visibleInCurrentFarm()
             ->with('user')
-            ->when($farmId, function ($q) use ($farmId) {
-                $accessUserIds = \Illuminate\Support\Facades\DB::table('farm_user')
-                    ->where('farm_id', $farmId)->pluck('user_id');
-                $q->where(function ($sub) use ($farmId, $accessUserIds) {
-                    $sub->where('farm_id', $farmId)
-                        ->orWhereIn('user_id', $accessUserIds);
-                });
-            })
             ->orderBy('last_name', 'asc')
             ->get();
         // Rôles proposés pour la création d'accès en masse (outil admin.S).
@@ -60,22 +55,41 @@ class EmployeeController extends Controller
             ->with('success', "L'agent {$employee->last_name} a été intégré au système sous le matricule {$employee->employee_id}.");
     }
 
-    public function show($id) 
+    public function show(Employee $employee)
     {
-        if (Gate::denies('rh.L') && Gate::denies('rh.L')) return back()->with('error', 'Accès restreint.');
-        // On conserve $id ici car le withTrashed() est requis pour voir les archives
-        $employee = Employee::withTrashed()->with('batches')->findOrFail($id);
+        if (Gate::denies('rh.L')) return back()->with('error', 'Accès restreint.');
+
+        // L'employé est résolu par le binding {employee} (AppServiceProvider),
+        // qui applique la règle de visibilité UNIQUE et inclut les archives :
+        // la fiche d'un sortant reste consultable.
+        $employee->load('batches');
+
         return view('employees.show', compact('employee'));
     }
 
     public function edit(Employee $employee) 
     {
         if (Gate::denies('rh.M')) return back()->with('error', 'Modification de profil interdite.');
+
+        // Une fiche archivée se consulte mais ne se modifie pas : il faut la
+        // restaurer d'abord. Dit explicitement — avant, le scope SoftDeletes
+        // renvoyait un 404 muet qui laissait chercher une route cassée.
+        if ($employee->trashed()) {
+            return redirect()->route('employees.show', $employee->id)
+                ->with('error', __("Cette fiche est archivée : restaurez-la avant de la modifier."));
+        }
+
         return view('employees.edit', compact('employee'));
     }
 
     public function update(UpdateEmployeeRequest $request, Employee $employee, UpdateEmployee $updateEmployee) 
     {
+        // Pendant serveur de la garde d'`edit` : l'écran peut être contourné.
+        if ($employee->trashed()) {
+            return redirect()->route('employees.show', $employee->id)
+                ->with('error', __("Cette fiche est archivée : restaurez-la avant de la modifier."));
+        }
+
         $updateEmployee->execute(
             $employee,
             $request->validated(),
@@ -89,7 +103,11 @@ class EmployeeController extends Controller
     public function destroy(Employee $employee, ArchiveEmployee $archiveEmployee) 
     {
         if (Gate::denies('rh.S')) return back()->with('error', 'Seul un administrateur peut archiver un employé.');
-        
+
+        if ($employee->trashed()) {
+            return back()->with('error', __("Cette fiche est déjà archivée."));
+        }
+
         try {
             $archiveEmployee->execute($employee);
             return redirect()->route('employees.index')->with('success', "L'employé a été déplacé vers les archives.");

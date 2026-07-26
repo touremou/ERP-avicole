@@ -528,21 +528,87 @@ test('l’onglet Exemples n’est JAMAIS importé', function () {
     expect(Plot::count())->toBe(0);
 });
 
-test('le modèle sépare bien onglets de saisie (vides) et onglet Exemples (rempli)', function () {
+test('les onglets d’ACTIVITÉ restent vides, l’onglet Exemples reste rempli', function () {
     $book = app(CropBackfillTemplate::class)->build();
 
-    foreach (['Parcelles', 'Cycles', 'Intrants', 'Recoltes'] as $title) {
-        $rows = $book->getSheetByName($title)->toArray(null, true, false, false);
-        // Ligne 1 = en-tête ; tout le reste doit être vide.
-        $data = array_slice($rows, 1);
-        $filled = array_filter($data, fn ($row) => array_filter($row, fn ($c) => trim((string) $c) !== '') !== []);
-        expect($filled)->toBe([], "L'onglet {$title} contient des lignes pré-remplies.");
+    // Intrants et Recoltes n'ont AUCUNE clé naturelle : pré-remplis, ils
+    // seraient ré-ajoutés à chaque téléversement. Ils restent donc vides.
+    foreach (['Intrants', 'Recoltes'] as $title) {
+        $rows = array_slice($book->getSheetByName($title)->toArray(null, true, false, false), 1);
+        $filled = array_filter($rows, fn ($row) => array_filter($row, fn ($c) => trim((string) $c) !== '') !== []);
+        expect($filled)->toBe([], "L'onglet {$title} contient des lignes pré-remplies : elles seraient dupliquées à l'import.");
     }
 
-    $examples = $book->getSheetByName('Exemples')->toArray();
-    $flat = collect($examples)->flatten()->filter()->implode(' ');
+    $flat = collect($book->getSheetByName('Exemples')->toArray())->flatten()->filter()->implode(' ');
     expect($flat)->toContain('GOM-2026-01');
     expect($flat)->toContain('Mancozèbe 80 WP');
+});
+
+/*
+ * ONGLETS PARCELLES ET CYCLES PRÉ-REMPLIS.
+ *
+ * Le classeur sortait avec des onglets vides, y compris chez un producteur qui a
+ * déjà cinq parcelles dans l'application : il devait les retrouver de mémoire
+ * pour rattacher un cycle ou une récolte. Ces deux onglets sont donc pré-remplis
+ * — c'est possible SANS RISQUE parce que l'import reconnaît une parcelle et un
+ * cycle par leur CODE et les RÉUTILISE sans rien réécrire.
+ */
+
+test('l’onglet Parcelles sort avec les parcelles DÉJÀ enregistrées', function () {
+    $cycle = backfillExistingCycle('MAIS-PRE-01');
+
+    $rows = array_slice(
+        app(CropBackfillTemplate::class)->build()->getSheetByName('Parcelles')->toArray(null, true, false, false),
+        1
+    );
+    $flat = collect($rows)->flatten()->filter()->implode(' ');
+
+    expect($flat)->toContain($cycle->plot->code);
+    expect($flat)->toContain($cycle->plot->name);
+});
+
+test('l’onglet Cycles sort avec les cycles DÉJÀ enregistrés et leur parcelle', function () {
+    $cycle = backfillExistingCycle('MAIS-PRE-02');
+
+    $rows = array_slice(
+        app(CropBackfillTemplate::class)->build()->getSheetByName('Cycles')->toArray(null, true, false, false),
+        1
+    );
+    $flat = collect($rows)->flatten()->filter()->implode(' ');
+
+    // Les DEUX codes : c'est le lien parcelle → cycle que le technicien doit
+    // recopier en Intrants et Recoltes.
+    expect($flat)->toContain($cycle->code);
+    expect($flat)->toContain($cycle->plot->code);
+});
+
+test('re-téléverser le modèle pré-rempli ne crée AUCUN doublon ni erreur', function () {
+    // C'est la condition qui rend le pré-remplissage acceptable. Si elle tombe,
+    // le classeur devient un piège : le télécharger et le renvoyer dupliquerait
+    // les parcelles.
+    $cycle = backfillExistingCycle('MAIS-PRE-03');
+    $plotsBefore = \App\Models\Plot::count();
+    $cyclesBefore = \App\Models\CropCycle::count();
+
+    $path = storage_path('app/imports/cultures/modele-prerempli.xlsx');
+    @mkdir(dirname($path), 0775, true);
+    (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx(app(CropBackfillTemplate::class)->build()))->save($path);
+
+    $report = importer()->analyse($path);
+    expect($report['ok'])->toBeTrue(implode(' | ', array_column($report['errors'], 'message')));
+    expect($report['counts']['plots'])->toBeGreaterThan(0);
+    expect($report['counts']['cycles'])->toBeGreaterThan(0);
+
+    $result = importer()->commit($path, $this->managerUser->id);
+
+    expect(\App\Models\Plot::count())->toBe($plotsBefore);
+    expect(\App\Models\CropCycle::count())->toBe($cyclesBefore);
+    expect($result['created']['plots'])->toBe(0);
+    expect($result['created']['cycles'])->toBe(0);
+    expect($result['reused']['plots'])->toBeGreaterThan(0);
+
+    @unlink($path);
+    expect($cycle->fresh()->code)->toBe('MAIS-PRE-03');
 });
 
 /*
