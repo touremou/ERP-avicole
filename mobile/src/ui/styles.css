@@ -621,6 +621,18 @@ input:focus, textarea:focus, select:focus {
 .chip-on { background: var(--primary); border-color: var(--primary); color: #fff; }
 .chip-danger { background: var(--danger); border-color: var(--danger); color: #fff; }
 
+/* Chips d'état SÉLECTIONNABLES (grille de présence) : la couleur ne s'allume
+   qu'au choix, pour qu'une ligne « tout le monde présent » reste calme et que
+   l'œil accroche les exceptions. */
+.chip-ok.chip-on { background: var(--success); border-color: var(--success); }
+.chip-warn.chip-on { background: var(--warning); border-color: var(--warning); }
+.chip-bad.chip-on { background: var(--danger); border-color: var(--danger); }
+.chip-info.chip-on { background: #2b6cb0; border-color: #2b6cb0; }
+/* Grille de présence : 4 statuts sur une rangée, cibles au pouce. */
+.chip-row .chip-ok, .chip-row .chip-warn, .chip-row .chip-bad, .chip-row .chip-info {
+  flex: 1 1 0; min-width: 0; padding: 10px 6px; font-size: 13px; text-align: center;
+}
+
 /* Puces d'état compactes (non cliquables) — home & registres */
 .state-chip {
   font-size: 0.68rem; font-weight: 700; letter-spacing: 0.02em;

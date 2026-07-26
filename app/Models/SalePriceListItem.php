@@ -15,4 +15,16 @@ class SalePriceListItem extends Model
     {
         return $this->belongsTo(SalePriceList::class, 'sale_price_list_id');
     }
+
+    /**
+     * Lignes de tarif descendues au terrain (M6) — cloisonnement de ferme.
+     *
+     * La table ne porte PAS de farm_id : son périmètre est celui de sa liste de
+     * prix (elle, bornée par BelongsToFarm). Sans ce filtre, le POS mobile
+     * recevrait les tarifs des autres fermes.
+     */
+    public function scopeForFarmSync($query)
+    {
+        return $query->whereIn('sale_price_list_id', SalePriceList::query()->select('id'));
+    }
 }

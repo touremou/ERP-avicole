@@ -34,6 +34,9 @@ import type {
   RefMillMachine,
   RefSale,
   RefSaleItem,
+  RefSalePriceList,
+  RefSalePriceListItem,
+  RefEmployeeLeave,
   RefStock,
   RefTask,
 } from '../api/types'
@@ -100,6 +103,9 @@ class ErpMobileDb extends Dexie {
   ref_employees!: Table<RefEmployee, number>
   ref_incubations!: Table<RefIncubation, number>
   ref_energy_sources!: Table<RefEnergySource, number>
+  ref_sale_price_lists!: Table<RefSalePriceList, number>
+  ref_sale_price_list_items!: Table<RefSalePriceListItem, number>
+  ref_employee_leaves!: Table<RefEmployeeLeave, number>
   tasks!: Table<RefTask, number>
   meta!: Table<MetaEntry, string>
 
@@ -162,6 +168,13 @@ class ErpMobileDb extends Dexie {
     this.version(10).stores({
       ref_incubations: 'id, status',
       ref_energy_sources: 'id, type',
+    })
+    // v11 (M6) : tarifs par palier client (POS hors réseau) + congés validés
+    // courants (le pointage ne déclare pas présent un absent justifié).
+    this.version(11).stores({
+      ref_sale_price_lists: 'id, is_default',
+      ref_sale_price_list_items: 'id, sale_price_list_id, product_id',
+      ref_employee_leaves: 'id, employee_id',
     })
   }
 }

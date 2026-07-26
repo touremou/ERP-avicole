@@ -35,6 +35,21 @@ class EmployeeLeave extends Model
         return $query->whereIn('status', ['approuve', 'en_cours']);
     }
 
+    /**
+     * Congés descendus au terrain (M6) : validés et COURANTS uniquement.
+     *
+     * Le pointage mobile doit savoir qui est en congé pour ne pas le déclarer
+     * présent — comme le pré-remplissage de la grille web. On borne la fenêtre
+     * (les congés d'il y a deux ans n'aident personne au rassemblement du
+     * matin) et on ne descend AUCUN motif : ni raison, ni type, ni validateur.
+     */
+    public function scopeCurrentForSync($query)
+    {
+        return $query->approved()
+            ->whereDate('end_date', '>=', now()->subDays(7)->toDateString())
+            ->whereDate('start_date', '<=', now()->addDays(60)->toDateString());
+    }
+
     /** Le congé couvre-t-il la date donnée (et est-il validé) ? */
     public function isActiveOn(\Carbon\Carbon $date): bool
     {
