@@ -58,6 +58,23 @@ class SyncController extends Controller
             'gate'    => 'commerce.L',
             'columns' => ['id', 'client_id', 'name', 'category', 'phone', 'balance', 'status', 'updated_at'],
         ],
+        // M5 — Couvoir : cycles d'incubation OUVERTS (mirage/éclosion se font
+        // en salle). Les cycles clos ne servent plus au terrain.
+        'incubations' => [
+            'model'   => \App\Models\Incubation::class,
+            'gate'    => 'production.L',
+            'columns' => ['id', 'uuid', 'code_incubation', 'batch_id', 'incubator_id', 'start_date',
+                          'hatch_date_expected', 'eggs_count', 'fertile_eggs', 'hatched_chicks',
+                          'status', 'updated_at'],
+            'scope'   => 'openForSync',
+        ],
+        // M5 — Sources d'énergie : relevé du compteur groupe lu sur place.
+        'energy_sources' => [
+            'model'   => \App\Models\EnergySource::class,
+            'gate'    => 'ressources.L',
+            'columns' => ['id', 'name', 'type', 'fuel_type', 'current_fuel_level', 'status', 'updated_at'],
+            'scope'   => 'activeForSync',
+        ],
         // M4 — Machines du moulin : lancer un OP au terrain exige de choisir
         // la (les) machine(s) et de connaître leur état.
         'mill_machines' => [

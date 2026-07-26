@@ -18,7 +18,7 @@ class MilkProduction extends Model
     use BelongsToFarm;
 
     protected $fillable = [
-        'farm_id', 'batch_id', 'recorded_by',
+        'farm_id', 'uuid', 'batch_id', 'recorded_by',
         'production_date', 'morning_liters', 'evening_liters',
         'total_liters', 'unit_price', 'milking_females', 'notes',
     ];

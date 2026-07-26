@@ -125,6 +125,45 @@ const RULES: Partial<Record<OperationType, Validator>> = {
     reqDate(p, 'expense_date', 'Date', e, true)
     return e
   },
+  'incubation.mirage': (p) => {
+    const e: string[] = []
+    reqId(p, 'incubation_id', 'Cycle', e)
+    reqNum(p, 'fertile_eggs', 'Œufs fertiles', e, 0)
+    return e
+  },
+  'incubation.hatch': (p) => {
+    const e: string[] = []
+    reqId(p, 'incubation_id', 'Cycle', e)
+    reqNum(p, 'hatched_chicks', 'Poussins éclos', e, 0)
+    return e
+  },
+  'milk_production.create': (p) => {
+    const e: string[] = []
+    reqId(p, 'batch_id', 'Lot', e)
+    reqDate(p, 'production_date', 'Date', e, true)
+    optNum(p, 'morning_liters', 'Traite du matin', e, 0)
+    optNum(p, 'evening_liters', 'Traite du soir', e, 0)
+    const total = (num(p.morning_liters) ?? 0) + (num(p.evening_liters) ?? 0)
+    if (total <= 0) e.push('Renseignez au moins une traite (matin ou soir).')
+    return e
+  },
+  'energy_reading.create': (p) => {
+    const e: string[] = []
+    reqId(p, 'energy_source_id', 'Source', e)
+    reqDate(p, 'reading_date', 'Date', e, true)
+    reqNumRange(p, 'hours_run', 'Heures de marche', e, 0, 24)
+    optNum(p, 'outage_hours', 'Heures de coupure', e, 0, 24)
+    return e
+  },
+  'water_reading.create': (p) => {
+    const e: string[] = []
+    reqId(p, 'water_source_id', 'Citerne', e)
+    reqDate(p, 'reading_date', 'Date', e, true)
+    reqNum(p, 'volume_consumed_liters', 'Volume consommé', e, 0)
+    optNum(p, 'quality_ph', 'pH', e, 0, 14)
+    optNum(p, 'chlorine_level', 'Chlore', e, 0, 10)
+    return e
+  },
   'mill_production.create': (p) => {
     const e: string[] = []
     reqId(p, 'formula_id', 'Formule', e)

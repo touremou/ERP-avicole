@@ -124,38 +124,13 @@ class UtilityController extends Controller
             'notes'                  => 'nullable|string|max:500',
         ]);
 
-        $validated['user_id'] = Auth::id();
-        
-        // CORRECTION : Forcer à 0 si la valeur est null
-        $validated['volume_added_liters'] = $validated['volume_added_liters'] ?? 0;
-
-        // Coût estimé depuis le prix du m³ (paramètre énergie) si non saisi.
-        if (empty($validated['cost'])) {
-            $pricePerM3 = (float) setting('energie.water_price_m3', 0);
-            $validated['cost'] = round(($validated['volume_consumed_liters'] / 1000) * $pricePerM3, 2);
-        }
-
-        // Relevé de consommation : un seul par (citerne, jour) — clé explicite
-        // is_refill=false pour ne pas heurter les lignes de ravitaillement.
-        WaterReading::updateOrCreate(
-            ['water_source_id' => $validated['water_source_id'], 'reading_date' => $validated['reading_date'], 'is_refill' => false],
-            array_merge($validated, ['is_refill' => false])
-        );
-
-        // Mettre à jour le niveau de la citerne
-        $source = WaterSource::find($validated['water_source_id']);
-        $source->refreshLevel();
+        // Règles métier (coût estimé, unicité par jour, niveau citerne) : dans
+        // l'action — SOURCE UNIQUE avec la sync mobile (M5).
+        app(\App\Actions\Utility\RecordWaterReading::class)->execute($validated, Auth::id());
 
         return back()->with('success', "Relevé eau enregistré pour le {$validated['reading_date']}.");
     }
 
-    /**
-     * Ravitaillement d'une citerne : appoint d'eau INDÉPENDANT du relevé de
-     * consommation. On trace l'événement (volume, coût, date) et on ajoute le
-     * volume au niveau courant (plafonné à la capacité). Un ravitaillement pur
-     * (consommation 0) ne clôt PAS la tâche « Relevé eau » du jour (cf.
-     * WaterReading::booted) — c'est un appoint, pas un relevé.
-     */
     public function refillWaterSource(Request $request, WaterSource $source)
     {
         if (Gate::denies('ressources.C')) return back()->with('error', 'Action non autorisée.');
@@ -335,71 +310,14 @@ class UtilityController extends Controller
             'notes'               => 'nullable|string|max:500',
         ]);
 
-        $validated['user_id'] = Auth::id();
-        $validated['outage_hours'] = $validated['outage_hours'] ?? 0;
+        // Anti-corvée (carburant/coût estimés), compteurs, alerte gasoil et
+        // bascule maintenance : dans l'action — SOURCE UNIQUE avec la sync (M5).
+        $result = app(\App\Actions\Utility\RecordEnergyReading::class)->execute($validated, Auth::id());
 
-        $source = EnergySource::find($validated['energy_source_id']);
-
-        // ─── Anti-corvée : dériver carburant et coût quand ils ne sont pas saisis ───
-        // L'opérateur ne renseigne idéalement que les heures ; le système estime
-        // le carburant (heures × conso horaire moyenne) puis le coût (carburant ×
-        // prix au litre). Toute valeur saisie manuellement est respectée.
-        $autoNotes = [];
-
-        if (empty($validated['fuel_consumed_liters'])
-            && $source->type === 'groupe'
-            && (float) $validated['hours_run'] > 0) {
-            $litersPerHour = $source->averageLitersPerHour();
-            if ($litersPerHour) {
-                $validated['fuel_consumed_liters'] = round((float) $validated['hours_run'] * $litersPerHour, 1);
-                $autoNotes[] = "gasoil estimé " . number_format($validated['fuel_consumed_liters'], 1, ',', ' ') . " L";
-            }
-        }
-
-        if (empty($validated['cost']) && ! empty($validated['fuel_consumed_liters'])) {
-            // Prix réel le plus récent (dernier achat), repli sur le paramètre.
-            $unitPrice = FuelPurchase::where('energy_source_id', $source->id)
-                ->latest('purchase_date')->value('unit_price')
-                ?? (float) setting('energie.fuel_price_liter', 12000);
-            $validated['cost'] = round((float) $validated['fuel_consumed_liters'] * (float) $unitPrice);
-            $autoNotes[] = "coût estimé " . number_format($validated['cost'], 0, ',', ' ') . " GNF";
-        }
-
-        EnergyReading::updateOrCreate(
-            ['energy_source_id' => $validated['energy_source_id'], 'reading_date' => $validated['reading_date']],
-            $validated
-        );
-
-        // Mettre à jour les heures totales et le niveau de carburant
-        $source->increment('total_hours_run', (float) $validated['hours_run']);
-
-        $wasFuelLow = $source->is_fuel_low;
-
-        if (! empty($validated['fuel_consumed_liters']) && $source->current_fuel_level !== null) {
-            $source->decrement('current_fuel_level', (float) $validated['fuel_consumed_liters']);
-            if ($source->current_fuel_level < 0) {
-                $source->update(['current_fuel_level' => 0]);
-            }
-        }
-
-        // Alerte gasoil critique : seulement au moment où l'on franchit le seuil.
-        if (! $wasFuelLow && $source->refresh()->is_fuel_low) {
-            app(NotificationHub::class)->alertFuelLow($source);
-        }
-
-        // Vérifier si maintenance nécessaire
-        if ($source->needs_maintenance && $source->status === 'operationnel') {
-            $source->update(['status' => 'maintenance']);
-        }
-
-        $suffix = $autoNotes ? ' (' . implode(' · ', $autoNotes) . ')' : '';
+        $suffix = $result['notes'] ? ' (' . implode(' · ', $result['notes']) . ')' : '';
 
         return back()->with('success', "Relevé énergie enregistré pour le {$validated['reading_date']}.{$suffix}");
     }
-
-    // ──────────────────────────────────────────────
-    // ACHATS CARBURANT
-    // ──────────────────────────────────────────────
 
     public function fuelPurchases(Request $request)
     {

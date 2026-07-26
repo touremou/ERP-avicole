@@ -29,6 +29,8 @@ import type {
   RefProvider,
   RefSlaughterOrder,
   RefEmployee,
+  RefEnergySource,
+  RefIncubation,
   RefMillMachine,
   RefSale,
   RefSaleItem,
@@ -96,6 +98,8 @@ class ErpMobileDb extends Dexie {
   ref_sale_items!: Table<RefSaleItem, number>
   ref_mill_machines!: Table<RefMillMachine, number>
   ref_employees!: Table<RefEmployee, number>
+  ref_incubations!: Table<RefIncubation, number>
+  ref_energy_sources!: Table<RefEnergySource, number>
   tasks!: Table<RefTask, number>
   meta!: Table<MetaEntry, string>
 
@@ -153,6 +157,11 @@ class ErpMobileDb extends Dexie {
     this.version(9).stores({
       ref_mill_machines: 'id, status',
       ref_employees: 'id, status',
+    })
+    // v10 (M5) : couvoir (cycles ouverts) + sources d'énergie.
+    this.version(10).stores({
+      ref_incubations: 'id, status',
+      ref_energy_sources: 'id, type',
     })
   }
 }

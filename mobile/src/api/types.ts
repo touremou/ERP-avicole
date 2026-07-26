@@ -65,6 +65,11 @@ export type OperationType =
   | 'inventory_count.create'
   | 'feed_purchase.create'
   | 'mill_production.create'
+  | 'incubation.mirage'
+  | 'incubation.hatch'
+  | 'milk_production.create'
+  | 'energy_reading.create'
+  | 'water_reading.create'
   | 'mill_production.complete'
   // Phase 3 — cœur sanitaire HACCP abattoir.
   | 'slaughter_reception.create'
@@ -135,7 +140,37 @@ export interface PullResponse {
     // M4 — machines du moulin et employés (superviseur d'OP).
     mill_machines?: PullEntity<RefMillMachine>
     employees?: PullEntity<RefEmployee>
+    // M5 — couvoir et sources d'énergie.
+    incubations?: PullEntity<RefIncubation>
+    energy_sources?: PullEntity<RefEnergySource>
   }
+}
+
+/** Cycle d'incubation ouvert (M5) — mirage puis éclosion en salle. */
+export interface RefIncubation {
+  id: number
+  uuid: string | null
+  code_incubation: string
+  batch_id: number | null
+  incubator_id: number | null
+  start_date: string
+  hatch_date_expected: string | null
+  eggs_count: number
+  fertile_eggs: number | null
+  hatched_chicks: number | null
+  status: string
+  updated_at: string
+}
+
+/** Source d'énergie (M5) — relevé du compteur groupe sur place. */
+export interface RefEnergySource {
+  id: number
+  name: string
+  type: string | null
+  fuel_type: string | null
+  current_fuel_level: number | null
+  status: string | null
+  updated_at: string
 }
 
 /** Machine du moulin (M4) — choix des machines au lancement d'un OP. */
