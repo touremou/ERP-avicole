@@ -90,6 +90,7 @@ class SyncService
             'harvest.create'          => 'harvestCreate',
             'crop_input.create'       => 'cropInputCreate',
             'crop_transformation.create' => 'cropTransformationCreate',
+            'stored_lot.check'           => 'storedLotCheck',
             'slaughter.execute'       => 'slaughterExecute',
             'slaughter.close'         => 'slaughterClose',
             'slaughter.cutting'       => 'slaughterCutting',
@@ -1465,6 +1466,69 @@ class SyncService
             Log::info("Sync: transformation {$transformation->batch_number} — rendement {$transformation->yield_percent}%, coût de revient {$transformation->output_unit_cost}/u.");
 
             return ['status' => 'success', 'server_id' => $transformation->id];
+        });
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    //  CONTRÔLE DE CONSERVATION (T2) — se fait AU MAGASIN, balance en main,
+    //  souvent sans réseau. Réutilise RecordStoredLotCheck : la freinte est
+    //  dérivée de la pesée, répercutée sur l'inventaire par un ajustement
+    //  formel (motif « freinte »), et un constat grave exige une décision.
+    // ─────────────────────────────────────────────────────────────
+    private function storedLotCheck(array $payload): array
+    {
+        if (Gate::denies('logistique.C')) {
+            return $this->denied();
+        }
+
+        $v = Validator::make($payload, [
+            'uuid'             => 'required|uuid',
+            'stored_lot_id'    => ['required', 'integer', $this->farmScopedExists('stored_lots')],
+            'checked_at'       => 'nullable|date|before_or_equal:now',
+            'weighed_quantity' => 'nullable|numeric|min:0',
+            'condition'        => ['required', Rule::in(array_keys(\App\Models\StoredLotCheck::CONDITIONS))],
+            'action_taken'     => ['nullable', Rule::in(array_keys(\App\Models\StoredLotCheck::ACTIONS))],
+            'market_price'     => 'nullable|numeric|min:0',
+            'employee_id'      => ['nullable', 'integer', $this->farmScopedExists('employees')],
+            'photo_path'       => 'nullable|string|max:255',
+            'notes'            => 'nullable|string|max:1000',
+        ]);
+
+        if ($v->fails()) {
+            return $this->invalid($v->errors()->toArray());
+        }
+
+        $data = $v->validated();
+
+        return DB::transaction(function () use ($data) {
+            if (\App\Models\StoredLotCheck::withoutGlobalScopes()->where('uuid', $data['uuid'])->exists()) {
+                return ['status' => 'already_synced'];
+            }
+
+            $lot = \App\Models\StoredLot::find($data['stored_lot_id']);
+            if (! $lot) {
+                return ['status' => 'conflict', 'message' => __('Lot de conservation introuvable dans cette ferme.')];
+            }
+
+            // Un lot clos (vendu, détruit) ne se contrôle plus : le terrain
+            // travaillait sur une liste périmée. Refus DÉFINITIF.
+            if (! $lot->is_open) {
+                return ['status' => 'conflict', 'message' => __(
+                    'Le lot « :label » est clos (:status) — aucun contrôle possible.',
+                    ['label' => $lot->label, 'status' => $lot->status_label],
+                )];
+            }
+
+            $uuid = $data['uuid'];
+            unset($data['uuid'], $data['stored_lot_id']);
+
+            $check = app(\App\Actions\Stock\RecordStoredLotCheck::class)->execute($lot, $data, Auth::id());
+
+            $check->forceFill(['uuid' => $uuid])->save();
+
+            Log::info("Sync: contrôle de conservation lot #{$lot->id} — freinte {$check->shrinkage_quantity} {$lot->unit}.");
+
+            return ['status' => 'success', 'server_id' => $check->id];
         });
     }
 

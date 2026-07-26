@@ -984,6 +984,16 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/{task}', 'destroy')->name('destroy')->middleware('can:S');
     });
 
+    // ─── CONSERVATION : lots gardés pour vendre plus tard (module: logistique) ───
+    Route::prefix('conservation')->name('stored-lots.')->controller(\App\Http\Controllers\StoredLotController::class)->group(function () {
+        Route::get('/', 'index')->name('index')->middleware('can:L');
+        Route::get('/nouveau', 'create')->name('create')->middleware('can:C');
+        Route::post('/', 'store')->name('store')->middleware('can:C');
+        Route::get('/{storedLot}', 'show')->name('show')->middleware('can:L');
+        Route::post('/{storedLot}/controle', 'storeCheck')->name('checks.store')->middleware('can:C');
+        Route::post('/{storedLot}/cloture', 'close')->name('close')->middleware('can:M');
+    });
+
     // ─── VUE CONSOLIDÉE MULTI-SITES (promoteur) ───
     // Aucun middleware can:* : la page n'appartient à AUCUN module (elle les
     // traverse tous). L'autorisation est portée par ConsolidatedSitesService

@@ -168,6 +168,12 @@ class TaskSchedulerService
         // manquées.
         $created += $this->generateProtocolTasks($date, $farmId, $employees);
 
+        // ── CONTRÔLES DE CONSERVATION (T2) ──
+        // Un lot gardé pour être vendu plus cher se dégrade sans surveillance.
+        // La consigne de contrôle périodique n'existerait nulle part si elle ne
+        // devenait pas une tâche : ni au calendrier, ni dans la complétion.
+        $created += $this->generateStoredLotChecks($date, $farmId, $employees);
+
         // Marquer en retard (jours précédents, même ferme)
         $overdueQuery = TaskAssignment::where('status', 'a_faire')
             ->where('scheduled_date', '<', $date->toDateString());
@@ -308,6 +314,102 @@ class TaskSchedulerService
             'observation' => ['proof_type' => 'valeur', 'proof_label' => 'Pieds atteints observés', 'proof_unit' => 'pieds'],
             default       => ['proof_type' => 'aucune', 'proof_label' => null, 'proof_unit' => null],
         };
+    }
+
+    /**
+     * Matérialise en tâches les CONTRÔLES DE CONSERVATION échus.
+     *
+     * Une tâche par lot à contrôler, datée à son échéance (et non au jour de
+     * génération) : comme pour les étapes d'itinéraire, dater à aujourd'hui
+     * effacerait le retard et fausserait la ponctualité.
+     *
+     * Preuve exigée : une VALEUR — la pesée. C'est tout l'objet du contrôle ;
+     * « je suis passé voir » ne se recoupe avec rien, « 86,5 kg » se compare au
+     * relevé précédent et donne la freinte.
+     *
+     * Idempotence : une seule tâche ouverte par lot à la fois. Tant que le
+     * contrôle n'est pas fait, on ne réempile pas une tâche par jour de retard ;
+     * dès qu'il est fait, l'échéance suivante en produira une nouvelle.
+     */
+    private function generateStoredLotChecks(Carbon $date, ?int $farmId, $employees): int
+    {
+        $lotQuery = \App\Models\StoredLot::query()->open()->with('stock');
+
+        if ($farmId && Schema::hasColumn('stored_lots', 'farm_id')) {
+            $lotQuery->where('farm_id', $farmId);
+        }
+
+        $created = 0;
+
+        foreach ($lotQuery->get() as $lot) {
+            $due = $lot->next_check_due_at;
+
+            if ($due->startOfDay()->gt($date->copy()->startOfDay())) {
+                continue;
+            }
+
+            // Une tâche de contrôle DÉJÀ OUVERTE sur ce lot suffit.
+            $hasOpen = TaskAssignment::where('stored_lot_id', $lot->id)
+                ->whereIn('status', ['a_faire', 'en_cours', 'en_retard'])
+                ->exists();
+
+            if ($hasOpen) {
+                continue;
+            }
+
+            // Le contrôle déjà fait à cette échéance ne se redemande pas.
+            $alreadyDone = TaskAssignment::where('stored_lot_id', $lot->id)
+                ->whereDate('scheduled_date', $due->toDateString())
+                ->exists();
+
+            if ($alreadyDone) {
+                continue;
+            }
+
+            $employee = $employees->reject(fn ($emp) => $emp->isOnLeaveOn($date))->first();
+
+            TaskAssignment::create([
+                'farm_id'           => $farmId ?? $lot->farm_id ?? null,
+                'task_template_id'  => null,
+                'employee_id'       => $employee?->id,
+                'is_pool'           => $employee === null,
+                'title'             => 'Contrôle de conservation — ' . $lot->label,
+                'description'       => $this->storedLotCheckDescription($lot),
+                'category'          => 'controle',
+                'stored_lot_id'     => $lot->id,
+                'scheduled_date'    => $due->toDateString(),
+                'priority'          => $lot->is_past_deadline ? 'critique' : 'haute',
+                'status'            => 'a_faire',
+                'is_auto_generated' => true,
+                'proof_type'        => 'valeur',
+                'proof_label'       => 'Pesée du lot',
+                'proof_unit'        => $lot->unit,
+            ]);
+
+            $created++;
+        }
+
+        return $created;
+    }
+
+    /** Consigne du contrôle : ce qu'il faut mesurer et regarder, sur place. */
+    private function storedLotCheckDescription(\App\Models\StoredLot $lot): string
+    {
+        $parts = [
+            sprintf('Peser le lot (dernier relevé : %s %s)', number_format((float) $lot->quantity_current, 1, ',', ' '), $lot->unit),
+            'Vérifier humidité, insectes, moisissure',
+            'Relever le cours du marché du jour',
+        ];
+
+        if ($lot->target_unit_price !== null) {
+            $parts[] = sprintf('Objectif de vente : %s / %s', number_format((float) $lot->target_unit_price, 0, ',', ' '), $lot->unit);
+        }
+
+        if ($lot->hold_until) {
+            $parts[] = 'Échéance de détention : ' . $lot->hold_until->format('d/m/Y');
+        }
+
+        return implode(' · ', $parts);
     }
 
     private function alreadyExists(TaskTemplate $tpl, Carbon $date, ?int $buildingId, ?int $farmId): bool

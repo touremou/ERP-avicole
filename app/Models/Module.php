@@ -61,6 +61,7 @@ class Module extends Model
             // Logistique
             'logistique.'       => 'logistique',
             'stocks.'           => 'logistique',
+            'stored-lots.'      => 'logistique',
             'dispatches.'       => 'logistique',
             'stock-adjustments.' => 'logistique',
 

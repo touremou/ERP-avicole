@@ -38,6 +38,8 @@
                     ['title' => 'Magasin', 'color' => 'orange', 'items' => [
                         ['label' => 'Stocks', 'icon' => 'fa-boxes-stacked', 'route' => 'stocks.index', 'can' => 'logistique.L'],
                         ['label' => 'Démarque', 'icon' => 'fa-sliders', 'route' => 'stock-adjustments.index', 'can' => 'logistique.L'],
+                        // T2 — lots gardés pour être vendus plus cher plus tard.
+                        ['label' => 'Conservation', 'icon' => 'fa-box', 'route' => 'stored-lots.index', 'can' => 'logistique.L'],
                     ]],
                     ['title' => 'Expéditions', 'color' => 'blue', 'items' => [
                         ['label' => 'Expéditions', 'icon' => 'fa-truck', 'route' => 'dispatches.index', 'can' => 'logistique.L'],

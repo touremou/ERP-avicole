@@ -276,6 +276,21 @@ const RULES: Partial<Record<OperationType, Validator>> = {
     }
     return e
   },
+  'stored_lot.check': (p) => {
+    const e: string[] = []
+    reqId(p, 'stored_lot_id', 'Lot en conservation', e)
+    const conditions = ['bon', 'humide', 'insectes', 'moisissure', 'degrade']
+    if (!conditions.includes(String(p.condition))) e.push('État constaté invalide.')
+    // Miroir de RecordStoredLotCheck : un constat grave sans décision est refusé.
+    // Un contrôle qui voit un problème et ne décide rien sert d'alibi.
+    const grave = ['insectes', 'moisissure', 'degrade']
+    if (grave.includes(String(p.condition)) && (p.action_taken ?? 'aucune') === 'aucune') {
+      e.push('Constat grave : une décision est obligatoire (séchage, traitement, déclassement ou destruction).')
+    }
+    optNum(p, 'weighed_quantity', 'Pesée', e, 0)
+    optNum(p, 'market_price', 'Cours du marché', e, 0)
+    return e
+  },
   'crop_transformation.create': (p) => {
     const e: string[] = []
     reqStr(p, 'input_product', 'Produit entrant', e)

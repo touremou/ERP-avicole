@@ -1073,4 +1073,42 @@ export const en: Record<string, string> = {
     'Punctuality is measured on the date you did the task, not on the sync date.',
   '← Mon espace': '← My space',
   'Réessayer': 'Retry',
+  // ── T2 — conservation : prix-cible, contrôle, freinte ──
+  'Contrôle de conservation': 'Storage check',
+  'pesée · état · cours du marché': 'weighing · condition · market price',
+  'Lot à contrôler': 'Lot to check',
+  'Aucun lot en conservation en local — synchronisez d’abord.':
+    'No stored lot held locally — sync first.',
+  'Dernier relevé : :n :unit': 'Last reading: :n :unit',
+  'butoir': 'deadline',
+  'objectif': 'target',
+  'Pesée du lot (:unit)': 'Weigh the lot (:unit)',
+  '⚠️ Pesée supérieure au stock du lot (:n :unit) : un lot conservé ne prend pas de poids. Vérifiez la balance, ou un mélange de lots.':
+    '⚠️ Weight above the lot\u2019s stock (:n :unit): a stored lot cannot gain weight. Check the scale, or a mix-up between lots.',
+  'Freinte : :n :unit (:pct %)': 'Shrinkage: :n :unit (:pct %)',
+  'État constaté': 'Condition observed',
+  '✅ Bon état': '✅ Good',
+  '💧 Reprise d’humidité': '💧 Moisture uptake',
+  '🐛 Insectes': '🐛 Insects',
+  '🦠 Moisissure': '🦠 Mould',
+  '⚠️ Dégradé': '⚠️ Degraded',
+  'Décision *': 'Decision *',
+  'Décision — optionnel': 'Decision — optional',
+  'Aucune action': 'No action',
+  'Séchage complémentaire': 'Additional drying',
+  'Reconditionnement': 'Repackaging',
+  'Déclassement': 'Downgrade',
+  'Destruction': 'Disposal',
+  '⚠️ Un contrôle qui constate un problème sans rien décider ne protège rien : choisissez une décision.':
+    '⚠️ A check that finds a problem and decides nothing protects nothing: pick a decision.',
+  'Cours du marché du jour (par :unit)': 'Today\u2019s market price (per :unit)',
+  '✓ Prix-cible atteint — c’est le moment de vendre.': '✓ Target price reached — time to sell.',
+  'Encore :n en dessous de l’objectif.': 'Still :n below target.',
+  'Si je vends maintenant : :n GNF (freinte déduite)':
+    'If I sell now: :n GNF (shrinkage deducted)',
+  'Enregistrer le contrôle': 'Save the check',
+  '✓ Contrôle enregistré': '✓ Check saved',
+  'La freinte sera répercutée sur l’inventaire au push.':
+    'Shrinkage will be applied to inventory on push.',
+  'Contrôle :label': 'Check :label',
 }
