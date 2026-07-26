@@ -28,7 +28,7 @@ export function NouvelleSaisieScreen() {
   const canRessources = can('ressources', 'C')
   const hasQuick =
     can('commerce', 'C') || can('commerce', 'M') || can('logistique', 'M') || can('logistique', 'C') ||
-    can('depenses', 'C') || abattoirC || canRessources || canElevage
+    can('depenses', 'C') || abattoirC || canRessources || canElevage || can('provenderie', 'C')
   const nothing = !hasContextual && !hasQuick && !(canElevage || canProduction)
 
   return (
@@ -120,6 +120,12 @@ export function NouvelleSaisieScreen() {
             <Link to="/elevage/soin" className="task-card">
               <span className="task-title">💉 {t('Soin / vaccination')}</span>
               <span className="task-meta">{t('produit · dose · délai d’attente')}</span>
+            </Link>
+          )}
+          {can('provenderie', 'C') && (
+            <Link to="/provenderie/lancer" className="task-card">
+              <span className="task-title">🏭 {t('Lancer un OP au moulin')}</span>
+              <span className="task-meta">{t('formule · machines · sacs')}</span>
             </Link>
           )}
           {can('logistique', 'C') && (

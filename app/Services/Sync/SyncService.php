@@ -74,6 +74,7 @@ class SyncService
             'sale_return.create'     => 'saleReturnCreate',
             'inventory_count.create' => 'inventoryCountCreate',
             'feed_purchase.create'   => 'feedPurchaseCreate',
+            'mill_production.create' => 'millProductionCreate',
             'expense.create'         => 'expenseCreate',
             'batch.upsert'           => 'batchUpsert',
             'health_incident.create' => 'healthIncidentCreate',
@@ -329,6 +330,82 @@ class SyncService
     // ─────────────────────────────────────────────────────────────
     //  VENTE RAPIDE — créée en BROUILLON (validation/déstockage en ligne).
     // ─────────────────────────────────────────────────────────────
+
+    // ─────────────────────────────────────────────────────────────
+    //  LANCEMENT D'OP AU MOULIN (M4) — le meunier démarre la fabrication sur
+    //  place. Rejoue la règle web d'OCCUPATION MACHINE (une machine ne traite
+    //  qu'un OP ouvert à la fois) et fige la capacité au moment du lancement.
+    //  L'OP naît « Planifié » ; sa clôture reste mill_production.complete.
+    // ─────────────────────────────────────────────────────────────
+    private function millProductionCreate(array $payload): array
+    {
+        if (Gate::denies('provenderie.C')) {
+            return $this->denied();
+        }
+
+        $v = Validator::make($payload, [
+            'uuid'          => 'required|uuid',
+            'formula_id'     => ['required', 'integer', $this->farmScopedExists('formulas')],
+            'machine_ids'    => 'required|array|min:1',
+            'machine_ids.*'  => ['integer', $this->farmScopedExists('mill_machines')],
+            'nb_bags'        => 'required|integer|min:1',
+            'supervisor_id'  => ['required', 'integer', $this->farmScopedExists('employees')],
+        ]);
+
+        if ($v->fails()) {
+            return $this->invalid($v->errors()->toArray());
+        }
+
+        $data = $v->validated();
+
+        return DB::transaction(function () use ($data) {
+            if (\App\Models\MillProduction::withoutGlobalScopes()->where('uuid', $data['uuid'])->exists()) {
+                return ['status' => 'already_synced'];
+            }
+
+            // Occupation machine (miroir du web) : un OP est « ouvert » tant
+            // qu'il n'est ni Terminé ni Annulé. Refus définitif → à corriger.
+            $busy = DB::table('mill_production_machine')
+                ->join('mill_productions', 'mill_productions.id', '=', 'mill_production_machine.mill_production_id')
+                ->whereIn('mill_production_machine.mill_machine_id', $data['machine_ids'])
+                ->whereNotIn('mill_productions.status', ['Terminé', 'Annulé'])
+                ->pluck('mill_production_machine.mill_machine_id')
+                ->unique();
+
+            if ($busy->isNotEmpty()) {
+                $names = \App\Models\MillMachine::whereIn('id', $busy)->pluck('name')->join(', ');
+
+                return ['status' => 'conflict', 'message' => __(
+                    'Machine(s) déjà engagée(s) sur un ordre en cours : :names. Clôturez l\'OP ouvert avant d\'en lancer un nouveau.',
+                    ['names' => $names],
+                )];
+            }
+
+            $totalWeight = \App\Services\UnitConverter::sacksToKg((float) $data['nb_bags']);
+
+            $production = \App\Models\MillProduction::create([
+                'uuid'              => $data['uuid'],
+                'batch_number'      => \App\Services\DocumentNumberingService::generate('mill_production'),
+                'formula_id'        => $data['formula_id'],
+                'quantity_produced' => $totalWeight,
+                'supervisor_id'     => $data['supervisor_id'],
+                'operator_id'       => Auth::id(),
+                'status'            => 'Planifié',
+            ]);
+
+            // Capacité FIGÉE au lancement (snapshot) — comme le web.
+            $machines = [];
+            foreach ($data['machine_ids'] as $machineId) {
+                $machine = \App\Models\MillMachine::find($machineId);
+                $machines[$machineId] = ['snapshot_capacity_per_hour' => $machine?->capacity_per_hour];
+            }
+            $production->machines()->attach($machines);
+
+            Log::info("Sync: OP moulin {$production->batch_number} lancée — {$totalWeight} kg planifiés (uuid: {$data['uuid']}).");
+
+            return ['status' => 'success', 'server_id' => $production->id];
+        });
+    }
 
     // ─────────────────────────────────────────────────────────────
     //  INVENTAIRE PHYSIQUE (M3) — le magasinier compte DEVANT le rayon.
@@ -978,6 +1055,22 @@ class SyncService
                 return ['status' => 'conflict', 'message' => __('Le cycle :code est clos — récolte impossible.', ['code' => $cycle->code])];
             }
 
+            // DÉLAI AVANT RÉCOLTE (résidus phytosanitaires) : après un
+            // traitement, la production n'est pas récoltable avant l'échéance
+            // de la notice. Levée AUTOMATIQUE à la date — refus définitif ici
+            // (bac « À corriger »), pas une erreur rejouable.
+            if ($blocking = $cycle->activePreharvestInterval()) {
+                return ['status' => 'conflict', 'message' => __(
+                    "Le cycle :code est sous délai avant récolte jusqu'au :date (:n j restants) suite au traitement « :product » — récolte interdite (résidus).",
+                    [
+                        'code' => $cycle->code,
+                        'date' => $blocking->harvest_allowed_from->format('d/m/Y'),
+                        'n' => $blocking->preharvest_days_left,
+                        'product' => $blocking->name,
+                    ],
+                )];
+            }
+
             $uuid = $data['uuid'];
             unset($data['uuid'], $data['crop_cycle_id']);
 
@@ -1018,6 +1111,9 @@ class SyncService
             'provider_id'     => ['nullable', 'integer', $this->farmScopedExists('providers')],
             'unit_cost'       => 'nullable|numeric|min:0',
             'total_cost'      => 'nullable|numeric|min:0',
+            // Délai avant récolte (DAR) de la notice : bloque la récolte du
+            // cycle jusqu'à l'échéance (0/absent = intrant sans délai).
+            'preharvest_days' => 'nullable|integer|min:0|max:365',
             'synced_to_stock' => 'nullable|boolean',
             'stock_item_name' => 'nullable|string|max:255',
             'notes'           => 'nullable|string|max:1000',

@@ -125,6 +125,15 @@ const RULES: Partial<Record<OperationType, Validator>> = {
     reqDate(p, 'expense_date', 'Date', e, true)
     return e
   },
+  'mill_production.create': (p) => {
+    const e: string[] = []
+    reqId(p, 'formula_id', 'Formule', e)
+    reqId(p, 'supervisor_id', 'Superviseur', e)
+    reqNum(p, 'nb_bags', 'Nombre de sacs', e, 1)
+    const machines = Array.isArray(p.machine_ids) ? p.machine_ids : []
+    if (machines.length === 0) e.push('Machine : au moins une sélection requise.')
+    return e
+  },
   'inventory_count.create': (p) => {
     const e: string[] = []
     reqId(p, 'stock_id', 'Article', e)

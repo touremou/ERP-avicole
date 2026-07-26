@@ -614,6 +614,26 @@ export const en: Record<string, string> = {
   'Cet ordre ne peut pas être ré-exécuté. Suite du cycle : clôture HACCP/déchets.':
     'This order cannot be executed again. Next step of the cycle: HACCP/waste closure.',
   'Retour à l’accueil': 'Back to home',
+  // Provenderie & cultures (M4)
+  'Lancer un OP au moulin': 'Start a feed-mill run',
+  'formule · machines · sacs': 'formula · machines · bags',
+  'Formule à fabriquer': 'Formula to produce',
+  'Aucune formule en local — synchronisez d’abord.': 'No formula locally — sync first.',
+  'Machine(s) engagée(s)': 'Machine(s) used',
+  'Aucune machine en local — synchronisez d’abord.': 'No machine locally — sync first.',
+  'Une machine déjà engagée sur un OP ouvert sera refusée au push.':
+    'A machine already busy on an open run will be refused on push.',
+  'Nombre de sacs à produire': 'Number of bags to produce',
+  'Soit :kg kg planifiés': 'That is :kg kg planned',
+  'Superviseur': 'Supervisor',
+  'Aucun employé en local — synchronisez d’abord.': 'No employee locally — sync first.',
+  'Lancer la fabrication': 'Start production',
+  '✓ OP lancée': '✓ Run started',
+  'L’occupation des machines sera re-vérifiée par le serveur au push ; clôturez l’OP après la fabrication.':
+    'Machine availability will be re-checked by the server on push; close the run after production.',
+  'OP moulin :formula — :n sacs': 'Mill run :formula — :n bags',
+  'Délai avant récolte (jours) — notice du produit': 'Pre-harvest interval (days) — product leaflet',
+  'Récolte bloquée jusqu’au :date (:n j)': 'Harvest blocked until :date (:n d)',
   // Magasin : inventaire & réception (M3)
   'Inventaire physique': 'Physical inventory',
   'comptage · écarts': 'counting · variances',

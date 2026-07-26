@@ -37,6 +37,9 @@ export function CropInputScreen() {
   const [unit, setUnit] = useState('kg')
   const [unitCost, setUnitCost] = useState(0)
   const [notes, setNotes] = useState('')
+  // DAR (délai avant récolte) de la notice : bloque la récolte du cycle
+  // jusqu'à l'échéance — le pendant du délai d'attente en élevage.
+  const [preharvestDays, setPreharvestDays] = useState('')
   const [saved, setSaved] = useState(false)
 
   useEffect(() => {
@@ -59,6 +62,7 @@ export function CropInputScreen() {
         quantity: quantity,
         unit: unit || null,
         unit_cost: unitCost,
+        preharvest_days: Number(preharvestDays) > 0 ? Number(preharvestDays) : null,
         notes: notes || null,
       },
       t('Intrant :name — :code', { name: name.trim(), code: cycle.code }),
@@ -138,6 +142,31 @@ export function CropInputScreen() {
       <NumberStepper label={t('Coût unitaire (GNF)')} value={unitCost} onChange={setUnitCost} min={0} step={500} />
       {totalCost > 0 && (
         <p className="muted">{t('Coût total dérivé : :amount GNF', { amount: totalCost.toLocaleString(dateLocale()) })}</p>
+      )}
+
+      {/* DAR : surtout pour le phyto — la récolte sera refusée avant l'échéance. */}
+      {(type === 'phyto' || preharvestDays !== '') && (
+        <>
+          <label htmlFor="dar">{t('Délai avant récolte (jours) — notice du produit')}</label>
+          <input
+            id="dar"
+            type="number"
+            inputMode="numeric"
+            min={0}
+            max={365}
+            value={preharvestDays}
+            onChange={(e) => setPreharvestDays(e.target.value)}
+            placeholder={t('0 = aucun délai')}
+          />
+          {Number(preharvestDays) > 0 && (
+            <p className="proof-hint">
+              🔒 {t('Récolte bloquée jusqu’au :date (:n j)', {
+                date: new Date(Date.now() + Number(preharvestDays) * 86400000).toISOString().slice(0, 10),
+                n: Number(preharvestDays),
+              })}
+            </p>
+          )}
+        </>
       )}
 
       <label htmlFor="notes">{t('Observations — optionnel')}</label>
