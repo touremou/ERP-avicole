@@ -20,7 +20,7 @@ class StockAdjustment extends Model
     use BelongsToFarm, AuditsChanges;
 
     protected $fillable = [
-        'farm_id', 'stock_id', 'user_id', 'reference', 'type', 'reason',
+        'farm_id', 'uuid', 'stock_id', 'user_id', 'reference', 'type', 'reason',
         'quantity_before', 'quantity_after', 'delta', 'unit_cost', 'value_impact',
         'adjustment_date', 'notes',
     ];

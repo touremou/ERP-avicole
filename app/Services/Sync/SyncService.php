@@ -72,6 +72,8 @@ class SyncService
             'sale.create'            => 'saleCreate',
             'payment.create'         => 'paymentCreate',
             'sale_return.create'     => 'saleReturnCreate',
+            'inventory_count.create' => 'inventoryCountCreate',
+            'feed_purchase.create'   => 'feedPurchaseCreate',
             'expense.create'         => 'expenseCreate',
             'batch.upsert'           => 'batchUpsert',
             'health_incident.create' => 'healthIncidentCreate',
@@ -327,6 +329,118 @@ class SyncService
     // ─────────────────────────────────────────────────────────────
     //  VENTE RAPIDE — créée en BROUILLON (validation/déstockage en ligne).
     // ─────────────────────────────────────────────────────────────
+
+    // ─────────────────────────────────────────────────────────────
+    //  INVENTAIRE PHYSIQUE (M3) — le magasinier compte DEVANT le rayon.
+    //  Réutilise CreateStockAdjustment : quantité recalée sous verrou, écart
+    //  chiffré au CMP, mouvement « adjustment » + alerte anti-fraude.
+    //  Un comptage SANS écart n'est pas une erreur : on l'absorbe (rien à
+    //  ajuster) plutôt que d'envoyer l'opérateur au bac « À corriger ».
+    // ─────────────────────────────────────────────────────────────
+    private function inventoryCountCreate(array $payload): array
+    {
+        if (Gate::denies('logistique.C')) {
+            return $this->denied();
+        }
+
+        $v = Validator::make($payload, [
+            'uuid'             => 'required|uuid',
+            'stock_id'         => ['required', 'integer', $this->farmScopedExists('stocks')],
+            'counted_quantity' => 'required|numeric|min:0',
+            'count_date'       => 'required|date|before_or_equal:today',
+            'notes'            => 'nullable|string|max:500',
+        ]);
+
+        if ($v->fails()) {
+            return $this->invalid($v->errors()->toArray());
+        }
+
+        $data = $v->validated();
+
+        return DB::transaction(function () use ($data) {
+            if (\App\Models\StockAdjustment::withoutGlobalScopes()->where('uuid', $data['uuid'])->exists()) {
+                return ['status' => 'already_synced'];
+            }
+
+            try {
+                $adjustment = app(\App\Actions\Stock\CreateStockAdjustment::class)->execute(
+                    (int) $data['stock_id'],
+                    (float) $data['counted_quantity'],
+                    'inventaire',
+                    $data['notes'] ?? null,
+                    (int) Auth::id(),
+                    $data['count_date'],
+                );
+            } catch (\Illuminate\Validation\ValidationException $e) {
+                // « Aucun écart » : le comptage CONFIRME le stock — c'est un
+                // succès métier, pas une saisie à corriger.
+                Log::info("Sync: comptage sans écart sur stock #{$data['stock_id']} (uuid: {$data['uuid']}).");
+
+                return ['status' => 'success', 'server_id' => null];
+            }
+
+            $adjustment->forceFill(['uuid' => $data['uuid']])->save();
+
+            Log::info("Sync: inventaire {$adjustment->reference} — écart {$adjustment->delta} sur stock #{$data['stock_id']}.");
+
+            return ['status' => 'success', 'server_id' => $adjustment->id];
+        });
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    //  RÉCEPTION D'ALIMENT AU PORTAIL (M3) — le camion arrive à la ferme,
+    //  pas au bureau. Réutilise CreateFeedPurchase : entrée de stock valorisée
+    //  (CMP au coût réel), facture fournisseur et règlement/dette selon le
+    //  mode de paiement. Idempotent par uuid.
+    // ─────────────────────────────────────────────────────────────
+    private function feedPurchaseCreate(array $payload): array
+    {
+        if (Gate::denies('provenderie.C') && Gate::denies('logistique.C')) {
+            return $this->denied();
+        }
+
+        $v = Validator::make($payload, [
+            'uuid'          => 'required|uuid',
+            'batch_id'      => ['required', 'integer', $this->farmScopedExists('batches')],
+            'purchase_date' => 'required|date|before_or_equal:today',
+            'feed_type'     => 'required|string|max:255',
+            'quantity'      => 'required|numeric|min:0.001',
+            // Montant TOTAL payé (cohérent avec le web : unit_price = total).
+            'unit_price'    => 'required|numeric|min:0',
+            'unit'          => 'required|in:Sac,KG,Litre,Unité,Boite',
+            'supplier'      => 'nullable|string|max:255',
+            'payment_mode'  => 'nullable|in:comptant,credit',
+            'metadata'      => 'nullable|array',
+        ]);
+
+        if ($v->fails()) {
+            return $this->invalid($v->errors()->toArray());
+        }
+
+        $data = $v->validated();
+
+        return DB::transaction(function () use ($data) {
+            if (\App\Models\FeedPurchase::withoutGlobalScopes()->where('uuid', $data['uuid'])->exists()) {
+                return ['status' => 'already_synced'];
+            }
+
+            try {
+                $purchase = app(\App\Actions\FeedPurchase\CreateFeedPurchase::class)->execute($data);
+            } catch (\Exception $e) {
+                if ($e instanceof \Illuminate\Database\QueryException || $e instanceof \PDOException) {
+                    throw $e;
+                }
+
+                return ['status' => 'conflict', 'message' => $e->getMessage()];
+            }
+
+            $purchase->forceFill(['uuid' => $data['uuid']])->save();
+
+            Log::info("Sync: réception aliment {$purchase->feed_type} — {$data['quantity']} {$data['unit']} (uuid: {$data['uuid']}).");
+
+            return ['status' => 'success', 'server_id' => $purchase->id];
+        });
+    }
 
     // ─────────────────────────────────────────────────────────────
     //  ENCAISSEMENT DE CRÉANCE (M2) — le livreur encaisse chez le client,

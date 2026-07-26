@@ -13,6 +13,7 @@ class FeedPurchase extends Model
 
     protected $fillable = [
         'farm_id',
+        'uuid',
         'batch_id', 
         'purchase_date', 
         'feed_type', 
