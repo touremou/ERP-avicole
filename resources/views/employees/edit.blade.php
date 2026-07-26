@@ -71,14 +71,7 @@
                                 <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 italic tracking-widest">{{ __("Intitulé Exact du Poste") }}</label>
                                 <input type="text" name="job_title" value="{{ old('job_title', $employee->job_title) }}" required class="w-full p-5 bg-slate-50 rounded-2xl font-black outline-none text-emerald-600 border-none focus:ring-4 focus:ring-emerald-500/10 shadow-inner italic">
                             </div>
-                            <div class="space-y-3">
-                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 italic tracking-widest">{{ __("Type de Contrat") }}</label>
-                                <select name="contract_type" class="w-full p-5 bg-slate-50 rounded-2xl font-black outline-none border-none focus:ring-4 focus:ring-emerald-500/10 shadow-inner appearance-none text-slate-700 italic cursor-pointer">
-                                    <option value="CDI" {{ old('contract_type', $employee->contract_type) == 'CDI' ? 'selected' : '' }}>📄 {{ __("CDI (Indéterminé)") }}</option>
-                                    <option value="CDD" {{ old('contract_type', $employee->contract_type) == 'CDD' ? 'selected' : '' }}>⏳ {{ __("CDD (Déterminé)") }}</option>
-                                    <option value="Journalier" {{ old('contract_type', $employee->contract_type) == 'Journalier' ? 'selected' : '' }}>☀️ {{ __("Journalier") }}</option>
-                                </select>
-                            </div>
+                            @include('employees.partials.contract-fields', ['employee' => $employee])
                             <div class="space-y-3">
                                 <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 italic tracking-widest">{{ __("Département") }}</label>
                                 <select name="department" class="w-full p-5 bg-slate-50 rounded-2xl font-black outline-none border-none focus:ring-4 focus:ring-emerald-500/10 shadow-inner appearance-none text-slate-700 italic cursor-pointer">

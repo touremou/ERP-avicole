@@ -63,14 +63,7 @@
                                 <label class="text-[10px] font-black text-slate-500 uppercase ml-1 tracking-widest">{{ __("Poste occupé") }}</label>
                                 <input type="text" name="job_title" value="{{ old('job_title') }}" class="w-full p-5 bg-slate-50 rounded-2xl border-none focus:ring-4 focus:ring-emerald-500/10 outline-none shadow-inner font-black text-slate-800 italic" required>
                             </div>
-                            <div class="space-y-3">
-                                <label class="text-[10px] font-black text-slate-500 uppercase ml-1 tracking-widest">{{ __("Type de Contrat") }}</label>
-                                <select name="contract_type" class="w-full p-5 bg-slate-50 rounded-2xl border-none focus:ring-4 focus:ring-emerald-500/10 outline-none shadow-inner appearance-none font-black text-slate-800 italic cursor-pointer" required>
-                                    <option value="CDI" {{ old('contract_type') == 'CDI' ? 'selected' : '' }}>📄 {{ __("CDI (Indéterminé)") }}</option>
-                                    <option value="CDD" {{ old('contract_type') == 'CDD' ? 'selected' : '' }}>⏳ {{ __("CDD (Déterminé)") }}</option>
-                                    <option value="Journalier" {{ old('contract_type') == 'Journalier' ? 'selected' : '' }}>☀️ {{ __("Journalier") }}</option>
-                                </select>
-                            </div>
+                            @include('employees.partials.contract-fields', ['employee' => null])
                             <div class="space-y-3">
                                 <label class="text-[10px] font-black text-slate-500 uppercase ml-1 tracking-widest">{{ __("Département") }}</label>
                                 <select name="department" class="w-full p-5 bg-slate-50 rounded-2xl border-none focus:ring-4 focus:ring-emerald-500/10 outline-none shadow-inner appearance-none font-black text-slate-800 italic cursor-pointer">

@@ -9,6 +9,23 @@
                 </a>
                 @endcan
 
+                {{-- CONTRATS À TERME (L) : le compteur porte l'urgence. Une date
+                     de fin qui ne se lit nulle part ne sert à rien — c'est ce
+                     qui rendait l'oubli d'échéance inévitable. --}}
+                @can('rh.L')
+                @php
+                    // Compteur d'urgence : le nombre de décisions attendues.
+                    $contractsToDecide = \App\Models\Employee::contractsToDecide()->count();
+                @endphp
+                <a href="{{ route('employees.contracts.index') }}"
+                   class="{{ $contractsToDecide > 0 ? 'bg-amber-500 hover:bg-amber-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200' }} {{ $contractsToDecide > 0 ? 'text-white' : '' }} px-6 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest transition-all shadow-lg italic no-underline">
+                    <i class="fas fa-file-signature mr-2"></i> {{ __("Contrats à terme") }}
+                    @if($contractsToDecide > 0)
+                        <span class="ml-2 bg-white text-amber-600 px-2 py-0.5 rounded-full">{{ $contractsToDecide }}</span>
+                    @endif
+                </a>
+                @endcan
+
                 {{-- MODULE RH : Accès à la Paie (L) --}}
                 @can('rh.L')
                 <a href="{{ route('payroll.index') }}" class="bg-blue-600 text-white px-6 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-blue-700 transition-all shadow-lg italic no-underline">
