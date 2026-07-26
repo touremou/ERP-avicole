@@ -67,6 +67,24 @@
                 </a>
                 @endcan
 
+                {{-- DÉLAI AVANT RÉCOLTE — confrontation manuelle. Le compteur
+                     ne peut PAS être « tout va bien » par défaut : le délai
+                     n'était pas enregistré avant sa correction, donc une bonne
+                     part des cas est « à vérifier », pas « conforme ». --}}
+                @can('cultures.L')
+                <a href="{{ route('crop-reports.withdrawal') }}" class="group bg-slate-900 p-8 rounded-[2rem] shadow-lg hover:bg-slate-800 transition-all no-underline relative overflow-hidden border-b-4 border-amber-500">
+                    <div class="w-12 h-12 bg-amber-500 text-white rounded-xl flex items-center justify-center mb-5 shadow-lg group-hover:scale-110 transition-transform">
+                        <i class="fa-solid fa-flask-vial text-lg"></i>
+                    </div>
+                    <h3 class="text-base font-black text-white uppercase tracking-tighter mb-2 italic">{{ __("Délai avant récolte") }}</h3>
+                    <p class="text-[9px] text-slate-500 uppercase tracking-widest font-black mb-6">{{ __("Traitements phytosanitaires suivis d'une récolte — cas à confronter à la notice") }}</p>
+                    <div class="flex items-center gap-2 text-amber-400 text-[9px] font-black uppercase tracking-widest border-t border-white/10 pt-4">
+                        {{ __("Voir le rapport") }} <i class="fa-solid fa-arrow-right group-hover:translate-x-1 transition-transform text-[8px]"></i>
+                    </div>
+                    <i class="fa-solid fa-leaf absolute -right-4 -bottom-4 text-7xl text-white/5"></i>
+                </a>
+                @endcan
+
             </div>
         </div>
     </div>
