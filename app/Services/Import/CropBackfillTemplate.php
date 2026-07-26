@@ -73,6 +73,10 @@ class CropBackfillTemplate
             ->map(fn (Employee $e) => trim($e->first_name . ' ' . $e->last_name))
             ->filter()->values()->all();
 
+        // Codes des cycles DÉJÀ enregistrés : ce sont eux qu'on référence quand
+        // on n'importe que des activités sur des cultures existantes.
+        $cycleCodes = \App\Models\CropCycle::orderByDesc('id')->pluck('code')->filter()->take(60)->values()->all();
+
         return [
             'Parcelles' => [
                 'columns' => [
@@ -127,6 +131,10 @@ class CropBackfillTemplate
                 'choices' => [
                     'type'  => ['values' => array_keys(CropInput::TYPES), 'strict' => true],
                     'unite' => ['values' => ['kg', 'g', 'l', 'ml', 'sac', 'unite', 'jour', 'heure'], 'strict' => false],
+                    // Codes des cycles DÉJÀ en base, en liste indicative : on
+                    // peut aussi référencer un cycle créé dans l'onglet Cycles du
+                    // même fichier, qui n'existe pas encore en base.
+                    'code_cycle' => ['values' => $cycleCodes, 'strict' => false],
                 ],
             ],
             'Recoltes' => [
@@ -144,6 +152,7 @@ class CropBackfillTemplate
                     ['notes', 30, false],
                 ],
                 'choices' => [
+                    'code_cycle'      => ['values' => $cycleCodes, 'strict' => false],
                     'unite'           => ['values' => ['kg', 'sac', 'panier', 'caisse', 'botte', 'regime', 'unite'], 'strict' => false],
                     'qualite'         => ['values' => Harvest::QUALITIES, 'strict' => true],
                     'destination'     => ['values' => array_keys(Harvest::DESTINATIONS), 'strict' => true],
@@ -323,6 +332,13 @@ class CropBackfillTemplate
             ['Employés actifs', Employee::active()->orderBy('first_name')->get()
                 ->map(fn (Employee $e) => trim($e->first_name . ' ' . $e->last_name))->filter()->values()->all()],
             ['Cultures du catalogue', CropSpecies::orderBy('name')->pluck('name')->filter()->take(200)->values()->all()],
+            // CODES DÉJÀ EN BASE. Sans eux, on ne pouvait pas n'importer QUE des
+            // récoltes : il fallait connaître de mémoire le code d'un cycle
+            // enregistré. Le symptôme observé était un « code_cycle inconnu » sur
+            // un code recopié depuis les EXEMPLES, faute de savoir où trouver les
+            // vrais. Ces deux colonnes se copient-collent dans les onglets.
+            ['Parcelles déjà enregistrées', Plot::orderBy('code')->pluck('code')->filter()->take(300)->values()->all()],
+            ['Cycles déjà enregistrés', \App\Models\CropCycle::orderByDesc('id')->pluck('code')->filter()->take(300)->values()->all()],
         ];
 
         $column = 'A';

@@ -544,3 +544,96 @@ test('le modèle sépare bien onglets de saisie (vides) et onglet Exemples (remp
     expect($flat)->toContain('GOM-2026-01');
     expect($flat)->toContain('Mancozèbe 80 WP');
 });
+
+/*
+ * CODES DE LIAISON INTROUVABLES — l'erreur doit dire QUOI FAIRE.
+ *
+ * Cas observé sur le terrain : le technicien remplit UNIQUEMENT l'onglet
+ * Recoltes, avec un code_cycle recopié depuis l'onglet EXEMPLES. Il croit donc
+ * que le code « existe bien dans le fichier téléchargé », et « code_cycle
+ * inconnu » ne le détrompe pas. Le refus est CORRECT : c'est le message et le
+ * modèle qui ne donnaient pas de quoi corriger.
+ */
+
+/** Un cycle réellement enregistré, sur une parcelle réelle. */
+function backfillExistingCycle(string $code): \App\Models\CropCycle
+{
+    $farmId = session('current_farm_id');
+
+    $plot = \App\Models\Plot::create([
+        'farm_id' => $farmId, 'name' => 'Parcelle ' . $code,
+        'code' => 'PLOT-' . $code, 'area_ha' => 1,
+        'status' => \App\Models\Plot::STATUS_EN_CULTURE,
+    ]);
+
+    return \App\Models\CropCycle::create([
+        'farm_id' => $farmId, 'plot_id' => $plot->id, 'code' => $code,
+        'crop_name' => 'Maïs', 'area_used_ha' => 1,
+        'planting_date' => now()->subDays(120)->toDateString(),
+        'status' => \App\Models\CropCycle::STATUS_RECOLTE,
+    ]);
+}
+
+test('l’erreur de code_cycle inconnu énonce les deux façons de corriger', function () {
+    $cycle = backfillExistingCycle('MAIS-REEL-01');
+
+    // Exactement la situation de la capture : SEUL l'onglet Recoltes est rempli,
+    // avec un code calqué sur celui des exemples.
+    $path = backfillFile([
+        'Recoltes' => [['GOM-2026-05', '20/07/2026', 15, 'kg', 15, 0, 'bon', 'stockage', 3000, 'oui', null]],
+    ]);
+
+    $report = importer()->analyse($path);
+    $message = $report['errors'][0]['message'];
+
+    expect($message)->toContain('GOM-2026-05');
+    // Les deux issues réelles, pas seulement le constat d'échec.
+    expect($message)->toContain("ajoutez une ligne dans l'onglet « Cycles »");
+    expect($message)->toContain('reprenez un code existant');
+    // Le code utilisable est CITÉ : c'est ce qui permet de corriger seul.
+    expect($message)->toContain($cycle->code);
+    // Le piège précis : les codes d'exemple ressemblent à de vrais codes.
+    expect($message)->toContain('Exemples');
+});
+
+test('sans aucun cycle en base, l’erreur oriente vers l’onglet Cycles', function () {
+    $path = backfillFile([
+        'Recoltes' => [['GOM-2026-05', '20/07/2026', 15, 'kg', 15, 0, 'bon', 'stockage', 3000, 'oui', null]],
+    ]);
+
+    $message = importer()->analyse($path)['errors'][0]['message'];
+
+    // Citer une liste vide serait absurde : on dit par où commencer.
+    expect($message)->toContain("Aucun code n'est encore enregistré");
+});
+
+test('le modèle expose les codes DÉJÀ enregistrés, sinon ils sont introuvables', function () {
+    $cycle = backfillExistingCycle('MAIS-REEL-02');
+
+    $flat = collect((new CropBackfillTemplate())->build()->getSheetByName('References')->toArray())
+        ->flatten()->filter()->values()->all();
+
+    // Sans ces deux colonnes, on ne pouvait pas n'importer QUE des récoltes :
+    // il fallait connaître de mémoire le code d'un cycle enregistré.
+    expect($flat)->toContain('Cycles déjà enregistrés');
+    expect($flat)->toContain('Parcelles déjà enregistrées');
+    expect($flat)->toContain($cycle->code);
+    expect($flat)->toContain($cycle->plot->code);
+});
+
+test('une récolte qui référence un cycle EXISTANT en base s’importe seule', function () {
+    // Le parcours voulu : les cultures sont déjà dans l'application, on n'ajoute
+    // que des récoltes. Il doit aboutir, sans onglet Cycles.
+    $cycle = backfillExistingCycle('MAIS-REEL-03');
+
+    $path = backfillFile([
+        'Recoltes' => [[$cycle->code, '20/07/2026', 15, 'kg', 15, 0, 'bon', 'stockage', 3000, 'oui', null]],
+    ]);
+
+    $report = importer()->analyse($path);
+    expect($report['ok'])->toBeTrue(implode(' | ', array_column($report['errors'], 'message')));
+    expect($report['counts']['harvests'])->toBe(1);
+
+    importer()->commit($path, $this->managerUser->id);
+    expect($cycle->harvests()->count())->toBe(1);
+});

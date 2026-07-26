@@ -10,18 +10,30 @@
       - sur le hub lui-même, ni hors d'un module mappé ;
       - sur les modules « non-lanceur » (planning/notifications, intégrés ailleurs) ;
       - sur les pages formulaire/détail (create/edit/show/route paramétrée) : elles
-        ont déjà leur propre flèche « retour à la liste ».
+        ont déjà leur propre flèche « retour à la liste » ;
+      - sur toute page dont l'en-tête pose DÉJÀ un `:back` (x-page-header) —
+        sinon deux flèches s'affichent côte à côte, parfois vers des
+        destinations différentes, et plus rien n'est lisible.
 --}}
 @php
     $route = request()->route();
     $routeName = $route?->getName();
 
-    $isLeaf = $routeName && (
+    /*
+     * La page a-t-elle DÉJÀ posé sa propre flèche via x-page-header (:back) ?
+     * Le slot `header` est rendu avant le corps du layout, donc le drapeau est
+     * disponible ici. Deux flèches côte à côte, parfois vers des destinations
+     * différentes, ne se lisent pas : on laisse gagner celle de la page, qui
+     * connaît son parent réel mieux que la déduction par préfixe de route.
+     */
+    $pageHasOwnBack = app()->bound('page-header.has-back') && app()->make('page-header.has-back') === true;
+
+    $isLeaf = $pageHasOwnBack || ($routeName && (
         str_ends_with($routeName, '.create')
         || str_ends_with($routeName, '.edit')
         || str_ends_with($routeName, '.show')
         || ! empty($route?->parameters())
-    );
+    ));
 
     // Sous-sections dont le parent logique N'EST PAS le hub du module mais une
     // autre section. Ex. le registre des suivis quotidiens (« Historique
@@ -75,7 +87,7 @@
 @endphp
 
 @if($target)
-<a href="{{ route($target) }}"
+<a href="{{ route($target) }}" data-back="hub"
    class="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-900 hover:text-white transition-all no-underline shrink-0"
    title="{{ __('Retour') }}">
     <i class="fa-solid fa-arrow-left"></i>
