@@ -17,7 +17,7 @@ class TaskAssignment extends Model
         'uuid',
         'farm_id', 'task_template_id', 'employee_id', 'title', 'description',
         'category', 'building_id', 'plot_id', 'batch_id',
-        'crop_cycle_id', 'crop_protocol_item_id',
+        'crop_cycle_id', 'crop_protocol_item_id', 'stored_lot_id',
         'scheduled_date', 'scheduled_time',
         'duration_minutes', 'priority', 'status', 'started_at', 'claimed_by', 'completed_at',
         'completed_by', 'completion_notes', 'is_auto_generated', 'is_pool',
@@ -48,6 +48,12 @@ class TaskAssignment extends Model
     public function protocolItem(): BelongsTo
     {
         return $this->belongsTo(CropProtocolItem::class, 'crop_protocol_item_id');
+    }
+
+    /** Lot en conservation dont cette tâche est le contrôle périodique (T2). */
+    public function storedLot(): BelongsTo
+    {
+        return $this->belongsTo(StoredLot::class);
     }
 
     /**

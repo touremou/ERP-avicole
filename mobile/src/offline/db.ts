@@ -39,6 +39,7 @@ import type {
   RefEmployeeLeave,
   RefCropRecipe,
   RefPendingHarvest,
+  RefStoredLot,
   RefStock,
   RefTask,
 } from '../api/types'
@@ -110,6 +111,7 @@ class ErpMobileDb extends Dexie {
   ref_employee_leaves!: Table<RefEmployeeLeave, number>
   ref_crop_recipes!: Table<RefCropRecipe, number>
   ref_pending_harvests!: Table<RefPendingHarvest, number>
+  ref_stored_lots!: Table<RefStoredLot, number>
   tasks!: Table<RefTask, number>
   meta!: Table<MetaEntry, string>
 
@@ -185,6 +187,11 @@ class ErpMobileDb extends Dexie {
     this.version(12).stores({
       ref_crop_recipes: 'id, transformation_type',
       ref_pending_harvests: 'id, crop_cycle_id',
+    })
+    // v13 (T2) : lots en conservation — le contrôle périodique se fait au
+    // magasin, balance en main, souvent sans réseau.
+    this.version(13).stores({
+      ref_stored_lots: 'id, status',
     })
   }
 }

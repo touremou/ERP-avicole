@@ -23,6 +23,7 @@ import { StockMovementScreen } from '../features/logistique/StockMovementScreen'
 import { StocksScreen } from '../features/logistique/StocksScreen'
 import { InventoryCountScreen } from '../features/logistique/InventoryCountScreen'
 import { FeedReceptionScreen } from '../features/logistique/FeedReceptionScreen'
+import { StoredLotCheckScreen } from '../features/logistique/StoredLotCheckScreen'
 import { ExpenseScreen } from '../features/depenses/ExpenseScreen'
 import { HarvestScreen } from '../features/cultures/HarvestScreen'
 import { SemisScreen } from '../features/cultures/SemisScreen'
@@ -139,6 +140,7 @@ function Shell() {
           <Route path="/logistique/stocks" element={<StocksScreen />} />
           <Route path="/logistique/inventaire" element={<InventoryCountScreen />} />
           <Route path="/logistique/reception-aliment" element={<FeedReceptionScreen />} />
+          <Route path="/logistique/conservation/:lotId?" element={<StoredLotCheckScreen />} />
           <Route path="/depenses/nouvelle" element={<ExpenseScreen />} />
           <Route path="/cultures/semis" element={<SemisScreen />} />
           <Route path="/cultures/recolte/:cycleId" element={<HarvestScreen />} />

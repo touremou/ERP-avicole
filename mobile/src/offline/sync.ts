@@ -279,6 +279,7 @@ async function pullDelta(): Promise<void> {
     employee_leaves,
     crop_recipes,
     pending_harvests,
+    stored_lots,
   } = response.entities
 
   const refTables = [
@@ -288,7 +289,7 @@ async function pullDelta(): Promise<void> {
     db.ref_crop_species, db.ref_sales, db.ref_sale_items,
     db.ref_mill_machines, db.ref_employees, db.ref_incubations, db.ref_energy_sources,
     db.ref_sale_price_lists, db.ref_sale_price_list_items, db.ref_employee_leaves,
-    db.ref_crop_recipes, db.ref_pending_harvests,
+    db.ref_crop_recipes, db.ref_pending_harvests, db.ref_stored_lots,
   ]
 
   await db.transaction(
@@ -353,6 +354,13 @@ async function pullDelta(): Promise<void> {
       if (crop_recipes) {
         await db.ref_crop_recipes.bulkPut(crop_recipes.upserts)
         await db.ref_crop_recipes.bulkDelete(crop_recipes.deletes)
+      }
+      if (stored_lots) {
+        // Remplacement COMPLET (entité `full` côté serveur) : un lot vendu ou
+        // détruit quitte le périmètre sans tombstone. Un delta le laisserait dans
+        // la liste de contrôle, et le terrain pèserait un lot qui n'existe plus.
+        await db.ref_stored_lots.clear()
+        await db.ref_stored_lots.bulkPut(stored_lots.upserts)
       }
       if (pending_harvests) {
         // Remplacement COMPLET : une récolte déjà transformée quitte le scope
@@ -449,7 +457,7 @@ export async function switchFarm(farmId: number): Promise<void> {
       db.ref_sales, db.ref_sale_items, db.ref_mill_machines, db.ref_employees,
       db.ref_incubations, db.ref_energy_sources,
       db.ref_sale_price_lists, db.ref_sale_price_list_items, db.ref_employee_leaves,
-      db.ref_crop_recipes, db.ref_pending_harvests,
+      db.ref_crop_recipes, db.ref_pending_harvests, db.ref_stored_lots,
     ],
     async () => {
       await Promise.all([
@@ -463,6 +471,7 @@ export async function switchFarm(farmId: number): Promise<void> {
         db.ref_sale_price_lists.clear(), db.ref_sale_price_list_items.clear(),
         db.ref_employee_leaves.clear(),
         db.ref_crop_recipes.clear(), db.ref_pending_harvests.clear(),
+        db.ref_stored_lots.clear(),
       ])
     },
   )

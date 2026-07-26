@@ -165,6 +165,12 @@ export function NouvelleSaisieScreen() {
             </Link>
           )}
           {can('logistique', 'C') && (
+            <Link to="/logistique/conservation" className="task-card">
+              <span className="task-title">📦 {t('Contrôle de conservation')}</span>
+              <span className="task-meta">{t('pesée · état · cours du marché')}</span>
+            </Link>
+          )}
+          {can('logistique', 'C') && (
             <Link to="/logistique/reception-aliment" className="task-card">
               <span className="task-title">🚚 {t('Réception d’aliment')}</span>
               <span className="task-meta">{t('au portail · fournisseur')}</span>

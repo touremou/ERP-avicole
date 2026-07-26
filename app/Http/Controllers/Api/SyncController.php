@@ -211,6 +211,21 @@ class SyncController extends Controller
             'columns' => ['id', 'batch_number', 'formula_id', 'quantity_produced', 'status',
                           'operator_id', 'supervisor_id', 'started_at', 'updated_at'],
         ],
+        // T2 — Lots en conservation OUVERTS : le contrôle périodique se fait au
+        // magasin, balance en main. On descend aussi l'objectif de prix et
+        // l'échéance : le contrôleur doit savoir ce qu'il cherche à décider.
+        'stored_lots' => [
+            'model'   => \App\Models\StoredLot::class,
+            'gate'    => ['logistique.L', 'logistique.C'],
+            'columns' => ['id', 'uuid', 'stock_id', 'label', 'quantity_initial', 'quantity_current',
+                          'unit', 'unit_cost', 'target_unit_price', 'last_market_price',
+                          'opened_at', 'hold_until', 'check_interval_days', 'status', 'updated_at'],
+            'scope'   => 'open',
+            // Un lot vendu ou détruit quitte le périmètre SANS tombstone (il
+            // change juste de statut) : sans envoi intégral, il resterait dans la
+            // liste de contrôle du terrain, qui pèserait un lot qui n'existe plus.
+            'full'    => true,
+        ],
         // T1 — Recettes de transformation végétale : le séchoir a besoin du
         // rendement de référence pour que l'opérateur voie tout de suite si sa
         // sortie est plausible (même jauge que la découpe d'abattoir).

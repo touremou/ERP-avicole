@@ -39,6 +39,10 @@ class StockAdjustment extends Model
         'inventaire'           => "Écart d'inventaire",
         'casse'                => 'Casse / détérioration',
         'peremption'           => 'Péremption',
+        // T2 — perte de poids d'un lot conservé (reprise d'humidité, insectes,
+        // dessiccation). Distincte de la casse et de la péremption : la
+        // marchandise est toujours vendable, elle pèse simplement moins.
+        'freinte'              => 'Freinte de conservation',
         'vol'                  => 'Vol / disparition',
         'don'                  => 'Don / prélèvement',
         'consommation_interne' => 'Consommation interne',

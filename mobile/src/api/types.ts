@@ -72,6 +72,7 @@ export type OperationType =
   | 'water_reading.create'
   | 'attendance.create'
   | 'crop_transformation.create'
+  | 'stored_lot.check'
   | 'mill_production.complete'
   // Phase 3 — cœur sanitaire HACCP abattoir.
   | 'slaughter_reception.create'
@@ -152,6 +153,8 @@ export interface PullResponse {
     // T1 — atelier de transformation végétale (le séchoir est dehors).
     crop_recipes?: PullEntity<RefCropRecipe>
     pending_harvests?: PullEntity<RefPendingHarvest>
+    // T2 — lots en conservation à contrôler au magasin.
+    stored_lots?: PullEntity<RefStoredLot>
   }
 }
 
@@ -316,6 +319,29 @@ export interface RefSalePriceListItem {
   product_id: number | null
   product_type: string | null
   unit_price: number
+  updated_at: string
+}
+
+/**
+ * Lot en conservation (T2) — gardé pour être vendu plus cher plus tard.
+ * L'objectif de prix et l'échéance descendent aussi : le contrôleur doit savoir
+ * ce qu'il cherche à décider en pesant.
+ */
+export interface RefStoredLot {
+  id: number
+  uuid: string | null
+  stock_id: number
+  label: string
+  quantity_initial: number
+  quantity_current: number
+  unit: string
+  unit_cost: number | null
+  target_unit_price: number | null
+  last_market_price: number | null
+  opened_at: string
+  hold_until: string | null
+  check_interval_days: number
+  status: string
   updated_at: string
 }
 
