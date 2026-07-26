@@ -59,7 +59,16 @@ class TaskController extends Controller
 
     public function index(Request $request, TaskSchedulerService $service)
     {
-        if (Gate::denies('rh.L')) return redirect()->route('dashboard')->with('error', 'Accès restreint.');
+        // ACCÈS : encadrement (rh.L) OU titulaire de tâches. Un technicien de
+        // cultures n'a aucun droit RH et se voyait refuser SA propre liste — la
+        // logique de portée personnelle existait juste en dessous, mais était
+        // inatteignable. Le mobile, lui, la servait déjà : deux comportements
+        // pour la même donnée.
+        $myEmployee = Auth::user()?->employee;
+
+        if (Gate::denies('rh.L') && ! $myEmployee) {
+            return redirect()->route('dashboard')->with('error', 'Accès restreint.');
+        }
 
         $date = Carbon::parse($request->input('date', now()->toDateString()));
         $view = $request->input('view', 'day');
@@ -76,7 +85,7 @@ class TaskController extends Controller
         // paramètres d'URL. Les liens « Mes tâches » du menu profil passent
         // ?mine=1 pour présélectionner l'utilisateur courant — y compris pour
         // un encadrant, qui peut ensuite élargir à toute l'équipe.
-        $myEmployeeId = Auth::user()?->employee?->id;
+        $myEmployeeId = $myEmployee?->id;
         $canSeeAll    = Gate::allows('rh.M');
 
         if (! $canSeeAll) {
@@ -168,7 +177,17 @@ class TaskController extends Controller
 
     public function complete(Request $request, TaskAssignment $task)
     {
-        if (Gate::denies('rh.M')) return back()->with('error', 'Non autorisé.');
+        // Le TITULAIRE coche sa tâche sans droit RH ; l'encadrement (rh.M) peut
+        // la clore pour autrui. Même règle que SyncService::taskComplete, qui
+        // l'appliquait déjà côté terrain : exiger rh.M ici empêchait un
+        // technicien de valider depuis le bureau ce qu'il pouvait valider
+        // depuis son téléphone.
+        $myEmployeeId = Auth::user()?->employee?->id;
+        $isOwner = $task->employee_id !== null && $task->employee_id === $myEmployeeId;
+
+        if (! $isOwner && Gate::denies('rh.M')) {
+            return back()->with('error', 'Non autorisé.');
+        }
 
         $task->update([
             'status'           => 'fait',

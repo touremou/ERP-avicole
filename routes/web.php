@@ -794,10 +794,14 @@ Route::middleware(['auth'])->group(function () {
     // ─── NOTIFICATIONS WHATSAPP ───
     Route::prefix('notifications')->name('notifications.')->controller(NotificationController::class)->group(function () {
         Route::get('/preferences', 'preferences')->name('preferences')->middleware('can:L');
-        Route::put('/preferences', 'updatePreferences')->name('preferences.update')->middleware('can:L');
-        Route::post('/test', 'sendTest')->name('test')->middleware('can:L');
-        Route::post('/test-sms', 'sendTestSms')->name('test_sms')->middleware('can:L');
-        Route::post('/test-mail', 'sendTestMail')->name('test_mail')->middleware('can:L');
+        // ÉCRITURES en M, pas en L. Enregistrer des préférences est une
+        // modification ; envoyer un test consomme des crédits SMS/e-mail réels.
+        // Les garder en L laissait n'importe quel lecteur reconfigurer les
+        // alertes de la ferme et vider le crédit de messagerie.
+        Route::put('/preferences', 'updatePreferences')->name('preferences.update')->middleware('can:M');
+        Route::post('/test', 'sendTest')->name('test')->middleware('can:M');
+        Route::post('/test-sms', 'sendTestSms')->name('test_sms')->middleware('can:M');
+        Route::post('/test-mail', 'sendTestMail')->name('test_mail')->middleware('can:M');
         Route::get('/logs', 'logs')->name('logs')->middleware('can:S');
         // Journal d'audit (qui a modifié quoi) — lecture seule, admin.
         Route::get('/audit', [\App\Http\Controllers\AuditLogController::class, 'index'])->name('audit')->middleware('can:admin.S');
@@ -965,7 +969,11 @@ Route::middleware(['auth'])->group(function () {
 
     // ─── PLANNING TÂCHES OPÉRATIONNELLES ───
     Route::prefix('tasks')->name('tasks.')->controller(TaskController::class)->group(function () {
-        Route::get('/', 'index')->name('index')->middleware('can:L');
+        // PAS de can:L ici : un technicien doit voir SES tâches sans droit RH.
+        // Le contrôleur arbitre — il verrouille la portée sur sa fiche RH tant
+        // qu'il n'est pas encadrant (rh.M). Idem pour cocher une tâche : le
+        // mobile l'autorisait déjà au titulaire, le web l'exigeait en rh.M.
+        Route::get('/', 'index')->name('index');
         // Routes littérales EN PREMIER (avant {task})
         Route::post('/generate', 'generate')->name('generate')->middleware('can:M');
         Route::post('/store', 'storeManual')->name('store')->middleware('can:C');
@@ -979,7 +987,7 @@ Route::middleware(['auth'])->group(function () {
         // Routes avec task paramétrisé EN DERNIER
         Route::get('/{task}/edit', 'edit')->name('edit')->middleware('can:M');
         Route::put('/{task}', 'update')->name('update')->middleware('can:M');
-        Route::post('/{task}/complete', 'complete')->name('complete')->middleware('can:M');
+        Route::post('/{task}/complete', 'complete')->name('complete');
         Route::post('/{task}/assign', 'assign')->name('assign')->middleware('can:M');
         Route::delete('/{task}', 'destroy')->name('destroy')->middleware('can:S');
     });
