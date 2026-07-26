@@ -122,13 +122,13 @@ class CropCycle extends Model
      * (résidus). Renvoie l'intrant qui contraint le plus (échéance la plus
      * lointaine), null si le cycle est récoltable. Levée AUTOMATIQUE à la date.
      */
-    public function activePreharvestInterval(): ?CropInput
+    public function activePreharvestInterval(?Carbon $harvestDate = null): ?CropInput
     {
         return $this->inputs()
             ->whereNotNull('preharvest_days')
             ->where('preharvest_days', '>', 0)
             ->get()
-            ->filter(fn (CropInput $input) => $input->blocksHarvest())
+            ->filter(fn (CropInput $input) => $input->blocksHarvest($harvestDate))
             ->sortByDesc(fn (CropInput $input) => $input->harvest_allowed_from)
             ->first();
     }

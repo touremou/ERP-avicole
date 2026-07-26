@@ -1358,7 +1358,7 @@ class SyncService
             // traitement, la production n'est pas récoltable avant l'échéance
             // de la notice. Levée AUTOMATIQUE à la date — refus définitif ici
             // (bac « À corriger »), pas une erreur rejouable.
-            if ($blocking = $cycle->activePreharvestInterval()) {
+            if ($blocking = $cycle->activePreharvestInterval(Carbon::parse($data['harvest_date']))) {
                 return ['status' => 'conflict', 'message' => __(
                     "Le cycle :code est sous délai avant récolte jusqu'au :date (:n j restants) suite au traitement « :product » — récolte interdite (résidus).",
                     [

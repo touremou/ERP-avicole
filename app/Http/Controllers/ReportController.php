@@ -544,10 +544,13 @@ class ReportController extends Controller
 
     private function buildTechnicalStats(): array
     {
+        // Les anciens alias withSum (total_mortality / total_feed_consumed) sont
+        // retirés : ils étaient de toute façon MASQUÉS par les accesseurs du
+        // modèle (un accesseur prime sur un attribut brut homonyme), donc
+        // trompeurs à la lecture — et plus aucun code ne les consomme depuis que
+        // le FCR et le taux de mortalité vivent sur Batch.
         $activeBatches = Batch::with('building')
             ->active()
-            ->withSum('dailyChecks as total_mortality', 'mortality')
-            ->withSum('dailyChecks as total_feed_consumed', 'feed_consumed')
             ->live()
             ->get();
 
@@ -568,7 +571,18 @@ class ReportController extends Controller
             $totalMortalite = $batch->total_mortality ?? 0;
             $current = $initial - $totalMortalite;
 
-            $tauxMortalite = $initial > 0 ? ($totalMortalite / $initial) * 100 : 0;
+            // TAUX DE MORTALITÉ — implémentation UNIQUE sur le modèle
+            // (Batch::mortality_rate), partagée avec la fiche hebdomadaire.
+            //
+            // La base de calcul devient (initial_quantity + qty_dead) au lieu de
+            // initial_quantity seul : initial_quantity ne compte que les sujets
+            // VIVANTS reçus, les morts au transport en sont exclus. Les imputer
+            // au numérateur sans les mettre au dénominateur gonflait le taux —
+            // un lot de 1 000 sujets commandés dont 20 arrivent morts affichait
+            // 2,04 % au lieu de 2,00 %. L'écart est faible mais il s'aggrave avec
+            // la mortalité de transport, et deux écrans ne doivent pas donner
+            // deux chiffres.
+            $tauxMortalite = $batch->mortality_rate;
             $age = Carbon::parse($batch->arrival_date)->diffInDays(now()) + 1;
 
             $lastCheck = $latestChecks->get($batch->id);

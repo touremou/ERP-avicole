@@ -36,7 +36,12 @@ class RecordHarvest
         // production n'est pas récoltable avant l'échéance de la notice
         // (résidus). Garde placée ICI = un seul point pour le web, la sync
         // mobile et tout appelant futur. Levée automatique à la date.
-        if ($blocking = $cycle->activePreharvestInterval()) {
+        // Garde évaluée à la DATE DE RÉCOLTE déclarée, non à l'instant de la
+        // saisie : c'est la date de récolte qui décide de la présence de résidus.
+        // Rend la reprise d'un historique possible sans exception au garde-fou.
+        $harvestDate = ! empty($data['harvest_date']) ? \Carbon\Carbon::parse($data['harvest_date']) : now();
+
+        if ($blocking = $cycle->activePreharvestInterval($harvestDate)) {
             throw new \Exception(sprintf(
                 "Le cycle %s est sous délai avant récolte jusqu'au %s (%d j restants) suite au traitement « %s » — récolte interdite (résidus).",
                 $cycle->code,

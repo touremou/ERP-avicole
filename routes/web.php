@@ -984,6 +984,14 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/{task}', 'destroy')->name('destroy')->middleware('can:S');
     });
 
+    // ─── REPRISE D'HISTORIQUE CULTURES (import en lot, module: cultures) ───
+    Route::prefix('cultures/reprise')->name('crop-backfill.')->controller(\App\Http\Controllers\CropBackfillController::class)->group(function () {
+        Route::get('/', 'index')->name('index')->middleware('can:C');
+        Route::get('/modele', 'template')->name('template')->middleware('can:C');
+        Route::post('/analyse', 'analyse')->name('analyse')->middleware('can:C');
+        Route::post('/importer', 'commit')->name('commit')->middleware('can:C');
+    });
+
     // ─── CONSERVATION : lots gardés pour vendre plus tard (module: logistique) ───
     Route::prefix('conservation')->name('stored-lots.')->controller(\App\Http\Controllers\StoredLotController::class)->group(function () {
         Route::get('/', 'index')->name('index')->middleware('can:L');

@@ -41,6 +41,13 @@ class RecordCropInput
                 'unit_cost'       => $unitCost,
                 'total_cost'      => $totalCost,
                 'input_date'      => $data['input_date'],
+                // DÉLAI AVANT RÉCOLTE (DAR) — il était collecté par les
+                // formulaires web et mobile, VALIDÉ par la porte de sync… puis
+                // jamais écrit ici. La garde de RecordHarvest ne bloquait donc
+                // jamais rien : le champ existait, la règle existait, mais la
+                // valeur n'atteignait pas la base. Sans cette ligne, le délai
+                // d'attente phytosanitaire est purement décoratif.
+                'preharvest_days' => $data['preharvest_days'] ?? null,
                 'notes'           => $data['notes'] ?? null,
                 'synced_to_stock' => false,
                 'stock_item_name' => $syncToStock ? $stockItem : null,
