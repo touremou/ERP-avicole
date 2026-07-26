@@ -6,6 +6,7 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\Database\Events\MigrationsStarted;
 use Illuminate\Database\Events\MigrationsEnded;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\Facades\Request;
@@ -39,6 +40,24 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // ─── BINDING {employee} : UNE seule règle de visibilité RH ───
+        // La liste du personnel inclut les employés d'un AUTRE site dont le
+        // compte a reçu l'accès à la ferme courante (agent prêté). Les routes à
+        // paramètre, elles, passaient par le global scope de ferme : ces
+        // employés étaient donc LISTÉS mais leur ouverture renvoyait 404
+        // (« INTROUVABLE » sur /employees/4). On fait résoudre {employee} par la
+        // même règle que la liste, pour que voir et ouvrir aillent ensemble.
+        //
+        // Strictement plus étroit que le withoutGlobalScopes() de la liste : un
+        // employé d'un autre site dont le compte n'a PAS accès reste introuvable.
+        // withTrashed : la fiche d'un employé ARCHIVÉ doit rester consultable
+        // (historique de paie, dossier). Les écrans qui ne doivent pas y toucher
+        // le refusent explicitement plutôt que de compter sur un 404 fortuit du
+        // scope SoftDeletes — un refus dit pourquoi, un 404 laisse chercher.
+        Route::bind('employee', function ($value) {
+            return \App\Models\Employee::visibleInCurrentFarm()->withTrashed()->findOrFail($value);
+        });
+
         // ─── 0. PARITÉ MIGRATIONS MySQL (job « parité prod ») ───
         // La chaîne de migrations comporte des FK « en avant » : une table
         // référence une cible créée par une migration au timestamp POSTÉRIEUR

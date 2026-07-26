@@ -7,6 +7,7 @@ use App\Models\CropSpecies;
 use App\Models\Employee;
 use App\Models\Harvest;
 use App\Models\Plot;
+use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\Cell\DataValidation;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
@@ -211,10 +212,16 @@ class CropBackfillTemplate
             ['Ce classeur sert à importer EN LOT les cultures déjà en place et leurs activités,', ''],
             ['sans les ressaisir une par une.', ''],
             ['', ''],
-            ['LES ONGLETS À REMPLIR SONT VIDES', 'head'],
-            ['Parcelles, Cycles, Intrants et Recoltes ne contiennent que leurs en-têtes.', ''],
+            ['CE QUI EST DÉJÀ DANS LE FICHIER', 'head'],
+            ['Parcelles et Cycles arrivent PRÉ-REMPLIS avec ce qui existe déjà dans', ''],
+            ['l\'application (en gris italique). Ne les retapez pas : vos codes sont sous', ''],
+            ['vos yeux, à l\'endroit même où vous devez les recopier. Ces lignes sont', ''],
+            ['reconnues par leur CODE et réutilisées — jamais dupliquées.', ''],
+            ['Intrants et Recoltes, eux, sont VIDES : une activité n\'a pas de code, donc', ''],
+            ['elle serait ré-ajoutée à chaque téléversement. À vous de les saisir.', ''],
             ['Les exemples sont dans l\'onglet « Exemples » — à lire, jamais à remplir.', ''],
-            ['Vous pouvez donc téléverser ce fichier partiellement rempli sans risque.', ''],
+            ['Vous pouvez téléverser ce fichier partiellement rempli sans risque.', ''],
+            ['Supprimer une ligne pré-remplie NE supprime rien dans l\'application.', ''],
             ['', ''],
             ['ORDRE DE REMPLISSAGE', 'head'],
             ['1. Parcelles — une ligne par parcelle. Le « code_parcelle » est votre référence.', ''],
@@ -318,6 +325,84 @@ class CropBackfillTemplate
             }
             $this->dropdown($sheet, $letters[$columnName], $choice['values'], strict: $choice['strict']);
         }
+
+        // Lignes DÉJÀ enregistrées (Parcelles et Cycles seulement) : le
+        // producteur retrouve ses codes sous les yeux, à l'endroit même où il
+        // doit les recopier. En gris italique pour qu'on voie tout de suite que
+        // ce n'est pas de la saisie à faire.
+        $existing = static::existingRows()[$name] ?? [];
+
+        foreach (array_values($existing) as $index => $values) {
+            $row = $index + 2;
+            $letter = 'A';
+
+            foreach ($values as $value) {
+                if ($value !== null && $value !== '') {
+                    // Texte forcé : « 0,75 » et « 15/05/2026 » ne doivent pas
+                    // être réinterprétés par Excel selon sa locale.
+                    $sheet->setCellValueExplicit($letter . $row, (string) $value, DataType::TYPE_STRING);
+                }
+                $letter = chr(ord($letter) + 1);
+            }
+
+            $sheet->getStyle('A' . $row . ':' . chr(ord('A') + count($definition['columns']) - 1) . $row)
+                ->getFont()->setItalic(true)->getColor()->setARGB('FF64748B');
+        }
+    }
+
+    /**
+     * LIGNES DÉJÀ ENREGISTRÉES, pré-remplies dans les onglets de saisie.
+     *
+     * Le classeur sortait avec des onglets vides, y compris chez un producteur
+     * qui a déjà cinq parcelles dans l'application. Il devait donc les
+     * retrouver de mémoire pour rattacher un cycle ou une récolte — et le
+     * symptôme final était un « code inconnu » sur un code recopié depuis les
+     * exemples.
+     *
+     * SEULS Parcelles et Cycles sont pré-remplis, et c'est un choix, pas un
+     * oubli : l'import les reconnaît par leur CODE et les RÉUTILISE sans rien
+     * réécrire (voir CropBackfillImporter::commit). Re-téléverser le fichier
+     * intact ne crée donc aucun doublon. Les intrants et les récoltes, eux,
+     * n'ont aucune clé naturelle : pré-remplis, ils seraient ré-ajoutés à
+     * chaque téléversement. L'asymétrie est expliquée dans le mode d'emploi,
+     * sans quoi on croirait à une omission.
+     *
+     * @return array<string, array<int, array<int, mixed>>>
+     */
+    public static function existingRows(): array
+    {
+        $plots = Plot::orderBy('code')->take(300)->get();
+
+        $cycles = \App\Models\CropCycle::with('plot')
+            ->whereHas('plot')
+            ->orderByDesc('id')->take(300)->get();
+
+        return [
+            'Parcelles' => $plots->map(fn (Plot $plot) => [
+                $plot->code,
+                $plot->name,
+                $plot->area_ha,
+                $plot->location,
+                $plot->soil_type,
+                $plot->irrigation_type,
+                $plot->status,
+                null, // notes : laissées vides, ce sont des observations de saisie
+            ])->all(),
+
+            'Cycles' => $cycles->map(fn ($cycle) => [
+                $cycle->plot->code,
+                $cycle->code,
+                $cycle->crop_name,
+                $cycle->variety,
+                optional($cycle->planting_date)->format('d/m/Y'),
+                $cycle->area_used_ha,
+                $cycle->expected_yield_kg,
+                null, // les coûts ne se re-déclarent pas : ils sont déjà comptés
+                null,
+                null,
+                null,
+            ])->all(),
+        ];
     }
 
     private function buildReferences(Worksheet $sheet): void

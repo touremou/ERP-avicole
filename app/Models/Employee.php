@@ -161,6 +161,41 @@ class Employee extends Model
         return $query->where('department', $dept);
     }
 
+    /**
+     * VISIBILITÉ RH d'un employé dans la ferme courante — règle UNIQUE.
+     *
+     * Un employé est visible s'il est rattaché à la ferme courante (farm_id) OU
+     * si son COMPTE a reçu l'accès à cette ferme (farm_user) : c'est le cas d'un
+     * agent affecté à un autre site pour y travailler.
+     *
+     * Cette règle vivait en dur dans EmployeeController::index(), tandis que
+     * show(), edit() et toutes les routes à paramètre {employee} passaient par
+     * le global scope de ferme. Conséquence : un employé de la seconde
+     * catégorie apparaissait dans la LISTE mais son ouverture renvoyait 404
+     * (« INTROUVABLE » sur /employees/4). Listé sans être ouvrable — le pire
+     * des deux mondes, et invisible en relisant l'un ou l'autre fichier seul.
+     *
+     * La règle est donc ici, et le binding de route la consomme (AppServiceProvider).
+     */
+    public function scopeVisibleInCurrentFarm($query)
+    {
+        $farmId = session('current_farm_id');
+
+        $query->withoutGlobalScopes();
+
+        if (! $farmId) {
+            return $query; // hors contexte multi-ferme : aucun filtre (cf. FarmScope)
+        }
+
+        $accessUserIds = \Illuminate\Support\Facades\DB::table('farm_user')
+            ->where('farm_id', $farmId)->pluck('user_id');
+
+        return $query->where(function ($sub) use ($farmId, $accessUserIds) {
+            $sub->where('farm_id', $farmId)
+                ->orWhereIn('user_id', $accessUserIds);
+        });
+    }
+
     // --- CONTRAT À DURÉE DÉTERMINÉE ---
 
     /** Types de contrat qui ont un TERME, donc une décision à prendre. */
