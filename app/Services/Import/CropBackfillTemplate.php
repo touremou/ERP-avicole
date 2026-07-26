@@ -35,6 +35,13 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
  *  2. LISTES DÉROULANTES PARTOUT où un ensemble fermé existe. Un technicien qui
  *     tape « engrai » au lieu de « engrais » produit une ligne en erreur qu'il
  *     faudra corriger et re-téléverser : autant l'empêcher à la source.
+ *  3. LES EXEMPLES VIVENT DANS LEUR PROPRE ONGLET, jamais dans les onglets à
+ *     remplir. Mélanger les deux obligeait l'import à DEVINER, à partir d'un
+ *     marqueur textuel, ce qui était un exemple et ce qui était une vraie
+ *     donnée — et il se trompait : téléverser le modèle intact produisait des
+ *     erreurs sur des codes qui figuraient pourtant bien dans le fichier
+ *     (lignes d'exemple ignorées d'un côté, lues de l'autre). Les onglets de
+ *     saisie ne contiennent donc plus que leurs en-têtes.
  */
 class CropBackfillTemplate
 {
@@ -56,6 +63,7 @@ class CropBackfillTemplate
         $this->buildCycles($book->createSheet());
         $this->buildInputs($book->createSheet());
         $this->buildHarvests($book->createSheet());
+        $this->buildExamples($book->createSheet());
         $this->buildReferences($book->createSheet());
 
         $book->setActiveSheetIndex(0);
@@ -88,6 +96,11 @@ class CropBackfillTemplate
             ['', ''],
             ['Ce classeur sert à importer EN LOT les cultures déjà en place et leurs activités,', ''],
             ['sans les ressaisir une par une.', ''],
+            ['', ''],
+            ['LES ONGLETS À REMPLIR SONT VIDES', 'head'],
+            ['Parcelles, Cycles, Intrants et Recoltes ne contiennent que leurs en-têtes.', ''],
+            ['Les exemples sont dans l\'onglet « Exemples » — à lire, jamais à remplir.', ''],
+            ['Vous pouvez donc téléverser ce fichier partiellement rempli sans risque.', ''],
             ['', ''],
             ['ORDRE DE REMPLISSAGE', 'head'],
             ['1. Parcelles — une ligne par parcelle. Le « code_parcelle » est votre référence.', ''],
@@ -124,6 +137,7 @@ class CropBackfillTemplate
             ['ne re-téléversez ces onglets que s\'ils n\'ont pas encore été importés.', ''],
             ['', ''],
             ['L\'onglet « References » liste toutes les valeurs acceptées.', ''],
+            ['L\'onglet « Exemples » montre une ligne type pour chaque onglet.', ''],
         ];
 
         foreach ($lines as $index => [$text, $style]) {
@@ -156,10 +170,6 @@ class CropBackfillTemplate
             ['notes', 34, false],
         ]);
 
-        $sheet->fromArray([
-            ['P-001', 'Bas-fond Kolenten', 0.75, 'Kindia — sortie nord', 'argileux', 'gravitaire', 'en_culture', 'Exemple — remplacez ou supprimez cette ligne'],
-        ], null, 'A2');
-        $this->markExample($sheet, 2, 8);
 
         $this->dropdown($sheet, 'G', Plot::STATUSES);
     }
@@ -182,10 +192,6 @@ class CropBackfillTemplate
             ['notes', 30, false],
         ]);
 
-        $sheet->fromArray([
-            ['P-001', 'GOM-2026-01', 'Gombo', 'Clemson', '15/05/2026', 0.75, 1200, 1000000, 250000, '', 'Exemple — remplacez ou supprimez cette ligne'],
-        ], null, 'A2');
-        $this->markExample($sheet, 2, 11);
 
         // Cultures du catalogue : liste indicative, la saisie libre reste permise
         // (un producteur peut cultiver une espèce absente du référentiel).
@@ -219,12 +225,6 @@ class CropBackfillTemplate
             ['notes', 30, false],
         ]);
 
-        $sheet->fromArray([
-            ['GOM-2026-01', '20/05/2026', 'engrais', 'NPK 15-15-15', 50, 'kg', 9000, 450000, '', 'Exemple — remplacez ou supprimez cette ligne'],
-            ['GOM-2026-01', '10/06/2026', 'phyto', 'Mancozèbe 80 WP', 2, 'kg', 45000, 90000, 14, 'Le délai de 14 j vient de la notice'],
-        ], null, 'A2');
-        $this->markExample($sheet, 2, 10);
-        $this->markExample($sheet, 3, 10);
 
         $this->dropdown($sheet, 'C', array_keys(CropInput::TYPES));
         $this->dropdown($sheet, 'F', ['kg', 'g', 'l', 'ml', 'sac', 'unite', 'jour', 'heure'], strict: false);
@@ -248,12 +248,6 @@ class CropBackfillTemplate
             ['notes', 30, false],
         ]);
 
-        $sheet->fromArray([
-            ['GOM-2026-01', '20/07/2026', 180, 'kg', 180, 5, 'bon', 'vente', 3000, 'non', 'Vendue au marché'],
-            ['GOM-2026-01', '27/07/2026', 220, 'kg', 220, 0, 'bon', 'transformation', '', 'oui', 'Part au séchage — poids en kg OBLIGATOIRE'],
-        ], null, 'A2');
-        $this->markExample($sheet, 2, 11);
-        $this->markExample($sheet, 3, 11);
 
         $this->dropdown($sheet, 'D', ['kg', 'sac', 'panier', 'caisse', 'botte', 'regime', 'unite'], strict: false);
         $this->dropdown($sheet, 'G', Harvest::QUALITIES);
@@ -334,11 +328,73 @@ class CropBackfillTemplate
             ->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
     }
 
-    /** Marque une ligne comme exemple (grisée, en italique) — à supprimer par l'utilisateur. */
-    private function markExample(Worksheet $sheet, int $row, int $columns): void
+    /**
+     * Onglet EXEMPLES — à lire, jamais à remplir.
+     *
+     * L'import IGNORE cet onglet par son nom : aucune heuristique, aucun
+     * marqueur à repérer. C'est ce qui rend la reprise prévisible.
+     */
+    private function buildExamples(Worksheet $sheet): void
     {
-        $range = "A{$row}:" . chr(ord('A') + $columns - 1) . $row;
-        $sheet->getStyle($range)->getFont()->setItalic(true)->getColor()->setARGB('FF94A3B8');
+        $sheet->setTitle('Exemples');
+
+        $blocks = [
+            ['Parcelles', ['code_parcelle', 'nom', 'surface_ha', 'localisation', 'type_sol', 'irrigation', 'statut', 'notes'], [
+                ['P-001', 'Bas-fond Kolenten', '0,75', 'Kindia — sortie nord', 'argileux', 'gravitaire', 'en_culture', ''],
+            ]],
+            ['Cycles', ['code_parcelle', 'code_cycle', 'culture', 'variete', 'date_semis', 'surface_utilisee_ha', 'rendement_attendu_kg', 'cout_semences_intrants_initial', 'couts_additionnels', 'responsable', 'notes'], [
+                ['P-001', 'GOM-2026-01', 'Gombo', 'Clemson', '15/05/2026', '0,75', '1200', '1000000', '250000', '', ''],
+            ]],
+            ['Intrants', ['code_cycle', 'date', 'type', 'nom_produit', 'quantite', 'unite', 'cout_unitaire', 'cout_total', 'delai_avant_recolte_jours', 'notes'], [
+                ['GOM-2026-01', '20/05/2026', 'engrais', 'NPK 15-15-15', '50', 'kg', '9000', '450000', '', ''],
+                ['GOM-2026-01', '10/06/2026', 'phyto', 'Mancozèbe 80 WP', '2', 'kg', '45000', '90000', '14', 'Le délai de 14 j vient de la notice du produit'],
+            ]],
+            ['Recoltes', ['code_cycle', 'date', 'quantite', 'unite', 'poids_net_kg', 'pertes', 'qualite', 'destination', 'prix_unitaire_kg', 'verser_au_stock', 'notes'], [
+                ['GOM-2026-01', '20/07/2026', '180', 'kg', '180', '5', 'bon', 'vente', '3000', 'non', 'Vendue au marché'],
+                ['GOM-2026-01', '27/07/2026', '220', 'kg', '220', '0', 'bon', 'transformation', '', 'oui', 'Part au séchage — poids en kg OBLIGATOIRE'],
+            ]],
+        ];
+
+        $row = 1;
+        $sheet->setCellValue('A1', 'EXEMPLES — À LIRE, PAS À REMPLIR');
+        $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(14);
+        $sheet->setCellValue('A2', 'Recopiez la structure dans les onglets de saisie. Cet onglet n\'est jamais importé.');
+        $sheet->getStyle('A2')->getFont()->setItalic(true)->getColor()->setARGB('FF64748B');
+        $row = 4;
+
+        foreach ($blocks as [$title, $headers, $rows]) {
+            $sheet->setCellValue("A{$row}", 'Onglet ' . $title);
+            $sheet->getStyle("A{$row}")->getFont()->setBold(true)->getColor()->setARGB('FF1E293B');
+            $row++;
+
+            $letter = 'A';
+            foreach ($headers as $header) {
+                $sheet->setCellValue($letter . $row, $header);
+                $style = $sheet->getStyle($letter . $row);
+                $style->getFont()->setBold(true)->setSize(8)->getColor()->setARGB('FFFFFFFF');
+                $style->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB(self::HEADER_FILL);
+                $letter = chr(ord($letter) + 1);
+            }
+            $row++;
+
+            foreach ($rows as $example) {
+                $letter = 'A';
+                foreach ($example as $value) {
+                    // Texte forcé : on montre le FORMAT attendu (« 0,75 »,
+                    // « 15/05/2026 »), qu'Excel ne doit pas réinterpréter.
+                    $sheet->setCellValueExplicit($letter . $row, (string) $value, \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+                    $sheet->getStyle($letter . $row)->getFont()->setSize(9);
+                    $letter = chr(ord($letter) + 1);
+                }
+                $row++;
+            }
+
+            $row += 2;
+        }
+
+        foreach (range('A', 'K') as $column) {
+            $sheet->getColumnDimension($column)->setWidth(22);
+        }
     }
 
     /**

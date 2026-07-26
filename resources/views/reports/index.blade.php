@@ -13,6 +13,25 @@
         <div class="max-w-5xl mx-auto sm:px-6 lg:px-8">
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 text-left">
 
+                {{-- PRODUCTION VÉGÉTALE — les rapports cultures vivent dans leur
+                     propre centre (crop-reports). Sans ce renvoi, un technicien
+                     végétal ouvrait « Rapports » et n'y trouvait rien qui le
+                     concerne : un centre de rapports qui ignore un module entier
+                     est une source de confusion, pas un raccourci. --}}
+                @can('cultures.L')
+                <a href="{{ route('crop-reports.index') }}" class="group bg-slate-900 p-8 rounded-2xl shadow-lg hover:bg-slate-800 transition-all no-underline relative overflow-hidden border-b-4 border-green-500">
+                    <div class="relative">
+                        <div class="w-12 h-12 rounded-2xl bg-green-500/20 text-green-400 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
+                            <i class="fa-solid fa-seedling text-lg"></i>
+                        </div>
+                        <h3 class="text-[11px] font-black uppercase tracking-widest text-white mb-2">{{ __("Production végétale") }}</h3>
+                        <p class="text-[9px] font-bold text-white/50 uppercase italic leading-relaxed">
+                            {{ __("Rendements, intrants, campagnes, transformations") }}
+                        </p>
+                    </div>
+                </a>
+                @endcan
+
                 {{-- COMPTE DE RÉSULTAT (P&L) — admin.L, aligné sur le contrôleur
                      (donnée financière sensible : la tuile ne s'affiche qu'à ceux
                      qui peuvent réellement ouvrir le rapport). --}}

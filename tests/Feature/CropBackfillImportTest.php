@@ -498,3 +498,49 @@ test('la garde DAR s’évalue à la DATE DE RÉCOLTE, pas à l’instant de la 
         'quantity' => 50, 'unit' => 'kg', 'destination' => Harvest::DEST_VENTE, 'unit_price' => 3000,
     ]))->toThrow(\Exception::class);
 });
+
+test('le modèle VIERGE, téléversé tel quel, ne produit AUCUNE erreur', function () {
+    // Régression : les onglets de saisie contenaient des lignes d'exemple dont
+    // le marquage était incomplet. Téléverser le modèle intact signalait des
+    // codes de cycle « inconnus » alors qu'ils figuraient bien dans le fichier —
+    // les lignes d'exemple étaient ignorées dans un onglet et lues dans l'autre.
+    $path = tempnam(sys_get_temp_dir(), 'vierge-') . '.xlsx';
+    file_put_contents($path, app(CropBackfillTemplate::class)->contents());
+
+    $analysis = importer()->analyse($path);
+
+    expect($analysis['ok'])->toBeTrue();
+    expect($analysis['errors'])->toBe([]);
+    // Les 4 onglets de saisie sont vides : rien n'est lu, donc rien à corriger.
+    expect($analysis['counts'])->toBe(['plots' => 0, 'cycles' => 0, 'inputs' => 0, 'harvests' => 0]);
+});
+
+test('l’onglet Exemples n’est JAMAIS importé', function () {
+    $path = tempnam(sys_get_temp_dir(), 'exemples-') . '.xlsx';
+    file_put_contents($path, app(CropBackfillTemplate::class)->contents());
+
+    importer()->commit($path, $this->managerUser->id);
+
+    // La parcelle P-001 et le cycle GOM-2026-01 de l'onglet Exemples ne doivent
+    // pas atterrir en base : un import ne doit pas créer de données de démonstration.
+    expect(Plot::where('code', 'P-001')->exists())->toBeFalse();
+    expect(CropCycle::where('code', 'GOM-2026-01')->exists())->toBeFalse();
+    expect(Plot::count())->toBe(0);
+});
+
+test('le modèle sépare bien onglets de saisie (vides) et onglet Exemples (rempli)', function () {
+    $book = app(CropBackfillTemplate::class)->build();
+
+    foreach (['Parcelles', 'Cycles', 'Intrants', 'Recoltes'] as $title) {
+        $rows = $book->getSheetByName($title)->toArray(null, true, false, false);
+        // Ligne 1 = en-tête ; tout le reste doit être vide.
+        $data = array_slice($rows, 1);
+        $filled = array_filter($data, fn ($row) => array_filter($row, fn ($c) => trim((string) $c) !== '') !== []);
+        expect($filled)->toBe([], "L'onglet {$title} contient des lignes pré-remplies.");
+    }
+
+    $examples = $book->getSheetByName('Exemples')->toArray();
+    $flat = collect($examples)->flatten()->filter()->implode(' ');
+    expect($flat)->toContain('GOM-2026-01');
+    expect($flat)->toContain('Mancozèbe 80 WP');
+});

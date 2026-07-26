@@ -50,7 +50,15 @@ class CropBackfillImporter
         'Recoltes'  => 'harvests',
     ];
 
-    /** Libellés d'exemple à ignorer : le modèle en contient, l'utilisateur peut les laisser. */
+    /**
+     * Filet de RÉTRO-COMPATIBILITÉ : les premiers modèles diffusés plaçaient des
+     * lignes d'exemple DANS les onglets de saisie, marquées par ce libellé. Le
+     * marquage était incomplet — certaines lignes d'exemple passaient pour de
+     * vraies données et provoquaient des erreurs sur des codes pourtant présents
+     * dans le fichier. Le modèle actuel isole les exemples dans un onglet
+     * « Exemples », que cet import ignore par son nom (il n'est pas dans SHEETS).
+     * On conserve la détection pour les fichiers déjà téléchargés.
+     */
     private const EXAMPLE_MARKER = 'Exemple — remplacez';
 
     /**

@@ -34,11 +34,19 @@ class ReportController extends Controller
      */
     public function index()
     {
-        if (Gate::denies('elevage.L') && Gate::denies('depenses.L') && Gate::denies('admin.L')) {
-            return redirect()->route('dashboard')->with('error', 'Accès restreint.');
+        // Le centre de rapports est TRANSVERSE : il doit s'ouvrir à qui a au
+        // moins un rapport à y lire. Il ignorait les cultures — un technicien
+        // végétal y atterrissait sur une page qui ne le concernait pas, ou s'en
+        // voyait refuser l'accès alors que des rapports existaient pour lui.
+        $anyOf = ['elevage.L', 'cultures.L', 'depenses.L', 'admin.L'];
+
+        foreach ($anyOf as $gate) {
+            if (Gate::allows($gate)) {
+                return view('reports.index');
+            }
         }
 
-        return view('reports.index');
+        return redirect()->route('dashboard')->with('error', 'Accès restreint.');
     }
 
     /**

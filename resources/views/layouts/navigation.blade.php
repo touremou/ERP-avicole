@@ -63,9 +63,11 @@
 
                             {{-- RAPPORTS : entrée transverse (pas un module de la
                                  matrice) — le centre de rapports est accessible
-                                 sans passer par le hub Élevage. Mêmes droits que
-                                 le contrôleur (any-of), tuiles filtrées ensuite. --}}
-                            @canany(['elevage.L', 'depenses.L', 'admin.L'])
+                                 sans passer par le hub Élevage. La condition doit
+                                 rester IDENTIQUE à celle de ReportController::index,
+                                 sinon la tuile s'affiche pour un profil que la page
+                                 refuse ensuite (ou l'inverse). --}}
+                            @canany(['elevage.L', 'cultures.L', 'depenses.L', 'admin.L'])
                             <a href="{{ route('reports.index') }}" class="flex flex-col items-center p-2.5 rounded-xl hover:bg-slate-100 transition-all group no-underline">
                                 <div class="w-9 h-9 rounded-lg bg-slate-100 text-slate-500 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform">
                                     <i class="fa-solid fa-chart-pie text-sm"></i>
@@ -213,7 +215,7 @@
             </a>
             @endcanany
             {{-- RAPPORTS : même entrée transverse que le drawer desktop. --}}
-            @canany(['elevage.L', 'depenses.L', 'admin.L'])
+            @canany(['elevage.L', 'cultures.L', 'depenses.L', 'admin.L'])
             <a href="{{ route('reports.index') }}" class="flex items-center px-3 py-2 rounded-lg text-[10px] font-black uppercase italic text-slate-600 hover:bg-slate-100 no-underline">
                 <i class="fa-solid fa-chart-pie mr-2 text-slate-500 w-4 text-center"></i> {{ __("Rapports") }}
             </a>
