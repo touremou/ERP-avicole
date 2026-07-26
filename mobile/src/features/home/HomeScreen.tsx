@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../app/AuthContext'
 import { db, type MyRecord } from '../../offline/db'
-import { onSyncChange, enqueue } from '../../offline/sync'
+import { onSyncChange, enqueue, declaredNow } from '../../offline/sync'
 import { safeLoad } from '../../offline/safeLoad'
 import { t, dateLocale } from '../../i18n'
 import { useFieldTasks } from './useFieldTasks'
@@ -101,7 +101,7 @@ export function HomeScreen() {
       return
     }
     // Optimiste : on retire la tâche localement et on pousse l'opération.
-    await enqueue('task.complete', { task_id: task.id }, t('Tâche : :title', { title: task.title }))
+    await enqueue('task.complete', { task_id: task.id, done_at: declaredNow() }, t('Tâche : :title', { title: task.title }))
     await db.tasks.delete(task.id)
     window.dispatchEvent(new CustomEvent('tasks:updated'))
   }

@@ -10,7 +10,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../../app/AuthContext'
 import { db, getMeta } from '../../offline/db'
-import { onSyncChange, enqueue } from '../../offline/sync'
+import { onSyncChange, enqueue, declaredNow } from '../../offline/sync'
 import { safeLoad } from '../../offline/safeLoad'
 import { t } from '../../i18n'
 import { FilterChips } from '../../ui/FilterChips'
@@ -146,7 +146,7 @@ export function TachesScreen() {
       setProofTask(task)
       return
     }
-    await enqueue('task.complete', { task_id: task.id }, t('Tâche : :title', { title: task.title }))
+    await enqueue('task.complete', { task_id: task.id, done_at: declaredNow() }, t('Tâche : :title', { title: task.title }))
     await db.tasks.delete(task.id)
     window.dispatchEvent(new CustomEvent('tasks:updated'))
   }

@@ -1042,4 +1042,35 @@ export const en: Record<string, string> = {
   'Le coût de revient et la valorisation du stock seront calculés par le serveur au push.':
     'Cost price and stock valuation will be computed by the server on push.',
   'Transformation :out — :n :unit': 'Processing :out — :n :unit',
+  // ── S2 — fiche hebdomadaire par technicien ──
+  'Mon suivi': 'My tracking',
+  'Ma semaine (indicateurs)': 'My week (indicators)',
+  'Ma semaine': 'My week',
+  'Semaine :n': 'Week :n',
+  'Semaine précédente': 'Previous week',
+  'Revenir à cette semaine': 'Back to this week',
+  'Aucune tâche planifiée cette semaine — rien à mesurer.':
+    'No task scheduled this week — nothing to measure.',
+  'Indicateurs indisponibles hors réseau — ils sont calculés au bureau.':
+    'Indicators unavailable offline — they are computed at the office.',
+  'Votre compte n’est pas rattaché à une fiche employé : aucun suivi personnel à afficher.':
+    'Your account is not linked to an employee record: no personal tracking to show.',
+  'non mesurable': 'not measurable',
+  'cible': 'target',
+  'Taux de complétion des tâches': 'Task completion rate',
+  'Ponctualité de saisie (le jour même)': 'Same-day entry punctuality',
+  'Mortalité du lot le plus atteint': 'Mortality of the worst-hit batch',
+  'Indice de consommation (FCR) moyen': 'Average feed conversion ratio (FCR)',
+  'Écart aliment réel / norme de souche': 'Actual feed vs strain standard',
+  'Interventions cultures réalisées / planifiées': 'Crop interventions done / planned',
+  'Mes lots': 'My batches',
+  'Mes cultures': 'My crops',
+  'mort.': 'mort.',
+  'en retard': 'late',
+  ':n incident(s) sanitaire(s) déclaré(s) cette semaine':
+    ':n health incident(s) reported this week',
+  'La ponctualité se mesure sur la date où vous avez fait la tâche, pas sur celle de la synchronisation.':
+    'Punctuality is measured on the date you did the task, not on the sync date.',
+  '← Mon espace': '← My space',
+  'Réessayer': 'Retry',
 }

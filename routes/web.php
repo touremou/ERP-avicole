@@ -984,6 +984,13 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/{task}', 'destroy')->name('destroy')->middleware('can:S');
     });
 
+    // ─── FICHE DE SUIVI HEBDOMADAIRE PAR TECHNICIEN (module: rh) ───
+    // Volontairement SANS middleware can:L sur l'index : un technicien consulte
+    // SA fiche sans droit RH (auto-suivi du lundi) — le contrôleur arbitre entre
+    // « ma fiche » et « toutes les fiches + comparatif ».
+    Route::get('/rh/semaine', [\App\Http\Controllers\TechnicianWeekController::class, 'index'])->name('rh.semaine');
+    Route::get('/rh/semaine/pdf', [\App\Http\Controllers\TechnicianWeekController::class, 'pdf'])->name('rh.semaine.pdf')->middleware('can:L');
+
     // ─── PAIE & CONGÉS (RH) ───
     // ─── POINTAGE DE PRÉSENCE (RH léger, module: annuaire) ───
     Route::prefix('attendance')->name('attendance.')->controller(\App\Http\Controllers\AttendanceController::class)->group(function () {

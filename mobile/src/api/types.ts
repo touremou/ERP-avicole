@@ -420,6 +420,41 @@ export interface RefTask {
   is_pool?: boolean
 }
 
+/** Un indicateur de la fiche hebdomadaire (S2) — miroir de TechnicianWeekService. */
+export interface WeekIndicator {
+  key: string
+  label: string
+  /** null = NON MESURABLE (donnée absente) — volontairement distinct de 0. */
+  value: number | null
+  unit: string
+  target: string
+  tone: 'ok' | 'warn' | 'bad' | 'neutral'
+  detail: string
+}
+
+export interface MyWeekResponse {
+  has_sheet: boolean
+  employee?: { id: number; name: string; job_title: string | null }
+  week?: { iso: number; year: number; from: string; to: string }
+  indicators?: WeekIndicator[]
+  tasks?: {
+    total: number; done: number; on_time: number; late: number; open: number
+    crop_total: number; crop_done: number
+  }
+  batches?: Array<{
+    id: number; code: string; building: string | null; age_days: number; current: number
+    mortality_rate: number; fcr: number | null
+    feed_gap_percent: number | null; feed_expected_kg: number | null; feed_actual_kg: number | null
+  }>
+  cycles?: Array<{
+    id: number; code: string; crop_name: string; plot: string | null
+    days_after_planting: number | null
+    steps_total: number; steps_done: number; steps_late: number
+  }>
+  incidents?: number
+  server_time: string
+}
+
 export interface TaskSummary {
   today: number
   overdue: number

@@ -344,6 +344,15 @@ export function MonEspaceScreen() {
         </section>
       )}
 
+      {/* Auto-suivi hebdomadaire (S2) : le technicien consulte ses propres
+          indicateurs avant le point du lundi — c'est un miroir, pas un classement. */}
+      <section>
+        <div className="section-head"><h3>{t('Mon suivi')}</h3></div>
+        <Link to="/mon-espace/semaine" className="btn-secondary btn-link-row">
+          📊 {t('Ma semaine (indicateurs)')}
+        </Link>
+      </section>
+
       <section>
         <div className="section-head"><h3>{t('Appareils connectés')}</h3></div>
         <Link to="/appareils" className="btn-secondary btn-link-row">

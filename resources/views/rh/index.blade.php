@@ -37,6 +37,8 @@
                         ['label' => 'Employés', 'icon' => 'fa-id-badge', 'route' => 'employees.index', 'can' => 'rh.L'],
                         ['label' => 'Présence', 'icon' => 'fa-user-check', 'route' => 'attendance.index', 'can' => 'rh.L'],
                         ['label' => 'Tâches', 'icon' => 'fa-list-check', 'route' => 'tasks.index', 'can' => 'rh.L'],
+                        // Fiche hebdomadaire (S2) : support du point du lundi.
+                        ['label' => 'Suivi hebdo', 'icon' => 'fa-chart-line', 'route' => 'rh.semaine', 'can' => 'rh.L'],
                     ]],
                     ['title' => 'Paie', 'color' => 'emerald', 'items' => [
                         ['label' => 'Paie', 'icon' => 'fa-money-check-dollar', 'route' => 'payroll.index', 'can' => 'rh.L'],

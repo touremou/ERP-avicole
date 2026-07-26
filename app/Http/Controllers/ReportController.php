@@ -574,20 +574,17 @@ class ReportController extends Controller
             $lastCheck = $latestChecks->get($batch->id);
             $avgWeightGrams = $lastCheck ? ($lastCheck->avg_weight * 1000) : 0;
 
-            // FCR corrigé
-            $totalFeedKg = $batch->total_feed_consumed ?? 0;
-            $biomassVivantsKg = ($current * ($avgWeightGrams / 1000));
-            $poidsMoyenMort = $avgWeightGrams * 0.5;
-            $biomassMortsKg = ($totalMortalite * ($poidsMoyenMort / 1000));
-            $totalBiomassKg = $biomassVivantsKg + $biomassMortsKg;
-            $fcr = ($totalBiomassKg > 0) ? ($totalFeedKg / $totalBiomassKg) : 0;
+            // FCR corrigé — implémentation UNIQUE sur le modèle (Batch::
+            // fcr_corrected), partagée avec la fiche hebdomadaire par technicien.
+            // Formule et bases de calcul inchangées : mêmes valeurs qu'avant.
+            $fcr = $batch->fcr_corrected ?? 0;
 
             return [
                 'id'              => $batch->id,
                 'code'            => $batch->code,
                 'type'            => $batch->type,
                 'building'        => $batch->building->name ?? 'N/A',
-                'fcr'             => round($fcr, 2),
+                'fcr'             => round((float) $fcr, 2),
                 'age'             => (int) $age,
                 'initial'         => $initial,
                 'current'         => $current,

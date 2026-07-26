@@ -45,6 +45,7 @@ import { MillCompleteScreen } from '../features/provenderie/MillCompleteScreen'
 import { MillStartScreen } from '../features/provenderie/MillStartScreen'
 import { MillJournalScreen } from '../features/provenderie/MillJournalScreen'
 import { MonEspaceScreen } from '../features/mon-espace/MonEspaceScreen'
+import { MaSemaineScreen } from '../features/mon-espace/MaSemaineScreen'
 import { WaterRefillScreen } from '../features/ressources/WaterRefillScreen'
 import { MeterReadingScreen } from '../features/ressources/MeterReadingScreen'
 import { AttendanceScreen } from '../features/rh/AttendanceScreen'
@@ -159,6 +160,7 @@ function Shell() {
           <Route path="/alertes" element={<NotificationsScreen />} />
           <Route path="/taches" element={<TachesScreen />} />
           <Route path="/mon-espace" element={<MonEspaceScreen />} />
+          <Route path="/mon-espace/semaine" element={<MaSemaineScreen />} />
           <Route path="/appareils" element={<AppareilsScreen />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
