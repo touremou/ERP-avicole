@@ -70,6 +70,8 @@ class SyncService
             'stock_movement.create'  => 'stockMovementCreate',
             'water_refill.create'    => 'waterRefillCreate',
             'sale.create'            => 'saleCreate',
+            'payment.create'         => 'paymentCreate',
+            'sale_return.create'     => 'saleReturnCreate',
             'expense.create'         => 'expenseCreate',
             'batch.upsert'           => 'batchUpsert',
             'health_incident.create' => 'healthIncidentCreate',
@@ -325,6 +327,134 @@ class SyncService
     // ─────────────────────────────────────────────────────────────
     //  VENTE RAPIDE — créée en BROUILLON (validation/déstockage en ligne).
     // ─────────────────────────────────────────────────────────────
+
+    // ─────────────────────────────────────────────────────────────
+    //  ENCAISSEMENT DE CRÉANCE (M2) — le livreur encaisse chez le client,
+    //  hors réseau. Réutilise RecordPayment : reste dû relu SOUS VERROU
+    //  (deux encaissements concurrents ne peuvent pas dépasser le dû),
+    //  statut de vente et solde client recalculés, alerte propriétaire.
+    //  Idempotent par uuid : un rejeu ne double JAMAIS l'encaissement.
+    // ─────────────────────────────────────────────────────────────
+    private function paymentCreate(array $payload): array
+    {
+        if (Gate::denies('commerce.C')) {
+            return $this->denied();
+        }
+
+        $v = Validator::make($payload, [
+            'uuid'         => 'required|uuid',
+            'sale_id'      => ['required', 'integer', $this->farmScopedExists('sales')],
+            'amount'       => 'required|numeric|min:1',
+            'payment_date' => 'required|date|before_or_equal:today',
+            'method'       => 'required|in:especes,orange_money,virement,cheque',
+            'reference'    => 'nullable|string|max:100',
+            'notes'        => 'nullable|string|max:500',
+        ]);
+
+        if ($v->fails()) {
+            return $this->invalid($v->errors()->toArray());
+        }
+
+        $data = $v->validated();
+
+        return DB::transaction(function () use ($data) {
+            if (\App\Models\Payment::withoutGlobalScopes()->where('uuid', $data['uuid'])->exists()) {
+                return ['status' => 'already_synced'];
+            }
+
+            $sale = \App\Models\Sale::find($data['sale_id']);
+            if (! $sale) {
+                return ['status' => 'conflict', 'message' => __('Vente introuvable dans cette ferme.')];
+            }
+
+            try {
+                $payment = app(\App\Actions\Sale\RecordPayment::class)->execute($sale, $data);
+            } catch (\Exception $e) {
+                // Règles métier (vente soldée entre-temps, montant > reste dû,
+                // vente annulée…) : refus définitif → bac « À corriger ».
+                if ($e instanceof \Illuminate\Database\QueryException || $e instanceof \PDOException) {
+                    throw $e;
+                }
+
+                return ['status' => 'conflict', 'message' => $e->getMessage()];
+            }
+
+            $payment->forceFill(['uuid' => $data['uuid']])->save();
+
+            Log::info("Sync: encaissement {$payment->amount} sur {$sale->reference} (uuid: {$data['uuid']}).");
+
+            return ['status' => 'success', 'server_id' => $payment->id];
+        });
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    //  RETOUR CLIENT (M2) — reprise de marchandise chez le client :
+    //  remise en stock + avoir, via ProcessSaleReturn (source unique avec
+    //  le web). Idempotent par uuid de retour.
+    // ─────────────────────────────────────────────────────────────
+    private function saleReturnCreate(array $payload): array
+    {
+        if (Gate::denies('commerce.M')) {
+            return $this->denied();
+        }
+
+        $v = Validator::make($payload, [
+            'uuid'            => 'required|uuid',
+            'sale_id'         => ['required', 'integer', $this->farmScopedExists('sales')],
+            'reason'          => 'nullable|string|max:500',
+            'refund_method'   => 'required|in:especes,orange_money,virement,cheque',
+            'lines'           => 'required|array|min:1',
+            'lines.*.sale_item_id' => 'required|integer',
+            'lines.*.quantity'     => 'required|numeric|min:0.01',
+        ]);
+
+        if ($v->fails()) {
+            return $this->invalid($v->errors()->toArray());
+        }
+
+        $data = $v->validated();
+
+        return DB::transaction(function () use ($data) {
+            if (\App\Models\SaleReturn::withoutGlobalScopes()->where('uuid', $data['uuid'])->exists()) {
+                return ['status' => 'already_synced'];
+            }
+
+            $sale = \App\Models\Sale::with('items')->find($data['sale_id']);
+            if (! $sale) {
+                return ['status' => 'conflict', 'message' => __('Vente introuvable dans cette ferme.')];
+            }
+
+            // Les lignes retournées doivent appartenir à CETTE vente (un client
+            // hors-ligne peut poster un id de ligne obsolète après resync).
+            $ownIds = $sale->items->pluck('id')->all();
+            $lines = [];
+            foreach ($data['lines'] as $line) {
+                if (! in_array((int) $line['sale_item_id'], $ownIds, true)) {
+                    return $this->invalid(['lines' => [
+                        __('Ligne :id absente de la vente :ref.', ['id' => $line['sale_item_id'], 'ref' => $sale->reference]),
+                    ]]);
+                }
+                $lines[(int) $line['sale_item_id']] = (float) $line['quantity'];
+            }
+
+            try {
+                $return = app(\App\Actions\Sale\ProcessSaleReturn::class)
+                    ->execute($sale, $lines, $data['reason'] ?? '', $data['refund_method']);
+            } catch (\Throwable $e) {
+                if ($e instanceof \Illuminate\Database\QueryException || $e instanceof \PDOException) {
+                    throw $e;
+                }
+
+                return ['status' => 'conflict', 'message' => $e->getMessage()];
+            }
+
+            $return->forceFill(['uuid' => $data['uuid']])->save();
+
+            Log::info("Sync: retour {$return->reference} sur {$sale->reference} — remboursement {$return->total_refund}.");
+
+            return ['status' => 'success', 'server_id' => $return->id];
+        });
+    }
 
     private function saleCreate(array $payload): array
     {

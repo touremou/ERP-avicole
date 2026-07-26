@@ -15,7 +15,7 @@ class SaleReturn extends Model
     use BelongsToFarm;
 
     protected $fillable = [
-        'farm_id', 'sale_id', 'reference', 'return_date', 'reason',
+        'farm_id', 'uuid', 'sale_id', 'reference', 'return_date', 'reason',
         'total_refund', 'refund_method', 'user_id',
     ];
 

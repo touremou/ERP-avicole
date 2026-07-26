@@ -72,6 +72,18 @@ class Sale extends Model
 
     // ─── SCOPES ───
 
+    /**
+     * Créances descendues au terrain (M2) : ventes NON SOLDÉES, validées (ni
+     * brouillon ni annulée) et récentes — le livreur encaisse chez le client
+     * sans réseau. Bornée à 90 j pour garder la base locale légère.
+     */
+    public function scopeOpenReceivablesForSync($query)
+    {
+        return $query->whereIn('payment_status', ['impaye', 'partiel'])
+            ->whereNotIn('status', ['brouillon', 'annule'])
+            ->whereDate('sale_date', '>=', now()->subDays(90)->toDateString());
+    }
+
     public function scopeUnpaid($query)
     {
         return $query->whereIn('payment_status', ['impaye', 'partiel']);

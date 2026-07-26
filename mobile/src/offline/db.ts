@@ -28,6 +28,8 @@ import type {
   RefProductionType,
   RefProvider,
   RefSlaughterOrder,
+  RefSale,
+  RefSaleItem,
   RefStock,
   RefTask,
 } from '../api/types'
@@ -88,6 +90,8 @@ class ErpMobileDb extends Dexie {
   ref_mill_productions!: Table<RefMillProduction, number>
   ref_water_sources!: Table<RefWaterSource, number>
   ref_crop_species!: Table<RefCropSpecies, number>
+  ref_sales!: Table<RefSale, number>
+  ref_sale_items!: Table<RefSaleItem, number>
   tasks!: Table<RefTask, number>
   meta!: Table<MetaEntry, string>
 
@@ -134,6 +138,12 @@ class ErpMobileDb extends Dexie {
     // v7 : catalogue des cultures (espèces) — liste au pointage de semis.
     this.version(7).stores({
       ref_crop_species: 'id, name',
+    })
+    // v8 (M2) : créances ouvertes + leurs lignes — encaissement et retour
+    // client saisis chez le client, hors réseau.
+    this.version(8).stores({
+      ref_sales: 'id, client_id, payment_status',
+      ref_sale_items: 'id, sale_id',
     })
   }
 }

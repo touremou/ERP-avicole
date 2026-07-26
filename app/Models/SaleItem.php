@@ -27,6 +27,16 @@ class SaleItem extends Model
         return $this->belongsTo(Sale::class);
     }
 
+    /**
+     * Lignes des créances descendues au terrain (M2) : le retour client se
+     * saisit ligne par ligne chez le client, il faut donc les lignes des
+     * ventes non soldées récentes (cf. Sale::scopeOpenReceivablesForSync).
+     */
+    public function scopeForOpenReceivablesSync($query)
+    {
+        return $query->whereHas('sale', fn ($q) => $q->openReceivablesForSync());
+    }
+
     public function stock(): BelongsTo
     {
         return $this->belongsTo(Stock::class, 'product_id');

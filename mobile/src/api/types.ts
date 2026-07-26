@@ -60,6 +60,8 @@ export type OperationType =
   | 'slaughter.close'
   | 'slaughter.cutting'
   | 'health_check.create'
+  | 'payment.create'
+  | 'sale_return.create'
   | 'mill_production.complete'
   // Phase 3 — cœur sanitaire HACCP abattoir.
   | 'slaughter_reception.create'
@@ -124,7 +126,37 @@ export interface PullResponse {
     mill_productions?: PullEntity<RefMillProduction>
     water_sources?: PullEntity<RefWaterSource>
     crop_species?: PullEntity<RefCropSpecies>
+    // M2 — créances ouvertes (encaissement / retour chez le client).
+    sales?: PullEntity<RefSale>
+    sale_items?: PullEntity<RefSaleItem>
   }
+}
+
+/** Créance ouverte : vente non soldée descendue au terrain (M2). */
+export interface RefSale {
+  id: number
+  uuid: string | null
+  reference: string
+  client_id: number | null
+  sale_date: string
+  status: string
+  total_amount: number
+  paid_amount: number
+  payment_status: string
+  updated_at: string
+}
+
+/** Ligne d'une créance ouverte — base du retour client (M2). */
+export interface RefSaleItem {
+  id: number
+  sale_id: number
+  product_name: string
+  product_type: string | null
+  quantity: number
+  unit: string | null
+  unit_price: number
+  total: number
+  updated_at: string
 }
 
 // ── Données de référence (colonnes de la liste blanche du pull) ─────────

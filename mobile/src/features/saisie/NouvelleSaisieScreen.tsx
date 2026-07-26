@@ -122,6 +122,18 @@ export function NouvelleSaisieScreen() {
             </Link>
           )}
           {can('commerce', 'C') && (
+            <Link to="/commerce/encaisser" className="task-card">
+              <span className="task-title">💰 {t('Encaisser une créance')}</span>
+              <span className="task-meta">{t('chez le client')}</span>
+            </Link>
+          )}
+          {can('commerce', 'M') && (
+            <Link to="/commerce/retour" className="task-card">
+              <span className="task-title">↩️ {t('Retour client')}</span>
+              <span className="task-meta">{t('reprise · avoir')}</span>
+            </Link>
+          )}
+          {can('commerce', 'C') && (
             <Link to="/commerce/vente" className="task-card">
               <span className="task-title">💰 {t('Vente rapide')}</span>
               <span className="task-meta">{t('brouillon')}</span>
