@@ -397,11 +397,16 @@ export interface RefTask {
   category: string
   priority: string | null
   status: string
+  /** Consigne de l'étape d'itinéraire (S1) : stade, produit, dose, méthode. */
+  description?: string | null
   scheduled_date: string
   scheduled_time: string | null
   batch_id: number | null
   building_id: number | null
   plot_id: number | null
+  /** Cycle de culture et étape d'itinéraire dont la tâche est issue (S1). */
+  crop_cycle_id?: number | null
+  crop_protocol_item_id?: number | null
   // Preuve d'exécution exigée à la complétion (miroir serveur).
   proof_type?: 'aucune' | 'photo' | 'valeur'
   proof_label?: string | null

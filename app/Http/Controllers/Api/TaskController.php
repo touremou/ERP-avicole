@@ -50,7 +50,13 @@ class TaskController extends Controller
             ->orderByRaw('scheduled_time IS NULL, scheduled_time')
             ->get([
                 'id', 'title', 'category', 'priority', 'status',
+                // description (S1) : porte la consigne de l'étape d'itinéraire —
+                // stade, produit, dose, méthode. Sans elle, le technicien lit
+                // « Traitement phyto » sur son téléphone et doit deviner quoi
+                // appliquer, à quelle dose.
+                'description',
                 'scheduled_date', 'scheduled_time', 'batch_id', 'building_id', 'plot_id',
+                'crop_cycle_id', 'crop_protocol_item_id',
                 'proof_type', 'proof_label', 'proof_unit',
                 'started_at', 'claimed_by', 'is_pool',
             ]);

@@ -73,6 +73,28 @@
                         </div>
                     </div>
 
+                    {{-- MOIS D'ACTIVITÉ (S1) — dégonfle le bruit calendaire. Un
+                         arrosage quotidien généré toute l'année tourne aussi en
+                         pleine saison des pluies : la tâche sans objet apprend au
+                         technicien à cocher sans faire, et fausse le taux de
+                         complétion. Aucun mois coché = toute l'année. --}}
+                    <div>
+                        <label class="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-2">
+                            {{ __("Mois d'activité") }}
+                            <span class="text-slate-300 normal-case tracking-normal">— {{ __("aucun coché = toute l'année") }}</span>
+                        </label>
+                        <div class="flex flex-wrap gap-2">
+                            @php $activeMonths = array_map('intval', $template->months ?? []); @endphp
+                            @foreach([1 => __("Jan"), 2 => __("Fév"), 3 => __("Mar"), 4 => __("Avr"), 5 => __("Mai"), 6 => __("Juin"),
+                                      7 => __("Juil"), 8 => __("Août"), 9 => __("Sep"), 10 => __("Oct"), 11 => __("Nov"), 12 => __("Déc")] as $n => $label)
+                            <label class="cursor-pointer">
+                                <input type="checkbox" name="months[]" value="{{ $n }}" {{ in_array($n, $activeMonths, true) ? 'checked' : '' }} class="hidden peer">
+                                <div class="w-14 h-10 rounded-xl flex items-center justify-center text-[9px] font-black uppercase bg-slate-50 text-slate-400 peer-checked:bg-cyan-500 peer-checked:text-white transition-all shadow-inner">{{ $label }}</div>
+                            </label>
+                            @endforeach
+                        </div>
+                    </div>
+
                     {{-- OPTIONS --}}
                     <div class="grid grid-cols-2 gap-4">
                         <label class="flex items-center gap-3 p-3 bg-slate-50 rounded-xl cursor-pointer">

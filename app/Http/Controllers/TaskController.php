@@ -177,6 +177,10 @@ class TaskController extends Controller
             'completion_notes' => $request->input('notes'),
         ]);
 
+        // Boucle de retour itinéraire technique (S1) : sans elle, le calendrier
+        // dirait « fait » et l'itinéraire continuerait d'afficher « en retard ».
+        $task->recordProtocolCompletion(Auth::id(), $request->input('notes'));
+
         $task->logLifecycle('completed', ['statut' => 'fait', 'origine' => 'bureau']);
 
         return back()->with('success', "✅ \"{$task->title}\" terminée.");
@@ -313,6 +317,9 @@ class TaskController extends Controller
             'frequency'        => 'required|in:quotidien,hebdo,mensuel,ponctuel',
             'days_of_week'     => 'nullable|array',
             'days_of_week.*'   => 'integer|min:1|max:7',
+            // Saisonnalité (S1) : aucun mois coché = toute l'année.
+            'months'           => 'nullable|array',
+            'months.*'         => 'integer|min:1|max:12',
             'scheduled_time'   => 'nullable',
             'duration_minutes' => 'required|integer|min:5|max:480',
             'priority'         => 'required|in:basse,normale,haute,critique',
@@ -349,6 +356,7 @@ class TaskController extends Controller
             'category'         => $validated['category'],
             'frequency'        => $validated['frequency'],
             'days_of_week'     => $validated['days_of_week'] ?? null,
+            'months'           => $validated['months'] ?? null,
             'scheduled_time'   => $validated['scheduled_time'] ?? null,
             'duration_minutes' => $validated['duration_minutes'],
             'priority'         => $validated['priority'],

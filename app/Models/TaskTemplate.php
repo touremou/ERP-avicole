@@ -17,7 +17,7 @@ class TaskTemplate extends Model
 
     protected $fillable = [
         'farm_id', 'name', 'category', 'description', 'icon', 'color',
-        'frequency', 'days_of_week', 'day_of_month', 'scheduled_time',
+        'frequency', 'days_of_week', 'day_of_month', 'months', 'scheduled_time',
         'duration_minutes', 'target_type', 'per_building', 'batch_types',
         'plot_types', 'priority', 'is_active', 'is_pool',
         'proof_type', 'proof_label', 'proof_unit',
@@ -25,6 +25,7 @@ class TaskTemplate extends Model
 
     protected $casts = [
         'days_of_week'  => 'array',
+        'months'        => 'array',
         'batch_types'   => 'array',
         'plot_types'    => 'array',
         'per_building'  => 'boolean',
@@ -128,11 +129,38 @@ class TaskTemplate extends Model
     {
         if (! $this->is_active) return false;
 
+        // SAISONNALITÉ (S1) : un arrosage quotidien généré toute l'année tourne
+        // aussi en pleine saison des pluies. Une tâche sans objet ce jour-là
+        // apprend au technicien à cocher sans faire — et empoisonne le
+        // dénominateur du taux de complétion, donc la mesure elle-même.
+        // null = tous les mois (comportement historique inchangé).
+        if (! empty($this->months) && ! in_array((int) $date->month, array_map('intval', $this->months), true)) {
+            return false;
+        }
+
         return match($this->frequency) {
             'quotidien'  => $this->days_of_week === null || in_array($date->dayOfWeekIso, $this->days_of_week ?? []),
             'hebdo'      => in_array($date->dayOfWeekIso, $this->days_of_week ?? []),
             'mensuel'    => $date->day === $this->day_of_month,
+            // 'ponctuel' : JAMAIS auto-généré, et c'est voulu. Une récolte ne se
+            // planifie pas au calendrier : elle vient de l'itinéraire technique
+            // (étape « recolte » en jours après semis), via
+            // TaskSchedulerService::generateProtocolTasks. Un template ponctuel
+            // reste utile en création manuelle.
             default      => false,
         };
+    }
+
+    /** Libellé des mois d'activité (« toute l'année » si non restreint). */
+    public function getMonthsLabelAttribute(): string
+    {
+        if (empty($this->months)) {
+            return 'Toute l\'année';
+        }
+
+        $names = [1 => 'Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'];
+        $picked = array_map(fn ($m) => $names[(int) $m] ?? $m, $this->months);
+
+        return implode(' · ', $picked);
     }
 }

@@ -16,7 +16,9 @@ class TaskAssignment extends Model
     protected $fillable = [
         'uuid',
         'farm_id', 'task_template_id', 'employee_id', 'title', 'description',
-        'category', 'building_id', 'plot_id', 'batch_id', 'scheduled_date', 'scheduled_time',
+        'category', 'building_id', 'plot_id', 'batch_id',
+        'crop_cycle_id', 'crop_protocol_item_id',
+        'scheduled_date', 'scheduled_time',
         'duration_minutes', 'priority', 'status', 'started_at', 'claimed_by', 'completed_at',
         'completed_by', 'completion_notes', 'is_auto_generated', 'is_pool',
         'proof_type', 'proof_label', 'proof_unit', 'proof_photo_path', 'proof_value',
@@ -35,6 +37,55 @@ class TaskAssignment extends Model
     public function requiresProof(): bool
     {
         return in_array($this->proof_type, ['photo', 'valeur'], true);
+    }
+
+    public function cropCycle(): BelongsTo
+    {
+        return $this->belongsTo(CropCycle::class);
+    }
+
+    /** Étape d'itinéraire technique dont cette tâche est la matérialisation (S1). */
+    public function protocolItem(): BelongsTo
+    {
+        return $this->belongsTo(CropProtocolItem::class, 'crop_protocol_item_id');
+    }
+
+    /**
+     * BOUCLE DE RETOUR (S1) : cocher la tâche valide l'étape d'itinéraire.
+     *
+     * Sans cela, les deux vues se contrediraient — le calendrier dirait « fait »
+     * et l'itinéraire technique continuerait d'afficher « en retard », puisque
+     * CropProtocolAlertService devine l'exécution par rapprochement de NOMS
+     * (intrant ou événement dont le libellé ressemble à l'étape). Une validation
+     * explicite est fiable là où l'inférence est fragile ; c'est d'ailleurs
+     * l'ordre de priorité que ce service applique déjà.
+     *
+     * Appelée depuis les DEUX portes d'entrée (web TaskController::complete et
+     * sync SyncService::taskComplete). Idempotente : firstOrCreate sur
+     * (cycle, étape).
+     */
+    public function recordProtocolCompletion(?int $userId = null, ?string $notes = null): void
+    {
+        if (! $this->crop_cycle_id || ! $this->crop_protocol_item_id) {
+            return;
+        }
+
+        CropProtocolCompletion::firstOrCreate(
+            [
+                'crop_cycle_id'         => $this->crop_cycle_id,
+                'crop_protocol_item_id' => $this->crop_protocol_item_id,
+            ],
+            [
+                'farm_id'      => $this->farm_id,
+                'completed_at' => $this->completed_at ?? now(),
+                'completed_by' => $userId,
+                // La valeur de preuve chiffrée (pieds atteints à l'observation)
+                // vaut mieux que rien dans le registre de l'itinéraire.
+                'quantity'     => $this->proof_value,
+                'unit'         => $this->proof_unit,
+                'notes'        => $notes ?: $this->completion_notes,
+            ],
+        );
     }
 
     public function claimant(): BelongsTo { return $this->belongsTo(User::class, 'claimed_by'); }

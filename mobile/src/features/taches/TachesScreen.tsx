@@ -259,6 +259,12 @@ export function TachesScreen() {
               <div key={task.id} className={`task-row ${task.locked ? 'task-locked' : ''}`}>
                 <div className="task-row__body">
                   <span className="task-title">{CATEGORY_ICON[task.category] ?? '📌'} {task.title}</span>
+                  {/* Consigne de l'étape d'itinéraire (S1) : produit et dose se
+                      lisent SUR PLACE. Sans elle, « Traitement phyto » oblige le
+                      technicien à deviner quoi appliquer et à quelle dose. */}
+                  {task.description && (
+                    <span className="task-hint">{task.description}</span>
+                  )}
                   <span className="task-meta">
                     {task.scheduled_time ? task.scheduled_time.slice(0, 5) + ' · ' : ''}
                     {t(task.category)}

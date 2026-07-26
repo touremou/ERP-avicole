@@ -401,6 +401,12 @@ h3 {
   color: var(--muted); font-size: 0.82rem; font-weight: 600;
   white-space: nowrap; text-align: right;
 }
+/* Consigne d'itinéraire technique (produit · dose · méthode) : elle DOIT passer
+   à la ligne — un « Mancozèbe 2,5 g/L » tronqué ne sert à rien au champ. */
+.task-hint {
+  display: block; color: var(--ink); font-size: 0.8rem; font-weight: 600;
+  line-height: 1.35; margin-top: 2px; white-space: normal;
+}
 /* chevron d'affordance */
 .task-card::after {
   content: ""; flex: none;

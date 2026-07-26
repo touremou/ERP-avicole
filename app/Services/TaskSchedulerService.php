@@ -159,6 +159,15 @@ class TaskSchedulerService
             }
         });
 
+        // ── ITINÉRAIRE TECHNIQUE (S1) ──
+        // Les étapes en jours après semis (« traitement phyto J+30 ») ne sont pas
+        // calendaires : elles dépendent de la date de semis de CHAQUE cycle. Elles
+        // deviennent ici de vraies tâches, donc visibles au calendrier et comptées
+        // dans le taux de complétion — jusqu'à présent elles n'existaient qu'en
+        // alerte, et un technicien pouvait afficher 100 % en les ayant toutes
+        // manquées.
+        $created += $this->generateProtocolTasks($date, $farmId, $employees);
+
         // Marquer en retard (jours précédents, même ferme)
         $overdueQuery = TaskAssignment::where('status', 'a_faire')
             ->where('scheduled_date', '<', $date->toDateString());
@@ -170,6 +179,135 @@ class TaskSchedulerService
         Log::info("Tasks [{$farmId}] {$date->format('d/m')}: {$created} created, {$skipped} skipped, {$overdue} overdue");
 
         return ['created' => $created, 'skipped' => $skipped, 'overdue' => $overdue];
+    }
+
+    /**
+     * Matérialise en TÂCHES les étapes d'itinéraire technique arrivées à échéance.
+     *
+     * Source de vérité : CropProtocolAlertService::getCycleSchedule(), qui projette
+     * chaque étape (jours après semis → date cible) et calcule son statut. On ne
+     * duplique donc AUCUNE règle de phénologie ici — on ne fait que transformer un
+     * « due / overdue » en tâche assignée.
+     *
+     * Trois choix qui comptent :
+     *
+     *  - scheduled_date = la DATE CIBLE de l'étape, pas aujourd'hui. Une étape
+     *    prévue J+30 et découverte avec trois jours de retard doit apparaître au
+     *    30, pas au 33 : sinon le retard disparaît du calendrier et le taux de
+     *    ponctualité devient faux ;
+     *  - idempotence par (cycle, étape) — index UNIQUE en base. Le générateur
+     *    tourne chaque jour, sur des étapes qui restent « overdue » plusieurs
+     *    jours : sans cette clé il en créerait une par jour de retard ;
+     *  - une étape DÉJÀ FAITE ne génère rien. Comme la complétion d'une tâche
+     *    écrit en retour une CropProtocolCompletion (TaskAssignment::
+     *    recordProtocolCompletion), la boucle se referme et le calendrier
+     *    s'accorde avec l'itinéraire au lieu de le contredire.
+     */
+    private function generateProtocolTasks(Carbon $date, ?int $farmId, $employees): int
+    {
+        $alerts = app(\App\Services\CropProtocolAlertService::class);
+
+        $cycleQuery = CropCycle::query()
+            ->whereIn('status', CropCycle::IN_PROGRESS_STATUSES)
+            ->whereNotNull('crop_protocol_id')
+            ->whereNotNull('planting_date')
+            ->with(['protocol.items', 'inputs', 'harvests', 'plot']);
+
+        if ($farmId && Schema::hasColumn('crop_cycles', 'farm_id')) {
+            $cycleQuery->where('farm_id', $farmId);
+        }
+
+        $created = 0;
+
+        foreach ($cycleQuery->get() as $cycle) {
+            foreach ($alerts->getCycleSchedule($cycle) as $entry) {
+                // Seules les étapes échues comptent : on ne remplit pas le
+                // calendrier du technicien avec l'itinéraire des trois mois à
+                // venir, il n'y verrait plus ce qui est à faire aujourd'hui.
+                if (! in_array($entry['status'], ['due', 'overdue'], true)) {
+                    continue;
+                }
+
+                /** @var \App\Models\CropProtocolItem $item */
+                $item = $entry['item'];
+
+                // La date cible ne doit pas être dans le futur du jour généré :
+                // une génération rétroactive ne crée pas de tâches à l'avance.
+                if ($entry['target_date']->gt($date)) {
+                    continue;
+                }
+
+                if (TaskAssignment::where('crop_cycle_id', $cycle->id)
+                    ->where('crop_protocol_item_id', $item->id)
+                    ->exists()) {
+                    continue;
+                }
+
+                // Responsable du cycle en priorité (continuité du suivi), sinon
+                // répartition de charge sur la parcelle.
+                $employeeId = $cycle->employee_id
+                    ?? ($cycle->plot ? $this->findBestEmployeeForPlot($cycle->plot, $employees, $date)?->id : null);
+
+                TaskAssignment::create([
+                    'farm_id'               => $farmId ?? $cycle->farm_id ?? null,
+                    'task_template_id'      => null,
+                    'employee_id'           => $employeeId,
+                    'is_pool'               => false,
+                    'title'                 => $item->action_name . ' — ' . $cycle->crop_name
+                                               . ($cycle->code ? " ({$cycle->code})" : ''),
+                    'description'           => $this->protocolStepDescription($item, (int) $item->day_number),
+                    'category'              => $item->type,
+                    'plot_id'               => $cycle->plot_id,
+                    'crop_cycle_id'         => $cycle->id,
+                    'crop_protocol_item_id' => $item->id,
+                    'scheduled_date'        => $entry['target_date']->toDateString(),
+                    'priority'              => $entry['status'] === 'overdue' ? 'critique' : 'haute',
+                    'status'                => 'a_faire',
+                    'is_auto_generated'     => true,
+                ] + $this->protocolStepProof($item));
+
+                $created++;
+            }
+        }
+
+        return $created;
+    }
+
+    /** Consigne de l'étape : ce que le technicien doit lire sur son téléphone. */
+    private function protocolStepDescription(\App\Models\CropProtocolItem $item, int $day): string
+    {
+        $parts = array_filter([
+            $item->stage ? "Stade : {$item->stage}" : null,
+            "Prévu J+{$day} après semis",
+            $item->product_suggested ? "Produit : {$item->product_suggested}" : null,
+            $item->dose ? "Dose : {$item->dose}" : null,
+            $item->method ? "Méthode : {$item->method}" : null,
+            $item->notes,
+        ]);
+
+        return implode(' · ', $parts);
+    }
+
+    /**
+     * Preuve d'exécution exigée selon le type d'étape.
+     *
+     * Un TRAITEMENT PHYTOSANITAIRE exige une photo : c'est l'acte le moins
+     * vérifiable à distance, celui qui engage un délai avant récolte (DAR) et
+     * une responsabilité sanitaire. Sur un site sans binôme pour le contrôle
+     * croisé, la photo horodatée est le seul élément objectif disponible.
+     * Une OBSERVATION exige une valeur chiffrée : « j'ai regardé » ne se
+     * vérifie pas, « 12 pieds atteints sur 100 » se compare d'une semaine
+     * à l'autre.
+     *
+     * @return array<string, string|null>
+     */
+    private function protocolStepProof(\App\Models\CropProtocolItem $item): array
+    {
+        return match ($item->type) {
+            'traitement'  => ['proof_type' => 'photo', 'proof_label' => 'Photo de la parcelle traitée', 'proof_unit' => null],
+            'observation' => ['proof_type' => 'valeur', 'proof_label' => 'Pieds atteints observés', 'proof_unit' => 'pieds'],
+            default       => ['proof_type' => 'aucune', 'proof_label' => null, 'proof_unit' => null],
+        };
     }
 
     private function alreadyExists(TaskTemplate $tpl, Carbon $date, ?int $buildingId, ?int $farmId): bool
