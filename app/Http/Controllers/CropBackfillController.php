@@ -51,6 +51,24 @@ class CropBackfillController extends Controller
         );
     }
 
+    /**
+     * Fiche PAPIER, à imprimer et remplir au stylo.
+     *
+     * Gardée en `cultures.L` et non `cultures.C` : une fiche vierge ne contient
+     * aucune donnée de la ferme et ne modifie rien. Exiger le droit de création
+     * pour imprimer un formulaire vide empêcherait justement celui qui doit le
+     * remplir de l'obtenir.
+     */
+    public function fieldSheet(\App\Services\Import\CropBackfillFieldSheet $sheet)
+    {
+        abort_if(Gate::denies('cultures.L'), 403);
+
+        $pdf = \Pdf::loadView('cultures.reprise.pdf.fiche', $sheet->data())
+            ->setPaper('a4', 'landscape');
+
+        return $pdf->download('fiche-reprise-cultures-' . now()->format('Y-m-d') . '.pdf');
+    }
+
     /** Analyse SANS écrire : rapport ligne par ligne. */
     public function analyse(Request $request, CropBackfillImporter $importer)
     {
