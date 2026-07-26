@@ -64,6 +64,10 @@ const ACTIVITY_STATUS: Record<MyRecord['sync_status'], { label: string; cls: str
 export function HomeScreen() {
   const { me, can } = useAuth()
   const { batches, checksTodo, eggsTodo, slaughterOrders, millProductions, cropCycles } = useFieldTasks()
+
+  // Nom du site RÉSOLU par le serveur (scope.farm_id), pas celui qu'on croit :
+  // c'est lui qui détermine ce que l'appareil voit.
+  const currentFarmName = me?.scope.farms.find((farm) => farm.id === me.scope.farm_id)?.name ?? null
   const [alerts, setAlerts] = useState<ApiNotification[]>([])
   const [tasks, setTasks] = useState<RefTask[]>([])
   const [activity, setActivity] = useState<MyRecord[]>([])
@@ -183,6 +187,14 @@ export function HomeScreen() {
       ) : (
         <div className="ok-card ok-muted">
           {t('ℹ️ Votre compte n’est pas rattaché à une fiche employé : vos tâches assignées n’apparaîtront pas ici. Demandez à l’administrateur de créer votre accès depuis la fiche employé.')}
+          {/* NOMMER le compte et le site. Le symptôme le plus courant est de
+              s'être connecté ici avec un SECOND compte, homonyme du compte web
+              mais sans fiche : sans voir l'adresse à l'écran, c'est
+              indétectable, et on cherche un défaut qui n'existe pas. */}
+          <div className="ok-detail">
+            {t('Compte connecté')} : <b>{me?.user.email}</b>
+            {currentFarmName && <> · {t('Site')} : <b>{currentFarmName}</b></>}
+          </div>
         </div>
       )}
 
