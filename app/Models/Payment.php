@@ -11,7 +11,7 @@ class Payment extends Model
 {
     use BelongsToFarm, AuditsChanges;
     protected $fillable = [
-        'farm_id', 'sale_id', 'amount', 'payment_date',
+        'farm_id', 'uuid', 'sale_id', 'amount', 'payment_date',
         'method', 'treasury_account_id', 'reference', 'received_by', 'notes',
     ];
 

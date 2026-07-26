@@ -58,6 +58,24 @@ class SyncController extends Controller
             'gate'    => 'commerce.L',
             'columns' => ['id', 'client_id', 'name', 'category', 'phone', 'balance', 'status', 'updated_at'],
         ],
+        // M2 — CRÉANCES OUVERTES : ventes non soldées des 90 derniers jours, pour
+        // que le livreur puisse encaisser et traiter un retour chez le client
+        // sans réseau. Le reste dû est recalculé serveur au push (le montant
+        // local n'est qu'un guide de saisie).
+        'sales' => [
+            'model'   => \App\Models\Sale::class,
+            'gate'    => 'commerce.L',
+            'columns' => ['id', 'uuid', 'reference', 'client_id', 'sale_date', 'status',
+                          'total_amount', 'paid_amount', 'payment_status', 'updated_at'],
+            'scope'   => 'openReceivablesForSync',
+        ],
+        'sale_items' => [
+            'model'   => \App\Models\SaleItem::class,
+            'gate'    => 'commerce.L',
+            'columns' => ['id', 'sale_id', 'product_name', 'product_type', 'quantity', 'unit',
+                          'unit_price', 'total', 'updated_at'],
+            'scope'   => 'forOpenReceivablesSync',
+        ],
         // Citernes / sources d'eau : pour le ravitaillement terrain hors-ligne.
         // Gate any-of : qui peut ravitailler (C) doit recevoir les citernes,
         // même sans lecture explicite (L).
@@ -208,6 +226,14 @@ class SyncController extends Controller
             $query = $model::query()
                 ->when($since, fn ($q) => $q->where('updated_at', '>', $since))
                 ->orderBy('id');
+
+            // Périmètre optionnel : certains référentiels seraient trop lourds
+            // (ou hors sujet) descendus en entier — ex. seules les ventes NON
+            // SOLDÉES récentes intéressent l'encaissement terrain. Le scope vit
+            // sur le modèle, jamais dans le contrôleur.
+            if (! empty($config['scope'])) {
+                $query->{$config['scope']}();
+            }
 
             if (! empty($config['append'])) {
                 // Attribut(s) dérivé(s) : on hydrate le modèle complet (la règle

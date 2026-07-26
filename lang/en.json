@@ -3329,5 +3329,7 @@
     "Le lot :code est sous délai d'attente jusqu'au :date (« :product ») — planifiez l'abattage après cette échéance.": "Batch :code is under withdrawal until :date (\":product\") — schedule slaughter after that deadline.",
     "Produit périmé au jour de l'intervention — administration interdite.": "Product expired on the intervention date — administration forbidden.",
     "Délai d'attente": "Withdrawal period",
-    "sous délai d'attente": "under withdrawal"
+    "sous délai d'attente": "under withdrawal",
+    "Vente introuvable dans cette ferme.": "Sale not found in this farm.",
+    "Ligne :id absente de la vente :ref.": "Line :id is not part of sale :ref."
 }

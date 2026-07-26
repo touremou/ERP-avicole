@@ -255,13 +255,15 @@ async function pullDelta(): Promise<void> {
     batches, buildings, stocks, clients, products, production_types,
     plots, crop_cycles, slaughter_orders, providers, formulas, mill_productions,
     water_sources, crop_species,
+    sales,
+    sale_items,
   } = response.entities
 
   const refTables = [
     db.ref_batches, db.ref_buildings, db.ref_stocks, db.ref_clients, db.ref_products,
     db.ref_production_types, db.ref_plots, db.ref_crop_cycles, db.ref_slaughter_orders,
     db.ref_providers, db.ref_formulas, db.ref_mill_productions, db.ref_water_sources,
-    db.ref_crop_species,
+    db.ref_crop_species, db.ref_sales, db.ref_sale_items,
   ]
 
   await db.transaction(
@@ -302,6 +304,14 @@ async function pullDelta(): Promise<void> {
       if (slaughter_orders) {
         await db.ref_slaughter_orders.bulkPut(slaughter_orders.upserts)
         await db.ref_slaughter_orders.bulkDelete(slaughter_orders.deletes)
+      }
+      if (sales) {
+        await db.ref_sales.bulkPut(sales.upserts)
+        await db.ref_sales.bulkDelete(sales.deletes)
+      }
+      if (sale_items) {
+        await db.ref_sale_items.bulkPut(sale_items.upserts)
+        await db.ref_sale_items.bulkDelete(sale_items.deletes)
       }
       if (providers) {
         await db.ref_providers.bulkPut(providers.upserts)
@@ -371,6 +381,7 @@ export async function switchFarm(farmId: number): Promise<void> {
       db.ref_batches, db.ref_buildings, db.ref_stocks, db.ref_clients, db.ref_products,
       db.ref_production_types, db.ref_plots, db.ref_crop_cycles, db.ref_slaughter_orders,
       db.ref_providers, db.ref_formulas, db.ref_mill_productions, db.tasks,
+      db.ref_sales, db.ref_sale_items,
     ],
     async () => {
       await Promise.all([
@@ -378,7 +389,7 @@ export async function switchFarm(farmId: number): Promise<void> {
         db.ref_clients.clear(), db.ref_products.clear(), db.ref_production_types.clear(),
         db.ref_plots.clear(), db.ref_crop_cycles.clear(), db.ref_slaughter_orders.clear(),
         db.ref_providers.clear(), db.ref_formulas.clear(), db.ref_mill_productions.clear(),
-        db.tasks.clear(),
+        db.tasks.clear(), db.ref_sales.clear(), db.ref_sale_items.clear(),
       ])
     },
   )

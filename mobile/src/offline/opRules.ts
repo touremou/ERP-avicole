@@ -125,6 +125,25 @@ const RULES: Partial<Record<OperationType, Validator>> = {
     reqDate(p, 'expense_date', 'Date', e, true)
     return e
   },
+  'payment.create': (p) => {
+    const e: string[] = []
+    reqId(p, 'sale_id', 'Vente', e)
+    reqNum(p, 'amount', 'Montant', e, 1)
+    reqDate(p, 'payment_date', 'Date', e, true)
+    reqStr(p, 'method', 'Mode de paiement', e)
+    return e
+  },
+  'sale_return.create': (p) => {
+    const e: string[] = []
+    reqId(p, 'sale_id', 'Vente', e)
+    reqStr(p, 'refund_method', 'Mode de remboursement', e)
+    const lines = Array.isArray(p.lines) ? (p.lines as Array<Record<string, unknown>>) : []
+    if (lines.length === 0) e.push('Au moins une ligne à retourner est requise.')
+    if (lines.some((l) => !(num(l.quantity) && (num(l.quantity) as number) > 0))) {
+      e.push('Quantité retournée invalide.')
+    }
+    return e
+  },
   'health_check.create': (p) => {
     const e: string[] = []
     reqId(p, 'batch_id', 'Lot', e)
