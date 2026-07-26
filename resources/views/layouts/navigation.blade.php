@@ -111,6 +111,15 @@
                             </button>
                         </form>
                         @endforeach
+
+                        {{-- Vue consolidée (S3) : plutôt que de basculer de site en
+                             site pour comparer, on les lit côte à côte. --}}
+                        @if($canConsolidate ?? false)
+                            <a href="{{ route('consolide.index') }}"
+                               class="block mt-2 pt-2 border-t border-slate-100 rounded-lg p-2.5 text-[8px] font-black uppercase italic tracking-widest text-indigo-500 hover:bg-indigo-50 no-underline">
+                                <i class="fa-solid fa-layer-group mr-1"></i> {{ __("Voir tous les sites") }}
+                            </a>
+                        @endif
                 </x-menu>
                 @elseif($currentFarm ?? null)
                 <span class="flex items-center gap-1.5 text-[8px] font-black text-slate-400 uppercase tracking-widest px-2">

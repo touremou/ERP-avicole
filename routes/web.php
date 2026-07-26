@@ -984,6 +984,12 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/{task}', 'destroy')->name('destroy')->middleware('can:S');
     });
 
+    // ─── VUE CONSOLIDÉE MULTI-SITES (promoteur) ───
+    // Aucun middleware can:* : la page n'appartient à AUCUN module (elle les
+    // traverse tous). L'autorisation est portée par ConsolidatedSitesService
+    // (propriétaire d'un site OU admin) et le périmètre par le farm_user.
+    Route::get('/consolide', [\App\Http\Controllers\ConsolidatedSitesController::class, 'index'])->name('consolide.index');
+
     // ─── FICHE DE SUIVI HEBDOMADAIRE PAR TECHNICIEN (module: rh) ───
     // Volontairement SANS middleware can:L sur l'index : un technicien consulte
     // SA fiche sans droit RH (auto-suivi du lundi) — le contrôleur arbitre entre
