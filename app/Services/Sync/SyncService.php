@@ -89,6 +89,7 @@ class SyncService
             'crop_cycle.create'       => 'cropCycleCreate',
             'harvest.create'          => 'harvestCreate',
             'crop_input.create'       => 'cropInputCreate',
+            'crop_transformation.create' => 'cropTransformationCreate',
             'slaughter.execute'       => 'slaughterExecute',
             'slaughter.close'         => 'slaughterClose',
             'slaughter.cutting'       => 'slaughterCutting',
@@ -1321,6 +1322,10 @@ class SyncService
             'net_weight_kg'   => 'nullable|numeric|min:0',
             'loss_quantity'   => 'nullable|numeric|min:0',
             'quality'         => 'nullable|in:' . implode(',', Harvest::QUALITIES),
+            // Destination (T1) : « vente » compte au revenu du cycle ; les
+            // récoltes conservées n'encaissent rien et entrent en stock.
+            'destination'     => 'nullable|in:' . implode(',', array_keys(Harvest::DESTINATIONS)),
+            'unit_price'      => 'nullable|numeric|min:0',
             'sync_to_stock'   => 'nullable|boolean',
             'stock_item_name' => 'nullable|string|max:255',
             'notes'           => 'nullable|string|max:1000',
@@ -1380,6 +1385,86 @@ class SyncService
             Log::info("Sync: récolte réconciliée (uuid: {$uuid}, cycle: {$cycle->code}).");
 
             return ['status' => 'success', 'server_id' => $harvest->id];
+        });
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    //  TRANSFORMATION VÉGÉTALE (T1) — le séchoir est DEHORS, sans réseau : le
+    //  lot se pèse et se saisit sur place, à la sortie des claies. Réutilise
+    //  RecordCropTransformation : rendement, garde de rendement aberrant,
+    //  déstockage strict de l'intrant et — surtout — valorisation du produit
+    //  fini au COÛT DE REVIENT, pas au prix de vente espéré.
+    // ─────────────────────────────────────────────────────────────
+    private function cropTransformationCreate(array $payload): array
+    {
+        if (Gate::denies('cultures.C')) {
+            return $this->denied();
+        }
+
+        $v = Validator::make($payload, [
+            'uuid'                => 'required|uuid',
+            'harvest_id'          => ['nullable', 'integer', $this->farmScopedExists('harvests')],
+            'crop_cycle_id'       => ['nullable', 'integer', $this->farmScopedExists('crop_cycles')],
+            'crop_recipe_id'      => ['nullable', 'integer', $this->farmScopedExists('crop_recipes')],
+            'input_product'       => 'required|string|max:255',
+            'output_product'      => 'required|string|max:255',
+            'transformation_type' => 'required|in:' . implode(',', array_keys(\App\Models\CropTransformation::TYPES)),
+            'input_quantity'      => 'required|numeric|min:0.001',
+            'input_unit'          => 'nullable|string|max:20',
+            'output_quantity'     => 'required|numeric|min:0',
+            'output_unit'         => 'nullable|string|max:20',
+            'production_date'     => 'required|date|before_or_equal:today',
+            'expiry_date'         => 'nullable|date|after_or_equal:production_date',
+            'production_cost'     => 'nullable|numeric|min:0',
+            'output_unit_price'   => 'nullable|numeric|min:0',
+            'consumed_from_stock' => 'nullable|boolean',
+            'input_stock_item'    => 'nullable|string|max:255',
+            'synced_to_stock'     => 'nullable|boolean',
+            'output_stock_item'   => 'nullable|string|max:255',
+            'notes'               => 'nullable|string|max:1000',
+        ]);
+
+        if ($v->fails()) {
+            return $this->invalid($v->errors()->toArray());
+        }
+
+        $data = $v->validated();
+
+        return DB::transaction(function () use ($data) {
+            if (\App\Models\CropTransformation::withoutGlobalScopes()->where('uuid', $data['uuid'])->exists()) {
+                return ['status' => 'already_synced'];
+            }
+
+            // Une récolte déjà transformée ne se re-transforme pas : ce serait
+            // engager deux fois la même matière (et la compter deux fois en
+            // coût). Refus DÉFINITIF, comme la re-sélection d'un ordre exécuté.
+            if (! empty($data['harvest_id'])) {
+                $harvest = \App\Models\Harvest::find($data['harvest_id']);
+                if (! $harvest) {
+                    return ['status' => 'conflict', 'message' => __('Récolte introuvable dans cette ferme.')];
+                }
+                if ($harvest->transformations()->exists()) {
+                    return ['status' => 'conflict', 'message' => __(
+                        'La récolte du :date a déjà été transformée — sa matière est engagée.',
+                        ['date' => $harvest->harvest_date->format('d/m/Y')],
+                    )];
+                }
+            }
+
+            $uuid = $data['uuid'];
+            unset($data['uuid']);
+
+            $transformation = app(\App\Actions\Crop\RecordCropTransformation::class)->execute($data);
+
+            $transformation->forceFill([
+                'uuid'         => $uuid,
+                'is_synced'    => true,
+                'last_sync_at' => now(),
+            ])->save();
+
+            Log::info("Sync: transformation {$transformation->batch_number} — rendement {$transformation->yield_percent}%, coût de revient {$transformation->output_unit_cost}/u.");
+
+            return ['status' => 'success', 'server_id' => $transformation->id];
         });
     }
 

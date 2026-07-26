@@ -268,20 +268,64 @@ class CropCycle extends Model
     }
 
     /**
-     * Marge nette consolidée du cycle (revenus − coûts).
+     * Coût TOTAL engagé sur le cycle : forfait d'acquisition + coûts
+     * additionnels forfaitaires (main d'œuvre, irrigation…) + intrants
+     * itémisés (registre crop_inputs). Les intrants détaillés viennent en
+     * complément du forfait, pas en doublon : on saisit l'un OU l'autre.
+     */
+    public function getTotalCostAttribute(): float
+    {
+        return (float) $this->total_acquisition_cost
+            + (float) $this->additional_costs
+            + $this->inputs_cost;
+    }
+
+    /**
+     * COÛT DES MARCHANDISES VENDUES (T1).
      *
-     * Même esprit que Batch::getNetMarginAttribute : revenus enregistrés moins
-     * coûts d'acquisition (forfait initial), coûts additionnels forfaitaires
-     * (main d'œuvre, irrigation…) ET intrants itémisés (registre crop_inputs).
-     * Les intrants détaillés viennent en complément du forfait, pas en doublon :
-     * on saisit l'un OU l'autre selon le niveau de détail souhaité.
+     * = coût total engagé − coût des kg SORTIS DU CYCLE sans être vendus.
+     *
+     * Une récolte séchée ou stockée pour vendre plus tard quitte le cycle en
+     * matière : son coût la suit dans l'inventaire (où RecordHarvest la valorise
+     * déjà au coût de production). L'imputer au cycle afficherait une marge
+     * catastrophique le mois de la récolte, puis un profit sans coût le mois de
+     * la vente — deux mensonges qui se compensent, et aucun pilotage possible.
+     */
+    public function costOfGoodsSold(): float
+    {
+        return round(max(0.0, $this->total_cost - $this->heldValorisation()['value']), 2);
+    }
+
+    /**
+     * Récoltes CONSERVÉES (à transformer / stockées) : poids et valeur AU COÛT
+     * DE PRODUCTION. Volontairement au coût, jamais au prix espéré : ce n'est
+     * pas un profit tant que ce n'est pas vendu.
+     *
+     * @return array{kg: float, value: float}
+     */
+    public function heldValorisation(): array
+    {
+        $kg = (float) $this->harvests()
+            ->held()
+            ->sum(\Illuminate\Support\Facades\DB::raw(
+                "COALESCE(net_weight_kg, CASE WHEN LOWER(unit) = 'kg' THEN quantity ELSE 0 END)"
+            ));
+
+        return ['kg' => $kg, 'value' => round($kg * $this->productionCostPerKg(), 2)];
+    }
+
+    /**
+     * Marge nette RÉALISÉE du cycle : revenus encaissés − coût des marchandises
+     * vendues. Elle ne bouge plus quand la récolte conservée est vendue plus
+     * tard — cette vente-là est une vente de stock, avec sa propre marge
+     * (prix − CMP), ce qui est le traitement correct.
+     *
+     * Rétro-compatibilité : sans récolte conservée, heldValorisation vaut 0 et
+     * la formule redevient exactement l'ancienne.
      */
     public function getNetMarginAttribute(): float
     {
-        return (float) $this->total_revenue
-            - (float) $this->total_acquisition_cost
-            - (float) $this->additional_costs
-            - $this->inputs_cost;
+        return round((float) $this->total_revenue - $this->costOfGoodsSold(), 2);
     }
 
     /**
@@ -299,24 +343,25 @@ class CropCycle extends Model
             return 0.0;
         }
 
-        $cost = (float) $this->total_acquisition_cost
-            + (float) $this->additional_costs
-            + $this->inputs_cost;
-
-        return round($cost / $kg, 2);
+        return round($this->total_cost / $kg, 2);
     }
 
     /**
-     * Recalcule total_revenue depuis les récoltes réelles.
+     * Recalcule total_revenue depuis les récoltes RÉELLEMENT VENDUES (T1).
      *
      * Base = POIDS NET EFFECTIF (kg) × prix unitaire (exprimé au kg), cohérent
      * avec le rendement (kg/ha) et la valorisation de l'inventaire. Sommer
      * quantity × prix mélangerait des unités hétérogènes (caisses, sacs, kg)
      * et fausserait le revenu dès qu'une récolte n'est pas saisie en kg.
+     *
+     * FILTRE `sold()` : une récolte destinée au séchage ou au stockage n'a rien
+     * encaissé. La compter inscrivait un revenu fictif au cours (bas) du jour de
+     * récolte — précisément ce que le report de vente cherche à éviter.
      */
     public function recalculateRevenue(): void
     {
         $revenue = $this->harvests()
+            ->sold()
             ->selectRaw(
                 "COALESCE(SUM(COALESCE(net_weight_kg, CASE WHEN LOWER(unit) = 'kg' THEN quantity ELSE 0 END) * COALESCE(unit_price, 0)), 0) as total"
             )

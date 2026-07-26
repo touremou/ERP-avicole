@@ -15,7 +15,8 @@
                 </div>
             @endif
 
-            <form action="{{ route('crop-cycles.harvests.update', [$cycle, $harvest]) }}" method="POST" x-data="{ unit: '{{ old('unit', $harvest->unit) }}' }" class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm space-y-6">
+            <form action="{{ route('crop-cycles.harvests.update', [$cycle, $harvest]) }}" method="POST" x-data="{ unit: '{{ old('unit', $harvest->unit) }}', dest: '{{ old('destination', $harvest->destination ?? 'vente') }}',
+                          get held() { return this.dest !== 'vente' } }" class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm space-y-6">
                 @csrf @method('PUT')
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
@@ -47,6 +48,16 @@
                             @endforeach
                         </select>
                     </div>
+                    {{-- Destination (T1) : la changer recalcule le revenu du cycle
+                         (HarvestObserver::updated → recalculateRevenue). --}}
+                    <div>
+                        <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Destination") }}</label>
+                        <select name="destination" x-model="dest" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic appearance-none cursor-pointer">
+                            @foreach(\App\Models\Harvest::DESTINATIONS as $value => $label)
+                                <option value="{{ $value }}" @selected(old('destination', $harvest->destination ?? 'vente') === $value)>{{ __($label) }}</option>
+                            @endforeach
+                        </select>
+                    </div>
                     <div>
                         <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Responsable") }}</label>
                         <select name="employee_id" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic appearance-none cursor-pointer">
@@ -56,9 +67,15 @@
                             @endforeach
                         </select>
                     </div>
-                    <div>
-                        <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Prix unitaire") }} ({{ $currency }}/kg)</label>
+                    <div x-show="!held" x-cloak>
+                        <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Prix de vente encaissé") }} ({{ $currency }}/kg)</label>
                         <input type="number" step="1" min="0" name="unit_price" value="{{ old('unit_price', $harvest->unit_price) }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic text-right">
+                    </div>
+                    <div x-show="held" x-cloak class="md:col-span-2">
+                        <p class="text-[9px] font-bold text-amber-600 uppercase italic leading-relaxed bg-amber-50 rounded-2xl p-4">
+                            <i class="fa-solid fa-circle-info mr-1"></i>
+                            {{ __("Récolte non vendue : le prix est retiré et aucun revenu n'est inscrit au cycle. Pensez à saisir un poids net en kg — c'est lui qui la valorise en stock.") }}
+                        </p>
                     </div>
                 </div>
                 <div>

@@ -71,6 +71,7 @@ export type OperationType =
   | 'energy_reading.create'
   | 'water_reading.create'
   | 'attendance.create'
+  | 'crop_transformation.create'
   | 'mill_production.complete'
   // Phase 3 — cœur sanitaire HACCP abattoir.
   | 'slaughter_reception.create'
@@ -148,6 +149,9 @@ export interface PullResponse {
     sale_price_lists?: PullEntity<RefSalePriceList>
     sale_price_list_items?: PullEntity<RefSalePriceListItem>
     employee_leaves?: PullEntity<RefEmployeeLeave>
+    // T1 — atelier de transformation végétale (le séchoir est dehors).
+    crop_recipes?: PullEntity<RefCropRecipe>
+    pending_harvests?: PullEntity<RefPendingHarvest>
   }
 }
 
@@ -312,6 +316,39 @@ export interface RefSalePriceListItem {
   product_id: number | null
   product_type: string | null
   unit_price: number
+  updated_at: string
+}
+
+/** Recette de transformation végétale — rendement de référence (T1). */
+export interface RefCropRecipe {
+  id: number
+  code: string | null
+  name: string
+  transformation_type: string
+  output_product: string | null
+  output_unit: string | null
+  expected_yield_percent: number | null
+  shelf_life_days: number | null
+  is_active: boolean
+  updated_at: string
+}
+
+/**
+ * Récolte marquée « à transformer » et pas encore engagée (T1) : la liste de
+ * travail de l'atelier. La choisir porte la traçabilité au lot et le coût
+ * matière — le terrain n'a rien à ressaisir.
+ */
+export interface RefPendingHarvest {
+  id: number
+  uuid: string | null
+  crop_cycle_id: number
+  harvest_date: string
+  quantity: number
+  unit: string | null
+  net_weight_kg: number | null
+  quality: string | null
+  destination: string
+  stock_item_name: string | null
   updated_at: string
 }
 

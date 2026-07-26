@@ -15,6 +15,12 @@ use Illuminate\Support\Facades\DB;
  * Bascule le cycle en statut « recolte » dès la première récolte saisie, pour
  * matérialiser l'entrée en phase de récolte (le passage à « termine » reste une
  * action explicite de clôture).
+ *
+ * DESTINATION (T1) : une récolte non vendue (à transformer, ou stockée pour
+ * vendre plus cher plus tard) n'inscrit AUCUN revenu au cycle. En contrepartie
+ * elle doit exister quelque part — donc elle entre obligatoirement en stock, et
+ * elle exige une pesée en kg. Sans ces deux garde-fous, la matière conservée
+ * serait sortie du revenu sans entrer nulle part : elle disparaîtrait.
  */
 class RecordHarvest
 {
@@ -40,18 +46,37 @@ class RecordHarvest
             ));
         }
 
-        return DB::transaction(function () use ($cycle, $data) {
-            $syncToStock = (bool) ($data['sync_to_stock'] ?? false);
-            $stockItem   = trim((string) ($data['stock_item_name'] ?? $cycle->crop_name));
-            $unit        = $data['unit'] ?? 'kg';
-            $quantity    = (float) $data['quantity'];
+        $destination = $data['destination'] ?? Harvest::DEST_VENTE;
+        $isHeld      = in_array($destination, Harvest::DEST_HELD, true);
 
-            // Poids net pesé (toujours en kg). Si non fourni mais que la récolte
-            // est saisie en kg, on le déduit de la quantité — les KPI de
-            // rendement restent ainsi alimentés sans double saisie.
-            $netWeightKg = isset($data['net_weight_kg']) && $data['net_weight_kg'] !== null && $data['net_weight_kg'] !== ''
-                ? (float) $data['net_weight_kg']
-                : (strtolower($unit) === 'kg' ? $quantity : null);
+        $unit     = $data['unit'] ?? 'kg';
+        $quantity = (float) $data['quantity'];
+
+        // Poids net pesé (toujours en kg). Si non fourni mais que la récolte
+        // est saisie en kg, on le déduit de la quantité — les KPI de
+        // rendement restent ainsi alimentés sans double saisie.
+        $netWeightKg = isset($data['net_weight_kg']) && $data['net_weight_kg'] !== null && $data['net_weight_kg'] !== ''
+            ? (float) $data['net_weight_kg']
+            : (strtolower($unit) === 'kg' ? $quantity : null);
+
+        $effectiveKg = Harvest::effectiveWeightKgFrom($netWeightKg, $unit, $quantity);
+
+        // PESÉE OBLIGATOIRE si la récolte est conservée. On ne peut pas valoriser
+        // au coût, ni calculer un rendement de séchage, ni vendre plus tard un
+        // stock dont on n'a jamais connu le poids. « 12 paniers » ne se sèche pas.
+        if ($isHeld && $effectiveKg <= 0) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'net_weight_kg' => 'Une récolte ' . mb_strtolower(Harvest::DESTINATIONS[$destination])
+                    . ' doit être pesée en kg : c\'est cette pesée qui la valorise en stock '
+                    . 'et qui servira de base au rendement de transformation.',
+            ]);
+        }
+
+        return DB::transaction(function () use ($cycle, $data, $destination, $isHeld, $unit, $quantity, $netWeightKg) {
+            // Une récolte conservée entre TOUJOURS en stock : sortie du revenu,
+            // elle doit être quelque part. Le choix n'est laissé qu'à la vente.
+            $syncToStock = $isHeld ? true : (bool) ($data['sync_to_stock'] ?? false);
+            $stockItem   = trim((string) ($data['stock_item_name'] ?? $cycle->crop_name));
 
             $harvest = $cycle->harvests()->create([
                 'farm_id'         => $cycle->farm_id,
@@ -62,7 +87,11 @@ class RecordHarvest
                 'net_weight_kg'   => $netWeightKg,
                 'loss_quantity'   => $data['loss_quantity'] ?? 0,
                 'quality'         => $data['quality'] ?? Harvest::QUALITY_BON,
-                'unit_price'      => $data['unit_price'] ?? null,
+                'destination'     => $destination,
+                // Le prix n'a de sens que sur une vente. Sur une récolte
+                // conservée on l'écarte : conservé, il serait tôt ou tard
+                // resommé quelque part comme un revenu.
+                'unit_price'      => $isHeld ? null : ($data['unit_price'] ?? null),
                 'notes'           => $data['notes'] ?? null,
                 'synced_to_stock' => false,
                 'stock_item_name' => $syncToStock ? $stockItem : null,

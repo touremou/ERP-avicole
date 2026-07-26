@@ -33,7 +33,9 @@ class SyncController extends Controller
      *
      * Clés : model, columns (liste blanche), gate (slug ou liste any-of),
      * scope (périmètre sur le modèle), append (attributs dérivés), with
-     * (relations préchargées pour ces attributs).
+     * (relations préchargées pour ces attributs), full (envoi INTÉGRAL du
+     * périmètre, `since` ignoré — pour une liste de travail dont on sort sans
+     * tombstone).
      *
      * @var array<string, array{model: class-string, columns: array<int, string>}>
      */
@@ -209,6 +211,34 @@ class SyncController extends Controller
             'columns' => ['id', 'batch_number', 'formula_id', 'quantity_produced', 'status',
                           'operator_id', 'supervisor_id', 'started_at', 'updated_at'],
         ],
+        // T1 — Recettes de transformation végétale : le séchoir a besoin du
+        // rendement de référence pour que l'opérateur voie tout de suite si sa
+        // sortie est plausible (même jauge que la découpe d'abattoir).
+        'crop_recipes' => [
+            'model'   => \App\Models\CropRecipe::class,
+            'gate'    => 'cultures.L',
+            'columns' => ['id', 'code', 'name', 'transformation_type', 'output_product',
+                          'output_unit', 'expected_yield_percent', 'shelf_life_days',
+                          'is_active', 'updated_at'],
+            'scope'   => 'active',
+        ],
+        // T1 — Récoltes EN ATTENTE DE TRANSFORMATION : la liste de travail de
+        // l'atelier. Choisir la récolte donne la traçabilité au lot ET le coût
+        // matière ; sans elle, le terrain devrait ressaisir les deux.
+        'pending_harvests' => [
+            'model'   => \App\Models\Harvest::class,
+            'gate'    => 'cultures.L',
+            'columns' => ['id', 'uuid', 'crop_cycle_id', 'harvest_date', 'quantity', 'unit',
+                          'net_weight_kg', 'quality', 'destination', 'stock_item_name', 'updated_at'],
+            'scope'   => 'awaitingTransformationForSync',
+            // ENVOI INTÉGRAL : une récolte transformée quitte ce périmètre SANS
+            // tombstone (elle n'est pas supprimée, juste plus « en attente »).
+            // Un delta la laisserait dans la liste de travail de l'atelier et
+            // l'opérateur engagerait deux fois la même matière. Le client
+            // remplace donc la liste entière à chaque pull — d'où l'envoi
+            // complet, borné par la fenêtre de 60 jours du scope.
+            'full'    => true,
+        ],
         // Catalogue agronomique des cultures (espèces) — référentiel GLOBAL
         // (non cloisonné par ferme), pour proposer la liste des cultures au
         // pointage de semis mobile (parité avec le datalist du formulaire web).
@@ -295,8 +325,12 @@ class SyncController extends Controller
 
             // Upserts : enregistrements (de la ferme courante — FarmScope actif)
             // créés/modifiés depuis `since`. Bootstrap complet si since absent.
+            // `full` : listes de travail dont on sort sans tombstone — on renvoie
+            // tout le périmètre courant, le client remplace intégralement.
+            $useDelta = $since !== null && empty($config['full']);
+
             $query = $model::query()
-                ->when($since, fn ($q) => $q->where('updated_at', '>', $since))
+                ->when($useDelta, fn ($q) => $q->where('updated_at', '>', $since))
                 ->orderBy('id');
 
             // Périmètre optionnel : certains référentiels seraient trop lourds

@@ -261,6 +261,38 @@ const RULES: Partial<Record<OperationType, Validator>> = {
     reqId(p, 'crop_cycle_id', 'Cycle', e)
     reqDate(p, 'harvest_date', 'Date', e, true)
     reqNum(p, 'quantity', 'Quantité', e, 0.001)
+    // Destination (T1) : miroir de RecordHarvest — une récolte conservée doit
+    // être pesée en kg, sinon elle sort du revenu sans pouvoir être valorisée.
+    const dest = String(p.destination ?? 'vente')
+    if (!['vente', 'transformation', 'stockage'].includes(dest)) {
+      e.push('Destination de récolte invalide.')
+    }
+    if (dest !== 'vente') {
+      const kg = Number(p.net_weight_kg ?? 0)
+      const inKg = String(p.unit ?? 'kg').trim().toLowerCase() === 'kg'
+      if (!(kg > 0) && !(inKg && Number(p.quantity) > 0)) {
+        e.push('Récolte non vendue : le poids net en kg est obligatoire (il la valorise en stock).')
+      }
+    }
+    return e
+  },
+  'crop_transformation.create': (p) => {
+    const e: string[] = []
+    reqStr(p, 'input_product', 'Produit entrant', e)
+    reqStr(p, 'output_product', 'Produit fini', e)
+    reqStr(p, 'transformation_type', 'Type de transformation', e)
+    reqNum(p, 'input_quantity', 'Quantité engagée', e, 0.001)
+    reqNum(p, 'output_quantity', 'Quantité obtenue', e, 0)
+    reqDate(p, 'production_date', 'Date', e, true)
+    // Conservation de matière : le miroir de la garde serveur. Une sortie
+    // supérieure à l'entrée dans la MÊME unité est une erreur de pesée.
+    const inQty = Number(p.input_quantity) || 0
+    const outQty = Number(p.output_quantity) || 0
+    const sameUnit = String(p.input_unit ?? 'kg').trim().toLowerCase()
+      === String(p.output_unit ?? 'kg').trim().toLowerCase()
+    if (inQty > 0 && sameUnit && outQty > inQty * 1.5) {
+      e.push('Rendement aberrant : la sortie dépasse l\'entrée. Vérifiez les deux pesées.')
+    }
     return e
   },
   'crop_input.create': (p) => {

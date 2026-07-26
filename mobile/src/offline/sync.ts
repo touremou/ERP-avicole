@@ -264,6 +264,8 @@ async function pullDelta(): Promise<void> {
     sale_price_lists,
     sale_price_list_items,
     employee_leaves,
+    crop_recipes,
+    pending_harvests,
   } = response.entities
 
   const refTables = [
@@ -273,6 +275,7 @@ async function pullDelta(): Promise<void> {
     db.ref_crop_species, db.ref_sales, db.ref_sale_items,
     db.ref_mill_machines, db.ref_employees, db.ref_incubations, db.ref_energy_sources,
     db.ref_sale_price_lists, db.ref_sale_price_list_items, db.ref_employee_leaves,
+    db.ref_crop_recipes, db.ref_pending_harvests,
   ]
 
   await db.transaction(
@@ -333,6 +336,18 @@ async function pullDelta(): Promise<void> {
       if (employee_leaves) {
         await db.ref_employee_leaves.bulkPut(employee_leaves.upserts)
         await db.ref_employee_leaves.bulkDelete(employee_leaves.deletes)
+      }
+      if (crop_recipes) {
+        await db.ref_crop_recipes.bulkPut(crop_recipes.upserts)
+        await db.ref_crop_recipes.bulkDelete(crop_recipes.deletes)
+      }
+      if (pending_harvests) {
+        // Remplacement COMPLET : une récolte déjà transformée quitte le scope
+        // serveur sans tombstone (elle n'est pas supprimée, juste plus
+        // « en attente »). Un delta la laisserait traîner dans la liste de
+        // travail de l'atelier, et l'opérateur l'engagerait deux fois.
+        await db.ref_pending_harvests.clear()
+        await db.ref_pending_harvests.bulkPut(pending_harvests.upserts)
       }
       if (mill_machines) {
         await db.ref_mill_machines.bulkPut(mill_machines.upserts)
@@ -421,6 +436,7 @@ export async function switchFarm(farmId: number): Promise<void> {
       db.ref_sales, db.ref_sale_items, db.ref_mill_machines, db.ref_employees,
       db.ref_incubations, db.ref_energy_sources,
       db.ref_sale_price_lists, db.ref_sale_price_list_items, db.ref_employee_leaves,
+      db.ref_crop_recipes, db.ref_pending_harvests,
     ],
     async () => {
       await Promise.all([
@@ -433,6 +449,7 @@ export async function switchFarm(farmId: number): Promise<void> {
         db.ref_incubations.clear(), db.ref_energy_sources.clear(),
         db.ref_sale_price_lists.clear(), db.ref_sale_price_list_items.clear(),
         db.ref_employee_leaves.clear(),
+        db.ref_crop_recipes.clear(), db.ref_pending_harvests.clear(),
       ])
     },
   )
