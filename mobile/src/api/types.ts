@@ -64,6 +64,7 @@ export type OperationType =
   | 'sale_return.create'
   | 'inventory_count.create'
   | 'feed_purchase.create'
+  | 'mill_production.create'
   | 'mill_production.complete'
   // Phase 3 — cœur sanitaire HACCP abattoir.
   | 'slaughter_reception.create'
@@ -131,7 +132,31 @@ export interface PullResponse {
     // M2 — créances ouvertes (encaissement / retour chez le client).
     sales?: PullEntity<RefSale>
     sale_items?: PullEntity<RefSaleItem>
+    // M4 — machines du moulin et employés (superviseur d'OP).
+    mill_machines?: PullEntity<RefMillMachine>
+    employees?: PullEntity<RefEmployee>
   }
+}
+
+/** Machine du moulin (M4) — choix des machines au lancement d'un OP. */
+export interface RefMillMachine {
+  id: number
+  name: string
+  type: string | null
+  capacity_per_hour: number | null
+  status: string | null
+  updated_at: string
+}
+
+/** Employé actif (M4) — superviseur d'un OP. Colonnes nominatives seulement. */
+export interface RefEmployee {
+  id: number
+  employee_id: string | null
+  first_name: string | null
+  last_name: string | null
+  job_title: string | null
+  status: string | null
+  updated_at: string
 }
 
 /** Créance ouverte : vente non soldée descendue au terrain (M2). */

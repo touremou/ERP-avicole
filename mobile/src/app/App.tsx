@@ -39,6 +39,7 @@ import { CcpScreen } from '../features/abattoir/CcpScreen'
 import { CleaningScreen } from '../features/abattoir/CleaningScreen'
 import { ByproductScreen } from '../features/abattoir/ByproductScreen'
 import { MillCompleteScreen } from '../features/provenderie/MillCompleteScreen'
+import { MillStartScreen } from '../features/provenderie/MillStartScreen'
 import { MillJournalScreen } from '../features/provenderie/MillJournalScreen'
 import { MonEspaceScreen } from '../features/mon-espace/MonEspaceScreen'
 import { WaterRefillScreen } from '../features/ressources/WaterRefillScreen'
@@ -144,6 +145,7 @@ function Shell() {
           <Route path="/abattoir/sousproduit" element={<ByproductScreen />} />
           <Route path="/abattoir/sousproduit/tournee" element={<ByproductRoundScreen />} />
           <Route path="/provenderie/cloture/:opId" element={<MillCompleteScreen />} />
+          <Route path="/provenderie/lancer" element={<MillStartScreen />} />
           <Route path="/alertes" element={<NotificationsScreen />} />
           <Route path="/taches" element={<TachesScreen />} />
           <Route path="/mon-espace" element={<MonEspaceScreen />} />

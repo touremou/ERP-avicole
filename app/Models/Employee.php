@@ -144,6 +144,15 @@ class Employee extends Model
         return $query->where('status', 'Actif');
     }
 
+    /**
+     * Employés descendus au terrain (M4) : uniquement les ACTIFS — un mobile
+     * n'a pas à connaître les sortants, et la liste reste courte.
+     */
+    public function scopeActiveForSync($query)
+    {
+        return $query->where('status', 'Actif');
+    }
+
     public function scopeByDepartment($query, $dept)
     {
         return $query->where('department', $dept);

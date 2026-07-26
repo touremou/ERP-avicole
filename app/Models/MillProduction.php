@@ -18,6 +18,7 @@ class MillProduction extends Model
 
     protected $fillable = [
         'farm_id',
+        'uuid',
         'batch_number',
         'formula_id',
         'machine_id',

@@ -28,6 +28,8 @@ import type {
   RefProductionType,
   RefProvider,
   RefSlaughterOrder,
+  RefEmployee,
+  RefMillMachine,
   RefSale,
   RefSaleItem,
   RefStock,
@@ -92,6 +94,8 @@ class ErpMobileDb extends Dexie {
   ref_crop_species!: Table<RefCropSpecies, number>
   ref_sales!: Table<RefSale, number>
   ref_sale_items!: Table<RefSaleItem, number>
+  ref_mill_machines!: Table<RefMillMachine, number>
+  ref_employees!: Table<RefEmployee, number>
   tasks!: Table<RefTask, number>
   meta!: Table<MetaEntry, string>
 
@@ -144,6 +148,11 @@ class ErpMobileDb extends Dexie {
     this.version(8).stores({
       ref_sales: 'id, client_id, payment_status',
       ref_sale_items: 'id, sale_id',
+    })
+    // v9 (M4) : machines du moulin + employés actifs (lancement d'OP terrain).
+    this.version(9).stores({
+      ref_mill_machines: 'id, status',
+      ref_employees: 'id, status',
     })
   }
 }

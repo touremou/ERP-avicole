@@ -58,6 +58,22 @@ class SyncController extends Controller
             'gate'    => 'commerce.L',
             'columns' => ['id', 'client_id', 'name', 'category', 'phone', 'balance', 'status', 'updated_at'],
         ],
+        // M4 — Machines du moulin : lancer un OP au terrain exige de choisir
+        // la (les) machine(s) et de connaître leur état.
+        'mill_machines' => [
+            'model'   => \App\Models\MillMachine::class,
+            'gate'    => 'provenderie.L',
+            'columns' => ['id', 'name', 'type', 'capacity_per_hour', 'status', 'updated_at'],
+        ],
+        // M4 — Employés actifs : superviseur d'un OP (et, plus tard, présence).
+        // Colonnes strictement nominatives : ni salaire, ni contrat, ni contact
+        // d'urgence ne descendent sur un téléphone de terrain.
+        'employees' => [
+            'model'   => \App\Models\Employee::class,
+            'gate'    => ['provenderie.L', 'elevage.L'],
+            'columns' => ['id', 'employee_id', 'first_name', 'last_name', 'job_title', 'status', 'updated_at'],
+            'scope'   => 'activeForSync',
+        ],
         // M2 — CRÉANCES OUVERTES : ventes non soldées des 90 derniers jours, pour
         // que le livreur puisse encaisser et traiter un retour chez le client
         // sans réseau. Le reste dû est recalculé serveur au push (le montant

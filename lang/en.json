@@ -3331,5 +3331,7 @@
     "Délai d'attente": "Withdrawal period",
     "sous délai d'attente": "under withdrawal",
     "Vente introuvable dans cette ferme.": "Sale not found in this farm.",
-    "Ligne :id absente de la vente :ref.": "Line :id is not part of sale :ref."
+    "Ligne :id absente de la vente :ref.": "Line :id is not part of sale :ref.",
+    "Le cycle :code est sous délai avant récolte jusqu'au :date (:n j restants) suite au traitement « :product » — récolte interdite (résidus).": "Cycle :code is under pre-harvest interval until :date (:n d left) after treatment \":product\" — harvest forbidden (residues).",
+    "Machine(s) déjà engagée(s) sur un ordre en cours : :names. Clôturez l'OP ouvert avant d'en lancer un nouveau.": "Machine(s) already busy on an open run: :names. Close the open run before starting a new one."
 }

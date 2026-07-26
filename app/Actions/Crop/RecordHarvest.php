@@ -26,6 +26,20 @@ class RecordHarvest
      */
     public function execute(CropCycle $cycle, array $data): Harvest
     {
+        // DÉLAI AVANT RÉCOLTE (DAR) : après un traitement phytosanitaire, la
+        // production n'est pas récoltable avant l'échéance de la notice
+        // (résidus). Garde placée ICI = un seul point pour le web, la sync
+        // mobile et tout appelant futur. Levée automatique à la date.
+        if ($blocking = $cycle->activePreharvestInterval()) {
+            throw new \Exception(sprintf(
+                "Le cycle %s est sous délai avant récolte jusqu'au %s (%d j restants) suite au traitement « %s » — récolte interdite (résidus).",
+                $cycle->code,
+                $blocking->harvest_allowed_from->format('d/m/Y'),
+                $blocking->preharvest_days_left,
+                $blocking->name,
+            ));
+        }
+
         return DB::transaction(function () use ($cycle, $data) {
             $syncToStock = (bool) ($data['sync_to_stock'] ?? false);
             $stockItem   = trim((string) ($data['stock_item_name'] ?? $cycle->crop_name));

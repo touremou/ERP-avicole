@@ -116,6 +116,29 @@ class CropCycle extends Model
         return $this->hasMany(CropInput::class);
     }
 
+    /**
+     * DÉLAI AVANT RÉCOLTE EN COURS (DAR) : traitement phytosanitaire dont le
+     * délai de la notice n'est pas purgé — la récolte du cycle est interdite
+     * (résidus). Renvoie l'intrant qui contraint le plus (échéance la plus
+     * lointaine), null si le cycle est récoltable. Levée AUTOMATIQUE à la date.
+     */
+    public function activePreharvestInterval(): ?CropInput
+    {
+        return $this->inputs()
+            ->whereNotNull('preharvest_days')
+            ->where('preharvest_days', '>', 0)
+            ->get()
+            ->filter(fn (CropInput $input) => $input->blocksHarvest())
+            ->sortByDesc(fn (CropInput $input) => $input->harvest_allowed_from)
+            ->first();
+    }
+
+    /** La récolte est-elle bloquée par un délai avant récolte ? */
+    public function isHarvestBlocked(): bool
+    {
+        return $this->activePreharvestInterval() !== null;
+    }
+
     /** Validations explicites d'étapes de l'itinéraire technique. */
     public function protocolCompletions(): HasMany
     {
