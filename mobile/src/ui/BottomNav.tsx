@@ -1,11 +1,23 @@
 /** Bottom-nav — règle UX n°1 : actions principales en zone du pouce, 4-5 entrées max. */
 import { useEffect, useState } from 'react'
 import { NavLink } from 'react-router-dom'
+import { useAuth } from '../app/AuthContext'
 import { t } from '../i18n'
 import { db } from '../offline/db'
+import { allows, ROUTE_ACCESS } from '../offline/access'
 
 export function BottomNav() {
+  const { can, me } = useAuth()
   const [unread, setUnread] = useState(0)
+  const [dueTasks, setDueTasks] = useState(0)
+
+  // L'entrée « Tâches » suit EXACTEMENT le droit de la route (@owner : il faut
+  // une fiche employé). Lire ROUTE_ACCESS plutôt que recopier la condition
+  // empêche la divergence qui afficherait un onglet menant à « Accès refusé ».
+  const canSeeTasks = allows(ROUTE_ACCESS['/taches'], {
+    can,
+    hasEmployee: me?.scope.employee_id != null,
+  })
 
   useEffect(() => {
     const refresh = () =>
@@ -14,6 +26,24 @@ export function BottomNav() {
     window.addEventListener('notifications:updated', refresh)
     return () => window.removeEventListener('notifications:updated', refresh)
   }, [])
+
+  useEffect(() => {
+    if (!canSeeTasks) return
+
+    // Le badge ne compte que ce qui demande une action MAINTENANT : à faire
+    // aujourd'hui ou en retard. Y mettre tout le prévisionnel afficherait un
+    // nombre permanent que plus personne ne regarde.
+    const refresh = () => {
+      const today = new Date().toISOString().slice(0, 10)
+      void db.tasks
+        .filter((task) => task.status !== 'fait' && task.scheduled_date <= today)
+        .count()
+        .then(setDueTasks)
+    }
+    refresh()
+    window.addEventListener('tasks:updated', refresh)
+    return () => window.removeEventListener('tasks:updated', refresh)
+  }, [canSeeTasks])
 
   return (
     <nav className="bottom-nav">
@@ -24,6 +54,20 @@ export function BottomNav() {
         </svg>
         <span>{t('Accueil')}</span>
       </NavLink>
+      {canSeeTasks && (
+        <NavLink to="/taches">
+          <span className="nav-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              {/* Presse-papiers coché : la tâche à faire, pas une liste abstraite. */}
+              <path d="M9 3h6a1 1 0 0 1 1 1v1H8V4a1 1 0 0 1 1-1z" />
+              <path d="M16 5h1a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h1" />
+              <path d="m9 14 2 2 4-4" />
+            </svg>
+            {dueTasks > 0 && <span className="nav-badge">{dueTasks > 9 ? '9+' : dueTasks}</span>}
+          </span>
+          <span>{t('Tâches')}</span>
+        </NavLink>
+      )}
       <NavLink to="/alertes">
         <span className="nav-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
