@@ -923,6 +923,9 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/employees/contracts', 'index')->name('employees.contracts.index')->middleware('can:L');
         Route::post('/employees/{employee}/contract/prolong', 'prolong')->name('employees.contracts.prolong')->middleware('can:M');
         Route::post('/employees/{employee}/contract/notice', 'notice')->name('employees.contracts.notice')->middleware('can:M');
+        // Régularisation en lot des contrats entrés en base avant l'introduction
+        // du terme : sans date, ils n'entrent dans aucune fenêtre d'échéance.
+        Route::post('/employees/contracts/backfill', 'backfill')->name('employees.contracts.backfill')->middleware('can:M');
     });
 
     Route::middleware('can:L')->resource('employees', EmployeeController::class)

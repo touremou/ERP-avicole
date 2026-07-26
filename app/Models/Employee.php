@@ -217,6 +217,27 @@ class Employee extends Model
     }
 
     /**
+     * Contrats à terme SANS terme renseigné — les employés déjà en base avant
+     * l'introduction de `contract_end_date`.
+     *
+     * Ils sont le trou le plus dangereux de la liste de suivi : n'ayant pas de
+     * date, ils n'apparaissent dans AUCUNE fenêtre d'échéance. Un CDD sans terme
+     * en base est invisible, donc jamais décidé — exactement la situation qu'on
+     * cherchait à supprimer. D'où un scope dédié, et un écran de régularisation.
+     *
+     * Aucune date n'est devinée : hire_date + une durée arbitraire produirait un
+     * terme faux, et un terme faux est pire qu'un terme absent — il ferme
+     * l'alerte en donnant l'illusion que le dossier est en règle.
+     */
+    public function scopeMissingContractTerm($query)
+    {
+        return $query->active()
+            ->whereIn('contract_type', self::FIXED_TERM)
+            ->whereNull('contract_end_date')
+            ->orderBy('hire_date');
+    }
+
+    /**
      * Contrats à terme dont l'échéance tombe dans les $days jours — ou est déjà
      * dépassée — et pour lesquels AUCUN préavis n'a été émis. Un préavis émis
      * signifie que la décision est prise : le rappeler chaque jour transforme

@@ -37,6 +37,82 @@
                 </div>
             @endif
 
+            {{-- RÉGULARISATION — en tête tant qu'il en reste, parce qu'un contrat
+                 à terme SANS terme n'entre dans aucune fenêtre d'échéance : il est
+                 invisible, donc jamais décidé. C'est le trou le plus dangereux de
+                 l'écran, pas une ligne de configuration. --}}
+            @if($missingTerm->isNotEmpty())
+                <div class="bg-white p-8 rounded-[3rem] border-2 border-amber-300 shadow-sm">
+                    <h3 class="text-[10px] font-black uppercase text-amber-600 tracking-widest italic mb-2">
+                        <i class="fa-solid fa-triangle-exclamation mr-2"></i>{{ __("Contrats sans terme renseigné") }}
+                        <span class="ml-2 bg-amber-500 text-white px-3 py-1 rounded-full">{{ $missingTerm->count() }}</span>
+                    </h3>
+                    <p class="text-[10px] font-bold text-slate-500 italic leading-relaxed mb-2">
+                        {{ __("Ces agents sont en CDD ou Journalier mais ont été enregistrés avant l'introduction de la date de fin. Sans terme, ils n'apparaissent dans aucune échéance : personne ne sera prévenu pour eux.") }}
+                    </p>
+                    <p class="text-[9px] font-black text-slate-400 uppercase italic leading-relaxed mb-6">
+                        {{ __("Aucune date n'est proposée par défaut : un terme deviné serait faux, et un terme faux est pire qu'un terme absent — il ferme l'alerte en donnant l'illusion que le dossier est en règle. Reprenez le contrat papier. Un terme déjà passé est accepté : c'est le cas normal d'une régularisation.") }}
+                    </p>
+
+                    @if($canDecide)
+                        <form method="POST" action="{{ route('employees.contracts.backfill') }}">
+                            @csrf
+                            <div class="overflow-x-auto mb-6">
+                                <table class="w-full text-left">
+                                    <thead>
+                                        <tr class="border-b border-amber-100">
+                                            <th class="pb-3 text-[8px] font-black text-slate-400 uppercase tracking-widest">{{ __("Agent") }}</th>
+                                            <th class="pb-3 text-[8px] font-black text-slate-400 uppercase tracking-widest">{{ __("Contrat") }}</th>
+                                            <th class="pb-3 text-[8px] font-black text-slate-400 uppercase tracking-widest">{{ __("Embauche") }}</th>
+                                            <th class="pb-3 text-[8px] font-black text-slate-400 uppercase tracking-widest">{{ __("Fin du contrat") }}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach($missingTerm as $employee)
+                                            <tr class="border-b border-amber-50 last:border-0">
+                                                <td class="py-3 text-[10px] font-black text-slate-800">
+                                                    <a href="{{ route('employees.show', $employee->id) }}" class="no-underline text-slate-800 hover:text-emerald-600">{{ $employee->name }}</a>
+                                                    <span class="block text-[8px] font-bold text-slate-400 uppercase">{{ $employee->employee_id }} · {{ $employee->job_title }}</span>
+                                                </td>
+                                                <td class="py-3 text-[10px] font-black text-slate-600 uppercase">{{ $employee->contract_type }}</td>
+                                                <td class="py-3 text-[10px] font-bold text-slate-500">
+                                                    {{ optional($employee->hire_date)->format('d/m/Y') ?? '—' }}
+                                                </td>
+                                                <td class="py-3">
+                                                    <input type="date" name="terms[{{ $employee->id }}]"
+                                                           value="{{ old('terms.' . $employee->id) }}"
+                                                           @if($employee->hire_date) min="{{ $employee->hire_date->copy()->addDay()->format('Y-m-d') }}" @endif
+                                                           class="bg-slate-50 border-none rounded-xl p-3 font-black text-slate-800 shadow-inner italic text-[11px]">
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div class="flex flex-wrap gap-4 items-end">
+                                <div class="flex-1 min-w-[240px]">
+                                    <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Motif commun (facultatif)") }}</label>
+                                    <input type="text" name="reason" maxlength="500" value="{{ old('reason') }}"
+                                           placeholder="{{ __('ex. reprise des contrats papier avec les techniciens') }}"
+                                           class="w-full bg-slate-50 border-none rounded-2xl p-4 font-bold text-slate-600 shadow-inner italic text-[11px]">
+                                </div>
+                                <button type="submit" class="bg-amber-500 text-white px-10 py-4 rounded-2xl font-black uppercase italic tracking-widest text-[10px] hover:bg-amber-600 transition-all shadow-lg">
+                                    <i class="fa-solid fa-check mr-2"></i> {{ __("Enregistrer les termes") }}
+                                </button>
+                            </div>
+                            <p class="text-[9px] font-bold text-slate-400 uppercase italic mt-4 leading-relaxed">
+                                {{ __("Les lignes laissées vides sont ignorées : régularisez ce que vous savez, revenez pour le reste. Tout-ou-rien sur les lignes remplies — si une date est refusée, aucune n'est enregistrée.") }}
+                            </p>
+                        </form>
+                    @else
+                        <p class="text-[9px] font-bold text-slate-400 uppercase italic">
+                            {{ __("Consultation seule — la régularisation relève d'un gestionnaire RH.") }}
+                        </p>
+                    @endif
+                </div>
+            @endif
+
             {{-- Fenêtre de surveillance --}}
             <form method="GET" class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm flex flex-wrap gap-4 items-end">
                 <div>

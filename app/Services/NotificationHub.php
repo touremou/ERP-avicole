@@ -515,9 +515,11 @@ class NotificationHub
      * son terme sans acte se requalifie), et « critique » déclenche l'escalade
      * admin même hors heures silencieuses.
      */
-    public function alertContractsToDecide($employees): void
+    public function alertContractsToDecide($employees, $missingTerm = null): void
     {
-        if ($employees->isEmpty()) return;
+        $missingTerm = $missingTerm ?? collect();
+
+        if ($employees->isEmpty() && $missingTerm->isEmpty()) return;
 
         $overdue = false;
         $lines = $employees
@@ -532,9 +534,20 @@ class NotificationHub
             })
             ->join("\n");
 
+        // Les contrats SANS terme sont annoncés à part : leur problème n'est pas
+        // une échéance qui approche, c'est l'absence de toute échéance. Les
+        // fondre dans la même liste rendrait le message incompréhensible.
+        if ($missingTerm->isNotEmpty()) {
+            $overdue = true; // aucun suivi possible : c'est au moins aussi grave
+            $lines .= ($lines !== '' ? "\n" : '')
+                . "\n⚠️ SANS TERME RENSEIGNÉ (hors de tout suivi) :\n"
+                . $missingTerm->map(fn ($e) => "• {$e->name} ({$e->contract_type}, embauché le "
+                    . (optional($e->hire_date)->format('d/m/Y') ?? '—') . ')')->join("\n");
+        }
+
         $message = $this->tpl('contract_expiry', [
             'farm'      => config('whatsapp.farm_name', 'AviSmart'),
-            'count'     => $employees->count(),
+            'count'     => $employees->count() + $missingTerm->count(),
             'employees' => $lines,
         ]);
 

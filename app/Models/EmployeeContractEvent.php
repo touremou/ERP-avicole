@@ -42,7 +42,13 @@ class EmployeeContractEvent extends Model
     public function getLabelAttribute(): string
     {
         return match ($this->type) {
-            'prolongation' => __('Prolongation'),
+            // Aucun terme antérieur → le terme a été DÉCLARÉ (régularisation
+            // d'un contrat entré en base avant l'introduction de la colonne),
+            // pas prolongé. La nuance compte en contrôle : une prolongation
+            // suppose un terme précédent, une déclaration non.
+            'prolongation' => $this->previous_end_date === null
+                ? __('Terme déclaré')
+                : __('Prolongation'),
             'preavis'      => __('Préavis émis'),
             'fin'          => __('Fin de contrat'),
             default        => $this->type,

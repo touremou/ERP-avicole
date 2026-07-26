@@ -14,8 +14,13 @@
                      qui rendait l'oubli d'échéance inévitable. --}}
                 @can('rh.L')
                 @php
-                    // Compteur d'urgence : le nombre de décisions attendues.
-                    $contractsToDecide = \App\Models\Employee::contractsToDecide()->count();
+                    // Compteur d'urgence : décisions attendues + contrats à terme
+                    // SANS terme renseigné. Les seconds doivent compter : sans
+                    // date ils n'entrent dans aucune fenêtre d'échéance, donc un
+                    // compteur à zéro ferait croire que rien n'attend — alors que
+                    // ce sont eux qui échappent complètement au suivi.
+                    $contractsToDecide = \App\Models\Employee::contractsToDecide()->count()
+                        + \App\Models\Employee::missingContractTerm()->count();
                 @endphp
                 <a href="{{ route('employees.contracts.index') }}"
                    class="{{ $contractsToDecide > 0 ? 'bg-amber-500 hover:bg-amber-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200' }} {{ $contractsToDecide > 0 ? 'text-white' : '' }} px-6 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest transition-all shadow-lg italic no-underline">

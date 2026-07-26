@@ -6,6 +6,7 @@ use App\Actions\Hr\DecideContract;
 use App\Models\Employee;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 
@@ -46,8 +47,67 @@ class EmployeeContractController extends Controller
             'days'     => $days,
             'toDecide' => $toDecide->sortBy(fn ($e) => $e->days_until_contract_end)->values(),
             'noticed'  => $noticed,
+            // Contrats à terme SANS terme : les employés déjà en base avant
+            // l'introduction de la colonne. Sans date, ils n'entrent dans aucune
+            // fenêtre d'échéance — donc invisibles, donc jamais décidés. Ils
+            // passent en tête de l'écran tant qu'il en reste.
+            'missingTerm' => Employee::missingContractTerm()->get(),
             'canDecide' => Gate::allows('rh.M'),
         ]);
+    }
+
+    /**
+     * Régularisation en lot : déclare le terme des contrats qui n'en portaient
+     * pas. Une seule soumission pour toute la liste — la saisie se fait avec les
+     * techniciens, contrat en main, et ouvrir une fiche par employé
+     * transformerait une réunion de dix minutes en corvée.
+     *
+     * Tout-ou-rien : si une ligne est refusée par la règle métier, aucune n'est
+     * enregistrée. Un historique à moitié régularisé serait pire que pas de
+     * régularisation du tout — on ne saurait plus ce qui reste à faire.
+     */
+    public function backfill(Request $request, DecideContract $decide)
+    {
+        if (Gate::denies('rh.M')) {
+            return back()->with('error', __("Seul un gestionnaire RH peut déclarer un terme de contrat."));
+        }
+
+        $data = $request->validate([
+            'terms'   => 'required|array',
+            'terms.*' => 'nullable|date',
+            'reason'  => 'nullable|string|max:500',
+        ]);
+
+        // Les lignes laissées vides sont ignorées : on régularise ce qu'on sait,
+        // on revient plus tard pour le reste.
+        $terms = array_filter($data['terms'], fn ($date) => filled($date));
+
+        if ($terms === []) {
+            return back()->with('error', __("Aucune date saisie : renseignez au moins un terme."));
+        }
+
+        $employees = Employee::missingContractTerm()->whereIn('id', array_keys($terms))->get()->keyBy('id');
+
+        try {
+            DB::transaction(function () use ($employees, $terms, $data, $decide) {
+                foreach ($terms as $employeeId => $endDate) {
+                    $employee = $employees->get((int) $employeeId);
+                    if (! $employee) {
+                        continue; // déjà régularisé entre-temps (double soumission)
+                    }
+
+                    $decide->declareTerm($employee, $endDate, $data['reason'] ?? null, Auth::id());
+                }
+            });
+        } catch (ValidationException $e) {
+            return back()->withErrors($e->errors())->withInput();
+        }
+
+        return back()->with('success', trans_choice(
+            '{1} :count contrat régularisé.|[2,*] :count contrats régularisés.',
+            count($terms),
+            ['count' => count($terms)]
+        ));
     }
 
     public function prolong(Request $request, Employee $employee, DecideContract $decide)
