@@ -75,6 +75,7 @@ class Module extends Model
             'crop-recipes.'         => 'cultures',
             'crop-protocols.'       => 'cultures',
             'crop-reports.'         => 'cultures',
+            'crop-backfill.'        => 'cultures',
             'crop-calendar-events.' => 'cultures',
             'weather.'              => 'cultures',
             'harvests.'             => 'cultures',
