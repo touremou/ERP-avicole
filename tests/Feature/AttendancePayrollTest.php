@@ -12,6 +12,10 @@ uses(Tests\TestCase::class, Illuminate\Foundation\Testing\RefreshDatabase::class
 
 beforeEach(function () {
     $this->setUpRbac();
+    // NB : les employés de ce fichier fixent explicitement leur date d'embauche.
+    // La paie proratise désormais une entrée en cours de mois, et la factory tire
+    // une date au hasard sur deux ans — qui pouvait tomber dans la période.
+
     // Juin 2026 : 30 j − 4 dimanches = 26 jours ouvrés.
     $this->period = PayrollPeriod::create([
         'farm_id' => $this->farm->id, 'label' => 'Juin 2026', 'year' => 2026, 'month' => 6,
@@ -20,7 +24,10 @@ beforeEach(function () {
 });
 
 test('la génération de paie déduit les absences réellement pointées', function () {
-    $e = Employee::factory()->create(['status' => 'Actif', 'salary' => 260000]);
+    $e = Employee::factory()->create([
+        'status' => 'Actif', 'salary' => 260000,
+        'hire_date' => '2024-01-15', 'contract_end_date' => null,
+    ]);
 
     foreach (['2026-06-10', '2026-06-11'] as $d) { // 2 jours ouvrés
         EmployeeAttendance::create([
@@ -44,7 +51,10 @@ test('la génération de paie déduit les absences réellement pointées', funct
 });
 
 test('sans absence pointée, la paie n\'est pas pénalisée', function () {
-    $e = Employee::factory()->create(['status' => 'Actif', 'salary' => 260000]);
+    $e = Employee::factory()->create([
+        'status' => 'Actif', 'salary' => 260000,
+        'hire_date' => '2024-01-15', 'contract_end_date' => null,
+    ]);
 
     EmployeeAttendance::create([
         'farm_id' => $this->farm->id, 'employee_id' => $e->id,
