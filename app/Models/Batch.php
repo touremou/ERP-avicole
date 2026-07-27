@@ -1308,6 +1308,18 @@ class Batch extends Model
     }
 
     /**
+     * Seuil d'ATTENTION de mortalité cumulée : la zone orange, sous le seuil
+     * critique. Le facteur 60 % était recopié dans le contrôleur des rapports et
+     * dans trois vues — l'une arrondissant le résultat, les autres non, si bien
+     * que la légende d'un rapport pouvait annoncer une borne que le classement
+     * des lots n'appliquait pas.
+     */
+    public static function cumulativeMortalityWarningThreshold(): float
+    {
+        return round(self::cumulativeMortalityThreshold() * 0.6, 1);
+    }
+
+    /**
      * Lots en surmortalité (requête SQL pure, pas d'accessor PHP).
      *
      * Correction B-01 : remplace le whereRaw('total_mortalite/...') inexistant.

@@ -58,7 +58,7 @@
                     <input type="hidden" name="batch_id" value="{{ $check->batch_id }}">
                     <input type="hidden" id="current_stock_birds" value="{{ $check->batch->current_quantity }}">
                     <input type="hidden" id="original_mortality" value="{{ $check->mortality }}">
-                    @php $mortalityAlert = (float) setting('elevage.mortality_alert', 5); @endphp
+                    @php $mortalityAlert = \App\Models\Batch::cumulativeMortalityThreshold(); @endphp
                     <input type="hidden" id="mortality_alert_threshold" value="{{ $mortalityAlert }}">
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
