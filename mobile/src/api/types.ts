@@ -35,6 +35,20 @@ export interface MeResponse {
     /** Employé rattaché : sert à ne montrer que les lots qui me sont affectés. */
     employee_id?: number | null
   }
+  /**
+   * Règles de la ferme dont les écrans terrain ont besoin.
+   *
+   * La PWA n'en recevait AUCUNE : elle ne pouvait donc pas honorer une règle
+   * définie par la ferme. La coupure de caisse en est le cas concret — le
+   * serveur arrondit le total à l'enregistrement, l'écran annonçait le brut.
+   *
+   * Optionnel : un serveur plus ancien ne renvoie pas ce bloc.
+   */
+  settings?: {
+    currency?: string
+    /** Coupure de caisse (0 = pas d'arrondi). Cf. cash_round() côté serveur. */
+    cash_rounding?: number
+  }
   server_time: string
 }
 

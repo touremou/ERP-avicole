@@ -175,9 +175,28 @@
                             <p x-show="cart.length === 0" class="text-center text-[9px] font-black text-slate-500 uppercase tracking-widest py-6">{{ __("Touchez un produit pour l'ajouter") }}</p>
                         </div>
 
-                        <div class="flex justify-between items-center border-t border-white/10 pt-4 mb-4">
-                            <span class="text-[10px] font-black uppercase tracking-widest text-slate-400">{{ __("Total") }}</span>
-                            <span class="text-2xl font-black text-emerald-400" x-text="formatMoney(total)"></span>
+                        {{-- MONTANT À ENCAISSER = montant arrondi à la coupure de caisse.
+                             L'écran affichait le total BRUT alors que le serveur
+                             enregistre le total ARRONDI : avec une coupure de 1 000,
+                             le caissier lisait 55 100, encaissait 55 100, et la vente
+                             était écrite à 55 000. La règle d'arrondi n'existait que
+                             côté serveur, invisible de l'écran qui annonce la somme. --}}
+                        <div class="border-t border-white/10 pt-4 mb-4 space-y-1">
+                            <div class="flex justify-between items-center" x-show="roundingAdjustment !== 0">
+                                <span class="text-[9px] font-black uppercase tracking-widest text-slate-500">{{ __("Sous-total") }}</span>
+                                <span class="text-[11px] font-black text-slate-400" x-text="formatMoney(subtotal)"></span>
+                            </div>
+                            <div class="flex justify-between items-center" x-show="roundingAdjustment !== 0">
+                                <span class="text-[9px] font-black uppercase tracking-widest text-amber-400">
+                                    {{ __("Arrondi caisse") }} ({{ (int) setting('ventes.cash_rounding', 0) }} {{ currency() }})
+                                </span>
+                                <span class="text-[11px] font-black text-amber-400"
+                                      x-text="(roundingAdjustment > 0 ? '+' : '') + formatMoney(roundingAdjustment)"></span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-[10px] font-black uppercase tracking-widest text-slate-400">{{ __("À encaisser") }}</span>
+                                <span class="text-2xl font-black text-emerald-400" x-text="formatMoney(total)"></span>
+                            </div>
                         </div>
 
                         {{-- Vendeur nominatif (façon balance : boutons prénom) --}}
@@ -263,6 +282,17 @@
             const label = btn.querySelector('span');
             if (label) label.textContent = on ? @json(__('Quitter')) : @json(__('Plein écran'));
         });
+
+        // Coupure de caisse paramétrée (ventes.cash_rounding). Miroir exact de
+        // cash_round() : arrondi à la coupure la plus proche, 0 = désactivé.
+        const CASH_STEP = {{ (int) setting('ventes.cash_rounding', 0) }};
+
+        function cashRound(amount) {
+            const value = Number(amount) || 0;
+            if (CASH_STEP <= 0) return Math.round(value * 100) / 100;
+
+            return Math.round(value / CASH_STEP) * CASH_STEP;
+        }
 
         document.addEventListener('alpine:init', () => {
             Alpine.data('posView', (products, clients, sellers) => ({
@@ -359,8 +389,20 @@
                         line.showWeigh = false;
                     }
                 },
-                get total() {
+                /** Somme des lignes, avant arrondi de caisse. */
+                get subtotal() {
                     return this.cart.reduce((s, l) => s + (l.quantity || 0) * (l.unit_price || 0), 0);
+                },
+                /**
+                 * Montant réellement payable : le sous-total ramené à la coupure de
+                 * caisse paramétrée — la MÊME règle que cash_round() côté serveur.
+                 */
+                get total() {
+                    return cashRound(this.subtotal);
+                },
+                /** Écart d'arrondi, affiché pour que le caissier sache pourquoi. */
+                get roundingAdjustment() {
+                    return Math.round((this.total - this.subtotal) * 100) / 100;
                 },
                 // Pas des boutons −/+ : 1 pour les pièces, 0,1 kg pour le pesé
                 // (incrémenter des découpes kilo par kilo n'a pas de sens).

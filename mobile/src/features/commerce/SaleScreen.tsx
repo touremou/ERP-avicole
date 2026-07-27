@@ -16,12 +16,12 @@
  */
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { db } from '../../offline/db'
+import { db, session } from '../../offline/db'
 import { safeLoad } from '../../offline/safeLoad'
 import { enqueue } from '../../offline/sync'
 import {
-  EMPTY_PRICE_BOOK, floorQuantity, isValidQuantity, isWeighable, priceBookFor, priceFor,
-  roundQuantity, stepFor, type PriceBook,
+  cashRound, EMPTY_PRICE_BOOK, floorQuantity, isValidQuantity, isWeighable, priceBookFor,
+  priceFor, roundQuantity, stepFor, type PriceBook,
 } from '../../offline/pricing'
 import { t, dateLocale } from '../../i18n'
 import type { RefClient, RefProduct } from '../../api/types'
@@ -71,10 +71,14 @@ export function SaleScreen() {
   const [paymentMethod, setPaymentMethod] = useState('especes')
   const [notes, setNotes] = useState('')
   const [saved, setSaved] = useState(false)
+  // Coupure de caisse de la ferme, lue dans la session en cache : disponible
+  // hors réseau, comme tout le reste de cet écran.
+  const [cashStep, setCashStep] = useState(0)
 
   useEffect(() => {
     void safeLoad('vente:clients', async () => setClients(await db.ref_clients.orderBy('name').toArray()))
     void db.ref_products.filter((p) => p.is_active).toArray().then(setProducts)
+    void session.me().then((me) => setCashStep(Number(me?.settings?.cash_rounding) || 0))
   }, [])
 
   // Changement de client → tout l'écran se re-tarife, y compris le panier déjà
@@ -200,7 +204,13 @@ export function SaleScreen() {
     resetLine()
   }
 
-  const total = items.reduce((sum, item) => sum + item.quantity * item.unit_price, 0)
+  // Sous-total des lignes, puis montant réellement encaissable : le serveur
+  // arrondit le total à la coupure de caisse au moment de l'enregistrement.
+  // L'écran annonçait le brut — le technicien encaissait 55 100 pour une vente
+  // écrite à 55 000, soit un écart de caisse à chaque vente.
+  const subtotal = items.reduce((sum, item) => sum + item.quantity * item.unit_price, 0)
+  const total = cashRound(subtotal, cashStep)
+  const roundingAdjustment = Math.round((total - subtotal) * 100) / 100
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault()
@@ -280,7 +290,16 @@ export function SaleScreen() {
               </span>
             </div>
           ))}
-          <p className="task-title">{t('Total : :amount', { amount: Math.round(total).toLocaleString(dateLocale()) })}</p>
+          {roundingAdjustment !== 0 && (
+            <p className="task-meta">
+              {t('Sous-total : :amount', { amount: Math.round(subtotal).toLocaleString(dateLocale()) })}
+              {' · '}
+              {t('arrondi caisse : :amount', {
+                amount: (roundingAdjustment > 0 ? '+' : '') + Math.round(roundingAdjustment).toLocaleString(dateLocale()),
+              })}
+            </p>
+          )}
+          <p className="task-title">{t('À encaisser : :amount', { amount: Math.round(total).toLocaleString(dateLocale()) })}</p>
         </section>
       )}
 

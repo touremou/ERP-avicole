@@ -70,8 +70,29 @@ class AuthController extends Controller
             ],
             'permissions' => $this->permissionsMatrix($user),
             'scope'       => $this->scope($user),
+            'settings'    => $this->fieldSettings(),
             'server_time' => now()->toIso8601String(),
         ]);
+    }
+
+    /**
+     * RÈGLES DE LA FERME dont les écrans TERRAIN ont besoin.
+     *
+     * La PWA n'avait accès à AUCUN réglage : elle ne pouvait donc pas honorer une
+     * règle définie par la ferme, et affichait ses propres valeurs. Le cas concret :
+     * la coupure de caisse (`ventes.cash_rounding`). Le serveur arrondit le total
+     * à l'enregistrement ; l'écran de vente mobile annonçait le total BRUT au
+     * client. Avec une coupure de 1 000, le technicien encaissait 55 100 et la
+     * vente était écrite à 55 000 — un écart de caisse à chaque vente.
+     *
+     * On n'expose ici QUE ce dont le terrain se sert, et rien de sensible.
+     */
+    private function fieldSettings(): array
+    {
+        return [
+            'currency'      => (string) setting('general.currency', 'GNF'),
+            'cash_rounding' => (int) setting('ventes.cash_rounding', 0),
+        ];
     }
 
     public function logout(Request $request): JsonResponse

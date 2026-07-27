@@ -86,6 +86,27 @@ export function priceOrigin(product: RefProduct, book: PriceBook): 'article' | '
   return 'base'
 }
 
+/**
+ * ARRONDI DE CAISSE — miroir exact de `cash_round()` côté serveur.
+ *
+ * Certaines coupures ne circulent plus en Guinée : la ferme fixe une coupure
+ * (`ventes.cash_rounding`) et le serveur y ramène le total à l'enregistrement.
+ * L'écran de vente mobile annonçait pourtant le total BRUT : avec une coupure de
+ * 1 000, le technicien encaissait 55 100 et la vente était écrite à 55 000 — un
+ * écart de caisse à chaque vente, invisible jusqu'au rapprochement.
+ *
+ * La coupure vient de la session en cache (`me.settings`), donc disponible hors
+ * réseau. Coupure absente ou nulle = pas d'arrondi, comme côté serveur.
+ */
+export function cashRound(amount: number, step: number | null | undefined): number {
+  const value = Number(amount) || 0
+  const cut = Number(step) || 0
+
+  if (cut <= 0) return Math.round(value * 100) / 100
+
+  return Math.round(value / cut) * cut
+}
+
 /** Article vendu au poids → quantité décimale, pesée brut/tare, pas de 0,1. */
 export function isWeighable(unit: string | null | undefined): boolean {
   return ['kg', 'g', 'l', 'litre', 'litres', 'tonne'].includes((unit ?? '').trim().toLowerCase())
