@@ -714,6 +714,12 @@ export interface RefCropSpecies {
   local_name: string | null
   type: string | null
   updated_at: string
+  /** Ce qu'on met en terre : semence, rejet, bouture… (null = semence). */
+  planting_material?: string | null
+  /** Comment on le compte : kg, unité… (null = kg). */
+  planting_unit?: string | null
+  /** Densité de référence par hectare — sert à PROPOSER la quantité. */
+  planting_density?: number | null
 }
 
 export interface RefMillProduction {

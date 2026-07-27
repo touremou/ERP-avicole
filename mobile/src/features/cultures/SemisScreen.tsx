@@ -49,7 +49,49 @@ export function SemisScreen() {
     return Math.max(0, total - used)
   }, [plots, cycles, plotId])
 
+  // Espèce du catalogue correspondant à la culture saisie. C'est elle qui porte
+  // le matériel de plantation : on ne plante pas un ananas en kilos de semence.
+  const matchedSpecies = useMemo(() => {
+    const needle = cropName.trim().toLowerCase()
+    return species.find((s) => s.name.toLowerCase() === needle) ?? null
+  }, [species, cropName])
+
+  const plantingLabel = useMemo(() => {
+    const material = matchedSpecies?.planting_material ?? 'semence'
+    const unit = matchedSpecies?.planting_unit ?? seedUnit
+    const plural: Record<string, string> = {
+      semence: t('Quantité de semences'),
+      plant: t('Nombre de plants'),
+      rejet: t('Nombre de rejets'),
+      bouture: t('Nombre de boutures'),
+      greffon: t('Nombre de greffons'),
+      tubercule: t('Quantité de tubercules'),
+      rhizome: t('Quantité de rhizomes'),
+    }
+
+    return `${plural[material] ?? t('Quantité')} (${unit})`
+  }, [matchedSpecies, seedUnit])
+
+  // L'unité SUIT la culture : laisser « kg » sur un ananas invite à saisir un
+  // poids de rejets, qui ne veut rien dire.
+  useEffect(() => {
+    if (matchedSpecies?.planting_unit) setSeedUnit(matchedSpecies.planting_unit)
+  }, [matchedSpecies])
+
   const areaNum = Number(area)
+
+  /** Quantité PROPOSÉE par la densité de référence — jamais imposée. */
+  const suggestedSeedQty = useMemo(() => {
+    const density = matchedSpecies?.planting_density
+    if (!density || !(areaNum > 0)) return null
+    const quantity = density * areaNum
+
+    // Un demi-rejet n'existe pas : on arrondit ce qui se compte à l'unité.
+    return matchedSpecies?.planting_unit === 'kg'
+      ? Math.round(quantity * 100) / 100
+      : Math.round(quantity)
+  }, [matchedSpecies, areaNum])
+
   const overCapacity = remaining !== null && areaNum > remaining + 0.0001
   const canSubmit =
     Boolean(plotId) && cropName.trim() !== '' && areaNum > 0 && !overCapacity
@@ -124,8 +166,16 @@ export function SemisScreen() {
         <p className="error">{t('⚠️ La surface dépasse le disponible (:rem ha) sur cette parcelle.', { rem: (remaining ?? 0).toFixed(2) })}</p>
       )}
 
-      <label htmlFor="seed">{t('Quantité de semence — optionnel')}</label>
+      <label htmlFor="seed">{plantingLabel} — {t('optionnel')}</label>
       <input id="seed" type="number" inputMode="decimal" min="0" step="any" value={seedQty} onFocus={(e) => e.target.select()} onChange={(e) => setSeedQty(e.target.value)} placeholder="0" />
+      {/* Suggestion TAPPABLE plutôt qu'auto-remplissage : au champ, le technicien
+          a souvent compté ses plants lui-même — sa valeur vaut mieux que la
+          densité théorique. On propose, il décide. */}
+      {suggestedSeedQty !== null && seedQty.trim() === '' && (
+        <button type="button" className="chip" onClick={() => setSeedQty(String(suggestedSeedQty))}>
+          {t('Proposer :n (densité de référence)', { n: suggestedSeedQty.toLocaleString('fr-FR') })}
+        </button>
+      )}
       {seedQty.trim() !== '' && (
         <div className="chip-row">
           {SEED_UNITS.map((u) => (

@@ -260,7 +260,12 @@ class SyncController extends Controller
         'crop_species' => [
             'model'   => \App\Models\CropSpecies::class,
             'gate'    => 'cultures.L',
-            'columns' => ['id', 'name', 'local_name', 'type', 'updated_at'],
+            // Matériel de plantation : le mobile adapte le même libellé que le
+            // web (« Nombre de rejets » pour un ananas). Sans ces colonnes,
+            // l'écran de semis resterait bloqué sur « semence en kg » — une
+            // divergence entre les deux supports pour la même culture.
+            'columns' => ['id', 'name', 'local_name', 'type',
+                'planting_material', 'planting_unit', 'planting_density', 'updated_at'],
         ],
     ];
 
