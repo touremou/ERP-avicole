@@ -121,8 +121,19 @@ class SalePriceListController extends Controller
     }
 
     /**
-     * Endpoint JSON appelé par le formulaire de vente : prix suggéré pour un
-     * client et un type de produit (le tarif du client, sinon le tarif défaut).
+     * Endpoint JSON du formulaire de vente : prix suggéré POUR TOUTES les façons
+     * de désigner un article — le catalogue, un article de stock, ou un simple
+     * type de produit.
+     *
+     * L'écran de vente n'appelait ceci que pour le catalogue et les lignes
+     * libres. Ses sélecteurs « stock » et « lot » lisaient une SECONDE grille
+     * tarifaire (`price_lists`), injectée côté client, sans filtre de palier ni
+     * de client : le même carton d'œufs partait au tarif négocié du grossiste
+     * s'il était choisi au catalogue, et au premier prix trouvé par nom de
+     * produit s'il était choisi dans le stock. Une seule source désormais.
+     *
+     * La réponse dit aussi D'OÙ vient le prix : un chiffre dont on ignore la
+     * provenance est un chiffre que personne ne peut contredire.
      */
     public function suggest(Request $request)
     {
@@ -131,20 +142,23 @@ class SalePriceListController extends Controller
         $data = $request->validate([
             'client_id'    => 'nullable|exists:clients,id',
             'product_id'   => 'nullable|exists:products,id',
-            'product_type' => 'required_without:product_id|string',
+            'stock_id'     => 'nullable|exists:stocks,id',
+            'product_type' => 'required_without_all:product_id,stock_id|nullable|string',
         ]);
 
         $client = ! empty($data['client_id']) ? Client::find($data['client_id']) : null;
+        $product = null;
 
-        // Article précis du catalogue → prix par article (cascade) ; sinon prix
-        // par catégorie (ligne en saisie libre).
         if (! empty($data['product_id'])) {
             $product = \App\Models\Product::find($data['product_id']);
-            $price = $product ? SalePriceList::priceForProduct($client, $product) : null;
-        } else {
-            $price = SalePriceList::suggestedPrice($client, $data['product_type']);
+        } elseif (! empty($data['stock_id'])) {
+            // Un article de stock rattaché au catalogue mérite son prix PAR
+            // ARTICLE, et non le prix générique de sa catégorie.
+            $product = \App\Models\Product::active()->where('stock_id', $data['stock_id'])->first();
         }
 
-        return response()->json(['price' => $price]);
+        return response()->json(
+            SalePriceList::explainPrice($client, $product, $data['product_type'] ?? null)
+        );
     }
 }

@@ -7,7 +7,6 @@ use App\Models\Client;
 use App\Models\Stock;
 use App\Models\Batch;
 use App\Models\CashRegisterSession;
-use App\Models\PriceList;
 use App\Http\Requests\Sale\StoreSaleRequest;
 use App\Actions\Sale\CreateSale;
 use App\Actions\Sale\ValidateSale;
@@ -72,7 +71,6 @@ class SaleController extends Controller
                         ->get();
                         
         $stocks  = Stock::where('current_quantity', '>', 0)->get();
-        $prices  = PriceList::where('is_active', true)->get();
 
         // Catalogue d'articles vendables (sélection guidée + photo + prix).
         $catalog = \App\Models\Product::active()->with('stock')->orderBy('name')->get()
@@ -95,7 +93,7 @@ class SaleController extends Controller
         // Types vendables (source unique partagée avec les groupes de prix).
         $sellableTypes = \App\Models\SaleItem::SELLABLE_TYPE_LABELS;
 
-        return view('sales.create', compact('clients', 'batches', 'stocks', 'prices', 'selectedClient', 'catalog', 'sellableTypes'));
+        return view('sales.create', compact('clients', 'batches', 'stocks', 'selectedClient', 'catalog', 'sellableTypes'));
     }
 
     public function store(StoreSaleRequest $request, CreateSale $action)
