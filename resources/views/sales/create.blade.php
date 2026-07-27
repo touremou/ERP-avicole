@@ -157,7 +157,13 @@
                                 </div>
                                 <div class="col-span-2">
                                     <label class="text-[8px] font-black uppercase text-slate-400 tracking-widest">{{ __("P.U.") }} ({{ currency() }})</label>
-                                    <input type="number" x-model.number="line.unit_price" min="0" required class="w-full bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none text-right">
+                                    <input type="number" x-model.number="line.unit_price" @input="onPriceTyped(index)" min="0" required class="w-full bg-white border-none rounded-xl p-3 text-[10px] font-black shadow-sm outline-none text-right">
+                                    {{-- Provenance du prix : un chiffre dont on ignore
+                                         l'origine est un chiffre que personne ne peut
+                                         contredire. --}}
+                                    <p class="mt-1 text-[7px] font-black uppercase italic leading-none text-right"
+                                       :class="line.manual_price ? 'text-blue-500' : 'text-slate-400'"
+                                       x-text="line.manual_price ? @json(__('Prix saisi manuellement')) : line.price_origin"></p>
                                 </div>
                                 <div class="col-span-1 text-center">
                                     <button type="button" @click="removeLine(index)" x-show="lines.length > 1" class="text-red-400 hover:text-red-600 border-none bg-transparent cursor-pointer mt-4"><i class="fa-solid fa-trash"></i></button>
@@ -265,11 +271,6 @@
             'qty' => (int) $b->current_quantity
         ]);
 
-        $formattedPrices = $prices->map(fn($p) => [
-            'product_type' => $p->product_type,
-            'product_name' => $p->product_name,
-            'unit_price' => (float) $p->unit_price
-        ]);
     @endphp
 
     <script>
@@ -277,7 +278,6 @@
         // On récupère les données proprement formatées
         const stocks = @json($formattedStocks);
         const batchList = @json($formattedBatches);
-        const prices = @json($formattedPrices);
         const catMap = @json(\App\Models\Stock::PRODUCT_TYPE_TO_CATEGORY);
         const catalog = {{ Illuminate\Support\Js::from($catalog) }};
 
@@ -286,7 +286,7 @@
             clientId: '{{ $selectedClient?->id ?? "" }}', saleType: 'bon_livraison', immediatePayment: 0,
             deliveryMode: 'sur_place', deliveryFee: 0,
             discountType: 'none', discountValue: 0,
-            lines: [{ catalog_id:'', photo:'', product_type:'', product_name:'', quantity:1, unit:'', unit_price:0, product_id:'', batch_id:'', selected_stock:'', max_qty:0 }],
+            lines: [{ catalog_id:'', photo:'', product_type:'', product_name:'', quantity:1, unit:'', unit_price:0, product_id:'', batch_id:'', selected_stock:'', max_qty:0, price_origin:'', manual_price:false }],
             batches: batchList.filter(b => b.qty > 0),
             get subtotal() { return this.lines.reduce((s,l) => s + (l.quantity*l.unit_price), 0); },
             get discount() {
@@ -320,7 +320,7 @@
                 })[t] || [];
             },
             isCountUnit(u) { return ['tete','piece','unite'].includes(u); },
-            addLine() { this.lines.push({ catalog_id:'', photo:'', product_type:'', product_name:'', quantity:1, unit:'', unit_price:0, product_id:'', batch_id:'', selected_stock:'', max_qty:0 }); },
+            addLine() { this.lines.push({ catalog_id:'', photo:'', product_type:'', product_name:'', quantity:1, unit:'', unit_price:0, product_id:'', batch_id:'', selected_stock:'', max_qty:0, price_origin:'', manual_price:false }); },
             removeLine(i) { if(this.lines.length>1) this.lines.splice(i,1); },
             // Sélection d'un article du catalogue : pré-remplit type, désignation,
             // unité, photo et prix (tarif par article du client).
@@ -337,35 +337,81 @@
                 // borne la quantité à la disponibilité réelle.
                 l.product_id = art.stock_id || '';
                 l.max_qty = (art.available !== null && art.available !== undefined) ? art.available : 0;
-                const url = '{{ route('sales.suggest-price') }}?product_id=' + art.id + (this.clientId ? '&client_id=' + this.clientId : '');
-                fetch(url, {headers:{'Accept':'application/json'}})
-                    .then(r => r.ok ? r.json() : null)
-                    .then(d => { l.unit_price = (d && d.price != null) ? d.price : art.base_price; })
-                    .catch(() => { l.unit_price = art.base_price; });
+                l.selected_stock = '';
+                l.manual_price = false;      // le prix tapé visait l'article précédent
+                this.suggestPrice(i, true);  // article explicitement choisi → on (re)tarife
             },
             onTypeChange(i) {
-                let l=this.lines[i]; l.product_name=''; l.product_id=''; l.batch_id=''; l.selected_stock=''; l.max_qty=0; l.unit_price=0;
+                let l=this.lines[i]; l.product_name=''; l.product_id=''; l.batch_id=''; l.selected_stock=''; l.max_qty=0; l.unit_price=0; l.manual_price=false;
                 // Unité par défaut selon le type ; les types stock prennent
                 // l'unité de l'article sélectionné (renseignée plus tard).
                 const defaults = { animal_vif:'tete', carcasse:'kg', fumier:'voyage', autre:'unite' };
                 l.unit = defaults[l.product_type] || '';
                 this.suggestPrice(i);
             },
-            // Pré-remplit le prix unitaire depuis le tarif du client (groupe de
-            // prix). N'écrase pas un prix déjà saisi manuellement (> 0).
-            suggestPrice(i) {
-                let l=this.lines[i];
-                if(!l.product_type || l.unit_price > 0) return;
-                const url = '{{ route('sales.suggest-price') }}?product_type=' + encodeURIComponent(l.product_type) + (this.clientId ? '&client_id=' + this.clientId : '');
-                fetch(url, {headers:{'Accept':'application/json'}})
+            /**
+             * TARIFICATION D'UNE LIGNE — le seul chemin, quel que soit le
+             * sélecteur utilisé (catalogue, stock, lot, type libre).
+             *
+             * Les sélecteurs « stock » et « lot » lisaient auparavant une
+             * seconde grille tarifaire injectée dans la page, sans tenir compte
+             * du client ni du palier, et ÉCRASAIENT au passage un prix déjà
+             * tapé à la main. Le prix reste une suggestion : jamais d'écrasement
+             * d'une saisie manuelle, sauf demande explicite (force).
+             *
+             * @param {number}  i      index de la ligne
+             * @param {boolean} force  re-tarifer même si un prix est déjà posé
+             */
+            suggestPrice(i, force = false) {
+                let l = this.lines[i];
+                if (l.manual_price && !force) return;
+                if (!force && l.unit_price > 0) return;
+                if (!l.product_type && !l.product_id && !l.catalog_id) return;
+
+                const params = new URLSearchParams();
+                if (l.catalog_id) params.set('product_id', l.catalog_id);
+                else if (l.selected_stock) params.set('stock_id', l.selected_stock);
+                if (l.product_type) params.set('product_type', l.product_type);
+                if (this.clientId) params.set('client_id', this.clientId);
+
+                l.price_origin = @json(__('Recherche du tarif…'));
+
+                fetch('{{ route('sales.suggest-price') }}?' + params.toString(), {headers:{'Accept':'application/json'}})
                     .then(r => r.ok ? r.json() : null)
-                    .then(d => { if(d && d.price !== null && d.price !== undefined && !(l.unit_price > 0)) l.unit_price = d.price; })
-                    .catch(() => {});
+                    .then(d => {
+                        if (!d) { l.price_origin = ''; return; }
+                        l.price_origin = d.label || '';
+                        // Le repli reste local quand le serveur ne connaît aucun
+                        // tarif : mieux vaut le dernier prix du stock que zéro.
+                        const fallback = this.localFallbackPrice(l);
+                        if (d.price !== null && d.price !== undefined) {
+                            if (force || !(l.unit_price > 0)) l.unit_price = d.price;
+                        } else if (fallback > 0 && (force || !(l.unit_price > 0))) {
+                            l.unit_price = fallback;
+                            l.price_origin = @json(__('Aucun tarif — dernier prix connu du stock'));
+                        }
+                    })
+                    .catch(() => { l.price_origin = ''; });
+            },
+
+            /** Dernier prix connu d'un article de stock (ni tarif, ni cible). */
+            localFallbackPrice(l) {
+                if (!l.selected_stock) return 0;
+                const s = stocks.find(x => x.id == l.selected_stock);
+                return s ? (parseFloat(s.unit_price) || 0) : 0;
             },
             onClientChange() {
-                // Au changement de client, re-suggère le prix des lignes non encore tarifées.
-                this.lines.forEach((l, i) => { if(l.product_type && !(l.unit_price > 0)) this.suggestPrice(i); });
+                // Le tarif DÉPEND du client : changer de client doit re-tarifer
+                // les lignes déjà tarifées automatiquement. On respecte en
+                // revanche les prix saisis à la main (manual_price).
+                this.lines.forEach((l, i) => {
+                    if (l.manual_price) return;
+                    this.suggestPrice(i, true);
+                });
             },
+
+            /** Un prix tapé à la main ne doit plus jamais être écrasé. */
+            onPriceTyped(i) { this.lines[i].manual_price = true; },
             onUnitChange(i) {
                 // Pour un animal vif, le plafond (effectif du lot) ne s'applique
                 // qu'aux ventes à la tête ; les ventes au poids ne sont pas capées.
@@ -375,14 +421,6 @@
                     l.max_qty = this.isCountUnit(l.unit) ? (b?b.qty:0) : 0;
                 }
             },
-            /* version initiale avant correction du bug de parser blade sur les prix spécifiques de vente
-            onStockSelected(i) {
-                let l=this.lines[i]; const s=stocks.find(x=>x.id==l.selected_stock); if(!s)return;
-                l.product_id=s.id; l.product_name=s.item_name; l.unit=s.unit.toLowerCase()==='alvéole'?'alveole':s.unit.toLowerCase();
-                l.max_qty=s.current_quantity; l.quantity=1;
-                const p=prices.find(x=>x.product_name===s.item_name); l.unit_price=p?p.unit_price:(s.last_unit_price||0);
-            },*/
-
             onStockSelected(i) {
                 let l=this.lines[i]; const s=stocks.find(x=>x.id==l.selected_stock); if(!s)return;
                 
@@ -391,12 +429,12 @@
                 l.unit=s.unit.toLowerCase()==='alvéole'?'alveole':s.unit.toLowerCase();
                 l.max_qty=s.current_quantity; 
                 l.quantity=1;
-                
-                // On cherche si un prix spécifique de vente existe dans la grille
-                const p = prices.find(x => x.product_name === s.item_name); 
-                
-                // S'il existe on le prend, SINON on prend le prix unitaire du stock
-                l.unit_price = p ? p.unit_price : s.unit_price;
+                l.catalog_id='';
+                l.manual_price=false;
+
+                // Le tarif du client, résolu par le serveur — et non le premier
+                // prix trouvé par NOM de produit dans une grille sans palier.
+                this.suggestPrice(i, true);
             },
             onBatchSelected(i) {
                 let l=this.lines[i]; const b=batchList.find(x=>x.id==l.batch_id); if(!b)return;
@@ -404,7 +442,8 @@
                 // Plafond uniquement si vente à la tête (sinon poids → non capé).
                 l.max_qty = this.isCountUnit(l.unit) ? b.qty : 0;
                 l.quantity=1;
-                const p=prices.find(x=>x.product_type===l.product_type); l.unit_price=p?p.unit_price:0;
+                l.manual_price=false;
+                this.suggestPrice(i, true);
             },
             formatGNF(v) { return new Intl.NumberFormat('fr-GN',{maximumFractionDigits:0}).format(v||0)+ ' {{ currency() }}'; },
 
