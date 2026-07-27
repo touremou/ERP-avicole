@@ -141,3 +141,116 @@ test('le rendement reste un POIDS, et l’écran l’explique', function () {
         ->assertSee('yieldHint()', false)
         ->assertSee('Rendement attendu (kg)', false);
 });
+
+/*
+ * LE RENDEMENT SUIT LE NOMBRE DE PLANTS.
+ *
+ * « À la manière de la date, que le rendement se recalcule quand on modifie le
+ * nombre de rejets. » Le calcul direct est plants × poids moyen — mais il
+ * suppose UN fruit par pied : vrai d'un ananas, faux d'un manioc, absurde d'un
+ * manguier. D'où une colonne explicite au catalogue plutôt qu'une hypothèse
+ * silencieuse.
+ *
+ * Et les deux bases ne s'accordent pas : 55 000 rejets × 1,5 kg = 82 500 kg,
+ * quand 1,57 ha × 32 t/ha = 50 200 kg. L'écart révèle une incohérence du
+ * RÉFÉRENTIEL, pas un bug — le formulaire l'affiche au lieu de trancher en
+ * silence.
+ */
+
+test('le rendement se dérive du nombre de plants quand le rapport est connu', function () {
+    $ananas = CropSpecies::create([
+        'type' => 'fruitier', 'name' => 'Ananas',
+        'planting_material' => 'rejet', 'planting_unit' => 'unité', 'planting_density' => 35000,
+        'avg_unit_weight_kg' => 1.5, 'harvest_unit_label' => 'fruit',
+        'harvest_units_per_plant' => 1,
+    ]);
+
+    // 55 000 rejets × 1 fruit × 1,5 kg
+    expect($ananas->yieldFromPlantCount(55000))->toBe(82500.0);
+});
+
+test('sans rapport unités/pied, aucune dérivation — on ne suppose pas', function () {
+    // Un manioc donne plusieurs tubercules, un manguier des centaines de fruits.
+    // Supposer « un par pied » produirait un chiffre faux avec l'autorité d'un
+    // chiffre calculé.
+    $manioc = CropSpecies::create([
+        'type' => 'tubercule', 'name' => 'Manioc',
+        'planting_material' => 'bouture', 'planting_unit' => 'unité',
+        'avg_unit_weight_kg' => 2.0, 'harvest_unit_label' => 'tubercule',
+        'harvest_units_per_plant' => null,
+    ]);
+
+    expect($manioc->yieldFromPlantCount(10000))->toBeNull();
+});
+
+test('une plantation pesée en kilos ne compte pas des pieds', function () {
+    $mais = CropSpecies::create([
+        'type' => 'cereale', 'name' => 'Maïs',
+        'planting_material' => 'semence', 'planting_unit' => 'kg',
+        'avg_unit_weight_kg' => 0.25, 'harvest_unit_label' => 'épi',
+        'harvest_units_per_plant' => 1,
+    ]);
+
+    // 25 kg de semences ne font pas 25 pieds : le modèle calcule, mais le
+    // formulaire refuse cette base (planting_unit = kg) — vérifié côté script.
+    $script = file_get_contents(resource_path('views/cultures/cycles/partials/form-script.blade.php'));
+    expect($script)->toContain("planting_unit === 'kg'");
+    expect($mais->yieldFromPlantCount(25))->toBe(6.25); // le modèle reste neutre
+});
+
+test('modifier le nombre de plants déclenche le recalcul du rendement', function () {
+    $script = file_get_contents(resource_path('views/cultures/cycles/partials/form-script.blade.php'));
+
+    // Le déclencheur demandé, « à la manière de la date ».
+    expect($script)->toContain("\$watch('seedQuantity', () => this.recomputeYield())");
+    // Et il respecte la même règle : une saisie humaine n'est pas écrasée.
+    expect($script)->toContain('isOurs(this.expectedYield, this.autoYield)');
+});
+
+test('les deux bases de calcul sont distinctes et le comptage prime', function () {
+    $script = file_get_contents(resource_path('views/cultures/cycles/partials/form-script.blade.php'));
+
+    expect($script)->toContain('yieldFromCount()');
+    expect($script)->toContain('yieldFromArea()');
+    // Le comptage est ce que le producteur maîtrise et vient de saisir.
+    expect($script)->toContain('fromCount !== null ? fromCount : this.yieldFromArea()');
+});
+
+test('un écart entre les deux bases est SIGNALÉ, pas arbitré en silence', function () {
+    $script = file_get_contents(resource_path('views/cultures/cycles/partials/form-script.blade.php'));
+
+    expect($script)->toContain('Écart avec la référence agronomique');
+    // Seuil : alerter pour 5 % apprendrait à ignorer l'alerte.
+    expect($script)->toContain('gap > 0.15');
+});
+
+test('le catalogue accepte et enregistre les unités par pied', function () {
+    $this->actingAs($this->adminUser)
+        ->post(route('crop-catalogue.store'), [
+            'type' => 'fruitier', 'name' => 'Ananas Cayenne',
+            'avg_unit_weight_kg' => 1.5, 'harvest_unit_label' => 'fruit',
+            'harvest_units_per_plant' => 1,
+        ])
+        ->assertRedirect();
+
+    expect(CropSpecies::where('name', 'Ananas Cayenne')->first()->harvest_units_per_plant)->toBe(1);
+});
+
+test('les DEUX écrans de cycle reçoivent les unités par pied', function () {
+    seedAnanas()->update(['avg_unit_weight_kg' => 1.5, 'harvest_unit_label' => 'fruit', 'harvest_units_per_plant' => 1]);
+
+    $plot = Plot::create([
+        'farm_id' => $this->farm->id, 'name' => 'P', 'code' => 'P-UP',
+        'area_ha' => 2, 'status' => Plot::STATUS_EN_CULTURE,
+    ]);
+    $cycle = CropCycle::create([
+        'farm_id' => $this->farm->id, 'plot_id' => $plot->id, 'code' => 'ANA-UP',
+        'crop_name' => 'Ananas', 'area_used_ha' => 1,
+        'planting_date' => '2024-12-01', 'status' => CropCycle::STATUS_EN_COURS,
+    ]);
+
+    foreach ([route('crop-cycles.create'), route('crop-cycles.edit', $cycle)] as $url) {
+        expect($this->actingAs($this->adminUser)->get($url)->assertOk()->getContent())
+            ->toContain('harvest_units_per_plant');
+    }
+});

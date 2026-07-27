@@ -132,6 +132,10 @@ class CropSpecies extends Model
             // Poids moyen de l'unité récoltée : convertit le rendement en fruits.
             'avg_unit_weight_kg' => $sp->avg_unit_weight_kg !== null ? (float) $sp->avg_unit_weight_kg : null,
             'harvest_unit_label' => $sp->harvest_unit_label,
+            // Unités récoltées par pied : ce qui permet de dériver le rendement du
+            // NOMBRE DE PLANTS. Null = rapport non établi, on garde la base
+            // agronomique plutôt que de supposer « un fruit par pied ».
+            'harvest_units_per_plant' => $sp->harvest_units_per_plant !== null ? (int) $sp->harvest_units_per_plant : null,
 
             'varieties' => $sp->varieties->map(fn ($v) => [
                 'name'          => $v->name,
@@ -170,6 +174,23 @@ class CropSpecies extends Model
         }
 
         return round($units * $weight, 2);
+    }
+
+    /**
+     * Rendement DÉRIVÉ DU NOMBRE DE PLANTS : plants × unités par pied × poids
+     * moyen. Null si le rapport unités/pied n'est pas établi au catalogue — on
+     * ne suppose pas « un fruit par pied », ce serait faux dès le manioc.
+     */
+    public function yieldFromPlantCount(?float $plants): ?float
+    {
+        $weight = (float) ($this->avg_unit_weight_kg ?? 0);
+        $perPlant = (int) ($this->harvest_units_per_plant ?? 0);
+
+        if ($weight <= 0 || $perPlant <= 0 || ! $plants || $plants <= 0) {
+            return null;
+        }
+
+        return round($plants * $perPlant * $weight, 2);
     }
 
     /** « fruit » → « fruits ». Le pluriel se voit à l'écran. */
@@ -215,7 +236,7 @@ class CropSpecies extends Model
         'type', 'name', 'local_name', 'family',
         'cycle_days_min', 'cycle_days_max', 'avg_yield_tha',
         'planting_material', 'planting_unit', 'planting_density',
-        'avg_unit_weight_kg', 'harvest_unit_label',
+        'avg_unit_weight_kg', 'harvest_unit_label', 'harvest_units_per_plant',
         'sowing_months', 'soil_types', 'agro_zones', 'water_need', 'yield_tips',
         'description', 'is_active',
     ];

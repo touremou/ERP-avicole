@@ -69,6 +69,9 @@ class CropCatalogueController extends Controller
             // et propose le poids net quand le technicien compte des fruits.
             'avg_unit_weight_kg' => 'nullable|numeric|min:0.001|max:500',
             'harvest_unit_label' => 'nullable|string|max:30',
+            // Plafond bas assumé : au-delà de quelques dizaines d'unités par pied,
+            // le comptage des plants n'est plus la bonne base de calcul.
+            'harvest_units_per_plant' => 'nullable|integer|min:1|max:500',
             'description'    => 'nullable|string|max:1000',
         ]);
 
@@ -126,6 +129,9 @@ class CropCatalogueController extends Controller
             // et propose le poids net quand le technicien compte des fruits.
             'avg_unit_weight_kg' => 'nullable|numeric|min:0.001|max:500',
             'harvest_unit_label' => 'nullable|string|max:30',
+            // Plafond bas assumé : au-delà de quelques dizaines d'unités par pied,
+            // le comptage des plants n'est plus la bonne base de calcul.
+            'harvest_units_per_plant' => 'nullable|integer|min:1|max:500',
             'description'    => 'nullable|string|max:1000',
             'is_active'      => 'nullable|boolean',
         ]);
