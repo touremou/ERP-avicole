@@ -292,11 +292,18 @@ test('mobile : la liste de tâches porte la consigne et le cycle d’origine', f
 
     $tasks = $this->getJson('/api/v1/tasks')->json('tasks');
 
-    expect($tasks)->toHaveCount(1);
-    expect($tasks[0]['description'])->toContain('Mancozèbe');
-    expect($tasks[0]['description'])->toContain('2,5 g/L');
-    expect($tasks[0]['crop_cycle_id'])->toBe($cycle->id);
-    expect($tasks[0]['proof_type'])->toBe('photo');
+    // On ISOLE la tâche d'itinéraire au lieu de compter le total : les modèles
+    // calendaires actifs (arrosage quotidien, inspection hebdomadaire du lundi…)
+    // s'ajoutent ou non selon le JOUR où la suite tourne. Compter donnait 1 un
+    // dimanche et 3 un lundi — une fragilité qui n'apprend rien sur ce que ce
+    // test vérifie : que la consigne et le cycle d'origine descendent au mobile.
+    $protocolTasks = collect($tasks)->whereNotNull('crop_protocol_item_id')->values();
+
+    expect($protocolTasks)->toHaveCount(1);
+    expect($protocolTasks[0]['description'])->toContain('Mancozèbe');
+    expect($protocolTasks[0]['description'])->toContain('2,5 g/L');
+    expect($protocolTasks[0]['crop_cycle_id'])->toBe($cycle->id);
+    expect($protocolTasks[0]['proof_type'])->toBe('photo');
 });
 
 // ───────────── BRUIT CALENDAIRE : la mesure doit rester crédible ─────────────
