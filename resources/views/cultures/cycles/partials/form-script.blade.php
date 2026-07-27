@@ -68,6 +68,10 @@
                 // suivre une correction manuelle du rendement, pas seulement le
                 // recalcul automatique.
                 this.$watch('expectedYield', () => this.buildHint());
+                // « À la manière de la date » : modifier le nombre de rejets
+                // recalcule le rendement. Sans cela, corriger la plantation de
+                // 35 000 à 55 000 rejets laissait un rendement inchangé, donc faux.
+                this.$watch('seedQuantity', () => this.recomputeYield());
                 this.$watch('selectedPlotId', (pid) => {
                     if (Object.keys(this.plotData).length === 0) return; // édition : surface figée
                     this.maxAreaHa = (pid && this.plotData[pid]) ? this.plotData[pid].remaining_ha : null;
@@ -192,8 +196,35 @@
                 const units = Math.round(kg / weight);
                 const label = this.harvestUnitPlural(units) || 'unités';
 
-                return '≈ ' + units.toLocaleString('fr-FR') + ' ' + label
+                let text = '≈ ' + units.toLocaleString('fr-FR') + ' ' + label
                     + ' (poids moyen ' + weight.toLocaleString('fr-FR') + ' kg).';
+
+                /*
+                 * ÉCART ENTRE LES DEUX BASES. Le comptage des plants et la
+                 * référence agronomique ne s'accordent pas toujours : 55 000
+                 * rejets × 1,5 kg font 82 500 kg, quand 1,57 ha × 32 t/ha en
+                 * donnent 50 200. L'écart ne signale pas un bug de calcul mais une
+                 * INCOHÉRENCE DU CATALOGUE — densité et rendement de référence ne
+                 * décrivent pas la même conduite.
+                 *
+                 * On l'affiche au-delà de 15 %, seuil sous lequel la variabilité
+                 * agronomique normale suffit à expliquer la différence : alerter
+                 * pour 5 % apprendrait à ignorer l'alerte.
+                 */
+                const fromCount = this.yieldFromCount();
+                const fromArea = this.yieldFromArea();
+
+                if (fromCount !== null && fromArea !== null && fromArea > 0) {
+                    const gap = Math.abs(fromCount - fromArea) / fromArea;
+
+                    if (gap > 0.15) {
+                        text += ' Écart avec la référence agronomique ('
+                            + fromArea.toLocaleString('fr-FR') + ' kg pour la surface saisie) :'
+                            + ' vérifiez la densité ou le rendement de référence au catalogue.';
+                    }
+                }
+
+                return text;
             },
 
             buildHint() {
@@ -208,7 +239,43 @@
                     + ' · cliquez pour pré-remplir';
             },
 
-            /** Valeurs suggérées : date de récolte et rendement attendu. */
+            /**
+             * Rendement dérivé du NOMBRE DE PLANTS : plants × unités par pied ×
+             * poids moyen.
+             *
+             * Null si le catalogue ne dit pas combien d'unités donne un pied : on
+             * ne suppose pas « un fruit par pied », ce serait faux dès le manioc
+             * et absurde sur un manguier.
+             */
+            yieldFromCount() {
+                const weight = this.match && this.match.avg_unit_weight_kg;
+                const perPlant = this.match && this.match.harvest_units_per_plant;
+                const plants = parseFloat(this.seedQuantity);
+
+                if (!weight || !perPlant || !(plants > 0)) return null;
+                // Une plantation pesée en kg (semences) ne compte pas des pieds.
+                if (this.match.planting_unit === 'kg') return null;
+
+                return Math.round(plants * perPlant * weight);
+            },
+
+            /** Rendement dérivé de la SURFACE : référence agronomique du catalogue. */
+            yieldFromArea() {
+                const tha = this.effectiveYieldTha();
+                const area = parseFloat(this.areaHa);
+
+                if (!tha || !(area > 0)) return null;
+
+                return Math.round(tha * area * 1000); // t/ha → kg
+            },
+
+            /**
+             * Valeurs suggérées : date de récolte et rendement attendu.
+             *
+             * Le rendement privilégie le COMPTAGE quand il est calculable, parce
+             * que c'est la quantité que le producteur maîtrise et vient de saisir.
+             * À défaut, on garde la base agronomique.
+             */
             suggestions() {
                 const out = { harvest: null, yield: null };
                 const days = this.effectiveCycleDays();
@@ -217,12 +284,23 @@
                     d.setDate(d.getDate() + parseInt(days, 10));
                     out.harvest = d.toISOString().slice(0, 10);
                 }
-                const tha = this.effectiveYieldTha();
-                const area = parseFloat(this.areaHa);
-                if (tha && area > 0) {
-                    out.yield = Math.round(tha * area * 1000); // t/ha → kg
-                }
+
+                const fromCount = this.yieldFromCount();
+                out.yield = fromCount !== null ? fromCount : this.yieldFromArea();
+
                 return out;
+            },
+
+            /** Recalcul CIBLÉ du rendement — le reste des champs n'est pas concerné. */
+            recomputeYield() {
+                const suggested = this.suggestions().yield;
+
+                if (suggested !== null && this.isOurs(this.expectedYield, this.autoYield)) {
+                    this.expectedYield = suggested;
+                    this.autoYield = suggested;
+                }
+
+                this.buildHint();
             },
 
             /**

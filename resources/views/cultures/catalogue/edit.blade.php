@@ -87,6 +87,11 @@
                         <p class="text-[8px] font-black text-slate-400 uppercase mt-1 ml-2 italic">{{ __("« ≈ 1 200 régimes » se lit ; « ≈ 1 200 unités » ne se lit pas.") }}</p>
                     </div>
                     <div class="md:col-span-2">
+                        <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Unités récoltées par pied") }}</label>
+                        <input type="number" min="1" max="500" name="harvest_units_per_plant" value="{{ old('harvest_units_per_plant', $species->harvest_units_per_plant) }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic text-right">
+                        <p class="text-[8px] font-black text-slate-400 uppercase mt-1 ml-2 italic">{{ __("1 pour un ananas (un fruit par pied) ou un bananier (un régime par cycle). Laissez VIDE si le rapport n'est pas univoque — un manguier donne des centaines de fruits : le rendement restera calculé sur la surface.") }}</p>
+                    </div>
+                    <div class="md:col-span-2">
                         <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Description") }}</label>
                         <textarea name="description" rows="2" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-bold text-slate-700 shadow-inner italic text-[11px]">{{ old('description', $species->description) }}</textarea>
                     </div>
