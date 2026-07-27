@@ -278,7 +278,7 @@ test('l’écran de suivi affiche les contrats à décider et les décisions pos
         ->get(route('employees.contracts.index'))
         ->assertOk()
         // La fiche affiche le nom via l'accesseur `name` (patronyme en capitales).
-        ->assertSee(strtoupper($employee->last_name), false)
+        ->assertSee(e(strtoupper($employee->last_name)), false)
         ->assertSee('Prolonger')
         ->assertSee('préavis', false);
 });
@@ -486,7 +486,7 @@ test('l’écran met la régularisation en tête et n’invente aucune date', fu
         ->get(route('employees.contracts.index'))
         ->assertOk()
         ->assertSee('Contrats sans terme renseigné', false)
-        ->assertSee(strtoupper($employee->last_name), false);
+        ->assertSee(e(strtoupper($employee->last_name)), false);
 
     // Le champ doit être VIDE : un terme deviné fermerait l'alerte en donnant
     // l'illusion que le dossier est en règle.

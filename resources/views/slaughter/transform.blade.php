@@ -34,11 +34,10 @@
 
                                 <div class="space-y-2">
                                     <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Type de transformation") }} *</label>
-                                    <select name="type" required class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black uppercase shadow-inner outline-none">
-                                        <option value="fume">{{ __("Fumage") }}</option>
-                                        <option value="grille">{{ __("Grillage") }}</option>
-                                        <option value="marine">{{ __("Marinade") }}</option>
-                                        <option value="autre">{{ __("Autre") }}</option>
+                                    <select name="type" x-model="type" required class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black uppercase shadow-inner outline-none">
+                                        @foreach(\App\Models\Transformation::typeLabels() as $slug => $label)
+                                            <option value="{{ $slug }}">{{ __($label) }}</option>
+                                        @endforeach
                                     </select>
                                 </div>
                             </div>
@@ -88,9 +87,27 @@
 
                             {{-- RENDEMENT TEMPS RÉEL --}}
                             <div class="p-4 bg-slate-50 rounded-2xl text-center" x-show="inputKg > 0 && outputKg > 0">
+                                {{-- Le rendement est confronté à la cible DU PROCÉDÉ choisi.
+                                     Cet affichage appelait `setting()` — une fonction PHP —
+                                     à l'intérieur d'une expression Alpine évaluée par le
+                                     NAVIGATEUR : l'expression levait une erreur à chaque
+                                     frappe et aucune couleur ne s'appliquait jamais. Les
+                                     deux seuils étaient de plus inversés, et l'un d'eux
+                                     pointait une clef de réglage inexistante. --}}
                                 <p class="text-[8px] font-black text-slate-400 uppercase">{{ __("Rendement transformation") }}</p>
-                                <p class="text-2xl font-black" :class="yieldPct >= setting('abattoir.yield_smoking', 65) ? 'text-emerald-600' : (yieldPct >= setting('abattoir.yield_carcass', 72) ? 'text-amber-600' : 'text-red-600')" x-text="yieldPct.toFixed(1) + '%'"></p>
-                                <p class="text-[8px] text-slate-400">{{ __("Fumage") }} : {{ setting('abattoir.yield_smoking', 65) }}% {{ __("cible") }} | {{ __("Carcasse") }} : {{ setting('abattoir.yield_carcass', 72) }}% {{ __("cible") }}</p>
+                                <p class="text-2xl font-black"
+                                   :class="targetYield === null ? 'text-slate-700'
+                                        : (yieldPct >= targetYield ? 'text-emerald-600'
+                                        : (yieldPct >= targetYield * 0.95 ? 'text-amber-600' : 'text-red-600'))"
+                                   x-text="yieldPct.toFixed(1) + '%'"></p>
+                                <p class="text-[8px] text-slate-400" x-show="targetYield !== null">
+                                    {{ __("Cible") }} <span x-text="typeLabel"></span> :
+                                    <span x-text="targetYield"></span>%
+                                </p>
+                                <p class="text-[8px] font-black text-amber-600 uppercase italic" x-show="targetYield === null">
+                                    {{ __("Aucune cible réglée pour ce procédé") }} —
+                                    {{ __("à fixer dans Paramètres → Abattoir") }}
+                                </p>
                             </div>
 
                             {{-- BILAN --}}
@@ -150,10 +167,24 @@
     function transformForm() {
         const stocks = @json($finishedProducts->pluck('current_quantity_kg', 'product_name'));
 
+        // Cibles et libellés viennent du modèle (Transformation::TYPES), donc du
+        // paramétrage — et non de valeurs recopiées dans la page.
+        const yieldTargets = @json(\App\Models\Transformation::yieldTargets());
+        const typeLabels = @json(\App\Models\Transformation::typeLabels());
+
         return {
             selectedSource: '', inputKg: 0, outputKg: 0, maxKg: 0,
+            type: Object.keys(typeLabels)[0] || '',
 
             get yieldPct() { return this.inputKg > 0 && this.outputKg > 0 ? (this.outputKg / this.inputKg * 100) : 0; },
+
+            /** Cible du procédé sélectionné, ou null si la ferme n'en a fixé aucune. */
+            get targetYield() {
+                const target = yieldTargets[this.type];
+                return (target === null || target === undefined) ? null : target;
+            },
+
+            get typeLabel() { return typeLabels[this.type] || ''; },
 
             onSourceChange() {
                 this.maxKg = parseFloat(stocks[this.selectedSource]) || 0;

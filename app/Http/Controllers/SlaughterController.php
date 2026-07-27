@@ -669,7 +669,9 @@ class SlaughterController extends Controller
             'product_source'  => 'required|string|max:255',
             // Rattachement optionnel à l'ordre d'origine (traçabilité cascade).
             'slaughter_order_id' => 'nullable|exists:slaughter_orders,id',
-            'type'            => 'required|in:fume,grille,marine,autre',
+            // Liste dérivée de Transformation::TYPES : ajouter un procédé au
+            // modèle suffit, la validation et le formulaire suivent.
+            'type'            => ['required', \Illuminate\Validation\Rule::in(array_keys(\App\Models\Transformation::TYPES))],
             'input_kg'        => 'required|numeric|min:0.1',
             'output_kg'       => 'nullable|numeric|min:0',
             'production_date' => 'required|date',
