@@ -1,8 +1,9 @@
 <x-app-layout>
     @php
         $currency = setting('general.currency', 'GNF');
-        $seuilCritique = setting('elevage.mortality_alert', 5);
-        $seuilAlerte = round($seuilCritique * 0.6, 1);
+        // Seuils UNIQUES : cette vue lisait l'ancienne clé en direct.
+        $seuilCritique = \App\Models\Batch::cumulativeMortalityThreshold();
+        $seuilAlerte = \App\Models\Batch::cumulativeMortalityWarningThreshold();
         $df = setting('general.date_format', 'd/m/Y');
     @endphp
     <x-slot name="header">

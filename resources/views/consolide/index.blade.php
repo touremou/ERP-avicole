@@ -7,7 +7,8 @@
      * ConsolidatedSitesService, borné au farm_user de l'utilisateur.
      */
     $currency = setting('general.currency', 'GNF');
-    $mortalityThreshold = (float) setting('elevage.mortality_alert', 5);
+    $mortalityThreshold = \App\Models\Batch::cumulativeMortalityThreshold();
+    $mortalityWarning = \App\Models\Batch::cumulativeMortalityWarningThreshold();
 
     /** Colonne du site le plus « à surveiller » sur une ligne donnée. */
     $toneClass = fn (string $tone) => match ($tone) {
@@ -99,7 +100,7 @@
                                 ['group' => __("Élevage"), 'label' => __("Lots actifs"), 'get' => fn ($s) => $s['elevage']['active_batches']],
                                 ['label' => __("Sujets vivants"), 'get' => fn ($s) => number_format($s['elevage']['live_subjects'], 0, ',', ' ')],
                                 ['label' => __("Mortalité — pire lot"), 'get' => fn ($s) => $s['elevage']['worst_mortality'] === null ? null : number_format($s['elevage']['worst_mortality'], 2, ',', ' ') . ' %',
-                                 'tone' => fn ($s) => $s['elevage']['worst_mortality'] === null ? 'neutral' : ($s['elevage']['worst_mortality'] >= $mortalityThreshold ? 'bad' : ($s['elevage']['worst_mortality'] >= $mortalityThreshold * 0.6 ? 'warn' : 'ok'))],
+                                 'tone' => fn ($s) => $s['elevage']['worst_mortality'] === null ? 'neutral' : ($s['elevage']['worst_mortality'] >= $mortalityThreshold ? 'bad' : ($s['elevage']['worst_mortality'] >= $mortalityWarning ? 'warn' : 'ok'))],
                                 ['label' => __("FCR moyen"), 'get' => fn ($s) => $s['elevage']['avg_fcr'] === null ? null : number_format($s['elevage']['avg_fcr'], 2, ',', ' ')],
 
                                 ['group' => __("Cultures"), 'label' => __("Cycles en cours"), 'get' => fn ($s) => $s['cultures']['active_cycles']],

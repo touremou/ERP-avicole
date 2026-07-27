@@ -309,7 +309,7 @@ class TechnicianWeekService
     /** Seuil de mortalité paramétré à la ferme (même source que le rapport technique). */
     private function mortalityThreshold(): float
     {
-        return (float) setting('elevage.mortality_alert', 5);
+        return \App\Models\Batch::cumulativeMortalityThreshold();
     }
 
     /**

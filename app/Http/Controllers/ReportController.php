@@ -571,8 +571,11 @@ class ReportController extends Controller
             })->get()->keyBy('batch_id');
 
         // ✅ setting() pour les seuils de mortalité
-        $seuilCritique = (float) setting('elevage.mortality_alert', 5);
-        $seuilAlerte = $seuilCritique * 0.6; // 60% du seuil critique = alerte
+        // Seuils UNIQUES (cf. Batch::cumulativeMortalityThreshold) : ce rapport
+        // lisait l'ancienne clé en direct, donc ignorait le réglage libellé
+        // « mortalité cumulée » que la ferme peut éditer.
+        $seuilCritique = \App\Models\Batch::cumulativeMortalityThreshold();
+        $seuilAlerte = \App\Models\Batch::cumulativeMortalityWarningThreshold();
 
         $stats = $activeBatches->map(function ($batch) use ($latestChecks, $seuilCritique, $seuilAlerte) {
             $initial = $batch->initial_quantity;
