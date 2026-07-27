@@ -62,6 +62,14 @@ class DashboardInsightsService
             ->groupBy('batch_id')
             ->get()->keyBy('batch_id');
 
+        // Mortalité troupeau par lot — 1 requête. Elle manquait : la biomasse
+        // agrégée ne comptait que les sujets VIVANTS, réintroduisant la double
+        // pénalité que la correction de mortalité existait pour supprimer.
+        $mortalityByBatch = DailyCheck::whereIn('batch_id', $ids)
+            ->select('batch_id', DB::raw('COALESCE(SUM(mortality), 0) AS deaths'))
+            ->groupBy('batch_id')
+            ->get()->pluck('deaths', 'batch_id');
+
         // Pesées (1ère / dernière) par lot pour le GMQ — 1 requête.
         $weighings = DailyCheck::whereIn('batch_id', $ids)
             ->whereNotNull('avg_weight')
@@ -80,8 +88,17 @@ class DashboardInsightsService
             $w    = $weighings->get($batch->id);
 
             $lastWeight = $w?->last()->avg_weight ? (float) $w->last()->avg_weight : 0.0;
-            if ($lastWeight > 0 && $batch->current_quantity > 0) {
-                $totalBiomass  += $batch->current_quantity * $lastWeight;
+
+            // MÊME convention de biomasse que Batch::fcr_corrected — c'est ce qui
+            // garantit que l'« IC moyen » du tableau de bord et l'indice de la
+            // fiche du lot parlent du même chiffre.
+            $biomass = $batch->producedBiomassKg(
+                $lastWeight,
+                (int) ($mortalityByBatch[$batch->id] ?? 0)
+            );
+
+            if ($biomass !== null) {
+                $totalBiomass  += $biomass;
                 $totalFeedKg   += (float) ($feed->feed_kg ?? 0);
                 $totalFeedCost += (float) ($feed->feed_cost ?? 0);
             }

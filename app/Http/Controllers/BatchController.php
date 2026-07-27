@@ -262,7 +262,9 @@ class BatchController extends Controller
             'total_feed'       => $totalFeedKg,
             'total_feed_cost'  => $totalFeedCost,
             'total_health_cost'=> $totalHealthCost,
-            'fcr'              => $batch->fcr,
+            // Indice canonique (correction de mortalité comprise) ; null quand
+            // aucune pesée moyenne ne le rend mesurable.
+            'fcr'              => $batch->fcr_corrected,
             'mortality_rate'   => $batch->mortality_rate,
             'age'              => $batch->age,
             'current_phase'    => $batch->current_phase,

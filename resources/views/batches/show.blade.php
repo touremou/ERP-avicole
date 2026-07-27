@@ -54,9 +54,13 @@
 
         $performanceWeight = ($targetWeight > 0 && $currentWeight > 0) ? ($currentWeight / $targetWeight) * 100 : 100;
 
-        // FCR — utilise l'accessor du model + cibles pilotées par les paramètres
-        // (provenderie.fc_target_chair/ponte selon le type, fc_alert = seuil rouge).
-        $fcr = $batch->fcr;
+        // FCR — l'accessor CANONIQUE (correction de mortalité comprise), le même
+        // que le rapport technique, la fiche hebdomadaire et la vue consolidée.
+        // Cette fiche affichait auparavant la variante « biomasse vivante seule »,
+        // donc un indice systématiquement plus mauvais que celui du rapport.
+        // Cibles pilotées par les paramètres (provenderie.fc_target_chair/ponte
+        // selon le type, fc_alert = seuil rouge).
+        $fcr = $batch->fcr_corrected;
         $fcrTarget = (float) (in_array($batch->type, ['ponte', 'reproducteur'])
             ? setting('provenderie.fc_target_ponte', 2.3)
             : setting('provenderie.fc_target_chair', 1.8));
@@ -417,7 +421,9 @@
             <div @class(['w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg', 'bg-orange-500' => ! $fcrBad, 'bg-red-600' => $fcrBad])><i class="fa-solid fa-chart-pie text-lg"></i></div>
             <div class="text-left leading-none">
                 <p @class(['text-[8px] font-black uppercase tracking-widest mb-1 italic', 'text-slate-400' => ! $fcrBad, 'text-red-400' => $fcrBad])>{{ __("Ratio (IC)") }} <span class="opacity-60">/ {{ __("cible") }} {{ number_format($fcrTarget, 1) }}</span></p>
-                <h4 @class(['text-xl font-black tracking-tighter', 'text-slate-800' => ! $fcrBad, 'text-red-700' => $fcrBad])>{{ number_format($fcr, 2) }}</h4>
+                {{-- Aucune pesée moyenne : l'indice n'est pas MESURABLE. Afficher 0,00
+                     se lirait comme une conversion parfaite. --}}
+                <h4 @class(['text-xl font-black tracking-tighter', 'text-slate-800' => ! $fcrBad, 'text-red-700' => $fcrBad])>{{ $fcr !== null ? number_format($fcr, 2) : '—' }}</h4>
             </div>
         </div>
         @endif
