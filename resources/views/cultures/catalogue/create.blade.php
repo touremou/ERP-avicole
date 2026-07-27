@@ -48,6 +48,30 @@
                         <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Rendement moyen (t/ha)") }}</label>
                         <input type="number" step="0.01" min="0" name="avg_yield_tha" value="{{ old('avg_yield_tha') }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic text-right">
                     </div>
+                    <div>
+                        <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Matériel de plantation") }}</label>
+                        <select name="planting_material" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic appearance-none cursor-pointer">
+                            <option value="">{{ __("-- Semence (défaut) --") }}</option>
+                            @foreach(\App\Models\CropSpecies::PLANTING_MATERIALS as $key => $label)
+                                <option value="{{ $key }}" @selected(old('planting_material', null) == $key)>{{ __($label) }}</option>
+                            @endforeach
+                        </select>
+                        <p class="text-[8px] font-black text-slate-400 uppercase mt-1 ml-2 italic">{{ __("On ne plante pas un ananas en kilos de semence : ce choix adapte le formulaire de cycle.") }}</p>
+                    </div>
+                    <div>
+                        <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Unité de comptage") }}</label>
+                        <select name="planting_unit" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic appearance-none cursor-pointer">
+                            <option value="">{{ __("-- kg (défaut) --") }}</option>
+                            @foreach(\App\Models\CropSpecies::PLANTING_UNITS as $unit)
+                                <option value="{{ $unit }}" @selected(old('planting_unit', null) == $unit)>{{ $unit }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Densité de référence (par hectare)") }}</label>
+                        <input type="number" min="1" name="planting_density" value="{{ old('planting_density', null) }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic text-right">
+                        <p class="text-[8px] font-black text-slate-400 uppercase mt-1 ml-2 italic">{{ __("Sert à PROPOSER la quantité selon la surface. Jamais une contrainte : l'écartement réel varie.") }}</p>
+                    </div>
                     <div class="md:col-span-2">
                         <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Description") }}</label>
                         <textarea name="description" rows="2" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-bold text-slate-700 shadow-inner italic text-[11px]">{{ old('description') }}</textarea>

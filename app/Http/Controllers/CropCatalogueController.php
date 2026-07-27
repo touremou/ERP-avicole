@@ -60,6 +60,11 @@ class CropCatalogueController extends Controller
             'cycle_days_min' => 'nullable|integer|min:1|max:1000',
             'cycle_days_max' => 'nullable|integer|min:1|max:1000|gte:cycle_days_min',
             'avg_yield_tha'  => 'nullable|numeric|min:0',
+            // Matériel de plantation : ce qu'on met en terre et comment on le
+            // compte. C'est lui qui adapte le formulaire de cycle.
+            'planting_material' => 'nullable|string|max:40',
+            'planting_unit'     => 'nullable|string|max:20',
+            'planting_density'  => 'nullable|integer|min:1|max:1000000',
             'description'    => 'nullable|string|max:1000',
         ]);
 
@@ -108,6 +113,11 @@ class CropCatalogueController extends Controller
             'cycle_days_min' => 'nullable|integer|min:1|max:1000',
             'cycle_days_max' => 'nullable|integer|min:1|max:1000|gte:cycle_days_min',
             'avg_yield_tha'  => 'nullable|numeric|min:0',
+            // Matériel de plantation : ce qu'on met en terre et comment on le
+            // compte. C'est lui qui adapte le formulaire de cycle.
+            'planting_material' => 'nullable|string|max:40',
+            'planting_unit'     => 'nullable|string|max:20',
+            'planting_density'  => 'nullable|integer|min:1|max:1000000',
             'description'    => 'nullable|string|max:1000',
             'is_active'      => 'nullable|boolean',
         ]);

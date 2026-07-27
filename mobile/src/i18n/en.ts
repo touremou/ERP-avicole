@@ -135,6 +135,17 @@ export const en: Record<string, string> = {
   'materiels': 'equipment',
   // Écran Tâches
   'Mes tâches': 'My tasks',
+  // Matériel de plantation (semis) — le libellé s'adapte à la culture.
+  'Quantité de semences': 'Seed quantity',
+  'Nombre de plants': 'Number of seedlings',
+  'Nombre de rejets': 'Number of suckers',
+  'Nombre de boutures': 'Number of cuttings',
+  'Nombre de greffons': 'Number of grafts',
+  'Quantité de tubercules': 'Tuber quantity',
+  'Quantité de rhizomes': 'Rhizome quantity',
+  'optionnel': 'optional',
+  'Proposer :n (densité de référence)': 'Suggest :n (reference density)',
+
   'Compte connecté': 'Signed-in account',
   'Site': 'Site',
   'Tâches': 'Tasks', // entrée de la barre de navigation

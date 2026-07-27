@@ -8,6 +8,11 @@
             'cycle_days_min' => $sp->cycle_days_min,
             'cycle_days_max' => $sp->cycle_days_max,
             'avg_yield_tha'  => $sp->avg_yield_tha !== null ? (float) $sp->avg_yield_tha : null,
+            // Matériel de plantation : c'est lui qui adapte le libellé, l'unité et
+            // la quantité suggérée. « Nombre de rejets (unité) » pour un ananas.
+            'planting_material' => $sp->planting_material,
+            'planting_unit'     => $sp->planting_unit,
+            'planting_density'  => $sp->planting_density !== null ? (int) $sp->planting_density : null,
             'varieties'      => $sp->varieties->map(fn ($v) => [
                 'name'          => $v->name,
                 'cycle_days'    => $v->cycle_days,
@@ -131,11 +136,17 @@
                         <input type="date" name="expected_harvest_date" x-model="expectedHarvest" value="{{ old('expected_harvest_date') }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic">
                     </div>
                     <div>
-                        <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Quantité semence") }}</label>
+                        {{-- Libellé ADAPTÉ à la culture : « Nombre de rejets (unité) »
+                             pour un ananas, « Quantité de semences (kg) » pour du maïs.
+                             On ne plante pas un ananas en kilos de semence. --}}
+                        <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic" x-text="plantingLabel()"></label>
                         <div class="flex gap-2">
-                            <input type="number" step="0.01" min="0" name="seed_quantity" value="{{ old('seed_quantity') }}" class="w-2/3 bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic text-right">
-                            <input type="text" name="seed_unit" value="{{ old('seed_unit', 'kg') }}" class="w-1/3 bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic text-center">
+                            <input type="number" step="0.01" min="0" name="seed_quantity" x-model="seedQuantity" value="{{ old('seed_quantity') }}" class="w-2/3 bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic text-right">
+                            <input type="text" name="seed_unit" x-model="seedUnit" value="{{ old('seed_unit', 'kg') }}" class="w-1/3 bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic text-center">
                         </div>
+                        <template x-if="densityHint()">
+                            <p class="text-[9px] font-black text-slate-400 mt-1 ml-2 italic" x-text="densityHint()"></p>
+                        </template>
                     </div>
                     <div>
                         <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Rendement attendu (kg)") }}</label>
@@ -174,6 +185,8 @@
                 plantingDate: @js(old('planting_date', now()->toDateString())),
                 expectedHarvest: @js(old('expected_harvest_date', '')),
                 expectedYield: @js(old('expected_yield_kg', '')),
+                seedQuantity: @js(old('seed_quantity', '')),
+                seedUnit: @js(old('seed_unit', 'kg')),
                 match: null,
                 hint: '',
                 selectedPlotId: '',
@@ -187,6 +200,10 @@
                     this.$watch('variety', () => this.buildHint());
                     this.$watch('areaHa', () => this.recompute());
                     this.$watch('plantingDate', () => this.recompute());
+                    // L'unité suit la culture DÈS le choix : laisser « kg » sur un
+                    // ananas invite à saisir un poids de rejets, qui ne veut rien
+                    // dire. On ne l'écrase que si la culture impose autre chose.
+                    this.$watch('match', () => this.adoptPlantingUnit());
                     this.$watch('selectedPlotId', (pid) => {
                         this.maxAreaHa = (pid && this.plotData[pid]) ? this.plotData[pid].remaining_ha : null;
                     });
@@ -256,11 +273,60 @@
                     return out;
                 },
 
+                /** Libellé du champ de quantité, adapté à la culture. */
+                plantingLabel() {
+                    const material = this.match && this.match.planting_material ? this.match.planting_material : 'semence';
+                    const unit = this.match && this.match.planting_unit ? this.match.planting_unit : (this.seedUnit || 'kg');
+                    const plural = {
+                        'semence': 'Quantité de semences',
+                        'plant': 'Nombre de plants',
+                        'rejet': 'Nombre de rejets',
+                        'bouture': 'Nombre de boutures',
+                        'greffon': 'Nombre de greffons',
+                        'tubercule': 'Quantité de tubercules',
+                        'rhizome': 'Quantité de rhizomes',
+                    }[material] || ('Quantité de ' + material);
+
+                    return plural + ' (' + unit + ')';
+                },
+
+                /** Unité imposée par la culture (rejets à l'unité, semences en kg). */
+                adoptPlantingUnit() {
+                    if (this.match && this.match.planting_unit) {
+                        this.seedUnit = this.match.planting_unit;
+                    }
+                },
+
+                /** Quantité suggérée par la densité de référence. */
+                suggestedSeedQuantity() {
+                    if (!this.match || !this.match.planting_density) return null;
+                    const area = parseFloat(this.areaHa);
+                    if (!(area > 0)) return null;
+
+                    const quantity = this.match.planting_density * area;
+
+                    // Un demi-rejet n'existe pas : on arrondit ce qui se compte.
+                    return this.match.planting_unit === 'kg'
+                        ? Math.round(quantity * 100) / 100
+                        : Math.round(quantity);
+                },
+
+                densityHint() {
+                    if (!this.match || !this.match.planting_density) return '';
+                    const unit = this.match.planting_unit || 'kg';
+
+                    return 'Densité de référence : ' + this.match.planting_density.toLocaleString('fr-FR')
+                        + ' ' + unit + '/ha — ajustez selon votre écartement réel.';
+                },
+
                 /** Applique explicitement les suggestions (bouton « Pré-remplir »). */
                 applySuggestions() {
                     const s = this.suggestions();
                     if (s.harvest) this.expectedHarvest = s.harvest;
                     if (s.yield !== null) this.expectedYield = s.yield;
+                    this.adoptPlantingUnit();
+                    const seed = this.suggestedSeedQuantity();
+                    if (seed !== null) this.seedQuantity = seed;
                 },
 
                 /** Recalcule à la volée : ne remplit que les champs encore vides (non-intrusif). */
@@ -269,6 +335,12 @@
                     const s = this.suggestions();
                     if (s.harvest && !this.expectedHarvest) this.expectedHarvest = s.harvest;
                     if (s.yield !== null && !this.expectedYield) this.expectedYield = s.yield;
+
+                    // La quantité ne se remplit QUE si elle est vide : on ne
+                    // corrige pas un chiffre que le technicien a compté lui-même.
+                    const seed = this.suggestedSeedQuantity();
+                    if (seed !== null && !this.seedQuantity) this.seedQuantity = seed;
+
                     this.buildHint();
                 },
             };

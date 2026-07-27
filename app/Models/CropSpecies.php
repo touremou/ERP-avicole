@@ -34,6 +34,66 @@ class CropSpecies extends Model
         'autre'       => ['label' => 'Autre',        'icon' => 'fa-sprout',        'color' => 'slate'],
     ];
 
+    /**
+     * MATÉRIEL DE PLANTATION — ce qu'on met en terre.
+     *
+     * Le formulaire demandait « Quantité semence » en kg pour toute culture. On
+     * ne plante pas un ananas en kilos de semence : on plante des REJETS, qui se
+     * comptent à l'unité. Le technicien devait convertir mentalement ou laisser
+     * le champ vide, et le coût de plantation devenait incomparable d'un cycle à
+     * l'autre.
+     */
+    public const PLANTING_MATERIALS = [
+        'semence'               => 'Semence',
+        'plant'                 => 'Plant (pépinière)',
+        'rejet'                 => 'Rejet',
+        'bouture'               => 'Bouture',
+        'tubercule'             => 'Tubercule',
+        'fragment de tubercule' => 'Fragment de tubercule',
+        'rhizome'               => 'Rhizome',
+        'greffon'               => 'Greffon',
+    ];
+
+    /** Unités de comptage du matériel de plantation. */
+    public const PLANTING_UNITS = ['kg', 'unité', 'botte', 'sac'];
+
+    /**
+     * Libellé du champ de quantité, adapté à la culture : « Quantité de rejets
+     * (unité) » plutôt que « Quantité semence ». C'est cette formulation qui dit
+     * au technicien ce qu'on attend de lui.
+     */
+    public function getPlantingLabelAttribute(): string
+    {
+        $material = $this->planting_material ?: 'semence';
+        $unit = $this->planting_unit ?: 'kg';
+
+        $plural = match ($material) {
+            'semence'   => 'Quantité de semences',
+            'plant'     => 'Nombre de plants',
+            'rejet'     => 'Nombre de rejets',
+            'bouture'   => 'Nombre de boutures',
+            'greffon'   => 'Nombre de greffons',
+            'tubercule' => 'Quantité de tubercules',
+            'rhizome'   => 'Quantité de rhizomes',
+            default     => 'Quantité de ' . $material,
+        };
+
+        return "{$plural} ({$unit})";
+    }
+
+    /** Quantité SUGGÉRÉE pour une surface donnée, d'après la densité de référence. */
+    public function suggestedPlantingQuantity(?float $areaHa): ?float
+    {
+        if (! $this->planting_density || ! $areaHa || $areaHa <= 0) {
+            return null;
+        }
+
+        $quantity = $this->planting_density * $areaHa;
+
+        // Un demi-plant n'existe pas : on arrondit ce qui se compte à l'unité.
+        return $this->planting_unit === 'kg' ? round($quantity, 2) : (float) round($quantity);
+    }
+
     /** Zones agro-écologiques de Guinée (4 régions naturelles). */
     public const ZONES = [
         'basse_guinee'      => 'Basse-Guinée (Maritime)',
@@ -64,6 +124,7 @@ class CropSpecies extends Model
         'uuid', 'is_synced', 'last_sync_at',
         'type', 'name', 'local_name', 'family',
         'cycle_days_min', 'cycle_days_max', 'avg_yield_tha',
+        'planting_material', 'planting_unit', 'planting_density',
         'sowing_months', 'soil_types', 'agro_zones', 'water_need', 'yield_tips',
         'description', 'is_active',
     ];
