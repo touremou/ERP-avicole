@@ -685,6 +685,9 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/transfer', 'transfer')->name('transfer')->middleware('can:C');
         Route::get('/{account}', 'show')->name('show')->middleware('can:L');
         Route::post('/{account}/movement', 'storeMovement')->name('movement')->middleware('can:C');
+        // Vérification du solde face au grand-livre : le garde-fou anti-dérive
+        // existait au modèle depuis l'origine sans qu'aucun chemin n'y mène.
+        Route::post('/{account}/verify-balance', 'verifyBalance')->name('verify-balance')->middleware('can:M');
         // Édition / suppression d'un compte (module Trésorerie).
         Route::put('/{account}', 'updateAccount')->name('account.update')->middleware('can:M');
         Route::delete('/{account}', 'destroyAccount')->name('account.destroy')->middleware('can:S');

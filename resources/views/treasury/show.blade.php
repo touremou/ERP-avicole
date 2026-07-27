@@ -34,6 +34,20 @@
                         <button type="submit" class="bg-slate-900 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-600 transition-all border-none cursor-pointer">{{ __("Enregistrer") }}</button>
                     </form>
 
+                    {{-- VÉRIFICATION DU SOLDE. Le modèle portait un recomputeBalance()
+                         annoncé comme la garantie anti-dérive, qu'aucun écran, aucune
+                         route et aucune commande n'appelait : une dérive était donc
+                         définitive. L'écart est ANNONCÉ, pas corrigé en silence. --}}
+                    <div class="pt-4 border-t border-slate-100">
+                        <form method="POST" action="{{ route('treasury.verify-balance', $account) }}">
+                            @csrf
+                            <button type="submit" class="text-[9px] font-black uppercase tracking-widest text-blue-600 hover:text-blue-800 bg-transparent border-none cursor-pointer p-0">
+                                <i class="fa-solid fa-scale-balanced mr-1"></i> {{ __("Vérifier le solde face au grand-livre") }}
+                            </button>
+                            <p class="text-[8px] text-slate-400 mt-1 italic">{{ __("Recalcule le solde depuis le solde d'ouverture et les écritures, et signale l'écart s'il en existe un.") }}</p>
+                        </form>
+                    </div>
+
                     @can('tresorerie.S')
                     <div class="pt-4 border-t border-slate-100">
                         <form method="POST" action="{{ route('treasury.account.destroy', $account) }}" onsubmit="return confirm('{{ __('Supprimer définitivement ce compte ? (impossible s\'il porte des mouvements)') }}')">

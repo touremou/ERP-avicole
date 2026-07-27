@@ -110,6 +110,42 @@ class TreasuryController extends Controller
         return redirect()->route('treasury.index')->with('success', "Compte « {$name} » supprimé.");
     }
 
+    /**
+     * VÉRIFICATION DU SOLDE d'un compte face à son grand-livre.
+     *
+     * Le solde est tenu de façon incrémentale à chaque mouvement, et le modèle
+     * portait depuis l'origine un `recomputeBalance()` présenté comme la garantie
+     * « anti-dérive »… que rien n'appelait : ni route, ni commande, ni bouton.
+     * Une dérive — plantage en cours d'écriture, correction faite directement en
+     * base — restait donc définitive, sans aucun moyen de la corriger depuis
+     * l'application.
+     *
+     * On ANNONCE l'écart avant de le corriger : un solde silencieusement réécrit
+     * masque l'incident au lieu de le signaler.
+     */
+    public function verifyBalance(TreasuryAccount $account)
+    {
+        if (Gate::denies('tresorerie.M')) {
+            return back()->with('error', 'Vérification réservée au responsable trésorerie.');
+        }
+
+        $before = (float) $account->current_balance;
+        $account->recomputeBalance();
+        $after = (float) $account->fresh()->current_balance;
+        $gap = round($after - $before, 2);
+
+        if (abs($gap) < 0.01) {
+            return back()->with('success', "Compte « {$account->name} » : solde conforme au grand-livre.");
+        }
+
+        $sign = $gap > 0 ? '+' : '';
+        $currency = setting('general.currency', 'GNF');
+
+        return back()->with('warning', "Compte « {$account->name} » : écart de {$sign}"
+            . number_format($gap, 2, ',', ' ') . " {$currency} entre le solde affiché et le grand-livre. "
+            . 'Le solde a été réaligné sur les écritures — vérifiez les mouvements récents.');
+    }
+
     /** État des flux de trésorerie : entrées/sorties par catégorie sur une période. */
     public function report(Request $request)
     {
