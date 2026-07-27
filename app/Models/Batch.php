@@ -866,28 +866,31 @@ class Batch extends Model
     }
 
     /**
-     * Indice de Consommation (FCR — Feed Conversion Ratio).
+     * BIOMASSE PRODUITE (kg) — la convention de calcul, en un seul endroit.
      *
-     * Formule : Total aliment consommé (kg) / Biomasse produite (kg)
-     * Biomasse = effectif vivant × poids moyen dernier pointage
+     * Un lot qui a subi de la mortalité était doublement pénalisé par les écrans
+     * qui ne comptaient que la biomasse VIVANTE : les sujets morts ont mangé sans
+     * figurer au dénominateur. On leur impute conventionnellement la moitié du
+     * poids moyen courant — ils sont morts en cours de croissance.
+     *
+     * Renvoie null quand aucune pesée moyenne n'existe : la conversion n'est
+     * alors pas mesurable, et 0 se lirait comme une conversion parfaite.
+     *
+     * @param  float  $avgWeightKg  poids moyen de la dernière pesée
+     * @param  int    $mortality    mortalité troupeau (daily_checks.mortality)
      */
-    public function getFcrAttribute(): float
+    public function producedBiomassKg(float $avgWeightKg, int $mortality): ?float
     {
-        $totalFeed = (float) $this->dailyChecks()->sum('feed_consumed');
-        $lastCheck = $this->dailyChecks()
-            ->whereNotNull('avg_weight')
-            ->latest('check_date')
-            ->first();
-
-        $lastWeight = $lastCheck ? (float) $lastCheck->avg_weight : 0;
-
-        if ($lastWeight <= 0 || $this->current_quantity <= 0) {
-            return 0;
+        if ($avgWeightKg <= 0) {
+            return null;
         }
 
-        $biomass = $this->current_quantity * $lastWeight;
+        // Effectif de référence : initial − mortalité, et non current_quantity
+        // (lequel intègre aussi ventes et transferts, hors périmètre du FCR).
+        $alive = max(0, (int) $this->initial_quantity - $mortality);
+        $biomass = ($alive * $avgWeightKg) + ($mortality * $avgWeightKg * 0.5);
 
-        return round($totalFeed / max($biomass, 1), 2);
+        return $biomass > 0 ? $biomass : null;
     }
 
     /**
@@ -899,14 +902,16 @@ class Batch extends Model
      * impute conventionnellement la moitié du poids moyen courant (ils sont morts
      * en cours de croissance, à un poids inférieur au poids final).
      *
-     * IMPLÉMENTATION UNIQUE, extraite de ReportController::buildTechnicalStats et
-     * reproduite à l'IDENTIQUE — mêmes bases de calcul, donc mêmes valeurs
-     * affichées qu'avant. Deux nuances assumées, héritées de cette formule :
-     *  - la mortalité retenue est celle du TROUPEAU (daily_checks.mortality),
-     *    sans la mortalité en infirmerie ni les morts au transport que compte
-     *    l'accesseur total_mortality ;
-     *  - l'effectif de référence est initial − mortalité, et non current_quantity
-     *    (lequel intègre aussi ventes et transferts, hors périmètre du FCR).
+     * IMPLÉMENTATION UNIQUE de l'indice de consommation. Elle l'était pour le
+     * rapport technique, la fiche hebdomadaire et la vue consolidée — mais la
+     * FICHE DU LOT et le tableau de bord affichaient, sous le même intitulé
+     * « indice de consommation », un chiffre calculé sur la seule biomasse
+     * vivante : systématiquement plus mauvais, du montant exact de la correction
+     * de mortalité. Trois écrans, trois valeurs pour un même lot.
+     *
+     * Une nuance assumée, héritée de la formule d'origine : la mortalité retenue
+     * est celle du TROUPEAU (daily_checks.mortality), sans la mortalité en
+     * infirmerie ni les morts au transport que compte total_mortality.
      */
     public function getFcrCorrectedAttribute(): ?float
     {
@@ -918,19 +923,21 @@ class Batch extends Model
             ->latest('check_date')
             ->first();
 
-        $avgWeightGrams = $lastCheck ? (float) $lastCheck->avg_weight * 1000 : 0.0;
-        if ($avgWeightGrams <= 0) {
-            // Aucune pesée moyenne : le FCR n'est pas mesurable. On renvoie null
-            // (et non 0, qui se lirait comme une conversion parfaite).
-            return null;
-        }
+        $biomassKg = $this->producedBiomassKg(
+            $lastCheck ? (float) $lastCheck->avg_weight : 0.0,
+            $mortality
+        );
 
-        $alive = max(0, (int) $this->initial_quantity - $mortality);
+        return $biomassKg === null ? null : round($totalFeedKg / $biomassKg, 2);
+    }
 
-        $biomassKg = ($alive * $avgWeightGrams / 1000)
-                   + ($mortality * ($avgWeightGrams * 0.5) / 1000);
-
-        return $biomassKg > 0 ? round($totalFeedKg / $biomassKg, 2) : null;
+    /**
+     * Alias de compatibilité : `$batch->fcr` désigne LE même indice que
+     * `fcr_corrected`. Il portait auparavant une seconde formule.
+     */
+    public function getFcrAttribute(): ?float
+    {
+        return $this->fcr_corrected;
     }
 
     /**
