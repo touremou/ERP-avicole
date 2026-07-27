@@ -50,14 +50,10 @@ class IncubationController extends Controller
             ->values();
 
         // Durées d'incubation par espèce (en jours), pour pré-remplissage du formulaire
-        $incubationDurations = [
-            'poulet'  => 21,
-            'pintade' => 28,
-            'dinde'   => 28,
-            'canard'  => 28,
-            'caille'  => 17,
-            'pigeon'  => 18,
-        ];
+        // Durées lues au RÉFÉRENTIEL (species.incubation_days) et non plus codées
+        // ici : la ferme peut les corriger, et une espèce ajoutée par
+        // l'utilisateur n'est plus muette. Cf. Species::incubationDays().
+        $incubationDurations = \App\Models\Species::incubationDurations();
 
         // KPI 30 jours
         $statsData = Incubation::where('updated_at', '>=', now()->subDays(30))

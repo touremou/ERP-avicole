@@ -101,6 +101,32 @@
                                     <span class="px-2 py-1 bg-cyan-50 rounded-lg text-[7px] font-black text-cyan-600 border border-cyan-100">{{ __("💧 Eau") }}</span>
                                     @endif
                                 </div>
+
+                                {{-- DURÉE D'INCUBATION — corrigeable par la ferme.
+                                     Elle vivait codée en dur dans un contrôleur : un
+                                     canard de Barbarie (35 j) ne pouvait pas être
+                                     distingué d'un canard commun (28 j). Affichée
+                                     pour les seules espèces qui pondent. --}}
+                                @if($sp->tracks_eggs)
+                                    @can('admin.M')
+                                    <form method="POST" action="{{ route('admin.species.incubation', $sp) }}"
+                                          class="flex items-center gap-2 mt-4">
+                                        @csrf @method('PATCH')
+                                        <label class="text-[7px] font-black text-slate-400 uppercase tracking-widest">{{ __("Incubation") }}</label>
+                                        <input type="number" name="incubation_days" min="10" max="60"
+                                               value="{{ $sp->incubation_days }}"
+                                               placeholder="{{ setting('couvoir.incubation_days', 21) }}"
+                                               class="w-16 bg-slate-50 border-none rounded-lg p-2 text-[10px] font-black text-slate-800 shadow-inner text-right">
+                                        <span class="text-[7px] font-black text-slate-400 uppercase">{{ __("jours") }}</span>
+                                        <button type="submit" class="px-3 py-2 bg-slate-100 rounded-lg text-[7px] font-black text-slate-600 uppercase border-none cursor-pointer hover:bg-slate-900 hover:text-white transition-all">
+                                            {{ __("Enregistrer") }}
+                                        </button>
+                                    </form>
+                                    <p class="text-[7px] font-black text-slate-300 uppercase mt-1 italic">
+                                        {{ __("Vide = réglage de la ferme (:n j)", ['n' => setting('couvoir.incubation_days', 21)]) }}
+                                    </p>
+                                    @endcan
+                                @endif
                             </div>
                         </div>
                         @endforeach
