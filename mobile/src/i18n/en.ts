@@ -135,6 +135,8 @@ export const en: Record<string, string> = {
   'materiels': 'equipment',
   // Écran Tâches
   'Mes tâches': 'My tasks',
+  // Poids net proposé depuis un comptage (poids moyen du catalogue).
+  'Proposer :n kg (:qty × :avg kg)': 'Suggest :n kg (:qty × :avg kg)',
   // Matériel de plantation (semis) — le libellé s'adapte à la culture.
   'Quantité de semences': 'Seed quantity',
   'Nombre de plants': 'Number of seedlings',

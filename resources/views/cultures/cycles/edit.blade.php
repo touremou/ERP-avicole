@@ -1,18 +1,9 @@
 <x-app-layout>
     @php
         $currency = setting('general.currency', 'GNF');
-        $catalogue = $species->map(fn ($sp) => [
-            'name'           => $sp->name,
-            'local_name'     => $sp->local_name,
-            'cycle_days_min' => $sp->cycle_days_min,
-            'cycle_days_max' => $sp->cycle_days_max,
-            'avg_yield_tha'  => $sp->avg_yield_tha !== null ? (float) $sp->avg_yield_tha : null,
-            'varieties'      => $sp->varieties->map(fn ($v) => [
-                'name'          => $v->name,
-                'cycle_days'    => $v->cycle_days,
-                'avg_yield_tha' => $v->avg_yield_tha !== null ? (float) $v->avg_yield_tha : null,
-            ])->values(),
-        ])->values();
+        // Fabrique UNIQUE (CropSpecies::formCatalogue) : ce tableau vivait en deux
+        // copies, et l'une avait déjà divergé de l'autre.
+        $catalogue = \App\Models\CropSpecies::formCatalogue($species);
     @endphp
     <x-slot name="header">
         <x-page-header :title="$cycle->crop_name" :subtitle="__('Modifier le cycle')" icon="fa-seedling" accent="green" :back="route('crop-cycles.show', $cycle)" />

@@ -265,7 +265,12 @@ class SyncController extends Controller
             // l'écran de semis resterait bloqué sur « semence en kg » — une
             // divergence entre les deux supports pour la même culture.
             'columns' => ['id', 'name', 'local_name', 'type',
-                'planting_material', 'planting_unit', 'planting_density', 'updated_at'],
+                'planting_material', 'planting_unit', 'planting_density',
+                // Poids moyen de l'unité récoltée : au champ, le technicien COMPTE
+                // des fruits. L'application peut alors proposer le poids net, que
+                // T1 exige pour valoriser une récolte conservée — sinon le champ
+                // reste vide et la matière n'a pas de valeur.
+                'avg_unit_weight_kg', 'harvest_unit_label', 'updated_at'],
         ],
     ];
 

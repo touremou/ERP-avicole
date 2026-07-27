@@ -2,23 +2,9 @@
     @php
         $currency = setting('general.currency', 'GNF');
         // Référentiel agronomique encodé pour l'auto-remplissage (cf. catalogue).
-        $catalogue = $species->map(fn ($sp) => [
-            'name'           => $sp->name,
-            'local_name'     => $sp->local_name,
-            'cycle_days_min' => $sp->cycle_days_min,
-            'cycle_days_max' => $sp->cycle_days_max,
-            'avg_yield_tha'  => $sp->avg_yield_tha !== null ? (float) $sp->avg_yield_tha : null,
-            // Matériel de plantation : c'est lui qui adapte le libellé, l'unité et
-            // la quantité suggérée. « Nombre de rejets (unité) » pour un ananas.
-            'planting_material' => $sp->planting_material,
-            'planting_unit'     => $sp->planting_unit,
-            'planting_density'  => $sp->planting_density !== null ? (int) $sp->planting_density : null,
-            'varieties'      => $sp->varieties->map(fn ($v) => [
-                'name'          => $v->name,
-                'cycle_days'    => $v->cycle_days,
-                'avg_yield_tha' => $v->avg_yield_tha !== null ? (float) $v->avg_yield_tha : null,
-            ])->values(),
-        ])->values();
+        // Fabrique UNIQUE (CropSpecies::formCatalogue) : ce tableau vivait en deux
+        // copies, et l'une avait déjà divergé de l'autre.
+        $catalogue = \App\Models\CropSpecies::formCatalogue($species);
     @endphp
     <x-slot name="header">
         <x-page-header :title="__('Nouveau Cycle de Culture')" :subtitle="__('Démarrage d\'un semis')" icon="fa-seedling" accent="green" :back="route('crop-cycles.index')" />

@@ -9,13 +9,13 @@
  * séchée ou gardée pour vendre plus cher plus tard n'encaisse RIEN, entre en
  * stock au coût de production, et doit donc être pesée en kg.
  */
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { db } from '../../offline/db'
 import { enqueue } from '../../offline/sync'
 import { dateLocale, t } from '../../i18n'
 import { NumberStepper } from '../../ui/NumberStepper'
-import type { RefCropCycle } from '../../api/types'
+import type { RefCropCycle, RefCropSpecies } from '../../api/types'
 
 const UNITS = ['kg', 'sac', 'botte', 'régime', 'unité'] as const
 const QUALITIES = [
@@ -53,12 +53,41 @@ export function HarvestScreen() {
   const [syncToStock, setSyncToStock] = useState(false)
   const [stockItemName, setStockItemName] = useState('')
 
+  const [species, setSpecies] = useState<RefCropSpecies | null>(null)
+
   useEffect(() => {
     if (cycleId) void db.ref_crop_cycles.get(Number(cycleId)).then((c) => setCycle(c ?? null))
   }, [cycleId])
 
+  // Espèce du catalogue : elle porte le poids moyen d'une unité récoltée.
+  useEffect(() => {
+    if (!cycle?.crop_name) return
+    const needle = cycle.crop_name.trim().toLowerCase()
+    void db.ref_crop_species
+      .toArray()
+      .then((all) => setSpecies(all.find((s) => s.name.toLowerCase() === needle) ?? null))
+  }, [cycle])
+
   const held = destination !== 'vente'
   const inKg = unit.trim().toLowerCase() === 'kg'
+
+  /**
+   * Poids net PROPOSÉ à partir du comptage.
+   *
+   * Au champ, le technicien compte des fruits ou des régimes — pas des kilos.
+   * Une récolte conservée exige pourtant une pesée en kg, sinon la matière sort
+   * du revenu sans pouvoir être valorisée (T1). Le poids moyen du catalogue
+   * permet de proposer ce chiffre au lieu de laisser le champ vide.
+   *
+   * On ne propose RIEN si l'unité saisie est déjà le kilo — il n'y a rien à
+   * convertir — ni sans poids moyen : on ne devine pas un calibre.
+   */
+  const suggestedNetWeight = useMemo(() => {
+    const avg = Number(species?.avg_unit_weight_kg ?? 0)
+    if (inKg || !(avg > 0) || !(quantity > 0)) return null
+
+    return Math.round(quantity * avg * 100) / 100
+  }, [species, inKg, quantity])
   const effectiveKg = netWeightKg.trim() !== '' ? Number(netWeightKg) : (inKg ? quantity : 0)
   // Miroir de RecordHarvest : conservée sans pesée = matière non valorisable.
   const missingWeight = held && !(effectiveKg > 0)
@@ -207,6 +236,18 @@ export function HarvestScreen() {
             onChange={(e) => setNetWeightKg(e.target.value)}
             placeholder={held ? t('obligatoire — valorise le stock') : t('pesée précise pour le rendement')}
           />
+          {/* Suggestion TAPPABLE, jamais automatique : une pesée réelle vaut
+              toujours mieux qu'un poids moyen. On propose quand le champ est vide,
+              c'est-à-dire précisément quand l'alternative serait « rien ». */}
+          {suggestedNetWeight !== null && netWeightKg.trim() === '' && (
+            <button type="button" className="chip" onClick={() => setNetWeightKg(String(suggestedNetWeight))}>
+              {t('Proposer :n kg (:qty × :avg kg)', {
+                n: suggestedNetWeight.toLocaleString('fr-FR'),
+                qty: quantity,
+                avg: Number(species?.avg_unit_weight_kg ?? 0).toLocaleString('fr-FR'),
+              })}
+            </button>
+          )}
           {missingWeight && (
             <p className="error">
               {t('⚠️ Récolte non vendue : pesez-la en kg. Sans pesée, elle sort du revenu sans pouvoir être valorisée ni transformée.')}

@@ -65,6 +65,10 @@ class CropCatalogueController extends Controller
             'planting_material' => 'nullable|string|max:40',
             'planting_unit'     => 'nullable|string|max:20',
             'planting_density'  => 'nullable|integer|min:1|max:1000000',
+            // Poids moyen de l'unité récoltée : convertit le rendement en fruits
+            // et propose le poids net quand le technicien compte des fruits.
+            'avg_unit_weight_kg' => 'nullable|numeric|min:0.001|max:500',
+            'harvest_unit_label' => 'nullable|string|max:30',
             'description'    => 'nullable|string|max:1000',
         ]);
 
@@ -118,6 +122,10 @@ class CropCatalogueController extends Controller
             'planting_material' => 'nullable|string|max:40',
             'planting_unit'     => 'nullable|string|max:20',
             'planting_density'  => 'nullable|integer|min:1|max:1000000',
+            // Poids moyen de l'unité récoltée : convertit le rendement en fruits
+            // et propose le poids net quand le technicien compte des fruits.
+            'avg_unit_weight_kg' => 'nullable|numeric|min:0.001|max:500',
+            'harvest_unit_label' => 'nullable|string|max:30',
             'description'    => 'nullable|string|max:1000',
             'is_active'      => 'nullable|boolean',
         ]);

@@ -167,3 +167,167 @@ test('le catalogue accepte et enregistre le matériel de plantation', function (
     expect($species->planting_material)->toBe('rejet');
     expect($species->planting_density)->toBe(35000);
 });
+
+/*
+ * POIDS MOYEN DE L'UNITÉ RÉCOLTÉE — le pont entre ce qu'on compte et ce qu'on
+ * pèse.
+ *
+ * Le rendement reste un poids : le kilo porte le prix de vente, donc la marge.
+ * Mais un producteur d'ananas plante des rejets, vend des fruits et raisonne en
+ * fruits — « 50 000 kg » ne lui dit rien tant qu'il ne sait pas que cela fait
+ * environ 33 000 fruits. Et au champ, c'est l'inverse qui manque : il COMPTE des
+ * fruits alors qu'une récolte conservée exige une pesée en kg (T1).
+ */
+
+test('le rendement en kg se convertit en nombre de fruits', function () {
+    $ananas = CropSpecies::create([
+        'type' => 'fruitier', 'name' => 'Ananas',
+        'avg_unit_weight_kg' => 1.5, 'harvest_unit_label' => 'fruit',
+    ]);
+
+    expect($ananas->unitsForWeight(50000))->toBe(33333);
+    expect($ananas->harvestUnitPlural(33333))->toBe('fruits');
+    // Le singulier se voit aussi : « 1 fruit », pas « 1 fruits ».
+    expect($ananas->harvestUnitPlural(1))->toBe('fruit');
+});
+
+test('un comptage se convertit en poids — l’usage qui sert au champ', function () {
+    $ananas = CropSpecies::create([
+        'type' => 'fruitier', 'name' => 'Ananas',
+        'avg_unit_weight_kg' => 1.5, 'harvest_unit_label' => 'fruit',
+    ]);
+
+    // Sans cela, une récolte conservée reste sans pesée, donc sans valeur.
+    expect($ananas->weightForUnits(500))->toBe(750.0);
+});
+
+test('sans poids moyen, aucune conversion — on ne devine pas un calibre', function () {
+    $riz = CropSpecies::create(['type' => 'cereale', 'name' => 'Riz']);
+
+    expect($riz->unitsForWeight(1000))->toBeNull();
+    expect($riz->weightForUnits(100))->toBeNull();
+    expect($riz->harvestUnitPlural())->toBeNull();
+});
+
+test('un poids ou un comptage nul ne produit pas de division absurde', function () {
+    $ananas = CropSpecies::create([
+        'type' => 'fruitier', 'name' => 'Ananas',
+        'avg_unit_weight_kg' => 1.5, 'harvest_unit_label' => 'fruit',
+    ]);
+
+    expect($ananas->unitsForWeight(0))->toBeNull();
+    expect($ananas->unitsForWeight(null))->toBeNull();
+    expect($ananas->weightForUnits(0))->toBeNull();
+});
+
+test('le petit calibre survit à l’arrondi', function () {
+    // Un gombo pèse 15 g. Avec deux décimales il serait tombé à 0,02 kg, soit
+    // 25 % d'erreur ; avec un entier, à zéro — et la conversion n'existerait plus.
+    $gombo = CropSpecies::create([
+        'type' => 'legume', 'name' => 'Gombo',
+        'avg_unit_weight_kg' => 0.015, 'harvest_unit_label' => 'gousse',
+    ]);
+
+    expect((float) $gombo->fresh()->avg_unit_weight_kg)->toBe(0.015);
+    expect($gombo->unitsForWeight(30))->toBe(2000);
+});
+
+test('la migration renseigne le poids des espèces déjà au catalogue', function () {
+    DB::table('crop_species')->insert([
+        ['name' => 'Ananas', 'type' => 'fruitier', 'is_active' => true, 'created_at' => now(), 'updated_at' => now()],
+        ['name' => 'Banane plantain', 'type' => 'fruitier', 'is_active' => true, 'created_at' => now(), 'updated_at' => now()],
+        ['name' => 'Riz', 'type' => 'cereale', 'is_active' => true, 'created_at' => now(), 'updated_at' => now()],
+    ]);
+
+    $migration = require database_path('migrations/2026_08_02_000000_add_avg_unit_weight_to_crop_species.php');
+    (new ReflectionClass($migration))->getMethod('backfill')->invoke($migration);
+
+    expect((float) CropSpecies::where('name', 'Ananas')->first()->avg_unit_weight_kg)->toBe(1.5);
+    // On compte des RÉGIMES de bananes, jamais des doigts.
+    expect(CropSpecies::where('name', 'Banane plantain')->first()->harvest_unit_label)->toBe('régime');
+    // Le riz reste sans poids : personne ne compte des grains, et inventer une
+    // valeur afficherait une équivalence absurde.
+    expect(CropSpecies::where('name', 'Riz')->first()->avg_unit_weight_kg)->toBeNull();
+});
+
+test('le catalogue encodé des formulaires est UNIQUE et complet', function () {
+    // Ce tableau vivait en deux copies : en ajoutant le matériel de plantation je
+    // n'avais patché que la création, et l'édition affichait « Quantité semence »
+    // sur un ananas. Le test de l'époque cherchait l'appel JavaScript, pas les
+    // DONNÉES — il passait au vert sur un écran cassé.
+    $species = CropSpecies::create([
+        'type' => 'fruitier', 'name' => 'Ananas', 'is_active' => true,
+        'planting_material' => 'rejet', 'planting_unit' => 'unité', 'planting_density' => 35000,
+        'avg_unit_weight_kg' => 1.5, 'harvest_unit_label' => 'fruit',
+    ]);
+
+    $catalogue = CropSpecies::formCatalogue(CropSpecies::with('varieties')->get());
+
+    expect($catalogue[0])->toHaveKeys([
+        'name', 'planting_material', 'planting_unit', 'planting_density',
+        'avg_unit_weight_kg', 'harvest_unit_label', 'varieties',
+    ]);
+    expect($catalogue[0]['avg_unit_weight_kg'])->toBe(1.5);
+    expect($catalogue[0]['harvest_unit_label'])->toBe('fruit');
+});
+
+test('les DEUX écrans de cycle reçoivent le poids moyen', function () {
+    CropSpecies::create([
+        'type' => 'fruitier', 'name' => 'Ananas', 'is_active' => true,
+        'planting_material' => 'rejet', 'planting_unit' => 'unité', 'planting_density' => 35000,
+        'avg_unit_weight_kg' => 1.5, 'harvest_unit_label' => 'fruit',
+    ]);
+    $plot = \App\Models\Plot::create([
+        'farm_id' => $this->farm->id, 'name' => 'P', 'code' => 'P-1',
+        'area_ha' => 2, 'status' => \App\Models\Plot::STATUS_EN_CULTURE,
+    ]);
+    $cycle = \App\Models\CropCycle::create([
+        'farm_id' => $this->farm->id, 'plot_id' => $plot->id, 'code' => 'ANA-9',
+        'crop_name' => 'Ananas', 'area_used_ha' => 1,
+        'planting_date' => '2024-12-01', 'status' => \App\Models\CropCycle::STATUS_EN_COURS,
+    ]);
+
+    foreach ([route('crop-cycles.create'), route('crop-cycles.edit', $cycle)] as $url) {
+        $html = $this->actingAs($this->adminUser)->get($url)->assertOk()->getContent();
+
+        // On vérifie les DONNÉES, pas seulement la présence de la fonction.
+        expect($html)->toContain('avg_unit_weight_kg');
+        expect($html)->toContain('harvest_unit_label');
+        expect($html)->toContain('rejet');
+    }
+});
+
+test('le mobile reçoit le poids moyen pour proposer la pesée', function () {
+    CropSpecies::create([
+        'type' => 'fruitier', 'name' => 'Ananas', 'is_active' => true,
+        'avg_unit_weight_kg' => 1.5, 'harvest_unit_label' => 'fruit',
+    ]);
+
+    $payload = json_encode($this->actingAs($this->adminUser, 'sanctum')
+        ->getJson('/api/v1/sync/pull')->assertOk()->json('entities.crop_species'));
+
+    expect($payload)->toContain('avg_unit_weight_kg');
+    expect($payload)->toContain('harvest_unit_label');
+});
+
+test('le catalogue accepte et enregistre le poids moyen', function () {
+    $this->actingAs($this->adminUser)
+        ->post(route('crop-catalogue.store'), [
+            'type' => 'fruitier', 'name' => 'Ananas Cayenne',
+            'avg_unit_weight_kg' => 1.5, 'harvest_unit_label' => 'fruit',
+        ])
+        ->assertRedirect();
+
+    $species = CropSpecies::where('name', 'Ananas Cayenne')->first();
+    expect((float) $species->avg_unit_weight_kg)->toBe(1.5);
+    expect($species->harvest_unit_label)->toBe('fruit');
+});
+
+test('un poids moyen absurde est refusé', function () {
+    $this->actingAs($this->adminUser)
+        ->post(route('crop-catalogue.store'), [
+            'type' => 'fruitier', 'name' => 'Fruit géant',
+            'avg_unit_weight_kg' => 900, // au-delà du plafond : erreur de saisie
+        ])
+        ->assertSessionHasErrors('avg_unit_weight_kg');
+});
