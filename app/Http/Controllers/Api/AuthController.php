@@ -151,6 +151,8 @@ class AuthController extends Controller
         $path = $request->file('photo')->store('avatars', 'public');
         $user->update(['avatar_path' => $path]);
 
+        app(\App\Actions\Hr\SyncPersonPhoto::class)->fromAccount($user, $path, $old);
+
         if ($old && $old !== $path) {
             Storage::disk('public')->delete($old);
         }
@@ -167,8 +169,12 @@ class AuthController extends Controller
         $user = $request->user();
 
         if ($user->avatar_path) {
-            Storage::disk('public')->delete($user->avatar_path);
+            $old = $user->avatar_path;
+            Storage::disk('public')->delete($old);
             $user->update(['avatar_path' => null]);
+
+            // Idem web : la fiche ne se vide que si elle pointait le même fichier.
+            app(\App\Actions\Hr\SyncPersonPhoto::class)->fromAccount($user, null, $old);
         }
 
         return response()->json([

@@ -50,10 +50,24 @@ class User extends Authenticatable
     /**
      * URL publique de la photo de profil (disque public via /media), partagée
      * par le web ET le mobile. Null si aucune photo → repli sur les initiales.
+     *
+     * REPLI sur la photo de la FICHE EMPLOYÉ : le visage d'une personne est un
+     * seul visage, et il vivait dans deux champs indépendants
+     * (users.avatar_path, employees.photo_path). Un agent photographié par son
+     * responsable apparaissait donc en initiales sur son propre téléphone.
+     *
+     * On ne retombe QUE sur une vraie photo : jamais sur l'avatar SVG génénique
+     * par genre, sinon les initiales — plus reconnaissables — disparaîtraient.
      */
     public function getAvatarUrlAttribute(): ?string
     {
-        return $this->avatar_path ? media_url($this->avatar_path) : null;
+        if ($this->avatar_path) {
+            return media_url($this->avatar_path);
+        }
+
+        $employeePhoto = $this->employee?->photo_path;
+
+        return $employeePhoto ? media_url($employeePhoto) : null;
     }
 
     public function userRole(): BelongsTo

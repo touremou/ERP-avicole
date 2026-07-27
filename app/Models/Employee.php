@@ -121,6 +121,18 @@ class Employee extends Model
             return media_url($this->photo_path);
         }
 
+        // REPLI sur l'avatar du compte : même visage, deux champs. Un agent qui a
+        // choisi sa photo depuis le mobile apparaissait en silhouette sur sa
+        // propre fiche.
+        //
+        // UNIQUEMENT si la relation est DÉJÀ chargée : cet accesseur est appelé
+        // pour chaque ligne des listes d'équipe. Y déclencher une requête ferait
+        // un N+1 silencieux sur cinquante employés. Les écrans qui veulent le
+        // repli chargent `user` (c'est déjà le cas de la liste du personnel).
+        if ($this->relationLoaded('user') && $this->user?->avatar_path) {
+            return media_url($this->user->avatar_path);
+        }
+
         // Avatar par défaut selon le genre (SVG inline, pas de dépendance externe)
         return $this->gender === 'F'
             ? asset('images/avatars/female-tech.svg')
