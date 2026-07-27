@@ -113,7 +113,7 @@
                                     </td>
                                     <td class="p-6 text-center">
                                         <div class="inline-block px-3 py-1 bg-slate-100 rounded-lg text-[10px] font-black text-slate-600 italic">
-                                            {{ number_format($feed->current_quantity / 50, 1) }}
+                                            {{ number_format(\App\Services\UnitConverter::kgToSacks($feed->current_quantity), 1) }}
                                         </div>
                                     </td>
                                     <td class="p-6 text-right px-10">

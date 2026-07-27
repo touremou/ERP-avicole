@@ -58,7 +58,7 @@
                                    class="w-full {{ isset($eggProduction) ? 'bg-blue-50 text-blue-600' : 'bg-emerald-50 text-emerald-600' }} border-none rounded-[2.5rem] p-8 text-7xl font-black text-center shadow-inner focus:ring-0 italic appearance-none">
                             
                             <p id="info-display" class="mt-4 text-[11px] font-black text-slate-400 uppercase italic tracking-widest">
-                                ≈ {{ number_format(($eggProduction->total_eggs_collected ?? 0) / 30, 2) }} {{ __("Alvéoles") }}
+                                ≈ {{ number_format(\App\Services\UnitConverter::eggsToTrays($eggProduction->total_eggs_collected ?? 0), 2) }} {{ __("Alvéoles") }}
                             </p>
                         </div>
                     </div>

@@ -343,14 +343,17 @@ class BatchController extends Controller
                     ->first();
 
             $qty   = $stockItem ? (float) $stockItem->current_quantity : 0.0;
-            $isSac = $stockItem && $stockItem->unit === 'Sac';
+            $isSac = $stockItem && \App\Services\UnitConverter::isSac($stockItem->unit);
 
             return [
                 'label'        => str_replace($batch->feedSector() . ' ', '', $phaseName),
                 'exists'       => (bool) $stockItem,
                 'qty'          => $qty,
                 'is_sac'       => $isSac,
-                'available_kg' => $isSac ? $qty * 50 : $qty,
+                // Le poids du sac vient du paramétrage (general.feed_bag_weight) :
+                // un « × 50 » codé en dur ment dès qu'une ferme achète en sacs de
+                // 25 kg, et cette valeur borne ce que le technicien peut saisir.
+                'available_kg' => $isSac ? \App\Services\UnitConverter::sacksToKg($qty) : $qty,
             ];
         });
 

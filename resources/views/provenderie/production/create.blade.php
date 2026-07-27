@@ -152,6 +152,8 @@
     </div>
 
     <script>
+        const BAG_WEIGHT_KG = {{ \App\Services\UnitConverter::bagWeight() }};
+
         function updateMachineCount() {
             const checkboxes = document.querySelectorAll('.machine-checkbox');
             const checkedCount = Array.from(checkboxes).filter(c => c.checked).length;
@@ -177,7 +179,11 @@
         function checkStocks() {
             const select = document.getElementById('formula_id');
             const bags = document.getElementById('nb_bags').value || 0;
-            const totalWeight = bags * 50;
+            // Poids du sac injecté depuis le paramétrage (general.feed_bag_weight),
+            // et non un « × 50 » codé en dur : cet écran vérifie les stocks avant
+            // de lancer une fabrication, un facteur faux y annonce des manques ou
+            // des disponibilités qui n'existent pas.
+            const totalWeight = bags * BAG_WEIGHT_KG;
             const container = document.getElementById('material_needs');
             const submitBtn = document.getElementById('submit_btn');
             const badge = document.getElementById('stock_status_badge');

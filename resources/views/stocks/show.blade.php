@@ -52,7 +52,7 @@
                         </p>
                     @elseif($stock->category == 'conso' && $stock->unit == 'KG')
                         <p class="text-[9px] text-emerald-600 mt-3 uppercase font-black italic bg-emerald-50 px-3 py-1 rounded-lg inline-block">
-                            ≈ {{ number_format($stock->current_quantity / 50, 1) }} {{ __("Sacs (50kg)") }}
+                            ≈ {{ number_format(\App\Services\UnitConverter::kgToSacks($stock->current_quantity), 1) }} {{ __("Sacs de :kg kg", ['kg' => \App\Services\UnitConverter::bagWeight()]) }}
                         </p>
                     @endif
                     <i class="fa-solid fa-boxes-stacked absolute -right-2 -bottom-2 text-slate-50 text-5xl group-hover:scale-110 transition-transform"></i>
