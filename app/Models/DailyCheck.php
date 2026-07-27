@@ -275,11 +275,12 @@ class DailyCheck extends Model
             return;
         }
 
-        // Effectif AVANT le pointage du jour = effectif courant + impact net appliqué.
-        $effectifBefore = max(1, (int) $batch->current_quantity + $check->calculateNetImpact());
-        $dailyRate = round($deaths / $effectifBefore * 100, 2);
+        // Taux et seuil viennent du lot : une seule mesure, un seul seuil — et
+        // celui-ci dépend désormais de la PHASE, car 0,8 %/jour est normal à J3
+        // sur des poussins de chair et alarmant en finition.
+        $dailyRate = $batch->dailyMortalityRate($check);
 
-        if ($dailyRate < (float) setting('elevage.daily_mortality_alert_pct', 0.5)) {
+        if ($dailyRate < $batch->dailyMortalityThreshold()) {
             return;
         }
 
