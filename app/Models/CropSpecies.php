@@ -54,6 +54,15 @@ class CropSpecies extends Model
         'greffon'               => 'Greffon',
     ];
 
+    /**
+     * Libellés d'unité RÉCOLTÉE proposés au catalogue. On compte des fruits, des
+     * régimes, des tubercules — jamais des « unités » : « ≈ 1 200 régimes » se
+     * lit, « ≈ 1 200 unités » ne se lit pas.
+     */
+    public const HARVEST_UNIT_LABELS = [
+        'fruit', 'régime', 'tubercule', 'pied', 'bulbe', 'gousse', 'épi', 'noix', 'botte',
+    ];
+
     /** Unités de comptage du matériel de plantation. */
     public const PLANTING_UNITS = ['kg', 'unité', 'botte', 'sac'];
 
@@ -94,6 +103,87 @@ class CropSpecies extends Model
         return $this->planting_unit === 'kg' ? round($quantity, 2) : (float) round($quantity);
     }
 
+    /**
+     * CATALOGUE ENCODÉ pour les formulaires de cycle — source UNIQUE.
+     *
+     * Ce tableau vivait en deux copies, une par vue. Résultat immédiat : quand
+     * j'ai ajouté le matériel de plantation, je n'ai patché que la création, et
+     * l'écran de modification a continué d'afficher « Quantité semence » sur un
+     * ananas. Mon test de l'époque cherchait la présence de l'appel JavaScript,
+     * pas celle des DONNÉES : il passait au vert sur un écran cassé.
+     *
+     * @param  \Illuminate\Support\Collection<int, self>  $species
+     * @return array<int, array<string, mixed>>
+     */
+    public static function formCatalogue($species): array
+    {
+        return $species->map(fn (self $sp) => [
+            'name'           => $sp->name,
+            'local_name'     => $sp->local_name,
+            'cycle_days_min' => $sp->cycle_days_min,
+            'cycle_days_max' => $sp->cycle_days_max,
+            'avg_yield_tha'  => $sp->avg_yield_tha !== null ? (float) $sp->avg_yield_tha : null,
+
+            // Matériel de plantation : adapte le libellé, l'unité et la quantité.
+            'planting_material' => $sp->planting_material,
+            'planting_unit'     => $sp->planting_unit,
+            'planting_density'  => $sp->planting_density !== null ? (int) $sp->planting_density : null,
+
+            // Poids moyen de l'unité récoltée : convertit le rendement en fruits.
+            'avg_unit_weight_kg' => $sp->avg_unit_weight_kg !== null ? (float) $sp->avg_unit_weight_kg : null,
+            'harvest_unit_label' => $sp->harvest_unit_label,
+
+            'varieties' => $sp->varieties->map(fn ($v) => [
+                'name'          => $v->name,
+                'cycle_days'    => $v->cycle_days,
+                'avg_yield_tha' => $v->avg_yield_tha !== null ? (float) $v->avg_yield_tha : null,
+            ])->values(),
+        ])->values()->all();
+    }
+
+    /**
+     * Combien d'unités récoltées pour un poids donné ? null si le poids moyen
+     * n'est pas renseigné — on ne devine pas, on se tait.
+     */
+    public function unitsForWeight(?float $kg): ?int
+    {
+        $weight = (float) ($this->avg_unit_weight_kg ?? 0);
+
+        if ($weight <= 0 || ! $kg || $kg <= 0) {
+            return null;
+        }
+
+        return (int) round($kg / $weight);
+    }
+
+    /**
+     * Poids attendu pour un nombre d'unités — l'usage qui rapporte le plus au
+     * terrain : le technicien compte 500 fruits, l'application propose 750 kg.
+     * Sans cela, une récolte conservée restait sans pesée, donc sans valeur (T1).
+     */
+    public function weightForUnits(?float $units): ?float
+    {
+        $weight = (float) ($this->avg_unit_weight_kg ?? 0);
+
+        if ($weight <= 0 || ! $units || $units <= 0) {
+            return null;
+        }
+
+        return round($units * $weight, 2);
+    }
+
+    /** « fruit » → « fruits ». Le pluriel se voit à l'écran. */
+    public function harvestUnitPlural(?int $count = null): ?string
+    {
+        if (! $this->harvest_unit_label) {
+            return null;
+        }
+
+        $label = $this->harvest_unit_label;
+
+        return ($count !== null && $count <= 1) ? $label : $label . 's';
+    }
+
     /** Zones agro-écologiques de Guinée (4 régions naturelles). */
     public const ZONES = [
         'basse_guinee'      => 'Basse-Guinée (Maritime)',
@@ -125,6 +215,7 @@ class CropSpecies extends Model
         'type', 'name', 'local_name', 'family',
         'cycle_days_min', 'cycle_days_max', 'avg_yield_tha',
         'planting_material', 'planting_unit', 'planting_density',
+        'avg_unit_weight_kg', 'harvest_unit_label',
         'sowing_months', 'soil_types', 'agro_zones', 'water_need', 'yield_tips',
         'description', 'is_active',
     ];

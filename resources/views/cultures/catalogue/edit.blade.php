@@ -73,6 +73,19 @@
                         <input type="number" min="1" name="planting_density" value="{{ old('planting_density', $species->planting_density) }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic text-right">
                         <p class="text-[8px] font-black text-slate-400 uppercase mt-1 ml-2 italic">{{ __("Sert à PROPOSER la quantité selon la surface. Jamais une contrainte : l'écartement réel varie.") }}</p>
                     </div>
+                    <div>
+                        <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Poids moyen d'une unité récoltée (kg)") }}</label>
+                        <input type="number" step="0.001" min="0.001" name="avg_unit_weight_kg" value="{{ old('avg_unit_weight_kg', $species->avg_unit_weight_kg) }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic text-right">
+                        <p class="text-[8px] font-black text-slate-400 uppercase mt-1 ml-2 italic">{{ __("Ex. 1,5 pour un ananas, 15 pour un régime de bananes. Laissez vide pour une culture qui ne se compte pas (riz, maïs grain).") }}</p>
+                    </div>
+                    <div>
+                        <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Nom de l'unité récoltée") }}</label>
+                        <input type="text" name="harvest_unit_label" list="harvest-unit-list" maxlength="30" value="{{ old('harvest_unit_label', $species->harvest_unit_label) }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic">
+                        <datalist id="harvest-unit-list">
+                            @foreach(\App\Models\CropSpecies::HARVEST_UNIT_LABELS as $label)<option value="{{ $label }}">@endforeach
+                        </datalist>
+                        <p class="text-[8px] font-black text-slate-400 uppercase mt-1 ml-2 italic">{{ __("« ≈ 1 200 régimes » se lit ; « ≈ 1 200 unités » ne se lit pas.") }}</p>
+                    </div>
                     <div class="md:col-span-2">
                         <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Description") }}</label>
                         <textarea name="description" rows="2" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-bold text-slate-700 shadow-inner italic text-[11px]">{{ old('description', $species->description) }}</textarea>

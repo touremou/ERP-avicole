@@ -64,6 +64,10 @@
                 this.$watch('areaHa', () => this.recompute());
                 this.$watch('plantingDate', () => this.recompute());
                 this.$watch('match', () => this.adoptPlantingUnit());
+                // L'équivalence en fruits se lit sous le rendement : elle doit
+                // suivre une correction manuelle du rendement, pas seulement le
+                // recalcul automatique.
+                this.$watch('expectedYield', () => this.buildHint());
                 this.$watch('selectedPlotId', (pid) => {
                     if (Object.keys(this.plotData).length === 0) return; // édition : surface figée
                     this.maxAreaHa = (pid && this.plotData[pid]) ? this.plotData[pid].remaining_ha : null;
@@ -151,17 +155,45 @@
                     + ' ' + unit + '/ha — ajustez selon votre écartement réel.';
             },
 
+            /** Pluriel du nom de l'unité récoltée : « fruit » → « fruits ». */
+            harvestUnitPlural(count) {
+                const label = this.match && this.match.harvest_unit_label;
+                if (!label) return null;
+
+                return (count !== null && count !== undefined && Math.abs(count) <= 1) ? label : label + 's';
+            },
+
             /**
-             * Le rendement reste un POIDS, même pour une culture comptée à l'unité.
-             * Ce n'est pas une incohérence : c'est le kilo qui rend deux cycles
-             * comparables et qui porte le prix de vente, donc la marge. On l'écrit,
-             * parce que « 50 000 » sous un champ « rejets » invite au doute.
+             * ÉQUIVALENCE du rendement en unités récoltées.
+             *
+             * Le rendement reste un POIDS, et c'est juste : le kilo porte le prix
+             * de vente, donc la marge, et une récolte se pèse. Mais un producteur
+             * d'ananas plante des rejets, vend des fruits et raisonne en fruits :
+             * « 50 000 kg » ne lui dit rien tant qu'il ne sait pas que cela fait
+             * environ 33 000 fruits.
+             *
+             * Sans poids moyen au catalogue, on n'affiche RIEN : on ne devine pas
+             * un calibre.
              */
             yieldHint() {
-                if (!this.match || !this.match.planting_unit || this.match.planting_unit === 'kg') return '';
+                const weight = this.match && this.match.avg_unit_weight_kg;
+                const kg = parseFloat(this.expectedYield);
 
-                return 'Le rendement se mesure en kilos, même quand la plantation se compte à l’unité :'
-                    + ' c’est le poids qui porte le prix de vente et la marge.';
+                if (!weight || !(kg > 0)) {
+                    // Pas de poids moyen : on explique au moins pourquoi le
+                    // rendement est en kilos, là où le doute naît.
+                    if (this.match && this.match.planting_unit && this.match.planting_unit !== 'kg') {
+                        return 'Le rendement se mesure en kilos, même quand la plantation se compte à l’unité :'
+                            + ' c’est le poids qui porte le prix de vente et la marge.';
+                    }
+                    return '';
+                }
+
+                const units = Math.round(kg / weight);
+                const label = this.harvestUnitPlural(units) || 'unités';
+
+                return '≈ ' + units.toLocaleString('fr-FR') + ' ' + label
+                    + ' (poids moyen ' + weight.toLocaleString('fr-FR') + ' kg).';
             },
 
             buildHint() {

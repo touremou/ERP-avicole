@@ -720,6 +720,10 @@ export interface RefCropSpecies {
   planting_unit?: string | null
   /** Densité de référence par hectare — sert à PROPOSER la quantité. */
   planting_density?: number | null
+  /** Poids moyen d'UNE unité récoltée (kg) — convertit un comptage en poids. */
+  avg_unit_weight_kg?: string | number | null
+  /** Nom de l'unité récoltée : fruit, régime, tubercule… */
+  harvest_unit_label?: string | null
 }
 
 export interface RefMillProduction {
