@@ -47,28 +47,24 @@
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 @forelse($formulas as $formula)
                     @php
-                        // 1. Calcul du coût théorique basé sur le stock MP actuel
-                        $theoreticalCost = $formula->items->sum(fn($item) => ($item->percentage / 100) * ($item->rawMaterial->unit_cost ?? 0));
-                        
-                        // 2. Analyse Nutritionnelle Pondérée (Réel calculé par le mélange)
-                        $reelEM = $formula->items->sum(fn($item) => ($item->percentage / 100) * ($item->rawMaterial->energy_kcal ?? 0));
-                        $reelPB = $formula->items->sum(fn($item) => ($item->percentage / 100) * ($item->rawMaterial->protein_rate ?? 0));
-
-                        // 3. Matching avec le référentiel normé
-                        $matchedNorm = $norms->where('animal_type', $formula->target_type)->first();
-                        $targetPrice = $matchedNorm->target_price_kg ?? 4500;
-                        $targetEM = $matchedNorm->target_em ?? 3000;
-                        $targetPB = $matchedNorm->target_pb ?? 21;
-                        $diffPrice = $theoreticalCost - $targetPrice;
+                        // Analyse et verdict viennent du MODÈLE, qui lit le référentiel
+                        // (cf. Formula::nutritionalComparison() / economicVerdict()). Cet
+                        // écran recalculait sa propre pondération et repliait sur des
+                        // cibles codées en dur — 3 000 kcal, 21 % de protéine, 4 500/kg —
+                        // qui contredisaient celles de la fiche.
+                        $comparison = $formula->nutritionalComparison();
+                        $verdict = $formula->economicVerdict();
+                        $matchedNorm = $formula->norm();
                     @endphp
                     
                     <div class="bg-white rounded-[3.5rem] border border-slate-100 shadow-sm hover:shadow-2xl transition-all group relative overflow-hidden flex flex-col">
                         {{-- Indicateur de Performance Prix --}}
                         <div @class([
                             'absolute top-0 left-0 w-2 h-full transition-all',
-                            'bg-emerald-500' => $diffPrice <= 0,
-                            'bg-amber-400' => $diffPrice > 0 && $diffPrice < 300,
-                            'bg-red-500 font-black' => $diffPrice >= 300
+                            'bg-slate-200'   => $verdict['status'] === 'unknown',
+                            'bg-emerald-500' => $verdict['status'] === 'under',
+                            'bg-amber-400'   => $verdict['status'] === 'near',
+                            'bg-red-500 font-black' => $verdict['status'] === 'over',
                         ])></div>
 
                         <div class="p-8 ml-2 flex-1 flex flex-col">
@@ -84,47 +80,23 @@
 
                             {{-- ANALYSE NUTRITIONNELLE VS NORME --}}
                             <div class="space-y-4 mb-8">
-                                <div class="bg-slate-50 p-5 rounded-[2rem] space-y-3 border border-slate-100 shadow-inner text-left">
-                                    {{-- Énergie Métabolisable --}}
-                                    <div class="space-y-1">
-                                        <div class="flex justify-between text-[8px] font-black uppercase italic">
-                                            <span class="text-slate-400">{{ __("Énergie (EM)") }}</span>
-                                            <span class="text-slate-800">{{ number_format($reelEM, 0, ',', ' ') }} / {{ number_format($targetEM, 0, ',', ' ') }} <small>kcal</small></span>
-                                        </div>
-                                        <div class="h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                                            <div class="h-full bg-blue-600 transition-all duration-1000" style="width: {{ min(($reelEM/$targetEM)*100, 100) }}%"></div>
-                                        </div>
-                                    </div>
-
-                                    {{-- Protéine Brute --}}
-                                    <div class="space-y-1">
-                                        <div class="flex justify-between text-[8px] font-black uppercase italic">
-                                            <span class="text-slate-400">{{ __("Protéines (PB)") }}</span>
-                                            <span class="text-slate-800">{{ number_format($reelPB, 1) }}% / {{ number_format($targetPB, 1) }}%</span>
-                                        </div>
-                                        <div class="h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                                            <div @class([
-                                                'h-full transition-all duration-1000',
-                                                'bg-emerald-500' => $reelPB >= $targetPB,
-                                                'bg-red-500' => $reelPB < $targetPB
-                                            ]) style="width: {{ min(($reelPB/$targetPB)*100, 100) }}%"></div>
-                                        </div>
-                                    </div>
+                                <div class="bg-slate-50 p-5 rounded-[2rem] border border-slate-100 shadow-inner text-left">
+                                    @include('provenderie.formulas.partials.nutrient-bars', [
+                                        'comparison' => $comparison,
+                                        'only' => ['em', 'pb'],
+                                    ])
+                                    @unless($matchedNorm)
+                                        <p class="mt-3 text-[8px] font-black uppercase italic text-amber-600 leading-tight">
+                                            <i class="fa-solid fa-triangle-exclamation mr-1"></i>
+                                            {{ __('Aucune norme pour') }} « {{ $formula->target_type }} »
+                                        </p>
+                                    @endunless
                                 </div>
-                                
+
                                 {{-- INDICATEUR FINANCIER --}}
                                 <div class="flex justify-between items-end px-2 text-left">
                                     <span class="text-[9px] font-black text-slate-400 uppercase italic">{{ __("Coût théorique") }}</span>
-                                    <div class="text-right">
-                                        <p class="text-xl font-black text-slate-900 italic tracking-tighter leading-none">{{ number_format($theoreticalCost, 0, ',', ' ') }} <small class="text-[10px]">{{ currency() }}</small></p>
-                                        <p @class([
-                                            'text-[7px] font-black uppercase mt-1 italic',
-                                            'text-emerald-600' => $diffPrice <= 0,
-                                            'text-red-500' => $diffPrice > 0
-                                        ])>
-                                            {{ $diffPrice <= 0 ? __('Sous la norme (-') : __('Surcoût (+') }}{{ number_format(abs($diffPrice), 0, ',', ' ') }} {{ currency() }}/kg)
-                                        </p>
-                                    </div>
+                                    @include('provenderie.formulas.partials.economic-verdict', ['verdict' => $verdict])
                                 </div>
                             </div>
 
@@ -169,22 +141,28 @@
                         <span class="px-4 py-1 bg-blue-600 text-white rounded-full text-[8px] font-black uppercase italic shadow-lg">{{ $norm->name }}</span>
                         <span class="text-[10px] font-black text-slate-400 uppercase italic tracking-tighter">{{ $norm->animal_type }}</span>
                     </div>
-                    <div class="grid grid-cols-2 gap-x-8 gap-y-4">
-                        <div class="flex flex-col border-r border-slate-200">
-                            <span class="text-[8px] text-slate-400 uppercase font-black mb-1 italic">{{ __("EM Cible") }}</span>
-                            <span class="text-sm font-black text-slate-800 italic">{{ number_format($norm->target_em, 0, ',', ' ') }} <small>kcal</small></span>
-                        </div>
-                        <div class="flex flex-col text-left">
-                            <span class="text-[8px] text-slate-400 uppercase font-black mb-1 italic">{{ __("PB Cible") }}</span>
-                            <span class="text-sm font-black text-slate-800 italic">{{ number_format($norm->target_pb, 1) }} %</span>
-                        </div>
-                        <div class="flex flex-col border-r border-slate-200 border-t border-slate-100 pt-2">
-                            <span class="text-[8px] text-slate-400 uppercase font-black mb-1 italic">{{ __("Lysine (%)") }}</span>
-                            <span class="text-sm font-black text-slate-800 italic">{{ number_format($norm->target_lys, 2) }} %</span>
-                        </div>
-                        <div class="flex flex-col border-t border-slate-100 pt-2 text-left">
-                            <span class="text-[8px] text-blue-500 uppercase font-black mb-1 italic">{{ __("Prix Cible") }}</span>
-                            <span class="text-sm font-black text-slate-900 italic">{{ number_format($norm->target_price_kg, 0, ',', ' ') }} {{ currency() }}/kg</span>
+                    {{-- Les SIX cibles du référentiel, déclinées depuis FoodNorm::NUTRIENTS :
+                         méthionine et phosphore n'apparaissaient nulle part alors que le
+                         référentiel les fixe depuis l'origine. --}}
+                    <div class="grid grid-cols-3 gap-x-6 gap-y-3">
+                        @foreach(\App\Models\FoodNorm::NUTRIENTS as $key => $nutrient)
+                            <div class="flex flex-col text-left">
+                                <span class="text-[8px] text-slate-400 uppercase font-black mb-1 italic leading-none">{{ __($nutrient['label']) }}</span>
+                                <span class="text-sm font-black text-slate-800 italic">
+                                    {{ number_format((float) $norm->{$nutrient['target']}, $nutrient['decimals'], ',', ' ') }}
+                                    <small class="opacity-40">{{ $nutrient['unit'] }}</small>
+                                </span>
+                            </div>
+                        @endforeach
+                        <div class="flex flex-col text-left col-span-3 border-t border-slate-100 pt-3">
+                            <span class="text-[8px] text-blue-500 uppercase font-black mb-1 italic leading-none">{{ __("Prix Cible") }}</span>
+                            <span class="text-sm font-black text-slate-900 italic">
+                                @if($norm->targetPrice())
+                                    {{ number_format($norm->targetPrice(), 0, ',', ' ') }} {{ currency() }}/kg
+                                @else
+                                    <span class="text-slate-300">{{ __("non fixé") }}</span>
+                                @endif
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -199,7 +177,7 @@
             <div class="bg-blue-50/50 p-6 rounded-[2.5rem] border border-blue-100 flex flex-col md:flex-row items-center justify-between gap-6">
                 <div class="text-left">
                     <h4 class="text-xs font-black uppercase text-blue-600 italic tracking-tighter mb-1">{{ __("Mettre à jour le Référentiel") }}</h4>
-                    <p class="text-[9px] font-bold text-slate-400 uppercase italic leading-none">{{ __("Importation de masse via fichier Excel (.xlsx)") }}</p>
+                    <p class="text-[9px] font-bold text-slate-400 uppercase italic leading-none">{{ __("Téléchargez le référentiel, corrigez les cibles, réimportez : les normes sont mises à jour sur (type, phase), pas dupliquées.") }}</p>
                 </div>
                 
                 <form action="{{ route('norms.import') }}" method="POST" enctype="multipart/form-data" id="importForm" class="flex items-center gap-4">
@@ -209,7 +187,7 @@
                         class="bg-slate-900 text-white px-8 py-4 rounded-2xl text-[9px] font-black uppercase italic tracking-widest shadow-xl hover:bg-blue-600 transition-all flex items-center">
                         <i class="fa-solid fa-file-import mr-2"></i> {{ __("Sélectionner le fichier") }}
                     </button>
-                    <a href="/templates/norms_template.xlsx" title="{{ __('Télécharger le modèle Excel') }}" class="w-12 h-12 bg-white text-blue-500 rounded-xl flex items-center justify-center border border-blue-100 hover:bg-blue-50 shadow-sm transition-all">
+                    <a href="{{ route('norms.template') }}" title="{{ __('Télécharger le modèle Excel') }}" class="w-12 h-12 bg-white text-blue-500 rounded-xl flex items-center justify-center border border-blue-100 hover:bg-blue-50 shadow-sm transition-all">
                         <i class="fa-solid fa-download"></i>
                     </a>
                 </form>

@@ -26,7 +26,8 @@ class FormulaController extends Controller
         if (Gate::denies('provenderie.L')) return redirect()->route('dashboard')->with('error', 'Accès non autorisé.');
 
         $formulas = Formula::with(['items.rawMaterial'])->latest()->get();
-        $norms = FoodNorm::where('is_active', true)->get();
+        Formula::attachNorms($formulas);
+        $norms = FoodNorm::active()->orderBy('name')->get();
 
         return view('provenderie.formulas.index', compact('formulas', 'norms'));
     }
@@ -36,7 +37,7 @@ class FormulaController extends Controller
         if (Gate::denies('provenderie.C')) return back()->with('error', 'Privilèges insuffisants.');
 
         $materials = RawMaterial::where('is_active', true)->orderBy('name')->get();
-        $norms = FoodNorm::where('is_active', true)->orderBy('name')->get();
+        $norms = FoodNorm::active()->orderBy('name')->get();
         // Types de production de toutes les espèces (cible multiespèces de l'aliment).
         $productionTypes = ProductionType::active()->with('species')->orderBy('species_id')->get();
 
@@ -56,29 +57,18 @@ class FormulaController extends Controller
 
     public function show(Formula $formula): View
     {
-        $formula->load('items.rawMaterial');
+        $formula->load('items.rawMaterial', 'productionType');
 
-        $norm = FoodNorm::where('animal_type', $formula->target_type)->first();
+        // Une seule source pour l'analyse et le verdict : le modèle, qui lit le
+        // référentiel. La fiche portait auparavant sa propre pondération et ses
+        // propres cibles de repli (3000 kcal / 20 % / 1,1 %), affichées sous
+        // l'étiquette « Cible (Norme) » alors qu'aucune norme n'était rattachée.
+        $comparison = $formula->nutritionalComparison();
+        $verdict    = $formula->economicVerdict();
+        $norm       = $formula->norm();
+        $candidates = $formula->normCandidates();
 
-        // Analyse nutritionnelle pondérée
-        $stats = [
-            'energy'  => $formula->items->sum(fn($i) => ($i->percentage / 100) * ($i->rawMaterial->energy_kcal ?? 0)),
-            'protein' => $formula->items->sum(fn($i) => ($i->percentage / 100) * ($i->rawMaterial->protein_rate ?? 0)),
-            'lysine'  => $formula->items->sum(fn($i) => ($i->percentage / 100) * ($i->rawMaterial->lysine_rate ?? 0)),
-            'cost'    => $formula->items->sum(fn($i) => ($i->percentage / 100) * ($i->rawMaterial->unit_cost ?? 0)),
-        ];
-
-        $chartData = [
-            'labels' => ['Énergie (EM)', 'Protéines (PB)', 'Lysine'],
-            'real'   => [round($stats['energy']), round($stats['protein'], 1), round($stats['lysine'], 2)],
-            'target' => [
-                $norm->target_em ?? 3000,
-                $norm->target_pb ?? 20,
-                $norm->target_lys ?? 1.1,
-            ],
-        ];
-
-        return view('provenderie.formulas.show', compact('formula', 'norm', 'stats', 'chartData'));
+        return view('provenderie.formulas.show', compact('formula', 'norm', 'comparison', 'verdict', 'candidates'));
     }
 
     public function edit(Formula $formula): View|RedirectResponse
@@ -88,8 +78,11 @@ class FormulaController extends Controller
         $formula->load('items.rawMaterial');
         $rawMaterials = RawMaterial::orderBy('name')->get();
         $productionTypes = ProductionType::active()->with('species')->orderBy('species_id')->get();
+        // L'écran d'OPTIMISATION était le seul sans cibles à l'écran : on y
+        // travaillait à l'aveugle alors que la création, elle, les affichait.
+        $norms = FoodNorm::active()->orderBy('name')->get();
 
-        return view('provenderie.formulas.edit', compact('formula', 'rawMaterials', 'productionTypes'));
+        return view('provenderie.formulas.edit', compact('formula', 'rawMaterials', 'productionTypes', 'norms'));
     }
 
     public function update(UpdateFormulaRequest $request, Formula $formula, UpdateFormula $action): RedirectResponse
@@ -129,6 +122,45 @@ class FormulaController extends Controller
             Log::error("Import normes échoué : {$e->getMessage()}");
             return back()->with('error', 'Erreur dans le fichier : ' . $e->getMessage());
         }
+    }
+
+    /**
+     * MODÈLE DE FICHIER pour l'import du référentiel normé.
+     *
+     * L'écran proposait « /templates/norms_template.xlsx », un fichier qui
+     * n'existe pas dans le dépôt : le lien renvoyait un 404 et il fallait
+     * deviner l'ordre des dix colonnes d'un import positionnel — une colonne
+     * décalée écrivait l'énergie dans la protéine sans un mot. Le modèle est
+     * maintenant EXTRAIT du référentiel en place : les colonnes sont
+     * nécessairement dans le bon ordre, et le fichier téléchargé, corrigé puis
+     * réimporté met à jour les normes au lieu de les dupliquer.
+     */
+    public function normsTemplate(): \Symfony\Component\HttpFoundation\StreamedResponse
+    {
+        $norms = FoodNorm::orderBy('animal_type')->orderBy('phase')->get();
+
+        return response()->streamDownload(function () use ($norms) {
+            $out = fopen('php://output', 'w');
+            fwrite($out, "\xEF\xBB\xBF"); // BOM : Excel ouvre l'UTF-8 correctement
+
+            fputcsv($out, [
+                'Nom', 'Type animal (clef)', 'Phase (clef)',
+                'Énergie EM kcal/kg', 'Protéine brute %', 'Lysine %',
+                'Méthionine %', 'Calcium %', 'Phosphore %',
+                'Prix cible ' . currency() . '/kg',
+            ], ';');
+
+            foreach ($norms as $norm) {
+                fputcsv($out, [
+                    $norm->name, $norm->animal_type, $norm->phase,
+                    $norm->target_em, $norm->target_pb, $norm->target_lys,
+                    $norm->target_meth, $norm->target_ca, $norm->target_p,
+                    $norm->target_price_kg,
+                ], ';');
+            }
+
+            fclose($out);
+        }, 'normes-nutritionnelles.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 
     /**

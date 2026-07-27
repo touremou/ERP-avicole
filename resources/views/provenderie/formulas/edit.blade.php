@@ -4,14 +4,15 @@
     </x-slot>
 
     <div class="py-12 italic font-bold text-left">
-        <div class="max-w-5xl mx-auto sm:px-6 lg:px-8">
+        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             
             {{-- PROTECTION PERMISSION M (MODIFICATION) --}}
             @can('provenderie.M')
             <form action="{{ route('formulas.update', $formula->id) }}" method="POST" id="formulaForm">
                 @csrf @method('PUT')
 
-                <div class="space-y-8">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+                <div class="lg:col-span-2 space-y-8">
                     {{-- 1. INFOS GÉNÉRALES --}}
                     <div class="bg-white p-10 rounded-[3.5rem] border border-slate-100 shadow-sm grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div class="md:col-span-2">
@@ -50,18 +51,19 @@
 
                         <div id="ingredients-container" class="space-y-4">
                             @foreach($formula->items as $index => $item)
-                            <div class="ingredient-row flex flex-col md:flex-row items-center gap-4 p-4 bg-slate-50 rounded-[2rem] border border-slate-100 relative group transition-all hover:bg-white hover:shadow-md">
+                            <div data-lab-row class="ingredient-row flex flex-col md:flex-row items-center gap-4 p-4 bg-slate-50 rounded-[2rem] border border-slate-100 relative group transition-all hover:bg-white hover:shadow-md">
                                 <div class="flex-1 w-full text-left">
                                     <label class="block text-[8px] font-black text-slate-400 uppercase mb-1 ml-2 italic leading-none">{{ __("Matière Première") }}</label>
-                                    <select name="ingredients[{{ $index }}][id]" required class="w-full bg-white border-none rounded-xl p-3 text-xs font-black text-slate-800 shadow-sm italic appearance-none">
+                                    <select name="ingredients[{{ $index }}][id]" data-lab-material required class="w-full bg-white border-none rounded-xl p-3 text-xs font-black text-slate-800 shadow-sm italic appearance-none">
                                         @foreach($rawMaterials as $rm)
-                                            <option value="{{ $rm->id }}" @selected($item->raw_material_id == $rm->id)>{{ strtoupper($rm->name) }}</option>
+                                            <option value="{{ $rm->id }}" @selected($item->raw_material_id == $rm->id)
+                                                    @include('provenderie.formulas.partials.material-data', ['material' => $rm])>{{ strtoupper($rm->name) }}</option>
                                         @endforeach
                                     </select>
                                 </div>
                                 <div class="w-full md:w-32 text-left">
                                     <label class="block text-[8px] font-black text-slate-400 uppercase mb-1 ml-2 italic text-center leading-none">{{ __("Part (%)") }}</label>
-                                    <input type="number" step="0.01" name="ingredients[{{ $index }}][percentage]" value="{{ $item->percentage }}" oninput="calculateTotal()" required class="percentage-input w-full bg-white border-none rounded-xl p-3 text-center font-black text-blue-600 shadow-sm italic">
+                                    <input type="number" step="0.01" name="ingredients[{{ $index }}][percentage]" value="{{ $item->percentage }}" data-lab-share required class="w-full bg-white border-none rounded-xl p-3 text-center font-black text-blue-600 shadow-sm italic">
                                 </div>
                                 <button type="button" onclick="removeRow(this)" class="mt-4 md:mt-0 p-3 text-red-300 hover:text-red-500 transition-colors">
                                     <i class="fa-solid fa-trash-can"></i>
@@ -78,18 +80,30 @@
                                 <p class="text-[8px] text-slate-400 italic font-bold leading-none">{{ __("Le dosage cumulé doit être égal à 100%") }}</p>
                             </div>
                             <div class="text-right relative z-10">
-                                <span id="total-display" class="text-3xl font-black italic tracking-tighter transition-all">0%</span>
+                                <span data-lab-status class="text-3xl font-black italic tracking-tighter transition-all">0%</span>
                             </div>
                         </div>
                     </div>
 
                     {{-- BOUTON ENREGISTRER --}}
                     <div class="flex flex-col items-center gap-4">
-                        <button type="submit" id="submitBtn" disabled class="w-full bg-slate-900 text-white px-16 py-6 rounded-[2.5rem] text-xs font-black uppercase italic tracking-[0.2em] shadow-2xl hover:bg-emerald-600 transition-all disabled:opacity-20 disabled:cursor-not-allowed active:scale-95">
+                        <button type="submit" data-lab-submit disabled class="w-full bg-slate-900 text-white px-16 py-6 rounded-[2.5rem] text-xs font-black uppercase italic tracking-[0.2em] shadow-2xl hover:bg-emerald-600 transition-all disabled:opacity-20 disabled:cursor-not-allowed active:scale-95">
                             {{ __("Mettre à jour la Bibliothèque") }}
                         </button>
-                        <p id="alert-msg" class="text-[9px] text-red-500 uppercase font-black italic animate-pulse">{{ __("L'équilibre à 100% n'est pas atteint") }}</p>
+                        <p data-lab-warning class="text-[9px] text-red-500 uppercase font-black italic animate-pulse">{{ __("L'équilibre à 100% n'est pas atteint") }}</p>
                     </div>
+                </div>
+
+                {{-- LABORATOIRE : mêmes cibles, même calcul et même rendu qu'à la
+                     création. Cet écran — celui où l'on OPTIMISE une recette — ne
+                     montrait que le total des parts : ni teneurs, ni cibles, ni
+                     coût de revient. --}}
+                <div class="lg:sticky lg:top-8">
+                    @include('provenderie.formulas.partials.lab-dashboard', [
+                        'norms' => $norms,
+                        'selected' => $formula->target_type,
+                    ])
+                </div>
                 </div>
             </form>
             @else
@@ -103,6 +117,8 @@
             @endcan
         </div>
     </div>
+
+    @include('provenderie.formulas.partials.lab-script')
 
     <script>
         function el(id) { return document.getElementById(id); }
@@ -124,55 +140,48 @@
             row.innerHTML = `
                 <div class="flex-1 w-full text-left">
                     <label class="block text-[8px] font-black text-slate-400 uppercase mb-1 ml-2 italic leading-none">{{ __("Matière Première") }}</label>
-                    <select name="ingredients[${rowCount}][id]" required class="w-full bg-white border-none rounded-xl p-3 text-xs font-black text-slate-800 shadow-sm italic appearance-none">
+                    <select name="ingredients[${rowCount}][id]" data-lab-material required class="w-full bg-white border-none rounded-xl p-3 text-xs font-black text-slate-800 shadow-sm italic appearance-none">
                         @foreach($rawMaterials as $rm)
-                            <option value="{{ $rm->id }}">{{ strtoupper($rm->name) }}</option>
+                            <option value="{{ $rm->id }}" @include('provenderie.formulas.partials.material-data', ['material' => $rm])>{{ strtoupper($rm->name) }}</option>
                         @endforeach
                     </select>
                 </div>
                 <div class="w-full md:w-32 text-left">
                     <label class="block text-[8px] font-black text-slate-400 uppercase mb-1 ml-2 italic text-center leading-none">{{ __("Part (%)") }}</label>
-                    <input type="number" step="0.01" name="ingredients[${rowCount}][percentage]" placeholder="0" oninput="calculateTotal()" required class="percentage-input w-full bg-white border-none rounded-xl p-3 text-center font-black text-blue-600 shadow-sm italic">
+                    <input type="number" step="0.01" name="ingredients[${rowCount}][percentage]" placeholder="0" data-lab-share required class="w-full bg-white border-none rounded-xl p-3 text-center font-black text-blue-600 shadow-sm italic">
                 </div>
                 <button type="button" onclick="removeRow(this)" class="p-3 text-red-300 hover:text-red-500"><i class="fa-solid fa-trash-can"></i></button>
             `;
+            row.setAttribute('data-lab-row', '');
             container.appendChild(row);
             rowCount++;
-            calculateTotal();
+            refreshLab();
         }
 
         function removeRow(btn) {
             btn.closest('.ingredient-row').remove();
-            calculateTotal();
+            refreshLab();
         }
 
-        function calculateTotal() {
-            let total = 0;
-            document.querySelectorAll('.percentage-input').forEach(input => {
-                total += parseFloat(input.value) || 0;
-            });
+        // Le total des parts, les teneurs, les cibles et le coût de revient sont
+        // calculés par FormulaLab — le même module qu'à la création. Cet écran
+        // portait sa propre somme, qui ne savait compter que les pourcentages.
+        let refreshLab = function () {};
 
-            const display = el('total-display');
-            const btn = el('submitBtn');
-            const msg = el('alert-msg');
-            
-            display.innerText = total.toFixed(2) + '%';
-            
-            // Tolérance pour erreurs d'arrondi
-            if (Math.abs(total - 100) < 0.01) {
-                display.classList.remove('text-red-500');
-                display.classList.add('text-emerald-500');
-                if(btn) btn.disabled = false;
-                if(msg) msg.classList.add('hidden');
-            } else {
-                display.classList.remove('text-emerald-500');
-                display.classList.add('text-red-500');
-                if(btn) btn.disabled = true;
-                if(msg) msg.classList.remove('hidden');
+        document.addEventListener('DOMContentLoaded', function () {
+            const form = el('formulaForm');
+            if (! form) return;
+
+            refreshLab = window.FormulaLab.attach(form);
+
+            // Le référentiel choisi devient le type cible enregistré : la fiche
+            // retrouve ensuite SA norme.
+            const normSelect = form.querySelector('[data-lab-norm]');
+            if (normSelect) {
+                normSelect.addEventListener('change', function () {
+                    if (normSelect.value) el('target_type_edit').value = normSelect.value;
+                });
             }
-        }
-
-        // Initialisation immédiate
-        document.addEventListener('DOMContentLoaded', calculateTotal);
+        });
     </script>
 </x-app-layout>

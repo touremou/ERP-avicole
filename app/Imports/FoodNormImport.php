@@ -1,29 +1,54 @@
 <?php
+
 namespace App\Imports;
 
 use App\Models\FoodNorm;
 use Maatwebsite\Excel\Concerns\ToModel;
-use Maatwebsite\Excel\Concerns\WithStartRow; // On commence à la ligne 2
 use Maatwebsite\Excel\Concerns\WithCustomCsvSettings;
+use Maatwebsite\Excel\Concerns\WithStartRow; // On commence à la ligne 2
 
+/**
+ * IMPORT DU RÉFÉRENTIEL NORMÉ — idempotent.
+ *
+ * L'ancienne version faisait `new FoodNorm([...])` sur chaque ligne : réimporter
+ * le classeur après avoir corrigé une cible AJOUTAIT un jeu complet de normes au
+ * lieu de mettre à jour l'existant, et les écrans lisaient ensuite l'un des
+ * doublons au hasard. La clef métier est (type d'animal, phase) : on met donc à
+ * jour sur cette clef.
+ *
+ * Le fichier est positionnel (cf. FoodNorm::IMPORT_COLUMNS) et sans en-tête
+ * vérifiable : une colonne décalée écrirait l'énergie dans la protéine sans un
+ * mot. On refuse donc les lignes dont le type est vide ou dont l'énergie n'est
+ * pas un nombre — ce qui écarte aussi les lignes de titre et les lignes vides du
+ * bas de classeur, qui créaient des normes fantômes.
+ */
 class FoodNormImport implements ToModel, WithStartRow, WithCustomCsvSettings
 {
     public function model(array $row)
     {
-        // On utilise les index numériques [0, 1, 2...] au lieu des noms
-        return new FoodNorm([
-            'name'            => $row[0], // Colonne A
-            'animal_type'     => $row[1], // Colonne B
-            'phase'           => $row[2], // Colonne C
-            'target_em'       => $row[3], // Colonne D
-            'target_pb'       => $row[4], // ...
-            'target_lys'      => $row[5],
-            'target_meth'     => $row[6],
-            'target_ca'       => $row[7],
-            'target_p'        => $row[8],
-            'target_price_kg' => $row[9],
-            'is_active'       => true,
-        ]);
+        $animalType = trim((string) ($row[1] ?? ''));
+        $phase      = trim((string) ($row[2] ?? ''));
+
+        if ($animalType === '' || $phase === '' || $this->number($row[3] ?? null) === null) {
+            return null; // ligne de titre, de séparation ou de bas de classeur
+        }
+
+        FoodNorm::updateOrCreate(
+            ['animal_type' => $animalType, 'phase' => $phase],
+            [
+                'name'            => trim((string) ($row[0] ?? '')) ?: "{$animalType} — {$phase}",
+                'target_em'       => $this->number($row[3] ?? null) ?? 0,
+                'target_pb'       => $this->number($row[4] ?? null) ?? 0,
+                'target_lys'      => $this->number($row[5] ?? null) ?? 0,
+                'target_meth'     => $this->number($row[6] ?? null) ?? 0,
+                'target_ca'       => $this->number($row[7] ?? null) ?? 0,
+                'target_p'        => $this->number($row[8] ?? null) ?? 0,
+                'target_price_kg' => $this->number($row[9] ?? null),
+                'is_active'       => true,
+            ]
+        );
+
+        return null; // l'écriture est faite ci-dessus, rien à insérer en plus
     }
 
     public function startRow(): int
@@ -34,7 +59,23 @@ class FoodNormImport implements ToModel, WithStartRow, WithCustomCsvSettings
     public function getCsvSettings(): array
     {
         return [
-            'delimiter' => ';' // Indispensable pour votre fichier
+            'delimiter' => ';', // Indispensable pour votre fichier
         ];
+    }
+
+    /**
+     * Tolère la virgule décimale et les espaces de milliers : un Excel
+     * francophone écrit « 3 000,50 », que `(float)` tronquait à 3.
+     */
+    private function number($value): ?float
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        $clean = str_replace([' ', "\u{00A0}", ' '], '', (string) $value);
+        $clean = str_replace(',', '.', $clean);
+
+        return is_numeric($clean) ? (float) $clean : null;
     }
 }

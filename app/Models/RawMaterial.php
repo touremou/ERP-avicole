@@ -22,7 +22,9 @@ class RawMaterial extends Model
         'energy_kcal', 
         'protein_rate', 
         'lysine_rate', 
+        'methionine_rate',
         'calcium_rate',
+        'phosphorus_rate',
         'alert_threshold', 
         'is_active'
     ];
@@ -37,7 +39,9 @@ class RawMaterial extends Model
         'energy_kcal'     => 'decimal:2',
         'protein_rate'    => 'decimal:2',
         'lysine_rate'     => 'decimal:3', // Les acides aminés sont précis à 3 décimales
+        'methionine_rate' => 'decimal:3',
         'calcium_rate'    => 'decimal:2',
+        'phosphorus_rate' => 'decimal:3',
         'alert_threshold' => 'decimal:2',
         'is_active'       => 'boolean',
     ];

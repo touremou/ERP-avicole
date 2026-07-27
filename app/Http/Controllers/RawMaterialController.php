@@ -14,6 +14,34 @@ use Illuminate\View\View;
 
 class RawMaterialController extends Controller
 {
+    /**
+     * Règles de validation des teneurs, DÉRIVÉES de la table des nutriments.
+     *
+     * Ces règles étaient recopiées à la main dans store(), update() et
+     * updateNutrition() — et les trois listes différaient : la lysine était
+     * validée à la création mais absente de tout formulaire, donc toujours nulle,
+     * tandis que la fiche d'analyse affichait sa cible. En dérivant la liste du
+     * référentiel, un nutriment ajouté est accepté partout du même coup.
+     */
+    private function nutrientRules(): array
+    {
+        $rules = [];
+
+        foreach (\App\Models\FoodNorm::NUTRIENTS as $nutrient) {
+            $column = $nutrient['material'];
+            $max = $nutrient['unit'] === '%' ? '|max:100' : '';
+            $rules[$column] = 'nullable|numeric|min:0' . $max;
+        }
+
+        return $rules;
+    }
+
+    /** Colonnes de teneur, dans l'ordre du référentiel. */
+    private function nutrientColumns(): array
+    {
+        return array_column(\App\Models\FoodNorm::NUTRIENTS, 'material');
+    }
+
     public function index(): View|RedirectResponse
     {
         if (Gate::denies('provenderie.L')) return redirect()->route('dashboard')->with('error', 'Accès non autorisé.');
@@ -39,29 +67,27 @@ class RawMaterialController extends Controller
             'unit' => strtolower($request->input('unit', 'kg')),
         ]);
 
-        $validated = $request->validate([
+        $validated = $request->validate(array_merge([
             'name'            => 'required|string|unique:raw_materials,name|max:100',
             'unit'            => 'required|string|in:kg,l,unite',
             'stock_qty'       => 'nullable|numeric|min:0',
             'unit_cost'       => 'nullable|numeric|min:0',
             'alert_threshold' => 'nullable|numeric|min:0',
-            'energy_kcal'     => 'nullable|numeric|min:0',
-            'protein_rate'    => 'nullable|numeric|min:0|max:100',
-            'lysine_rate'     => 'nullable|numeric|min:0|max:100',
-            'calcium_rate'    => 'nullable|numeric|min:0|max:100',
-        ], [
+        ], $this->nutrientRules()), [
             'name.unique' => 'Une matière première porte déjà ce nom.',
         ]);
 
-        // Valeurs par défaut pour les colonnes NOT NULL
+        // Valeurs par défaut pour les colonnes NOT NULL. Une teneur laissée vide
+        // vaut 0 = « non analysé » : l'analyse d'une formule le signalera au lieu
+        // de conclure à une carence (cf. Formula::nutrientCoverage()).
         $validated['stock_qty']       = $validated['stock_qty'] ?? 0;
         $validated['unit_cost']       = $validated['unit_cost'] ?? 0;
         $validated['alert_threshold'] = $validated['alert_threshold'] ?? 100;
-        $validated['energy_kcal']     = $validated['energy_kcal'] ?? 0;
-        $validated['protein_rate']    = $validated['protein_rate'] ?? 0;
-        $validated['lysine_rate']     = $validated['lysine_rate'] ?? 0;
-        $validated['calcium_rate']    = $validated['calcium_rate'] ?? 0;
         $validated['is_active']       = true;
+
+        foreach ($this->nutrientColumns() as $column) {
+            $validated[$column] = $validated[$column] ?? 0;
+        }
 
         RawMaterial::create($validated);
 
@@ -81,15 +107,13 @@ class RawMaterialController extends Controller
             'unit' => strtolower($request->input('unit', $material->unit)),
         ]);
 
-        $validated = $request->validate([
+        $validated = $request->validate(array_merge([
             'name'            => 'required|string|max:100|unique:raw_materials,name,' . $material->id,
             'unit'            => 'required|string|in:kg,l,unite',
             'stock_qty'       => 'required|numeric|min:0',
             'unit_cost'       => 'required|numeric|min:0',
             'alert_threshold' => 'nullable|numeric|min:0',
-            'energy_kcal'     => 'nullable|numeric|min:0',
-            'protein_rate'    => 'nullable|numeric|min:0|max:100',
-        ], [
+        ], $this->nutrientRules()), [
             'name.unique' => 'Une matière première porte déjà ce nom.',
         ]);
 
@@ -148,15 +172,13 @@ class RawMaterialController extends Controller
     {
         if (Gate::denies('provenderie.M')) return back()->with('error', 'Action non autorisée.');
 
-        $request->validate([
-            'energy_kcal'  => 'required|numeric|min:0',
-            'protein_rate' => 'required|numeric|min:0|max:100',
-            'lysine_rate'  => 'nullable|numeric|min:0|max:100',
-            'calcium_rate' => 'nullable|numeric|min:0|max:100',
-        ]);
+        $request->validate(array_merge(
+            ['energy_kcal' => 'required|numeric|min:0', 'protein_rate' => 'required|numeric|min:0|max:100'],
+            collect($this->nutrientRules())->except(['energy_kcal', 'protein_rate'])->all()
+        ));
 
         $material = RawMaterial::findOrFail($id);
-        $material->update($request->only(['energy_kcal', 'protein_rate', 'lysine_rate', 'calcium_rate']));
+        $material->update($request->only($this->nutrientColumns()));
 
         return back()->with('success', "Valeurs nutritionnelles de {$material->name} mises à jour.");
     }

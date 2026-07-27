@@ -248,6 +248,10 @@ Route::middleware(['auth'])->group(function () {
         // Verrou de route par verbe (défense en profondeur, aligné sur les
         // FormRequests/gates du contrôleur) : lecture = L, création = C,
         // édition = M, suppression = S. Le référentiel normé s'importe en S.
+        // AVANT la resource : « /formulas/norms/template » serait sinon capturé
+        // par « /formulas/{formula} » et l'app chercherait une formule nommée
+        // « norms ».
+        Route::get('/formulas/norms/template', [FormulaController::class, 'normsTemplate'])->name('norms.template')->middleware('can:L');
         Route::middleware('can:L')->resource('formulas', FormulaController::class)
             ->middlewareFor(['create', 'store'], 'can:C')
             ->middlewareFor(['edit', 'update'], 'can:M')
