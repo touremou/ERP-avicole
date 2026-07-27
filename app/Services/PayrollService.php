@@ -22,8 +22,9 @@ class PayrollService
         $employees = Employee::where('status', 'Actif')->get();
         $created = 0;
         $skipped = 0;
+        $outOfContract = 0;
 
-        DB::transaction(function () use ($period, $employees, &$created, &$skipped) {
+        DB::transaction(function () use ($period, $employees, &$created, &$skipped, &$outOfContract) {
             foreach ($employees as $emp) {
                 // Vérifier si la fiche existe déjà
                 $exists = Payslip::where('payroll_period_id', $period->id)
@@ -37,11 +38,24 @@ class PayrollService
                 $weekends = $this->countWeekends($period->start_date, $period->end_date);
                 $workingDays = $totalDays - $weekends;
 
+                // Jours réellement SOUS CONTRAT dans la période (embauche en cours
+                // de mois, terme de CDD atteint). Aucun jour sous contrat = aucune
+                // fiche : mieux vaut ne rien produire qu'un bulletin à zéro, qui
+                // ferait croire à un salarié impayé.
+                $contract = $this->contractWindow($emp, $period);
+
+                if ($contract['working_days'] <= 0) {
+                    $outOfContract++;
+                    continue;
+                }
+
+                $daysOutsideContract = max(0, $workingDays - $contract['working_days']);
+
                 // Congés/absences pendant la période
                 $leaves = EmployeeLeave::where('employee_id', $emp->id)
                     ->whereIn('status', ['approuve', 'en_cours', 'termine'])
-                    ->where('start_date', '<=', $period->end_date)
-                    ->where('end_date', '>=', $period->start_date)
+                    ->where('start_date', '<=', $contract['end'])
+                    ->where('end_date', '>=', $contract['start'])
                     ->get();
 
                 $daysLeave = 0;
@@ -49,8 +63,11 @@ class PayrollService
                 $unpaidDays = 0;
 
                 foreach ($leaves as $leave) {
-                    $overlapStart = max($leave->start_date->timestamp, $period->start_date->timestamp);
-                    $overlapEnd = min($leave->end_date->timestamp, $period->end_date->timestamp);
+                    // Chevauchement borné à la FENÊTRE CONTRACTUELLE : un congé qui
+                    // déborde avant l'embauche ou après le terme ne se déduit pas
+                    // deux fois (il est déjà hors contrat).
+                    $overlapStart = max($leave->start_date->timestamp, $contract['start']->timestamp);
+                    $overlapEnd = min($leave->end_date->timestamp, $contract['end']->timestamp);
                     $overlapDays = max(0, Carbon::createFromTimestamp($overlapEnd)->diffInDays(Carbon::createFromTimestamp($overlapStart)) + 1);
 
                     if (in_array($leave->type, ['conge_annuel', 'maladie', 'maternite', 'formation'])) {
@@ -70,15 +87,16 @@ class PayrollService
                 // sont pré-pointés « conge » (cf. AttendanceController), donc ils ne
                 // remontent pas ici en « absent » → pas de double comptage.
                 $pointedAbsent = EmployeeAttendance::where('employee_id', $emp->id)
-                    ->whereDate('attendance_date', '>=', $period->start_date->toDateString())
-                    ->whereDate('attendance_date', '<=', $period->end_date->toDateString())
+                    ->whereDate('attendance_date', '>=', $contract['start']->toDateString())
+                    ->whereDate('attendance_date', '<=', $contract['end']->toDateString())
                     ->where('status', 'absent')
                     ->count();
 
                 $daysAbsent += $pointedAbsent;
                 $unpaidDays += $pointedAbsent;
 
-                $daysWorked = max(0, $workingDays - $daysLeave - $daysAbsent);
+                // Les jours travaillés se comptent DANS la fenêtre contractuelle.
+                $daysWorked = max(0, $contract['working_days'] - $daysLeave - $daysAbsent);
 
                 // Créer la fiche
                 $payslip = Payslip::create([
@@ -92,6 +110,24 @@ class PayrollService
                     'payment_method'    => $emp->orange_money_number ? 'orange_money' : 'especes',
                     'payment_status'    => 'en_attente',
                 ]);
+
+                // PRORATA D'ENTRÉE / DE SORTIE, porté par une ligne du bulletin
+                // plutôt qu'en modifiant le salaire de base : le salarié voit le
+                // salaire contractuel et la retenue qui l'explique.
+                if ($daysOutsideContract > 0 && $workingDays > 0) {
+                    $prorata = (int) round($emp->salary / $workingDays * $daysOutsideContract);
+                    $label = $emp->hire_date && $emp->hire_date->gt($period->start_date)
+                        ? "Entrée en cours de période ({$daysOutsideContract}j non dus)"
+                        : "Fin de contrat en cours de période ({$daysOutsideContract}j non dus)";
+
+                    PayslipLine::create([
+                        'payslip_id' => $payslip->id,
+                        'type'       => 'deduction',
+                        'label'      => $label,
+                        'amount'     => $prorata,
+                        'category'   => 'prorata_contrat',
+                    ]);
+                }
 
                 // Déduction pour absences non payées
                 if ($unpaidDays > 0 && $workingDays > 0) {
@@ -117,18 +153,19 @@ class PayrollService
         $period->recalculateTotals();
         $period->update(['status' => 'calcule']);
 
-        return ['created' => $created, 'skipped' => $skipped];
+        return ['created' => $created, 'skipped' => $skipped, 'out_of_contract' => $outOfContract];
     }
 
     /**
-     * Compte les dimanches dans une période.
+     * Compte les jours de repos hebdomadaire dans une période (cf. rh.rest_day).
      */
     private function countWeekends(Carbon $start, Carbon $end): int
     {
         $count = 0;
         $current = $start->copy();
+        $restDay = setting('rh.rest_day', 'dimanche');
+
         while ($current->lte($end)) {
-            $restDay = setting('rh.rest_day', 'dimanche');
             $isRest = match($restDay) {
                 'dimanche' => $current->isSunday(),
                 'samedi'   => $current->isSaturday(),
@@ -140,5 +177,46 @@ class PayrollService
             $current->addDay();
         }
         return $count;
+    }
+
+    /** Jours ouvrés d'un intervalle (hors jour de repos hebdomadaire). */
+    private function workingDaysBetween(Carbon $start, Carbon $end): int
+    {
+        if ($start->gt($end)) {
+            return 0;
+        }
+
+        $total = (int) $start->diffInDays($end) + 1;
+
+        return max(0, $total - $this->countWeekends($start, $end));
+    }
+
+    /**
+     * FENÊTRE CONTRACTUELLE d'un employé à l'intérieur d'une période de paie.
+     *
+     * La paie ignorait la date d'EMBAUCHE et la date de FIN DE CONTRAT : un agent
+     * recruté le 25 touchait le mois entier, et un CDD arrivé à terme le 10
+     * continuait d'être payé en plein tant que sa fiche restait « Actif » — ce que
+     * rien n'automatise, et à raison : archiver un dossier est une décision RH.
+     * Ces deux dates existent au dossier depuis toujours ; la paie ne les lisait
+     * pas.
+     *
+     * @return array{start: ?Carbon, end: ?Carbon, working_days: int}
+     */
+    private function contractWindow(Employee $employee, PayrollPeriod $period): array
+    {
+        $start = $employee->hire_date && $employee->hire_date->gt($period->start_date)
+            ? $employee->hire_date->copy()
+            : $period->start_date->copy();
+
+        $end = $employee->contract_end_date && $employee->contract_end_date->lt($period->end_date)
+            ? $employee->contract_end_date->copy()
+            : $period->end_date->copy();
+
+        if ($start->gt($end)) {
+            return ['start' => null, 'end' => null, 'working_days' => 0];
+        }
+
+        return ['start' => $start, 'end' => $end, 'working_days' => $this->workingDaysBetween($start, $end)];
     }
 }

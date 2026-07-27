@@ -87,7 +87,17 @@ class PayrollController extends Controller
 
         $result = $service->generatePayroll($period);
 
-        return back()->with('success', "{$result['created']} fiches générées, {$result['skipped']} déjà existantes.");
+        $message = "{$result['created']} fiches générées, {$result['skipped']} déjà existantes.";
+
+        // Un dossier « Actif » dont le contrat ne couvre AUCUN jour de la période
+        // ne produit pas de bulletin — le dire, sinon l'absence de fiche passe
+        // pour un oubli du logiciel.
+        if (($result['out_of_contract'] ?? 0) > 0) {
+            $message .= " {$result['out_of_contract']} dossier(s) hors contrat sur la période"
+                . " (embauche postérieure ou terme dépassé) : aucun bulletin produit.";
+        }
+
+        return back()->with('success', $message);
     }
 
     public function addLine(Request $request, Payslip $payslip)
