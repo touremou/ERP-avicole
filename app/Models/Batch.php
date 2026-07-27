@@ -1231,6 +1231,67 @@ class Batch extends Model
      * éditable dans Paramètres › Élevage). Repli sur l'ancienne clé
      * « elevage.mortality_alert » (compatibilité), puis 5 %.
      */
+    /**
+     * TAUX DE MORTALITÉ DU JOUR — une seule implémentation.
+     *
+     * Il en existait TROIS, toutes différentes :
+     *   • DailyCheck (l'alerte à la saisie) : morts / (effectif + impact NET du
+     *     pointage) — la seule qui reconstituait vraiment l'effectif du matin,
+     *     puisqu'un pointage déplace aussi des sujets en quarantaine et en trie ;
+     *   • DashboardController : morts / (effectif + morts) — ignore ces
+     *     mouvements, donc surévalue le taux dès qu'il y a eu un tri ;
+     *   • DashboardService (code mort) : morts / effectif COURANT — dénominateur
+     *     déjà amputé des morts du jour, donc surévaluation systématique.
+     *
+     * Base = effectif du DÉBUT de journée : les mouvements du pointage ont déjà
+     * été retirés de `current_quantity` par l'observer, on les rajoute.
+     */
+    public function dailyMortalityRate(DailyCheck $check): float
+    {
+        $base = max(1, (int) $this->current_quantity + $check->calculateNetImpact());
+
+        return round((int) $check->mortality / $base * 100, 2);
+    }
+
+    /**
+     * SEUIL D'ALERTE de mortalité quotidienne, selon l'âge et le type.
+     *
+     * Une mortalité de 0,8 %/jour est normale sur des poussins de chair à J3 et
+     * alarmante sur des poulets en finition : un seuil unique se trompe donc dans
+     * les deux sens. Cette courbe existait — écrite avec soin — dans
+     * DashboardService, un service qu'AUCUN code n'appelait ; la seule alerte
+     * réellement émise utilisait un seuil plat. La courbe est reprise ici et
+     * exposée au paramétrage, valeur par valeur.
+     *
+     * Cascade : réglage de la phase → réglage général → 0,5 %.
+     */
+    public function dailyMortalityThreshold(): float
+    {
+        $flat = (float) setting('elevage.daily_mortality_alert_pct', 0.5);
+        $key = self::dailyMortalityPhaseKey($this->feedSector(), (int) ($this->age ?? 0));
+
+        $phase = setting("elevage.{$key}");
+
+        return ($phase === null || $phase === '') ? $flat : (float) $phase;
+    }
+
+    /**
+     * Clef de réglage de la phase d'un lot pour le seuil de mortalité du jour.
+     * Dérivée du SECTEUR d'aliment (cf. feedSector()) — la même notion de phase
+     * que celle qui pilote déjà l'alimentation, et non un second découpage.
+     */
+    public static function dailyMortalityPhaseKey(string $sector, int $age): string
+    {
+        return match (true) {
+            $sector === 'Chair' && $age <= 7  => 'mortality_pct_chair_demarrage',
+            $sector === 'Chair' && $age <= 28 => 'mortality_pct_chair_croissance',
+            $sector === 'Chair'               => 'mortality_pct_chair_finition',
+            $sector === 'Ponte' && $age <= 42 => 'mortality_pct_ponte_poulette',
+            $sector === 'Ponte'               => 'mortality_pct_ponte_production',
+            default                           => 'mortality_pct_autres',
+        };
+    }
+
     public static function cumulativeMortalityThreshold(): float
     {
         return (float) setting(

@@ -114,7 +114,12 @@ class NotificationHub
         $lines[] = "  Effectif actif : *{$totalBirds}* sujets ({$activeBatches} lots)";
         if ($mortality24h > 0) {
             $rate = $totalBirds > 0 ? round(($mortality24h / $totalBirds) * 100, 2) : 0;
-            $emoji = $rate > 0.5 ? '🔴' : '⚠️';
+            // Seuil paramétré, et non un 0,5 codé en dur : le résumé WhatsApp
+            // teintait en rouge selon un seuil que la ferme ne pouvait pas régler,
+            // alors même que le réglage existait et pilotait les autres alertes.
+            // Ici le taux est un AGRÉGAT tous lots confondus : le seuil par phase
+            // ne s'applique pas, c'est bien le seuil général qui fait foi.
+            $emoji = $rate > (float) setting('elevage.daily_mortality_alert_pct', 0.5) ? '🔴' : '⚠️';
             $lines[] = "  {$emoji} Mortalité 24h : *{$mortality24h}* ({$rate}%)";
         } else {
             $lines[] = "  ✅ Mortalité 24h : 0";
