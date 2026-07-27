@@ -45,27 +45,16 @@
                                 </select>
                                 <input type="hidden" name="species_id" :value="speciesId">
                                 <input type="hidden" name="production_type_id" :value="productionTypeId">
-                                <input type="hidden" name="target_type" :value="targetType">
+                                {{-- Champ NON lié à Alpine : il est écrit par le
+                                     sélecteur de type de production ET par celui du
+                                     référentiel (le dernier choix l'emporte). --}}
+                                <input type="hidden" name="target_type" id="target_type" value="{{ old('target_type') }}">
                             </div>
 
                             <div>
                                 <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-2 italic tracking-widest">{{ __("Nom") }}</label>
                                 <input type="text" name="name" x-model="formulaName" required
                                     class="w-full bg-blue-50 border-none rounded-2xl p-4 font-black text-blue-900 shadow-inner italic uppercase">
-                            </div>
-
-                            <div>
-                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-2 italic tracking-widest">{{ __("Référentiel nutritionnel") }} <span class="text-slate-300 normal-case">{{ __("(optionnel)") }}</span></label>
-                                <select x-model="selectedNormId" @change="updateTargets($event)" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic appearance-none">
-                                    <option value="">{{ __("-- Aucun (cibles libres) --") }}</option>
-                                    @foreach($norms as $norm)
-                                        <option value="{{ $norm->animal_type }}"
-                                                data-em="{{ $norm->target_em }}"
-                                                data-pb="{{ $norm->target_pb }}">
-                                            {{ strtoupper($norm->name) }}
-                                        </option>
-                                    @endforeach
-                                </select>
                             </div>
 
                             <div class="grid grid-cols-2 gap-4">
@@ -80,46 +69,11 @@
                             </div>
                         </div>
 
-                        {{-- DASHBOARD NUTRITIONNEL TEMPS RÉEL --}}
-                        <div class="bg-slate-900 p-8 rounded-[3rem] shadow-2xl text-white space-y-6 relative overflow-hidden">
-                            <div class="absolute top-0 right-0 w-24 h-24 bg-blue-500/10 rounded-bl-full"></div>
-                            <h4 class="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-4 italic text-left">{{ __("Dashboard Temps Réel") }}</h4>
-
-                            <div class="space-y-2 text-left">
-                                <div class="flex justify-between text-[9px] font-black uppercase italic">
-                                    <span class="opacity-50">{{ __("Énergie (EM)") }}</span>
-                                    <span><span x-text="Math.round(realEM)">0</span> / <span x-text="targetEM">0</span> <small>kcal</small></span>
-                                </div>
-                                <div class="h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                                    <div class="h-full bg-blue-500 transition-all duration-500" :style="'width:' + Math.min((realEM / Math.max(targetEM, 1)) * 100, 100) + '%'"></div>
-                                </div>
-                            </div>
-
-                            <div class="space-y-2 text-left">
-                                <div class="flex justify-between text-[9px] font-black uppercase italic">
-                                    <span class="opacity-50">{{ __("Protéines (PB)") }}</span>
-                                    <span><span x-text="realPB.toFixed(1)">0</span> / <span x-text="targetPB">0</span> <small>%</small></span>
-                                </div>
-                                <div class="h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                                    <div class="h-full bg-emerald-500 transition-all duration-500" :style="'width:' + Math.min((realPB / Math.max(targetPB, 1)) * 100, 100) + '%'"></div>
-                                </div>
-                            </div>
-
-                            <div class="pt-4 border-t border-slate-800 text-left">
-                                <div class="flex justify-between items-end">
-                                    <span class="text-[9px] uppercase opacity-50 italic">{{ __("Coût Théorique") }}</span>
-                                    <span class="text-2xl font-black italic tracking-tighter"><span x-text="costPerKg.toLocaleString()">0</span> <small class="text-[10px]">{{ currency() }}/kg</small></span>
-                                </div>
-                            </div>
-
-                            {{-- INDICATEUR TOTAL % --}}
-                            <div class="pt-4 border-t border-slate-800 text-left">
-                                <div class="flex justify-between items-end">
-                                    <span class="text-[9px] uppercase opacity-50 italic">{{ __("Total Formule") }}</span>
-                                    <span class="text-2xl font-black italic tracking-tighter" :class="Math.abs(totalPercentage - 100) < 0.1 ? 'text-emerald-400' : 'text-red-400'" x-text="totalPercentage.toFixed(2) + '%'">0%</span>
-                                </div>
-                            </div>
-                        </div>
+                        {{-- DASHBOARD NUTRITIONNEL TEMPS RÉEL — rendu et calcul partagés
+                             avec l'écran d'édition (cf. partials/lab-dashboard et
+                             lab-script). Cet écran suivait deux nutriments sur les six
+                             que fixe le référentiel. --}}
+                        @include('provenderie.formulas.partials.lab-dashboard', ['norms' => $norms])
                     </div>
 
                     {{-- 02. COMPOSITION — FORMAT UNIFIÉ ingredients[].id + ingredients[].percentage --}}
@@ -128,16 +82,14 @@
                             <div class="flex justify-between items-center mb-8 px-4">
                                 <h3 class="text-[10px] font-black uppercase text-slate-400 tracking-widest italic">{{ __("02. Dosage des Ingrédients (% de la base)") }}</h3>
                                 <div class="flex gap-2">
-                                    <span class="px-4 py-1 rounded-full text-[9px] font-black uppercase italic transition-colors"
-                                          :class="Math.abs(totalPercentage - 100) < 0.1 ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' : 'bg-red-50 text-red-600 border border-red-200'"
-                                          x-text="totalPercentage.toFixed(2) + '% / 100%'">
-                                    </span>
+                                    <span data-lab-status class="px-4 py-1 rounded-full text-[9px] font-black uppercase italic transition-colors bg-slate-50 border border-slate-200">0% / 100%</span>
                                 </div>
                             </div>
 
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-3 flex-1 overflow-y-auto pr-2 custom-scrollbar max-h-[600px]">
                                 @foreach($materials as $index => $m)
-                                <div class="flex items-center gap-3 p-4 bg-slate-50 rounded-[2rem] hover:bg-white border-2 border-transparent hover:border-blue-100 transition-all group shadow-sm hover:shadow-md">
+                                <div data-lab-row @include('provenderie.formulas.partials.material-data', ['material' => $m])
+                                     class="flex items-center gap-3 p-4 bg-slate-50 rounded-[2rem] hover:bg-white border-2 border-transparent hover:border-blue-100 transition-all group shadow-sm hover:shadow-md">
                                     {{-- Hidden : ID de la matière première --}}
                                     <input type="hidden" name="ingredients[{{ $index }}][id]" value="{{ $m->id }}">
                                     
@@ -152,12 +104,8 @@
                                         <input type="number" step="0.01" min="0" max="100"
                                             name="ingredients[{{ $index }}][percentage]"
                                             value="{{ old('ingredients.'.$index.'.percentage') }}"
-                                            data-cost="{{ $m->unit_cost }}"
-                                            data-pb="{{ $m->protein_rate }}"
-                                            data-em="{{ $m->energy_kcal }}"
-                                            placeholder="0.00"
-                                            @input="recalculate()"
-                                            class="pct-input w-full bg-white border-none rounded-xl p-3 font-black text-right text-blue-600 shadow-inner focus:ring-2 focus:ring-blue-500/20 italic">
+                                            placeholder="0.00" data-lab-share
+                                            class="w-full bg-white border-none rounded-xl p-3 font-black text-right text-blue-600 shadow-inner focus:ring-2 focus:ring-blue-500/20 italic">
                                     </div>
                                     <span class="text-[8px] text-slate-300 font-black italic">%</span>
                                 </div>
@@ -166,7 +114,7 @@
 
                             <div class="mt-10 pt-6 border-t border-slate-50 flex justify-between items-center">
                                 <p class="text-[9px] text-slate-400 italic font-medium">{{ __("Le total des pourcentages doit être exactement 100%.") }}</p>
-                                <button type="submit" :disabled="Math.abs(totalPercentage - 100) > 0.1 || totalPercentage === 0"
+                                <button type="submit" data-lab-submit disabled
                                     class="bg-slate-900 text-white px-12 py-5 rounded-[2rem] font-black uppercase italic tracking-[0.2em] text-[11px] shadow-2xl hover:bg-blue-600 transition-all disabled:opacity-20 disabled:cursor-not-allowed active:scale-95">
                                     <i class="fa-solid fa-cloud-arrow-up mr-2 text-blue-400"></i> {{ __("Enregistrer Recette") }}
                                 </button>
@@ -186,6 +134,8 @@
         </div>
     </div>
 
+    @include('provenderie.formulas.partials.lab-script')
+
     <script>
         // Composant défini comme fonction globale ordinaire, sans Alpine.data().
         // Alpine évalue x-data="formulaBuilderData()" comme expression JS au moment
@@ -197,70 +147,48 @@
                 formulaName: '',
                 speciesId: '',
                 productionTypeId: '',
-                targetType: '',
                 ptSlug: '',
                 batchWeight: 1000,
-                selectedNormId: '',
-                targetEM: 0,
-                targetPB: 0,
-                totalPercentage: 0,
-                realEM: 0,
-                realPB: 0,
-                costPerKg: 0,
-
-                init() {
-                    this.$nextTick(() => this.recalculate());
-                },
 
                 onPtChange(e) {
                     const opt = e.target.options[e.target.selectedIndex];
                     this.speciesId = opt?.dataset?.speciesId || '';
                     this.productionTypeId = e.target.value || '';
                     this.ptSlug = opt?.dataset?.slug || '';
-                    if (!this.selectedNormId) this.targetType = this.ptSlug;
+                    document.getElementById('target_type').value = this.selectedNorm() || this.ptSlug;
                     if (opt?.dataset?.label) this.formulaName = opt.dataset.label;
-                    this.recalculate();
                 },
 
-                updateTargets(e) {
-                    const opt = e.target.options[e.target.selectedIndex];
-                    this.targetEM = parseFloat(opt?.dataset?.em) || 0;
-                    this.targetPB = parseFloat(opt?.dataset?.pb) || 0;
-                    this.targetType = this.selectedNormId || this.ptSlug;
-                    this.recalculate();
-                },
-
-                recalculate() {
-                    // Utilise document.querySelectorAll pour ne pas dépendre de $el
-                    const inputs = document.querySelectorAll('.pct-input');
-                    let totalPct = 0, totalCost = 0, totalEM = 0, totalPB = 0;
-
-                    inputs.forEach(function (input) {
-                        const pct  = parseFloat(input.value)          || 0;
-                        const cost = parseFloat(input.dataset.cost)    || 0;
-                        const em   = parseFloat(input.dataset.em)      || 0;
-                        const pb   = parseFloat(input.dataset.pb)      || 0;
-
-                        totalPct  += pct;
-                        totalCost += (pct / 100) * cost;
-                        totalEM   += (pct / 100) * em;
-                        totalPB   += (pct / 100) * pb;
-                    });
-
-                    this.totalPercentage = totalPct;
-                    this.realEM          = totalEM;
-                    this.realPB          = totalPB;
-                    this.costPerKg       = Math.round(totalCost);
+                /** La norme choisie au tableau de bord, s'il y en a une. */
+                selectedNorm() {
+                    return document.querySelector('[data-lab-norm]')?.value || '';
                 },
 
                 submitForm() {
-                    if (Math.abs(this.totalPercentage - 100) > 0.1) {
-                        alert({{ Js::from(__('Le total des pourcentages doit être de 100%. Actuellement : ')) }} + this.totalPercentage.toFixed(2) + '%');
-                        return;
-                    }
+                    // Le verrou à 100 % vit dans FormulaLab (bouton désactivé) et,
+                    // en dernier ressort, dans StoreFormulaRequest côté serveur.
                     document.getElementById('formula_form').submit();
                 }
             };
         };
+
+        // Le référentiel choisi devient le type cible enregistré : la fiche
+        // retrouvera ainsi SA norme, au lieu de retomber sur le slug du type de
+        // production quand les deux diffèrent.
+        document.addEventListener('DOMContentLoaded', function () {
+            const form = document.getElementById('formula_form');
+            if (! form) return;
+
+            window.FormulaLab.attach(form);
+
+            const normSelect = form.querySelector('[data-lab-norm]');
+            const targetInput = document.getElementById('target_type');
+
+            if (normSelect && targetInput) {
+                normSelect.addEventListener('change', function () {
+                    if (normSelect.value) targetInput.value = normSelect.value;
+                });
+            }
+        });
     </script>
 </x-app-layout>

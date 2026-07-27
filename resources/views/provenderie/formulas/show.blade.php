@@ -59,10 +59,50 @@
                     <div class="absolute right-0 top-0 p-10 opacity-5 group-hover:rotate-12 transition-transform pointer-events-none">
                         <i class="fa-solid fa-chart-pie text-9xl"></i>
                     </div>
-                    <h3 class="text-xs font-black uppercase text-blue-400 mb-8 italic tracking-widest relative leading-none">{{ __("Équilibre Nutritionnel vs Norme") }}</h3>
-                    
-                    <div class="h-64 relative">
-                        <canvas id="nutritionChart"></canvas>
+
+                    <div class="flex flex-wrap justify-between items-baseline gap-3 mb-8 relative">
+                        <h3 class="text-xs font-black uppercase text-blue-400 italic tracking-widest leading-none">{{ __("Équilibre Nutritionnel vs Norme") }}</h3>
+                        @if($norm)
+                            <span class="text-[9px] font-black uppercase italic text-white/60">
+                                {{ $norm->name }} · {{ $norm->phase }}
+                            </span>
+                        @endif
+                    </div>
+
+                    @unless($norm)
+                        {{-- Auparavant, la fiche affichait ici 3 000 kcal / 20 % / 1,1 %
+                             sous l'étiquette « Cible (Norme) » alors qu'aucune norme
+                             n'était rattachée : une cible inventée a l'autorité d'une
+                             cible mesurée. --}}
+                        <div class="relative mb-6 p-5 rounded-[2rem] bg-amber-500/10 border border-amber-400/30">
+                            <p class="text-[10px] font-black uppercase italic text-amber-300 leading-tight">
+                                <i class="fa-solid fa-triangle-exclamation mr-1"></i>
+                                {{ __("Aucune norme du référentiel ne correspond au type") }} « {{ $formula->target_type }} »
+                            </p>
+                            <p class="text-[9px] font-bold italic text-white/50 mt-2 leading-snug">
+                                {{ __("Les teneurs ci-dessous sont celles du mélange ; aucune cible ne leur est opposée. Ajoutez la norme au référentiel pour obtenir un verdict.") }}
+                            </p>
+                        </div>
+                    @endunless
+
+                    @if($candidates->count() > 1)
+                        <div class="relative mb-6 p-5 rounded-[2rem] bg-blue-500/10 border border-blue-400/30">
+                            <p class="text-[10px] font-black uppercase italic text-blue-300 leading-tight">
+                                <i class="fa-solid fa-circle-info mr-1"></i>
+                                {{ __("Le référentiel propose :count normes pour ce type", ['count' => $candidates->count()]) }}
+                            </p>
+                            <p class="text-[9px] font-bold italic text-white/50 mt-2 leading-snug">
+                                {{ $candidates->pluck('phase')->implode(' · ') }} —
+                                {{ __("la phase retenue est la première du référentiel. Précisez la phase visée sur la norme ou sur la formule.") }}
+                            </p>
+                        </div>
+                    @endif
+
+                    <div class="relative">
+                        @include('provenderie.formulas.partials.nutrient-bars', [
+                            'comparison' => $comparison,
+                            'dark' => true,
+                        ])
                     </div>
                 </div>
 
@@ -71,74 +111,46 @@
                     <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm group hover:border-blue-200 transition-all text-left">
                         <p class="text-[9px] font-black text-slate-400 uppercase italic mb-1 leading-none">{{ __("Coût de Revient Théorique") }}</p>
                         <p class="text-4xl font-black text-slate-900 italic tracking-tighter leading-none">
-                            {{ number_format($stats['cost'], 0, ',', ' ') }} 
+                            {{ number_format($verdict['cost'], 0, ',', ' ') }}
                             <small class="text-xs opacity-30 italic">{{ currency() }}/kg</small>
                         </p>
+                        @if($verdict['target'])
+                            <p class="text-[9px] font-black uppercase italic text-slate-400 mt-3 leading-none">
+                                {{ __("Prix cible au référentiel") }} :
+                                {{ number_format($verdict['target'], 0, ',', ' ') }} {{ currency() }}/kg
+                            </p>
+                        @endif
                     </div>
-                    <div class="bg-emerald-50 p-8 rounded-[3rem] border border-emerald-100 shadow-sm relative overflow-hidden text-left">
+
+                    {{-- VERDICT ÉCONOMIQUE. Cet écran tranchait sur « coût < 5 000 »
+                         codé en dur : un aliment d'alevinage (cible 9 500/kg) était
+                         déclaré « À RÉVISER » alors que la liste, elle, le donnait
+                         sous la norme — deux écrans, deux verdicts opposés. --}}
+                    <div @class([
+                        'p-8 rounded-[3rem] shadow-sm relative overflow-hidden text-left border',
+                        'bg-slate-50 border-slate-100'      => $verdict['status'] === 'unknown',
+                        'bg-emerald-50 border-emerald-100'  => $verdict['status'] === 'under',
+                        'bg-slate-50 border-slate-200'      => $verdict['status'] === 'near',
+                        'bg-red-50 border-red-100'          => $verdict['status'] === 'over',
+                    ])>
                         <div class="absolute right-0 bottom-0 p-4 opacity-10"><i class="fa-solid fa-piggy-bank text-4xl"></i></div>
-                        <p class="text-[9px] font-black text-emerald-600 uppercase italic mb-1 leading-none">{{ __("Performance Économique") }}</p>
-                        <p class="text-4xl font-black text-emerald-600 italic tracking-tighter leading-none">
-                            {{ $stats['cost'] < 5000 ? __('Optimum') : __('À Réviser') }}
-                        </p>
+                        <p class="text-[9px] font-black uppercase italic mb-1 leading-none text-slate-500">{{ __("Performance Économique") }}</p>
+                        <p @class([
+                            'text-3xl font-black italic tracking-tighter leading-none',
+                            'text-slate-400'   => $verdict['status'] === 'unknown',
+                            'text-emerald-600' => $verdict['status'] === 'under',
+                            'text-slate-700'   => $verdict['status'] === 'near',
+                            'text-red-500'     => $verdict['status'] === 'over',
+                        ])>{{ $verdict['label'] }}</p>
+                        @if($verdict['diff'] !== null)
+                            <p class="text-[10px] font-black uppercase italic text-slate-400 mt-2 leading-none">
+                                {{ $verdict['diff'] <= 0 ? '−' : '+' }}{{ number_format(abs($verdict['diff']), 0, ',', ' ') }} {{ currency() }}/kg
+                            </p>
+                        @endif
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script>
-        const ctx = document.getElementById('nutritionChart').getContext('2d');
-        new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: {!! json_encode($chartData['labels']) !!},
-                datasets: [
-                    {
-                        label: {{ Js::from(__('Réel (Formule)')) }},
-                        data: {!! json_encode($chartData['real']) !!},
-                        backgroundColor: '#3b82f6',
-                        borderRadius: 12,
-                    },
-                    {
-                        label: {{ Js::from(__('Cible (Norme)')) }},
-                        data: {!! json_encode($chartData['target']) !!},
-                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                        borderColor: 'white',
-                        borderWidth: 2,
-                        borderRadius: 12,
-                        borderDash: [5, 5]
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: { 
-                        display: true, 
-                        grid: { color: 'rgba(255,255,255,0.05)' },
-                        ticks: { color: 'rgba(255,255,255,0.3)', font: { size: 9 } }
-                    },
-                    x: { 
-                        ticks: { color: 'rgba(255,255,255,0.5)', font: { weight: 'bold', size: 10, family: 'italic' } }, 
-                        grid: { display: false } 
-                    }
-                },
-                plugins: {
-                    legend: { 
-                        display: true,
-                        labels: { color: 'white', font: { size: 10, weight: 'bold' }, usePointStyle: true }
-                    },
-                    tooltip: {
-                        backgroundColor: '#1e293b',
-                        titleFont: { size: 12, weight: 'bold' },
-                        padding: 12,
-                        cornerRadius: 12
-                    }
-                }
-            }
-        });
-    </script>
 </x-app-layout>

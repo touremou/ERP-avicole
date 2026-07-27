@@ -101,7 +101,7 @@
                             
                             {{-- Permission M : Analyse Labo --}}
                             @can('provenderie.M')
-                            <button onclick="openLaboModal({{ $material->id }}, {{ Js::from($material->name) }}, {{ $material->energy_kcal ?: 0 }}, {{ $material->protein_rate ?: 0 }})"
+                            <button onclick="openLaboModal({{ Js::from($material) }})"
                                 class="flex-1 text-[9px] font-black text-amber-600 uppercase italic tracking-widest hover:text-slate-900 transition-colors border-l border-slate-100 pl-2">
                                 <i class="fa-solid fa-flask mr-1"></i> {{ __("Labo") }}
                             </button>
@@ -201,15 +201,18 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-2 italic">{{ __("Énergie (kcal)") }}</label>
-                        <input type="number" min="0" placeholder="0" name="energy_kcal" id="edit_energy" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic text-center">
-                    </div>
-                    <div>
-                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-2 italic">{{ __("Protéines (%)") }}</label>
-                        <input type="number" step="0.1" min="0" placeholder="0.0" name="protein_rate" id="edit_protein" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic text-center">
-                    </div>
+                <div class="grid grid-cols-3 gap-4">
+                    @foreach(\App\Models\FoodNorm::NUTRIENTS as $editKey => $editNutrient)
+                        <div>
+                            <label class="block text-[9px] font-black text-slate-400 uppercase mb-2 ml-2 italic leading-none">
+                                {{ __($editNutrient['label']) }} <span class="opacity-40 normal-case">{{ $editNutrient['unit'] }}</span>
+                            </label>
+                            <input type="number" step="{{ $editNutrient['decimals'] > 0 ? '0.' . str_repeat('0', $editNutrient['decimals'] - 1) . '1' : '1' }}"
+                                   min="0" placeholder="0" name="{{ $editNutrient['material'] }}"
+                                   data-edit-field="{{ $editNutrient['material'] }}"
+                                   class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic text-center">
+                        </div>
+                    @endforeach
                 </div>
 
                 <div class="flex gap-3">
@@ -268,16 +271,27 @@
             <h3 id="labo_title" class="text-2xl font-black text-slate-900 uppercase italic tracking-tighter mb-8 leading-none italic">{{ __("Analyse Labo") }}</h3>
             <form id="labo_form" method="POST" class="space-y-6">
                 @csrf @method('PUT')
-                <div class="grid grid-cols-2 gap-6">
-                    <div>
-                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-2 italic">{{ __("Énergie (kcal/kg)") }}</label>
-                        <input type="number" min="0" placeholder="0" name="energy_kcal" id="labo_energy" required class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-xl text-center italic shadow-inner">
-                    </div>
-                    <div>
-                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-2 italic">{{ __("Protéines (%)") }}</label>
-                        <input type="number" step="0.1" min="0" placeholder="0.0" name="protein_rate" id="labo_protein" required class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-xl text-center italic shadow-inner text-blue-600">
-                    </div>
+                {{-- Les SIX teneurs que le référentiel des normes cible. Ce modal
+                     n'en proposait que deux : la lysine était validée côté serveur
+                     mais aucun formulaire ne permettait de la saisir, si bien que
+                     la fiche d'une formule affichait éternellement 0 % face à sa
+                     cible — une carence de saisie prise pour une carence réelle. --}}
+                <div class="grid grid-cols-2 gap-5">
+                    @foreach(\App\Models\FoodNorm::NUTRIENTS as $labKey => $labNutrient)
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-2 italic leading-none">
+                                {{ __($labNutrient['label']) }} <span class="opacity-40 normal-case">{{ $labNutrient['unit'] }}</span>
+                            </label>
+                            <input type="number" step="{{ $labNutrient['decimals'] > 0 ? '0.' . str_repeat('0', $labNutrient['decimals'] - 1) . '1' : '1' }}"
+                                   min="0" placeholder="0" name="{{ $labNutrient['material'] }}"
+                                   id="labo_{{ $labKey }}" data-labo-field="{{ $labNutrient['material'] }}"
+                                   class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-lg text-center italic shadow-inner">
+                        </div>
+                    @endforeach
                 </div>
+                <p class="text-[9px] font-bold text-slate-400 uppercase italic leading-snug text-center">
+                    {{ __("Une teneur laissée à 0 est considérée « non analysée » : l'analyse d'une formule le signalera au lieu de conclure à une carence.") }}
+                </p>
                 <button type="submit" class="w-full bg-slate-900 text-white font-black py-5 rounded-2xl shadow-xl italic uppercase">{{ __("Enregistrer Valeurs") }}</button>
             </form>
         </div>
@@ -335,8 +349,9 @@
             el('edit_threshold').value = material.alert_threshold;
             el('edit_stock_qty').value = material.stock_qty;
             el('edit_unit_cost').value = material.unit_cost;
-            el('edit_energy').value = material.energy_kcal;
-            el('edit_protein').value = material.protein_rate;
+            document.querySelectorAll('#edit_form [data-edit-field]').forEach(function (input) {
+                input.value = material[input.dataset.editField] ?? 0;
+            });
             el('modalEditMaterial').classList.remove('hidden');
         }
 
@@ -352,11 +367,16 @@
             el('modalLoss').classList.remove('hidden');
         }
 
-        function openLaboModal(id, name, energy, protein) {
-            el('labo_title').innerText = `🔬 ${@json(__('ANALYSE'))} : ${name}`;
-            el('labo_form').action = `/provenderie/materials/${id}/nutrition`;
-            el('labo_energy').value = energy;
-            el('labo_protein').value = protein;
+        function openLaboModal(material) {
+            el('labo_title').innerText = `🔬 ${@json(__('ANALYSE'))} : ${material.name}`;
+            el('labo_form').action = `/provenderie/materials/${material.id}/nutrition`;
+
+            // Champs dérivés de FoodNorm::NUTRIENTS : un nutriment ajouté au
+            // référentiel apparaît ici sans retoucher ce script.
+            document.querySelectorAll('#labo_form [data-labo-field]').forEach(function (input) {
+                input.value = material[input.dataset.laboField] ?? 0;
+            });
+
             el('modalLabo').classList.remove('hidden');
         }
 
