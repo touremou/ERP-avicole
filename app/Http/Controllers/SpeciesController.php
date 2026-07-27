@@ -57,6 +57,33 @@ class SpeciesController extends Controller
     }
 
     /**
+     * Corriger la durée d'incubation d'une espèce.
+     *
+     * La durée vivait codée en dur dans un contrôleur : la ferme ne pouvait donc
+     * rien corriger, alors que les valeurs varient réellement (un canard de
+     * Barbarie incube 35 jours quand un canard commun en demande 28). Vider le
+     * champ fait retomber sur le réglage `couvoir.incubation_days`, ce qui est un
+     * choix explicite et non un oubli.
+     */
+    public function updateIncubation(Request $request, Species $species)
+    {
+        if (Gate::denies('admin.M')) abort(403);
+
+        $data = $request->validate([
+            // Bornes larges mais physiques : 10 jours est en dessous de tout
+            // oiseau connu, 60 au-dessus. Elles arrêtent la faute de frappe, pas
+            // l'espèce inhabituelle.
+            'incubation_days' => 'nullable|integer|min:10|max:60',
+        ]);
+
+        $species->update(['incubation_days' => $data['incubation_days'] ?? null]);
+
+        return back()->with('success', $data['incubation_days']
+            ? "Incubation de « {$species->name_fr} » : {$data['incubation_days']} jours."
+            : "Durée d'incubation de « {$species->name_fr} » remise au réglage de la ferme.");
+    }
+
+    /**
      * Suppression définitive d'une espèce — réservée aux cas de MÉNAGE :
      * ligne orpheline (créée à la main / reliquat d'un ancien prototype) sans
      * aucun lot. Toute espèce référencée par au moins un lot (même terminé)

@@ -18,7 +18,15 @@ class StartIncubation
             $incubator = Incubator::findOrFail($data['incubator_id']);
             $batchId = $this->resolveBatchId($data);
             
-            $duration = (int) ($data['duration'] ?? 21); // Espèce par défaut : Poule
+            // Durée : saisie explicite → espèce du lot → réglage de la ferme → 21.
+            //
+            // Le repli valait « 21 » en dur, donc la poule : une mise en couvoir
+            // de canards sans durée saisie datait l'éclosion une SEMAINE trop tôt,
+            // et le mirage avec elle. Le tableau par espèce existait pourtant, mais
+            // dans un contrôleur — l'Action ne le voyait pas.
+            $duration = isset($data['duration']) && $data['duration'] !== ''
+                ? (int) $data['duration']
+                : $this->resolveDuration($batchId);
 
             // Coût unitaire des œufs mis à couver : prix d'achat (œufs fournisseur)
             // ou valeur interne (œufs collectés). Repli sur un défaut paramétrable.
@@ -49,6 +57,19 @@ class StartIncubation
 
             return $incubation;
         });
+    }
+
+    /**
+     * Durée d'incubation du lot, d'après l'espèce — source unique
+     * (Species::incubationDays). Repli sur le réglage de la ferme puis 21.
+     */
+    private function resolveDuration(int $batchId): int
+    {
+        $species = Batch::with('species')->find($batchId)?->species;
+
+        return $species
+            ? $species->incubationDays()
+            : (int) setting('couvoir.incubation_days', 21);
     }
 
     private function resolveBatchId(array $data): int
@@ -134,71 +155,3 @@ class StartIncubation
         return $batch->id;
     }
 }
-
-/*
-
-namespace App\Actions\Incubation;
-
-use App\Models\Incubation;
-use App\Models\Batch;
-use App\Models\Incubator;
-use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
-
-class StartIncubation
-{
-    public function execute(array $data): Incubation
-    {
-        return DB::transaction(function () use ($data) {
-            $incubator = Incubator::findOrFail($data['incubator_id']);
-            
-            // 1. Résolution de la source (Lot interne vs Achat externe)
-            $batchId = $this->resolveBatchId($data);
-
-            // 2. [INTÉGRATION STOCK] : Décrémentation du magasin d'œufs
-            // Si la source est interne, les œufs doivent sortir du stock "Œufs à couver".
-            // if ($data['source_type'] === 'internal') {
-            //     app(StockIntegrationService::class)->deductIncubableEggs($data['eggs_count']);
-            // }
-            // Dans StartIncubation.php
-            $duration = $data['duration'] ?? 21; // Préparation pour l'avenir
-
-            // 3. Création du cycle
-            $incubation = Incubation::create([
-                'batch_id'            => $batchId,
-                'incubator_id'        => $incubator->id,
-                'code_incubation'     => 'INC-' . now()->format('ymd') . '-' . strtoupper(Str::random(4)),
-                'start_date'          => $data['start_date'],
-                'hatch_date_expected' => Carbon::parse($data['start_date'])->addDays($duration),
-                'eggs_count'          => $data['eggs_count'],
-                'status'              => 'incubation'
-            ]);
-
-            // 4. Verrouillage de la machine
-            $incubator->update(['status' => 'Occupé']);
-
-            return $incubation;
-        });
-    }
-
-    private function resolveBatchId(array $data): int
-    {
-        if ($data['source_type'] === 'internal') {
-            return (int) $data['batch_id'];
-        }
-
-        // Création d'un lot fantôme de traçabilité pour les œufs externes
-        $batch = Batch::firstOrCreate(
-            ['code' => 'EXT-' . strtoupper(Str::slug($data['external_source_name']))],
-            [
-                'type' => 'reproducteur',
-                'status' => 'Actif',
-                'description' => "Achat externe d'œufs à couver : " . $data['external_source_name']
-            ]
-        );
-
-        return $batch->id;
-    }
-}
-*/

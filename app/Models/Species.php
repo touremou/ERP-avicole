@@ -10,7 +10,7 @@ class Species extends Model
     protected $fillable = [
         'slug','name_fr','local_name','family','unit_label','habitat_label',
         'icon','color','tracks_eggs','tracks_milk','tracks_water_quality',
-        'is_active','sort_order','farm_id',
+        'is_active','sort_order','farm_id','incubation_days',
     ];
 
     protected $casts = [
@@ -18,7 +18,42 @@ class Species extends Model
         'tracks_milk'         => 'boolean',
         'tracks_water_quality'=> 'boolean',
         'is_active'           => 'boolean',
+        'incubation_days'     => 'integer',
     ];
+
+    /**
+     * Durée d'incubation en jours — SOURCE UNIQUE.
+     *
+     * Le nombre vivait en trois endroits qui pouvaient se contredire : un tableau
+     * codé en dur dans IncubationController, le repli « 21 » de StartIncubation
+     * (qui ignorait ce tableau, datant l'éclosion d'un canard à 21 jours au lieu
+     * de 28), et le réglage `couvoir.incubation_days` lu par la seule barre de
+     * progression.
+     *
+     * Cascade assumée : valeur de l'espèce → réglage de la ferme → 21 (la poule).
+     * Une espèce ajoutée par l'utilisateur sans durée renseignée retombe donc sur
+     * le réglage, que la ferme peut fixer — et non sur une constante enfouie.
+     */
+    public function incubationDays(): int
+    {
+        return (int) ($this->incubation_days
+            ?: setting('couvoir.incubation_days', 21));
+    }
+
+    /**
+     * Durées par slug d'espèce, pour les formulaires : { poulet: 21, canard: 28 }.
+     * Remplace le tableau que le contrôleur portait en dur.
+     *
+     * @return array<string, int>
+     */
+    public static function incubationDurations(): array
+    {
+        return static::query()
+            ->whereNotNull('incubation_days')
+            ->pluck('incubation_days', 'slug')
+            ->map(fn ($days) => (int) $days)
+            ->all();
+    }
 
     public function productionTypes(): HasMany
     {

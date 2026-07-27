@@ -980,6 +980,10 @@ Route::middleware(['auth'])->group(function () {
             // Gestion des espèces (multiespèces) — relève bien de l'administration.
             Route::get('/species', [SpeciesController::class, 'index'])->name('species.index');
             Route::patch('/species/{species}/toggle', [SpeciesController::class, 'toggle'])->name('species.toggle');
+            // Durée d'incubation : la seule donnée zootechnique que la ferme doit
+            // pouvoir corriger sans nous (un canard de Barbarie incube 35 jours,
+            // pas 28). Sans cette route, le référentiel restait en lecture seule.
+            Route::patch('/species/{species}/incubation', [SpeciesController::class, 'updateIncubation'])->name('species.incubation');
             Route::delete('/species/{species}', [SpeciesController::class, 'destroy'])->name('species.destroy');
         });
 
