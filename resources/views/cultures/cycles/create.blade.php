@@ -43,7 +43,21 @@
             @endif
 
             <form action="{{ route('crop-cycles.store') }}" method="POST"
-                  x-data="cropCycleForm({{ Js::from($catalogue) }}, {{ Js::from($plotData) }})"
+                  x-data="cropCycleForm({
+                      catalogue: {{ Js::from($catalogue) }},
+                      plotData: {{ Js::from($plotData) }},
+                      initial: {{ Js::from([
+                          'cropName' => old('crop_name', ''),
+                          'variety' => old('variety', ''),
+                          'areaHa' => old('area_used_ha', ''),
+                          'plantingDate' => old('planting_date', now()->toDateString()),
+                          'expectedHarvest' => old('expected_harvest_date', ''),
+                          'expectedYield' => old('expected_yield_kg', ''),
+                          'seedQuantity' => old('seed_quantity', ''),
+                          'seedUnit' => old('seed_unit', 'kg'),
+                          'selectedPlotId' => old('plot_id', ''),
+                      ]) }},
+                  })"
                   class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm space-y-6">
                 @csrf
 
@@ -151,6 +165,12 @@
                     <div>
                         <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Rendement attendu (kg)") }}</label>
                         <input type="number" step="0.01" min="0" name="expected_yield_kg" x-model="expectedYield" value="{{ old('expected_yield_kg') }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic text-right">
+                        {{-- Le rendement reste un POIDS même pour une culture comptée
+                             à l'unité : « 50 000 » sous un champ « rejets » invite au
+                             doute, on l'explique donc à l'écran. --}}
+                        <template x-if="yieldHint()">
+                            <p class="text-[9px] font-black text-slate-400 mt-1 ml-2 italic" x-text="yieldHint()"></p>
+                        </template>
                     </div>
                     <div>
                         <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Coût semences/intrants") }} ({{ $currency }})</label>
@@ -174,176 +194,5 @@
         </div>
     </div>
 
-    <script>
-        function cropCycleForm(catalogue, plotData) {
-            return {
-                catalogue: catalogue,
-                plotData: plotData || {},
-                cropName: @js(old('crop_name', '')),
-                variety: @js(old('variety', '')),
-                areaHa: @js(old('area_used_ha', '')),
-                plantingDate: @js(old('planting_date', now()->toDateString())),
-                expectedHarvest: @js(old('expected_harvest_date', '')),
-                expectedYield: @js(old('expected_yield_kg', '')),
-                seedQuantity: @js(old('seed_quantity', '')),
-                seedUnit: @js(old('seed_unit', 'kg')),
-                match: null,
-                hint: '',
-                selectedPlotId: '',
-                maxAreaHa: null,
-
-                init() {
-                    this.resolveMatch();
-                    // $watch guarantees the property is already updated when the callback fires,
-                    // unlike @input which can race with x-model's own input listener.
-                    this.$watch('cropName', () => this.resolveMatch());
-                    this.$watch('variety', () => this.buildHint());
-                    this.$watch('areaHa', () => this.recompute());
-                    this.$watch('plantingDate', () => this.recompute());
-                    // L'unité suit la culture DÈS le choix : laisser « kg » sur un
-                    // ananas invite à saisir un poids de rejets, qui ne veut rien
-                    // dire. On ne l'écrase que si la culture impose autre chose.
-                    this.$watch('match', () => this.adoptPlantingUnit());
-                    this.$watch('selectedPlotId', (pid) => {
-                        this.maxAreaHa = (pid && this.plotData[pid]) ? this.plotData[pid].remaining_ha : null;
-                    });
-                },
-
-                areaExceedsLimit() {
-                    if (this.maxAreaHa === null || !this.areaHa) return false;
-                    return parseFloat(this.areaHa) > this.maxAreaHa + 0.0001;
-                },
-
-                resolveMatch() {
-                    const needle = (this.cropName || '').trim().toLowerCase();
-                    this.match = this.catalogue.find(s => s.name.toLowerCase() === needle) || null;
-                    this.buildHint();
-                },
-
-                /** Variété sélectionnée dans le catalogue (si elle existe). */
-                currentVariety() {
-                    if (!this.match) return null;
-                    const needle = (this.variety || '').trim().toLowerCase();
-                    return this.match.varieties.find(v => v.name.toLowerCase() === needle) || null;
-                },
-
-                /** Jours de cycle effectifs : variété > espèce (max). */
-                effectiveCycleDays() {
-                    const v = this.currentVariety();
-                    if (v && v.cycle_days) return v.cycle_days;
-                    if (this.match && this.match.cycle_days_max) return this.match.cycle_days_max;
-                    if (this.match && this.match.cycle_days_min) return this.match.cycle_days_min;
-                    return null;
-                },
-
-                /** Rendement de référence effectif (t/ha) : variété > espèce. */
-                effectiveYieldTha() {
-                    const v = this.currentVariety();
-                    if (v && v.avg_yield_tha) return v.avg_yield_tha;
-                    if (this.match && this.match.avg_yield_tha) return this.match.avg_yield_tha;
-                    return null;
-                },
-
-                buildHint() {
-                    if (!this.match) { this.hint = ''; return; }
-                    const parts = [];
-                    if (this.match.local_name) parts.push('Nom local : ' + this.match.local_name);
-                    const days = this.effectiveCycleDays();
-                    if (days) parts.push('Cycle ≈ ' + days + ' j');
-                    const tha = this.effectiveYieldTha();
-                    if (tha) parts.push('Rdt réf. ' + tha + ' t/ha');
-                    this.hint = (parts.length ? this.match.name + ' — ' + parts.join(' · ') : this.match.name)
-                        + ' · cliquez pour pré-remplir';
-                },
-
-                /** Calcule les valeurs suggérées (récolte + rendement) sans écraser une saisie manuelle vide. */
-                suggestions() {
-                    const out = { harvest: null, yield: null };
-                    const days = this.effectiveCycleDays();
-                    if (this.plantingDate && days) {
-                        const d = new Date(this.plantingDate);
-                        d.setDate(d.getDate() + parseInt(days, 10));
-                        out.harvest = d.toISOString().slice(0, 10);
-                    }
-                    const tha = this.effectiveYieldTha();
-                    const area = parseFloat(this.areaHa);
-                    if (tha && area > 0) {
-                        out.yield = Math.round(tha * area * 1000); // t/ha → kg
-                    }
-                    return out;
-                },
-
-                /** Libellé du champ de quantité, adapté à la culture. */
-                plantingLabel() {
-                    const material = this.match && this.match.planting_material ? this.match.planting_material : 'semence';
-                    const unit = this.match && this.match.planting_unit ? this.match.planting_unit : (this.seedUnit || 'kg');
-                    const plural = {
-                        'semence': 'Quantité de semences',
-                        'plant': 'Nombre de plants',
-                        'rejet': 'Nombre de rejets',
-                        'bouture': 'Nombre de boutures',
-                        'greffon': 'Nombre de greffons',
-                        'tubercule': 'Quantité de tubercules',
-                        'rhizome': 'Quantité de rhizomes',
-                    }[material] || ('Quantité de ' + material);
-
-                    return plural + ' (' + unit + ')';
-                },
-
-                /** Unité imposée par la culture (rejets à l'unité, semences en kg). */
-                adoptPlantingUnit() {
-                    if (this.match && this.match.planting_unit) {
-                        this.seedUnit = this.match.planting_unit;
-                    }
-                },
-
-                /** Quantité suggérée par la densité de référence. */
-                suggestedSeedQuantity() {
-                    if (!this.match || !this.match.planting_density) return null;
-                    const area = parseFloat(this.areaHa);
-                    if (!(area > 0)) return null;
-
-                    const quantity = this.match.planting_density * area;
-
-                    // Un demi-rejet n'existe pas : on arrondit ce qui se compte.
-                    return this.match.planting_unit === 'kg'
-                        ? Math.round(quantity * 100) / 100
-                        : Math.round(quantity);
-                },
-
-                densityHint() {
-                    if (!this.match || !this.match.planting_density) return '';
-                    const unit = this.match.planting_unit || 'kg';
-
-                    return 'Densité de référence : ' + this.match.planting_density.toLocaleString('fr-FR')
-                        + ' ' + unit + '/ha — ajustez selon votre écartement réel.';
-                },
-
-                /** Applique explicitement les suggestions (bouton « Pré-remplir »). */
-                applySuggestions() {
-                    const s = this.suggestions();
-                    if (s.harvest) this.expectedHarvest = s.harvest;
-                    if (s.yield !== null) this.expectedYield = s.yield;
-                    this.adoptPlantingUnit();
-                    const seed = this.suggestedSeedQuantity();
-                    if (seed !== null) this.seedQuantity = seed;
-                },
-
-                /** Recalcule à la volée : ne remplit que les champs encore vides (non-intrusif). */
-                recompute() {
-                    if (!this.match) return;
-                    const s = this.suggestions();
-                    if (s.harvest && !this.expectedHarvest) this.expectedHarvest = s.harvest;
-                    if (s.yield !== null && !this.expectedYield) this.expectedYield = s.yield;
-
-                    // La quantité ne se remplit QUE si elle est vide : on ne
-                    // corrige pas un chiffre que le technicien a compté lui-même.
-                    const seed = this.suggestedSeedQuantity();
-                    if (seed !== null && !this.seedQuantity) this.seedQuantity = seed;
-
-                    this.buildHint();
-                },
-            };
-        }
-    </script>
+    @include('cultures.cycles.partials.form-script')
 </x-app-layout>

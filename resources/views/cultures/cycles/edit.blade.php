@@ -30,7 +30,20 @@
             @endif
 
             <form action="{{ route('crop-cycles.update', $cycle) }}" method="POST"
-                  x-data="cropCycleForm({{ Js::from($catalogue) }}, {{ Js::from($maxAreaHa) }})"
+                  x-data="cropCycleForm({
+                      catalogue: {{ Js::from($catalogue) }},
+                      maxAreaHa: {{ Js::from($maxAreaHa) }},
+                      initial: {{ Js::from([
+                          'cropName' => old('crop_name', $cycle->crop_name),
+                          'variety' => old('variety', $cycle->variety ?? ''),
+                          'areaHa' => old('area_used_ha', (string) $cycle->area_used_ha),
+                          'plantingDate' => old('planting_date', $cycle->planting_date?->format('Y-m-d')),
+                          'expectedHarvest' => old('expected_harvest_date', $cycle->expected_harvest_date?->format('Y-m-d')),
+                          'expectedYield' => old('expected_yield_kg', $cycle->expected_yield_kg ? (string) $cycle->expected_yield_kg : ''),
+                          'seedQuantity' => old('seed_quantity', $cycle->seed_quantity ? (string) $cycle->seed_quantity : ''),
+                          'seedUnit' => old('seed_unit', $cycle->seed_unit ?? 'kg'),
+                      ]) }},
+                  })"
                   class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm space-y-6">
                 @csrf @method('PUT')
 
@@ -115,15 +128,25 @@
                         <input type="date" name="expected_harvest_date" x-model="expectedHarvest" value="{{ old('expected_harvest_date', $cycle->expected_harvest_date?->format('Y-m-d')) }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic">
                     </div>
                     <div>
-                        <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Quantité semence") }}</label>
+                        {{-- Libellé ADAPTÉ à la culture, comme à la création : les deux
+                             écrans partagent désormais la même logique. --}}
+                        <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic" x-text="plantingLabel()"></label>
                         <div class="flex gap-2">
-                            <input type="number" step="0.01" min="0" name="seed_quantity" value="{{ old('seed_quantity', $cycle->seed_quantity) }}" class="w-2/3 bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic text-right">
-                            <input type="text" name="seed_unit" value="{{ old('seed_unit', $cycle->seed_unit ?? 'kg') }}" class="w-1/3 bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic text-center">
+                            <input type="number" step="0.01" min="0" name="seed_quantity" x-model="seedQuantity" value="{{ old('seed_quantity', $cycle->seed_quantity) }}" class="w-2/3 bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic text-right">
+                            <input type="text" name="seed_unit" x-model="seedUnit" value="{{ old('seed_unit', $cycle->seed_unit ?? 'kg') }}" class="w-1/3 bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic text-center">
                         </div>
+                        <template x-if="densityHint()">
+                            <p class="text-[9px] font-black text-slate-400 mt-1 ml-2 italic" x-text="densityHint()"></p>
+                        </template>
                     </div>
                     <div>
                         <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Rendement attendu (kg)") }}</label>
                         <input type="number" step="0.01" min="0" name="expected_yield_kg" x-model="expectedYield" value="{{ old('expected_yield_kg', $cycle->expected_yield_kg) }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic text-right">
+                        {{-- Le rendement reste un POIDS même pour une culture comptée
+                             à l'unité : on l'explique là où le doute naît. --}}
+                        <template x-if="yieldHint()">
+                            <p class="text-[9px] font-black text-slate-400 mt-1 ml-2 italic" x-text="yieldHint()"></p>
+                        </template>
                     </div>
                     <div>
                         <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Coût semences/intrants") }} ({{ $currency }})</label>
@@ -154,94 +177,5 @@
         </div>
     </div>
 
-    <script>
-        function cropCycleForm(catalogue, maxAreaHa) {
-            return {
-                catalogue: catalogue,
-                maxAreaHa: (maxAreaHa === undefined ? null : maxAreaHa),
-                cropName: @js(old('crop_name', $cycle->crop_name)),
-                variety: @js(old('variety', $cycle->variety ?? '')),
-                areaHa: @js(old('area_used_ha', (string) $cycle->area_used_ha)),
-                plantingDate: @js(old('planting_date', $cycle->planting_date?->format('Y-m-d'))),
-                expectedHarvest: @js(old('expected_harvest_date', $cycle->expected_harvest_date?->format('Y-m-d'))),
-                expectedYield: @js(old('expected_yield_kg', $cycle->expected_yield_kg ? (string) $cycle->expected_yield_kg : '')),
-                match: null,
-                hint: '',
-
-                init() {
-                    this.resolveMatch();
-                    this.$watch('cropName', () => this.resolveMatch());
-                    this.$watch('variety', () => this.buildHint());
-                    this.$watch('areaHa', () => this.recompute());
-                    this.$watch('plantingDate', () => this.recompute());
-                },
-
-                areaExceedsLimit() {
-                    if (this.maxAreaHa === null || !this.areaHa) return false;
-                    return parseFloat(this.areaHa) > this.maxAreaHa + 0.0001;
-                },
-
-                resolveMatch() {
-                    const needle = (this.cropName || '').trim().toLowerCase();
-                    this.match = this.catalogue.find(s => s.name.toLowerCase() === needle) || null;
-                    this.buildHint();
-                },
-
-                currentVariety() {
-                    if (!this.match) return null;
-                    const needle = (this.variety || '').trim().toLowerCase();
-                    return this.match.varieties.find(v => v.name.toLowerCase() === needle) || null;
-                },
-                effectiveCycleDays() {
-                    const v = this.currentVariety();
-                    if (v && v.cycle_days) return v.cycle_days;
-                    if (this.match && this.match.cycle_days_max) return this.match.cycle_days_max;
-                    if (this.match && this.match.cycle_days_min) return this.match.cycle_days_min;
-                    return null;
-                },
-                effectiveYieldTha() {
-                    const v = this.currentVariety();
-                    if (v && v.avg_yield_tha) return v.avg_yield_tha;
-                    if (this.match && this.match.avg_yield_tha) return this.match.avg_yield_tha;
-                    return null;
-                },
-                buildHint() {
-                    if (!this.match) { this.hint = ''; return; }
-                    const parts = [];
-                    if (this.match.local_name) parts.push('Nom local : ' + this.match.local_name);
-                    const days = this.effectiveCycleDays();
-                    if (days) parts.push('Cycle ≈ ' + days + ' j');
-                    const tha = this.effectiveYieldTha();
-                    if (tha) parts.push('Rdt réf. ' + tha + ' t/ha');
-                    this.hint = (parts.length ? this.match.name + ' — ' + parts.join(' · ') : this.match.name)
-                        + ' · cliquez pour pré-remplir';
-                },
-                suggestions() {
-                    const out = { harvest: null, yield: null };
-                    const days = this.effectiveCycleDays();
-                    if (this.plantingDate && days) {
-                        const d = new Date(this.plantingDate);
-                        d.setDate(d.getDate() + parseInt(days, 10));
-                        out.harvest = d.toISOString().slice(0, 10);
-                    }
-                    const tha = this.effectiveYieldTha();
-                    const area = parseFloat(this.areaHa);
-                    if (tha && area > 0) out.yield = Math.round(tha * area * 1000);
-                    return out;
-                },
-                applySuggestions() {
-                    const s = this.suggestions();
-                    if (s.harvest) this.expectedHarvest = s.harvest;
-                    if (s.yield !== null) this.expectedYield = s.yield;
-                },
-                recompute() {
-                    if (!this.match) return;
-                    const s = this.suggestions();
-                    if (s.harvest && !this.expectedHarvest) this.expectedHarvest = s.harvest;
-                    if (s.yield !== null && !this.expectedYield) this.expectedYield = s.yield;
-                    this.buildHint();
-                },
-            };
-        }
-    </script>
+    @include('cultures.cycles.partials.form-script')
 </x-app-layout>
