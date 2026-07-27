@@ -14,6 +14,8 @@ class UpdateEmployee
         return DB::transaction(function () use ($employee, $data, $photo, $cv) {
             
             // Remplacement Photo sécurisé
+            $previousPhoto = $employee->photo_path;
+
             if ($photo) {
                 if ($employee->photo_path && Storage::disk('public')->exists($employee->photo_path)) {
                     Storage::disk('public')->delete($employee->photo_path);
@@ -30,6 +32,14 @@ class UpdateEmployee
             }
 
             $employee->update($data);
+
+            // Le visage mis à jour sur la fiche descend sur le compte : sinon
+            // l'agent garderait l'ancienne photo sur son téléphone, et le
+            // responsable croirait l'avoir changée partout.
+            if ($photo) {
+                app(\App\Actions\Hr\SyncPersonPhoto::class)
+                    ->fromEmployee($employee, $employee->photo_path, $previousPhoto);
+            }
 
             return $employee;
         });

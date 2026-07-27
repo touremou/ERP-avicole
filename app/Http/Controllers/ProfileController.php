@@ -54,6 +54,9 @@ class ProfileController extends Controller
         $path = $request->file('photo')->store('avatars', 'public');
         $user->update(['avatar_path' => $path]);
 
+        // Même visage sur la fiche employé : « voici ma photo », pas « ici seulement ».
+        app(\App\Actions\Hr\SyncPersonPhoto::class)->fromAccount($user, $path, $old);
+
         if ($old && $old !== $path) {
             Storage::disk('public')->delete($old);
         }
@@ -67,8 +70,13 @@ class ProfileController extends Controller
         $user = $request->user();
 
         if ($user->avatar_path) {
-            Storage::disk('public')->delete($user->avatar_path);
+            $old = $user->avatar_path;
+            Storage::disk('public')->delete($old);
             $user->update(['avatar_path' => null]);
+
+            // La fiche ne se vide que si elle désignait LE MÊME fichier : sinon on
+            // laisserait une image cassée, ou on effacerait une photo distincte.
+            app(\App\Actions\Hr\SyncPersonPhoto::class)->fromAccount($user, null, $old);
         }
 
         return Redirect::route('profile.edit')->with('status', 'avatar-removed');
