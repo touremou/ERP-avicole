@@ -26,24 +26,46 @@ use Illuminate\Support\Facades\DB;
  */
 class DiagnoseAccountLinkCommand extends Command
 {
-    protected $signature = 'hr:diagnose-account {email? : Adresse du compte (toutes si omis)}';
+    protected $signature = 'hr:diagnose-account {recherche? : Nom OU adresse e-mail, accents et casse indifférents (tous les comptes si omis)}';
 
     protected $description = "Explique pourquoi un compte ne trouve pas sa fiche employé";
 
+    /** Minuscules sans accent : « TOURÉ » et « toure » deviennent comparables. */
+    private function flatten(?string $value): string
+    {
+        return \Illuminate\Support\Str::lower(\Illuminate\Support\Str::ascii((string) $value));
+    }
+
     public function handle(): int
     {
-        $email = $this->argument('email');
+        $needle = $this->argument('recherche');
 
-        $users = User::query()
-            ->when($email, fn ($q) => $q->where('email', 'like', "%{$email}%"))
-            ->orderBy('email')
-            ->get();
+        // Recherche sur le NOM **ou** l'adresse, accents et casse ignorés.
+        //
+        // La première version ne cherchait que dans l'e-mail : « touré » ne
+        // renvoyait rien alors que le compte existait — on cherche
+        // naturellement un agent par son nom, pas par son adresse. Et sous
+        // Windows, l'accent tapé au terminal n'arrive pas toujours intact
+        // jusqu'à PHP ; le filtrage se fait donc en mémoire sur une forme
+        // désaccentuée, indépendante de la collation MySQL ou SQLite.
+        $users = User::query()->orderBy('name')->get();
+
+        if ($needle) {
+            $flat = $this->flatten($needle);
+            $users = $users->filter(fn (User $user) => str_contains($this->flatten($user->name), $flat)
+                || str_contains($this->flatten($user->email), $flat))->values();
+        }
 
         if ($users->isEmpty()) {
-            $this->error($email ? "Aucun compte ne correspond à « {$email} »." : 'Aucun compte.');
+            $this->error($needle
+                ? "Aucun compte ne correspond à « {$needle} » (recherche sur le nom ET l'adresse)."
+                : 'Aucun compte.');
+            $this->line('Lancez la commande SANS argument pour lister tous les comptes.');
 
             return self::FAILURE;
         }
+
+        $this->line(($needle ? $users->count() . ' compte(s) trouvé(s) pour « ' . $needle . ' »' : $users->count() . ' compte(s)'));
 
         foreach ($users as $user) {
             $this->newLine();
@@ -81,7 +103,63 @@ class DiagnoseAccountLinkCommand extends Command
             }
         }
 
-        // Le cas le plus trompeur : deux comptes pour la même personne.
+        // FICHES EN DOUBLE. `users.email` est UNIQUE : deux COMPTES de connexion
+        // ne peuvent pas partager une adresse. En revanche `employees.email` et
+        // `employees.last_name` ne le sont pas — deux FICHES pour la même
+        // personne sont donc possibles (saisie manuelle puis import, ou une fiche
+        // par site). Comme `employees.user_id` EST unique, une seule peut porter
+        // le lien : l'autre paraît « sans accès », et c'est ce qu'on prend pour un
+        // conflit de comptes.
+        $this->newLine();
+        $this->line('<options=bold>FICHES EMPLOYÉ en double (même nom, ou même e-mail)</>');
+
+        // toBase() : `merge()` sur une collection ELOQUENT traite ses éléments
+        // comme des modèles et appelle getKey() sur les groupes. On travaille donc
+        // sur des collections de base.
+        $employees = Employee::withoutGlobalScopes()->get()->toBase();
+
+        $groups = [];
+
+        // Deux critères de rapprochement, car un doublon se reconnaît à l'un OU
+        // à l'autre : même patronyme, ou même adresse.
+        foreach ([
+            fn (Employee $e) => $this->flatten($e->last_name . '|' . $e->first_name),
+            fn (Employee $e) => filled($e->email) ? 'mail:' . $this->flatten($e->email) : null,
+        ] as $key) {
+            foreach ($employees->groupBy($key) as $signature => $group) {
+                if ($signature === '' || $group->count() < 2) {
+                    continue;
+                }
+
+                // Le même trio de fiches peut sortir des deux critères : on le
+                // dédoublonne sur la liste d'identifiants, pas sur la clé.
+                $ids = $group->pluck('id')->sort()->implode('-');
+                $groups[$ids] = $group;
+            }
+        }
+
+        if ($groups === []) {
+            $this->line('   aucune');
+        }
+
+        foreach ($groups as $group) {
+            $first = $group->first();
+            $this->line("   {$first->last_name} {$first->first_name} — " . $group->count() . ' fiches :');
+
+            foreach ($group as $employee) {
+                $link = $employee->user_id
+                    ? '<fg=green>rattachée au compte #' . $employee->user_id . '</>'
+                    : '<fg=red>AUCUN compte</>';
+                $this->line("      fiche #{$employee->id} ({$employee->employee_id}), ferme #{$employee->farm_id}, "
+                    . "statut {$employee->status}" . ($employee->trashed() ? ' [ARCHIVÉE]' : '') . " — {$link}");
+            }
+
+            $this->line('   → Gardez UNE fiche : celle qui porte le lien et l\'historique (pointages, tâches, paie).');
+            $this->line('     Archivez l\'autre depuis sa fiche. Si le lien est sur la MAUVAISE, déplacez-le avec');
+            $this->line('     hr:relink-account --employee=<id de la bonne fiche> --user=<id du compte>.');
+        }
+
+        // Le cas voisin : deux comptes pour la même personne (noms identiques).
         $this->newLine();
         $this->line('<options=bold>Comptes en DOUBLE (même nom, adresses différentes)</>');
         $duplicates = User::query()

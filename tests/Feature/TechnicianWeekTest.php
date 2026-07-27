@@ -135,6 +135,13 @@ test('un push tardif hors réseau NE dégrade PAS la ponctualité', function () 
     // Le cœur de l'équité : le technicien de Kérouané fait sa tâche lundi et ne
     // capte le réseau que mercredi. Mesurer l'arrivée serveur le sanctionnerait
     // pour un problème de couverture, pas pour un manquement.
+    // TEMPS FIGÉ au mercredi : le scénario décrit un travail fait LUNDI et poussé
+    // MERCREDI. Sans figer, `now()->startOfWeek()` vaut aujourd'hui quand la
+    // suite tourne un lundi, et l'horodatage « lundi 07:15 » devient FUTUR avant
+    // 07:15 — la garde `before_or_equal:now` refuse alors la saisie et le test
+    // échoue pour une raison qui n'a rien à voir avec ce qu'il vérifie.
+    \Carbon\Carbon::setTestNow(\Carbon\Carbon::parse('2026-07-29 14:00:00')); // mercredi
+
     $employee = Employee::factory()->create(['status' => 'Actif', 'user_id' => $this->managerUser->id]);
     $monday = now()->startOfWeek();
 
@@ -156,6 +163,8 @@ test('un push tardif hors réseau NE dégrade PAS la ponctualité', function () 
 
     expect($task->fresh()->completed_at->toDateString())->toBe($monday->toDateString());
     expect(indicator(weekSheet($employee), 'punctuality')['value'])->toBe(100.0);
+
+    \Carbon\Carbon::setTestNow();
 });
 
 test('sans horodatage déclaré, on retombe sur l’heure serveur', function () {
