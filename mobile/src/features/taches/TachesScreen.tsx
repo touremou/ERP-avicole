@@ -19,17 +19,24 @@ import { toCsv, exportOrShare, dateStamp } from '../../ui/exportShare'
 import { TaskProofModal } from './TaskProofModal'
 import type { RefTask, TaskSummary } from '../../api/types'
 
-const CATEGORY_ICON: Record<string, string> = {
-  alimentation: '🌾',
-  collecte: '🥚',
-  nettoyage: '🧽',
-  sante: '🩺',
-  controle: '📋',
-  maintenance: '🔧',
-  autre: '📌',
-}
-
-const CATEGORIES = ['controle', 'nettoyage', 'alimentation', 'sante', 'maintenance', 'autre'] as const
+/**
+ * REPLI, pas source de vérité.
+ *
+ * Les catégories descendent du serveur avec la session (settings.task_categories,
+ * cf. TaskTemplate::CATEGORIES). Cette liste ne sert qu'à un serveur plus ancien,
+ * qui n'envoie pas encore le bloc : mieux vaut six catégories qu'un menu vide.
+ *
+ * C'est elle qui, tenue en dur, faisait diverger le terrain du bureau — six
+ * catégories contre quatorze. Ne rien y ajouter : la liste vit côté serveur.
+ */
+const FALLBACK_CATEGORIES = [
+  { key: 'controle', label: 'Contrôle', emoji: '📋', group: 'Élevage' },
+  { key: 'nettoyage', label: 'Nettoyage', emoji: '🧹', group: 'Élevage' },
+  { key: 'alimentation', label: 'Alimentation', emoji: '🌾', group: 'Élevage' },
+  { key: 'sante', label: 'Santé', emoji: '💉', group: 'Élevage' },
+  { key: 'maintenance', label: 'Maintenance', emoji: '🔧', group: 'Élevage' },
+  { key: 'autre', label: 'Autre', emoji: '📌', group: 'Divers' },
+]
 
 const PRIORITY_LABEL: Record<string, string> = {
   basse: 'Basse', normale: 'Normale', haute: 'Haute', critique: 'Critique',
@@ -41,6 +48,29 @@ const STATUS_LABEL: Record<string, string> = {
 export function TachesScreen() {
   const { me } = useAuth()
   const hasEmployee = me?.scope.employee_id != null
+
+  // Servies par le serveur, en cache avec la session (donc disponibles hors
+  // ligne). Le repli ne joue que face à un serveur plus ancien.
+  const categories = me?.settings?.task_categories?.length
+    ? me.settings.task_categories
+    : FALLBACK_CATEGORIES
+
+  const categoryEmoji = useMemo(
+    () => Object.fromEntries(categories.map((c) => [c.key, c.emoji])) as Record<string, string>,
+    [categories],
+  )
+  const categoryLabel = useMemo(
+    () => Object.fromEntries(categories.map((c) => [c.key, c.label])) as Record<string, string>,
+    [categories],
+  )
+
+  // Groupées comme au bureau : quatorze entrées à plat se parcourent mal sur un
+  // téléphone, et rien ne dirait qu'« irrigation » relève des cultures.
+  const categoryGroups = useMemo(() => {
+    const groups = new Map<string, typeof categories>()
+    categories.forEach((c) => groups.set(c.group, [...(groups.get(c.group) ?? []), c]))
+    return [...groups.entries()]
+  }, [categories])
 
   const [tasks, setTasks] = useState<RefTask[]>([])
   const [doneToday, setDoneToday] = useState(0)
@@ -100,9 +130,9 @@ export function TachesScreen() {
     const cats = [...new Set(inWindow.map((task) => task.category).filter(Boolean))]
     return [
       { key: 'all', label: t('Toutes'), count: inWindow.length },
-      ...cats.map((c) => ({ key: c, label: `${CATEGORY_ICON[c] ?? '📌'} ${t(c)}`, count: inWindow.filter((task) => task.category === c).length })),
+      ...cats.map((c) => ({ key: c, label: `${categoryEmoji[c] ?? '📌'} ${categoryLabel[c] ?? t(c)}`, count: inWindow.filter((task) => task.category === c).length })),
     ]
-  }, [inWindow])
+  }, [inWindow, categoryEmoji, categoryLabel])
 
   const visible = useMemo(
     () => (cat === 'all' ? inWindow : inWindow.filter((task) => task.category === cat)),
@@ -180,7 +210,7 @@ export function TachesScreen() {
     const csv = toCsv(
       [t('Intitulé'), t('Catégorie'), t('Priorité'), t('Échéance'), t('Heure'), t('Statut')],
       visible.map((task) => [
-        task.title, t(task.category), t(PRIORITY_LABEL[task.priority ?? 'normale'] ?? task.priority ?? ''),
+        task.title, categoryLabel[task.category] ?? t(task.category), t(PRIORITY_LABEL[task.priority ?? 'normale'] ?? task.priority ?? ''),
         task.scheduled_date, task.scheduled_time?.slice(0, 5) ?? '', t(STATUS_LABEL[task.status] ?? task.status),
       ]),
     )
@@ -223,8 +253,12 @@ export function TachesScreen() {
 
           <label htmlFor="task-category">{t('Catégorie')}</label>
           <select id="task-category" value={category} onChange={(event) => setCategory(event.target.value)}>
-            {CATEGORIES.map((key) => (
-              <option key={key} value={key}>{CATEGORY_ICON[key]} {t(key)}</option>
+            {categoryGroups.map(([group, items]) => (
+              <optgroup key={group} label={group}>
+                {items.map((c) => (
+                  <option key={c.key} value={c.key}>{c.emoji} {c.label}</option>
+                ))}
+              </optgroup>
             ))}
           </select>
 
@@ -258,7 +292,7 @@ export function TachesScreen() {
             {group.items.map((task) => (
               <div key={task.id} className={`task-row ${task.locked ? 'task-locked' : ''}`}>
                 <div className="task-row__body">
-                  <span className="task-title">{CATEGORY_ICON[task.category] ?? '📌'} {task.title}</span>
+                  <span className="task-title">{categoryEmoji[task.category] ?? '📌'} {task.title}</span>
                   {/* Consigne de l'étape d'itinéraire (S1) : produit et dose se
                       lisent SUR PLACE. Sans elle, « Traitement phyto » oblige le
                       technicien à deviner quoi appliquer et à quelle dose. */}
@@ -267,7 +301,7 @@ export function TachesScreen() {
                   )}
                   <span className="task-meta">
                     {task.scheduled_time ? task.scheduled_time.slice(0, 5) + ' · ' : ''}
-                    {t(task.category)}
+                    {categoryLabel[task.category] ?? t(task.category)}
                     {task.is_pool && task.status === 'a_faire' ? ' · 🙌 ' + t('Libre') : ''}
                     {task.proof_type === 'photo' ? ' · 📸 ' + t('photo requise') : ''}
                     {task.proof_type === 'valeur' ? ' · 🔢 ' + t('valeur requise') : ''}

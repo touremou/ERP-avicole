@@ -34,8 +34,21 @@ class TechnicianWeekController extends Controller
             return redirect()->route('dashboard')->with('error', 'Accès restreint.');
         }
 
+        // La fiche suit le LIEU DE TRAVAIL, pas le dossier administratif.
+        //
+        // `Employee::active()` était borné à la ferme, donc un agent PRÊTÉ —
+        // dossier sur l'autre site — n'avait aucune fiche là où il travaille.
+        // Sur un site tenu par des agents prêtés, l'écran était vide.
+        //
+        // Les six indicateurs se calculent sur des données déjà bornées au site
+        // (tâches, lots, cycles, incidents) : chaque ferme voit donc la semaine
+        // qu'il a faite CHEZ ELLE. Un agent partagé entre deux sites a une fiche
+        // de chaque côté, chacune juste — ce qu'un rattachement unique au dossier
+        // ne saurait pas représenter.
+        //
+        // La PAIE ne bouge pas : elle reste au site d'origine (cf. Employee).
         $employees = $canSeeAll
-            ? Employee::active()->orderBy('first_name')->get()
+            ? Employee::assignableInCurrentFarm()->orderBy('first_name')->get()
             : collect([$mine]);
 
         $selected = $this->resolveEmployee($request->input('employee_id'), $employees, $mine, $canSeeAll);
@@ -60,7 +73,9 @@ class TechnicianWeekController extends Controller
         }
 
         $week = $this->resolveWeek($request->input('week'));
-        $employee = Employee::findOrFail((int) $request->input('employee_id'));
+        // Même vivier que l'écran : sinon l'export renvoyait 404 sur une fiche
+        // pourtant affichée.
+        $employee = Employee::assignableInCurrentFarm()->findOrFail((int) $request->input('employee_id'));
         $sheet = $service->forEmployee($employee, $week);
 
         $name = str($employee->first_name . '-' . $employee->last_name)->slug();

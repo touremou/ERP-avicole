@@ -378,7 +378,9 @@ class TechnicianWeekService
      */
     public function comparison(Carbon $weekStart): array
     {
-        return Employee::active()
+        // Même vivier que les fiches individuelles : un comparatif qui omet des
+        // agents pourtant fichés se lirait comme un effectif incomplet.
+        return Employee::assignableInCurrentFarm()
             ->orderBy('first_name')
             ->get()
             ->map(function (Employee $employee) use ($weekStart) {

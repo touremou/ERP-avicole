@@ -114,6 +114,14 @@ class TaskTemplate extends Model
         // ── Relevés de compteurs ──
         'releve_eau'     => ['label' => 'Relevé eau',     'emoji' => '🚰', 'icon' => 'fa-water',              'color' => 'cyan', 'group' => 'Relevés', 'departments' => null],
         'releve_energie' => ['label' => 'Relevé énergie', 'emoji' => '⚡', 'icon' => 'fa-bolt',               'color' => 'yellow', 'group' => 'Relevés', 'departments' => null],
+
+        // ── Divers ──
+        // Le terrain proposait déjà « Autre » sans que le bureau le connaisse :
+        // des tâches existent avec cette catégorie. L'inscrire ici les rend
+        // lisibles et filtrables partout — et permet de CONTRAINDRE la validation
+        // de synchronisation sans rejeter du travail déjà saisi (un refus de
+        // synchro est terminal : la saisie partirait au bac « À corriger »).
+        'autre'          => ['label' => 'Autre',          'emoji' => '📌', 'icon' => 'fa-thumbtack',          'color' => 'slate', 'group' => 'Divers', 'departments' => null],
     ];
 
     /**

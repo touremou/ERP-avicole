@@ -2501,7 +2501,13 @@ class SyncService
         $v = Validator::make($payload, [
             'uuid'           => 'required|uuid',
             'title'          => 'required|string|max:255',
-            'category'       => 'required|string|max:50',
+            // Liste contrainte, comme au bureau (cf. TaskController::storeManual) :
+            // « string » acceptait n'importe quel libellé, et une tâche mal
+            // catégorisée devenait invisible de tous les filtres. Ce resserrement
+            // n'est possible QUE parce que le terrain reçoit désormais la même
+            // liste que le bureau — sinon il refuserait du travail déjà saisi, et
+            // un refus de synchronisation est terminal.
+            'category'       => ['required', \Illuminate\Validation\Rule::in(array_keys(\App\Models\TaskTemplate::CATEGORIES))],
             'scheduled_date' => 'required|date',
             'priority'       => 'nullable|in:basse,normale,haute,critique',
             'description'    => 'nullable|string|max:500',
