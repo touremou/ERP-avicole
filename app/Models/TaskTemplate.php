@@ -60,6 +60,91 @@ class TaskTemplate extends Model
      *
      * @return array<string,string>
      */
+    /**
+     * CATÉGORIES DE TÂCHES — déclaration unique.
+     *
+     * La liste vivait en CINQ exemplaires, tous différents :
+     *
+     *   • getCategoryLabelAttribute()          12 catégories ;
+     *   • le tableau $catMeta du catalogue      14 ;
+     *   • les quatre <select> des formulaires    6 — l'élevage seulement ;
+     *   • la validation                        « string|max:50 », donc tout ;
+     *   • la carte catégorie → service du contrôleur  6.
+     *
+     * Conséquence signalée depuis le terrain : les modèles de tâches agricoles
+     * s'affichaient correctement au catalogue, mais on ne pouvait CRÉER aucune
+     * tâche d'irrigation, de semis ou de relevé — le menu déroulant n'offrait que
+     * les six catégories d'élevage. Un arrosage se rangeait donc sous
+     * « ALIMENTATION », et le planificateur devenait illisible.
+     *
+     * @var array<string, array{label: string, emoji: string, icon: string, color: string}>
+     */
+    public const CATEGORIES = [
+        // ── Élevage ──
+        'alimentation'   => ['label' => 'Alimentation',   'emoji' => '🌾', 'icon' => 'fa-bowl-food',          'color' => 'amber', 'group' => 'Élevage'],
+        'collecte'       => ['label' => 'Collecte',       'emoji' => '🥚', 'icon' => 'fa-egg',                'color' => 'emerald', 'group' => 'Élevage'],
+        'controle'       => ['label' => 'Contrôle',       'emoji' => '📋', 'icon' => 'fa-clipboard-check',    'color' => 'blue', 'group' => 'Élevage'],
+        'nettoyage'      => ['label' => 'Nettoyage',      'emoji' => '🧹', 'icon' => 'fa-broom',              'color' => 'purple', 'group' => 'Élevage'],
+        'sante'          => ['label' => 'Santé',          'emoji' => '💉', 'icon' => 'fa-heart-pulse',        'color' => 'rose', 'group' => 'Élevage'],
+        'maintenance'    => ['label' => 'Maintenance',    'emoji' => '🔧', 'icon' => 'fa-wrench',             'color' => 'slate', 'group' => 'Élevage'],
+
+        // ── Cultures ──
+        'semis'          => ['label' => 'Semis',          'emoji' => '🌱', 'icon' => 'fa-seedling',           'color' => 'lime', 'group' => 'Cultures'],
+        'irrigation'     => ['label' => 'Irrigation',     'emoji' => '💧', 'icon' => 'fa-droplet',            'color' => 'cyan', 'group' => 'Cultures'],
+        'sarclage'       => ['label' => 'Sarclage',       'emoji' => '🌿', 'icon' => 'fa-trowel',             'color' => 'lime', 'group' => 'Cultures'],
+        'fertilisation'  => ['label' => 'Fertilisation',  'emoji' => '⚗️', 'icon' => 'fa-flask',              'color' => 'green', 'group' => 'Cultures'],
+        'traitement'     => ['label' => 'Traitement',     'emoji' => '🧪', 'icon' => 'fa-spray-can-sparkles', 'color' => 'rose', 'group' => 'Cultures'],
+        'recolte'        => ['label' => 'Récolte',        'emoji' => '🧺', 'icon' => 'fa-basket-shopping',    'color' => 'emerald', 'group' => 'Cultures'],
+
+        // ── Relevés de compteurs ──
+        'releve_eau'     => ['label' => 'Relevé eau',     'emoji' => '🚰', 'icon' => 'fa-water',              'color' => 'cyan', 'group' => 'Relevés'],
+        'releve_energie' => ['label' => 'Relevé énergie', 'emoji' => '⚡', 'icon' => 'fa-bolt',               'color' => 'yellow', 'group' => 'Relevés'],
+    ];
+
+    /**
+     * Options du menu déroulant : [slug => « emoji Libellé »], libellés traduits.
+     */
+    public static function categoryOptions(): array
+    {
+        $options = [];
+
+        foreach (self::CATEGORIES as $slug => $meta) {
+            $options[$slug] = $meta['emoji'] . ' ' . __($meta['label']);
+        }
+
+        return $options;
+    }
+
+    /**
+     * Options regroupées par domaine : [« Élevage » => [slug => libellé], …].
+     * Quatorze options à plat noieraient l'opérateur ; les <optgroup> gardent le
+     * menu lisible tout en ouvrant enfin les catégories agricoles.
+     */
+    public static function categoryOptionGroups(): array
+    {
+        $groups = [];
+
+        foreach (self::CATEGORIES as $slug => $meta) {
+            $groups[$meta['group']][$slug] = $meta['emoji'] . ' ' . __($meta['label']);
+        }
+
+        return $groups;
+    }
+
+    /** Métadonnées d'affichage d'une catégorie (libellé traduit, icône, couleur). */
+    public static function categoryMeta(string $slug): array
+    {
+        $meta = self::CATEGORIES[$slug] ?? null;
+
+        if ($meta === null) {
+            // Catégorie héritée d'anciennes données : elle reste lisible.
+            return ['label' => ucfirst(str_replace('_', ' ', $slug)),
+                    'emoji' => '🏷️', 'icon' => 'fa-tag', 'color' => 'slate'];
+        }
+
+        return ['label' => __($meta['label'])] + $meta;
+    }
+
     public static function batchTypeOptions(): array
     {
         $labels = [
@@ -91,21 +176,9 @@ class TaskTemplate extends Model
 
     public function getCategoryLabelAttribute(): string
     {
-        return match($this->category) {
-            'alimentation' => '🌾 Alimentation',
-            'collecte'     => '🥚 Collecte',
-            'controle'     => '📋 Contrôle',
-            'nettoyage'    => '🧹 Nettoyage',
-            'sante'        => '💉 Santé',
-            'maintenance'  => '🔧 Maintenance',
-            'irrigation'   => '💧 Irrigation',
-            'sarclage'     => '🌿 Sarclage',
-            'traitement'   => '🌾 Traitement',
-            'fertilisation'=> '⚗️ Fertilisation',
-            'recolte'      => '🧺 Récolte',
-            'semis'        => '🌱 Semis',
-            default        => $this->category,
-        };
+        $meta = self::categoryMeta((string) $this->category);
+
+        return $meta['emoji'] . ' ' . $meta['label'];
     }
 
     public static function plotTypeOptions(): array

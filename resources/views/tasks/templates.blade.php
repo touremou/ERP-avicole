@@ -24,24 +24,7 @@
                             </div>
                             <div>
                                 <label class="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">{{ __("Catégorie") }}</label>
-                                <select name="category" required class="w-full bg-slate-50 border-none rounded-xl p-3 text-xs font-black uppercase shadow-inner outline-none">
-                                    <optgroup label="── Élevage ──">
-                                        <option value="alimentation">🌾 {{ __("Alimentation") }}</option>
-                                        <option value="collecte">🥚 {{ __("Collecte") }}</option>
-                                        <option value="controle">📋 {{ __("Contrôle") }}</option>
-                                        <option value="nettoyage">🧹 {{ __("Nettoyage") }}</option>
-                                        <option value="sante">💉 {{ __("Santé") }}</option>
-                                        <option value="maintenance">🔧 {{ __("Maintenance") }}</option>
-                                    </optgroup>
-                                    <optgroup label="── Cultures ──">
-                                        <option value="irrigation">💧 {{ __("Irrigation") }}</option>
-                                        <option value="sarclage">🌿 {{ __("Sarclage") }}</option>
-                                        <option value="traitement">🌾 {{ __("Traitement phyto") }}</option>
-                                        <option value="fertilisation">⚗️ {{ __("Fertilisation") }}</option>
-                                        <option value="recolte">🧺 {{ __("Récolte") }}</option>
-                                        <option value="semis">🌱 {{ __("Semis") }}</option>
-                                    </optgroup>
-                                </select>
+                                @include('tasks.partials.category-select', ['required' => true])
                             </div>
                         </div>
 
@@ -175,22 +158,13 @@
                 };
 
                 $grouped = $shown->groupBy('category');
-                $catMeta = [
-                    'alimentation' => ['label' => __('Alimentation'),  'icon' => 'fa-bowl-food',          'color' => 'amber'],
-                    'collecte'     => ['label' => __('Collecte'),      'icon' => 'fa-egg',                'color' => 'emerald'],
-                    'controle'     => ['label' => __('Contrôles'),     'icon' => 'fa-clipboard-check',    'color' => 'blue'],
-                    'nettoyage'    => ['label' => __('Nettoyage'),     'icon' => 'fa-broom',              'color' => 'purple'],
-                    'sante'        => ['label' => __('Santé'),         'icon' => 'fa-heart-pulse',        'color' => 'rose'],
-                    'maintenance'  => ['label' => __('Maintenance'),   'icon' => 'fa-wrench',             'color' => 'slate'],
-                    'irrigation'   => ['label' => __('Irrigation'),    'icon' => 'fa-droplet',            'color' => 'cyan'],
-                    'sarclage'     => ['label' => __('Sarclage'),      'icon' => 'fa-trowel',             'color' => 'amber'],
-                    'traitement'   => ['label' => __('Traitement'),    'icon' => 'fa-spray-can-sparkles', 'color' => 'rose'],
-                    'fertilisation'=> ['label' => __('Fertilisation'), 'icon' => 'fa-flask',              'color' => 'green'],
-                    'recolte'      => ['label' => __('Récolte'),       'icon' => 'fa-basket-shopping',    'color' => 'emerald'],
-                    'semis'        => ['label' => __('Semis'),         'icon' => 'fa-seedling',           'color' => 'lime'],
-                    'releve_eau'    => ['label' => __('Relevés eau'),   'icon' => 'fa-water',              'color' => 'cyan'],
-                    'releve_energie'=> ['label' => __('Relevés énergie'), 'icon' => 'fa-bolt',             'color' => 'yellow'],
-                ];
+                // Métadonnées dérivées du modèle (TaskTemplate::CATEGORIES) : ce
+                // tableau connaissait quatorze catégories quand les menus n'en
+                // offraient que six — le catalogue affichait donc des modèles
+                // qu'aucun formulaire ne permettait de créer.
+                $catMeta = collect(\App\Models\TaskTemplate::CATEGORIES)
+                    ->map(fn ($m) => ['label' => __($m['label']), 'icon' => $m['icon'], 'color' => $m['color']])
+                    ->all();
                 $dayLabels = [1 => __('L'), 2 => __('M'), 3 => __('Me'), 4 => __('J'), 5 => __('V'), 6 => __('S'), 7 => __('D')];
             @endphp
 

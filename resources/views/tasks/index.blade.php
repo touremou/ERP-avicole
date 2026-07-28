@@ -42,12 +42,12 @@
                         <option value="{{ $b->id }}" {{ ($activeFilters['building'] ?? '') == $b->id ? 'selected' : '' }}>{{ $b->name }}</option>
                     @endforeach
                 </select>
-                <select name="category" onchange="document.getElementById('filterForm').submit()" class="bg-white border border-slate-200 rounded-xl px-3 py-2 text-[9px] font-black uppercase text-slate-600 shadow-sm outline-none cursor-pointer">
-                    <option value="">{{ __("Toutes catégories") }}</option>
-                    @foreach(['alimentation' => __("🌾 Alimentation"), 'collecte' => __("🥚 Collecte"), 'controle' => __("📋 Contrôle"), 'nettoyage' => __("🧹 Nettoyage"), 'sante' => __("💉 Santé"), 'maintenance' => __("🔧 Maintenance")] as $k => $v)
-                        <option value="{{ $k }}" {{ ($activeFilters['category'] ?? '') === $k ? 'selected' : '' }}>{{ $v }}</option>
-                    @endforeach
-                </select>
+                @include('tasks.partials.category-select', [
+                    'selected' => $activeFilters['category'] ?? null,
+                    'blank'    => __("Toutes catégories"),
+                    'onchange' => "document.getElementById('filterForm').submit()",
+                    'class'    => 'bg-white border border-slate-200 rounded-xl px-3 py-2 text-[9px] font-black uppercase text-slate-600 shadow-sm outline-none cursor-pointer',
+                ])
                 <select name="priority" onchange="document.getElementById('filterForm').submit()" class="bg-white border border-slate-200 rounded-xl px-3 py-2 text-[9px] font-black uppercase text-slate-600 shadow-sm outline-none cursor-pointer">
                     <option value="">{{ __("Toutes priorités") }}</option>
                     @foreach(['critique' => __("🔴 Critique"), 'haute' => __("🟠 Haute"), 'normale' => __("⚪ Normale"), 'basse' => __("🔵 Basse")] as $k => $v)
@@ -354,14 +354,10 @@
                         <form method="POST" action="{{ route('tasks.store') }}" class="space-y-3">
                             @csrf
                             <input type="text" name="title" required placeholder="Titre de la tâche..." class="w-full bg-slate-50 border-none rounded-xl p-3 text-xs font-black shadow-inner outline-none">
-                            <select name="category" required class="w-full bg-slate-50 border-none rounded-xl p-2.5 text-[10px] font-black uppercase shadow-inner outline-none">
-                                <option value="alimentation">🌾 Alimentation</option>
-                                <option value="collecte">🥚 Collecte</option>
-                                <option value="controle">📋 Contrôle</option>
-                                <option value="nettoyage">🧹 Nettoyage</option>
-                                <option value="sante">💉 Santé</option>
-                                <option value="maintenance">🔧 Maintenance</option>
-                            </select>
+                            @include('tasks.partials.category-select', [
+                                'required' => true,
+                                'class'    => 'w-full bg-slate-50 border-none rounded-xl p-2.5 text-[10px] font-black uppercase shadow-inner outline-none',
+                            ])
                             <select name="employee_id" class="w-full bg-slate-50 border-none rounded-xl p-2.5 text-[10px] font-black shadow-inner outline-none">
                                 <option value="">Employé...</option>
                                 @foreach($employees as $e)<option value="{{ $e->id }}">{{ $e->first_name }} {{ $e->last_name }}</option>@endforeach

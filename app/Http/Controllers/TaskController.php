@@ -233,7 +233,10 @@ class TaskController extends Controller
 
         $validated = $request->validate([
             'title'           => 'required|string|max:255',
-            'category'        => 'required|string|max:50',
+            // Liste contrainte, dérivée de TaskTemplate::CATEGORIES : « string »
+            // acceptait n'importe quel libellé, y compris une faute de frappe
+            // qui rendait la tâche invisible de tous les filtres.
+            'category'        => ['required', \Illuminate\Validation\Rule::in(array_keys(\App\Models\TaskTemplate::CATEGORIES))],
             'employee_id'     => 'nullable|exists:employees,id',
             'building_id'     => 'nullable|exists:buildings,id',
             'scheduled_date'  => 'required|date',
@@ -284,7 +287,10 @@ class TaskController extends Controller
 
         $validated = $request->validate([
             'title'           => 'required|string|max:255',
-            'category'        => 'required|string|max:50',
+            // Liste contrainte, dérivée de TaskTemplate::CATEGORIES : « string »
+            // acceptait n'importe quel libellé, y compris une faute de frappe
+            // qui rendait la tâche invisible de tous les filtres.
+            'category'        => ['required', \Illuminate\Validation\Rule::in(array_keys(\App\Models\TaskTemplate::CATEGORIES))],
             'employee_id'     => 'nullable|exists:employees,id',
             'building_id'     => 'nullable|exists:buildings,id',
             'scheduled_date'  => 'required|date',
@@ -332,7 +338,7 @@ class TaskController extends Controller
 
         $validated = $request->validate([
             'name'             => 'required|string|max:255',
-            'category'         => 'required|string|max:50',
+            'category'         => ['required', \Illuminate\Validation\Rule::in(array_keys(\App\Models\TaskTemplate::CATEGORIES))],
             'frequency'        => 'required|in:quotidien,hebdo,mensuel,ponctuel',
             'days_of_week'     => 'nullable|array',
             'days_of_week.*'   => 'integer|min:1|max:7',
@@ -409,7 +415,7 @@ class TaskController extends Controller
 
         $validated = $request->validate([
             'name'             => 'required|string|max:255',
-            'category'         => 'required|string|max:50',
+            'category'         => ['required', \Illuminate\Validation\Rule::in(array_keys(\App\Models\TaskTemplate::CATEGORIES))],
             'frequency'        => 'required|in:quotidien,hebdo,mensuel,ponctuel',
             'days_of_week'     => 'nullable|array',
             'days_of_week.*'   => 'integer|min:1|max:7',
