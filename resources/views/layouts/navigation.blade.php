@@ -163,8 +163,12 @@
                         <a href="{{ route('tasks.index', ['mine' => 1]) }}" class="block rounded-lg p-2 text-[9px] font-black uppercase italic tracking-widest hover:bg-blue-50 text-slate-500 no-underline"><span class="inline-block w-4 text-center mr-1" aria-hidden="true">📋</span> {{ __("Mes Tâches") }}</a>
                         @endcan
                         <a href="{{ route('profile.edit') }}" class="block rounded-lg p-2 text-[9px] font-black uppercase italic tracking-widest hover:bg-blue-50 text-slate-500 no-underline"><span class="inline-block w-4 text-center mr-1" aria-hidden="true">👤</span> {{ __("Profil") }}</a>
+                        {{-- Centre d'alertes PERSONNEL : distinct des « Réglages de
+                             notification » et du journal des envois. Sans cette entrée,
+                             une alerte lue était définitivement perdue de vue. --}}
+                        <a href="{{ route('notifications.index') }}" class="block rounded-lg p-2 text-[9px] font-black uppercase italic tracking-widest hover:bg-blue-50 text-slate-500 no-underline"><span class="inline-block w-4 text-center mr-1" aria-hidden="true">🔔</span> {{ __("Mes alertes") }}</a>
                         @if(\Illuminate\Support\Facades\Route::has('notifications.preferences'))
-                        <a href="{{ route('notifications.preferences') }}" class="block rounded-lg p-2 text-[9px] font-black uppercase italic tracking-widest hover:bg-blue-50 text-slate-500 no-underline"><span class="inline-block w-4 text-center mr-1" aria-hidden="true">🔔</span> {{ __("Notifications") }}</a>
+                        <a href="{{ route('notifications.preferences') }}" class="block rounded-lg p-2 text-[9px] font-black uppercase italic tracking-widest hover:bg-blue-50 text-slate-500 no-underline"><span class="inline-block w-4 text-center mr-1" aria-hidden="true">⚙️</span> {{ __("Réglages d'alertes") }}</a>
                         @endif
                         <div class="border-t border-slate-100 my-1.5"></div>
                         <form method="POST" action="{{ route('logout') }}">@csrf
