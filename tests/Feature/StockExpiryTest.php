@@ -103,7 +103,7 @@ test('la commande stock:check-expiry alerte sur les articles concernés', functi
         $captured = $msg;
         return true;
     });
-    app()->instance(NotificationHub::class, new NotificationHub($fake));
+    app()->instance(NotificationHub::class, app()->makeWith(NotificationHub::class, ['whatsapp' => $fake]));
 
     $this->artisan('stock:check-expiry')->assertExitCode(0);
 

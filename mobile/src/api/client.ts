@@ -137,6 +137,27 @@ export const api = {
 
   notifications: () => request<NotificationsResponse>('/notifications'),
 
+  // ─── Push navigateur ───
+  pushKey: () => request<{ configured: boolean; public_key: string }>('/push/key'),
+
+  pushSubscribe: (subscription: {
+    endpoint: string
+    keys: { p256dh: string; auth: string }
+    device_label?: string
+  }) => request<{ message: string; id: number }>('/push/subscribe', {
+    method: 'POST',
+    body: JSON.stringify(subscription),
+  }),
+
+  pushUnsubscribe: (endpoint: string) =>
+    request<{ message: string }>('/push/unsubscribe', {
+      method: 'POST',
+      body: JSON.stringify({ endpoint }),
+    }),
+
+  /** Envoi de test : « ai-je bien accepté ? » ne se vérifie pas autrement. */
+  pushTest: () => request<{ message: string }>('/push/test', { method: 'POST' }),
+
   tasks: () => request<TasksResponse>('/tasks'),
 
   /** Ma semaine — auto-suivi du lundi (six indicateurs, calcul serveur). */

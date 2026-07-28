@@ -53,6 +53,27 @@ class AlertNotification extends Notification implements ShouldQueue
         ];
     }
 
+    /**
+     * Charge utile PUSH — ce qui s'affiche sur l'écran verrouillé.
+     *
+     * Volontairement SOBRE : titre, message court, URL. Rien de sensible. Le
+     * contenu traverse le serveur de push du fabricant (chiffré de bout en bout,
+     * mais autant ne pas y confier les chiffres de l'exploitation) et s'affiche
+     * sur un écran que n'importe qui peut lire par-dessus l'épaule.
+     */
+    public function toWebPush($notifiable): array
+    {
+        return [
+            'title'    => $this->payload['title'] ?? 'Alerte',
+            'body'     => $this->payload['message'] ?? '',
+            'severity' => $this->payload['severity'] ?? 'normal',
+            'url'      => $this->payload['url'] ?? '/alertes',
+            // Regroupe les notifications d'un même type : trois alertes de
+            // mortalité n'empilent pas trois bannières sur l'écran verrouillé.
+            'tag'      => $this->payload['type'] ?? 'general',
+        ];
+    }
+
     public function toMail($notifiable): MailMessage
     {
         $severity = strtoupper($this->payload['severity'] ?? 'normal');

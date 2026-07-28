@@ -66,6 +66,14 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::post('/notifications/read-all', [\App\Http\Controllers\Api\NotificationController::class, 'markAllRead'])->name('notifications.read_all');
         Route::post('/notifications/{id}/read', [\App\Http\Controllers\Api\NotificationController::class, 'markRead'])->name('notifications.read');
 
+        // ─── PUSH NAVIGATEUR ───
+        // S'abonner à SES alertes ne dépend d'aucune permission métier : le vrai
+        // consentement est celui que le navigateur demande à l'utilisateur.
+        Route::get('/push/key', [\App\Http\Controllers\Api\PushSubscriptionController::class, 'key'])->name('push.key');
+        Route::post('/push/subscribe', [\App\Http\Controllers\Api\PushSubscriptionController::class, 'subscribe'])->name('push.subscribe');
+        Route::post('/push/unsubscribe', [\App\Http\Controllers\Api\PushSubscriptionController::class, 'unsubscribe'])->name('push.unsubscribe');
+        Route::post('/push/test', [\App\Http\Controllers\Api\PushSubscriptionController::class, 'test'])->name('push.test');
+
         Route::get('/batches', [BatchController::class, 'index'])->name('batches.index');
         Route::get('/batches/{batch}', [BatchController::class, 'show'])->name('batches.show');
         // Fiche enrichie : indicateurs + historique des pointages (courbe de poids).

@@ -40,6 +40,15 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // ─── CANAL « webpush » ───
+        // Enregistré ici pour que NotificationHub puisse le mettre dans la liste
+        // des canaux d'un destinataire, au même titre que la cloche et l'e-mail :
+        // une seule décision d'éligibilité, plusieurs porteurs.
+        \Illuminate\Support\Facades\Notification::extend(
+            'webpush',
+            fn ($app) => $app->make(\App\Notifications\Channels\WebPushChannel::class)
+        );
+
         // ─── BINDING {employee} : UNE seule règle de visibilité RH ───
         // La liste du personnel inclut les employés d'un AUTRE site dont le
         // compte a reçu l'accès à la ferme courante (agent prêté). Les routes à

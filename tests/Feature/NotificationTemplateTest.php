@@ -68,7 +68,8 @@ test('un modèle personnalisé change le message d\'alerte envoyé', function ()
     $building = \App\Models\Building::factory()->create();
     $batch = Batch::factory()->create(['building_id' => $building->id, 'code' => 'LOT-MORT', 'current_quantity' => 90]);
 
-    $hub = new NotificationHub($fake);
+    // Le hub a plusieurs dépendances : on n'en cite que celle qu'on remplace.
+    $hub = app()->makeWith(NotificationHub::class, ['whatsapp' => $fake]);
     $hub->alertMortality($batch, 10, 5.0);
 
     expect($captured)->toContain('MORT LOT-MORT = 10');

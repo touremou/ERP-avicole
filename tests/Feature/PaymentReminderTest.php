@@ -60,7 +60,7 @@ test('relancer envoie un message au client et journalise la relance', function (
         $captured = ['phone' => $phone, 'msg' => $msg];
         return true;
     });
-    app()->instance(NotificationHub::class, new NotificationHub($fake));
+    app()->instance(NotificationHub::class, app()->makeWith(NotificationHub::class, ['whatsapp' => $fake]));
 
     $sale = overdueSale();
 
@@ -78,7 +78,7 @@ test('relancer envoie un message au client et journalise la relance', function (
 test('la commande relance les ventes échues sans en relancer deux fois', function () {
     $fake = Mockery::mock(WhatsAppService::class);
     $fake->shouldReceive('send')->andReturnTrue();
-    app()->instance(NotificationHub::class, new NotificationHub($fake));
+    app()->instance(NotificationHub::class, app()->makeWith(NotificationHub::class, ['whatsapp' => $fake]));
 
     $sale = overdueSale();
 
