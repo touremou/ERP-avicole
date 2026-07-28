@@ -163,7 +163,10 @@ class BatchController extends Controller
         $count = Batch::whereIn('id', $data['batch_ids'])->update(['employee_id' => $employeeId]);
 
         if ($employeeId) {
-            $employee = \App\Models\Employee::find($employeeId);
+            // Même règle que le sélecteur : `find()` renvoyait null pour un agent
+            // prêté, et le message annonçait « affecté(s) à . » — l'affectation
+            // avait pourtant bien eu lieu.
+            $employee = \App\Models\Employee::assignableInCurrentFarm()->find($employeeId);
             $who = trim(($employee->first_name ?? '') . ' ' . ($employee->last_name ?? ''));
             return back()->with('success', __(':count lot(s) affecté(s) à :who.', ['count' => $count, 'who' => $who]));
         }

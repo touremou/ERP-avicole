@@ -387,7 +387,17 @@ class PayrollController extends Controller
             'delegate_to' => 'required|exists:employees,id',
         ]);
 
-        $delegate = Employee::findOrFail($validated['delegate_to']);
+        // Le délégataire vient du menu « Collègue », alimenté par le même écran :
+        // `findOrFail()` réappliquait le filtre de ferme et renvoyait 404 sur un
+        // agent prêté — une page « INTROUVABLE » là où le collègue était proposé
+        // deux lignes plus haut. On délègue à quelqu'un qui peut travailler ici,
+        // donc la règle d'affectation.
+        $delegate = Employee::assignableInCurrentFarm()->find($validated['delegate_to']);
+
+        if (! $delegate) {
+            return back()->with('error', "Ce collègue n'est pas disponible sur cette ferme.");
+        }
+
         if ($delegate->id === $leave->employee_id) {
             return back()->with('error', "Impossible de déléguer à l'employé absent lui-même.");
         }

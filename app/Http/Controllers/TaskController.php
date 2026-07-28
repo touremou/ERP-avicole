@@ -101,7 +101,10 @@ class TaskController extends Controller
         // FarmScope s'applique automatiquement sur ces modèles
         $employees = Employee::assignableInCurrentFarm()->orderBy('first_name')->get();
         $buildings = Building::physical()->orderBy('name')->get();
-        $filteredEmployee = $employeeId ? Employee::find($employeeId) : null;
+        // Même vivier que le sélecteur juste au-dessus : filtrer les tâches par
+        // un agent prêté ne trouvait personne, et l'étiquette du filtre restait
+        // muette alors que la liste, elle, était bien filtrée.
+        $filteredEmployee = $employeeId ? $employees->firstWhere('id', (int) $employeeId) : null;
 
         // ═══ VUE MENSUELLE ═══
         $calendarData = [];
