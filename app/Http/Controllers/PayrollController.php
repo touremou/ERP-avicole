@@ -222,17 +222,33 @@ class PayrollController extends Controller
     {
         if (Gate::denies('rh.L')) return back()->with('error', 'Accès restreint.');
 
-        $leaves = EmployeeLeave::with('employee')
+        // Le sélecteur suit la règle des affectations : `where status = Actif`
+        // était filtré par ferme et EXCLUAIT les agents prêtés. Sur un site tenu
+        // par des agents prêtés, la liste était donc entièrement VIDE — aucun
+        // congé n'y était saisissable.
+        $employees = Employee::onStaffInCurrentFarm()->orderBy('first_name')->get();
+
+        // Un congé est classé au dossier de l'agent, donc sur son site d'origine.
+        // L'écran doit néanmoins montrer les absences de TOUS ceux qu'on peut
+        // affecter ici : sinon on saisit un congé et il disparaît de la liste où
+        // on vient de l'inscrire.
+        $scope = fn ($query) => $query
+            ->withoutGlobalScope(\App\Scopes\FarmScope::class)
+            ->whereIn('employee_id', $employees->pluck('id'));
+
+        // NB : $employees porte l'effectif (congés compris), pas seulement les
+        // « Actif » — sans quoi approuver un congé en ferait disparaître la ligne.
+
+        $leaves = $scope(EmployeeLeave::with('employee'))
             ->orderByDesc('start_date')
             ->paginate((int) setting('general.items_per_page', 20));
 
-        $employees = Employee::where('status', 'Actif')->orderBy('first_name')->get();
-
-        // KPI congés
+        // KPI congés — sur le même périmètre que la liste, sans quoi les compteurs
+        // annonceraient des congés introuvables en dessous.
         $kpi = [
-            'pending'   => EmployeeLeave::where('status', 'demande')->count(),
-            'on_leave'  => EmployeeLeave::where('status', 'en_cours')->count(),
-            'this_month' => EmployeeLeave::where('start_date', '>=', now()->startOfMonth())->count(),
+            'pending'    => $scope(EmployeeLeave::query())->where('status', 'demande')->count(),
+            'on_leave'   => $scope(EmployeeLeave::query())->where('status', 'en_cours')->count(),
+            'this_month' => $scope(EmployeeLeave::query())->where('start_date', '>=', now()->startOfMonth())->count(),
         ];
 
         return view('payroll.leaves', compact('leaves', 'employees', 'kpi'));
@@ -250,6 +266,14 @@ class PayrollController extends Controller
             'reason'      => 'nullable|string|max:500',
         ]);
 
+        // Même règle que le sélecteur qui l'a proposé : `exists:employees,id` ne
+        // borne rien (ni ferme, ni archive).
+        $employee = Employee::onStaffInCurrentFarm()->find($validated['employee_id']);
+
+        if (! $employee) {
+            return back()->with('error', "Cet employé n'est pas rattaché à cette ferme.")->withInput();
+        }
+
         $days = Carbon::parse($validated['start_date'])->diffInDays(Carbon::parse($validated['end_date'])) + 1;
 
         // Habilité (RH / Manager / Admin = droit rh.S) : la saisie vaut
@@ -257,6 +281,11 @@ class PayrollController extends Controller
         $autoApprove = Gate::allows('rh.S');
 
         $leave = EmployeeLeave::create(array_merge($validated, [
+            // Le congé est classé au DOSSIER de l'agent, donc sur son site
+            // d'origine — celui qui le paie. Le classer sur le site de saisie
+            // l'aurait rendu invisible à la paie qui doit le compter, et son site
+            // d'origine aurait pu lui donner du travail pendant la même absence.
+            'farm_id'      => $employee->farm_id,
             'days_count'   => $days,
             'status'       => $autoApprove ? 'approuve' : 'demande',
             'requested_by' => Auth::id(),

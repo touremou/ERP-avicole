@@ -52,7 +52,11 @@ class PayrollService
                 $daysOutsideContract = max(0, $workingDays - $contract['working_days']);
 
                 // Congés/absences pendant la période
-                $leaves = EmployeeLeave::where('employee_id', $emp->id)
+                // Par le LIEN de l'employé : un congé lui appartient, d'où qu'il
+                // ait été saisi. Une requête filtrée par ferme aurait manqué un
+                // congé enregistré depuis le site où il est prêté — un sans-solde
+                // ne serait pas déduit, un congé payé pas compté.
+                $leaves = $emp->leaves()
                     ->whereIn('status', ['approuve', 'en_cours', 'termine'])
                     ->where('start_date', '<=', $contract['end'])
                     ->where('end_date', '>=', $contract['start'])

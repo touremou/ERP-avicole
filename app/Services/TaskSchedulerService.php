@@ -34,13 +34,16 @@ class TaskSchedulerService
         // ni lot virtuel de traçabilité ne génère de tâches.
         $buildingQuery = Building::physical()
             ->whereHas('batches', fn($q) => $q->active()->live());
-        $employeeQuery = Employee::where('status', 'Actif');
+        // Le vivier d'affectation suit la MÊME règle que les sélecteurs
+        // « Assigner… » : `where farm_id = X` en excluait les agents PRÊTÉS,
+        // dont le dossier vit sur l'autre site. Sur une ferme tenue par des
+        // agents prêtés, le vivier était donc VIDE : le générateur créait toutes
+        // les tâches sans titulaire et il fallait les assigner une par une, alors
+        // que findBestEmployee() sait très bien les répartir.
+        $employeeQuery = Employee::assignableInFarm($farmId);
 
         if ($farmId && Schema::hasColumn('buildings', 'farm_id')) {
             $buildingQuery->where('farm_id', $farmId);
-        }
-        if ($farmId && Schema::hasColumn('employees', 'farm_id')) {
-            $employeeQuery->where('farm_id', $farmId);
         }
 
         $activeBuildings = $buildingQuery->get();

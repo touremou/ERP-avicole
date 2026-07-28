@@ -61,9 +61,20 @@ class Employee extends Model
         return $this->belongsTo(\App\Models\Building::class, 'assigned_building_id');
     }
 
+    /**
+     * Congés de CET employé — quel que soit le site qui les a saisis.
+     *
+     * Un congé est classé au dossier de l'agent, donc sur son site d'ORIGINE.
+     * Filtré par ferme, ce lien rendait l'absence invisible depuis le site
+     * d'accueil d'un agent prêté : il y était « disponible » alors qu'il était
+     * en congé chez lui, et le garde-fou d'affectation ne pouvait rien dire.
+     *
+     * Être en congé ne dépend pas de l'endroit d'où on regarde.
+     */
     public function leaves(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
-        return $this->hasMany(EmployeeLeave::class);
+        return $this->hasMany(EmployeeLeave::class)
+            ->withoutGlobalScope(\App\Scopes\FarmScope::class);
     }
 
     /**
@@ -196,8 +207,20 @@ class Employee extends Model
      */
     public function scopeVisibleInCurrentFarm($query)
     {
-        $farmId = session('current_farm_id');
+        return $query->visibleInFarm(session('current_farm_id'));
+    }
 
+    /**
+     * Même règle, pour une ferme DÉSIGNÉE.
+     *
+     * Les traitements de fond (génération des tâches, commandes planifiées)
+     * tournent sans session : ils reçoivent l'identifiant de ferme en argument.
+     * Faute de cette variante, ils réécrivaient le filtre à la main — `where
+     * farm_id = X` — et retombaient donc dans le défaut que la règle corrige :
+     * les agents prêtés disparaissaient de leur vivier.
+     */
+    public function scopeVisibleInFarm($query, ?int $farmId)
+    {
         // On retire le scope de FERME, et RIEN D'AUTRE. withoutGlobalScopes()
         // emportait aussi SoftDeletes : les employés ARCHIVÉS réapparaissaient
         // dans tous les sélecteurs « Responsable ». Les écrans qui doivent voir
@@ -238,7 +261,30 @@ class Employee extends Model
      */
     public function scopeAssignableInCurrentFarm($query)
     {
-        return $query->visibleInCurrentFarm()->active();
+        return $query->assignableInFarm(session('current_farm_id'));
+    }
+
+    /** Même règle, pour une ferme désignée (cf. scopeVisibleInFarm). */
+    public function scopeAssignableInFarm($query, ?int $farmId)
+    {
+        return $query->visibleInFarm($farmId)->active();
+    }
+
+    /**
+     * Agents encore À L'EFFECTIF de la ferme courante — congés et suspensions
+     * COMPRIS. C'est le périmètre des écrans RH d'absence.
+     *
+     * `assignableInCurrentFarm()` ne retient que les « Actif », ce qui est juste
+     * pour désigner quelqu'un à une tâche mais faux ici : approuver un congé fait
+     * passer l'agent au statut « Congé », il quittait donc le sélecteur ET la
+     * liste. On saisissait une absence et elle disparaissait de l'écran qui
+     * venait de l'enregistrer — en paraissant n'avoir rien enregistré.
+     *
+     * Seuls les départs (« Parti ») et les dossiers archivés sortent.
+     */
+    public function scopeOnStaffInCurrentFarm($query)
+    {
+        return $query->visibleInCurrentFarm()->where('status', '!=', 'Parti');
     }
 
     // --- CONTRAT À DURÉE DÉTERMINÉE ---
