@@ -226,3 +226,92 @@ test('un agent d’un autre site SANS accès reste hors du vivier', function () 
     $response = $this->actingAs($this->adminUser)->get(route('payroll.leaves'));
     expect($response->viewData('employees')->pluck('id'))->not->toContain($stranger->id);
 });
+
+/*
+ * SUITE — signalé le même jour : « erreur pour délégation de tâche pour un
+ * employé en congé » (404 sur /payroll/leaves/1/delegate).
+ *
+ * Le congé s'ouvrait bien, le menu « Collègue » proposait bien l'agent : c'est
+ * la RELECTURE du délégataire qui le refusait. Quatre écrans partageaient cet
+ * écart entre ce qui est proposé et ce qui est relu — chacun avec un symptôme
+ * différent, du 404 au message tronqué.
+ */
+
+test('déléguer les tâches à un collègue PRÊTÉ aboutit', function () {
+    // Le signalement exact : page « INTROUVABLE » alors que le collègue venait
+    // d'être proposé dans le menu du même écran.
+    $absent    = lentAgent($this->farm, $this->adminUser);
+    $colleague = lentAgent($this->farm, $this->adminUser);
+
+    $leave = EmployeeLeave::create([
+        'farm_id'     => $absent->farm_id,
+        'employee_id' => $absent->id,
+        'type'        => 'conge_annuel',
+        'start_date'  => today()->toDateString(),
+        'end_date'    => today()->addDays(2)->toDateString(),
+        'days_count'  => 3,
+        'status'      => 'approuve',
+    ]);
+
+    $task = TaskAssignment::create([
+        'farm_id' => $this->farm->id, 'employee_id' => $absent->id,
+        'title' => 'Arrosage', 'category' => 'irrigation',
+        'scheduled_date' => today()->addDay()->toDateString(), 'status' => 'a_faire',
+    ]);
+
+    $this->actingAs($this->adminUser)
+        ->post(route('payroll.leaves.delegate', $leave), ['delegate_to' => $colleague->id])
+        ->assertRedirect()
+        ->assertSessionHas('success');
+
+    // Et la tâche a réellement changé de main : un message de succès sur une
+    // délégation qui n'a rien déplacé serait pire que le 404.
+    expect($task->fresh()->employee_id)->toBe($colleague->id);
+});
+
+test('déléguer à quelqu’un hors de la ferme est refusé, proprement', function () {
+    // Le refus doit rester, mais en le DISANT — pas par une page introuvable.
+    $absent = lentAgent($this->farm, $this->adminUser);
+    $elsewhere = Farm::firstOrCreate(['code' => 'KER-802'], ['name' => 'Ailleurs', 'is_active' => true]);
+    $stranger = Employee::factory()->create([
+        'farm_id' => $elsewhere->id, 'user_id' => null, 'status' => 'Actif',
+    ]);
+
+    $leave = EmployeeLeave::create([
+        'farm_id' => $absent->farm_id, 'employee_id' => $absent->id, 'type' => 'conge_annuel',
+        'start_date' => today()->toDateString(), 'end_date' => today()->addDay()->toDateString(),
+        'days_count' => 2, 'status' => 'approuve',
+    ]);
+
+    $this->actingAs($this->adminUser)
+        ->post(route('payroll.leaves.delegate', $leave), ['delegate_to' => $stranger->id])
+        ->assertRedirect()
+        ->assertSessionHas('error');
+});
+
+test('affecter des lots à un agent prêté NOMME l’agent dans le compte-rendu', function () {
+    // Symptôme discret du même écart : l'affectation avait lieu, mais le message
+    // annonçait « affecté(s) à . » — on ne savait pas si ça avait marché.
+    $lent = lentAgent($this->farm, $this->adminUser);
+
+    $batch = \App\Models\Batch::factory()->create(['farm_id' => $this->farm->id]);
+
+    $this->actingAs($this->adminUser)
+        ->post(route('batches.bulkAssign'), [
+            'batch_ids'   => [$batch->id],
+            'employee_id' => $lent->id,
+        ])
+        ->assertRedirect();
+
+    expect(session('success'))->toContain($lent->first_name);
+});
+
+test('cocher un agent prêté dans l’annuaire ne le fait pas disparaître en silence', function () {
+    // L'annuaire propose les agents prêtés (règle de visibilité), mais l'action
+    // les relisait filtrés par ferme : on en cochait cinq, le compte-rendu en
+    // annonçait trois, sans dire lesquels ni pourquoi.
+    $controller = file_get_contents(app_path('Http/Controllers/EmployeeAccessController.php'));
+
+    expect($controller)->toContain('Employee::visibleInCurrentFarm()->whereIn(')
+        ->and($controller)->not->toContain("Employee::whereIn('id', \$data['employee_ids'])");
+});

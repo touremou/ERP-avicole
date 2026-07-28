@@ -84,8 +84,11 @@ class EmployeeAccessController extends Controller
             'role_id'        => ['required', 'integer', Rule::exists('roles', 'id')],
         ]);
 
-        // FarmScope actif : bornée aux employés du site courant.
-        $employees = Employee::whereIn('id', $data['employee_ids'])->get();
+        // Exactement ce que l'annuaire a proposé à la coche : filtrée par ferme,
+        // cette relecture écartait les agents PRÊTÉS en silence. On en cochait
+        // cinq, le compte-rendu en annonçait trois, sans dire lesquels ni
+        // pourquoi.
+        $employees = Employee::visibleInCurrentFarm()->whereIn('id', $data['employee_ids'])->get();
 
         $created = [];   // nouveaux accès (avec mot de passe à distribuer)
         $linked  = [];   // comptes existants rattachés
