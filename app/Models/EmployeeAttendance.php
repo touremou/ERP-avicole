@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Traits\BelongsToFarm;
+use App\Traits\ReferencesEmployee;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -14,7 +15,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class EmployeeAttendance extends Model
 {
-    use BelongsToFarm;
+    use BelongsToFarm, ReferencesEmployee;
 
     protected $fillable = [
         'farm_id', 'employee_id', 'attendance_date', 'status',
@@ -35,10 +36,6 @@ class EmployeeAttendance extends Model
     /** Statuts comptés comme journée travaillée. */
     public const WORKED = ['present', 'retard'];
 
-    public function employee(): BelongsTo
-    {
-        return $this->belongsTo(Employee::class);
-    }
 
     public function recorder(): BelongsTo
     {

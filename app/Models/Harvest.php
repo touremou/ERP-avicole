@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Traits\BelongsToFarm;
+use App\Traits\ReferencesEmployee;
 use App\Traits\HasStandardUuid;
 
 /**
@@ -17,7 +18,7 @@ use App\Traits\HasStandardUuid;
  */
 class Harvest extends Model
 {
-    use HasFactory, SoftDeletes, HasStandardUuid, BelongsToFarm;
+    use HasFactory, SoftDeletes, HasStandardUuid, BelongsToFarm, ReferencesEmployee;
 
     /** Qualité de la récolte (colonne `quality`). */
     public const QUALITY_BON      = 'bon';
@@ -111,10 +112,6 @@ class Harvest extends Model
         return $this->belongsTo(CropCycle::class);
     }
 
-    public function employee(): BelongsTo
-    {
-        return $this->belongsTo(Employee::class);
-    }
 
     /**
      * Lots de transformation issus de cette récolte (T1) — traçabilité

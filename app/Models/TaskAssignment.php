@@ -3,12 +3,13 @@
 namespace App\Models;
 
 use App\Traits\BelongsToFarm;
+use App\Traits\ReferencesEmployee;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class TaskAssignment extends Model
 {
-    use BelongsToFarm;
+    use BelongsToFarm, ReferencesEmployee;
 
     /** Délai au-delà duquel une prise (claim) non clôturée est libérée. */
     public const CLAIM_TIMEOUT_MINUTES = 120;
@@ -131,7 +132,6 @@ class TaskAssignment extends Model
     }
 
     public function template(): BelongsTo { return $this->belongsTo(TaskTemplate::class, 'task_template_id'); }
-    public function employee(): BelongsTo { return $this->belongsTo(Employee::class); }
     public function building(): BelongsTo { return $this->belongsTo(Building::class); }
     public function plot(): BelongsTo { return $this->belongsTo(\App\Models\Plot::class); }
     public function batch(): BelongsTo { return $this->belongsTo(Batch::class); }

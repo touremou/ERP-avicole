@@ -3,13 +3,14 @@
 namespace App\Models;
 
 use App\Traits\BelongsToFarm;
+use App\Traits\ReferencesEmployee;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Payslip extends Model
 {
-    use BelongsToFarm;
+    use BelongsToFarm, ReferencesEmployee;
 
     protected $fillable = [
         'farm_id', 'payroll_period_id', 'employee_id',
@@ -24,7 +25,6 @@ class Payslip extends Model
     ];
 
     public function period(): BelongsTo { return $this->belongsTo(PayrollPeriod::class, 'payroll_period_id'); }
-    public function employee(): BelongsTo { return $this->belongsTo(Employee::class); }
     public function lines(): HasMany { return $this->hasMany(PayslipLine::class); }
 
     public function primes(): HasMany { return $this->lines()->where('type', 'prime'); }

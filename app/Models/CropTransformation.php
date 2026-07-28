@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Traits\BelongsToFarm;
+use App\Traits\ReferencesEmployee;
 use App\Traits\HasStandardUuid;
 
 /**
@@ -18,7 +19,7 @@ use App\Traits\HasStandardUuid;
  */
 class CropTransformation extends Model
 {
-    use HasFactory, SoftDeletes, HasStandardUuid, BelongsToFarm;
+    use HasFactory, SoftDeletes, HasStandardUuid, BelongsToFarm, ReferencesEmployee;
 
     public const STATUS_EN_COURS = 'en_cours';
     public const STATUS_TERMINE  = 'termine';
@@ -83,10 +84,6 @@ class CropTransformation extends Model
         return $this->belongsTo(CropRecipe::class, 'crop_recipe_id');
     }
 
-    public function employee(): BelongsTo
-    {
-        return $this->belongsTo(Employee::class);
-    }
 
     // ─── ACCESSEURS ───
 
