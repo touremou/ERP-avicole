@@ -92,6 +92,27 @@ class AuthController extends Controller
         return [
             'currency'      => (string) setting('general.currency', 'GNF'),
             'cash_rounding' => (int) setting('ventes.cash_rounding', 0),
+
+            // CATÉGORIES DE TÂCHE — servies, pas dupliquées.
+            //
+            // Le terrain en portait six, écrites en dur dans l'écran mobile, quand
+            // le bureau en proposait quatorze. Une tâche de cultures créée au
+            // bureau arrivait au téléphone dans une catégorie qu'il ne savait pas
+            // nommer, et le technicien ne pouvait en créer aucune : arroser se
+            // classait « alimentation ».
+            //
+            // La liste descend maintenant du serveur et se met en cache avec la
+            // session : ajouter une catégorie au bureau la rend disponible au
+            // terrain sans republier l'application.
+            'task_categories' => collect(\App\Models\TaskTemplate::CATEGORIES)
+                ->map(fn (array $meta, string $key) => [
+                    'key'   => $key,
+                    'label' => __($meta['label']),
+                    'emoji' => $meta['emoji'],
+                    'group' => __($meta['group']),
+                ])
+                ->values()
+                ->all(),
         ];
     }
 

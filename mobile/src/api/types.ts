@@ -48,6 +48,15 @@ export interface MeResponse {
     currency?: string
     /** Coupure de caisse (0 = pas d'arrondi). Cf. cash_round() côté serveur. */
     cash_rounding?: number
+    /**
+     * Catégories de tâche, SERVIES par le serveur (TaskTemplate::CATEGORIES).
+     *
+     * L'écran mobile en portait six en dur quand le bureau en proposait
+     * quatorze : arroser se classait « alimentation », faute de mieux. Les
+     * servir évite qu'une liste métier vive à deux endroits — ajouter une
+     * catégorie au bureau suffit désormais.
+     */
+    task_categories?: { key: string; label: string; emoji: string; group: string }[]
   }
   server_time: string
 }
