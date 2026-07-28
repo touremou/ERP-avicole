@@ -80,8 +80,23 @@ export function MonEspaceScreen() {
     .toUpperCase()
 
   async function refresh() {
-    setRecords(await db.my_records.orderBy('created_at').reverse().limit(30).toArray())
-    setReview(await db.outbox.where('status').equals('review').toArray())
+    // MON activité, pas celle de l'appareil. Les téléphones de service passent de
+    // main en main : sans ce filtre, un technicien voyait — et pouvait abandonner
+    // — les saisies du précédent connecté. Le principe est celui des tâches : on
+    // ne voit et on n'agit que sur ce qui nous concerne.
+    //
+    // Les entrées SANS auteur (antérieures au marquage) ne sont montrées à
+    // personne : on ne peut pas deviner qui les a saisies, et les attribuer au
+    // hasard serait pire que de les masquer. Elles partent quand même à la
+    // synchronisation, elles ne sont donc pas perdues.
+    const mine = (rows: { user_id?: number }[]) =>
+      me?.user.id ? rows.filter((row) => row.user_id === me.user.id) : []
+
+    const records = await db.my_records.orderBy('created_at').reverse().limit(200).toArray()
+    setRecords(mine(records).slice(0, 30) as MyRecord[])
+
+    const review = await db.outbox.where('status').equals('review').toArray()
+    setReview(mine(review) as OutboxEntry[])
   }
 
   // État du push sur CET appareil : trois conditions peuvent manquer (navigateur,
@@ -124,8 +139,15 @@ export function MonEspaceScreen() {
     }
   }
 
+  // La session est chargée en asynchrone au démarrage : `me` est encore nul au
+  // premier rendu. Le filtre par auteur en dépendant, il faut RELIRE une fois
+  // l'identité connue — sinon « Mon activité » resterait vide jusqu'au prochain
+  // geste. Et au changement de compte, la liste se recompose d'elle-même.
   useEffect(() => {
     void safeLoad('mon-espace', refresh)
+  }, [me?.user.id])
+
+  useEffect(() => {
     void pushStatus().then(setPush)
     const on = () => setOnline(true)
     const off = () => setOnline(false)

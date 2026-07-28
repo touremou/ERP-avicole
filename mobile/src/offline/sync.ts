@@ -14,7 +14,7 @@
  *   error (5xx serveur) → RESTE pending, retenté au prochain cycle (backoff)
  */
 import { api, ApiError } from '../api/client'
-import { db, getMeta, setMeta, type OutboxEntry } from './db'
+import { db, getMeta, setMeta, session, type OutboxEntry } from './db'
 import { validateOp, OpValidationError } from './opRules'
 import { allows, OP_ACCESS, OpForbiddenError } from './access'
 import { t } from '../i18n'
@@ -165,6 +165,11 @@ export async function enqueue(
   const fullPayload = { uuid: opUuid, ...payload }
   const now = new Date().toISOString()
 
+  // AUTEUR de la saisie. Les téléphones de service sont partagés : sans cette
+  // marque, « Mon activité » montrait l'historique du technicien précédemment
+  // connecté, et une saisie non poussée partait sous le jeton du suivant.
+  const authorId = (await session.me())?.user.id
+
   await db.transaction('rw', db.outbox, db.my_records, async () => {
     await db.outbox.add({
       op_uuid: opUuid,
@@ -175,6 +180,7 @@ export async function enqueue(
       created_at: now,
       last_error: null,
       server_errors: null,
+      user_id: authorId,
     })
     await db.my_records.add({
       uuid: opUuid,
@@ -183,6 +189,7 @@ export async function enqueue(
       payload: fullPayload,
       sync_status: 'pending',
       created_at: now,
+      user_id: authorId,
     })
   })
 
@@ -190,6 +197,29 @@ export async function enqueue(
   // Tentative opportuniste — silencieuse si hors-ligne.
   void syncNow()
   return opUuid
+}
+
+/**
+ * Saisies en attente APPARTENANT au compte connecté.
+ *
+ * Un téléphone de service passe de main en main. Pousser les saisies d'un
+ * technicien sous le jeton du suivant ferait attribuer son travail au mauvais
+ * compte par le serveur — qui écrit toujours au nom de l'utilisateur authentifié.
+ * Les indicateurs par technicien créditeraient alors la mauvaise personne.
+ *
+ * Les saisies d'un AUTRE compte restent en file : elles repartiront quand leur
+ * auteur se reconnectera. On ne détruit pas du travail de terrain.
+ *
+ * Les entrées sans auteur (antérieures à la v14 du schéma) sont poussées : elles
+ * précèdent la notion d'auteur, et les bloquer les condamnerait.
+ */
+async function myPendingOperations(): Promise<OutboxEntry[]> {
+  const meId = (await session.me())?.user.id
+  const pending = await db.outbox.where('status').equals('pending').toArray()
+
+  if (!meId) return pending
+
+  return pending.filter((op) => op.user_id === undefined || op.user_id === meId)
 }
 
 /** Cycle complet push → pull. Réentrant-safe (une seule exécution à la fois). */
@@ -233,7 +263,11 @@ export async function syncNow(): Promise<void> {
 const MAX_OP_ATTEMPTS = 10
 
 async function pushOutbox(): Promise<void> {
-  const pending = await db.outbox.where('status').equals('pending').sortBy('created_at')
+  // Uniquement MES saisies : cf. myPendingOperations(). Celles d'un autre compte
+  // attendent son retour plutôt que d'être poussées en son nom.
+  const pending = (await myPendingOperations())
+    .sort((a, b) => a.created_at.localeCompare(b.created_at))
+
   if (pending.length === 0) return
 
   // Photos d'abord : une op qui référence une photo locale (payload.photo_uuid)

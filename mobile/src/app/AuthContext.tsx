@@ -13,7 +13,7 @@ import {
   type ReactNode,
 } from 'react'
 import { api, clearSession } from '../api/client'
-import { db, getMeta, setMeta } from '../offline/db'
+import { clearPersonalData, db, getMeta, setMeta } from '../offline/db'
 import { adoptProfileLocale } from '../i18n'
 import type { MeResponse, PermissionLevel } from '../api/types'
 
@@ -64,10 +64,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const login = useCallback(async (email: string, password: string, deviceName: string) => {
+    // QUI était connecté avant ? Sur un téléphone de service qui passe de main en
+    // main, le compte change sans qu'une déconnexion propre ait eu lieu (batterie
+    // vide, application tuée).
+    const previous = (await getMeta<MeResponse>('me'))?.user.id
+
     const { token } = await api.login(email, password, deviceName)
     await setMeta('token', token)
 
     const fresh = await api.me()
+
+    // CHANGEMENT DE COMPTE : on purge les miroirs PERSONNELS du précédent —
+    // alertes et tâches assignées. Il les voyait sinon s'afficher chez le suivant,
+    // alors que le principe, côté web, est qu'on ne voit que ce qui nous concerne.
+    //
+    // L'historique de saisie et l'outbox RESTENT, marqués de leur auteur : ils ne
+    // sont montrés qu'à lui et ne partiront pas au nom du nouveau venu
+    // (cf. clearPersonalData et myPendingOperations).
+    if (previous && previous !== fresh.user.id) {
+      await clearPersonalData()
+    }
+
     await setMeta('me', fresh)
     if (fresh.scope.farm_id) await setMeta('farm_id', fresh.scope.farm_id)
     await adoptProfileLocale(fresh.user.locale)
@@ -81,9 +98,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Déjà déconnecté côté serveur ou hors-ligne : on purge quand même.
     }
     await clearSession()
-    // Les données de référence restent (autre utilisateur de la même ferme
-    // possible) mais les saisies personnelles non poussées sont conservées :
-    // l'outbox appartient à l'appareil, elle repartira à la prochaine session.
+
+    // Les données de RÉFÉRENCE restent (le suivant travaille sur la même ferme).
+    // Les miroirs personnels partent : alertes et tâches assignées, retéléchargés
+    // à la première synchronisation du suivant.
+    //
+    // L'historique et l'outbox restent, marqués de leur auteur : on ne détruit pas
+    // du travail de terrain, et il n'est montré qu'à celui qui l'a saisi.
+    await clearPersonalData()
     await db.meta.delete('last_pull_at')
     setMe(null)
   }, [])
