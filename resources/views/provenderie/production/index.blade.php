@@ -92,7 +92,7 @@
                             </td>
                             <td class="p-6 text-center">
                                 <p class="text-xl font-black text-slate-900 italic tracking-tighter leading-none">
-                                    {{ number_format($prod->quantity_produced / 50, 1) }} 
+                                    {{ number_format(\App\Services\UnitConverter::kgToSacks($prod->quantity_produced), 1) }} 
                                     <small class="text-[8px] text-slate-400 uppercase ml-1 italic font-black">{{ __("Sacs (50kg)") }}</small>
                                 </p>
                                 <p class="text-[8px] text-blue-500 uppercase font-black leading-none mt-2">{{ __("Masse") }} : {{ number_format($prod->quantity_produced, 0) }} kg</p>

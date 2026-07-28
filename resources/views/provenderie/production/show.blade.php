@@ -87,7 +87,7 @@
                     <div class="bg-slate-900 p-6 rounded-3xl text-white shadow-xl">
                         <p class="text-[9px] uppercase text-slate-400 mb-2 font-black italic opacity-70">{{ __("Masse Totale Cible") }}</p>
                         <p class="text-3xl font-black italic leading-none tracking-tighter">{{ number_format($production->quantity_produced, 0, ',', ' ') }} <small class="text-sm uppercase">kg</small></p>
-                        <p class="text-[10px] uppercase mt-2 opacity-50 font-black italic">{{ number_format($production->quantity_produced / 50, 1) }} {{ __("Sacs (50kg)") }}</p>
+                        <p class="text-[10px] uppercase mt-2 opacity-50 font-black italic">{{ number_format(\App\Services\UnitConverter::kgToSacks($production->quantity_produced), 1) }} {{ __("Sacs de :kg kg", ['kg' => \App\Services\UnitConverter::bagWeight()]) }}</p>
                     </div>
 
                     <div class="bg-slate-50 p-6 rounded-3xl border border-slate-100">

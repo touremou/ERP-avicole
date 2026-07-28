@@ -103,7 +103,7 @@
             {{-- Conversion visuelle pour les aliments en KG --}}
             @if($item->category === 'conso' && $themeKey === 'Aliment' && $item->unit === 'KG')
                 <span class="text-[8px] font-black text-emerald-500 uppercase italic tracking-tighter mt-1">
-                    ≈ {{ number_format($item->current_quantity / 50, 1) }} {{ __("Sacs") }}
+                    ≈ {{ number_format(\App\Services\UnitConverter::kgToSacks($item->current_quantity), 1) }} {{ __("Sacs") }}
                 </span>
             @endif
         </div>
@@ -112,7 +112,7 @@
     {{-- Indicateur Alvéoles (Spécifique) --}}
     @if($item->unit === 'Alvéole' && $item->current_quantity > 0)
         <div class="mt-2 text-[7px] text-blue-500 font-black uppercase italic">
-            {{ __("Soit") }} {{ floor($item->current_quantity) }} {{ __("plateaux") }} + {{ round(($item->current_quantity - floor($item->current_quantity)) * 30) }} {{ __("œufs") }}
+            {{ __("Soit") }} {{ floor($item->current_quantity) }} {{ __("plateaux") }} + {{ \App\Services\UnitConverter::traysToEggs($item->current_quantity - floor($item->current_quantity)) }} {{ __("œufs") }}
         </div>
     @endif
 
