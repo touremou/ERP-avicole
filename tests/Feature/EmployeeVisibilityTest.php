@@ -75,13 +75,13 @@ test('un employé prêté par un autre site est listé ET ouvrable', function ()
     $this->actingAs($this->adminUser)
         ->get(route('employees.index'))
         ->assertOk()
-        ->assertSee($lent->last_name, false);
+        ->assertSee(e($lent->last_name), false);
 
     // …et ouvrable : c'est ce qui renvoyait « INTROUVABLE ».
     $this->actingAs($this->adminUser)
         ->get(route('employees.show', $lent->id))
         ->assertOk()
-        ->assertSee($lent->last_name, false);
+        ->assertSee(e($lent->last_name), false);
 
     $this->actingAs($this->adminUser)
         ->get(route('employees.edit', $lent->id))
@@ -224,7 +224,7 @@ test('les formulaires d’opération proposent bien l’agent prêté', function
         $this->actingAs($this->adminUser)
             ->get(route($routeName))
             ->assertOk()
-            ->assertSee($lent->last_name, false);
+            ->assertSee(e($lent->last_name), false);
     }
 });
 

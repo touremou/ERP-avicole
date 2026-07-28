@@ -66,11 +66,7 @@
                             @include('employees.partials.contract-fields', ['employee' => null])
                             <div class="space-y-3">
                                 <label class="text-[10px] font-black text-slate-500 uppercase ml-1 tracking-widest">{{ __("Département") }}</label>
-                                <select name="department" class="w-full p-5 bg-slate-50 rounded-2xl border-none focus:ring-4 focus:ring-emerald-500/10 outline-none shadow-inner appearance-none font-black text-slate-800 italic cursor-pointer">
-                                    <option value="Elevage" {{ old('department') == 'Elevage' ? 'selected' : '' }}>🐔 {{ __("Élevage / Technique") }}</option>
-                                    <option value="Administration" {{ old('department') == 'Administration' ? 'selected' : '' }}>📂 {{ __("Administration / RH") }}</option>
-                                    <option value="Logistique" {{ old('department') == 'Logistique' ? 'selected' : '' }}>🚚 {{ __("Logistique & Ventes") }}</option>
-                                </select>
+                                @include('employees.partials.department-select', ['selected' => old('department')])
                             </div>
                             <div class="space-y-3">
                                 <label class="text-[10px] font-black text-slate-500 uppercase ml-1 tracking-widest">{{ __("Salaire Mensuel") }} ({{ setting('general.currency', 'GNF') }})</label>

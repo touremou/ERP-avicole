@@ -150,3 +150,61 @@ test('aucune vue ne recopie plus la liste des catégories', function () {
             ->and($source)->not->toContain('<option value="alimentation">');
     }
 });
+
+/*
+ * LES SERVICES DE LA FERME.
+ *
+ * Trois services seulement étaient proposés — Élevage, Administration,
+ * Logistique — alors que l'exploitation compte des cultures, une provenderie, un
+ * abattoir et un comptoir. Et les libellés DIVERGEAIENT entre la création
+ * (« Élevage / Technique ») et l'édition (« Élevage & Production ») : le même
+ * service portait deux noms selon l'écran.
+ */
+
+test('les services couvrent les activités réelles de la ferme', function () {
+    $keys = array_keys(\App\Models\Employee::DEPARTMENTS);
+
+    // Les trois existants, clefs INCHANGÉES : les dossiers en base les portent.
+    foreach (['Elevage', 'Administration', 'Logistique'] as $key) {
+        expect($keys)->toContain($key);
+    }
+
+    // Et les ateliers qui manquaient.
+    foreach (['Cultures', 'Provenderie', 'Abattoir', 'Commerce'] as $key) {
+        expect($keys)->toContain($key);
+    }
+});
+
+test('création et édition d’un employé proposent la MÊME liste', function () {
+    $employee = \App\Models\Employee::factory()->create([
+        'farm_id' => $this->farm->id, 'department' => 'Cultures', 'status' => 'Actif',
+    ]);
+
+    foreach ([route('employees.create'), route('employees.edit', $employee)] as $url) {
+        $response = $this->actingAs($this->adminUser)->get($url)->assertOk();
+
+        foreach (['Cultures', 'Provenderie', 'Abattoir', 'Commerce'] as $key) {
+            $response->assertSee('value="' . $key . '"', false);
+        }
+
+        // Le libellé est le même des deux côtés.
+        $response->assertSee('Élevage &amp; Production', false);
+    }
+});
+
+test('un service hérité reste sélectionné à l’édition', function () {
+    $employee = \App\Models\Employee::factory()->create([
+        'farm_id' => $this->farm->id, 'department' => 'Gardiennage', 'status' => 'Actif',
+    ]);
+
+    $this->actingAs($this->adminUser)->get(route('employees.edit', $employee))
+        ->assertOk()
+        ->assertSee('value="Gardiennage" selected', false);
+});
+
+test('aucun formulaire employé ne recopie la liste des services', function () {
+    foreach ([resource_path('views/employees/create.blade.php'),
+              resource_path('views/employees/edit.blade.php')] as $file) {
+        expect(file_get_contents($file))->not->toContain('<option value="Elevage"');
+    }
+});

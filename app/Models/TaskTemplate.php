@@ -77,28 +77,43 @@ class TaskTemplate extends Model
      * les six catégories d'élevage. Un arrosage se rangeait donc sous
      * « ALIMENTATION », et le planificateur devenait illisible.
      *
-     * @var array<string, array{label: string, emoji: string, icon: string, color: string}>
+     * `departments` porte les services autorisés à recevoir la catégorie (cf.
+     * Employee::DEPARTMENTS) ; `null` = aucune restriction. Cette carte vivait
+     * dans TaskController et ne connaissait que les six catégories d'élevage :
+     * une tâche agricole n'était donc soumise à aucun contrôle, tandis qu'un
+     * nettoyage était refusé à tout autre service que l'Élevage — alors qu'on
+     * nettoie aussi la provenderie et l'abattoir.
+     *
+     * Les catégories de CULTURES admettent « Elevage » en plus de « Cultures » :
+     * les techniciens de cultures existants sont classés « Élevage / Technique »,
+     * faute d'un service dédié jusqu'ici. Les leur refuser du jour au lendemain
+     * bloquerait le planning.
+     *
+     * `controle`, `maintenance` et les relevés ne sont PAS restreints : ils se
+     * pratiquent dans tous les ateliers.
+     *
+     * @var array<string, array{label: string, emoji: string, icon: string, color: string, group: string, departments: ?array}>
      */
     public const CATEGORIES = [
         // ── Élevage ──
-        'alimentation'   => ['label' => 'Alimentation',   'emoji' => '🌾', 'icon' => 'fa-bowl-food',          'color' => 'amber', 'group' => 'Élevage'],
-        'collecte'       => ['label' => 'Collecte',       'emoji' => '🥚', 'icon' => 'fa-egg',                'color' => 'emerald', 'group' => 'Élevage'],
-        'controle'       => ['label' => 'Contrôle',       'emoji' => '📋', 'icon' => 'fa-clipboard-check',    'color' => 'blue', 'group' => 'Élevage'],
-        'nettoyage'      => ['label' => 'Nettoyage',      'emoji' => '🧹', 'icon' => 'fa-broom',              'color' => 'purple', 'group' => 'Élevage'],
-        'sante'          => ['label' => 'Santé',          'emoji' => '💉', 'icon' => 'fa-heart-pulse',        'color' => 'rose', 'group' => 'Élevage'],
-        'maintenance'    => ['label' => 'Maintenance',    'emoji' => '🔧', 'icon' => 'fa-wrench',             'color' => 'slate', 'group' => 'Élevage'],
+        'alimentation'   => ['label' => 'Alimentation',   'emoji' => '🌾', 'icon' => 'fa-bowl-food',          'color' => 'amber', 'group' => 'Élevage', 'departments' => ['Elevage']],
+        'collecte'       => ['label' => 'Collecte',       'emoji' => '🥚', 'icon' => 'fa-egg',                'color' => 'emerald', 'group' => 'Élevage', 'departments' => ['Elevage']],
+        'controle'       => ['label' => 'Contrôle',       'emoji' => '📋', 'icon' => 'fa-clipboard-check',    'color' => 'blue', 'group' => 'Élevage', 'departments' => null],
+        'nettoyage'      => ['label' => 'Nettoyage',      'emoji' => '🧹', 'icon' => 'fa-broom',              'color' => 'purple', 'group' => 'Élevage', 'departments' => ['Elevage', 'Logistique', 'Provenderie', 'Abattoir']],
+        'sante'          => ['label' => 'Santé',          'emoji' => '💉', 'icon' => 'fa-heart-pulse',        'color' => 'rose', 'group' => 'Élevage', 'departments' => ['Elevage']],
+        'maintenance'    => ['label' => 'Maintenance',    'emoji' => '🔧', 'icon' => 'fa-wrench',             'color' => 'slate', 'group' => 'Élevage', 'departments' => null],
 
         // ── Cultures ──
-        'semis'          => ['label' => 'Semis',          'emoji' => '🌱', 'icon' => 'fa-seedling',           'color' => 'lime', 'group' => 'Cultures'],
-        'irrigation'     => ['label' => 'Irrigation',     'emoji' => '💧', 'icon' => 'fa-droplet',            'color' => 'cyan', 'group' => 'Cultures'],
-        'sarclage'       => ['label' => 'Sarclage',       'emoji' => '🌿', 'icon' => 'fa-trowel',             'color' => 'lime', 'group' => 'Cultures'],
-        'fertilisation'  => ['label' => 'Fertilisation',  'emoji' => '⚗️', 'icon' => 'fa-flask',              'color' => 'green', 'group' => 'Cultures'],
-        'traitement'     => ['label' => 'Traitement',     'emoji' => '🧪', 'icon' => 'fa-spray-can-sparkles', 'color' => 'rose', 'group' => 'Cultures'],
-        'recolte'        => ['label' => 'Récolte',        'emoji' => '🧺', 'icon' => 'fa-basket-shopping',    'color' => 'emerald', 'group' => 'Cultures'],
+        'semis'          => ['label' => 'Semis',          'emoji' => '🌱', 'icon' => 'fa-seedling',           'color' => 'lime', 'group' => 'Cultures', 'departments' => ['Cultures', 'Elevage']],
+        'irrigation'     => ['label' => 'Irrigation',     'emoji' => '💧', 'icon' => 'fa-droplet',            'color' => 'cyan', 'group' => 'Cultures', 'departments' => ['Cultures', 'Elevage']],
+        'sarclage'       => ['label' => 'Sarclage',       'emoji' => '🌿', 'icon' => 'fa-trowel',             'color' => 'lime', 'group' => 'Cultures', 'departments' => ['Cultures', 'Elevage']],
+        'fertilisation'  => ['label' => 'Fertilisation',  'emoji' => '⚗️', 'icon' => 'fa-flask',              'color' => 'green', 'group' => 'Cultures', 'departments' => ['Cultures', 'Elevage']],
+        'traitement'     => ['label' => 'Traitement',     'emoji' => '🧪', 'icon' => 'fa-spray-can-sparkles', 'color' => 'rose', 'group' => 'Cultures', 'departments' => ['Cultures', 'Elevage']],
+        'recolte'        => ['label' => 'Récolte',        'emoji' => '🧺', 'icon' => 'fa-basket-shopping',    'color' => 'emerald', 'group' => 'Cultures', 'departments' => ['Cultures', 'Elevage']],
 
         // ── Relevés de compteurs ──
-        'releve_eau'     => ['label' => 'Relevé eau',     'emoji' => '🚰', 'icon' => 'fa-water',              'color' => 'cyan', 'group' => 'Relevés'],
-        'releve_energie' => ['label' => 'Relevé énergie', 'emoji' => '⚡', 'icon' => 'fa-bolt',               'color' => 'yellow', 'group' => 'Relevés'],
+        'releve_eau'     => ['label' => 'Relevé eau',     'emoji' => '🚰', 'icon' => 'fa-water',              'color' => 'cyan', 'group' => 'Relevés', 'departments' => null],
+        'releve_energie' => ['label' => 'Relevé énergie', 'emoji' => '⚡', 'icon' => 'fa-bolt',               'color' => 'yellow', 'group' => 'Relevés', 'departments' => null],
     ];
 
     /**
@@ -129,6 +144,14 @@ class TaskTemplate extends Model
         }
 
         return $groups;
+    }
+
+    /**
+     * Services autorisés pour une catégorie, ou null si elle n'est pas restreinte.
+     */
+    public static function categoryDepartments(string $slug): ?array
+    {
+        return self::CATEGORIES[$slug]['departments'] ?? null;
     }
 
     /** Métadonnées d'affichage d'une catégorie (libellé traduit, icône, couleur). */
