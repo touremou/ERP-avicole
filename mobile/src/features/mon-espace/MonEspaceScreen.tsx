@@ -13,6 +13,7 @@ import { db, type MyRecord, type OutboxEntry } from '../../offline/db'
 import { safeLoad } from '../../offline/safeLoad'
 import { syncNow, switchFarm } from '../../offline/sync'
 import { getLocale, setLocale, t, type Locale } from '../../i18n'
+import { disablePush, enablePush, pushStatus, type PushStatus } from '../../offline/push'
 
 const LOCALES: { value: Locale; label: string }[] = [
   { value: 'fr', label: '🇫🇷 Français' },
@@ -83,8 +84,48 @@ export function MonEspaceScreen() {
     setReview(await db.outbox.where('status').equals('review').toArray())
   }
 
+  // État du push sur CET appareil : trois conditions peuvent manquer (navigateur,
+  // clef serveur, autorisation) et il faut savoir laquelle pour la dire.
+  const [push, setPush] = useState<PushStatus | null>(null)
+  const [pushBusy, setPushBusy] = useState(false)
+  const [pushMessage, setPushMessage] = useState('')
+
+  async function onPushToggle(enable: boolean): Promise<void> {
+    setPushBusy(true)
+    setPushMessage('')
+    try {
+      setPush(enable ? await enablePush() : await disablePush())
+    } catch (e) {
+      setPushMessage(
+        e instanceof ApiError
+          ? `${t('Échec')} : ${e.message}`
+          : t('Échec : le navigateur a refusé l’abonnement.'),
+      )
+    } finally {
+      setPushBusy(false)
+    }
+  }
+
+  async function onPushTest(): Promise<void> {
+    setPushBusy(true)
+    setPushMessage('')
+    try {
+      const response = await api.pushTest()
+      setPushMessage(response.message)
+    } catch (e) {
+      setPushMessage(
+        e instanceof ApiError
+          ? e.message
+          : t('Aucun appareil abonné n’a pu être joint.'),
+      )
+    } finally {
+      setPushBusy(false)
+    }
+  }
+
   useEffect(() => {
     void safeLoad('mon-espace', refresh)
+    void pushStatus().then(setPush)
     const on = () => setOnline(true)
     const off = () => setOnline(false)
     window.addEventListener('online', on)
@@ -374,6 +415,47 @@ export function MonEspaceScreen() {
             </button>
           ))}
         </div>
+      </section>
+
+      {/* ── NOTIFICATIONS SUR CET APPAREIL ──
+          Le centre d'alertes ne se remplit qu'à la synchronisation : sans le
+          push, il faut OUVRIR l'application pour découvrir qu'une mortalité a
+          franchi le seuil. C'est le seul canal qui atteigne le terrain sans ça. */}
+      <section>
+        <h3>{t('Alertes sur cet appareil')}</h3>
+
+        {push?.state === 'on' && (
+          <>
+            <p className="task-meta">{t('Cet appareil recevra les alertes, même application fermée.')}</p>
+            <div className="chip-row">
+              <button type="button" className="btn-secondary" disabled={pushBusy}
+                      onClick={() => void onPushTest()}>
+                {t('Envoyer un test')}
+              </button>
+              <button type="button" className="btn-danger" disabled={pushBusy}
+                      onClick={() => void onPushToggle(false)}>
+                {t('Ne plus recevoir')}
+              </button>
+            </div>
+          </>
+        )}
+
+        {push?.state === 'off' && (
+          <>
+            <p className="task-meta">{t('Recevez les alertes critiques même quand l’application est fermée.')}</p>
+            <button type="button" className="btn-primary" disabled={pushBusy}
+                    onClick={() => void onPushToggle(true)}>
+              {t('Activer les alertes')}
+            </button>
+          </>
+        )}
+
+        {/* On DIT ce qui manque : un échec muet fait croire l'application cassée. */}
+        {push && ['unsupported', 'denied', 'not_configured'].includes(push.state) && (
+          <p className="task-meta notif-attention">{push.reason}</p>
+        )}
+
+        {pushMessage && <p className="task-meta">{pushMessage}</p>}
       </section>
 
       <section>

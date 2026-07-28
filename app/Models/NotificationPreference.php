@@ -23,6 +23,7 @@ class NotificationPreference extends Model
         'is_active'        => true,
         'channel_whatsapp' => true,
         'channel_database' => true,   // la cloche : gratuite et non intrusive
+        'channel_push'     => true,   // sans effet tant qu'aucun appareil n'est abonné
         'channel_email'    => false,
         'daily_summary'    => true,
         'alert_mortality'  => true,
@@ -54,7 +55,7 @@ class NotificationPreference extends Model
 
     protected $fillable = [
         'user_id', 'is_active',
-        'channel_whatsapp', 'channel_database', 'channel_email', 'channel_sms',
+        'channel_whatsapp', 'channel_database', 'channel_email', 'channel_sms', 'channel_push',
         'daily_summary', 'alert_mortality', 'alert_stock',
         'alert_energy', 'alert_sales', 'alert_fraud',
         'quiet_start', 'quiet_end',
@@ -65,6 +66,7 @@ class NotificationPreference extends Model
         'channel_whatsapp'  => 'boolean',
         'channel_database'  => 'boolean',
         'channel_email'     => 'boolean',
+        'channel_push'      => 'boolean',
         'channel_sms'       => 'boolean',
         'daily_summary'     => 'boolean',
         'alert_mortality'   => 'boolean',

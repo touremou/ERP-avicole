@@ -20,6 +20,10 @@ export default defineConfig({
         // (miroir + outbox), pas dans le cache du service worker.
         navigateFallbackDenylist: [/^\/api\//],
         runtimeCaching: [],
+        // Écouteurs de PUSH ajoutés au service worker généré. On garde
+        // 'generateSW' : réécrire toute la stratégie de cache en
+        // 'injectManifest' pour deux écouteurs serait un risque pour rien.
+        importScripts: ['/push-sw.js'],
       },
       manifest: {
         name: 'Biocrest — AviTerrain',

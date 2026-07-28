@@ -11,6 +11,7 @@ use App\Models\EnergySource;
 use App\Models\Module;
 use App\Models\ModulePermission;
 use App\Models\NotificationPreference;
+use App\Services\WebPushService;
 use App\Models\Payment;
 use App\Models\Sale;
 use App\Models\Stock;
@@ -29,7 +30,8 @@ use Illuminate\Support\Facades\Log;
 class NotificationHub
 {
     public function __construct(
-        private WhatsAppService $whatsapp
+        private WhatsAppService $whatsapp,
+        private WebPushService $push,
     ) {}
 
     // ──────────────────────────────────────────────
@@ -1205,6 +1207,15 @@ class NotificationHub
             $emailAllowedNow = $severity === 'critique' || ! $prefs->isQuietHour();
             if ($prefs->channel_email && $user->email && $emailAllowedNow) {
                 $channels[] = 'mail';
+            }
+
+            // PUSH : c'est ce qui fait sonner le téléphone application FERMÉE —
+            // le seul canal qui atteint le terrain sans qu'on ouvre l'app. Il
+            // respecte les heures silencieuses comme l'e-mail : une bannière à
+            // 3 h du matin pour un registre incomplet ferait couper les
+            // notifications, et on perdrait aussi les alertes qui comptent.
+            if ($prefs->channel_push && $emailAllowedNow && $this->push->isConfigured()) {
+                $channels[] = 'webpush';
             }
 
             if ($channels !== []) {
