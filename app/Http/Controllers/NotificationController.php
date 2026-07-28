@@ -20,21 +20,8 @@ class NotificationController extends Controller
      */
     public function preferences()
     {
-        $prefs = NotificationPreference::firstOrCreate(
-            ['user_id' => Auth::id()],
-            [
-                'is_active'         => true,
-                'channel_whatsapp'  => true,
-                'channel_database'  => true,
-                'channel_email'     => false,
-                'daily_summary'     => true,
-                'alert_mortality'   => true,
-                'alert_stock'       => true,
-                'alert_energy'      => true,
-                'alert_sales'       => false,
-                'alert_fraud'       => true,
-            ]
-        );
+        // Valeurs livrées : NotificationPreference::DEFAULTS (source unique).
+        $prefs = NotificationPreference::forUser(Auth::id());
 
         $recentLogs = NotificationLog::where('user_id', Auth::id())
             ->latest()

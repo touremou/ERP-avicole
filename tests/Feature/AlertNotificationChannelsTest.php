@@ -19,7 +19,8 @@ beforeEach(function () {
 /** Préférence de notif abonnée aux alertes stock (heures calmes neutralisées). */
 function stockPref(User $user, array $attrs = []): NotificationPreference
 {
-    return NotificationPreference::create(array_merge([
+    // La ligne existe déjà (créée avec le compte) : on la RÈGLE.
+    return NotificationPreference::updateOrCreate(['user_id' => $user->id], array_merge([
         'user_id'          => $user->id,
         'is_active'        => true,
         'channel_whatsapp' => false,

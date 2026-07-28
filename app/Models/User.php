@@ -109,6 +109,27 @@ class User extends Authenticatable
         return $this->hasOne(NotificationPreference::class);
     }
 
+    /**
+     * Chaque nouveau compte reçoit ses préférences d'alerte.
+     *
+     * Elles n'étaient créées qu'en ouvrant l'écran des réglages : un compte qui
+     * n'y allait jamais ne recevait aucune alerte in-app, et rien ne le disait.
+     * Le code n'en dépend plus, mais la ligne existe désormais dès la création —
+     * la ferme la VOIT et peut la régler, plutôt que de subir un implicite.
+     */
+    protected static function booted(): void
+    {
+        static::created(function (self $user) {
+            \Illuminate\Support\Facades\DB::table('notification_preferences')->insertOrIgnore(
+                array_merge(NotificationPreference::DEFAULTS, [
+                    'user_id'    => $user->id,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ])
+            );
+        });
+    }
+
     public function dashboardConfiguration(): HasOne
     {
         return $this->hasOne(DashboardConfiguration::class);

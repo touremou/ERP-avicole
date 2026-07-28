@@ -1184,8 +1184,12 @@ class NotificationHub
         // Les canaux retenus dépendent des préférences de chaque destinataire ;
         // la décision est centralisée ici, AlertNotification ne fait que les porter.
         foreach ($this->typeRecipients($type) as $user) {
-            $prefs = $user->notificationPreference;
-            if (! $prefs || ! $prefs->is_active) {
+            // Préférences EFFECTIVES : la ligne enregistrée, ou les valeurs
+            // livrées si l'utilisateur n'a jamais ouvert l'écran des réglages.
+            // Cette boucle écartait auparavant tout compte sans ligne — le même
+            // trou que dans typeRecipients().
+            $prefs = NotificationPreference::resolveFor($user);
+            if (! $prefs->is_active) {
                 continue;
             }
 
@@ -1213,10 +1217,23 @@ class NotificationHub
     }
 
     /**
-     * Destinataires d'un type d'alerte pour les canaux in-app / e-mail :
-     * tout utilisateur dont les préférences sont actives et qui n'a pas
-     * désactivé ce type — indépendamment du canal WhatsApp (on peut ne
-     * recevoir que la cloche et/ou l'e-mail).
+     * Destinataires d'un type d'alerte pour les canaux in-app / e-mail.
+     *
+     * ATTENTION, c'était le trou : la requête exigeait une ligne de préférences
+     * ACTIVE (`whereHas`). Or cette ligne n'était créée qu'en ouvrant l'écran des
+     * réglages de notification. Un compte qui n'y était jamais allé recevait donc
+     * ZÉRO alerte in-app — ni cloche web, ni centre d'alertes mobile — sans
+     * qu'aucun message ne le signale. Le promoteur, qui avait visité l'écran,
+     * recevait tout ; ses techniciens, rien.
+     *
+     * Une préférence ABSENTE vaut désormais les valeurs livrées
+     * (NotificationPreference::DEFAULTS), qui activent la cloche. Le silence par
+     * omission est le pire des défauts pour un système d'alerte : ne rien recevoir
+     * est indistinguable de « tout va bien ».
+     *
+     * Le canal WhatsApp, lui, reste sur consentement EXPLICITE (cf.
+     * getSubscribers) : un message sur le téléphone de quelqu'un coûte de l'argent
+     * et s'impose à lui.
      */
     private function typeRecipients(string $type)
     {
@@ -1227,10 +1244,20 @@ class NotificationHub
             default => null,
         };
 
-        return User::whereHas('notificationPreference', function ($q) use ($column) {
-            $q->where('is_active', true);
-            if ($column) {
-                $q->where($column, true);
+        $defaultAllows = $column === null || (NotificationPreference::DEFAULTS[$column] ?? false);
+
+        return User::where(function ($query) use ($column, $defaultAllows) {
+            // Préférence explicite : elle fait foi.
+            $query->whereHas('notificationPreference', function ($q) use ($column) {
+                $q->where('is_active', true);
+                if ($column) {
+                    $q->where($column, true);
+                }
+            });
+
+            // Aucune préférence enregistrée : on applique les valeurs livrées.
+            if ($defaultAllows) {
+                $query->orWhereDoesntHave('notificationPreference');
             }
         })->get();
     }
