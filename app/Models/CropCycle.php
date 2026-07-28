@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Carbon\Carbon;
 use App\Traits\BelongsToFarm;
+use App\Traits\ReferencesEmployee;
 use App\Traits\HasStandardUuid;
 
 /**
@@ -20,7 +21,7 @@ use App\Traits\HasStandardUuid;
  */
 class CropCycle extends Model
 {
-    use HasFactory, SoftDeletes, HasStandardUuid, BelongsToFarm;
+    use HasFactory, SoftDeletes, HasStandardUuid, BelongsToFarm, ReferencesEmployee;
 
     /** Statuts du cycle (colonne `status`). */
     public const STATUS_EN_COURS  = 'en_cours';  // semé, en croissance
@@ -95,10 +96,6 @@ class CropCycle extends Model
         return $this->belongsTo(CropCampaign::class, 'campaign_id');
     }
 
-    public function employee(): BelongsTo
-    {
-        return $this->belongsTo(Employee::class);
-    }
 
     /** Protocole / itinéraire technique rattaché (optionnel). */
     public function protocol(): BelongsTo

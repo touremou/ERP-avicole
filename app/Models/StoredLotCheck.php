@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Traits\BelongsToFarm;
+use App\Traits\ReferencesEmployee;
 use App\Traits\HasStandardUuid;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -21,7 +22,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class StoredLotCheck extends Model
 {
-    use HasFactory, HasStandardUuid, BelongsToFarm;
+    use HasFactory, HasStandardUuid, BelongsToFarm, ReferencesEmployee;
 
     /** État sanitaire constaté. */
     public const CONDITIONS = [
@@ -59,7 +60,6 @@ class StoredLotCheck extends Model
     ];
 
     public function storedLot(): BelongsTo { return $this->belongsTo(StoredLot::class); }
-    public function employee(): BelongsTo { return $this->belongsTo(Employee::class); }
     public function recorder(): BelongsTo { return $this->belongsTo(User::class, 'recorded_by'); }
 
     public function getConditionLabelAttribute(): string

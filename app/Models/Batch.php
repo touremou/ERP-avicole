@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Carbon\Carbon;
 use App\Traits\HasStandardUuid;
 use App\Traits\BelongsToFarm;
+use App\Traits\ReferencesEmployee;
 use App\Actions\DailyCheck\SyncManureCollection;
 use App\Models\WaterReading;
 use App\Models\EnergyReading;
@@ -30,7 +31,7 @@ use App\Models\EnergyReading;
  */
 class Batch extends Model
 {
-    use HasFactory, SoftDeletes, HasStandardUuid, BelongsToFarm;
+    use HasFactory, SoftDeletes, HasStandardUuid, BelongsToFarm, ReferencesEmployee;
 
     /**
      * Statuts du cycle de vie d'un lot (valeurs stockées en base dans la
@@ -157,10 +158,6 @@ class Batch extends Model
         return $this->belongsTo(Provider::class);
     }
 
-    public function employee(): BelongsTo
-    {
-        return $this->belongsTo(Employee::class);
-    }
 
     public function protocol(): BelongsTo
     {

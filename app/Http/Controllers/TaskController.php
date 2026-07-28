@@ -207,10 +207,20 @@ class TaskController extends Controller
 
         $validated = $request->validate(['employee_id' => 'required|exists:employees,id']);
 
+        // On relit l'employé par la MÊME règle que le sélecteur qui l'a proposé.
+        // `Employee::find()` réappliquait le filtre de ferme : pour un agent
+        // PRÊTÉ il renvoyait null, et les deux garde-fous ci-dessous étaient
+        // alors SILENCIEUSEMENT sautés (`if ($employee && …)`) — on pouvait
+        // affecter une tâche à quelqu'un en congé sans qu'un mot soit dit.
+        $employee = \App\Models\Employee::assignableInCurrentFarm()->find($validated['employee_id']);
+
+        if (! $employee) {
+            return back()->with('error', "Cet employé n'est pas affectable sur cette ferme.");
+        }
+
         // Garde-fou disponibilité : pas d'affectation à un employé en congé à la date prévue.
-        $employee = \App\Models\Employee::find($validated['employee_id']);
         $date = \Illuminate\Support\Carbon::parse($task->scheduled_date);
-        if ($employee && $employee->isOnLeaveOn($date)) {
+        if ($employee->isOnLeaveOn($date)) {
             return back()->with('error', "{$employee->first_name} est en congé le {$date->format('d/m/Y')}. Choisissez un collègue disponible.");
         }
 
@@ -220,7 +230,10 @@ class TaskController extends Controller
 
         $task->update($validated);
 
-        return back()->with('success', "Tâche assignée à {$task->fresh()->employee->first_name}.");
+        // On nomme l'employé DÉJÀ chargé : relire par la relation exposait au
+        // même trou (agent prêté, dossier archivé entre-temps) et faisait planter
+        // la confirmation d'une affectation pourtant enregistrée.
+        return back()->with('success', "Tâche assignée à {$employee->first_name}.");
     }
 
     public function storeManual(Request $request)
@@ -243,9 +256,16 @@ class TaskController extends Controller
 
         // Garde-fou disponibilité : pas d'affectation à un employé en congé à la date prévue.
         if (! empty($validated['employee_id'])) {
-            $employee = \App\Models\Employee::find($validated['employee_id']);
+            // Même règle que le sélecteur (cf. assign) : `find()` sautait les
+            // garde-fous pour un agent prêté au lieu de les appliquer.
+            $employee = \App\Models\Employee::assignableInCurrentFarm()->find($validated['employee_id']);
+
+            if (! $employee) {
+                return back()->with('error', "Cet employé n'est pas affectable sur cette ferme.")->withInput();
+            }
+
             $date = \Illuminate\Support\Carbon::parse($validated['scheduled_date']);
-            if ($employee && $employee->isOnLeaveOn($date)) {
+            if ($employee->isOnLeaveOn($date)) {
                 return back()->with('error', "{$employee->first_name} est en congé le {$date->format('d/m/Y')}. Choisissez un collègue disponible.")->withInput();
             }
             if ($mismatch = $this->departmentMismatch($employee, $validated['category'])) {

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Traits\BelongsToFarm;
+use App\Traits\ReferencesEmployee;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -16,7 +17,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class EmployeeContractEvent extends Model
 {
-    use BelongsToFarm;
+    use BelongsToFarm, ReferencesEmployee;
 
     protected $fillable = [
         'farm_id', 'employee_id', 'type', 'decided_on',
@@ -29,10 +30,6 @@ class EmployeeContractEvent extends Model
         'new_end_date'      => 'date',
     ];
 
-    public function employee(): BelongsTo
-    {
-        return $this->belongsTo(Employee::class);
-    }
 
     public function user(): BelongsTo
     {
