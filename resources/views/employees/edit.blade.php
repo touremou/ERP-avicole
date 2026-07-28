@@ -74,11 +74,10 @@
                             @include('employees.partials.contract-fields', ['employee' => $employee])
                             <div class="space-y-3">
                                 <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 italic tracking-widest">{{ __("Département") }}</label>
-                                <select name="department" class="w-full p-5 bg-slate-50 rounded-2xl font-black outline-none border-none focus:ring-4 focus:ring-emerald-500/10 shadow-inner appearance-none text-slate-700 italic cursor-pointer">
-                                    <option value="Elevage" {{ old('department', $employee->department) == 'Elevage' ? 'selected' : '' }}>{{ __("Élevage & Production") }}</option>
-                                    <option value="Administration" {{ old('department', $employee->department) == 'Administration' ? 'selected' : '' }}>{{ __("Administration") }}</option>
-                                    <option value="Logistique" {{ old('department', $employee->department) == 'Logistique' ? 'selected' : '' }}>{{ __("Logistique") }}</option>
-                                </select>
+                                @include('employees.partials.department-select', [
+                                    'selected' => old('department', $employee->department),
+                                    'class' => 'w-full p-5 bg-slate-50 rounded-2xl font-black outline-none border-none focus:ring-4 focus:ring-emerald-500/10 shadow-inner appearance-none text-slate-700 italic cursor-pointer',
+                                ])
                             </div>
                             <div class="space-y-3">
                                 <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 italic tracking-widest">{{ __("Salaire de base") }} ({{ setting('general.currency', 'GNF') }})</label>

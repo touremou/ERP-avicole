@@ -244,6 +244,57 @@ class Employee extends Model
     // --- CONTRAT À DURÉE DÉTERMINÉE ---
 
     /** Types de contrat qui ont un TERME, donc une décision à prendre. */
+    /**
+     * SERVICES DE LA FERME — déclaration unique.
+     *
+     * Trois services seulement étaient proposés — Élevage, Administration,
+     * Logistique — alors que l'exploitation compte des cultures, une provenderie,
+     * un abattoir et un comptoir de vente. Un technicien de cultures était donc
+     * classé « Élevage / Technique », et le garde-fou qui vérifie qu'une tâche va
+     * au bon service ne pouvait rien dire d'utile.
+     *
+     * Les libellés divergeaient d'ailleurs entre la création (« Élevage /
+     * Technique ») et l'édition (« Élevage & Production ») : le même service
+     * portait deux noms selon l'écran.
+     *
+     * Les CLEFS existantes sont conservées telles quelles : les dossiers en base
+     * portent « Elevage », « Administration », « Logistique ». Les renommer
+     * demanderait une migration de données pour aucun gain.
+     */
+    public const DEPARTMENTS = [
+        'Elevage'        => ['label' => 'Élevage & Production', 'emoji' => '🐔'],
+        'Cultures'       => ['label' => 'Cultures & Maraîchage', 'emoji' => '🌱'],
+        'Provenderie'    => ['label' => 'Provenderie',          'emoji' => '🌾'],
+        'Abattoir'       => ['label' => 'Abattoir & Transformation', 'emoji' => '🔪'],
+        'Commerce'       => ['label' => 'Commerce & Caisse',     'emoji' => '🛒'],
+        'Logistique'     => ['label' => 'Logistique & Magasin',  'emoji' => '🚚'],
+        'Administration' => ['label' => 'Administration & RH',   'emoji' => '📂'],
+    ];
+
+    /** Options du menu déroulant : [clef => « emoji Libellé »]. */
+    public static function departmentOptions(): array
+    {
+        $options = [];
+
+        foreach (self::DEPARTMENTS as $key => $meta) {
+            $options[$key] = $meta['emoji'] . ' ' . __($meta['label']);
+        }
+
+        return $options;
+    }
+
+    /** Libellé lisible d'un service, y compris hérité d'anciennes données. */
+    public static function departmentLabel(?string $key): string
+    {
+        if (blank($key)) {
+            return '—';
+        }
+
+        return isset(self::DEPARTMENTS[$key])
+            ? __(self::DEPARTMENTS[$key]['label'])
+            : $key;
+    }
+
     public const FIXED_TERM = ['CDD', 'Journalier'];
 
     public function contractEvents(): HasMany

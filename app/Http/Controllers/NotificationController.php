@@ -86,6 +86,43 @@ class NotificationController extends Controller
     }
 
     /**
+     * CENTRE D'ALERTES de l'utilisateur — l'historique qui manquait au web.
+     *
+     * La cloche n'affichait que les notifications NON LUES, et cliquer sur l'une
+     * d'elles la marquait lue : elle disparaissait aussitôt, sans qu'on ait eu le
+     * temps de la lire. Aucun écran ne permettait de la retrouver — « Historique »
+     * du menu Notifications désigne le journal des messages SORTANTS
+     * (WhatsApp/SMS), réservé aux administrateurs, pas ses propres alertes.
+     *
+     * Le mobile, lui, faisait déjà la bonne chose : son centre d'alertes liste
+     * tout, les lues estompées. Le web était l'exception.
+     *
+     * Aucun droit de module requis : ce sont SES alertes.
+     */
+    public function index(Request $request)
+    {
+        $user = Auth::user();
+
+        $filter = $request->input('vue', 'toutes');
+
+        $query = $user->notifications();
+
+        if ($filter === 'non_lues') {
+            $query->whereNull('read_at');
+        }
+
+        $notifications = $query->latest()->paginate((int) setting('general.items_per_page', 20))
+            ->withQueryString();
+
+        return view('notifications.index', [
+            'notifications' => $notifications,
+            'filter'        => $filter,
+            'unreadCount'   => $user->unreadNotifications()->count(),
+            'totalCount'    => $user->notifications()->count(),
+        ]);
+    }
+
+    /**
      * Marque toutes les notifications in-app de l'utilisateur comme lues
      * (bouton « tout marquer lu » de la cloche).
      */

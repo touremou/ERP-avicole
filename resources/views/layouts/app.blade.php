@@ -107,9 +107,16 @@
                         
                         {{-- 🔔 CLOCHE DE NOTIFICATION INDUSTRIELLE (OPTIMISÉE) --}}
                         @php
-                            // On charge les notifications une seule fois pour éviter de multiplier les requêtes SQL
-                            $unreadNotifications = auth()->check() ? auth()->user()->unreadNotifications : collect();
-                            $unreadCount = $unreadNotifications->count();
+                            // La cloche montrait UNIQUEMENT les non lues : cliquer sur une
+                            // alerte la marquait lue et la faisait disparaître aussitôt,
+                            // sans laisser le temps de la lire — et aucun écran ne
+                            // permettait de la retrouver. Elle affiche désormais les
+                            // dernières alertes, lues comprises (estompées), comme le
+                            // centre d'alertes mobile le fait depuis toujours.
+                            $bellNotifications = auth()->check()
+                                ? auth()->user()->notifications()->latest()->limit(8)->get()
+                                : collect();
+                            $unreadCount = auth()->check() ? auth()->user()->unreadNotifications()->count() : 0;
                         @endphp
 
                         <x-menu align="right" width="w-80" panel="bg-white rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.1)] border border-slate-100 overflow-hidden" class="ml-4">
@@ -136,8 +143,13 @@
                                             <p class="text-[9px] font-black text-slate-400 uppercase italic">{{ __("Les alertes seront synchronisées au retour du serveur.") }}</p>
                                         </div>
                                     @else
-                                        @forelse($unreadNotifications as $notification)
-                                            <a href="{{ route('notifications.read', $notification->id) }}" class="block p-5 border-b border-slate-50 hover:bg-slate-50 transition-colors relative no-underline">
+                                        @forelse($bellNotifications as $notification)
+                                            @php $isUnread = $notification->read_at === null; @endphp
+                                            <a href="{{ route('notifications.read', $notification->id) }}"
+                                               @class([
+                                                   'block p-5 border-b border-slate-50 hover:bg-slate-50 transition-colors relative no-underline',
+                                                   'opacity-50' => ! $isUnread,
+                                               ])>
                                                 <div class="flex items-start gap-3">
                                                     <span @class([
                                                         'w-9 h-9 rounded-full flex items-center justify-center text-base shrink-0',
@@ -145,9 +157,15 @@
                                                         'bg-amber-100' => ($notification->data['severity'] ?? '') === 'attention',
                                                         'bg-blue-100' => ! in_array($notification->data['severity'] ?? '', ['critique', 'attention']),
                                                     ])>{{ notif_icon($notification->data['type'] ?? null, $notification->data['severity'] ?? null) }}</span>
-                                                    <div class="text-left">
-                                                        <p class="text-[10px] font-black text-slate-800 uppercase italic mb-1">{{ $notification->data['title'] ?? __("Alerte") }}</p>
+                                                    <div class="text-left min-w-0">
+                                                        <p class="text-[10px] font-black text-slate-800 uppercase italic mb-1">
+                                                            {{ $notification->data['title'] ?? __("Alerte") }}
+                                                            @if($isUnread)<span class="ml-1 inline-block w-1.5 h-1.5 rounded-full bg-rose-600 align-middle"></span>@endif
+                                                        </p>
                                                         <p class="text-[9px] text-slate-400 font-bold uppercase leading-tight">{{ $notification->data['message'] ?? '' }}</p>
+                                                        {{-- La DATE : sans elle, deux alertes du même contrôle à
+                                                             deux jours d'intervalle se lisaient comme un doublon. --}}
+                                                        <p class="text-[8px] text-slate-300 font-black uppercase tracking-widest mt-1">{{ $notification->created_at->diffForHumans() }}</p>
                                                     </div>
                                                 </div>
                                             </a>
@@ -159,13 +177,22 @@
                                         @endforelse
                                     @endif
                                 </div>
-                                @if(!config('app.database_down') && $unreadCount > 0)
-                                    <form method="POST" action="{{ route('notifications.read-all') }}" class="p-3 bg-slate-50 border-t border-slate-100">
-                                        @csrf
-                                        <button type="submit" class="w-full text-center text-[9px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-900 transition-colors py-2 border-none bg-transparent cursor-pointer">
-                                            <i class="fa-solid fa-check-double mr-1"></i> {{ __("Tout marquer comme lu") }}
-                                        </button>
-                                    </form>
+                                @if(!config('app.database_down'))
+                                    <div class="bg-slate-50 border-t border-slate-100 divide-y divide-slate-100">
+                                        {{-- Le chemin vers l'historique : sans lui, une alerte
+                                             lue était définitivement perdue de vue. --}}
+                                        <a href="{{ route('notifications.index') }}" class="block text-center text-[9px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-900 transition-colors py-3 no-underline">
+                                            <i class="fa-solid fa-list-ul mr-1"></i> {{ __("Voir toutes les alertes") }}
+                                        </a>
+                                        @if($unreadCount > 0)
+                                            <form method="POST" action="{{ route('notifications.read-all') }}" class="p-1">
+                                                @csrf
+                                                <button type="submit" class="w-full text-center text-[9px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-900 transition-colors py-2 border-none bg-transparent cursor-pointer">
+                                                    <i class="fa-solid fa-check-double mr-1"></i> {{ __("Tout marquer comme lu") }}
+                                                </button>
+                                            </form>
+                                        @endif
+                                    </div>
                                 @endif
                         </x-menu>
                     </div>

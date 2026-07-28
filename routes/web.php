@@ -823,6 +823,9 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/templates/{template}', [NotificationTemplateController::class, 'update'])->name('templates.update')->middleware('can:S');
         Route::put('/templates/{template}/reset', [NotificationTemplateController::class, 'reset'])->name('templates.reset')->middleware('can:S');
         // Cloche in-app : gérer ses propres notifications (aucun droit module requis).
+        // Le centre d'alertes personnel n'est pas « notifications.logs » : celui-ci
+        // est le journal des messages SORTANTS, réservé aux administrateurs.
+        Route::get('/', 'index')->name('index');
         Route::post('/read-all', 'markAllRead')->name('read-all');
         Route::get('/{id}/read', 'markRead')->name('read');
     });

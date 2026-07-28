@@ -25,11 +25,7 @@
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">{{ __("Catégorie") }}</label>
-                            <select name="category" class="w-full bg-slate-50 border-none rounded-xl p-3 text-xs font-black uppercase shadow-inner outline-none">
-                                @foreach(['alimentation' => '🌾 '.__('Alimentation'), 'collecte' => '🥚 '.__('Collecte'), 'controle' => '📋 '.__('Contrôle'), 'nettoyage' => '🧹 '.__('Nettoyage'), 'sante' => '💉 '.__('Santé'), 'maintenance' => '🔧 '.__('Maintenance')] as $k => $v)
-                                    <option value="{{ $k }}" {{ $task->category === $k ? 'selected' : '' }}>{{ $v }}</option>
-                                @endforeach
-                            </select>
+                            @include('tasks.partials.category-select', ['selected' => $task->category])
                         </div>
                         <div>
                             <label class="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">{{ __("Priorité") }}</label>

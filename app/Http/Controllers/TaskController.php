@@ -28,15 +28,6 @@ class TaskController extends Controller
      * cohérence métier du planning. Une catégorie absente d'ici n'est pas
      * contrainte ; un employé sans département renseigné n'est jamais bloqué.
      */
-    private const CATEGORY_DEPARTMENTS = [
-        'alimentation' => ['Elevage'],
-        'collecte'     => ['Elevage'],
-        'nettoyage'    => ['Elevage'],
-        'sante'        => ['Elevage'],
-        'controle'     => ['Elevage'],
-        'maintenance'  => ['Elevage', 'Logistique'],
-    ];
-
     /**
      * Renvoie un message d'erreur si l'employé n'est pas du bon service pour
      * la catégorie de tâche, sinon null.
@@ -47,14 +38,19 @@ class TaskController extends Controller
             return null;
         }
 
-        $allowed = self::CATEGORY_DEPARTMENTS[$category] ?? null;
+        // Les services autorisés vivent avec la catégorie (TaskTemplate::CATEGORIES).
+        // Cette carte, portée ici, ne connaissait que les six catégories d'élevage.
+        $allowed = TaskTemplate::categoryDepartments($category);
+
         if ($allowed === null || empty($employee->department) || in_array($employee->department, $allowed, true)) {
             return null;
         }
 
-        $services = implode(' / ', $allowed);
+        $services = collect($allowed)->map(fn ($key) => Employee::departmentLabel($key))->implode(' / ');
+        $categoryLabel = TaskTemplate::categoryMeta($category)['label'];
+        $employeeService = Employee::departmentLabel($employee->department);
 
-        return "{$employee->first_name} ({$employee->department}) n'est pas du service concerné : une tâche « {$category} » revient au service {$services}. Choisissez un employé de ce service.";
+        return "{$employee->first_name} ({$employeeService}) n'est pas du service concerné : une tâche « {$categoryLabel} » revient au service {$services}. Choisissez un employé de ce service.";
     }
 
     public function index(Request $request, TaskSchedulerService $service)
@@ -233,7 +229,10 @@ class TaskController extends Controller
 
         $validated = $request->validate([
             'title'           => 'required|string|max:255',
-            'category'        => 'required|string|max:50',
+            // Liste contrainte, dérivée de TaskTemplate::CATEGORIES : « string »
+            // acceptait n'importe quel libellé, y compris une faute de frappe
+            // qui rendait la tâche invisible de tous les filtres.
+            'category'        => ['required', \Illuminate\Validation\Rule::in(array_keys(\App\Models\TaskTemplate::CATEGORIES))],
             'employee_id'     => 'nullable|exists:employees,id',
             'building_id'     => 'nullable|exists:buildings,id',
             'scheduled_date'  => 'required|date',
@@ -284,7 +283,10 @@ class TaskController extends Controller
 
         $validated = $request->validate([
             'title'           => 'required|string|max:255',
-            'category'        => 'required|string|max:50',
+            // Liste contrainte, dérivée de TaskTemplate::CATEGORIES : « string »
+            // acceptait n'importe quel libellé, y compris une faute de frappe
+            // qui rendait la tâche invisible de tous les filtres.
+            'category'        => ['required', \Illuminate\Validation\Rule::in(array_keys(\App\Models\TaskTemplate::CATEGORIES))],
             'employee_id'     => 'nullable|exists:employees,id',
             'building_id'     => 'nullable|exists:buildings,id',
             'scheduled_date'  => 'required|date',
@@ -332,7 +334,7 @@ class TaskController extends Controller
 
         $validated = $request->validate([
             'name'             => 'required|string|max:255',
-            'category'         => 'required|string|max:50',
+            'category'         => ['required', \Illuminate\Validation\Rule::in(array_keys(\App\Models\TaskTemplate::CATEGORIES))],
             'frequency'        => 'required|in:quotidien,hebdo,mensuel,ponctuel',
             'days_of_week'     => 'nullable|array',
             'days_of_week.*'   => 'integer|min:1|max:7',
@@ -409,7 +411,7 @@ class TaskController extends Controller
 
         $validated = $request->validate([
             'name'             => 'required|string|max:255',
-            'category'         => 'required|string|max:50',
+            'category'         => ['required', \Illuminate\Validation\Rule::in(array_keys(\App\Models\TaskTemplate::CATEGORIES))],
             'frequency'        => 'required|in:quotidien,hebdo,mensuel,ponctuel',
             'days_of_week'     => 'nullable|array',
             'days_of_week.*'   => 'integer|min:1|max:7',

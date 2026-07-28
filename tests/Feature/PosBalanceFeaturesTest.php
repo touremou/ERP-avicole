@@ -88,14 +88,14 @@ test('checkout avec vendeur nominatif : la vente porte l\'employé, le ticket l\
         ->get(route('pos.receipt', $sale))
         ->assertOk()
         ->assertSee('Vendeur')
-        ->assertSee($this->employee->first_name);
+        ->assertSee(e($this->employee->first_name), false);
 
     // Z du jour : bloc « Ventes par vendeur » alimenté.
     $this->actingAs($this->managerUser)
         ->get(route('pos.report'))
         ->assertOk()
         ->assertSee('Ventes par vendeur')
-        ->assertSee($this->employee->first_name);
+        ->assertSee(e($this->employee->first_name), false);
 });
 
 test('checkout sans vendeur : la vente passe comme avant (vendeur optionnel)', function () {
