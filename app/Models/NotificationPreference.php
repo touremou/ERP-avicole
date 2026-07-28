@@ -8,6 +8,50 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class NotificationPreference extends Model
 {
     
+    /**
+     * PRÉFÉRENCES LIVRÉES PAR DÉFAUT.
+     *
+     * Elles étaient écrites en dur dans NotificationController::preferences(),
+     * dans un `firstOrCreate` — donc la ligne de préférences n'existait QUE si
+     * l'utilisateur avait ouvert l'écran des réglages. Et la résolution des
+     * destinataires in-app exige une ligne active : un compte qui n'a jamais
+     * visité cet écran ne recevait AUCUNE alerte, ni cloche web, ni mobile.
+     *
+     * Le promoteur en avait donc, ses techniciens non — sans que rien ne le dise.
+     */
+    public const DEFAULTS = [
+        'is_active'        => true,
+        'channel_whatsapp' => true,
+        'channel_database' => true,   // la cloche : gratuite et non intrusive
+        'channel_email'    => false,
+        'daily_summary'    => true,
+        'alert_mortality'  => true,
+        'alert_stock'      => true,
+        'alert_energy'     => true,
+        'alert_sales'      => false,
+        'alert_fraud'      => true,
+    ];
+
+    /**
+     * Préférences d'un utilisateur, créées au besoin avec les valeurs livrées.
+     */
+    public static function forUser(int $userId): self
+    {
+        return static::firstOrCreate(['user_id' => $userId], self::DEFAULTS);
+    }
+
+    /**
+     * Préférences EFFECTIVES d'un utilisateur, SANS rien écrire : la ligne
+     * enregistrée si elle existe, sinon une instance non persistée portant les
+     * valeurs livrées. À utiliser dans les chemins de lecture — diffuser une
+     * alerte ne doit pas créer de lignes au passage.
+     */
+    public static function resolveFor(User $user): self
+    {
+        return $user->notificationPreference
+            ?? new static(array_merge(['user_id' => $user->id], self::DEFAULTS));
+    }
+
     protected $fillable = [
         'user_id', 'is_active',
         'channel_whatsapp', 'channel_database', 'channel_email', 'channel_sms',

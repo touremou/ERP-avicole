@@ -22,7 +22,8 @@ beforeEach(function () {
     $this->user = User::factory()->create(['role_id' => $role->id]);
 
     // Abonné aux alertes ressources/énergie, canal in-app (cloche).
-    NotificationPreference::create([
+    // La ligne existe déjà (créée avec le compte) : on la RÈGLE.
+    NotificationPreference::updateOrCreate(['user_id' => $this->user->id], [
         'user_id' => $this->user->id, 'is_active' => true,
         'channel_whatsapp' => false, 'channel_database' => true, 'channel_email' => false,
         'alert_energy' => true,
