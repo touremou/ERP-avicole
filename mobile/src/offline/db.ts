@@ -54,6 +54,17 @@ export interface OutboxEntry {
   last_error: string | null
   /** Erreurs de validation renvoyées par le serveur (bac « À corriger »). */
   server_errors: Record<string, string[]> | null
+  /**
+   * AUTEUR de la saisie (id du compte connecté au moment de la saisie).
+   *
+   * Les téléphones de service sont PARTAGÉS : deux techniciens s'y connectent
+   * tour à tour. Sans cette marque, les saisies non poussées de l'un partaient
+   * sous le jeton de l'autre — et le serveur attribuait le travail au compte
+   * authentifié. Les indicateurs par technicien créditaient donc le mauvais.
+   *
+   * Optionnel : les entrées créées avant ce champ n'en ont pas.
+   */
+  user_id?: number
 }
 
 export interface MyRecord {
@@ -64,6 +75,11 @@ export interface MyRecord {
   payload: Record<string, unknown>
   sync_status: 'pending' | 'synced' | 'review'
   created_at: string
+  /**
+   * AUTEUR de la saisie. « Mon activité » est filtrée dessus : sur un téléphone
+   * partagé, un technicien voyait l'historique du précédent connecté.
+   */
+  user_id?: number
 }
 
 export interface MetaEntry {
@@ -193,6 +209,26 @@ class ErpMobileDb extends Dexie {
     this.version(13).stores({
       ref_stored_lots: 'id, status',
     })
+    // v14 : AUTEUR des saisies locales. Les téléphones de service sont partagés
+    // et « Mon activité » montrait l'historique du technicien précédemment
+    // connecté. On indexe l'auteur pour filtrer sans balayer la table.
+    //
+    // Les entrées ANTÉRIEURES n'ont pas d'auteur connu : on ne peut pas le
+    // deviner. Elles sont rattachées au compte de la session en cours lors de la
+    // migration — c'est le seul candidat plausible sur cet appareil — et à défaut
+    // laissées sans auteur, donc visibles de personne (cf. mine()).
+    this.version(14).stores({
+      outbox: 'op_uuid, status, created_at, user_id',
+      my_records: 'uuid, type, sync_status, created_at, user_id',
+    }).upgrade(async (tx) => {
+      const session = await tx.table('meta').get('me')
+      const userId = (session?.value as { user?: { id?: number } } | undefined)?.user?.id
+
+      if (!userId) return
+
+      await tx.table('my_records').toCollection().modify({ user_id: userId })
+      await tx.table('outbox').toCollection().modify({ user_id: userId })
+    })
   }
 }
 
@@ -206,6 +242,40 @@ export async function getMeta<T>(key: string): Promise<T | undefined> {
 
 export async function setMeta(key: string, value: unknown): Promise<void> {
   await db.meta.put({ key, value })
+}
+
+/**
+ * Purge l'état PERSONNEL de l'appareil : alertes, tâches assignées, historique
+ * de saisie. À appeler à la déconnexion et au changement de compte.
+ *
+ * Les téléphones de service passent de main en main. Sans cette purge, le
+ * technicien suivant voyait les alertes, les tâches et l'activité du précédent —
+ * alors que le principe, côté web, est qu'on ne voit que ce qui nous concerne.
+ *
+ * CE QUI EST PURGÉ : les alertes et les tâches assignées. Ce sont des MIROIRS
+ * du serveur, retéléchargés à la première synchronisation du compte suivant — les
+ * effacer ne coûte rien et évite qu'ils s'affichent à quelqu'un d'autre.
+ *
+ * CE QUI RESTE, et pourquoi :
+ *   • le référentiel (ref_*) — il n'est pas personnel, et le serveur en borne
+ *     déjà l'accès ; le purger obligerait à retélécharger la ferme entière ;
+ *   • l'HISTORIQUE de saisie (my_records) — il n'existe QUE localement, rien ne
+ *     le retélécharge. L'effacer priverait le technicien de son propre journal à
+ *     son retour. Chaque ligne portant son auteur, elle n'est de toute façon
+ *     montrée qu'à lui (cf. « Mon activité ») ;
+ *   • l'OUTBOX — elle peut porter du travail de terrain non encore poussé.
+ *     Chaque entrée est marquée de son auteur : elle ne partira pas au nom du
+ *     compte suivant et attendra le retour du sien. Détruire une saisie de
+ *     terrain serait pire que la faire attendre.
+ */
+export async function clearPersonalData(): Promise<void> {
+  await db.transaction('rw', db.notifications, db.tasks, async () => {
+    await db.notifications.clear()
+    await db.tasks.clear()
+  })
+
+  window.dispatchEvent(new CustomEvent('notifications:updated'))
+  window.dispatchEvent(new CustomEvent('tasks:updated'))
 }
 
 export const session = {
