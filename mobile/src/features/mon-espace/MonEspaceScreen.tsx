@@ -11,7 +11,7 @@ import { api, ApiError } from '../../api/client'
 import { compressImage } from '../../platform'
 import { db, type MyRecord, type OutboxEntry } from '../../offline/db'
 import { safeLoad } from '../../offline/safeLoad'
-import { syncNow, switchFarm } from '../../offline/sync'
+import { syncNow, switchFarm, retryOperation } from '../../offline/sync'
 import { getLocale, setLocale, t, type Locale } from '../../i18n'
 import { disablePush, enablePush, pushStatus, type PushStatus } from '../../offline/push'
 
@@ -88,6 +88,7 @@ export function MonEspaceScreen() {
   // clef serveur, autorisation) et il faut savoir laquelle pour la dire.
   const [push, setPush] = useState<PushStatus | null>(null)
   const [pushBusy, setPushBusy] = useState(false)
+  const [retrying, setRetrying] = useState<string | null>(null)
   const [pushMessage, setPushMessage] = useState('')
 
   async function onPushToggle(enable: boolean): Promise<void> {
@@ -228,6 +229,18 @@ export function MonEspaceScreen() {
     }
   }
 
+  async function retry(opUuid: string) {
+    // Le motif du refus peut avoir disparu côté serveur : on RETENTE avant de
+    // proposer d'abandonner un travail de terrain déjà saisi.
+    setRetrying(opUuid)
+    try {
+      await retryOperation(opUuid)
+    } finally {
+      setRetrying(null)
+      await refresh()
+    }
+  }
+
   async function discard(opUuid: string) {
     // Abandon d'une opération refusée : on la retire de la file ET de
     // l'activité locale (elle n'a jamais existé côté serveur).
@@ -346,9 +359,18 @@ export function MonEspaceScreen() {
                   ))}
                 </ul>
               )}
-              <button type="button" className="btn-secondary" onClick={() => void discard(entry.op_uuid)}>
-                {t('Abandonner cette saisie')}
-              </button>
+              <div className="chip-row">
+                {/* RETENTER avant d'abandonner : un refus n'est pas toujours
+                    définitif — règle serveur corrigée, employé rattaché depuis,
+                    horloge du téléphone résorbée. */}
+                <button type="button" className="btn-primary" disabled={retrying === entry.op_uuid}
+                        onClick={() => void retry(entry.op_uuid)}>
+                  {retrying === entry.op_uuid ? t('Envoi…') : t('Réessayer')}
+                </button>
+                <button type="button" className="btn-secondary" onClick={() => void discard(entry.op_uuid)}>
+                  {t('Abandonner cette saisie')}
+                </button>
+              </div>
             </div>
           ))}
         </section>

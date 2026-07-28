@@ -58,6 +58,16 @@ use Illuminate\Validation\Rule;
 class SyncService
 {
     /**
+     * Avance d'horloge tolérée sur un horodatage déclaré par le terrain.
+     *
+     * Les téléphones du terrain dérivent : refuser une saisie parce que l'appareil
+     * a trente secondes d'avance la condamne au bac « À corriger », d'où elle ne
+     * revient pas. Quinze minutes couvrent toute dérive plausible sans laisser
+     * dater un acte à un moment qui n'est pas encore arrivé.
+     */
+    private const CLOCK_SKEW_TOLERANCE = '+15 minutes';
+
+    /**
      * Registre type d'opération → handler.
      *
      * @return array<string, string> méthode locale par type
@@ -599,7 +609,7 @@ class SyncService
             'uuid'                 => 'required|uuid',
             'attendance_date'      => 'required|date|before_or_equal:today',
             'rows'                 => 'required|array|min:1|max:300',
-            'rows.*.employee_id'   => ['required', 'integer', $this->farmScopedExists('employees')],
+            'rows.*.employee_id'   => ['required', 'integer', $this->employeeExists()],
             'rows.*.status'        => ['required', Rule::in(array_keys(\App\Models\EmployeeAttendance::STATUSES))],
             'rows.*.check_in_time' => 'nullable|date_format:H:i',
         ]);
@@ -644,7 +654,7 @@ class SyncService
             'machine_ids'    => 'required|array|min:1',
             'machine_ids.*'  => ['integer', $this->farmScopedExists('mill_machines')],
             'nb_bags'        => 'required|integer|min:1',
-            'supervisor_id'  => ['required', 'integer', $this->farmScopedExists('employees')],
+            'supervisor_id'  => ['required', 'integer', $this->employeeExists()],
         ]);
 
         if ($v->fails()) {
@@ -1050,7 +1060,7 @@ class SyncService
             'current_quantity'       => 'required|integer|min:0',
             'status'                 => 'nullable|string|in:Actif,Terminé',
             'arrival_date'           => 'required|date',
-            'employee_id'            => ['nullable', 'integer', $this->farmScopedExists('employees')],
+            'employee_id'            => ['nullable', 'integer', $this->employeeExists()],
             'provider_id'            => ['nullable', 'integer', $this->farmScopedExists('providers')],
             'qty_dead'               => 'nullable|integer|min:0',
             'arrival_mortality_rate' => 'nullable|numeric|min:0',
@@ -1484,12 +1494,14 @@ class SyncService
         $v = Validator::make($payload, [
             'uuid'             => 'required|uuid',
             'stored_lot_id'    => ['required', 'integer', $this->farmScopedExists('stored_lots')],
-            'checked_at'       => 'nullable|date|before_or_equal:now',
+            // Même tolérance d'horloge que done_at : une dérive de téléphone ne
+            // doit pas condamner un contrôle de lot au bac « À corriger ».
+            'checked_at'       => ['nullable', 'date', 'before_or_equal:' . self::CLOCK_SKEW_TOLERANCE],
             'weighed_quantity' => 'nullable|numeric|min:0',
             'condition'        => ['required', Rule::in(array_keys(\App\Models\StoredLotCheck::CONDITIONS))],
             'action_taken'     => ['nullable', Rule::in(array_keys(\App\Models\StoredLotCheck::ACTIONS))],
             'market_price'     => 'nullable|numeric|min:0',
-            'employee_id'      => ['nullable', 'integer', $this->farmScopedExists('employees')],
+            'employee_id'      => ['nullable', 'integer', $this->employeeExists()],
             'photo_path'       => 'nullable|string|max:255',
             'notes'            => 'nullable|string|max:1000',
         ]);
@@ -2138,7 +2150,19 @@ class SyncService
             // ponctualité punissait alors un problème de réseau, pas un
             // manquement — et un indicateur injuste n'est jamais utilisé.
             // Borné : ni dans le futur, ni au-delà de 30 jours en arrière.
-            'done_at'     => 'nullable|date|before_or_equal:now|after:-30 days',
+            //
+            // TOLÉRANCE D'HORLOGE. `before_or_equal:now` condamnait une saisie dès
+            // que le téléphone avait quelques secondes d'avance sur le serveur —
+            // ce qui est la NORME sur les appareils du terrain, dont l'horloge
+            // dérive. Et un `validation_failed` est terminal : la tâche partait au
+            // bac « À corriger » et le technicien devait tout ressaisir, pour une
+            // dérive d'horloge de trente secondes.
+            //
+            // On accepte donc une avance BORNÉE (cf. CLOCK_SKEW_TOLERANCE) et on
+            // ramène l'horodatage à l'instant serveur au moment d'écrire. Au-delà,
+            // on refuse toujours : dater une tâche la semaine prochaine n'est pas
+            // une dérive d'horloge.
+            'done_at'     => ['nullable', 'date', 'before_or_equal:' . self::CLOCK_SKEW_TOLERANCE, 'after:-30 days'],
         ]);
 
         if ($v->fails()) {
@@ -2183,6 +2207,13 @@ class SyncService
         }
 
         $declared = ! empty($data['done_at']) ? Carbon::parse($data['done_at']) : null;
+
+        // L'avance d'horloge tolérée est RAMENÉE à l'instant serveur : on ne veut
+        // pas d'un acte daté dans le futur au registre, mais on ne rejette pas la
+        // saisie pour autant.
+        if ($declared && $declared->isFuture()) {
+            $declared = now();
+        }
 
         $task->update([
             'status'           => 'fait',
@@ -2411,6 +2442,47 @@ class SyncService
         }
 
         return $rule;
+    }
+
+    /**
+     * EMPLOYÉ VALIDE — la MÊME règle que celle qui l'a descendu au téléphone.
+     *
+     * Signalé depuis le terrain : « rows.0.employee_id sélectionné est invalide »
+     * sur les trois lignes d'un pointage de présence, saisie condamnée au bac
+     * « À corriger ».
+     *
+     * Le miroir mobile est alimenté par `Employee::scopeActiveForSync`, qui appelle
+     * `assignableInCurrentFarm()` : elle inclut délibérément les agents PRÊTÉS —
+     * ceux dont le COMPTE a reçu l'accès à cette ferme alors que leur dossier
+     * reste rattaché à leur site d'origine. La validation du push, elle, exigeait
+     * `employees.farm_id = ferme courante`.
+     *
+     * Le téléphone PROPOSAIT donc des employés que le serveur REFUSAIT. Le
+     * technicien les cochait, et sa feuille de présence entière était rejetée.
+     *
+     * C'est le même défaut que « listé mais pas ouvrable » corrigé côté web : une
+     * règle de visibilité, deux implémentations. Cette fois elles se
+     * contredisaient au point de rendre la fonction inutilisable.
+     */
+    private function employeeExists(): \Illuminate\Validation\Rules\Exists
+    {
+        $rule = Rule::exists('employees', 'id');
+        $farmId = session('current_farm_id');
+
+        if (! $farmId) {
+            return $rule;
+        }
+
+        return $rule->where(function ($query) use ($farmId) {
+            $query->where(function ($sub) use ($farmId) {
+                $sub->where('farm_id', $farmId)
+                    ->orWhereIn('user_id', function ($accounts) use ($farmId) {
+                        $accounts->select('user_id')->from('farm_user')->where('farm_id', $farmId);
+                    });
+            })
+            // Un dossier ARCHIVÉ ne doit pas revenir par cette porte.
+            ->whereNull('deleted_at');
+        });
     }
 
     /**

@@ -56,8 +56,59 @@ async function notify(state?: SyncState): Promise<void> {
  * L'indicateur punirait alors le réseau, pas un manquement — et un indicateur
  * injuste n'est jamais utilisé.
  */
+/**
+ * Décalage entre l'horloge du SERVEUR et celle du téléphone, en millisecondes.
+ *
+ * Les appareils du terrain dérivent. Un horodatage déclaré avec quelques secondes
+ * d'avance était refusé par le serveur (`before_or_equal:now`) et la saisie
+ * partait au bac « À corriger », d'où elle ne revient pas : le technicien devait
+ * tout ressaisir pour une dérive d'horloge.
+ *
+ * Le serveur reste l'autorité de temps — c'est déjà le cas pour le `since` de
+ * synchronisation. On mesure l'écart à chaque cycle et on l'applique aux
+ * horodatages déclarés, plutôt que de compter sur la tolérance du serveur.
+ */
+let serverClockOffsetMs = 0
+
+/** Mémorise l'écart d'horloge d'après l'instant serveur renvoyé par un pull. */
+export function noteServerTime(serverTime: string): void {
+  const server = Date.parse(serverTime)
+  if (!Number.isNaN(server)) serverClockOffsetMs = server - Date.now()
+}
+
+/** Écart mesuré, exposé pour le diagnostic terrain. */
+export function clockOffsetSeconds(): number {
+  return Math.round(serverClockOffsetMs / 1000)
+}
+
+/**
+ * Instant DÉCLARÉ d'un acte, corrigé de la dérive d'horloge du téléphone.
+ * Reste l'heure du téléphone tant qu'aucune synchronisation n'a eu lieu — mieux
+ * vaut un horodatage approché qu'aucun.
+ */
 export function declaredNow(): string {
-  return new Date().toISOString()
+  return new Date(Date.now() + serverClockOffsetMs).toISOString()
+}
+
+/**
+ * REMET une saisie refusée dans la file d'attente.
+ *
+ * Un `validation_failed` était TERMINAL : la saisie restait au bac « À corriger »
+ * et le seul geste offert était de l'ABANDONNER, donc de tout ressaisir. Or le
+ * motif du refus peut très bien avoir disparu depuis — une règle serveur corrigée,
+ * un employé enfin rattaché à la ferme, une dérive d'horloge résorbée. Condamner
+ * la saisie revenait alors à jeter un travail de terrain valide.
+ */
+export async function retryOperation(opUuid: string): Promise<void> {
+  await db.outbox.update(opUuid, {
+    status: 'pending',
+    attempts: 0,
+    last_error: null,
+    server_errors: null,
+  })
+  await db.my_records.update(opUuid, { sync_status: 'pending' })
+
+  await syncNow()
 }
 
 /**
@@ -445,6 +496,9 @@ async function pullDelta(): Promise<void> {
       }
     },
   )
+
+  // L'instant serveur sert aussi à mesurer la dérive de l'horloge locale.
+  noteServerTime(response.server_time)
 
   await setMeta('last_pull_at', response.server_time)
 }
