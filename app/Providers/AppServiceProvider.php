@@ -67,6 +67,25 @@ class AppServiceProvider extends ServiceProvider
             return \App\Models\Employee::visibleInCurrentFarm()->withTrashed()->findOrFail($value);
         });
 
+        // Même raisonnement pour un CONGÉ. Il est classé au dossier de l'agent,
+        // donc sur son site d'ORIGINE, mais son site d'accueil doit pouvoir
+        // l'approuver, le rejeter ou le clore : il l'a sous les yeux dans sa
+        // propre liste. Filtré par ferme, le binding aurait rendu 404 sur un
+        // congé pourtant affiché — « listé mais pas actionnable », le défaut
+        // qu'on a déjà corrigé pour la fiche employé.
+        //
+        // La portée reste bornée : on n'atteint que les congés d'un agent que
+        // l'on peut affecter ici.
+        Route::bind('leave', function ($value) {
+            return \App\Models\EmployeeLeave::withoutGlobalScope(\App\Scopes\FarmScope::class)
+                // À L'EFFECTIF, pas « Actif » : approuver un congé fait passer
+                // l'agent au statut « Congé ». Restreint aux actifs, le binding
+                // aurait rendu son propre congé inaccessible — impossible de le
+                // clore, de le rejeter ou de déléguer ses tâches.
+                ->whereIn('employee_id', \App\Models\Employee::onStaffInCurrentFarm()->pluck('id'))
+                ->findOrFail($value);
+        });
+
         // ─── 0. PARITÉ MIGRATIONS MySQL (job « parité prod ») ───
         // La chaîne de migrations comporte des FK « en avant » : une table
         // référence une cible créée par une migration au timestamp POSTÉRIEUR
