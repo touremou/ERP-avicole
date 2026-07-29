@@ -40,6 +40,17 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // ─── CONFIGURATION E-MAIL DEPUIS LES RÉGLAGES ───
+        // WhatsApp et SMS se réglaient déjà dans l'application ; l'e-mail exigeait
+        // un accès SSH et l'édition du .env. Un réglage qui demande un terminal
+        // est un réglage que le promoteur, à l'étranger, ne peut pas corriger le
+        // jour où il échoue.
+        //
+        // Sans hôte saisi, cet appel ne touche à rien : le .env continue de faire
+        // foi, et une mise à jour ne change pas le comportement d'un serveur déjà
+        // configuré (cf. MailSettings::apply).
+        \App\Support\MailSettings::apply();
+
         // ─── CANAL « webpush » ───
         // Enregistré ici pour que NotificationHub puisse le mettre dans la liste
         // des canaux d'un destinataire, au même titre que la cloche et l'e-mail :

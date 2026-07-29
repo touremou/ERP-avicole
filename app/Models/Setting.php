@@ -214,6 +214,7 @@ class Setting extends Model
             'planning'    => ['label' => 'Planning',      'icon' => 'fa-calendar-days',    'color' => 'indigo'],
             'energie'     => ['label' => 'Énergie',       'icon' => 'fa-bolt',             'color' => 'cyan'],
             'whatsapp'    => ['label' => 'WhatsApp',      'icon' => 'fa-bell',             'color' => 'emerald'],
+            'mail'        => ['label' => 'E-mail (SMTP)', 'icon' => 'fa-envelope',         'color' => 'blue'],
             'sms'         => ['label' => 'SMS',           'icon' => 'fa-comment-sms',      'color' => 'blue'],
             'rh'          => ['label' => 'RH & Paie',     'icon' => 'fa-users',            'color' => 'violet'],
             'stocks'      => ['label' => 'Stocks',        'icon' => 'fa-boxes-stacked',    'color' => 'orange'],

@@ -49,6 +49,51 @@
                         </div>
                     @endif
 
+                    {{-- ÉTAT DU CANAL E-MAIL, au même titre que WhatsApp.
+                         La page ne parlait que du numéro WhatsApp : le bouton
+                         « E-mail » envoyait un test sans qu'on sache jamais avec
+                         quelle configuration, ni où la corriger. --}}
+                    @php
+                        $mailFromSettings = \App\Support\MailSettings::configured();
+                        $mailer = config('mail.default');
+                        $smtpCfg = config('mail.mailers.smtp');
+                        $mailFrom = (string) (config('mail.from.address') ?? '');
+                        $mailUser = (string) ($smtpCfg['username'] ?? '');
+                        $mailMismatch = $mailFrom !== '' && $mailUser !== '' && strcasecmp($mailFrom, $mailUser) !== 0;
+                    @endphp
+
+                    @if($mailer === 'log')
+                        <div class="mb-4 p-4 bg-amber-100 text-amber-700 rounded-2xl text-[9px] font-black uppercase tracking-widest flex items-center gap-2">
+                            <i class="fa-solid fa-triangle-exclamation"></i>
+                            {{ __("Canal e-mail en mode journal : les messages sont écrits dans le journal, pas envoyés.") }}
+                            @can('admin.S')
+                                <a href="{{ route('settings.index', ['group' => 'mail']) }}" class="underline ml-auto no-underline text-amber-800">{{ __("Configurer") }} →</a>
+                            @endcan
+                        </div>
+                    @elseif(! $mailFromSettings)
+                        <div class="mb-4 p-4 bg-slate-100 text-slate-600 rounded-2xl text-[9px] font-black uppercase tracking-widest flex items-center gap-2">
+                            <i class="fa-solid fa-circle-info"></i>
+                            {{ __("E-mail configuré côté serveur (.env)") }} — {{ $smtpCfg['host'] ?? '?' }}:{{ $smtpCfg['port'] ?? '?' }}
+                            @can('admin.S')
+                                <a href="{{ route('settings.index', ['group' => 'mail']) }}" class="underline ml-auto no-underline text-slate-800">{{ __("Régler ici plutôt") }} →</a>
+                            @endcan
+                        </div>
+                    @endif
+
+                    {{-- L'expéditeur différent du compte authentifié est refusé par
+                         la plupart des hébergements mutualisés — et invisible dans
+                         le message brut du serveur. On le dit AVANT le test. --}}
+                    @if($mailMismatch)
+                        <div class="mb-4 p-4 bg-red-100 text-red-700 rounded-2xl text-[9px] font-black uppercase tracking-widest flex items-center gap-2">
+                            <i class="fa-solid fa-circle-exclamation"></i>
+                            {{ __("L'expéditeur") }} ({{ $mailFrom }}) {{ __("diffère du compte authentifié") }} ({{ $mailUser }}) —
+                            {{ __("la plupart des hébergeurs refusent l'envoi.") }}
+                            @can('admin.S')
+                                <a href="{{ route('settings.index', ['group' => 'mail']) }}" class="underline ml-auto no-underline text-red-900">{{ __("Corriger") }} →</a>
+                            @endcan
+                        </div>
+                    @endif
+
                     <div class="flex gap-4 items-end">
                         <div class="flex-1 space-y-2">
                             <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Numéro avec indicatif") }}</label>

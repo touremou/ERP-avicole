@@ -54,7 +54,10 @@ return [
              * MAIL_SCHEME reste prioritaire pour un serveur non standard ; il
              * n'est simplement plus nécessaire dans les deux cas courants.
              */
-            'scheme' => env('MAIL_SCHEME') ?: ((int) env('MAIL_PORT', 2525) === 465 ? 'smtps' : null),
+            'scheme' => \App\Support\MailSettings::schemeForPort(
+                env('MAIL_SCHEME'),
+                (int) env('MAIL_PORT', 2525),
+            ),
             'url' => env('MAIL_URL'),
             'host' => env('MAIL_HOST', '127.0.0.1'),
             'port' => env('MAIL_PORT', 2525),
