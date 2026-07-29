@@ -55,6 +55,6 @@
     <p>{{ __("Aucune campagne pour cette année.") }}</p>
     @endforelse
 
-    <div class="footer">{{ setting('general.farm_name', 'ERP Avicole') }} · {{ __("Rapport généré le") }} {{ now()->format('d/m/Y à H:i') }}</div>
+    <div class="footer">{{ \App\Models\Setting::companyName() }} · {{ __("Rapport généré le") }} {{ now()->format('d/m/Y à H:i') }}</div>
 </body>
 </html>

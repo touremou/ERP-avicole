@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <title>{{ __("Reçu") }} {{ $sale->reference }}</title>
     @php
-        $shop  = setting('general.company_name', setting('general.farm_name', 'Ferme'));
+        $shop  = setting('general.company_name', \App\Models\Setting::companyName());
         $phone = setting('general.company_phone', '');
         $addr  = setting('general.company_address', '');
     @endphp

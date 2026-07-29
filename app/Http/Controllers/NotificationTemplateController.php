@@ -46,6 +46,24 @@ class NotificationTemplateController extends Controller
             'is_active' => 'nullable|boolean',
         ]);
 
+        // Une variable inconnue est remplacée par du VIDE à l'envoi : le message
+        // partirait troué, sans que rien ne le signale — privé justement du
+        // chiffre qui le rendait utile. On refuse tant que c'est corrigeable.
+        $unknown = NotificationTemplate::unknownVariables($template->key, $validated['body']);
+
+        if ($unknown !== []) {
+            $available = implode(', ', array_map(
+                fn ($v) => '{{' . $v . '}}',
+                NotificationTemplate::catalog()[$template->key]['variables'] ?? []
+            ));
+
+            return back()->withInput()->with('error',
+                'Variable(s) inconnue(s) : ' . implode(', ', array_map(fn ($v) => '{{' . $v . '}}', $unknown))
+                . ". Elles seraient remplacées par du vide dans le message envoyé."
+                . ($available !== '' ? " Disponibles pour ce modèle : {$available}." : '')
+            );
+        }
+
         $template->update([
             'body'      => $validated['body'],
             'is_active' => $request->boolean('is_active'),

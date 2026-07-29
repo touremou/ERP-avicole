@@ -117,7 +117,7 @@ class ErrorAlertService
      */
     private static function buildAlertMessage(Throwable $e): string
     {
-        $farmName = config('whatsapp.farm_name', 'AviSmart');
+        $farmName = \App\Models\Setting::companyName();
         $url = request()?->fullUrl() ?? 'CLI';
         $user = auth()?->user()?->name ?? 'Anonyme';
 

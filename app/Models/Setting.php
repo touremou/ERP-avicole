@@ -45,6 +45,46 @@ class Setting extends Model
     }
 
     /**
+     * NOM DE L'EXPLOITATION — déclaration UNIQUE de l'identité sortante.
+     *
+     * Ce nom signait TROIS choses par trois chemins différents :
+     *
+     *   • les documents (relevés client, tickets, bulletins) → general.company_name,
+     *     le SEUL réglage réellement déclaré, modifiable dans les Réglages ;
+     *   • les rapports cultures → general.farm_name, une clef qui n'a jamais
+     *     existé parmi les réglages : ces quatre PDF imprimaient donc toujours
+     *     leur texte de repli, « ERP Avicole », quoi qu'on saisisse ;
+     *   • les messages WhatsApp → config('whatsapp.farm_name'), c'est-à-dire une
+     *     variable d'environnement (.env) INACCESSIBLE depuis l'application.
+     *
+     * Conséquence, invisible depuis n'importe lequel des trois : le promoteur
+     * pouvait saisir le nom de son exploitation dans les Réglages sans que ses
+     * alertes cessent de partir signées « AviSmart » sur les téléphones de ses
+     * techniciens et de ses clients. Rien ne le lui disait.
+     *
+     * L'ordre de résolution va du plus intentionnel au plus lointain : ce que
+     * l'utilisateur a saisi l'emporte toujours sur ce que le serveur suppose. Le
+     * .env reste en dernier recours pour ne pas régresser un site qui l'aurait
+     * réglé avant que ce réglage n'existe.
+     */
+    public static function companyName(): string
+    {
+        $candidates = [
+            static::get('general.company_name'),
+            config('whatsapp.farm_name'),
+            config('app.name'),
+        ];
+
+        foreach ($candidates as $name) {
+            if (filled($name)) {
+                return (string) $name;
+            }
+        }
+
+        return 'AviSmart';
+    }
+
+    /**
      * Définit une valeur de paramètre.
      */
     public static function set(string $dotKey, $value): void
