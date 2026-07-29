@@ -148,7 +148,7 @@ test('l’écran de paie annonce les dossiers hors contrat', function () {
     hired('2025-01-06', '2026-05-31', type: 'CDD');
 
     $this->actingAs($this->adminUser)
-        ->post(route('payroll.generate', $this->period))
+        ->post(route('payroll.generate', $this->period), ['confirm_no_attendance' => 1])
         ->assertRedirect();
 
     expect(session('success'))->toContain('hors contrat');

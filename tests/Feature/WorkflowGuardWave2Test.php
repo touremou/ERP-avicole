@@ -134,7 +134,7 @@ test('générer les fiches d\'une période PAYÉE est refusé (période verrouil
     $period = makePayrollPeriod($this->farm->id,'paye');
 
     $this->actingAs($this->managerUser)
-        ->post(route('payroll.generate', $period))
+        ->post(route('payroll.generate', $period), ['confirm_no_attendance' => 1])
         ->assertSessionHas('error');
 
     expect($period->fresh()->status)->toBe('paye');

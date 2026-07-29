@@ -77,12 +77,28 @@ class PayrollController extends Controller
         return view('payroll.show', compact('period', 'kpi'));
     }
 
-    public function generate(PayrollPeriod $period, PayrollService $service)
+    public function generate(Request $request, PayrollPeriod $period, PayrollService $service)
     {
         if (Gate::denies('rh.M')) return back()->with('error', 'Non autorisé.');
 
         if ($period->status === 'paye') {
             return back()->with('error', 'Cette période est déjà payée et verrouillée.');
+        }
+
+        // BLOCAGE DOUX : une période sans AUCUN pointage produit la même paie
+        // qu'un mois de présence parfaite — les jours non pointés sont présumés
+        // travaillés. Générer sans le savoir, c'est payer des absences.
+        //
+        // On refuse UNE FOIS, en disant quoi faire, puis on laisse passer sur
+        // confirmation explicite. Un blocage dur ferait saisir n'importe quoi
+        // pour débloquer la paie : le pointage deviendrait une formalité, et la
+        // mesure perdrait tout sens.
+        if (! $request->boolean('confirm_no_attendance') && $service->pointedDaysIn($period) === 0) {
+            return back()->with('error',
+                "Aucun pointage n'a été enregistré sur {$period->label}. La paie présumerait "
+                . 'TOUS les jours travaillés et les règlerait en entier — une absence non pointée '
+                . 'serait payée. Saisissez les présences, ou confirmez la génération sans pointage.'
+            )->with('confirm_no_attendance_period', $period->id);
         }
 
         $result = $service->generatePayroll($period);

@@ -342,6 +342,41 @@ class NotificationHub
         $this->broadcast('alert_haccp', $message, $title, $severity);
     }
 
+    /**
+     * POINTAGE MANQUANT — le trou qui coûte de l'argent en silence.
+     *
+     * Les jours non pointés sont présumés travaillés : sans feuille de présence,
+     * la paie du mois est identique à celle d'un mois de présence parfaite. Une
+     * absence d'une semaine est donc payée, et rien ne le signale.
+     *
+     * L'alerte se déclenche le SOIR même, quand la journée se rattrape encore.
+     * Découverte à la paie, l'information n'a plus de valeur : on ne reconstitue
+     * pas un mois de présence de mémoire.
+     *
+     * @param  array<int, string>  $missingDates  Jours ouvrés sans aucune feuille.
+     */
+    public function alertAttendanceMissing(string $farmName, array $missingDates, int $headcount): void
+    {
+        if (empty($missingDates)) return;
+
+        $count = count($missingDates);
+        $days = collect($missingDates)
+            ->map(fn ($d) => '• ' . \Illuminate\Support\Carbon::parse($d)->translatedFormat('D d/m'))
+            ->join("\n");
+
+        $message = "🕓 *Pointage manquant — {$farmName}*\n\n"
+            . ($count === 1
+                ? "Aucune feuille de présence pour :\n{$days}"
+                : "{$count} jours ouvrés sans feuille de présence :\n{$days}")
+            . "\n\n{$headcount} employé(s) concerné(s)."
+            . "\n\n⚠️ Sans pointage, la paie présume ces jours TRAVAILLÉS et les règle en entier."
+            . " Une absence non pointée est payée.";
+
+        // Au-delà de deux jours, le rattrapage devient une reconstitution de
+        // mémoire : ce n'est plus un oubli, c'est une perte de traçabilité.
+        $this->broadcast('alert_hr_attendance', $message, 'Pointage manquant', $count > 2 ? 'critique' : 'attention');
+    }
+
     private function tpl(string $key, array $vars): string
     {
         return \App\Models\NotificationTemplate::interpolate(
@@ -1290,6 +1325,10 @@ class NotificationHub
             'alert_budget'               => 'alert_fraud',
             // Contrat à terme non décidé = anomalie administrative : même canal.
             'alert_hr_contract'          => 'alert_fraud',
+            // Pointage manquant = anomalie administrative à portée financière
+            // (jours non pointés payés en entier) : même canal, comme son
+            // jumeau ci-dessus, plutôt qu'une colonne de plus pour une alerte.
+            'alert_hr_attendance'        => 'alert_fraud',
             default                      => null,
         };
 
