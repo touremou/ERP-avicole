@@ -54,12 +54,19 @@ function lentAgent(Farm $host, User $sameRoleAs, string $department = 'Cultures'
         'created_at' => now(), 'updated_at' => now(),
     ]);
 
-    return Employee::factory()->create([
+    $employee = Employee::factory()->create([
         'farm_id'    => $home->id,
         'user_id'    => $account->id,
         'status'     => 'Actif',
         'department' => $department,
     ]);
+
+    // La mise à disposition est désormais DÉCLARÉE. Auparavant elle se déduisait
+    // du seul accès du compte au site — un effet de bord que personne n'avait
+    // décidé, et qui a fui dans une dizaine d'écrans.
+    $employee->lendTo($host->id, today()->subMonth());
+
+    return $employee;
 }
 
 test('l’écran des congés propose les agents prêtés', function () {

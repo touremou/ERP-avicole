@@ -85,6 +85,10 @@ test('un agent PRÊTÉ peut être pointé depuis le mobile', function () {
         'status'  => 'Actif',
     ]);
 
+    // Sa mise à disposition sur Kindia est DÉCLARÉE : elle se déduisait
+    // auparavant du seul accès du compte.
+    $lent->lendTo($this->farm->id, today()->subMonth());
+
     // Il figure bien dans ce que le mobile reçoit…
     expect(Employee::assignableInCurrentFarm()->pluck('id'))->toContain($lent->id);
 

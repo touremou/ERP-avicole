@@ -53,12 +53,16 @@ function lentAgentForTask(Farm $farm, User $sameRoleAs, string $department = 'Cu
         'created_at' => now(), 'updated_at' => now(),
     ]);
 
-    return Employee::factory()->create([
+    $employee = Employee::factory()->create([
         'farm_id'    => $elsewhere->id,
         'user_id'    => $account->id,
         'status'     => 'Actif',
         'department' => $department,
     ]);
+
+    $employee->lendTo($farm->id, today()->subMonth());
+
+    return $employee;
 }
 
 function unassignedTask(Farm $farm, string $category = 'irrigation'): TaskAssignment

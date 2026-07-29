@@ -51,10 +51,16 @@ function lentEmployee(int $currentFarmId): Employee
     ]);
 
     // …mais sa fiche est rattachée à l'autre site.
-    return Employee::factory()->create([
+    $employee = Employee::factory()->create([
         'farm_id' => $otherFarm->id, 'user_id' => $user->id,
         'status' => 'Actif', 'contract_type' => 'CDI',
     ]);
+
+    // La mise à disposition est DÉCLARÉE. Elle se déduisait auparavant du seul
+    // accès du compte au site : un effet de bord que personne n'avait décidé.
+    $employee->lendTo($currentFarmId, today()->subMonth());
+
+    return $employee;
 }
 
 /** Un employé d'un autre site SANS aucun accès au site courant. */
@@ -65,6 +71,12 @@ function foreignEmployee(): Employee
     return Employee::factory()->create([
         'farm_id' => $otherFarm->id, 'user_id' => null,
         'status' => 'Actif', 'contract_type' => 'CDI',
+        // Nom INVENTÉ, pas tiré du faker : l'assertion « ce nom n'apparaît pas »
+        // devenait fausse au hasard des tirages. « Price », « Prix », « Total »
+        // figurent dans les libellés d'un formulaire de lot — le test échouait
+        // alors sans qu'aucun défaut n'existe, ce qui use la confiance dans la
+        // suite bien plus vite qu'un vrai échec.
+        'last_name' => 'Zzyxwvut',
     ]);
 }
 

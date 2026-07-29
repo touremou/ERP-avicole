@@ -62,9 +62,13 @@ class EmployeeController extends Controller
         // L'employé est résolu par le binding {employee} (AppServiceProvider),
         // qui applique la règle de visibilité UNIQUE et inclut les archives :
         // la fiche d'un sortant reste consultable.
-        $employee->load('batches');
+        $employee->load('batches', 'assignments.farm', 'assignments.decider');
 
-        return view('employees.show', compact('employee'));
+        // Les sites où l'on peut muter ou prêter. Toutes les fermes actives : une
+        // mutation sort par définition du site courant.
+        $farms = \App\Models\Farm::where('is_active', true)->orderBy('name')->get();
+
+        return view('employees.show', compact('employee', 'farms'));
     }
 
     public function edit(Employee $employee) 
