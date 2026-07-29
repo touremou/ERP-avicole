@@ -64,7 +64,7 @@ test('le message de génération DIT que rien n’a été pointé', function () 
     $period = julyPeriod();
 
     $this->actingAs($this->adminUser)
-        ->post(route('payroll.generate', $period))
+        ->post(route('payroll.generate', $period), ['confirm_no_attendance' => 1])
         ->assertRedirect();
 
     expect(session('success'))->toContain('Aucun pointage')

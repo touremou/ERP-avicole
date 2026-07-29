@@ -168,9 +168,7 @@ class PayrollService
         // On compte donc les jours pointés, pour que le bureau sache sur quoi la
         // paie repose. Ce n'est pas un blocage : c'est un fait à connaître avant
         // de valider.
-        $pointedDays = EmployeeAttendance::whereDate('attendance_date', '>=', $period->start_date->toDateString())
-            ->whereDate('attendance_date', '<=', $period->end_date->toDateString())
-            ->count();
+        $pointedDays = $this->pointedDaysIn($period);
 
         return [
             'created'         => $created,
@@ -187,20 +185,45 @@ class PayrollService
     {
         $count = 0;
         $current = $start->copy();
-        $restDay = setting('rh.rest_day', 'dimanche');
 
         while ($current->lte($end)) {
-            $isRest = match($restDay) {
-                'dimanche' => $current->isSunday(),
-                'samedi'   => $current->isSaturday(),
-                'vendredi' => $current->isFriday(),
-                'aucun'    => false,
-                default    => $current->isSunday(),
-            };
-            if ($isRest) $count++;
+            if (self::isRestDay($current)) $count++;
             $current->addDay();
         }
         return $count;
+    }
+
+    /**
+     * Ce jour est-il le repos hebdomadaire de l'exploitation (rh.rest_day) ?
+     *
+     * Déclaration UNIQUE : le contrôle de pointage doit se taire le jour de
+     * repos, faute de quoi il crierait chaque semaine et cesserait d'être lu. En
+     * recopier la règle l'aurait fait diverger du calcul de paie — le défaut que
+     * cette base a payé une dizaine de fois.
+     */
+    public static function isRestDay(Carbon $date): bool
+    {
+        return match (setting('rh.rest_day', 'dimanche')) {
+            'dimanche' => $date->isSunday(),
+            'samedi'   => $date->isSaturday(),
+            'vendredi' => $date->isFriday(),
+            'aucun'    => false,
+            default    => $date->isSunday(),
+        };
+    }
+
+    /**
+     * Jours POINTÉS d'une période — sur quoi la paie repose réellement.
+     *
+     * Les jours non pointés sont présumés travaillés (bénéfice du doute). Une
+     * période vide produit donc la même paie qu'un mois complet de présence :
+     * c'est défendable, mais cela doit être SU avant de valider.
+     */
+    public function pointedDaysIn(PayrollPeriod $period): int
+    {
+        return EmployeeAttendance::whereDate('attendance_date', '>=', $period->start_date->toDateString())
+            ->whereDate('attendance_date', '<=', $period->end_date->toDateString())
+            ->count();
     }
 
     /** Jours ouvrés d'un intervalle (hors jour de repos hebdomadaire). */

@@ -12,6 +12,17 @@
                     <form method="POST" action="{{ route('payroll.generate', $period) }}">@csrf
                         <button class="bg-blue-600 text-white px-5 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-blue-700 border-none cursor-pointer shadow-lg italic"><i class="fa-solid fa-calculator mr-1"></i> {{ __("Générer les fiches") }}</button>
                     </form>
+
+                    {{-- Le refus « aucun pointage » propose de passer outre, mais
+                         seulement APRÈS l'avoir lu : le second bouton n'existe
+                         qu'en réponse au premier refus. --}}
+                    @if(session('confirm_no_attendance_period') == $period->id)
+                    <form method="POST" action="{{ route('payroll.generate', $period) }}"
+                          onsubmit="return confirm('{{ __('Générer la paie sans aucun pointage ? Tous les jours seront payés comme travaillés.') }}')">@csrf
+                        <input type="hidden" name="confirm_no_attendance" value="1">
+                        <button class="bg-amber-500 text-white px-5 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-amber-600 border-none cursor-pointer shadow-lg italic"><i class="fa-solid fa-triangle-exclamation mr-1"></i> {{ __("Générer sans pointage") }}</button>
+                    </form>
+                    @endif
                     @endif
                 @endcan
                 

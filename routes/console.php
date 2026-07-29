@@ -56,6 +56,12 @@ Schedule::command('stock:check-expiry')->dailyAt('06:15');
 // l'étranger, l'alerte doit venir à lui.
 Schedule::command('hr:check-contracts')->dailyAt('06:20');
 
+// Pointage manquant — LE SOIR, quand la journée se rattrape encore. Découverte
+// à la paie, l'information n'a plus de valeur : on ne reconstitue pas un mois de
+// présence de mémoire. Sans feuille, la paie présume les jours travaillés et les
+// règle en entier.
+Schedule::command('hr:check-attendance')->dailyAt('18:30');
+
 // Purge du journal d'audit au-delà de la rétention (config/activitylog.php,
 // défaut 365 j) — borne la croissance de la table activity_log.
 Schedule::command('activitylog:clean')->weekly();
