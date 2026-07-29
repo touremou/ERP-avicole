@@ -156,6 +156,36 @@ class NotificationTemplate extends Model
         }, $body);
     }
 
+    /**
+     * Variables employées par un texte, qui n'existent PAS pour ce message.
+     *
+     * L'interpolation remplace une variable inconnue par du VIDE — choix sûr à
+     * l'envoi (mieux vaut une phrase incomplète qu'un « {{montant}} » brut sur
+     * le téléphone d'un client). Mais à la SAISIE, ce même silence laissait
+     * enregistrer un modèle troué : on écrivait « Restant : {{quantite}} »,
+     * personne ne signalait que la variable s'appelle « quantity », et l'alerte
+     * partait avec un blanc à l'endroit du chiffre — c'est-à-dire privée de la
+     * seule information qui la rendait utile.
+     *
+     * On refuse donc au moment où l'erreur est encore corrigeable.
+     *
+     * @return array<int, string>
+     */
+    public static function unknownVariables(string $key, string $body): array
+    {
+        $known = static::catalog()[$key]['variables'] ?? null;
+
+        // Clef hors catalogue : on ne connaît pas ses variables, donc on n'a rien
+        // à reprocher. Refuser ici bloquerait un modèle qu'on ne sait pas juger.
+        if ($known === null) {
+            return [];
+        }
+
+        preg_match_all('/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/', $body, $matches);
+
+        return array_values(array_unique(array_diff($matches[1], $known)));
+    }
+
     public static function clearCache(): void
     {
         Cache::forget(self::CACHE_KEY);

@@ -9,6 +9,7 @@ use App\Models\DiscrepancyReport;
 use App\Models\EmployeeLeave;
 use App\Models\EnergySource;
 use App\Models\Module;
+use App\Models\Setting;
 use App\Models\ModulePermission;
 use App\Models\NotificationPreference;
 use App\Services\WebPushService;
@@ -66,7 +67,7 @@ class NotificationHub
      */
     private function buildDailySummary(): string
     {
-        $farmName = config('whatsapp.farm_name', 'AviSmart');
+        $farmName = Setting::companyName();
         $date = now()->translatedFormat('l d F Y');
 
         // Données
@@ -243,7 +244,7 @@ class NotificationHub
      */
     private function buildActivityDigest(): ?string
     {
-        $farmName = config('whatsapp.farm_name', 'AviSmart');
+        $farmName = Setting::companyName();
         $date = now()->translatedFormat('l d F Y');
         $start = now()->copy()->startOfDay();
         $end = now()->copy()->endOfDay();
@@ -499,7 +500,7 @@ class NotificationHub
             'reference' => $sale->reference,
             'amount'    => number_format($sale->remaining_amount, 0, ',', ' '),
             'days'      => $sale->days_overdue,
-            'farm'      => config('whatsapp.farm_name', 'AviSmart'),
+            'farm'      => Setting::companyName(),
         ]);
 
         $sent = false;
@@ -541,7 +542,7 @@ class NotificationHub
         })->join("\n");
 
         $message = $this->tpl('stock_expiry', [
-            'farm'  => config('whatsapp.farm_name', 'AviSmart'),
+            'farm'  => Setting::companyName(),
             'count' => $items->count(),
             'items' => $lines,
         ]);
@@ -588,7 +589,7 @@ class NotificationHub
         }
 
         $message = $this->tpl('contract_expiry', [
-            'farm'      => config('whatsapp.farm_name', 'AviSmart'),
+            'farm'      => Setting::companyName(),
             'count'     => $employees->count() + $missingTerm->count(),
             'employees' => $lines,
         ]);
@@ -895,7 +896,7 @@ class NotificationHub
             return 0;
         }
 
-        $farmName = config('whatsapp.farm_name', 'AviSmart');
+        $farmName = Setting::companyName();
         $lines = ["🌾 *{$farmName} — Calendrier cultural*", ''];
 
         foreach ($cycles as $cycle) {
@@ -943,7 +944,7 @@ class NotificationHub
         }
 
         $advisor   = new \App\Services\BatchAdvisorService();
-        $farmName  = config('whatsapp.farm_name', 'AviSmart');
+        $farmName  = Setting::companyName();
         $date      = now()->translatedFormat('l d F Y');
 
         $byBuilding = $batches->groupBy(fn($b) => $b->building?->name ?? 'Sans bâtiment');
@@ -1021,7 +1022,7 @@ class NotificationHub
             return 0;
         }
 
-        $farmName = config('whatsapp.farm_name', 'AviSmart');
+        $farmName = Setting::companyName();
         $utility  = app(\App\Services\UtilityService::class);
         $signaled = 0;
 
@@ -1072,7 +1073,7 @@ class NotificationHub
 
         $advisor = new \App\Services\CropAdvisorService();
         $protocolService = new \App\Services\CropProtocolAlertService();
-        $farmName = config('whatsapp.farm_name', 'AviSmart');
+        $farmName = Setting::companyName();
         $signaled = 0;
 
         foreach ($cycles as $cycle) {
