@@ -25,20 +25,26 @@ return new class extends Migration
 {
     public function up(): void
     {
+        /*
+         * `unit` est un string(20) — « kg », « % », « jours ». Les explications
+         * vont dans `label`, qui est un string(255). SQLite les aurait acceptées
+         * dans `unit` en tronquant en silence ; MySQL refuse l'insertion, et le
+         * job de parité l'a attrapé avant la production.
+         */
         $rows = [
             ['key' => 'mailer', 'value' => 'smtp', 'type' => 'select',
-             'label' => 'Canal e-mail', 'options' => 'smtp,log',
-             'unit' => 'log = écrit dans le journal sans envoyer', 'display_order' => 1],
+             'label' => 'Canal e-mail (log = écrit sans envoyer)', 'options' => 'smtp,log',
+             'display_order' => 1],
 
             ['key' => 'host', 'value' => '', 'type' => 'string',
-             'label' => 'Serveur SMTP', 'unit' => 'ex. mail.mondomaine.fr', 'display_order' => 2],
+             'label' => 'Serveur SMTP (ex. mail.mondomaine.fr)', 'display_order' => 2],
 
             ['key' => 'port', 'value' => '465', 'type' => 'number',
-             'label' => 'Port', 'unit' => '465 (SSL) ou 587 (TLS)', 'display_order' => 3],
+             'label' => 'Port — le chiffrement en découle', 'unit' => '465 ou 587',
+             'display_order' => 3],
 
             ['key' => 'username', 'value' => '', 'type' => 'string',
-             'label' => 'Identifiant (adresse complète)', 'unit' => 'ex. contact@mondomaine.fr',
-             'display_order' => 4],
+             'label' => 'Identifiant — adresse complète de la boîte', 'display_order' => 4],
 
             // Même traitement que la clef API WhatsApp : jamais réaffiché à
             // l'écran, et un champ laissé vide conserve la valeur existante.
@@ -46,8 +52,7 @@ return new class extends Migration
              'label' => 'Mot de passe de la boîte', 'is_sensitive' => true, 'display_order' => 5],
 
             ['key' => 'from_address', 'value' => '', 'type' => 'string',
-             'label' => 'Adresse expéditeur',
-             'unit' => "à défaut, l'identifiant — la plupart des hébergeurs exigent qu'ils soient identiques",
+             'label' => "Adresse expéditeur — à défaut l'identifiant (la plupart des hébergeurs exigent qu'ils soient identiques)",
              'display_order' => 6],
         ];
 

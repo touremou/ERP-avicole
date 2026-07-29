@@ -46,6 +46,24 @@ test('les réglages e-mail existent et le mot de passe est traité comme un secr
         ->and($rows['password']->is_sensitive)->toBeTrue();
 });
 
+test('aucun réglage ne dépasse la longueur des colonnes MySQL', function () {
+    // `unit` est un string(20). SQLite accepte une valeur plus longue en la
+    // tronquant EN SILENCE ; MySQL refuse l'insertion. Sans ce contrôle, seul le
+    // job de parité voyait le problème — après le push, et pour tous les
+    // réglages, pas seulement ceux de l'e-mail.
+    //
+    // Le garde-fou porte sur TOUS les groupes : c'est la classe de défaut qu'on
+    // ferme, pas l'occurrence.
+    Setting::whereNull('farm_id')->get()->each(function ($setting) {
+        expect(mb_strlen((string) $setting->unit))->toBeLessThanOrEqual(
+            20,
+            "Le réglage « {$setting->group}.{$setting->key} » a une unité trop longue pour MySQL : "
+            . 'les explications vont dans le libellé.'
+        );
+        expect(mb_strlen((string) $setting->label))->toBeLessThanOrEqual(255);
+    });
+});
+
 test('AUCUN réglage de chiffrement n’est proposé — il se déduit du port', function () {
     // Le proposer rouvrirait le défaut : deux façons de se contredire.
     expect(Setting::where('group', 'mail')->where('key', 'scheme')->exists())->toBeFalse()
