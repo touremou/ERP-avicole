@@ -18,6 +18,20 @@
                 <a href="{{ route('attendance.report.pdf', ['from' => $from, 'to' => $to]) }}" class="px-4 py-3 bg-red-50 text-red-600 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-red-100 transition-all no-underline" title="{{ __('Export PDF') }}"><i class="fa-solid fa-file-pdf mr-1"></i> PDF</a>
             </form>
 
+            {{-- AUCUN POINTAGE : un tableau de zéros se lit comme une mesure
+                 (« personne n'est venu »), alors qu'il signifie l'inverse — rien
+                 n'a été saisi. La paie, elle, présume ces jours travaillés : sans
+                 cette phrase, les deux écrans paraissent se contredire. --}}
+            @if($rows->sum('total') === 0)
+            <div class="mb-4 p-5 bg-amber-50 border border-amber-100 rounded-[2rem] text-[10px] font-black text-amber-700 uppercase tracking-wide">
+                <i class="fa-solid fa-triangle-exclamation mr-2"></i>
+                {{ __("Aucun pointage enregistré sur cette période.") }}
+                <span class="block mt-2 normal-case tracking-normal font-bold text-amber-600">
+                    {{ __("Les zéros ci-dessous ne sont pas des absences : rien n'a été saisi. La paie présume ces jours travaillés — les déductions qui y figurent proviennent des dates de contrat, pas de la présence.") }}
+                </span>
+            </div>
+            @endif
+
             <div class="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
                 <table class="w-full border-collapse">
                     <thead>

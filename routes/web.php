@@ -944,6 +944,13 @@ Route::middleware(['auth'])->group(function () {
         ->middlewareFor('destroy', 'can:S');
     Route::put('/employees/{id}/status', [EmployeeController::class, 'updateStatus'])->name('employees.status')->middleware('can:M');
 
+    // ─── AFFECTATION AUX SITES : mutation et mise à disposition ───
+    Route::controller(\App\Http\Controllers\EmployeeAssignmentController::class)->group(function () {
+        Route::post('/employees/{employee}/transfer', 'transfer')->name('employees.transfer')->middleware('can:S');
+        Route::post('/employees/{employee}/lend', 'lend')->name('employees.lend')->middleware('can:M');
+        Route::post('/assignments/{assignment}/end', 'end')->name('employees.assignment.end')->middleware('can:M');
+    });
+
     // ─── ESPACE EMPLOYÉ : gestion du compte de connexion (réservé admin.S) ───
     // Verrou de route explicite : création/gestion d'identités = admin.S.
     Route::controller(EmployeeAccessController::class)->middleware('can:admin.S')->group(function () {

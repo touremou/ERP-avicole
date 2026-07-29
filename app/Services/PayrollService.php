@@ -157,7 +157,27 @@ class PayrollService
         $period->recalculateTotals();
         $period->update(['status' => 'calcule']);
 
-        return ['created' => $created, 'skipped' => $skipped, 'out_of_contract' => $outOfContract];
+        // POINTAGE DE LA PÉRIODE — à dire, parce que la paie s'en passe.
+        //
+        // Les jours non pointés sont présumés travaillés (bénéfice du doute, pour
+        // ne pas sanctionner un pointage incomplet). Conséquence : une période SANS
+        // AUCUN pointage produit exactement la même paie qu'une période où tout le
+        // monde était là tous les jours. Le rapport de présence affiche alors des
+        // zéros, la paie affiche des déductions, et rien ne relie les deux.
+        //
+        // On compte donc les jours pointés, pour que le bureau sache sur quoi la
+        // paie repose. Ce n'est pas un blocage : c'est un fait à connaître avant
+        // de valider.
+        $pointedDays = EmployeeAttendance::whereDate('attendance_date', '>=', $period->start_date->toDateString())
+            ->whereDate('attendance_date', '<=', $period->end_date->toDateString())
+            ->count();
+
+        return [
+            'created'         => $created,
+            'skipped'         => $skipped,
+            'out_of_contract' => $outOfContract,
+            'pointed_days'    => $pointedDays,
+        ];
     }
 
     /**

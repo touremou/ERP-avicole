@@ -97,6 +97,15 @@ class PayrollController extends Controller
                 . " (embauche postérieure ou terme dépassé) : aucun bulletin produit.";
         }
 
+        // Aucun pointage sur la période : la paie a tout présumé travaillé. Le
+        // rapport de présence affichera des zéros, et le rapprochement des deux
+        // écrans est impossible sans cette phrase.
+        if (($result['pointed_days'] ?? null) === 0) {
+            $message .= " ⚠️ Aucun pointage n'a été enregistré sur cette période :"
+                . ' tous les jours sont présumés travaillés. Les déductions affichées'
+                . " proviennent des dates de contrat, pas des absences.";
+        }
+
         return back()->with('success', $message);
     }
 

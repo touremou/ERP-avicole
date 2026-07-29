@@ -188,6 +188,8 @@ test('la fiche hebdomadaire suit le LIEU DE TRAVAIL', function () {
         'farm_id' => $elsewhere->id, 'user_id' => $account->id, 'status' => 'Actif',
     ]);
 
+    $lent->lendTo($this->farm->id, today()->subMonth());
+
     session(['current_farm_id' => $this->farm->id]);
 
     $response = $this->actingAs($this->adminUser)->get(route('rh.semaine'));

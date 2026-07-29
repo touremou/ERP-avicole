@@ -42,6 +42,47 @@ class Employee extends Model
                 $employee->employee_id = 'EMP-' . date('Y') . '-' . str_pad($count, 3, '0', STR_PAD_LEFT);
             }
         });
+
+        // TOUT DOSSIER PORTE UNE AFFECTATION. Sans cela, un agent créé par un
+        // écran, un import ou un seeder n'apparaîtrait nulle part : la
+        // visibilité repose désormais sur l'affectation, plus sur la colonne.
+        // La règle vit ici pour qu'aucun chemin de création ne puisse l'oublier.
+        static::created(function ($employee) {
+            if (! $employee->farm_id) {
+                return;
+            }
+
+            $employee->assignments()->create([
+                'farm_id'    => $employee->farm_id,
+                'type'       => 'mutation',
+                'start_date' => $employee->hire_date ?: $employee->created_at ?: now(),
+                'reason'     => __('Rattachement initial'),
+            ]);
+        });
+
+        // Le dossier peut encore être déplacé directement (import, correction).
+        // On garde l'affectation principale ALIGNÉE, sinon la fiche dirait un
+        // site et les sélecteurs un autre — la divergence qu'on vient d'éteindre.
+        static::updated(function ($employee) {
+            if (! $employee->wasChanged('farm_id') || ! $employee->farm_id) {
+                return;
+            }
+
+            $current = $employee->primaryAssignmentOn();
+
+            if ($current && (int) $current->farm_id === (int) $employee->farm_id) {
+                return;
+            }
+
+            $current?->update(['end_date' => today()->subDay()]);
+
+            $employee->assignments()->create([
+                'farm_id'    => $employee->farm_id,
+                'type'       => 'mutation',
+                'start_date' => today(),
+                'reason'     => __('Changement de site au dossier'),
+            ]);
+        });
     }
 
     // --- RELATIONS ---
@@ -71,6 +112,89 @@ class Employee extends Model
      *
      * Être en congé ne dépend pas de l'endroit d'où on regarde.
      */
+    /**
+     * Affectations successives de cet agent — l'historique de ses sites.
+     *
+     * C'est la source de « où travaille-t-il », en remplacement de la déduction
+     * implicite qui a coûté une dizaine de correctifs. Non filtrée par ferme :
+     * la fiche doit montrer tout le parcours, pas la seule tranche locale.
+     */
+    public function assignments(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(EmployeeAssignment::class)->orderByDesc('start_date');
+    }
+
+    /** Affectation principale (celle qui porte le dossier) à une date donnée. */
+    public function primaryAssignmentOn($date = null): ?EmployeeAssignment
+    {
+        return $this->assignments()
+            ->where('type', 'mutation')
+            ->coveringDate($date ?: today())
+            ->first();
+    }
+
+    /**
+     * MUTER l'agent vers un autre site : le dossier déménage, donc la paie aussi.
+     *
+     * L'affectation en cours est CLOSE à la veille — jamais supprimée : c'est ce
+     * qui permet à une paie de mois à cheval de savoir où il était, jour par
+     * jour. Écraser l'historique rendrait la question sans réponse, comme avant.
+     */
+    public function transferTo(int $farmId, $date = null, ?string $reason = null, ?int $decidedBy = null): EmployeeAssignment
+    {
+        $start = \Illuminate\Support\Carbon::parse($date ?: today());
+
+        $this->assignments()
+            ->where('type', 'mutation')
+            ->coveringDate($start)
+            ->get()
+            ->each(fn ($assignment) => $assignment->update(['end_date' => $start->copy()->subDay()]));
+
+        $assignment = $this->assignments()->create([
+            'farm_id'    => $farmId,
+            'type'       => 'mutation',
+            'start_date' => $start,
+            'reason'     => $reason,
+            'decided_by' => $decidedBy,
+        ]);
+
+        // Le dossier suit. `updated` ne doit pas rouvrir une seconde affectation :
+        // elle vient d'être créée ici, et il la reconnaît (même ferme).
+        $this->forceFill(['farm_id' => $farmId])->save();
+
+        return $assignment;
+    }
+
+    /**
+     * METTRE À DISPOSITION : l'agent travaille ailleurs, son dossier ne bouge pas.
+     *
+     * Une seconde affectation, bornée. Sans terme, un prêt s'oublie et devient
+     * une mutation de fait que personne n'a décidée — exactement ce qui s'était
+     * produit avec les accès de compte.
+     */
+    public function lendTo(int $farmId, $start, $end = null, ?string $reason = null, ?int $decidedBy = null): EmployeeAssignment
+    {
+        return $this->assignments()->create([
+            'farm_id'    => $farmId,
+            'type'       => 'mise_a_disposition',
+            'start_date' => \Illuminate\Support\Carbon::parse($start ?: today()),
+            'end_date'   => $end ? \Illuminate\Support\Carbon::parse($end) : null,
+            'reason'     => $reason,
+            'decided_by' => $decidedBy,
+        ]);
+    }
+
+    /** Sites où cet agent travaille à une date donnée (mutation + prêts). */
+    public function farmIdsOn($date = null): array
+    {
+        return $this->assignments()
+            ->coveringDate($date ?: today())
+            ->pluck('farm_id')
+            ->unique()
+            ->values()
+            ->all();
+    }
+
     public function leaves(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(EmployeeLeave::class)
@@ -219,7 +343,7 @@ class Employee extends Model
      * farm_id = X` — et retombaient donc dans le défaut que la règle corrige :
      * les agents prêtés disparaissaient de leur vivier.
      */
-    public function scopeVisibleInFarm($query, ?int $farmId)
+    public function scopeVisibleInFarm($query, ?int $farmId, $date = null)
     {
         // On retire le scope de FERME, et RIEN D'AUTRE. withoutGlobalScopes()
         // emportait aussi SoftDeletes : les employés ARCHIVÉS réapparaissaient
@@ -232,13 +356,17 @@ class Employee extends Model
             return $query; // hors contexte multi-ferme : aucun filtre (cf. FarmScope)
         }
 
-        $accessUserIds = \Illuminate\Support\Facades\DB::table('farm_user')
-            ->where('farm_id', $farmId)->pluck('user_id');
+        // UNE affectation en cours sur ce site, à cette date. Auparavant la règle
+        // se déduisait de deux faits sans rapport — le farm_id du dossier et
+        // l'accès du COMPTE à une autre ferme — c'est-à-dire d'un effet de bord
+        // que personne n'avait décidé. Une affectation, elle, se décide, se date
+        // et se termine.
+        $day = $date ?: today();
 
-        return $query->where(function ($sub) use ($farmId, $accessUserIds) {
-            $sub->where('farm_id', $farmId)
-                ->orWhereIn('user_id', $accessUserIds);
-        });
+        return $query->whereHas(
+            'assignments',
+            fn ($sub) => $sub->where('farm_id', $farmId)->coveringDate($day)
+        );
     }
 
     /**

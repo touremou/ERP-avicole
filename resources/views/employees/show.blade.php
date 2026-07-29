@@ -229,6 +229,8 @@
                 {{-- COLONNE DROITE : DÉTAILS + HISTORIQUE --}}
                 <div class="lg:col-span-2 space-y-5 text-left">
 
+                    @include('employees.partials.assignments')
+
                     {{-- CONTRAT --}}
                     <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
                         <h3 class="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center mb-5 italic">

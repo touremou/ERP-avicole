@@ -10,10 +10,13 @@ use Illuminate\Support\Facades\DB;
 uses(Tests\TestCase::class, Illuminate\Foundation\Testing\RefreshDatabase::class);
 
 /*
- * Visibilité RH multi-ferme : un employé rattaché à une ferme (farm_id) OU dont
- * le compte a reçu l'ACCÈS à la ferme courante (farm_user) apparaît dans la
- * liste RH de cette ferme — sinon un agent affecté à un autre site pour y
- * travailler obtenait les droits sans jamais figurer dans la liste.
+ * Visibilité RH multi-ferme : un employé apparaît dans la liste d'un site s'il y
+ * a une AFFECTATION en cours — mutation (son dossier y est) ou mise à
+ * disposition (il y travaille sans que son dossier bouge).
+ *
+ * Cette règle se déduisait auparavant du farm_id du dossier ET de l'accès du
+ * compte à la ferme : deux faits sans rapport, dont personne n'avait décidé la
+ * combinaison. D'où sa divergence dans une dizaine d'écrans.
  */
 
 function rhViewerRole(): Role
@@ -39,11 +42,16 @@ test('un employé rattaché à un autre site mais AYANT ACCÈS à la ferme coura
         'last_name' => 'Diallo', 'first_name' => 'Amadou', 'status' => 'Actif',
     ]);
 
-    // On lui donne l'ACCÈS au site B (farm_user) — comme la gestion de site.
+    // On lui donne l'ACCÈS au site B (farm_user) — comme la gestion de site…
     DB::table('farm_user')->insert([
         'farm_id' => $farmB->id, 'user_id' => $empUser->id,
         'is_default' => false, 'is_owner' => false, 'created_at' => now(), 'updated_at' => now(),
     ]);
+
+    // …et on DÉCLARE sa mise à disposition sur ce site. L'accès du compte seul ne
+    // suffit plus : il ouvrait des droits sans que personne ait décidé d'affecter
+    // quelqu'un, ce qui est précisément ce que le modèle d'affectation remplace.
+    $employee->lendTo($farmB->id, today()->subMonth());
 
     // Un responsable RH consultant le site B.
     $rh = User::factory()->create(['role_id' => rhViewerRole()->id]);
