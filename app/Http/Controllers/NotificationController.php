@@ -263,11 +263,24 @@ class NotificationController extends Controller
                 config('mail.from.address') ?? '?'
             );
 
-            $hint = '';
+            // On NOMME l'incohérence quand on la voit, au lieu de laisser
+            // relire une liste de choses à vérifier. L'expéditeur différent du
+            // compte authentifié est refusé par la plupart des hébergements
+            // mutualisés, et c'est invisible dans le message brut du serveur.
+            $from = (string) (config('mail.from.address') ?? '');
+            $user = (string) ($smtp['username'] ?? '');
+
+            $mismatch = ($from !== '' && $user !== '' && strcasecmp($from, $user) !== 0)
+                ? " ⚠️ L'expéditeur ({$from}) diffère du compte authentifié ({$user}) :"
+                    . ' la plupart des hébergements le refusent. Mettez MAIL_FROM_ADDRESS='
+                    . $user . '.'
+                : '';
+
+            $hint = $mismatch;
             if (Str::contains($e->getMessage(), ['authenticate', 'Authenticator', '535', '534'])) {
                 // Hôte mutualisé (PlanetHoster) : port 465 + SSL, et l'expéditeur
                 // (MAIL_FROM_ADDRESS) doit correspondre à la boîte authentifiée.
-                $hint = ' — Auth SMTP refusée : vérifiez MAIL_PASSWORD (guillemets si caractères spéciaux),'
+                $hint .= ' — Auth SMTP refusée : vérifiez MAIL_PASSWORD (guillemets si caractères spéciaux),'
                     . ' que MAIL_FROM_ADDRESS = MAIL_USERNAME, et le couple port/chiffrement'
                     . ' (465→MAIL_SCHEME=smtps, ou 587→MAIL_SCHEME=null + TLS).';
             }

@@ -39,7 +39,22 @@ return [
 
         'smtp' => [
             'transport' => 'smtp',
-            'scheme' => env('MAIL_SCHEME'),
+
+            /*
+             * Le port DÉCIDE du chiffrement, on ne le redemande donc pas.
+             *
+             * 465 = TLS implicite (SMTPS) : le serveur attend une poignée de main
+             * chiffrée AVANT toute commande. Sans « smtps », le client envoie un
+             * EHLO en clair et l'authentification échoue — avec un message qui
+             * parle d'identifiants, alors que le mot de passe est bon. Piège
+             * classique des hébergements mutualisés, et diagnostic trompeur.
+             *
+             * 587 = STARTTLS : la session commence en clair puis s'élève.
+             *
+             * MAIL_SCHEME reste prioritaire pour un serveur non standard ; il
+             * n'est simplement plus nécessaire dans les deux cas courants.
+             */
+            'scheme' => env('MAIL_SCHEME') ?: ((int) env('MAIL_PORT', 2525) === 465 ? 'smtps' : null),
             'url' => env('MAIL_URL'),
             'host' => env('MAIL_HOST', '127.0.0.1'),
             'port' => env('MAIL_PORT', 2525),
