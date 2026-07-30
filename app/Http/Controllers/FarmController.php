@@ -15,7 +15,11 @@ class FarmController extends Controller
     {
         if (Gate::denies('admin.S')) return redirect()->route('dashboard')->with('error', 'Accès réservé.');
 
-        $farms = Farm::withoutGlobalScopes()->withCount('users')->get();
+        // On garde le scope SoftDeletes : `withoutGlobalScopes()` l'emportait
+        // aussi, si bien qu'un site supprimé serait resté affiché dans la liste —
+        // avec ses boutons, comme s'il existait encore. Les sites DÉSACTIVÉS, eux,
+        // doivent rester visibles : c'est de là qu'on les réactive.
+        $farms = Farm::withCount('users')->get();
         $users = User::orderBy('name')->get();
 
         return view('farms.index', compact('farms', 'users'));
@@ -90,6 +94,116 @@ class FarmController extends Controller
         }
 
         return back()->with('success', "Ferme \"{$farm->name}\" mise à jour.");
+    }
+
+    /**
+     * ACTIVER / DÉSACTIVER un site.
+     *
+     * `is_active` existait DÉJÀ : le sélecteur de site, la vue consolidée et les
+     * contrôles planifiés l'honorent tous. Mais aucun écran ne permettait de
+     * l'écrire — un état appliqué partout que personne ne pouvait poser. Même
+     * famille de défaut que le nom d'exploitation : des lecteurs, pas de rédacteur.
+     *
+     * Désactiver ne détruit RIEN et reste réversible : le site quitte les
+     * sélecteurs, l'historique demeure lisible. C'est le geste attendu pour un
+     * site qu'on ferme, qu'on met en sommeil entre deux campagnes, ou qu'on a créé
+     * en double.
+     */
+    public function toggleActive(Farm $farm)
+    {
+        if (Gate::denies('admin.S')) return back()->with('error', 'Non autorisé.');
+
+        // RÉACTIVER est toujours sûr.
+        if (! $farm->is_active) {
+            $farm->update(['is_active' => true]);
+
+            return back()->with('success', "Site « {$farm->name} » réactivé.");
+        }
+
+        // Désactiver le DERNIER site actif enfermerait l'utilisateur dehors : plus
+        // aucune ferme à sélectionner, donc plus de contexte, donc plus d'écrans.
+        $othersActive = Farm::active()->where('id', '!=', $farm->id)->count();
+
+        if ($othersActive === 0) {
+            return back()->with('error',
+                "« {$farm->name} » est le dernier site actif : le désactiver rendrait "
+                . "l'application inutilisable. Activez un autre site d'abord."
+            );
+        }
+
+        $farm->update(['is_active' => false]);
+
+        // Si c'était le site COURANT, la session pointerait sur un site que plus
+        // rien ne sert : on bascule, et on le dit. Laisser la session dessus
+        // produirait des écrans vides sans explication.
+        $switched = '';
+        if ((int) session('current_farm_id') === (int) $farm->id) {
+            $fallback = Farm::active()->orderBy('id')->first();
+            session(['current_farm_id' => $fallback->id]);
+            $switched = " Vous travaillez maintenant sur « {$fallback->name} ».";
+        }
+
+        // On ANNONCE ce qui reste en cours sur ce site plutôt que de bloquer :
+        // désactiver est réversible, mais l'ignorer laisserait des lots vivants
+        // hors de toute surveillance.
+        $live = \App\Models\Batch::withoutGlobalScopes()
+            ->where('farm_id', $farm->id)->where('status', 'Actif')->count();
+
+        $warning = $live > 0
+            ? " ⚠️ {$live} lot(s) encore ACTIF(s) y sont rattachés : ils ne seront plus suivis."
+            : '';
+
+        return back()->with('success', "Site « {$farm->name} » désactivé.{$switched}{$warning}");
+    }
+
+    /**
+     * SUPPRIMER un site — uniquement s'il est VIDE.
+     *
+     * Un site est la racine de tout ce qui s'y produit. Une suppression qui
+     * cascade détruirait des années d'écritures — dont la paie, qui doit être
+     * conservée ; une suppression qui n'en tient pas compte laisserait des lignes
+     * orphelines, rattachées à un site qui n'existe plus. Les deux sont pires que
+     * de refuser.
+     *
+     * On ne supprime donc que ce qui n'a jamais servi : un site créé par erreur,
+     * un doublon, un essai. Pour tout le reste, il y a la DÉSACTIVATION — elle
+     * répond au même besoin sans rien perdre.
+     */
+    public function destroy(Farm $farm)
+    {
+        if (Gate::denies('admin.S')) return back()->with('error', 'Non autorisé.');
+
+        $counts = $farm->dataCounts();
+
+        if ($counts !== []) {
+            $total = array_sum($counts);
+            $top = collect($counts)->sortDesc()->take(3)
+                ->map(fn ($n, $table) => "{$n} {$table}")->implode(', ');
+
+            return back()->with('error',
+                "« {$farm->name} » porte {$total} écriture(s) ({$top}…) : la suppression "
+                . "détruirait cet historique, paie comprise. Désactivez le site : il quitte "
+                . "les sélecteurs et l'historique reste consultable."
+            );
+        }
+
+        if (Farm::where('id', '!=', $farm->id)->count() === 0) {
+            return back()->with('error', "C'est le seul site : l'application en exige un.");
+        }
+
+        $name = $farm->name;
+
+        // Les droits d'accès, eux, n'ont plus d'objet : ce ne sont pas des
+        // écritures d'exploitation, et les laisser pointerait vers un site absent.
+        DB::table('farm_user')->where('farm_id', $farm->id)->delete();
+
+        if ((int) session('current_farm_id') === (int) $farm->id) {
+            session(['current_farm_id' => Farm::active()->orderBy('id')->value('id')]);
+        }
+
+        $farm->delete();   // archivage (SoftDeletes) : traçable, et non un effacement
+
+        return back()->with('success', "Site « {$name} » supprimé (il ne portait aucune donnée).");
     }
 
     /**

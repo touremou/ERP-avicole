@@ -48,7 +48,9 @@
                                     </p>
                                 </div>
                             </div>
-                            @if($isCurrentFarm)
+                            @if(! $farm->is_active)
+                                <span class="text-[8px] font-black text-amber-700 bg-amber-100 px-3 py-1 rounded-full uppercase">{{ __("Désactivé") }}</span>
+                            @elseif($isCurrentFarm)
                                 <span class="text-[8px] font-black text-violet-600 bg-violet-100 px-3 py-1 rounded-full uppercase">{{ __("Active") }}</span>
                             @else
                                 <form method="POST" action="{{ route('farms.switch') }}">
@@ -123,6 +125,35 @@
                                     class="text-[8px] font-black text-violet-500 uppercase tracking-widest hover:text-violet-700 border-none bg-transparent cursor-pointer">
                                     <i class="fa-solid fa-user-gear mr-1"></i> {{ __("Gérer") }}
                                 </button>
+
+                                {{-- DÉSACTIVER / RÉACTIVER — l'état existait déjà et était
+                                     honoré partout (sélecteur de site, vue consolidée,
+                                     contrôles planifiés) ; aucun écran ne l'écrivait. --}}
+                                <form method="POST" action="{{ route('farms.toggleActive', $farm) }}" class="inline"
+                                      onsubmit="return confirm('{{ $farm->is_active
+                                          ? __('Désactiver ce site ? Il quitte les sélecteurs ; rien n\'est supprimé.')
+                                          : __('Réactiver ce site ?') }}')">
+                                    @csrf @method('PATCH')
+                                    <button class="text-[8px] font-black uppercase tracking-widest border-none bg-transparent cursor-pointer {{ $farm->is_active ? 'text-amber-600 hover:text-amber-800' : 'text-emerald-600 hover:text-emerald-800' }}">
+                                        <i class="fa-solid {{ $farm->is_active ? 'fa-pause' : 'fa-play' }} mr-1"></i>
+                                        {{ $farm->is_active ? __("Désactiver") : __("Réactiver") }}
+                                    </button>
+                                </form>
+
+                                {{-- SUPPRIMER — proposé UNIQUEMENT si le site ne porte aucune
+                                     écriture. Sur un site en service, la suppression
+                                     détruirait l'historique (paie comprise) ou laisserait des
+                                     lignes orphelines : le bouton n'existe donc pas, plutôt
+                                     que d'exister et de refuser. --}}
+                                @if($farm->isEmpty() && $farms->count() > 1)
+                                <form method="POST" action="{{ route('farms.destroy', $farm) }}" class="inline"
+                                      onsubmit="return confirm('{{ __('Supprimer définitivement ce site vide ?') }}')">
+                                    @csrf @method('DELETE')
+                                    <button class="text-[8px] font-black text-red-500 uppercase tracking-widest hover:text-red-700 border-none bg-transparent cursor-pointer">
+                                        <i class="fa-solid fa-trash mr-1"></i> {{ __("Supprimer") }}
+                                    </button>
+                                </form>
+                                @endif
                             </div>
                         </div>
                     </div>
