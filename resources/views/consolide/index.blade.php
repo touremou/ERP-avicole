@@ -85,6 +85,13 @@
                             @foreach($sites as $site)
                                 <th class="pb-3 px-4 text-[9px] font-black text-slate-800 uppercase tracking-widest text-right whitespace-nowrap">
                                     {{ $site['farm']->name }}
+                                    {{-- Un site DÉSACTIVÉ figure encore dans les semaines
+                                         où il a produit — le passé ne se réécrit pas — mais
+                                         il doit se signaler, sinon on lit ses chiffres comme
+                                         ceux d'un site en service. --}}
+                                    @if($site['inactive'] ?? false)
+                                        <span class="block text-[7px] font-black text-amber-600 normal-case tracking-normal">{{ __("désactivé") }}</span>
+                                    @endif
                                 </th>
                             @endforeach
                         </tr>

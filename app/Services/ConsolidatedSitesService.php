@@ -57,9 +57,63 @@ class ConsolidatedSitesService
             return collect();
         }
 
-        return Farm::withoutGlobalScopes()
-            ->whereIn('id', $ids)
+        return Farm::whereIn('id', $ids)
             ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
+    }
+
+    /**
+     * Fermes à consolider POUR UNE SEMAINE DONNÉE.
+     *
+     * Le filtre « actif » portait sur l'état d'AUJOURD'HUI, pour une photo d'une
+     * semaine PASSÉE. Désactiver un site en fin de mois effaçait donc sa
+     * production des semaines déjà écoulées : le comparatif accusait une chute
+     * qui n'avait pas eu lieu, provoquée par un geste administratif et non par
+     * l'exploitation. Un promoteur qui compare ses mois y lit une contre-performance
+     * imaginaire.
+     *
+     * Règle : un site figure dans la semaine s'il est ACTIF AUJOURD'HUI — il a sa
+     * place même à zéro, c'est un site qu'on pilote — OU s'il a PRODUIT quelque
+     * chose cette semaine-là, même désactivé depuis. Le passé ne se réécrit pas.
+     *
+     * @return \Illuminate\Support\Collection<int, Farm>
+     */
+    public function farmsForWeek(User $user, Carbon $from, Carbon $to)
+    {
+        $ids = DB::table('farm_user')->where('user_id', $user->id)->pluck('farm_id');
+
+        if ($ids->isEmpty()) {
+            return collect();
+        }
+
+        // Sites désactivés qui ont tout de même travaillé pendant la semaine.
+        // On interroge les écritures datées que la photo elle-même restitue :
+        // si le tableau afficherait autre chose que des zéros, le site y a sa place.
+        $withActivity = collect();
+
+        foreach ([
+            ['sales', 'sale_date'],
+            ['task_assignments', 'scheduled_date'],
+            ['daily_checks', 'check_date'],
+        ] as [$table, $column]) {
+            if (! \Illuminate\Support\Facades\Schema::hasTable($table)) {
+                continue;
+            }
+
+            $withActivity = $withActivity->merge(
+                DB::table($table)
+                    ->whereIn('farm_id', $ids)
+                    ->whereDate($column, '>=', $from->toDateString())
+                    ->whereDate($column, '<=', $to->toDateString())
+                    ->distinct()
+                    ->pluck('farm_id')
+            );
+        }
+
+        return Farm::whereIn('id', $ids)
+            ->where(fn ($q) => $q->where('is_active', true)
+                ->orWhereIn('id', $withActivity->unique()->all()))
             ->orderBy('name')
             ->get();
     }
@@ -92,7 +146,7 @@ class ConsolidatedSitesService
     public function forUser(User $user, ?Carbon $weekStart = null): array
     {
         $week = ($weekStart ?? now())->copy()->startOfWeek();
-        $farms = $this->accessibleFarms($user);
+        $farms = $this->farmsForWeek($user, $week, $week->copy()->endOfWeek());
 
         // On restaure la ferme d'origine quoi qu'il arrive (cf. docblock).
         $original = session('current_farm_id');
@@ -120,6 +174,10 @@ class ConsolidatedSitesService
 
         return [
             'farm'      => $farm,
+            // Un site désactivé qui figure encore dans une semaine passée doit se
+            // SIGNALER : sans cela, on lit ses chiffres comme ceux d'un site en
+            // service et l'on s'étonne qu'il ne produise plus rien ensuite.
+            'inactive'  => ! $farm->is_active,
             'elevage'   => $this->elevage($batches),
             'cultures'  => $this->cultures(),
             'tasks'     => $tasks,
