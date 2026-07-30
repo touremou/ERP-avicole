@@ -61,6 +61,32 @@ class NotificationPreference extends Model
         'quiet_start', 'quiet_end',
     ];
 
+    /**
+     * HEURES SILENCIEUSES — toujours « HH:MM », dans les deux sens.
+     *
+     * La colonne est un TIME : MySQL la relit « 22:00:00 ». Le champ du
+     * formulaire réaffichait ces secondes, le navigateur les resoumettait, et la
+     * validation les refusait — l'écran devenait inenregistrable, numéro WhatsApp
+     * compris, puisque tout le formulaire tombait avec.
+     *
+     * Élargir la validation ne suffisait pas : il faut aussi que ce qui est
+     * AFFICHÉ soit ce qui est attendu. On normalise donc au point unique où la
+     * valeur entre et sort du modèle.
+     */
+    protected function quietStart(): \Illuminate\Database\Eloquent\Casts\Attribute
+    {
+        return \Illuminate\Database\Eloquent\Casts\Attribute::make(
+            get: fn ($value) => $value === null ? null : substr((string) $value, 0, 5),
+        );
+    }
+
+    protected function quietEnd(): \Illuminate\Database\Eloquent\Casts\Attribute
+    {
+        return \Illuminate\Database\Eloquent\Casts\Attribute::make(
+            get: fn ($value) => $value === null ? null : substr((string) $value, 0, 5),
+        );
+    }
+
     protected $casts = [
         'is_active'         => 'boolean',
         'channel_whatsapp'  => 'boolean',
