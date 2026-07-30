@@ -1129,6 +1129,11 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/{farm}', 'update')->name('update')->middleware('can:S');
         Route::post('/switch', 'switchFarm')->name('switch');
         Route::post('/{farm}/users', 'manageUsers')->name('users')->middleware('can:S');
+        // Désactiver / réactiver : l'état existait déjà et était honoré partout,
+        // sans qu'aucun écran ne puisse l'écrire.
+        Route::patch('/{farm}/active', 'toggleActive')->name('toggleActive')->middleware('can:S');
+        // Suppression réservée aux sites VIDES (cf. FarmController::destroy).
+        Route::delete('/{farm}', 'destroy')->name('destroy')->middleware('can:S');
     });
 
     // ─── CORBEILLE ───
