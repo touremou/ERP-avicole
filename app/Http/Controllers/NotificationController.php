@@ -55,8 +55,16 @@ class NotificationController extends Controller
             'alert_energy'      => 'boolean',
             'alert_sales'       => 'boolean',
             'alert_fraud'       => 'boolean',
-            'quiet_start'       => 'nullable|date_format:H:i',
-            'quiet_end'         => 'nullable|date_format:H:i',
+            // MySQL stocke une colonne TIME et la relit « 22:00:00 ». Le champ du
+            // formulaire la réaffiche telle quelle, le navigateur la resoumet avec
+            // les secondes, et « H:i » seul la refusait : on ne pouvait plus rien
+            // enregistrer sur cet écran — pas même le numéro WhatsApp, puisque
+            // tout le formulaire tombait.
+            //
+            // Invisible en local : sans ligne de préférences, la valeur est nulle
+            // et la validation ne voit jamais de secondes.
+            'quiet_start'       => 'nullable|date_format:H:i,H:i:s',
+            'quiet_end'         => 'nullable|date_format:H:i,H:i:s',
         ]);
 
         // Mettre à jour le numéro WhatsApp sur le user
@@ -64,10 +72,17 @@ class NotificationController extends Controller
             Auth::user()->update(['whatsapp_phone' => $validated['whatsapp_phone']]);
         }
 
-        NotificationPreference::updateOrCreate(
-            ['user_id' => Auth::id()],
-            collect($validated)->except('whatsapp_phone')->toArray()
-        );
+        // Les colonnes d'heures sont NOT NULL : vider le champ envoyait null et
+        // produisait une erreur 500. Un champ laissé vide signifie « ne change
+        // rien » — le modèle n'a pas d'état « pas d'heures silencieuses »
+        // (isQuietHour retombe toujours sur une fenêtre), l'inventer ici
+        // reviendrait à décider d'une règle depuis un contrôleur.
+        $payload = collect($validated)
+            ->except('whatsapp_phone')
+            ->reject(fn ($value, $key) => in_array($key, ['quiet_start', 'quiet_end'], true) && blank($value))
+            ->toArray();
+
+        NotificationPreference::updateOrCreate(['user_id' => Auth::id()], $payload);
 
         return back()->with('success', 'Préférences de notification mises à jour.');
     }
@@ -288,9 +303,34 @@ class NotificationController extends Controller
             return back()->with('error', 'Échec e-mail : ' . Str::limit($e->getMessage(), 140) . " [{$ctx}]{$hint}");
         }
 
-        $hint = config('mail.default') === 'log' ? " (mailer « log » : voir storage/logs/laravel.log)" : '';
+        // « ENVOYÉ » NE DOIT PAS MENTIR.
+        //
+        // Le canal « log » écrit dans un fichier et rend la main sans erreur : le
+        // message annonçait donc un envoi réussi pour un message que personne ne
+        // recevra jamais, la nuance étant reléguée entre parenthèses. On cherche
+        // alors le problème du côté du destinataire, de ses spams, de son
+        // fournisseur — partout sauf là où il est.
+        if (config('mail.default') === 'log') {
+            return back()->with('error',
+                "RIEN N'A ÉTÉ ENVOYÉ : le canal e-mail est en mode « journal ». Le message a été"
+                . " écrit dans storage/logs/laravel.log, pas expédié à {$email}."
+                . ' Choisissez « smtp » dans Réglages → E-mail pour envoyer réellement.'
+            );
+        }
 
-        return back()->with('success', "E-mail de test envoyé à {$email}{$hint}.");
+        // Sur un SUCCÈS aussi, on dit PAR OÙ c'est parti. Un e-mail accepté par le
+        // serveur puis classé en indésirable est indiscernable d'un e-mail jamais
+        // parti, si l'on ne sait pas quel serveur l'a accepté.
+        $smtp = config('mail.mailers.smtp');
+        $via = sprintf(
+            '%s:%s, expéditeur %s',
+            $smtp['host'] ?? '?', $smtp['port'] ?? '?', config('mail.from.address') ?? '?'
+        );
+
+        return back()->with('success',
+            "E-mail de test accepté par le serveur pour {$email} — via {$via}."
+            . ' Si rien n\'arrive, vérifiez les indésirables : le serveur l\'a bien pris en charge.'
+        );
     }
 
     /**
