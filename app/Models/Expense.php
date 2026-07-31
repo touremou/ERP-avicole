@@ -94,9 +94,25 @@ class Expense extends Model
         return $query->where('status', 'valide');
     }
 
+    /**
+     * Dépenses d'un intervalle, BORNES COMPRISES.
+     *
+     * `whereBetween` comparait la colonne — un DATETIME, donc « 2026-07-31
+     * 00:00:00 » — à une borne écrite en date seule, « 2026-07-31 ». La chaîne
+     * la plus longue est la plus grande : TOUTE dépense du DERNIER JOUR du mois
+     * était exclue.
+     *
+     * Le défaut ne se voyait qu'au dernier jour, et frappait précisément ce qui
+     * s'y calcule : le cumul mensuel. Conséquences silencieuses — un dépassement
+     * de budget franchi le 31 n'était jamais alerté, et les états du mois
+     * sous-estimaient les charges de la dernière journée.
+     *
+     * On compare donc les DATES, sans l'heure.
+     */
     public function scopeBetweenDates($query, $from, $to)
     {
-        return $query->whereBetween('expense_date', [$from, $to]);
+        return $query->whereDate('expense_date', '>=', $from)
+            ->whereDate('expense_date', '<=', $to);
     }
 
     public function scopeByCategory($query, ?string $category)

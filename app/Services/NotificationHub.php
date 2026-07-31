@@ -30,6 +30,62 @@ use Illuminate\Support\Facades\Log;
  */
 class NotificationHub
 {
+    /**
+     * OÙ MÈNE LE CLIC, par type d'alerte — repli quand l'objet précis n'est pas
+     * connu (contrôle planifié portant sur plusieurs enregistrements).
+     *
+     * Une alerte dit qu'il y a QUELQUE CHOSE À FAIRE. Sans destination, elle
+     * laisse chercher où — et sur un téléphone, chercher signifie renoncer.
+     *
+     * Déclaration UNIQUE : la cloche, le push et l'e-mail lisent tous la même
+     * adresse. Trois cartes divergeraient, et l'on ouvrirait trois écrans
+     * différents pour la même alerte.
+     *
+     * Les alertes qui DÉSIGNENT un enregistrement (un lot, un article, un congé)
+     * passent leur propre adresse à broadcast() : mieux vaut la fiche que la
+     * liste où il faut ensuite retrouver la ligne.
+     */
+    private const DESTINATIONS = [
+        'alert_mortality'     => 'batches.index',
+        'alert_stock'         => 'stocks.index',
+        'alert_energy'        => 'utilities.energy.sources',
+        'alert_sales'         => 'sales.index',
+        'alert_fraud'         => 'dispatches.discrepancies',
+        'alert_budget'        => 'budgets.index',
+        'alert_haccp'         => 'slaughter.registres.index',
+        'alert_hr_contract'   => 'employees.contracts.index',
+        'alert_hr_attendance' => 'attendance.index',
+        'alert_leave'         => 'payroll.leaves',
+        'daily_summary'       => 'dashboard',
+    ];
+
+    /**
+     * Destination par défaut d'un type d'alerte.
+     *
+     * Un type inconnu mène au centre d'alertes plutôt que nulle part : la
+     * notification y est relisible en entier, ce qui vaut mieux qu'un clic sans
+     * effet — lequel se lit comme une panne.
+     */
+    public static function destinationFor(string $type): string
+    {
+        // Des NOMS de route, pas des chemins écrits à la main.
+        //
+        // Écrits à la main, ils s'inventent : « /stocks » n'existe pas — l'écran
+        // est /inventory —, « /energy » non plus, et « /alertes » encore moins.
+        // Trois destinations sur onze menaient à une page introuvable, ce qui se
+        // lit comme une panne. Un nom, lui, est vérifié par le framework et suit
+        // l'URL si elle change.
+        $name = self::DESTINATIONS[$type] ?? null;
+
+        if ($name && \Illuminate\Support\Facades\Route::has($name)) {
+            return route($name, absolute: false);
+        }
+
+        // Type inconnu, ou route renommée : le centre d'alertes. La notification
+        // y est relisible en entier — mieux qu'un clic sans effet.
+        return route('notifications.index', absolute: false);
+    }
+
     public function __construct(
         private WhatsAppService $whatsapp,
         private WebPushService $push,
@@ -400,7 +456,7 @@ class NotificationHub
             'remaining' => $batch->current_quantity,
         ]);
 
-        $this->broadcast('alert_mortality', $message, 'Mortalité ' . $batch->code, 'critique');
+        $this->broadcast('alert_mortality', $message, 'Mortalité ' . $batch->code, 'critique', route('batches.show', $batch->id, absolute: false));
     }
 
     /**
@@ -447,7 +503,7 @@ class NotificationHub
             'remaining'  => $batch->current_quantity,
         ]);
 
-        $this->broadcast('alert_mortality', $message, 'Pic mortalité ' . $batch->code, 'critique');
+        $this->broadcast('alert_mortality', $message, 'Pic mortalité ' . $batch->code, 'critique', route('batches.show', $batch->id, absolute: false));
     }
 
     /**
@@ -463,7 +519,7 @@ class NotificationHub
             'threshold' => $stock->alert_threshold,
         ]);
 
-        $this->broadcast('alert_stock', $message, 'Stock ' . $stock->item_name, 'critique');
+        $this->broadcast('alert_stock', $message, 'Stock ' . $stock->item_name, 'critique', route('stocks.show', $stock->id, absolute: false));
     }
 
     /**
@@ -673,7 +729,7 @@ class NotificationHub
             'flags'     => $flags,
         ]);
 
-        $this->broadcast('alert_sales', $message, 'Vente ' . $sale->reference, ($isLarge || $afterHours) ? 'critique' : 'normal');
+        $this->broadcast('alert_sales', $message, 'Vente ' . $sale->reference, ($isLarge || $afterHours) ? 'critique' : 'normal', route('sales.show', $sale->id, absolute: false));
     }
 
     /**
@@ -696,7 +752,7 @@ class NotificationHub
             . ($reason !== '' ? "Motif : {$reason}\n" : '')
             . ($wasCommitted ? "\nLa vente était validée (stock restitué). Vérifier la légitimité." : '');
 
-        $this->broadcast('alert_fraud', $message, 'Annulation ' . $sale->reference, $wasCommitted ? 'critique' : 'normal');
+        $this->broadcast('alert_fraud', $message, 'Annulation ' . $sale->reference, $wasCommitted ? 'critique' : 'normal', route('sales.show', $sale->id, absolute: false));
     }
 
     /**
@@ -719,7 +775,7 @@ class NotificationHub
             . ($notes ? "Note : {$notes}\n" : '')
             . ($isDecrease ? "\nDiminution manuelle d'inventaire — vérifier la justification." : '');
 
-        $this->broadcast('alert_fraud', $message, 'Ajustement ' . $stock->item_name, $isDecrease ? 'critique' : 'normal');
+        $this->broadcast('alert_fraud', $message, 'Ajustement ' . $stock->item_name, $isDecrease ? 'critique' : 'normal', route('stocks.show', $stock->id, absolute: false));
     }
 
     /**
@@ -744,7 +800,7 @@ class NotificationHub
             'flags'     => $flags,
         ]);
 
-        $this->broadcast('alert_sales', $message, 'Paiement ' . $sale->reference, $afterHours ? 'critique' : 'normal');
+        $this->broadcast('alert_sales', $message, 'Paiement ' . $sale->reference, $afterHours ? 'critique' : 'normal', route('sales.show', $sale->id, absolute: false));
     }
 
     // ──────────────────────────────────────────────
@@ -1175,8 +1231,17 @@ class NotificationHub
     /**
      * Envoie à tous les abonnés d'un type de notification.
      */
-    private function broadcast(string $type, string $message, string $title, string $severity = 'normal'): void
+    /**
+     * @param string|null $url  Où mène le clic. Voir DESTINATIONS pour le repli.
+     */
+    private function broadcast(string $type, string $message, string $title, string $severity = 'normal', ?string $url = null): void
     {
+        // Une alerte dit qu'il y a QUELQUE CHOSE À FAIRE ; sans destination, elle
+        // laisse chercher où. Le mécanisme existait de bout en bout — la cloche
+        // redirige vers data['url'], le push l'ouvre, l'e-mail en fait un bouton —
+        // mais AUCUNE alerte ne le renseignait. Des lecteurs, pas de rédacteur.
+        $url = $url ?: static::destinationFor($type);
+
         $recipients = $this->getSubscribers($type);
 
         foreach ($recipients as $user) {
@@ -1212,7 +1277,7 @@ class NotificationHub
         if ($severity === 'critique' && $adminEmail !== '') {
             \Illuminate\Support\Facades\Notification::route('mail', $adminEmail)
                 ->notify(new \App\Notifications\AlertNotification(
-                    ['type' => $type, 'title' => $title, 'message' => $message, 'severity' => $severity],
+                    ['type' => $type, 'title' => $title, 'message' => $message, 'severity' => $severity, 'url' => $url],
                     ['mail']
                 ));
         }
@@ -1256,7 +1321,7 @@ class NotificationHub
 
             if ($channels !== []) {
                 $user->notify(new \App\Notifications\AlertNotification(
-                    ['type' => $type, 'title' => $title, 'message' => $message, 'severity' => $severity],
+                    ['type' => $type, 'title' => $title, 'message' => $message, 'severity' => $severity, 'url' => $url],
                     $channels
                 ));
             }
