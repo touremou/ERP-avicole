@@ -98,7 +98,7 @@ class PushSubscriptionController extends Controller
             'title'    => __('Test de notification'),
             'body'     => __('Si vous lisez ceci, cet appareil recevra bien les alertes.'),
             'severity' => 'normal',
-            'url'      => '/alertes',
+            'url'      => '/notifications',   // « /alertes » n'existe pas (cf. NotificationHub::destinationFor)
             'tag'      => 'test',
         ]);
 

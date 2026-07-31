@@ -67,7 +67,9 @@ class AlertNotification extends Notification implements ShouldQueue
             'title'    => $this->payload['title'] ?? 'Alerte',
             'body'     => $this->payload['message'] ?? '',
             'severity' => $this->payload['severity'] ?? 'normal',
-            'url'      => $this->payload['url'] ?? '/alertes',
+            // Le centre d'alertes est /notifications : « /alertes » n'existe pas,
+            // et le clic sur une bannière push ouvrait donc une page introuvable.
+            'url'      => $this->payload['url'] ?? '/notifications',
             // Regroupe les notifications d'un même type : trois alertes de
             // mortalité n'empilent pas trois bannières sur l'écran verrouillé.
             'tag'      => $this->payload['type'] ?? 'general',

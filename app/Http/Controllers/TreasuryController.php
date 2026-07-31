@@ -181,7 +181,13 @@ class TreasuryController extends Controller
         $accountId = $request->input('account_id') ?: null;
         $accounts  = TreasuryAccount::active()->orderBy('name')->get();
 
-        $base = \App\Models\TreasuryTransaction::whereBetween('transaction_date', [$from->toDateString(), $to->toDateString()]);
+        // BORNES COMPRISES. `whereBetween` comparait la colonne — un DATETIME,
+        // donc « 2026-07-31 00:00:00 » — à une borne en date seule,
+        // « 2026-07-31 » : la chaîne la plus longue étant la plus grande, tout
+        // le DERNIER JOUR de la période était exclu. L'état de fin de mois
+        // perdait donc systématiquement sa dernière journée, en silence.
+        $base = \App\Models\TreasuryTransaction::whereDate('transaction_date', '>=', $from->toDateString())
+            ->whereDate('transaction_date', '<=', $to->toDateString());
         if ($accountId) {
             $base->where('treasury_account_id', $accountId);
         }
@@ -204,7 +210,8 @@ class TreasuryController extends Controller
         // Synthèse par compte (flux de la période).
         $perAccount = $accounts->map(function ($acc) use ($from, $to) {
             $q = \App\Models\TreasuryTransaction::where('treasury_account_id', $acc->id)
-                ->whereBetween('transaction_date', [$from->toDateString(), $to->toDateString()]);
+                ->whereDate('transaction_date', '>=', $from->toDateString())
+            ->whereDate('transaction_date', '<=', $to->toDateString());
             return [
                 'account' => $acc,
                 'in'      => (float) (clone $q)->where('direction', 'in')->sum('amount'),
@@ -230,7 +237,8 @@ class TreasuryController extends Controller
         $accountId = $request->input('account_id') ?: null;
 
         $txs = \App\Models\TreasuryTransaction::with('account')
-            ->whereBetween('transaction_date', [$from->toDateString(), $to->toDateString()])
+            ->whereDate('transaction_date', '>=', $from->toDateString())
+            ->whereDate('transaction_date', '<=', $to->toDateString())
             ->when($accountId, fn ($q) => $q->where('treasury_account_id', $accountId))
             ->orderBy('transaction_date')->orderBy('id')->get();
 
