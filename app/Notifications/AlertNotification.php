@@ -50,6 +50,10 @@ class AlertNotification extends Notification implements ShouldQueue
             'message'  => $this->payload['message'] ?? '',
             'severity' => $this->payload['severity'] ?? 'normal',
             'url'      => $this->payload['url'] ?? null,
+            // Adresse du TERRAIN, conservée à côté de celle du bureau : sans
+            // elle, l'API mobile retomberait sur la destination générique du
+            // type et perdrait le lot précis que l'alerte désigne.
+            'mobile_url' => $this->payload['mobile_url'] ?? null,
         ];
     }
 

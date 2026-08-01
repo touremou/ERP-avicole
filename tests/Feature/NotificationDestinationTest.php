@@ -275,3 +275,71 @@ test('un budget franchi le DERNIER jour du mois alerte bien', function () {
         ]);
     }
 });
+
+/*
+ * SUITE — signalé après le lot précédent : « la redirection fonctionne sur le
+ * web, pas sur mobile. Ou peut-être que je suis notifié d'une action non
+ * autorisée par mon profil et rejeté silencieusement. »
+ *
+ * L'HYPOTHÈSE ÉTAIT JUSTE EN PARTIE, et deux causes se cumulaient.
+ *
+ * 1. MA CARTE MOBILE ÉTAIT TROP PAUVRE. J'avais conclu « la PWA n'a pas d'écran
+ *    de détail » d'un inventaire de routes TRONQUÉ — je n'en avais lu que les
+ *    onze premières. Elle en compte une cinquantaine : fiche de lot, feuille de
+ *    présence, stocks, tournée de températures. Huit types d'alerte sur onze
+ *    pointaient donc vers /alertes, c'est-à-dire l'écran où l'on se trouvait
+ *    déjà : le clic ne montrait rien, ce qui se lit comme « ça ne marche pas ».
+ *
+ * 2. LE DROIT N'ÉTAIT PAS VÉRIFIÉ AVANT DE NAVIGUER. Une alerte part à tous les
+ *    abonnés d'un type ; l'écran qui la traite est réservé. Le clic menait donc
+ *    à « Accès refusé » — pas un rejet silencieux, mais un mur qui se lit comme
+ *    une panne alors que c'est une règle.
+ */
+
+test('le terrain reçoit l’écran où l’on AGIT, pas le centre d’alertes', function () {
+    // C'est la correction du défaut signalé : huit types sur onze menaient à
+    // l'écran où l'on se trouvait déjà.
+    expect(NotificationHub::mobileDestinationFor('alert_hr_attendance'))->toBe('/rh/presence')
+        ->and(NotificationHub::mobileDestinationFor('alert_stock'))->toBe('/logistique/stocks')
+        ->and(NotificationHub::mobileDestinationFor('alert_haccp'))->toBe('/abattoir/temperature/tournee')
+        ->and(NotificationHub::mobileDestinationFor('alert_energy'))->toBe('/ressources/ravitaillement');
+});
+
+test('une alerte de mortalité ouvre LE LOT sur le terrain aussi', function () {
+    // Le mobile a bien une fiche de lot : /lot/:batchId. Je l'avais manquée.
+    $batch = Batch::factory()->create(['farm_id' => $this->farm->id, 'status' => 'Actif']);
+
+    app(NotificationHub::class)->alertMortality($batch, 12, 6.2);
+
+    $notification = $this->adminUser->fresh()->notifications()->latest()->first();
+
+    expect($notification->data['mobile_url'])->toBe("/lot/{$batch->id}");
+});
+
+test('les destinations ADMINISTRATIVES restent au centre d’alertes', function () {
+    // Le terrain n'a pas d'écran de contrats ni de congés : l'y envoyer
+    // produirait un « Accès refusé » ou un écran vide. Y renoncer est un choix,
+    // pas un oubli.
+    expect(NotificationHub::mobileDestinationFor('alert_hr_contract'))->toBe('/alertes')
+        ->and(NotificationHub::mobileDestinationFor('alert_leave'))->toBe('/alertes');
+});
+
+test('le mobile vérifie le DROIT avant de naviguer', function () {
+    // L'hypothèse du promoteur : notifié d'une action que son profil n'autorise
+    // pas. Le contrôle existe désormais côté écran, et il le DIT.
+    $screen = file_get_contents(base_path('mobile/src/features/notifications/NotificationsScreen.tsx'));
+
+    expect($screen)->toContain('accessForPath(n.url)')
+        ->and($screen)->toContain('allows(spec,')
+        // …et le refus est affiché, pas avalé.
+        ->and($screen)->toContain('setRefused');
+});
+
+test('le résolveur de droit rapproche un chemin CONCRET de son gabarit', function () {
+    // « /lot/12 » doit retrouver « /lot/:batchId » : sinon toute destination
+    // portant un identifiant serait jugée inconnue et refusée.
+    $access = file_get_contents(base_path('mobile/src/offline/access.ts'));
+
+    expect($access)->toContain('export function accessForPath')
+        ->and($access)->toContain("segment.startsWith(':')");
+});

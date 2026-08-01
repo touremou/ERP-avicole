@@ -7,6 +7,8 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../../api/client'
 import { db } from '../../offline/db'
+import { accessForPath, allows } from '../../offline/access'
+import { useAuth } from '../../app/AuthContext'
 import { safeLoad } from '../../offline/safeLoad'
 import { dateLocale, t } from '../../i18n'
 import { notifIcon } from './notifIcon'
@@ -20,6 +22,8 @@ const SEVERITY_CLASS: Record<string, string> = {
 
 export function NotificationsScreen() {
   const navigate = useNavigate()
+  const { can, me } = useAuth()
+  const [refused, setRefused] = useState('')
   const [notifications, setNotifications] = useState<ApiNotification[]>([])
 
   async function refresh() {
@@ -50,9 +54,28 @@ export function NotificationsScreen() {
       window.dispatchEvent(new CustomEvent('notifications:updated'))
     }
 
-    if (n.url && n.url !== '/alertes') {
-      navigate(n.url)
+    if (!n.url || n.url === '/alertes') {
+      return   // on y est déjà : naviguer ne montrerait rien de neuf
     }
+
+    // LE DROIT SE VÉRIFIE AVANT DE NAVIGUER. Une alerte part à tous les abonnés
+    // d'un type ; l'écran qui la traite, lui, est réservé. Sans ce contrôle, le
+    // clic menait à « Accès refusé » — un mur qui se lit comme une panne alors
+    // que c'est une règle. On le DIT sur place, et l'alerte reste lisible.
+    const spec = accessForPath(n.url)
+
+    if (spec === null) {
+      setRefused(t("Cette alerte ne renvoie à aucun écran de l'application terrain."))
+      return
+    }
+
+    if (!allows(spec, { can, hasEmployee: me?.scope.employee_id != null })) {
+      setRefused(t("Vous n'avez pas accès à l'écran qui traite cette alerte. Prévenez la personne concernée."))
+      return
+    }
+
+    setRefused('')
+    navigate(n.url)
   }
 
   async function markAllRead() {
@@ -81,6 +104,8 @@ export function NotificationsScreen() {
           {t('Tout marquer lu (:count)', { count: unread })}
         </button>
       )}
+
+      {refused !== '' && <p className="notif-refused">{refused}</p>}
 
       {notifications.length === 0 && (
         <p className="muted">{t('Aucune alerte — elles arrivent à chaque synchronisation.')}</p>

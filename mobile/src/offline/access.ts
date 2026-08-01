@@ -215,3 +215,37 @@ export class OpForbiddenError extends Error {
     this.name = 'OpForbiddenError'
   }
 }
+
+/**
+ * Droit exigé par un chemin CONCRET (« /lot/12 »), en le rapprochant du gabarit
+ * déclaré (« /lot/:batchId »).
+ *
+ * Sert aux destinations d'alerte : une notification peut désigner un écran que
+ * le profil n'a pas le droit d'ouvrir — le promoteur reçoit l'alerte de
+ * mortalité, le vendeur non. Sans ce contrôle, le clic mène à « Accès refusé »,
+ * ce qui se lit comme une panne alors que c'est une règle.
+ *
+ * Renvoie null si le chemin ne correspond à aucune route : mieux vaut ne pas
+ * naviguer que d'atterrir sur l'accueil sans explication.
+ */
+export function accessForPath(path: string): AccessSpec | null {
+  const target = path.split('?')[0].replace(/\/+$/, '') || '/'
+
+  for (const [pattern, spec] of Object.entries(ROUTE_ACCESS)) {
+    const segments = pattern.split('/')
+    const parts = target.split('/')
+
+    // Un segment optionnel (« :id? ») autorise un chemin plus court d'un cran.
+    const optional = segments.filter((s) => s.endsWith('?')).length
+    if (parts.length > segments.length || parts.length < segments.length - optional) continue
+
+    const matches = segments.every((segment, i) => {
+      if (segment.startsWith(':')) return true
+      return segment === parts[i]
+    })
+
+    if (matches) return spec as AccessSpec
+  }
+
+  return null
+}
