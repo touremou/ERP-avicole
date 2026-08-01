@@ -17,14 +17,20 @@ class BatchController extends Controller
     {
         abort_if(Gate::denies('elevage.L'), 403, 'Lecture du module Élevage non autorisée.');
 
-        $batches = Batch::with(['building:id,name', 'species:id,name'])
+        // `type` n'est plus une colonne (migration 2026_06_13_000005) : c'est un
+        // accessor porté par `productionType`. La demander dans un SELECT
+        // explicite fait échouer la requête en base — donc un 500 au terrain sur
+        // la liste des lots. On charge la relation et on expose l'attribut
+        // calculé, sous le même nom que celui attendu par le mobile.
+        $batches = Batch::with(['building:id,name', 'species:id,name', 'productionType:id,slug'])
             ->when($request->query('status', 'Actif') !== 'all',
                 fn ($q) => $q->where('status', $request->query('status', 'Actif')))
             ->orderByDesc('arrival_date')
             ->get([
-                'id', 'uuid', 'code', 'type', 'status', 'building_id', 'species_id',
+                'id', 'uuid', 'code', 'status', 'building_id', 'species_id', 'production_type_id',
                 'initial_quantity', 'current_quantity', 'qty_dead', 'arrival_date',
-            ]);
+            ])
+            ->append('type');
 
         return response()->json(['data' => $batches]);
     }
