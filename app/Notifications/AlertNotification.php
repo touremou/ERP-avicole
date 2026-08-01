@@ -67,9 +67,11 @@ class AlertNotification extends Notification implements ShouldQueue
             'title'    => $this->payload['title'] ?? 'Alerte',
             'body'     => $this->payload['message'] ?? '',
             'severity' => $this->payload['severity'] ?? 'normal',
-            // Le centre d'alertes est /notifications : « /alertes » n'existe pas,
-            // et le clic sur une bannière push ouvrait donc une page introuvable.
-            'url'      => $this->payload['url'] ?? '/notifications',
+            // ADRESSE DU TERRAIN, pas du bureau. Le push est délivré à la PWA,
+            // dont le routeur ne connaît que ses propres chemins : « /batches/12 »
+            // ou « /notifications » l'auraient renvoyée à l'accueil. « /alertes »
+            // est SON centre d'alertes.
+            'url'      => $this->payload['mobile_url'] ?? '/alertes',
             // Regroupe les notifications d'un même type : trois alertes de
             // mortalité n'empilent pas trois bannières sur l'écran verrouillé.
             'tag'      => $this->payload['type'] ?? 'general',
