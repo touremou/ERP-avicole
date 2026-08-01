@@ -23,7 +23,7 @@ function makeSale(): Sale
         'farm_id' => $farm, 'reference' => 'BL-2026-000999', 'client_id' => $client->id,
         'user_id' => \App\Models\User::value('id'), 'sale_date' => now(), 'type' => 'bon_livraison',
         'status' => 'valide', 'subtotal' => 6000, 'total_amount' => 6000, 'paid_amount' => 6000,
-        'payment_status' => 'paye',
+        'payment_status' => 'solde',
     ]);
     SaleItem::create([
         'farm_id' => $farm, 'sale_id' => $sale->id, 'product_type' => 'oeufs',

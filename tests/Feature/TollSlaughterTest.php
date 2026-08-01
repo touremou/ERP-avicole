@@ -54,7 +54,7 @@ beforeEach(function () {
     session(['current_farm_id' => $this->farm->id]);
     $this->actingAs($this->manager);
 
-    $this->client = Client::create(['client_id' => 'CL-FACON-01', 'name' => 'Restaurant Le Fouta', 'type' => 'professionnel']);
+    $this->client = Client::create(['client_id' => 'CL-FACON-01', 'name' => 'Restaurant Le Fouta', 'type' => 'entreprise']);
     $this->reception = SlaughterReception::create([
         'provider_id' => Provider::factory()->create()->id,
         'reception_date' => now()->toDateString(),

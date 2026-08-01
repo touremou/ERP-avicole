@@ -178,7 +178,7 @@ test('pull : les congés validés courants descendent, sans aucun motif', functi
     EmployeeLeave::create([
         'employee_id' => $employee->id, 'type' => 'sans_solde',
         'start_date' => now()->toDateString(), 'end_date' => now()->addDay()->toDateString(),
-        'days_count' => 2, 'status' => 'en_attente',
+        'days_count' => 2, 'status' => 'demande',
     ]);
 
     $res = $this->getJson('/api/v1/sync/pull');
@@ -222,7 +222,7 @@ test('pull : le barème du client descend pour re-tarifer hors réseau', functio
     ]);
     $client = Client::create([
         'client_id' => 'CL-001', 'name' => 'Boucherie du marché',
-        'type' => 'professionnel', 'price_list_id' => $grossiste->id,
+        'type' => 'entreprise', 'price_list_id' => $grossiste->id,
     ]);
 
     $res = $this->getJson('/api/v1/sync/pull');
@@ -272,7 +272,7 @@ test('la cascade de prix est bien article → catégorie → prix de base', func
     // comptoir — d'où ce garde-fou.
     $list = SalePriceList::create(['name' => 'Demi-gros', 'is_default' => true]);
     $client = Client::create(['client_id' => 'CL-9', 'name' => 'Alimentation Kaloum',
-        'type' => 'professionnel', 'price_list_id' => $list->id]);
+        'type' => 'entreprise', 'price_list_id' => $list->id]);
 
     $product = Product::create(['name' => 'Œufs plateau', 'product_type' => 'oeufs',
         'unit' => 'plateau', 'base_price' => 40000, 'is_active' => true]);

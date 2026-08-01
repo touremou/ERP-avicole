@@ -35,13 +35,15 @@ beforeEach(function () {
 
 function createSlaughterOrder(Batch $batch, int $qty = 100): SlaughterOrder
 {
+    // `requested_by` référence un compte RÉEL : un 1 écrit en dur ne tient que
+    // sur un moteur qui n'applique pas les clés étrangères.
     return SlaughterOrder::create([
         'order_number'     => SlaughterOrder::generateNumber(),
         'batch_id'         => $batch->id,
         'planned_date'     => now()->toDateString(),
         'planned_quantity' => $qty,
         'status'           => 'planifie',
-        'requested_by'     => 1,
+        'requested_by'     => User::query()->orderBy('id')->value('id'),
     ]);
 }
 

@@ -223,7 +223,7 @@ test('relevé énergie : gasoil et coût ESTIMÉS quand seules les heures sont s
 
 test('relevé énergie : un rejeu met à jour la même ligne (source + jour)', function () {
     $source = EnergySource::create([
-        'name' => 'Réseau', 'type' => 'reseau', 'maintenance_interval_hours' => 0,
+        'name' => 'Réseau EDG', 'type' => 'edg', 'maintenance_interval_hours' => 0,
         'status' => 'operationnel', 'is_active' => true,
     ]);
     $payload = ['uuid' => (string) Str::uuid(), 'energy_source_id' => $source->id,
@@ -272,7 +272,7 @@ test('le pull descend les sources d’énergie ACTIVES', function () {
     ]);
     EnergySource::create([
         'name' => 'Groupe retiré', 'type' => 'groupe', 'maintenance_interval_hours' => 250,
-        'status' => 'hors_service', 'is_active' => false,
+        'status' => 'panne', 'is_active' => false,
     ]);
 
     $names = collect($this->getJson('/api/v1/sync/pull')->assertOk()->json('entities.energy_sources.upserts'))

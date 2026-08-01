@@ -29,7 +29,7 @@ function makeBrouillonSale(Client $client, Stock $stock, float $qty, string $uni
     $sale = Sale::create([
         'farm_id'        => $client->farm_id,
         'client_id'      => $client->id,
-        'user_id'        => 1,
+        'user_id'        => \App\Models\User::query()->orderBy('id')->value('id'),
         'reference'      => 'BL-2026-STOCKTEST-' . $stock->id . '-' . $unit,
         'sale_date'      => now()->toDateString(),
         'type'           => 'bon_livraison',

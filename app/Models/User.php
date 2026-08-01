@@ -32,6 +32,24 @@ class User extends Authenticatable
         'name', 'email', 'password', 'role_id', 'whatsapp_phone', 'is_active', 'locale', 'avatar_path',
     ];
 
+    /**
+     * À qui attribuer une écriture faite HORS session utilisateur.
+     *
+     * Plusieurs écritures traçables (mouvement de stock, ordre de production…)
+     * portent un auteur NOT NULL. Quand le geste vient d'un observer, d'une
+     * commande planifiée ou d'un import, il n'y a personne derrière : le code
+     * repliait alors sur l'identifiant 1, écrit en dur.
+     *
+     * Ce 1 n'est garanti nulle part. Sur une base où le premier compte a été
+     * supprimé, l'écriture entière échoue — et la seule façon de s'en rendre
+     * compte est de la voir échouer. On résout donc un compte qui EXISTE.
+     */
+    public static function systemActorId(): ?int
+    {
+        return \Illuminate\Support\Facades\Auth::id()
+            ?? static::query()->orderBy('id')->value('id');
+    }
+
     protected $hidden = [
         'password', 'remember_token',
     ];

@@ -112,7 +112,7 @@ test('le garde-fou « en congé » s’applique AUSSI à un agent prêté', func
     EmployeeLeave::create([
         'farm_id'     => $this->farm->id,
         'employee_id' => $lent->id,
-        'type'        => 'Congé annuel',
+        'type'        => 'conge_annuel',
         'start_date'  => today()->subDay()->toDateString(),
         'end_date'    => today()->addDay()->toDateString(),
         'days_count'  => 3,

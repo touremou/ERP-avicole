@@ -49,7 +49,7 @@ test('citerne d\'eau : sous 15 % l\'alerte escalade au bandeau (le bandeau est c
 
 test('gasoil de groupe critique : alerte au dashboard avec autonomie estimée', function () {
     $groupe = EnergySource::create([
-        'name' => 'Groupe 40 kVA', 'type' => 'groupe', 'fuel_type' => 'diesel',
+        'name' => 'Groupe 40 kVA', 'type' => 'groupe', 'fuel_type' => 'gasoil',
         'fuel_tank_capacity' => 200, 'current_fuel_level' => 10,
         'maintenance_interval_hours' => 250, 'total_hours_run' => 10,
         'is_active' => true, 'status' => 'operationnel',
@@ -66,7 +66,7 @@ test('gasoil de groupe critique : alerte au dashboard avec autonomie estimée', 
 
 test('maintenance de groupe due : alerte au dashboard (heures restantes)', function () {
     EnergySource::create([
-        'name' => 'Groupe secours', 'type' => 'groupe', 'fuel_type' => 'diesel',
+        'name' => 'Groupe secours', 'type' => 'groupe', 'fuel_type' => 'gasoil',
         'maintenance_interval_hours' => 100, 'total_hours_run' => 90, // 10 h restantes ≤ 20
         'is_active' => true, 'status' => 'operationnel',
     ]);
@@ -81,7 +81,7 @@ test('ressources saines : aucune alerte utilités au dashboard', function () {
         'current_level_percent' => 90, 'is_active' => true,
     ]);
     EnergySource::create([
-        'name' => 'Groupe neuf', 'type' => 'groupe', 'fuel_type' => 'diesel',
+        'name' => 'Groupe neuf', 'type' => 'groupe', 'fuel_type' => 'gasoil',
         'fuel_tank_capacity' => 200, 'current_fuel_level' => 180,
         'maintenance_interval_hours' => 250, 'total_hours_run' => 10,
         'is_active' => true, 'status' => 'operationnel',

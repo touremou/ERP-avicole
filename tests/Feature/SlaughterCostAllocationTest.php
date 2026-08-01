@@ -145,7 +145,7 @@ test('routage post-découpe : destination transformation → enfant en_cours li�
 });
 
 test('façon : aucun ordre enfant créé (matière du client, RG-07)', function () {
-    $client = \App\Models\Client::create(['client_id' => 'CL-FACON-99', 'name' => 'Client Façon', 'type' => 'professionnel']);
+    $client = \App\Models\Client::create(['client_id' => 'CL-FACON-99', 'name' => 'Client Façon', 'type' => 'entreprise']);
     $reception = \App\Models\SlaughterReception::create([
         'provider_id' => \App\Models\Provider::factory()->create()->id,
         'reception_date' => now()->toDateString(),

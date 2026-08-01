@@ -134,7 +134,7 @@ class StockIntegrationService
             // ─── 5. ENREGISTREMENT DU MOUVEMENT ───
             return StockMovement::create([
                 'stock_id' => $stock->id,
-                'user_id'  => Auth::id() ?? 1,
+                'user_id'  => \App\Models\User::systemActorId(),
                 'type'     => $type,
                 'quantity' => $quantityBase,
                 'notes'    => "[SYNC] {$notes} | Saisie: {$quantity} {$inputUnit} → Appliqué: "
