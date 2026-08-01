@@ -146,10 +146,14 @@ class NotificationController extends Controller
         if ($notification) {
             $notification->markAsRead();
 
-            $url = $notification->data['url'] ?? null;
-            if ($url) {
-                return redirect($url);
-            }
+            // Les alertes ANTÉRIEURES à ce correctif n'ont pas d'adresse en base :
+            // sans repli, elles resteraient mortes au clic — et ce sont justement
+            // celles qui remplissent la cloche aujourd'hui. On retombe donc sur
+            // l'écran du sujet, déduit du type.
+            $url = $notification->data['url']
+                ?? \App\Services\NotificationHub::destinationFor($notification->data['type'] ?? '');
+
+            return redirect($url);
         }
 
         return back();

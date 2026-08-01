@@ -34,7 +34,11 @@ class NotificationController extends Controller
             'title'      => $n->data['title'] ?? 'Alerte',
             'message'    => $n->data['message'] ?? '',
             'severity'   => $n->data['severity'] ?? 'normal',
-            'url'        => $n->data['url'] ?? null,
+            // Adresse du TERRAIN : `url` est la route WEB, inconnue du routeur
+            // de la PWA. Servir la mauvaise revient à ne rien servir — le clic
+            // retombe sur l'accueil.
+            'url'        => $n->data['mobile_url']
+                ?? \App\Services\NotificationHub::mobileDestinationFor($n->data['type'] ?? ''),
             'read_at'    => $n->read_at?->toIso8601String(),
             'created_at' => $n->created_at->toIso8601String(),
         ])->values();

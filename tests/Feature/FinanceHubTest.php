@@ -58,7 +58,12 @@ test('le hub finance calcule les indicateurs de pilotage (Δ charges, autonomie,
     // Charges : 60 000 ce mois-ci, 40 000 le mois dernier → Δ = +50 %.
     Expense::create([
         'reference' => 'DEP-M0', 'category' => 'fournitures', 'label' => 'Mois courant', 'amount' => 60000,
-        'expense_date' => now()->startOfMonth()->addDay()->toDateString(), 'status' => 'valide', 'user_id' => $this->adminUser->id,
+        // AUJOURD'HUI, pas « début de mois + 1 jour » : le 1er du mois, cette
+        // date tombe DEMAIN et la dépense sort de la fenêtre [début de mois →
+        // aujourd'hui]. Le test échouait alors une fois par mois, sans qu'aucun
+        // défaut n'existe — et un test qui ment un jour sur trente use la
+        // confiance plus vite qu'un vrai échec.
+        'expense_date' => now()->toDateString(), 'status' => 'valide', 'user_id' => $this->adminUser->id,
     ]);
     Expense::create([
         'reference' => 'DEP-M1', 'category' => 'fournitures', 'label' => 'Mois précédent', 'amount' => 40000,

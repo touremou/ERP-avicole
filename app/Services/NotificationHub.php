@@ -46,17 +46,28 @@ class NotificationHub
      * liste où il faut ensuite retrouver la ligne.
      */
     private const DESTINATIONS = [
-        'alert_mortality'     => 'batches.index',
-        'alert_stock'         => 'stocks.index',
-        'alert_energy'        => 'utilities.energy.sources',
-        'alert_sales'         => 'sales.index',
-        'alert_fraud'         => 'dispatches.discrepancies',
-        'alert_budget'        => 'budgets.index',
-        'alert_haccp'         => 'slaughter.registres.index',
-        'alert_hr_contract'   => 'employees.contracts.index',
-        'alert_hr_attendance' => 'attendance.index',
-        'alert_leave'         => 'payroll.leaves',
-        'daily_summary'       => 'dashboard',
+        // [ route web (nom), écran du terrain (chemin PWA) ]
+        //
+        // DEUX APPLICATIONS, DEUX JEUX DE ROUTES. Le bureau connaît /batches/12 ;
+        // le terrain ne connaît que ses onze écrans. Envoyer une adresse web au
+        // téléphone le renvoie à l'accueil — son routeur ignore le chemin.
+        //
+        // Les deux vivent donc dans LA MÊME table : deux cartes séparées
+        // divergeraient, et l'on ouvrirait deux écrans différents pour une seule
+        // alerte. Le terrain n'ayant pas de fiche détaillée, il retombe sur son
+        // centre d'alertes — où le message est lisible en entier — sauf quand un
+        // de ses écrans traite réellement le sujet.
+        'alert_mortality'     => ['batches.index', '/alertes'],
+        'alert_stock'         => ['stocks.index', '/alertes'],
+        'alert_energy'        => ['utilities.energy.sources', '/alertes'],
+        'alert_sales'         => ['sales.index', '/commerce/journal'],
+        'alert_fraud'         => ['dispatches.discrepancies', '/commerce/journal'],
+        'alert_budget'        => ['budgets.index', '/tresorerie/journal'],
+        'alert_haccp'         => ['slaughter.registres.index', '/alertes'],
+        'alert_hr_contract'   => ['employees.contracts.index', '/alertes'],
+        'alert_hr_attendance' => ['attendance.index', '/alertes'],
+        'alert_leave'         => ['payroll.leaves', '/alertes'],
+        'daily_summary'       => ['dashboard', '/'],
     ];
 
     /**
@@ -68,22 +79,29 @@ class NotificationHub
      */
     public static function destinationFor(string $type): string
     {
-        // Des NOMS de route, pas des chemins écrits à la main.
-        //
-        // Écrits à la main, ils s'inventent : « /stocks » n'existe pas — l'écran
-        // est /inventory —, « /energy » non plus, et « /alertes » encore moins.
-        // Trois destinations sur onze menaient à une page introuvable, ce qui se
-        // lit comme une panne. Un nom, lui, est vérifié par le framework et suit
-        // l'URL si elle change.
-        $name = self::DESTINATIONS[$type] ?? null;
+        // Des NOMS de route, pas des chemins écrits à la main : écrits à la main
+        // ils s'inventent — « /stocks » n'existe pas, l'écran est /inventory. Un
+        // nom est vérifié par le framework et suit l'URL si elle change.
+        $name = self::DESTINATIONS[$type][0] ?? null;
 
         if ($name && \Illuminate\Support\Facades\Route::has($name)) {
             return route($name, absolute: false);
         }
 
-        // Type inconnu, ou route renommée : le centre d'alertes. La notification
-        // y est relisible en entier — mieux qu'un clic sans effet.
         return route('notifications.index', absolute: false);
+    }
+
+    /**
+     * Destination sur le TERRAIN (application mobile).
+     *
+     * Le push et le centre d'alertes mobile la consomment. Le routeur de la PWA
+     * ne connaît que ses propres chemins : lui donner « /batches/12 » ou
+     * « /notifications » le renvoie à l'accueil, ce qui se lit comme un clic sans
+     * effet. « /alertes » est SON centre d'alertes — pas celui du bureau.
+     */
+    public static function mobileDestinationFor(string $type): string
+    {
+        return self::DESTINATIONS[$type][1] ?? '/alertes';
     }
 
     public function __construct(
@@ -1242,6 +1260,11 @@ class NotificationHub
         // mais AUCUNE alerte ne le renseignait. Des lecteurs, pas de rédacteur.
         $url = $url ?: static::destinationFor($type);
 
+        // Adresse du TERRAIN : le push est délivré à la PWA, qui a ses propres
+        // routes. Une alerte peut désigner une fiche au bureau sans que le
+        // terrain ait l'écran correspondant — il retombe alors sur son centre.
+        $mobileUrl = static::mobileDestinationFor($type);
+
         $recipients = $this->getSubscribers($type);
 
         foreach ($recipients as $user) {
@@ -1277,7 +1300,7 @@ class NotificationHub
         if ($severity === 'critique' && $adminEmail !== '') {
             \Illuminate\Support\Facades\Notification::route('mail', $adminEmail)
                 ->notify(new \App\Notifications\AlertNotification(
-                    ['type' => $type, 'title' => $title, 'message' => $message, 'severity' => $severity, 'url' => $url],
+                    ['type' => $type, 'title' => $title, 'message' => $message, 'severity' => $severity, 'url' => $url, 'mobile_url' => $mobileUrl],
                     ['mail']
                 ));
         }
@@ -1321,7 +1344,7 @@ class NotificationHub
 
             if ($channels !== []) {
                 $user->notify(new \App\Notifications\AlertNotification(
-                    ['type' => $type, 'title' => $title, 'message' => $message, 'severity' => $severity, 'url' => $url],
+                    ['type' => $type, 'title' => $title, 'message' => $message, 'severity' => $severity, 'url' => $url, 'mobile_url' => $mobileUrl],
                     $channels
                 ));
             }

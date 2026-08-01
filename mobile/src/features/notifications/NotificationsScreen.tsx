@@ -4,6 +4,7 @@
  * Marquage lu optimiste : local d'abord, serveur quand le réseau le permet.
  */
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { api } from '../../api/client'
 import { db } from '../../offline/db'
 import { safeLoad } from '../../offline/safeLoad'
@@ -18,6 +19,7 @@ const SEVERITY_CLASS: Record<string, string> = {
 }
 
 export function NotificationsScreen() {
+  const navigate = useNavigate()
   const [notifications, setNotifications] = useState<ApiNotification[]>([])
 
   async function refresh() {
@@ -30,6 +32,28 @@ export function NotificationsScreen() {
     window.addEventListener('notifications:updated', onUpdate)
     return () => window.removeEventListener('notifications:updated', onUpdate)
   }, [])
+
+  /**
+   * Ouvrir une alerte : la marquer lue, puis aller où elle mène.
+   *
+   * Les cartes n'étaient pas cliquables du tout — une alerte annonçait une
+   * action à faire et laissait chercher l'écran. Le serveur fournit désormais
+   * l'adresse du TERRAIN (pas la route web, que ce routeur ignore).
+   *
+   * Sans adresse — alerte d'avant ce correctif — on marque lu et on reste : un
+   * saut vers l'accueil se lirait comme une erreur de manipulation.
+   */
+  async function open(n: ApiNotification) {
+    if (!n.read_at) {
+      await db.notifications.update(n.id, { read_at: new Date().toISOString() })
+      await refresh()
+      window.dispatchEvent(new CustomEvent('notifications:updated'))
+    }
+
+    if (n.url && n.url !== '/alertes') {
+      navigate(n.url)
+    }
+  }
 
   async function markAllRead() {
     const now = new Date().toISOString()
@@ -63,7 +87,13 @@ export function NotificationsScreen() {
       )}
 
       {notifications.map((n) => (
-        <div key={n.id} className={`notif-card ${SEVERITY_CLASS[n.severity] ?? 'notif-normal'} ${n.read_at ? 'notif-read' : ''}`}>
+        <div
+          key={n.id}
+          role="button"
+          tabIndex={0}
+          onClick={() => void open(n)}
+          onKeyDown={(event) => { if (event.key === 'Enter') void open(n) }}
+          className={`notif-card ${SEVERITY_CLASS[n.severity] ?? 'notif-normal'} ${n.read_at ? 'notif-read' : ''}`}>
           <span className="notif-avatar" aria-hidden="true">{notifIcon(n.type, n.severity)}</span>
           <div className="notif-body">
             <span className="task-title">{n.title}</span>

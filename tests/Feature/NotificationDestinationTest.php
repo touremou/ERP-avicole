@@ -67,18 +67,18 @@ test('un type inconnu mène au centre d’alertes, pas nulle part', function () 
     expect(NotificationHub::destinationFor('quelque_chose_de_neuf'))->toBe('/notifications');
 });
 
-test('« /alertes » n’existe nulle part — c’était la destination du push', function () {
-    // Défaut préexistant : le clic sur une bannière push ouvrait une page
-    // introuvable. Le centre d'alertes est /notifications.
-    $found = [];
+test('« /alertes » est l’écran du TERRAIN, pas une adresse morte', function () {
+    // CORRECTION D'UNE ERREUR QUE J'AI FAITE : j'avais pris « /alertes » pour une
+    // adresse inexistante et l'avais remplacée par « /notifications ». C'est en
+    // réalité le centre d'alertes de la PWA — une route mobile, pas web.
+    //
+    // Le remplacer envoyait le push vers un chemin que le routeur du téléphone
+    // ignore : le clic retombait sur l'accueil. Deux applications, deux jeux de
+    // routes ; confondre les deux revient à ne mener nulle part.
+    $mobileRoutes = file_get_contents(base_path('mobile/src/offline/access.ts'));
 
-    foreach (\Illuminate\Support\Facades\File::allFiles(app_path()) as $file) {
-        if (str_contains(file_get_contents($file->getPathname()), "'/alertes'")) {
-            $found[] = $file->getRelativePathname();
-        }
-    }
-
-    expect($found)->toBe([]);
+    expect($mobileRoutes)->toContain("'/alertes'")
+        ->and(NotificationHub::mobileDestinationFor('type_inconnu'))->toBe('/alertes');
 });
 
 test('une alerte de mortalité ouvre LE LOT concerné', function () {
@@ -133,15 +133,60 @@ test('la cloche REDIRIGE vers la destination au clic', function () {
     expect($notification->fresh()->read_at)->not->toBeNull();
 });
 
-test('la destination est la MÊME pour la cloche, le push et l’e-mail', function () {
-    // Trois cartes divergeraient, et l'on ouvrirait trois écrans différents pour
-    // une seule alerte.
-    $payload = ['type' => 'alert_mortality', 'title' => 'Mortalité', 'message' => 'Lot CH-001', 'url' => '/batches/7'];
+test('la cloche reçoit l’adresse WEB, le push celle du TERRAIN', function () {
+    // Elles ne peuvent PAS être identiques : le bureau connaît /batches/12, le
+    // téléphone ne connaît que ses onze écrans. Une seule adresse pour les deux
+    // en casse forcément une.
+    //
+    // Ce qui reste unique, c'est la DÉCLARATION : les deux sortent de la même
+    // table, pas de deux cartes qui divergeraient.
+    $payload = [
+        'type' => 'alert_sales', 'title' => 'Vente', 'message' => 'V-001',
+        'url' => '/sales/7', 'mobile_url' => '/commerce/journal',
+    ];
 
-    $notification = new \App\Notifications\AlertNotification($payload, ['database', 'webpush', 'mail']);
+    $notification = new \App\Notifications\AlertNotification($payload, ['database', 'webpush']);
 
-    expect($notification->toDatabase($this->adminUser)['url'])->toBe('/batches/7')
-        ->and($notification->toWebPush($this->adminUser)['url'])->toBe('/batches/7');
+    expect($notification->toDatabase($this->adminUser)['url'])->toBe('/sales/7')
+        ->and($notification->toWebPush($this->adminUser)['url'])->toBe('/commerce/journal');
+});
+
+test('chaque destination du TERRAIN est une route que la PWA connaît', function () {
+    // Une adresse inconnue de son routeur renvoie à l'accueil — un clic sans
+    // effet, indiscernable d'une panne.
+    $mobileRoutes = file_get_contents(base_path('mobile/src/offline/access.ts'));
+
+    foreach ([
+        'alert_mortality', 'alert_stock', 'alert_energy', 'alert_sales',
+        'alert_fraud', 'alert_budget', 'alert_haccp', 'alert_hr_contract',
+        'alert_hr_attendance', 'alert_leave', 'daily_summary', 'type_inconnu',
+    ] as $type) {
+        $path = NotificationHub::mobileDestinationFor($type);
+
+        expect(str_contains($mobileRoutes, "'{$path}'"))->toBeTrue(
+            "L'écran « {$path} » du type « {$type} » n'existe pas dans la PWA."
+        );
+    }
+});
+
+test('une alerte ANTÉRIEURE, sans adresse, mène quand même quelque part', function () {
+    // Celles qui remplissent la cloche aujourd'hui ont été créées avant ce
+    // correctif : sans repli, elles resteraient mortes au clic — et ce sont
+    // précisément celles que le promoteur essaie d'ouvrir.
+    $this->adminUser->notify(new \App\Notifications\AlertNotification(
+        ['type' => 'alert_stock', 'title' => 'Ancienne', 'message' => 'Sans adresse'],
+        ['database']
+    ));
+
+    $notification = $this->adminUser->fresh()->notifications()->latest()->first();
+
+    // Une alerte sans adresse la porte à null (et les lignes créées AVANT ce
+    // champ n'ont pas la clef du tout) : « ?? » couvre les deux cas.
+    expect($notification->data['url'] ?? null)->toBeNull();
+
+    $this->actingAs($this->adminUser)
+        ->get(route('notifications.read', $notification->id))
+        ->assertRedirect(NotificationHub::destinationFor('alert_stock'));
 });
 
 /*
