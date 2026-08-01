@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Traits\BelongsToFarm;
+use App\Models\Setting;
 
 class Transformation extends Model
 {
@@ -45,7 +46,10 @@ class Transformation extends Model
         $targets = [];
 
         foreach (self::TYPES as $slug => $type) {
-            $value = setting($type['setting']);
+            // Valeur BRUTE : le cast numérique des réglages transforme une
+            // chaîne vide en 0, ce qui effacerait la distinction entre « aucune
+            // cible fixée » et « cible à 0 % ».
+            $value = Setting::rawValue($type['setting']);
             $targets[$slug] = ($value === null || $value === '') ? null : (float) $value;
         }
 
