@@ -22,7 +22,7 @@ class BatchController extends Controller
         // explicite fait échouer la requête en base — donc un 500 au terrain sur
         // la liste des lots. On charge la relation et on expose l'attribut
         // calculé, sous le même nom que celui attendu par le mobile.
-        $batches = Batch::with(['building:id,name', 'species:id,name', 'productionType:id,slug'])
+        $batches = Batch::with(['building:id,name', 'species:id,name_fr,slug', 'productionType:id,slug'])
             ->when($request->query('status', 'Actif') !== 'all',
                 fn ($q) => $q->where('status', $request->query('status', 'Actif')))
             ->orderByDesc('arrival_date')
@@ -39,7 +39,7 @@ class BatchController extends Controller
     {
         abort_if(Gate::denies('elevage.L'), 403, 'Lecture du module Élevage non autorisée.');
 
-        $batch->load(['building:id,name', 'species:id,name']);
+        $batch->load(['building:id,name', 'species:id,name_fr,slug']);
 
         return response()->json([
             'data' => $batch,

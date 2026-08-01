@@ -43,8 +43,6 @@ class EggProductionTriTest extends TestCase
         );
         $this->user = User::factory()->create(['role_id' => $admin->id]);
 
-        DB::statement('PRAGMA foreign_keys = OFF');
-
         $employeeId = DB::table('employees')->insertGetId([
             'farm_id' => $farm->id, 'employee_id' => 'EMP-2026-001',
             'last_name' => 'Kante', 'first_name' => 'Moussa', 'gender' => 'M',
@@ -88,7 +86,6 @@ class EggProductionTriTest extends TestCase
         ]);
 
         $this->batch = Batch::find($batchId);
-        DB::statement('PRAGMA foreign_keys = ON');
     }
 
     /** @test */

@@ -6,6 +6,7 @@ use App\Models\DailyCheck;
 use App\Models\Expense;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 uses(Tests\TestCase::class, Illuminate\Foundation\Testing\RefreshDatabase::class);
@@ -25,7 +26,9 @@ beforeEach(function () {
 // ─── Structure : les index d'idempotence sync sont UNIQUES ───
 
 test('les uuid de synchro offline portent un index UNIQUE en base', function () {
-    // sqlite (base de test) : PRAGMA expose le flag "unique" de chaque index.
+    // Introspection par le schéma, pas par PRAGMA : la garantie doit être
+    // vérifiée sur le moteur de PRODUCTION autant que sur celui des tests, et
+    // PRAGMA n'existe que sur sqlite.
     $expected = [
         'batches'         => 'batches_uuid_unique',
         'sales'           => 'sales_uuid_unique',
@@ -36,12 +39,11 @@ test('les uuid de synchro offline portent un index UNIQUE en base', function () 
     ];
 
     foreach ($expected as $table => $index) {
-        $indexes = collect(DB::select("PRAGMA index_list({$table})"));
-
-        $found = $indexes->first(fn ($i) => $i->name === $index);
+        $found = collect(Schema::getIndexes($table))
+            ->first(fn ($i) => $i['name'] === $index);
 
         expect($found)->not->toBeNull("Index {$index} absent de {$table}");
-        expect((int) $found->unique)->toBe(1, "Index {$index} n'est pas UNIQUE");
+        expect($found['unique'])->toBeTrue();
     }
 });
 
