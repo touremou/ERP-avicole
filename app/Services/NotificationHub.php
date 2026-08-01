@@ -46,26 +46,27 @@ class NotificationHub
      * liste où il faut ensuite retrouver la ligne.
      */
     private const DESTINATIONS = [
-        // [ route web (nom), écran du terrain (chemin PWA) ]
+        // [ route web (nom), écran du TERRAIN (chemin PWA) ]
         //
         // DEUX APPLICATIONS, DEUX JEUX DE ROUTES. Le bureau connaît /batches/12 ;
-        // le terrain ne connaît que ses onze écrans. Envoyer une adresse web au
-        // téléphone le renvoie à l'accueil — son routeur ignore le chemin.
+        // le terrain a ses propres écrans. Envoyer une adresse web au téléphone
+        // le renvoie à l'accueil — son routeur ignore le chemin. Les deux vivent
+        // donc dans LA MÊME table : deux cartes séparées divergeraient.
         //
-        // Les deux vivent donc dans LA MÊME table : deux cartes séparées
-        // divergeraient, et l'on ouvrirait deux écrans différents pour une seule
-        // alerte. Le terrain n'ayant pas de fiche détaillée, il retombe sur son
-        // centre d'alertes — où le message est lisible en entier — sauf quand un
-        // de ses écrans traite réellement le sujet.
-        'alert_mortality'     => ['batches.index', '/alertes'],
-        'alert_stock'         => ['stocks.index', '/alertes'],
-        'alert_energy'        => ['utilities.energy.sources', '/alertes'],
+        // Le terrain reçoit l'écran où l'on AGIT, pas celui où l'on consulte :
+        // un pointage manquant ouvre la feuille de présence, un registre
+        // incomplet ouvre la tournée de températures. C'est ce qu'on lui demande
+        // de faire.
+        'alert_mortality'     => ['batches.index', '/nouvelle'],
+        'alert_stock'         => ['stocks.index', '/logistique/stocks'],
+        'alert_energy'        => ['utilities.energy.sources', '/ressources/ravitaillement'],
         'alert_sales'         => ['sales.index', '/commerce/journal'],
         'alert_fraud'         => ['dispatches.discrepancies', '/commerce/journal'],
         'alert_budget'        => ['budgets.index', '/tresorerie/journal'],
-        'alert_haccp'         => ['slaughter.registres.index', '/alertes'],
+        'alert_haccp'         => ['slaughter.registres.index', '/abattoir/temperature/tournee'],
+        'alert_hr_attendance' => ['attendance.index', '/rh/presence'],
+        // Administratif : le terrain n'a pas d'écran, il reste sur ses alertes.
         'alert_hr_contract'   => ['employees.contracts.index', '/alertes'],
-        'alert_hr_attendance' => ['attendance.index', '/alertes'],
         'alert_leave'         => ['payroll.leaves', '/alertes'],
         'daily_summary'       => ['dashboard', '/'],
     ];
@@ -474,7 +475,7 @@ class NotificationHub
             'remaining' => $batch->current_quantity,
         ]);
 
-        $this->broadcast('alert_mortality', $message, 'Mortalité ' . $batch->code, 'critique', route('batches.show', $batch->id, absolute: false));
+        $this->broadcast('alert_mortality', $message, 'Mortalité ' . $batch->code, 'critique', route('batches.show', $batch->id, absolute: false), "/lot/{$batch->id}");
     }
 
     /**
@@ -521,7 +522,7 @@ class NotificationHub
             'remaining'  => $batch->current_quantity,
         ]);
 
-        $this->broadcast('alert_mortality', $message, 'Pic mortalité ' . $batch->code, 'critique', route('batches.show', $batch->id, absolute: false));
+        $this->broadcast('alert_mortality', $message, 'Pic mortalité ' . $batch->code, 'critique', route('batches.show', $batch->id, absolute: false), "/lot/{$batch->id}");
     }
 
     /**
@@ -1252,7 +1253,7 @@ class NotificationHub
     /**
      * @param string|null $url  Où mène le clic. Voir DESTINATIONS pour le repli.
      */
-    private function broadcast(string $type, string $message, string $title, string $severity = 'normal', ?string $url = null): void
+    private function broadcast(string $type, string $message, string $title, string $severity = 'normal', ?string $url = null, ?string $mobile = null): void
     {
         // Une alerte dit qu'il y a QUELQUE CHOSE À FAIRE ; sans destination, elle
         // laisse chercher où. Le mécanisme existait de bout en bout — la cloche
@@ -1263,7 +1264,7 @@ class NotificationHub
         // Adresse du TERRAIN : le push est délivré à la PWA, qui a ses propres
         // routes. Une alerte peut désigner une fiche au bureau sans que le
         // terrain ait l'écran correspondant — il retombe alors sur son centre.
-        $mobileUrl = static::mobileDestinationFor($type);
+        $mobileUrl = $mobile ?: static::mobileDestinationFor($type);
 
         $recipients = $this->getSubscribers($type);
 
