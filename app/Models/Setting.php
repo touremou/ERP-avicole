@@ -255,6 +255,7 @@ class Setting extends Model
             'cultures'    => ['label' => 'Cultures',      'icon' => 'fa-leaf',             'color' => 'green'],
             'numbering'   => ['label' => 'Numérotation',  'icon' => 'fa-hashtag',          'color' => 'slate'],
             'etiquettes'  => ['label' => 'Étiquettes',    'icon' => 'fa-tag',              'color' => 'purple'],
+            'telemetry'   => ['label' => 'Capteurs',      'icon' => 'fa-satellite-dish',   'color' => 'cyan'],
             'licence'     => ['label' => 'Licence',       'icon' => 'fa-key',              'color' => 'purple'],
         ];
     }
