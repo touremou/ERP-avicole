@@ -88,7 +88,9 @@ test('clôturer avec comptage des billets calcule l\'écart (manquant)', functio
         ->and((float) $session->expected_cash)->toBe(70000.0)
         ->and((float) $session->counted_cash)->toBe(68000.0)
         ->and((float) $session->difference)->toBe(-2000.0) // manquant
-        ->and($session->denominations)->toBe([20000 => 3, 5000 => 1, 1000 => 3]);
+        // Comparaison par CLÉ, pas par ordre : un moteur qui stocke le JSON en
+        // objet normalise l'ordre des clés. Ce qui compte est le comptage.
+        ->and($session->denominations)->toEqualCanonicalizing([20000 => 3, 5000 => 1, 1000 => 3]);
 });
 
 test('caisse juste : écart nul à la clôture', function () {

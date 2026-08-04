@@ -151,9 +151,35 @@ class Setting extends Model
     /**
      * Récupère les métadonnées d'un paramètre (type, options, etc.).
      */
+    /**
+     * Valeur BRUTE, sans cast : la seule façon de distinguer « pas de réglage »
+     * de « réglé à zéro ».
+     *
+     * `castValue` transforme une chaîne vide en 0 pour un réglage numérique —
+     * ce qui est le bon comportement pour un seuil, et le mauvais pour une
+     * cible : une cible vide veut dire « pas de référence », et l'afficher
+     * comme 0 % donnerait à une absence l'autorité d'une mesure.
+     */
+    public static function rawValue(string $dotKey): ?string
+    {
+        $value = static::getAllCached()[$dotKey] ?? null;
+
+        return $value === null ? null : (string) $value;
+    }
+
     private static function getSettingMeta(string $dotKey): ?array
     {
-        static $meta = null;
+        // Mémorisé par le MÊME cache que les valeurs, et non dans une variable
+        // statique de processus : figée pour toute la durée du processus, elle
+        // rendait le typage d'un réglage dépendant de l'ordre des appels — un
+        // réglage ajouté après le premier accès n'était jamais typé.
+        // Le cache lui-même peut être indisponible — il vit en base, et les
+        // réglages sont lus AVANT que les migrations n'aient tourné.
+        try {
+            $meta = Cache::get(static::$cacheKey . ':meta');
+        } catch (\Throwable $e) {
+            $meta = null;
+        }
 
         if ($meta === null) {
             try {
@@ -169,6 +195,12 @@ class Setting extends Model
                     ->toArray();
             } catch (\Throwable $e) {
                 $meta = [];
+            }
+
+            try {
+                Cache::put(static::$cacheKey . ':meta', $meta, static::$cacheTtl);
+            } catch (\Throwable $e) {
+                // Cache indisponible : on relira la table au prochain appel.
             }
         }
 
@@ -196,6 +228,7 @@ class Setting extends Model
     public static function clearCache(): void
     {
         Cache::forget(static::$cacheKey);
+        Cache::forget(static::$cacheKey . ':meta');
     }
 
     /**

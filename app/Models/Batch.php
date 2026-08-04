@@ -1274,7 +1274,10 @@ class Batch extends Model
         $flat = (float) setting('elevage.daily_mortality_alert_pct', 0.5);
         $key = self::dailyMortalityPhaseKey($this->feedSector(), (int) ($this->age ?? 0));
 
-        $phase = setting("elevage.{$key}");
+        // Valeur BRUTE : le cast numérique des réglages transforme une chaîne
+        // vide en 0, ce qui ferait passer « pas de seuil pour cette phase » pour
+        // « seuil à 0 % » — et déclencherait une alerte à la moindre mortalité.
+        $phase = \App\Models\Setting::rawValue("elevage.{$key}");
 
         return ($phase === null || $phase === '') ? $flat : (float) $phase;
     }

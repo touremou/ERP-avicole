@@ -45,7 +45,7 @@ test('repointer la même date met à jour (pas de doublon)', function () {
 test('la grille pré-remplit « congé » pour un employé en congé validé', function () {
     $e = Employee::factory()->create(['status' => 'Actif']);
     EmployeeLeave::create([
-        'farm_id' => $this->farm->id, 'employee_id' => $e->id, 'type' => 'annuel',
+        'farm_id' => $this->farm->id, 'employee_id' => $e->id, 'type' => 'conge_annuel',
         'start_date' => now()->subDay()->toDateString(), 'end_date' => now()->addDay()->toDateString(),
         'days_count' => 3, 'status' => 'approuve',
     ]);

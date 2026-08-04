@@ -55,10 +55,20 @@ jobs:
         run: php artisan test
 
   mysql:
-    # Parité prod (audit 360° §1.4-D1/B5) : les 897 tests valident sqlite,
-    # mais la production est MySQL 8 auto-géré. Ce job garantit que la chaîne
-    # de migrations complète se construit ET se rejoue proprement sur MySQL.
-    name: Migrations MySQL 8 (parité prod)
+    # PARITÉ PROD. La suite tourne sur sqlite ; la production est MySQL 8. Ce job
+    # garantissait déjà que la chaîne de migrations se construit et se rejoue sur
+    # MySQL — mais AUCUN test ne s'y exécutait, si bien qu'une différence de
+    # comportement entre les deux moteurs restait invisible.
+    #
+    # Ce n'est pas théorique : sqlite n'applique pas les types de colonnes. Une
+    # colonne DATE y accepte « 2026-07-31 00:00:00 » et le compare comme du texte,
+    # là où MySQL stocke « 2026-07-31 ». Un test a échoué pour cette seule raison,
+    # et j'en ai conclu à tort un défaut de production. L'inverse est le vrai
+    # danger : un défaut propre à MySQL ne serait vu par personne avant le terrain.
+    #
+    # La suite s'exécute donc AUSSI sur MySQL. Ce que la CI valide devient ce qui
+    # tourne réellement.
+    name: Tests + migrations MySQL 8 (parité prod)
     runs-on: ubuntu-latest
 
     services:
@@ -119,3 +129,23 @@ jobs:
           DB_USERNAME: root
           DB_PASSWORD: root
         run: php artisan migrate --force
+
+      # Les vues Blade référencent les actifs compilés : sans le manifeste, tout
+      # test qui rend une page échoue pour une raison sans rapport avec MySQL.
+      - name: Install & build front-end assets
+        run: |
+          npm ci
+          npm run build
+
+      - name: Run test suite ON MYSQL
+        # phpunit.xml impose sqlite via <env>, SANS force="true" : une variable
+        # déjà présente dans l'environnement l'emporte. C'est ce qui permet de
+        # rejouer exactement la même suite sur l'autre moteur, sans la dupliquer.
+        env:
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_DATABASE: erp_ci
+          DB_USERNAME: root
+          DB_PASSWORD: root
+        run: php artisan test

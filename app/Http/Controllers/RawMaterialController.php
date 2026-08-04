@@ -154,7 +154,7 @@ class RawMaterialController extends Controller
             if ($material->stock_id) {
                 StockMovement::create([
                     'stock_id' => $material->stock_id,
-                    'user_id'  => Auth::id() ?? 1,
+                    'user_id'  => \App\Models\User::systemActorId(),
                     'type'     => 'in',
                     'quantity' => $addedQty,
                     'notes'    => "Réception {$material->name} : +{$addedQty} {$material->unit}, CMP → " . round($newUnitCost, 2) . " GNF",
@@ -224,7 +224,7 @@ class RawMaterialController extends Controller
             if ($material->stock_id) {
                 StockMovement::create([
                     'stock_id' => $material->stock_id,
-                    'user_id'  => Auth::id() ?? 1,
+                    'user_id'  => \App\Models\User::systemActorId(),
                     'type'     => 'out',
                     'quantity' => $request->qty,
                     'notes'    => "Ajustement {$material->name} -{$request->qty} {$material->unit}. Motif: {$request->reason}",

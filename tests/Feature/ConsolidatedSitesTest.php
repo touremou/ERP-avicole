@@ -126,8 +126,14 @@ test('la ferme courante est restaurée même si le calcul échoue', function () 
     secondSite();
     $before = session('current_farm_id');
 
-    // On force une panne au milieu de la boucle en supprimant la table agrégée.
-    DB::statement('DROP TABLE task_assignments');
+    // On force une panne au milieu de la boucle. Pas en supprimant une table :
+    // un DROP dépend de l'ordre des clés étrangères du moteur, et surtout il
+    // VALIDE implicitement la transaction du test sur MySQL — les données de ce
+    // test survivraient alors aux suivants. On fait échouer la première requête
+    // venue, ce qui est exactement la panne que le finally doit encaisser.
+    DB::listen(function () {
+        throw new \RuntimeException('Panne simulée pendant la consolidation.');
+    });
 
     try {
         consolidate();

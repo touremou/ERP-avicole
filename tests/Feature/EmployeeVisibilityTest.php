@@ -66,7 +66,7 @@ function lentEmployee(int $currentFarmId): Employee
 /** Un employé d'un autre site SANS aucun accès au site courant. */
 function foreignEmployee(): Employee
 {
-    $otherFarm = Farm::create(['name' => 'Site tiers ' . uniqid(), 'code' => 'F-TIERS-' . uniqid(), 'is_active' => true]);
+    $otherFarm = Farm::create(['name' => 'Site tiers ' . uniqid(), 'code' => 'FT' . substr(uniqid(), -8), 'is_active' => true]);
 
     return Employee::factory()->create([
         'farm_id' => $otherFarm->id, 'user_id' => null,

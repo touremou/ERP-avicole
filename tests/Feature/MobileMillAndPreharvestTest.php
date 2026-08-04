@@ -34,7 +34,7 @@ function millSetup($test): array
 {
     // Factories : évite de deviner les colonnes NOT NULL du référentiel RH/industriel.
     $formula  = Formula::factory()->create(['name' => 'Démarrage chair']);
-    $machine  = MillMachine::factory()->create(['name' => 'Broyeur A', 'capacity_per_hour' => 500, 'status' => 'Actif']);
+    $machine  = MillMachine::factory()->create(['name' => 'Broyeur A', 'capacity_per_hour' => 500, 'status' => 'Opérationnel']);
     $employee = Employee::factory()->create([
         'employee_id' => 'EMP-M4', 'first_name' => 'Moussa', 'last_name' => 'Touré',
         'job_title' => 'Meunier', 'status' => 'Actif',

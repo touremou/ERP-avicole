@@ -24,7 +24,7 @@ beforeEach(function () {
         'farm_id' => $this->farm->id, 'user_id' => $this->managerUser->id,
         'is_default' => true, 'is_owner' => false, 'created_at' => now(), 'updated_at' => now(),
     ]);
-    $this->client = Client::create(['client_id' => 'CL-M2-01', 'name' => 'Boutique Kaloum', 'type' => 'professionnel']);
+    $this->client = Client::create(['client_id' => 'CL-M2-01', 'name' => 'Boutique Kaloum', 'type' => 'entreprise']);
     $this->sale = Sale::create([
         'reference' => 'V-M2-001', 'client_id' => $this->client->id, 'user_id' => $this->managerUser->id,
         'sale_date' => now()->toDateString(), 'type' => 'comptoir', 'status' => 'valide',

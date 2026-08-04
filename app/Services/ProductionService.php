@@ -80,7 +80,7 @@ class ProductionService
                 'quantity_produced' => $quantityToProduce,
                 'real_cost_per_kg'  => $realCostPerKg,
                 'usage_hours'       => $usageHours,
-                'operator_id'       => auth()->id() ?? 1,
+                'operator_id'       => \App\Models\User::systemActorId(),
                 'status'            => 'Terminé',
                 'finished_at'       => now(),
             ]);
