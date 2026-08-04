@@ -1301,10 +1301,10 @@ class Batch extends Model
 
     public static function cumulativeMortalityThreshold(): float
     {
-        return (float) setting(
-            'elevage.cumulative_mortality_alert_pct',
-            setting('elevage.mortality_alert', 5)
-        );
+        // Le repli ne relit plus `elevage.mortality_alert` : ce doublon a été
+        // supprimé le 9 août, sa valeur reportée sur la clef canonique. Le
+        // relire donnait l'illusion d'un second réglage réglable.
+        return (float) setting('elevage.cumulative_mortality_alert_pct', 5);
     }
 
     /**
