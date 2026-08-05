@@ -10,13 +10,17 @@ class ReleaseBuildingsFromSanitaryVoid extends Command
 {
     // Nom de la commande à taper dans le terminal
     protected $signature = 'farm:release-buildings';
-    protected $description = 'Libère les bâtiments dont le vide sanitaire de 14 jours est terminé';
+    protected $description = 'Libère les bâtiments dont le vide sanitaire réglé est terminé';
 
     public function handle()
     {
-        // On cherche les bâtiments "En désinfection" depuis 14 jours ou plus
+        // Durée RÉGLÉE (Paramètres › Élevage), et non plus la constante : c'est
+        // cette commande qui rend le bâtiment disponible, donc c'est ici que le
+        // réglage devait être honoré en premier. Il ne l'était nulle part.
+        $days = Building::sanitaryBreakDays();
+
         $buildings = Building::inSanitaryBreak()
-            ->where('disinfection_started_at', '<=', now()->subDays(Building::SANITARY_BREAK_DAYS))
+            ->where('disinfection_started_at', '<=', now()->subDays($days))
             ->get();
 
         foreach ($buildings as $building) {
@@ -29,7 +33,7 @@ class ReleaseBuildingsFromSanitaryVoid extends Command
         }
 
         if ($buildings->isEmpty()) {
-            $this->comment("Aucun bâtiment à libérer aujourd'hui.");
+            $this->comment("Aucun bâtiment à libérer aujourd'hui (vide sanitaire réglé à {$days} jours).");
         }
     }
 }
