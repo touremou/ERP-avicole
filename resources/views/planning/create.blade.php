@@ -376,7 +376,11 @@ function calculateDates() {
     el('dt_end').innerText = fmt(add(d, cycle));
     el('dt_end_label').innerText = CYCLE_LABELS[type] || 'Fin';
     el('dt_end_j').innerText = 'J+' + cycle;
-    const voidDays = {{ setting('planning.void_sanitaire_days', 21) }};
+    {{-- Même durée que celle réellement appliquée à la libération du bâtiment
+         (cf. Building::sanitaryBreakDays). Cet écran lisait un SECOND réglage,
+         21 jours par défaut : il annonçait à l'utilisateur une date de remise en
+         service que le système ne respectait pas. --}}
+    const voidDays = {{ \App\Models\Building::sanitaryBreakDays() }};
     el('dt_void').innerText = fmt(add(d, cycle + 1)) + ' → ' + fmt(add(d, cycle + voidDays));
     el('dt_free').innerText = fmt(add(d, cycle + voidDays + 1));
 }

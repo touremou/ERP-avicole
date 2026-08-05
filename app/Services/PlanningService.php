@@ -74,7 +74,11 @@ class PlanningService
         // Vide sanitaire en cours
         $building = Building::find($buildingId);
         if ($building && $building->disinfection_started_at) {
-            $voidDays = (int) setting('planning.void_sanitaire_days', $building->min_sanitary_days ?? 21);
+            // Même durée que celle réellement appliquée à la libération. Le
+            // planning lisait `planning.void_sanitaire_days` (21 j par défaut) :
+            // il annonçait donc une indisponibilité que le système ne respectait
+            // pas, un décalage d'une semaine invisible aux deux bouts.
+            $voidDays = Building::sanitaryBreakDays();
             $voidEnd = Carbon::parse($building->disinfection_started_at)->addDays($voidDays);
             if ($voidEnd->isAfter($from)) {
                 $conflicts[] = [

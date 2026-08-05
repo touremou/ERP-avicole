@@ -53,8 +53,47 @@ class Building extends Model
 
     /**
      * Durée standard du vide sanitaire (jours) avant réutilisation.
+     *
+     * REPLI SEULEMENT. La durée qui gouverne réellement est celle réglée dans
+     * Paramètres › Élevage, et se lit par sanitaryBreakDays() — jamais par cette
+     * constante en direct.
      */
     public const SANITARY_BREAK_DAYS = 14;
+
+    /**
+     * DURÉE DU VIDE SANITAIRE — déclaration UNIQUE.
+     *
+     * Cette durée était déclarée CINQ fois, de quatre manières qui divergeaient :
+     *
+     *   • la constante ci-dessus (14 j), utilisée par le compte à rebours affiché
+     *     sur la fiche du bâtiment ;
+     *   • `elevage.sanitary_break_days` (14 j), lu par le SEUL tableau de bord ;
+     *   • `planning.void_sanitaire_days` (21 j) — une AUTRE clef, dans un autre
+     *     onglet, portant le même libellé « Durée vide sanitaire », lue par le
+     *     service de planning ET par l'écran de création d'un plan de bande ;
+     *   • les colonnes `min_sanitary_days` / `max_sanitary_days` (14 / 21),
+     *     qu'aucun écran n'a jamais pu écrire — elles ne figurent même pas dans
+     *     $fillable — et qui servaient pourtant de repli au planning ;
+     *   • la commande planifiée qui LIBÈRE le bâtiment, sur la constante.
+     *
+     * Conséquence pour l'exploitation : régler « 21 jours » dans Paramètres ›
+     * Élevage changeait le décompte du tableau de bord, et RIEN d'autre. Le
+     * planning appliquait sa propre clef, le compte à rebours de la fiche
+     * affichait 14, et surtout la libération automatique rendait le bâtiment
+     * disponible au 14ᵉ jour — une semaine avant le vide demandé.
+     *
+     * Un vide sanitaire écourté n'est pas un détail de présentation : c'est la
+     * mesure qui casse le cycle des pathogènes entre deux bandes. Le réglage
+     * existait, l'écran l'acceptait, et le geste ne suivait pas.
+     */
+    public static function sanitaryBreakDays(): int
+    {
+        $days = (int) setting('elevage.sanitary_break_days', self::SANITARY_BREAK_DAYS);
+
+        // Un réglage à zéro ou négatif supprimerait le vide sanitaire : on refuse
+        // de l'appliquer plutôt que d'obéir à une saisie manifestement erronée.
+        return $days > 0 ? $days : self::SANITARY_BREAK_DAYS;
+    }
 
     protected $fillable = [
         'farm_id',
@@ -189,8 +228,9 @@ class Building extends Model
     }
 
     /**
-     * Calcule le temps de repos restant (Vide Sanitaire)
-     * Basé sur une norme industrielle standard de 14 jours
+     * Temps de repos restant (vide sanitaire), sur la durée RÉGLÉE — et non plus
+     * sur la norme codée en dur, qui faisait afficher 14 jours à qui en avait
+     * demandé 21.
      */
     public function getSanitaryBreakRemainingDaysAttribute(): int
     {
@@ -198,10 +238,15 @@ class Building extends Model
             return 0;
         }
 
-        $targetDate = $this->disinfection_started_at->addDays(self::SANITARY_BREAK_DAYS);
-        $remaining = now()->diffInDays($targetDate, false);
+        $targetDate = $this->disinfection_started_at->copy()->addDays(self::sanitaryBreakDays());
 
-        return $remaining > 0 ? (int)$remaining : 0;
+        // Comparaison de DATES, pas d'instants. L'écart en instants est presque
+        // toujours fractionnaire — la désinfection n'a pas commencé à minuit — et
+        // sa troncature retirait systématiquement un jour : le dernier jour du
+        // vide s'affichait « 0 », donc prêt, alors qu'il courait encore.
+        $remaining = now()->startOfDay()->diffInDays($targetDate->startOfDay(), false);
+
+        return $remaining > 0 ? (int) $remaining : 0;
     }
 
     // --- ACCESSEURS (VIRTUAL ATTRIBUTES) ---

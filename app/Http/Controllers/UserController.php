@@ -272,13 +272,11 @@ class UserController extends Controller
             );
         }
 
-        // Vider le cache pour tous les utilisateurs de ce rôle
-        $userIds = \App\Models\User::where('role', $role->id)
-            ->orWhere('role_id', $role->id)
-            ->pluck('id');
-        foreach ($userIds as $uid) {
-            Cache::forget("rbac_perms_{$uid}");
-        }
+        // Vider le cache pour tous les utilisateurs de ce rôle. La condition
+        // portait aussi sur `users.role`, colonne dépréciée qui contient un NOM
+        // de rôle, comparé ici à un IDENTIFIANT : elle ne pouvait rien apparier.
+        // Seul `role_id` fait foi (cf. AppServiceProvider).
+        $this->clearCacheForRoles([$role->id]);
 
         return back()->with('success', 'Permissions mises à jour.');
     }
