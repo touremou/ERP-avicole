@@ -36,6 +36,55 @@ class StockController extends Controller
         return view('stocks.index', compact('stocks', 'recentMovements', 'category'));
     }
     
+    /**
+     * Export CSV de l'inventaire d'une catégorie.
+     *
+     * Le bouton « Export » existait sur l'écran des stocks depuis toujours ; la
+     * route aussi. La MÉTHODE, non : cliquer déclenchait une erreur serveur. Un
+     * bouton visible qui échoue est pire qu'un bouton absent — on le reclique.
+     *
+     * Format aligné sur les autres exports de la maison (démarque, dépenses) :
+     * point-virgule et BOM UTF-8, pour qu'Excel ouvre le fichier correctement
+     * sans manipulation.
+     */
+    public function export(Request $request, $category)
+    {
+        if (Gate::denies('logistique.L')) return back()->with('error', 'Accès restreint.');
+
+        $stocks = Stock::where('category', $category)->orderBy('item_name')->get();
+
+        $filename = 'stocks-' . $category . '-' . now()->format('Y-m-d') . '.csv';
+
+        return response()->streamDownload(function () use ($stocks) {
+            $out = fopen('php://output', 'w');
+            fwrite($out, "\xEF\xBB\xBF");   // BOM UTF-8 : accents lisibles dans Excel
+            fputcsv($out, [
+                'Article', 'Catégorie', 'Unité', 'Quantité', 'Seuil d\'alerte',
+                'Prix unitaire', 'Valeur', 'Lot', 'Péremption', 'Sous le seuil',
+            ], ';');
+
+            foreach ($stocks as $s) {
+                fputcsv($out, [
+                    $s->item_name,
+                    $s->category,
+                    $s->unit,
+                    $s->current_quantity,
+                    $s->alert_threshold,
+                    $s->unit_price,
+                    round((float) $s->current_quantity * (float) $s->unit_price),
+                    $s->lot_number,
+                    $s->expiry_date?->format('d/m/Y'),
+                    // Colonne explicite : c'est l'information qu'on vient chercher
+                    // dans un export d'inventaire, et la calculer soi-même dans
+                    // le tableur invite à l'erreur.
+                    ($s->alert_threshold > 0 && $s->current_quantity <= $s->alert_threshold) ? 'OUI' : '',
+                ], ';');
+            }
+
+            fclose($out);
+        }, $filename);
+    }
+
     public function create(Request $request)
     {
         if (Gate::denies('logistique.C')) return back()->with('error', 'Action non autorisée.'); 
