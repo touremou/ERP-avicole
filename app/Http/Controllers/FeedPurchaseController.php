@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\FeedPurchase;
+use App\Models\Provider;
 use App\Http\Requests\FeedPurchase\StoreFeedPurchaseRequest;
 use App\Http\Requests\FeedPurchase\UpdateFeedPurchaseRequest;
 use App\Actions\FeedPurchase\CreateFeedPurchase;
@@ -25,6 +26,36 @@ class FeedPurchaseController extends Controller
             Log::error("Échec Ravitaillement: " . $e->getMessage());
             return back()->with('error', "Erreur lors du ravitaillement : " . $e->getMessage());
         }
+    }
+
+    /**
+     * Formulaire de rectification d'un ravitaillement.
+     *
+     * La vue (`feed-purchases/edit.blade.php`), la validation
+     * (UpdateFeedPurchaseRequest), l'action (UpdateFeedPurchase) et la route
+     * existaient ; seule cette méthode manquait. Le crayon affiché en face de
+     * chaque achat sur la fiche de bande menait donc à une erreur serveur :
+     * corriger un achat d'aliment était impossible, alors que tout était en place
+     * pour le faire.
+     */
+    public function edit(FeedPurchase $feedPurchase)
+    {
+        if (Gate::denies('provenderie.M')) {
+            return back()->with('error', 'Rectification réservée aux managers.');
+        }
+
+        $batch = $feedPurchase->batch;
+
+        if (! $batch) {
+            return redirect()->route('batches.index')
+                ->with('error', 'Cet achat n\'est rattaché à aucune bande : rectification impossible.');
+        }
+
+        // Même source que le formulaire de création (cf. BatchController) : une
+        // seconde liste divergerait au premier fournisseur désactivé.
+        $providers = Provider::orderBy('name')->get();
+
+        return view('feed-purchases.edit', compact('feedPurchase', 'batch', 'providers'));
     }
 
     public function update(UpdateFeedPurchaseRequest $request, FeedPurchase $feedPurchase, UpdateFeedPurchase $updatePurchase)

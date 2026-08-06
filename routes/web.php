@@ -208,7 +208,9 @@ Route::middleware(['auth'])->group(function () {
 
         Route::get('/{id}/edit', 'edit')->name('edit')->middleware('can:M');
         Route::put('/{id}', 'update')->name('update')->middleware('can:M');
-        Route::put('/item/{id}/threshold', 'updateThreshold')->name('update_threshold')->middleware('can:M');
+        // `update_threshold` retirée : la méthode n'existait pas (erreur serveur
+        // garantie) et aucun écran ne l'appelait — le seuil d'alerte s'édite dans
+        // la fiche de l'article, avec le reste.
 
         Route::delete('/{id}', 'destroy')->name('destroy')->middleware('can:S');
     });
@@ -461,7 +463,9 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/{eggProduction}', 'destroy')->name('destroy')->middleware('can:S');
     });
 
-    Route::post('/egg-movements/store', [EggMovementController::class, 'store'])->name('egg-movements.store')->middleware('can:C');
+    // Câblée sur `store`, méthode inexistante : la seule action du contrôleur
+    // s'appelle storeMovement(). Tout appel finissait en erreur serveur.
+    Route::post('/egg-movements/store', [EggMovementController::class, 'storeMovement'])->name('egg-movements.store')->middleware('can:C');
 
     // ─── COLLECTE DE LAIT (laiterie caprine) ───
     Route::prefix('milk-productions')->name('milk-productions.')->controller(MilkProductionController::class)->group(function () {
@@ -495,7 +499,11 @@ Route::middleware(['auth'])->group(function () {
 
     // Verrou de route par verbe (défense en profondeur, en plus des gates du
     // contrôleur) : lecture = L, création = C, édition = M, suppression = S.
+    // `show` exclue : le contrôleur ne l'implémente pas. Une route de ressource
+    // annonce les sept verbes ; celui-ci n'en sert que six, et l'URL restante
+    // menait à une erreur serveur pour qui y arrivait par un lien ou un signet.
     Route::middleware('can:L')->resource('daily-checks', DailyCheckController::class)
+        ->except(['show'])
         ->middlewareFor(['create', 'store'], 'can:C')
         ->middlewareFor(['edit', 'update'], 'can:M')
         ->middlewareFor('destroy', 'can:S');
@@ -511,7 +519,9 @@ Route::middleware(['auth'])->group(function () {
 
     // Verrou de route par verbe (défense en profondeur) : store = C, édition = M,
     // suppression = S ; lecture (index/show) au niveau L.
+    // `create` exclue : non implémentée. Un protocole se crée depuis la liste.
     Route::middleware(['auth', 'can:L'])->resource('protocols', ProtocolController::class)
+        ->except(['create'])
         ->middlewareFor('store', 'can:C')
         ->middlewareFor(['edit', 'update'], 'can:M')
         ->middlewareFor('destroy', 'can:S');
@@ -550,8 +560,10 @@ Route::middleware(['auth'])->group(function () {
 
     // ─── ACHATS ALIMENT ───
     Route::prefix('feed-purchases')->name('feed-purchases.')->controller(FeedPurchaseController::class)->group(function () {
-        Route::get('/', 'index')->name('index')->middleware('can:L');
-        Route::get('/create', 'create')->name('create')->middleware('can:C');
+        // Ni `index` ni `create` n'ont jamais été écrites, et aucun écran ne les
+        // appelle : un ravitaillement se saisit depuis la fiche de bande, où il a
+        // son contexte (lot, phase, secteur). Deux routes qui n'auraient su que
+        // renvoyer une erreur.
         Route::post('/', 'store')->name('store')->middleware('can:C');
         Route::get('/{feed_purchase}/edit', 'edit')->name('edit')->middleware('can:M');
         Route::put('/{feed_purchase}', 'update')->name('update')->middleware('can:M');
