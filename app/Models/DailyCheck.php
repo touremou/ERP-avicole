@@ -204,10 +204,23 @@ class DailyCheck extends Model
                 Log::warning("[DailyCheck] Effectif négatif bloqué sur lot {$batch->code} (delta: {$delta}).");
             }
 
+            $previousQty = (int) $batch->current_quantity;
+
             // UPDATE direct : n'émet pas d'événements Eloquent → pas de boucle
             DB::table('batches')
                 ->where('id', $batchId)
                 ->update(['current_quantity' => $newQty, 'updated_at' => now()]);
+
+            // …et c'est précisément pour cela qu'il faut appeler l'alerte ICI.
+            // BatchObserver ne verra jamais cette écriture. Le pointage
+            // journalier étant LE chemin par lequel la mortalité entre dans le
+            // système, l'alerte de mortalité cumulée était muette sur le geste
+            // quotidien — et le restait ensuite définitivement, sa condition
+            // exigeant un franchissement que plus rien ne pouvait produire.
+            $batch->current_quantity = $newQty;
+
+            app(\App\Services\CumulativeMortalityAlert::class)
+                ->evaluate($batch, $previousQty);
         });
     }
 
