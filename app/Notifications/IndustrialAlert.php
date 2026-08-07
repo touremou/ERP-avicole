@@ -21,12 +21,39 @@ class IndustrialAlert extends Notification
         $this->alertData = $alertData;
     }
 
+    /**
+     * Canaux retenus pour CE destinataire.
+     *
+     * Le SMS est le canal de repli d'un éleveur dont le WhatsApp ne part pas. Il
+     * se paie au message : son interrupteur doit donc être obéi. Or la case
+     * « SMS » de Notifications › Préférences (`channel_sms`) était enregistrée et
+     * n'était LUE par personne — la décocher n'arrêtait rien, la cocher n'ajoutait
+     * rien. Le SMS partait sur la seule condition d'une priorité haute.
+     *
+     * On consulte désormais la préférence. La PORTÉE d'aujourd'hui est préservée
+     * à l'identique : `channel_sms` passe à « activé » par défaut et pour les
+     * comptes existants (cf. migration 2026_08_17_000000). Ce lot rend
+     * l'interrupteur réel sans rien couper.
+     *
+     * Ce qui ne change pas, volontairement : le SMS reste réservé aux alertes de
+     * priorité HAUTE. L'étendre aux autres familles serait une décision de
+     * dépense, pas une correction de défaut.
+     */
     public function via($notifiable)
     {
         $channels = ['database'];
-        if (($this->alertData['priority'] ?? '') === 'high') {
-            $channels[] = SmsGuineeChannel::class;
+
+        if (($this->alertData['priority'] ?? '') !== 'high') {
+            return $channels;
         }
+
+        if ($notifiable instanceof \App\Models\User
+            && ! \App\Models\NotificationPreference::resolveFor($notifiable)->channel_sms) {
+            return $channels;
+        }
+
+        $channels[] = SmsGuineeChannel::class;
+
         return $channels;
     }
 
