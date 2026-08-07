@@ -18,21 +18,54 @@ use Illuminate\Support\Facades\Gate;
  */
 class PhotoController extends Controller
 {
+    /**
+     * Droit exigé pour chaque contexte de photo — déclaration UNIQUE, qui sert
+     * à la fois de liste de validation et de contrôle d'accès. Les deux ne
+     * peuvent donc plus diverger : ajouter un contexte sans lui donner de droit
+     * ne compile pas dans la tête du lecteur, et un test le vérifie.
+     *
+     * Les niveaux reprennent ceux des opérations de synchro correspondantes
+     * (cf. mobile/src/offline/access.ts) : la photo accompagne une écriture, et
+     * n'a pas à être plus exigeante qu'elle.
+     */
+    private const CONTEXT_ABILITIES = [
+        'incident'    => 'elevage.C',
+        'daily_check' => 'elevage.C',
+        'reception'   => 'abattoir.C',
+        'cleaning'    => 'abattoir.C',
+        'expense'     => 'depenses.C',
+        // Preuve de tâche : la tâche est déjà réservée à son assigné côté
+        // terrain ; exiger un droit de module en plus fermerait la preuve à
+        // l'ouvrier à qui la tâche est confiée.
+        'task'        => 'elevage.L',
+    ];
+
     public function store(Request $request): JsonResponse
     {
-        // Toute photo terrain accompagne une écriture élevage OU abattoir
-        // (certificat sanitaire de réception, preuve de nettoyage HACCP).
-        if (Gate::denies('elevage.C') && Gate::denies('abattoir.C')) {
-            return response()->json(['message' => __('Permission insuffisante.')], 403);
-        }
-
         $validated = $request->validate([
             // 5 Mo max : les clients compressent avant envoi (règle data faible).
             'photo'   => 'required|image|max:5120',
-            'context' => 'nullable|string|in:incident,expense,daily_check,reception,cleaning,task',
+            'context' => 'nullable|string|in:' . implode(',', array_keys(self::CONTEXT_ABILITIES)),
         ]);
 
-        $folder = 'field/' . ($validated['context'] ?? 'incident');
+        $context = $validated['context'] ?? 'incident';
+
+        // Le droit exigé suit le CONTEXTE de la photo. Auparavant la porte
+        // n'acceptait que `elevage.C` ou `abattoir.C`, alors que l'endpoint
+        // déclarait déjà six contextes : le reçu de carburant d'une dépense et la
+        // preuve d'une tâche étaient donc refusés à qui n'avait pas de droit
+        // d'élevage — et refusés en SILENCE.
+        //
+        // Le silence est le vrai défaut. Un téléversement refusé fait sauter
+        // l'opération du tour de synchro (cf. mobile/src/offline/sync.ts) : elle
+        // reste en file, réessayée à chaque passage, sans jamais apparaître dans
+        // « À corriger » ni faire redescendre le compteur. Le technicien voit
+        // « enregistré », et la dépense n'arrive jamais en comptabilité.
+        if (Gate::denies(self::CONTEXT_ABILITIES[$context])) {
+            return response()->json(['message' => __('Permission insuffisante.')], 403);
+        }
+
+        $folder = 'field/' . $context;
         $path = $request->file('photo')->store($folder, 'public');
 
         return response()->json([

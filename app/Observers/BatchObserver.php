@@ -3,45 +3,29 @@
 namespace App\Observers;
 
 use App\Models\Batch;
-use App\Models\User;
-use App\Notifications\IndustrialAlert;
-use App\Services\NotificationHub;
+use App\Services\CumulativeMortalityAlert;
 use Illuminate\Support\Facades\Log;
 
 class BatchObserver
 {
     /**
-     * Après mise à jour : vérifier la mortalité et alerter si nécessaire.
+     * Après mise à jour : vérifier la mortalité cumulée et alerter si la ligne
+     * rouge vient d'être franchie.
+     *
+     * La règle elle-même vit dans CumulativeMortalityAlert : le pointage
+     * journalier écrit l'effectif par requête directe, sans passer par Eloquent,
+     * et devait donc pouvoir l'appeler lui aussi. Tant qu'elle vivait ici, le
+     * geste quotidien — celui par lequel la mortalité arrive réellement — ne
+     * déclenchait rien.
      */
     public function updated(Batch $batch): void
     {
-        if (! $batch->wasChanged('current_quantity') || $batch->status !== 'Actif' || $batch->initial_quantity <= 0) {
+        if (! $batch->wasChanged('current_quantity')) {
             return;
         }
 
-        // Seuil unique d'alerte mortalité : même source que le filtre « surmortalité »
-        // de l'index (BatchController), le scope Batch::critical() et le tableau de
-        // bord, pour éviter qu'une alerte se déclenche à un taux différent de celui
-        // affiché — et pour que le réglage éditable « mortalité cumulée » pilote tout.
-        $threshold = Batch::cumulativeMortalityThreshold();
-
-        // Calcul du taux de mortalité ACTUEL
-        $currentMortality = (($batch->initial_quantity - $batch->current_quantity) / $batch->initial_quantity) * 100;
-
-        // Calcul du taux de mortalité PRÉCÉDENT (grâce à getOriginal)
-        $previousQuantity = $batch->getOriginal('current_quantity');
-        $previousMortality = (($batch->initial_quantity - $previousQuantity) / $batch->initial_quantity) * 100;
-
-        // Condition stricte : on ne notifie QUE si on vient de franchir la ligne rouge
-        if ($currentMortality > $threshold && $previousMortality <= $threshold) {
-            $rate = round($currentMortality, 2);
-            $this->notifyAdmins($batch, $rate);
-
-            // Canal WhatsApp (NotificationHub) : préférences utilisateur +
-            // filet de secours admin, en plus de la notification DB/SMS ci-dessus.
-            $totalDead = max(0, $batch->initial_quantity - $batch->current_quantity);
-            app(NotificationHub::class)->alertMortality($batch, $totalDead, $rate);
-        }
+        app(CumulativeMortalityAlert::class)
+            ->evaluate($batch, (int) $batch->getOriginal('current_quantity'));
     }
 
     /**
@@ -74,56 +58,4 @@ class BatchObserver
             $batch->healthChecks()->withTrashed()->restore();
         }
     }
-
-    // ─────────────────────────────────────────────
-    // MÉTHODES PRIVÉES
-    // ─────────────────────────────────────────────
-
-    /**
-     * Envoie une notification d'alerte mortalité à tous les administrateurs.
-     */
-    private function notifyAdmins(Batch $batch, float $mortalityRate): void
-    {
-        try {
-            // Requête unique : utilisateurs ayant le rôle nommé 'admin'.
-            // Correction : la relation est `userRole` (et non `role`) — l'ancien
-            // `whereHas('role')` levait une BadMethodCallException avalée par le
-            // catch, si bien que l'alerte de surmortalité n'était JAMAIS envoyée.
-            $admins = User::whereHas('userRole', function ($query) {
-                $query->where('name', 'admin');
-            })->get();
-
-            if ($admins->isEmpty()) {
-                Log::warning(
-                    "[BatchObserver] Aucun utilisateur avec le rôle 'admin' trouvé. " .
-                    "Alerte mortalité non envoyée pour lot {$batch->code}."
-                );
-                return;
-            }
-
-            $alertData = [
-                'type' => 'high_mortality',
-                'priority' => 'high',
-                'title' => 'Alerte de Surmortalité',
-                'message' => "Mortalité critique franchie sur le lot {$batch->code} : {$mortalityRate}% atteint " .
-                             "(effectif : {$batch->current_quantity}/{$batch->initial_quantity}).",
-                'id_reference' => $batch->uuid,
-            ];
-
-            foreach ($admins as $admin) {
-                try {
-                    $admin->notify(new IndustrialAlert($alertData));
-                } catch (\Exception $e) {
-                    Log::error(
-                        "[BatchObserver] Échec notification admin #{$admin->id} " .
-                        "pour lot {$batch->code}: {$e->getMessage()}"
-                    );
-                }
-            }
-
-        } catch (\Exception $e) {
-            Log::error("[BatchObserver] Erreur globale alertes lot {$batch->code}: {$e->getMessage()}");
-        }
-    }
 }
-
