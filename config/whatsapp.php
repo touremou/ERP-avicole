@@ -72,4 +72,21 @@ return [
     */
     'verify_ssl' => env('WHATSAPP_VERIFY_SSL', true),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Alertes d'erreur serveur (ErrorAlertService)
+    |--------------------------------------------------------------------------
+    |
+    | Coupe-circuit documenté dans le runbook. Il vivait dans un env() posé au
+    | milieu du service — c'est-à-dire HORS de config/ — et le déploiement met la
+    | configuration en cache : à partir de là, Laravel ne lit plus le .env du tout
+    | (Bootstrap\LoadEnvironmentVariables sort si la config est en cache).
+    | Renseigner ERROR_ALERTS_ENABLED=false n'avait donc aucun effet en
+    | production : le coupe-circuit ne coupait rien.
+    |
+    | Déclaré ici, il est capturé par config:cache et redevient effectif.
+    |
+    */
+    'error_alerts_enabled' => env('ERROR_ALERTS_ENABLED', true),
+
 ];

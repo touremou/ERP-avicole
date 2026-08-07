@@ -560,7 +560,16 @@
         }
     });
     // ── Chargement dynamique des types de production selon l'espèce ──
-    async function loadProductionTypes(speciesId) {
+    // Types de production par espèce — rendus par le serveur, qui les a déjà en
+    // main. Une seule source pour les deux cas (mono- et multi-espèces).
+    const PRODUCTION_TYPES_BY_SPECIES = @json(
+        $activeSpecies->mapWithKeys(fn ($sp) => [$sp->id => $sp->productionTypes->map(fn ($pt) => [
+            'id' => $pt->id, 'slug' => $pt->slug, 'name_fr' => $pt->name_fr,
+            'cycle_days_default' => $pt->cycle_days_default,
+        ])->values()])
+    );
+
+    function loadProductionTypes(speciesId) {
         const typeSelect = document.getElementById('breeding_type');
         const slugHidden = document.getElementById('species_slug_hidden');
         const speciesSelect = document.getElementById('species_selector');
@@ -575,24 +584,37 @@
             return;
         }
 
-        try {
-            const resp = await fetch(`/api/species/${speciesId}/production-types`);
-            const types = await resp.json();
-            typeSelect.innerHTML = '<option value="">' + {{ Js::from(__("-- Type de production --")) }} + '</option>';
-            types.forEach(t => {
-                const opt = document.createElement('option');
-                opt.value = t.slug;
-                opt.textContent = t.name_fr;
-                opt.dataset.cycleDays = t.cycle_days_default;
-                opt.dataset.ptId = t.id;
-                if ('{{ old('type') }}' === t.slug) opt.selected = true;
-                typeSelect.appendChild(opt);
-            });
-            syncProductionTypeId();
-            runFilters();
-        } catch (e) {
-            console.error('Erreur chargement types:', e);
-        }
+        // Les types viennent de la page, PAS du réseau.
+        //
+        // Cet écran appelait `/api/species/{id}/production-types`, une route rangée
+        // dans le groupe d'administration : le droit résolu était `admin.S`. Un
+        // chef de site ayant `elevage.C` recevait donc un 403 dès qu'il choisissait
+        // une espèce autre que la volaille — et le 403 était AVALÉ par le catch
+        // ci-dessous : pas de message, juste un sélecteur « Type de production »
+        // vide. Le champ étant obligatoire, la bande ne pouvait plus être créée,
+        // sans que rien n'explique pourquoi.
+        //
+        // Or le contrôleur charge déjà `$activeSpecies` avec ses types
+        // (BatchController::create). L'aller-retour réseau était donc redondant —
+        // et c'est cette redondance qui a permis à deux droits de diverger. On lit
+        // la donnée déjà présente : plus de 403 possible, et un sélecteur qui
+        // répond instantanément, y compris sur une connexion de terrain.
+        const types = PRODUCTION_TYPES_BY_SPECIES[speciesId] || [];
+
+        typeSelect.innerHTML = '<option value="">' + {{ Js::from(__("-- Type de production --")) }} + '</option>';
+
+        types.forEach(t => {
+            const opt = document.createElement('option');
+            opt.value = t.slug;
+            opt.textContent = t.name_fr;
+            opt.dataset.cycleDays = t.cycle_days_default;
+            opt.dataset.ptId = t.id;
+            if ('{{ old('type') }}' === t.slug) opt.selected = true;
+            typeSelect.appendChild(opt);
+        });
+
+        syncProductionTypeId();
+        runFilters();
     }
 
     // Auto-charger si espèce déjà sélectionnée (retour form avec erreurs)
