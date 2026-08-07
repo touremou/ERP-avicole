@@ -532,15 +532,35 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/batches', [BatchController::class, 'getOfflineBatches'])->name('batches');
         Route::get('/buildings', [BuildingController::class, 'getOfflineBuildings'])->name('buildings');
 
-        // Closures pour les référentiels simples (colonnes déjà limitées ou petites tables)
-        Route::get('/employees', fn() => \App\Models\Employee::active()
-            ->get(['id', 'first_name', 'last_name', 'job_title as position']))->name('employees');
-        Route::get('/providers', fn() => \App\Models\Provider::where('status', 'Actif')
-            ->get(['id', 'name', 'phone']))->name('providers');
-        Route::get('/protocols', fn() => \App\Models\Protocol::all(['id', 'name', 'type']))->name('protocols');
-        Route::get('/norms', fn() => \App\Models\ProductionNorm::select('id', 'model_name', 'batch_type')
-            ->distinct()->get())->name('norms');
-        Route::get('/stocks', fn() => \App\Models\Stock::all(['id', 'item_name', 'current_quantity', 'category', 'unit']))->name('stocks');
+        // Référentiels simples (colonnes déjà limitées ou petites tables).
+        //
+        // GARDE `elevage.L`, alors que ces cinq-là n'en avaient AUCUNE : le groupe
+        // ne demandait qu'un compte authentifié. Tout utilisateur du site —
+        // caissier, profil en lecture seule, ouvrier dont la matrice est
+        // entièrement décochée — pouvait donc récupérer et mettre en cache dans
+        // son navigateur l'annuaire nominatif du personnel actif, les téléphones
+        // des fournisseurs et l'inventaire complet. Leurs trois voisins
+        // (`batches`, `buildings`, `clients`) vérifiaient bien un module.
+        //
+        // POURQUOI `elevage.L` ET NON LE MODULE D'ORIGINE (rh, annuaire,
+        // logistique) : ces listes ne sont pas des écrans, ce sont les SÉLECTEURS
+        // des formulaires du mode terrain — le responsable d'une bande
+        // (batches/create), l'aliment d'un pointage (daily-checks/create). Les
+        // verrouiller sur leur module d'origine viderait le sélecteur d'un
+        // technicien qui a le droit de créer une bande sans avoir accès aux
+        // fiches du personnel : le défaut « liste d'employés vide » que
+        // l'exploitation a déjà signalé. `elevage.L` est le droit que possède
+        // tout écran consommateur, et il ferme la porte à ceux qui n'en sont pas.
+        Route::middleware('can:elevage.L')->group(function () {
+            Route::get('/employees', fn() => \App\Models\Employee::active()
+                ->get(['id', 'first_name', 'last_name', 'job_title as position']))->name('employees');
+            Route::get('/providers', fn() => \App\Models\Provider::where('status', 'Actif')
+                ->get(['id', 'name', 'phone']))->name('providers');
+            Route::get('/protocols', fn() => \App\Models\Protocol::all(['id', 'name', 'type']))->name('protocols');
+            Route::get('/norms', fn() => \App\Models\ProductionNorm::select('id', 'model_name', 'batch_type')
+                ->distinct()->get())->name('norms');
+            Route::get('/stocks', fn() => \App\Models\Stock::all(['id', 'item_name', 'current_quantity', 'category', 'unit']))->name('stocks');
+        });
         Route::get('/clients', [ClientController::class, 'getOfflineClients'])->name('clients');
     });
 

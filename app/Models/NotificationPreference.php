@@ -25,6 +25,12 @@ class NotificationPreference extends Model
         'channel_database' => true,   // la cloche : gratuite et non intrusive
         'channel_push'     => true,   // sans effet tant qu'aucun appareil n'est abonné
         'channel_email'    => false,
+        // ACTIVÉ, et ce n'est pas un élargissement : le SMS partait déjà pour
+        // toute alerte de priorité haute, sans consulter personne. Depuis que
+        // `via()` obéit à cette case (cf. IndustrialAlert), la laisser à « faux »
+        // COUPERAIT le canal de repli — l'inverse du besoin. La portée reste
+        // celle d'avant ; ce qui change, c'est qu'on peut désormais l'arrêter.
+        'channel_sms'      => true,
         'daily_summary'    => true,
         'alert_mortality'  => true,
         'alert_stock'      => true,

@@ -38,7 +38,6 @@ export function CcpScreen() {
   const [orderId, setOrderId] = useState('')
   const [equipmentRef, setEquipmentRef] = useState('')
   // Mesures par CCP.
-  const [appreciation, setAppreciation] = useState<'conforme' | 'non_conforme'>('conforme')
   const [carcassesTotal, setCarcassesTotal] = useState(0)
   const [carcassesSouillees, setCarcassesSouillees] = useState(0)
   const [coreTemp, setCoreTemp] = useState('')
@@ -70,7 +69,20 @@ export function CcpScreen() {
   function buildMesures(): Record<string, unknown> {
     switch (ccp) {
       case 'ccp1_reception':
-        return { appreciation }
+        // DÉRIVÉE de la déclaration, jamais saisie à part.
+        //
+        // Cet écran offrait DEUX commandes pour un seul fait : des puces
+        // « Appréciation ante-mortem » (conforme / non conforme) et la
+        // « Déclaration terrain » générique. Le serveur ne lit que la seconde
+        // (RecordCcp::evaluate n'a pas de cas CCP 1 : il retombe sur le drapeau
+        // déclaré). Toucher celle qui portait le NOM du contrôle n'avait donc
+        // aucun effet : le relevé partait « conforme », sans action corrective
+        // exigée, sans alerte HACCP, sans blocage d'ordre — et le registre, qui
+        // est le document légal, attestait des animaux propres à l'abattage.
+        //
+        // Le web ne s'y trompait pas : HaccpRegisterController dérive
+        // `appreciation` de `declared_conforme`. On fait pareil.
+        return { appreciation: conforme ? 'conforme' : 'non_conforme' }
       case 'ccp2_evisceration':
         return { carcasses_total: carcassesTotal, carcasses_souillees: carcassesSouillees }
       case 'ccp3_refroidissement':
@@ -153,28 +165,6 @@ export function CcpScreen() {
         placeholder={t('ex. CF-01')}
       />
 
-      {ccp === 'ccp1_reception' && (
-        <>
-          <label>{t('Appréciation ante-mortem')}</label>
-          <div className="chip-row">
-            <button
-              type="button"
-              className={`chip ${appreciation === 'conforme' ? 'chip-on' : ''}`}
-              onClick={() => setAppreciation('conforme')}
-            >
-              {t('Conforme')}
-            </button>
-            <button
-              type="button"
-              className={`chip ${appreciation === 'non_conforme' ? 'chip-on' : ''}`}
-              onClick={() => setAppreciation('non_conforme')}
-            >
-              {t('Non conforme')}
-            </button>
-          </div>
-        </>
-      )}
-
       {ccp === 'ccp2_evisceration' && (
         <>
           <NumberStepper label={t('Carcasses contrôlées')} value={carcassesTotal} onChange={setCarcassesTotal} min={0} />
@@ -234,7 +224,11 @@ export function CcpScreen() {
         </>
       )}
 
-      <label>{t('Déclaration terrain')}</label>
+      {/* Une seule commande, nommée par le contrôle qu'elle exprime : à la
+          réception du vif, c'est l'appréciation ante-mortem elle-même. */}
+      <label>
+        {ccp === 'ccp1_reception' ? t('Appréciation ante-mortem') : t('Déclaration terrain')}
+      </label>
       <div className="chip-row">
         <button
           type="button"

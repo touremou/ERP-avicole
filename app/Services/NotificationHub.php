@@ -1371,14 +1371,47 @@ class NotificationHub
      * getSubscribers) : un message sur le téléphone de quelqu'un coûte de l'argent
      * et s'impose à lui.
      */
-    private function typeRecipients(string $type)
+    /**
+     * COLONNE DE SOUSCRIPTION D'UN TYPE D'ALERTE — déclaration UNIQUE.
+     *
+     * Cette correspondance était écrite DEUX fois, et les deux divergeaient.
+     * getSubscribers() (canal WhatsApp) rattachait `alert_hr_contract` et
+     * `alert_hr_attendance` à la souscription « anti-fraude » ; typeRecipients()
+     * (cloche, e-mail, push) ne les connaissait pas et retombait sur « aucun
+     * filtre », c'est-à-dire TOUT LE MONDE.
+     *
+     * « Alertes anti-fraude » est la SEULE case que l'écran des préférences offre
+     * pour ces deux alertes — il n'existe pas de case « RH ». La décocher
+     * arrêtait donc les WhatsApp, et laissait la cloche, le push et l'e-mail
+     * continuer d'arroser. Un interrupteur qui n'éteint que la moitié des lampes
+     * est pire qu'un interrupteur absent : on croit avoir coupé.
+     *
+     * @return string|null  colonne de préférence, ou null si le type n'est
+     *                      gouverné par aucune souscription (alerte structurelle
+     *                      que l'on ne se désabonne pas).
+     */
+    private function subscriptionColumnFor(string $type): ?string
     {
-        $column = match ($type) {
+        return match ($type) {
             'daily_summary', 'alert_mortality', 'alert_stock',
             'alert_energy', 'alert_sales', 'alert_fraud' => $type,
-            'alert_budget' => 'alert_fraud', // contrôle financier (cf. getSubscribers)
+
+            // Dépassement budgétaire = contrôle financier : on réutilise la
+            // souscription « fraude/anomalies » plutôt qu'une colonne de plus.
+            'alert_budget' => 'alert_fraud',
+
+            // Contrat à terme non décidé, et pointage manquant : anomalies
+            // administratives à portée financière (des jours non pointés payés en
+            // entier). Même canal que leur jumeau ci-dessus.
+            'alert_hr_contract', 'alert_hr_attendance' => 'alert_fraud',
+
             default => null,
         };
+    }
+
+    private function typeRecipients(string $type)
+    {
+        $column = $this->subscriptionColumnFor($type);
 
         $defaultAllows = $column === null || (NotificationPreference::DEFAULTS[$column] ?? false);
 
@@ -1403,24 +1436,10 @@ class NotificationHub
      */
     private function getSubscribers(string $type)
     {
-        $column = match ($type) {
-            'daily_summary'              => 'daily_summary',
-            'alert_mortality'            => 'alert_mortality',
-            'alert_stock'                => 'alert_stock',
-            'alert_energy'               => 'alert_energy',
-            'alert_sales'                => 'alert_sales',
-            'alert_fraud'                => 'alert_fraud',
-            // Dépassement budgétaire = contrôle financier : on réutilise la
-            // souscription « fraude/anomalies » plutôt qu'une nouvelle colonne.
-            'alert_budget'               => 'alert_fraud',
-            // Contrat à terme non décidé = anomalie administrative : même canal.
-            'alert_hr_contract'          => 'alert_fraud',
-            // Pointage manquant = anomalie administrative à portée financière
-            // (jours non pointés payés en entier) : même canal, comme son
-            // jumeau ci-dessus, plutôt qu'une colonne de plus pour une alerte.
-            'alert_hr_attendance'        => 'alert_fraud',
-            default                      => null,
-        };
+        // Même déclaration que les autres canaux : c'est la divergence entre les
+        // deux copies de cette carte qui laissait la cloche et le push ignorer
+        // une case décochée.
+        $column = $this->subscriptionColumnFor($type);
 
         $query = User::whereNotNull('whatsapp_phone')
             ->whereHas('notificationPreference', function ($q) use ($column) {
