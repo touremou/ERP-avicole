@@ -560,14 +560,25 @@
         }
     });
     // ── Chargement dynamique des types de production selon l'espèce ──
-    // Types de production par espèce — rendus par le serveur, qui les a déjà en
-    // main. Une seule source pour les deux cas (mono- et multi-espèces).
-    const PRODUCTION_TYPES_BY_SPECIES = @json(
-        $activeSpecies->mapWithKeys(fn ($sp) => [$sp->id => $sp->productionTypes->map(fn ($pt) => [
-            'id' => $pt->id, 'slug' => $pt->slug, 'name_fr' => $pt->name_fr,
-            'cycle_days_default' => $pt->cycle_days_default,
-        ])->values()])
-    );
+    @php
+        // Types de production par espèce — rendus par le serveur, qui les a déjà
+        // en main (BatchController::create les charge avec les espèces actives).
+        //
+        // Calculés dans un bloc PHP et non dans la directive @json : celle-ci
+        // apparie les parenthèses de façon naïve, et une expression multiligne
+        // contenant des fonctions fléchées produit une vue non compilable — une
+        // page blanche en 500, que seule la suite de tests rattrape.
+        $productionTypesBySpecies = $activeSpecies->mapWithKeys(fn ($sp) => [
+            $sp->id => $sp->productionTypes->map(fn ($pt) => [
+                'id'                 => $pt->id,
+                'slug'               => $pt->slug,
+                'name_fr'            => $pt->name_fr,
+                'cycle_days_default' => $pt->cycle_days_default,
+            ])->values(),
+        ]);
+    @endphp
+
+    const PRODUCTION_TYPES_BY_SPECIES = @json($productionTypesBySpecies);
 
     function loadProductionTypes(speciesId) {
         const typeSelect = document.getElementById('breeding_type');
