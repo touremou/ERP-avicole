@@ -1036,9 +1036,23 @@ Route::middleware(['auth'])->group(function () {
             Route::delete('/species/{species}', [SpeciesController::class, 'destroy'])->name('species.destroy');
         });
 
-        // API espèces — endpoint JSON pour sélecteur dynamique
-        Route::get('/api/species/{species}/production-types', [SpeciesController::class, 'productionTypesForSpecies'])->name('api.species.production-types');
     });
+
+    // API espèces — référentiel zootechnique consulté depuis les LOTS.
+    //
+    // Cette route vivait DANS le groupe d'administration : son droit résolu était
+    // donc `admin.S`. Un chef de site ayant `elevage.C` recevait un 403 en
+    // choisissant une espèce non volaille à la création d'une bande, et l'écran
+    // avalait le refus — sélecteur vide, champ obligatoire, bande impossible à
+    // créer, sans un mot d'explication.
+    //
+    // Elle sort du groupe et prend le droit de ce qu'elle décrit : lire le
+    // référentiel des types de production relève de l'élevage, pas de
+    // l'administration. (L'écran de création n'en dépend plus — il lit la donnée
+    // déjà chargée — mais un endpoint dont le droit ment reste un piège.)
+    Route::get('/api/species/{species}/production-types', [SpeciesController::class, 'productionTypesForSpecies'])
+        ->middleware('can:elevage.L')
+        ->name('api.species.production-types');
 
     // ─── PLANNING TÂCHES OPÉRATIONNELLES ───
     Route::prefix('tasks')->name('tasks.')->controller(TaskController::class)->group(function () {
