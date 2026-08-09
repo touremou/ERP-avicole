@@ -42,11 +42,41 @@ class ErrorAlertService
      */
     public static function handle(Throwable $e): void
     {
+        // UN RAPPORTEUR D'ERREUR NE DOIT JAMAIS ÉCHOUER.
+        //
+        // Cette méthode est appelée depuis bootstrap/app.php sur CHAQUE exception
+        // rapportable. Si elle lève à son tour, elle détruit l'information qu'elle
+        // était censée transmettre : le journal garde la trace du messager, pas du
+        // message, et l'alerte de l'incident réel ne part jamais.
+        //
+        // C'est arrivé en production le 14/07 (cf. le throttle plus bas). Le
+        // garde-fou vaut pour toutes les causes, pas seulement celle-là.
+        try {
+            self::attempt($e);
+        } catch (Throwable $inner) {
+            // Dernier recours : on n'utilise QUE le journal, jamais le cache ni la
+            // base — ce sont eux qui viennent d'échouer, le plus souvent.
+            try {
+                Log::warning('[ErrorAlertService] Alerte non émise : ' . $inner->getMessage());
+            } catch (Throwable) {
+                // Même le journal est tombé : on abandonne en silence plutôt que
+                // de masquer l'erreur d'origine par la nôtre.
+            }
+        }
+    }
+
+    private static function attempt(Throwable $e): void
+    {
         // Jamais pendant les tests (la CI ne doit pas tenter d'envoyer du
         // WhatsApp) ; pilotable par ERROR_ALERTS_ENABLED (défaut : actif
         // hors environnement local). Audit P2-⑪.
         if (app()->runningUnitTests()) return;
-        if (! (bool) env('ERROR_ALERTS_ENABLED', ! app()->environment('local'))) return;
+
+        // Coupe-circuit lu depuis la CONFIG, pas depuis env() : le déploiement met
+        // la configuration en cache, après quoi le .env n'est plus lu du tout.
+        // Renseigné ici, ERROR_ALERTS_ENABLED redevient effectif.
+        if (! config('whatsapp.error_alerts_enabled', true)) return;
+        if (app()->environment('local')) return;
 
         // Refus métier propres (machines à états) : pas un incident serveur.
         if ($e instanceof \DomainException) return;
@@ -63,15 +93,27 @@ class ErrorAlertService
         // Ne pas alerter pour les ModelNotFoundException (404 implicite)
         if ($e instanceof \Illuminate\Database\Eloquent\ModelNotFoundException) return;
 
-        // Throttle : éviter le spam
+        // Throttle : éviter le spam.
+        //
+        // On mémorise un HORODATAGE ENTIER, jamais un objet. Le cache stockait un
+        // Carbon sérialisé ; à la relecture, quand la classe n'est pas
+        // reconstructible — ce qui arrive précisément pendant une erreur fatale —
+        // PHP rend un __PHP_Incomplete_Class, et `now()->diffInMinutes()` lève une
+        // TypeError. Le rapporteur d'erreur échouait donc en rapportant l'erreur.
+        //
+        // Vu en production le 14/07 : erreur fatale à 07:51:51, TypeError du
+        // rapporteur à 07:51:52. L'alerte de l'erreur fatale n'est jamais partie,
+        // et le journal a gardé la trace du messager plutôt que du message.
         $errorKey = 'error_alert_' . md5($e->getFile() . $e->getLine());
-        $lastAlerted = cache()->get($errorKey);
 
-        if ($lastAlerted && now()->diffInMinutes($lastAlerted) < self::THROTTLE_MINUTES) {
+        $lastAlerted = cache()->get($errorKey);
+        $lastAlerted = is_numeric($lastAlerted) ? (int) $lastAlerted : null;
+
+        if ($lastAlerted !== null && (time() - $lastAlerted) < self::THROTTLE_MINUTES * 60) {
             return; // Déjà alerté récemment pour cette erreur
         }
 
-        cache()->put($errorKey, now(), self::THROTTLE_MINUTES * 60);
+        cache()->put($errorKey, time(), self::THROTTLE_MINUTES * 60);
 
         // Construire le message d'alerte
         $message = self::buildAlertMessage($e);
