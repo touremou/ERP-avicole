@@ -2,6 +2,8 @@
 
 namespace App\Actions\FeedPurchase;
 
+use App\Services\UnitConverter;
+
 use App\Models\FeedPurchase;
 use App\Models\Batch;
 use App\Models\Provider;
@@ -55,7 +57,16 @@ class CreateFeedPurchase
             // 3. SYNCHRONISATION PHYSIQUE DU MAGASIN (valorisée au prix d'achat)
             // Coût par unité PIVOT (KG) : prix total ÷ quantité normalisée, afin
             // que le CMP de l'article reflète le coût réel d'acquisition.
-            $bagWeight       = (float) ($metadata['bag_weight'] ?? 50);
+            // Poids du sac : surcharge de l'achat, SINON le réglage de la ferme,
+            // sinon 50 kg. Le repli était écrit « ?? 50 » ici, ce qui SAUTAIT le
+            // réglage `general.feed_bag_weight` — pourtant honoré partout ailleurs,
+            // y compris par le modèle FeedPurchase qui affiche la fiche.
+            //
+            // Une ferme achetant en sacs de 25 kg voyait donc, pour un même achat :
+            // 500 kg sur la fiche, 1 000 kg crédités au magasin, et un coût pivot
+            // de moitié. Le stock était gonflé du double et le CMP sous-évalué —
+            // donc le coût de revient de chaque bande nourrie sur ce stock.
+            $bagWeight       = UnitConverter::bagWeight($metadata['bag_weight'] ?? null);
             $normalizedQty   = ($data['unit'] === 'Sac')
                 ? (float) $data['quantity'] * $bagWeight
                 : (float) $data['quantity'];
@@ -70,7 +81,11 @@ class CreateFeedPurchase
                 'in',
                 "Ravitaillement {$data['unit']} - Lot {$batch->code} ({$consoType})",
                 $data['unit'],
-                $costPerPivotKg
+                $costPerPivotKg,
+                false,
+                // Le MÊME poids de sac que celui qui a servi au coût : sans quoi la
+                // quantité et le prix au kilo ne parleraient pas de la même chose.
+                $bagWeight
             );
 
             if (!$synced) {
