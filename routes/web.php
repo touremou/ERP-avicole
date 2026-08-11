@@ -851,9 +851,22 @@ Route::middleware(['auth'])->group(function () {
         // Journal d'audit (qui a modifié quoi) — lecture seule, admin.
         Route::get('/audit', [\App\Http\Controllers\AuditLogController::class, 'index'])->name('audit')->middleware('can:admin.S');
         // Modèles de messages éditables (admin).
-        Route::get('/templates', [NotificationTemplateController::class, 'index'])->name('templates')->middleware('can:S');
-        Route::put('/templates/{template}', [NotificationTemplateController::class, 'update'])->name('templates.update')->middleware('can:S');
-        Route::put('/templates/{template}/reset', [NotificationTemplateController::class, 'reset'])->name('templates.reset')->middleware('can:S');
+        // MODÈLES DE MESSAGES — un seul droit, explicite : `admin.S`.
+        //
+        // Ces trois routes portaient le gate GÉNÉRIQUE `can:S`, que le préfixe
+        // `notifications.` résout en `notifications.S` (cf. Module::routePrefixMap).
+        // Or le contrôleur exige `admin.S`, et la vue n'affiche le lien qu'à
+        // `admin.S`. Trois déclarations, deux droits différents : un rôle ayant
+        // admin.S sans notifications.S VOYAIT le bouton « Modèles de messages » et
+        // se prenait un 403 en cliquant. Un bouton visible qui refuse use la
+        // confiance plus qu'un bouton absent.
+        //
+        // On retient `admin.S`, le droit déjà exigé par les deux autres
+        // déclarations : aligner sur l'autre aurait ouvert l'écran à des rôles que
+        // personne n'a décidé d'y admettre.
+        Route::get('/templates', [NotificationTemplateController::class, 'index'])->name('templates')->middleware('can:admin.S');
+        Route::put('/templates/{template}', [NotificationTemplateController::class, 'update'])->name('templates.update')->middleware('can:admin.S');
+        Route::put('/templates/{template}/reset', [NotificationTemplateController::class, 'reset'])->name('templates.reset')->middleware('can:admin.S');
         // Cloche in-app : gérer ses propres notifications (aucun droit module requis).
         // Le centre d'alertes personnel n'est pas « notifications.logs » : celui-ci
         // est le journal des messages SORTANTS, réservé aux administrateurs.

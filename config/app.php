@@ -65,7 +65,14 @@ return [
     |
     */
 
-    'timezone' => 'UTC',
+    // Lu depuis l'environnement, comme dans le squelette Laravel. La valeur était
+    // FIGÉE à 'UTC' : `APP_TIMEZONE=Africa/Conakry`, annoncé dans
+    // .env.production.example, n'avait donc aucun effet.
+    //
+    // Sans conséquence aujourd'hui — Conakry est à UTC+0 sans heure d'été — mais un
+    // réglage annoncé qui n'est pas lu est un piège en attente : il mordra le jour
+    // où un site se trouvera dans un autre fuseau.
+    'timezone' => env('APP_TIMEZONE', 'UTC'),
 
     /*
     |--------------------------------------------------------------------------

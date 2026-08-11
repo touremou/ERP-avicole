@@ -852,17 +852,25 @@ class NotificationHub
             ->where('can_delete', true)
             ->pluck('role_id');
 
-        $approvers = User::whereIn('role_id', $approverRoleIds)
-            ->whereNotNull('whatsapp_phone')
-            ->get();
+        // Plus de filtre sur le téléphone WhatsApp : un valideur qui n'en a pas
+        // doit tout de même voir la demande sur sa cloche et son téléphone. C'est
+        // broadcast() qui écarte ensuite, canal par canal, ceux qu'il ne peut pas
+        // joindre.
+        $approvers = User::whereIn('role_id', $approverRoleIds)->get();
 
-        foreach ($approvers as $approver) {
-            $this->whatsapp->send($approver->whatsapp_phone, $message, [
-                'user_id' => $approver->id,
-                'type'    => 'alert_leave',
-                'title'   => "Congé {$emp->first_name}",
-            ]);
-        }
+        // Diffusion COMPLÈTE, à l'audience imposée : cloche, push, e-mail et
+        // WhatsApp selon les préférences de chacun — au lieu du seul WhatsApp
+        // envoyé en direct. Tant que le WhatsApp reste en mode journal, une demande
+        // de congé n'atteignait tout simplement personne.
+        $this->broadcast(
+            'alert_leave',
+            $message,
+            "Congé {$emp->first_name}",
+            'attention',
+            null,
+            null,
+            $approvers
+        );
 
         Log::info("NotificationHub: demande de congé #{$leave->id} notifiée à {$approvers->count()} responsable(s).");
     }
@@ -872,8 +880,13 @@ class NotificationHub
      */
     public function notifyLeaveApproved(EmployeeLeave $leave): void
     {
+        // On sort si l'on ne sait pas QUI prévenir — pas s'il n'a pas de WhatsApp.
+        // Le garde portait sur `whatsapp_phone` : un employé sans numéro n'était
+        // donc prévenu par AUCUN canal, alors que la cloche et le push l'auraient
+        // atteint. C'est broadcast() qui décide, canal par canal, ce qui est
+        // joignable.
         $recipient = $leave->employee->user ?? $leave->requester;
-        if (! $recipient?->whatsapp_phone) {
+        if (! $recipient) {
             return;
         }
 
@@ -888,11 +901,8 @@ class NotificationHub
             . "Type : {$leave->type_label}\n\n"
             . "Si vous avez des tâches à déléguer, connectez-vous à l'ERP avant votre départ.";
 
-        $this->whatsapp->send($recipient->whatsapp_phone, $message, [
-            'user_id' => $recipient->id,
-            'type'    => 'alert_leave',
-            'title'   => 'Congé approuvé',
-        ]);
+        // L'employé voit sa réponse dans l'application, même sans WhatsApp.
+        $this->broadcast('alert_leave', $message, 'Congé approuvé', 'normal', null, null, collect([$recipient]));
     }
 
     /**
@@ -900,8 +910,13 @@ class NotificationHub
      */
     public function notifyLeaveRejected(EmployeeLeave $leave): void
     {
+        // On sort si l'on ne sait pas QUI prévenir — pas s'il n'a pas de WhatsApp.
+        // Le garde portait sur `whatsapp_phone` : un employé sans numéro n'était
+        // donc prévenu par AUCUN canal, alors que la cloche et le push l'auraient
+        // atteint. C'est broadcast() qui décide, canal par canal, ce qui est
+        // joignable.
         $recipient = $leave->employee->user ?? $leave->requester;
-        if (! $recipient?->whatsapp_phone) {
+        if (! $recipient) {
             return;
         }
 
@@ -916,11 +931,7 @@ class NotificationHub
             . ($leave->rejection_reason ? "Motif : *{$leave->rejection_reason}*\n" : '')
             . "\nContactez votre responsable RH pour plus d'informations.";
 
-        $this->whatsapp->send($recipient->whatsapp_phone, $message, [
-            'user_id' => $recipient->id,
-            'type'    => 'alert_leave',
-            'title'   => 'Congé refusé',
-        ]);
+        $this->broadcast('alert_leave', $message, 'Congé refusé', 'normal', null, null, collect([$recipient]));
     }
 
     /**
@@ -1253,7 +1264,17 @@ class NotificationHub
     /**
      * @param string|null $url  Où mène le clic. Voir DESTINATIONS pour le repli.
      */
-    private function broadcast(string $type, string $message, string $title, string $severity = 'normal', ?string $url = null, ?string $mobile = null): void
+    /**
+     * @param  \Illuminate\Support\Collection<int, User>|null  $audience
+     *        Destinataires IMPOSÉS, au lieu des abonnés au type. Sert aux alertes
+     *        adressées à une fonction et non à un abonnement — une demande de
+     *        congé va aux valideurs, pas à qui a coché une case. Ces alertes
+     *        envoyaient jusqu'ici un WhatsApp EN DIRECT, contournant toute la
+     *        chaîne : ni cloche, ni push, ni e-mail, et aucune destination. Le
+     *        WhatsApp étant en mode journal chez l'exploitant, elles n'atteignaient
+     *        donc personne.
+     */
+    private function broadcast(string $type, string $message, string $title, string $severity = 'normal', ?string $url = null, ?string $mobile = null, ?\Illuminate\Support\Collection $audience = null): void
     {
         // Une alerte dit qu'il y a QUELQUE CHOSE À FAIRE ; sans destination, elle
         // laisse chercher où. Le mécanisme existait de bout en bout — la cloche
@@ -1266,7 +1287,9 @@ class NotificationHub
         // terrain ait l'écran correspondant — il retombe alors sur son centre.
         $mobileUrl = $mobile ?: static::mobileDestinationFor($type);
 
-        $recipients = $this->getSubscribers($type);
+        $recipients = $audience
+            ? $audience->filter(fn ($u) => filled($u->whatsapp_phone))->values()
+            : $this->getSubscribers($type);
 
         foreach ($recipients as $user) {
             $prefs = NotificationPreference::where('user_id', $user->id)->first();
@@ -1310,7 +1333,7 @@ class NotificationHub
         // Même alerte, autres canaux : on touche aussi les abonnés sans WhatsApp.
         // Les canaux retenus dépendent des préférences de chaque destinataire ;
         // la décision est centralisée ici, AlertNotification ne fait que les porter.
-        foreach ($this->typeRecipients($type) as $user) {
+        foreach ($audience ?? $this->typeRecipients($type) as $user) {
             // Préférences EFFECTIVES : la ligne enregistrée, ou les valeurs
             // livrées si l'utilisateur n'a jamais ouvert l'écran des réglages.
             // Cette boucle écartait auparavant tout compte sans ligne — le même

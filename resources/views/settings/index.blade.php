@@ -65,6 +65,11 @@
                                 'api_key'     => ['callmebot', 'ultramsg', 'wati', 'twilio'],
                                 'instance_id' => ['ultramsg'],
                                 'api_url'     => ['ultramsg', 'wati', 'twilio'],
+                                // Numéro expéditeur : exigé par Twilio, et jusqu'ici
+                                // sans aucun champ — le driver retombait sur le
+                                // numéro de bac à sable, qui n'écrit qu'aux numéros
+                                // pré-autorisés.
+                                'sender'      => ['twilio'],
                             ]],
                             'sms' => ['driverKey' => 'driver', 'fields' => [
                                 'api_url' => ['http'],

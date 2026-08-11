@@ -183,6 +183,16 @@ class Module extends Model
     public static function landingRoute(string $slug): ?string
     {
         return [
+            // Le module « dashboard » ne gouverne DÉLIBÉRÉMENT aucun droit d'accès :
+            // aucune Gate ne consulte `dashboard.L`, et sa case dans la matrice des
+            // rôles n'agit que sur la TUILE du lanceur (getAccessibleModules).
+            //
+            // Ne pas « corriger » cela en verrouillant la route du tableau de bord :
+            // des dizaines de contrôleurs finissent par `redirect()->route('dashboard')`.
+            // Un rôle dont la case serait décochée verrait chacune de ces
+            // redirections refusée — un compte inutilisable, produit par une case
+            // que l'on croyait cosmétique. Le comportement actuel est le bon ; c'est
+            // sa portée qui méritait d'être écrite.
             'dashboard'     => 'dashboard',
             'elevage'       => 'elevage.index',
             'production'    => 'productions.index',

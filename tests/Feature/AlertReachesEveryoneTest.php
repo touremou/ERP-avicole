@@ -132,13 +132,38 @@ test('le canal WhatsApp reste sur consentement EXPLICITE', function () {
     // Un message sur le téléphone de quelqu'un coûte de l'argent et s'impose à
     // lui : contrairement à la cloche, il ne s'active pas par défaut faute de
     // réglage. Un compte sans préférence ne doit recevoir aucun WhatsApp.
-    $hub = file_get_contents(app_path('Services/NotificationHub.php'));
+    //
+    // L'ASSERTION PORTE SUR getSubscribers(), ET SUR ELLE SEULE. Auparavant elle
+    // cherchait « ->whereNotNull('whatsapp_phone') » dans TOUT le fichier : elle
+    // était donc satisfaite par une ligne sans rapport — la requête des valideurs
+    // de congé — et serait restée verte si getSubscribers avait perdu son filtre.
+    // Le jour où cette autre ligne a été retirée à bon droit, le test a crié pour
+    // une raison qui n'était pas la sienne. Un garde-fou qui surveille autre chose
+    // que ce qu'il annonce ne garde rien.
+    $method = new ReflectionMethod(\App\Services\NotificationHub::class, 'getSubscribers');
 
-    // getSubscribers (canal WhatsApp) garde son whereHas strict…
-    expect($hub)->toContain("->whereNotNull('whatsapp_phone')");
+    $body = implode('', array_slice(
+        file($method->getFileName()),
+        $method->getStartLine() - 1,
+        $method->getEndLine() - $method->getStartLine() + 1
+    ));
 
-    // …tandis que la résolution in-app admet l'absence de préférence.
-    expect($hub)->toContain('orWhereDoesntHave');
+    expect($body)->toContain("whereNotNull('whatsapp_phone')")
+        // …et le consentement explicite : une préférence enregistrée, cochée.
+        ->and($body)->toContain('channel_whatsapp')
+        ->and($body)->toContain('whereHas');
+
+    // La résolution in-app, elle, admet l'absence de préférence : la cloche est
+    // gratuite et non intrusive, elle suit les valeurs livrées.
+    $inApp = new ReflectionMethod(\App\Services\NotificationHub::class, 'typeRecipients');
+
+    $inAppBody = implode('', array_slice(
+        file($inApp->getFileName()),
+        $inApp->getStartLine() - 1,
+        $inApp->getEndLine() - $inApp->getStartLine() + 1
+    ));
+
+    expect($inAppBody)->toContain('orWhereDoesntHave');
 });
 
 test('un compte sans téléphone WhatsApp ne bloque pas la cloche', function () {
