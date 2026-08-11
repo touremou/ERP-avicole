@@ -880,8 +880,13 @@ class NotificationHub
      */
     public function notifyLeaveApproved(EmployeeLeave $leave): void
     {
+        // On sort si l'on ne sait pas QUI prévenir — pas s'il n'a pas de WhatsApp.
+        // Le garde portait sur `whatsapp_phone` : un employé sans numéro n'était
+        // donc prévenu par AUCUN canal, alors que la cloche et le push l'auraient
+        // atteint. C'est broadcast() qui décide, canal par canal, ce qui est
+        // joignable.
         $recipient = $leave->employee->user ?? $leave->requester;
-        if (! $recipient?->whatsapp_phone) {
+        if (! $recipient) {
             return;
         }
 
@@ -905,8 +910,13 @@ class NotificationHub
      */
     public function notifyLeaveRejected(EmployeeLeave $leave): void
     {
+        // On sort si l'on ne sait pas QUI prévenir — pas s'il n'a pas de WhatsApp.
+        // Le garde portait sur `whatsapp_phone` : un employé sans numéro n'était
+        // donc prévenu par AUCUN canal, alors que la cloche et le push l'auraient
+        // atteint. C'est broadcast() qui décide, canal par canal, ce qui est
+        // joignable.
         $recipient = $leave->employee->user ?? $leave->requester;
-        if (! $recipient?->whatsapp_phone) {
+        if (! $recipient) {
             return;
         }
 
