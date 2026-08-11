@@ -10,6 +10,7 @@ import { NouvelleSaisieScreen } from '../features/saisie/NouvelleSaisieScreen'
 import { DailyCheckScreen } from '../features/elevage/DailyCheckScreen'
 import { EggCollectionScreen } from '../features/elevage/EggCollectionScreen'
 import { IncidentScreen } from '../features/elevage/IncidentScreen'
+import { NewBatchScreen } from '../features/elevage/NewBatchScreen'
 import { HealthCareScreen } from '../features/elevage/HealthCareScreen'
 import { HatcheryScreen } from '../features/elevage/HatcheryScreen'
 import { MilkingScreen } from '../features/elevage/MilkingScreen'
@@ -87,6 +88,7 @@ const SCREENS: Array<[RoutePath, ReactElement]> = [
   ['/elevage/soin/:batchId?', <HealthCareScreen />],
   ['/elevage/couvoir/:incubationId?', <HatcheryScreen />],
   ['/elevage/traite/:batchId?', <MilkingScreen />],
+  ['/elevage/mise-en-lot', <NewBatchScreen />],
   ['/lot/:batchId', <BatchScreen />],
   ['/scan', <ScanScreen />],
   ['/commerce/vente', <SaleScreen />],

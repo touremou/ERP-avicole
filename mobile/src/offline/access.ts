@@ -139,6 +139,10 @@ export const ROUTE_ACCESS = {
   '/elevage/pointage/:batchId?': 'elevage.C',
   '/elevage/incident/:batchId': 'elevage.C',
   '/elevage/soin/:batchId?': 'elevage.C',
+  // Mise en lot depuis le terrain : même droit que le type d'opération qu'elle
+  // émet (`batch.upsert` → elevage.C). Un écran plus permissif que son opération
+  // ferait remplir un formulaire pour rien.
+  '/elevage/mise-en-lot': 'elevage.C',
   '/lot/:batchId': 'elevage.L',
   '/scan': 'elevage.L|production.L',
 
