@@ -54,7 +54,13 @@ class StockIntegrationService
         string $notes,
         ?string $inputUnit = null,
         ?float $unitCost = null,
-        bool   $strictOut = false
+        bool   $strictOut = false,
+        // Poids de sac PROPRE à ce mouvement, quand l'achat en déclare un. Sans
+        // lui, la quantité se convertissait sur le réglage général tandis que le
+        // coût suivait la surcharge : deux conversions pour une seule écriture,
+        // donc une valeur de stock (quantité × prix) fausse dans un sens ou dans
+        // l'autre. Une même règle appliquée deux fois différemment.
+        ?float $bagWeight = null
     ): StockMovement|false {
 
         // ─── 1. RECHERCHE DE L'ARTICLE ───
@@ -66,7 +72,7 @@ class StockIntegrationService
             return false;
         }
 
-        return DB::transaction(function () use ($stock, $itemName, $category, $quantity, $type, $notes, $inputUnit, $unitCost, $strictOut) {
+        return DB::transaction(function () use ($stock, $itemName, $category, $quantity, $type, $notes, $inputUnit, $unitCost, $strictOut, $bagWeight) {
 
             // ─── 2. DÉTERMINATION DE L'UNITÉ ───
             // B-17 corrigé : si $inputUnit n'est pas fourni, on logge un warning
@@ -79,7 +85,7 @@ class StockIntegrationService
             }
 
             // ─── 3. NORMALISATION VERS UNITÉ PIVOT ───
-            $quantityBase = self::normalizeQuantity($quantity, $inputUnit, $category);
+            $quantityBase = self::normalizeQuantity($quantity, $inputUnit, $category, $bagWeight);
 
             // ─── 4. APPLICATION DU MOUVEMENT ───
             // Verrouillage pour éviter les race conditions
@@ -230,9 +236,9 @@ class StockIntegrationService
      * - Catégorie 'oeufs' : Alvéole (Unité → ÷ œufs par alvéole configuré)
      * - Autres : pas de conversion
      */
-    private static function normalizeQuantity(float $quantity, string $inputUnit, string $category): float
+    private static function normalizeQuantity(float $quantity, string $inputUnit, string $category, ?float $bagWeight = null): float
     {
-        return UnitConverter::toStockBase($quantity, $inputUnit, $category);
+        return UnitConverter::toStockBase($quantity, $inputUnit, $category, $bagWeight);
     }
 
     /**
