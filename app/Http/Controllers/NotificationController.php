@@ -49,6 +49,11 @@ class NotificationController extends Controller
             'channel_database'  => 'boolean',
             'channel_email'     => 'boolean',
             'channel_sms'       => 'boolean',
+            // `channel_push` était LU par la diffusion mais absent d'ici ET de
+            // l'écran : le canal ne pouvait ni s'afficher ni s'enregistrer. Ajouter
+            // la case sans la valider n'aurait rien changé — la valeur serait tombée
+            // à la porte.
+            'channel_push'      => 'boolean',
             'daily_summary'     => 'boolean',
             'alert_mortality'   => 'boolean',
             'alert_stock'       => 'boolean',

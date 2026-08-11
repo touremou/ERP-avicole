@@ -223,6 +223,19 @@
                             </div>
                             <p class="text-[9px] font-black uppercase peer-checked:text-blue-600 text-slate-400">SMS</p>
                         </label>
+                        {{-- PUSH : `channel_push` était LU par la diffusion (cf.
+                             NotificationHub::broadcast) mais n'avait aucune case ici.
+                             Le canal était donc impossible à couper depuis
+                             l'application — l'inverse du canal SMS, dont la case
+                             existait sans lecteur. --}}
+                        <label class="p-4 bg-slate-50 rounded-2xl cursor-pointer text-center group">
+                            <input type="hidden" name="channel_push" value="0">
+                            <input type="checkbox" name="channel_push" value="1" {{ $prefs->channel_push ? 'checked' : '' }} class="sr-only peer">
+                            <div class="peer-checked:bg-violet-500 peer-checked:text-white bg-slate-200 text-slate-400 w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-2 transition-all">
+                                <i class="fa-solid fa-mobile-screen-button text-xl"></i>
+                            </div>
+                            <p class="text-[9px] font-black uppercase peer-checked:text-violet-600 text-slate-400">{{ __("Push") }}</p>
+                        </label>
                     </div>
                 </div>
 

@@ -98,7 +98,19 @@ class PushSubscriptionController extends Controller
             'title'    => __('Test de notification'),
             'body'     => __('Si vous lisez ceci, cet appareil recevra bien les alertes.'),
             'severity' => 'normal',
-            'url'      => '/notifications',   // « /alertes » n'existe pas (cf. NotificationHub::destinationFor)
+            // ADRESSE DU TERRAIN. Un push est délivré à la PWA, dont le routeur
+            // ne connaît que ses propres chemins : « /notifications » est une route
+            // du BUREAU, et la bannière touchée renvoyait donc à l'accueil.
+            //
+            // Le commentaire précédent affirmait que « /alertes » n'existait pas :
+            // c'est vrai du routeur web, et faux de la PWA, où c'est précisément le
+            // centre d'alertes (cf. mobile/src/offline/access.ts et le repli de
+            // AlertNotification::toWebPush, qui applique déjà la bonne règle).
+            //
+            // L'outil censé lever un doute — « mes alertes arrivent-elles ? » — en
+            // ajoutait un : rien ne distinguait « le push ne marche pas » de « le
+            // push marche et m'emmène au mauvais endroit ».
+            'url'      => '/alertes',
             'tag'      => 'test',
         ]);
 
