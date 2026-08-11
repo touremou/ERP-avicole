@@ -47,6 +47,17 @@
                             </div>
                         </form>
 
+                        {{-- ESSAI DU MODÈLE : rend le texte TEL QU'IL EST ENREGISTRÉ, avec
+                             des valeurs visiblement fictives, et l'envoie sur vos canaux.
+                             Les autres essais de l'application envoient un texte codé en
+                             dur : ils prouvent que le canal marche, et rien sur le modèle. --}}
+                        <form action="{{ route('notifications.templates.test', $model->id) }}" method="POST" class="mt-2 text-right">
+                            @csrf
+                            <button type="submit" class="text-[10px] font-black text-blue-600 hover:text-blue-800 uppercase tracking-widest transition">
+                                <i class="fa-solid fa-paper-plane mr-1"></i> {{ __('Envoyer un essai') }}
+                            </button>
+                        </form>
+
                         <form action="{{ route('notifications.templates.reset', $model->id) }}" method="POST" class="mt-2 text-right" onsubmit="return confirm(@json(__('Restaurer le texte d\'origine ?')))">
                             @csrf @method('PUT')
                             <button type="submit" class="text-[10px] font-black text-slate-400 hover:text-rose-500 uppercase tracking-widest transition">
