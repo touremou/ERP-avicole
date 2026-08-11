@@ -300,20 +300,70 @@ class WhatsAppService
      */
     private function sendViaTwilio(string $phone, string $message): array
     {
-        $sid = config('whatsapp.twilio_sid');
-        $token = config('whatsapp.twilio_token');
-        $from = config('whatsapp.twilio_from', 'whatsapp:+14155238886');
+        // Identifiants pris DANS L'APPLICATION, comme pour tous les autres drivers.
+        //
+        // Cette méthode ne lisait que `config('whatsapp.twilio_sid'/'twilio_token')`,
+        // c'est-à-dire deux variables d'environnement — inaccessibles à un
+        // exploitant sur hébergement mutualisé, et absentes de toute la
+        // documentation. Or l'écran Paramètres › WhatsApp AFFICHE « Clé API » et
+        // « URL API » dès qu'on choisit twilio (cf. settings/index.blade.php) : on
+        // les renseignait consciencieusement, et le driver appelait Twilio avec
+        // `withBasicAuth(null, null)`. 401 à chaque envoi, `successful()` faux,
+        // send() renvoyait false. TOUS les messages échouaient, sur une
+        // configuration que l'écran présentait comme faite.
+        //
+        // Convention de la clé API : « SID:TOKEN » — les deux moitiés d'une
+        // authentification basique dans le champ unique que l'écran propose. Le
+        // repli sur les variables d'environnement est conservé pour ne rien casser
+        // là où elles sont déjà posées.
+        [$sid, $token] = $this->twilioCredentials();
+
+        // Numéro expéditeur : réglable (whatsapp.sender), sinon l'environnement,
+        // sinon le numéro de bac à sable de Twilio — qui n'envoie qu'aux numéros
+        // pré-autorisés, ce qui explique aussi bien des silences.
+        $from = (string) (setting('whatsapp.sender', '') ?: config('whatsapp.twilio_from', 'whatsapp:+14155238886'));
+
+        if (! str_starts_with($from, 'whatsapp:')) {
+            $from = 'whatsapp:' . $from;
+        }
+
+        if ($sid === '' || $token === '') {
+            return [false, ['error' => 'Twilio : renseignez la clé API au format SID:TOKEN dans Paramètres › WhatsApp.']];
+        }
+
+        $base = rtrim($this->apiUrl ?: 'https://api.twilio.com', '/');
 
         $response = $this->http()
             ->withBasicAuth($sid, $token)
             ->asForm()
-            ->post("https://api.twilio.com/2010-04-01/Accounts/{$sid}/Messages.json", [
+            ->post("{$base}/2010-04-01/Accounts/{$sid}/Messages.json", [
                 'To'   => "whatsapp:{$phone}",
                 'From' => $from,
                 'Body' => $message,
             ]);
 
         return [$response->successful(), $this->responseDetails($response)];
+    }
+
+    /**
+     * SID et jeton Twilio : réglage applicatif d'abord, environnement ensuite.
+     *
+     * @return array{0: string, 1: string}
+     */
+    private function twilioCredentials(): array
+    {
+        $key = trim((string) $this->apiKey);
+
+        if ($key !== '' && str_contains($key, ':')) {
+            [$sid, $token] = explode(':', $key, 2);
+
+            return [trim($sid), trim($token)];
+        }
+
+        return [
+            (string) config('whatsapp.twilio_sid', ''),
+            (string) config('whatsapp.twilio_token', ''),
+        ];
     }
 
     /**
