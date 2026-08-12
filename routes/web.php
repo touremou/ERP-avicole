@@ -867,6 +867,10 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/templates', [NotificationTemplateController::class, 'index'])->name('templates')->middleware('can:admin.S');
         Route::put('/templates/{template}', [NotificationTemplateController::class, 'update'])->name('templates.update')->middleware('can:admin.S');
         Route::put('/templates/{template}/reset', [NotificationTemplateController::class, 'reset'])->name('templates.reset')->middleware('can:admin.S');
+        // Essai d'un modèle : teste la configuration ET le texte enregistré. Les
+        // essais existants envoient un texte codé en dur, donc ne disent rien des
+        // modèles — on pouvait garder un modèle troué sans jamais le voir.
+        Route::post('/templates/{template}/test', [NotificationTemplateController::class, 'sendTest'])->name('templates.test')->middleware('can:admin.S');
         // Cloche in-app : gérer ses propres notifications (aucun droit module requis).
         // Le centre d'alertes personnel n'est pas « notifications.logs » : celui-ci
         // est le journal des messages SORTANTS, réservé aux administrateurs.
