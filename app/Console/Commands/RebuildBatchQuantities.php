@@ -12,23 +12,35 @@ use Illuminate\Console\Command;
  * sur initial_quantity et la somme des impacts des daily_checks.
  *
  * Usage :
- *   php artisan batches:rebuild-quantities              # Exécution réelle
- *   php artisan batches:rebuild-quantities --dry-run     # Prévisualisation sans modification
- *   php artisan batches:rebuild-quantities --batch=42    # Un seul lot
+ *   php artisan batches:rebuild-quantities              # SIMULATION (rien n'est écrit)
+ *   php artisan batches:rebuild-quantities --force      # Applique les corrections
+ *   php artisan batches:rebuild-quantities --batch=42   # Un seul lot
+ *
+ * CONVENTION UNIFIÉE : les commandes qui réécrivent des chiffres simulent par
+ * défaut et n'écrivent qu'avec --force. Celle-ci appliquait par défaut, à l'inverse
+ * de feed:recompute-costs et stocks:sync — le même geste montrait donc dans un cas
+ * et réécrivait dans l'autre. `--dry-run` reste accepté et vaut le défaut, pour ne
+ * pas faire écrire une habitude ou un script existant.
+ *
+ * LA TÂCHE PLANIFIÉE DE NUIT PASSE DONC --force EXPLICITEMENT (cf. routes/console.php).
+ * L'oublier aurait transformé la réconciliation nocturne en simulation muette :
+ * exactement le genre de panne silencieuse que cet audit passe son temps à corriger.
  *
  * @see AUDIT_MODULE_LOTS.md — B-03/B-04 (update écrase current_quantity)
  */
 class RebuildBatchQuantities extends Command
 {
     protected $signature = 'batches:rebuild-quantities
-                            {--dry-run : Afficher les corrections sans les appliquer}
+                            {--force : APPLIQUER les corrections. Sans ce drapeau : simulation seule}
+                            {--dry-run : Conservé pour compatibilité — c\'est déjà le comportement par défaut}
                             {--batch= : ID d\'un lot spécifique à recalculer}';
 
     protected $description = 'Recalcule les effectifs vivants depuis les pointages journaliers';
 
     public function handle(BatchQuantityService $service): int
     {
-        $dryRun = $this->option('dry-run');
+        // Simulation par défaut. --dry-run est toléré et redondant (cf. l'en-tête).
+        $dryRun = ! $this->option('force');
         $batchId = $this->option('batch');
 
         if ($dryRun) {
@@ -63,14 +75,14 @@ class RebuildBatchQuantities extends Command
                 ['Quantité actuelle (avant)', $result['old_quantity']],
                 ['Quantité recalculée', $result['new_quantity']],
                 ['Écart (drift)', $result['drift']],
-                ['Corrigé', $result['corrected'] ? 'OUI' : ($dryRun ? 'NON (dry-run)' : 'NON (déjà cohérent)')],
+                ['Corrigé', $result['corrected'] ? 'OUI' : ($dryRun ? 'NON (simulation)' : 'NON (déjà cohérent)')],
             ]
         );
 
         if ($result['drift'] === 0) {
             $this->info("Le lot {$result['batch_code']} est cohérent.");
         } elseif ($dryRun) {
-            $this->warn("Le lot {$result['batch_code']} a un écart de {$result['drift']} sujets. Relancer sans --dry-run pour corriger.");
+            $this->warn("Le lot {$result['batch_code']} a un écart de {$result['drift']} sujets. Relancer avec --force pour corriger.");
         } else {
             $this->info("Le lot {$result['batch_code']} a été corrigé ({$result['old_quantity']} → {$result['new_quantity']}).");
         }
@@ -112,7 +124,7 @@ class RebuildBatchQuantities extends Command
                      "{$report['total_corrected']} corrigés.");
 
         if ($dryRun && $report['total_corrected'] === 0) {
-            $this->warn('Relancer sans --dry-run pour appliquer les corrections.');
+            $this->warn('Relancer avec --force pour appliquer les corrections.');
         }
 
         return self::SUCCESS;
