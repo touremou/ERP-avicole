@@ -276,9 +276,15 @@ class AuthController extends Controller
      */
     private function scope(User $user): array
     {
+        // `farms.is_active` ET `farms.deleted_at` : la jointure brute n'en tenait
+        // aucun compte, si bien que le sélecteur de site du TERRAIN proposait des
+        // sites fermés — alors que celui du bureau les excluait déjà. Un technicien
+        // pouvait donc choisir un site qui n'existe plus.
         $farms = DB::table('farm_user')
             ->join('farms', 'farms.id', '=', 'farm_user.farm_id')
             ->where('farm_user.user_id', $user->id)
+            ->where('farms.is_active', true)
+            ->whereNull('farms.deleted_at')
             ->orderBy('farms.name')
             ->get(['farms.id', 'farms.name', 'farm_user.is_default'])
             ->map(fn ($f) => [

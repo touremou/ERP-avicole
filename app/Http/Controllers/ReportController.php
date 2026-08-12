@@ -214,6 +214,12 @@ class ReportController extends Controller
         // On exclut donc les groupes ici pour ne pas compter le carburant deux fois.
         // (Le coût estimé des groupes reste exploité côté analytique : coût/kWh, coût/h.)
         $costEnergy = (float) EnergyReading::query()
+            // PAS de filtre `energy_sources.deleted_at` ICI, et c'est délibéré.
+            // Supprimer une source ne doit pas RÉÉCRIRE le passé : le gasoil brûlé
+            // par un groupe a bien coûté ce qu'il a coûté, et l'exclure ferait
+            // baisser après coup le coût énergie d'une période déjà arrêtée. Un
+            // balayage des lectures brutes signale cette jointure ; la garder est un
+            // choix, pas un oubli.
             ->join('energy_sources', 'energy_sources.id', '=', 'energy_readings.energy_source_id')
             ->whereBetween('energy_readings.reading_date', [$from, $to])
             ->where('energy_sources.type', '!=', 'groupe')

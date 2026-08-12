@@ -43,10 +43,20 @@ class SetApiFarmContext
             return $next($request); // auth:sanctum a déjà refusé en amont
         }
 
-        // Fermes réellement affectées à l'utilisateur (pivot farm_user).
-        $userFarmIds = DB::table('farm_user')
-            ->where('user_id', $user->id)
-            ->pluck('farm_id')
+        /*
+         * Fermes affectées à l'utilisateur ET ENCORE EN SERVICE.
+         *
+         * Le filtre `Farm::active()` manquait : le pivot était lu seul. Un site
+         * désactivé — ou SUPPRIMÉ — restait donc le contexte de synchronisation du
+         * terrain, et toutes les saisies du technicien continuaient d'y entrer. Côté
+         * bureau, le même défaut vient d'être corrigé (#221) ; il vivait aussi ici,
+         * là où il coûte le plus cher puisque c'est le terrain qui saisit.
+         *
+         * Farm::active() étant un scope Eloquent, il exclut aussi les suppressions.
+         */
+        $userFarmIds = Farm::active()
+            ->whereIn('id', DB::table('farm_user')->where('user_id', $user->id)->pluck('farm_id'))
+            ->pluck('id')
             ->map(fn ($id) => (int) $id);
 
         // 1. Choix explicite de ferme par l'appareil (multi-sites).
@@ -71,9 +81,13 @@ class SetApiFarmContext
 
         // 2-3. Ferme par défaut puis première ferme de l'utilisateur.
         // 4. Repli mono-ferme (aucune affectation) : ferme par défaut du site.
+        // La ferme par défaut n'est retenue que si elle est encore en service :
+        // sans cette borne, un compte dont le site par défaut a été fermé y serait
+        // replacé à chaque requête.
         $farmId = $userFarmIds->isNotEmpty()
             ? DB::table('farm_user')
                 ->where('user_id', $user->id)
+                ->whereIn('farm_id', $userFarmIds)
                 ->orderByDesc('is_default')
                 ->value('farm_id')
             : null;
