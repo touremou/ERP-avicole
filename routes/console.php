@@ -11,8 +11,19 @@ Artisan::command('inspire', function () {
 // Vérifie chaque jour à minuit
 Schedule::command('farm:release-buildings')->daily();
 
-// Exécute la synchronisation chaque soir à minuit
-Schedule::command('stocks:sync')->daily();
+// Réconciliation nocturne des EFFECTIFS uniquement, par l'outil qui ne fait que
+// cela (BatchQuantityService, écriture directe donc sans réveiller l'observer).
+//
+// C'était `stocks:sync` auparavant, et sa partie « œufs » écrasait chaque nuit le
+// niveau de stock des calibres avec la somme de TOUTE la production enregistrée —
+// la même colonne que la vente décrémente. Les œufs vendus revenaient donc en
+// stock au matin, et l'écart se reconstituait tout seul, indéfiniment. Mesuré :
+// 100 alvéoles produites, 30 vendues, 70 restantes ; après passage, 100.
+//
+// `stocks:sync` existe toujours, en lecture seule sans --force, et se lance à la
+// main : une réécriture de quantités de magasin ne s'applique pas sans que
+// personne n'ait lu le résultat.
+Schedule::command('batches:rebuild-quantities')->daily();
 
 Schedule::command('tasks:generate')->dailyAt('05:00');
 
