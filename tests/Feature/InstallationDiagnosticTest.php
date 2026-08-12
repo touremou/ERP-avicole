@@ -232,3 +232,14 @@ test('chaque constat de niveau bloquant ou attention porte un remède', function
 
     expect($withoutRemedy)->toBe([], "Constats sans remède :\n  " . implode("\n  ", $withoutRemedy));
 });
+
+test('une heure de réglage illisible est signalée', function () {
+    // Elle n'arrête plus le planificateur, mais l'heure qui s'applique n'est pas
+    // celle que l'exploitation a choisie — et rien d'autre ne le dit.
+    makeInstallationHealthy($this->farm->id);
+    Setting::set('whatsapp.daily_summary_hour', '25:00');
+
+    $out = runDiagnostic()[1];
+
+    expect($out)->toContain('25:00')->and($out)->toContain('la valeur de repli s’applique');
+});

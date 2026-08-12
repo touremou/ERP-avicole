@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Setting;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -18,14 +19,21 @@ Schedule::command('tasks:generate')->dailyAt('05:00');
 // Verrou anti-doublon : libère les prises de tâche abandonnées (timeout).
 Schedule::command('tasks:release-stale')->everyFifteenMinutes();
 
-// Résumé quotidien WhatsApp — heure pilotée par le paramètre whatsapp.daily_summary_hour
-Schedule::command('avismart:daily-summary')->dailyAt(setting('whatsapp.daily_summary_hour', '07:00'));
+// Résumé quotidien WhatsApp — heure pilotée par le paramètre whatsapp.daily_summary_hour.
+//
+// L'heure passe par Setting::hour() et NON par setting() : la valeur vient d'un
+// champ de formulaire libre, et une heure impossible (« 25:00 ») faisait lever le
+// constructeur d'expression cron. `schedule:run` échouait alors AVANT d'exécuter
+// quoi que ce soit, arrêtant les VINGT-TROIS tâches de ce fichier — sauvegardes
+// comprises — à chaque minute et en silence, la ligne de cron recommandée
+// redirigeant sa sortie vers /dev/null. Vérifié à la main.
+Schedule::command('avismart:daily-summary')->dailyAt(Setting::hour('whatsapp.daily_summary_hour', '07:00'));
 
 // Réessaie les notifications WhatsApp en échec (coupure réseau, panne API...)
 Schedule::command('avismart:retry-failed-notifications')->everyFifteenMinutes();
 
 // Digest d'activité par employé (fin de journée) — redevabilité hors site
-Schedule::command('avismart:activity-digest')->dailyAt(setting('whatsapp.activity_digest_hour', '20:00'));
+Schedule::command('avismart:activity-digest')->dailyAt(Setting::hour('whatsapp.activity_digest_hour', '20:00'));
 
 // Rappels du calendrier cultural (récoltes à venir / en retard) — module Cultures
 Schedule::command('cultures:harvest-reminders')->dailyAt('06:30');
