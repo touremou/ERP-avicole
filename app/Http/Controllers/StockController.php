@@ -12,7 +12,7 @@ use App\Actions\Stock\CreateStockAction;
 use App\Actions\Stock\UpdateStockAction;
 use App\Actions\Stock\MoveStockAction;
 use App\Actions\Stock\DeleteStockAction;
-use App\Actions\Stock\SyncEggStocksAction;
+use App\Actions\Stock\CompareEggStockToLedger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
@@ -169,13 +169,38 @@ class StockController extends Controller
         }
     }
 
-    // INJECTION DE L'ACTION SYNC
-    public function syncAll(SyncEggStocksAction $action)
+    /**
+     * ÉTAT DES STOCKS D'ŒUFS FACE À LEUR REGISTRE. N'écrit plus rien.
+     *
+     * Cette route d'administration écrasait le niveau de chaque calibre avec la
+     * somme de TOUTE la production enregistrée — la même colonne que la vente
+     * décrémente. Elle remettait donc en stock ce qui était déjà vendu : 100
+     * alvéoles produites, 30 vendues, 70 restantes ; après appel, 100.
+     *
+     * Aucun écran ne l'appelle aujourd'hui (vérifié : `stocks.syncAll` n'apparaît
+     * dans aucune vue), elle n'est donc joignable qu'en POST direct — mais la tâche
+     * de nuit `stocks:sync` portait le MÊME calcul, et celle-là tournait
+     * réellement, chaque nuit. C'est par là que l'écart se reconstituait.
+     *
+     * On ne recalcule plus : `current_quantity` est tenue à chaque mouvement,
+     * c'est elle la source de vérité. On CONSTATE l'écart et on renvoie vers le
+     * bon outil — l'inventaire physique, qui écrit un ajustement en règle.
+     * Voir CompareEggStockToLedger pour le détail, notamment pourquoi le registre
+     * ne permet pas de trancher seul.
+     */
+    public function syncAll(CompareEggStockToLedger $action)
     {
         if (Gate::denies('logistique.M')) return back()->with('error', 'Action non autorisée.');
 
-        $action->execute();
+        $ecarts = collect($action->execute(session('current_farm_id')))
+            ->filter(fn ($l) => abs($l['gap']) >= 0.001);
 
-        return back()->with('success', '🚀 Synchronisation des stocks terminée.');
+        if ($ecarts->isEmpty()) {
+            return back()->with('success', __('Chaque calibre s’accorde avec son registre de mouvements.'));
+        }
+
+        return back()->with('error', __('Écart(s) constaté(s) : :liste. Rien n’a été modifié — passer par l’inventaire physique (Production d’œufs) pour corriger.', [
+            'liste' => $ecarts->map(fn ($l) => sprintf('%s %+.2f %s', $l['item'], $l['gap'], $l['unit']))->implode(' ; '),
+        ]));
     }
 }
