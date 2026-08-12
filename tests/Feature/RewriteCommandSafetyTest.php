@@ -44,37 +44,71 @@ uses(Tests\TestCase::class, Illuminate\Foundation\Testing\RefreshDatabase::class
  * à écrire du jour au lendemain.
  */
 
-/** Les commandes qui réécrivent des chiffres, et doivent donc simuler par défaut. */
-const REWRITE_COMMANDS = [
+/**
+ * Les commandes de réécriture CONNUES — vérifiées nommément, en plus du balayage.
+ *
+ * Elles ne servent PAS à définir la famille : ce serait reproduire le défaut que ce
+ * dépôt corrige partout. Elles servent à détecter l'inverse — qu'on retire un drapeau
+ * de sûreté à l'une d'elles, ce qu'un balayage sur les drapeaux ne verrait pas
+ * puisqu'elle sortirait alors de la famille.
+ */
+const KNOWN_REWRITE_COMMANDS = [
     'feed:recompute-costs',
     'stocks:sync',
     'couvoir:recompute-chick-costs',
     'batches:rebuild-quantities',
 ];
 
+/**
+ * La famille, DÉRIVÉE : toute commande de l'application déclarant --force ou --dry-run.
+ *
+ * Ma première version de ce fichier énumérait quatre noms à la main. Une cinquième
+ * commande de réécriture y aurait échappé en silence — exactement le défaut que je
+ * venais de reprocher au garde-fou des index uniques (#223), qui reposait lui aussi
+ * sur une liste écrite de mémoire. Un garde-fou tenu à la main a la même faille que
+ * le code qu'il protège.
+ *
+ * LIMITE ASSUMÉE, et il vaut mieux l'écrire que la laisser croire couverte : une
+ * commande qui écrirait SANS déclarer aucun des deux drapeaux échappe à ce balayage.
+ * Elle n'est détectable que par son intention, pas par sa structure. Le contrôle
+ * nommé ci-dessus borne le risque sur les quatre qu'on connaît.
+ *
+ * @return array<int, string>
+ */
+function safetyFlagCommands(): array
+{
+    $family = [];
+
+    foreach (\Illuminate\Support\Facades\Artisan::all() as $name => $command) {
+        if (! str_starts_with(get_class($command), 'App\\Console\\Commands')) {
+            continue;
+        }
+
+        $definition = $command->getDefinition();
+
+        if ($definition->hasOption('force') || $definition->hasOption('dry-run')) {
+            $family[] = $name;
+        }
+    }
+
+    return $family;
+}
+
 beforeEach(function () {
     $this->setUpRbac();
 });
 
-test('les quatre commandes offrent TOUTES --force', function () {
-    $missing = [];
-
-    foreach (REWRITE_COMMANDS as $name) {
-        $definition = \Illuminate\Support\Facades\Artisan::all()[$name]->getDefinition();
-
-        if (! $definition->hasOption('force')) {
-            $missing[] = $name;
-        }
-    }
-
-    expect($missing)->toBe([], 'Commandes de réécriture sans --force : ' . implode(', ', $missing));
-});
-
-test('aucune de ces commandes ne fait de --dry-run son SEUL garde-fou', function () {
+test('aucune commande ne fait de --dry-run son SEUL garde-fou', function () {
     // Le cœur de la divergence : `--dry-run` seul signifie « j'écris par défaut ».
+    // Balayage DÉRIVÉ : une commande ajoutée demain avec ce seul drapeau tombera ici.
+    $family = safetyFlagCommands();
+
+    // Garde-fou du garde-fou : famille vide = balayage cassé, test creux.
+    expect(count($family))->toBeGreaterThan(4);
+
     $offenders = [];
 
-    foreach (REWRITE_COMMANDS as $name) {
+    foreach ($family as $name) {
         $definition = \Illuminate\Support\Facades\Artisan::all()[$name]->getDefinition();
 
         if ($definition->hasOption('dry-run') && ! $definition->hasOption('force')) {
@@ -83,6 +117,23 @@ test('aucune de ces commandes ne fait de --dry-run son SEUL garde-fou', function
     }
 
     expect($offenders)->toBe([], implode("\n  ", $offenders));
+});
+
+test('les commandes de réécriture connues portent TOUJOURS --force', function () {
+    // Le pendant du balayage : retirer son drapeau à l'une d'elles la ferait SORTIR
+    // de la famille dérivée, donc échapper au test précédent. On les nomme donc, non
+    // pour définir la règle, mais pour détecter qu'on les en sort.
+    $missing = [];
+
+    foreach (KNOWN_REWRITE_COMMANDS as $name) {
+        $definition = \Illuminate\Support\Facades\Artisan::all()[$name]->getDefinition();
+
+        if (! $definition->hasOption('force')) {
+            $missing[] = $name;
+        }
+    }
+
+    expect($missing)->toBe([], 'Commandes de réécriture sans --force : ' . implode(', ', $missing));
 });
 
 test('batches:rebuild-quantities NE corrige PAS sans --force', function () {
@@ -187,7 +238,7 @@ test('les commandes de réécriture ne sont pas planifiées SANS --force', funct
 
     $offenders = [];
 
-    foreach (REWRITE_COMMANDS as $name) {
+    foreach (KNOWN_REWRITE_COMMANDS as $name) {
         if (! preg_match("/Schedule::command\('" . preg_quote($name, '/') . "([^']*)'\)/", $source, $m)) {
             continue;   // non planifiée : rien à vérifier
         }
