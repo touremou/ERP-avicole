@@ -85,6 +85,54 @@ class Setting extends Model
     }
 
     /**
+     * IDENTITÉ DE L'ÉMETTEUR — déclaration UNIQUE de qui signe un document.
+     *
+     * Cette identité était écrite QUATRE fois, dans quatre documents, et chacun
+     * n'en imprimait qu'une partie :
+     *
+     *   • la FACTURE : nom, pays, NIF, RCCM — mais ni adresse ni téléphone ;
+     *   • le TICKET de vente : nom, NIF, RCCM ;
+     *   • le REÇU de caisse : nom, adresse, téléphone — sans NIF ni RCCM ;
+     *   • le BULLETIN de paie : nom, adresse, téléphone.
+     *
+     * La facture — celle qui part chez le client et qui compte fiscalement — était
+     * donc justement celle qui ne portait pas l'adresse de l'émetteur.
+     *
+     * ─── ET SURTOUT ───
+     *
+     * Le bloc « Vendeur » de la facture ne lisait RIEN : il imprimait
+     * « AviSmart SARL » et « Conakry, République de Guinée » CODÉS EN DUR. Le
+     * promoteur pouvait renseigner le nom de son exploitation dans les Réglages —
+     * l'en-tête l'affichait — et la partie qui l'identifie légalement continuait
+     * de désigner une autre société. Ses factures partaient chez ses clients au nom
+     * d'AviSmart SARL, sans que rien ne le lui dise.
+     *
+     * C'est exactement le défaut corrigé sur companyName() plus tôt dans cet
+     * audit — le nom saisi qui n'atteignait pas les messages sortants. Il avait
+     * survécu ici, sous une forme pire : non pas un repli mal choisi, mais une
+     * valeur en dur qu'aucun réglage ne pouvait atteindre.
+     *
+     * Les valeurs vides sont rendues telles quelles : à chaque document de décider
+     * s'il masque la ligne. Inventer une adresse par défaut redonnerait à une
+     * supposition l'autorité d'une mention légale.
+     *
+     * @return array{name: string, address: string, phone: string, fiscal_id: string,
+     *               rccm: string, country: string, logo: string}
+     */
+    public static function companyIdentity(): array
+    {
+        return [
+            'name'      => static::companyName(),
+            'address'   => trim((string) static::get('general.company_address', '')),
+            'phone'     => trim((string) static::get('general.company_phone', '')),
+            'fiscal_id' => trim((string) static::get('general.fiscal_id', '')),
+            'rccm'      => trim((string) static::get('general.rccm', '')),
+            'country'   => trim((string) static::get('general.country', 'Guinée')),
+            'logo'      => trim((string) static::get('general.company_logo', '')),
+        ];
+    }
+
+    /**
      * HEURE D'UN RÉGLAGE — déclaration UNIQUE de « ce qu'est une heure valide ».
      *
      * Quatre réglages portent une heure saisie à la main (unité déclarée HH:MM) :

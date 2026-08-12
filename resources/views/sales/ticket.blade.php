@@ -5,9 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ $sale->reference }} — {{ __('Ticket') }}</title>
     @php
-        $shop   = setting('general.company_name', 'AviSmart');
-        $nif    = setting('general.fiscal_id', '');
-        $rccm   = setting('general.rccm', '');
+        // Identité de l'émetteur : déclaration UNIQUE (Setting::companyIdentity).
+        // Elle vivait ici en trois lectures séparées, et il en manquait deux —
+        // adresse et téléphone — que le reçu de caisse imprimait pourtant déjà.
+        $emetteur = \App\Models\Setting::companyIdentity();
+        $shop   = $emetteur['name'];
+        $nif    = $emetteur['fiscal_id'];
+        $rccm   = $emetteur['rccm'];
         $footer = trim((string) setting('ventes.invoice_footer', 'Merci pour votre confiance.'));
         $paid   = (float) $sale->total_amount - (float) $sale->remaining_amount;
         $docLabel = match ($sale->type) {
@@ -42,6 +46,8 @@
             <img src="{{ media_url(setting('general.company_logo')) }}" alt="" style="max-height:42px;max-width:60mm;margin-bottom:4px;">
         @endif
         <div class="bold lg">{{ $shop }}</div>
+        @if($emetteur['address'])<div class="muted">{{ $emetteur['address'] }}</div>@endif
+        @if($emetteur['phone'])<div class="muted">{{ __("Tél") }} : {{ $emetteur['phone'] }}</div>@endif
         @if($nif)<div class="muted">NIF : {{ $nif }}</div>@endif
         @if($rccm)<div class="muted">RCCM : {{ $rccm }}</div>@endif
     </div>

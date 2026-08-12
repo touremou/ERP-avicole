@@ -40,7 +40,12 @@
         </div>
 
         <p class="text-[8px] text-slate-300 font-black uppercase tracking-widest mt-6">
-            AviSmart ERP — {{ __("L'admin a été notifié par WhatsApp") }}
+        {{-- « notifié par WhatsApp » NOMMAIT un canal précis, et c'était faux : sur
+             une installation dont le WhatsApp est en mode journal, personne n'était
+             notifié du tout. Depuis, l'alerte part sur trois canaux (cloche, e-mail,
+             WhatsApp) selon ce qui est configuré. On dit donc ce qui est vrai dans
+             tous les cas, sans promettre un canal qui peut être muet. --}}
+            {{ Illuminate\Support\Facades\Config::get('app.name', 'AviSmart') }} — {{ __("L'administration a été alertée") }}
         </p>
     </div>
 </body>

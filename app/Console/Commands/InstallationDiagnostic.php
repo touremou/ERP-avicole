@@ -216,6 +216,23 @@ class InstallationDiagnostic extends Command
                 'Réglages › Général → nom de l’entreprise.')
             : $this->healthy('Identité', "Documents signés « {$company} ».");
 
+        // Identité de l'émetteur : elle signe factures, tickets, reçus et bulletins.
+        // Une mention absente ne se voit pas à l'écran — elle se voit sur le
+        // document que le client a déjà reçu.
+        $identite = Setting::companyIdentity();
+
+        $manquants = collect([
+            'adresse'   => $identite['address'],
+            'téléphone' => $identite['phone'],
+            'NIF'       => $identite['fiscal_id'],
+            'RCCM'      => $identite['rccm'],
+        ])->filter(fn ($v) => blank($v))->keys();
+
+        $manquants->isEmpty()
+            ? $this->healthy('Documents', 'Factures, tickets, reçus et bulletins portent une identité complète.')
+            : $this->attention('Documents', 'Mention(s) absente(s) de TOUS les documents sortants : ' . $manquants->implode(', ') . '. Une facture sans NIF ni RCCM n’est pas un justificatif recevable.',
+                'Réglages › Général → adresse, téléphone, N° Identification Fiscale, N° RCCM.');
+
         $bagWeight = (float) setting('general.feed_bag_weight', 50);
 
         if ($bagWeight != 50.0) {

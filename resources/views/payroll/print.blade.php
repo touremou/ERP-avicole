@@ -35,7 +35,8 @@
     </style>
 </head>
 <body>
-    <div class="watermark">{{ setting('general.company_name', 'AviSmart') }}</div>
+    @php($emetteur = \App\Models\Setting::companyIdentity())
+    <div class="watermark">{{ $emetteur['name'] }}</div>
 
     {{-- BOUTON IMPRIMER --}}
     <div class="no-print" style="margin-bottom: 20px; text-align: right;">
@@ -48,10 +49,16 @@
     {{-- EN-TÊTE --}}
     <div class="header">
         <div>
+            {{-- Identité de l'émetteur : déclaration UNIQUE (Setting::companyIdentity),
+                 résolue en tête de document. Le repli « République de Guinée » sur
+                 l'ADRESSE a disparu : ce n'est pas une adresse, et l'imprimer donnait
+                 à un blanc l'apparence d'un renseignement. Une ligne non renseignée
+                 est désormais masquée. --}}
             <div class="company">
-                {{ setting('general.company_name', 'AviSmart') }}
-                <small>{{ setting('general.company_address', 'République de Guinée') }}</small>
-                <small>{{ __("Tél") }} : {{ setting('general.company_phone', '') }}</small>
+                {{ $emetteur['name'] }}
+                @if($emetteur['address'])<small>{{ $emetteur['address'] }}</small>@endif
+                @if($emetteur['phone'])<small>{{ __("Tél") }} : {{ $emetteur['phone'] }}</small>@endif
+                @if($emetteur['fiscal_id'])<small>NIF : {{ $emetteur['fiscal_id'] }}</small>@endif
             </div>
         </div>
         <div class="doc-type">
@@ -172,7 +179,7 @@
     </div>
 
     <div style="margin-top: 30px; text-align: center; font-size: 8px; color: #cbd5e1; border-top: 1px solid #f1f5f9; padding-top: 10px;">
-        {{ setting('rh.payslip_footer', setting('general.company_name', 'AviSmart') . ' — Système ERP — Document généré automatiquement') }}
+        {{ setting('rh.payslip_footer', $emetteur['name'] . ' — Système ERP — Document généré automatiquement') }}
     </div>
 </body>
 </html>

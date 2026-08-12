@@ -4,9 +4,14 @@
     <meta charset="UTF-8">
     <title>{{ __("Reçu") }} {{ $sale->reference }}</title>
     @php
-        $shop  = setting('general.company_name', \App\Models\Setting::companyName());
-        $phone = setting('general.company_phone', '');
-        $addr  = setting('general.company_address', '');
+        // Identité de l'émetteur : déclaration UNIQUE (Setting::companyIdentity).
+        // Le NIF et le RCCM manquaient ici, alors que la facture et le ticket de
+        // vente les portaient — un reçu de caisse en est un justificatif comptable
+        // comme les autres.
+        $emetteur = \App\Models\Setting::companyIdentity();
+        $shop  = $emetteur['name'];
+        $phone = $emetteur['phone'];
+        $addr  = $emetteur['address'];
     @endphp
     <style>
         /* margin:0 → pas d'URL/date injectées par le navigateur ; marge en padding. */
@@ -36,7 +41,9 @@
     <div class="center">
         <div class="shop">{{ $shop }}</div>
         @if($addr)<div class="muted">{{ $addr }}</div>@endif
-        @if($phone)<div class="muted">Tél : {{ $phone }}</div>@endif
+        @if($phone)<div class="muted">{{ __("Tél") }} : {{ $phone }}</div>@endif
+        @if($emetteur['fiscal_id'])<div class="muted">NIF : {{ $emetteur['fiscal_id'] }}</div>@endif
+        @if($emetteur['rccm'])<div class="muted">RCCM : {{ $emetteur['rccm'] }}</div>@endif
     </div>
 
     <div class="sep"></div>
