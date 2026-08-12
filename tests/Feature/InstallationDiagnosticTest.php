@@ -69,6 +69,10 @@ function makeInstallationHealthy(int $farmId): void
     }
 
     DB::table('users')->update(['whatsapp_phone' => '+224610000000']);
+
+    // Une installation saine a des sauvegardes RÉCENTES : c'est le seul incident de
+    // ce diagnostic qui ne se rattrape pas, et son absence est donc bloquante.
+    \Illuminate\Support\Facades\Storage::fake('backups')->put('avismart/hier.zip', 'contenu');
 }
 
 test('la commande n’écrit RIEN', function () {
@@ -185,11 +189,20 @@ test('un article en stock sans prix est signalé', function () {
     expect($out)->toContain('Maïs vrac')->and($out)->toContain('comptée gratuite');
 });
 
-test('le planificateur est déclaré NON VÉRIFIABLE, jamais vert', function () {
-    // Rendre « planificateur OK » depuis une commande lancée à la main serait un
-    // mensonge : c'est le cron de l'hébergeur qui décide, et il n'est pas
-    // observable d'ici. Or c'est lui qui déclenche presque toutes les alertes.
+test('le planificateur n’est JAMAIS déclaré vert sans preuve', function () {
+    /*
+     * Ce test disait d'abord « NON VÉRIFIABLE, jamais vert ». Sa prémisse a été
+     * dépassée, et il faut le dire plutôt que de le contorsionner : la sauvegarde de
+     * 02:00 est déclenchée par le planificateur, et par lui seul. Une sauvegarde
+     * datée de cette nuit est donc une PREUVE que le cron tourne.
+     *
+     * Ce qui ne change pas — et c'est le vrai principe — c'est qu'on ne rend jamais
+     * ce verdict SANS trace. Sans preuve, on dit qu'on ne sait pas.
+     */
     makeInstallationHealthy($this->farm->id);
+
+    // Aucune trace : on ne conclut pas.
+    \Illuminate\Support\Facades\Storage::fake('backups');
 
     $out = runDiagnostic()[1];
 
@@ -223,9 +236,39 @@ test('chaque constat de niveau bloquant ou attention porte un remède', function
     $withoutRemedy = [];
 
     foreach ($matches[2] as $i => $args) {
-        // Trois arguments attendus : sujet, constat, remède. Deux seulement
-        // signifierait un remède manquant.
-        if (substr_count($args, "',") + substr_count($args, '",') < 2 && ! str_contains($args, '. \'')) {
+        // Trois arguments attendus : sujet, constat, remède.
+        //
+        // On compte les virgules de PREMIER NIVEAU, en ignorant celles qui vivent
+        // dans une chaîne ou entre parenthèses. Ma première version comptait
+        // naïvement les occurrences de « ', » : un constat bâti par concaténation —
+        // 'texte : ' . $e->getMessage() — n'en portait pas, et le test criait au
+        // remède manquant sur un appel parfaitement correct. Un détecteur qui
+        // produit des faux positifs finit ignoré, donc inutile.
+        $depth = 0;
+        $quote = null;
+        $topLevelCommas = 0;
+
+        foreach (str_split($args) as $char) {
+            if ($quote !== null) {
+                if ($char === $quote) {
+                    $quote = null;
+                }
+
+                continue;
+            }
+
+            if ($char === "'" || $char === '"') {
+                $quote = $char;
+            } elseif ($char === '(' || $char === '[') {
+                $depth++;
+            } elseif ($char === ')' || $char === ']') {
+                $depth--;
+            } elseif ($char === ',' && $depth === 0) {
+                $topLevelCommas++;
+            }
+        }
+
+        if ($topLevelCommas < 2) {
             $withoutRemedy[] = trim(substr($matches[0][$i], 0, 90));
         }
     }
@@ -242,4 +285,91 @@ test('une heure de réglage illisible est signalée', function () {
     $out = runDiagnostic()[1];
 
     expect($out)->toContain('25:00')->and($out)->toContain('la valeur de repli s’applique');
+});
+
+// ─────────────────────────────────────────────────────────────
+//  LES SAUVEGARDES — le seul incident de cette liste qui ne se rattrape pas
+// ─────────────────────────────────────────────────────────────
+
+test('l’absence TOTALE de sauvegarde est BLOQUANTE', function () {
+    // Tout le reste de ce diagnostic porte sur des états rattrapables. Une panne de
+    // disque sans sauvegarde, non : elle met fin à l'exploitation.
+    makeInstallationHealthy($this->farm->id);
+    \Illuminate\Support\Facades\Storage::fake('backups');
+
+    [$code, $out] = runDiagnostic();
+
+    expect($out)->toContain('AUCUNE sauvegarde')
+        ->and($out)->toContain('ne se rattrape pas')
+        ->and($code)->toBe(1);
+});
+
+test('une sauvegarde TROP ANCIENNE est bloquante, pas « au vert »', function () {
+    // Un fichier présent ne prouve rien s'il date de trois semaines : la sauvegarde
+    // quotidienne ne tourne alors plus, et personne ne s'en aperçoit.
+    makeInstallationHealthy($this->farm->id);
+
+    $disk = \Illuminate\Support\Facades\Storage::fake('backups');
+    $disk->put('avismart/2026-07-01.zip', 'contenu');
+    touch($disk->path('avismart/2026-07-01.zip'), now()->subDays(20)->timestamp);
+
+    [$code, $out] = runDiagnostic();
+
+    expect($out)->toContain('ne tourne donc plus')->and($code)->toBe(1);
+});
+
+test('une sauvegarde RÉCENTE prouve que le planificateur tourne', function () {
+    /*
+     * Le point le plus utile de ce lot.
+     *
+     * Le diagnostic annonçait le planificateur « NON VÉRIFIABLE d'ici », et c'était
+     * vrai au sens strict : aucune commande lancée à la main n'interroge le cron de
+     * l'hébergeur. Mais elle peut en observer la TRACE — la sauvegarde de 02:00 est
+     * déclenchée par le planificateur, et par lui seul.
+     *
+     * Un fait établi par ce qu'il a laissé vaut mieux qu'un « je ne sais pas ».
+     */
+    makeInstallationHealthy($this->farm->id);
+
+    $disk = \Illuminate\Support\Facades\Storage::fake('backups');
+    $disk->put('avismart/hier.zip', 'contenu');
+
+    $out = runDiagnostic()[1];
+
+    expect($out)->toContain('Le planificateur TOURNE')
+        ->and($out)->not->toContain('NON VÉRIFIABLE');
+});
+
+test('sans sauvegarde récente, le planificateur reste déclaré NON VÉRIFIABLE', function () {
+    // Le pendant : sans trace, on ne conclut pas. Annoncer « le planificateur
+    // tourne » sans preuve serait exactement le verdict inventé que cette commande
+    // s'interdit.
+    makeInstallationHealthy($this->farm->id);
+    \Illuminate\Support\Facades\Storage::fake('backups');
+
+    expect(runDiagnostic()[1])->toContain('NON VÉRIFIABLE');
+});
+
+test('des sauvegardes uniquement LOCALES sont signalées', function () {
+    // Une sauvegarde à côté des données ne protège que de l'effacement, pas de la
+    // perte de la machine.
+    makeInstallationHealthy($this->farm->id);
+
+    $disk = \Illuminate\Support\Facades\Storage::fake('backups');
+    $disk->put('avismart/hier.zip', 'contenu');
+
+    config(['backup.backup.destination.disks' => ['backups']]);
+
+    expect(runDiagnostic()[1])->toContain('emporterait les données ET leurs sauvegardes');
+});
+
+test('une copie hors site est reconnue', function () {
+    makeInstallationHealthy($this->farm->id);
+
+    $disk = \Illuminate\Support\Facades\Storage::fake('backups');
+    $disk->put('avismart/hier.zip', 'contenu');
+
+    config(['backup.backup.destination.disks' => ['backups', 'backups_offsite']]);
+
+    expect(runDiagnostic()[1])->toContain('Copie sur 2 destination(s)');
 });

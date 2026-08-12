@@ -64,6 +64,7 @@ class InstallationDiagnostic extends Command
         $this->checkAccountsAndSites();
         $this->checkCriticalSettings();
         $this->checkCostIntegrity();
+        $this->checkBackups();
         $this->checkScheduler();
 
         return $this->render();
@@ -294,15 +295,83 @@ class InstallationDiagnostic extends Command
     }
 
     // ─────────────────────────────────────────────────────────────
-    //  5. CE QUE CETTE COMMANDE NE PEUT PAS VÉRIFIER
+    //  5. LES SAUVEGARDES
+    // ─────────────────────────────────────────────────────────────
+    //
+    // L'enjeu le plus lourd de tous, et le seul irréversible : une panne de disque
+    // sans sauvegarde met fin à l'exploitation. Tout le reste se rattrape.
+    private function checkBackups(): void
+    {
+        try {
+            $disk = \Illuminate\Support\Facades\Storage::disk('backups');
+            $fichiers = $disk->allFiles();
+        } catch (\Throwable $e) {
+            $this->blocking('Sauvegardes', 'Le disque de sauvegarde est injoignable : ' . $e->getMessage(),
+                'Vérifier la configuration du disque « backups » et les droits d’écriture.');
+
+            return;
+        }
+
+        if ($fichiers === []) {
+            $this->blocking('Sauvegardes', 'AUCUNE sauvegarde n’existe. Une panne de disque effacerait l’exploitation — c’est le seul incident de cette liste qui ne se rattrape pas.',
+                'Lancer une fois php artisan backup:run, puis vérifier que le cron de l’hébergeur tourne.');
+
+            return;
+        }
+
+        $dernier = collect($fichiers)
+            ->map(fn ($f) => $disk->lastModified($f))
+            ->max();
+
+        $age = now()->diffInHours(\Carbon\Carbon::createFromTimestamp($dernier), absolute: true);
+
+        if ($age > 48) {
+            $jours = round($age / 24, 1);
+
+            $this->blocking('Sauvegardes', "La dernière sauvegarde date de {$jours} jour(s). La sauvegarde quotidienne ne tourne donc plus.",
+                'Vérifier le cron de l’hébergeur (schedule:run), puis php artisan backup:run.');
+        } else {
+            $this->healthy('Sauvegardes', count($fichiers) . " sauvegarde(s), la plus récente il y a {$age} h.");
+        }
+
+        // Une sauvegarde à côté des données ne protège que de l'effacement, pas de
+        // la perte de la machine.
+        $disques = (array) config('backup.backup.destination.disks', []);
+
+        count($disques) > 1
+            ? $this->healthy('Sauvegardes hors site', 'Copie sur ' . count($disques) . ' destination(s).')
+            : $this->attention('Sauvegardes hors site', 'Les sauvegardes ne partent QUE sur le disque du serveur : une panne matérielle emporterait les données ET leurs sauvegardes.',
+                'Configurer BACKUP_DISKS=backups,backups_offsite (voir docs/ops/backup-restore-runbook.md).');
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    //  6. LE PLANIFICATEUR
     // ─────────────────────────────────────────────────────────────
     private function checkScheduler(): void
     {
-        // Aucune commande lancée à la main ne peut établir que le planificateur
-        // tourne côté hébergeur. Le dire vaut mieux qu'un verdict inventé : c'est
-        // pourtant lui qui déclenche les alertes de contrat, de pointage manquant,
-        // de péremption et le résumé quotidien.
-        $this->attention('Tâches planifiées', 'NON VÉRIFIABLE d’ici. Si le cron de l’hébergeur n’appelle pas « php artisan schedule:run » chaque minute, AUCUNE alerte planifiée ne partira (contrats, pointages manquants, péremptions, résumé quotidien).',
+        /*
+         * AUCUNE commande lancée à la main ne peut interroger le cron de
+         * l'hébergeur. Mais elle peut en observer la TRACE : la sauvegarde
+         * quotidienne de 02:00 est déclenchée par le planificateur, et par lui seul.
+         * Une sauvegarde datée de cette nuit est donc une PREUVE que le cron tourne.
+         *
+         * C'est mieux qu'un « non vérifiable » : le fait est établi par ce qu'il a
+         * laissé, à défaut de pouvoir l'être en le regardant faire.
+         */
+        try {
+            $disk = \Illuminate\Support\Facades\Storage::disk('backups');
+            $recent = collect($disk->allFiles())->map(fn ($f) => $disk->lastModified($f))->max();
+        } catch (\Throwable) {
+            $recent = null;
+        }
+
+        if ($recent && now()->diffInHours(\Carbon\Carbon::createFromTimestamp($recent), absolute: true) <= 36) {
+            $this->healthy('Tâches planifiées', 'Le planificateur TOURNE : la sauvegarde automatique de cette nuit en est la trace.');
+
+            return;
+        }
+
+        $this->attention('Tâches planifiées', 'NON VÉRIFIABLE d’ici, et aucune sauvegarde récente n’en atteste. Si le cron de l’hébergeur n’appelle pas « php artisan schedule:run » chaque minute, AUCUNE alerte planifiée ne partira (contrats, pointages manquants, péremptions, résumé quotidien).',
             'cPanel › Tâches cron → * * * * * cd /chemin && php artisan schedule:run >> /dev/null 2>&1');
     }
 
