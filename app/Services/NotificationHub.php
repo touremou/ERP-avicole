@@ -69,6 +69,11 @@ class NotificationHub
         'alert_hr_contract'   => ['employees.contracts.index', '/alertes'],
         'alert_leave'         => ['payroll.leaves', '/alertes'],
         'daily_summary'       => ['dashboard', '/'],
+        'activity_digest'     => ['dashboard', '/'],
+        // Le récepteur valide la réception au bureau : la PWA n'a pas d'écran
+        // d'expédition (vérifié dans SCREENS), le terrain reste donc sur ses
+        // alertes plutôt que d'être renvoyé à l'accueil par un chemin inconnu.
+        'alert_dispatch'      => ['dispatches.index', '/alertes'],
     ];
 
     /**
@@ -119,20 +124,19 @@ class NotificationHub
      */
     public function sendDailySummary(): int
     {
-        $message = $this->buildDailySummary();
-        $recipients = $this->getSubscribers('daily_summary');
-        $sent = 0;
+        // Par broadcast() et NON par un envoi WhatsApp direct : c'est LE résumé du
+        // promoteur, qui vit à l'étranger. Envoyé en direct, il n'existait que sur
+        // le canal WhatsApp — lequel est en mode journal sur cette installation. Le
+        // résumé ne partait donc nulle part, chaque matin, sans que rien ne le dise.
+        // Il passe désormais aussi par la cloche, le push et l'e-mail, selon les
+        // préférences de chacun.
+        $sent = $this->broadcast(
+            'daily_summary',
+            $this->buildDailySummary(),
+            'Résumé Quotidien'
+        );
 
-        foreach ($recipients as $user) {
-            $result = $this->whatsapp->send($user->whatsapp_phone, $message, [
-                'user_id' => $user->id,
-                'type'    => 'daily_summary',
-                'title'   => 'Résumé Quotidien',
-            ]);
-            if ($result) $sent++;
-        }
-
-        Log::info("NotificationHub: résumé quotidien envoyé à {$sent}/{$recipients->count()} destinataires.");
+        Log::info("NotificationHub: résumé quotidien remis à {$sent} destinataire(s), tous canaux.");
 
         return $sent;
     }
@@ -166,14 +170,26 @@ class NotificationHub
         // Citernes basses
         $lowCiternes = WaterSource::critical()->get();
 
-        // CA de la veille
-        $yesterdaySales = Sale::whereDate('sale_date', yesterday())
+        // CA de la veille.
+        //
+        // C'ÉTAIT `yesterday()`, une fonction qui N'EXISTE PAS. `yesterday()` est une
+        // méthode statique de Carbon, pas une fonction globale — PHP levait donc une
+        // erreur fatale « Call to undefined function App\Services\yesterday() » ici
+        // même, et le résumé quotidien N'A JAMAIS ÉTÉ ENVOYÉ, sur aucun canal, depuis
+        // que ces deux lignes existent. La tâche de 07:00 mourait chaque matin en
+        // silence. Vérifié à la main : `php artisan avismart:daily-summary` plantait.
+        //
+        // C'est la même famille que l'incident du 14 juillet — un symbole absent,
+        // invoqué seulement à l'exécution, dans une tâche que personne ne regarde
+        // tourner. UndefinedFunctionCallTest balaie désormais tout le code à la
+        // recherche du même défaut.
+        $yesterdaySales = Sale::whereDate('sale_date', now()->subDay()->toDateString())
             ->whereNotIn('status', ['annule', 'brouillon']);
         $yesterdayCA = $yesterdaySales->sum('total_amount');
         $yesterdayCount = $yesterdaySales->count();
 
         // Paiements reçus hier
-        $yesterdayPayments = Payment::whereDate('payment_date', yesterday())->sum('amount');
+        $yesterdayPayments = Payment::whereDate('payment_date', now()->subDay()->toDateString())->sum('amount');
 
         // Écarts non résolus
         $openDiscrepancies = DiscrepancyReport::where('resolution', 'en_cours')->count();
@@ -282,24 +298,17 @@ class NotificationHub
             return 0;
         }
 
-        $recipients = $this->getSubscribers('daily_summary');
-        $sent = 0;
-        $servedPhones = [];
+        // Même raison que le résumé quotidien : envoyé en direct, ce digest
+        // n'existait que sur WhatsApp. C'est l'outil de redevabilité d'un promoteur
+        // hors site — le canal le plus important à ne PAS laisser dépendre d'un
+        // seul provider.
+        $sent = $this->broadcast('activity_digest', $message, 'Activité du jour');
 
-        foreach ($recipients as $user) {
-            $servedPhones[] = $user->whatsapp_phone;
-            if ($this->whatsapp->send($user->whatsapp_phone, $message, [
-                'user_id' => $user->id,
-                'type'    => 'activity_digest',
-                'title'   => 'Activité du jour',
-            ])) {
-                $sent++;
-            }
-        }
-
-        // Filet de sécurité : toujours au propriétaire hors site.
+        // Filet de sécurité : toujours au propriétaire hors site, même s'il n'est
+        // pas abonné. Conservé tel quel — c'est un numéro, pas un compte, donc il
+        // n'a ni cloche ni push : le WhatsApp direct est ici le seul chemin.
         $adminPhone = (string) setting('whatsapp.admin_phone', '');
-        if ($adminPhone !== '' && ! in_array($adminPhone, $servedPhones, true)) {
+        if ($adminPhone !== '') {
             if ($this->whatsapp->send($adminPhone, $message, [
                 'type'  => 'activity_digest',
                 'title' => 'Activité du jour',
@@ -940,8 +949,14 @@ class NotificationHub
      */
     public function notifyDispatchReceiver(\App\Models\Dispatch $dispatch): void
     {
+        // Le garde portait sur le NUMÉRO WhatsApp : un récepteur désigné qui n'en
+        // a pas ne recevait RIEN — pas même la cloche. Or il est le seul à pouvoir
+        // valider la réception, et sans elle le contrôle des écarts ne se déclenche
+        // jamais. La marchandise arrivait donc sans que personne ne soit prévenu.
+        // C'est le même défaut que celui corrigé sur les congés (#206).
         $receiver = $dispatch->intendedReceiver;
-        if (! $receiver?->whatsapp_phone) {
+
+        if (! $receiver) {
             return;
         }
 
@@ -956,11 +971,18 @@ class NotificationHub
             . "Vous êtes le récepteur désigné. À l'arrivée, validez la réception dans l'ERP "
             . "(Logistique › Expéditions) pour déclencher le contrôle des écarts.";
 
-        $this->whatsapp->send($receiver->whatsapp_phone, $message, [
-            'user_id' => $receiver->id,
-            'type'    => 'alert_dispatch',
-            'title'   => "Réception {$dispatch->dispatch_number}",
-        ]);
+        // Audience IMPOSÉE : cette alerte s'adresse à une FONCTION — le récepteur
+        // désigné — et non à qui a coché une case. Elle ne doit donc pas dépendre
+        // des abonnements.
+        $this->broadcast(
+            'alert_dispatch',
+            $message,
+            "Réception {$dispatch->dispatch_number}",
+            'normal',
+            null,
+            null,
+            collect([$receiver])
+        );
     }
 
     /**
@@ -1069,20 +1091,13 @@ class NotificationHub
         $lines[] = "— {$farmName} ERP 🇬🇳";
         $message  = implode("\n", $lines);
 
-        $recipients = $this->getSubscribers('daily_summary');
-        $sent       = 0;
+        // Par broadcast() : envoyé en direct, ce dosage n'existait que sur WhatsApp.
+        // C'est la consigne d'aliment du jour, destinée aux techniciens — ceux-là
+        // même qui n'ont pas forcément de numéro renseigné, et qui travaillent
+        // depuis la PWA où la cloche et le push les atteignent.
+        $sent = $this->broadcast('daily_summary', $message, 'Dosage Aliment');
 
-        foreach ($recipients as $user) {
-            if ($this->whatsapp->send($user->whatsapp_phone, $message, [
-                'user_id' => $user->id,
-                'type'    => 'daily_summary',
-                'title'   => 'Dosage Aliment',
-            ])) {
-                $sent++;
-            }
-        }
-
-        Log::info("NotificationHub: dosage aliment envoyé à {$sent} destinataire(s).");
+        Log::info("NotificationHub: dosage aliment remis à {$sent} destinataire(s), tous canaux.");
 
         return $sent;
     }
@@ -1283,8 +1298,14 @@ class NotificationHub
      *        WhatsApp étant en mode journal chez l'exploitant, elles n'atteignaient
      *        donc personne.
      */
-    private function broadcast(string $type, string $message, string $title, string $severity = 'normal', ?string $url = null, ?string $mobile = null, ?\Illuminate\Support\Collection $audience = null): void
+    private function broadcast(string $type, string $message, string $title, string $severity = 'normal', ?string $url = null, ?string $mobile = null, ?\Illuminate\Support\Collection $audience = null): int
     {
+        // Nombre de personnes touchées sur AU MOINS un canal. Les appelants qui
+        // rendaient « envoyé à N » comptaient les seuls envois WhatsApp : chez une
+        // exploitation dont le WhatsApp est en mode journal, ils annonçaient donc 0
+        // alors que la cloche avait bien reçu — ou l'inverse, 1 alors que rien
+        // n'était parti. On compte les personnes atteintes, tous canaux confondus.
+        $reached = [];
         // Une alerte dit qu'il y a QUELQUE CHOSE À FAIRE ; sans destination, elle
         // laisse chercher où. Le mécanisme existait de bout en bout — la cloche
         // redirige vers data['url'], le push l'ouvre, l'e-mail en fait un bouton —
@@ -1308,11 +1329,13 @@ class NotificationHub
                 continue;
             }
 
-            $this->whatsapp->send($user->whatsapp_phone, $message, [
+            if ($this->whatsapp->send($user->whatsapp_phone, $message, [
                 'user_id' => $user->id,
                 'type'    => $type,
                 'title'   => $title,
-            ]);
+            ])) {
+                $reached[$user->id] = true;
+            }
         }
 
         // Filet de sécurité : les alertes critiques sont aussi envoyées au
@@ -1380,8 +1403,12 @@ class NotificationHub
                     ['type' => $type, 'title' => $title, 'message' => $message, 'severity' => $severity, 'url' => $url, 'mobile_url' => $mobileUrl],
                     $channels
                 ));
+
+                $reached[$user->id] = true;
             }
         }
+
+        return count($reached);
     }
 
     /**
@@ -1436,6 +1463,20 @@ class NotificationHub
             // administratives à portée financière (des jours non pointés payés en
             // entier). Même canal que leur jumeau ci-dessus.
             'alert_hr_contract', 'alert_hr_attendance' => 'alert_fraud',
+
+            // Digest d'activité de fin de journée : il a TOUJOURS été adressé aux
+            // abonnés du résumé quotidien (getSubscribers('daily_summary')). Le
+            // rattachement est explicité ici plutôt que laissé au défaut `null`,
+            // qui vaut « aucun filtre » — c'est-à-dire un WhatsApp à TOUS les
+            // comptes ayant un numéro. Élargir une audience payante par omission
+            // serait le contraire d'une correction.
+            'activity_digest' => 'daily_summary',
+
+            // Expédition à réceptionner : adressée à une FONCTION — le récepteur
+            // désigné, passé en audience imposée — et non à qui a coché une case.
+            // Le rattachement à « anti-fraude » ne sert donc pas à choisir les
+            // destinataires mais à respecter un compte qui a tout coupé.
+            'alert_dispatch' => 'alert_fraud',
 
             default => null,
         };

@@ -25,3 +25,9 @@ Homestead.yaml
 Thumbs.db
 
 .env.dusk.local
+
+# Répertoires de travail temporaires des agents : un « gitlink » vers un worktree
+# inexistant avait été committé (cf. #157), ce qui faisait échouer
+# `git submodule foreach` à CHAQUE checkout du CI — un avertissement permanent,
+# sans rapport avec le code.
+.claude/worktrees/
