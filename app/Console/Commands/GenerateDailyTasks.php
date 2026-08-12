@@ -35,9 +35,16 @@ class GenerateDailyTasks extends Command
         $days = (int) $this->option('days');
         $farmId = $this->option('farm') ? (int) $this->option('farm') : null;
 
-        // Si pas de ferme spécifiée, générer pour chaque ferme
+        // Sites ACTIFS uniquement, par la déclaration unique (Farm::active(), qui
+        // exclut aussi les sites supprimés).
+        //
+        // C'était `DB::table('farms')->pluck('id')` : AUCUN filtre. Un site
+        // désactivé — ou supprimé — recevait donc ses tâches quotidiennes chaque
+        // matin à 05:00, indéfiniment, et elles s'accumulaient dans les compteurs
+        // de retard. Mesuré avant correction : 4 sites parcourus dont un inactif et
+        // un supprimé, 4 tâches créées pour chacun.
         if (!$farmId && \Illuminate\Support\Facades\Schema::hasTable('farms')) {
-            $farmIds = \Illuminate\Support\Facades\DB::table('farms')->pluck('id')->toArray();
+            $farmIds = \App\Models\Farm::active()->pluck('id')->toArray();
             if (empty($farmIds)) $farmIds = [null];
         } else {
             $farmIds = [$farmId];

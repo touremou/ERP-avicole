@@ -54,11 +54,28 @@ class SetCurrentFarm
             $this->resolveDefaultFarm($user);
         }
 
-        // 3. Partager la ferme courante avec toutes les vues
+        /*
+         * 3. Partager la ferme courante — SI elle est encore utilisable.
+         *
+         * C'était `Farm::withoutGlobalScopes()->find()`. Sur ce modèle, cet appel ne
+         * retire que la protection des SUPPRESSIONS (Farm n'a pas de scope de ferme) :
+         * un site supprimé restait donc affiché comme site courant, et le travail
+         * continuait de s'y déverser. Le sélecteur, juste en dessous, l'excluait déjà —
+         * les deux se contredisaient sur le même écran.
+         *
+         * Si le site en session n'est plus utilisable, on l'oublie et on en résout un
+         * autre plutôt que de laisser l'utilisateur dans un site fantôme.
+         */
         $currentFarmId = session('current_farm_id');
+
+        if ($currentFarmId && ! \App\Models\Farm::isUsable((int) $currentFarmId)) {
+            session()->forget('current_farm_id');
+            $this->resolveDefaultFarm($user);
+            $currentFarmId = session('current_farm_id');
+        }
+
         if ($currentFarmId) {
-            $currentFarm = \App\Models\Farm::withoutGlobalScopes()->find($currentFarmId);
-            view()->share('currentFarm', $currentFarm);
+            view()->share('currentFarm', \App\Models\Farm::find($currentFarmId));
             view()->share('currentFarmId', $currentFarmId);
         }
 
@@ -89,10 +106,18 @@ class SetCurrentFarm
 
     private function resolveDefaultFarm($user): void
     {
-        // Ferme par défaut
+        // Sites du compte encore EN SERVICE. Les deux requêtes ci-dessous lisaient le
+        // pivot sans aucun filtre : un compte dont le site par défaut avait été
+        // désactivé ou supprimé y était replacé à chaque requête.
+        $usable = \App\Models\Farm::active()
+            ->whereIn('id', DB::table('farm_user')->where('user_id', $user->id)->pluck('farm_id'))
+            ->pluck('id');
+
+        // Ferme par défaut, si elle est encore en service.
         $default = DB::table('farm_user')
             ->where('user_id', $user->id)
             ->where('is_default', true)
+            ->whereIn('farm_id', $usable)
             ->value('farm_id');
 
         if ($default) {
@@ -100,13 +125,9 @@ class SetCurrentFarm
             return;
         }
 
-        // Première ferme disponible
-        $first = DB::table('farm_user')
-            ->where('user_id', $user->id)
-            ->value('farm_id');
-
-        if ($first) {
-            session(['current_farm_id' => $first]);
+        // Premier site en service parmi les siens.
+        if ($usable->isNotEmpty()) {
+            session(['current_farm_id' => $usable->first()]);
             return;
         }
 

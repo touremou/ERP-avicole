@@ -31,8 +31,13 @@ class IncubatorController extends Controller
         // Injection des moyennes de performance
         $incubators->getCollection()->transform(function($incubator) {
             // Moyenne de réussite historique
-            $incubator->avg_performance = DB::table('incubations')
-                ->where('incubator_id', $incubator->id)
+            // Par le MODÈLE, pas par DB::table() : Incubation a le trait SoftDeletes,
+            // et une requête brute ignore ce filtre. Une incubation supprimée tirait
+            // donc la performance affichée de l'incubateur — alors que le total
+            // produit juste au-dessus, calculé par Eloquent (withSum), l'excluait.
+            // Le même écran montrait ainsi une somme et une moyenne qui ne portaient
+            // pas sur les mêmes lignes.
+            $incubator->avg_performance = \App\Models\Incubation::where('incubator_id', $incubator->id)
                 ->where('status', 'clos')
                 ->avg('hatchability_rate') ?? 0;
 

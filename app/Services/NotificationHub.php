@@ -1127,7 +1127,7 @@ class NotificationHub
         $utility  = app(\App\Services\UtilityService::class);
         $signaled = 0;
 
-        foreach (\App\Models\Farm::where('is_active', true)->get() as $farm) {
+        foreach (\App\Models\Farm::active()->get() as $farm) {
             session(['current_farm_id' => $farm->id]); // contexte ferme pour les modèles énergie
 
             $alerts = $weather->forecastAlerts($farm, $days);

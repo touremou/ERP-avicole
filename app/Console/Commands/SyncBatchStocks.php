@@ -60,8 +60,11 @@ class SyncBatchStocks extends Command
             $this->warn('Simulation : aucune écriture. Ajouter --force pour appliquer la rectification des effectifs.');
         }
 
-        $farms = Farm::withoutGlobalScopes()
-            ->where('is_active', true)
+        // Farm::active() et NON withoutGlobalScopes() : sur ce modèle, ce dernier ne
+        // retire que la protection des SUPPRESSIONS. Un site supprimé était donc
+        // réconcilié comme s'il tournait encore — défaut que j'avais introduit ici
+        // même en #215.
+        $farms = Farm::active()
             ->when($this->option('farm'), fn ($q) => $q->where('id', (int) $this->option('farm')))
             ->get();
 
