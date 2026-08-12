@@ -222,8 +222,24 @@ class FarmController extends Controller
             return back()->with('error', 'Vous n\'avez pas accès à cette ferme.');
         }
 
+        /*
+         * LE RATTACHEMENT NE SUFFISAIT PAS.
+         *
+         * Ce contrôle vérifiait uniquement la ligne du pivot `farm_user`. On pouvait
+         * donc basculer dans un site DÉSACTIVÉ, ou même SUPPRIMÉ : la session le
+         * retenait, l'en-tête le nommait, et toutes les saisies y allaient. Le
+         * sélecteur de site, lui, l'excluait déjà — il faisait donc comme si ce site
+         * n'existait plus, pendant qu'on pouvait continuer d'y travailler.
+         *
+         * Autrement dit, « désactiver un site » ne désactivait rien pour les comptes
+         * qui y étaient rattachés.
+         */
+        if (! Farm::isUsable($farmId)) {
+            return back()->with('error', __('Ce site est désactivé : impossible d’y basculer.'));
+        }
+
         session(['current_farm_id' => $farmId]);
-        $farm = Farm::withoutGlobalScopes()->find($farmId);
+        $farm = Farm::find($farmId);
 
         return redirect()->route('dashboard')
             ->with('success', "Basculé vers : {$farm->name}");

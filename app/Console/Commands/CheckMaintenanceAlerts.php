@@ -14,7 +14,7 @@ class CheckMaintenanceAlerts extends Command
 
     public function handle(): int
     {
-        $farmQuery = Farm::where('is_active', true);
+        $farmQuery = Farm::active();
 
         if ($farmId = $this->option('farm')) {
             $farmQuery->where('id', $farmId);

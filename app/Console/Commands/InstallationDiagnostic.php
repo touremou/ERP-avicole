@@ -151,7 +151,11 @@ class InstallationDiagnostic extends Command
     // ─────────────────────────────────────────────────────────────
     private function checkAccountsAndSites(): void
     {
-        $farms = Farm::withoutGlobalScopes()->where('is_active', true)->count();
+        // Farm::active() et NON withoutGlobalScopes() : sur ce modèle, ce dernier ne
+        // retire que la protection des SUPPRESSIONS (Farm n'a pas de scope de ferme).
+        // Un site supprimé était donc compté comme actif — défaut que j'avais
+        // introduit ici même en #213.
+        $farms = Farm::active()->count();
 
         $farms === 0
             ? $this->blocking('Sites', 'Aucun site actif : plus aucun écran ne fonctionne.', 'Sites → réactiver au moins un site.')

@@ -44,7 +44,9 @@ class CheckAttendanceGaps extends Command
 
         // Chaque site a son propre pointage : une alerte globale ne dirait pas
         // OÙ la feuille manque, donc à qui la demander.
-        $farms = Farm::withoutGlobalScopes()->where('is_active', true)->get();
+        // Farm::active() : `withoutGlobalScopes()` incluait les sites SUPPRIMÉS, qui
+        // recevaient donc des alertes de pointage manquant.
+        $farms = Farm::active()->get();
 
         foreach ($farms as $farm) {
             $headcount = Employee::assignableInFarm($farm->id)->count();

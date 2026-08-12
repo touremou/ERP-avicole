@@ -66,7 +66,7 @@ class EmployeeController extends Controller
 
         // Les sites où l'on peut muter ou prêter. Toutes les fermes actives : une
         // mutation sort par définition du site courant.
-        $farms = \App\Models\Farm::where('is_active', true)->orderBy('name')->get();
+        $farms = \App\Models\Farm::active()->orderBy('name')->get();
 
         return view('employees.show', compact('employee', 'farms'));
     }
