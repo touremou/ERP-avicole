@@ -196,7 +196,11 @@
         <div x-show="overtimeModal" x-transition class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" x-cloak>
             <div class="bg-white rounded-2xl w-full max-w-md p-8 text-left font-bold italic" @click.outside="overtimeModal = false">
                 <h3 class="text-lg font-black text-amber-600 uppercase tracking-tighter mb-2" x-text="'⏱ ' + @json(__("Heures sup.")) + ' — ' + otEmployee"></h3>
-                <p class="text-[9px] text-slate-500 mb-4">{{ __("Majoration appliquée : ×") }}{{ setting('rh.overtime_rate', 1.5) }} {{ __("(base mensuelle : 26 j × 8 h).") }}</p>
+                {{-- « 26 j × 8 h » était écrit EN DUR, alors que la base mensuelle est un réglage
+                     (rh.monthly_hours) qui entre réellement dans le calcul du taux horaire. Une
+                     exploitation passant à 173 h/mois lisait donc, sur l'écran même de la paie,
+                     une base qui n'était pas celle appliquée à ses bulletins. --}}
+                <p class="text-[9px] text-slate-500 mb-4">{{ __("Majoration appliquée : ×") }}{{ setting('rh.overtime_rate', 1.5) }} {{ __("(base mensuelle : :h h).", ['h' => rtrim(rtrim(number_format((float) setting('rh.monthly_hours', 208), 2, ',', ' '), '0'), ',')]) }}</p>
                 <form :action="'/payroll/payslip/' + otSlipId + '/overtime'" method="POST" class="space-y-4">
                     @csrf
                     <input type="number" name="hours" required min="0.5" step="0.5" placeholder="{{ __("Nombre d'heures") }}" class="w-full bg-slate-50 border-none rounded-xl p-3 text-lg font-black shadow-inner outline-none text-center">

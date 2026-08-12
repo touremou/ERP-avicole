@@ -49,14 +49,16 @@
 </head>
 <body onload="window.print()">
 
+    @php($emetteur = \App\Models\Setting::companyIdentity())
+
     <div class="header">
         <div class="logo-area">
-            @if(setting('general.company_logo'))
-                <img src="{{ media_url(setting('general.company_logo')) }}" alt="Logo" style="max-height: 60px; max-width: 220px; margin-bottom: 6px;">
+            @if($emetteur['logo'])
+                <img src="{{ media_url($emetteur['logo']) }}" alt="Logo" style="max-height: 60px; max-width: 220px; margin-bottom: 6px;">
             @endif
-            <h1>{{ setting('general.company_name', 'AviSmart') }}</h1>
+            <h1>{{ $emetteur['name'] }}</h1>
             <p>{{ __("Système de Gestion Avicole Intégré") }}</p>
-            <p style="margin-top: 8px; font-size: 9px; color: #475569;">{{ setting('general.country', 'Guinée') }}</p>
+            <p style="margin-top: 8px; font-size: 9px; color: #475569;">{{ $emetteur['country'] }}</p>
         </div>
         <div class="doc-info">
             <div class="ref">{{ $sale->reference }}</div>
@@ -70,18 +72,38 @@
     </div>
 
     <div class="parties">
+        {{--
+            LE BLOC QUI IDENTIFIE LÉGALEMENT L'ÉMETTEUR.
+
+            Il imprimait « AviSmart SARL » et « Conakry, République de Guinée »
+            CODÉS EN DUR : aucun réglage ne pouvait l'atteindre. Le promoteur
+            renseignait le nom de son exploitation, l'en-tête l'affichait, et cette
+            partie-ci — la seule qui compte fiscalement — continuait de désigner une
+            autre société. Ses factures partaient donc chez ses clients au nom
+            d'AviSmart SARL.
+
+            Ni adresse ni téléphone n'y figuraient non plus, alors que le bulletin
+            de paie et le reçu de caisse les imprimaient déjà. Une ligne vide est
+            MASQUÉE plutôt que remplie d'une valeur inventée : sur une mention
+            légale, une supposition ne vaut pas mieux qu'un blanc.
+        --}}
         <div class="party vendor">
             <div class="party-label">{{ __("Vendeur") }}</div>
-            <div class="party-name">AviSmart SARL</div>
+            <div class="party-name">{{ $emetteur['name'] }}</div>
             <div class="party-detail" style="margin-top: 6px;">
-                {{ __("Conakry, République de Guinée") }}<br>
-                {{-- NIF et RCCM à personnaliser --}}
-                @if(setting('general.fiscal_id'))
-               <small>NIF : {{ setting('general.fiscal_id') }}</small><br>
-               @endif
-               @if(setting('general.rccm'))
-                   <small>RCCM : {{ setting('general.rccm') }}</small>
-               @endif
+                @if($emetteur['address'])
+                    {{ $emetteur['address'] }}<br>
+                @endif
+                {{ $emetteur['country'] }}<br>
+                @if($emetteur['phone'])
+                    <small>{{ __("Tél") }} : {{ $emetteur['phone'] }}</small><br>
+                @endif
+                @if($emetteur['fiscal_id'])
+                    <small>NIF : {{ $emetteur['fiscal_id'] }}</small><br>
+                @endif
+                @if($emetteur['rccm'])
+                    <small>RCCM : {{ $emetteur['rccm'] }}</small>
+                @endif
             </div>
         </div>
         <div class="party client">
