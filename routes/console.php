@@ -21,13 +21,14 @@ Schedule::command('farm:release-buildings')->daily();
 // 100 alvéoles produites, 30 vendues, 70 restantes ; après passage, 100.
 //
 // `stocks:sync` existe toujours, en lecture seule sans --force, et se lance à la
-// main : une réécriture de quantités de magasin ne s'applique pas sans que
-// personne n'ait lu le résultat.
-// --force EXPLICITE : la convention de ces commandes est « simulation par défaut ».
-// L'omettre transformerait la réconciliation nocturne en simulation muette — la
-// panne silencieuse par excellence, et c'est bien celle-ci qui doit ÉCRIRE : elle
-// dérive d'un registre complet (les pointages), elle est idempotente, et elle écrit
-// en direct sans réveiller l'observer.
+// main : une réécriture de quantités de magasin ne s'applique pas sans que personne
+// n'ait lu le résultat.
+//
+// --force EXPLICITE ici : la convention de ces commandes est « simulation par
+// défaut » (#220). L'omettre transformerait cette réconciliation nocturne en
+// simulation muette — la panne silencieuse par excellence. Et c'est bien celle-ci
+// qui doit ÉCRIRE : elle dérive d'un registre complet (les pointages), elle est
+// idempotente, et elle écrit en direct sans réveiller l'observer.
 Schedule::command('batches:rebuild-quantities --force')->daily();
 
 Schedule::command('tasks:generate')->dailyAt('05:00');
@@ -94,6 +95,14 @@ Schedule::command('activitylog:clean')->weekly();
 // rétention puis sauvegarde quotidienne aux heures creuses.
 Schedule::command('backup:clean')->dailyAt('01:30');
 Schedule::command('backup:run')->dailyAt('02:00');
+
+// SANTÉ des sauvegardes, APRÈS celle de la nuit. Deux runbooks désignaient
+// `backup:monitor` comme ce contrôle — il n'était planifié nulle part, et même lancé
+// n'aurait prévenu personne : toutes les notifications de la bibliothèque sont
+// désactivées dans config/backup.php. Une sauvegarde qui échouait à 02:00 n'était
+// donc annoncée à personne. Celle-ci alerte les administrateurs par la chaîne de
+// l'application, et reste muette quand tout va bien.
+Schedule::command('avismart:check-backups')->dailyAt('03:00');
 
 // Relances de paiement : rappel aux clients en retard (anti-doublon intégré).
 Schedule::command('sales:payment-reminders')->dailyAt('09:00');

@@ -302,44 +302,38 @@ class InstallationDiagnostic extends Command
     // sans sauvegarde met fin à l'exploitation. Tout le reste se rattrape.
     private function checkBackups(): void
     {
-        try {
-            $disk = \Illuminate\Support\Facades\Storage::disk('backups');
-            $fichiers = $disk->allFiles();
-        } catch (\Throwable $e) {
-            $this->blocking('Sauvegardes', 'Le disque de sauvegarde est injoignable : ' . $e->getMessage(),
+        // MÊME déclaration que la tâche planifiée `avismart:check-backups` : la règle
+        // « une sauvegarde est-elle saine ? » ne doit exister qu'une fois, sans quoi
+        // le rapport à l'écran et l'alerte de nuit pourraient se contredire.
+        $etat = app(\App\Services\BackupHealth::class)->assess();
+
+        if (! $etat['reachable']) {
+            $this->blocking('Sauvegardes', 'Le disque de sauvegarde est injoignable : ' . $etat['error'],
                 'Vérifier la configuration du disque « backups » et les droits d’écriture.');
 
             return;
         }
 
-        if ($fichiers === []) {
+        if ($etat['count'] === 0) {
             $this->blocking('Sauvegardes', 'AUCUNE sauvegarde n’existe. Une panne de disque effacerait l’exploitation — c’est le seul incident de cette liste qui ne se rattrape pas.',
                 'Lancer une fois php artisan backup:run, puis vérifier que le cron de l’hébergeur tourne.');
 
             return;
         }
 
-        $dernier = collect($fichiers)
-            ->map(fn ($f) => $disk->lastModified($f))
-            ->max();
-
-        $age = now()->diffInHours(\Carbon\Carbon::createFromTimestamp($dernier), absolute: true);
-
-        if ($age > 48) {
-            $jours = round($age / 24, 1);
+        if (! $etat['healthy']) {
+            $jours = round($etat['age_hours'] / 24, 1);
 
             $this->blocking('Sauvegardes', "La dernière sauvegarde date de {$jours} jour(s). La sauvegarde quotidienne ne tourne donc plus.",
                 'Vérifier le cron de l’hébergeur (schedule:run), puis php artisan backup:run.');
         } else {
-            $this->healthy('Sauvegardes', count($fichiers) . " sauvegarde(s), la plus récente il y a {$age} h.");
+            $this->healthy('Sauvegardes', "{$etat['count']} sauvegarde(s), la plus récente il y a {$etat['age_hours']} h.");
         }
 
         // Une sauvegarde à côté des données ne protège que de l'effacement, pas de
         // la perte de la machine.
-        $disques = (array) config('backup.backup.destination.disks', []);
-
-        count($disques) > 1
-            ? $this->healthy('Sauvegardes hors site', 'Copie sur ' . count($disques) . ' destination(s).')
+        $etat['offsite']
+            ? $this->healthy('Sauvegardes hors site', "Copie sur {$etat['disks']} destination(s).")
             : $this->attention('Sauvegardes hors site', 'Les sauvegardes ne partent QUE sur le disque du serveur : une panne matérielle emporterait les données ET leurs sauvegardes.',
                 'Configurer BACKUP_DISKS=backups,backups_offsite (voir docs/ops/backup-restore-runbook.md).');
     }
@@ -358,14 +352,7 @@ class InstallationDiagnostic extends Command
          * C'est mieux qu'un « non vérifiable » : le fait est établi par ce qu'il a
          * laissé, à défaut de pouvoir l'être en le regardant faire.
          */
-        try {
-            $disk = \Illuminate\Support\Facades\Storage::disk('backups');
-            $recent = collect($disk->allFiles())->map(fn ($f) => $disk->lastModified($f))->max();
-        } catch (\Throwable) {
-            $recent = null;
-        }
-
-        if ($recent && now()->diffInHours(\Carbon\Carbon::createFromTimestamp($recent), absolute: true) <= 36) {
+        if (app(\App\Services\BackupHealth::class)->schedulerRanRecently()) {
             $this->healthy('Tâches planifiées', 'Le planificateur TOURNE : la sauvegarde automatique de cette nuit en est la trace.');
 
             return;

@@ -74,6 +74,9 @@ class NotificationHub
         // d'expédition (vérifié dans SCREENS), le terrain reste donc sur ses
         // alertes plutôt que d'être renvoyé à l'accueil par un chemin inconnu.
         'alert_dispatch'      => ['dispatches.index', '/alertes'],
+        // Sauvegarde en défaut : affaire d'administration, le terrain n'a pas
+        // d'écran de sauvegardes et reste sur ses alertes.
+        'alert_backup'        => ['backups.index', '/alertes'],
     ];
 
     /**
@@ -1283,6 +1286,29 @@ class NotificationHub
     }
 
     /**
+     * SAUVEGARDE EN DÉFAUT — alerte les administrateurs, tous canaux.
+     *
+     * Passe par broadcast() et non par un envoi direct : sur cette installation le
+     * canal WhatsApp est en mode « journal », et une alerte qui n'existerait que là
+     * n'atteindrait personne (cf. #216). Sur le seul incident irréversible de
+     * l'exploitation, c'est le silence qui coûte le plus cher.
+     *
+     * @param \Illuminate\Support\Collection<int, \App\Models\User> $admins
+     */
+    public function alertBackupFailure(string $message, $admins): int
+    {
+        return $this->broadcast(
+            'alert_backup',
+            $message,
+            'Sauvegarde en défaut',
+            'critique',
+            null,
+            null,
+            $admins
+        );
+    }
+
+    /**
      * Envoie à tous les abonnés d'un type de notification.
      */
     /**
@@ -1477,6 +1503,11 @@ class NotificationHub
             // Le rattachement à « anti-fraude » ne sert donc pas à choisir les
             // destinataires mais à respecter un compte qui a tout coupé.
             'alert_dispatch' => 'alert_fraud',
+
+            // Sauvegarde en défaut : même logique — audience imposée (les
+            // administrateurs), le rattachement ne sert qu'à respecter un compte
+            // qui a coupé ce canal.
+            'alert_backup' => 'alert_fraud',
 
             default => null,
         };

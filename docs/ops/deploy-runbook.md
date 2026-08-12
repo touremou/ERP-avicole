@@ -65,10 +65,14 @@ de surveillance. Ce qu'elle vérifie, et pourquoi ce sont ces points-là :
 | Rôle sans aucune permission | Écrans vides, pris pour une panne |
 | Pointage consommant de l'aliment sans coût | Coût de revient de la bande incomplet — et le total s'affiche quand même |
 | Article en stock sans prix | Consommation comptée gratuite |
+| Aucune sauvegarde, ou plus vieille que 48 h | Le seul incident irréversible : une panne de disque effacerait l'exploitation |
+| Sauvegardes uniquement locales | Une panne matérielle emporte les données **et** leurs sauvegardes |
 
-Elle ne prétend PAS établir que le planificateur tourne : aucune commande lancée à
-la main ne peut l'observer. Elle le déclare **non vérifiable** et rappelle la ligne
-de cron à poser — c'est pourtant lui qui déclenche presque toutes les alertes.
+Pour le planificateur, elle rend un verdict **quand elle en a la preuve** : la
+sauvegarde de 02:00 est déclenchée par lui, et par lui seul — une sauvegarde datée de
+cette nuit établit donc que le cron tourne. Sans trace récente, elle le déclare
+**non vérifiable** et rappelle la ligne de cron à poser, plutôt que d'inventer un
+verdict qu'elle n'a pas les moyens de porter.
 
 **Rollback (< 10 min)** :
 ```bash
@@ -128,11 +132,12 @@ Comme le mode A (git ou artefact selon connectivité), plus :
 
 ## 5. Supervision post-déploiement (P2-⑪)
 
-- **Alertes erreurs 500 → WhatsApp admin** : actives par défaut hors local
-  (`ErrorAlertService`, throttle 5 min/erreur). Prérequis : `whatsapp.admin_phone`
-  renseigné dans Réglages, et/ou utilisateurs admin avec `whatsapp_phone`.
-  Désactivable par `ERROR_ALERTS_ENABLED=false`.
-- **Santé backups** : IHM module Sauvegardes (âge < 24 h) + `backup:monitor`.
+- **Alertes erreurs 500 → administrateurs, TROIS canaux** : cloche in-app, e-mail
+  (`whatsapp.admin_email`) et WhatsApp, tentés séparément (`ErrorAlertService`,
+  throttle 5 min/erreur, actif par défaut hors local). Depuis le lot #217, un
+  administrateur SANS numéro WhatsApp est tout de même prévenu — la sélection ne
+  porte plus sur la présence d'un numéro. Désactivable par `ERROR_ALERTS_ENABLED=false`.
+- **Santé backups** : IHM module Sauvegardes + `avismart:check-backups`, planifiée à 03:00 et qui ALERTE (cloche, push, e-mail, WhatsApp) si la sauvegarde ne tourne plus. `backup:monitor` ne prévient personne : ses notifications sont désactivées dans `config/backup.php`.
 - **Uptime externe** (VPS/mutualisé) : pinger `/up` chaque minute (UptimeRobot ou équivalent) → alerte SMS/mail.
 - **Disque** : garder ≥ 20 % libres (les backups remplissent) — la rétention
   spatie nettoie à 01:30, vérifier après le 1er mois.
