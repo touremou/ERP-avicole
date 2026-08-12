@@ -23,7 +23,12 @@ Schedule::command('farm:release-buildings')->daily();
 // `stocks:sync` existe toujours, en lecture seule sans --force, et se lance à la
 // main : une réécriture de quantités de magasin ne s'applique pas sans que
 // personne n'ait lu le résultat.
-Schedule::command('batches:rebuild-quantities')->daily();
+// --force EXPLICITE : la convention de ces commandes est « simulation par défaut ».
+// L'omettre transformerait la réconciliation nocturne en simulation muette — la
+// panne silencieuse par excellence, et c'est bien celle-ci qui doit ÉCRIRE : elle
+// dérive d'un registre complet (les pointages), elle est idempotente, et elle écrit
+// en direct sans réveiller l'observer.
+Schedule::command('batches:rebuild-quantities --force')->daily();
 
 Schedule::command('tasks:generate')->dailyAt('05:00');
 
