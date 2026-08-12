@@ -126,6 +126,12 @@ class UtilityService
                 'energy_sources.type',
                 DB::raw('SUM(energy_readings.hours_run) as total_hours')
             )
+            // PAS de filtre `energy_sources.deleted_at` ICI, et c'est délibéré.
+            // Supprimer une source ne doit pas RÉÉCRIRE le passé : le gasoil brûlé
+            // par un groupe a bien coûté ce qu'il a coûté, et l'exclure ferait
+            // baisser après coup le coût énergie d'une période déjà arrêtée. Un
+            // balayage des lectures brutes signale cette jointure ; la garder est un
+            // choix, pas un oubli.
             ->join('energy_sources', 'energy_sources.id', '=', 'energy_readings.energy_source_id')
             ->where('energy_readings.reading_date', '>=', $from)
             ->groupBy('energy_sources.type')
