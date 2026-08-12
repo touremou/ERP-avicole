@@ -173,8 +173,13 @@
                                                 @break
 
                                             @default
-                                                <input type="text" name="settings[{{ $s->key }}]" value="{{ $s->is_sensitive ? '' : $s->value }}"
-                                                    placeholder="{{ $s->is_sensitive ? '••••••••' : '' }}"
+                                                {{-- old() : après un refus de saisie, la valeur tapée est conservée.
+                                                     Sans quoi le champ revient à l'ancienne valeur et le message
+                                                     d'erreur parle d'une saisie qui a disparu de l'écran.
+                                                     Jamais pour un champ sensible : on ne réaffiche pas un secret. --}}
+                                                <input type="text" name="settings[{{ $s->key }}]"
+                                                    value="{{ $s->is_sensitive ? '' : old('settings.' . $s->key, $s->value) }}"
+                                                    placeholder="{{ $s->is_sensitive ? '••••••••' : ($s->unit === 'HH:MM' ? 'HH:MM' : '') }}"
                                                     class="w-full md:w-64 bg-slate-50 border-none rounded-xl p-3 text-sm font-black text-slate-800 shadow-inner outline-none focus:ring-2 focus:ring-blue-500">
                                                 @if($s->unit)
                                                     <span class="text-[9px] font-black text-slate-400 uppercase whitespace-nowrap">{{ $s->unit }}</span>

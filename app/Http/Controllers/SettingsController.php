@@ -92,6 +92,63 @@ class SettingsController extends Controller
             }
         }
 
+        /*
+         * REFUSER UNE VALEUR IMPOSSIBLE, PLUTÔT QUE DE L'ENREGISTRER.
+         *
+         * Cet écran n'a jamais rien validé : n'importe quelle chaîne partait en
+         * base pour n'importe quel réglage. Deux conséquences, toutes deux
+         * invisibles depuis le formulaire :
+         *
+         *   • une heure impossible (« 25:00 ») dans l'un des quatre réglages HH:MM
+         *     faisait échouer `schedule:run` AVANT toute exécution, arrêtant les
+         *     23 tâches planifiées — sauvegardes comprises — en silence ;
+         *   • un réglage numérique renseigné en lettres est coulé en 0 par le cast
+         *     (cf. Setting::castValue). Un seuil d'alerte à 0 ne ressemble pas à
+         *     une panne : il alerte sur tout, ou plus sur rien, sans un mot.
+         *
+         * Honnêtement : le second cas est peu atteignable depuis un navigateur, qui
+         * refuse déjà les lettres dans un `<input type="number">`. C'est le premier
+         * qui l'est vraiment — les quatre réglages HH:MM sont rendus en TEXTE libre.
+         * Le contrôle numérique reste, parce qu'un formulaire n'est pas la seule
+         * façon d'atteindre cette route.
+         *
+         * La lecture reste défensive de son côté — un site portant déjà une valeur
+         * fautive doit continuer à tourner. Mais laisser l'utilisateur enregistrer
+         * une valeur qu'on remplacera ensuite dans son dos, c'est lui cacher que
+         * son réglage n'a pas pris effet.
+         */
+        $rejected = [];
+
+        foreach ($values as $key => $newValue) {
+            $meta = Setting::where('group', $group)->where('key', $key)->whereNull('farm_id')->first();
+
+            if (! $meta || $newValue === null || $newValue === '') {
+                continue;   // vide = « ne pas toucher » / « effacer », traité plus bas
+            }
+
+            if ($meta->unit === 'HH:MM' && Setting::normalizeHour((string) $newValue) === null) {
+                $rejected["settings.$key"] = __('« :value » n’est pas une heure valide pour « :label ». Format attendu HH:MM, entre 00:00 et 23:59.', [
+                    'value' => $newValue, 'label' => $meta->label ?: $key,
+                ]);
+
+                continue;
+            }
+
+            if (in_array($meta->type, ['number', 'integer'], true) && ! is_numeric($newValue)) {
+                $rejected["settings.$key"] = __('« :value » n’est pas un nombre pour « :label ». La valeur aurait été enregistrée comme 0.', [
+                    'value' => $newValue, 'label' => $meta->label ?: $key,
+                ]);
+            }
+        }
+
+        if ($rejected !== []) {
+            // Aucun enregistrement partiel : un groupe de réglages se lit comme un
+            // tout, et n'en écrire que la moitié laisse un état que personne n'a
+            // voulu.
+            return back()->withInput()->withErrors($rejected)
+                ->with('error', __('Aucune modification enregistrée : :n valeur(s) refusée(s).', ['n' => count($rejected)]));
+        }
+
         $updated = 0;
 
         DB::transaction(function () use ($group, $values, &$updated) {

@@ -85,6 +85,97 @@ class Setting extends Model
     }
 
     /**
+     * HEURE D'UN RÉGLAGE — déclaration UNIQUE de « ce qu'est une heure valide ».
+     *
+     * Quatre réglages portent une heure saisie à la main (unité déclarée HH:MM) :
+     * l'heure du résumé quotidien, celle du digest d'activité, et les deux bornes
+     * des heures ouvrées. Rien ne validait la saisie — l'écran des Réglages
+     * enregistre n'importe quelle chaîne — et deux lecteurs en tiraient deux
+     * comportements opposés :
+     *
+     *   • NotificationHub::isAfterHours() rattrape l'échec et désactive la
+     *     détection : dégradation propre ;
+     *   • routes/console.php passait la valeur BRUTE à dailyAt(), qui la découpe
+     *     et la donne au constructeur d'expression cron.
+     *
+     * Conséquence du second, vérifiée à la main : taper « 25:00 » dans les
+     * Réglages fait lever le constructeur cron, et `schedule:run` échoue AVANT
+     * d'exécuter quoi que ce soit. Les VINGT-TROIS tâches planifiées s'arrêtent —
+     * sauvegardes, alertes de contrat, pointages manquants, péremptions, résumé
+     * quotidien — à chaque minute, indéfiniment. Et en silence : la ligne de cron
+     * recommandée redirige sa sortie vers /dev/null.
+     *
+     * Une faute de frappe dans un champ de formulaire arrêtait donc toute
+     * l'automatisation de l'exploitation, sans un mot.
+     *
+     * Les valeurs silencieusement fausses comptent autant que celles qui cassent :
+     * un champ VIDE donnait « dans 10 heures », c'est-à-dire minuit — le résumé
+     * quotidien partait à 00:00 sur les téléphones. Ici, vide = valeur par défaut.
+     *
+     * Ce qui est accepté, du plus au moins probable sous les doigts :
+     *   '7'  '07'        → 07:00      (heure seule)
+     *   '19h30' '19h'    → 19:30 / 19:00  (notation française)
+     *   '07:00:00'       → 07:00      (secondes ignorées)
+     *   '7:5'            → 07:05      (complété)
+     * Tout le reste rend le défaut, et le journal dit lequel et pourquoi.
+     */
+    public static function hour(string $dotKey, string $default): string
+    {
+        $raw = trim((string) static::get($dotKey, ''));
+
+        if ($raw === '') {
+            return $default;
+        }
+
+        $normalized = static::normalizeHour($raw);
+
+        if ($normalized === null) {
+            \Illuminate\Support\Facades\Log::warning(
+                "[Setting::hour] {$dotKey} = « {$raw} » n’est pas une heure valide ; {$default} appliqué."
+            );
+
+            return $default;
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * Rend l'heure normalisée « HH:MM », ou null si la saisie est illisible.
+     *
+     * Séparée de hour() pour que l'écran des Réglages puisse REFUSER la saisie
+     * avec la règle exacte qu'appliquera le planificateur. Sans cela il aurait
+     * fallu une seconde définition de « heure valide » — précisément le défaut que
+     * ce lot corrige, et qu'on aurait recréé dans le formulaire.
+     */
+    public static function normalizeHour(?string $raw): ?string
+    {
+        $raw = trim((string) $raw);
+
+        if ($raw === '') {
+            return null;
+        }
+
+        // « 19h30 », « 19 h 30 », « 19H » → séparateur unifié.
+        $candidate = rtrim((string) preg_replace('/\s*[hH]\s*/', ':', $raw), ':');
+
+        $parts = explode(':', $candidate);
+
+        if (! ctype_digit($parts[0] ?? '') || (isset($parts[1]) && ! ctype_digit($parts[1]))) {
+            return null;
+        }
+
+        $h = (int) $parts[0];
+        $m = (int) ($parts[1] ?? 0);
+
+        if ($h > 23 || $m > 59) {
+            return null;
+        }
+
+        return sprintf('%02d:%02d', $h, $m);
+    }
+
+    /**
      * Définit une valeur de paramètre.
      */
     public static function set(string $dotKey, $value): void

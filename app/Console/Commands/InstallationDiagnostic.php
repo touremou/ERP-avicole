@@ -226,6 +226,19 @@ class InstallationDiagnostic extends Command
 
         $sanitary = \App\Models\Building::sanitaryBreakDays();
         $this->healthy('Vide sanitaire', "{$sanitary} jours — appliqué à l’affichage, au planning ET à la libération automatique.");
+
+        // Les quatre réglages d'heure sont saisis à la main. Une valeur illisible
+        // n'arrête plus le planificateur (Setting::hour la remplace), mais elle
+        // signifie que l'heure choisie par l'exploitation N'EST PAS celle qui
+        // s'applique — et rien d'autre ne le dirait.
+        $badHours = Setting::whereNull('farm_id')->where('unit', 'HH:MM')->get()
+            ->filter(fn ($s) => filled($s->value) && Setting::normalizeHour((string) $s->value) === null)
+            ->map(fn ($s) => "{$s->label} = « {$s->value} »");
+
+        $badHours->isEmpty()
+            ? $this->healthy('Heures réglées', 'Les quatre heures paramétrées sont lisibles.')
+            : $this->attention('Heures réglées', 'Heure(s) illisible(s) — la valeur de repli s’applique, pas celle saisie : ' . $badHours->implode(' ; '),
+                'Réglages → ressaisir au format HH:MM (00:00 à 23:59).');
     }
 
     // ─────────────────────────────────────────────────────────────

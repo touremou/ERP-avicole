@@ -1234,12 +1234,21 @@ class NotificationHub
      */
     private function isAfterHours(): bool
     {
-        $start = trim((string) setting('whatsapp.business_hours_start', ''));
-        $end   = trim((string) setting('whatsapp.business_hours_end', ''));
-
-        if ($start === '' || $end === '') {
+        // Les deux bornes passent par la MÊME lecture d'heure que le planificateur
+        // (Setting::hour) : c'était la seconde déclaration divergente de « ce
+        // qu'est une heure valide ». Ici la conséquence d'une saisie fautive était
+        // douce — détection désactivée — mais opposée à celle de routes/console.php,
+        // où elle arrêtait toutes les tâches planifiées. Une règle, une déclaration.
+        //
+        // Le repli VIDE reste distinct du repli d'une valeur illisible : plage vide
+        // = surveillance volontairement éteinte, et ce choix doit être respecté.
+        if (trim((string) setting('whatsapp.business_hours_start', '')) === ''
+            || trim((string) setting('whatsapp.business_hours_end', '')) === '') {
             return false;
         }
+
+        $start = Setting::hour('whatsapp.business_hours_start', '06:00');
+        $end   = Setting::hour('whatsapp.business_hours_end', '20:00');
 
         try {
             $now = now();
