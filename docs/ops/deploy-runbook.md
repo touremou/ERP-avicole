@@ -45,6 +45,31 @@ php artisan up
 1 hub s'affiche · `php artisan schedule:list` intact · pas d'erreur nouvelle
 dans `storage/logs/laravel.log`.
 
+Puis, en une commande :
+
+```bash
+php artisan avismart:diagnostic
+```
+
+Elle LIT l'installation et n'écrit rien. Elle rend un code de sortie non nul dès
+qu'il reste un **bloquant**, ce qui la rend utilisable telle quelle dans un script
+de surveillance. Ce qu'elle vérifie, et pourquoi ce sont ces points-là :
+
+| Contrôle | Ce que l'état fautif produit, sans rien dire |
+|---|---|
+| WhatsApp en mode « journal » | Aucune alerte ne quitte le serveur ; les écrans affichent « envoyé » |
+| Clé Twilio sans `SID:TOKEN` | 401 à chaque envoi, sans message lisible |
+| Clefs de notification jamais générées | Le push est impossible, application fermée |
+| Expéditeur e-mail ≠ boîte authentifiée | « Failed to authenticate » sur hébergement mutualisé |
+| Compte actif non rattaché à un site | **Toutes** ses saisies mobiles refusées, avec un message parlant de « bâtiment invalide » |
+| Rôle sans aucune permission | Écrans vides, pris pour une panne |
+| Pointage consommant de l'aliment sans coût | Coût de revient de la bande incomplet — et le total s'affiche quand même |
+| Article en stock sans prix | Consommation comptée gratuite |
+
+Elle ne prétend PAS établir que le planificateur tourne : aucune commande lancée à
+la main ne peut l'observer. Elle le déclare **non vérifiable** et rappelle la ligne
+de cron à poser — c'est pourtant lui qui déclenche presque toutes les alertes.
+
 **Rollback (< 10 min)** :
 ```bash
 php artisan down
