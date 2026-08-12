@@ -26,25 +26,57 @@ beforeEach(function () {
 // ─── Structure : les index d'idempotence sync sont UNIQUES ───
 
 test('les uuid de synchro offline portent un index UNIQUE en base', function () {
-    // Introspection par le schéma, pas par PRAGMA : la garantie doit être
-    // vérifiée sur le moteur de PRODUCTION autant que sur celui des tests, et
-    // PRAGMA n'existe que sur sqlite.
-    $expected = [
-        'batches'         => 'batches_uuid_unique',
-        'sales'           => 'sales_uuid_unique',
-        'daily_checks'    => 'daily_checks_uuid_unique',
-        'health_checks'   => 'health_checks_uuid_unique',
-        'incubations'     => 'incubations_uuid_unique',
-        'egg_productions' => 'egg_productions_uuid_unique',
-    ];
+    /*
+     * DÉRIVÉ DU SCHÉMA, ET NON D'UNE LISTE ÉCRITE À LA MAIN.
+     *
+     * Ce test énumérait six tables, nommées une par une. Il ne pouvait donc
+     * vérifier que ce dont quelqu'un s'était souvenu — et `water_readings`, ajoutée
+     * plus tard avec un uuid de synchro, n'y figurait pas. Elle était la SEULE table
+     * de la base sans index unique sur son uuid, et rien ne le signalait.
+     *
+     * Conséquence concrète : un ravitaillement de citerne rejoué (mauvais réseau,
+     * double appui, deux appareils) pouvait s'enregistrer deux fois, et
+     * `waterReadingCreate` ajoute le volume au niveau de la citerne APRÈS insertion.
+     * Le doublon gonflait donc la citerne d'autant, et comptait le coût deux fois.
+     *
+     * SyncService écrit pourtant la règle en tête de fichier : « IDEMPOTENCE par
+     * uuid — doublée d'index UNIQUE en base ». Le contrôle applicatif
+     * `where('uuid')->exists()` suffit en série ; deux rejeux strictement
+     * concurrents le passent tous les deux. L'index est la vraie garantie.
+     *
+     * Un garde-fou qui repose sur une liste tenue à jour à la main reproduit
+     * exactement le défaut qu'il surveille. Celui-ci interroge le schéma : toute
+     * table portant une colonne `uuid` doit porter l'index qui va avec.
+     *
+     * Introspection par le schéma et non par PRAGMA : la garantie doit valoir sur le
+     * moteur de PRODUCTION autant que sur celui des tests, et PRAGMA n'existe que
+     * sur sqlite.
+     */
+    $missing = [];
+    $checked = 0;
 
-    foreach ($expected as $table => $index) {
-        $found = collect(Schema::getIndexes($table))
-            ->first(fn ($i) => $i['name'] === $index);
+    foreach (Schema::getTableListing() as $table) {
+        $short = str_contains($table, '.') ? substr($table, strrpos($table, '.') + 1) : $table;
 
-        expect($found)->not->toBeNull("Index {$index} absent de {$table}");
-        expect($found['unique'])->toBeTrue();
+        if (! in_array('uuid', Schema::getColumnListing($short), true)) {
+            continue;
+        }
+
+        $checked++;
+
+        $unique = collect(Schema::getIndexes($short))
+            ->contains(fn ($i) => ($i['unique'] ?? false) && in_array('uuid', $i['columns'], true));
+
+        if (! $unique) {
+            $missing[] = $short;
+        }
     }
+
+    // Garde-fou du garde-fou : sans table à vérifier, il passerait sans rien faire.
+    expect($checked)->toBeGreaterThan(10);
+
+    expect($missing)->toBe([], "Table(s) à uuid de synchro SANS index unique — deux rejeux concurrents y créeraient un doublon :\n  "
+        . implode("\n  ", $missing));
 });
 
 // ─── Comportement : la base rejette physiquement les doublons ───
@@ -103,4 +135,36 @@ test('une référence de dépense est unique en base (numérotation fiscale)', f
 
     expect(fn () => Expense::factory()->create(['reference' => $expense->reference, 'user_id' => $user->id]))
         ->toThrow(QueryException::class);
+});
+
+test('un ravitaillement de citerne ne peut pas être enregistré deux fois', function () {
+    /*
+     * LE COMPORTEMENT, pas seulement la structure. Un index déclaré mais posé sur la
+     * mauvaise colonne passerait le test d'introspection ; celui-ci l'attrape.
+     *
+     * L'enjeu est concret : `waterReadingCreate` ajoute le volume au niveau de la
+     * citerne APRÈS insertion. Un rejeu réseau qui passe — deux appels strictement
+     * concurrents franchissent tous deux le `where('uuid')->exists()` — gonflerait
+     * donc la citerne d'un ravitaillement fantôme, et compterait son coût deux fois.
+     */
+    $source = \App\Models\WaterSource::create([
+        'name' => 'Citerne test', 'type' => 'citerne',
+        'capacity_liters' => 10000, 'current_level_liters' => 2000,
+    ]);
+
+    $uuid = (string) Str::uuid();
+
+    $ligne = [
+        'user_id' => \App\Models\User::factory()->create()->id,
+        'water_source_id' => $source->id,
+        'reading_date' => '2026-08-01',
+        'volume_consumed_liters' => 0,
+        'volume_added_liters' => 3000,
+        'is_refill' => true,
+        'uuid' => $uuid,
+    ];
+
+    \App\Models\WaterReading::create($ligne);
+
+    expect(fn () => \App\Models\WaterReading::create($ligne))->toThrow(QueryException::class);
 });
