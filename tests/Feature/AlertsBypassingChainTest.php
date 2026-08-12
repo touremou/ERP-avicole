@@ -68,7 +68,12 @@ function newDispatch(int $farmId, int $receiverId, int $senderId): \App\Models\D
         'driver_name'          => 'Mamadou Camara',
         'dispatch_date'        => now()->toDateString(),
         'destination'          => 'Kérouané',
-        'status'               => 'en_transit',
+        // « expedie », pas une valeur inventée : la colonne est un ENUM
+        // ('prepare','expedie','en_route','receptionne','clos'). sqlite accepte
+        // n'importe quelle chaîne, MySQL la TRONQUE — le test passait donc en
+        // local et cassait en intégration. C'est le piège sqlite/MySQL de ce
+        // dépôt, et c'est pour cela que le job MySQL 8 existe.
+        'status'               => 'expedie',
     ]);
 }
 
