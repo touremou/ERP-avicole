@@ -692,6 +692,13 @@ class SyncService
                 'uuid'              => $data['uuid'],
                 'batch_number'      => \App\Services\DocumentNumberingService::generate('mill_production'),
                 'formula_id'        => $data['formula_id'],
+                // MACHINE PRINCIPALE — la première, comme le web
+                // (MillProductionController : machine_id = machine_ids[0]).
+                // Elle n'était PAS renseignée ici : une OP lancée depuis le terrain
+                // n'avait donc aucune machine principale, et les écrans du bureau
+                // affichaient « Standard » à la place de la machine réellement
+                // employée. Deux chemins écrivant la même entité, deux résultats.
+                'machine_id'        => $data['machine_ids'][0] ?? null,
                 'quantity_produced' => $totalWeight,
                 'supervisor_id'     => $data['supervisor_id'],
                 'operator_id'       => Auth::id(),

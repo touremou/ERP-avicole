@@ -64,25 +64,22 @@ class MillProduction extends Model
     }
 
     /**
-     * Relation avec la ligne de production complète (table pivot)
+     * Machines de la ligne de production (pivot).
+     *
+     * Le pivot porte `snapshot_capacity_per_hour` : la capacité FIGÉE au lancement
+     * de l'OP. C'est elle qui donne des heures d'usure justes même si la machine a
+     * été reparamétrée depuis — et c'est pour cela que le calcul d'usure lit cette
+     * relation, et non `machine()`.
+     *
+     * Une première version de cette relation, sans le pivot, subsistait juste
+     * au-dessus en commentaire. Elle a été retirée : deux déclarations dont une
+     * morte se lisent mal, et rien ne dit laquelle fait foi.
      */
-    /*
     public function machines(): BelongsToMany
     {
-        return $this->belongsToMany(
-            MillMachine::class, 
-            'mill_production_machine', 
-            'mill_production_id', 
-            'mill_machine_id'
-        )->withTimestamps();
-    } 
-*/
-    // Dans app/Models/MillProduction.php
-    public function machines()
-    {
         return $this->belongsToMany(MillMachine::class, 'mill_production_machine')
-                    ->withPivot('snapshot_capacity_per_hour') // Ajout crucial pour la suite
-                    ->withTimestamps();
+            ->withPivot('snapshot_capacity_per_hour')
+            ->withTimestamps();
     }
     // -----------------------
     // ACCESSEURS (KPI & UI)
