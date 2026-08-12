@@ -12,7 +12,12 @@
 - **Chiffrement** : AES-256 si `BACKUP_ARCHIVE_PASSWORD` est défini (**obligatoire en prod** ;
   conserver ce mot de passe dans le coffre — un backup chiffré sans mot de passe = perdu).
 - **Vérification** : `BACKUP_VERIFY=true` (défaut) — l'archive est ré-ouverte après création.
-- **Santé** : IHM module Sauvegardes + `php artisan backup:monitor` (âge ≤ 1 jour).
+- **Santé** : IHM module Sauvegardes + `php artisan avismart:check-backups` (âge ≤ 48 h).
+  Cette commande est **planifiée à 03:00**, après la sauvegarde de 02:00, et alerte les
+  administrateurs par la chaîne de l'application (cloche, push, e-mail, WhatsApp) si la
+  sauvegarde ne tourne plus. Elle reste muette quand tout va bien.
+  `backup:monitor` (bibliothèque) reste disponible à la main, mais ses notifications sont
+  désactivées dans `config/backup.php` : lancée seule, elle ne prévient personne.
 
 ## 2. Configuration par variable d'environnement
 
