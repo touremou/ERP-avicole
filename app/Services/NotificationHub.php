@@ -1240,6 +1240,70 @@ class NotificationHub
         $this->broadcast('alert_fraud', $message, 'Écart ' . $dispatch->dispatch_number, $report->severity);
     }
 
+    /**
+     * ÉCART DE CAISSE À LA CLÔTURE — le signal anti-fraude le plus direct.
+     *
+     * Il n'était annoncé À PERSONNE : un message à l'écran, pour celui-là même qui
+     * venait de clôturer la caisse — c'est-à-dire, le cas échéant, la personne en
+     * cause. Le promoteur, qui vit à l'étranger, n'en savait rien.
+     *
+     * POURQUOI TOUT ÉCART ALERTE, sans seuil de tolérance : l'espèce attendue est
+     * calculée à partir des paiements RÉELLEMENT enregistrés (fond d'ouverture +
+     * encaissements espèces nets). Un ticket arrondi l'est déjà à l'enregistrement
+     * du paiement — cash_round porte sur le total de la vente, pas sur le comptage.
+     * L'écart attendu est donc exactement ZÉRO, et inventer une tolérance
+     * reviendrait à laisser passer les petits détournements réguliers, qui sont les
+     * plus fréquents.
+     *
+     * DEUX SÉVÉRITÉS, et la distinction compte :
+     *   • MANQUANT → critique. C'est de l'argent qui n'est pas là ; l'alerte doit
+     *     passer les heures silencieuses et déclencher le filet admin ;
+     *   • EXCÉDENT → normal. C'est presque toujours une erreur de saisie (vente non
+     *     enregistrée, rendu de monnaie faux). Il faut le savoir, pas s'en alarmer.
+     */
+    public function alertCashDiscrepancy(\App\Models\CashRegisterSession $session): int
+    {
+        $ecart = (float) $session->difference;
+
+        if (abs($ecart) < 0.01) {
+            return 0;
+        }
+
+        $manquant = $ecart < 0;
+        $emoji = $manquant ? '🚨' : '⚠️';
+        $sens = $manquant ? 'MANQUANT' : 'EXCÉDENT';
+
+        // `user_id` est le compte qui a OUVERT la session (seule colonne de
+        // rattachement de la table). On nomme donc le tenant de la caisse, sans
+        // prétendre désigner qui l'a clôturée.
+        $caissier = $session->user?->name ?? 'inconnu';
+
+        $message = "{$emoji} *ÉCART DE CAISSE — {$sens}*\n\n"
+            . 'Montant : *' . money(abs($ecart)) . "*\n"
+            . 'Attendu : ' . money((float) $session->expected_cash) . "\n"
+            . 'Compté : ' . money((float) $session->counted_cash) . "\n"
+            . "Caisse tenue par : {$caissier}\n"
+            . 'Le ' . ($session->closed_at?->format('d/m/Y à H:i') ?? now()->format('d/m/Y à H:i'));
+
+        /*
+         * DESTINATION EXPLICITE. Le type `alert_fraud` mène par défaut à l'écran des
+         * écarts d'EXPÉDITION — la bonne destination pour son usage d'origine, la
+         * mauvaise ici. Une alerte qui dit « écart de caisse » et ouvre les
+         * expéditions fait chercher au mauvais endroit.
+         *
+         * On garde le type (c'est bien le canal anti-fraude, et son abonnement doit
+         * continuer de gouverner cette alerte), et on précise où l'on agit.
+         */
+        return $this->broadcast(
+            'alert_fraud',
+            $message,
+            'Écart de caisse',
+            $manquant ? 'critique' : 'normal',
+            route('cash-register.index', absolute: false),
+            '/commerce/journal'
+        );
+    }
+
     // ──────────────────────────────────────────────
     // HELPERS
     // ──────────────────────────────────────────────

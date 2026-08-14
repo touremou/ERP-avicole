@@ -112,6 +112,21 @@ class CashRegisterController extends Controller
             $this->syncTreasuryToCount($session, $counted, $treasury);
         });
 
+        /*
+         * ALERTE ANTI-FRAUDE — l'écart ne restait annoncé qu'ICI, à l'écran, pour
+         * celui-là même qui venait de clôturer la caisse. Le promoteur, qui vit à
+         * l'étranger, n'en savait rien : le signal le plus direct de détournement
+         * n'atteignait personne.
+         *
+         * Jamais bloquante : une alerte qui échoue ne doit pas empêcher une caisse
+         * de se clôturer — sans quoi le comptage physique serait perdu.
+         */
+        try {
+            app(\App\Services\NotificationHub::class)->alertCashDiscrepancy($session->fresh());
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("Alerte d'écart de caisse non émise : {$e->getMessage()}");
+        }
+
         $ecart = $session->difference;
         $msg = $ecart == 0
             ? 'Caisse clôturée — caisse juste.'
