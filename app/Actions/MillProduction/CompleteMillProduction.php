@@ -124,12 +124,28 @@ class CompleteMillProduction
                 }
             }
 
-            // ─── 5. USURE DES MACHINES ───
-            $allMachines = collect([$production->machine])
-                ->merge($production->machines ?? collect())
-                ->filter()
-                ->unique('id');
-
+            /*
+             * ─── 5. USURE DES MACHINES ───
+             *
+             * On parcourt la relation PIVOT, et elle seule.
+             *
+             * Une variable `$allMachines` fusionnait ici la machine principale et
+             * les machines du pivot, dédoublonnées — puis la boucle l'IGNORAIT.
+             * Du code mort, mais qui annonçait une intention trompeuse : cette
+             * fusion est inutilisable telle quelle, car un élément venu de
+             * `$production->machine` ne porte AUCUN pivot, donc pas de
+             * `snapshot_capacity_per_hour`. L'employer aurait planté à la clôture.
+             *
+             * La capacité FIGÉE au lancement n'existe que sur le pivot : c'est elle
+             * qui donne des heures justes même si la machine a été reparamétrée
+             * depuis. Le pivot est donc la bonne source, et la machine principale y
+             * figure toujours — le web l'y met (machine_ids[0]) et la synchro le
+             * fait désormais aussi.
+             *
+             * L'enjeu n'est pas cosmétique : `total_hours_run` déclenche
+             * `needs_maintenance`, donc la maintenance préventive. Des heures non
+             * comptées, c'est une machine qui casse sans avoir été révisée.
+             */
             foreach ($production->machines as $machine) {
                 // On utilise la capacité figée au moment de la création de l'OP !
                 $capacityAtTheTime = (float) $machine->pivot->snapshot_capacity_per_hour;
