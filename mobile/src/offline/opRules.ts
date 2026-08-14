@@ -82,6 +82,44 @@ function reqFilled(p: P, k: string, label: string, e: string[]): void {
 type Validator = (p: P) => string[]
 
 const RULES: Partial<Record<OperationType, Validator>> = {
+  /*
+   * MISE EN LOT HORS LIGNE — la seule opération qui n'avait AUCUNE règle ici.
+   *
+   * Le pire mode d'échec du travail hors ligne : le technicien saisit, la file
+   * accepte, et le refus n'apparaît qu'à la synchronisation — des heures plus tard,
+   * au bac « À corriger », alors qu'il a quitté le bâtiment depuis longtemps. Ces
+   * règles sont le miroir de celles du serveur (SyncService::batchUpsert) et
+   * refusent AVANT la mise en file, quand la correction ne coûte rien.
+   *
+   * L'écran (NewBatchScreen) porte ses propres contrôles, mais un contrôle d'écran
+   * ne protège que cet écran-là. C'est ici qu'est la barrière commune.
+   */
+  'batch.upsert': (p) => {
+    const e: string[] = []
+    reqStr(p, 'code', 'Code du lot', e)
+    reqStr(p, 'type', 'Type de production', e)
+    reqId(p, 'building_id', 'Bâtiment', e)
+    reqNum(p, 'initial_quantity', 'Effectif à l’arrivée', e, 1)
+    reqDate(p, 'arrival_date', 'Date d’arrivée', e, true)
+    optNum(p, 'current_quantity', 'Effectif actuel', e, 0)
+    optNum(p, 'qty_dead', 'Morts à l’arrivée', e, 0)
+    optNum(p, 'buy_price_per_unit', 'Prix d’achat unitaire', e, 0)
+
+    // Le serveur n'accepte que ces deux valeurs (in:Actif,Terminé) : un statut
+    // arbitraire ferait échouer la synchro pour un motif illisible sur le terrain.
+    if (has(p, 'status')) reqEnum(p, 'status', 'Statut', ['Actif', 'Terminé'], e)
+
+    // Cohérence propre au terrain : on ne peut pas déclarer plus de morts à
+    // l'arrivée que de sujets reçus. Le serveur ne l'interdit pas explicitement,
+    // mais la bande naîtrait avec un effectif négatif.
+    const initial = num(p['initial_quantity'])
+    const dead = num(p['qty_dead'])
+    if (initial !== null && dead !== null && dead > initial) {
+      e.push('Morts à l’arrivée : ne peut pas dépasser l’effectif reçu.')
+    }
+
+    return e
+  },
   'daily_check.create': (p) => {
     const e: string[] = []
     reqId(p, 'batch_id', 'Lot', e)
