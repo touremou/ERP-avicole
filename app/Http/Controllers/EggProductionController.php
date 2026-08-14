@@ -447,15 +447,33 @@ class EggProductionController extends Controller
 
                 $stock->update(['current_quantity' => $newValue]);
 
+                $notes = "Inventaire physique : {$stock->item_name} "
+                       . number_format($oldValue, 2) . " → "
+                       . number_format($newValue, 2) . " alvéoles";
+
                 StockMovement::create([
                     'stock_id' => $stock->id,
                     'user_id'  => auth()->id(),
                     'type'     => 'adjustment',
                     'quantity' => abs($newValue - $oldValue),
-                    'notes'    => "Inventaire physique : {$stock->item_name} "
-                               . number_format($oldValue, 2) . " → "
-                               . number_format($newValue, 2) . " alvéoles",
+                    'notes'    => $notes,
                 ]);
+
+                /*
+                 * MÊME GESTE, MÊME ALERTE. L'inventaire physique des œufs écrit un
+                 * ajustement comme l'écran d'ajustement du magasin — mais celui-ci
+                 * alertait, et celui-là non. Trois chemins écrivaient un ajustement,
+                 * un seul était surveillé.
+                 *
+                 * C'est l'outil légitime pour corriger un niveau (cf. #215), et il
+                 * doit le rester : on ne l'entrave pas, on le rend visible.
+                 */
+                try {
+                    app(\App\Services\NotificationHub::class)
+                        ->alertStockAdjustment($stock, $oldValue, $newValue, $notes);
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning("Alerte d'inventaire physique non émise : {$e->getMessage()}");
+                }
 
                 $updated++;
             }
