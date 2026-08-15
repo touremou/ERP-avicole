@@ -186,13 +186,29 @@ class DashboardInsightsService
 
         $caTotal = $caVentes + $caLait;
 
-        $costFeed = (float) DailyCheck::whereBetween('check_date', [$monthStart, $monthEnd])
-            ->selectRaw('COALESCE(SUM(feed_consumed * COALESCE(feed_unit_cost, 0)), 0) AS c')
-            ->value('c');
+        /*
+         * CHARGES DU MOIS — même déclaration que le compte de résultat.
+         *
+         * Ce calcul ne retenait que l'aliment, la santé et les dépenses
+         * validées. Manquaient donc LA PAIE et L'ACHAT DES ANIMAUX — les deux
+         * plus gros postes d'un élevage — ainsi que l'eau et l'énergie réseau.
+         *
+         * La marge annoncée ici était donc systématiquement plus favorable que
+         * celle du compte de résultat, sans rien dire de ce qu'elle omettait. Et
+         * c'est cet écran que le promoteur, à l'étranger, regarde EN PREMIER.
+         *
+         * (Le commentaire du contrôleur affirmait inclure « la main d'œuvre » :
+         * il parlait de la catégorie de dépense « main-d'œuvre journalière », pas
+         * des bulletins de paie. Exact au mot près, trompeur à la lecture.)
+         */
+        $charges = \App\Services\Accounting\PeriodCharges::between($monthStart, $monthEnd);
 
-        $costHealth = (float) HealthCheck::whereBetween('intervention_date', [$monthStart, $monthEnd])->sum('cost');
+        $costFeed   = (float) ($charges['Aliment'] ?? 0);
+        $costHealth = (float) ($charges['Santé / prophylaxie'] ?? 0);
+        $costLabor  = (float) ($charges["Main d'œuvre (paie)"] ?? 0);
 
-        // Dépenses validées du mois, ventilées par catégorie (top 4).
+        // Dépenses validées du mois, ventilées par catégorie (top 4) — conservé
+        // tel quel : cet écran montre AUSSI le détail des postes de dépense.
         $expensesByCat = Expense::validated()
             ->betweenDates($monthStart, $monthEnd)
             ->select('category', DB::raw('SUM(amount) AS total'))
@@ -207,7 +223,10 @@ class DashboardInsightsService
             'amount' => (float) $e->total,
         ])->values()->all();
 
-        $costTotal = $costFeed + $costHealth + $costExpenses;
+        // Le total vient de la déclaration commune, pas d'une addition refaite
+        // ici : c'est la recomposition à la main qui avait laissé des postes de
+        // côté.
+        $costTotal = (float) array_sum($charges);
 
         // Trésorerie : encours clients (ventes non soldées).
         $receivables = (float) Sale::unpaid()->get()->sum(fn ($s) => $s->remaining_amount);
@@ -219,6 +238,7 @@ class DashboardInsightsService
             'cost_feed'     => $costFeed,
             'cost_health'   => $costHealth,
             'cost_expenses' => $costExpenses,
+            'cost_labor'    => $costLabor,
             'cost_total'    => $costTotal,
             'net_margin'    => $caTotal - $costTotal,
             'receivables'   => $receivables,

@@ -139,17 +139,22 @@ test('le coût énergie d’une période N’EST PAS réécrit par la suppressio
     /*
      * DÉCISION EXPLICITE, à rebours du balayage qui a trouvé ces jointures.
      *
-     * `ReportController` et `UtilityService` joignent `energy_sources` — une table à
+     * `PeriodCharges` et `UtilityService` joignent `energy_sources` — une table à
      * suppression logique — SANS filtrer les supprimées. Un balayage mécanique le
      * signale comme un défaut. C'en est un ailleurs ; ici, le corriger ferait BAISSER
      * après coup le coût énergie d'une période déjà arrêtée.
+     *
+     * La jointure vivait dans `ReportController` ; elle a suivi les charges dans
+     * `PeriodCharges` quand le compte de résultat et le tableau de bord ont été
+     * ramenés sur une déclaration commune. Ce test suit la RÈGLE, pas le fichier
+     * où elle se trouvait.
      *
      * Le gasoil brûlé par un groupe a coûté ce qu'il a coûté. Supprimer la fiche du
      * groupe ne doit pas réécrire un compte de résultat, pas plus que la synchro de
      * nuit ne devait réécrire un stock (#215). On garde donc la jointure telle
      * quelle, et ce test existe pour qu'on ne la « corrige » pas par réflexe.
      */
-    foreach ([app_path('Services/UtilityService.php'), app_path('Http/Controllers/ReportController.php')] as $file) {
+    foreach ([app_path('Services/UtilityService.php'), app_path('Services/Accounting/PeriodCharges.php')] as $file) {
         $source = file_get_contents($file);
 
         expect($source)->toContain('PAS de filtre `energy_sources.deleted_at` ICI');

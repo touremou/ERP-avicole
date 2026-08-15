@@ -194,69 +194,13 @@ class ReportController extends Controller
         $totalRevenue = array_sum($revenue);
 
         // ─── CHARGES ───
-        $costAcquisition = (float) Batch::live()->whereBetween('arrival_date', [$from, $to])->sum('total_acquisition_cost');
-
-        // Aliment : on impute la charge à la CONSOMMATION réelle (principe de
-        // rattachement) et non aux achats — un sujet qui mange génère une charge,
-        // que l'aliment soit acheté OU produit en interne (provenderie). Source de
-        // valorisation unique partagée avec la fiche lot (feed_cogs) : coût figé à
-        // la saisie, repli sur le CMP courant de l'article.
-        $costFeed = $this->feedConsumedCost($from, $to);
-        $costHealth = (float) HealthCheck::whereBetween('intervention_date', [$from, $to])->sum('cost');
-        $costLabor  = (float) Payslip::whereHas('period', fn ($q) => $q->whereBetween('start_date', [$from, $to]))
-            ->sum('net_salary');
-        $costWater  = (float) WaterReading::whereBetween('reading_date', [$from, $to])->sum('cost');
-
-        // Énergie : on ne compte au P&L que l'énergie ACHETÉE en cash hors carburant
-        // — l'électricité réseau (EDG) et l'appoint solaire. Le coût des relevés de
-        // GROUPES électrogènes est une estimation du gasoil brûlé : ce gasoil est
-        // déjà porté par la ligne « Carburant » (registre des dépenses, base achats).
-        // On exclut donc les groupes ici pour ne pas compter le carburant deux fois.
-        // (Le coût estimé des groupes reste exploité côté analytique : coût/kWh, coût/h.)
-        $costEnergy = (float) EnergyReading::query()
-            // PAS de filtre `energy_sources.deleted_at` ICI, et c'est délibéré.
-            // Supprimer une source ne doit pas RÉÉCRIRE le passé : le gasoil brûlé
-            // par un groupe a bien coûté ce qu'il a coûté, et l'exclure ferait
-            // baisser après coup le coût énergie d'une période déjà arrêtée. Un
-            // balayage des lectures brutes signale cette jointure ; la garder est un
-            // choix, pas un oubli.
-            ->join('energy_sources', 'energy_sources.id', '=', 'energy_readings.energy_source_id')
-            ->whereBetween('energy_readings.reading_date', [$from, $to])
-            ->where('energy_sources.type', '!=', 'groupe')
-            ->sum('energy_readings.cost');
-
-        // Dépenses diverses validées (registre des dépenses), ventilées par catégorie.
-        $expensesByCategory = Expense::validated()
-            ->betweenDates($from, $to)
-            ->selectRaw('category, SUM(amount) as total')
-            ->groupBy('category')
-            ->pluck('total', 'category');
-
-        // Gasoil : tenu dans le registre des dépenses (catégorie « carburant »),
-        // posté automatiquement par le module Énergie à chaque achat de cuve. On
-        // le lit ici comme poste dédié et on l'exclut de la ventilation générique
-        // plus bas pour ne JAMAIS le compter deux fois.
-        $costFuel = (float) ($expensesByCategory['carburant'] ?? 0);
-
-        $costs = [
-            'Achats animaux (lots)'   => $costAcquisition,
-            'Aliment'                 => $costFeed,
-            'Santé / prophylaxie'     => $costHealth,
-            'Main d\'œuvre (paie)'    => $costLabor,
-            'Eau'                     => $costWater,
-            'Énergie réseau (EDG)'    => $costEnergy,
-            'Carburant'               => $costFuel,
-        ];
-
-        // Chaque catégorie de dépense devient une ligne de charge dédiée
-        // (le carburant est déjà porté par la ligne « Carburant » ci-dessus).
-        foreach ($expensesByCategory as $category => $total) {
-            if ($category === 'carburant') {
-                continue;
-            }
-            $label = 'Dépenses : ' . (Expense::CATEGORIES[$category] ?? ucfirst((string) $category));
-            $costs[$label] = ($costs[$label] ?? 0) + (float) $total;
-        }
+        // Déclaration UNIQUE, partagée avec le tableau de bord : les deux écrans
+        // répondaient à « combien ai-je gagné ce mois-ci » sans compter les mêmes
+        // charges — celui-ci les comptait toutes, l'autre oubliait la PAIE et
+        // l'ACHAT DES ANIMAUX, soit les deux plus gros postes d'un élevage.
+        // Les conventions (aliment au consommé, groupes exclus de l'énergie,
+        // carburant en poste dédié) vivent désormais dans PeriodCharges.
+        $costs = \App\Services\Accounting\PeriodCharges::between($from, $to);
 
         // Coûts des cycles végétaux clôturés sur la période : forfaits
         // (acquisition + additionnels) + intrants itémisés. Cohérent avec la
