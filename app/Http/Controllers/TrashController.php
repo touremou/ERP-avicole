@@ -7,6 +7,7 @@ use App\Models\Provider;
 use App\Models\Employee;
 use App\Models\Batch;
 use Illuminate\Http\Request;
+use App\Support\DependencyGuard;
 use Illuminate\Support\Facades\Gate;
 
 class TrashController extends Controller
@@ -54,11 +55,35 @@ class TrashController extends Controller
 
         $model = $this->getModel($type);
         $item = $model::onlyTrashed()->findOrFail($id);
-        
-        // Sécurité : On empêche la suppression physique si l'élément a laissé des traces (ex: factures, pointages)
-        // Note: C'est ici que l'on pourrait vérifier des relations complexes avant le point de non-retour.
-        
-        $item->forceDelete(); 
+
+        /*
+         * LA GARDE QUE CE FICHIER ANNONÇAIT SANS LA FAIRE.
+         *
+         * Le commentaire d'origine disait : « On empêche la suppression physique
+         * si l'élément a laissé des traces (ex : factures, pointages) » — et la
+         * ligne suivante avouait qu'on POURRAIT le vérifier. Entre les deux,
+         * `forceDelete()` partait sans rien contrôler.
+         *
+         * Or les clés étrangères de cette base sont en CASCADE : supprimer un lot
+         * archivé emporte ses pointages, ses soins, ses collectes d'œufs et ses
+         * achats d'aliment ; supprimer un employé archivé emporte ses bulletins,
+         * ses présences — et SES LOTS, donc tout ce qui précède. Un clic pouvait
+         * effacer des années d'élevage en annonçant « effectuée ».
+         *
+         * On refuse désormais, et on NOMME ce qui retient : un refus qui ne dit
+         * pas pourquoi pousse à chercher un autre moyen de supprimer.
+         */
+        $blockers = DependencyGuard::blockers($item);
+
+        if ($blockers !== []) {
+            return back()->with('error',
+                "Suppression définitive refusée : cet élément est encore lié à "
+                . DependencyGuard::describe($blockers)
+                . ". Ces enregistrements seraient détruits avec lui. Il reste archivé."
+            );
+        }
+
+        $item->forceDelete();
 
         return back()->with('success', "Suppression irréversible effectuée.");
     }
@@ -70,12 +95,43 @@ class TrashController extends Controller
     {
         if (Gate::denies('admin.S')) return back();
 
-        Employee::onlyTrashed()->forceDelete();
-        Building::onlyTrashed()->forceDelete();
-        Provider::onlyTrashed()->forceDelete();
-        Batch::onlyTrashed()->forceDelete();
+        /*
+         * LE MÊME GESTE, EN MASSE — donc la MÊME règle.
+         *
+         * Cette méthode passait un `forceDelete()` sur TOUTE la corbeille, en
+         * quatre lignes, et annonçait « La base de données a été nettoyée ».
+         * Avec des clés étrangères en cascade, c'était l'effacement possible de
+         * l'historique de plusieurs bandes et de plusieurs années de paie, d'un
+         * seul clic et sans un mot sur ce qui partait.
+         *
+         * On supprime donc un par un, en épargnant ce qui a laissé des traces, et
+         * on RESTITUE le compte des deux côtés : ce qui est parti, ce qui est
+         * resté. Un « nettoyage » muet ne dit pas à l'administrateur qu'il vient
+         * de conserver — ou de détruire — quoi que ce soit.
+         */
+        $supprimes = 0;
+        $conserves = 0;
 
-        return redirect()->route('trash.index')->with('success', "La base de données a été nettoyée.");
+        foreach ([Employee::class, Building::class, Provider::class, Batch::class] as $model) {
+            foreach ($model::onlyTrashed()->get() as $item) {
+                if (DependencyGuard::blockers($item) !== []) {
+                    $conserves++;
+                    continue;
+                }
+
+                $item->forceDelete();
+                $supprimes++;
+            }
+        }
+
+        $message = "{$supprimes} élément(s) supprimé(s) définitivement.";
+
+        if ($conserves > 0) {
+            $message .= " {$conserves} conservé(s) : ils portent encore des enregistrements"
+                . " (pointages, paie, production…) qui auraient été détruits avec eux.";
+        }
+
+        return redirect()->route('trash.index')->with('success', $message);
     }
 
     /**
