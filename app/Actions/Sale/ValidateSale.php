@@ -27,6 +27,23 @@ class ValidateSale
 
         return DB::transaction(function () use ($sale) {
 
+            // ─── 0. CRÉDIT CLIENT ───
+            // C'est ICI que la créance naît : le solde ne bouge qu'à la
+            // validation (recalculateBalance ignore les brouillons), et la
+            // marchandise ne sort qu'ici. La règle n'était pourtant appliquée
+            // qu'à la CRÉATION, et sur le seul formulaire du bureau : une vente
+            // venue du terrain, ou créée avant que le client soit suspendu,
+            // passait sans jamais rencontrer son plafond.
+            //
+            // Le crédit examiné est ce qui restera dû sur CETTE vente, une fois
+            // déduits les règlements déjà encaissés dessus.
+            $sale->loadMissing('client');
+            $reste = (float) $sale->total_amount - (float) $sale->payments()->sum('amount');
+
+            if ($sale->client && $raison = $sale->client->creditRefusalReason($reste)) {
+                throw new Exception("Vente {$sale->reference} : {$raison}");
+            }
+
             // ─── 1. VÉRIFIER ET DÉSTOCKER CHAQUE LIGNE ───
             foreach ($sale->items as $item) {
 

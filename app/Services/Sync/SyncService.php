@@ -995,6 +995,23 @@ class SyncService
                 return ['status' => 'already_synced'];
             }
 
+            // Crédit client : même règle que le formulaire du bureau, qui était
+            // jusqu'ici le seul à l'appliquer — alors que ce chemin-ci est celui
+            // des techniciens. Refus DÉFINITIF (validation_failed) et non
+            // rejouable : le plafond ne se lèvera pas tout seul.
+            //
+            // APRÈS la garde d'idempotence : une vente déjà appliquée doit être
+            // reconnue comme telle, même si le client a depuis atteint son
+            // plafond — sinon un simple rejeu réseau la ferait « échouer » après
+            // coup.
+            $client = \App\Models\Client::find($validated['client_id']);
+            $newCredit = collect($validated['items'])->sum(fn ($i) => $i['quantity'] * $i['unit_price'])
+                - ($validated['immediate_payment'] ?? 0);
+
+            if ($client && $raison = $client->creditRefusalReason((float) $newCredit)) {
+                return $this->invalid(['client_id' => [$raison]]);
+            }
+
             $sale = app(CreateSale::class)->execute($validated);
             $sale->update(['is_synced' => true, 'last_sync_at' => now()]);
 
