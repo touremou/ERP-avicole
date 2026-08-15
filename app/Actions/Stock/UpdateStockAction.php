@@ -40,16 +40,40 @@ class UpdateStockAction
                 'metadata'         => array_merge($stock->metadata ?? [], $data['metadata'] ?? []),
             ]);
 
-            // Tracabilité de l'ajustement
+            /*
+             * TRAÇABILITÉ, ET ALERTE — le même geste que l'écran d'ajustement.
+             *
+             * Modifier la quantité depuis la FICHE d'un article produit exactement
+             * l'effet d'un ajustement d'inventaire : le stock change, un mouvement
+             * `adjustment` est écrit. Mais l'écran d'ajustement, lui, ALERTE
+             * (CreateStockAdjustment → alertStockAdjustment) et celui-ci restait
+             * muet.
+             *
+             * Deux chemins pour le même geste, un seul surveillé : c'est le trou par
+             * lequel passe une démarque volontaire — il suffisait d'éditer la fiche
+             * au lieu d'ouvrir l'écran prévu.
+             *
+             * L'alerte n'est JAMAIS bloquante : un canal muet ne doit pas empêcher
+             * la correction d'une fiche.
+             */
             if (round($oldQuantity, 3) != round($newQuantity, 3)) {
                 $delta = abs($newQuantity - $oldQuantity);
+                $notes = "Ajustement fiche (Précédent: {$oldQuantity} -> Nouveau: {$newQuantity} {$unit})";
+
                 StockMovement::create([
                     'stock_id' => $stock->id,
                     'user_id'  => $userId,
                     'type'     => 'adjustment',
                     'quantity' => $delta,
-                    'notes'    => "Ajustement fiche (Précédent: {$oldQuantity} -> Nouveau: {$newQuantity} {$unit})",
+                    'notes'    => $notes,
                 ]);
+
+                try {
+                    app(\App\Services\NotificationHub::class)
+                        ->alertStockAdjustment($stock, (float) $oldQuantity, (float) $newQuantity, $notes);
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning("Alerte d'ajustement de fiche non émise : {$e->getMessage()}");
+                }
             }
         });
     }

@@ -89,7 +89,14 @@ Schedule::command('hr:check-attendance')->dailyAt('18:30');
 
 // Purge du journal d'audit au-delà de la rétention (config/activitylog.php,
 // défaut 365 j) — borne la croissance de la table activity_log.
-Schedule::command('activitylog:clean')->weekly();
+//
+// --force INDISPENSABLE : sans lui, cette commande DEMANDE une confirmation et
+// s'annule faute de réponse — y compris en mode non interactif. Vérifié à la main :
+// `php artisan activitylog:clean` comme `--no-interaction` rendent tous deux
+// « Command cancelled ». Le planificateur l'appelait sans drapeau : la purge
+// hebdomadaire ne tournait donc JAMAIS, et la table activity_log grossissait sans
+// borne — alors que le commentaire ci-dessus affirmait précisément le contraire.
+Schedule::command('activitylog:clean --force')->weekly();
 
 // Sauvegarde automatisée (base + fichiers utilisateurs) : nettoyage de la
 // rétention puis sauvegarde quotidienne aux heures creuses.
