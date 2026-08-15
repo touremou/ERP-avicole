@@ -334,6 +334,19 @@ class EggProductionController extends Controller
     {
         if (Gate::denies('production.M')) return back()->with('error', 'Action non autorisée.');
 
+        // Délai d'attente : on le dit AVANT la saisie. Le refus ferme est dans
+        // l'action (GradeEggProduction), seul point de passage vers le stock
+        // vendable ; ici on évite seulement de faire remplir un formulaire
+        // dont on sait déjà qu'il sera rejeté.
+        if ($withdrawal = $eggProduction->batch?->withdrawalOn($eggProduction->production_date)) {
+            return back()->with('error', sprintf(
+                "Ponte du %s sous délai d'attente (« %s », échéance le %s) — ces œufs ne peuvent pas être mis en stock vendable.",
+                $eggProduction->production_date->format('d/m/Y'),
+                $withdrawal->product_name,
+                $withdrawal->withdrawal_until->format('d/m/Y'),
+            ));
+        }
+
         return view('egg-productions.tri', [
             'eggProduction' => $eggProduction,
             'batch'         => $eggProduction->batch,

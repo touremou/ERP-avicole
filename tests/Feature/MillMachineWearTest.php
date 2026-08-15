@@ -166,7 +166,7 @@ test('la clôture ne calcule plus de variable qu’elle n’utilise pas', functi
     // nomme forcément, et un test qui bute sur sa propre documentation est le même
     // piège que celui corrigé sur « AviSmart SARL » (#219).
     $source = file_get_contents(app_path('Actions/MillProduction/CompleteMillProduction.php'));
-    $code = preg_replace('#//.*$|/\*.*?\*/#ms', '', $source);
+    $code = preg_replace('#//[^\n]*|/\*.*?\*/#s', '', $source);
 
     expect($code)->not->toContain('$allMachines');
 });
