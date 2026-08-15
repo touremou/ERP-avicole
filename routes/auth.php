@@ -7,16 +7,30 @@ use App\Http\Controllers\Auth\EmailVerificationPromptController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
-use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use Illuminate\Support\Facades\Route;
 
+/*
+ * PAS D'INSCRIPTION PUBLIQUE.
+ *
+ * Les routes `register` de Breeze étaient restées ouvertes : n'importe qui
+ * atteignant le site pouvait créer un compte et se retrouvait IMMÉDIATEMENT
+ * authentifié sur le tableau de bord (`Auth::login($user)` puis redirection).
+ * Le compte naissait actif (`users.is_active` vaut true par défaut) et sans
+ * rôle — les portes de modules le refusaient donc, mais il détenait une session
+ * valide, durable, pour sonder chaque écran à la recherche d'une porte oubliée.
+ * Et la table des comptes se remplissait sans que personne ne l'ait décidé.
+ *
+ * Cet ERP ne s'adresse pas au public : il sert UNE exploitation, dont les
+ * comptes se créent à l'écran d'administration (droit `S`), avec un rôle choisi.
+ * Cette porte-ci n'avait donc aucun usage — seulement un risque.
+ *
+ * Le contrôleur, sa vue et le test Breeze qui ATTESTAIT le comportement partent
+ * avec la route : une vue qui pointe vers une route inexistante est une mine, et
+ * le tout premier compte se crée par l'installateur (InstallController), qui a
+ * son propre chemin.
+ */
 Route::middleware('guest')->group(function () {
-    Route::get('register', [RegisteredUserController::class, 'create'])
-        ->name('register');
-
-    Route::post('register', [RegisteredUserController::class, 'store']);
-
     Route::get('login', [AuthenticatedSessionController::class, 'create'])
         ->name('login');
 
