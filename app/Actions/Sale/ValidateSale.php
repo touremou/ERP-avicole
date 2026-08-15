@@ -146,13 +146,49 @@ class ValidateSale
             throw new Exception("Le lot {$batch->code} n'est pas actif (statut: {$batch->status}).");
         }
 
-        // Biosécurité : lot sous quarantaine sanitaire → vente à la tête
-        // interdite (délai d'attente médicamenteux). Levée via le module Santé.
+        // Biosécurité : lot sous QUARANTAINE sanitaire → vente à la tête
+        // interdite. La levée est une DÉCISION, prise via le module Santé.
+        //
+        // (Ce commentaire invoquait le « délai d'attente médicamenteux » — qui
+        // est l'autre règle, celle du bloc suivant. Les deux sont distinctes :
+        // la quarantaine se lève sur décision, le délai d'attente tout seul à
+        // l'échéance. Le texte annonçait donc une garde que le code ne faisait
+        // pas.)
         if ($quarantine = $batch->activeQuarantine()) {
             throw new Exception(
                 "Le lot {$batch->code} est en QUARANTAINE sanitaire"
                 . ($quarantine->quarantine_started_at ? ' depuis le ' . $quarantine->quarantine_started_at->format('d/m/Y') : '')
                 . " — vente interdite jusqu'à la levée (incident santé n°{$quarantine->id})."
+            );
+        }
+
+        /*
+         * DÉLAI D'ATTENTE (résidus médicamenteux) — le TROISIÈME objet de la
+         * même règle, et le seul qui restait ouvert.
+         *
+         * Après un vaccin ou un traitement, la notice interdit la consommation
+         * avant l'échéance. La règle bloquait l'abattage interne
+         * (SlaughterService) et, depuis #235, la mise en vente des œufs. Vendre
+         * les bêtes VIVANTES restait libre — or l'acheteur les abat, et le
+         * résidu part avec elles. La contrainte ne disparaît pas parce que
+         * l'animal change de mains : elle sort de l'exploitation sans être
+         * levée.
+         *
+         * Ce n'est pas une politique inventée ici : le garde ci-dessus
+         * annonçait déjà cette interdiction dans son propre commentaire, en
+         * l'attribuant par erreur à la quarantaine.
+         *
+         * La levée est AUTOMATIQUE à l'échéance — aucune décision à prendre,
+         * juste le temps qui passe. On la nomme, pour que le refus dise quand
+         * il tombera.
+         */
+        if ($withdrawal = $batch->activeWithdrawal()) {
+            throw new Exception(
+                "Le lot {$batch->code} est sous DÉLAI D'ATTENTE jusqu'au "
+                . $withdrawal->withdrawal_until->format('d/m/Y')
+                . " ({$withdrawal->withdrawal_days_left} j restants) suite à « {$withdrawal->product_name} »"
+                . ' du ' . $withdrawal->intervention_date->format('d/m/Y')
+                . ' — vente sur pied interdite (résidus médicamenteux).'
             );
         }
 
