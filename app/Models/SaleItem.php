@@ -117,6 +117,58 @@ class SaleItem extends Model
     }
 
     /**
+     * L'ARTICLE DE STOCK visé par cette ligne — null si aucun ne correspond.
+     *
+     * Une seule résolution pour la SORTIE (validation) et pour les RETOURS
+     * (annulation, reprise client). Elles divergeaient :
+     *
+     *   • la validation résolvait par `product_id` puis par nom, et écrivait sur
+     *     l'identité RÉELLE de l'article trouvé ;
+     *   • l'annulation et le retour ignoraient `product_id` et reconstruisaient
+     *     la catégorie depuis `product_type` — l'approche que le commentaire de
+     *     la validation désigne précisément comme fausse.
+     *
+     * Or `requiresDestock()` est vrai dès qu'un `product_id` existe, TOUTE
+     * catégorie confondue. Une ligne dont la catégorie réelle ne se déduit pas
+     * du type sortait donc du bon article et revenait dans un autre — ou dans
+     * aucun : `syncMovement` renvoie false sur article introuvable, sans lever.
+     * La marchandise revenait physiquement, la vente était annulée, et le stock
+     * ne la retrouvait jamais.
+     */
+    public function resolveStock(): ?Stock
+    {
+        if ($this->product_id) {
+            $stock = Stock::find($this->product_id);
+            if ($stock) {
+                return $stock;
+            }
+        }
+
+        return Stock::where('item_name', $this->product_name)
+            ->where('category', Stock::categoryForProductType($this->product_type))
+            ->first()
+            ?? Stock::where('item_name', $this->product_name)->first();
+    }
+
+    /**
+     * Unité de SAISIE à passer aux mouvements de stock pour cette ligne.
+     *
+     * Cette correspondance était recopiée à l'identique dans les trois actions
+     * (validation, annulation, retour) : trois exemplaires d'une même table de
+     * conversion, donc trois occasions de diverger.
+     */
+    public function stockInputUnit(): string
+    {
+        return match ($this->unit) {
+            'alveole' => 'Alvéole',
+            'sac'     => 'Sac',
+            'litre'   => 'Litre',
+            'tete'    => 'Tête',
+            default   => 'KG',
+        };
+    }
+
+    /**
      * Détermine si cette ligne impacte un lot (animal vif, toute espèce).
      */
     public function impactsBatch(): bool

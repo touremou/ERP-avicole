@@ -87,9 +87,12 @@ class ValidateSale
         // simultanées du même dernier stock passaient TOUTES LES DEUX le
         // contrôle ci-dessous (sur-vente silencieuse). lockForUpdate sérialise
         // le contrôle de disponibilité — la transaction de execute() l'englobe.
-        $stock = $item->product_id
-            ? Stock::lockForUpdate()->find($item->product_id)
-            : Stock::where('item_name', $item->product_name)->lockForUpdate()->first();
+        // Résolution PARTAGÉE avec l'annulation et le retour (SaleItem::
+        // resolveStock) : c'est la divergence entre ces trois chemins qui
+        // faisait revenir la marchandise dans un autre article que celui d'où
+        // elle était sortie. Le verrou est repris ici, sur l'article résolu.
+        $resolved = $item->resolveStock();
+        $stock = $resolved ? Stock::lockForUpdate()->find($resolved->id) : null;
 
         if (! $stock) {
             // product_id explicite mais stock disparu → vraie anomalie (FK), on bloque.
@@ -122,13 +125,7 @@ class ValidateSale
             (float) $item->quantity,
             'out',
             "Vente {$item->sale->reference} — Client: {$item->sale->client->name}",
-            match ($item->unit) {
-                'alveole' => 'Alvéole',
-                'sac'     => 'Sac',
-                'litre'   => 'Litre',
-                'tete'    => 'Tête',
-                default   => 'KG',
-            }
+            $item->stockInputUnit()
         );
     }
 

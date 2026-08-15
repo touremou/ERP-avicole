@@ -60,22 +60,29 @@ class ProcessSaleReturn
                 }
                 $qty = min($qty, (float) $item->quantity); // jamais plus que vendu
 
-                // 1. Restocker l'article rendu (même mécanique que l'annulation).
+                // 1. Restocker l'article rendu, sur l'article D'OÙ il est sorti
+                // (SaleItem::resolveStock — même résolution que la validation
+                // et que l'annulation).
                 if ($item->requiresDestock()) {
-                    StockIntegrationService::syncMovement(
-                        $item->product_name,
-                        Stock::categoryForProductType($item->product_type),
-                        $qty,
-                        'in',
-                        "Retour vente {$sale->reference} ({$return->reference})",
-                        match ($item->unit) {
-                            'alveole' => 'Alvéole',
-                            'sac'     => 'Sac',
-                            'litre'   => 'Litre',
-                            'tete'    => 'Tête',
-                            default   => 'KG',
-                        }
-                    );
+                    $stock = $item->resolveStock();
+
+                    if (! $stock) {
+                        // Le retour reste enregistré (l'avoir est dû au client),
+                        // mais l'échec de remise en stock cesse d'être muet.
+                        Log::warning(
+                            "Retour {$return->reference} : aucun article de stock ne correspond à "
+                            . "« {$item->product_name} » — remise en stock impossible, à corriger à la main."
+                        );
+                    } else {
+                        StockIntegrationService::syncMovement(
+                            $stock->item_name,
+                            $stock->category,
+                            $qty,
+                            'in',
+                            "Retour vente {$sale->reference} ({$return->reference})",
+                            $item->stockInputUnit()
+                        );
+                    }
                 }
                 if ($item->decrementsBatchCount() && $item->batch_id) {
                     Batch::find($item->batch_id)?->increment('current_quantity', (int) $qty);

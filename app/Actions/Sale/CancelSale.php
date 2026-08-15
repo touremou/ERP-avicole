@@ -40,21 +40,31 @@ class CancelSale
             if (in_array($sale->status, ['valide', 'livre'])) {
                 foreach ($sale->items as $item) {
 
-                    // Restockage articles
+                    // Restockage articles — sur l'article D'OÙ la marchandise
+                    // est sortie (SaleItem::resolveStock, partagé avec la
+                    // validation), et non sur une catégorie redéduite du type.
                     if ($item->requiresDestock()) {
+                        $stock = $item->resolveStock();
+
+                        if (! $stock) {
+                            // On n'empêche PAS l'annulation : elle est
+                            // légitime et la marchandise est déjà revenue. Mais
+                            // on le dit — c'était jusqu'ici un no-op silencieux
+                            // (syncMovement renvoie false sans lever).
+                            Log::warning(
+                                "Annulation {$sale->reference} : aucun article de stock ne correspond à "
+                                . "« {$item->product_name} » — restockage impossible, à corriger à la main."
+                            );
+                            continue;
+                        }
+
                         StockIntegrationService::syncMovement(
-                            $item->product_name,
-                            Stock::categoryForProductType($item->product_type),
+                            $stock->item_name,
+                            $stock->category,
                             (float) $item->quantity,
                             'in',
                             "Annulation vente {$sale->reference} — Restockage",
-                            match ($item->unit) {
-                                'alveole' => 'Alvéole',
-                                'sac'     => 'Sac',
-                                'litre'   => 'Litre',
-                                'tete'    => 'Tête',
-                                default   => 'KG',
-                            }
+                            $item->stockInputUnit()
                         );
                     }
 
