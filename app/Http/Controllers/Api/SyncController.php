@@ -64,8 +64,15 @@ class SyncController extends Controller
             'gate'    => 'commerce.L',
             // price_list_id (M6) : le POS mobile re-tarife tout l'écran au
             // changement de client, hors réseau — l'AJAX web ne peut pas.
+            //
+            // credit_limit : depuis #237, le serveur OPPOSE le plafond aux
+            // ventes venues du terrain — mais le terrain ne le recevait pas. Il
+            // ne pouvait donc pas voir la règle qu'on lui applique : la vente
+            // partait, la marchandise aussi, et le refus n'arrivait qu'à la
+            // synchronisation suivante, définitif et sans recours. Le solde
+            // descendait déjà ; il manquait la borne à laquelle le comparer.
             'columns' => ['id', 'client_id', 'name', 'category', 'price_list_id', 'phone',
-                          'balance', 'status', 'updated_at'],
+                          'balance', 'credit_limit', 'status', 'updated_at'],
         ],
         // M5 — Couvoir : cycles d'incubation OUVERTS (mirage/éclosion se font
         // en salle). Les cycles clos ne servent plus au terrain.

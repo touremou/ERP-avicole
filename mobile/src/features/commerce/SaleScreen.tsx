@@ -49,6 +49,41 @@ function remaining(product: RefProduct, items: SaleItem[]): number | null {
   return floorQuantity(stock - inCart(items, product.id), product.unit)
 }
 
+/**
+ * MIROIR de App\Models\Client::creditRefusalReason — pourquoi ce client ne peut
+ * pas prendre CE crédit, null s'il le peut.
+ *
+ * Depuis #237 le serveur oppose cette règle aux ventes venues du terrain. Elle
+ * ne descendait pas jusqu'ici : la vente partait, la marchandise avec, et le
+ * refus n'arrivait qu'à la synchronisation suivante — définitif, et bien après
+ * que le client soit reparti avec les sacs. Le contrôle local ne remplace pas
+ * celui du serveur (le solde peut avoir bougé entre-temps, et c'est le serveur
+ * qui tranche) : il évite d'engager la marchandise sur une vente qu'on sait
+ * déjà refusée.
+ */
+function creditRefusalReason(client: RefClient | undefined, newCredit: number): string | null {
+  if (!client) return null
+
+  if (client.status && client.status !== 'actif') {
+    return t('Client :status — vente à crédit impossible.', { status: client.status })
+  }
+
+  // Plafond à 0 = pas de plafond ; une vente soldée d'avance ne crée aucun encours.
+  const limit = Number(client.credit_limit ?? 0)
+  if (newCredit <= 0 || limit <= 0) return null
+
+  const balance = Number(client.balance ?? 0)
+  if (balance + newCredit > limit) {
+    return t('Plafond crédit dépassé : solde :balance + :credit > :limit GNF.', {
+      balance: Math.round(balance).toString(),
+      credit: Math.round(newCredit).toString(),
+      limit: Math.round(limit).toString(),
+    })
+  }
+
+  return null
+}
+
 export function SaleScreen() {
   const navigate = useNavigate()
   const [clients, setClients] = useState<RefClient[]>([])
@@ -212,11 +247,16 @@ export function SaleScreen() {
   const total = cashRound(subtotal, cashStep)
   const roundingAdjustment = Math.round((total - subtotal) * 100) / 100
 
+  // Crédit qui restera dû après l'éventuel paiement immédiat : c'est lui que
+  // le plafond borne, côté serveur comme ici.
+  const client = clients.find((c) => c.id === Number(clientId))
+  const newCredit = total - (immediatePayment ? Number(immediatePayment) : 0)
+  const creditWarning = creditRefusalReason(client, newCredit)
+
   async function onSubmit(event: FormEvent) {
     event.preventDefault()
-    if (!clientId || items.length === 0) return
+    if (!clientId || items.length === 0 || creditWarning) return
 
-    const client = clients.find((c) => c.id === Number(clientId))
     await enqueue(
       'sale.create',
       {
@@ -268,6 +308,9 @@ export function SaleScreen() {
       {book.listName && (
         <p className="muted">{t('Tarif appliqué : :name', { name: book.listName })}</p>
       )}
+      {/* Le refus se dit AVANT que la marchandise parte : après coup, le client
+          est reparti avec les sacs et la vente meurt à la synchronisation. */}
+      {creditWarning && <p className="error">{creditWarning}</p>}
 
       {items.length > 0 && (
         <section>
@@ -486,7 +529,11 @@ export function SaleScreen() {
         </>
       )}
 
-      <button type="submit" className="btn-primary" disabled={!clientId || items.length === 0}>
+      <button
+        type="submit"
+        className="btn-primary"
+        disabled={!clientId || items.length === 0 || creditWarning !== null}
+      >
         {t('Enregistrer la vente (brouillon)')}
       </button>
     </form>
