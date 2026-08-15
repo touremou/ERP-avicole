@@ -6,9 +6,10 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use App\Contracts\MaintainableAsset;
 use App\Traits\BelongsToFarm;
 
-class MillMachine extends Model
+class MillMachine extends Model implements MaintainableAsset
 {
     use HasFactory, BelongsToFarm;
 
@@ -124,6 +125,46 @@ class MillMachine extends Model
     public function isAvailable(): bool
     {
         return $this->status === 'Opérationnel' && !$this->needs_maintenance;
+    }
+
+    // -----------------------
+    // MAINTENANCE PRÉVENTIVE (contrat MaintainableAsset)
+    // -----------------------
+    //
+    // `needs_maintenance` existait ici depuis toujours, mais sans personne pour
+    // en faire quelque chose : `maintenance:check` ne parcourait que les groupes
+    // électrogènes, et le seul autre lecteur était un badge de couleur sur un
+    // écran du bureau. Les heures s'accumulaient à chaque clôture d'OP, le seuil
+    // se franchissait, et rien ne partait.
+
+    /** Entretien dû : le seuil d'heures est atteint (aucune date sur ces machines). */
+    public function isMaintenanceDue(): bool
+    {
+        return $this->needs_maintenance;
+    }
+
+    /** Le seuil n'est pas seulement atteint, il est dépassé d'au moins 10 %. */
+    public function isMaintenanceOverdue(): bool
+    {
+        return $this->maintenance_interval_hours > 0
+            && $this->total_hours_run >= $this->maintenance_interval_hours * 1.1;
+    }
+
+    public function maintenanceLabel(): string
+    {
+        return (string) $this->name;
+    }
+
+    public function maintenanceDetail(): string
+    {
+        $depuis = $this->last_maintenance
+            ? ' Dernière révision le ' . $this->last_maintenance->format('d/m/Y') . '.'
+            : ' Aucune révision enregistrée à ce jour.';
+
+        return 'Révision préventive : ' . round((float) $this->total_hours_run, 1) . ' h tournées'
+            . ' pour un intervalle de ' . round((float) $this->maintenance_interval_hours) . ' h.'
+            . $depuis
+            . ' Vérifier courroies, roulements, grille de broyage.';
     }
 
     /**
