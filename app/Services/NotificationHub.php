@@ -814,6 +814,57 @@ class NotificationHub
     }
 
     /**
+     * AJUSTEMENT OU DESTRUCTION D'UN PRODUIT FINI — le stock le plus cher au kilo.
+     *
+     * Deux écrans réécrivent à la main la quantité d'un produit fini : l'ajustement
+     * d'inventaire, et la destruction (péremption, saisie sanitaire) qui met la ligne
+     * à ZÉRO d'un seul geste. Les deux étaient TRACÉS — journal en base et fichier —
+     * mais n'alertaient personne.
+     *
+     * Or l'ajustement du magasin ordinaire, lui, alerte depuis toujours
+     * (alertStockAdjustment), et le lot #230 a étendu cette règle à ses deux autres
+     * chemins. La viande — le stock de plus grande valeur de l'exploitation — restait
+     * le seul endroit où l'on pouvait effacer de la quantité en silence. Le promoteur,
+     * à l'étranger, ne l'apprenait qu'en ouvrant une table que personne n'ouvre.
+     *
+     * UNE DESTRUCTION EST TOUJOURS CRITIQUE, quelle que soit la quantité : elle
+     * supprime la totalité d'une ligne. Un ajustement suit la règle habituelle —
+     * critique à la baisse, informatif à la hausse (cf. #229, #230).
+     */
+    public function alertFinishedProductAdjustment(
+        \App\Models\FinishedProduct $product,
+        float $oldKg,
+        float $newKg,
+        string $reason,
+        bool $isDisposal = false
+    ): int {
+        $delta = $newKg - $oldKg;
+        $isDecrease = $delta < 0;
+        $critique = $isDisposal || $isDecrease;
+
+        $titre = $isDisposal ? 'DESTRUCTION PRODUIT FINI' : 'AJUSTEMENT PRODUIT FINI';
+
+        $message = ($critique ? '🚨' : 'ℹ️') . " *{$titre}*\n\n"
+            . "Produit : *{$product->product_name}*\n"
+            . 'Avant : ' . round($oldKg, 2) . " kg\n"
+            . 'Après : *' . round($newKg, 2) . " kg*\n"
+            . 'Écart : *' . ($delta > 0 ? '+' : '') . round($delta, 2) . " kg*\n"
+            . 'Par : ' . (\Illuminate\Support\Facades\Auth::user()?->name ?? 'Système') . "\n"
+            . "Motif : {$reason}"
+            . ($isDisposal ? "\n\nLigne entièrement détruite — vérifier le justificatif sanitaire." : '')
+            . ($isDecrease && ! $isDisposal ? "\n\nDiminution manuelle — vérifier la justification." : '');
+
+        return $this->broadcast(
+            'alert_fraud',
+            $message,
+            ($isDisposal ? 'Destruction ' : 'Ajustement ') . $product->product_name,
+            $critique ? 'critique' : 'normal',
+            route('slaughter.finished', absolute: false),
+            '/abattoir/journal'
+        );
+    }
+
+    /**
      * Notification paiement reçu.
      */
     public function notifyPaymentReceived(Payment $payment): void
