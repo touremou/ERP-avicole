@@ -880,6 +880,22 @@ class SlaughterController extends Controller
 
         \Illuminate\Support\Facades\Log::info("Ajustement stock produit fini \"{$product->product_name}\" : {$oldQty} → {$newQty} kg — Raison : {$validated['reason']} — Par : " . auth()->user()->name);
 
+        /*
+         * ALERTE — le stock le plus cher au kilo était le seul qu'on pouvait réduire
+         * en silence. L'ajustement du magasin ordinaire alerte depuis toujours, et le
+         * lot #230 a étendu la règle à ses deux autres chemins ; la viande restait à
+         * l'écart. Le journal existait, mais personne n'ouvre une table.
+         *
+         * Jamais bloquante : une alerte qui échoue ne doit pas empêcher la correction
+         * d'un inventaire.
+         */
+        try {
+            app(\App\Services\NotificationHub::class)
+                ->alertFinishedProductAdjustment($product, $oldQty, $newQty, $validated['reason']);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("Alerte d'ajustement produit fini non émise : {$e->getMessage()}");
+        }
+
         $diff = $newQty - $oldQty;
         $diffLabel = $diff >= 0 ? "+{$diff}" : "{$diff}";
 
@@ -915,6 +931,18 @@ class SlaughterController extends Controller
         });
 
         \Illuminate\Support\Facades\Log::warning("ÉLIMINATION produit fini \"{$product->product_name}\" : {$qty} kg — Raison : {$validated['reason']} — Par : " . auth()->user()->name);
+
+        /*
+         * ALERTE — TOUJOURS critique, quelle que soit la quantité : une destruction
+         * met la ligne entière à zéro d'un seul geste. C'est le mouvement le plus
+         * lourd de tout le magasin, et il ne s'annonçait à personne.
+         */
+        try {
+            app(\App\Services\NotificationHub::class)
+                ->alertFinishedProductAdjustment($product, $qty, 0.0, $validated['reason'], isDisposal: true);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("Alerte de destruction produit fini non émise : {$e->getMessage()}");
+        }
 
         return back()->with('success', "{$qty} kg de \"{$product->product_name}\" éliminés. Raison : {$validated['reason']}");
     }
