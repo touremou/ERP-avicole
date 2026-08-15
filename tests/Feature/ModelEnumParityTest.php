@@ -67,6 +67,13 @@ test('aucune liste de valeurs d’un modèle ne diverge de l’ENUM de sa table'
         // opposition au CDI. La colonne admet les trois ; la constante n'en
         // désigne que deux, et c'est tout son objet (cf. hasFixedTerm()).
         'Employee::FIXED_TERM',
+
+        // Sous-ensemble VOLONTAIRE : les statuts d'absence qui OCCUPENT le
+        // calendrier d'un agent, donc ceux avec lesquels une nouvelle absence
+        // entre en conflit. La colonne admet cinq valeurs ; celle-ci en désigne
+        // quatre — « refuse » en est exclu à dessein, un congé refusé n'ayant
+        // jamais eu lieu (cf. EmployeeLeave::overlapping()).
+        'EmployeeLeave::OCCUPYING_STATUSES',
     ];
 
     $divergences = [];
