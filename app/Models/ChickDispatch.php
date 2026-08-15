@@ -12,7 +12,7 @@ class ChickDispatch extends Model
 
     protected $fillable = [
         'farm_id', 'incubation_id', 'destination_type', 'quantity',
-        'batch_id', 'client_id', 'unit_price', 'total_amount',
+        'batch_id', 'client_id', 'sale_id', 'unit_price', 'total_amount',
         'quality_grade', 'notes', 'dispatched_by', 'dispatch_date',
     ];
 
@@ -26,6 +26,9 @@ class ChickDispatch extends Model
     public function batch(): BelongsTo { return $this->belongsTo(Batch::class); }
     public function client(): BelongsTo { return $this->belongsTo(Client::class); }
     public function dispatcher(): BelongsTo { return $this->belongsTo(User::class, 'dispatched_by'); }
+
+    /** La vente engendrée par un dispatch « vente » — null pour les autres destinations. */
+    public function sale(): BelongsTo { return $this->belongsTo(Sale::class); }
 
     public function getDestinationLabelAttribute(): string
     {
