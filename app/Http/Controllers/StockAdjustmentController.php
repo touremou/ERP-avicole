@@ -105,9 +105,9 @@ class StockAdjustmentController extends Controller
         return response()->streamDownload(function () use ($rows) {
             $out = fopen('php://output', 'w');
             fwrite($out, "\xEF\xBB\xBF"); // BOM UTF-8
-            fputcsv($out, ['Référence', 'Date', 'Article', 'Motif', 'Type', 'Avant', 'Après', 'Écart', 'CMP', 'Valeur'], ';');
+            \App\Support\CsvExport::putRow($out, ['Référence', 'Date', 'Article', 'Motif', 'Type', 'Avant', 'Après', 'Écart', 'CMP', 'Valeur'], ';');
             foreach ($rows as $r) {
-                fputcsv($out, [
+                \App\Support\CsvExport::putRow($out, [
                     $r->reference, $r->adjustment_date->format('d/m/Y'), $r->stock?->item_name,
                     $r->reason_label, $r->type, $r->quantity_before, $r->quantity_after,
                     $r->delta, $r->unit_cost, $r->value_impact,

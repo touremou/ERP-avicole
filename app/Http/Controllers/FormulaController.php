@@ -143,7 +143,7 @@ class FormulaController extends Controller
             $out = fopen('php://output', 'w');
             fwrite($out, "\xEF\xBB\xBF"); // BOM : Excel ouvre l'UTF-8 correctement
 
-            fputcsv($out, [
+            \App\Support\CsvExport::putRow($out, [
                 'Nom', 'Type animal (clef)', 'Phase (clef)',
                 'Énergie EM kcal/kg', 'Protéine brute %', 'Lysine %',
                 'Méthionine %', 'Calcium %', 'Phosphore %',
@@ -151,7 +151,7 @@ class FormulaController extends Controller
             ], ';');
 
             foreach ($norms as $norm) {
-                fputcsv($out, [
+                \App\Support\CsvExport::putRow($out, [
                     $norm->name, $norm->animal_type, $norm->phase,
                     $norm->target_em, $norm->target_pb, $norm->target_lys,
                     $norm->target_meth, $norm->target_ca, $norm->target_p,
