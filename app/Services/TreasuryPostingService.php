@@ -114,6 +114,48 @@ class TreasuryPostingService
     }
 
     /**
+     * SALAIRE VERSÉ — la sortie d'argent la plus régulière de l'exploitation.
+     *
+     * Les encaissements clients, les dépenses et les règlements fournisseurs
+     * passaient tous en trésorerie. La PAIE, non : marquer un bulletin « payé »
+     * n'écrivait rien nulle part. Le compte Caisse ne bougeait pas d'un franc,
+     * alors que l'argent était sorti — et l'écart se reconstituait chaque mois,
+     * du montant de la masse salariale.
+     *
+     * Le compte est résolu par le mode de paiement, exactement comme pour un
+     * règlement fournisseur (espèces → caisse, virement → banque), sauf compte
+     * explicitement désigné.
+     */
+    public function postPayslip(\App\Models\Payslip $payslip): ?TreasuryTransaction
+    {
+        if ($this->alreadyPosted($payslip)) {
+            return null;
+        }
+
+        $amount = (float) $payslip->net_salary;
+        if ($amount <= 0) {
+            return null;
+        }
+
+        $account = $this->resolveAccount(null, $payslip->payment_method ?? 'especes');
+        if (! $account) {
+            Log::info("Trésorerie : aucun compte pour le bulletin #{$payslip->id} — non comptabilisé.");
+            return null;
+        }
+
+        $employe = trim(($payslip->employee?->first_name ?? '') . ' ' . ($payslip->employee?->last_name ?? ''));
+
+        return $this->service->record($account, 'out', $amount, [
+            'date'        => optional($payslip->paid_at)->toDateString() ?? now()->toDateString(),
+            'category'    => 'salaire',
+            'description' => 'Salaire ' . ($employe !== '' ? $employe : "bulletin #{$payslip->id}")
+                . ($payslip->period?->label ? " — {$payslip->period->label}" : ''),
+            'reference'   => $payslip->payment_reference,
+            'source'      => $payslip,
+        ]);
+    }
+
+    /**
      * Contre-passe toutes les écritures générées par une pièce (annulation,
      * suppression, remboursement) : restaure le solde et supprime l'écriture.
      */

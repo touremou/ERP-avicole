@@ -207,6 +207,37 @@ class PayrollController extends Controller
     {
         if (Gate::denies('rh.M')) return back()->with('error', 'Non autorisé.');
 
+        /*
+         * DEUX GARDES QUI MANQUAIENT — c'était la SEULE écriture de ce
+         * contrôleur à n'en avoir aucune.
+         *
+         * 1. LA VALIDATION DE LA PÉRIODE ÉTAIT CONTOURNABLE. `validatePeriod`
+         *    exige le droit `rh.S` (administrateur) : c'est le moment où
+         *    quelqu'un approuve la paie AVANT que l'argent sorte. Mais payer se
+         *    fait bulletin par bulletin avec `rh.M` — un responsable pouvait
+         *    donc régler toute la paie sans que la période soit validée, et la
+         *    garde d'approbation ne servait à rien.
+         *
+         * 2. UN BULLETIN DÉJÀ PAYÉ POUVAIT ÊTRE REPAYÉ. `update()` réécrivait
+         *    `paid_at`, le mode et la référence : la trace du versement réel —
+         *    quand, comment, sous quelle référence — était effacée par la
+         *    seconde saisie. Pour un promoteur qui suit ses versements de
+         *    l'étranger, c'est la seule preuve qu'il possède.
+         */
+        if ($payslip->payment_status === 'paye') {
+            return back()->with('error',
+                'Ce bulletin est déjà réglé le ' . optional($payslip->paid_at)->format('d/m/Y')
+                . ' : le re-marquer effacerait la trace du versement réel.'
+            );
+        }
+
+        if (! in_array($payslip->period?->status, ['valide', 'paye'], true)) {
+            return back()->with('error',
+                "La période {$payslip->period?->label} n'est pas validée (statut : {$payslip->period?->status})."
+                . ' La validation par un administrateur précède le paiement.'
+            );
+        }
+
         $validated = $request->validate([
             'payment_method'    => 'required|in:especes,orange_money,virement',
             'payment_reference' => 'nullable|string|max:100',
@@ -218,6 +249,34 @@ class PayrollController extends Controller
             'payment_status'    => 'paye',
             'paid_at'           => now(),
         ]);
+
+        // Le salaire sort de la caisse : il doit s'y voir. Jamais bloquant —
+        // perdre l'enregistrement d'un versement déjà effectué serait pire que
+        // perdre son écriture de trésorerie.
+        rescue(
+            fn () => app(\App\Services\TreasuryPostingService::class)->postPayslip($payslip->fresh(['employee', 'period'])),
+            fn ($e) => \Illuminate\Support\Facades\Log::warning("Salaire non comptabilisé en trésorerie : {$e->getMessage()}"),
+            report: false
+        );
+
+        /*
+         * L'ÉTAT TERMINAL DE LA PÉRIODE N'ÉTAIT ÉCRIT PAR PERSONNE.
+         *
+         * `payroll_periods.status` déclare « paye », et DEUX gardes le lisent —
+         * `generate()` refuse de recalculer une période payée, `isLocked()`
+         * verrouille les bulletins d'une période payée. Aucune ligne de code ne
+         * l'écrivait jamais : les deux gardes étaient donc mortes, et la période
+         * restait indéfiniment « validée » alors que tout était réglé.
+         *
+         * On la clôt quand le DERNIER bulletin est payé : c'est le seul moment
+         * où l'affirmation « cette période est payée » devient vraie.
+         */
+        $periode = $payslip->period;
+
+        if ($periode && $periode->status !== 'paye'
+            && $periode->payslips()->where('payment_status', '!=', 'paye')->doesntExist()) {
+            $periode->update(['status' => 'paye']);
+        }
 
         return back()->with('success', "Paiement enregistré pour {$payslip->employee->first_name} {$payslip->employee->last_name}.");
     }
