@@ -53,15 +53,13 @@ class ValidateReception
 
         return DB::transaction(function () use ($dispatch, $data) {
 
-            // ─── 1. NUMÉROTATION ───
-            $year = now()->format('Y');
-            $lastNum = Reception::where('reception_number', 'LIKE', "REC-{$year}-%")->max('reception_number');
-            $seq = $lastNum ? (int) substr($lastNum, -6) + 1 : 1;
-
-            // ─── 2. CRÉER LA RÉCEPTION ───
+            // ─── 1. CRÉER LA RÉCEPTION ───
+            // Numérotation par le service central. Elle se faisait ici à la main,
+            // sans verrou — et sans regarder les enregistrements SUPPRIMÉS : le
+            // compteur pouvait donc réémettre le numéro d'une réception effacée.
             $reception = Reception::create([
                 'dispatch_id'      => $dispatch->id,
-                'reception_number' => sprintf('REC-%s-%06d', $year, $seq),
+                'reception_number' => \App\Services\DocumentNumberingService::generate('reception'),
                 'received_by'      => Auth::id(),
                 'reception_date'   => $data['reception_date'],
                 'reception_time'   => $data['reception_time'] ?? null,

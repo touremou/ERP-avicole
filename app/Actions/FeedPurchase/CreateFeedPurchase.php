@@ -112,10 +112,24 @@ class CreateFeedPurchase
                 $onCredit = ($data['payment_mode'] ?? 'comptant') === 'credit';
 
                 DB::transaction(function () use ($provider, $purchase, $data, $onCredit) {
-                    $lastId = SupplierInvoice::withoutGlobalScopes()->max('id') ?? 0;
+                    /*
+                     * DEUX AUTORITÉS SUR LA MÊME COLONNE UNIQUE.
+                     *
+                     * La référence se calculait ici à partir du MAX(id) — pas de
+                     * la séquence des références — alors que l'écran d'achat la
+                     * tire de DocumentNumberingService, qui lit le MAX de la
+                     * COLONNE. Deux règles pour `supplier_invoices.reference`,
+                     * qui est unique en base : elles ne coïncident que tant que
+                     * les identifiants et les séquences restent en phase.
+                     *
+                     * Il suffit d'un achat supprimé, ou d'un préfixe changé dans
+                     * les Réglages (il est configurable), pour qu'elles
+                     * divergent — et l'écriture éclate alors sur la contrainte
+                     * d'unicité, du côté de celui qui saisit.
+                     */
                     $invoice = SupplierInvoice::create([
                         'provider_id'      => $provider->id,
-                        'reference'        => sprintf('ACH-%05d', $lastId + 1),
+                        'reference'        => \App\Services\DocumentNumberingService::generate('supplier_invoice'),
                         'invoice_date'     => $data['purchase_date'],
                         'category'         => 'aliment',
                         'label'            => 'Aliment — ' . $purchase->feed_type . ' (' . $purchase->display_label . ')',
