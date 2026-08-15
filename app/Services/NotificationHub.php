@@ -81,6 +81,10 @@ class NotificationHub
         // Sauvegarde en défaut : affaire d'administration, le terrain n'a pas
         // d'écran de sauvegardes et reste sur ses alertes.
         'alert_backup'        => ['backups.index', '/alertes'],
+        // Règlement fournisseur : le bureau va à l'achat réglé ; le terrain n'a
+        // pas d'écran d'achats (seulement une saisie de dépense), il reste donc
+        // sur le journal de trésorerie, où la sortie d'argent apparaît.
+        'alert_purchase'      => ['purchases.index', '/tresorerie/journal'],
     ];
 
     /**
@@ -861,6 +865,55 @@ class NotificationHub
             $critique ? 'critique' : 'normal',
             route('slaughter.finished', absolute: false),
             '/abattoir/journal'
+        );
+    }
+
+    /**
+     * RÈGLEMENT FOURNISSEUR — l'argent qui SORT.
+     *
+     * L'encaissement client est annoncé depuis toujours (notifyPaymentReceived,
+     * décrit sur place comme « pièce centrale de la prévention des malversations
+     * sur les paiements »), horaire inhabituel signalé compris. Le règlement
+     * fournisseur, lui, ne prévenait personne — alors que c'est la voie la plus
+     * directe par laquelle l'argent quitte l'exploitation, et que le promoteur
+     * n'est pas sur place pour le voir passer.
+     *
+     * L'alerte vit dans l'OBSERVER du règlement, pas dans l'écran : trois
+     * chemins créent un règlement fournisseur (l'écran d'achat, et deux chemins
+     * d'achat d'aliment). Les brancher un par un, c'était rouvrir le trou au
+     * quatrième.
+     *
+     * UN AVOIR (montant négatif) est un remboursement REÇU du fournisseur :
+     * l'argent revient, l'alerte le dit ainsi plutôt que d'annoncer une sortie.
+     */
+    public function notifySupplierPaymentMade(\App\Models\SupplierPayment $payment): int
+    {
+        $invoice   = $payment->invoice;
+        $montant   = (float) $payment->amount;
+        $estAvoir  = $montant < 0;
+        $horsHeure = $this->isAfterHours();
+
+        $entete = $estAvoir
+            ? '↩️ *AVOIR FOURNISSEUR*'
+            : ($horsHeure ? '🌙 *RÈGLEMENT FOURNISSEUR HORS HORAIRES*' : '💸 *RÈGLEMENT FOURNISSEUR*');
+
+        $message = "{$entete}\n\n"
+            . 'Fournisseur : *' . ($invoice?->provider?->name ?? 'Fournisseur') . "*\n"
+            . 'Montant : *' . number_format(abs($montant), 0, ',', '.') . " GNF*\n"
+            . 'Mode : ' . ($payment->method ?? 'especes') . "\n"
+            . 'Achat : ' . ($invoice?->reference ?? '—') . "\n"
+            . 'Reste dû : ' . number_format((float) ($invoice?->remaining_amount ?? 0), 0, ',', '.') . " GNF\n"
+            . 'Par : ' . (\Illuminate\Support\Facades\Auth::user()?->name ?? 'Système')
+            . ($horsHeure && ! $estAvoir
+                ? "\n\n⚠️ Enregistré à " . now()->format('H:i') . ', hors heures ouvrées — à vérifier.'
+                : '');
+
+        return $this->broadcast(
+            'alert_purchase',
+            $message,
+            ($estAvoir ? 'Avoir ' : 'Règlement ') . ($invoice?->reference ?? ''),
+            $horsHeure && ! $estAvoir ? 'critique' : 'normal',
+            $invoice ? route('purchases.show', $invoice->id, absolute: false) : null,
         );
     }
 
@@ -1649,7 +1702,12 @@ class NotificationHub
 
             // Dépassement budgétaire = contrôle financier : on réutilise la
             // souscription « fraude/anomalies » plutôt qu'une colonne de plus.
-            'alert_budget' => 'alert_fraud',
+            //
+            // Le règlement fournisseur la rejoint : c'est l'argent qui SORT, donc
+            // le même contrôle. Et le rattachement compte — laissé au défaut
+            // `null`, il vaudrait « aucun filtre », c'est-à-dire un WhatsApp à
+            // tout compte ayant un numéro (cf. activity_digest ci-dessous).
+            'alert_budget', 'alert_purchase' => 'alert_fraud',
 
             // Contrat à terme non décidé, et pointage manquant : anomalies
             // administratives à portée financière (des jours non pointés payés en
