@@ -305,6 +305,11 @@ export interface RefClient {
   price_list_id?: number | null
   phone: string | null
   balance: number
+  /**
+   * Plafond de crédit. 0 = pas de plafond (convention du champ côté serveur).
+   * Optionnel : un serveur antérieur à #244 ne le renvoie pas.
+   */
+  credit_limit?: number | null
   status: string | null
   updated_at: string
 }
