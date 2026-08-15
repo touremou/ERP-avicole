@@ -2,266 +2,80 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Batch;
+use App\Actions\Stock\MoveStockAction;
 use App\Models\EggProduction;
 use App\Models\Stock;
-use App\Models\StockMovement;
-use App\Services\StockIntegrationService;
+use App\Services\UnitConverter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\Log;
 
 /**
- * EggMovementController — Refactoré
+ * EggMovementController — mouvement MANUEL d'un calibre d'œufs.
  *
- * Gère :
- * - Tri des œufs par calibre (S, M, L, XL) après collecte
- * - Synchronisation automatique avec le stock (StockIntegrationService)
- * - Mouvements d'œufs (entrée stock, sortie vente, transfert, casse)
- * - Validation rigoureuse (totaux cohérents, pas de stock négatif)
+ * Ce contrôleur portait aussi un tri par calibre complet (formulaire, création,
+ * correction, ~180 lignes). Ce tri-là était MORT à trois titres : aucune route
+ * ne le desservait, sa vue n'existait pas, et il écrivait dans des colonnes
+ * absentes du schéma (`is_sorted`, `qty_s`, `collection_date`,
+ * `total_collected`…) — la table porte `is_graded`, `grade_s`,
+ * `production_date`, `total_eggs_collected`. Il ne pouvait donc que planter s'il
+ * était un jour rebranché, tout en se lisant comme la règle de tri en vigueur.
+ * Le vrai tri vit dans GradeEggProduction, et lui seul.
  *
+ * Ne reste ici que ce qui est réellement routé : le mouvement manuel.
  */
 class EggMovementController extends Controller
 {
     /**
-     * Formulaire de tri des œufs pour une collecte donnée.
-     */
-    public function showTriForm(EggProduction $eggProduction)
-    {
-        if (Gate::denies('production.C')) return back()->with('error', 'Action non autorisée.');
-
-        if ($eggProduction->is_sorted) {
-            return back()->with('error', "La collecte du {$eggProduction->collection_date->format('d/m/Y')} est déjà triée.");
-        }
-
-        $eggProduction->load('batch.building');
-
-        // Stock actuel par calibre
-        $calibreStocks = Stock::where('category', Stock::CAT_OEUFS)
-            ->whereIn('item_name', ['S', 'M', 'L', 'XL'])
-            ->get()
-            ->keyBy('item_name');
-
-        return view('egg-movements.tri', compact('eggProduction', 'calibreStocks'));
-    }
-
-    /**
-     * Enregistre le tri par calibre et synchronise le stock.
+     * Mouvement manuel d'œufs (ajustement d'inventaire, sortie, entrée).
      *
-     * Validation :
-     * - La somme des calibres + cassés + anomalies DOIT = total_collected
-     * - Chaque calibre >= 0
-     * - Le tri ne peut être fait qu'une fois par collecte
-     */
-    public function storeTri(Request $request, EggProduction $eggProduction)
-    {
-        if (Gate::denies('production.C')) return back()->with('error', 'Action non autorisée.');
-
-        if ($eggProduction->is_sorted) {
-            return back()->with('error', 'Cette collecte est déjà triée.');
-        }
-
-        $validated = $request->validate([
-            'qty_s'       => 'required|integer|min:0',
-            'qty_m'       => 'required|integer|min:0',
-            'qty_l'       => 'required|integer|min:0',
-            'qty_xl'      => 'required|integer|min:0',
-            'qty_broken'  => 'required|integer|min:0',
-            'qty_anomaly' => 'required|integer|min:0',
-            'notes'       => 'nullable|string|max:500',
-        ]);
-
-        // Validation métier : total tri = total collecté
-        $totalTri = $validated['qty_s'] + $validated['qty_m'] + $validated['qty_l']
-            + $validated['qty_xl'] + $validated['qty_broken'] + $validated['qty_anomaly'];
-
-        $totalCollected = (int) $eggProduction->total_collected;
-
-        if ($totalTri !== $totalCollected) {
-            return back()->withErrors([
-                'qty_s' => "Le total du tri ({$totalTri}) ne correspond pas au total collecté ({$totalCollected}). Différence : " . abs($totalTri - $totalCollected) . " œufs."
-            ])->withInput();
-        }
-
-        return DB::transaction(function () use ($eggProduction, $validated) {
-
-            // 1. Mettre à jour la collecte
-            $eggProduction->update([
-                'qty_s'       => $validated['qty_s'],
-                'qty_m'       => $validated['qty_m'],
-                'qty_l'       => $validated['qty_l'],
-                'qty_xl'      => $validated['qty_xl'],
-                'qty_broken'  => $validated['qty_broken'],
-                'qty_anomaly' => $validated['qty_anomaly'],
-                'is_sorted'   => true,
-                'sorted_by'   => Auth::id(),
-                'sorted_at'   => now(),
-                'notes'       => $validated['notes'] ?? $eggProduction->notes,
-            ]);
-
-            // 2. Synchroniser le stock par calibre (en Unités → conversion en Alvéoles par StockIntegrationService)
-            $calibres = [
-                'S'  => $validated['qty_s'],
-                'M'  => $validated['qty_m'],
-                'L'  => $validated['qty_l'],
-                'XL' => $validated['qty_xl'],
-            ];
-
-            $syncResults = [];
-            foreach ($calibres as $calibre => $qty) {
-                if ($qty > 0) {
-                    $result = StockIntegrationService::syncMovement(
-                        $calibre,
-                        'oeufs',
-                        $qty,
-                        'in',
-                        "Tri collecte #{$eggProduction->id} — Lot {$eggProduction->batch->code} — {$eggProduction->collection_date->format('d/m/Y')}",
-                        'Unité' // En unités d'œufs, le service convertit en alvéoles (÷30)
-                    );
-
-                    $syncResults[$calibre] = $result ? 'OK' : 'ÉCHEC';
-
-                    if (! $result) {
-                        Log::warning("EggMovementController: échec sync stock calibre {$calibre} — article peut-être inexistant dans stocks.");
-                    }
-                }
-            }
-
-            Log::info("Tri œufs enregistré — Collecte #{$eggProduction->id}, Lot {$eggProduction->batch->code}: S={$validated['qty_s']}, M={$validated['qty_m']}, L={$validated['qty_l']}, XL={$validated['qty_xl']}, Cassés={$validated['qty_broken']}, Anomalies={$validated['qty_anomaly']}");
-
-            // Vérifier si des syncs ont échoué
-            $failures = collect($syncResults)->filter(fn($r) => $r === 'ÉCHEC');
-            if ($failures->isNotEmpty()) {
-                $failedCal = $failures->keys()->implode(', ');
-                return back()->with('warning',
-                    "Tri enregistré, mais le stock n'a pas été mis à jour pour : {$failedCal}. " .
-                    "Vérifiez que les articles S, M, L, XL existent dans le stock catégorie 'oeufs'."
-                );
-            }
-
-            return redirect()->route('egg-productions.show', $eggProduction)
-                ->with('success', "Tri enregistré et stock mis à jour. S:{$validated['qty_s']} M:{$validated['qty_m']} L:{$validated['qty_l']} XL:{$validated['qty_xl']}");
-        });
-    }
-
-    /**
-     * Corrige un tri existant (manager+ requis).
+     * IL ÉCRIVAIT PAR StockIntegrationService — l'outil des flux AUTOMATIQUES
+     * (tri, production, abattage), où l'écriture dérive d'un document et n'a
+     * personne à alerter. D'où deux manques, propres au geste manuel :
      *
-     * Annule le stock de l'ancien tri et applique le nouveau.
+     *   • aucune ALERTE sur un ajustement, alors que réécrire à la main un
+     *     niveau de stock alerte partout ailleurs (#215, #229, #230, #234) ;
+     *   • une sortie supérieure au stock était plafonnée à zéro en silence,
+     *     faisant disparaître la matière manquante au lieu de la signaler.
+     *
+     * On passe donc par le chemin canonique du magasin (MoveStockAction), qui
+     * alerte et surveille le franchissement de seuil. La seule chose propre aux
+     * œufs reste ici : la conversion Unité → Alvéole, déléguée à UnitConverter
+     * comme partout ailleurs.
      */
-    public function updateTri(Request $request, EggProduction $eggProduction)
-    {
-        if (Gate::denies('production.M')) return back()->with('error', 'Correction réservée aux managers.');
-
-        if (! $eggProduction->is_sorted) {
-            return back()->with('error', 'Cette collecte n\'a pas encore été triée.');
-        }
-
-        $validated = $request->validate([
-            'qty_s'       => 'required|integer|min:0',
-            'qty_m'       => 'required|integer|min:0',
-            'qty_l'       => 'required|integer|min:0',
-            'qty_xl'      => 'required|integer|min:0',
-            'qty_broken'  => 'required|integer|min:0',
-            'qty_anomaly' => 'required|integer|min:0',
-            'correction_reason' => 'required|string|max:500',
-        ]);
-
-        $totalTri = $validated['qty_s'] + $validated['qty_m'] + $validated['qty_l']
-            + $validated['qty_xl'] + $validated['qty_broken'] + $validated['qty_anomaly'];
-
-        if ($totalTri !== (int) $eggProduction->total_collected) {
-            return back()->withErrors([
-                'qty_s' => "Total tri ({$totalTri}) ≠ total collecté ({$eggProduction->total_collected})."
-            ])->withInput();
-        }
-
-        return DB::transaction(function () use ($eggProduction, $validated) {
-
-            // 1. Annuler l'ancien tri (sortie stock des anciens calibres)
-            $oldCalibres = [
-                'S'  => (int) $eggProduction->qty_s,
-                'M'  => (int) $eggProduction->qty_m,
-                'L'  => (int) $eggProduction->qty_l,
-                'XL' => (int) $eggProduction->qty_xl,
-            ];
-
-            foreach ($oldCalibres as $calibre => $qty) {
-                if ($qty > 0) {
-                    StockIntegrationService::syncMovement(
-                        $calibre, 'oeufs', $qty, 'out',
-                        "CORRECTION tri #{$eggProduction->id} — annulation ancien tri",
-                        'Unité'
-                    );
-                }
-            }
-
-            // 2. Appliquer le nouveau tri (entrée stock)
-            $newCalibres = [
-                'S'  => $validated['qty_s'],
-                'M'  => $validated['qty_m'],
-                'L'  => $validated['qty_l'],
-                'XL' => $validated['qty_xl'],
-            ];
-
-            foreach ($newCalibres as $calibre => $qty) {
-                if ($qty > 0) {
-                    StockIntegrationService::syncMovement(
-                        $calibre, 'oeufs', $qty, 'in',
-                        "CORRECTION tri #{$eggProduction->id} — nouveau tri — {$validated['correction_reason']}",
-                        'Unité'
-                    );
-                }
-            }
-
-            // 3. Mettre à jour la collecte
-            $eggProduction->update([
-                'qty_s'       => $validated['qty_s'],
-                'qty_m'       => $validated['qty_m'],
-                'qty_l'       => $validated['qty_l'],
-                'qty_xl'      => $validated['qty_xl'],
-                'qty_broken'  => $validated['qty_broken'],
-                'qty_anomaly' => $validated['qty_anomaly'],
-                'notes'       => trim(($eggProduction->notes ?? '') . "\n[CORRECTION " . now()->format('d/m/Y H:i') . " par " . Auth::user()->name . "] " . $validated['correction_reason']),
-            ]);
-
-            Log::info("Correction tri œufs — Collecte #{$eggProduction->id} par " . Auth::user()->name . ": {$validated['correction_reason']}");
-
-            return back()->with('success', 'Tri corrigé et stock recalculé.');
-        });
-    }
-
-    /**
-     * Mouvement manuel d'œufs (transfert entre catégories, ajustement inventaire).
-     */
-    public function storeMovement(Request $request)
+    public function storeMovement(Request $request, MoveStockAction $action)
     {
         if (Gate::denies('production.M')) return back()->with('error', 'Action réservée aux managers.');
 
         $validated = $request->validate([
-            'calibre'   => 'required|in:' . implode(',', \App\Models\EggProduction::gradeCodes()),
+            'calibre'   => 'required|in:' . implode(',', EggProduction::gradeCodes()),
             'type'      => 'required|in:in,out,adjustment',
             'quantity'  => 'required|integer|min:1',
             'unit'      => 'required|in:unite,alveole',
             'reason'    => 'required|string|max:500',
         ]);
 
-        $inputUnit = $validated['unit'] === 'alveole' ? 'Alvéole' : 'Unité';
+        $stock = Stock::where('category', Stock::CAT_OEUFS)
+            ->where('item_name', $validated['calibre'])
+            ->first();
 
-        $result = StockIntegrationService::syncMovement(
-            $validated['calibre'],
-            'oeufs',
-            (int) $validated['quantity'],
-            $validated['type'],
-            $validated['reason'] . ' (mouvement manuel par ' . Auth::user()->name . ')',
-            $inputUnit
-        );
-
-        if (! $result) {
+        if (! $stock) {
             return back()->with('error', "Mouvement impossible : article '{$validated['calibre']}' introuvable dans le stock œufs.");
         }
+
+        $inputUnit = $validated['unit'] === 'alveole' ? 'Alvéole' : 'Unité';
+        $quantity  = UnitConverter::toStockBase((float) $validated['quantity'], $inputUnit, Stock::CAT_OEUFS);
+
+        // Disponibilité, miroir de MoveStockRequest : l'ancien chemin plafonnait
+        // silencieusement à zéro, ce qui faisait disparaître la matière manquante
+        // au lieu de la signaler.
+        if ($validated['type'] === 'out' && (float) $stock->current_quantity < $quantity) {
+            return back()->withErrors([
+                'quantity' => "Stock insuffisant (disponible : {$stock->current_quantity} {$stock->unit}).",
+            ])->withInput();
+        }
+
+        $action->execute($stock->id, $validated['type'], $quantity, $validated['reason'], Auth::id());
 
         return back()->with('success',
             "Mouvement {$validated['type']} de {$validated['quantity']} {$inputUnit}(s) — Calibre {$validated['calibre']} enregistré."
