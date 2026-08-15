@@ -153,6 +153,7 @@ class AppServiceProvider extends ServiceProvider
             \App\Models\Batch::observe(\App\Observers\BatchObserver::class);
             \App\Models\CropCycle::observe(\App\Observers\CropCycleObserver::class);
             \App\Models\Harvest::observe(\App\Observers\HarvestObserver::class);
+            \App\Models\DailyCheckExtension::observe(\App\Observers\DailyCheckExtensionObserver::class);
             \App\Models\CropInput::observe(\App\Observers\CropInputObserver::class);
             \App\Models\Expense::observe(\App\Observers\ExpenseObserver::class);
             \App\Models\Payment::observe(\App\Observers\PaymentObserver::class);

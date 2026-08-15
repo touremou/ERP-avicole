@@ -58,6 +58,10 @@ class NotificationHub
         // incomplet ouvre la tournée de températures. C'est ce qu'on lui demande
         // de faire.
         'alert_mortality'     => ['batches.index', '/nouvelle'],
+        // Qualité de l'eau : on mène à la FICHE DU LOT, où le relevé et ses alertes
+        // sont affichés — pas à la liste. Le terrain, lui, va au pointage du jour :
+        // c'est là qu'on agit (aération, renouvellement d'eau).
+        'alert_water'         => ['batches.index', '/nouvelle'],
         'alert_stock'         => ['stocks.index', '/logistique/stocks'],
         'alert_energy'        => ['utilities.energy.sources', '/ressources/ravitaillement'],
         'alert_sales'         => ['sales.index', '/commerce/journal'],
@@ -1350,6 +1354,53 @@ class NotificationHub
     }
 
     /**
+     * QUALITÉ DE L'EAU CRITIQUE — le risque le plus RAPIDE de l'exploitation.
+     *
+     * Une chute d'oxygène tue un bassin en quelques heures. L'évaluation existait et
+     * était juste (DailyCheckExtension::getWaterAlerts, seuils réglables), mais elle
+     * n'était consommée que par TROIS ÉCRANS : le tableau de bord, un rapport, et la
+     * fiche du lot. Aucune notification.
+     *
+     * Autrement dit : l'alerte n'atteignait que la personne qui ouvrait la page. Le
+     * promoteur, à l'étranger, n'en savait rien — et le technicien qui venait de
+     * saisir le relevé non plus, sauf à revenir sur la fiche.
+     *
+     * SEULS LES SEUILS « CRITIQUES » ALERTENT. Un avertissement à chaque dérive de pH
+     * de 0,2 apprendrait à ignorer le canal, et c'est l'asphyxie qu'on veut voir
+     * passer. Même raisonnement que l'excédent de caisse (#229) et la sauvegarde
+     * saine (#226) : ce qui crie tout le temps ne se lit plus.
+     *
+     * @param \App\Models\DailyCheckExtension $extension
+     * @param array<int, array{level: string, metric: string, value: float, message: string}> $critiques
+     */
+    public function alertWaterQuality($extension, array $critiques): int
+    {
+        if ($critiques === []) {
+            return 0;
+        }
+
+        $check = $extension->dailyCheck;
+        $batch = $check?->batch;
+        $code  = $batch?->code ?? '—';
+
+        $lignes = collect($critiques)->map(fn ($a) => "• {$a['message']}")->implode("\n");
+
+        $message = "🚨 *EAU CRITIQUE — {$code}*\n\n"
+            . $lignes . "\n\n"
+            . 'Relevé du ' . ($check?->check_date?->format('d/m/Y') ?? now()->format('d/m/Y')) . ".\n"
+            . 'Intervention immédiate : aération, renouvellement d’eau.';
+
+        return $this->broadcast(
+            'alert_water',
+            $message,
+            "Eau critique {$code}",
+            'critique',
+            $batch ? route('batches.show', $batch->id, absolute: false) : null,
+            $batch ? "/lot/{$batch->id}" : null
+        );
+    }
+
+    /**
      * SAUVEGARDE EN DÉFAUT — alerte les administrateurs, tous canaux.
      *
      * Passe par broadcast() et non par un envoi direct : sur cette installation le
@@ -1572,6 +1623,13 @@ class NotificationHub
             // administrateurs), le rattachement ne sert qu'à respecter un compte
             // qui a coupé ce canal.
             'alert_backup' => 'alert_fraud',
+
+            // Qualité de l'eau : c'est le même enjeu que la mortalité — des animaux
+            // en danger — et l'écran des préférences n'offre pas de case
+            // « pisciculture ». On réutilise donc l'abonnement existant plutôt que
+            // d'inventer un type sans correspondance : l'absence de correspondance
+            // vaut « aucun filtre », c'est-à-dire un WhatsApp à TOUT LE MONDE (#216).
+            'alert_water' => 'alert_mortality',
 
             default => null,
         };
