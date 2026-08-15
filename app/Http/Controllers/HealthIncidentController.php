@@ -68,7 +68,7 @@ class HealthIncidentController extends Controller
         // 2. Traitement de la photo d'autopsie
         $photoPath = null;
         if ($request->hasFile('photo')) {
-            $photoPath = $request->file('photo')->store('autopsies', 'public');
+            $photoPath = \App\Support\PrivateUpload::store($request->file('photo'), 'autopsies');
         }
 
         $batch = Batch::findOrFail($validated['batch_id']);

@@ -508,8 +508,12 @@ test('pull expose production_types et production_type_id sur les lots', function
     expect($response->json('entities.batches.upserts.0'))->toHaveKey('production_type_id');
 });
 
-test('téléversement de photo terrain : stockée sur le disque public', function () {
-    Illuminate\Support\Facades\Storage::fake('public');
+test('téléversement de photo terrain : stockée sur le disque PRIVÉ', function () {
+    // Les clichés du champ (autopsie, preuve de tâche, reçu) ne sont plus rangés
+    // sur le disque servi en statique : ils y répondaient à /storage/… sans
+    // compte. Ils vivent hors racine web et ne sortent que par la route de
+    // l'application, pour un utilisateur connecté.
+    Illuminate\Support\Facades\Storage::fake(\App\Support\PrivateUpload::DISK);
     Sanctum::actingAs($this->manager);
 
     $response = $this->postJson('/api/v1/photos', [
@@ -518,7 +522,7 @@ test('téléversement de photo terrain : stockée sur le disque public', functio
     ]);
 
     $response->assertCreated()->assertJsonStructure(['path', 'url', 'server_time']);
-    Illuminate\Support\Facades\Storage::disk('public')->assertExists($response->json('path'));
+    Illuminate\Support\Facades\Storage::disk(\App\Support\PrivateUpload::DISK)->assertExists($response->json('path'));
     expect($response->json('path'))->toStartWith('field/incident/');
 });
 

@@ -333,7 +333,7 @@ class HaccpRegisterController extends Controller
             'dosage'       => $validated['dosage'] ?? null,
             'notes'        => $validated['notes'] ?? null,
             'photo_path'   => $request->hasFile('photo')
-                ? $request->file('photo')->store('cleaning', 'public')
+                ? \App\Support\PrivateUpload::store($request->file('photo'), 'cleaning')
                 : null,
             'operator_id'  => Auth::id(),
             'done_at'      => now(),

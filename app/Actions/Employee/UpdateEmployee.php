@@ -17,18 +17,18 @@ class UpdateEmployee
             $previousPhoto = $employee->photo_path;
 
             if ($photo) {
-                if ($employee->photo_path && Storage::disk('public')->exists($employee->photo_path)) {
-                    Storage::disk('public')->delete($employee->photo_path);
-                }
-                $data['photo_path'] = $photo->store('employees/photos', 'public');
+                // Purge des DEUX emplacements : l'ancienne photo peut encore
+                // être sur le disque servi en statique, et l'y laisser
+                // reviendrait à garder publiquement lisible le visage qu'on
+                // vient justement de remplacer.
+                \App\Support\PrivateUpload::delete($employee->photo_path);
+                $data['photo_path'] = \App\Support\PrivateUpload::store($photo, 'employees/photos');
             }
 
             // Remplacement CV sécurisé
             if ($cv) {
-                if ($employee->cv_path && Storage::disk('public')->exists($employee->cv_path)) {
-                    Storage::disk('public')->delete($employee->cv_path);
-                }
-                $data['cv_path'] = $cv->store('employees/cvs', 'public');
+                \App\Support\PrivateUpload::delete($employee->cv_path);
+                $data['cv_path'] = \App\Support\PrivateUpload::store($cv, 'employees/cvs');
             }
 
             $employee->update($data);

@@ -19,10 +19,10 @@ class CreateEmployee
             }
 
             if ($photo) {
-                $data['photo_path'] = $photo->store('employees/photos', 'public');
+                $data['photo_path'] = \App\Support\PrivateUpload::store($photo, 'employees/photos');
             }
             if ($cv) {
-                $data['cv_path'] = $cv->store('employees/cvs', 'public');
+                $data['cv_path'] = \App\Support\PrivateUpload::store($cv, 'employees/cvs');
             }
 
             return Employee::create($data);
