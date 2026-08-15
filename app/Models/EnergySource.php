@@ -7,9 +7,10 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Carbon\Carbon;
+use App\Contracts\MaintainableAsset;
 use App\Traits\BelongsToFarm;
 
-class EnergySource extends Model
+class EnergySource extends Model implements MaintainableAsset
 {
     use HasFactory, SoftDeletes, BelongsToFarm;
 
@@ -155,6 +156,42 @@ class EnergySource extends Model
     public function getNeedsMaintenanceAttribute(): bool
     {
         return $this->hours_before_maintenance <= 20;
+    }
+
+    // -----------------------
+    // MAINTENANCE PRÉVENTIVE (contrat MaintainableAsset)
+    // -----------------------
+    //
+    // Règle INCHANGÉE, seulement déplacée sous un nom commun : compteur d'heures
+    // en alerte, OU échéance calendaire dans les 48 h. Elle vivait dans la
+    // commande ; l'y laisser aurait obligé à recopier une logique par famille
+    // d'actifs — ce que l'autre famille, précisément, n'avait jamais eu.
+
+    public function isMaintenanceDue(): bool
+    {
+        return $this->needs_maintenance
+            || ($this->next_maintenance_at && $this->next_maintenance_at->lte(now()->addHours(48)));
+    }
+
+    /** Compteur déjà en alerte : l'échéance n'est plus « à venir », elle est là. */
+    public function isMaintenanceOverdue(): bool
+    {
+        return (bool) $this->needs_maintenance;
+    }
+
+    public function maintenanceLabel(): string
+    {
+        return (string) $this->name;
+    }
+
+    public function maintenanceDetail(): string
+    {
+        $echeance = $this->next_maintenance_at
+            ? $this->next_maintenance_at->format('d/m/Y')
+            : 'maintenant';
+
+        return 'Révision préventive (' . round((float) $this->hours_before_maintenance) . 'h restantes, '
+            . "échéance {$echeance}). Vérifier huile, filtres, courroies.";
     }
 
     /**
