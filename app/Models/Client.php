@@ -76,6 +76,45 @@ class Client extends Model
     // ─── METHODS ───
 
     /**
+     * POURQUOI ce client ne peut pas prendre CE crédit — null s'il le peut.
+     *
+     * Règle unique du crédit client, et le seul frein sur l'argent qui sort de
+     * l'exploitation à distance. Elle n'existait qu'en un endroit :
+     * StoreSaleRequest, c'est-à-dire le formulaire du bureau.
+     *
+     *   • la SYNCHRO ne la connaissait pas — or c'est le canal des techniciens,
+     *     ceux qui vendent réellement sur le terrain ;
+     *   • la VALIDATION non plus — le moment où la créance naît, où le solde
+     *     bouge et où la marchandise sort.
+     *
+     * Un client suspendu ou blacklisté pouvait donc être livré à crédit sans
+     * plafond, pourvu que la vente ne passe pas par l'écran du bureau.
+     *
+     * @param float $newCredit Montant qui restera dû après le paiement immédiat.
+     */
+    public function creditRefusalReason(float $newCredit): ?string
+    {
+        if ($this->status !== 'actif') {
+            return "Le client {$this->name} est {$this->status}.";
+        }
+
+        // Plafond à 0 = pas de plafond défini (convention historique du champ),
+        // et une vente soldée d'avance ne crée aucun encours.
+        if ($newCredit <= 0 || (float) $this->credit_limit <= 0) {
+            return null;
+        }
+
+        if ((float) $this->balance + $newCredit > (float) $this->credit_limit) {
+            return "Plafond crédit dépassé pour {$this->name}. "
+                . "Solde actuel : " . number_format((float) $this->balance) . " GNF, "
+                . "à créditer : " . number_format($newCredit) . " GNF, "
+                . "Plafond : " . number_format((float) $this->credit_limit) . " GNF.";
+        }
+
+        return null;
+    }
+
+    /**
      * Recalcule le solde client depuis les ventes et paiements.
      */
     public function recalculateBalance(): void

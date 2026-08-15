@@ -55,24 +55,17 @@ class StoreSaleRequest extends FormRequest
     public function withValidator($validator): void
     {
         $validator->after(function ($validator) {
-            // Vérifier que le client est actif
+            // Statut du client et plafond crédit : règle unique portée par le
+            // modèle (Client::creditRefusalReason), pour que le formulaire du
+            // bureau, la synchro terrain et la validation ne puissent pas
+            // diverger — c'était le cas, et seul cet écran-ci l'appliquait.
             $client = Client::find($this->client_id);
-            if ($client && $client->status !== 'actif') {
-                $validator->errors()->add('client_id', "Le client {$client->name} est {$client->status}.");
-            }
+            if ($client) {
+                $total = collect($this->items)->sum(fn ($i) => ($i['quantity'] ?? 0) * ($i['unit_price'] ?? 0));
+                $newCredit = $total - ($this->immediate_payment ?? 0);
 
-            // Vérifier le plafond crédit si pas de paiement immédiat total
-            if ($client && $client->credit_limit > 0) {
-                $total = collect($this->items)->sum(fn($i) => ($i['quantity'] ?? 0) * ($i['unit_price'] ?? 0));
-                $immediatePayment = $this->immediate_payment ?? 0;
-                $newCredit = $total - $immediatePayment;
-
-                if ($newCredit > 0 && ($client->balance + $newCredit) > $client->credit_limit) {
-                    $validator->errors()->add('client_id',
-                        "Plafond crédit dépassé pour {$client->name}. " .
-                        "Solde actuel : " . number_format($client->balance) . " GNF, " .
-                        "Plafond : " . number_format($client->credit_limit) . " GNF."
-                    );
+                if ($raison = $client->creditRefusalReason((float) $newCredit)) {
+                    $validator->errors()->add('client_id', $raison);
                 }
             }
 
