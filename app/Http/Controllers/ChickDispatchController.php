@@ -181,7 +181,51 @@ class ChickDispatchController extends Controller
                 $dispatchData['total_amount'] = $total;
 
                 $clientName = Client::find($validated['client_id'])?->name ?? '—';
-                $message = "{$qty} poussins vendus à {$clientName} — " . number_format($total, 0, ',', '.') . " GNF";
+
+                /*
+                 * LA VENTE N'EXISTAIT QUE DANS LE COUVOIR.
+                 *
+                 * Ce bloc écrivait un client, un prix et un total sur la ligne de
+                 * dispatch, affichait « X poussins vendus à Y » — et s'arrêtait
+                 * là. Aucune vente n'était créée : donc aucune créance, aucune
+                 * ligne au journal des ventes, aucune recette au compte de
+                 * résultat, et rien dans l'écran de recouvrement. Les poussins
+                 * partaient, le client devait de l'argent, et la chaîne
+                 * commerciale n'en savait rien. Aucun code ne lit
+                 * `chick_dispatches.total_amount` : ce montant ne servait à rien.
+                 *
+                 * La vente naît en BROUILLON, comme celles qui viennent du
+                 * terrain. Trois raisons, dans cet ordre :
+                 *
+                 *  1. si le bureau saisissait déjà ces ventes à la main — ce que
+                 *     l'absence de tout enregistrement rendait nécessaire — une
+                 *     vente validée d'office ferait DOUBLE emploi, et gonflerait
+                 *     le chiffre d'affaires. Un brouillon se supprime ;
+                 *  2. la validation porte les règles commerciales (plafond
+                 *     crédit, statut du client, cf. #237) : les faire échouer ici
+                 *     ferait perdre l'enregistrement ZOOTECHNIQUE de l'éclosion,
+                 *     qui, lui, est un fait ;
+                 *  3. c'est la convention de cette base — la validation et le
+                 *     déstockage se font au bureau, en ligne.
+                 */
+                $sale = app(\App\Actions\Sale\CreateSale::class)->execute([
+                    'client_id' => $validated['client_id'],
+                    'sale_date' => now()->toDateString(),
+                    'type'      => 'bon_livraison',
+                    'notes'     => "Couvoir — éclosion {$incubation->code_incubation}",
+                    'items'     => [[
+                        'product_type' => 'volaille_vivante',
+                        'product_name' => "Poussins d'un jour (grade {$validated['quality_grade']})",
+                        'quantity'     => $qty,
+                        'unit'         => 'tete',
+                        'unit_price'   => $unitPrice,
+                    ]],
+                ]);
+
+                $dispatchData['sale_id'] = $sale->id;
+
+                $message = "{$qty} poussins vendus à {$clientName} — " . number_format($total, 0, ',', '.')
+                    . " GNF (vente {$sale->reference} en brouillon, à valider au module Ventes)";
             }
 
             // ═══ STOCK → Ajouter au stock "Poussins d'un jour" ═══
