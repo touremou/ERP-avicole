@@ -11,7 +11,11 @@ import { enqueue } from '../../offline/sync'
 import { t } from '../../i18n'
 import type { RefSlaughterOrder } from '../../api/types'
 
-/** Miroir de App\Models\SlaughterByproduct::TYPES / DESTINATIONS. */
+/**
+ * Miroir PARTIEL de App\Models\SlaughterByproduct::TYPES / DESTINATIONS
+ * (hors « autre » : la ronde couvre les trois flux standards, un par ligne —
+ * l'écran unitaire ByproductScreen porte « autre »).
+ */
 const TYPES = [
   { value: 'sang', label: '🩸 Sang' },
   { value: 'plumes', label: '🪶 Plumes' },

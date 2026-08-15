@@ -11,7 +11,7 @@ import { enqueue } from '../../offline/sync'
 import { lastPayloadOf } from '../../offline/prefill'
 import { t } from '../../i18n'
 
-/** Miroir de App\Models\CleaningLog::ZONES (hors « autre » : écran unitaire). */
+/** Miroir PARTIEL de App\Models\CleaningLog::ZONES (hors « autre » : écran unitaire). */
 const ZONES = [
   { value: 'surfaces_tables', label: 'Surfaces et tables' },
   { value: 'sols_siphons', label: 'Sols et siphons' },

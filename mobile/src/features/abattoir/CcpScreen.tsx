@@ -23,7 +23,7 @@ const CCPS = [
 
 type Ccp = (typeof CCPS)[number]['value']
 
-/** Miroir de App\Models\TemperatureLog::POINT_LABELS (mesure du CCP 4). */
+/** Miroir PARTIEL de App\Models\TemperatureLog::POINT_LABELS (mesure du CCP 4 : points FROIDS seuls). */
 const COLD_POINTS = [
   { value: 'chambre_froide_positive', label: 'Chambre froide positive' },
   { value: 'congelation', label: 'Congélation' },

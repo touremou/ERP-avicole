@@ -23,6 +23,7 @@ const CATEGORIES: Record<string, string> = {
   taxes: 'Taxes & impôts',
   location: 'Location',
   main_oeuvre: "Main-d'œuvre journalière",
+  achat_animaux: "Achat d'animaux vifs",
   sante_animale: 'Santé animale (achat ponctuel)',
   eau_energie: 'Eau & énergie (appoint)',
   divers: 'Divers',
