@@ -214,7 +214,16 @@ class TraceabilityController extends Controller
             'farm'    => $d->farm?->name,
             'rows'    => array_filter([
                 ['Destination', $d->destination],
-                ['Chauffeur', trim($d->driver_name . ($d->driver_phone ? " ({$d->driver_phone})" : ''))],
+                // Le NOM du chauffeur, pas son TÉLÉPHONE. Cette page est
+                // volontairement publique — sans compte, et sur un numéro
+                // d'expédition séquentiel donc énumérable. Y publier le numéro
+                // personnel d'un chauffeur, à côté de son itinéraire, de son
+                // véhicule et de l'heure de départ, n'aide à vérifier aucune
+                // origine : ça expose une personne et cartographie les tournées.
+                // Le nom reste : c'est ce que le réceptionnaire confronte au
+                // document de transport. Le téléphone demeure au bureau, sur la
+                // fiche d'expédition, derrière le droit logistique.
+                ['Chauffeur', $d->driver_name],
                 ['Véhicule', $d->vehicle_plate],
                 ['Date d\'expédition', optional($d->dispatch_date)->format('d/m/Y') . ($d->dispatch_time ? ' ' . substr((string) $d->dispatch_time, 0, 5) : '')],
                 ['Contenu', $contenu ?: null],
