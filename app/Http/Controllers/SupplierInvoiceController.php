@@ -163,23 +163,44 @@ class SupplierInvoiceController extends Controller
 
         $amount = round((float) $data['amount'], 2);
 
-        // Règlement positif borné au reste dû ; avoir négatif borné au déjà payé.
-        if ($amount > 0 && $amount > $invoice->remaining_amount + 0.001) {
-            return back()->with('error', 'Le règlement dépasse le reste dû (' . money($invoice->remaining_amount) . ').');
-        }
-        if ($amount < 0 && abs($amount) > $invoice->paid_amount + 0.001) {
-            return back()->with('error', 'L\'avoir dépasse le montant déjà réglé.');
-        }
+        /*
+         * CONTRÔLE SOUS VERROU. Les bornes ci-dessous étaient vérifiées sur une
+         * facture lue sans verrou et hors transaction : deux règlements
+         * simultanés du même achat passaient TOUS LES DEUX le contrôle du reste
+         * dû, et le fournisseur était payé deux fois.
+         *
+         * C'est exactement le défaut prouvé par drill parallèle sur
+         * l'encaissement CLIENT (« AUDIT C3 », RecordPayment) et corrigé là-bas
+         * par ce même verrou. Le côté qui fait SORTIR l'argent était resté en
+         * l'état.
+         */
+        $erreur = DB::transaction(function () use ($invoice, $amount, $data) {
+            $invoice = SupplierInvoice::lockForUpdate()->findOrFail($invoice->id);
 
-        SupplierPayment::create([
-            'supplier_invoice_id' => $invoice->id,
-            'amount'              => $amount,
-            'payment_date'        => $data['payment_date'],
-            'method'              => $data['method'],
-            'reference'           => $data['reference'] ?? null,
-            'notes'               => $data['notes'] ?? null,
-            'paid_by'             => Auth::id(),
-        ]);
+            // Règlement positif borné au reste dû ; avoir négatif borné au déjà payé.
+            if ($amount > 0 && $amount > $invoice->remaining_amount + 0.001) {
+                return 'Le règlement dépasse le reste dû (' . money($invoice->remaining_amount) . ').';
+            }
+            if ($amount < 0 && abs($amount) > $invoice->paid_amount + 0.001) {
+                return 'L\'avoir dépasse le montant déjà réglé.';
+            }
+
+            SupplierPayment::create([
+                'supplier_invoice_id' => $invoice->id,
+                'amount'              => $amount,
+                'payment_date'        => $data['payment_date'],
+                'method'              => $data['method'],
+                'reference'           => $data['reference'] ?? null,
+                'notes'               => $data['notes'] ?? null,
+                'paid_by'             => Auth::id(),
+            ]);
+
+            return null;
+        });
+
+        if ($erreur) {
+            return back()->with('error', $erreur);
+        }
 
         return back()->with('success', ($amount >= 0 ? 'Règlement' : 'Avoir') . ' enregistré : ' . money(abs($amount)) . '.');
     }
