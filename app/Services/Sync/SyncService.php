@@ -1033,11 +1033,17 @@ class SyncService
 
         $v = Validator::make($payload, [
             'uuid'           => 'required|uuid',
-            'category'       => 'required|string|max:50',
+            // Référentiels FERMÉS, comme sur le formulaire du bureau. Ils
+            // étaient ici en texte libre : rien ne pouvait donc signaler qu'un
+            // écran terrain avait cessé de refléter la liste du serveur, et une
+            // catégorie hors liste échappe à toute surveillance de budget
+            // (BudgetMonitor cherche un budget PAR catégorie : sans
+            // correspondance, il n'y a pas de dépassement possible).
+            'category'       => ['required', Rule::in(array_keys(\App\Models\Expense::CATEGORIES))],
             'label'          => 'required|string|max:255',
             'amount'         => 'required|numeric|min:1',
             'expense_date'   => 'required|date|before_or_equal:today',
-            'payment_method' => 'nullable|string|max:30',
+            'payment_method' => ['nullable', Rule::in(array_keys(\App\Models\Expense::PAYMENT_METHODS))],
             'batch_id'       => ['nullable', 'integer', $this->farmScopedExists('batches')],
             'supplier_name'  => 'nullable|string|max:255',
             'notes'          => 'nullable|string|max:2000',
