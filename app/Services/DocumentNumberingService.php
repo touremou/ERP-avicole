@@ -52,6 +52,18 @@ class DocumentNumberingService
             'transformation'      => ['model' => \App\Models\Transformation::class,     'column' => 'batch_number', 'prefix_key' => 'numbering.transformation_prefix',   'prefix_default' => 'TRANS', 'year' => true,  'pad' => 6],
             'crop_transformation' => ['model' => \App\Models\CropTransformation::class, 'column' => 'batch_number', 'prefix_key' => 'numbering.crop_transformation_prefix', 'prefix_default' => 'TRV', 'year' => true, 'pad' => 6],
             'mill_production'     => ['model' => \App\Models\MillProduction::class,     'column' => 'batch_number', 'prefix_key' => 'numbering.mill_prefix',             'prefix_default' => 'OP',    'year' => true,  'pad' => 6],
+
+            // LOGISTIQUE INTER-SITES. Ces deux-là numérotaient à la main, dans
+            // leurs actions respectives : hors du verrou posé ici, et hors de la
+            // garde qui exige un index unique — laquelle DÉRIVE de cette table,
+            // donc ne pouvait pas voir ce qui n'y figurait pas.
+            //
+            // La réception, en outre, oubliait les enregistrements supprimés :
+            // son compteur pouvait RÉÉMETTRE le numéro d'une réception effacée.
+            // Le format historique (EXP-/REC- + année + 6 chiffres) est conservé
+            // à l'identique — les séquences en cours continuent.
+            'dispatch'            => ['model' => \App\Models\Dispatch::class,           'column' => 'dispatch_number',  'prefix_key' => 'numbering.dispatch_prefix',  'prefix_default' => 'EXP', 'year' => true, 'pad' => 6],
+            'reception'           => ['model' => \App\Models\Reception::class,          'column' => 'reception_number', 'prefix_key' => 'numbering.reception_prefix', 'prefix_default' => 'REC', 'year' => true, 'pad' => 6],
         ];
     }
 

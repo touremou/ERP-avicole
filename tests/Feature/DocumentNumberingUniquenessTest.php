@@ -129,3 +129,98 @@ test('la migration dé-doublonne AVANT de poser l’index', function () {
         ->and($second->fresh()->batch_number)->not->toBe('TRANS-2026-000042')
         ->and(DB::table('transformations')->distinct()->count('batch_number'))->toBe(2);
 });
+
+test('AUCUNE numérotation de document ne vit hors du service', function () {
+    /*
+     * LA GARDE QUI MANQUAIT.
+     *
+     * Celle de l'unicité DÉRIVE des schémas déclarés au service : elle ne
+     * pouvait donc rien voir de ce qui numérotait AILLEURS. Trois générateurs
+     * vivaient hors de lui — l'expédition, la réception, et l'achat d'aliment
+     * qui écrivait `supplier_invoices.reference` à partir du MAX(id) quand
+     * l'écran d'achat la tire de la séquence des références. Deux autorités sur
+     * une même colonne unique.
+     *
+     * On cherche donc la SIGNATURE exacte : une colonne de numéro de document
+     * REMPLIE par un `sprintf` fabriqué sur place. Le service lui-même est exclu
+     * — c'est son métier.
+     *
+     * La formulation compte. Une première version se contentait de « un sprintf
+     * zéro-paddé quelque part dans un fichier qui mentionne une colonne
+     * numérotée » : elle dénonçait le contrôleur des clients, qui fabrique un
+     * CODE CLIENT (CLI-0001) et n'a rien à voir avec la numérotation des
+     * documents. Une garde qui crie à tort finit ignorée, donc désactivée.
+     *
+     * SA PORTÉE, DITE FRANCHEMENT : elle dérive des colonnes DÉCLARÉES au
+     * service. Un document d'un type entièrement nouveau, qui n'y serait jamais
+     * inscrit, resterait hors de sa vue — c'est exactement ce qui protégeait
+     * l'expédition et la réception, dont les colonnes n'y figuraient pas. Le
+     * test suivant les nomme donc explicitement, en complément.
+     */
+    $colonnes = collect(DocumentNumberingService::schemes())->pluck('column')->unique();
+
+    $coupables = [];
+
+    foreach (array_merge(
+        glob(app_path('Actions/*/*.php')),
+        glob(app_path('Services/*.php')),
+        glob(app_path('Http/Controllers/*.php')),
+        glob(app_path('Models/*.php')),
+    ) as $fichier) {
+        if (basename($fichier) === 'DocumentNumberingService.php') {
+            continue;
+        }
+
+        $code = preg_replace('#//[^\n]*|/\*.*?\*/#s', '', file_get_contents($fichier));
+
+        foreach ($colonnes as $colonne) {
+            // La colonne numérotée, remplie par un sprintf fabriqué sur place.
+            $motif = '#[\'"]' . preg_quote($colonne, '#') . '[\'"]\s*(=>|\]\s*=)\s*sprintf\(#';
+
+            if (preg_match($motif, $code)) {
+                $coupables[] = basename($fichier) . " fabrique un numéro pour « {$colonne} »";
+                break;
+            }
+        }
+    }
+
+    expect($coupables)->toBe([]);
+});
+
+test('la garde sait reconnaître la signature qu’elle cherche', function () {
+    // Un test dérivé qui ne reconnaîtrait plus rien passerait à vide. On vérifie
+    // les DEUX sens : il attrape la forme fautive, et laisse tranquille le code
+    // client, qui fabrique un code d'identité et non un numéro de document.
+    $motif = '#[\'"]reference[\'"]\s*(=>|\]\s*=)\s*sprintf\(#';
+
+    expect(preg_match($motif, "'reference'        => sprintf('ACH-%05d', \$lastId + 1),"))->toBe(1)
+        ->and(preg_match($motif, "\$validated['client_id'] = sprintf('CLI-%04d', \$lastId + 1);"))->toBe(0)
+        ->and(preg_match($motif, "'reference' => DocumentNumberingService::generate('expense'),"))->toBe(0);
+});
+
+test('expédition et réception passent par le service', function () {
+    foreach (['Dispatch/CreateDispatch', 'Dispatch/ValidateReception'] as $action) {
+        $code = preg_replace('#//[^\n]*|/\*.*?\*/#s', '', file_get_contents(app_path("Actions/{$action}.php")));
+
+        expect($code)->toContain('DocumentNumberingService::generate');
+    }
+});
+
+test('l’achat d’aliment ne numérote plus par le MAX des identifiants', function () {
+    // La règle divergente : MAX(id) + 1 au lieu de la séquence des références.
+    $code = preg_replace('#//[^\n]*|/\*.*?\*/#s', '', file_get_contents(app_path('Actions/FeedPurchase/CreateFeedPurchase.php')));
+
+    expect($code)->not->toContain("max('id')")
+        ->and($code)->toContain("DocumentNumberingService::generate('supplier_invoice')");
+});
+
+test('les préfixes des deux nouveaux documents sont RÉGLABLES', function () {
+    // Un préfixe lu par le service mais absent des Réglages serait configurable
+    // en théorie seulement — le défaut « lecteur sans écrivain » de cet audit.
+    foreach (['numbering.dispatch_prefix', 'numbering.reception_prefix'] as $cle) {
+        [$groupe, $clef] = explode('.', $cle);
+
+        expect(DB::table('settings')->where('group', $groupe)->where('key', $clef)->exists())
+            ->toBeTrue("Réglage absent : {$cle}");
+    }
+});

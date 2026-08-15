@@ -25,15 +25,13 @@ class CreateDispatch
     {
         return DB::transaction(function () use ($data) {
 
-            // ─── 1. NUMÉROTATION ───
-            $year = now()->format('Y');
-            $lastNum = Dispatch::where('dispatch_number', 'LIKE', "EXP-{$year}-%")
-                ->withTrashed()->max('dispatch_number');
-            $seq = $lastNum ? (int) substr($lastNum, -6) + 1 : 1;
-
-            // ─── 2. CRÉER L'EXPÉDITION ───
+            // ─── 1. CRÉER L'EXPÉDITION ───
+            // Numérotation par le service central : elle se faisait ici à la
+            // main, donc sans le verrou qui sérialise deux demandes simultanées,
+            // et hors de la garde qui exige un index unique par colonne
+            // numérotée — garde qui dérive des schémas déclarés au service.
             $dispatch = Dispatch::create([
-                'dispatch_number'      => sprintf('EXP-%s-%06d', $year, $seq),
+                'dispatch_number'      => \App\Services\DocumentNumberingService::generate('dispatch'),
                 'sale_id'              => $data['sale_id'] ?? null,
                 'dispatched_by'        => Auth::id(),
                 'intended_receiver_id' => $data['intended_receiver_id'] ?? null,
