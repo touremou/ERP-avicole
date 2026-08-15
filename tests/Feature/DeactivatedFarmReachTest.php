@@ -175,7 +175,7 @@ test('aucune tâche planifiée ne parcourt les sites par withoutGlobalScopes()',
 
         // On ne retient que les commentaires exclus : une mention explicative ne
         // reproduit pas le défaut.
-        $code = preg_replace('#//.*$|/\*.*?\*/#ms', '', $source);
+        $code = preg_replace('#//[^\n]*|/\*.*?\*/#s', '', $source);
 
         if (preg_match('/Farm::withoutGlobalScopes\(\)/', (string) $code)) {
             $offenders[] = basename($file);

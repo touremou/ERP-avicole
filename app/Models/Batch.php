@@ -256,24 +256,38 @@ class Batch extends Model
 
     /**
      * DÉLAI D'ATTENTE EN COURS (sécurité alimentaire) : intervention sanitaire
-     * dont le délai avant consommation n'est pas purgé — la viande du lot ne
-     * peut pas partir à l'abattage. Renvoie l'intervention qui court le plus
+     * dont le délai avant consommation n'est pas purgé — ni la viande ni les
+     * ŒUFS du lot ne peuvent partir à la vente. Renvoie l'intervention qui court le plus
      * loin (celle qui contraint la date de sortie), null si le lot est libre.
      * Distinct de la quarantaine : ici pas de décision qualité, juste le temps
      * qui passe (la levée est automatique à l'échéance).
      */
     public function activeWithdrawal(): ?HealthCheck
     {
+        return $this->withdrawalOn(now());
+    }
+
+    /**
+     * L'intervention dont le délai d'attente couvre une DATE DE PRODUCTION
+     * donnée — celle qui rend impropre ce qui a été produit ce jour-là.
+     *
+     * `activeWithdrawal()` n'en est que le cas « aujourd'hui » : la viande sort
+     * le jour où on abat, la question ne se posait donc jamais autrement. Les
+     * œufs, eux, se trient après coup : une ponte du 3 reste une ponte du 3,
+     * qu'on la calibre le 4 ou le 10.
+     */
+    public function withdrawalOn(\Carbon\Carbon|string $date): ?HealthCheck
+    {
         return $this->healthChecks()
             ->whereNotNull('withdrawal_days')
             ->where('withdrawal_days', '>', 0)
             ->get()
-            ->filter(fn (HealthCheck $check) => $check->isUnderWithdrawal())
+            ->filter(fn (HealthCheck $check) => $check->coversDate($date))
             ->sortByDesc(fn (HealthCheck $check) => $check->withdrawal_until)
             ->first();
     }
 
-    /** Le lot est-il sous délai d'attente (viande non consommable) ? */
+    /** Le lot est-il sous délai d'attente aujourd'hui (denrée non consommable) ? */
     public function isUnderWithdrawal(): bool
     {
         return $this->activeWithdrawal() !== null;

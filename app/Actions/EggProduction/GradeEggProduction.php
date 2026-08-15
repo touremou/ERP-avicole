@@ -5,6 +5,7 @@ namespace App\Actions\EggProduction;
 use App\Models\EggProduction;
 use App\Services\StockIntegrationService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Action : Tri d'une collecte brute par calibre.
@@ -25,6 +26,8 @@ class GradeEggProduction
      */
     public function execute(EggProduction $prod, array $data): EggProduction
     {
+        $this->assertNotUnderWithdrawal($prod);
+
         return DB::transaction(function () use ($prod, $data) {
             $grades = array_map('strtolower', EggProduction::gradeCodes());
             $newGrades = [];
@@ -86,5 +89,40 @@ class GradeEggProduction
 
             return $prod->fresh();
         });
+    }
+
+    /**
+     * DÉLAI D'ATTENTE (résidus médicamenteux) — sécurité alimentaire.
+     *
+     * Le tri est le SEUL passage des œufs vers le stock vendable : c'est donc
+     * ici que la règle s'applique, et nulle part ailleurs. La collecte, elle,
+     * reste libre — les œufs ont été pondus, le registre doit le dire ; ce
+     * qu'on interdit c'est de les mettre en vente.
+     *
+     * La règle existait déjà pour la viande (SlaughterService, blocage dur) et
+     * la documentation du modèle l'annonçait pour « la viande/les œufs ». Côté
+     * œufs elle n'avait aucun lecteur : une ponte prélevée en plein traitement
+     * partait au calibrage puis à la vente sans que rien ne s'y oppose.
+     *
+     * On lit le délai à la DATE DE PONTE, pas à celle du tri : trier trois
+     * jours plus tard ne rend pas les œufs consommables.
+     */
+    private function assertNotUnderWithdrawal(EggProduction $prod): void
+    {
+        $withdrawal = $prod->batch?->withdrawalOn($prod->production_date);
+
+        if (! $withdrawal) {
+            return;
+        }
+
+        throw ValidationException::withMessages(['logic' => sprintf(
+            "Ponte du %s sous DÉLAI D'ATTENTE : « %s » administré le %s, échéance le %s. "
+            . "Ces œufs ne peuvent pas entrer en stock vendable — ils doivent être écartés de la consommation. "
+            . "La collecte reste enregistrée telle quelle.",
+            $prod->production_date->format('d/m/Y'),
+            $withdrawal->product_name,
+            $withdrawal->intervention_date->format('d/m/Y'),
+            $withdrawal->withdrawal_until->format('d/m/Y'),
+        )]);
     }
 }

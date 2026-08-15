@@ -52,12 +52,34 @@ class HealthCheck extends Model
         return $this->intervention_date->copy()->addDays((int) $this->withdrawal_days);
     }
 
+    /**
+     * Le délai d'attente COUVRE-T-IL une date donnée ?
+     *
+     * Une denrée est impropre si elle a été PRODUITE pendant la fenêtre
+     * [intervention ; échéance[ — ce qui compte est la date de production, pas
+     * la date où on la manipule. Pour la viande les deux se confondent (on
+     * abat aujourd'hui), pour les œufs non : une ponte du 3 triée le 10 reste
+     * une ponte du 3.
+     *
+     * C'est cette distinction qui manquait, et elle ne se voyait pas tant que
+     * la règle n'avait qu'un seul lecteur — l'abattage.
+     */
+    public function coversDate(Carbon|string $date): bool
+    {
+        $until = $this->withdrawal_until;
+        if ($until === null || ! $this->intervention_date) {
+            return false;
+        }
+
+        $day = ($date instanceof Carbon ? $date->copy() : Carbon::parse($date))->startOfDay();
+
+        return $day->gte($this->intervention_date->copy()->startOfDay()) && $day->lt($until);
+    }
+
     /** Le délai d'attente court-il encore aujourd'hui ? */
     public function isUnderWithdrawal(): bool
     {
-        $until = $this->withdrawal_until;
-
-        return $until !== null && $until->isAfter(now()->startOfDay());
+        return $this->coversDate(now());
     }
 
     /** Jours restants avant la fin du délai d'attente (0 si purgé/sans délai). */
