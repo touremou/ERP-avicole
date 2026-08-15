@@ -66,11 +66,15 @@ class PhotoController extends Controller
         }
 
         $folder = 'field/' . $context;
-        $path = $request->file('photo')->store($folder, 'public');
+        $path = \App\Support\PrivateUpload::store($request->file('photo'), $folder);
 
         return response()->json([
             'path'        => $path,
-            'url'         => asset('storage/' . $path),
+            // Les clichés du champ vivent désormais hors racine web : l'adresse
+            // passe par la route de l'application, seule à savoir les servir —
+            // et seulement à un compte connecté. `asset('storage/…')` pointerait
+            // sur un fichier que le serveur web ne trouve plus.
+            'url'         => media_url($path),
             'server_time' => now()->toIso8601String(),
         ], 201);
     }

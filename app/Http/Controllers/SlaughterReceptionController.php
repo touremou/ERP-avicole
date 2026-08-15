@@ -67,7 +67,7 @@ class SlaughterReceptionController extends Controller
         ]);
 
         $photoPath = $request->hasFile('photo')
-            ? $request->file('photo')->store('receptions', 'public')
+            ? \App\Support\PrivateUpload::store($request->file('photo'), 'receptions')
             : null;
 
         $reception = app(RecordSlaughterReception::class)->execute([
