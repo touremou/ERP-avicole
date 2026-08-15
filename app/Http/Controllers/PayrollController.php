@@ -358,6 +358,24 @@ class PayrollController extends Controller
             return back()->with('error', "Cet employé n'est pas rattaché à cette ferme.")->withInput();
         }
 
+        // ABSENCE DÉJÀ ENREGISTRÉE SUR CES JOURS. Rien ne l'empêchait : le
+        // responsable de site saisissait l'absence, le bureau la ressaisissait,
+        // et la paie SOMME les congés qui recoupent la période — les mêmes jours
+        // étaient donc déduits DEUX FOIS du salaire, et le solde de congés
+        // annuels amputé deux fois à l'approbation. L'agent était sous-payé sans
+        // que rien ne le signale.
+        if ($conflit = EmployeeLeave::overlapping($employee->id, $validated['start_date'], $validated['end_date'])) {
+            return back()->with('error', sprintf(
+                'Une absence est déjà enregistrée pour %s du %s au %s (%s, statut : %s).'
+                . ' Deux absences sur les mêmes jours seraient déduites deux fois du salaire.',
+                $employee->first_name . ' ' . $employee->last_name,
+                $conflit->start_date->format('d/m/Y'),
+                $conflit->end_date->format('d/m/Y'),
+                $conflit->type,
+                $conflit->status,
+            ))->withInput();
+        }
+
         $days = Carbon::parse($validated['start_date'])->diffInDays(Carbon::parse($validated['end_date'])) + 1;
 
         // Habilité (RH / Manager / Admin = droit rh.S) : la saisie vaut
@@ -397,6 +415,27 @@ class PayrollController extends Controller
 
         if ($leave->status !== 'demande') {
             return back()->with('error', 'Cette demande a déjà été traitée.');
+        }
+
+        // Le conflit se vérifie AUSSI ici : une demande peut avoir été déposée
+        // avant qu'une autre absence soit approuvée sur les mêmes jours. Contrôler
+        // à la seule saisie laisserait passer le doublon par le chemin le plus
+        // lent — celui qui attend une décision.
+        $conflit = EmployeeLeave::overlapping(
+            $leave->employee_id,
+            $leave->start_date->toDateString(),
+            $leave->end_date->toDateString(),
+            $leave->id,
+        );
+
+        if ($conflit && $conflit->status !== 'demande') {
+            return back()->with('error', sprintf(
+                'Une absence approuvée couvre déjà ces jours (%s au %s, %s) :'
+                . ' l\'approuver déduirait deux fois les mêmes journées.',
+                $conflit->start_date->format('d/m/Y'),
+                $conflit->end_date->format('d/m/Y'),
+                $conflit->type,
+            ));
         }
 
         $leave->update([

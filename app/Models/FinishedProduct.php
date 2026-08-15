@@ -41,9 +41,28 @@ class FinishedProduct extends Model
         return $this->alert_threshold_kg > 0 && $this->current_quantity_kg <= $this->alert_threshold_kg;
     }
 
+    /**
+     * PÉREMPTION PROCHE (≤ 3 jours) — l'alerte était TOUJOURS vraie.
+     *
+     * `$this->expiry_date->diffInDays(now())` est SIGNÉ : pour une date de
+     * péremption à venir, il vaut -30, -90… donc toujours « ≤ 3 ». Combiné à
+     * `! isPast()`, l'accesseur répondait vrai pour TOUT produit non périmé,
+     * quelle qu'en soit l'échéance.
+     *
+     * Le tableau de bord de l'abattoir et la liste des produits finis
+     * teintaient donc en ambre la totalité du stock frais, en permanence. Un
+     * signal qui s'allume toujours ne signale plus rien : c'est le contraire
+     * d'une alerte, et il masquait les vraies échéances.
+     *
+     * On compte les jours dans le bon sens : d'aujourd'hui VERS l'échéance.
+     */
     public function getIsExpiringSoonAttribute(): bool
     {
-        return $this->expiry_date && $this->expiry_date->diffInDays(now()) <= 3 && ! $this->expiry_date->isPast();
+        if (! $this->expiry_date || $this->expiry_date->isPast()) {
+            return false;
+        }
+
+        return now()->startOfDay()->diffInDays($this->expiry_date->copy()->startOfDay()) <= 3;
     }
 
     public function getIsExpiredAttribute(): bool
