@@ -70,21 +70,41 @@ class DocumentNumberingService
 
         $like = $scheme['year'] ? "{$prefix}-{$year}-%" : "{$prefix}-%";
 
-        /** @var \Illuminate\Database\Eloquent\Builder $query */
-        $query = $scheme['model']::query()->withoutGlobalScopes();
+        /*
+         * LECTURE VERROUILLÉE. « Lire le max, ajouter un » n'est atomique que si
+         * personne ne lit entre les deux — et deux écritures simultanées, c'est
+         * le quotidien de cette installation : une vente au comptoir pendant
+         * qu'une tournée terrain se synchronise. Sans verrou, les deux
+         * obtenaient le même numéro.
+         *
+         * Le verrou est pris sur la PLAGE des références de ce préfixe (scan
+         * d'index descendant), ce qui sérialise les demandeurs concurrents du
+         * même compteur sans gêner les autres types de documents. La
+         * transaction est imbriquée dans celle de l'appelant quand il y en a
+         * une : le verrou tient alors jusqu'à l'insertion, là où il sert.
+         */
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($scheme, $column, $like, $prefix, $year, $pad) {
+            /** @var \Illuminate\Database\Eloquent\Builder $query */
+            $query = $scheme['model']::query()->withoutGlobalScopes();
 
-        // Inclure les enregistrements supprimés : une référence consommée ne
-        // doit jamais être réattribuée, même après suppression logique.
-        if (in_array(SoftDeletes::class, class_uses_recursive($scheme['model']), true)) {
-            $query->withTrashed();
-        }
+            // Inclure les enregistrements supprimés : une référence consommée ne
+            // doit jamais être réattribuée, même après suppression logique.
+            if (in_array(SoftDeletes::class, class_uses_recursive($scheme['model']), true)) {
+                $query->withTrashed();
+            }
 
-        $last = $query->where($column, 'LIKE', $like)->max($column);
+            // `value()` sur un tri descendant plutôt que `max()` : l'agrégat ne
+            // porte pas de verrou de ligne, la lecture ordonnée si.
+            $last = $query->where($column, 'LIKE', $like)
+                ->orderByDesc($column)
+                ->lockForUpdate()
+                ->value($column);
 
-        $sequence = $last ? ((int) substr($last, -$pad)) + 1 : 1;
+            $sequence = $last ? ((int) substr($last, -$pad)) + 1 : 1;
 
-        return $scheme['year']
-            ? sprintf("%s-%s-%0{$pad}d", $prefix, $year, $sequence)
-            : sprintf("%s-%0{$pad}d", $prefix, $sequence);
+            return $scheme['year']
+                ? sprintf("%s-%s-%0{$pad}d", $prefix, $year, $sequence)
+                : sprintf("%s-%0{$pad}d", $prefix, $sequence);
+        });
     }
 }
