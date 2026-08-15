@@ -22,7 +22,16 @@ class RecordHatching
                 'finished_at'       => now()
             ]);
 
-            if ($incubation->incubator) {
+            /*
+             * La machine n'est libérée que si elle est RÉELLEMENT vide.
+             *
+             * Le statut était écrit sans condition : clôturer UN cycle basculait
+             * l'incubateur en « Maintenance » alors qu'un autre cycle pouvait encore y être en
+             * incubation (multi-étages). La machine s'affichait donc disponible avec
+             * des œufs dedans — et le contrôle de capacité, qui s'appuie sur les
+             * cycles en cours, restait juste pendant que l'écran mentait.
+             */
+            if ($incubation->incubator && $incubation->incubator->eggsInIncubation() === 0) {
                 $incubation->incubator->update(['status' => 'Maintenance']);
             }
 
@@ -59,7 +68,12 @@ class RecordHatching
             ]);
 
             // 2. Gestion de l'infrastructure (Machine)
-            if ($incubation->incubator) {
+            //
+            // Même règle que l'autre chemin de clôture de ce fichier : la machine ne
+            // part au nettoyage que si elle est RÉELLEMENT vide. Sans cette
+            // condition, clôturer un cycle envoyait en « Maintenance » une machine
+            // portant encore un autre cycle en incubation.
+            if ($incubation->incubator && $incubation->incubator->eggsInIncubation() === 0) {
                 // Rigueur : Une machine sortant d'un cycle DOIT passer par un nettoyage/désinfection
                 $incubation->incubator->update(['status' => 'Maintenance']);
             }

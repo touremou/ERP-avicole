@@ -10,10 +10,20 @@ class AbortIncubation
     public function execute(Incubation $incubation): void
     {
         DB::transaction(function () use ($incubation) {
-            if ($incubation->incubator) {
-                $incubation->incubator->update(['status' => 'Disponible']);
-            }
+            $incubateur = $incubation->incubator;
+
             $incubation->delete();
+
+            /*
+             * On libère APRÈS la suppression, et seulement si la machine est vide.
+             *
+             * Avant : le statut passait à « Disponible » sans condition, et AVANT que
+             * ce cycle ne soit supprimé — la machine était donc déclarée libre alors
+             * qu'un autre cycle pouvait encore y être en incubation (multi-étages).
+             */
+            if ($incubateur && $incubateur->eggsInIncubation() === 0) {
+                $incubateur->update(['status' => 'Disponible']);
+            }
         });
     }
 }
