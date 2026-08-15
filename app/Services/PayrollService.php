@@ -70,9 +70,41 @@ class PayrollService
                     // Chevauchement borné à la FENÊTRE CONTRACTUELLE : un congé qui
                     // déborde avant l'embauche ou après le terme ne se déduit pas
                     // deux fois (il est déjà hors contrat).
-                    $overlapStart = max($leave->start_date->timestamp, $contract['start']->timestamp);
-                    $overlapEnd = min($leave->end_date->timestamp, $contract['end']->timestamp);
-                    $overlapDays = max(0, Carbon::createFromTimestamp($overlapEnd)->diffInDays(Carbon::createFromTimestamp($overlapStart)) + 1);
+                    /*
+                     * AUCUN CONGÉ N'ÉTAIT COMPTÉ — LE CALCUL RENDAIT TOUJOURS ZÉRO.
+                     *
+                     * La ligne d'origine appelait `$fin->diffInDays($debut)` :
+                     * l'écart est SIGNÉ, donc négatif quand on part de la fin.
+                     * Cinq jours donnaient -4, +1 faisait -3, et `max(0, …)`
+                     * avalait le tout. Le zéro n'était pas une absence de congé :
+                     * c'était une soustraction à l'envers, rendue muette par le
+                     * garde-fou censé empêcher les valeurs négatives.
+                     *
+                     * Conséquence, tous les mois et pour tout le monde : les
+                     * congés n'entraient pas dans `daysLeave`, les absences
+                     * justifiées pas dans `daysAbsent`, et surtout les SANS-SOLDE
+                     * pas dans `unpaidDays` — la retenue correspondante ne se
+                     * faisait jamais. Un agent en congé sans solde était payé en
+                     * entier, et son bulletin affichait « 0 jour d'absence »,
+                     * comme s'il avait été présent.
+                     *
+                     * (Les absences POINTÉES, elles, étaient bien déduites : leur
+                     * décompte est un simple `count()`. D'où un défaut invisible —
+                     * la paie « marchait ».)
+                     *
+                     * On écrit donc le sens explicitement, bornes incluses.
+                     */
+                    $debutChevauchement = Carbon::createFromTimestamp(
+                        max($leave->start_date->timestamp, $contract['start']->timestamp)
+                    )->startOfDay();
+
+                    $finChevauchement = Carbon::createFromTimestamp(
+                        min($leave->end_date->timestamp, $contract['end']->timestamp)
+                    )->startOfDay();
+
+                    $overlapDays = $finChevauchement->lt($debutChevauchement)
+                        ? 0
+                        : (int) $debutChevauchement->diffInDays($finChevauchement) + 1;
 
                     if (in_array($leave->type, ['conge_annuel', 'maladie', 'maternite', 'formation'])) {
                         $daysLeave += $overlapDays;

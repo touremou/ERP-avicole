@@ -12,6 +12,43 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class EmployeeLeave extends Model
 {
+    /**
+     * Statuts qui OCCUPENT le calendrier de l'agent — donc ceux avec lesquels
+     * une nouvelle absence entrerait en conflit.
+     *
+     * Un congé refusé ne compte pas : il n'a jamais eu lieu. Les autres, si —
+     * y compris une demande encore en attente, sans quoi on empilerait deux
+     * demandes sur les mêmes jours avant que quiconque les regarde.
+     */
+    public const OCCUPYING_STATUSES = ['demande', 'approuve', 'en_cours', 'termine'];
+
+    /**
+     * ABSENCE DÉJÀ ENREGISTRÉE SUR CES MÊMES JOURS — null s'il n'y en a pas.
+     *
+     * Rien n'empêchait d'enregistrer deux fois la même absence : le responsable
+     * de site la saisit, le bureau la ressaisit, ou un sans-solde se superpose à
+     * un congé annuel. Et la paie SOMME les congés qui recoupent la période :
+     * les mêmes jours étaient alors comptés DEUX FOIS, donc déduits deux fois
+     * d'un salaire. Le solde de congés annuels, lui, était décrémenté deux fois
+     * à l'approbation.
+     *
+     * L'agent était sous-payé et son reliquat de congés amputé, sans que rien ne
+     * le signale — ni à lui, ni au promoteur.
+     */
+    public static function overlapping(int $employeeId, string $start, string $end, ?int $exceptId = null): ?self
+    {
+        return static::query()
+            ->where('employee_id', $employeeId)
+            ->whereIn('status', self::OCCUPYING_STATUSES)
+            ->when($exceptId, fn ($q) => $q->whereKeyNot($exceptId))
+            // Deux intervalles se recoupent si chacun commence avant que
+            // l'autre ne finisse. Les bornes sont INCLUSES : deux absences qui
+            // partagent une seule journée se chevauchent bel et bien.
+            ->whereDate('start_date', '<=', $end)
+            ->whereDate('end_date', '>=', $start)
+            ->first();
+    }
+
     use BelongsToFarm, ReferencesEmployee;
 
     protected $fillable = [
