@@ -9,7 +9,13 @@ uses(Tests\TestCase::class, Illuminate\Foundation\Testing\RefreshDatabase::class
 
 beforeEach(function () {
     $this->setUpRbac();
-    Storage::fake('public');
+    // Les justificatifs vivent sur le disque PRIVÉ depuis #248 : le disque
+    // « public » est servi en statique par le serveur web (storage:link), ce
+    // qui rendait la pièce lisible sans compte, à côté de la route qui exige
+    // le droit `depenses.L`. Les deux sont simulés : la lecture sait encore
+    // retrouver un fichier resté à l'ancien emplacement.
+    Storage::fake(\App\Support\ReceiptStorage::DISK);
+    Storage::fake(\App\Support\ReceiptStorage::LEGACY_DISK);
 });
 
 test('une dépense peut être créée avec un justificatif PDF', function () {
@@ -29,7 +35,7 @@ test('une dépense peut être créée avec un justificatif PDF', function () {
     $expense = Expense::first();
     expect($expense)->not->toBeNull();
     expect($expense->justificatif_path)->not->toBeNull();
-    Storage::disk('public')->assertExists($expense->justificatif_path);
+    Storage::disk(\App\Support\ReceiptStorage::DISK)->assertExists($expense->justificatif_path);
 });
 
 test('une dépense reste valide sans justificatif (champ optionnel)', function () {
@@ -84,7 +90,8 @@ test('le justificatif d\'une dépense est téléchargeable', function () {
 });
 
 test('la mise à jour remplace l\'ancien justificatif et supprime le fichier orphelin', function () {
-    $oldPath = UploadedFile::fake()->create('ancien.pdf', 50)->store('expenses/justificatifs', 'public');
+    // Fichier existant rangé comme aujourd'hui : sur le disque privé.
+    $oldPath = \App\Support\ReceiptStorage::store(UploadedFile::fake()->create('ancien.pdf', 50));
 
     $expense = Expense::create([
         'farm_id'           => $this->farm->id,
@@ -99,7 +106,7 @@ test('la mise à jour remplace l\'ancien justificatif et supprime le fichier orp
         'justificatif_path' => $oldPath,
     ]);
 
-    Storage::disk('public')->assertExists($oldPath);
+    Storage::disk(\App\Support\ReceiptStorage::DISK)->assertExists($oldPath);
 
     $this->actingAs($this->managerUser)
         ->put(route('expenses.update', $expense), [
@@ -114,6 +121,6 @@ test('la mise à jour remplace l\'ancien justificatif et supprime le fichier orp
 
     $expense->refresh();
     expect($expense->justificatif_path)->not->toBe($oldPath);
-    Storage::disk('public')->assertMissing($oldPath);
-    Storage::disk('public')->assertExists($expense->justificatif_path);
+    Storage::disk(\App\Support\ReceiptStorage::DISK)->assertMissing($oldPath);
+    Storage::disk(\App\Support\ReceiptStorage::DISK)->assertExists($expense->justificatif_path);
 });

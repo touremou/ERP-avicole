@@ -25,8 +25,12 @@ class CreateExpense
             // Depuis le web : fichier joint au formulaire. Depuis la sync
             // mobile : la photo du reçu est DÉJÀ téléversée (POST /photos) et
             // arrive comme chemin ($data['justificatif_path']).
+            // Disque PRIVÉ : le disque « public » est servi en statique par le
+            // serveur web (le déploiement crée le lien storage:link), ce qui
+            // rendait chaque justificatif accessible sans compte — court-circuitant
+            // le droit `depenses.L` que la route de téléchargement exige.
             $justificatifPath = $justificatif
-                ? $justificatif->store('expenses/justificatifs', 'public')
+                ? \App\Support\ReceiptStorage::store($justificatif)
                 : ($data['justificatif_path'] ?? null);
 
             $expense = Expense::create([
