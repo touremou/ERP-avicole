@@ -57,12 +57,57 @@ class Incubator extends Model
         return round($closedCycles->avg('hatchability_rate'), 1);
     }
 
+    /**
+     * TOUS les cycles en cours de cet incubateur — pas seulement le premier.
+     *
+     * `activeIncubation()` est un hasOne : avec deux cycles simultanés, il en rend
+     * un arbitrairement et ignore l'autre. C'est ce qui faisait sous-estimer le
+     * remplissage de la machine.
+     *
+     * L'incubation MULTI-ÉTAGES — plusieurs mises à couver à des dates différentes
+     * dans la même machine — est une pratique courante, et l'application doit la
+     * permettre. Ce qu'elle doit empêcher, c'est le DÉPASSEMENT de capacité.
+     */
+    public function activeIncubations(): HasMany
+    {
+        return $this->hasMany(Incubation::class)->where('status', '!=', 'clos');
+    }
+
+    /**
+     * ŒUFS ACTUELLEMENT DANS LA MACHINE — déclaration unique.
+     *
+     * Somme de tous les cycles non clos. Sert à la fois au taux de remplissage
+     * affiché et au contrôle de capacité à la mise à couver : deux calculs
+     * divergents diraient deux vérités sur la même machine.
+     */
+    public function eggsInIncubation(): int
+    {
+        return (int) $this->activeIncubations()->sum('eggs_count');
+    }
+
+    /**
+     * PLACE RESTANTE. Jamais négative : une machine déjà surchargée en rend zéro,
+     * plutôt qu'un nombre qui autoriserait à charger encore.
+     */
+    public function remainingCapacity(): int
+    {
+        return max(0, (int) $this->capacity - $this->eggsInIncubation());
+    }
+
+    /**
+     * TAUX DE REMPLISSAGE.
+     *
+     * Il ne comptait QUE le premier cycle trouvé (hasOne). Une machine portant deux
+     * mises à couver affichait donc la moitié de sa charge réelle — et le écran de
+     * planification s'en servait pour décider s'il restait de la place.
+     */
     public function getOccupancyRateAttribute(): float
     {
-        $active = $this->activeIncubation;
-        if (!$active || $this->capacity <= 0) return 0.0;
+        if ($this->capacity <= 0) {
+            return 0.0;
+        }
 
-        return round(($active->eggs_count / $this->capacity) * 100, 1);
+        return round(($this->eggsInIncubation() / $this->capacity) * 100, 1);
     }
 
     public function getStatusColorAttribute(): string
