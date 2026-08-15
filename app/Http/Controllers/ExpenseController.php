@@ -130,10 +130,12 @@ class ExpenseController extends Controller
         // Remplacement du justificatif : on purge l'ancien fichier pour ne pas
         // laisser d'orphelins sur le disque (même garde-fou que UpdateEmployee).
         if ($request->hasFile('justificatif')) {
-            if ($expense->justificatif_path && Storage::disk('public')->exists($expense->justificatif_path)) {
-                Storage::disk('public')->delete($expense->justificatif_path);
-            }
-            $data['justificatif_path'] = $request->file('justificatif')->store('expenses/justificatifs', 'public');
+            // La purge vise les DEUX emplacements : l'ancien fichier peut encore
+            // être sur le disque servi en statique, et l'y laisser reviendrait à
+            // garder publiquement lisible une pièce qu'on vient de remplacer.
+            \App\Support\ReceiptStorage::delete($expense->justificatif_path);
+
+            $data['justificatif_path'] = \App\Support\ReceiptStorage::store($request->file('justificatif'));
         }
 
         $expense->update($data);
@@ -150,13 +152,18 @@ class ExpenseController extends Controller
             return back()->with('error', 'Action non autorisée.');
         }
 
-        if (! $expense->justificatif_path || ! Storage::disk('public')->exists($expense->justificatif_path)) {
+        // Le fichier peut être sur le disque privé (nouveau) ou sur l'ancien, si
+        // la migration de déplacement n'a pas pu tout traiter : une pièce
+        // comptable ne doit pas devenir introuvable pour cette raison.
+        $disque = \App\Support\ReceiptStorage::diskFor($expense->justificatif_path);
+
+        if (! $disque) {
             return back()->with('error', 'Aucun justificatif disponible pour cette dépense.');
         }
 
         $extension = pathinfo($expense->justificatif_path, PATHINFO_EXTENSION);
 
-        return Storage::disk('public')->download(
+        return $disque->download(
             $expense->justificatif_path,
             "justificatif-{$expense->reference}.{$extension}"
         );
