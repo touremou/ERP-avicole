@@ -68,7 +68,7 @@ beforeEach(function () {
         'start_date' => now()->subDays(21)->toDateString(),
         'hatch_date_expected' => now()->toDateString(),
         'eggs_count' => 1000, 'fertile_eggs' => 900, 'hatched_chicks' => 800,
-        'status' => 'Éclos',
+        'status' => 'clos',
     ]);
 });
 
