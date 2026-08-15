@@ -99,10 +99,10 @@ class BudgetController extends Controller
             $out = fopen('php://output', 'w');
             fwrite($out, "\xEF\xBB\xBF"); // BOM UTF-8
 
-            fputcsv($out, ['Poste', 'Budget', 'Dépensé', 'Reste', 'Consommation %', 'Statut'], ';');
+            \App\Support\CsvExport::putRow($out, ['Poste', 'Budget', 'Dépensé', 'Reste', 'Consommation %', 'Statut'], ';');
 
             foreach ($rows as $r) {
-                fputcsv($out, [
+                \App\Support\CsvExport::putRow($out, [
                     $r['label'],
                     number_format($r['budget'], 0, ',', ' '),
                     number_format($r['spent'], 0, ',', ' '),
@@ -112,7 +112,7 @@ class BudgetController extends Controller
                 ], ';');
             }
 
-            fputcsv($out, [
+            \App\Support\CsvExport::putRow($out, [
                 'TOTAL',
                 number_format($totals['budget'], 0, ',', ' '),
                 number_format($totals['spent'], 0, ',', ' '),

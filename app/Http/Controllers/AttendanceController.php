@@ -116,9 +116,9 @@ class AttendanceController extends Controller
         return response()->streamDownload(function () use ($rows) {
             $out = fopen('php://output', 'w');
             fwrite($out, "\xEF\xBB\xBF"); // BOM UTF-8
-            fputcsv($out, ['Employé', 'Poste', 'Présent', 'Retard', 'Absent', 'Congé', 'Jours pointés', 'Taux présence %'], ';');
+            \App\Support\CsvExport::putRow($out, ['Employé', 'Poste', 'Présent', 'Retard', 'Absent', 'Congé', 'Jours pointés', 'Taux présence %'], ';');
             foreach ($rows as $r) {
-                fputcsv($out, [
+                \App\Support\CsvExport::putRow($out, [
                     $r['employee']->first_name . ' ' . $r['employee']->last_name,
                     $r['employee']->job_title ?? '',
                     $r['counts']['present'], $r['counts']['retard'],

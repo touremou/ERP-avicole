@@ -58,13 +58,13 @@ class StockController extends Controller
         return response()->streamDownload(function () use ($stocks) {
             $out = fopen('php://output', 'w');
             fwrite($out, "\xEF\xBB\xBF");   // BOM UTF-8 : accents lisibles dans Excel
-            fputcsv($out, [
+            \App\Support\CsvExport::putRow($out, [
                 'Article', 'Catégorie', 'Unité', 'Quantité', 'Seuil d\'alerte',
                 'Prix unitaire', 'Valeur', 'Lot', 'Péremption', 'Sous le seuil',
             ], ';');
 
             foreach ($stocks as $s) {
-                fputcsv($out, [
+                \App\Support\CsvExport::putRow($out, [
                     $s->item_name,
                     $s->category,
                     $s->unit,

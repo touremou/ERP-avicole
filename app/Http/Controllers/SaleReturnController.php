@@ -44,9 +44,9 @@ class SaleReturnController extends Controller
         return response()->streamDownload(function () use ($returns) {
             $out = fopen('php://output', 'w');
             fwrite($out, "\xEF\xBB\xBF"); // BOM UTF-8
-            fputcsv($out, ['Avoir', 'Date', 'Vente', 'Client', 'Articles', 'Remboursement', 'Mode', 'Motif'], ';');
+            \App\Support\CsvExport::putRow($out, ['Avoir', 'Date', 'Vente', 'Client', 'Articles', 'Remboursement', 'Mode', 'Motif'], ';');
             foreach ($returns as $r) {
-                fputcsv($out, [
+                \App\Support\CsvExport::putRow($out, [
                     $r->reference,
                     $r->return_date->format('d/m/Y'),
                     $r->sale?->reference ?? '',

@@ -245,9 +245,9 @@ class TreasuryController extends Controller
         return response()->streamDownload(function () use ($txs) {
             $out = fopen('php://output', 'w');
             fwrite($out, "\xEF\xBB\xBF"); // BOM UTF-8
-            fputcsv($out, ['Date', 'Compte', 'Sens', 'Montant', 'Catégorie', 'Description', 'Référence'], ';');
+            \App\Support\CsvExport::putRow($out, ['Date', 'Compte', 'Sens', 'Montant', 'Catégorie', 'Description', 'Référence'], ';');
             foreach ($txs as $t) {
-                fputcsv($out, [
+                \App\Support\CsvExport::putRow($out, [
                     $t->transaction_date->format('d/m/Y'),
                     $t->account?->name,
                     $t->direction === 'in' ? 'Entrée' : 'Sortie',
