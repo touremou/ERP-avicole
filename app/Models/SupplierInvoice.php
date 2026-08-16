@@ -126,6 +126,11 @@ class SupplierInvoice extends Model
         $attributes = [
             'farm_id'       => $this->farm_id,
             'user_id'       => $this->user_id,
+            // Le lien porté par la DÉPENSE, et posé dès sa création : c'est ce
+            // qui permet à la trésorerie de reconnaître un miroir au moment où
+            // l'observateur s'exécute. `expense_id` ci-dessous n'est écrit
+            // qu'ensuite, donc trop tard pour lui.
+            'supplier_invoice_id' => $this->getKey(),
             'category'      => $this->category,
             'label'         => $this->label,
             'amount'        => $this->total_amount,
