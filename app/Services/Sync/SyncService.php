@@ -118,6 +118,8 @@ class SyncService
             'task.release'               => 'taskRelease',
             // Tâche PERSONNELLE créée depuis le terrain (auto-assignée).
             'task.create'                => 'taskCreate',
+            // Tâche AFFECTÉE (à un collègue ou au pool) — droit rh.C exigé.
+            'task.dispatch'              => 'taskDispatch',
         ];
     }
 
@@ -2571,6 +2573,131 @@ class SyncService
 
             return ['status' => 'success', 'server_id' => $task->id];
         });
+    }
+
+    /**
+     * TÂCHE AFFECTÉE DEPUIS LE TERRAIN — à un collègue, ou au pool.
+     *
+     * `task.create` juste au-dessus crée une tâche PERSONNELLE, sans droit RH :
+     * un agent gère sa propre liste. Affecter à AUTRUI est un autre geste, et
+     * son commentaire disait jusqu'ici que cela « reste une opération web ».
+     * Le chef d'équipe qui répartit le travail au rassemblement du matin devait
+     * donc attendre d'être au bureau.
+     *
+     * Ce chemin porte les MÊMES règles que le formulaire web
+     * (`TaskController::storeManual`), sans en assouplir une seule :
+     *
+     *   1. droit `rh.C` — le même que le bureau ;
+     *   2. l'employé doit être AFFECTABLE sur la ferme courante. `find()` seul
+     *      sautait silencieusement les garde-fous pour un agent prêté : on relit
+     *      donc par le même scope que le sélecteur ;
+     *   3. pas d'affectation à quelqu'un EN CONGÉ à la date prévue ;
+     *   4. le SERVICE doit correspondre à la catégorie de la tâche.
+     *
+     * Les refus 2 à 4 sont des « conflict » : le miroir local du terrain peut
+     * dater (congé approuvé après la dernière synchro), et rejouer n'y changerait
+     * rien — direction le bac « À corriger », avec le motif en clair.
+     *
+     * `is_pool` est DÉRIVÉ de l'absence de titulaire, comme au bureau : une
+     * tâche sans personne désignée part en libre-service. La coder en dur avait
+     * produit des tâches que personne ne voyait (cf. générateur d'itinéraire).
+     */
+    private function taskDispatch(array $payload): array
+    {
+        if (Gate::denies('rh.C')) {
+            return $this->denied();
+        }
+
+        $v = Validator::make($payload, [
+            'uuid'           => 'required|uuid',
+            'title'          => 'required|string|max:255',
+            'category'       => ['required', Rule::in(array_keys(\App\Models\TaskTemplate::CATEGORIES))],
+            'employee_id'    => ['nullable', 'integer', $this->employeeExists()],
+            'scheduled_date' => 'required|date',
+            'priority'       => 'nullable|in:basse,normale,haute,critique',
+            'description'    => 'nullable|string|max:500',
+        ]);
+
+        if ($v->fails()) {
+            return $this->invalid($v->errors()->toArray());
+        }
+
+        $data = $v->validated();
+
+        return DB::transaction(function () use ($data) {
+            if (\App\Models\TaskAssignment::withoutGlobalScopes()->where('uuid', $data['uuid'])->exists()) {
+                return ['status' => 'already_synced'];
+            }
+
+            $employee = null;
+
+            if (! empty($data['employee_id'])) {
+                // MÊME lecture que le sélecteur du bureau : un agent prêté doit
+                // passer les garde-fous, pas les contourner.
+                $employee = \App\Models\Employee::assignableInCurrentFarm()->find($data['employee_id']);
+
+                if (! $employee) {
+                    return ['status' => 'conflict', 'message' => __("Cet employé n'est pas affectable sur cette ferme.")];
+                }
+
+                $date = Carbon::parse($data['scheduled_date']);
+
+                if ($employee->isOnLeaveOn($date)) {
+                    return ['status' => 'conflict', 'message' => __(
+                        ':name est en congé le :date — choisissez un collègue disponible.',
+                        ['name' => $employee->first_name, 'date' => $date->format('d/m/Y')],
+                    )];
+                }
+
+                if ($motif = $this->departmentMismatch($employee, $data['category'])) {
+                    return ['status' => 'conflict', 'message' => $motif];
+                }
+            }
+
+            $task = \App\Models\TaskAssignment::create([
+                'uuid'              => $data['uuid'],
+                'title'             => $data['title'],
+                'category'          => $data['category'],
+                'employee_id'       => $employee?->id,
+                'scheduled_date'    => $data['scheduled_date'],
+                'priority'          => $data['priority'] ?? 'normale',
+                'description'       => $data['description'] ?? null,
+                'status'            => 'a_faire',
+                'is_auto_generated' => false,
+                // Sans titulaire → libre-service, comme au bureau.
+                'is_pool'           => $employee === null,
+            ]);
+
+            Log::info("Sync: tâche « {$task->title} » affectée à " . ($employee?->first_name ?? 'au pool') . '.');
+
+            return ['status' => 'success', 'server_id' => $task->id];
+        });
+    }
+
+    /**
+     * Le SERVICE de l'employé correspond-il à la catégorie de la tâche ?
+     *
+     * Règle identique à celle du bureau (TaskController::departmentMismatch) —
+     * la carte vit sur TaskTemplate, les deux chemins l'y lisent.
+     *
+     * @return string|null  motif du refus, ou null si l'affectation est valide
+     */
+    private function departmentMismatch(\App\Models\Employee $employee, string $category): ?string
+    {
+        $allowed = \App\Models\TaskTemplate::categoryDepartments($category);
+
+        if ($allowed === null || empty($employee->department) || in_array($employee->department, $allowed, true)) {
+            return null;
+        }
+
+        $services = collect($allowed)->map(fn ($k) => \App\Models\Employee::departmentLabel($k))->implode(' / ');
+
+        return __(':name (:service) n\'est pas du service concerné : une tâche « :cat » revient au service :services.', [
+            'name'     => $employee->first_name,
+            'service'  => \App\Models\Employee::departmentLabel($employee->department),
+            'cat'      => \App\Models\TaskTemplate::categoryMeta($category)['label'],
+            'services' => $services,
+        ]);
     }
 
     private function denied(): array

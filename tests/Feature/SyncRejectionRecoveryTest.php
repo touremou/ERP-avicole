@@ -266,5 +266,5 @@ test('la validation employé est UNE règle, partagée par toutes les opération
     $service = file_get_contents(app_path('Services/Sync/SyncService.php'));
 
     expect(substr_count($service, "farmScopedExists('employees')"))->toBe(0)
-        ->and(substr_count($service, '$this->employeeExists()'))->toBe(4);
+        ->and(substr_count($service, '$this->employeeExists()'))->toBe(5);   // + task.dispatch
 });

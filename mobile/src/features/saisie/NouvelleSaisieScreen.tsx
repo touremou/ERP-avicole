@@ -146,6 +146,12 @@ export function NouvelleSaisieScreen() {
               <span className="task-meta">{t('toute l’équipe · 1 validation')}</span>
             </Link>
           )}
+          {canRh && (
+            <Link to="/taches/affecter" className="task-card">
+              <span className="task-title">📋 {t('Affecter une tâche')}</span>
+              <span className="task-meta">{t('au collègue ou au libre-service')}</span>
+            </Link>
+          )}
           {canRessources && (
             <Link to="/ressources/releve" className="task-card">
               <span className="task-title">🔢 {t('Relevé de compteur')}</span>

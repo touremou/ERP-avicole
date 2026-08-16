@@ -422,6 +422,17 @@ const RULES: Partial<Record<OperationType, Validator>> = {
     reqDate(p, 'scheduled_date', 'Échéance', e)
     return e
   },
+  // Mêmes champs obligatoires que la tâche personnelle. Le TITULAIRE est
+  // facultatif — sans lui, la tâche part au libre-service. Les trois refus
+  // métier (employé affectable, congé, service) restent AUTORITAIRES serveur :
+  // ils dépendent d'un état que le miroir local peut ne plus refléter.
+  'task.dispatch': (p) => {
+    const e: string[] = []
+    reqStr(p, 'title', 'Intitulé', e)
+    reqStr(p, 'category', 'Catégorie', e)
+    reqDate(p, 'scheduled_date', 'Échéance', e)
+    return e
+  },
   // ── HACCP abattoir + provenderie (énumérations laissées au serveur/formulaire :
   //    on ne vérifie que présence / bornes / dates — zéro faux rejet). ──
   'mill_production.complete': (p) => {
