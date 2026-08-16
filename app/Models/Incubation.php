@@ -32,12 +32,18 @@ class Incubation extends Model
         'fertile_eggs',
         'hatched_chicks',
         'status',
+        // `RecordHatching` écrit `finished_at => now()` à la clôture ; absent de
+        // cette liste, l'assignation de masse le jetait SANS UN MOT. La colonne
+        // existe depuis la migration d'origine et restait donc toujours nulle :
+        // une écriture qui n'écrivait pas.
+        'finished_at',
         'chicks_dispatched', 'chicks_remaining', // incubation, mirage_fait, clos
     ];
 
     protected $casts = [
         'start_date'          => 'date',
         'hatch_date_expected' => 'date',
+        'finished_at'         => 'datetime',
         'incubation_duration' => 'integer',
         'eggs_count'          => 'integer',
         'egg_unit_cost'       => 'decimal:2',

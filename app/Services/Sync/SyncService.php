@@ -448,7 +448,13 @@ class SyncService
                 ]]);
             }
 
-            $updated = app(\App\Actions\Incubation\RecordHatching::class)->execute($incubation, $data);
+            // Refus métier (cycle déjà clôturé) → conflit DÉFINITIF, comme pour
+            // le mirage juste au-dessus : le rejeu ne changerait rien.
+            try {
+                $updated = app(\App\Actions\Incubation\RecordHatching::class)->execute($incubation, $data);
+            } catch (\DomainException $e) {
+                return ['status' => 'conflict', 'message' => $e->getMessage()];
+            }
 
             // Compteurs de dispatch (colonnes optionnelles, comme le web).
             $counters = [];
