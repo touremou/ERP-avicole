@@ -201,6 +201,37 @@ class ExpenseController extends Controller
             return back()->with('error', 'Action non autorisée.');
         }
 
+        /*
+         * UNE DÉPENSE VALIDÉE NE SE SUPPRIME PAS — ELLE S'ANNULE.
+         *
+         * `update()`, vingt lignes plus haut, refuse déjà de toucher une dépense
+         * qui n'est plus en attente : « Seule une dépense en attente peut être
+         * modifiée. » La suppression, elle, ne vérifiait rien — et c'est le
+         * geste le plus destructeur des deux.
+         *
+         * Mesuré sur une dépense de 2 000 000 GNF validée le 10 juillet,
+         * supprimée en août :
+         *
+         *   • les charges de JUILLET tombent de 2 000 000 à 0 — un mois arrêté,
+         *     dont le résultat remonte d'autant ;
+         *   • l'écriture de trésorerie passe de 1 à 0. `reverseFor()` SUPPRIME
+         *     le mouvement au lieu de le contre-passer : l'argent est bien sorti
+         *     de la caisse en juillet, et le grand-livre dit désormais que non.
+         *     Le solde étant corrigé du même geste, aucun écart n'est
+         *     détectable par le contrôle de cohérence.
+         *
+         * Le modèle déclare pourtant la sortie : STATUSES = en_attente, valide,
+         * ANNULE. L'annulation garde la pièce, sa trace et son motif ; la
+         * suppression efface tout. Le refus renvoie donc vers elle.
+         */
+        if ($expense->status !== 'en_attente') {
+            return back()->with('error',
+                "La dépense {$expense->reference} est {$expense->status} : elle est entrée dans le compte "
+                . "de résultat et au grand-livre de caisse. Annulez-la plutôt — l'annulation conserve la "
+                . 'pièce et son motif.'
+            );
+        }
+
         $expense->delete();
 
         return redirect()->route('expenses.index')->with('success', 'Dépense supprimée.');
