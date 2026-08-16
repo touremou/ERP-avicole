@@ -101,8 +101,30 @@ class Harvest extends Model
     public function scopeAwaitingTransformationForSync($query)
     {
         return $query->where('destination', self::DEST_TRANSFORMATION)
-            ->whereDoesntHave('transformations')
+            ->notEngaged()
             ->whereDate('harvest_date', '>=', now()->subDays(60)->toDateString());
+    }
+
+    /**
+     * MATIÈRE PAS ENCORE ENGAGÉE À L'ATELIER.
+     *
+     * Cette condition était recopiée à trois endroits qui LISENT — la liste de
+     * synchro mobile, la liste du formulaire web, la garde de la synchro — et
+     * absente du seul qui ÉCRIT : le contrôleur web. La liste connaissait donc
+     * la règle que l'enregistrement ignorait.
+     *
+     * Elle est déclarée ici une fois, sous ses deux formes : le filtre de
+     * liste et la question posée d'une récolte précise.
+     */
+    public function scopeNotEngaged($query)
+    {
+        return $query->whereDoesntHave('transformations');
+    }
+
+    /** Cette récolte a-t-elle déjà été transformée ? (matière engagée) */
+    public function isEngaged(): bool
+    {
+        return $this->transformations()->exists();
     }
 
     // ─── RELATIONS ───

@@ -52,7 +52,7 @@ class CropTransformationController extends Controller
             // fois la traçabilité et le coût matière, sans rien saisir de plus.
             'pendingHarvests' => \App\Models\Harvest::query()
                 ->where('destination', \App\Models\Harvest::DEST_TRANSFORMATION)
-                ->whereDoesntHave('transformations')
+                ->notEngaged()
                 ->with('cropCycle:id,code,crop_name')
                 ->orderByDesc('harvest_date')
                 ->limit(50)
@@ -90,6 +90,32 @@ class CropTransformationController extends Controller
             'output_stock_item'   => 'nullable|string|max:255',
             'notes'               => 'nullable|string|max:1000',
         ]);
+
+        /*
+         * UNE RÉCOLTE NE S'ENGAGE QU'UNE FOIS.
+         *
+         * La synchro mobile refuse depuis toujours de re-transformer une
+         * récolte : « sa matière est engagée ». Le web, lui, se contentait de
+         * ne PAS la proposer dans la liste — une garde d'AFFICHAGE, pas une
+         * règle. Un double envoi, un retour arrière ou un formulaire d'atelier
+         * resté ouvert la franchissaient sans rien signaler.
+         *
+         * Mesuré : deux envois du même formulaire sur une récolte de 200 kg
+         * engagent 400 kg de matière, imputent 800 000 GNF de coût matière à
+         * un cycle qui n'a coûté que 400 000, et sortent 120 kg de produit
+         * fini là où il n'y en a que 60. Le coût de revient du cycle et le
+         * stock de l'atelier deviennent faux ensemble.
+         */
+        if (! empty($validated['harvest_id'])) {
+            $harvest = \App\Models\Harvest::find($validated['harvest_id']);
+
+            if ($harvest?->isEngaged()) {
+                return back()->withInput()->with('error',
+                    'La récolte du ' . $harvest->harvest_date->format('d/m/Y')
+                    . ' a déjà été transformée — sa matière est engagée.'
+                );
+            }
+        }
 
         $transformation = $action->execute($validated);
 
