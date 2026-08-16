@@ -254,14 +254,17 @@ class TaskSchedulerService
 
                 // Responsable du cycle en priorité (continuité du suivi), sinon
                 // répartition de charge sur la parcelle.
-                $employeeId = $cycle->employee_id
-                    ?? ($cycle->plot ? $this->findBestEmployeeForPlot($cycle->plot, $employees, $date)?->id : null);
+                $employee = $this->protocolAssignee($cycle, $employees, $date);
 
                 TaskAssignment::create([
                     'farm_id'               => $farmId ?? $cycle->farm_id ?? null,
                     'task_template_id'      => null,
-                    'employee_id'           => $employeeId,
-                    'is_pool'               => false,
+                    'employee_id'           => $employee?->id,
+                    // Sans titulaire, la tâche part au POOL — comme le fait le
+                    // générateur de contrôles de conservation. Marquée « ni à
+                    // quelqu'un, ni libre », elle n'apparaissait sur AUCUN
+                    // téléphone : la liste mobile est « mes tâches OU le pool ».
+                    'is_pool'               => $employee === null,
                     'title'                 => $item->action_name . ' — ' . $cycle->crop_name
                                                . ($cycle->code ? " ({$cycle->code})" : ''),
                     'description'           => $this->protocolStepDescription($item, (int) $item->day_number),
@@ -484,6 +487,43 @@ class TaskSchedulerService
             $q->where('farm_id', $farmId);
         }
         return $q->exists();
+    }
+
+    /**
+     * TITULAIRE D'UNE TÂCHE D'ITINÉRAIRE TECHNIQUE.
+     *
+     * Une seule ligne portait deux règles différentes :
+     *
+     *     $cycle->employee_id ?? findBestEmployeeForPlot(...)
+     *
+     * La branche de REPLI écarte les employés en congé et ne pioche que dans le
+     * vivier affectable de la ferme. La branche PRIORITAIRE — le responsable du
+     * cycle — ne vérifiait rien : ni congé, ni dossier encore actif.
+     *
+     * C'est exactement la règle que le bureau applique et documente
+     * (TaskController::assign : « pas d'affectation à un employé en congé à la
+     * date prévue »), et dont un audit précédent notait déjà qu'on pouvait la
+     * sauter « sans qu'un mot soit dit ». Le générateur quotidien la sautait à
+     * son tour, sur les tâches les plus datées de toutes : un traitement
+     * phytosanitaire a une fenêtre, et attribué à quelqu'un d'absent il attend
+     * son retour.
+     *
+     * Le vivier `$employees` est déjà `Employee::assignableInFarm()` : passer
+     * le responsable par lui écarte du même geste un dossier archivé ou parti.
+     */
+    private function protocolAssignee(CropCycle $cycle, $employees, Carbon $date): ?Employee
+    {
+        $responsable = $cycle->employee_id
+            ? $employees->firstWhere('id', $cycle->employee_id)
+            : null;
+
+        if ($responsable && ! $responsable->isOnLeaveOn($date)) {
+            return $responsable;
+        }
+
+        return $cycle->plot
+            ? $this->findBestEmployeeForPlot($cycle->plot, $employees, $date)
+            : null;
     }
 
     private function findBestEmployeeForPlot(Plot $plot, $employees, Carbon $date): ?Employee
