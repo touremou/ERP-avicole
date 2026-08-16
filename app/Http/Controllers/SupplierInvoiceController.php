@@ -136,6 +136,28 @@ class SupplierInvoiceController extends Controller
             return back()->with('error', 'Cet achat est déjà annulé.');
         }
 
+        /*
+         * LA MÊME RÈGLE QUE CÔTÉ VENTE. `CancelSale` refuse d'annuler une vente
+         * porteuse de paiements et renvoie vers le remboursement. Ici, rien ne
+         * regardait les règlements — alors que les conséquences sont pires.
+         *
+         * Le relevé fournisseur ne charge les règlements que des achats NON
+         * annulés : annuler un achat déjà payé retirait du compte du fournisseur
+         * la facture ET le règlement, comme si l'argent n'était jamais sorti.
+         * La trésorerie, elle, gardait le décaissement — posté par l'observateur
+         * de règlement, que personne n'annule. Et la dépense miroir passait
+         * « annulé », donc le coût quittait aussi le compte de résultat.
+         *
+         * On renvoie vers l'AVOIR, que `pay()` sait déjà enregistrer (montant
+         * négatif) : l'argent revient par un geste qui laisse une trace, au lieu
+         * d'un effacement qui n'en laisse aucune.
+         */
+        if (abs($invoice->paid_amount) > 0.001) {
+            return back()->with('error',
+                "Impossible d'annuler : des règlements sont enregistrés sur {$invoice->reference} ("
+                . money($invoice->paid_amount) . '). Enregistrez d\'abord un avoir du même montant.');
+        }
+
         DB::transaction(function () use ($invoice) {
             $invoice->update(['status' => 'annule']);
             $invoice->expense?->update(['status' => 'annule']); // sort du P&L
@@ -231,11 +253,19 @@ class SupplierInvoiceController extends Controller
     /** Timeline + totaux du relevé fournisseur (partagé écran/PDF). */
     private function buildStatement(Provider $provider): array
     {
-        $invoices = $provider->supplierInvoices()
-            ->where('status', '!=', 'annule')
+        $all = $provider->supplierInvoices()
             ->get(['id', 'reference', 'invoice_date', 'total_amount', 'status']);
 
-        $payments = SupplierPayment::whereIn('supplier_invoice_id', $invoices->pluck('id'))
+        // Les achats ANNULÉS ne sont pas des dettes : ils ne figurent pas au
+        // débit. Mais leurs RÈGLEMENTS restent de l'argent versé, et le relevé
+        // les chargeait sur la seule liste des achats vivants — ils
+        // disparaissaient donc avec la facture. On les charge sur TOUS les
+        // achats du fournisseur : un règlement porté sur un achat annulé reste
+        // au crédit, et le solde dit alors la vérité — le fournisseur nous doit
+        // ce montant.
+        $invoices = $all->where('status', '!=', 'annule');
+
+        $payments = SupplierPayment::whereIn('supplier_invoice_id', $all->pluck('id'))
             ->with('invoice:id,reference')
             ->get();
 
