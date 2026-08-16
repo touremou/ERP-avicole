@@ -79,7 +79,7 @@ function enConge(Employee $employe): EmployeeLeave
     return EmployeeLeave::create([
         'farm_id' => $employe->farm_id,
         'employee_id' => $employe->id,
-        'type' => 'annuel',
+        'type' => 'conge_annuel',
         'start_date' => now()->subDays(2)->toDateString(),
         'end_date' => now()->addDays(2)->toDateString(),
         'status' => 'approuve',
