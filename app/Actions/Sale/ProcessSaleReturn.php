@@ -94,6 +94,13 @@ class ProcessSaleReturn
                     'sale_return_id' => $return->id,
                     'sale_item_id'   => $item->id,
                     'product_name'   => $item->product_name,
+                    // CATÉGORIE et LOT figés ici, pendant qu'ils existent encore :
+                    // la ligne de vente est supprimée juste en dessous si le
+                    // retour est total, et `sale_items` n'a pas de suppression
+                    // douce. Ce sont les deux clefs par lesquelles les rapports
+                    // ventilent le chiffre d'affaires.
+                    'product_type'   => $item->product_type,
+                    'batch_id'       => $item->batch_id,
                     'quantity'       => $qty,
                     'unit_price'     => $item->unit_price,
                     'total'          => $lineTotal,

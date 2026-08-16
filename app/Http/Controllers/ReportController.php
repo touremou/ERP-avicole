@@ -16,6 +16,7 @@ use App\Models\EnergyReading;
 use App\Models\Payslip;
 use App\Models\Species;
 use App\Models\Expense;
+use App\Services\Accounting\PeriodRevenue;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -161,13 +162,15 @@ class ReportController extends Controller
         $to   = Carbon::parse($request->get('date_to', now()->toDateString()))->endOfDay();
 
         // ─── PRODUITS ───
-        // Ventes réellement engagées (validées/livrées) sur la période, par catégorie.
-        $salesByType = SaleItem::query()
-            ->whereHas('sale', fn ($q) => $q->whereIn('status', ['valide', 'livre'])
-                ->whereBetween('sale_date', [$from, $to]))
-            ->selectRaw('product_type, SUM(total) as total')
-            ->groupBy('product_type')
-            ->pluck('total', 'product_type');
+        // Ventes réellement engagées (validées/livrées) sur la période, par
+        // catégorie — TELLES QU'ELLES ÉTAIENT À LA CLÔTURE de la période.
+        //
+        // Un retour de marchandise décrémente la ligne de vente d'origine, et le
+        // rapport sélectionne les ventes par leur date de vente : un retour de
+        // septembre réécrivait donc le chiffre de JUILLET. La reconstitution vit
+        // dans PeriodRevenue, appelée aussi par la rentabilité par espèce plus
+        // bas — une règle recopiée est une règle qui diverge.
+        $salesByType = collect(PeriodRevenue::byProductType($from, $to));
 
         // Lait collecté valorisé (pas de flux de vente dédié à ce stade).
         $milkRevenue = (float) MilkProduction::whereBetween('production_date', [$from, $to])
@@ -321,10 +324,10 @@ class ReportController extends Controller
             $batchIds = Batch::where('species_id', $sp->id)->pluck('id');
             if ($batchIds->isEmpty()) continue;
 
-            $rev = (float) SaleItem::whereIn('batch_id', $batchIds)
-                ->whereHas('sale', fn ($q) => $q->whereIn('status', ['valide', 'livre'])
-                    ->whereBetween('sale_date', [$from, $to]))
-                ->sum('total');
+            // Même reconstitution que le compte de résultat : un retour postérieur
+            // à la période ne doit pas rétrécir la rentabilité d'une espèce sur un
+            // mois déjà arrêté.
+            $rev = PeriodRevenue::forBatches($batchIds, $from, $to);
             $rev += (float) MilkProduction::whereIn('batch_id', $batchIds)
                 ->whereBetween('production_date', [$from, $to])
                 ->sum(DB::raw('total_liters * unit_price'));
@@ -352,6 +355,12 @@ class ReportController extends Controller
 
     private function productTypeLabel(string $type): string
     {
+        // Déjà un libellé, pas un code : les retours antérieurs à l'instantané
+        // de catégorie (migration du 19/08/2026) arrivent sous leur propre nom.
+        if ($type === PeriodRevenue::LIBELLE_NON_VENTILE) {
+            return $type;
+        }
+
         return match ($type) {
             'animal_vif'        => 'Animaux vifs',
             'carcasse', 'volaille_abattue' => 'Carcasses / viande',
