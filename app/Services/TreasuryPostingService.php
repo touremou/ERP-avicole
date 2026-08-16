@@ -63,6 +63,10 @@ class TreasuryPostingService
             return null;
         }
 
+        if ($this->isSupplierInvoiceMirror($expense)) {
+            return null;
+        }
+
         $amount = (float) $expense->amount;
         if ($amount <= 0) {
             return null;
@@ -176,6 +180,30 @@ class TreasuryPostingService
                 $tx->delete();
             }
         });
+    }
+
+    /**
+     * Cette dépense est-elle la DÉPENSE MIROIR d'un achat fournisseur ?
+     *
+     * L'achat fournisseur pose une dépense à la validation pour porter le coût
+     * au compte de résultat — « même convention que FuelPurchase », dit le
+     * modèle. Mais FuelPurchase n'a pas de pièce de règlement : sa dépense EST
+     * le décaissement. L'achat fournisseur, lui, en a une — et elle poste déjà
+     * sa propre sortie.
+     *
+     * La convention a donc été reprise dans un décor où elle ne tenait plus, et
+     * la caisse sortait deux fois le montant d'un achat payé une fois. Pour un
+     * achat à crédit, la première sortie tombait même à la validation, avant
+     * que rien ne soit payé : le solde était faux, et faux dans le sens qui
+     * fait peur — trop bas.
+     *
+     * On ne retire ici QUE le mouvement d'argent. La dépense reste, valide, au
+     * compte de résultat : un achat sans règlement est une dette, pas un
+     * décaissement, et c'est toute la raison d'être du module.
+     */
+    private function isSupplierInvoiceMirror(Expense $expense): bool
+    {
+        return $expense->supplier_invoice_id !== null;
     }
 
     /** Une écriture a-t-elle déjà été générée pour cette pièce ? (anti double-comptage) */
