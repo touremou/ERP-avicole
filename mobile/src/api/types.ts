@@ -107,6 +107,7 @@ export type OperationType =
   | 'task.complete'
   // Tâche personnelle créée depuis le terrain (auto-assignée).
   | 'task.create'
+  | 'task.dispatch'
   // Ravitaillement d'une citerne d'eau (appoint) depuis le terrain.
   | 'water_refill.create'
 
@@ -225,6 +226,14 @@ export interface RefEmployee {
   first_name: string | null
   last_name: string | null
   job_title: string | null
+  /**
+   * Service de rattachement (Elevage, Cultures, Commerce…).
+   *
+   * Sert à l'écran d'affectation : le serveur refuse une tâche confiée hors du
+   * service concerné, et l'écran doit pouvoir le dire AVANT l'envoi plutôt que
+   * de laisser le refus arriver à la synchronisation.
+   */
+  department: string | null
   status: string | null
   updated_at: string
 }

@@ -106,7 +106,12 @@ class SyncController extends Controller
         'employees' => [
             'model'   => \App\Models\Employee::class,
             'gate'    => ['provenderie.L', 'elevage.L', 'rh.L', 'rh.C'],
-            'columns' => ['id', 'employee_id', 'first_name', 'last_name', 'job_title', 'status', 'updated_at'],
+            // `department` : le terrain peut désormais AFFECTER une tâche
+            // (task.dispatch), et le serveur refuse une affectation hors du
+            // service concerné. Sans cette colonne, l'écran ne pourrait pas le
+            // dire avant l'envoi — le refus n'arriverait qu'à la synchro, comme
+            // pour le délai avant récolte avant qu'on ne le descende.
+            'columns' => ['id', 'employee_id', 'first_name', 'last_name', 'job_title', 'department', 'status', 'updated_at'],
             'scope'   => 'activeForSync',
         ],
         // M2 — CRÉANCES OUVERTES : ventes non soldées des 90 derniers jours, pour

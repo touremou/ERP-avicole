@@ -113,6 +113,11 @@ export const OP_ACCESS: Record<OperationType, AccessSpec> = {
   'task.start': '@owner',
   'task.release': '@owner',
   'task.create': '@owner',
+  // AFFECTER à un collègue (ou au pool) est un geste d'encadrement, pas de
+  // saisie personnelle : le serveur exige rh.C (SyncService::taskDispatch),
+  // exactement comme le formulaire du bureau. Le déclarer ici évite qu'un agent
+  // voie un écran dont l'envoi sera refusé.
+  'task.dispatch': 'rh.C',
 }
 
 /**
@@ -134,6 +139,9 @@ export const ROUTE_ACCESS = {
   '/appareils': '@self',
   '/alertes': '@self',
   '/taches': '@owner',
+  // Affecter à autrui n'est pas une saisie personnelle : même droit que l'op
+  // qu'il produit (règle énoncée ci-dessus).
+  '/taches/affecter': 'rh.C',
 
   // Élevage
   '/elevage/pointage/:batchId?': 'elevage.C',

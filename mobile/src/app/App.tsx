@@ -54,6 +54,7 @@ import { MeterReadingScreen } from '../features/ressources/MeterReadingScreen'
 import { AttendanceScreen } from '../features/rh/AttendanceScreen'
 import { AppareilsScreen } from '../features/appareils/AppareilsScreen'
 import { TachesScreen } from '../features/taches/TachesScreen'
+import { AffecterTacheScreen } from '../features/taches/AffecterTacheScreen'
 import { NotificationsScreen } from '../features/notifications/NotificationsScreen'
 import { BottomNav } from '../ui/BottomNav'
 import { SyncBadge } from '../ui/SyncBadge'
@@ -127,6 +128,7 @@ const SCREENS: Array<[RoutePath, ReactElement]> = [
   ['/provenderie/lancer', <MillStartScreen />],
   ['/alertes', <NotificationsScreen />],
   ['/taches', <TachesScreen />],
+  ['/taches/affecter', <AffecterTacheScreen />],
   ['/mon-espace', <MonEspaceScreen />],
   ['/mon-espace/semaine', <MaSemaineScreen />],
   ['/appareils', <AppareilsScreen />],
