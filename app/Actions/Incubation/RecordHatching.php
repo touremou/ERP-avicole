@@ -15,6 +15,25 @@ class RecordHatching
             
             $hatchabilityRate = $fertile > 0 ? ($hatched / $fertile) * 100 : 0;
 
+            /*
+             * UN CYCLE CLOS NE S'ÉCLÔT PAS UNE SECONDE FOIS.
+             *
+             * Le mirage porte cette garde depuis toujours — « Impossible
+             * d'effectuer un mirage sur un cycle clôturé » — et l'éclosion, qui
+             * est pourtant LE GESTE QUI CLÔT, ne la portait pas.
+             *
+             * Ce n'était pas symbolique : les deux portes remettent, après
+             * chaque éclosion, `chicks_dispatched` à 0 et `chicks_remaining` au
+             * total. Re-soumettre le formulaire — retour arrière, double envoi
+             * sur une connexion lente — sur un cycle dont 600 poussins sur 800
+             * étaient DÉJÀ partis en dispatch ramenait le compteur à 0/800 :
+             * les 600 poussins déjà répartis redevenaient « à dispatcher ».
+             */
+            if ($incubation->status === 'clos') {
+                throw new \DomainException('Ce cycle est déjà clôturé : son éclosion a été enregistrée le '
+                    . ($incubation->finished_at?->format('d/m/Y') ?? '—') . '.');
+            }
+
             $incubation->update([
                 'hatched_chicks'    => $hatched,
                 'hatchability_rate' => $hatchabilityRate,

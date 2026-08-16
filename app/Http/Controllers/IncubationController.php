@@ -102,15 +102,34 @@ class IncubationController extends Controller
 
     public function recordMirage(RecordMirageRequest $request, Incubation $incubation, RecordMirage $action)
     {
-        $updatedIncubation = $action->execute($incubation, $request->validated());
+        /*
+         * Le refus métier est un MESSAGE, pas une page d'erreur.
+         *
+         * `RecordMirage` refuse un cycle clôturé en levant une DomainException.
+         * La synchro mobile l'attrape et la rend en conflit lisible ; le web ne
+         * l'attrapait pas : mirer un cycle clos renvoyait une ERREUR 500. La
+         * règle était la même des deux côtés, sa restitution non.
+         */
+        try {
+            $updatedIncubation = $action->execute($incubation, $request->validated());
+        } catch (\DomainException $e) {
+            return back()->with('error', $e->getMessage());
+        }
+
         return back()->with('success', "Mirage enregistré : {$updatedIncubation->fertility_rate}% de fertilité.");
     }
 
     public function recordHatch(RecordHatchRequest $request, Incubation $incubation, RecordHatching $action)
     {
-        $updatedIncubation = $action->execute($incubation, $request->validated());
+        try {
+            $updatedIncubation = $action->execute($incubation, $request->validated());
+        } catch (\DomainException $e) {
+            return back()->with('error', $e->getMessage());
+        }
 
-        // Initialiser les compteurs (colonnes optionnelles)
+        // Initialiser les compteurs (colonnes optionnelles).
+        // Cette remise à zéro est la raison pour laquelle la double éclosion
+        // coûtait cher : elle efface le dispatch déjà effectué.
         $update = [];
         if (\Schema::hasColumn('incubations', 'chicks_remaining')) {
             $update['chicks_remaining'] = $updatedIncubation->hatched_chicks;
