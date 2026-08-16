@@ -214,8 +214,9 @@ test('l’achat de CARBURANT garde son décaissement', function () {
      */
     $groupe = \App\Models\EnergySource::create([
         'farm_id' => $this->farm->id, 'name' => 'Groupe électrogène',
-        'type' => 'generateur', 'fuel_type' => 'diesel',
-        'status' => 'Actif', 'is_active' => true,
+        // Valeurs du référentiel — sqlite n'applique pas les ENUM, MySQL si.
+        'type' => 'groupe', 'fuel_type' => 'gasoil',
+        'status' => 'operationnel', 'is_active' => true,
     ]);
 
     $achatCarburant = FuelPurchase::create([
