@@ -22,6 +22,37 @@ class CompleteMillProduction
 
     public function execute(MillProduction $production): MillProduction
     {
+        return DB::transaction(fn () => $this->completeLocked($production));
+    }
+
+    /**
+     * DEUX CLÔTURES SIMULTANÉES CONSOMMAIENT LA MATIÈRE DEUX FOIS.
+     *
+     * La garde « déjà clôturée » lisait le statut de l'objet REÇU — une copie
+     * chargée par la requête, avant que l'autre n'écrive. Deux requêtes
+     * concurrentes voyaient donc toutes deux « Planifié » et passaient.
+     *
+     * Mesuré : deux clôtures du même ordre de 200 kg font tomber le maïs
+     * concassé de 1 000 à 600 kg. QUATRE CENTS KILOS consommés pour deux cents
+     * produits, et deux entrées d'aliment fini pour une seule fabrication.
+     *
+     * C'est le double-clic sur « Clôturer » depuis une connexion lente — le
+     * geste exact que cette base garde partout ailleurs par un uuid
+     * d'idempotence ou un refus de rejeu.
+     *
+     * La synchro mobile, elle, verrouillait déjà la ligne avant d'appeler cette
+     * action (`MillProduction::lockForUpdate()`). Le web appelait la MÊME action
+     * sans verrou : la protection tenait un chemin sur deux. Elle vit maintenant
+     * dans l'action, donc dans les deux — et le verrou de la synchro, pris sur
+     * la même ligne dans la même transaction, reste sans effet de bord.
+     */
+    private function completeLocked(MillProduction $production): MillProduction
+    {
+        // Relecture SOUS VERROU : entre le chargement par le contrôleur et cet
+        // instant, un autre appel a pu clôturer l'ordre. C'est cet état-là que
+        // la garde doit lire, pas celui de la copie en mémoire.
+        $production = MillProduction::lockForUpdate()->findOrFail($production->getKey());
+
         if ($production->status === 'Terminé') {
             throw new \DomainException("L'OP #{$production->batch_number} est déjà clôturée.");
         }
