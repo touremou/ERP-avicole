@@ -236,6 +236,25 @@ class Stock extends Model
      * alerte dont aucune alerte ne parlerait jamais et que la liste du tableau
      * de bord ne montrait pas.
      */
+    /**
+     * ALIMENT ou autre consommable ? La catégorie `conso` porte « Aliment &
+     * Santé », et les deux ne se comptent pas pareil : l'aliment est imputé à la
+     * consommation, le reste au prix d'achat (cf. Batch::…, PeriodCharges).
+     *
+     * La règle « metadata['conso_type'] ?? 'Aliment' » — un type absent vaut
+     * Aliment — était recopiée à la main partout où elle servait. Elle vit ici.
+     */
+    public function getConsoTypeAttribute(): string
+    {
+        return $this->metadata['conso_type'] ?? 'Aliment';
+    }
+
+    /** L'article est-il de l'aliment au sens comptable ? */
+    public function isFeed(): bool
+    {
+        return $this->category === self::CAT_CONSO && $this->conso_type === 'Aliment';
+    }
+
     public function getIsLowAttribute(): bool
     {
         if ((float) $this->alert_threshold <= 0) {
