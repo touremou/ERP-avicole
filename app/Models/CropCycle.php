@@ -136,6 +136,32 @@ class CropCycle extends Model
         return $this->activePreharvestInterval() !== null;
     }
 
+    /**
+     * DATE À PARTIR DE LAQUELLE LA RÉCOLTE REDEVIENT PERMISE — ou null.
+     *
+     * Le serveur REFUSE DÉFINITIVEMENT une récolte sous délai avant récolte,
+     * des deux côtés (web et synchro) : résidus phytosanitaires. Mais le terrain
+     * ne recevait AUCUNE information sur ce délai — la charge utile des cycles
+     * ne porte que le nom, le code, la parcelle et la date de semis.
+     *
+     * Un technicien hors réseau récoltait donc une parcelle sous délai, saisissait
+     * la récolte, et ne l'apprenait qu'à la synchronisation — par un refus
+     * définitif qui l'envoie au bac « À corriger ». Deux dégâts d'un coup : la
+     * saisie est perdue, et surtout LA RÉCOLTE A DÉJÀ EU LIEU. Le refus arrive
+     * après le geste qu'il devait empêcher.
+     *
+     * Cet attribut descend avec le cycle (`append` de la charge utile, comme
+     * `can_collect_eggs` pour les lots) : l'écran de récolte peut alors avertir
+     * AVANT que le sécateur ne serve.
+     *
+     * `isHarvestBlocked()` juste au-dessus existait déjà et n'était appelée par
+     * aucun code : la règle était exposée par le modèle et lue par personne.
+     */
+    public function getHarvestBlockedUntilAttribute(): ?string
+    {
+        return $this->activePreharvestInterval()?->harvest_allowed_from?->toDateString();
+    }
+
     /** Validations explicites d'étapes de l'itinéraire technique. */
     public function protocolCompletions(): HasMany
     {

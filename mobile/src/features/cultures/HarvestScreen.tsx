@@ -97,9 +97,23 @@ export function HarvestScreen() {
     if (held) setShowDetails(true)
   }, [held])
 
+  /*
+   * DÉLAI AVANT RÉCOLTE (résidus phytosanitaires).
+   *
+   * Le serveur refuse DÉFINITIVEMENT une récolte sous délai — le refus part au
+   * bac « À corriger » et n'est pas rejouable. Jusqu'ici le terrain l'ignorait :
+   * le technicien récoltait, saisissait, et l'apprenait à la synchronisation.
+   * Le refus arrivait donc APRÈS le geste qu'il devait empêcher.
+   *
+   * La date descend maintenant avec le cycle. On avertit avant le sécateur.
+   */
+  const blockedUntil = cycle?.harvest_blocked_until ?? null
+  const harvestBlocked =
+    blockedUntil !== null && new Date().toISOString().slice(0, 10) < blockedUntil
+
   async function onSubmit(event: FormEvent) {
     event.preventDefault()
-    if (!cycle || quantity <= 0 || missingWeight) return
+    if (!cycle || quantity <= 0 || missingWeight || harvestBlocked) return
 
     const num = (v: string) => (v.trim() !== '' ? Number(v) : null)
 
@@ -153,6 +167,16 @@ export function HarvestScreen() {
         {cycle.code}
         {cycle.variety ? ` · ${cycle.variety}` : ''} · {new Date().toLocaleDateString(dateLocale())}
       </p>
+
+      {harvestBlocked && (
+        <p className="proof-hint" role="alert">
+          ⛔{' '}
+          {t(
+            'Délai avant récolte en cours : la récolte est interdite jusqu’au :date (résidus phytosanitaires). Le serveur la refusera — attendez l’échéance.',
+            { date: new Date(blockedUntil as string).toLocaleDateString(dateLocale()) },
+          )}
+        </p>
+      )}
 
       <label>{t('Que devient cette récolte ?')}</label>
       <div className="chip-row">
@@ -280,7 +304,11 @@ export function HarvestScreen() {
       <label htmlFor="notes">{t('Observations — optionnel')}</label>
       <textarea id="notes" rows={2} maxLength={1000} value={notes} onChange={(e) => setNotes(e.target.value)} />
 
-      <button type="submit" className="btn-primary" disabled={quantity <= 0 || missingWeight}>
+      <button
+        type="submit"
+        className="btn-primary"
+        disabled={quantity <= 0 || missingWeight || harvestBlocked}
+      >
         {t('Enregistrer la récolte')}
       </button>
 

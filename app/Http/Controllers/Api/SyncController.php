@@ -189,6 +189,10 @@ class SyncController extends Controller
             'gate'    => 'cultures.L',
             'columns' => ['id', 'uuid', 'plot_id', 'code', 'crop_name', 'variety', 'status',
                           'employee_id', 'planting_date', 'area_used_ha', 'updated_at'],
+            // DÉLAI AVANT RÉCOLTE : le serveur refuse DÉFINITIVEMENT une récolte
+            // sous délai (résidus). Sans cette information au terrain, le refus
+            // n'arrivait qu'à la synchronisation — après la récolte.
+            'append'  => ['harvest_blocked_until'],
         ],
         'slaughter_orders' => [
             'model'   => \App\Models\SlaughterOrder::class,
