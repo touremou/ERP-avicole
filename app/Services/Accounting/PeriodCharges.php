@@ -6,6 +6,7 @@ use App\Models\Batch;
 use App\Models\EnergyReading;
 use App\Models\Expense;
 use App\Models\HealthCheck;
+use App\Models\HealthIncident;
 use App\Models\Payslip;
 use App\Models\WaterReading;
 use Carbon\Carbon;
@@ -89,7 +90,28 @@ class PeriodCharges
 
             'Aliment' => self::feedConsumedCost($from, $to),
 
-            'Santé / prophylaxie' => (float) HealthCheck::whereBetween('intervention_date', [$from, $to])->sum('cost'),
+            /*
+             * DEUX SOURCES, comme la marge du lot — qui les additionnait déjà.
+             *
+             * Cette ligne ne sommait que les actes du registre. Le coût de
+             * traitement d'un INCIDENT sanitaire, saisi au diagnostic
+             * vétérinaire, était lu par la marge du lot, la tuile du module
+             * santé et le rapport sanitaire — jamais ici. Une épidémie traitée
+             * à 2 000 000 amputait la marge du lot de 2 000 000 et le résultat
+             * de la ferme de zéro : la somme des marges ne pouvait pas tomber
+             * juste, et l'écart se cherchait du côté des ventes.
+             *
+             * Aucun double comptage, et Batch le disait déjà en toutes lettres :
+             * « champ dédié, non capté ailleurs ». La boucle était fermée pour
+             * le lot ; elle restait ouverte pour la ferme.
+             *
+             * Borne de période : `incident_date`, comme le rapport sanitaire.
+             * Deux écrans qui chiffrent la même épidémie doivent la ranger dans
+             * le même mois.
+             */
+            'Santé / prophylaxie' =>
+                (float) HealthCheck::whereBetween('intervention_date', [$from, $to])->sum('cost')
+                + (float) HealthIncident::whereBetween('incident_date', [$from, $to])->sum('treatment_cost'),
 
             'Main d\'œuvre (paie)' => (float) Payslip::whereHas(
                 'period',
