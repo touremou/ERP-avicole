@@ -394,6 +394,14 @@ test('byproduct.create enregistre le sous-produit, idempotent', function () {
 // ─── COMMANDE PLANIFIÉE §9 : complétude des registres ───
 
 test('haccp:check-registers alerte sur relevés manquants et CCP 3 absent', function () {
+    /*
+     * Le contrôle est désormais fait PAR SITE (un registre HACCP est nominatif
+     * par établissement, et deux relevés faits ici ne prouvent rien là-bas).
+     * Ce test compte les alertes : il doit donc dire quels sites sont actifs,
+     * sinon son total dépend du décor laissé par les migrations.
+     */
+    Farm::query()->where('id', '!=', $this->farmA->id)->update(['is_active' => false]);
+
     // Un abattage exécuté aujourd'hui sans CCP 3, zéro relevé température.
     $order = makeHaccpOrder($this->manager);
     $order->update(['status' => 'termine', 'actual_date' => now()->toDateString()]);
