@@ -150,8 +150,14 @@ class CropTransformationController extends Controller
     }
 
     /**
-     * Mise à jour d'une transformation (champs descriptifs et économiques ;
-     * la re-synchronisation stock n'est pas rejouée pour éviter les doublons).
+     * Mise à jour d'une transformation.
+     *
+     * Le stock est réconcilié par CropTransformationObserver::updated() —
+     * l'ancienne valeur est ANNULÉE puis la nouvelle appliquée, comme pour les
+     * récoltes et les intrants. L'en-tête disait ici que la synchro « n'est pas
+     * rejouée pour éviter les doublons » : le motif était juste (rejouer la
+     * création doublerait), mais la conclusion — ne rien faire — laissait la
+     * fiche affirmer un stock qu'elle n'avait pas écrit.
      */
     public function update(Request $request, CropTransformation $cropTransformation)
     {
