@@ -64,10 +64,63 @@ class CashRegisterSession extends Model
     {
         $end = $this->closed_at ?? now();
 
+        // ENTRÉES : encaissements en espèces de la session. La somme est SIGNÉE
+        // — un remboursement client est un paiement négatif, il sort donc déjà
+        // du tiroir par cette ligne.
         $netCash = (float) Payment::where('method', 'especes')
             ->whereBetween('created_at', [$this->opened_at, $end])
             ->sum('amount');
 
-        return round((float) $this->opening_float + $netCash, 2);
+        return round((float) $this->opening_float + $netCash - $this->cashPaidOut($end), 2);
+    }
+
+    /**
+     * SORTIES D'ESPÈCES DU TIROIR pendant la session — hors encaissements.
+     *
+     * Ce montant manquait, et le manque se voyait à l'endroit le plus sensible :
+     * une dépense payée en espèces sort physiquement de la caisse, mais
+     * `expectedCash()` ne comptait que les ENCAISSEMENTS. Le comptage du soir
+     * annonçait donc un MANQUANT égal au montant sorti.
+     *
+     * Mesuré : fond 1 000 000, encaissé 500 000, gasoil payé 300 000. Le tiroir
+     * contient 1 200 000, le code en attendait 1 500 000 — « manquant de
+     * 300 000 », et l'ALERTE ANTI-FRAUDE partait au promoteur, à l'étranger,
+     * sur une opération parfaitement régulière.
+     *
+     * C'est le pire endroit pour un faux positif : une alerte de détournement
+     * qui se déclenche sur la routine finit par ne plus être lue, et le jour où
+     * l'écart est réel, il se lit comme les autres.
+     *
+     * ─── POURQUOI LE GRAND-LIVRE, ET PAS LES SEULES DÉPENSES ───
+     *
+     * Le tiroir ne paie pas que des dépenses : règlement fournisseur, salaire
+     * remis en main propre, tout passe par le compte de caisse. On lit donc les
+     * SORTIES du compte, ce qui les couvre toutes — présentes et à venir.
+     *
+     * DEUX EXCLUSIONS, chacune pour éviter un double comptage :
+     *
+     *   • les écritures issues d'un PAIEMENT : un remboursement est déjà compté
+     *     en négatif dans la somme signée ci-dessus ;
+     *   • l'écriture de CLÔTURE, qui aligne le compte sur le comptant physique —
+     *     la faire entrer dans le calcul de ce même comptant serait circulaire.
+     */
+    private function cashPaidOut(\Illuminate\Support\Carbon|\DateTimeInterface $end): float
+    {
+        $accountId = $this->treasury_account_id
+            ?: TreasuryAccount::active()->where('type', 'caisse')->value('id');
+
+        if (! $accountId) {
+            return 0.0;
+        }
+
+        return (float) TreasuryTransaction::where('treasury_account_id', $accountId)
+            ->where('direction', 'out')
+            ->where('category', '!=', 'cloture_caisse')
+            ->where(function ($q) {
+                $q->whereNull('source_type')
+                  ->orWhere('source_type', '!=', (new Payment)->getMorphClass());
+            })
+            ->whereBetween('created_at', [$this->opened_at, $end])
+            ->sum('amount');
     }
 }
