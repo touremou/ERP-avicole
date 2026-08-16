@@ -47,6 +47,27 @@ use Illuminate\Support\Facades\DB;
  *     ventilation générique pour la même raison ;
  *   • PAIE : les bulletins des périodes qui COMMENCENT dans l'intervalle, au
  *     net versé.
+ *
+ * ─── DÉMARQUE ALIMENT : POURQUOI ELLE, ET ELLE SEULE ───
+ *
+ * La démarque était chiffrée, exportée, affichée en tuile — et ne pesait sur
+ * aucun résultat. Un sac volé sortait du magasin sans jamais coûter un franc au
+ * compte de résultat : le bénéfice affiché était surévalué du montant des
+ * pertes, précisément sur le poste que le promoteur, à l'étranger, surveille.
+ *
+ * On n'ajoute pourtant QUE l'aliment, et c'est un raisonnement, pas une
+ * timidité. L'aliment est imputé À LA CONSOMMATION (ci-dessus) : ce qui est volé
+ * n'est jamais consommé, donc jamais compté — l'ajouter ne peut pas
+ * double-compter. Les autres catégories sont chargées À L'ACHAT : les matières
+ * premières de la provenderie passent par le module Dépenses (convention
+ * verrouillée par RawMaterialEntryIsInventoryOnlyTest), les consommables aussi.
+ * Leur démarque est déjà dans les charges, au jour de l'achat ; l'y remettre
+ * gonflerait les charges d'autant.
+ *
+ * Les GAINS d'inventaire ne sont pas déduits. Ce n'est pas une symétrie oubliée :
+ * le coût de l'aliment ne vient pas du stock mais des pointages, si bien qu'un
+ * écart positif ne correspond à aucune charge déjà prise — la déduire créerait
+ * un avoir sorti de nulle part. On reconnaît la perte, pas le gain latent.
  */
 class PeriodCharges
 {
@@ -90,6 +111,8 @@ class PeriodCharges
                 ->sum('energy_readings.cost'),
 
             'Carburant' => (float) ($expensesByCategory['carburant'] ?? 0),
+
+            'Démarque aliment' => self::feedShrinkageCost($from, $to),
         ];
 
         foreach ($expensesByCategory as $category => $total) {
@@ -102,6 +125,27 @@ class PeriodCharges
         }
 
         return $costs;
+    }
+
+    /**
+     * Valeur de l'aliment PERDU sur la période (démarque).
+     *
+     * Les pertes seules — cf. l'en-tête pour la raison de ne pas y opposer les
+     * gains d'inventaire. La valeur est celle FIGÉE par l'ajustement
+     * (`value_impact`, au CMP du jour), la même que lit l'écran de démarque :
+     * deux chiffres tirés du même champ ne peuvent pas diverger.
+     */
+    public static function feedShrinkageCost(Carbon $from, Carbon $to): float
+    {
+        // Le tri « aliment / autre consommable » vit sur le modèle Stock
+        // (isFeed) : la catégorie `conso` porte « Aliment & Santé », et les
+        // médicaments sont chargés au prix d'achat, donc déjà comptés.
+        return round((float) \App\Models\StockAdjustment::with('stock')
+            ->where('type', 'perte')
+            ->whereBetween('adjustment_date', [$from, $to])
+            ->get()
+            ->filter(fn ($a) => $a->stock?->isFeed())
+            ->sum('value_impact'), 2);
     }
 
     /**

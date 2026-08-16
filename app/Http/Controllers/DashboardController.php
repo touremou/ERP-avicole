@@ -156,9 +156,7 @@ class DashboardController extends Controller
         $criticalTypes = [];
         // logistique.L : autonomie silos & angles morts d'alimentation.
         $silos = $canLogistique
-            ? Stock::where('category', Stock::CAT_CONSO)->get()->filter(function($item) {
-                return ($item->metadata['conso_type'] ?? 'Aliment') === 'Aliment';
-            })
+            ? Stock::where('category', Stock::CAT_CONSO)->get()->filter->isFeed()
             : collect();
 
         foreach ($silos as $silo) {
