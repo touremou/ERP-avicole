@@ -232,7 +232,14 @@ class DashboardController extends Controller
             // dailyMortalityThreshold). Cet écran calculait sa propre base —
             // effectif + morts — en ignorant les quarantaines et les tris du
             // pointage, donc en surévaluant le taux dès qu'il y avait eu un tri.
-            return $batch->dailyMortalityRate($todayCheck) > $batch->dailyMortalityThreshold();
+            //
+            // COMPARAISON >= , comme l'alerte. Le taux et le seuil étaient déjà
+            // mutualisés ; restait UN CARACTÈRE de différence. DailyCheck alerte
+            // dès que le seuil est ATTEINT (`if ($rate < $seuil) return;`), cet
+            // écran n'affichait qu'au-dessus. À l'égalité exacte — 10 morts sur
+            // 2 000 pour un seuil de 0,5 % —, le téléphone sonnait et le lot ne
+            // figurait pas dans les urgences : l'alerte passait pour fausse.
+            return $batch->dailyMortalityRate($todayCheck) >= $batch->dailyMortalityThreshold();
         });
 
         // C. Dérive Technique (mortalité CUMULÉE réelle > seuil paramétré).
