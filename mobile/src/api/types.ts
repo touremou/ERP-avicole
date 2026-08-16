@@ -688,6 +688,15 @@ export interface RefCropCycle {
   employee_id: number | null
   planting_date: string | null
   area_used_ha: string | number | null
+  /**
+   * Date à partir de laquelle la récolte redevient permise (délai avant
+   * récolte / résidus phytosanitaires), ou null si rien ne la bloque.
+   *
+   * Le serveur refuse DÉFINITIVEMENT une récolte sous délai. Sans cette date au
+   * terrain, le refus n'arrivait qu'à la synchronisation — donc après la
+   * récolte, quand il ne servait plus qu'à perdre la saisie.
+   */
+  harvest_blocked_until?: string | null
   updated_at: string
 }
 
