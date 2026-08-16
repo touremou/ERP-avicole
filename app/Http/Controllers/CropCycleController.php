@@ -16,9 +16,13 @@ use App\Models\Harvest;
 use App\Models\Plot;
 use App\Models\Provider;
 use App\Models\Stock;
+use App\Services\CropAdvisorService;
+use App\Services\CropProtocolAlertService;
 use App\Services\StockIntegrationService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 
@@ -71,16 +75,16 @@ class CropCycleController extends Controller
             ->values();
 
         $plotData = $plots->keyBy('id')->map(fn ($p) => [
-            'area_ha'      => (float) $p->area_ha,
+            'area_ha' => (float) $p->area_ha,
             'remaining_ha' => (float) $p->remaining_ha,
         ])->toArray();
 
         return view('cultures.cycles.create', [
-            'plots'     => $plots,
-            'plotData'  => $plotData,
+            'plots' => $plots,
+            'plotData' => $plotData,
             'employees' => Employee::assignableInCurrentFarm()->orderBy('first_name')->get(['id', 'first_name', 'last_name']),
             'campaigns' => CropCampaign::where('status', '!=', CropCampaign::STATUS_CLOTUREE)->orderByDesc('start_date')->get(['id', 'name', 'year']),
-            'species'   => CropSpecies::active()->with('varieties:id,crop_species_id,name,cycle_days,avg_yield_tha')->orderBy('name')->get(),
+            'species' => CropSpecies::active()->with('varieties:id,crop_species_id,name,cycle_days,avg_yield_tha')->orderBy('name')->get(),
             'protocols' => CropProtocol::active()->orderBy('name')->get(['id', 'name', 'crop_name']),
         ]);
     }
@@ -92,26 +96,26 @@ class CropCycleController extends Controller
         }
 
         $validated = $request->validate([
-            'plot_id'                => 'required|exists:plots,id',
-            'campaign_id'            => 'nullable|exists:crop_campaigns,id',
-            'crop_protocol_id'       => 'nullable|exists:crop_protocols,id',
-            'employee_id'            => 'nullable|exists:employees,id',
-            'code'                   => 'nullable|string|max:50',
-            'crop_name'              => 'required|string|max:255',
-            'variety'                => 'nullable|string|max:255',
-            'area_used_ha'           => 'required|numeric|min:0.001',
-            'planting_date'          => 'required|date',
-            'expected_harvest_date'  => 'nullable|date|after_or_equal:planting_date',
-            'seed_quantity'          => 'nullable|numeric|min:0',
-            'seed_unit'              => 'nullable|string|max:20',
-            'expected_yield_kg'      => 'nullable|numeric|min:0',
+            'plot_id' => 'required|exists:plots,id',
+            'campaign_id' => 'nullable|exists:crop_campaigns,id',
+            'crop_protocol_id' => 'nullable|exists:crop_protocols,id',
+            'employee_id' => 'nullable|exists:employees,id',
+            'code' => 'nullable|string|max:50',
+            'crop_name' => 'required|string|max:255',
+            'variety' => 'nullable|string|max:255',
+            'area_used_ha' => 'required|numeric|min:0.001',
+            'planting_date' => 'required|date',
+            'expected_harvest_date' => 'nullable|date|after_or_equal:planting_date',
+            'seed_quantity' => 'nullable|numeric|min:0',
+            'seed_unit' => 'nullable|string|max:20',
+            'expected_yield_kg' => 'nullable|numeric|min:0',
             'total_acquisition_cost' => 'nullable|numeric|min:0',
-            'additional_costs'       => 'nullable|numeric|min:0',
-            'notes'                  => 'nullable|string|max:1000',
+            'additional_costs' => 'nullable|numeric|min:0',
+            'notes' => 'nullable|string|max:1000',
         ]);
 
         $validated['total_acquisition_cost'] = $validated['total_acquisition_cost'] ?? 0;
-        $validated['additional_costs']       = $validated['additional_costs'] ?? 0;
+        $validated['additional_costs'] = $validated['additional_costs'] ?? 0;
 
         $plot = Plot::findOrFail($validated['plot_id']);
         $usedByOthers = (float) CropCycle::where('plot_id', $plot->id)
@@ -123,11 +127,11 @@ class CropCycleController extends Controller
                 'area_used_ha' => sprintf(
                     'Surface demandée (%.2f ha) dépasse la surface disponible sur cette parcelle (%.2f ha restant sur %.2f ha total).',
                     $validated['area_used_ha'], $remaining, (float) $plot->area_ha
-                )
+                ),
             ]);
         }
 
-        $cycle = \Illuminate\Support\Facades\DB::transaction(function () use ($validated) {
+        $cycle = DB::transaction(function () use ($validated) {
             $cycle = CropCycle::create($validated);
             // Démarrer un cycle met la parcelle en culture (y compris si elle
             // était en jachère — action utilisateur explicite).
@@ -158,7 +162,7 @@ class CropCycleController extends Controller
         $advisories = [];
         $schedule = [];
         if (! $cropCycle->isArchived()) {
-            $advisor = new \App\Services\CropAdvisorService();
+            $advisor = new CropAdvisorService;
             $advisories = array_merge(
                 $advisor->cycleRisks($cropCycle),
                 $cropCycle->plot ? $advisor->weatherAlerts($cropCycle->plot) : []
@@ -166,24 +170,24 @@ class CropCycleController extends Controller
 
             // Itinéraire technique : calendrier projeté + alertes (retard / dû).
             if ($cropCycle->protocol) {
-                $protocolService = new \App\Services\CropProtocolAlertService();
-                $schedule   = $protocolService->getCycleSchedule($cropCycle);
+                $protocolService = new CropProtocolAlertService;
+                $schedule = $protocolService->getCycleSchedule($cropCycle);
                 $advisories = array_merge($advisories, $protocolService->getCycleAlerts($cropCycle));
             }
         }
 
         // Plan de suivi & conseils du cycle (fenêtre de semis, récolte recommandée…).
-        $monitoring = (new \App\Services\CropAdvisorService())->monitoringPlan($cropCycle);
+        $monitoring = (new CropAdvisorService)->monitoringPlan($cropCycle);
 
         return view('cultures.cycles.show', [
-            'cycle'      => $cropCycle,
+            'cycle' => $cropCycle,
             'advisories' => $advisories,
-            'schedule'   => $schedule,
+            'schedule' => $schedule,
             'monitoring' => $monitoring,
-            'qualities'  => Harvest::QUALITIES,
+            'qualities' => Harvest::QUALITIES,
             'inputTypes' => CropInput::TYPES,
-            'employees'  => Employee::assignableInCurrentFarm()->orderBy('first_name')->get(['id', 'first_name', 'last_name']),
-            'providers'  => Provider::orderBy('name')->get(['id', 'name']),
+            'employees' => Employee::assignableInCurrentFarm()->orderBy('first_name')->get(['id', 'first_name', 'last_name']),
+            'providers' => Provider::orderBy('name')->get(['id', 'name']),
             // Intrants en stock proposables au déstockage depuis une étape.
             'intrantStocks' => Stock::where('category', Stock::CAT_INTRANTS)
                 ->orderBy('item_name')->get(['id', 'item_name', 'unit', 'current_quantity']),
@@ -208,17 +212,17 @@ class CropCycleController extends Controller
         }
 
         $data = $request->validate([
-            'completed_at'      => 'nullable|date',
-            'cost'              => 'nullable|numeric|min:0',
-            'quantity'          => 'nullable|numeric|min:0',
-            'unit'              => 'nullable|string|max:20',
-            'notes'             => 'nullable|string|max:500',
-            'record_as_input'   => 'nullable|boolean',
-            'consume_stock_id'  => 'nullable|exists:stocks,id',
+            'completed_at' => 'nullable|date',
+            'cost' => 'nullable|numeric|min:0',
+            'quantity' => 'nullable|numeric|min:0',
+            'unit' => 'nullable|string|max:20',
+            'notes' => 'nullable|string|max:500',
+            'record_as_input' => 'nullable|boolean',
+            'consume_stock_id' => 'nullable|exists:stocks,id',
         ]);
 
-        $completedAt = isset($data['completed_at']) ? \Carbon\Carbon::parse($data['completed_at']) : now();
-        $qty  = (float) ($data['quantity'] ?? 0);
+        $completedAt = isset($data['completed_at']) ? Carbon::parse($data['completed_at']) : now();
+        $qty = (float) ($data['quantity'] ?? 0);
 
         // Déstockage optionnel d'un intrant existant (consommation).
         $consumeStock = null;
@@ -243,9 +247,9 @@ class CropCycleController extends Controller
             $cost = round($qty * (float) ($consumeStock->last_unit_price ?? $consumeStock->unit_price ?? 0), 2);
         }
 
-        \Illuminate\Support\Facades\DB::transaction(function () use ($cropCycle, $item, $request, $data, $completedAt, $cost, $qty, $consumeStock) {
+        DB::transaction(function () use ($cropCycle, $item, $request, $data, $completedAt, $cost, $qty, $consumeStock) {
             $completion = CropProtocolCompletion::firstOrNew([
-                'crop_cycle_id'         => $cropCycle->id,
+                'crop_cycle_id' => $cropCycle->id,
                 'crop_protocol_item_id' => $item->id,
             ]);
 
@@ -274,15 +278,15 @@ class CropCycleController extends Controller
 
             if ($recordAsInput && $inputType && ($cost > 0 || $qty > 0)) {
                 $input = $cropCycle->inputs()->create([
-                    'farm_id'         => $cropCycle->farm_id,
-                    'type'            => $inputType,
-                    'name'            => $consumeStock?->item_name ?: ($item->product_suggested ?: $item->action_name),
-                    'quantity'        => $qty,
-                    'unit'            => $consumeStock?->unit ?: ($data['unit'] ?? 'kg'),
-                    'unit_cost'       => $qty > 0 ? round($cost / $qty, 2) : 0,
-                    'total_cost'      => $cost,
-                    'input_date'      => $completedAt->toDateString(),
-                    'notes'           => "Étape itinéraire : {$item->action_name}" . ($consumeStock ? ' (déstockage)' : ''),
+                    'farm_id' => $cropCycle->farm_id,
+                    'type' => $inputType,
+                    'name' => $consumeStock?->item_name ?: ($item->product_suggested ?: $item->action_name),
+                    'quantity' => $qty,
+                    'unit' => $consumeStock?->unit ?: ($data['unit'] ?? 'kg'),
+                    'unit_cost' => $qty > 0 ? round($cost / $qty, 2) : 0,
+                    'total_cost' => $cost,
+                    'input_date' => $completedAt->toDateString(),
+                    'notes' => "Étape itinéraire : {$item->action_name}".($consumeStock ? ' (déstockage)' : ''),
                     'synced_to_stock' => false, // le mouvement de stock est géré ici, pas via l'entrée
                 ]);
                 $completion->crop_input_id = $input->id;
@@ -291,10 +295,10 @@ class CropCycleController extends Controller
             $completion->fill([
                 'completed_at' => $completedAt,
                 'completed_by' => $request->user()?->id,
-                'notes'        => $data['notes'] ?? null,
-                'cost'         => $cost > 0 ? $cost : null,
-                'quantity'     => $qty > 0 ? $qty : null,
-                'unit'         => $qty > 0 ? ($consumeStock?->unit ?: ($data['unit'] ?? null)) : null,
+                'notes' => $data['notes'] ?? null,
+                'cost' => $cost > 0 ? $cost : null,
+                'quantity' => $qty > 0 ? $qty : null,
+                'unit' => $qty > 0 ? ($consumeStock?->unit ?: ($data['unit'] ?? null)) : null,
             ])->save();
         });
 
@@ -313,7 +317,7 @@ class CropCycleController extends Controller
             ->first();
 
         if ($completion) {
-            \Illuminate\Support\Facades\DB::transaction(function () use ($completion) {
+            DB::transaction(function () use ($completion) {
                 if ($completion->crop_input_id) {
                     CropInput::find($completion->crop_input_id)?->delete();
                 }
@@ -336,7 +340,7 @@ class CropCycleController extends Controller
         if ($stock) {
             StockIntegrationService::syncMovement(
                 $stock->item_name, $stock->category, (float) $completion->quantity, 'in',
-                "Annulation consommation itinéraire", $stock->unit
+                'Annulation consommation itinéraire', $stock->unit
             );
         }
     }
@@ -365,26 +369,26 @@ class CropCycleController extends Controller
         if (in_array($cropCycle->status, CropCycle::STATUS_ARCHIVED, true)) {
             return back()->with('error',
                 "Ce cycle est clôturé ({$cropCycle->status}) : ses chiffres sont entrés dans le compte de "
-                . "résultat de sa période. Rouvrez-le d'abord si une correction est nécessaire."
+                ."résultat de sa période. Rouvrez-le d'abord si une correction est nécessaire."
             );
         }
 
         $validated = $request->validate([
-            'campaign_id'            => 'nullable|exists:crop_campaigns,id',
-            'crop_protocol_id'       => 'nullable|exists:crop_protocols,id',
-            'crop_name'              => 'required|string|max:255',
-            'variety'                => 'nullable|string|max:255',
-            'employee_id'            => 'nullable|exists:employees,id',
-            'area_used_ha'           => 'required|numeric|min:0.001',
-            'planting_date'          => 'required|date',
-            'expected_harvest_date'  => 'nullable|date|after_or_equal:planting_date',
-            'seed_quantity'          => 'nullable|numeric|min:0',
-            'seed_unit'              => 'nullable|string|max:20',
-            'expected_yield_kg'      => 'nullable|numeric|min:0',
+            'campaign_id' => 'nullable|exists:crop_campaigns,id',
+            'crop_protocol_id' => 'nullable|exists:crop_protocols,id',
+            'crop_name' => 'required|string|max:255',
+            'variety' => 'nullable|string|max:255',
+            'employee_id' => 'nullable|exists:employees,id',
+            'area_used_ha' => 'required|numeric|min:0.001',
+            'planting_date' => 'required|date',
+            'expected_harvest_date' => 'nullable|date|after_or_equal:planting_date',
+            'seed_quantity' => 'nullable|numeric|min:0',
+            'seed_unit' => 'nullable|string|max:20',
+            'expected_yield_kg' => 'nullable|numeric|min:0',
             'total_acquisition_cost' => 'nullable|numeric|min:0',
-            'additional_costs'       => 'nullable|numeric|min:0',
-            'status'                 => 'required|in:' . implode(',', CropCycle::EDITABLE_STATUSES),
-            'notes'                  => 'nullable|string|max:1000',
+            'additional_costs' => 'nullable|numeric|min:0',
+            'status' => 'required|in:'.implode(',', CropCycle::EDITABLE_STATUSES),
+            'notes' => 'nullable|string|max:1000',
         ]);
 
         if (in_array($validated['status'], CropCycle::IN_PROGRESS_STATUSES)) {
@@ -399,12 +403,12 @@ class CropCycleController extends Controller
                     'area_used_ha' => sprintf(
                         'Surface (%.2f ha) dépasse la surface disponible sur la parcelle (%.2f ha disponible).',
                         $validated['area_used_ha'], $remaining
-                    )
+                    ),
                 ]);
             }
         }
 
-        \Illuminate\Support\Facades\DB::transaction(function () use ($cropCycle, $validated) {
+        DB::transaction(function () use ($cropCycle, $validated) {
             $cropCycle->update($validated);
 
             // À la clôture/abandon, on horodate la fermeture. La libération de
@@ -447,18 +451,18 @@ class CropCycleController extends Controller
         $anciennecloture = $cropCycle->closing_date;
 
         $cropCycle->update([
-            'status'       => CropCycle::STATUS_EN_COURS,
+            'status' => CropCycle::STATUS_EN_COURS,
             'closing_date' => null,
         ]);
 
         Log::info(
-            "Cycle {$cropCycle->code} rouvert par " . (Auth::user()?->name ?? 'inconnu')
-            . ' — clôture du ' . optional($anciennecloture)->format('d/m/Y') . ' annulée.'
+            "Cycle {$cropCycle->code} rouvert par ".(Auth::user()?->name ?? 'inconnu')
+            .' — clôture du '.optional($anciennecloture)->format('d/m/Y').' annulée.'
         );
 
         return back()->with('success',
             "Cycle {$cropCycle->code} rouvert. Ses chiffres quittent le résultat de la période close ;"
-            . ' ils y reviendront à la prochaine clôture.'
+            .' ils y reviendront à la prochaine clôture.'
         );
     }
 
@@ -473,18 +477,18 @@ class CropCycleController extends Controller
         }
 
         $validated = $request->validate([
-            'harvest_date'    => 'required|date',
-            'quantity'        => 'required|numeric|min:0.001',
-            'unit'            => 'nullable|string|max:20',
-            'net_weight_kg'   => 'nullable|numeric|min:0',
-            'loss_quantity'   => 'nullable|numeric|min:0',
-            'quality'         => 'nullable|in:' . implode(',', Harvest::QUALITIES),
-            'destination'     => 'nullable|in:' . implode(',', array_keys(Harvest::DESTINATIONS)),
-            'employee_id'     => 'nullable|exists:employees,id',
-            'unit_price'      => 'nullable|numeric|min:0',
-            'sync_to_stock'   => 'nullable|boolean',
+            'harvest_date' => 'required|date',
+            'quantity' => 'required|numeric|min:0.001',
+            'unit' => 'nullable|string|max:20',
+            'net_weight_kg' => 'nullable|numeric|min:0',
+            'loss_quantity' => 'nullable|numeric|min:0',
+            'quality' => 'nullable|in:'.implode(',', Harvest::QUALITIES),
+            'destination' => 'nullable|in:'.implode(',', array_keys(Harvest::DESTINATIONS)),
+            'employee_id' => 'nullable|exists:employees,id',
+            'unit_price' => 'nullable|numeric|min:0',
+            'sync_to_stock' => 'nullable|boolean',
             'stock_item_name' => 'nullable|string|max:255',
-            'notes'           => 'nullable|string|max:500',
+            'notes' => 'nullable|string|max:500',
         ]);
 
         $action->execute($cropCycle, $validated);
@@ -506,21 +510,21 @@ class CropCycleController extends Controller
         }
 
         $validated = $request->validate([
-            'type'            => 'required|in:' . implode(',', array_keys(CropInput::TYPES)),
-            'name'            => 'required|string|max:255',
-            'quantity'        => 'nullable|numeric|min:0',
-            'unit'            => 'nullable|string|max:20',
-            'unit_cost'       => 'nullable|numeric|min:0',
-            'total_cost'      => 'nullable|numeric|min:0',
-            'input_date'      => 'required|date',
+            'type' => 'required|in:'.implode(',', array_keys(CropInput::TYPES)),
+            'name' => 'required|string|max:255',
+            'quantity' => 'nullable|numeric|min:0',
+            'unit' => 'nullable|string|max:20',
+            'unit_cost' => 'nullable|numeric|min:0',
+            'total_cost' => 'nullable|numeric|min:0',
+            'input_date' => 'required|date',
             // Délai avant récolte (DAR) de la notice : bloque la récolte tant
             // qu'il court. Absent de la validation web jusqu'ici, il ne pouvait
             // donc pas être saisi au bureau — seul le mobile l'envoyait.
             'preharvest_days' => 'nullable|integer|min:0|max:365',
-            'provider_id'     => 'nullable|exists:providers,id',
+            'provider_id' => 'nullable|exists:providers,id',
             'synced_to_stock' => 'nullable|boolean',
             'stock_item_name' => 'nullable|string|max:255',
-            'notes'           => 'nullable|string|max:500',
+            'notes' => 'nullable|string|max:500',
         ]);
 
         $action->execute($cropCycle, $validated);
@@ -545,11 +549,11 @@ class CropCycleController extends Controller
         $maxAreaHa = max(0.0, (float) $cropCycle->plot->area_ha - $usedByOthers);
 
         return view('cultures.cycles.edit', [
-            'cycle'     => $cropCycle,
+            'cycle' => $cropCycle,
             'campaigns' => CropCampaign::orderByDesc('start_date')->get(['id', 'name', 'year']),
             'employees' => Employee::assignableInCurrentFarm()->orderBy('first_name')->get(['id', 'first_name', 'last_name']),
-            'statuses'  => CropCycle::EDITABLE_STATUSES,
-            'species'   => CropSpecies::active()->with('varieties:id,crop_species_id,name,cycle_days,avg_yield_tha')->orderBy('name')->get(),
+            'statuses' => CropCycle::EDITABLE_STATUSES,
+            'species' => CropSpecies::active()->with('varieties:id,crop_species_id,name,cycle_days,avg_yield_tha')->orderBy('name')->get(),
             'protocols' => CropProtocol::active()->orderBy('name')->get(['id', 'name', 'crop_name']),
             'maxAreaHa' => $maxAreaHa,
         ]);
@@ -568,7 +572,7 @@ class CropCycleController extends Controller
         }
 
         return view('cultures.cycles.harvests.create', [
-            'cycle'     => $cropCycle,
+            'cycle' => $cropCycle,
             'qualities' => Harvest::QUALITIES,
             'employees' => Employee::assignableInCurrentFarm()->orderBy('first_name')->get(['id', 'first_name', 'last_name']),
         ]);
@@ -584,8 +588,8 @@ class CropCycleController extends Controller
         abort_unless($harvest->crop_cycle_id === $cropCycle->id, 404);
 
         return view('cultures.cycles.harvests.edit', [
-            'cycle'     => $cropCycle,
-            'harvest'   => $harvest,
+            'cycle' => $cropCycle,
+            'harvest' => $harvest,
             'qualities' => Harvest::QUALITIES,
             'employees' => Employee::assignableInCurrentFarm()->orderBy('first_name')->get(['id', 'first_name', 'last_name']),
         ]);
@@ -601,17 +605,21 @@ class CropCycleController extends Controller
 
         abort_unless($harvest->crop_cycle_id === $cropCycle->id, 404);
 
+        if ($refus = $this->refusSiCloture($cropCycle, 'modifiée')) {
+            return $refus;
+        }
+
         $validated = $request->validate([
-            'harvest_date'  => 'required|date',
-            'quantity'      => 'required|numeric|min:0.001',
-            'unit'          => 'nullable|string|max:20',
+            'harvest_date' => 'required|date',
+            'quantity' => 'required|numeric|min:0.001',
+            'unit' => 'nullable|string|max:20',
             'net_weight_kg' => 'nullable|numeric|min:0',
             'loss_quantity' => 'nullable|numeric|min:0',
-            'quality'       => 'nullable|in:' . implode(',', Harvest::QUALITIES),
-            'destination'   => 'nullable|in:' . implode(',', array_keys(Harvest::DESTINATIONS)),
-            'employee_id'   => 'nullable|exists:employees,id',
-            'unit_price'    => 'nullable|numeric|min:0',
-            'notes'         => 'nullable|string|max:500',
+            'quality' => 'nullable|in:'.implode(',', Harvest::QUALITIES),
+            'destination' => 'nullable|in:'.implode(',', array_keys(Harvest::DESTINATIONS)),
+            'employee_id' => 'nullable|exists:employees,id',
+            'unit_price' => 'nullable|numeric|min:0',
+            'notes' => 'nullable|string|max:500',
         ]);
 
         // Poids net non saisi mais récolte en kg → on le recale sur la quantité.
@@ -656,9 +664,9 @@ class CropCycleController extends Controller
         }
 
         return view('cultures.cycles.inputs.create', [
-            'cycle'      => $cropCycle,
+            'cycle' => $cropCycle,
             'inputTypes' => CropInput::TYPES,
-            'providers'  => Provider::orderBy('name')->get(['id', 'name']),
+            'providers' => Provider::orderBy('name')->get(['id', 'name']),
         ]);
     }
 
@@ -672,10 +680,10 @@ class CropCycleController extends Controller
         abort_unless($input->crop_cycle_id === $cropCycle->id, 404);
 
         return view('cultures.cycles.inputs.edit', [
-            'cycle'      => $cropCycle,
-            'input'      => $input,
+            'cycle' => $cropCycle,
+            'input' => $input,
             'inputTypes' => CropInput::TYPES,
-            'providers'  => Provider::orderBy('name')->get(['id', 'name']),
+            'providers' => Provider::orderBy('name')->get(['id', 'name']),
         ]);
     }
 
@@ -689,20 +697,24 @@ class CropCycleController extends Controller
 
         abort_unless($input->crop_cycle_id === $cropCycle->id, 404);
 
+        if ($refus = $this->refusSiCloture($cropCycle, 'modifié')) {
+            return $refus;
+        }
+
         $validated = $request->validate([
-            'type'        => 'required|in:' . implode(',', array_keys(CropInput::TYPES)),
-            'name'        => 'required|string|max:255',
-            'quantity'    => 'nullable|numeric|min:0',
-            'unit'        => 'nullable|string|max:20',
-            'unit_cost'   => 'nullable|numeric|min:0',
-            'total_cost'  => 'nullable|numeric|min:0',
-            'input_date'  => 'required|date',
+            'type' => 'required|in:'.implode(',', array_keys(CropInput::TYPES)),
+            'name' => 'required|string|max:255',
+            'quantity' => 'nullable|numeric|min:0',
+            'unit' => 'nullable|string|max:20',
+            'unit_cost' => 'nullable|numeric|min:0',
+            'total_cost' => 'nullable|numeric|min:0',
+            'input_date' => 'required|date',
             'provider_id' => 'nullable|exists:providers,id',
-            'notes'       => 'nullable|string|max:500',
+            'notes' => 'nullable|string|max:500',
         ]);
 
         // Recalculate total_cost if quantity and unit_cost are provided but total_cost is not.
-        if (!isset($validated['total_cost']) || $validated['total_cost'] === null) {
+        if (! isset($validated['total_cost']) || $validated['total_cost'] === null) {
             $qty = (float) ($validated['quantity'] ?? $input->quantity);
             $unitCost = (float) ($validated['unit_cost'] ?? $input->unit_cost);
             if ($qty > 0 && $unitCost > 0) {
@@ -731,7 +743,7 @@ class CropCycleController extends Controller
         // libération de la parcelle sont assurées par CropCycleObserver, quel
         // que soit le chemin de suppression. On enveloppe en transaction pour
         // l'atomicité de la cascade.
-        \Illuminate\Support\Facades\DB::transaction(fn () => $cropCycle->delete());
+        DB::transaction(fn () => $cropCycle->delete());
 
         return redirect()->route('crop-cycles.index')->with('success', 'Cycle supprimé.');
     }
@@ -743,6 +755,10 @@ class CropCycleController extends Controller
         }
 
         abort_unless($harvest->crop_cycle_id === $cropCycle->id, 404);
+
+        if ($refus = $this->refusSiCloture($cropCycle, 'supprimée')) {
+            return $refus;
+        }
 
         // HarvestObserver::deleted reverse le stock synchronisé et réouvre le
         // cycle (RECOLTE → EN_COURS) s'il s'agissait de la dernière récolte.
@@ -759,9 +775,49 @@ class CropCycleController extends Controller
 
         abort_unless($input->crop_cycle_id === $cropCycle->id, 404);
 
+        if ($refus = $this->refusSiCloture($cropCycle, 'supprimé')) {
+            return $refus;
+        }
+
         // CropInputObserver::deleted reverse l'entrée stock synchronisée.
         $input->delete();
 
         return back()->with('success', 'Intrant supprimé.');
+    }
+
+    /**
+     * UNE PÉRIODE ARRÊTÉE NE SE RÉÉCRIT PAS — par aucune des six portes.
+     *
+     * La règle existait déjà à la CRÉATION d'une récolte et d'un intrant
+     * (« Ce cycle est clôturé : aucune récolte ne peut y être ajoutée »), et
+     * depuis peu sur le cycle lui-même. Elle manquait aux quatre portes du
+     * milieu : modifier ou supprimer une récolte, modifier ou supprimer un
+     * intrant.
+     *
+     * Ce n'était pas un trou théorique. `HarvestObserver::updated/deleted`
+     * appelle `recalculateRevenue()` sur le cycle, et le compte de résultat
+     * lit le `total_revenue` des cycles clos ainsi que la somme des
+     * `crop_inputs.total_cost` qui leur sont rattachés. Corriger la quantité
+     * d'une récolte d'un cycle clos en juillet déplaçait donc le résultat de
+     * JUILLET — un mois déjà arrêté, peut-être déjà transmis — sans laisser
+     * la moindre trace côté rapport.
+     *
+     * Interdire l'entrée d'une nouvelle ligne tout en laissant réécrire les
+     * lignes existantes ne protégeait rien : c'est le même chiffre.
+     *
+     * L'issue reste la même que pour le cycle : rouvrir. Un refus sans recours
+     * pousse à contourner.
+     */
+    private function refusSiCloture(CropCycle $cropCycle, string $geste)
+    {
+        if (! in_array($cropCycle->status, CropCycle::STATUS_ARCHIVED, true)) {
+            return null;
+        }
+
+        return back()->with('error',
+            "Ce cycle est clôturé ({$cropCycle->status}) : ses chiffres sont entrés dans le compte de "
+            ."résultat de sa période, aucune ligne ne peut y être {$geste}. "
+            ."Rouvrez-le d'abord si une correction est nécessaire."
+        );
     }
 }
