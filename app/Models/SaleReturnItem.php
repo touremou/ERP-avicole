@@ -9,6 +9,10 @@ class SaleReturnItem extends Model
 {
     protected $fillable = [
         'sale_return_id', 'sale_item_id', 'product_name',
+        // Instantanés : la ligne de vente est SUPPRIMÉE quand le retour est
+        // total (sale_items n'a pas de suppression douce). Sans ces copies, le
+        // chiffre retourné ne se rattache plus ni à une catégorie ni à un lot.
+        'product_type', 'batch_id',
         'quantity', 'unit_price', 'total',
     ];
 
