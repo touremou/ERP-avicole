@@ -26,6 +26,29 @@ class CompleteMillProduction
             throw new \DomainException("L'OP #{$production->batch_number} est déjà clôturée.");
         }
 
+        /*
+         * UN ORDRE ANNULÉ NE SE CLÔTURE PAS.
+         *
+         * La synchro mobile refuse ce cas explicitement — « L'OP #:op a été
+         * annulée » — juste à côté de son refus de double clôture. L'action, qui
+         * porte pourtant le premier des deux refus, ignorait le second : le web
+         * pouvait donc clôturer un ordre annulé.
+         *
+         * Ce n'est pas un changement de statut sans effet. La clôture CONSOMME
+         * les matières premières : mesuré, un ordre annulé puis clôturé fait
+         * passer le maïs de 1 000 à 800 kg et repasse l'ordre en « Terminé ».
+         *
+         * Or l'annulation existe précisément pour les ordres qui n'auront pas
+         * lieu — panne, erreur de saisie — et son propre commentaire le dit :
+         * « la consommation des matières premières n'a lieu qu'à la clôture,
+         * donc aucun stock à contre-passer pour un OP planifié ». Cette phrase
+         * n'est vraie que si un ordre annulé ne peut plus être clôturé.
+         */
+        if ($production->status === 'Annulé') {
+            throw new \DomainException("L'OP #{$production->batch_number} a été annulée : "
+                . 'elle ne peut plus être clôturée. Créez un nouvel ordre de production.');
+        }
+
         $production->load(['formula.items.rawMaterial', 'formula.productionType.species', 'machine', 'machines']);
         $quantityProduced = (float) $production->quantity_produced;
 
