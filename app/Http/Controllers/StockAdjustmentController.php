@@ -23,19 +23,13 @@ class StockAdjustmentController extends Controller
 
         [$from, $to] = $this->period($request);
 
-        $query = StockAdjustment::with(['stock', 'user'])->betweenDates($from, $to);
-
-        if ($request->filled('stock_id')) $query->where('stock_id', $request->stock_id);
-        if ($request->filled('reason'))   $query->where('reason', $request->reason);
-        if ($request->filled('type'))     $query->where('type', $request->type);
-
-        $adjustments = (clone $query)->latest('adjustment_date')->latest('id')
+        $adjustments = $this->filtered($request)->with(['stock', 'user'])
+            ->latest('adjustment_date')->latest('id')
             ->paginate((int) setting('general.items_per_page', 20))->withQueryString();
 
-        // KPIs valorisés sur le périmètre filtré.
-        $base = StockAdjustment::betweenDates($from, $to)
-            ->when($request->filled('stock_id'), fn ($q) => $q->where('stock_id', $request->stock_id))
-            ->when($request->filled('reason'), fn ($q) => $q->where('reason', $request->reason));
+        // KPIs valorisés sur le périmètre filtré — hors filtre de TYPE, puisque
+        // ces indicateurs comparent justement pertes et gains entre eux.
+        $base = $this->filtered($request, withType: false);
 
         $lossValue = (float) (clone $base)->where('type', 'perte')->sum('value_impact');
         $gainValue = (float) (clone $base)->where('type', 'gain')->sum('value_impact');
@@ -100,7 +94,7 @@ class StockAdjustmentController extends Controller
         if (Gate::denies('logistique.L')) return back()->with('error', 'Accès restreint.');
 
         [$from, $to] = $this->period($request);
-        $rows = StockAdjustment::with('stock')->betweenDates($from, $to)->latest('adjustment_date')->get();
+        $rows = $this->filtered($request)->with('stock')->latest('adjustment_date')->get();
 
         return response()->streamDownload(function () use ($rows) {
             $out = fopen('php://output', 'w');
@@ -122,7 +116,7 @@ class StockAdjustmentController extends Controller
         if (Gate::denies('logistique.L')) return back()->with('error', 'Accès restreint.');
 
         [$from, $to] = $this->period($request);
-        $rows = StockAdjustment::with('stock')->betweenDates($from, $to)->latest('adjustment_date')->get();
+        $rows = $this->filtered($request)->with('stock')->latest('adjustment_date')->get();
 
         $pdf = \Pdf::loadView('stock-adjustments.pdf.journal', [
             'rows'      => $rows,
@@ -142,5 +136,35 @@ class StockAdjustmentController extends Controller
         $to   = $request->filled('to') ? $request->to : now()->toDateString();
 
         return [$from, $to];
+    }
+
+    /**
+     * LE PÉRIMÈTRE DE L'ÉCRAN — déclaration UNIQUE, liste et exports compris.
+     *
+     * La même requête était écrite TROIS fois : filtrée dans `index()`, et non
+     * filtrée dans les deux exports, qui ne retenaient que les dates.
+     *
+     * Ce n'était pas un oubli sans conséquence : la vue construit ses liens
+     * d'export avec `request()->query()`. Les filtres SONT donc transmis —
+     * `?stock_id=3&type=perte` — et les exports les jetaient.
+     *
+     * Mesuré : un journal filtré sur un article et sur les pertes affiche UNE
+     * ligne à l'écran et en exporte TROIS, dont un gain explicitement écarté et
+     * un article qui n'a rien à voir. Le document sort sous le nom « démarque »
+     * et sert à justifier la casse : celui qui le reçoit croit lire la sélection
+     * qu'on lui a annoncée.
+     *
+     * @param  bool  $withType  Les indicateurs de l'écran comparent pertes ET
+     *                          gains sur le même périmètre : ils excluent donc
+     *                          le filtre de type, à dessein.
+     */
+    private function filtered(Request $request, bool $withType = true)
+    {
+        [$from, $to] = $this->period($request);
+
+        return StockAdjustment::betweenDates($from, $to)
+            ->when($request->filled('stock_id'), fn ($q) => $q->where('stock_id', $request->stock_id))
+            ->when($request->filled('reason'), fn ($q) => $q->where('reason', $request->reason))
+            ->when($withType && $request->filled('type'), fn ($q) => $q->where('type', $request->type));
     }
 }
