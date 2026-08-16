@@ -1484,7 +1484,7 @@ class SyncService
                 if (! $harvest) {
                     return ['status' => 'conflict', 'message' => __('Récolte introuvable dans cette ferme.')];
                 }
-                if ($harvest->transformations()->exists()) {
+                if ($harvest->isEngaged()) {
                     return ['status' => 'conflict', 'message' => __(
                         'La récolte du :date a déjà été transformée — sa matière est engagée.',
                         ['date' => $harvest->harvest_date->format('d/m/Y')],
