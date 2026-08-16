@@ -142,42 +142,61 @@ class UtilityController extends Controller
             'notes'               => 'nullable|string|max:500',
         ]);
 
-        // Une citerne ne peut pas être remplie au-delà de sa capacité : message
-        // clair plutôt qu'un dépassement/erreur silencieuse.
-        if ($source->type === 'citerne' && $source->capacity_liters) {
-            $remaining = (float) $source->capacity_liters - (float) $source->current_level_liters;
-            if ((float) $validated['volume_added_liters'] > $remaining + 0.01) {
-                return back()->with('error', 'Ravitaillement supérieur à la capacité : il reste '
-                    . number_format(max(0, $remaining), 0, ',', ' ') . " L disponibles dans « {$source->name} ».");
+        /*
+         * TOUT LE RAVITAILLEMENT SOUS VERROU.
+         *
+         * Ce qui suit est un lire-puis-écrire : on lit le niveau, on vérifie
+         * qu'il reste de la place, puis on recalcule le niveau À PARTIR DE LA
+         * MÊME VALEUR LUE. Deux appoints simultanés voyaient donc le même
+         * niveau de départ, passaient tous deux le contrôle de capacité, et le
+         * second écrasait le premier : deux relevés enregistrés, un seul
+         * comptabilisé dans la citerne.
+         *
+         * La synchro mobile verrouillait déjà la source pour ce même geste
+         * (`WaterSource::lockForUpdate()`), et porte le même garde-fou
+         * anti-débordement. La règle était donc identique des deux côtés — seule
+         * la sérialisation manquait au web.
+         */
+        return DB::transaction(function () use ($source, $validated) {
+            $source = WaterSource::lockForUpdate()->findOrFail($source->id);
+
+            // Une citerne ne peut pas être remplie au-delà de sa capacité : message
+            // clair plutôt qu'un dépassement/erreur silencieuse.
+            if ($source->type === 'citerne' && $source->capacity_liters) {
+                $remaining = (float) $source->capacity_liters - (float) $source->current_level_liters;
+                if ((float) $validated['volume_added_liters'] > $remaining + 0.01) {
+                    return back()->with('error', 'Ravitaillement supérieur à la capacité : il reste '
+                        . number_format(max(0, $remaining), 0, ',', ' ') . " L disponibles dans « {$source->name} ».");
+                }
             }
-        }
 
-        // Trace l'appoint comme un événement (consommation 0) — plusieurs
-        // ravitaillements le même jour sont possibles (create, pas updateOrCreate).
-        WaterReading::create([
-            'water_source_id'        => $source->id,
-            'reading_date'           => $validated['refill_date'],
-            'user_id'                => Auth::id(),
-            'volume_consumed_liters' => 0,
-            'volume_added_liters'    => $validated['volume_added_liters'],
-            'is_refill'              => true,
-            'cost'                   => $validated['cost'] ?? 0,
-            'notes'                  => $validated['notes'] ?? null,
-        ]);
-
-        // Niveau : on ajoute directement le volume ravitaillé (plafonné à la
-        // capacité). Direct plutôt que refreshLevel() pour rester exact quel que
-        // soit le nombre d'appoints/relevés du jour.
-        if ($source->type === 'citerne' && $source->capacity_liters) {
-            $newLevel = min((float) $source->capacity_liters,
-                (float) $source->current_level_liters + (float) $validated['volume_added_liters']);
-            $source->update([
-                'current_level_liters'  => $newLevel,
-                'current_level_percent' => min(100, $newLevel / (float) $source->capacity_liters * 100),
+            // Trace l'appoint comme un événement (consommation 0) — plusieurs
+            // ravitaillements le même jour sont possibles (create, pas updateOrCreate).
+            WaterReading::create([
+                'water_source_id'        => $source->id,
+                'reading_date'           => $validated['refill_date'],
+                'user_id'                => Auth::id(),
+                'volume_consumed_liters' => 0,
+                'volume_added_liters'    => $validated['volume_added_liters'],
+                'is_refill'              => true,
+                'cost'                   => $validated['cost'] ?? 0,
+                'notes'                  => $validated['notes'] ?? null,
             ]);
-        }
 
-        return back()->with('success', 'Ravitaillement de ' . number_format((float) $validated['volume_added_liters']) . " L enregistré pour « {$source->name} ».");
+            // Niveau : on ajoute directement le volume ravitaillé (plafonné à la
+            // capacité). Direct plutôt que refreshLevel() pour rester exact quel que
+            // soit le nombre d'appoints/relevés du jour.
+            if ($source->type === 'citerne' && $source->capacity_liters) {
+                $newLevel = min((float) $source->capacity_liters,
+                    (float) $source->current_level_liters + (float) $validated['volume_added_liters']);
+                $source->update([
+                    'current_level_liters'  => $newLevel,
+                    'current_level_percent' => min(100, $newLevel / (float) $source->capacity_liters * 100),
+                ]);
+            }
+
+                return back()->with('success', 'Ravitaillement de ' . number_format((float) $validated['volume_added_liters']) . " L enregistré pour « {$source->name} ».");
+        });
     }
 
     // ──────────────────────────────────────────────

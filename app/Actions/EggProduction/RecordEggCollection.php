@@ -21,9 +21,29 @@ class RecordEggCollection
 
         return DB::transaction(function () use ($data, $batch) {
             
-            // 1. Recherche d'une collecte existante pour ce lot aujourd'hui
+            /*
+             * 1. Recherche d'une collecte existante pour ce lot aujourd'hui.
+             *
+             * SOUS VERROU. Cette action se présente comme le « point d'écriture
+             * unique afin de couvrir TOUS les chemins » (cf. plus bas), mais le
+             * verrou vivait chez UN SEUL de ses appelants : la synchro mobile
+             * posait `lockForUpdate()` avant de l'appeler, le web non.
+             *
+             * Or la suite est un lire-puis-écrire : on cherche la collecte du
+             * jour, puis on l'enrichit ou on la crée. Deux saisies simultanées
+             * — le double-envoi d'un formulaire sur une connexion lente — n'en
+             * trouvaient donc aucune et en créaient DEUX, doublant la ponte du
+             * jour. L'index (batch_id, production_date) n'est pas UNIQUE : la
+             * base ne rattrape pas.
+             *
+             * En production (MySQL/InnoDB) une lecture verrouillante sur une
+             * ligne absente pose un verrou d'intervalle, qui bloque l'insertion
+             * concurrente — c'est bien la création simultanée qui est empêchée,
+             * pas seulement la modification.
+             */
             $production = EggProduction::where('batch_id', $data['batch_id'])
                 ->where('production_date', $data['production_date'])
+                ->lockForUpdate()
                 ->first();
 
             // 2. SÉCURITÉ ERP : Si le tri a déjà été fait, on bloque
