@@ -133,7 +133,8 @@ class StockIntegrationService
             // Alerte stock critique : seulement au moment où l'on FRANCHIT le
             // seuil (pas à chaque mouvement répété sous le seuil), pour éviter
             // le spam WhatsApp sur un article déjà connu comme bas.
-            if (! $wasLow && $stock->is_low && $stock->alert_threshold > 0) {
+            // `is_low` porte désormais la garde « seuil > 0 » (cf. Stock::getIsLowAttribute).
+            if (! $wasLow && $stock->is_low) {
                 app(NotificationHub::class)->alertStockCritical($stock);
             }
 

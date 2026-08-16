@@ -216,9 +216,32 @@ class Stock extends Model
 
     /**
      * Détermine si le seuil de sécurité est franchi.
+     *
+     * UN SEUIL À ZÉRO N'EST PAS UN SEUIL. Sans cette garde, un article à seuil 0
+     * et à quantité 0 satisfaisait « 0 <= 0 » et se déclarait EN ALERTE. Or
+     * `StockIntegrationService::ensureItem()` crée précisément ses articles avec
+     * `alert_threshold => 0` : tout article né d'une intégration automatique —
+     * sortie de transformation, entrée de récolte — comptait donc comme bas dès
+     * qu'il était épuisé, c'est-à-dire dans son état le plus ordinaire.
+     *
+     * Les requêtes qui ALERTENT, elles, exigent toutes `alert_threshold > 0`
+     * (NotificationHub, tableau de bord, FinishedProduct::scopeLow). Trois
+     * appelants ajoutaient même la garde à la main — « $stock->is_low &&
+     * $stock->alert_threshold > 0 » — preuve que la règle était connue et que
+     * l'accesseur ne la portait pas. Le modèle sœur RawMaterial la porte
+     * pourtant : « if (! $this->alert_threshold) return false; ».
+     *
+     * Restait un lecteur SANS garde : la vue consolidée multi-sites, celle que
+     * le promoteur regarde depuis l'étranger. Elle annonçait des articles en
+     * alerte dont aucune alerte ne parlerait jamais et que la liste du tableau
+     * de bord ne montrait pas.
      */
     public function getIsLowAttribute(): bool
     {
+        if ((float) $this->alert_threshold <= 0) {
+            return false;
+        }
+
         return (float) $this->current_quantity <= (float) $this->alert_threshold;
     }
 

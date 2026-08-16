@@ -49,7 +49,8 @@ class MoveStockAction
             }
 
             // Franchissement du seuil d'alerte (toute baisse manuelle).
-            if (! $wasLow && $stock->is_low && $stock->alert_threshold > 0) {
+            // `is_low` porte désormais la garde « seuil > 0 » (cf. Stock::getIsLowAttribute).
+            if (! $wasLow && $stock->is_low) {
                 $hub->alertStockCritical($stock);
             }
         });
