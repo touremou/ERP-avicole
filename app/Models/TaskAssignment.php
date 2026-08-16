@@ -40,6 +40,36 @@ class TaskAssignment extends Model
         return in_array($this->proof_type, ['photo', 'valeur'], true);
     }
 
+    /**
+     * CE QUI MANQUE POUR CLÔTURER — ou null si la preuve exigée est fournie.
+     *
+     * L'exigence de preuve était vérifiée dans la SYNCHRO seulement, en ligne,
+     * et cette vérification se présentait comme « AUTORITAIRE serveur […] même
+     * si un client altéré tentait de passer outre ». Le formulaire web du même
+     * serveur, lui, clôturait n'importe quelle tâche d'un clic : une tâche
+     * « photo exigée » se cochait depuis le bureau avec `proof_photo_path` à
+     * null, message de succès à l'appui.
+     *
+     * La règle qui se dit autoritaire ne peut pas ne tenir qu'une porte sur
+     * deux. Elle est déclarée ici, et les deux chemins l'appellent.
+     *
+     * (`requiresProof()` existait déjà — déclarée, couverte par un test, et
+     * appelée par AUCUN code de production. La synchro recopiait la condition
+     * à la main.)
+     */
+    public function missingProof(?string $photoPath, mixed $value): ?string
+    {
+        if ($this->proof_type === 'photo' && empty($photoPath)) {
+            return __('Cette tâche exige une photo pour être validée.');
+        }
+
+        if ($this->proof_type === 'valeur' && ($value === null || $value === '')) {
+            return __('Cette tâche exige une valeur chiffrée pour être validée.');
+        }
+
+        return null;
+    }
+
     public function cropCycle(): BelongsTo
     {
         return $this->belongsTo(CropCycle::class);

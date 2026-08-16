@@ -268,8 +268,22 @@
                             <div class="px-5 py-3 flex items-center gap-4 group">
 
                                 {{-- COMPLÉTION RAPIDE --}}
-                                @if($task->status !== 'fait')
-                                <form method="POST" action="{{ route('tasks.complete', $task) }}">@csrf
+                                {{-- Une tâche à PREUVE PHOTO atteste d'un geste fait au terrain :
+                                     elle se valide depuis le mobile, pas d'un clic au bureau. --}}
+                                @if($task->status !== 'fait' && $task->proof_type === 'photo')
+                                <div class="w-8 h-8 rounded-lg border-2 border-indigo-200 flex items-center justify-center text-indigo-400 shrink-0"
+                                     title="{{ __('Preuve photo exigée — à valider depuis l\'application mobile, sur place.') }}">
+                                    <i class="fa-solid fa-camera text-[10px]"></i>
+                                </div>
+                                @elseif($task->status !== 'fait')
+                                <form method="POST" action="{{ route('tasks.complete', $task) }}" class="flex items-center gap-1">@csrf
+                                    @if($task->proof_type === 'valeur')
+                                    {{-- Sans ce champ, le refus serait sans issue depuis le bureau. --}}
+                                    <input type="number" step="0.01" name="proof_value" required
+                                           placeholder="{{ $task->proof_label ?: __('Valeur') }}"
+                                           title="{{ $task->proof_label }}{{ $task->proof_unit ? ' (' . $task->proof_unit . ')' : '' }}"
+                                           class="w-20 bg-white border-none rounded-lg px-2 py-1 text-[10px] font-bold shadow-inner outline-none">
+                                    @endif
                                     <button class="w-8 h-8 rounded-lg border-2 {{ $task->status === 'en_retard' ? 'border-red-300 hover:bg-red-500' : 'border-slate-200 hover:bg-emerald-500' }} hover:text-white flex items-center justify-center transition-all bg-transparent cursor-pointer">
                                         <i class="fa-solid fa-check text-[10px]"></i>
                                     </button>

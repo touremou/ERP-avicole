@@ -2229,11 +2229,8 @@ class SyncService
         // manquante est un refus NON REJOUABLE (conflict → bac « À corriger »),
         // pas un no-op. Empêche de clôturer sans la photo/valeur exigée, même si
         // un client altéré tentait de passer outre.
-        if ($task->proof_type === 'photo' && empty($data['photo_path'])) {
-            return ['status' => 'conflict', 'message' => __('Cette tâche exige une photo pour être validée.')];
-        }
-        if ($task->proof_type === 'valeur' && ($data['proof_value'] ?? null) === null) {
-            return ['status' => 'conflict', 'message' => __('Cette tâche exige une valeur chiffrée pour être validée.')];
+        if ($manque = $task->missingProof($data['photo_path'] ?? null, $data['proof_value'] ?? null)) {
+            return ['status' => 'conflict', 'message' => $manque];
         }
 
         $declared = ! empty($data['done_at']) ? Carbon::parse($data['done_at']) : null;

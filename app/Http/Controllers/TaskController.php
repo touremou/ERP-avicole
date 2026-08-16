@@ -188,11 +188,44 @@ class TaskController extends Controller
             return back()->with('error', 'Non autorisé.');
         }
 
+        /*
+         * VERROU DE PRISE — la deuxième règle que seule la synchro tenait.
+         *
+         * Une tâche PRISE par un autre technicien (« en cours », prise non
+         * expirée) ne peut pas être clôturée à sa place : sinon le verrou est
+         * contournable en passant par le bureau au lieu du téléphone. C'est
+         * exactement ce que la synchro dit éviter, en sautant l'étape
+         * « prendre ».
+         */
+        if ($task->isClaimedByOther(Auth::id())) {
+            return back()->with('error',
+                'Tâche en cours par ' . ($task->claimant?->name ?? '—')
+                . ' — impossible de la valider à sa place.'
+            );
+        }
+
+        /*
+         * PREUVE D'EXÉCUTION.
+         *
+         * La valeur chiffrée se saisit ici (le champ est proposé par la liste) ;
+         * la photo, non — elle atteste d'un geste fait AU TERRAIN, et rien au
+         * bureau ne peut en tenir lieu. Le refus dit par où passer.
+         */
+        $proofValue = $request->input('proof_value');
+
+        if ($manque = $task->missingProof($request->input('photo_path'), $proofValue)) {
+            return back()->with('error', $task->proof_type === 'photo'
+                ? $manque . ' Validez-la depuis l\'application mobile, sur place.'
+                : $manque
+            );
+        }
+
         $task->update([
             'status'           => 'fait',
             'completed_at'     => now(),
             'completed_by'     => Auth::id(),
             'completion_notes' => $request->input('notes'),
+            'proof_value'      => $task->proof_type === 'valeur' ? $proofValue : $task->proof_value,
         ]);
 
         // Boucle de retour itinéraire technique (S1) : sans elle, le calendrier
