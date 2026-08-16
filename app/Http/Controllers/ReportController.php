@@ -184,7 +184,14 @@ class ReportController extends Controller
         // Production végétale : revenus des cycles CLÔTURÉS sur la période
         // (reconnaissance à la clôture, cohérente avec l'imputation de leurs
         // coûts ci-dessous — évite tout chevauchement de période).
-        $closedCyclesQuery = CropCycle::whereBetween('closing_date', [$from, $to]);
+        // Cycles RÉELLEMENT clôturés : la date de clôture ne suffit pas comme
+        // critère. Un cycle rouvert la conservait et restait donc compté ici,
+        // tout en continuant d'accumuler récoltes et intrants — une période
+        // arrêtée qui bouge encore. La réouverture efface désormais cette date
+        // (CropCycleController::reopen) ; ce filtre de statut est la seconde
+        // barrière, pour que le rapport reste juste même si un autre chemin
+        // venait un jour à rouvrir un cycle sans l'effacer.
+        $closedCyclesQuery = CropCycle::archived()->whereBetween('closing_date', [$from, $to]);
         $closedCycleIds = (clone $closedCyclesQuery)->pluck('id');
         $cropRevenue = (float) (clone $closedCyclesQuery)->sum('total_revenue');
         if ($cropRevenue > 0) {

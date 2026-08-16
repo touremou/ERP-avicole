@@ -18,7 +18,9 @@ use App\Models\Provider;
 use App\Models\Stock;
 use App\Services\StockIntegrationService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Cycles de culture (module: cultures) — du semis à la clôture, avec saisie
@@ -345,6 +347,28 @@ class CropCycleController extends Controller
             return back()->with('error', 'Action non autorisée.');
         }
 
+        /*
+         * UN CYCLE CLÔTURÉ NE SE MODIFIE PLUS PAR CE FORMULAIRE.
+         *
+         * Il l'était : avec le simple droit M, on pouvait rouvrir un cycle
+         * terminé ET réécrire ses coûts. Or le compte de résultat sélectionne
+         * les cycles végétaux par leur DATE DE CLÔTURE : changer le coût
+         * d'acquisition d'un cycle clos en juillet réécrit le résultat de
+         * juillet — un mois déjà arrêté, peut-être déjà imprimé et transmis.
+         *
+         * Mesuré : un coût passé de 500 000 à 5 000 000 sur un cycle clos le
+         * mois précédent, sans un mot.
+         *
+         * La réouverture reste possible, mais devient un geste DISTINCT et
+         * réservé au droit S — comme la réouverture d'un lot d'élevage.
+         */
+        if (in_array($cropCycle->status, CropCycle::STATUS_ARCHIVED, true)) {
+            return back()->with('error',
+                "Ce cycle est clôturé ({$cropCycle->status}) : ses chiffres sont entrés dans le compte de "
+                . "résultat de sa période. Rouvrez-le d'abord si une correction est nécessaire."
+            );
+        }
+
         $validated = $request->validate([
             'campaign_id'            => 'nullable|exists:crop_campaigns,id',
             'crop_protocol_id'       => 'nullable|exists:crop_protocols,id',
@@ -398,6 +422,46 @@ class CropCycleController extends Controller
     /**
      * Saisie d'une récolte sur le cycle (avec intégration stock optionnelle).
      */
+    /**
+     * RÉOUVERTURE d'un cycle clôturé — geste distinct, droit S.
+     *
+     * Elle se faisait par le formulaire ordinaire, avec le droit M, et sans
+     * effacer la date de clôture : le cycle repartait « en cours » tout en
+     * restant compté parmi les cycles CLÔTURÉS du compte de résultat, où il
+     * continuait d'accumuler récoltes et intrants. Une période arrêtée bougeait
+     * donc encore, sans que personne ne l'ait décidé.
+     *
+     * On EFFACE la date de clôture : un cycle en cours n'en a pas, et c'est
+     * elle qui décide de son rattachement comptable.
+     */
+    public function reopen(CropCycle $cropCycle)
+    {
+        if (Gate::denies('cultures.S')) {
+            return back()->with('error', 'Réouverture réservée aux administrateurs.');
+        }
+
+        if (! in_array($cropCycle->status, CropCycle::STATUS_ARCHIVED, true)) {
+            return back()->with('error', "Ce cycle n'est pas clôturé (statut : {$cropCycle->status}).");
+        }
+
+        $anciennecloture = $cropCycle->closing_date;
+
+        $cropCycle->update([
+            'status'       => CropCycle::STATUS_EN_COURS,
+            'closing_date' => null,
+        ]);
+
+        Log::info(
+            "Cycle {$cropCycle->code} rouvert par " . (Auth::user()?->name ?? 'inconnu')
+            . ' — clôture du ' . optional($anciennecloture)->format('d/m/Y') . ' annulée.'
+        );
+
+        return back()->with('success',
+            "Cycle {$cropCycle->code} rouvert. Ses chiffres quittent le résultat de la période close ;"
+            . ' ils y reviendront à la prochaine clôture.'
+        );
+    }
+
     public function storeHarvest(Request $request, CropCycle $cropCycle, RecordHarvest $action)
     {
         if (Gate::denies('cultures.C')) {

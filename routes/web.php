@@ -301,6 +301,12 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{cropCycle}', 'show')->name('show')->where('cropCycle', '[0-9]+')->middleware('can:L');
         Route::get('/{cropCycle}/edit', 'edit')->name('edit')->where('cropCycle', '[0-9]+')->middleware('can:M');
         Route::put('/{cropCycle}', 'update')->name('update')->middleware('can:M');
+        // RÉOUVERTURE d'un cycle clôturé : geste DISTINCT, droit S — comme la
+        // réouverture d'un lot d'élevage. Elle se faisait jusqu'ici par le
+        // formulaire ordinaire, avec le simple droit M, et sans effacer la date
+        // de clôture : le cycle repartait « en cours » tout en restant compté
+        // parmi les cycles CLÔTURÉS du compte de résultat.
+        Route::put('/{cropCycle}/reopen', 'reopen')->name('reopen')->middleware('can:S');
         Route::delete('/{cropCycle}', 'destroy')->name('destroy')->middleware('can:S');
         // Récoltes (sous-ressource du cycle)
         Route::get('/{cropCycle}/harvests/create', 'createHarvest')->name('harvests.create')->middleware('can:C');
