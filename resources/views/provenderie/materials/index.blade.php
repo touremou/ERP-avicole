@@ -91,11 +91,12 @@
                         </div>
 
                         <div class="mt-8 pt-6 border-t border-slate-50 flex flex-wrap justify-between items-center gap-2">
-                            {{-- Permission C : Réception (Achat) --}}
+                            {{-- Permission C : entrée d'inventaire (quantité + CMP,
+                                 sans contrepartie financière — cf. updateStock). --}}
                             @can('provenderie.C')
                             <button onclick="openReorderModal({{ $material->id }}, {{ Js::from($material->name) }})"
                                 class="flex-1 text-[9px] font-black text-blue-600 uppercase italic tracking-widest hover:text-slate-900 transition-colors">
-                                <i class="fa-solid fa-truck-ramp-box mr-1"></i> {{ __("Réception") }}
+                                <i class="fa-solid fa-truck-ramp-box mr-1"></i> {{ __("Entrée") }}
                             </button>
                             @endcan
                             
@@ -297,19 +298,28 @@
         </div>
     </div>
 
-    {{-- MODAL RÉCEPTION --}}
+    {{-- MODAL ENTRÉE D'INVENTAIRE
+
+         Ce geste corrige la QUANTITÉ en magasin et recalcule le CMP. Il ne crée
+         ni facture, ni règlement, ni écriture de trésorerie : l'achat se saisit
+         au module Dépenses. L'écran le dit désormais — il annonçait
+         « Réception » et « Montant Facturé », ce qui laissait croire que la
+         contrepartie financière était faite. --}}
     <div id="modalReorder" class="fixed inset-0 bg-slate-900/90 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-lg rounded-[3.5rem] shadow-2xl p-10 relative italic text-left overflow-hidden">
             <button onclick="document.getElementById('modalReorder').classList.add('hidden')" class="absolute top-8 right-8 text-slate-300 hover:text-slate-900 transition-colors">
                 <i class="fa-solid fa-xmark text-xl"></i>
             </button>
-            <h3 id="reorder_title" class="text-2xl font-black text-slate-900 uppercase italic tracking-tighter mb-8 leading-none">{{ __("Réception Magasin") }}</h3>
+            <h3 id="reorder_title" class="text-2xl font-black text-slate-900 uppercase italic tracking-tighter mb-2 leading-none">{{ __("Entrée Magasin") }}</h3>
+            <p class="text-[10px] font-black text-amber-600 uppercase italic leading-snug mb-8">
+                {{ __("Correction d'inventaire : la quantité entre en magasin et la valeur saisie recalcule le CMP. Aucune dépense ni règlement n'est créé — l'achat se saisit au module Dépenses.") }}
+            </p>
             <form id="reorder_form" method="POST" class="space-y-6">
                 @csrf @method('PUT')
                 <div>
-                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-2 italic tracking-widest">{{ __("Fournisseur") }}</label>
-                    <select name="provider_id" required class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic appearance-none">
-                        <option value="">{{ __("-- CHOISIR LE FOURNISSEUR --") }}</option>
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-2 italic tracking-widest">{{ __("Fournisseur / origine") }} <span class="opacity-40 normal-case">{{ __("optionnel") }}</span></label>
+                    <select name="provider_id" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic appearance-none">
+                        <option value="">{{ __("-- AUCUN / ÉCART D'INVENTAIRE --") }}</option>
                         @foreach($providers as $p) <option value="{{ $p->id }}">{{ strtoupper($p->name) }}</option> @endforeach
                     </select>
                 </div>
@@ -330,9 +340,14 @@
                     <input type="number" step="0.1" min="0" placeholder="{{ __('Total kg') }}" name="added_qty" id="final_qty" required oninput="calculateUnitCost()" class="w-full bg-white border-2 border-blue-200 rounded-2xl p-4 font-black text-3xl text-blue-600 text-center italic shadow-lg">
                 </div>
                 <div>
-                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-2 italic tracking-widest">{{ __("Montant Facturé") }} ({{ currency() }})</label>
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-2 italic tracking-widest">{{ __("Valeur de l'entrée") }} ({{ currency() }})</label>
                     <input type="number" min="0" placeholder="0" name="purchase_price" id="total_purchase_price" required oninput="calculateUnitCost()" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-2xl text-slate-800 shadow-inner text-center italic text-blue-600">
                     <p class="text-center mt-3 text-[9px] text-slate-400 uppercase italic font-black">{{ __("Coût unitaire estimé") }} : <span id="unit_cost_display" class="text-blue-500">0</span> {{ currency() }}/kg</p>
+                    <p class="text-center mt-1 text-[9px] text-slate-400 uppercase italic font-black">{{ __("Sert au recalcul du CMP — ne crée aucune écriture de caisse.") }}</p>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-2 italic tracking-widest">{{ __("Motif") }}</label>
+                    <input type="text" name="reason" required maxlength="255" placeholder="{{ __('ex. Réception commande, écart d’inventaire, retour atelier') }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic">
                 </div>
                 <button type="submit" class="w-full bg-slate-900 text-white font-black py-5 rounded-2xl shadow-xl uppercase italic hover:bg-blue-600 transition-colors">{{ __("Valider l'entrée") }}</button>
             </form>
@@ -356,7 +371,7 @@
         }
 
         function openReorderModal(id, name) {
-            el('reorder_title').innerText = `📦 ${@json(__('RÉCEPTION'))} : ${name}`;
+            el('reorder_title').innerText = `📦 ${@json(__('ENTRÉE'))} : ${name}`;
             el('reorder_form').action = `/provenderie/materials/${id}/add-stock`;
             el('modalReorder').classList.remove('hidden');
         }
