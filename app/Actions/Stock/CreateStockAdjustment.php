@@ -67,7 +67,8 @@ class CreateStockAdjustment
             $stock->refresh();
             $hub = app(NotificationHub::class);
             $hub->alertStockAdjustment($stock, $before, (float) $stock->current_quantity, $notes);
-            if (! $wasLow && $stock->is_low && $stock->alert_threshold > 0) {
+            // `is_low` porte désormais la garde « seuil > 0 » (cf. Stock::getIsLowAttribute).
+            if (! $wasLow && $stock->is_low) {
                 $hub->alertStockCritical($stock);
             }
 
