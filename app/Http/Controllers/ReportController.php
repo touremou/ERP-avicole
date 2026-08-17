@@ -25,6 +25,12 @@ use Carbon\Carbon;
 
 class ReportController extends Controller
 {
+    /** Types d'actes du registre sanitaire, dans l'ordre d'affichage. */
+    private const HEALTH_CHECK_TYPES = ['Vaccin', 'Traitement', 'Vitamine', 'Désinfection'];
+
+    /** Poste des coûts d'incident, qui ne vient pas du registre des actes. */
+    private const TYPE_INCIDENT = 'Incident sanitaire';
+
     /**
      * HUB DES RAPPORTS
      *
@@ -456,7 +462,31 @@ class ReportController extends Controller
             }
         };
 
-        $query = Batch::with(['building', 'healthChecks' => $healthCheckQuery])->live();
+        /*
+         * LES ÉPIDÉMIES MANQUAIENT AU RAPPORT QUI CHIFFRE LA SANTÉ.
+         *
+         * Ce rapport ne sommait que les actes du registre. Le coût de traitement
+         * d'un INCIDENT sanitaire — l'événement le plus cher, précisément — n'y
+         * entrait pas, alors que la marge du lot et le compte de résultat le
+         * comptent. Le « coût sanitaire par tête », titre de l'écran, était donc
+         * sous-estimé de ce qui coûte le plus.
+         *
+         * Même borne de période que les actes, transposée à la date d'incident.
+         */
+        $healthIncidentQuery = function ($query) use ($period) {
+            if ($period === 'month') {
+                $query->whereMonth('incident_date', now()->month)
+                      ->whereYear('incident_date', now()->year);
+            } elseif ($period === 'year') {
+                $query->whereYear('incident_date', now()->year);
+            }
+        };
+
+        $query = Batch::with([
+            'building',
+            'healthChecks'    => $healthCheckQuery,
+            'healthIncidents' => $healthIncidentQuery,
+        ])->live();
 
         if ($statusFilter === 'actif') {
             $query->active();
@@ -470,24 +500,45 @@ class ReportController extends Controller
         $totalGlobalCost = 0;
 
         foreach ($batches as $batch) {
+            $coutLot = 0.0;
+
             foreach ($batch->healthChecks as $hc) {
-                $typeBreakdown[$hc->type] = ($typeBreakdown[$hc->type] ?? 0) + $hc->cost;
-                $totalGlobalCost += $hc->cost;
+                $typeBreakdown[$hc->type] = ($typeBreakdown[$hc->type] ?? 0) + (float) $hc->cost;
+                $coutLot += (float) $hc->cost;
             }
+
+            $coutIncidents = (float) $batch->healthIncidents->sum('treatment_cost');
+
+            if ($coutIncidents > 0) {
+                $typeBreakdown[self::TYPE_INCIDENT] = ($typeBreakdown[self::TYPE_INCIDENT] ?? 0) + $coutIncidents;
+                $coutLot += $coutIncidents;
+            }
+
+            // Le coût du lot est calculé ICI, une fois. Le gabarit le recomposait
+            // à sa façon (actes seuls) : trois endroits chiffraient la santé d'un
+            // lot, et le tableau ne disait pas la même chose que son propre total.
+            $batch->setAttribute('sanitary_cost', round($coutLot, 2));
+
+            $totalGlobalCost += $coutLot;
         }
 
         $totalBirdsInitial = $batches->sum('initial_quantity');
         $averageCostPerHead = $totalBirdsInitial > 0 ? $totalGlobalCost / $totalBirdsInitial : 0;
 
-        $bestBatch = $batches->filter(fn($b) => $b->initial_quantity > 0)
-            ->sortBy(fn($b) => $b->healthChecks->sum('cost') / $b->initial_quantity)
+        $bestBatch = $batches->filter(fn ($b) => $b->initial_quantity > 0)
+            ->sortBy(fn ($b) => $b->sanitary_cost / $b->initial_quantity)
             ->first();
 
-        $bestBatchCost = $bestBatch ? ($bestBatch->healthChecks->sum('cost') / $bestBatch->initial_quantity) : 0;
+        $bestBatchCost = $bestBatch ? ($bestBatch->sanitary_cost / $bestBatch->initial_quantity) : 0;
+
+        // Postes affichés : les types du référentiel PLUS la ligne des incidents,
+        // servis par le contrôleur. Le gabarit en tenait la liste en dur et
+        // n'aurait donc jamais montré un poste nouveau.
+        $costTypes = array_merge(self::HEALTH_CHECK_TYPES, [self::TYPE_INCIDENT]);
 
         return compact(
             'batches', 'totalGlobalCost', 'averageCostPerHead',
-            'bestBatch', 'bestBatchCost', 'typeBreakdown', 'period', 'statusFilter'
+            'bestBatch', 'bestBatchCost', 'typeBreakdown', 'costTypes', 'period', 'statusFilter'
         );
     }
 
