@@ -46,17 +46,23 @@
                     <tbody class="divide-y divide-slate-50">
                         @forelse($archivedBatches as $batch)
                             @php
-                                $totalMorts = ($batch->qty_dead ?? 0) + $batch->dailyChecks->sum('mortality');
-                                $rate = ($batch->initial_quantity > 0) ? ($totalMorts / $batch->initial_quantity) * 100 : 0;
-                                
-                                $chiffreAffaire = $batch->total_revenue ?? 0;
-                                $coutPoussins = $batch->total_acquisition_cost ?? 0;
-                                $coutAliment = $batch->feedPurchases->sum('total_price');
-                                $coutSante = $batch->healthChecks->sum('cost');
-                                $fraisAnnexes = $batch->additional_costs ?? 0;
-                                
-                                $totalDepenses = $coutPoussins + $coutAliment + $coutSante + $fraisAnnexes;
-                                $realMargin = $chiffreAffaire - $totalDepenses;
+                                /*
+                                 * AUCUN MONTANT N'EST CALCULÉ ICI.
+                                 *
+                                 * Ce bloc recomposait la marge du lot avec quatre
+                                 * composantes (aliment pris à l'ACHAT, santé sans
+                                 * les incidents, ni dépenses directes ni eau et
+                                 * énergie) là où Batch::net_margin en compte sept.
+                                 * L'écran annonçait donc un « Bénéfice Net » que la
+                                 * fiche du lot contredisait. Le taux de mortalité
+                                 * était refait de même, sans l'infirmerie.
+                                 *
+                                 * Les deux viennent maintenant du modèle, posés par
+                                 * le contrôleur (cf. BatchController::archives).
+                                 */
+                                $totalMorts = $batch->total_mortality;
+                                $rate = $batch->mortality_rate;
+                                $realMargin = $batch->net_margin;
                             @endphp
                             <tr class="hover:bg-slate-50/80 transition-all group">
                                 <td class="px-8 py-6">
