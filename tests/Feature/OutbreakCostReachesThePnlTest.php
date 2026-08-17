@@ -163,8 +163,8 @@ test('le compte de résultat affiche la charge sanitaire complète', function ()
     $this->actingAs($this->adminUser);
 
     $pnl = $this->get(route('reports.profit_loss', [
-        'from' => now()->startOfMonth()->toDateString(),
-        'to'   => now()->endOfMonth()->toDateString(),
+        'date_from' => now()->startOfMonth()->toDateString(),
+        'date_to'   => now()->endOfMonth()->toDateString(),
     ]))->assertOk();
 
     expect($pnl->viewData('costs')['Santé / prophylaxie'])->toBe(2000000.0);

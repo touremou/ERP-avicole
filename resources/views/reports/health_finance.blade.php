@@ -73,8 +73,13 @@
                             <span class="w-2 h-6 bg-blue-600 rounded-full"></span> {{ __("Structure des Coûts (%)") }}
                         </h3>
                         <div class="space-y-5">
-                            @php $colors = ['Vaccin' => 'bg-indigo-600', 'Traitement' => 'bg-rose-600', 'Vitamine' => 'bg-amber-400', 'Désinfection' => 'bg-slate-500']; @endphp
-                            @foreach(['Vaccin', 'Traitement', 'Vitamine', 'Désinfection'] as $type)
+                            {{-- Liste servie par le contrôleur : elle porte les types du
+                                 référentiel ET le poste des incidents sanitaires, qui ne
+                                 vient pas du registre des actes. En dur ici, ce dernier
+                                 n'aurait jamais paru — et les pourcentages, calculés sur
+                                 un total qui l'inclut, n'auraient plus fait 100 %. --}}
+                            @php $colors = ['Vaccin' => 'bg-indigo-600', 'Traitement' => 'bg-rose-600', 'Vitamine' => 'bg-amber-400', 'Désinfection' => 'bg-slate-500', 'Incident sanitaire' => 'bg-red-700']; @endphp
+                            @foreach($costTypes as $type)
                                 @php 
                                     $amount = $typeBreakdown[$type] ?? 0;
                                     $percent = $totalGlobalCost > 0 ? ($amount / $totalGlobalCost) * 100 : 0; 
@@ -85,7 +90,7 @@
                                         <span class="text-slate-800">{{ number_format($percent, 1) }}% <small class="text-slate-300 ml-1">({{ number_format($amount, 0, ',', ' ') }} {{ $currency }})</small></span>
                                     </div>
                                     <div class="h-3 w-full bg-slate-50 rounded-full overflow-hidden shadow-inner border border-slate-100 p-0.5">
-                                        <div class="progress-bar {{ $colors[$type] }} h-full rounded-full transition-all duration-1000 shadow-sm" 
+                                        <div class="progress-bar {{ ($colors[$type] ?? 'bg-slate-400') }} h-full rounded-full transition-all duration-1000 shadow-sm" 
                                              style="width: {{ $percent }}%" 
                                              data-amount="{{ number_format($amount, 0, ',', ' ') }} {{ $currency }}"></div>
                                     </div>
@@ -120,7 +125,7 @@
                         @php $totalBirdsInTable = 0; @endphp
                         @foreach($batches as $batch)
                             @php 
-                                $totalBatchCost = $batch->healthChecks->sum('cost');
+                                $totalBatchCost = $batch->sanitary_cost;   // calculé une fois, au contrôleur
                                 $ratio = $batch->initial_quantity > 0 ? $totalBatchCost / $batch->initial_quantity : 0;
                                 $diff = $averageCostPerHead > 0 ? (($ratio - $averageCostPerHead) / $averageCostPerHead) * 100 : 0;
                                 $totalBirdsInTable += $batch->initial_quantity;

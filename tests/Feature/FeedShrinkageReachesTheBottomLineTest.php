@@ -175,8 +175,8 @@ test('la ligne remonte aux DEUX écrans, pas à un seul', function () {
 
     // 1. Le COMPTE DE RÉSULTAT : la charge y figure, nommée.
     $pnl = $this->get(route('reports.profit_loss', [
-        'from' => now()->startOfMonth()->toDateString(),
-        'to'   => now()->endOfMonth()->toDateString(),
+        'date_from' => now()->startOfMonth()->toDateString(),
+        'date_to'   => now()->endOfMonth()->toDateString(),
     ]))->assertOk();
 
     expect($pnl->viewData('costs'))->toHaveKey('Démarque aliment')

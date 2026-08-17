@@ -64,7 +64,8 @@
             <tr><th>{{ __("Type") }}</th><th class="amount" style="text-align:right;">{{ __("Montant") }}</th><th class="amount" style="text-align:right;">{{ __("% du total") }}</th></tr>
         </thead>
         <tbody>
-            @foreach(['Vaccin', 'Traitement', 'Vitamine', 'Désinfection'] as $type)
+            {{-- Même liste que l'écran, servie par le contrôleur (incidents compris). --}}
+            @foreach($costTypes as $type)
             @php
                 $amount = $typeBreakdown[$type] ?? 0;
                 $percent = $totalGlobalCost > 0 ? ($amount / $totalGlobalCost) * 100 : 0;
@@ -93,7 +94,7 @@
         <tbody>
             @forelse($batches as $batch)
             @php
-                $totalBatchCost = $batch->healthChecks->sum('cost');
+                $totalBatchCost = $batch->sanitary_cost;   // calculé une fois, au contrôleur
                 $ratio = $batch->initial_quantity > 0 ? $totalBatchCost / $batch->initial_quantity : 0;
             @endphp
             <tr>
