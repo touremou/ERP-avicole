@@ -190,7 +190,33 @@ class BatchController extends Controller
         }
 
         $archivedBatches = $query->orderBy('closing_date', 'desc')->paginate((int) setting('general.items_per_page', 20));
-        
+
+        /*
+         * LA VUE NE CALCULE PLUS NI MARGE NI MORTALITÉ — cf. le gabarit.
+         *
+         * Elle les recomposait, et différemment du modèle. La colonne
+         * « Performance Nette » annonçait un « Bénéfice Net » obtenu ainsi :
+         * CA − (poussins + aliment ACHETÉ + actes du registre + frais annexes).
+         * Quatre composantes, quand `Batch::net_margin` en compte sept et impute
+         * l'aliment à la CONSOMMATION : manquaient les dépenses directes du lot,
+         * l'eau et l'énergie du bâtiment, et le coût des épidémies.
+         *
+         * Le taux de mortalité était refait de même, sans la mortalité EN
+         * INFIRMERIE — des sujets déjà sortis de l'effectif, « aucun impact
+         * effectif, mais bien des pertes ».
+         *
+         * Rien n'est donc RECALCULÉ ici : la vue appelle les accesseurs du
+         * modèle. Poser des attributs maison aurait masqué `mortality_rate`, dont
+         * la base est documentée et n'est pas celle qu'on croit
+         * (initial_quantity + qty_dead, les morts au transport ne faisant pas
+         * partie de l'effectif reçu) — soit une quatrième règle en réparant la
+         * troisième.
+         *
+         * Les relations chargées sont celles que ces accesseurs traversent sans
+         * requête supplémentaire.
+         */
+        $archivedBatches->getCollection()->loadMissing(['feedPurchases', 'dailyChecks']);
+
         // 👈 Ajout du scope physical() et d'un tri par nom pour l'UX
         $buildings = Building::physical()->select('id', 'name')->orderBy('name')->get();
 
