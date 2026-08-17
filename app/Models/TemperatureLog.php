@@ -57,10 +57,43 @@ class TemperatureLog extends Model
     {
         $keys = self::POINTS[$point] ?? ['min' => null, 'max' => null];
 
+        /*
+         * UN SEUIL ABSENT EST ABSENT, PAS ZÉRO.
+         *
+         * Le cast en float transformait une valeur vide en 0.0 — et `isCompliant`,
+         * juste en dessous, teste `!== null` pour savoir s'il y a une borne à
+         * appliquer. Son chemin « pas de borne » était donc INATTEIGNABLE : un
+         * seuil effacé devenait un maximum de 0 °C, et toute chambre froide à 3 °C
+         * se lisait non conforme.
+         *
+         * On ne substitue AUCUNE valeur de repli : les seuils de référence vivent
+         * dans la migration qui les sème, et les recopier ici en ferait une seconde
+         * déclaration — celle qui finit par diverger. Faute de seuil, on n'en
+         * applique pas : l'appréciation de l'opérateur fait foi.
+         *
+         * `0` déclaré reste un vrai seuil : c'est le minimum de la chambre froide
+         * positive.
+         */
         return [
-            'min' => $keys['min'] ? (float) setting("abattoir.{$keys['min']}") : null,
-            'max' => $keys['max'] ? (float) setting("abattoir.{$keys['max']}") : null,
+            'min' => self::threshold($keys['min']),
+            'max' => self::threshold($keys['max']),
         ];
+    }
+
+    /** Le seuil paramétré, ou null s'il n'est pas renseigné. */
+    private static function threshold(?string $key): ?float
+    {
+        if (! $key) {
+            return null;
+        }
+
+        // `rawValue` et non `setting()` : le cast d'un réglage numérique
+        // transforme la chaîne vide en 0, ce qui est exactement la confusion à
+        // lever. Le modèle Setting porte cette méthode pour cette raison —
+        // « la seule façon de distinguer pas de réglage de réglé à zéro ».
+        $value = \App\Models\Setting::rawValue("abattoir.{$key}");
+
+        return ($value === null || $value === '') ? null : (float) $value;
     }
 
     /** Conformité serveur — source unique, jamais confiée au client. */

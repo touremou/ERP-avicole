@@ -123,6 +123,22 @@ class SettingsController extends Controller
             $meta = Setting::where('group', $group)->where('key', $key)->whereNull('farm_id')->first();
 
             if (! $meta || $newValue === null || $newValue === '') {
+                /*
+                 * VIDE RESTE PERMIS, ET C'EST UN CHOIX DÉJÀ PRIS AILLEURS.
+                 *
+                 * On a d'abord voulu refuser ici la mise à vide d'un réglage
+                 * numérique ou horaire — un seuil vidé par mégarde rendait
+                 * l'abattoir bloquant (cf. RecordCcp::seuil). Mais l'application
+                 * donne déjà un SENS à l'absence, et il est documenté : des bornes
+                 * d'heures ouvrées vides signifient « surveillance éteinte »
+                 * (ScheduleHourSettingTest), et une cible vide « pas de référence »
+                 * (Setting::rawValue).
+                 *
+                 * Refuser ici aurait donc opposé une nouvelle règle à celles-là. Le
+                 * défaut n'était pas que le vide s'enregistre : c'était que la
+                 * LECTURE le coule en 0, transformant « pas de seuil » en « seuil
+                 * zéro ». Il est corrigé là où il se produisait.
+                 */
                 continue;   // vide = « ne pas toucher » / « effacer », traité plus bas
             }
 
