@@ -30,6 +30,32 @@ return [
                     // fichiers utilisateurs (logos, photos, justificatifs,
                     // documents) — la base de données est ajoutée plus bas.
                     storage_path('app/public'),
+
+                    /*
+                     * LES PIÈCES PRIVÉES, QUI ÉTAIENT SORTIES DE L'ARCHIVE SANS
+                     * QUE PERSONNE NE LE VOIE.
+                     *
+                     * Deux corrections de sécurité ont déplacé vers ce disque,
+                     * hors racine web, tout ce qui n'a rien à faire en libre
+                     * accès : justificatifs de dépense, photos et CV d'employés,
+                     * photos d'autopsie, relevés de nettoyage, documents de
+                     * réception, clichés pris au champ.
+                     *
+                     * Cette liste ne portait que « app/public ». Ce qui a été mis
+                     * à l'abri des regards est donc sorti de la sauvegarde du même
+                     * mouvement : il ne restait dans l'archive que ce qui est
+                     * délibérément public — logos, avatars, imagerie de catalogue.
+                     *
+                     * En cas de sinistre, la base aurait rendu la LIGNE
+                     * « justificatif : expenses/justificatifs/xY3.pdf » et pas le
+                     * fichier : une comptabilité qui pointe vers des pièces
+                     * disparues, et une traçabilité sanitaire sans ses photos.
+                     *
+                     * Vérifié par BackupCoversPrivateUploadsTest, qui DÉPOSE un
+                     * fichier par chaque façade de téléversement plutôt que de
+                     * comparer deux listes de chaînes.
+                     */
+                    storage_path('app/private'),
                 ],
 
                 /*
