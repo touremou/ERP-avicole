@@ -76,16 +76,24 @@ class RecordCcp
         switch ($ccp) {
             case CcpRecord::CCP3:
                 if (isset($mesures['temperature_coeur'])) {
-                    return (float) $mesures['temperature_coeur'] <= (float) setting('abattoir.ccp3_core_temp_max');
+                    $max = self::seuil('ccp3_core_temp_max');
+
+                    if ($max !== null) {
+                        return (float) $mesures['temperature_coeur'] <= $max;
+                    }
                 }
                 break;
 
             case CcpRecord::CCP2:
                 if (isset($mesures['carcasses_souillees'], $mesures['carcasses_total'])
                     && (int) $mesures['carcasses_total'] > 0) {
-                    $pct = 100 * (int) $mesures['carcasses_souillees'] / (int) $mesures['carcasses_total'];
+                    $max = self::seuil('ccp2_soiled_max_pct');
 
-                    return $pct <= (float) setting('abattoir.ccp2_soiled_max_pct');
+                    if ($max !== null) {
+                        $pct = 100 * (int) $mesures['carcasses_souillees'] / (int) $mesures['carcasses_total'];
+
+                        return $pct <= $max;
+                    }
                 }
                 break;
 
@@ -94,12 +102,42 @@ class RecordCcp
                     return TemperatureLog::isCompliant((string) $mesures['point'], (float) $mesures['temperature']);
                 }
                 if (isset($mesures['temperature'])) {
-                    return (float) $mesures['temperature'] <= (float) setting('abattoir.cold_positive_max');
+                    $max = self::seuil('cold_positive_max');
+
+                    if ($max !== null) {
+                        return (float) $mesures['temperature'] <= $max;
+                    }
                 }
                 break;
         }
 
         return $declared ?? true;
+    }
+
+    /**
+     * Le seuil paramétré, ou null s'il n'est pas renseigné.
+     *
+     * Ces trois comparaisons coulaient le réglage en float sans rien vérifier. Un
+     * seuil effacé par mégarde à l'écran des Réglages devenait donc 0 : toute
+     * carcasse à 2 °C était déclarée NON CONFORME, une alerte HACCP « critique »
+     * partait à chaque relevé, et l'ordre d'abattage était BLOQUÉ. Un champ vidé
+     * arrêtait la production.
+     *
+     * Faute de seuil, on ne condamne pas : l'appréciation déclarée par l'opérateur
+     * fait foi — c'est déjà le repli de cette méthode pour les CCP sans règle
+     * numérique. Aucune valeur de secours n'est inventée ici : les seuils de
+     * référence vivent dans la migration qui les sème, et les recopier en ferait
+     * une seconde déclaration.
+     *
+     * `0` déclaré reste un vrai seuil.
+     */
+    private static function seuil(string $key): ?float
+    {
+        // `rawValue` et non `setting()` : le cast d'un réglage numérique
+        // transforme la chaîne vide en 0 — précisément la confusion à lever.
+        $value = \App\Models\Setting::rawValue("abattoir.{$key}");
+
+        return ($value === null || $value === '') ? null : (float) $value;
     }
 
     private function alert(CcpRecord $record): void
