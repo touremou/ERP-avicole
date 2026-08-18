@@ -33,12 +33,57 @@ class Setting extends Model
     {
         $all = static::getAllCached();
 
-        $value = $all[$dotKey] ?? $default;
+        /*
+         * UN CHAMP EFFACÉ VALAIT ZÉRO, PAS SON DÉFAUT.
+         *
+         * Ce `??` ne se déclenchait que sur une clef ABSENTE. Une clef présente
+         * avec une valeur VIDE — ce qu'écrit l'écran des Réglages quand on efface
+         * une case — renvoyait la chaîne vide, que `castValue` transforme en 0
+         * pour un réglage numérique.
+         *
+         * Deux cents appels de la forme `setting('x', 30)` promettaient donc un
+         * repli qu'ils n'obtenaient jamais dans le seul cas où il servait.
+         *
+         * Le plus visible : `ventes.payment_delay_days` effacé devient 0, donc
+         * l'échéance d'une vente tombe le JOUR de la vente et toute vente à crédit
+         * est « en retard » dès le lendemain — alors qu'une commande planifiée
+         * relance les clients par WhatsApp chaque matin à 09:00, sans délai de
+         * courtoisie si `reminder_cooldown_days` a été effacé lui aussi.
+         *
+         * Une valeur vide se comporte donc comme une valeur absente : le défaut
+         * FOURNI PAR L'APPELANT s'applique. C'est précisément ce qu'il déclare en
+         * l'écrivant — « faute de valeur utilisable, prends celle-ci ».
+         *
+         * ─── ET SEULEMENT POUR LES RÉGLAGES NUMÉRIQUES ───
+         *
+         * Un premier jet appliquait ce repli à TOUS les types. La suite l'a
+         * démenti : un test exige qu'un pied de ticket vidé n'imprime AUCUNE
+         * ligne de remerciement, alors que son appelant fournit bien un défaut.
+         *
+         * Pour du texte, la chaîne vide est une valeur à part entière, et
+         * l'application s'en sert — pied de ticket effacé = pas de pied, heures
+         * ouvrées vides = surveillance éteinte (#286). Le dégât venait
+         * exclusivement du CAST NUMÉRIQUE, qui donne à l'absence l'autorité d'un
+         * zéro.
+         *
+         * On ne corrige donc que là où le vide n'a aucun sens possible :
+         * l'arithmétique. Une cible vide qui doit rester « pas de référence » lit
+         * d'ailleurs par `rawValue`, qui ne caste rien.
+         *
+         * « 0 » DÉCLARÉ reste zéro — la chaîne « 0 » n'est pas vide.
+         */
+        $stored = $all[$dotKey] ?? null;
+        $meta   = static::getSettingMeta($dotKey);
 
-        // Cast automatique
-        $setting = static::getSettingMeta($dotKey);
-        if ($setting) {
-            return static::castValue($value, $setting['type']);
+        $blankIsMeaningless = $meta && in_array($meta['type'], ['number', 'integer'], true);
+
+        $value = ($stored === null || ($stored === '' && $blankIsMeaningless))
+            ? $default
+            : $stored;
+
+        // Cast automatique — mêmes métadonnées que ci-dessus, lues une fois.
+        if ($meta) {
+            return static::castValue($value, $meta['type']);
         }
 
         return $value;
