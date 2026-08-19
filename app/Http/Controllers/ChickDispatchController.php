@@ -152,6 +152,19 @@ class ChickDispatchController extends Controller
                     'qty_males'              => 0,
                     'qty_females'            => 0,
                     'arrival_date'           => now()->toDateString(),
+
+                    /*
+                     * LA SEULE NAISSANCE QUE L'APPLICATION CONNAÎT EXACTEMENT.
+                     *
+                     * Ailleurs, la date de naissance est saisie d'après le bon du
+                     * couvoir. Ici, les poussins sortent de NOTRE couveuse : la
+                     * date d'éclosion est celle de la clôture de l'incubation. On
+                     * la pose plutôt que de la faire ressaisir — et l'écart avec
+                     * la mise en poussinière, souvent d'un jour ou deux, cesse
+                     * d'être perdu.
+                     */
+                    'birth_date'             => optional($incubation->finished_at)->toDateString()
+                        ?? now()->toDateString(),
                     'expected_end_date'      => now()->addDays(90),
                     'avg_weight_start'       => 0,
                     'planned_density'        => 0,

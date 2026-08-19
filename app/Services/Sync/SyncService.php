@@ -1098,6 +1098,9 @@ class SyncService
             'current_quantity'       => 'required|integer|min:0',
             'status'                 => 'nullable|string|in:Actif,Terminé',
             'arrival_date'           => 'required|date',
+            // L'âge se compte depuis la naissance, pas depuis la réception : le
+            // terrain met en lot des sujets qui peuvent avoir n'importe quel âge.
+            'birth_date'             => 'nullable|date|before_or_equal:arrival_date',
             'employee_id'            => ['nullable', 'integer', $this->employeeExists()],
             'provider_id'            => ['nullable', 'integer', $this->farmScopedExists('providers')],
             'qty_dead'               => 'nullable|integer|min:0',
@@ -1126,7 +1129,7 @@ class SyncService
                 'data'   => $serverBatch->only([
                     'uuid', 'code', 'type', 'building_id',
                     'initial_quantity', 'current_quantity',
-                    'status', 'arrival_date', 'updated_at',
+                    'status', 'arrival_date', 'birth_date', 'updated_at',
                 ]),
             ];
         }
@@ -1146,6 +1149,10 @@ class SyncService
                     'arrival_mortality_rate' => $validated['arrival_mortality_rate'] ?? 0,
                     'status'                 => $validated['status'] ?? 'Actif',
                     'arrival_date'           => $validated['arrival_date'],
+                    // Sans cette ligne, la naissance était VALIDÉE puis jetée : le
+                    // terrain l'aurait saisie sans effet, et l'âge serait resté
+                    // compté depuis la réception.
+                    'birth_date'             => $validated['birth_date'] ?? null,
                     'employee_id'            => $validated['employee_id'] ?? null,
                     'provider_id'            => $validated['provider_id'] ?? null,
                     'buy_price_per_unit'     => $price,

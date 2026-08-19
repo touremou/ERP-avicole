@@ -101,6 +101,21 @@ const RULES: Partial<Record<OperationType, Validator>> = {
     reqId(p, 'building_id', 'Bâtiment', e)
     reqNum(p, 'initial_quantity', 'Effectif à l’arrivée', e, 1)
     reqDate(p, 'arrival_date', 'Date d’arrivée', e, true)
+    /*
+     * La naissance ancre l'âge, donc la phase, les seuils de mortalité et la fin
+     * prévue. Facultative — un poussin d'un jour n'a rien à saisir — mais jamais
+     * postérieure à l'arrivée : un sujet ne peut pas arriver avant d'être né.
+     *
+     * Le contrôle est écrit ici plutôt que dans une aide générique parce qu'il
+     * compare DEUX champs entre eux, ce qu'aucune aide ne fait.
+     */
+    if (has(p, 'birth_date')) {
+      if (isFuture(p.birth_date)) {
+        e.push('Date de naissance : ne peut pas être dans le futur.')
+      } else if (has(p, 'arrival_date') && String(p.birth_date) > String(p.arrival_date)) {
+        e.push('Date de naissance : postérieure à l’arrivée — un sujet ne peut pas arriver avant d’être né.')
+      }
+    }
     optNum(p, 'current_quantity', 'Effectif actuel', e, 0)
     optNum(p, 'qty_dead', 'Morts à l’arrivée', e, 0)
     optNum(p, 'buy_price_per_unit', 'Prix d’achat unitaire', e, 0)

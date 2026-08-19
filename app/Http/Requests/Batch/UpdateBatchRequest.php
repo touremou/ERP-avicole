@@ -50,6 +50,7 @@ class UpdateBatchRequest extends FormRequest
             'allocated_surface'  => 'nullable|numeric|min:0.1',
             'buy_price_per_unit' => 'required|numeric|min:0',
             'arrival_date'       => 'required|date',
+            'birth_date'       => 'nullable|date|before_or_equal:arrival_date',
             'status'             => ['required', Rule::in(Batch::EDITABLE_STATUSES)],
             'observations'       => 'nullable|string|max:2000',
             'species_id'         => 'nullable|integer|exists:species,id',

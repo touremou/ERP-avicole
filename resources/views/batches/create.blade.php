@@ -170,8 +170,25 @@
 
                                 <div>
                                     <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 italic leading-none">{{ __("Date d'arrivée") }}</label>
-                                    <input type="date" name="arrival_date" value="{{ old('arrival_date', date('Y-m-d')) }}" required
+                                    <input type="date" name="arrival_date" id="arrival_date" value="{{ old('arrival_date', date('Y-m-d')) }}" required
                                            class="w-full p-5 bg-slate-50 rounded-2xl border-none font-black text-slate-700 shadow-inner italic leading-none">
+                                </div>
+
+                                {{-- DATE DE NAISSANCE — l'âge se compte depuis elle.
+                                     Un lot s'achète à n'importe quel âge : des poulettes
+                                     prêtes à pondre arrivent à 16 semaines. Sans ce champ,
+                                     l'application les traitait comme des sujets d'un jour
+                                     (ponte bloquée, seuils de mortalité du démarrage,
+                                     phase et GMQ faux).
+                                     Pré-remplie à la date d'arrivée : le cas courant du
+                                     poussin d'un jour ne demande aucune réflexion. --}}
+                                <div>
+                                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 italic leading-none">{{ __("Date de naissance / éclosion") }}</label>
+                                    <input type="date" name="birth_date" id="birth_date" value="{{ old('birth_date', date('Y-m-d')) }}"
+                                           class="w-full p-5 bg-slate-50 rounded-2xl border-none font-black text-slate-700 shadow-inner italic leading-none">
+                                    <p class="text-[9px] text-slate-400 uppercase italic font-black mt-2 ml-1 leading-snug">
+                                        {{ __("Sur le bon du couvoir. Laisser égale à l'arrivée pour des sujets d'un jour.") }}
+                                    </p>
                                 </div>
                             </div>
                         </div>
@@ -637,5 +654,22 @@
             syncProductionTypeId();
         }
     });
+    </script>
+
+    <script>
+        // La naissance suit l'arrivée tant qu'on ne l'a pas saisie soi-même : le
+        // cas courant (poussin d'un jour) reste sans effort, le cas d'un lot déjà
+        // âgé demande une seule saisie.
+        (function () {
+            const arrivee = document.getElementById('arrival_date');
+            const naissance = document.getElementById('birth_date');
+            if (!arrivee || !naissance) return;
+
+            let touchee = false;
+            naissance.addEventListener('input', () => { touchee = true; });
+            arrivee.addEventListener('input', () => {
+                if (!touchee) naissance.value = arrivee.value;
+            });
+        })();
     </script>
 </x-app-layout>

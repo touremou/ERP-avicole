@@ -212,6 +212,19 @@
                                            class="w-full p-5 bg-slate-50 rounded-2xl border-none font-black text-slate-700 shadow-inner italic leading-none text-center text-sm">
                                 </div>
 
+                                {{-- DATE DE NAISSANCE — l'âge, la phase, les seuils de
+                                     mortalité et la fin prévue s'en déduisent. Modifiable :
+                                     un lot saisi avant l'existence de ce champ porte la date
+                                     d'arrivée, et se corrige ici. --}}
+                                <div>
+                                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 italic leading-none">Date de naissance / éclosion</label>
+                                    <input type="date" name="birth_date" value="{{ old('birth_date', $batch->birth_date ? $batch->birth_date->format('Y-m-d') : '') }}"
+                                           class="w-full p-5 bg-slate-50 rounded-2xl border-none font-black text-slate-700 shadow-inner italic leading-none text-center text-sm">
+                                    <p class="text-[9px] text-slate-400 uppercase italic font-black mt-2 ml-1 leading-snug">
+                                        Âge actuel : {{ $batch->age }} j
+                                    </p>
+                                </div>
+
                                 <div class="col-span-1 md:col-span-2">
                                     <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 italic leading-none">Statut du Lot</label>
                                     <select name="status" required class="w-full p-5 bg-slate-50 rounded-2xl font-black border-none text-slate-700 shadow-inner italic appearance-none">
