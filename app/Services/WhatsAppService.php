@@ -331,6 +331,36 @@ class WhatsAppService
             return [false, ['error' => 'Twilio : renseignez la clé API au format SID:TOKEN dans Paramètres › WhatsApp.']];
         }
 
+        /*
+         * UN SID QUI NE PEUT PAS ABOUTIR, REFUSÉ AVANT L'APPEL.
+         *
+         * Signalé depuis l'exploitation : tous les envois échouaient et
+         * l'historique n'affichait que la réponse brute de Twilio —
+         * « 401, code 20003, Authentication Error - invalid username » — qui ne
+         * dit pas ce qu'il faut corriger.
+         *
+         * La console Twilio propose deux identifiants qui se ressemblent :
+         * l'ACCOUNT SID (« AC… »), et un API KEY SID (« SK… »). Seul le premier
+         * convient ici, parce qu'il sert À LA FOIS d'utilisateur
+         * d'authentification ET de segment d'URL, juste en dessous :
+         * /Accounts/{SID}/Messages.json. Un « SK… » y est refusé.
+         *
+         * Le code le savait dès la lecture du réglage. Il envoyait quand même,
+         * et laissait l'exploitant devant le message d'un tiers.
+         *
+         * On ne prend PAS en charge les API Keys pour autant : elles demandent
+         * DEUX identifiants (Account SID pour l'URL, clé + secret pour
+         * l'authentification) là où l'écran offre un champ unique. Tant qu'il est
+         * unique, le seul couple qui fonctionne est celui que ce message demande.
+         */
+        if (! str_starts_with($sid, 'AC')) {
+            return [false, ['error' =>
+                'Twilio : la clé API doit commencer par l’ACCOUNT SID (« ACxxxx »), pas par un API Key SID '
+                . '(« SK… ») ni par le jeton seul. Format attendu : ACxxxx:votre_auth_token — '
+                . 'les deux se lisent côte à côte sur le tableau de bord Twilio.',
+            ]];
+        }
+
         $base = rtrim($this->apiUrl ?: 'https://api.twilio.com', '/');
 
         $response = $this->http()
