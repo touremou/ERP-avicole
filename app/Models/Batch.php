@@ -878,6 +878,36 @@ class Batch extends Model
      *
      * Correction S-13 : Carbon::parse safe en cas de type inattendu.
      */
+    /**
+     * DATE DE DÉPART D'UN PROTOCOLE — déclaration UNIQUE.
+     *
+     * Le même « quand cette étape est-elle due ? » se calculait à deux endroits,
+     * avec deux ancrages : le tableau de bord prenait
+     * `transfer_date ?? start_date ?? arrival_date`, l'alerte sanitaire prenait
+     * `arrival_date` tout court.
+     *
+     * Un lot ayant gradué — la mutation lui attribue un protocole NEUF — voyait
+     * donc une échéance de vaccination au tableau de bord et une autre dans
+     * l'alerte. Deux écrans, deux dates, pour le même acte.
+     *
+     * On retient la version du tableau de bord, la plus complète et la seule
+     * cohérente avec ce que fait la mutation : un protocole attribué à la
+     * mutation commence à la mutation. Aucune sémantique n'est changée ici — on
+     * supprime la moins complète des deux déclarations.
+     *
+     * NOTE : ce n'est PAS l'âge des sujets. Si les numéros de jour d'un protocole
+     * devaient un jour se lire comme des âges (J1, J7, J21 des programmes de
+     * vaccination), l'ancrage deviendrait `birth_date` — c'est une décision
+     * d'exploitation, pas une correction de code, et elle se prendrait ici, en un
+     * seul endroit.
+     */
+    public function protocolAnchorDate(): Carbon
+    {
+        return Carbon::parse(
+            $this->transfer_date ?? $this->start_date ?? $this->arrival_date
+        )->startOfDay();
+    }
+
     public function getAgeAttribute(): int
     {
         if (! $this->arrival_date) {

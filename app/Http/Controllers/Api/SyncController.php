@@ -44,7 +44,7 @@ class SyncController extends Controller
             'model'   => Batch::class,
             'gate'    => 'elevage.L',
             'columns' => ['id', 'uuid', 'code', 'status', 'building_id', 'species_id', 'production_type_id',
-                          'employee_id', 'initial_quantity', 'current_quantity', 'qty_dead', 'arrival_date', 'updated_at'],
+                          'employee_id', 'initial_quantity', 'current_quantity', 'qty_dead', 'arrival_date', 'birth_date', 'updated_at'],
             // Attribut dérivé (calculé serveur) : le terrain ne peut pas
             // reproduire la règle d'éligibilité ponte (normes de souche, âge).
             'append'  => ['can_collect_eggs'],

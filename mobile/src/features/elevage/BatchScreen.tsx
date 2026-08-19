@@ -43,9 +43,17 @@ export function BatchScreen() {
   // la souche) ; repli sur le slug 'ponte' si le serveur ne l'a pas fourni.
   const canCollect = batch.can_collect_eggs ?? productionType?.slug === 'ponte'
 
+  /*
+   * L'âge se compte depuis la NAISSANCE, pas depuis la réception — un lot
+   * s'achète à n'importe quel âge, et des poulettes prêtes à pondre arrivent à
+   * 16 semaines. Repli sur l'arrivée pour les lots antérieurs au champ, ce qui
+   * reproduit exactement l'affichage d'avant.
+   */
   const ageDays = Math.max(
     0,
-    Math.floor((Date.now() - new Date(batch.arrival_date).getTime()) / 86_400_000) + 1,
+    Math.floor(
+      (Date.now() - new Date(batch.birth_date ?? batch.arrival_date).getTime()) / 86_400_000,
+    ) + 1,
   )
   const ageWeeks = Math.floor(ageDays / 7)
   const mortalityRate =
