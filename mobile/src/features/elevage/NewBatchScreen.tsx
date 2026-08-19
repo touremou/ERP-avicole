@@ -44,6 +44,16 @@ export function NewBatchScreen() {
   const [initialQuantity, setInitialQuantity] = useState(0)
   const [deadOnArrival, setDeadOnArrival] = useState(0)
   const [arrivalDate, setArrivalDate] = useState(new Date().toISOString().slice(0, 10))
+  /*
+   * DATE DE NAISSANCE — l'âge du lot s'en déduit, et avec lui la phase, les
+   * seuils de mortalité, la fin prévue et l'autorisation de collecter les œufs.
+   *
+   * Elle SUIT la date d'arrivée tant que le technicien ne l'a pas saisie
+   * lui-même : le cas courant (poussins d'un jour) ne demande aucun geste, et un
+   * lot déjà âgé — des poulettes reçues à 16 semaines — n'en demande qu'un.
+   */
+  const [birthDate, setBirthDate] = useState(new Date().toISOString().slice(0, 10))
+  const [birthTouched, setBirthTouched] = useState(false)
   const [employeeId, setEmployeeId] = useState('')
   const [providerId, setProviderId] = useState('')
   const [buyPrice, setBuyPrice] = useState(0)
@@ -116,6 +126,7 @@ export function NewBatchScreen() {
           initialQuantity > 0 ? Number(((deadOnArrival / initialQuantity) * 100).toFixed(2)) : 0,
         status: 'Actif',
         arrival_date: arrivalDate,
+        birth_date: birthDate || null,
         employee_id: employeeId ? Number(employeeId) : null,
         provider_id: providerId ? Number(providerId) : null,
         buy_price_per_unit: buyPrice,
@@ -223,9 +234,27 @@ export function NewBatchScreen() {
         id="arrival"
         type="date"
         value={arrivalDate}
-        onChange={(e) => setArrivalDate(e.target.value)}
+        onChange={(e) => {
+          setArrivalDate(e.target.value)
+          if (!birthTouched) setBirthDate(e.target.value)
+        }}
         required
       />
+
+      <label htmlFor="birth">{t('Date de naissance / éclosion')}</label>
+      <input
+        id="birth"
+        type="date"
+        value={birthDate}
+        max={arrivalDate}
+        onChange={(e) => {
+          setBirthTouched(true)
+          setBirthDate(e.target.value)
+        }}
+      />
+      <p className="muted">
+        {t('Sur le bon du couvoir. Laisser égale à l’arrivée pour des sujets d’un jour.')}
+      </p>
 
       <label htmlFor="provider">{t('Fournisseur')}</label>
       <select id="provider" value={providerId} onChange={(e) => setProviderId(e.target.value)}>

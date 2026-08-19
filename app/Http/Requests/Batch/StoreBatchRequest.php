@@ -47,6 +47,7 @@ class StoreBatchRequest extends FormRequest
             'protocol_id'        => 'nullable|integer|exists:protocols,id',
             'allocated_surface'  => 'nullable|numeric|min:0.1',
             'arrival_date'       => 'required|date|before_or_equal:today',
+            'birth_date'       => 'nullable|date|before_or_equal:arrival_date',
             'buy_price_per_unit' => 'required|numeric|min:0',
             'avg_weight_start'   => 'nullable|numeric|min:0',
             'observations'       => 'nullable|string|max:2000',
@@ -99,6 +100,7 @@ class StoreBatchRequest extends FormRequest
             'qty_alive.min'            => 'L\'effectif doit être d\'au moins 1 sujet.',
             'qty_females.required'     => 'Le nombre de femelles est requis pour un lot reproducteur.',
             'qty_females.min'          => 'Il faut au moins 1 femelle pour un lot reproducteur.',
+            'birth_date.before_or_equal'   => 'La date de naissance ne peut pas être postérieure à l\'arrivée : un sujet ne peut pas arriver avant d\'être né.',
             'arrival_date.before_or_equal' => 'La date d\'arrivée ne peut pas être dans le futur.',
         ];
     }

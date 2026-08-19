@@ -84,6 +84,7 @@ class Batch extends Model
         'species_id', 'production_type_id',
 
         // Effectifs — current_quantity est la source de vérité
+        'birth_date',
         'initial_quantity', 'current_quantity', 'qty_dead',
         'qty_males', 'qty_females', 'mating_ratio',
 
@@ -123,6 +124,7 @@ class Batch extends Model
         'is_synced' => 'boolean',
         'last_sync_at' => 'datetime',
         'arrival_date' => 'date',
+        'birth_date'   => 'date',
         'expected_end_date' => 'date',
         'closing_date' => 'date',
         'start_date' => 'date',
@@ -426,6 +428,18 @@ class Batch extends Model
             return;
         }
 
+        /*
+         * Le cycle se compte depuis la NAISSANCE, et la fin ne tombe jamais avant
+         * l'arrivée.
+         *
+         * Cette méthode ajoutait le cycle entier à la date d'arrivée : un poulet de
+         * chair reçu à 21 jours se voyait planifier 45 jours de plus au lieu des 24
+         * qui lui restaient. Le cas limite compte aussi — un sujet repris au-delà de
+         * son cycle théorique donnerait une fin déjà passée, qui ferait clignoter
+         * tous les écrans de planning. On la ramène alors au jour de l'arrivée.
+         */
+        $ancrage = $this->birth_date ?? $this->arrival_date;
+
         // 1. Depuis le type de production (table production_types) — source de vérité multiespèces
         if ($this->production_type_id && $this->productionType?->cycle_days_default) {
             $days = $this->productionType->cycle_days_default;
@@ -452,7 +466,10 @@ class Batch extends Model
             };
         }
 
-        $this->expected_end_date = Carbon::parse($this->arrival_date)->addDays($days);
+        $fin = Carbon::parse($ancrage)->addDays($days);
+        $arrivee = Carbon::parse($this->arrival_date);
+
+        $this->expected_end_date = $fin->lessThan($arrivee) ? $arrivee : $fin;
     }
 
     /** Retourne le label de l'espèce (avec fallback sur type legacy pour le poulet) */
@@ -867,7 +884,20 @@ class Batch extends Model
             return 0;
         }
 
-        $start = Carbon::parse($this->arrival_date)->startOfDay();
+        /*
+         * L'ÂGE SE COMPTE DEPUIS LA NAISSANCE, PAS DEPUIS LA RÉCEPTION.
+         *
+         * Ce calcul partait de `arrival_date` : la réception valait jour 1 de vie.
+         * Or un lot s'achète à n'importe quel âge — des poulettes prêtes à pondre
+         * arrivent à 16 semaines. Toute l'application les traitait alors comme des
+         * sujets d'un jour : ponte BLOQUÉE sous le minimum d'âge, seuils de
+         * mortalité du démarrage (les plus tolérants) appliqués à des adultes,
+         * phase de production fausse, GMQ divisé par le mauvais dénominateur.
+         *
+         * Repli sur `arrival_date` quand la naissance n'est pas renseignée : c'est
+         * le comportement historique, à la journée près, pour les lots antérieurs.
+         */
+        $start = Carbon::parse($this->birth_date ?? $this->arrival_date)->startOfDay();
 
         $end = ($this->status === self::STATUS_TERMINE && $this->closing_date)
             ? Carbon::parse($this->closing_date)->startOfDay()
