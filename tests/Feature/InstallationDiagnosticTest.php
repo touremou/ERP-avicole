@@ -364,11 +364,27 @@ test('des sauvegardes uniquement LOCALES sont signalées', function () {
 });
 
 test('une copie hors site est reconnue', function () {
+    /*
+     * CE TEST ENCODAIT LE DÉFAUT.
+     *
+     * Il configurait `['backups', 'backups_offsite']` et attendait le feu vert.
+     * Or `backups_offsite` a pour racine PAR DÉFAUT
+     * storage_path('app/backups-offsite') : le MÊME disque physique. Le contrôle
+     * passait donc au vert sans écarter le risque qu'il annonce — « une panne
+     * matérielle emporterait les données ET leurs sauvegardes ».
+     *
+     * On configure maintenant une racine qui SURVIT à la machine, comme le
+     * runbook le prescrit (« BACKUP_OFFSITE_PATH → /mnt/nas/erp-backups »).
+     * L'intention du test est conservée ; sa prémisse était fausse.
+     */
     makeInstallationHealthy($this->farm->id);
 
     $disk = \Illuminate\Support\Facades\Storage::fake('backups');
     $disk->put('avismart/hier.zip', 'contenu');
 
+    config(['filesystems.disks.backups_offsite' => [
+        'driver' => 'local', 'root' => '/mnt/nas/erp-backups', 'throw' => false, 'report' => false,
+    ]]);
     config(['backup.backup.destination.disks' => ['backups', 'backups_offsite']]);
 
     expect(runDiagnostic()[1])->toContain('Copie sur 2 destination(s)');

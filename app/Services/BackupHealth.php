@@ -57,12 +57,14 @@ class BackupHealth
             ];
         }
 
-        $disks = count((array) config('backup.backup.destination.disks', []));
+        $destinations = (array) config('backup.backup.destination.disks', []);
+        $disks = count($destinations);
+        $offsite = static::hasOffsiteDestination($destinations);
 
         if ($files === []) {
             return [
                 'reachable' => true, 'count' => 0, 'age_hours' => null,
-                'healthy' => false, 'offsite' => $disks > 1, 'disks' => $disks,
+                'healthy' => false, 'offsite' => $offsite, 'disks' => $disks,
                 'error' => null,
             ];
         }
@@ -76,7 +78,7 @@ class BackupHealth
             'count'     => count($files),
             'age_hours' => $age,
             'healthy'   => $age <= self::MAX_AGE_HOURS,
-            'offsite'   => $disks > 1,
+            'offsite'   => $offsite,
             'disks'     => $disks,
             'error'     => null,
         ];
@@ -94,5 +96,60 @@ class BackupHealth
         $state = $this->assess();
 
         return $state['age_hours'] !== null && $state['age_hours'] <= self::SCHEDULER_PROOF_HOURS;
+    }
+
+    /**
+     * UNE DESTINATION QUITTE-ELLE VRAIMENT LA MACHINE ?
+     *
+     * Ce contrôle se contentait de compter : `$disks > 1`. Or le disque
+     * `backups_offsite` a pour racine PAR DÉFAUT storage_path('app/backups-offsite'),
+     * c'est-à-dire le MÊME disque physique.
+     *
+     * Suivre à la lettre le conseil du diagnostic — « Configurer
+     * BACKUP_DISKS=backups,backups_offsite » — sans renseigner en plus
+     * BACKUP_OFFSITE_PATH donnait donc deux copies côte à côte, l'avertissement
+     * qui passe au VERT, et le risque annoncé (« une panne matérielle emporterait
+     * les données ET leurs sauvegardes ») entièrement inchangé.
+     *
+     * C'est pire que le silence : un feu vert obtenu en appliquant le remède
+     * recommandé, sur le seul incident que cette exploitation ne peut pas
+     * rattraper.
+     *
+     * La règle est donc DÉRIVÉE du pilote et du chemin, jamais d'une liste de noms :
+     *
+     *   • pilote non local (s3, ftp, sftp…) → ailleurs par construction ;
+     *   • racine HORS de storage_path() → le montage NAS, le disque USB ou le
+     *     dossier synchronisé que décrit le runbook (« BACKUP_OFFSITE_PATH →
+     *     /mnt/nas/erp-backups ») ;
+     *   • racine SOUS storage_path() → meurt avec la machine, quel que soit le nom
+     *     du disque ;
+     *   • disque non déclaré → ne prouve rien. Le compter rendrait le feu vert
+     *     atteignable par une faute de frappe.
+     *
+     * @param  array<int, string> $destinations
+     */
+    public static function hasOffsiteDestination(array $destinations): bool
+    {
+        $storage = rtrim(storage_path(), DIRECTORY_SEPARATOR);
+
+        foreach ($destinations as $name) {
+            $disk = config('filesystems.disks.' . $name);
+
+            if (! is_array($disk)) {
+                continue;   // disque non déclaré : aucune preuve
+            }
+
+            if (($disk['driver'] ?? 'local') !== 'local') {
+                return true;
+            }
+
+            $root = rtrim((string) ($disk['root'] ?? ''), DIRECTORY_SEPARATOR);
+
+            if ($root !== '' && ! str_starts_with($root, $storage)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

@@ -335,7 +335,14 @@ class InstallationDiagnostic extends Command
         $etat['offsite']
             ? $this->healthy('Sauvegardes hors site', "Copie sur {$etat['disks']} destination(s).")
             : $this->attention('Sauvegardes hors site', 'Les sauvegardes ne partent QUE sur le disque du serveur : une panne matérielle emporterait les données ET leurs sauvegardes.',
-                'Configurer BACKUP_DISKS=backups,backups_offsite (voir docs/ops/backup-restore-runbook.md).');
+                // Le conseil s'arrêtait à BACKUP_DISKS — la moitié qui ne protège de
+                // rien. `backups_offsite` a pour racine par défaut
+                // storage_path('app/backups-offsite'), donc le MÊME disque : suivre
+                // le conseil à la lettre faisait passer ce contrôle au vert sans
+                // écarter le risque annoncé. BACKUP_OFFSITE_PATH est la moitié utile.
+                'Configurer BACKUP_DISKS=backups,backups_offsite ET BACKUP_OFFSITE_PATH vers un support qui '
+                . 'SURVIT à la machine (NAS, disque USB, dossier synchronisé rclone) — une racine sous '
+                . 'storage/ ne compte pas. Voir docs/ops/backup-restore-runbook.md.');
     }
 
     // ─────────────────────────────────────────────────────────────
