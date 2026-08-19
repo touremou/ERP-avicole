@@ -26,7 +26,11 @@ class SanitaryAlertService
         foreach ($activeBatches as $batch) {
             if (!$batch->protocol || !$batch->arrival_date) continue;
 
-            $arrivalDate = Carbon::parse($batch->arrival_date)->startOfDay();
+            // Ancrage du protocole : déclaration unique portée par le modèle.
+            // Ce service prenait `arrival_date` tout court, là où le tableau de
+            // bord tenait compte de la mutation — un lot ayant gradué voyait donc
+            // deux échéances différentes pour la même vaccination.
+            $arrivalDate = $batch->protocolAnchorDate();
             
             // Pré-calcul des produits déjà administrés
             $doneProducts = $batch->healthChecks->map(fn($c) => $sanitize($c->product_name))->toArray();

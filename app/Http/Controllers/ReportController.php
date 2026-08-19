@@ -611,7 +611,11 @@ class ReportController extends Controller
             // la mortalité de transport, et deux écrans ne doivent pas donner
             // deux chiffres.
             $tauxMortalite = $batch->mortality_rate;
-            $age = Carbon::parse($batch->arrival_date)->diffInDays(now()) + 1;
+            // L'ancienne formule était recopiée ici mot pour mot. Depuis que
+            // l'âge se compte depuis la NAISSANCE (#292), un lot reçu déjà âgé
+            // affichait le bon âge sur sa fiche et le mauvais dans ce rapport —
+            // donc un GMQ et des performances faux.
+            $age = $batch->age;
 
             $lastCheck = $latestChecks->get($batch->id);
             $avgWeightGrams = $lastCheck ? ($lastCheck->avg_weight * 1000) : 0;

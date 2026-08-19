@@ -281,6 +281,8 @@ export interface RefBatch {
   current_quantity: number
   qty_dead: number
   arrival_date: string
+  /** Naissance/éclosion : l'âge s'en déduit. Absente sur les lots antérieurs. */
+  birth_date?: string | null
   updated_at: string
   /** Calculé serveur : le lot est en âge/phase de collecte d'œufs (règle de souche). */
   can_collect_eggs?: boolean

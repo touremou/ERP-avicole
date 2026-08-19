@@ -297,7 +297,7 @@ class DashboardController extends Controller
 
         foreach ($protocolBatches as $batch) {
             if (! $batch->protocol) continue;
-            $refDate = Carbon::parse($batch->transfer_date ?? $batch->start_date ?? $batch->arrival_date)->startOfDay();
+            $refDate = $batch->protocolAnchorDate();   // déclaration unique (cf. Batch)
             $overdue = [];
 
             foreach ($batch->protocol->steps as $step) {

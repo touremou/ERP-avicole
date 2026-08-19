@@ -63,10 +63,11 @@ class EggAnalysisService
             $collection = $yesterdayCollections->where('batch_id', $batch->id)->first();
             $prevCollection = $dayBeforeCollections->where('batch_id', $batch->id)->first();
 
-            // Calcul de l'âge en semaines
-            $ageWeeks = $batch->arrival_date
-                ? Carbon::parse($batch->arrival_date)->diffInWeeks(now())
-                : null;
+            // Âge en semaines — la courbe de ponte (Lohmann, Hy-Line) est indexée
+            // là-dessus. Il se comptait depuis l'ARRIVÉE, et sans le « + 1 » de
+            // l'accesseur : des poulettes reçues en âge de pondre étaient jugées
+            // contre la semaine 1 de leur propre courbe.
+            $ageWeeks = $batch->arrival_date ? (int) floor($batch->age / 7) : null;
 
             // ─── IRRÉGULARITÉ 1 : PAS DE COLLECTE ───
             if (! $collection) {
