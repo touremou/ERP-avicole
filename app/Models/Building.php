@@ -280,16 +280,50 @@ class Building extends Model
     }
 
     /**
-     * Taux d'occupation global (%) par rapport à la capacité théorique
+     * SUJETS LOGÉS ICI — déclaration UNIQUE.
+     *
+     * Trois endroits comptaient l'occupation d'un bâtiment, et pas de la même
+     * façon :
+     *
+     *   • TransferBatchRequest  → somme des lots ACTIFS, en excluant le lot muté ;
+     *   • UpdateBuildingConfig  → somme des lots actifs ;
+     *   • occupancy_rate        → le PREMIER lot actif seulement.
+     *
+     * Le troisième est celui qui s'affiche : deux bandes de 500 dans un bâtiment
+     * de 1 000 annonçaient 50 % d'occupation quand il est plein. Or la
+     * coexistence de plusieurs lots est un cas explicitement prévu ailleurs — le
+     * vide sanitaire ne démarre que « s'il ne reste plus aucun lot actif ».
+     *
+     * @param  int|null $exceptBatchId  Lot à ne pas compter. Une transformation
+     *         SUR PLACE (graduation sans changer de bâtiment) ne doit pas voir ses
+     *         propres sujets occuper la place qu'elle demande.
+     */
+    public function currentOccupation(?int $exceptBatchId = null): int
+    {
+        $query = $this->batches()->active();
+
+        if ($exceptBatchId !== null) {
+            $query->where('id', '!=', $exceptBatchId);
+        }
+
+        return (int) $query->sum('current_quantity');
+    }
+
+    /** Places restantes, jamais négatives à l'affichage près. */
+    public function availableCapacity(?int $exceptBatchId = null): int
+    {
+        return (int) $this->capacity - $this->currentOccupation($exceptBatchId);
+    }
+
+    /**
+     * Taux d'occupation global (%) par rapport à la capacité théorique.
      */
     public function getOccupancyRateAttribute(): float
     {
-        $activeBatch = $this->batches()->active()->first();
-        
-        if (!$activeBatch || $this->capacity <= 0) {
+        if ($this->capacity <= 0) {
             return 0.0;
         }
 
-        return round(($activeBatch->current_quantity / $this->capacity) * 100, 1);
+        return round(($this->currentOccupation() / $this->capacity) * 100, 1);
     }
 }

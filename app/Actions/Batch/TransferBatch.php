@@ -48,6 +48,33 @@ class TransferBatch
             $oldBuilding = $batch->building;
             $newProtocol = Protocol::findOrFail($data['new_protocol_id']);
 
+            /*
+             * LA CAPACITÉ, REPOSÉE SOUS LE VERROU.
+             *
+             * Elle était vérifiée par TransferBatchRequest, donc AVANT la
+             * transaction. Ce `lockForUpdate` sérialisait bien deux écritures,
+             * mais sans jamais reposer la question à laquelle il sert.
+             *
+             * Deux techniciens mutant deux lots vers le même bâtiment au même
+             * moment lisaient la même occupation, passaient tous les deux, et le
+             * bâtiment se retrouvait en surcharge. Dans un poulailler, ce n'est
+             * pas un nombre qui déborde : c'est la densité au m², donc le stress
+             * thermique et la mortalité. Et rien ne le rattrapait après coup — la
+             * capacité n'est contrôlée qu'au moment de la mutation.
+             *
+             * On exclut le lot lui-même : une transformation SUR PLACE ne doit pas
+             * voir ses propres sujets occuper la place qu'elle demande.
+             */
+            $available = $newBuilding->availableCapacity($batch->id);
+
+            if ($batch->current_quantity > $available) {
+                throw new \Exception(
+                    "Capacité insuffisante dans {$newBuilding->name} : {$batch->current_quantity} sujets "
+                    . "pour {$available} place(s) disponible(s). Une autre mutation a peut-être été validée "
+                    . 'entre-temps.'
+                );
+            }
+
             // ─── 1. GRADUATION ÉVENTUELLE DE TYPE DE PRODUCTION ───
             // La mutation peut faire passer un lot d'un type de production à
             // un autre (ex. poussinière -> chair/ponte/reproducteur après
