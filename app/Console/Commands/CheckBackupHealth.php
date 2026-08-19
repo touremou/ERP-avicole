@@ -60,7 +60,7 @@ class CheckBackupHealth extends Command
 
         $message .= "\n\nVérifier le planificateur (schedule:run) puis lancer php artisan backup:run.";
 
-        $admins = $this->administrators();
+        $admins = \App\Support\Administrators::all();
 
         if ($admins->isEmpty()) {
             // On le DIT plutôt que de rendre un succès muet : sans destinataire,
@@ -77,21 +77,4 @@ class CheckBackupHealth extends Command
         return self::FAILURE;
     }
 
-    /** @return \Illuminate\Support\Collection<int, User> */
-    private function administrators()
-    {
-        $admins = User::where('is_active', true)
-            ->whereHas('userRole', fn ($q) => $q->where('name', 'admin'))
-            ->get();
-
-        if ($admins->isNotEmpty()) {
-            return $admins;
-        }
-
-        // Repli par role_id, comme ErrorAlertService : la relation `userRole` est la
-        // bonne, mais une base ancienne peut porter des rôles non nommés « admin ».
-        $roleId = Role::where('name', 'admin')->value('id');
-
-        return $roleId ? User::where('is_active', true)->where('role_id', $roleId)->get() : collect();
-    }
 }

@@ -143,21 +143,10 @@ class ErrorAlertService
          * lèverait une BadMethodCallException qui sauterait au catch et
          * neutraliserait même le repli ci-dessous).
          */
-        $admins = collect();
-
-        try {
-            $admins = User::whereHas('userRole', fn ($q) => $q->where('name', 'admin'))->get();
-
-            if ($admins->isEmpty()) {
-                $adminRoleId = \App\Models\Role::where('name', 'admin')->value('id');
-
-                if ($adminRoleId) {
-                    $admins = User::where('role_id', $adminRoleId)->get();
-                }
-            }
-        } catch (\Throwable $e) {
-            Log::error("ErrorAlertService: impossible de lister les administrateurs — {$e->getMessage()}");
-        }
+        // Déclaration UNIQUE de l'audience « administrateurs » : ce bloc en
+        // portait sa propre version, sans écarter les comptes DÉSACTIVÉS — une
+        // alerte adressée à quelqu'un qui a quitté l'exploitation.
+        $admins = \App\Support\Administrators::all();
 
         /*
          * TROIS CANAUX, TROIS TRY/CATCH SÉPARÉS.
