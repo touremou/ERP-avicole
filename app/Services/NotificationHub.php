@@ -1776,16 +1776,52 @@ class NotificationHub
         // une case décochée.
         $column = $this->subscriptionColumnFor($type);
 
-        $query = User::whereNotNull('whatsapp_phone')
-            ->whereHas('notificationPreference', function ($q) use ($column) {
-                $q->where('is_active', true)
-                  ->where('channel_whatsapp', true);
+        /*
+         * LE TROU AVAIT ÉTÉ BOUCHÉ POUR LA CLOCHE, PAS ICI.
+         *
+         * La ligne `notification_preferences` n'est créée QU'EN ouvrant l'écran
+         * des préférences. Un technicien qui ne travaille que sur le mobile n'y
+         * va jamais.
+         *
+         * `typeRecipients()` avait été réparée pour cela — son commentaire le dit
+         * encore : « un compte qui n'y était jamais allé recevait ZÉRO alerte
+         * in-app ». Elle accepte désormais les comptes sans ligne et leur applique
+         * les valeurs livrées. Cette méthode-ci, qui résout le canal WHATSAPP, est
+         * restée sur le `whereHas` d'origine : le même trou, sur le canal qui
+         * atteint le terrain.
+         *
+         * Les valeurs livrées activent WhatsApp et les alertes de mortalité. Un
+         * technicien n'ayant jamais ouvert cet écran recevait donc la cloche et le
+         * push, mais AUCUN WhatsApp — en silence, puisque rien ne distingue
+         * « pas abonné » de « jamais passé par là ».
+         *
+         * La nuance conservée : toutes les valeurs livrées ne sont pas « oui »
+         * (`alert_sales` vaut faux). On les consulte donc TYPE PAR TYPE, comme
+         * `typeRecipients`, au lieu d'ouvrir en grand.
+         */
+        $defaults = NotificationPreference::DEFAULTS;
 
-                if ($column) {
-                    $q->where($column, true);
+        $defaultAllows = ($defaults['is_active'] ?? false)
+            && ($defaults['channel_whatsapp'] ?? false)
+            && ($column === null || ($defaults[$column] ?? false));
+
+        return User::whereNotNull('whatsapp_phone')
+            ->where(function ($query) use ($column, $defaultAllows) {
+                // Préférence explicite : elle fait foi.
+                $query->whereHas('notificationPreference', function ($q) use ($column) {
+                    $q->where('is_active', true)
+                      ->where('channel_whatsapp', true);
+
+                    if ($column) {
+                        $q->where($column, true);
+                    }
+                });
+
+                // Aucune préférence enregistrée : on applique les valeurs livrées.
+                if ($defaultAllows) {
+                    $query->orWhereDoesntHave('notificationPreference');
                 }
-            });
-
-        return $query->get();
+            })
+            ->get();
     }
 }
