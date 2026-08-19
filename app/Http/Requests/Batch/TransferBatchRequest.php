@@ -109,12 +109,17 @@ class TransferBatchRequest extends FormRequest
             // Capacité — on exclut toujours le lot lui-même de l'occupation
             // (sinon une transformation sur place compterait ses propres
             // sujets contre la place disponible).
-            $currentOccupation = Batch::where('building_id', $targetBuilding->id)
-                ->active()
-                ->where('id', '!=', $batch->id)
-                ->sum('current_quantity');
+            //
+            // Le comptage vit sur le modèle Building : trois endroits le
+            // faisaient à leur façon, dont le taux d'occupation AFFICHÉ, qui ne
+            // regardait que le premier lot.
+            //
+            // Ce contrôle-ci reste utile — il rend une erreur de champ propre
+            // avant toute écriture — mais il n'est plus le seul : l'action le
+            // repose SOUS VERROU, car deux mutations simultanées le passaient
+            // toutes les deux contre la même occupation.
+            $available = $targetBuilding->availableCapacity($batch->id);
 
-            $available = $targetBuilding->capacity - $currentOccupation;
             if ($batch->current_quantity > $available) {
                 $validator->errors()->add(
                     'target_building_id',

@@ -10,8 +10,10 @@ class UpdateBuildingConfig
 {
     public function execute(Building $building, array $data): Building
     {
-        // Effectif actif présent dans le bâtiment (somme des lots actifs).
-        $currentOccupation = (int) $building->batches()->active()->sum('current_quantity');
+        // Effectif actif présent dans le bâtiment — déclaration unique portée par
+        // le modèle (cf. Building::currentOccupation), trois endroits la
+        // recopiaient avec trois résultats.
+        $currentOccupation = $building->currentOccupation();
         $isOccupied = $currentOccupation > 0 || $building->batches()->active()->exists();
 
         if ($isOccupied) {
