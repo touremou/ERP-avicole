@@ -93,10 +93,16 @@ class CumulativeMortalityAlert
     private function notifyAdmins(Batch $batch, float $rate): void
     {
         try {
-            // La relation est `userRole` (et non `role`) : l'ancien
-            // `whereHas('role')` levait une BadMethodCallException avalée par le
-            // catch, si bien que l'alerte n'était jamais envoyée.
-            $admins = User::whereHas('userRole', fn ($q) => $q->where('name', 'admin'))->get();
+            // Déclaration UNIQUE de l'audience « administrateurs ». Ce bloc
+            // portait la seule version SANS repli par role_id ni filtre sur les
+            // comptes actifs — sur l'alerte la plus critique d'un élevage.
+            //
+            // Le commentaire d'origine gardait la trace d'une panne du même
+            // ordre : `whereHas('role')` au lieu de `userRole` levait une
+            // BadMethodCallException avalée par le catch ci-dessous, et l'alerte
+            // n'était jamais envoyée. La résolution vit désormais en un seul
+            // endroit, testé.
+            $admins = \App\Support\Administrators::all();
 
             if ($admins->isEmpty()) {
                 Log::warning("[Mortalité cumulée] Aucun compte de rôle 'admin' : alerte non envoyée pour {$batch->code}.");
