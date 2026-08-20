@@ -13,13 +13,9 @@ class EggMovement extends Model
 
     protected $fillable = [
         'farm_id',
-        'batch_id',
-        'stock_id',
-        'user_id',
         'type',          // in (Production/Retour), out (Vente/Don/Casse), adjustment
         'grade',         // S, M, L, XL, Cassé, Anomalie
         'quantity',      // Valeur brute
-        'unit',          // Alvéole ou Unité
         'observations'
     ];
 

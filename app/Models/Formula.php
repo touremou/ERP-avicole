@@ -20,7 +20,6 @@ class Formula extends Model
         'species_id',
         'production_type_id',
         'total_batch_weight',
-        'description',
         'is_active'
     ];
 

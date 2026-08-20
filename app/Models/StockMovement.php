@@ -18,7 +18,6 @@ class StockMovement extends Model
         'user_id',
         'type',               // in, out, adjustment, transfer
         'quantity',
-        'unit_price',         
         'reference_type',     // Modèle lié (ex: App\Models\Production)
         'source_destination', // ID du modèle lié
         'notes'
@@ -30,7 +29,6 @@ class StockMovement extends Model
      */
     protected $casts = [
         'quantity' => 'decimal:3', 
-        'unit_price' => 'decimal:2',
         'created_at' => 'datetime',
     ];
 
@@ -57,14 +55,6 @@ class StockMovement extends Model
     public function reference(): MorphTo
     {
         return $this->morphTo(null, 'reference_type', 'source_destination');
-    }
-
-    /**
-     * ACCESSEUR : Valeur monétaire du mouvement
-     */
-    public function getTotalValueAttribute(): float
-    {
-        return (float) ($this->quantity * ($this->unit_price ?? 0));
     }
 
     /**

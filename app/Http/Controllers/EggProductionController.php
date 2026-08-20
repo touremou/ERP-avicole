@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Batch;
 use App\Models\EggProduction;
-use App\Models\EggMovement;
 use App\Models\Stock;
 use App\Models\StockMovement;
 use App\Actions\EggProduction\RecordEggCollection;

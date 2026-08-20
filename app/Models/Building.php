@@ -104,7 +104,6 @@ class Building extends Model
         'description',
         'status', // cf. constantes STATUS_* ci-dessus
         'water_source_id', // Source d'eau desservant le bâtiment (citerne…)
-        'is_active',
         'disinfection_started_at' // Présent dans votre schéma DB
     ];
 
