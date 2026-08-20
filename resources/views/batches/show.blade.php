@@ -502,7 +502,14 @@
                     <div class="h-full bg-blue-600 transition-all duration-1000 shadow-lg" style="width: {{ $progress }}%"></div>
                 </div>
                 <div class="flex justify-between mt-2 text-[8px] font-black text-slate-400 uppercase">
-                    <span>{{ __("Arrivée") }}</span>
+                    {{--
+                        La barre est indexée sur l'ÂGE (naissance → fin de cycle),
+                        pas sur la présence : son origine est donc l'éclosion. Un
+                        lot reçu à 16 semaines apparaît déjà bien avancé, ce qui
+                        est juste — l'étiquette « Arrivée » le contredisait.
+                        Sans date de naissance saisie, les deux coïncident.
+                    --}}
+                    <span>{{ $batch->birth_date ? __("Naissance") : __("Arrivée") }}</span>
                     <span>{{ __("Sortie Estimée") }} (J-{{ $maxDays }})</span>
                 </div>
             </div>

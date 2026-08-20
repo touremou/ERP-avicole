@@ -94,9 +94,24 @@ test('le web est borné à la ferme courante : les lots d\'une autre ferme sont 
         ->assertDontSee($batchB->code);
 });
 
-// ─── TRI D'OEUFS : is_graded VERROUILLE LA COLLECTE ───
-
-test('modifier une collecte déjà triée est refusé (le tri fige le total)', function () {
+/*
+ * ─── TRI D'OEUFS : CE QUE `is_graded` VERROUILLE, ET CE QU'IL NE VERROUILLE PLUS ───
+ *
+ * Ce test affirmait « le tri fige le total » : une collecte triée n'était plus
+ * corrigible du tout. L'exploitation a signalé que c'était faux — compter les
+ * œufs et les calibrer sont deux opérations distinctes, et un mauvais comptage
+ * doit pouvoir être rectifié.
+ *
+ * La règle est donc devenue : la correction est ACCEPTÉE, et rouvre le tri
+ * (stock défait, journée remise en réserve brute). Ce que le tri fige vraiment,
+ * c'est le stock déjà PARTI : si les œufs sont vendus, on ne peut plus les
+ * ressortir du magasin, et là seulement la correction est refusée.
+ *
+ * Le cas nominal est couvert par EggCollectionEditIsNotGradingTest ; on garde
+ * ici la borne qui appartient à cette suite de garde-fous — le refus quand le
+ * stock ne peut pas absorber la réouverture.
+ */
+test('corriger une collecte triée est refusé si les œufs sont déjà partis', function () {
     $batch = Batch::factory()->create([
         'building_id'      => $this->building->id,
         'status'           => 'Actif',
@@ -109,7 +124,8 @@ test('modifier une collecte déjà triée est refusé (le tri fige le total)', f
         'total_eggs_collected' => 150,
         'broken_eggs'          => 2,
         'small_eggs'           => 3,
-        'is_graded'            => true, // journée déjà TRIÉE et mise en stock
+        'grade_l'              => 4.8333,   // 145 œufs sains, mis en stock
+        'is_graded'            => true,     // journée déjà TRIÉE et mise en stock
         'created_at'           => now(),
         'updated_at'           => now(),
     ];
@@ -121,14 +137,26 @@ test('modifier une collecte déjà triée est refusé (le tri fige le total)', f
     }
     $eggId = DB::table('egg_productions')->insertGetId($egg);
 
+    // Le magasin ne porte plus que 1 alvéole des 4,83 entrées par ce tri :
+    // le reste est vendu. La réouverture rendrait le stock négatif.
+    \App\Models\Stock::create([
+        'farm_id' => $this->farm->id, 'item_name' => 'L',
+        'category' => \App\Models\Stock::CAT_OEUFS, 'unit' => 'Alvéole',
+        'current_quantity' => 1, 'alert_threshold' => 0,
+    ]);
+
     $this->actingAs($this->managerUser)
         ->put(route('egg-productions.update', $eggId), [
-            'total_eggs_collected' => 999, // tentative de réécrire l'historique
+            'total_eggs_collected' => 140,   // correction plausible, mais impossible à défaire
+            'broken_eggs'          => 2,
+            'small_eggs'           => 3,
         ])
         ->assertSessionHas('error');
 
     expect((int) DB::table('egg_productions')->where('id', $eggId)->value('total_eggs_collected'))
-        ->toBe(150); // total figé
+        ->toBe(150)                                      // rien n'est écrit
+        ->and((bool) DB::table('egg_productions')->where('id', $eggId)->value('is_graded'))
+        ->toBeTrue();                                    // ni le tri défait
 });
 
 // ─── EXPÉDITIONS : ANTI-FRAUDE & RÉCEPTION UNIQUE ───
