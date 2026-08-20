@@ -3,6 +3,8 @@
 namespace App\Actions\EggProduction;
 
 use App\Models\EggProduction;
+use App\Models\Stock;
+use App\Models\StockMovement;
 use App\Services\StockIntegrationService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -45,14 +47,16 @@ class GradeEggProduction
                 $newGrades["grade_{$g}"] = round($newQtyAlv, 4);
 
                 if (abs($delta) > 0.0001) {
-                    StockIntegrationService::syncMovement(
+                    $this->resolveStock(strtoupper($g));
+
+                    $this->assertMoved(StockIntegrationService::syncMovement(
                         strtoupper($g),
                         'oeufs',
                         abs($delta),
                         $delta > 0 ? 'in' : 'out',
                         "Tri lot {$prod->batch->code} — calibre " . strtoupper($g),
                         'Alvéole'
-                    );
+                    ), strtoupper($g));
                 }
             }
 
@@ -69,14 +73,16 @@ class GradeEggProduction
                 $deltaAlv   = round($deltaUnits / \App\Services\UnitConverter::eggsPerTray(), 4);
 
                 if (abs($deltaAlv) > 0.0001) {
-                    StockIntegrationService::syncMovement(
+                    $this->resolveStock($stockName);
+
+                    $this->assertMoved(StockIntegrationService::syncMovement(
                         $stockName,
                         'oeufs',
                         abs($deltaAlv),
                         $deltaAlv > 0 ? 'in' : 'out',
                         "Ajustement pertes lot {$prod->batch->code}",
                         'Alvéole'
-                    );
+                    ), $stockName);
                 }
             }
 
@@ -89,6 +95,61 @@ class GradeEggProduction
 
             return $prod->fresh();
         });
+    }
+
+    /**
+     * Garantit l'existence de l'article de stock — calibre ou perte.
+     *
+     * `StockIntegrationService::syncMovement()` ne CRÉE rien : article absent,
+     * il logge et rend `false`. Or RIEN dans l'application ne crée les articles
+     * « XL / L / M / S », ni « Cassé » / « Anomalie » — ni seeder, ni migration,
+     * ni installation. Sur une base neuve, aucun tri n'atteignait donc le
+     * magasin, en silence.
+     *
+     * C'est la règle qu'appliquent déjà, chacun pour son produit,
+     * SyncManureCollection (fumier), MilkProductionController (lait),
+     * SlaughterController (carcasses) et CompleteMillProduction (aliment). Les
+     * œufs — le plus gros volume — en étaient le seul flux dépourvu.
+     *
+     * Le farm_id est posé automatiquement par le trait BelongsToFarm : chaque
+     * ferme a son propre magasin d'œufs.
+     */
+    private function resolveStock(string $itemName): Stock
+    {
+        return Stock::firstOrCreate(
+            ['item_name' => $itemName, 'category' => Stock::CAT_OEUFS],
+            [
+                'unit'             => 'Alvéole',
+                'current_quantity' => 0,
+                'alert_threshold'  => 0,
+            ]
+        );
+    }
+
+    /**
+     * Un tri qui n'atteint pas le stock ne doit pas être déclaré réussi.
+     *
+     * Créer les articles supprime la cause connue. Mais un `false` avalé
+     * redeviendrait le même silence à la première autre cause : la collecte
+     * resterait marquée triée — ce qui la retire de la réserve brute et interdit
+     * toute correction (O-03) — sans qu'un seul œuf soit entré au magasin. La
+     * production de la journée serait perdue, avec un message de succès à
+     * l'écran.
+     *
+     * L'exception annule la transaction : ni calibres écrits, ni `is_graded`.
+     */
+    private function assertMoved(StockMovement|false $movement, string $itemName): void
+    {
+        if ($movement !== false) {
+            return;
+        }
+
+        throw ValidationException::withMessages(['logic' => sprintf(
+            "Le tri n'a pas pu être porté au stock : l'article « %s » (œufs) est introuvable "
+            . "et n'a pas pu être créé. Rien n'a été enregistré — la collecte reste triable. "
+            . "Vérifiez le magasin Œufs dans les Stocks.",
+            $itemName,
+        )]);
     }
 
     /**
