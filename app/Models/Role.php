@@ -13,7 +13,6 @@ class Role extends Model
     use HasFactory, BelongsToFarm, AuditsChanges;
 
     protected $fillable = [
-        'farm_id',
         'name',         // Nom système (ex: manager-provenderie)
         'display_name', // Nom affiché (ex: Manager Provenderie)
         'icon',         // Icone UI (ex: 🏗️)

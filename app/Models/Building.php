@@ -104,14 +104,12 @@ class Building extends Model
         'description',
         'status', // cf. constantes STATUS_* ci-dessus
         'water_source_id', // Source d'eau desservant le bâtiment (citerne…)
-        'is_active',
         'disinfection_started_at' // Présent dans votre schéma DB
     ];
 
     protected $casts = [
         'capacity' => 'integer',
         'surface' => 'decimal:2',
-        'is_active' => 'boolean',
         'disinfection_started_at' => 'datetime',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',

@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Log;
 /**
  * Service transversal de synchronisation des stocks.
  *
- * Appelé par : EggProductionController, MillProductionController (via ProductionService),
+ * Appelé par : EggProductionController, CompleteMillProduction,
  * StockController::syncAll, FeedPurchaseController, et tout module qui impacte le stock.
  *
  * BUGS CORRIGÉS dans cette version :

@@ -13,7 +13,6 @@ class FormulaItem extends Model
 
      protected $casts = [
         'percentage' => 'decimal:2',
-        'dosage_weight' => 'decimal:2',
         'quantity_kg' => 'decimal:2',
     ];
 
@@ -32,7 +31,6 @@ class FormulaItem extends Model
         'formula_id',
         'raw_material_id',
         'percentage',
-        'dosage_weight',
         'quantity_kg',
     ];
 }
