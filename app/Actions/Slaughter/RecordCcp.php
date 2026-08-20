@@ -130,8 +130,14 @@ class RecordCcp
      * une seconde déclaration.
      *
      * `0` déclaré reste un vrai seuil.
+     *
+     * PUBLIQUE parce que les ÉCRANS doivent dire ce que ce moteur fait. Ils
+     * lisaient `setting('abattoir.ccp3_core_temp_max', 4)` de leur côté : un
+     * réglage effacé leur faisait afficher « ≤ 4 °C » alors qu'ici plus aucun
+     * seuil ne s'applique. Un opérateur lisant cette limite la croyait tenue
+     * par l'application, quand seul son propre jugement la tenait.
      */
-    private static function seuil(string $key): ?float
+    public static function seuil(string $key): ?float
     {
         // `rawValue` et non `setting()` : le cast d'un réglage numérique
         // transforme la chaîne vide en 0 — précisément la confusion à lever.

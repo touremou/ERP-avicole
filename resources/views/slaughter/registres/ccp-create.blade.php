@@ -74,14 +74,14 @@
                                     <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest">{{ __("Carcasses souillées *") }}</label>
                                     <input type="number" name="carcasses_souillees" value="{{ old('carcasses_souillees') }}" min="0" :required="ccp === 'ccp2_evisceration'" class="w-full bg-white border-none rounded-2xl p-4 text-lg font-black shadow-inner outline-none text-center">
                                 </div>
-                                <p class="col-span-2 text-[8px] text-slate-400 m-0">{{ __("Seuil de contamination toléré :") }} {{ setting('abattoir.ccp2_soiled_max_pct') }} %</p>
+                                <p class="col-span-2 text-[8px] text-slate-400 m-0">{{ __("Seuil de contamination toléré :") }} {{ ($s = \App\Actions\Slaughter\RecordCcp::seuil('ccp2_soiled_max_pct')) !== null ? $s . ' %' : __("non paramétré — l’appréciation de l’opérateur fait foi") }}</p>
                             </div>
 
                             {{-- CCP 3 : refroidissement --}}
                             <div x-show="ccp === 'ccp3_refroidissement'" x-transition class="p-5 bg-slate-50 rounded-2xl space-y-2">
                                 <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest">{{ __("Température à cœur (°C) *") }}</label>
                                 <input type="number" name="temperature_coeur" value="{{ old('temperature_coeur') }}" step="0.1" min="-60" max="120" :required="ccp === 'ccp3_refroidissement'" class="w-full bg-white border-none rounded-2xl p-4 text-lg font-black shadow-inner outline-none text-center">
-                                <p class="text-[8px] text-slate-400">{{ __("Seuil maximum :") }} {{ setting('abattoir.ccp3_core_temp_max') }} °C</p>
+                                <p class="text-[8px] text-slate-400">{{ __("Seuil maximum :") }} {{ ($s = \App\Actions\Slaughter\RecordCcp::seuil('ccp3_core_temp_max')) !== null ? $s . ' °C' : __("non paramétré — l’appréciation de l’opérateur fait foi") }}</p>
                             </div>
 
                             {{-- CCP 4 : chaîne du froid --}}
