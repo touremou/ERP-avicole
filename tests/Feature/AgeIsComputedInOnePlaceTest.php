@@ -102,7 +102,11 @@ test('l’ANALYSE DE PONTE juge sur l’âge réel, pas sur la semaine 1', funct
 test('l’échéance d’un protocole est calculée en UN seul endroit', function () {
     /*
      * La garde contre le retour de la divergence : ni le tableau de bord ni
-     * l'alerte sanitaire ne reconstruisent l'ancrage chez eux.
+     * l'alerte sanitaire ne reconstruisent l'échéance chez eux.
+     *
+     * Le NOM de la déclaration a changé depuis : `protocolAnchorDate()` ne disait
+     * que l'ancrage, `protocolStepDue()` dit l'échéance ET la responsabilité —
+     * cf. ProtocolStepsAreIndexedOnAgeTest.
      */
     $fichiers = [
         'app/Services/SanitaryAlertService.php',
@@ -112,42 +116,23 @@ test('l’échéance d’un protocole est calculée en UN seul endroit', functio
     foreach ($fichiers as $fichier) {
         $code = file_get_contents(base_path($fichier));
 
-        expect(str_contains($code, 'protocolAnchorDate()'))
-            ->toBeTrue("Ancrage de protocole reconstruit dans {$fichier}");
+        expect(str_contains($code, 'protocolStepDue('))
+            ->toBeTrue("Échéance de protocole reconstruite dans {$fichier}");
     }
 });
 
-test('l’ancrage suit la MUTATION, qui attribue un protocole neuf', function () {
-    /*
-     * La sémantique retenue, celle du tableau de bord : un protocole attribué à
-     * la mutation commence à la mutation, pas à l'arrivée du lot dans la ferme.
-     */
-    $lot = Batch::factory()->create([
-        'farm_id'       => $this->farm->id,
-        'building_id'   => $this->building->id,
-        'arrival_date'  => today()->subDays(60)->toDateString(),
-        'transfer_date' => today()->subDays(10)->toDateString(),
-        'status'        => 'Actif',
-    ]);
-
-    expect($lot->protocolAnchorDate()->toDateString())
-        ->toBe(today()->subDays(10)->toDateString());
-});
-
-test('sans mutation, l’ancrage retombe sur l’arrivée', function () {
-    // Le cas courant, inchangé.
-    $lot = Batch::factory()->create([
-        'farm_id'       => $this->farm->id,
-        'building_id'   => $this->building->id,
-        'arrival_date'  => today()->subDays(30)->toDateString(),
-        'transfer_date' => null,
-        'start_date'    => null,
-        'status'        => 'Actif',
-    ]);
-
-    expect($lot->protocolAnchorDate()->toDateString())
-        ->toBe(today()->subDays(30)->toDateString());
-});
+/*
+ * LES DEUX TESTS D'ANCRAGE DE #293 ONT ÉTÉ RETIRÉS, ET C'EST VOLONTAIRE.
+ *
+ * Ils fixaient la sémantique « un protocole attribué à la mutation commence à la
+ * mutation », retenue faute de réponse dans le code. L'exploitation a depuis
+ * tranché : les `day_number` sont des ÂGES. L'échéance part donc de la naissance,
+ * et ces deux tests affirmaient le contraire.
+ *
+ * Ils ne sont pas supprimés en silence : ProtocolStepsAreIndexedOnAgeTest les
+ * remplace, et couvre en plus la seconde moitié de la règle — une étape due avant
+ * l'arrivée du lot ne nous incombe pas.
+ */
 
 test('le COÛT ÉNERGIE reste compté depuis l’ARRIVÉE — et c’est voulu', function () {
     /*
