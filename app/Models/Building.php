@@ -110,7 +110,6 @@ class Building extends Model
     protected $casts = [
         'capacity' => 'integer',
         'surface' => 'decimal:2',
-        'is_active' => 'boolean',
         'disinfection_started_at' => 'datetime',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',

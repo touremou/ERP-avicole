@@ -15,7 +15,7 @@ uses(TestCase::class, RefreshDatabase::class);
  * base refusera : le jour où un appelant passe la clé, l'insertion part en
  * erreur SQL.
  *
- * Un balayage sur les 9 modèles concernés a trouvé neuf entrées de ce genre :
+ * Un balayage de tous les modèles contre le schéma réel en a trouvé neuf :
  *
  *   • StockMovement::unit_price   — jamais créée par aucune migration, et lue
  *     par un accesseur `total_value` qui ne pouvait donc rendre que 0 ;
@@ -41,7 +41,7 @@ uses(TestCase::class, RefreshDatabase::class);
  * donc aussi pour les modèles à venir, sans qu'on ait à penser à l'y inscrire.
  */
 
-test('tout champ déclaré modifiable existe bien en base', function () {
+test('tout champ déclaré — modifiable ou converti — existe bien en base', function () {
     $violations = [];
     $modelesVus = 0;
 
@@ -75,6 +75,26 @@ test('tout champ déclaré modifiable existe bien en base', function () {
         foreach ($modele->getFillable() as $champ) {
             if (! in_array($champ, $colonnes, true)) {
                 $violations[] = "{$classe}::\$fillable['{$champ}'] — pas de colonne « {$champ} » dans « {$table} »";
+            }
+        }
+
+        /*
+         * Les CASTS aussi, et pour la même raison. Retirer un champ de
+         * `$fillable` en laissant son cast ne fait que déplacer le mensonge —
+         * c'est arrivé sur Building::is_active pendant ce nettoyage même.
+         *
+         * Un cast peut légitimement porter sur un attribut calculé ; ceux du
+         * projet ne le font pas, et le jour où l'un le fera, cette liste est
+         * l'endroit où le déclarer explicitement plutôt que de désarmer la
+         * vérification.
+         */
+        foreach (array_keys($modele->getCasts()) as $attribut) {
+            if ($attribut === $modele->getKeyName()) {
+                continue;                       // le cast implicite de la clé
+            }
+
+            if (! in_array($attribut, $colonnes, true)) {
+                $violations[] = "{$classe}::\$casts['{$attribut}'] — pas de colonne « {$attribut} » dans « {$table} »";
             }
         }
     }
