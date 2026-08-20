@@ -9,6 +9,8 @@ use App\Models\Stock;
 use App\Models\StockMovement;
 use App\Actions\EggProduction\RecordEggCollection;
 use App\Actions\EggProduction\GradeEggProduction;
+use App\Actions\EggProduction\UngradeEggProduction;
+use Illuminate\Validation\ValidationException;
 use App\Http\Requests\EggProduction\StoreEggProductionRequest;
 use App\Http\Requests\EggProduction\UpdateTriRequest;
 use App\Services\StockIntegrationService;
@@ -278,16 +280,16 @@ class EggProductionController extends Controller
     // RECTIFICATION (collecte non encore triée)
     // ─────────────────────────────────────────────
 
+    /**
+     * CORRIGER UNE COLLECTE — une opération à part entière.
+     *
+     * Compter les œufs sortis du bâtiment et les répartir par calibre sont deux
+     * gestes distincts, faits à deux moments, souvent par deux personnes. La
+     * correction du premier n'a jamais eu à passer par le second.
+     */
     public function edit(EggProduction $eggProduction): View|RedirectResponse
     {
         if (Gate::denies('production.M')) return back()->with('error', 'Modification non autorisée.');
-
-        // O-03 corrigé : bloquer si déjà trié
-        if ($eggProduction->is_graded) {
-            return back()->with('error',
-                "Cette collecte a déjà été triée. Pour la modifier, refaites le tri via 'Saisir le tri'."
-            );
-        }
 
         return view('egg-productions.edit', [
             'eggProduction' => $eggProduction,
@@ -296,17 +298,20 @@ class EggProductionController extends Controller
     }
 
     /**
-     * O-03 corrigé : modification bloquée si is_graded = true.
+     * Rectification de la récolte brute et des pertes.
+     *
+     * Sur une journée DÉJÀ TRIÉE, corriger ces nombres casse la balance
+     * « trié = collecté » : la répartition par calibre n'est plus celle des œufs
+     * déclarés. On rouvre donc le tri (stock défait, journée remise en réserve
+     * brute), et l'écran le dit — plutôt que de laisser un stock qui ne
+     * correspond plus à rien, ou de refuser la correction d'un chiffre faux.
      */
-    public function update(Request $request, EggProduction $eggProduction): RedirectResponse
-    {
+    public function update(
+        Request $request,
+        EggProduction $eggProduction,
+        UngradeEggProduction $reouvrir
+    ): RedirectResponse {
         if (Gate::denies('production.M')) return back()->with('error', 'Modification non autorisée.');
-
-        if ($eggProduction->is_graded) {
-            return back()->with('error',
-                "Collecte déjà triée. Impossible de modifier le total sans refaire le tri."
-            );
-        }
 
         $validated = $request->validate([
             'total_eggs_collected' => 'required|integer|min:0',
@@ -316,14 +321,50 @@ class EggProductionController extends Controller
         ]);
 
         $batch = $eggProduction->batch;
+
+        // Le total ne peut pas descendre sous les pertes qu'il contient.
+        $pertes = (int) ($validated['broken_eggs'] ?? 0) + (int) ($validated['small_eggs'] ?? 0);
+        if ($pertes > $validated['total_eggs_collected']) {
+            return back()->withInput()->with('error',
+                "Pertes ({$pertes}) supérieures à la récolte ({$validated['total_eggs_collected']}) : "
+                . "un œuf cassé fait partie des œufs ramassés."
+            );
+        }
+
+        // Même garde-fou biologique qu'à la saisie : 1 œuf/sujet/jour au plus.
+        if ($batch->current_quantity > 0 && $validated['total_eggs_collected'] > $batch->current_quantity) {
+            $taux = number_format(($validated['total_eggs_collected'] / $batch->current_quantity) * 100, 1);
+            return back()->withInput()->with('error',
+                "Taux de ponte impossible : {$validated['total_eggs_collected']} œufs pour "
+                . "{$batch->current_quantity} sujets = {$taux} %. Le maximum biologique est 100 %."
+            );
+        }
+
+        $etaitTrie = $eggProduction->is_graded;
+        $modifie   = (int) $eggProduction->total_eggs_collected !== (int) $validated['total_eggs_collected']
+            || (int) $eggProduction->broken_eggs !== (int) ($validated['broken_eggs'] ?? 0)
+            || (int) $eggProduction->small_eggs  !== (int) ($validated['small_eggs'] ?? 0);
+
+        try {
+            if ($etaitTrie && $modifie) {
+                $reouvrir->execute($eggProduction);
+            }
+        } catch (ValidationException $e) {
+            return back()->withInput()->with('error', $e->validator->errors()->first());
+        }
+
         $layingRate = $batch->current_quantity > 0
             ? round(($validated['total_eggs_collected'] / $batch->current_quantity) * 100, 2)
             : 0;
 
         $eggProduction->update(array_merge($validated, ['laying_rate' => $layingRate]));
 
-        return redirect()->route('egg-productions.index')
-            ->with('success', 'Collecte rectifiée.');
+        return redirect()->route('egg-productions.index')->with(
+            'success',
+            $etaitTrie && $modifie
+                ? 'Collecte rectifiée. Le tri a été rouvert et le stock défait : recalibrez cette journée.'
+                : 'Collecte rectifiée.'
+        );
     }
 
     // ─────────────────────────────────────────────
@@ -397,7 +438,11 @@ class EggProductionController extends Controller
         return DB::transaction(function () use ($eggProduction) {
             // Restitution des stocks
             if ($eggProduction->is_graded) {
-                foreach (['xl', 'l', 'm', 's'] as $g) {
+                // Calibres CONFIGURÉS, pas une liste écrite en dur : la
+                // vérification ci-dessus parcourt `gradeCodes()`, et une
+                // exploitation ayant ajouté un calibre le voyait contrôlé
+                // puis jamais restitué — le stock gardait ces alvéoles.
+                foreach (array_map('strtolower', EggProduction::gradeCodes()) as $g) {
                     $qty = (float) $eggProduction->{"grade_{$g}"};
                     if ($qty > 0) {
                         StockIntegrationService::syncMovement(
@@ -407,7 +452,7 @@ class EggProductionController extends Controller
                         );
                     }
                 }
-                foreach (['broken_eggs' => 'Cassé', 'small_eggs' => 'Anomalie'] as $field => $name) {
+                foreach (UngradeEggProduction::lossMap() as $field => $name) {
                     $qtyAlv = \App\Services\UnitConverter::eggsToTrays((float) $eggProduction->$field);
                     if ($qtyAlv > 0) {
                         StockIntegrationService::syncMovement(

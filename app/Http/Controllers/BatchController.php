@@ -273,7 +273,7 @@ class BatchController extends Controller
         }
         $batch->load([
             'building', 'protocol.steps', 'healthChecks',
-            'feedPurchases', 'tasks', 'species.productionTypes', 'productionType',
+            'feedPurchases', 'species.productionTypes', 'productionType',
             'dailyChecks' => fn($q) => $q->orderBy('check_date', 'asc'),
             'dailyChecks.extension',
         ]);

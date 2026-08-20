@@ -106,7 +106,6 @@ class DependencyGuard
         'health_incidents'      => 'incidents sanitaires',
         'egg_productions'       => 'collectes d\'œufs',
         'feed_purchases'        => 'achats d\'aliment',
-        'batch_tasks'           => 'tâches de lot',
         'milk_productions'      => 'traites',
         'reproducers'           => 'reproducteurs',
         'batches'               => 'lots d\'élevage',

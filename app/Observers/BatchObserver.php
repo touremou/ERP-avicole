@@ -42,7 +42,6 @@ class BatchObserver
         $batch->healthChecks()->delete();
         $batch->feedPurchases()->delete();
         $batch->eggProductions()->delete();
-        $batch->tasks()->delete();
     }
 
     /**
