@@ -319,11 +319,6 @@ class Batch extends Model
         return $this->hasMany(MilkProduction::class);
     }
 
-    public function tasks(): HasMany
-    {
-        return $this->hasMany(BatchTask::class);
-    }
-
     public function species(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(\App\Models\Species::class);

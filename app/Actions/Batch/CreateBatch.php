@@ -5,7 +5,6 @@ namespace App\Actions\Batch;
 use App\Models\Batch;
 use App\Models\Building;
 use App\Models\ProductionType;
-use App\Services\SanitarySchedulerService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -17,16 +16,11 @@ use Illuminate\Validation\ValidationException;
  * 2. Calcul des champs dérivés (coûts, mortalité d'arrivage, dates)
  * 3. Création atomique du lot
  * 4. Mise à jour du statut bâtiment → Occupé
- * 5. Planification sanitaire initiale
  *
  * @see AUDIT_MODULE_LOTS.md — B-02 (remplace le BatchService manquant)
  */
 class CreateBatch
 {
-    public function __construct(
-        private SanitarySchedulerService $scheduler
-    ) {}
-
     /**
      * @param  array $data  Données validées depuis StoreBatchRequest
      * @return Batch Le lot créé
@@ -133,10 +127,6 @@ class CreateBatch
             // ─── Mise à jour du bâtiment ───
             $building->markOccupied();
 
-            // ─── Planification sanitaire ───
-            if ($batch->protocol_id) {
-                $this->scheduler->syncSchedule($batch);
-            }
 
             return $batch;
         });

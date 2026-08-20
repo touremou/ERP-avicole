@@ -6,7 +6,6 @@ use App\Models\Batch;
 use App\Models\Building;
 use App\Models\Protocol;
 use App\Models\ProductionType;
-use App\Services\SanitarySchedulerService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -22,10 +21,6 @@ use Illuminate\Support\Str;
  */
 class TransferBatch
 {
-    public function __construct(
-        private SanitarySchedulerService $scheduler
-    ) {}
-
     /**
      * @param  Batch $batch  Le lot à transférer
      * @param  array $data   Données validées depuis TransferBatchRequest
@@ -150,8 +145,6 @@ class TransferBatch
                 }
             }
 
-            // ─── 5. REPLANIFICATION SANITAIRE ───
-            $this->scheduler->syncSchedule($batch->fresh());
 
             return $batch->fresh();
         });
