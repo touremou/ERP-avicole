@@ -195,11 +195,20 @@ test('un poussin d’un jour reçu le jour de son éclosion a bien 1 jour', func
     expect($poussins->age)->toBe(1);
 });
 
-test('le FORMULAIRE web peut enfin l’écrire', function () {
+test('le MODÈLE accepte la naissance en écriture de masse', function () {
     /*
      * La colonne `age_at_arrival` existait depuis toujours — mais hors de
-     * $fillable, donc inatteignable depuis un formulaire. Une colonne qu'on ne
-     * peut pas remplir ne vaut pas mieux qu'une colonne absente.
+     * $fillable, donc inatteignable depuis une écriture de masse. Une colonne
+     * qu'on ne peut pas remplir ne vaut pas mieux qu'une colonne absente.
+     *
+     * ⚠️ CE TEST NE PROUVE QUE $fillable. Il s'est d'abord appelé « le
+     * FORMULAIRE web peut enfin l'écrire » — un titre faux, qui a coûté cher :
+     * il appelle `update()` SUR LE MODÈLE, court-circuitant CreateBatch et
+     * UpdateBatch, qui tous deux jetaient `birth_date` en silence. Le défaut est
+     * parti en production et l'exploitation l'a vu avant nous.
+     *
+     * Le formulaire, lui, est couvert par BirthDateSurvivesTheFormTest, qui
+     * passe par les ROUTES et va jusqu'à l'écran.
      */
     $this->actingAs($this->adminUser);
 

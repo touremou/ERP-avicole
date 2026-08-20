@@ -110,6 +110,10 @@ class CreateBatch
 
                 // Dates
                 'arrival_date' => $data['arrival_date'],
+                // La naissance ancre TOUT le zootechnique (âge, phase, seuils de
+                // mortalité, échéances de protocole). L'omettre ici la faisait
+                // valider par le formulaire puis disparaître en silence.
+                'birth_date'   => $data['birth_date'] ?? null,
                 // expected_end_date est calculé automatiquement par Batch::booted()
 
                 // État
