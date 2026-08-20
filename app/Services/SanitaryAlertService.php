@@ -26,18 +26,28 @@ class SanitaryAlertService
         foreach ($activeBatches as $batch) {
             if (!$batch->protocol || !$batch->arrival_date) continue;
 
-            // Ancrage du protocole : déclaration unique portée par le modèle.
-            // Ce service prenait `arrival_date` tout court, là où le tableau de
-            // bord tenait compte de la mutation — un lot ayant gradué voyait donc
-            // deux échéances différentes pour la même vaccination.
-            $arrivalDate = $batch->protocolAnchorDate();
             
             // Pré-calcul des produits déjà administrés
             $doneProducts = $batch->healthChecks->map(fn($c) => $sanitize($c->product_name))->toArray();
 
             foreach ($batch->protocol->steps as $step) {
-                $targetDate = $arrivalDate->copy()->addDays($step->day_number);
-                
+                /*
+                 * Échéance et responsabilité, en une seule déclaration
+                 * (Batch::protocolStepDue). Les day_number sont des ÂGES, donc
+                 * l'échéance part de la naissance — et une étape due AVANT
+                 * l'arrivée du lot relevait de son détenteur d'alors.
+                 *
+                 * Sans cette seconde moitié, ce service — qui n'a aucune fenêtre —
+                 * aurait réclamé à un lot acheté à 16 semaines son J7, son J14 et
+                 * son J21, faits chez l'éleveur précédent et jamais inscrits à
+                 * notre registre : des alertes impossibles à solder.
+                 */
+                $targetDate = $batch->protocolStepDue((int) $step->day_number);
+
+                if ($targetDate === null) {
+                    continue;
+                }
+
                 // Si la date prévue est passée ou c'est aujourd'hui
                 if ($targetDate->lte($today)) {
                     $expected = $sanitize($step->action_name ?? $step->name);

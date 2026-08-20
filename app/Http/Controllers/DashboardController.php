@@ -297,11 +297,14 @@ class DashboardController extends Controller
 
         foreach ($protocolBatches as $batch) {
             if (! $batch->protocol) continue;
-            $refDate = $batch->protocolAnchorDate();   // déclaration unique (cf. Batch)
+
             $overdue = [];
 
             foreach ($batch->protocol->steps as $step) {
-                $dueDate = $refDate->copy()->addDays((int) $step->day_number);
+                // Échéance ET responsabilité : cf. Batch::protocolStepDue. Une
+                // étape due avant l'arrivée du lot n'est pas la nôtre.
+                $dueDate = $batch->protocolStepDue((int) $step->day_number);
+                if ($dueDate === null) continue;                          // pas notre étape
                 if (! $dueDate->isPast()) continue;                       // pas encore échue
                 if ($dueDate->lt(now()->subDays($protocolWindowDays))) continue; // trop ancienne
 
