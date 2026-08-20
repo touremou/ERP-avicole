@@ -31,7 +31,7 @@ class UpdateBatch
         'building_id', 'employee_id', 'provider_id',
         'protocol_id', 'current_protocol_id',
         'buy_price_per_unit',
-        'arrival_date', 'status',
+        'arrival_date', 'birth_date', 'status',
         'allocated_surface', 'observations',
         'qty_males', 'qty_females',
         'vaccination_received', 'vaccination_details',
