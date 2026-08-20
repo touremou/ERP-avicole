@@ -452,26 +452,23 @@ class BatchController extends Controller
             $acquisitionCost = (float) $batch->buy_price_per_unit * (int) $batch->initial_quantity;
         }
 
-        // 2. Coût alimentation (somme des daily_checks.feed_quantity × prix unitaire aliment)
-        $feedData = \App\Models\DailyCheck::where('batch_id', $batch->id)
-            ->selectRaw('SUM(feed_consumed) as total_kg')
-            ->first();
-        $totalFeed = (float) ($feedData->total_kg ?? 0);
-
-        // Prix moyen du kg d'aliment (depuis les stocks de type conso),
-        // filtré sur le secteur d'aliment du lot (Chair/Ponte) via feedSector().
-        $avgFeedPrice = \App\Models\Stock::where('category', \App\Models\Stock::CAT_CONSO)
-            ->where('item_name', 'LIKE', '%' . $batch->feedSector() . '%')
-            ->avg('last_unit_price') ?? 0;
-
-        // Si pas de prix moyen, estimer depuis les achats
-        if ($avgFeedPrice <= 0) {
-            $avgFeedPrice = \App\Models\Stock::where('category', \App\Models\Stock::CAT_CONSO)
-                ->where('last_unit_price', '>', 0)
-                ->avg('last_unit_price') ?? 5000; // Fallback 5000 GNF/kg
-        }
-
-        $feedCost = $totalFeed * $avgFeedPrice;
+        /*
+         * 2. ALIMENT — au coût figé à la saisie, comme la fiche du lot.
+         *
+         * Cet écran recomposait le sien : consommation × MOYENNE des prix des
+         * articles d'aliment du secteur, et, à défaut, 5 000 GNF/kg en dur. Trois
+         * défauts pour un seul chiffre — la moyenne ignore les quantités (un
+         * article rare pèse autant qu'un article de tous les jours), elle ignore
+         * le prix réellement payé au moment où le lot a mangé, et la constante
+         * s'affichait comme un coût constaté.
+         *
+         * `Batch::feed_cogs` valorise chaque pointage au coût moyen pondéré figé
+         * ce jour-là (daily_checks.feed_unit_cost), avec repli par type d'aliment.
+         * C'est la déclaration unique, déjà affichée sur la fiche du lot et déjà
+         * utilisée par la comptabilité de période.
+         */
+        $totalFeed = (float) $batch->feedConsumptionLedger()->sum('qty');
+        $feedCost  = (float) $batch->feed_cogs;
 
         // 3. Coût santé / vétérinaire
         $healthCost = 0;
@@ -481,35 +478,49 @@ class BatchController extends Controller
                 ->sum('cost');
         }
 
-        // 4. Coût énergie (proportionnel au lot si multi-lots)
-        $energyCost = 0;
+        /*
+         * 4. EAU + ÉNERGIE — les relevés facturés de SON bâtiment.
+         *
+         * Ici encore une invention locale : la MOYENNE du coût des relevés de
+         * toute l'exploitation, multipliée par la durée, divisée par le nombre de
+         * lots actifs. Elle imputait donc au lot une quote-part de bâtiments qu'il
+         * n'occupe pas, et changeait de valeur quand un lot voisin était clôturé.
+         *
+         * `Batch::utility_cost` somme les relevés taggés sur le bâtiment du lot,
+         * sur sa période de présence. Il couvre aussi l'eau, que cet écran
+         * oubliait.
+         */
+        $energyCost   = (float) $batch->utility_cost;
         $durationDays = $batch->arrival_date
             ? \Carbon\Carbon::parse($batch->arrival_date)->diffInDays(now())
             : 0;
 
-        if ($durationDays > 0 && \Illuminate\Support\Facades\Schema::hasTable('energy_readings')) {
-            $totalDailyEnergyCost = (float) \Illuminate\Support\Facades\DB::table('energy_readings')
-                ->where('reading_date', '>=', $batch->arrival_date)
-                ->avg('cost') ?? 0;
-
-            // Proportion : si 3 lots actifs, ce lot = 1/3 du coût énergie
-            $activeBatchCount = max(1, \App\Models\Batch::active()->live()->count());
-            $energyCost = ($totalDailyEnergyCost * $durationDays) / $activeBatchCount;
-        }
-
         // 5. Total des coûts connus
         $totalKnownCosts = $acquisitionCost + $feedCost + $healthCost + $energyCost;
+
+        /*
+         * L'ALIMENT ACHETÉ MAIS JAMAIS POINTÉ.
+         *
+         * Le coût de revient ne connaît que ce qui a été CONSOMMÉ. Si l'aliment a
+         * été acheté pour ce lot sans qu'aucun pointage ne l'enregistre, la marge
+         * est flattée d'autant — en silence. On ne corrige pas le chiffre (une
+         * consommation non saisie n'est pas une consommation), on le DIT, pour que
+         * la clôture ne se fasse pas sur une marge qu'on croit constatée.
+         */
+        $feedPurchased = (float) $batch->feedPurchases()->sum('total_price');
+        $feedUnlogged  = ($feedCost <= 0 && $feedPurchased > 0) ? $feedPurchased : 0.0;
 
         // Données pour la vue
         $costs = [
             'acquisition'     => round($acquisitionCost),
             'feed'            => round($feedCost),
             'feed_kg'         => round($totalFeed, 1),
-            'feed_price_kg'   => round($avgFeedPrice),
+            'feed_price_kg'   => $totalFeed > 0 ? round($feedCost / $totalFeed) : 0,
             'health'          => round($healthCost),
             'energy'          => round($energyCost),
             'total_known'     => round($totalKnownCosts),
             'duration_days'   => $durationDays,
+            'feed_unlogged'   => round($feedUnlogged),
         ];
 
         return view('batches.close', compact(

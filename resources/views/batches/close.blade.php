@@ -69,7 +69,14 @@
                                     <div class="flex justify-between items-center p-3 bg-red-50/50 rounded-xl">
                                         <div>
                                             <span class="text-[10px] font-black text-slate-700">{{ __("🌾 Alimentation") }}</span>
-                                            <p class="text-[8px] text-slate-400">{{ number_format($costs['feed_kg'], 0) }} kg × {{ number_format($costs['feed_price_kg'], 0, ',', '.') }} {{ currency() }}/kg (moy.)</p>
+                                            <p class="text-[8px] text-slate-400">{{ number_format($costs['feed_kg'], 0) }} kg {{ __("consommés") }}@if($costs['feed_price_kg'] > 0) × {{ number_format($costs['feed_price_kg'], 0, ',', '.') }} {{ currency() }}/kg @endif</p>
+                                            @if(($costs['feed_unlogged'] ?? 0) > 0)
+                                                {{-- L'achat existe, la consommation n'a jamais été pointée : la marge
+                                                     est flattée d'autant. On le dit AVANT de figer la clôture. --}}
+                                                <p class="text-[8px] font-black text-amber-600 mt-1">
+                                                    {{ __("⚠️ Aucune consommation pointée, alors que :montant :devise d'aliment ont été achetés pour ce lot. La marge ci-dessous ignore cet aliment.", ['montant' => number_format($costs['feed_unlogged'], 0, ',', '.'), 'devise' => currency()]) }}
+                                                </p>
+                                            @endif
                                         </div>
                                         <span class="text-sm font-black text-red-600">{{ number_format($costs['feed'], 0, ',', '.') }} {{ currency() }}</span>
                                     </div>
@@ -82,9 +89,10 @@
                                     </div>
                                     <div class="flex justify-between items-center p-3 bg-red-50/50 rounded-xl">
                                         <div>
-                                            <span class="text-[10px] font-black text-slate-700">{{ __("⚡ Énergie (prorata)") }}</span>
-                                            {{-- Utilisation de round() pour enlever les décimales --}}
-                                            <p class="text-[8px] text-slate-400">{{ __(":daysj × quote-part énergie", ['days' => round($costs['duration_days'])]) }}</p>
+                                            <span class="text-[10px] font-black text-slate-700">{{ __("⚡ Eau + Énergie") }}</span>
+                                            {{-- Relevés facturés taggés sur le bâtiment du lot (Batch::utility_cost),
+                                                 et non plus une quote-part moyenne de toute l'exploitation. --}}
+                                            <p class="text-[8px] text-slate-400">{{ __("Relevés du bâtiment sur :daysj de présence", ['days' => round($costs['duration_days'])]) }}</p>
                                         </div>
                                         <span class="text-sm font-black text-red-600">{{ number_format($costs['energy'], 0, ',', '.') }} {{ currency() }}</span>
                                     </div>
