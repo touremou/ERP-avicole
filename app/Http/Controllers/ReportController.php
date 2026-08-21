@@ -178,16 +178,21 @@ class ReportController extends Controller
         // bas — une règle recopiée est une règle qui diverge.
         $salesByType = collect(PeriodRevenue::byProductType($from, $to));
 
-        // Lait collecté valorisé (pas de flux de vente dédié à ce stade).
-        $milkRevenue = (float) MilkProduction::whereBetween('production_date', [$from, $to])
-            ->sum(DB::raw('total_liters * unit_price'));
+        /*
+         * Lait collecté et valorisé : un STOCK, pas une recette.
+         *
+         * Il était ajouté ICI, aux ventes — or la collecte alimente l'article
+         * « Lait » du magasin et `lait` est un type de vente adossé au stock :
+         * les litres traits puis vendus étaient comptés DEUX FOIS.
+         *
+         * Le chiffre reste affiché, hors du compte des recettes : une traite non
+         * encore vendue est un stock réel (cf. PeriodRevenue::milkCollectedValued).
+         */
+        $milkCollected = PeriodRevenue::milkCollectedValued($from, $to);
 
         $revenue = [];
         foreach ($salesByType as $type => $total) {
             $revenue[$this->productTypeLabel($type)] = (float) $total;
-        }
-        if ($milkRevenue > 0) {
-            $revenue['Lait (collecte valorisée)'] = ($revenue['Lait (collecte valorisée)'] ?? 0) + $milkRevenue;
         }
 
         // Production végétale : revenus des cycles CLÔTURÉS sur la période
@@ -250,7 +255,7 @@ class ReportController extends Controller
         return compact(
             'from', 'to', 'revenue', 'totalRevenue',
             'costs', 'totalCosts', 'netResult', 'marginPct', 'speciesMargin', 'cropMargin',
-            'syscohadaProduits', 'syscohadaCharges'
+            'syscohadaProduits', 'syscohadaCharges', 'milkCollected'
         );
     }
 
@@ -333,10 +338,11 @@ class ReportController extends Controller
             // Même reconstitution que le compte de résultat : un retour postérieur
             // à la période ne doit pas rétrécir la rentabilité d'une espèce sur un
             // mois déjà arrêté.
+            // La collecte de lait n'est PAS ajoutée ici : elle alimente le stock,
+            // et sa vente est déjà comptée par PeriodRevenue (cf.
+            // PeriodRevenue::milkCollectedValued). L'ajouter comptait les mêmes
+            // litres deux fois, et gonflait la rentabilité de l'espèce laitière.
             $rev = PeriodRevenue::forBatches($batchIds, $from, $to);
-            $rev += (float) MilkProduction::whereIn('batch_id', $batchIds)
-                ->whereBetween('production_date', [$from, $to])
-                ->sum(DB::raw('total_liters * unit_price'));
 
             $cost = (float) Batch::whereIn('id', $batchIds)->whereBetween('arrival_date', [$from, $to])->sum('total_acquisition_cost');
             $cost += (float) FeedPurchase::whereIn('batch_id', $batchIds)->whereBetween('purchase_date', [$from, $to])

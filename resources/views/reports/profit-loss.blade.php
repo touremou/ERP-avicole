@@ -64,6 +64,20 @@
                         <span class="text-[10px] font-black text-emerald-600 uppercase tracking-widest">{{ __("Total produits") }}</span>
                         <span class="text-lg font-black text-emerald-600">{{ number_format($totalRevenue) }}</span>
                     </div>
+
+                    @if(($milkCollected ?? 0) > 0)
+                        {{-- HORS RECETTES. La collecte de lait alimente le stock ; le revenu
+                             naît de sa VENTE, déjà comptée ci-dessus. L'ajouter aux produits
+                             comptait les mêmes litres deux fois. Le chiffre reste affiché : une
+                             traite non vendue est un stock réel. --}}
+                        <div class="flex justify-between items-center pt-3 mt-3 border-t border-dashed border-slate-200">
+                            <div>
+                                <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">{{ __("Lait collecté (valorisé)") }}</span>
+                                <p class="text-[8px] text-slate-400 italic mt-1">{{ __("Stock, hors recettes — le revenu est constaté à la vente") }}</p>
+                            </div>
+                            <span class="text-sm font-black text-slate-400">{{ number_format($milkCollected) }}</span>
+                        </div>
+                    @endif
                 </div>
 
                 {{-- CHARGES --}}

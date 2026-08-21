@@ -55,6 +55,31 @@ class PeriodRevenue
     public const LIBELLE_NON_VENTILE = 'Retours antérieurs (catégorie non tracée)';
 
     /**
+     * LAIT COLLECTÉ ET VALORISÉ SUR LA PÉRIODE — un STOCK, pas un revenu.
+     *
+     * La collecte de lait alimente l'article « Lait » du magasin
+     * (MilkProductionController::syncStock, Stock::CAT_LAIT), et `lait` est un
+     * type de vente ADOSSÉ AU STOCK (SaleItem::STOCK_TYPES) : les litres
+     * ressortent donc par une vente, qui est le vrai fait générateur du revenu.
+     *
+     * Trois écrans ajoutaient pourtant cette valorisation AU-DESSUS des ventes —
+     * le compte de résultat, le tableau de bord et la rentabilité par espèce.
+     * Les mêmes litres comptaient deux fois : une fois traits, une fois vendus.
+     * Le commentaire d'origine disait « pas de flux de vente dédié à ce stade » ;
+     * il l'était quand il a été écrit, il ne l'est plus.
+     *
+     * Cette déclaration existe pour que le chiffre reste VISIBLE — une traite
+     * non encore vendue est un stock réel, et le taire serait aussi faux que de
+     * l'appeler chiffre d'affaires. Elle n'entre dans aucun total de recettes.
+     */
+    public static function milkCollectedValued(Carbon $from, Carbon $to): float
+    {
+        return (float) \App\Models\MilkProduction::whereBetween('production_date', [$from, $to])
+            ->where('unit_price', '>', 0)
+            ->sum(\Illuminate\Support\Facades\DB::raw('total_liters * unit_price'));
+    }
+
+    /**
      * Chiffre d'affaires des ventes de la période, ventilé par type de produit.
      *
      * @return array<string, float>  product_type (ou libellé) => montant
