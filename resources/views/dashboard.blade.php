@@ -651,7 +651,10 @@
                     <div class="bg-slate-800/60 rounded-2xl p-5">
                         <p class="text-[8px] font-black text-blue-300 uppercase tracking-widest italic mb-2">{{ __("Chiffre d'affaires") }}</p>
                         <p class="text-xl font-black text-white tracking-tighter italic">{{ number_format($financial['ca_total'], 0, ',', ' ') }}<small class="text-[9px] ml-1 opacity-40">{{ currency() }}</small></p>
-                        <p class="text-[8px] text-slate-500 mt-1 uppercase font-black">{{ number_format($financial['ca_ventes'], 0, ',', ' ') }} ventes @if($financial['ca_lait'] > 0)· {{ number_format($financial['ca_lait'], 0, ',', ' ') }} lait @endif</p>
+                        {{-- Le lait collecté n'est plus additionné au CA : il alimente le stock,
+                             et sa vente est déjà dans « ventes ». Il reste affiché, mais donné
+                             pour ce qu'il est. --}}
+                        <p class="text-[8px] text-slate-500 mt-1 uppercase font-black">{{ number_format($financial['ca_ventes'], 0, ',', ' ') }} {{ __("ventes") }} @if($financial['ca_lait'] > 0)· {{ number_format($financial['ca_lait'], 0, ',', ' ') }} {{ __("lait collecté (stock)") }} @endif</p>
                     </div>
                     <div class="bg-slate-800/60 rounded-2xl p-5">
                         <p class="text-[8px] font-black text-rose-300 uppercase tracking-widest italic mb-2">{{ __("Charges totales") }}</p>

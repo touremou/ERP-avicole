@@ -180,11 +180,14 @@ class DashboardInsightsService
             ->whereBetween('sale_date', [$monthStart, $monthEnd])
             ->sum('total_amount');
 
-        $caLait = (float) MilkProduction::whereBetween('production_date', [$monthStart, $monthEnd])
-            ->where('unit_price', '>', 0)
-            ->sum(DB::raw('total_liters * unit_price'));
-
-        $caTotal = $caVentes + $caLait;
+        /*
+         * La collecte de lait n'entre PAS dans le chiffre d'affaires : elle
+         * alimente l'article « Lait » du magasin, et sa vente — type adossé au
+         * stock — est déjà dans $caVentes. L'ajouter comptait les mêmes litres
+         * deux fois (cf. PeriodRevenue::milkCollectedValued).
+         */
+        $caLait  = \App\Services\Accounting\PeriodRevenue::milkCollectedValued($monthStart, $monthEnd);
+        $caTotal = $caVentes;
 
         /*
          * CHARGES DU MOIS — même déclaration que le compte de résultat.
