@@ -1,7 +1,6 @@
 <?php
 
 use App\Actions\Sale\CreateSale;
-use App\Actions\Sale\ValidateSale;
 use App\Models\Client;
 use App\Models\Payment;
 use App\Models\Stock;
@@ -35,7 +34,9 @@ function creditSale(Client $client): App\Models\Sale
         ]],
         'immediate_payment' => 5000, 'payment_method' => 'especes',
     ]);
-    (new ValidateSale())->execute($sale);
+    // Plus de validation explicite : une vente qui a encaissé est engagée, et
+    // `CreateSale` la valide lui-même (cf. PaidSaleIsNotADraftTest). Les
+    // attentes ci-dessous sont inchangées — l'acompte partiel laisse un reste dû.
 
     return $sale;
 }

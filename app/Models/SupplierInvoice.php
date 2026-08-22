@@ -71,10 +71,29 @@ class SupplierInvoice extends Model
         return $query->where('status', 'valide');
     }
 
-    /** Achats comptés dans la dette (tout sauf annulé). */
+    /**
+     * Achats RECONNUS : ceux qui pèsent sur la dette ET sur le résultat.
+     *
+     * Ce scope retenait « tout sauf annulé », donc les BROUILLONS. Un achat
+     * simplement saisi comptait ainsi dans la dette fournisseur et dans le DPO —
+     * mais PAS dans les charges du compte de résultat, qui n'arrivent qu'à la
+     * validation (`validateInvoice` → `syncLedgerExpense`, « une seule fois »).
+     *
+     * Le même document était donc une DETTE SANS ÊTRE UNE CHARGE. En partie
+     * double, une dette a forcément une contrepartie : reconnaître l'une sans
+     * l'autre n'est cohérent dans aucun référentiel.
+     *
+     * On aligne sur l'événement que l'application a déjà choisi comme fait
+     * générateur — la validation — et non l'inverse : faire entrer les brouillons
+     * dans le résultat y ferait tomber des saisies incomplètes, non vérifiées.
+     *
+     * C'est aussi la règle appliquée côté vente depuis #302 : un brouillon
+     * n'engage rien, ni créance ni recette. Les deux côtés du bilan disent
+     * désormais la même chose.
+     */
     public function scopeCounted($query)
     {
-        return $query->where('status', '!=', 'annule');
+        return $query->whereNotIn('status', ['annule', 'brouillon']);
     }
 
     // ─── ACCESSORS ───

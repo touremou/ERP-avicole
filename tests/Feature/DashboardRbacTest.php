@@ -12,6 +12,13 @@ use Tests\Helpers\AviSmartTestHelper;
 
 uses(Tests\TestCase::class, Illuminate\Foundation\Testing\RefreshDatabase::class, AviSmartTestHelper::class);
 
+/**
+ * Effectif du lot témoin : un nombre volontairement improbable comme MONTANT,
+ * pour qu'un chiffre d'affaires ou une créance ne puisse pas le percuter par
+ * hasard et faire échouer le cloisonnement pour une mauvaise raison.
+ */
+const EFFECTIF_TEMOIN = 7_531;
+
 /*
  * Cloisonnement RBAC du tableau de bord : un vendeur (commerce.L+C uniquement)
  * ne doit voir NI les effectifs/mortalité (élevage), ni les silos (logistique),
@@ -58,8 +65,8 @@ beforeEach(function () {
         'building_id'        => Building::factory()->create(['type' => 'chair'])->id,
         'production_type_id' => $type->id,
         'status'             => 'Actif',
-        'initial_quantity'   => 1234,
-        'current_quantity'   => 1234,
+        'initial_quantity'   => EFFECTIF_TEMOIN,
+        'current_quantity'   => EFFECTIF_TEMOIN,
     ]);
 });
 
@@ -77,8 +84,25 @@ test('un vendeur (commerce.L) ne voit pas les widgets élevage/stocks du dashboa
         // Pas de carte « Densités Bâtiments » vide pour un profil non-élevage.
         ->assertDontSee('Densités Bâtiments');
 
-    // La donnée d'effectif elle-même ne transite pas (1 234 sujets).
-    $response->assertDontSee('1 234');
+    /*
+     * LA DONNÉE D'EFFECTIF ELLE-MÊME NE TRANSITE PAS.
+     *
+     * Cette assertion cherchait « 1 234 » — un nombre à la française, séparé par
+     * une ESPACE. Or l'effectif d'un lot s'affiche avec `number_format()` sans
+     * arguments, donc « 1,234 », avec une VIRGULE. La garde ne pouvait donc pas
+     * détecter la fuite qu'elle annonçait.
+     *
+     * En revanche elle tombait — au hasard — dès qu'un des montants en francs de
+     * la page valait 1234 : le tableau de bord en formate treize à la française.
+     * D'où un échec intermittent en intégration continue, sans rapport avec le
+     * cloisonnement des rôles.
+     *
+     * On vérifie désormais les DEUX écritures, dérivées de la constante : le test
+     * ne peut plus se désaligner du gabarit, et l'effectif témoin est choisi
+     * assez improbable pour ne plus percuter un montant.
+     */
+    $response->assertDontSee(number_format(EFFECTIF_TEMOIN))
+        ->assertDontSee(number_format(EFFECTIF_TEMOIN, 0, ',', ' '));
 });
 
 test("l'admin voit les widgets élevage du dashboard", function () {

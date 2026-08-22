@@ -68,7 +68,10 @@ class Provider extends Model
      */
     public function outstandingDebt(): float
     {
-        $invoiceIds = $this->supplierInvoices()->where('status', '!=', 'annule')->pluck('id');
+        // Même périmètre que SupplierInvoice::scopeCounted() — un brouillon
+        // n'engage pas plus une dette qu'il ne crée une charge. On passe par le
+        // scope pour que les deux ne puissent plus diverger.
+        $invoiceIds = $this->supplierInvoices()->counted()->pluck('id');
 
         $billed = (float) SupplierInvoice::whereIn('id', $invoiceIds)->sum('total_amount');
         $paid   = (float) SupplierPayment::whereIn('supplier_invoice_id', $invoiceIds)->sum('amount');
