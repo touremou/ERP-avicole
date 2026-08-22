@@ -5,12 +5,26 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Carbon\Carbon;
 use App\Traits\BelongsToFarm;
 
 class HealthCheck extends Model
 {
-    use HasFactory, BelongsToFarm;
+    /*
+     * LA COLONNE `deleted_at` EXISTAIT ; LE TRAIT, NON.
+     *
+     * `health_checks` porte `deleted_at` depuis sa création — la suppression
+     * douce était donc prévue — mais le modèle ne l'a jamais utilisée. Or
+     * `BatchObserver::deleting()` cascade `$batch->healthChecks()->delete()` :
+     * sans le trait, cet appel DÉTRUISAIT définitivement les vaccinations, les
+     * traitements et leurs coûts, alors même que le lot, lui, partait à la
+     * corbeille et se présentait comme récupérable.
+     *
+     * Un registre sanitaire est une pièce réglementaire : il ne doit pas
+     * disparaître comme effet de bord de la mise en corbeille d'un lot.
+     */
+    use HasFactory, BelongsToFarm, SoftDeletes;
 
     protected $fillable = [
         'farm_id',
