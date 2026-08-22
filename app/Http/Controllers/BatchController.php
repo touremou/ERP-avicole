@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Batch;
 use App\Models\Building;
+use App\Support\DependencyGuard;
 use App\Models\Employee;
 use App\Models\Protocol;
 use App\Models\Provider;
@@ -602,6 +603,36 @@ class BatchController extends Controller
     {
         if (Gate::denies('elevage.S')) {
             abort(403, 'Privilèges insuffisants.');
+        }
+
+        /*
+         * UN LOT QUI A PRODUIT SE CLÔTURE — IL NE SE SUPPRIME PAS.
+         *
+         * Cette action ne vérifiait que le droit. On pouvait donc envoyer à la
+         * corbeille une bande entière avec son historique : pointages, mortalité,
+         * interventions sanitaires, collectes, achats d'aliment. #308 a rendu ce
+         * geste non destructeur ; il restait déraisonnable.
+         *
+         * La règle est celle que la corbeille applique DÉJÀ à la suppression
+         * définitive, via la même déclaration (`DependencyGuard`) : on ne fait pas
+         * disparaître un enregistrement dont d'autres dépendent. Elle vaut aussi
+         * bien ici — un lot ayant produit se clôture, ce qui préserve sa marge,
+         * son coût de revient et sa traçabilité.
+         *
+         * Reste supprimable : le lot créé par erreur, avant toute saisie. C'est
+         * le seul cas où la suppression est le bon geste, et il continue de
+         * fonctionner.
+         *
+         * On réutilise `DependencyGuard` plutôt que d'énumérer les tables ici :
+         * une seconde liste divergerait au premier module ajouté.
+         */
+        if ($obstacles = DependencyGuard::blockers($batch)) {
+            return back()->with('error', sprintf(
+                "Le lot %s a un historique (%s) : il ne peut pas être supprimé. "
+                . "Clôturez-le pour l'archiver en conservant sa marge et sa traçabilité.",
+                $batch->code,
+                DependencyGuard::describe($obstacles),
+            ));
         }
 
         $building = $batch->building;
