@@ -84,9 +84,24 @@ class Sale extends Model
             ->whereDate('sale_date', '>=', now()->subDays(90)->toDateString());
     }
 
+    /**
+     * Ventes NON SOLDÉES qui constituent une CRÉANCE — donc engagées.
+     *
+     * Ce scope ne regardait que l'état du PAIEMENT, jamais celui du DOCUMENT.
+     * Or une vente naît en `brouillon` avec `payment_status = 'impaye'` : un
+     * simple brouillon entrait donc dans l'encours dès sa création, alors qu'il
+     * n'engage ni le client ni la ferme.
+     *
+     * Son scope frère `scopeOpenReceivablesForSync()` excluait bien
+     * brouillon/annulé — la règle était donc déjà écrite ici, à dix lignes de
+     * distance. Deux appelants sur trois rattrapaient l'oubli à la main en
+     * chaînant `->validated()` ; le tableau de bord, lui, ne le faisait pas et
+     * affichait un encours plus élevé que l'écran Commerce.
+     */
     public function scopeUnpaid($query)
     {
-        return $query->whereIn('payment_status', ['impaye', 'partiel']);
+        return $query->whereIn('payment_status', ['impaye', 'partiel'])
+            ->whereNotIn('status', ['brouillon', 'annule']);
     }
 
     public function scopeToday($query)
