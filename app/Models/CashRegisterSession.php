@@ -62,6 +62,24 @@ class CashRegisterSession extends Model
      */
     public function expectedCash(): float
     {
+        /*
+         * CE CALCUL REPOSE SUR UNE SEULE SESSION OUVERTE PAR FERME.
+         *
+         * Il retient TOUTES les espèces de la fenêtre, sans filtrer
+         * `treasury_account_id` — alors que la session en porte un. C'est juste
+         * aujourd'hui, et seulement parce que `CashRegisterController::open()`
+         * refuse d'ouvrir une session tant qu'une autre est ouverte, dans le
+         * périmètre de la ferme courante (portée du trait BelongsToFarm).
+         *
+         * Le jour où deux caisses coexisteraient sur une même ferme — un comptoir
+         * et une vente au portail, par exemple — chacune attendrait la recette de
+         * l'autre, et les DEUX tiroirs afficheraient un manquant du montant de
+         * l'autre. Un écart de caisse ressemble à un vol : ce n'est pas un défaut
+         * à découvrir un soir de comptage.
+         *
+         * CashDrawerAssumesOneSessionPerFarmTest fixe ce couplage : si la règle
+         * « une seule session ouverte » tombe, le test tombe avec elle.
+         */
         $end = $this->closed_at ?? now();
 
         // ENTRÉES : encaissements en espèces de la session. La somme est SIGNÉE
