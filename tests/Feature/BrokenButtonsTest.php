@@ -93,15 +93,24 @@ test('le crayon de rectification d’un achat d’aliment ouvre le formulaire', 
         ->assertSee('Provenderie Kindia', false);
 });
 
-test('archiver une bande retire ses achats — la rectification n’a plus de cible', function () {
-    // Vérification du raisonnement, pas d'un cas de bord inventé : la vue de
-    // rectification s'appuie sur `$batch`. On a d'abord cru qu'un achat pouvait
-    // se retrouver sans lot ; c'est faux. `batch_id` est NOT NULL, et archiver un
-    // lot supprime ses achats (BatchObserver). L'écran répond donc 404 — l'achat
-    // n'existe plus — et non une erreur de rendu.
-    //
-    // Le garde-fou du contrôleur reste en place : trois lignes qui transforment
-    // une éventuelle page d'erreur en message, si un chemin futur créait cet état.
+test('archiver une bande CONSERVE ses achats — et la rectification le dit proprement', function () {
+    /*
+     * CE TEST A CHANGE DE VERDICT, ET C'EST LE GARDE-FOU QUI GAGNE.
+     *
+     * Il constatait un 404 : archiver un lot DÉTRUISAIT ses achats d'aliment
+     * (`feed_purchases` n'a pas de colonne `deleted_at`, la cascade était donc
+     * définitive), et l'écran de rectification ne trouvait plus rien.
+     *
+     * Ce n'était pas une règle voulue mais une conséquence : une pièce comptable
+     * effacée pour obtenir un simple masquage. La cascade ne touche plus que ce
+     * qui est récupérable (cf. BinningABatchDestroyedItsHistoryTest).
+     *
+     * L'achat SURVIT donc, et son lot est en corbeille — précisément l'état que
+     * l'auteur de ce test croyait impossible et pour lequel il avait pourtant
+     * laissé trois lignes dans le contrôleur, « si un chemin futur créait cet
+     * état ». Ce chemin existe maintenant, et le garde-fou fait exactement ce
+     * qu'on attendait de lui : un message, pas une page d'erreur.
+     */
     $batch = Batch::factory()->create(['farm_id' => $this->farm->id, 'status' => 'Actif']);
 
     $purchase = FeedPurchase::create([
@@ -117,7 +126,11 @@ test('archiver une bande retire ses achats — la rectification n’a plus de ci
 
     $batch->delete();
 
+    // L'achat est toujours là : c'est le point.
+    expect(FeedPurchase::find($purchase->id))->not->toBeNull();
+
     $this->actingAs($this->adminUser)
         ->get(route('feed-purchases.edit', $purchase->id))
-        ->assertNotFound();
+        ->assertRedirect(route('batches.index'))
+        ->assertSessionHas('error');
 });
