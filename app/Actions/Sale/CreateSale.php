@@ -83,6 +83,35 @@ class CreateSale
                     'notes'        => 'Paiement à la vente',
                 ]);
                 $sale->refreshPaymentStatus();
+
+                /*
+                 * L'ARGENT REÇU ENGAGE LE DOCUMENT : il n'est plus un brouillon.
+                 *
+                 * L'application déclarait déjà cette règle à DEUX endroits —
+                 * `RecordPayment` et `StorePaymentRequest` refusent tous deux
+                 * d'encaisser sur un brouillon (« Impossible d'encaisser sur une
+                 * vente brouillon ») — et le point de vente l'appliquait déjà en
+                 * enchaînant création, validation puis livraison.
+                 *
+                 * Seul ce chemin-ci y dérogeait : il attachait le règlement à une
+                 * vente laissée en brouillon. Ni le formulaire bureau ni la synchro
+                 * terrain ne validant derrière, la vente restait indéfiniment un
+                 * document qui n'engage rien tout en ayant encaissé — et
+                 * `CancelSale`, qui refuse d'annuler une vente porteuse de
+                 * paiements, la rendait même impossible à nettoyer.
+                 *
+                 * C'est aussi la règle comptable : un encaissement comptant solde
+                 * une opération réalisée. Un « brouillon payé » n'existe pas.
+                 *
+                 * CONSÉQUENCE ASSUMÉE : la validation déstocke, et refuse si le
+                 * stock est insuffisant. Une vente au comptoir portant sur un
+                 * article dont le magasin est à zéro est donc désormais REFUSÉE,
+                 * avec le motif exact, là où elle devenait silencieusement un
+                 * brouillon payé. C'est le comportement que le point de vente
+                 * impose déjà.
+                 */
+                app(ValidateSale::class)->execute($sale->refresh());
+                $sale->refresh();
             }
 
             Log::info("Vente créée : {$sale->reference} — Client: {$sale->client->name} — Total: {$sale->total_amount} GNF");

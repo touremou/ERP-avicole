@@ -145,7 +145,10 @@ test('l\'encaissement express solde une vente à crédit et redirige vers le tic
         ]],
         'immediate_payment' => 5000, 'payment_method' => 'especes',
     ]);
-    (new \App\Actions\Sale\ValidateSale())->execute($sale);
+    // Plus de validation explicite ici : une vente qui a encaissé est engagée,
+    // et `CreateSale` la valide désormais lui-même (cf. PaidSaleIsNotADraftTest).
+    // Les attentes ci-dessous sont inchangées — l'acompte partiel laisse bien un
+    // reste dû, validation ou non.
     $sale->refresh();
     expect($sale->payment_status)->toBe('partiel')
         ->and((float) $sale->remaining_amount)->toBe(15000.0);

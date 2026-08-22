@@ -165,7 +165,13 @@ class PosController extends Controller
                 'payment_treasury_account_id' => $this->openSession()?->treasury_account_id,
             ]);
 
-            $validate->execute($sale); // déstockage (chaîne standard)
+            // Le déstockage a lieu à la validation. `CreateSale` valide désormais
+            // lui-même toute vente encaissée — ce qui est le cas ici, le POS étant
+            // payé intégralement comptant. On ne revalide donc que si le chemin
+            // de création ne l'a pas déjà fait (vente sans encaissement immédiat).
+            if ($sale->status === 'brouillon') {
+                $validate->execute($sale);
+            }
             $sale->update([
                 'status'             => 'livre',
                 'delivered_at'       => now(), // remis en main propre
