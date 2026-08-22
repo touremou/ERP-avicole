@@ -106,12 +106,29 @@ test('un vendeur (commerce.L) ne voit pas les widgets élevage/stocks du dashboa
 });
 
 test("l'admin voit les widgets élevage du dashboard", function () {
+    /*
+     * LE PENDANT DE CHAQUE INTERDICTION.
+     *
+     * Ce test ne prouvait la visibilité que de deux des cinq libellés interdits
+     * au vendeur. Les trois autres restaient des interdictions sans contrepartie :
+     * absentes de la page du vendeur, certes — mais on ne pouvait pas dire si
+     * c'était parce qu'elles étaient cachées ou parce qu'elles n'existaient plus.
+     *
+     * La liste est désormais la MÊME des deux côtés. Si un libellé change dans le
+     * gabarit, c'est ce test-ci qui tombe, et l'interdiction ne peut plus devenir
+     * silencieusement creuse.
+     */
     $this->actingAs($this->adminUser)
         ->withSession(['current_farm_id' => $this->farm->id])
         ->get(route('dashboard'))
         ->assertOk()
         ->assertSee('Effectif Actif')
-        ->assertSee('Bandes Actives');
+        ->assertSee('Bandes Actives')
+        ->assertSee('Mortalité Période')
+        ->assertSee('Densités Bâtiments')
+        ->assertSee('Vue analytique consolidée')
+        // Et la donnée elle-même, sous l'écriture exacte du gabarit.
+        ->assertSee(number_format(EFFECTIF_TEMOIN));
 });
 
 test('la vue analytique (séries élevage) est refusée à un vendeur', function () {

@@ -85,6 +85,15 @@ test("la vue budgets ne montre pas l'édition à un saisisseur (couche vue)", fu
         ->assertOk()
         ->assertDontSee('Enregistrer les budgets')
         ->assertSee('Lecture seule'); // message explicite pour L
+
+    // Le pendant : le bouton EXISTE pour qui peut modifier. Sans lui,
+    // l'interdiction ci-dessus resterait verte même si le bouton disparaissait
+    // du gabarit pour tout le monde.
+    $this->actingAs($this->managerUser)
+        ->withSession(['current_farm_id' => $this->farm->id])
+        ->get(route('budgets.index'))
+        ->assertOk()
+        ->assertSee('Enregistrer les budgets');
 });
 
 test('un manager (M) peut approuver la dépense', function () {
