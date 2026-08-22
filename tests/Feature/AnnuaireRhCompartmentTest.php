@@ -71,6 +71,23 @@ test("le hub Annuaire du Vendeur ne divulgue AUCUNE donnée RH (ni masse salaria
         ->assertDontSee('Masse salariale')
         ->assertDontSee('Effectif actif')
         ->assertDontSee('9 999 999');
+
+    /*
+     * LE PENDANT, sans lequel l'interdiction ne prouve rien.
+     *
+     * Une chaîne absente de toute la page reste absente qu'elle soit cachée ou
+     * qu'elle n'existe nulle part — et l'on ne peut pas distinguer les deux. Ce
+     * volet ancre les trois assertions ci-dessus : elles portent bien sur des
+     * données que quelqu'un voit réellement, à la virgule près du gabarit.
+     *
+     * La leçon vient de deux gardes trouvées aveugles dans ce même balayage :
+     * l'une cherchait un nombre à l'espace là où l'écran met une virgule,
+     * l'autre un libellé qui n'a jamais existé.
+     */
+    $this->actingAs($this->rhManager)->withSession(['current_farm_id' => $this->farm->id])
+        ->get(route('rh.index'))->assertOk()
+        ->assertSee('Masse salariale')
+        ->assertSee('9 999 999');
 });
 
 test("le Vendeur ne voit PAS la tuile RH dans le lanceur de modules", function () {

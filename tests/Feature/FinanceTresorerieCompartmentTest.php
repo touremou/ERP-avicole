@@ -58,11 +58,44 @@ test('le comptable (depenses) saisit dépenses/achats/budgets mais ne voit PAS l
 });
 
 test('le hub Finance du comptable ne divulgue NI soldes NI comptes de trésorerie', function () {
+    /*
+     * CETTE GARDE CHERCHAIT UN LIBELLÉ QUI N'EXISTE PAS.
+     *
+     * Elle interdisait « Comptes trésorerie ». Or la vue n'écrit jamais cette
+     * chaîne : elle affiche « Trésorerie » (tuile, avec le nombre de comptes) et
+     * « Soldes par compte » (tableau). L'assertion ne pouvait donc pas échouer,
+     * quoi qu'il arrive — même si les comptes bancaires fuyaient en entier.
+     *
+     * On devine pourquoi elle a été écrite ainsi : « Trésorerie » seul figure
+     * dans le sous-titre de la page, visible de tous, donc inassertable. Le
+     * rédacteur a inventé une variante plus spécifique… qui n'est nulle part.
+     *
+     * La réponse n'est pas un meilleur libellé, c'est de sortir des libellés :
+     * on vérifie que la DONNÉE ne transite pas — le nom d'un compte réel et son
+     * solde — et on prouve dans la foulée que le trésorier, lui, la voit. Sans
+     * ce second volet, rien ne distingue « bien caché » de « inexistant ».
+     */
+    $compte = \App\Models\TreasuryAccount::create([
+        'farm_id'         => $this->farm->id,
+        'name'            => 'Compte BICIGUI Kindia',
+        'type'            => 'banque',
+        'opening_balance' => 7_450_000,
+        'current_balance' => 7_450_000,
+        'is_active'       => true,
+    ]);
+
     $this->actingAs($this->comptable)->withSession(['current_farm_id' => $this->farm->id])
         ->get(route('finance.index'))->assertOk()
         ->assertDontSee('Soldes par compte')
-        ->assertDontSee('Comptes trésorerie')
+        ->assertDontSee($compte->name)
+        ->assertDontSee(number_format($compte->current_balance, 0, ',', ' '))
         ->assertSee('Registre'); // accès Dépenses présent
+
+    // Le pendant : le trésorier voit bien ce que le comptable ne voit pas.
+    $this->actingAs($this->tresorier)->withSession(['current_farm_id' => $this->farm->id])
+        ->get(route('finance.index'))->assertOk()
+        ->assertSee('Soldes par compte')
+        ->assertSee($compte->name);
 });
 
 test('le trésorier (tresorerie) gère les comptes mais ne peut PAS saisir de dépense', function () {
