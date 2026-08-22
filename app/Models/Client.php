@@ -141,13 +141,43 @@ class Client extends Model
      */
     public function recalculateBalance(): void
     {
+        $this->update(['balance' => $this->computedBalance()]);
+    }
+
+    /**
+     * Le solde que le client DEVRAIT avoir, sans rien écrire.
+     *
+     * Séparé de `recalculateBalance()` pour que la reprise
+     * (`clients:repair-balances`) puisse SIMULER : montrer l'écart avant de
+     * toucher quoi que ce soit. Une commande qui réécrit des soldes sans
+     * pouvoir les annoncer d'abord ne serait pas utilisable en production.
+     *
+     * C'est la MÊME déclaration qui sert au calcul et à la simulation : recopier
+     * la formule dans la commande aurait recréé, à l'endroit exact de la
+     * correction, le défaut qu'elle vient réparer.
+     */
+    public function computedBalance(): float
+    {
+        /*
+         * SANS LA PORTÉE DE FERME AMBIANTE, et délibérément.
+         *
+         * Ce qu'un client doit ne dépend pas du site que l'opérateur regarde en
+         * ce moment. Or `Sale` et `Payment` portent la portée de ferme : calculé
+         * depuis un autre site — ou depuis une reprise en lot qui balaie les
+         * quatre — le solde retombait à zéro, faute de voir les ventes.
+         *
+         * Le retrait est sûr : le périmètre reste borné aux ventes DE CE CLIENT,
+         * et un client appartient à un seul site. La portée ne pouvait donc rien
+         * ajouter ici, seulement retrancher à tort.
+         */
         $saleIds = $this->sales()
+            ->withoutFarm()
             ->whereNotIn('status', ['annule', 'brouillon'])
             ->pluck('id');
 
-        $totalDue  = (float) Sale::whereIn('id', $saleIds)->sum('total_amount');
-        $totalPaid = (float) Payment::whereIn('sale_id', $saleIds)->sum('amount');
+        $totalDue  = (float) Sale::withoutFarm()->whereIn('id', $saleIds)->sum('total_amount');
+        $totalPaid = (float) Payment::withoutFarm()->whereIn('sale_id', $saleIds)->sum('amount');
 
-        $this->update(['balance' => $totalDue - $totalPaid]);
+        return round($totalDue - $totalPaid, 2);
     }
 }
