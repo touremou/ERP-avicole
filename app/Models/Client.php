@@ -116,15 +116,37 @@ class Client extends Model
 
     /**
      * Recalcule le solde client depuis les ventes et paiements.
+     *
+     * LES DEUX JAMBES DOIVENT PORTER SUR LE MÊME PÉRIMÈTRE.
+     *
+     * Le débit excluait bien les brouillons et les annulées ; le crédit prenait
+     * les paiements de TOUTES les ventes du client, sans filtre. Un acompte
+     * encaissé sur une vente restée en brouillon était donc DÉDUIT d'un solde où
+     * la vente correspondante n'était jamais ENTRÉE.
+     *
+     * Ce cas n'a rien de théorique : `CreateSale` crée la vente en `brouillon`
+     * puis y attache le paiement immédiat, et ni le formulaire bureau ni la
+     * synchro terrain ne valident derrière. La vente reste brouillon, son acompte
+     * est enregistré — et `CancelSale` refuse ensuite d'annuler une vente
+     * porteuse de paiements, si bien que le brouillon payé ne peut plus être
+     * nettoyé et fausse chaque recalcul déclenché par une AUTRE vente du client.
+     *
+     * Conséquence : solde sous-évalué, crédit disponible sur-évalué — donc de la
+     * marchandise qui sort à crédit au-delà du plafond — et solde négatif si le
+     * client n'a que ce brouillon.
+     *
+     * Le périmètre est désormais calculé UNE fois et sert aux deux jambes, comme
+     * le fait déjà `Provider::outstandingDebt()`, qui se dit « symétrique de
+     * Client::recalculateBalance() » et l'était plus que celle-ci.
      */
     public function recalculateBalance(): void
     {
-        $totalDue = $this->sales()
+        $saleIds = $this->sales()
             ->whereNotIn('status', ['annule', 'brouillon'])
-            ->sum('total_amount');
+            ->pluck('id');
 
-        $totalPaid = Payment::whereIn('sale_id', $this->sales()->pluck('id'))
-            ->sum('amount');
+        $totalDue  = (float) Sale::whereIn('id', $saleIds)->sum('total_amount');
+        $totalPaid = (float) Payment::whereIn('sale_id', $saleIds)->sum('amount');
 
         $this->update(['balance' => $totalDue - $totalPaid]);
     }
