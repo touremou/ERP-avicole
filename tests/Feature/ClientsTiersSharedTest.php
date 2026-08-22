@@ -89,6 +89,12 @@ test("la fiche client vue par l'annuaire ne divulgue PAS la situation commercial
         ->assertDontSee('Total achats')      // stats commerciales : masquées
         ->assertDontSee('Plafond crédit')    // crédit : masqué
         ->assertDontSee('Dernières ventes'); // historique : masqué
+
+    // Le pendant : la situation commerciale EXISTE pour le profil commerce.
+    $this->actingAs($this->managerUser)->withSession(['current_farm_id' => $this->farm->id])
+        ->get(route('clients.show', $this->client))->assertOk()
+        ->assertSee('Total achats')
+        ->assertSee('Dernières ventes');
 });
 
 test("un profil commerce garde l'accès complet (relevé, crédit, suppression)", function () {

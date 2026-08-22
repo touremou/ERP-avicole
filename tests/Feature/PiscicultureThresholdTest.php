@@ -84,4 +84,34 @@ test('le formulaire EDIT câble aussi les seuils et masque la litière pour un p
         ->assertSee('PH_MAX = 9', false)         // seuil paramétré rendu
         ->assertDontSee('ph > 8.5', false)       // plus de hard-code
         ->assertDontSee('Litière Changée');      // section avicole masquée pour le poisson
+
+    /*
+     * LE PENDANT. La section litière doit EXISTER pour une volaille : sans cette
+     * moitié, l'interdiction ci-dessus resterait verte si la section disparaissait
+     * du formulaire pour TOUTES les espèces — on ne saurait pas distinguer
+     * « masquée pour le poisson » de « supprimée pour tout le monde ».
+     *
+     * Quant à « ph > 8.5 », c'est une garde d'une autre nature : elle interdit le
+     * RETOUR d'un seuil autrefois codé en dur, remplacé par le réglage lu
+     * ci-dessus. Sa vacuité est le but, et elle n'appelle pas de pendant.
+     */
+    $poule = Species::firstOrCreate(
+        ['slug' => 'poulet-chair-pisci'],
+        ['name_fr' => 'Poulet de chair', 'family' => 'volaille', 'is_active' => true]
+    );
+    $poulailler = Building::factory()->create(['type' => 'chair', 'capacity' => 5000]);
+    $lotVolaille = Batch::factory()->create([
+        'species_id'         => $poule->id,
+        'building_id'        => $poulailler->id,
+        'status'             => 'Actif',
+        'current_quantity'   => 500,
+        'production_type_id' => ProductionType::resolveOrCreate('chair', $poule->id)->id,
+    ]);
+    $pointageVolaille = DailyCheck::factory()->create([
+        'batch_id' => $lotVolaille->id, 'mortality' => 0, 'feed_consumed' => 0, 'feed_type' => 'Démarrage',
+    ]);
+
+    $this->actingAs($this->manager)->get(route('daily-checks.edit', $pointageVolaille))
+        ->assertOk()
+        ->assertSee('Litière Changée');
 });

@@ -87,6 +87,7 @@ test("le hub Annuaire du Vendeur ne divulgue AUCUNE donnée RH (ni masse salaria
     $this->actingAs($this->rhManager)->withSession(['current_farm_id' => $this->farm->id])
         ->get(route('rh.index'))->assertOk()
         ->assertSee('Masse salariale')
+        ->assertSee('Effectif actif')
         ->assertSee('9 999 999');
 });
 

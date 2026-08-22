@@ -294,8 +294,12 @@ test('la marge nette est masquée pour un utilisateur sans droit commerce', func
     }
     $eleveur = User::factory()->create(['role_id' => $role->id]);
 
-    // L'admin (bypass) voit bien la marge → le bloc existe.
-    $this->actingAs($this->adminUser)->get(route('dashboard'))->assertSee('Marge Nette Mensuelle');
+    // L'admin (bypass) voit bien la marge ET l'encours → les deux blocs existent.
+    // Sans ce second libellé, l'interdiction plus bas ne prouvait rien : une
+    // chaîne absente de partout est indiscernable d'une chaîne bien cachée.
+    $this->actingAs($this->adminUser)->get(route('dashboard'))
+        ->assertSee('Marge Nette Mensuelle')
+        ->assertSee('Encours Clients');
 
     // L'éleveur sans commerce.L ne doit PAS voir la marge ni l'encours clients.
     $this->actingAs($eleveur)
@@ -364,6 +368,20 @@ test('les boutons actions rapides sont masqués pour un opérateur sans droits l
         ->assertDontSee('Provenderie')
         ->assertDontSee('Stocks')
         ->assertDontSee('Nouvelle Bande');
+
+    /*
+     * LE PENDANT. Ces quatre boutons doivent EXISTER pour qui a les droits,
+     * sinon les interdire ne prouve rien — c'est la leçon des gardes trouvées
+     * aveugles en #306 : elles étaient vertes parce qu'elles ne pouvaient pas
+     * être rouges.
+     */
+    $this->actingAs($this->adminUser)
+        ->get(route('dashboard'))
+        ->assertOk()
+        ->assertSee('Magasin Oeufs')
+        ->assertSee('Provenderie')
+        ->assertSee('Stocks')
+        ->assertSee('Nouvelle Bande');
 });
 
 test('un lot virtuel (œufs externes) est exclu des KPI et de la liste du dashboard', function () {

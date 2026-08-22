@@ -72,6 +72,13 @@ test("l'UI stocks ne présente NI Modifier NI le mouvement rapide au magasinier 
         ->assertSee(route('stocks.create'), false)          // C : autorisé
         ->assertDontSee(route('stocks.edit', $this->stock->id), false)  // M : masqué
         ->assertDontSee('Mouvement rapide');                // M : masqué
+
+    // Le pendant : le mouvement rapide EXISTE pour qui a le droit M.
+    $this->actingAs($this->managerUser)
+        ->withSession(['current_farm_id' => $this->farm->id])
+        ->get(route('stocks.index'))
+        ->assertOk()
+        ->assertSee('Mouvement rapide');
 });
 
 test('un manager (M) peut effectuer un mouvement de stock (3 couches alignées)', function () {

@@ -66,6 +66,19 @@ test('un profil Trésorerie seule ne voit PAS les KPI dépenses (cloisonnement)'
         ->assertOk()
         ->assertSee('Soldes par compte', false)    // son périmètre
         ->assertDontSee('Dettes fournisseurs', false); // dépenses masquées
+
+    /*
+     * LE PENDANT. « Dettes fournisseurs » doit EXISTER pour le profil dépenses,
+     * sinon l'interdiction ci-dessus tient autant si le bloc a disparu du
+     * gabarit pour tout le monde — et une garde qui ne peut pas devenir rouge
+     * ne garde rien (cf. #306).
+     */
+    $depensier = User::factory()->create(['role_id' => financeHubRole('depensier_pur2', ['depenses'])->id]);
+    attachFarm($depensier, $this->farm);
+
+    $this->actingAs($depensier)->get(route('finance.index'))
+        ->assertOk()
+        ->assertSee('Dettes fournisseurs', false);
 });
 
 test('un profil sans Dépenses ni Trésorerie est rejeté du hub Finance', function () {
