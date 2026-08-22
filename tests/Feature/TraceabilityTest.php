@@ -50,9 +50,25 @@ test('la page publique n\'expose aucune donnée financière', function () {
         'total_acquisition_cost'  => 7654321,
     ]);
 
+    /*
+     * LES DEUX ÉCRITURES, parce que la page est PUBLIQUE.
+     *
+     * L'assertion ne cherchait que le nombre BRUT. Or l'application formate ses
+     * montants à la française — « 7 654 321 » — partout ailleurs. Le jour où un
+     * coût s'afficherait ici, il le serait sous cette forme, et la garde,
+     * cherchant l'autre, laisserait passer le prix d'achat d'un lot sur une page
+     * accessible sans authentification.
+     *
+     * Les deux formes dérivent de la valeur du lot : le test ne peut plus se
+     * désaligner de ce qu'il a lui-même posé en base.
+     */
+    $cout = (float) $batch->total_acquisition_cost;
+
     $this->get(route('trace.batch', 'LOT-TRACE-2'))
         ->assertOk()
-        ->assertDontSee('7654321');
+        ->assertDontSee((string) (int) $cout)
+        ->assertDontSee(number_format($cout, 0, ',', ' '))
+        ->assertDontSee(number_format($cout));
 });
 
 // ─── Étiquette imprimable ─────────────────────────────────────────────────────
@@ -114,7 +130,12 @@ test('la traçabilité publique d\'un OP d\'aliment affiche la formule sans coû
         ->assertOk()
         ->assertSee('OP-2026-000099')
         ->assertSee('Ponte Standard')
-        ->assertDontSee('1234'); // aucun coût exposé au public
+        // Aucun coût exposé au public — sous AUCUNE de ses écritures possibles
+        // (brut, à la française, ou séparé par une virgule). Voir la page lot
+        // ci-dessus : chercher une seule forme, c'est ne rien garder du tout.
+        ->assertDontSee('1234')
+        ->assertDontSee(number_format(1234, 0, ',', ' '))
+        ->assertDontSee(number_format(1234));
 
     $this->actingAs($this->adminUser)
         ->get(route('production.label', $op->id))
