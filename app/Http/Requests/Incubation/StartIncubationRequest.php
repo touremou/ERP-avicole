@@ -45,6 +45,20 @@ class StartIncubationRequest extends FormRequest
         // 💡 LOGIQUE CONDITIONNELLE
         if ($this->source_type === 'internal') {
             $rules['batch_id'] = ['required', 'exists:batches,id'];
+
+            /*
+             * QUEL CALIBRE EST PRÉLEVÉ AU MAGASIN.
+             *
+             * Des œufs collectés en interne sortent du stock : il faut donc dire
+             * lesquels. Sans ce champ, la mise en couvoir ne pouvait pas
+             * déstocker, et les œufs restaient comptés vendables pendant qu'ils
+             * étaient à l'incubateur.
+             *
+             * Exigé pour l'interne SEULEMENT : des œufs achetés à un fournisseur
+             * ne sont jamais passés par le magasin, et les déduire retirerait un
+             * stock qui n'a jamais existé.
+             */
+            $rules['egg_grade'] = ['required', 'in:' . implode(',', \App\Models\EggProduction::gradeCodes())];
         } else {
             $rules['provider_id'] = ['required'];
             
@@ -70,6 +84,11 @@ class StartIncubationRequest extends FormRequest
             $dedans = $incubator->eggsInIncubation();
 
             $messages = [
+            // Le message par défaut disait « Le champ egg grade est obligatoire » :
+            // un technicien devant sa couveuse n'en tire rien. On nomme le geste.
+            'egg_grade.required' => 'Indiquez le calibre prélevé au magasin : ces œufs sortent du stock vendable dès la mise à couver.',
+            'egg_grade.in'       => 'Ce calibre n\'existe pas au magasin.',
+
                 'eggs_count.max' => $dedans > 0
                     ? __('Il ne reste que :reste place(s) dans cet incubateur : :dedans œuf(s) y sont déjà en incubation sur une capacité de :capacite.', [
                         'reste' => $incubator->remainingCapacity(), 'dedans' => $dedans, 'capacite' => $incubator->capacity,
