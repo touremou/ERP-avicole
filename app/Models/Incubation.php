@@ -21,6 +21,11 @@ class Incubation extends Model
         'hatch_uuid',
         'farm_id',
         'batch_id',
+        // Provenance des œufs : `internal` (prélevés au magasin, donc déstockés)
+        // ou `external` (achetés, jamais entrés en stock). `egg_grade` dit quel
+        // calibre a été prélevé — sans lui, rien à restituer à l'abandon.
+        'source_type',
+        'egg_grade',
         'incubator_id',
         'code_incubation',
         'start_date',

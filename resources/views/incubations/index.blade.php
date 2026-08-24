@@ -503,6 +503,24 @@
                             </div>
                         </div>
 
+                        {{-- Calibre prélevé au magasin (interne uniquement).
+                             Des œufs collectés SORTENT du stock : il faut dire lesquels.
+                             Un achat fournisseur n'est jamais passé par le magasin — pas
+                             de calibre à prélever, donc pas de champ. --}}
+                        <div x-show="!isExternal" class="space-y-2">
+                            <label class="text-[10px] font-black text-blue-500 uppercase italic ml-2">{{ __("Calibre prélevé au magasin") }}</label>
+                            <div class="relative">
+                                <select name="egg_grade" :required="!isExternal" class="w-full bg-blue-50/50 border border-blue-100 rounded-2xl px-5 py-4 font-black text-xs italic shadow-sm outline-none focus:ring-2 focus:ring-blue-500/50 transition-all appearance-none cursor-pointer text-blue-900">
+                                    <option value="">{{ __("-- Choisir le calibre --") }}</option>
+                                    @foreach(\App\Models\EggProduction::gradeCodes() as $code)
+                                        <option value="{{ $code }}">{{ $code }}</option>
+                                    @endforeach
+                                </select>
+                                <i class="fa-solid fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-blue-300 pointer-events-none"></i>
+                            </div>
+                            <p class="text-[8px] text-slate-400 italic ml-2">{{ __("Ces œufs sortent du stock vendable dès la mise à couver.") }}</p>
+                        </div>
+
                         {{-- Choix Externe : Fournisseur --}}
                         <div x-show="isExternal" x-cloak class="space-y-2">
                             <label class="text-[10px] font-black text-orange-500 uppercase italic ml-2">{{ __("Fournisseur Externe") }}</label>

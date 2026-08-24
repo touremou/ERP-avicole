@@ -19,6 +19,17 @@ test('le lancement d\'une incubation (source interne) réussit sans erreur 500',
     ]);
     $batch = Batch::factory()->create(['farm_id' => $this->farm->id, 'status' => 'Actif']);
 
+    /*
+     * Des œufs prélevés en interne SORTENT désormais du magasin : la mise à
+     * couver dit quel calibre, et le stock doit exister pour être prélevé
+     * (cf. IncubatedEggsLeaveTheStoreTest). 300 œufs = 10 alvéoles.
+     */
+    \App\Models\Stock::create([
+        'farm_id' => $this->farm->id, 'item_name' => 'L',
+        'category' => \App\Models\Stock::CAT_OEUFS, 'unit' => 'Alvéole',
+        'current_quantity' => 50, 'alert_threshold' => 0,
+    ]);
+
     $this->actingAs($this->adminUser)
         ->withSession(['current_farm_id' => $this->farm->id])
         ->post(route('incubations.store'), [
@@ -27,6 +38,7 @@ test('le lancement d\'une incubation (source interne) réussit sans erreur 500',
             'eggs_count'   => 300,
             'source_type'  => 'internal',
             'batch_id'     => $batch->id,
+            'egg_grade'    => 'L',
             'duration'     => 21,
         ])
         ->assertSessionHasNoErrors()
