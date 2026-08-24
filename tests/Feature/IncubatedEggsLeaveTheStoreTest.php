@@ -173,3 +173,49 @@ test('la PROVENANCE est enregistrée, pas seulement validée', function () {
     expect($incubation->fresh()->source_type)->toBe('internal')
         ->and($incubation->fresh()->egg_grade)->toBe('L');
 });
+
+test('aucune COPIE MORTE de ces règles ne subsiste dans le module', function () {
+    /*
+     * CINQ FICHIERS PORTAIENT UNE COPIE COMMENTÉE DE LEUR PROPRE CLASSE.
+     *
+     * D'anciennes versions laissées en place lors d'une réécriture. Ce n'était
+     * pas qu'un désordre : chacune énonçait la même règle EN PLUS FAIBLE.
+     *
+     *   • la copie morte de `RecordHatching` n'avait ni la garde anti-double
+     *     éclosion ni le calcul du taux. Or cette garde existe pour un défaut
+     *     mesuré : re-soumettre le formulaire sur un cycle dont 600 poussins sur
+     *     800 étaient déjà partis remettait le compteur à 0/800, et les 600
+     *     redevenaient « à dispatcher » ;
+     *   • celle d'`AbortIncubation` ne libérait la machine que sans condition —
+     *     et, depuis le déstockage, ne restituerait pas les œufs au magasin.
+     *
+     * Le risque n'est pas théorique : un lecteur pressé « restaure » la version
+     * commentée en croyant retrouver l'original, et perd silencieusement une
+     * garde ajoutée pour un vrai incident.
+     *
+     * Ce test interdit leur retour. Il vaut pour TOUT le projet, pas seulement
+     * pour l'incubation : une classe déclarée deux fois dans un fichier est
+     * toujours une version morte qui contredit la vivante.
+     */
+    $doublons = [];
+
+    $iterateur = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator(base_path('app'), RecursiveDirectoryIterator::SKIP_DOTS)
+    );
+
+    foreach ($iterateur as $fichier) {
+        if ($fichier->getExtension() !== 'php') {
+            continue;
+        }
+
+        $lignes = file($fichier->getPathname());
+        $classes = array_filter($lignes, fn ($l) => preg_match('/^\s*class [A-Z]/', $l));
+
+        if (count($classes) > 1) {
+            $doublons[] = str_replace(base_path() . '/', '', $fichier->getPathname());
+        }
+    }
+
+    expect($doublons)->toBe([], 'Classe déclarée deux fois — une copie morte contredit la vivante : '
+        . implode(', ', $doublons));
+});
