@@ -190,6 +190,14 @@ class ReportController extends Controller
          */
         $milkCollected = PeriodRevenue::milkCollectedValued($from, $to);
 
+        /*
+         * TVA collectée : encaissée pour l'État, donc hors recettes (#310), mais
+         * elle ne doit pas disparaître de la vue pour autant. Elle est affichée
+         * sous le total, nommée pour ce qu'elle est — et NON comme un montant dû,
+         * la TVA déductible sur achats n'étant enregistrée nulle part.
+         */
+        $taxCollected = PeriodRevenue::taxCollected($from, $to);
+
         $revenue = [];
         foreach ($salesByType as $type => $total) {
             $revenue[$this->productTypeLabel($type)] = (float) $total;
@@ -255,7 +263,7 @@ class ReportController extends Controller
         return compact(
             'from', 'to', 'revenue', 'totalRevenue',
             'costs', 'totalCosts', 'netResult', 'marginPct', 'speciesMargin', 'cropMargin',
-            'syscohadaProduits', 'syscohadaCharges', 'milkCollected'
+            'syscohadaProduits', 'syscohadaCharges', 'milkCollected', 'taxCollected'
         );
     }
 
