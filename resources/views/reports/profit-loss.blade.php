@@ -65,6 +65,20 @@
                         <span class="text-lg font-black text-emerald-600">{{ number_format($totalRevenue) }}</span>
                     </div>
 
+                    @if(($taxCollected ?? 0) > 0)
+                        {{-- HORS RECETTES. Cet argent est encaissé POUR L'ÉTAT : il ne fait
+                             que transiter par la caisse. Il était écrit sur chaque facture et
+                             totalisé nulle part — l'exploitation n'avait aucun moyen de savoir
+                             ce qu'elle avait collecté. --}}
+                        <div class="flex justify-between items-center pt-3 mt-3 border-t border-dashed border-slate-200">
+                            <div>
+                                <span class="text-[10px] font-black text-amber-600 uppercase tracking-widest">{{ __("TVA collectée") }}</span>
+                                <p class="text-[8px] text-slate-400 italic mt-1">{{ __("Encaissée pour l’État, hors recettes — la TVA déductible sur achats n’est pas enregistrée, ce n’est donc PAS le montant à reverser") }}</p>
+                            </div>
+                            <span class="text-sm font-black text-amber-600">{{ number_format($taxCollected) }}</span>
+                        </div>
+                    @endif
+
                     @if(($milkCollected ?? 0) > 0)
                         {{-- HORS RECETTES. La collecte de lait alimente le stock ; le revenu
                              naît de sa VENTE, déjà comptée ci-dessus. L'ajouter aux produits

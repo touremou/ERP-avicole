@@ -88,6 +88,35 @@ class PeriodRevenue
     }
 
     /**
+     * TVA COLLECTÉE SUR LA PÉRIODE — encaissée pour l'État, hors recettes.
+     *
+     * `sales.tax_amount` était écrit par `recalculateTotals()` et lu NULLE PART,
+     * sauf sur la facture individuelle. Aucun écran ne totalisait jamais ce que
+     * l'exploitation avait collecté : l'argent entrait en caisse, ressortait du
+     * chiffre d'affaires (à juste titre, depuis #310) — et n'apparaissait ensuite
+     * dans aucun état.
+     *
+     * ─── CE CHIFFRE N'EST PAS LA TVA DUE ───
+     *
+     * La TVA à reverser vaut « collectée − déductible ». Or ni
+     * `supplier_invoices` ni `expenses` ne portent le moindre champ de taxe :
+     * l'application n'enregistre pas la TVA payée sur les achats, donc elle ne
+     * peut pas calculer le net.
+     *
+     * On expose donc la seule moitié que la base connaît, en la NOMMANT pour ce
+     * qu'elle est. Afficher « TVA à payer » sur une moitié de l'équation serait
+     * pire que de ne rien afficher : cela fonderait une déclaration sur un
+     * chiffre faux, toujours trop élevé.
+     */
+    public static function taxCollected(Carbon $from, Carbon $to): float
+    {
+        return round((float) Sale::query()
+            ->whereIn('status', ['valide', 'livre'])
+            ->whereBetween('sale_date', [$from, $to])
+            ->sum('tax_amount'), 2);
+    }
+
+    /**
      * Chiffre d'affaires des ventes de la période, ventilé par type de produit.
      *
      * @return array<string, float>  product_type (ou libellé) => montant
