@@ -234,10 +234,19 @@ class ReportController extends Controller
         // Coûts des cycles végétaux clôturés sur la période : forfaits
         // (acquisition + additionnels) + intrants itémisés. Cohérent avec la
         // marge nette du cycle (cf. CropCycle::getNetMarginAttribute).
-        $cropDirectCost = (float) (clone $closedCyclesQuery)
-            ->sum(DB::raw('total_acquisition_cost + additional_costs'));
-        $cropInputsCost = (float) CropInput::whereIn('crop_cycle_id', $closedCycleIds)->sum('total_cost');
-        $cropCost = $cropDirectCost + $cropInputsCost;
+        /*
+         * Même correction qu'à la marge par culture : on impute le coût des
+         * marchandises VENDUES, pas le coût engagé. La somme précédente valait
+         * exactement `CropCycle::total_cost` et ignorait donc les récoltes
+         * conservées, dont le coût suit la matière en inventaire.
+         *
+         * On passe par la déclaration du modèle plutôt que de la recopier : une
+         * seconde formule divergerait au premier ajustement.
+         */
+        $cropCost = (float) (clone $closedCyclesQuery)
+            ->with('inputs:id,crop_cycle_id,total_cost')
+            ->get()
+            ->sum(fn (CropCycle $c) => $c->costOfGoodsSold());
         if ($cropCost > 0) {
             $costs['Production végétale (cultures)'] = $cropCost;
         }
@@ -316,9 +325,24 @@ class ReportController extends Controller
         foreach ($cycles as $cycle) {
             $crop = $cycle->crop_name;
             $revenue = (float) $cycle->total_revenue;
-            $cost = (float) $cycle->total_acquisition_cost
-                + (float) $cycle->additional_costs
-                + (float) $cycle->inputs->sum('total_cost');
+
+            /*
+             * COÛT DES MARCHANDISES VENDUES, pas coût engagé.
+             *
+             * Cette ligne recomposait « acquisition + forfaits + intrants » —
+             * soit exactement `CropCycle::total_cost`, le coût ENGAGÉ. Or le
+             * revenu en face ne compte que les récoltes VENDUES.
+             *
+             * Un cycle dont une partie de la récolte sèche ou attend un meilleur
+             * prix se voyait donc imputer le coût de ce qui est encore en
+             * inventaire, sans la recette correspondante : marge catastrophique
+             * le mois de la récolte, puis profit sans coût le mois de la vente.
+             *
+             * Le modèle porte déjà la bonne déclaration — `costOfGoodsSold()`
+             * retire la valorisation des récoltes conservées, et son commentaire
+             * décrit précisément ce piège. Ce rapport ne l'avait jamais suivie.
+             */
+            $cost = $cycle->costOfGoodsSold();
 
             if (! isset($rows[$crop])) {
                 $rows[$crop] = ['crop' => $crop, 'revenue' => 0.0, 'cost' => 0.0, 'margin' => 0.0];
