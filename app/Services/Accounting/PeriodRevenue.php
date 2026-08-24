@@ -2,6 +2,7 @@
 
 namespace App\Services\Accounting;
 
+use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\SaleReturnItem;
 use Carbon\Carbon;
@@ -55,6 +56,13 @@ class PeriodRevenue
     public const LIBELLE_NON_VENTILE = 'Retours antérieurs (catégorie non tracée)';
 
     /**
+     * Les frais de livraison facturés sont une recette — d'une autre nature que
+     * la marchandise, donc sur leur propre ligne. Les fondre dans une catégorie
+     * de produit fausserait la rentabilité de cette catégorie.
+     */
+    public const LIBELLE_LIVRAISON = 'Livraison facturée';
+
+    /**
      * LAIT COLLECTÉ ET VALORISÉ SUR LA PÉRIODE — un STOCK, pas un revenu.
      *
      * La collecte de lait alimente l'article « Lait » du magasin
@@ -86,21 +94,96 @@ class PeriodRevenue
      */
     public static function byProductType(Carbon $from, Carbon $to): array
     {
-        $revenue = SaleItem::query()
-            ->whereHas('sale', fn ($q) => $q->whereIn('status', ['valide', 'livre'])
-                ->whereBetween('sale_date', [$from, $to]))
-            ->selectRaw('product_type, SUM(total) as total')
-            ->groupBy('product_type')
-            ->pluck('total', 'product_type')
-            ->map(fn ($v) => (float) $v)
-            ->all();
+        /*
+         * NET DE REMISE, HORS TVA — et la livraison à part.
+         *
+         * Cette méthode sommait `sale_items.total`, c'est-à-dire le brut AVANT
+         * remise. Une remise accordée ne réduisait donc pas la recette
+         * enregistrée : le compte de résultat annonçait plus que ce que le
+         * client avait été facturé.
+         *
+         * Le tableau de bord, lui, sommait `sales.total_amount` — donc TVA
+         * COMPRISE. Il comptait dans le chiffre d'affaires de la ferme un argent
+         * qui appartient à l'État. Sur une facture à 18 %, l'écart entre les deux
+         * écrans atteignait 112 000 GNF pour un million vendu.
+         *
+         * La règle retenue est celle de tous les référentiels : le chiffre
+         * d'affaires est net des remises et EXCLUT la taxe collectée. Les frais
+         * de livraison facturés sont bien une recette, mais d'une autre nature —
+         * ils figurent sur leur propre ligne plutôt que gonfler la vente de
+         * marchandise.
+         *
+         * La remise est portée par la VENTE, pas par la ligne : on la répartit au
+         * prorata du poids de chaque type de produit dans le sous-total. Sans
+         * cela, une remise sur une facture mixte s'imputerait arbitrairement.
+         */
+        $revenue = [];
+
+        foreach (self::netRatiosBySale($from, $to) as $saleId => $vente) {
+            foreach ($vente['lignes'] as $type => $brut) {
+                $cle = $type ?: self::LIBELLE_NON_VENTILE;
+                $revenue[$cle] = ($revenue[$cle] ?? 0.0) + round($brut * $vente['ratio'], 2);
+            }
+
+            if ($vente['livraison'] > 0) {
+                $revenue[self::LIBELLE_LIVRAISON] =
+                    ($revenue[self::LIBELLE_LIVRAISON] ?? 0.0) + $vente['livraison'];
+            }
+        }
 
         foreach (self::laterReturns($from, $to)->get() as $ligne) {
             $cle = $ligne->product_type ?: self::LIBELLE_NON_VENTILE;
             $revenue[$cle] = ($revenue[$cle] ?? 0.0) + (float) $ligne->total;
         }
 
-        return $revenue;
+        return array_map(fn ($v) => round($v, 2), $revenue);
+    }
+
+    /**
+     * Par vente de la période : ses lignes brutes par type, son ratio net après
+     * remise, et ses frais de livraison facturés.
+     *
+     * Le ratio vaut (sous-total − remise) ÷ sous-total. Il est neutre (1.0) sans
+     * remise, ce qui laisse les ventes ordinaires strictement inchangées.
+     *
+     * @return array<int, array{lignes: array<string, float>, ratio: float, livraison: float}>
+     */
+    private static function netRatiosBySale(Carbon $from, Carbon $to): array
+    {
+        $ventes = Sale::query()
+            ->whereIn('status', ['valide', 'livre'])
+            ->whereBetween('sale_date', [$from, $to])
+            ->get(['id', 'subtotal', 'discount_amount', 'delivery_fee']);
+
+        if ($ventes->isEmpty()) {
+            return [];
+        }
+
+        $lignes = SaleItem::whereIn('sale_id', $ventes->pluck('id'))
+            ->selectRaw('sale_id, product_type, SUM(total) as total')
+            ->groupBy('sale_id', 'product_type')
+            ->get();
+
+        $parVente = [];
+
+        foreach ($ventes as $v) {
+            $sousTotal = (float) $v->subtotal;
+            $remise    = (float) $v->discount_amount;
+
+            $parVente[$v->id] = [
+                'lignes'    => [],
+                // Un sous-total nul ne se prorate pas : on ne divise pas par zéro
+                // pour une vente sans marchandise (livraison seule, par exemple).
+                'ratio'     => $sousTotal > 0 ? max(0.0, ($sousTotal - $remise) / $sousTotal) : 1.0,
+                'livraison' => (float) ($v->delivery_fee ?? 0),
+            ];
+        }
+
+        foreach ($lignes as $l) {
+            $parVente[$l->sale_id]['lignes'][(string) $l->product_type] = (float) $l->total;
+        }
+
+        return $parVente;
     }
 
     /**
@@ -117,10 +200,23 @@ class PeriodRevenue
             return 0.0;
         }
 
-        $vendu = (float) SaleItem::whereIn('batch_id', $ids)
+        /*
+         * Même règle que `byProductType` : net de remise. Sans le prorata, la
+         * rentabilité d'une espèce comptait un chiffre d'affaires que le client
+         * n'a jamais payé — et la marge s'en trouvait flattée.
+         */
+        $ratios = self::netRatiosBySale($from, $to);
+
+        $vendu = 0.0;
+
+        foreach (SaleItem::whereIn('batch_id', $ids)
             ->whereHas('sale', fn ($q) => $q->whereIn('status', ['valide', 'livre'])
                 ->whereBetween('sale_date', [$from, $to]))
-            ->sum('total');
+            ->get(['sale_id', 'total']) as $ligne) {
+            $vendu += (float) $ligne->total * ($ratios[$ligne->sale_id]['ratio'] ?? 1.0);
+        }
+
+        $vendu = round($vendu, 2);
 
         $rendusApres = (float) self::laterReturns($from, $to)
             ->whereIn('sale_return_items.batch_id', $ids)
