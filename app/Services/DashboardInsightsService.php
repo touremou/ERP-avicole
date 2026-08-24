@@ -176,9 +176,22 @@ class DashboardInsightsService
      */
     public function financial(Carbon $monthStart, Carbon $monthEnd): array
     {
-        $caVentes = (float) Sale::validated()
-            ->whereBetween('sale_date', [$monthStart, $monthEnd])
-            ->sum('total_amount');
+        /*
+         * MÊME DÉCLARATION QUE LE COMPTE DE RÉSULTAT.
+         *
+         * Ce chiffre sommait `total_amount` : le montant TTC réellement facturé,
+         * donc TVA COMPRISE. Il comptait dans le chiffre d'affaires de la ferme
+         * un argent qui appartient à l'État — et divergeait du compte de
+         * résultat, qui sommait les lignes hors taxe. Sur une facture à 18 %
+         * avec remise et livraison, l'écart mesuré atteignait 112 000 GNF pour
+         * un million de marchandise.
+         *
+         * Les deux écrans répondent à la même question ; ils passent désormais
+         * par la même déclaration, net de remise et hors taxe.
+         */
+        $caVentes = (float) array_sum(
+            \App\Services\Accounting\PeriodRevenue::byProductType($monthStart, $monthEnd)
+        );
 
         /*
          * La collecte de lait n'entre PAS dans le chiffre d'affaires : elle
