@@ -89,24 +89,33 @@ class WaterSource extends Model
     }
 
     /**
-     * Met à jour le niveau de la citerne après un relevé.
+     * Applique au niveau de la citerne la VARIATION d'un relevé.
+     *
+     * Cette méthode s'appelait `refreshLevel()` et relisait le relevé du jour
+     * pour en soustraire la consommation ENTIÈRE. Or `RecordWaterReading` fait
+     * un `updateOrCreate` : corriger le relevé du jour (« 500 L, non, 600 »)
+     * rappelait la méthode, qui retirait 600 de plus d'un niveau qui portait
+     * déjà les 500 premiers. La citerne perdait 1 100 L pour une journée qui en
+     * avait consommé 600 — puis l'alerte « citerne basse » se déclenchait sur
+     * un niveau qui n'existait pas.
+     *
+     * On applique donc la VARIATION, sur le modèle de `SyncWaterConsumption`,
+     * qui dit en toutes lettres appliquer le delta « si bien qu'une
+     * rectification ou une suppression de pointage réajuste le niveau sans
+     * jamais double-compter ». La règle était déjà écrite ; elle n'était pas
+     * tenue des deux côtés.
+     *
+     * Les lignes de ravitaillement ne passent pas par ici : elles mettent le
+     * niveau à jour directement, à leur création (elles sont des événements, et
+     * plusieurs par jour coexistent).
      */
-    public function refreshLevel(): void
+    public function applyReadingDelta(float $consumedDelta, float $addedDelta): void
     {
         if ($this->type !== 'citerne' || ! $this->capacity_liters) return;
 
-        // Prend le RELEVÉ de consommation du jour (is_refill=false) : les lignes
-        // de ravitaillement (appoints) ont déjà mis à jour le niveau directement.
-        $todayReading = $this->readings()
-            ->whereDate('reading_date', today())
-            ->where('is_refill', false)
-            ->orderByDesc('volume_consumed_liters')
-            ->first();
-        if (! $todayReading) return;
+        if (abs($consumedDelta) < 0.0001 && abs($addedDelta) < 0.0001) return;
 
-        $newLevel = max(0, (float) $this->current_level_liters
-            - (float) $todayReading->volume_consumed_liters
-            + (float) $todayReading->volume_added_liters);
+        $newLevel = max(0, (float) $this->current_level_liters - $consumedDelta + $addedDelta);
 
         // Anti-débordement : une citerne ne peut pas dépasser sa capacité.
         $newLevel = min((float) $this->capacity_liters, $newLevel);
