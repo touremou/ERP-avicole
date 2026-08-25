@@ -9,6 +9,7 @@ use App\Models\ModulePermission;
 use App\Models\Reception;
 use App\Models\DiscrepancyReport;
 use App\Models\Client;
+use App\Models\Sale;
 use App\Models\Stock;
 use App\Models\Batch;
 use App\Actions\Dispatch\CreateDispatch;
@@ -60,7 +61,30 @@ class DispatchController extends Controller
         // catégories de stock ACTIVES (au lieu d'une liste codée en dur).
         $shippableStockTypes = Stock::shippableStockTypes();
 
-        return view('dispatches.create', compact('stocks', 'batches', 'receivers', 'shippableStockTypes'));
+        /*
+         * LES VENTES QUE CE BON DE LIVRAISON PEUT HONORER.
+         *
+         * `CreateDispatch` refuse de retirer une seconde fois ce que
+         * `ValidateSale` a déjà sorti — mais seulement si l'expédition SAIT à
+         * quelle vente elle se rattache. Or `sale_id` était validé par `store()`
+         * et lu par l'action sans qu'AUCUN formulaire ne le renseigne : le garde
+         * ne pouvait jamais se déclencher en exploitation. On vendait 100 sujets
+         * (l'effectif du lot baissait de 100), on éditait le bon de livraison
+         * correspondant, et 100 de plus disparaissaient du lot.
+         *
+         * On ne propose que les ventes SORTIES du stock (`valide` / `livre`) et
+         * PAS ENCORE expédiées : une vente déjà liée à un bon n'a plus à l'être,
+         * et un brouillon n'a rien déstocké — c'est alors l'expédition qui reste
+         * le fait générateur, et elle doit continuer de déstocker.
+         */
+        $sales = Sale::whereIn('status', ['valide', 'livre'])
+            ->whereDoesntHave('dispatches')
+            ->with('client:id,name')
+            ->latest('sale_date')
+            ->limit(50)
+            ->get(['id', 'reference', 'sale_date', 'total_amount', 'client_id']);
+
+        return view('dispatches.create', compact('stocks', 'batches', 'receivers', 'shippableStockTypes', 'sales'));
     }
 
     /**
