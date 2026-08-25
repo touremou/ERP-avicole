@@ -1153,9 +1153,28 @@ class Batch extends Model
     /**
      * Coût eau + énergie imputé à ce lot via le bâtiment qu'il occupe.
      *
-     * Seuls les relevés taggés avec building_id = ce lot sont comptabilisés,
-     * sur la période d'élevage (arrival_date → closing_date ou aujourd'hui).
-     * Retourne 0 si le lot n'a pas de bâtiment ou si aucun relevé n'est taggé.
+     * Seuls les relevés taggés sur SON bâtiment comptent, sur sa période de
+     * présence (arrival_date → closing_date ou aujourd'hui).
+     *
+     * ─── PARTAGÉ ENTRE LES LOTS QUI OCCUPENT LE BÂTIMENT ───
+     *
+     * Cette méthode sommait la facture ENTIÈRE. Deux bandes logées ensemble se
+     * voyaient donc imputer chacune la totalité de l'eau et de l'énergie : une
+     * facture de 300 000 en devenait 600 000 répartis. Depuis que la marge de
+     * clôture s'appuie sur ce chiffre (#300), l'erreur se retrouve dans le
+     * résultat de chaque bande.
+     *
+     * Chaque relevé est désormais partagé entre les lots PRÉSENTS CE JOUR-LÀ, au
+     * prorata de leur effectif — la mesure d'occupation que le bâtiment utilise
+     * déjà (`Building::currentOccupation()` somme des têtes). Un poulailler de
+     * 5 000 sujets ne consomme pas comme un de 500.
+     *
+     * L'effectif retenu est `initial_quantity`, pas `current_quantity` : la
+     * clôture met ce dernier à zéro, et un lot clos verrait alors sa part
+     * s'effondrer rétroactivement — le chiffre changerait après coup.
+     *
+     * Un bâtiment n'abritant qu'une bande donne une part de 1 : le résultat est
+     * alors exactement celui d'avant.
      */
     public function getUtilityCostAttribute(): float
     {
@@ -1164,17 +1183,52 @@ class Batch extends Model
         $start = $this->arrival_date?->toDateString();
         $end   = $this->closing_date?->toDateString() ?? now()->toDateString();
 
-        $waterCost = WaterReading::where('building_id', $this->building_id)
-            ->when($start, fn ($q) => $q->whereDate('reading_date', '>=', $start))
-            ->whereDate('reading_date', '<=', $end)
-            ->sum('cost');
+        $releves = collect();
 
-        $energyCost = EnergyReading::where('building_id', $this->building_id)
-            ->when($start, fn ($q) => $q->whereDate('reading_date', '>=', $start))
-            ->whereDate('reading_date', '<=', $end)
-            ->sum('cost');
+        foreach ([WaterReading::class, EnergyReading::class] as $modele) {
+            $releves = $releves->concat(
+                $modele::where('building_id', $this->building_id)
+                    ->when($start, fn ($q) => $q->whereDate('reading_date', '>=', $start))
+                    ->whereDate('reading_date', '<=', $end)
+                    ->get(['reading_date', 'cost'])
+                    ->all()
+            );
+        }
 
-        return (float) ($waterCost + $energyCost);
+        if ($releves->isEmpty()) {
+            return 0.0;
+        }
+
+        // Les colocataires possibles du bâtiment, chargés une fois.
+        $voisins = static::withoutGlobalScopes()
+            ->where('building_id', $this->building_id)
+            ->get(['id', 'arrival_date', 'closing_date', 'initial_quantity']);
+
+        $total = 0.0;
+
+        foreach ($releves as $releve) {
+            $jour = \Carbon\Carbon::parse($releve->reading_date)->startOfDay();
+
+            $presents = $voisins->filter(function ($lot) use ($jour) {
+                $arrivee = $lot->arrival_date ? Carbon::parse($lot->arrival_date)->startOfDay() : null;
+                $sortie  = $lot->closing_date ? Carbon::parse($lot->closing_date)->startOfDay() : null;
+
+                return ($arrivee === null || $arrivee->lte($jour))
+                    && ($sortie === null || $sortie->gte($jour));
+            });
+
+            $effectifs = (float) $presents->sum(fn ($l) => max(0, (int) $l->initial_quantity));
+
+            // Sans effectif déclaré nulle part, on partage en parts égales
+            // plutôt que de tout imputer au premier venu.
+            $part = $effectifs > 0
+                ? max(0, (int) $this->initial_quantity) / $effectifs
+                : ($presents->count() > 0 ? 1 / $presents->count() : 1.0);
+
+            $total += (float) $releve->cost * $part;
+        }
+
+        return round($total, 2);
     }
 
     /**
