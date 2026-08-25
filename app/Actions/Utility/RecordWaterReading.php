@@ -10,7 +10,8 @@ use Illuminate\Support\Facades\DB;
  * Relevé de consommation d'eau — SOURCE UNIQUE web + sync mobile.
  * Coût estimé depuis le prix du m³ quand il n'est pas saisi ; un relevé par
  * (citerne, jour) avec is_refill=false, pour ne jamais heurter les lignes de
- * ravitaillement ; le niveau de la citerne est recalculé après écriture.
+ * ravitaillement ; le niveau de la citerne suit la VARIATION du relevé, si bien
+ * qu'une correction de saisie ne retire pas la consommation une seconde fois.
  */
 class RecordWaterReading
 {
@@ -47,21 +48,46 @@ class RecordWaterReading
             $data['user_id'] = $userId;
             $data['volume_added_liters'] = $data['volume_added_liters'] ?? 0;
 
+            /*
+             * CE QUE LE RELEVÉ DU JOUR AVAIT DÉJÀ RETIRÉ DE LA CITERNE.
+             *
+             * `updateOrCreate` réécrit la ligne ; le niveau, lui, était
+             * décrémenté À NEUF à chaque passage (cf. WaterSource). On lit donc
+             * la ligne AVANT de l'écrire, pour n'appliquer que la variation.
+             */
+            $precedent = WaterReading::where('water_source_id', $data['water_source_id'])
+                ->whereDate('reading_date', $data['reading_date'])
+                ->where('is_refill', false)
+                ->first();
+
+            $consommeAvant = (float) ($precedent->volume_consumed_liters ?? 0);
+            $ajouteAvant   = (float) ($precedent->volume_added_liters ?? 0);
+
             if (empty($data['cost'])) {
                 $pricePerM3 = (float) setting('energie.water_price_m3', 0);
                 $data['cost'] = round(((float) $data['volume_consumed_liters'] / 1000) * $pricePerM3, 2);
             }
 
-            $reading = WaterReading::updateOrCreate(
-                [
-                    'water_source_id' => $data['water_source_id'],
-                    'reading_date'    => $data['reading_date'],
-                    'is_refill'       => false,
-                ],
-                array_merge($data, ['is_refill' => false]),
-            );
+            /*
+             * ON RÉÉCRIT LA LIGNE DÉJÀ TROUVÉE (cf. RecordEnergyReading pour le
+             * détail) : `reading_date` est une colonne DATE que le cast écrit au
+             * format datetime, si bien que l'égalité d'`updateOrCreate` retrouve
+             * la ligne sous MySQL et pas sous SQLite. La recherche par
+             * `whereDate` faite plus haut est vraie des deux côtés.
+             */
+            $data['is_refill'] = false;
 
-            WaterSource::find($data['water_source_id'])?->refreshLevel();
+            if ($precedent) {
+                $precedent->update($data);
+                $reading = $precedent->refresh();
+            } else {
+                $reading = WaterReading::create($data);
+            }
+
+            WaterSource::find($data['water_source_id'])?->applyReadingDelta(
+                (float) $data['volume_consumed_liters'] - $consommeAvant,
+                (float) $data['volume_added_liters'] - $ajouteAvant,
+            );
 
             return $reading;
         });

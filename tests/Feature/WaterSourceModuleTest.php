@@ -33,7 +33,7 @@ function citerne(int $farmId, array $attrs = []): WaterSource
     ], $attrs));
 }
 
-test('refreshLevel ne dépasse jamais la capacité (anti-débordement)', function () {
+test('applyReadingDelta ne dépasse jamais la capacité (anti-débordement)', function () {
     $src = citerne($this->farm->id, ['current_level_liters' => 800]);
 
     WaterReading::create([
@@ -41,7 +41,7 @@ test('refreshLevel ne dépasse jamais la capacité (anti-débordement)', functio
         'reading_date' => now()->toDateString(), 'volume_consumed_liters' => 0, 'volume_added_liters' => 5000,
     ]);
 
-    $src->refreshLevel();
+    $src->applyReadingDelta(0, 5000);
 
     expect((float) $src->fresh()->current_level_liters)->toBe(1000.0)
         ->and((float) $src->fresh()->current_level_percent)->toBe(100.0);
