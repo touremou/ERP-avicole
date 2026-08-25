@@ -196,7 +196,23 @@ class NotificationHub
         // recherche du même défaut.
         $yesterdaySales = Sale::whereDate('sale_date', now()->subDay()->toDateString())
             ->whereNotIn('status', ['annule', 'brouillon']);
-        $yesterdayCA = $yesterdaySales->sum('total_amount');
+        /*
+         * LE CA DU RÉSUMÉ QUOTIDIEN, sur la même déclaration que les écrans.
+         *
+         * Il sommait `total_amount` : TVA comprise, remise ignorée. C'est le
+         * message que le promoteur lit chaque matin, souvent depuis l'étranger —
+         * et depuis #310 il était le seul à annoncer encore un CA gonflé de la
+         * taxe, en désaccord avec le compte de résultat et le tableau de bord.
+         *
+         * « Encaissé », juste en dessous, reste la somme des paiements reçus :
+         * c'est de l'argent entré, TTC, et c'est bien ce qu'on veut y lire.
+         */
+        $yesterdayCA = (float) array_sum(
+            \App\Services\Accounting\PeriodRevenue::byProductType(
+                now()->subDay()->startOfDay(),
+                now()->subDay()->endOfDay(),
+            )
+        );
         $yesterdayCount = $yesterdaySales->count();
 
         // Paiements reçus hier

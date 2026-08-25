@@ -28,7 +28,25 @@ class CommerceController extends Controller
         $today = Sale::today()->validated();
 
         $kpis = [
-            'ca_jour'      => (float) $today->sum('total_amount'),
+            /*
+             * CA DU JOUR : la MÊME déclaration que le compte de résultat.
+             *
+             * Il sommait `total_amount`, donc TVA comprise, remise ignorée. #310
+             * a corrigé le compte de résultat et le tableau de bord — mais pas
+             * cet écran, qui s'est retrouvé seul à annoncer un troisième chiffre.
+             * Corriger deux lecteurs sur trois ne referme pas une divergence,
+             * cela la déplace.
+             *
+             * `creances` juste en dessous garde `total_amount`, et c'est voulu :
+             * un client doit bien le TTC, taxe et livraison comprises. Ce sont
+             * deux questions différentes, et elles n'ont pas la même réponse.
+             */
+            'ca_jour'      => (float) array_sum(
+                \App\Services\Accounting\PeriodRevenue::byProductType(
+                    today()->startOfDay(),
+                    today()->endOfDay(),
+                )
+            ),
             'ventes_jour'  => (int) $today->count(),
             'creances'     => (float) (Sale::unpaid()->validated()->sum('total_amount')
                                        - Sale::unpaid()->validated()->sum('paid_amount')),
