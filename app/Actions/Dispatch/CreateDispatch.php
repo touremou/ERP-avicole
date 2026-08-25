@@ -58,8 +58,28 @@ class CreateDispatch
                     'condition_at_dispatch' => $item['condition'] ?? 'bon',
                 ]);
 
-                // Déstockage ferme
-                $this->destockAtFarm($dispatchItem);
+                /*
+                 * UNE EXPÉDITION NE RETIRE PAS CE QUE SA VENTE A DÉJÀ RETIRÉ.
+                 *
+                 * `ValidateSale` déstocke à la validation — articles de magasin
+                 * ET effectif du lot pour les animaux vifs. Cette action faisait
+                 * exactement la même chose, sans regarder si la vente était
+                 * passée par là. Résultat mesuré : 100 sujets vendus puis
+                 * expédiés en retiraient 200 du lot, et 50 articles vendus en
+                 * retiraient 100 du magasin.
+                 *
+                 * #305 a rendu le cas courant : une vente encaissée se valide
+                 * désormais d'office, donc tout bon de livraison émis derrière
+                 * décomptait une seconde fois.
+                 *
+                 * Une expédition SANS vente — ou dont la vente est encore un
+                 * brouillon, donc jamais déstockée — doit continuer de déstocker :
+                 * la marchandise quitte bien la ferme. C'est le seul cas où ce
+                 * geste est le fait générateur.
+                 */
+                if (! $this->saleAlreadyDestocked($dispatch)) {
+                    $this->destockAtFarm($dispatchItem);
+                }
             }
 
             Log::info("Expédition {$dispatch->dispatch_number} créée — {$dispatch->destination} — Chauffeur: {$dispatch->driver_name}");
@@ -72,6 +92,21 @@ class CreateDispatch
 
             return $dispatch->fresh('items');
         });
+    }
+
+    /**
+     * La vente de cette expédition a-t-elle déjà sorti la marchandise ?
+     *
+     * `valide` et `livre` ne sont posés que par `ValidateSale`, qui déstocke
+     * dans la même transaction : ces deux statuts prouvent donc que la sortie a
+     * eu lieu. Un `brouillon` n'a rien déstocké, une vente `annule` a été
+     * restockée par `CancelSale` — dans les deux cas l'expédition reste le fait
+     * générateur.
+     */
+    private function saleAlreadyDestocked(Dispatch $dispatch): bool
+    {
+        return $dispatch->sale_id
+            && in_array($dispatch->sale?->status, ['valide', 'livre'], true);
     }
 
     private function destockAtFarm(DispatchItem $item): void
