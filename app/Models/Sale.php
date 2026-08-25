@@ -70,6 +70,20 @@ class Sale extends Model
         return $this->hasMany(Payment::class);
     }
 
+    /**
+     * Bons de livraison émis pour honorer cette vente.
+     *
+     * `dispatches.sale_id` existait depuis l'origine, et `CreateDispatch` s'en
+     * sert pour NE PAS retirer une seconde fois ce que `ValidateSale` a déjà
+     * sorti. Il manquait la relation inverse : sans elle, aucun écran ne pouvait
+     * dire quelles ventes restent à expédier — donc aucun formulaire ne pouvait
+     * proposer le lien, donc la colonne restait vide.
+     */
+    public function dispatches(): HasMany
+    {
+        return $this->hasMany(Dispatch::class);
+    }
+
     // ─── SCOPES ───
 
     /**

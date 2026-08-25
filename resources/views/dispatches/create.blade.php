@@ -63,6 +63,25 @@
                         </select>
                         <p class="text-[8px] text-slate-400 ml-2 italic">{{ __("Il sera notifié et pourra valider la réception. Un responsable logistique reste habilité en secours.") }}</p>
                     </div>
+
+                    {{-- VENTE HONORÉE : sans ce lien, l'expédition retire du stock
+                         et de l'effectif une marchandise que la validation de la
+                         vente a DÉJÀ sortie (cf. CreateDispatch). --}}
+                    <div class="mt-6 space-y-2">
+                        <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">
+                            <i class="fa-solid fa-receipt text-blue-500 mr-1"></i> {{ __("Vente honorée") }}
+                        </label>
+                        <select name="sale_id" class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black shadow-inner outline-none appearance-none cursor-pointer">
+                            <option value="">— {{ __("Aucune (transfert ou livraison sans vente enregistrée)") }} —</option>
+                            @foreach($sales as $sale)
+                                <option value="{{ $sale->id }}" {{ (string) old('sale_id') === (string) $sale->id ? 'selected' : '' }}>
+                                    {{ $sale->reference }} — {{ $sale->client?->name ?? __('Client comptant') }}
+                                    · {{ $sale->sale_date?->format('d/m/Y') }} · {{ money($sale->total_amount) }}
+                                </option>
+                            @endforeach
+                        </select>
+                        <p class="text-[8px] text-slate-400 ml-2 italic">{{ __("À renseigner quand ce chargement livre une vente déjà validée : la marchandise en est alors DÉJÀ sortie, elle ne doit pas être décomptée deux fois.") }}</p>
+                    </div>
                 </div>
 
                 {{-- MARCHANDISE --}}
