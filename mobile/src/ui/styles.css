@@ -620,6 +620,14 @@ input:focus, textarea:focus, select:focus {
 .notif-normal   .notif-avatar { background: rgb(22 163 74 / 0.14); }
 .notif-body { display: flex; flex-direction: column; gap: 2px; }
 
+/* Message d'alerte structuré (cf. NotifMessage.tsx) : une ligne par donnée,
+   sous-lignes décalées, sections séparées — comme sur WhatsApp, d'où il vient. */
+.notif-message { display: flex; flex-direction: column; color: var(--muted); }
+.notif-message-line { display: block; }
+.notif-message-sub { padding-left: 12px; }
+.notif-message-gap { display: block; height: 8px; }
+.notif-message strong { color: var(--ink); font-weight: 800; }
+
 /* ── Chips (symptômes, gravité) ── */
 .chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
 .chip {

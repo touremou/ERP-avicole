@@ -117,6 +117,18 @@ class AppServiceProvider extends ServiceProvider
             }
         });
 
+        // ─── 0 bis. JOURNAL DU CANAL E-MAIL ───
+        // WhatsApp et SMS écrivaient leurs envois dans `notification_logs` ;
+        // l'e-mail n'écrivait rien, et l'écran « Historique des notifications »
+        // ne pouvait donc pas dire si un message était parti. Cf. le listener
+        // pour la raison des trois évènements.
+        Event::listen(\Illuminate\Notifications\Events\NotificationSending::class,
+            [\App\Listeners\LogMailNotifications::class, 'sending']);
+        Event::listen(\Illuminate\Notifications\Events\NotificationSent::class,
+            [\App\Listeners\LogMailNotifications::class, 'sent']);
+        Event::listen(\Illuminate\Notifications\Events\NotificationFailed::class,
+            [\App\Listeners\LogMailNotifications::class, 'failed']);
+
         // ─── 1. DÉTECTION PANNE MySQL ───
         config(['app.database_down' => false]);
 

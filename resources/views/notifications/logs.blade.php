@@ -79,10 +79,19 @@
                                 <p class="text-[8px] text-slate-400">{{ $log->created_at->format('H:i:s') }}</p>
                             </td>
                             <td class="px-3 py-3">
-                                <p class="text-[10px] font-black text-slate-700">{{ $log->recipient_phone ?? '—' }}</p>
+                                {{-- Destination ET canal : depuis que l'e-mail est
+                                     journalisé lui aussi, un numéro seul ne dit plus
+                                     par où le message est passé. --}}
+                                <p class="text-[10px] font-black text-slate-700">{{ $log->recipient_phone ?: ($log->recipient_email ?: '—') }}</p>
                                 @if($log->user)
                                     <p class="text-[8px] text-slate-400">{{ $log->user->name }}</p>
                                 @endif
+                                <span @class([
+                                    'inline-block mt-1 text-[7px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full',
+                                    'bg-emerald-50 text-emerald-600' => $log->channel === 'whatsapp',
+                                    'bg-blue-50 text-blue-600'       => $log->channel === 'mail',
+                                    'bg-slate-100 text-slate-500'    => ! in_array($log->channel, ['whatsapp', 'mail']),
+                                ])>{{ $log->channel }}</span>
                             </td>
                             <td class="px-3 py-3">
                                 <span class="text-[8px] font-black text-slate-500 uppercase">{{ $log->type }}</span>

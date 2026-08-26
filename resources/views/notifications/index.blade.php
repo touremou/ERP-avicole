@@ -69,9 +69,13 @@
                                 @endif
                             </div>
 
-                            <p class="text-[10px] text-slate-500 font-bold leading-snug normal-case">
-                                {{ $notification->data['message'] ?? '' }}
-                            </p>
+                            {{-- Le message est composé en syntaxe WhatsApp (*gras*,
+                                 une donnée par ligne) : notif_html() l'échappe
+                                 puis le structure, au lieu de l'aplatir en un
+                                 paragraphe parsemé d'astérisques. --}}
+                            <div class="text-[10px] text-slate-500 font-bold leading-snug normal-case">
+                                {!! notif_html($notification->data['message'] ?? '') !!}
+                            </div>
 
                             {{-- La DATE : sans elle, deux alertes du même contrôle à
                                  deux jours d'intervalle se lisaient comme un doublon. --}}
