@@ -162,6 +162,75 @@ if (! function_exists('notif_icon')) {
     }
 }
 
+if (! function_exists('notif_html')) {
+    /**
+     * RENDU IN-APP D'UN MESSAGE D'ALERTE — écrit en syntaxe WhatsApp.
+     *
+     * Les alertes et le résumé quotidien sont composés pour WhatsApp : titres
+     * de section en `*gras*`, une donnée par ligne, sous-lignes indentées de
+     * deux espaces. C'est le bon format pour le canal auquel ils étaient
+     * destinés à l'origine.
+     *
+     * La cloche, elle, les affichait tels quels dans un `{{ }}` : les sauts de
+     * ligne s'effondraient en un seul paragraphe et les astérisques
+     * s'affichaient comme des astérisques. Le résumé du matin — le message le
+     * plus dense de l'application, celui que le promoteur lit depuis
+     * l'étranger — arrivait en un bloc de texte continu parsemé d'étoiles.
+     *
+     * On rend donc la MÊME chaîne, structurée :
+     *   • échappement D'ABORD (le message contient des noms saisis par des
+     *     humains : un lot nommé « <B2> » ne doit pas devenir du balisage) ;
+     *   • `*texte*` → gras ;
+     *   • ligne indentée de deux espaces → décalée, comme sur WhatsApp ;
+     *   • ligne vide → séparation entre sections.
+     *
+     * On ne CHANGE PAS la source : elle doit rester lisible sur WhatsApp, qui
+     * est un vrai canal de cette installation. C'est l'affichage qui s'adapte.
+     */
+    function notif_html(?string $message): \Illuminate\Support\HtmlString
+    {
+        $lignes = preg_split('/\r\n|\r|\n/', (string) $message) ?: [];
+        $html   = [];
+
+        foreach ($lignes as $ligne) {
+            if (trim($ligne) === '') {
+                $html[] = '<span class="block h-2"></span>';
+                continue;
+            }
+
+            // L'indentation WhatsApp (deux espaces) marque une sous-ligne.
+            $indente = str_starts_with($ligne, '  ');
+
+            $contenu = e(trim($ligne));
+
+            // `*gras*` — non gourmand, et seulement sur un contenu non vide,
+            // pour qu'un astérisque isolé reste un astérisque.
+            $contenu = preg_replace('/\*([^*]+)\*/u', '<strong>$1</strong>', $contenu);
+
+            $html[] = '<span class="block' . ($indente ? ' pl-4' : ' mt-1') . '">' . $contenu . '</span>';
+        }
+
+        return new \Illuminate\Support\HtmlString(implode('', $html));
+    }
+}
+
+if (! function_exists('notif_preview')) {
+    /**
+     * Aperçu d'une ligne pour la cloche déroulante — même message, sans balisage.
+     *
+     * La liste déroulante tronque à une ligne : y rendre du gras et des sauts de
+     * ligne n'aurait aucun effet, mais y laisser les astérisques en avait un,
+     * et il était laid.
+     */
+    function notif_preview(?string $message, int $max = 120): string
+    {
+        $plat = preg_replace('/\*([^*]+)\*/u', '$1', (string) $message);
+        $plat = trim(preg_replace('/\s+/u', ' ', (string) $plat));
+
+        return \Illuminate\Support\Str::limit($plat, $max);
+    }
+}
+
 if (! function_exists('dashboard_block_visible')) {
     /**
      * Indique si un bloc du tableau de bord doit être affiché pour l'utilisateur

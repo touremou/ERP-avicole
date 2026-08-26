@@ -162,7 +162,9 @@
                                                             {{ $notification->data['title'] ?? __("Alerte") }}
                                                             @if($isUnread)<span class="ml-1 inline-block w-1.5 h-1.5 rounded-full bg-rose-600 align-middle"></span>@endif
                                                         </p>
-                                                        <p class="text-[9px] text-slate-400 font-bold uppercase leading-tight">{{ $notification->data['message'] ?? '' }}</p>
+                                                        {{-- Aperçu : la liste déroulante tronque à une ligne, donc
+                                                             on retire le balisage WhatsApp plutôt que de l'afficher. --}}
+                                                        <p class="text-[9px] text-slate-400 font-bold uppercase leading-tight">{{ notif_preview($notification->data['message'] ?? '') }}</p>
                                                         {{-- La DATE : sans elle, deux alertes du même contrôle à
                                                              deux jours d'intervalle se lisaient comme un doublon. --}}
                                                         <p class="text-[8px] text-slate-300 font-black uppercase tracking-widest mt-1">{{ $notification->created_at->diffForHumans() }}</p>

@@ -13,6 +13,7 @@ import { safeLoad } from '../../offline/safeLoad'
 import { dateLocale, t } from '../../i18n'
 import { notifIcon } from './notifIcon'
 import type { ApiNotification } from '../../api/types'
+import { NotifMessage } from './NotifMessage'
 
 const SEVERITY_CLASS: Record<string, string> = {
   critical: 'notif-critical',
@@ -122,7 +123,7 @@ export function NotificationsScreen() {
           <span className="notif-avatar" aria-hidden="true">{notifIcon(n.type, n.severity)}</span>
           <div className="notif-body">
             <span className="task-title">{n.title}</span>
-            <span className="muted">{n.message}</span>
+            <NotifMessage message={n.message} />
             <span className="task-meta">{new Date(n.created_at).toLocaleString(dateLocale())}</span>
           </div>
         </div>
