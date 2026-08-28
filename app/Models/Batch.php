@@ -914,6 +914,52 @@ class Batch extends Model
         return $due->lt(Carbon::parse($this->arrival_date)->startOfDay()) ? null : $due;
     }
 
+    /**
+     * L'ÉTAPE DE PROTOCOLE A-T-ELLE ÉTÉ FAITE ? — déclaration UNIQUE.
+     *
+     * Cette question se posait à TROIS endroits, avec trois réponses :
+     *
+     *   • SanitaryAlertService : minuscules, espaces SUPPRIMÉS, et comparaison
+     *     BIDIRECTIONNELLE — l'acte contient l'étape OU l'étape contient l'acte ;
+     *   • DashboardController : minuscules, espaces conservés, comparaison à
+     *     sens unique. Son commentaire annonçait pourtant « réutilise EXACTEMENT
+     *     la convention de la fiche lot » ;
+     *   • la fiche lot elle-même : comme le tableau de bord.
+     *
+     * Sur la même donnée, ils ne disaient donc pas la même chose. Un acte saisi
+     * « Newcastle HB1 » face à une étape « NewcastleHB1 » était FAIT pour le
+     * service d'alertes et DÛ pour les deux écrans. Sur une vaccination.
+     *
+     * ─── LE SENS DE LA COMPARAISON N'EST PAS SYMÉTRIQUE ───
+     *
+     * On exige que l'acte enregistré CONTIENNE le nom de l'étape, et pas
+     * l'inverse. La réciproque disait : un acte nommé « Newcastle » solde une
+     * étape « Newcastle Lasota » — un rappel réputé fait parce qu'une primo l'a
+     * précédé. Sur un calendrier vaccinal, se tromper dans ce sens fait manquer
+     * une injection ; se tromper dans l'autre fait une alerte de trop.
+     *
+     * On garde en revanche l'insensibilité aux ESPACES, qui ne change pas le
+     * sens du nom et rattrape les saisies de terrain.
+     */
+    public function protocolStepDone(ProtocolStep $step, ?iterable $healthChecks = null): bool
+    {
+        $normaliser = fn (?string $texte) => strtolower(preg_replace('/\s+/', '', (string) $texte));
+
+        $attendu = $normaliser($step->action_name ?? $step->name ?? '');
+
+        if ($attendu === '') {
+            return false;   // une étape sans nom ne peut être soldée par aucun acte
+        }
+
+        foreach ($healthChecks ?? $this->healthChecks as $acte) {
+            if (str_contains($normaliser($acte->product_name), $attendu)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public function getAgeAttribute(): int
     {
         if (! $this->arrival_date) {

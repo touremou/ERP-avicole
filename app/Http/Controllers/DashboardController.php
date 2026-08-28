@@ -322,12 +322,11 @@ class DashboardController extends Controller
                 if (! $dueDate->isPast()) continue;                       // pas encore échue
                 if ($dueDate->lt(now()->subDays($protocolWindowDays))) continue; // trop ancienne
 
-                $done = $batch->healthChecks->contains(
-                    fn ($h) => $h->product_name
-                        && str_contains(strtolower($h->product_name), strtolower($step->action_name))
-                );
-
-                if (! $done) {
+                // Déclaration UNIQUE (cf. Batch::protocolStepDone). Le commentaire
+                // ci-dessus annonçait « réutilise EXACTEMENT la convention de la
+                // fiche lot » : c'était vrai de l'ancrage, pas de la comparaison,
+                // qui différait du service d'alertes sanitaires sur la même donnée.
+                if (! $batch->protocolStepDone($step, $batch->healthChecks)) {
                     $overdue[] = ['action' => $step->action_name, 'due' => $dueDate];
                 }
             }
