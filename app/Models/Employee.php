@@ -202,6 +202,25 @@ class Employee extends Model
     }
 
     /**
+     * Pointages de l'agent — D'OÙ QU'ILS AIENT ÉTÉ SAISIS.
+     *
+     * Même règle que `leaves()`, et pour la même raison : un agent prêté à un
+     * autre site y est pointé, et ces pointages portent le `farm_id` du site
+     * D'ACCUEIL. Une requête laissée sous le scope de ferme ne les voit pas.
+     *
+     * La paie lisait justement `EmployeeAttendance` en direct, donc filtrée :
+     * les absences constatées sur le site d'accueil n'étaient pas déduites, et
+     * l'agent était payé en plein pour des journées où on l'avait noté absent.
+     * La ligne d'à côté — celle des congés — évitait déjà ce piège et disait
+     * pourquoi ; le pointage l'avait manqué.
+     */
+    public function attendances(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(EmployeeAttendance::class)
+            ->withoutGlobalScope(\App\Scopes\FarmScope::class);
+    }
+
+    /**
      * L'employé est-il en congé approuvé à la date donnée ? Sert de garde-fou
      * à l'affectation des tâches (on n'assigne pas un absent) et au calcul de
      * disponibilité du planning.

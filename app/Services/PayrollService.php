@@ -171,8 +171,24 @@ class PayrollService
                  *
                  * Les jours NON pointés restent présumés travaillés (bénéfice du
                  * doute), pour ne pas pénaliser un pointage incomplet.
+                 *
+                 * ─── ET D'OÙ QU'ILS AIENT ÉTÉ POINTÉS ───
+                 *
+                 * La lecture se faisait sur `EmployeeAttendance` en direct, donc
+                 * sous le scope de FERME. Un agent prêté à un autre site y est
+                 * pointé, et ces lignes portent le `farm_id` du site d'accueil :
+                 * la paie de son site d'origine ne les voyait pas.
+                 *
+                 * Mesuré : trois absences constatées à Kérouané sur un agent de
+                 * Kindia — zéro déduite, 230 769 GNF versés pour des journées où
+                 * on l'avait noté absent.
+                 *
+                 * La requête des congés, deux lignes plus haut, évitait déjà ce
+                 * piège et disait pourquoi : « un congé lui appartient, d'où
+                 * qu'il ait été saisi ». Le pointage l'avait manqué. On passe
+                 * donc par `attendances()`, qui porte la même règle.
                  */
-                $pointedAbsent = EmployeeAttendance::where('employee_id', $emp->id)
+                $pointedAbsent = $emp->attendances()
                     ->whereDate('attendance_date', '>=', $contract['start']->toDateString())
                     ->whereDate('attendance_date', '<=', $contract['end']->toDateString())
                     ->where('status', 'absent')
@@ -310,7 +326,28 @@ class PayrollService
      */
     public function pointedDaysIn(PayrollPeriod $period): int
     {
-        return EmployeeAttendance::whereDate('attendance_date', '>=', $period->start_date->toDateString())
+        /*
+         * Compté sur les AGENTS de la ferme, pas sur les pointages de la ferme.
+         *
+         * Cette requête était filtrée par le scope de ferme des pointages : les
+         * journées saisies sur un site d'accueil, pour un agent prêté,
+         * n'entraient pas dans le total. L'indicateur sous-estimait donc
+         * exactement ce qu'il existe pour mesurer — et sous-estimer « sur quoi
+         * la paie repose » invite à valider une paie qu'on croit moins étayée
+         * qu'elle ne l'est.
+         *
+         * Le périmètre reste celui de la ferme, par les EMPLOYÉS qu'elle paie
+         * (la liste est déjà bornée par le scope sur `Employee`).
+         */
+        $agents = Employee::where('status', 'Actif')->pluck('id');
+
+        if ($agents->isEmpty()) {
+            return 0;
+        }
+
+        return EmployeeAttendance::withoutGlobalScope(\App\Scopes\FarmScope::class)
+            ->whereIn('employee_id', $agents)
+            ->whereDate('attendance_date', '>=', $period->start_date->toDateString())
             ->whereDate('attendance_date', '<=', $period->end_date->toDateString())
             ->count();
     }
