@@ -103,9 +103,25 @@ class PayrollService
                         min($leave->end_date->timestamp, $contract['end']->timestamp)
                     )->startOfDay();
 
-                    $overlapDays = $finChevauchement->lt($debutChevauchement)
-                        ? 0
-                        : (int) $debutChevauchement->diffInDays($finChevauchement) + 1;
+                    /*
+                     * EN JOURS OUVRÉS — le dimanche n'est pas un jour de congé.
+                     *
+                     * Ce décompte était CALENDAIRE, alors que la retenue qui en
+                     * découle vaut « salaire ÷ jours OUVRÉS × jours décomptés ».
+                     * Un congé qui enjambe un jour de repos facturait donc ce
+                     * repos au salarié, au taux d'une journée de travail.
+                     *
+                     * Mesuré : un sans-solde du lundi 3 au lundi 10 août 2026
+                     * (8 jours calendaires, 7 ouvrés) retenait 615 385 GNF au
+                     * lieu de 538 462 sur un salaire de 2 000 000 — 76 923 GNF
+                     * pour un dimanche que personne ne lui payait de travailler.
+                     *
+                     * `workingDaysBetween()` est la MÊME déclaration que celle
+                     * qui produit `workingDays`, le dénominateur de la retenue.
+                     * Numérateur et dénominateur comptent désormais la même
+                     * chose — c'était la seule façon que le rapport ait un sens.
+                     */
+                    $overlapDays = $this->workingDaysBetween($debutChevauchement, $finChevauchement);
 
                     if (in_array($leave->type, ['conge_annuel', 'maladie', 'maternite', 'formation'])) {
                         $daysLeave += $overlapDays;
@@ -162,6 +178,11 @@ class PayrollService
                     ->where('status', 'absent')
                     ->pluck('attendance_date')
                     ->reject(fn ($jour) => isset($joursDeConge[Carbon::parse($jour)->toDateString()]))
+                    // Et pas davantage le JOUR DE REPOS : une absence pointée un
+                    // dimanche était retenue comme une journée de travail perdue.
+                    // Même raison que pour les congés — la retenue s'exprime en
+                    // jours ouvrés, elle ne peut pas en compter d'autres.
+                    ->reject(fn ($jour) => self::isRestDay(Carbon::parse($jour)))
                     ->count();
 
                 $daysAbsent += $pointedAbsent;

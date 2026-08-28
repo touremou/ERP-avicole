@@ -203,3 +203,63 @@ test('sans aucun pointage, le congé se déduit normalement — non-régression'
     expect($fiche->days_absent)->toBe(5)
         ->and((int) $fiche->lines()->where('category', 'absence')->first()->amount)->toBe(384_615);
 });
+
+/*
+ * ─────────────────────────────────────────────────────────────────────────
+ * LE DÉCOMPTE SE FAIT EN JOURS OUVRÉS — le dimanche n'est pas un jour de congé.
+ *
+ * Le chevauchement des congés se comptait en jours CALENDAIRES, alors que la
+ * retenue vaut « salaire ÷ jours OUVRÉS × jours décomptés ». Un congé qui
+ * enjambe un jour de repos facturait donc ce repos au salarié, au taux d'une
+ * journée de travail. Numérateur et dénominateur ne comptaient pas la même
+ * chose : leur rapport n'avait pas de sens.
+ * ─────────────────────────────────────────────────────────────────────────
+ */
+
+test('un congé qui ENJAMBE un dimanche ne fait pas payer le dimanche', function () {
+    /*
+     * Lundi 3 → lundi 10 août 2026 : 8 jours calendaires, 7 ouvrés.
+     * Mesuré avant correction : 8 jours retenus, 615 385 GNF au lieu de
+     * 538 462 — 76 923 GNF pour un dimanche que personne ne lui payait de
+     * travailler.
+     */
+    EmployeeLeave::create([
+        'farm_id'     => $this->farm->id,
+        'employee_id' => $this->salarie->id,
+        'type'        => 'sans_solde',
+        'start_date'  => '2026-08-03',
+        'end_date'    => '2026-08-10',
+        'days_count'  => 8,
+        'status'      => 'approuve',
+    ]);
+
+    $fiche = ficheDe($this->periode, $this->salarie);
+
+    // Août 2026 : 26 jours ouvrés (31 − 5 dimanches).
+    expect($fiche->days_absent)->toBe(7)
+        ->and((int) $fiche->lines()->where('category', 'absence')->first()->amount)
+            ->toBe((int) round(2_000_000 / 26 * 7));
+});
+
+test('une absence pointée un DIMANCHE n’est pas retenue', function () {
+    /*
+     * Même principe par l'autre porte : la grille de pointage s'ouvre aussi le
+     * dimanche, et rien n'empêche d'y cocher « absent ». La retenue s'exprime en
+     * jours ouvrés — elle ne peut pas en compter d'autres.
+     */
+    pointer($this->farm->id, $this->salarie->id, ['2026-08-09'], 'absent');   // un dimanche
+
+    $fiche = ficheDe($this->periode, $this->salarie);
+
+    expect($fiche->days_absent)->toBe(0)
+        ->and($fiche->lines()->where('category', 'absence')->count())->toBe(0);
+});
+
+test('un congé entièrement en semaine est inchangé — non-régression', function () {
+    // La borne : sans jour de repos dans l'intervalle, rien ne doit bouger.
+    congeDeLaSemaine($this->farm->id, $this->salarie->id, 'sans_solde');
+
+    $fiche = ficheDe($this->periode, $this->salarie);
+
+    expect($fiche->days_absent)->toBe(5);
+});
