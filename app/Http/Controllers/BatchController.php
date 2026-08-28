@@ -496,8 +496,32 @@ class BatchController extends Controller
             ? \Carbon\Carbon::parse($batch->arrival_date)->diffInDays(now())
             : 0;
 
-        // 5. Total des coûts connus
-        $totalKnownCosts = $acquisitionCost + $feedCost + $healthCost + $energyCost;
+        /*
+         * 5. TOTAL — celui que la clôture VA ENREGISTRER, au franc près.
+         *
+         * Cet écran additionnait ses quatre postes détaillés. Il en manquait
+         * trois que `Batch::operating_cost` compte, et que `CloseBatch` écrit
+         * désormais : le traitement des INCIDENTS sanitaires, les DÉPENSES
+         * DIRECTES validées, et les ACHATS NON-ALIMENT.
+         *
+         * Le promoteur fixait donc son prix de cession en lisant un total, et le
+         * système en enregistrait un autre — l'écart valant exactement le coût
+         * des épidémies du lot. C'est le défaut que le commentaire de
+         * `CloseBatch` croyait avoir clos.
+         *
+         * Les quatre lignes de détail restent affichées telles quelles : elles
+         * expliquent d'où vient le gros du total. La ligne « autres coûts » dit
+         * le reste plutôt que de le taire.
+         *
+         * LES FRAIS ANNEXES SONT RETIRÉS DE CE TOTAL, et c'est indispensable :
+         * la vue les tient dans un CHAMP MODIFIABLE et calcule
+         * « total = coûts connus + frais annexes saisis ». Les laisser dans
+         * `operating_cost` les compterait deux fois à l'écran — on aurait
+         * remplacé une sous-estimation par une surestimation.
+         */
+        $operatingCost   = (float) $batch->operating_cost - (float) ($batch->additional_costs ?? 0);
+        $totalKnownCosts = $acquisitionCost + $operatingCost;
+        $otherCosts      = max(0.0, $operatingCost - $feedCost - $healthCost - $energyCost);
 
         /*
          * L'ALIMENT ACHETÉ MAIS JAMAIS POINTÉ.
@@ -519,6 +543,9 @@ class BatchController extends Controller
             'feed_price_kg'   => $totalFeed > 0 ? round($feedCost / $totalFeed) : 0,
             'health'          => round($healthCost),
             'energy'          => round($energyCost),
+            // Dépenses directes, achats non-aliment, frais annexes et traitement
+            // des incidents : comptés dans le total, donc nommés ici.
+            'other'           => round($otherCosts),
             'total_known'     => round($totalKnownCosts),
             'duration_days'   => $durationDays,
             'feed_unlogged'   => round($feedUnlogged),

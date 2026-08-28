@@ -96,6 +96,20 @@
                                         </div>
                                         <span class="text-sm font-black text-red-600">{{ number_format($costs['energy'], 0, ',', '.') }} {{ currency() }}</span>
                                     </div>
+                                    @if(($costs['other'] ?? 0) > 0)
+                                        {{-- Postes comptés par Batch::operating_cost et que les quatre
+                                             lignes ci-dessus ne montrent pas : traitement des incidents
+                                             sanitaires, dépenses directes validées, achats non-aliment.
+                                             Ils entrent dans le total enregistré à la clôture : les
+                                             taire ferait diverger l'écran et la marge écrite en base. --}}
+                                        <div class="flex justify-between items-center p-3 bg-red-50/50 rounded-xl">
+                                            <div>
+                                                <span class="text-[10px] font-black text-slate-700">{{ __("📦 Autres coûts du lot") }}</span>
+                                                <p class="text-[8px] text-slate-400">{{ __("Épidémies traitées, dépenses directes validées, achats non-aliment") }}</p>
+                                            </div>
+                                            <span class="text-sm font-black text-red-600">{{ number_format($costs['other'], 0, ',', '.') }} {{ currency() }}</span>
+                                        </div>
+                                    @endif
                                     <div class="flex justify-between items-center p-3 bg-amber-50 rounded-xl">
                                         <div>
                                             <span class="text-[10px] font-black text-slate-700">{{ __("📋 Frais annexes") }}</span>
