@@ -42,11 +42,15 @@ class SpeciesSeeder extends Seeder
                 ['slug'=>'chair',        'name_fr'=>'Poulet de Chair',     'metrics_enabled'=>$metricsBase, 'kpi_primary'=>'fcr','cycle_days_default'=>45],
                 ['slug'=>'ponte',        'name_fr'=>'Poule Pondeuse',      'metrics_enabled'=>$metricsEggs, 'kpi_primary'=>'hdp','cycle_days_default'=>540],
                 ['slug'=>'poussiniere',  'name_fr'=>'Poussinière',         'metrics_enabled'=>$metricsBase, 'kpi_primary'=>'survie','cycle_days_default'=>90],
-                ['slug'=>'reproducteur', 'name_fr'=>'Reproducteur',        'metrics_enabled'=>$metricsBase, 'kpi_primary'=>'fcr','cycle_days_default'=>450],
+                // Une volaille reproductrice POND : ses œufs à couver alimentent
+                // l'incubation. Semée en $metricsBase, elle sortait de la collecte
+                // d'œufs ET du choix d'origine d'une incubation (cf. migration
+                // 2026_08_28_000001).
+                ['slug'=>'reproducteur', 'name_fr'=>'Reproducteur',        'metrics_enabled'=>$metricsEggs, 'kpi_primary'=>'fcr','cycle_days_default'=>450],
             ],
             'dinde'   => [
                 ['slug'=>'chair',        'name_fr'=>'Dinde de Chair',      'metrics_enabled'=>$metricsBase, 'kpi_primary'=>'fcr','cycle_days_default'=>120],
-                ['slug'=>'reproducteur', 'name_fr'=>'Dindon Reproducteur', 'metrics_enabled'=>$metricsBase, 'kpi_primary'=>'fcr','cycle_days_default'=>300],
+                ['slug'=>'reproducteur', 'name_fr'=>'Dindon Reproducteur', 'metrics_enabled'=>$metricsEggs, 'kpi_primary'=>'fcr','cycle_days_default'=>300],
             ],
             'caille'  => [
                 ['slug'=>'ponte',        'name_fr'=>'Caille Pondeuse',     'metrics_enabled'=>$metricsEggs, 'kpi_primary'=>'hdp','cycle_days_default'=>240],
