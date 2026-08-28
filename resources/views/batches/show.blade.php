@@ -743,12 +743,32 @@
                 <div class="flex overflow-x-auto gap-4 pb-4 no-scrollbar">
                     @if($batch->protocol)
                         @foreach($batch->protocol->steps as $step)
-                            @php 
-                                $vaxDate = \Carbon\Carbon::parse($batch->transfer_date ?? $batch->start_date ?? $batch->arrival_date)->addDays($step->day_number)->startOfDay();
-                                $isDone = $batch->healthChecks->filter(fn($i) => 
-                                    str_contains(strtolower($i->product_name), strtolower($step->action_name))
-                                )->isNotEmpty();
-                                $isPast = $vaxDate->isPast() && !$isDone;
+                            @php
+                                /*
+                                 * ÉCHÉANCE ET « FAIT » : les deux déclarations du
+                                 * modèle, comme le tableau de bord et le service
+                                 * d'alertes.
+                                 *
+                                 * Cet écran calculait son échéance à part, depuis
+                                 * `transfer_date ?? start_date ?? arrival_date` —
+                                 * l'ancrage d'AVANT #295. Les day_number sont des
+                                 * ÂGES : un lot acheté à 16 semaines voyait donc
+                                 * son calendrier repartir de zéro à la réception,
+                                 * et ses étapes J7/J14/J21 s'affichaient en rouge
+                                 * clignotant — des actes faits chez l'éleveur
+                                 * précédent, qu'on ne pourra jamais solder.
+                                 *
+                                 * `protocolStepDue()` rend null pour ces
+                                 * étapes-là : elles ne nous incombent pas, on ne
+                                 * les réclame pas et on ne prétend pas les avoir
+                                 * faites — on ne les affiche donc plus du tout.
+                                 */
+                                $vaxDate = $batch->protocolStepDue((int) $step->day_number);
+                            @endphp
+                            @continue($vaxDate === null)
+                            @php
+                                $isDone  = $batch->protocolStepDone($step, $batch->healthChecks);
+                                $isPast  = $vaxDate->isPast() && !$isDone;
                                 $isToday = $vaxDate->isToday() && !$isDone;
                             @endphp
 

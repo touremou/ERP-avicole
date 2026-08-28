@@ -20,15 +20,8 @@ class SanitaryAlertService
             ->where('status', 'Actif')
             ->get();
 
-        // Fonction de normalisation pour la comparaison de chaînes
-        $sanitize = fn($text) => strtolower(trim(preg_replace('/\s+/', '', $text ?? '')));
-
         foreach ($activeBatches as $batch) {
             if (!$batch->protocol || !$batch->arrival_date) continue;
-
-            
-            // Pré-calcul des produits déjà administrés
-            $doneProducts = $batch->healthChecks->map(fn($c) => $sanitize($c->product_name))->toArray();
 
             foreach ($batch->protocol->steps as $step) {
                 /*
@@ -50,18 +43,10 @@ class SanitaryAlertService
 
                 // Si la date prévue est passée ou c'est aujourd'hui
                 if ($targetDate->lte($today)) {
-                    $expected = $sanitize($step->action_name ?? $step->name);
-                    
-                    // Vérification si l'action a été faite
-                    $isStepDone = false;
-                    foreach ($doneProducts as $recorded) {
-                        if (str_contains($recorded, $expected) || str_contains($expected, $recorded)) {
-                            $isStepDone = true;
-                            break;
-                        }
-                    }
-
-                    if (!$isStepDone) {
+                    // Déclaration UNIQUE (cf. Batch::protocolStepDone) : cette
+                    // question se posait ici, au tableau de bord et sur la fiche
+                    // lot, avec trois réponses différentes sur la même donnée.
+                    if (! $batch->protocolStepDone($step, $batch->healthChecks)) {
                         $alerts[] = [
                             'batch_id'   => $batch->id,
                             'batch_code' => $batch->code,

@@ -263,3 +263,62 @@ test('un congé entièrement en semaine est inchangé — non-régression', func
 
     expect($fiche->days_absent)->toBe(5);
 });
+
+/*
+ * ─────────────────────────────────────────────────────────────────────────
+ * ET D'OÙ QUE LE POINTAGE VIENNE — l'agent prêté à un autre site.
+ *
+ * La paie lisait `EmployeeAttendance` en direct, donc sous le scope de FERME.
+ * Un agent prêté est pointé sur le site d'ACCUEIL, et ces lignes portent le
+ * farm_id de ce site : la paie de son site d'origine ne les voyait pas.
+ *
+ * C'est le miroir du défaut principal de ce fichier. Celui-là retirait de
+ * l'argent au salarié ; celui-ci en verse pour des journées non travaillées.
+ * Les deux naissent d'une frontière qu'une requête respecte et que sa voisine
+ * ignore — la requête des congés évitait déjà ce piège, et disait pourquoi.
+ * ─────────────────────────────────────────────────────────────────────────
+ */
+
+test('une absence pointée sur le site d’ACCUEIL est bien déduite', function () {
+    /*
+     * Mesuré avant correction : trois absences constatées sur l'autre site,
+     * ZÉRO déduite, salaire versé en entier — 230 769 GNF pour des journées où
+     * l'agent était noté absent.
+     */
+    $autreSite = \App\Models\Farm::create([
+        'code' => 'FT-KER', 'name' => 'Kérouané', 'is_active' => true,
+    ]);
+
+    foreach (['2026-08-10', '2026-08-11', '2026-08-12'] as $jour) {
+        EmployeeAttendance::withoutGlobalScopes()->create([
+            'farm_id'         => $autreSite->id,          // pointé ailleurs
+            'employee_id'     => $this->salarie->id,
+            'attendance_date' => $jour,
+            'status'          => 'absent',
+        ]);
+    }
+
+    $fiche = ficheDe($this->periode, $this->salarie);
+
+    expect($fiche->days_absent)->toBe(3)
+        ->and((int) $fiche->lines()->where('category', 'absence')->first()->amount)
+            ->toBe((int) round(2_000_000 / 26 * 3));
+});
+
+test('le pointage d’un AUTRE agent ne s’invite pas dans la fiche', function () {
+    /*
+     * LA borne : lever le cloisonnement sur la ferme ne doit pas lever le
+     * cloisonnement sur la PERSONNE. La relation est bornée par l'agent, c'est
+     * ce qui rend l'ouverture sûre.
+     */
+    $collegue = Employee::factory()->create([
+        'farm_id' => $this->farm->id, 'status' => 'Actif',
+        'salary' => 1_000_000, 'hire_date' => '2026-01-01',
+    ]);
+
+    pointer($this->farm->id, $collegue->id, ['2026-08-10', '2026-08-11'], 'absent');
+
+    $fiche = ficheDe($this->periode, $this->salarie);
+
+    expect($fiche->days_absent)->toBe(0);
+});

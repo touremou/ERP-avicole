@@ -914,6 +914,52 @@ class Batch extends Model
         return $due->lt(Carbon::parse($this->arrival_date)->startOfDay()) ? null : $due;
     }
 
+    /**
+     * L'ÉTAPE DE PROTOCOLE A-T-ELLE ÉTÉ FAITE ? — déclaration UNIQUE.
+     *
+     * Cette question se posait à TROIS endroits, avec trois réponses :
+     *
+     *   • SanitaryAlertService : minuscules, espaces SUPPRIMÉS, et comparaison
+     *     BIDIRECTIONNELLE — l'acte contient l'étape OU l'étape contient l'acte ;
+     *   • DashboardController : minuscules, espaces conservés, comparaison à
+     *     sens unique. Son commentaire annonçait pourtant « réutilise EXACTEMENT
+     *     la convention de la fiche lot » ;
+     *   • la fiche lot elle-même : comme le tableau de bord.
+     *
+     * Sur la même donnée, ils ne disaient donc pas la même chose. Un acte saisi
+     * « Newcastle HB1 » face à une étape « NewcastleHB1 » était FAIT pour le
+     * service d'alertes et DÛ pour les deux écrans. Sur une vaccination.
+     *
+     * ─── LE SENS DE LA COMPARAISON N'EST PAS SYMÉTRIQUE ───
+     *
+     * On exige que l'acte enregistré CONTIENNE le nom de l'étape, et pas
+     * l'inverse. La réciproque disait : un acte nommé « Newcastle » solde une
+     * étape « Newcastle Lasota » — un rappel réputé fait parce qu'une primo l'a
+     * précédé. Sur un calendrier vaccinal, se tromper dans ce sens fait manquer
+     * une injection ; se tromper dans l'autre fait une alerte de trop.
+     *
+     * On garde en revanche l'insensibilité aux ESPACES, qui ne change pas le
+     * sens du nom et rattrape les saisies de terrain.
+     */
+    public function protocolStepDone(ProtocolStep $step, ?iterable $healthChecks = null): bool
+    {
+        $normaliser = fn (?string $texte) => strtolower(preg_replace('/\s+/', '', (string) $texte));
+
+        $attendu = $normaliser($step->action_name ?? $step->name ?? '');
+
+        if ($attendu === '') {
+            return false;   // une étape sans nom ne peut être soldée par aucun acte
+        }
+
+        foreach ($healthChecks ?? $this->healthChecks as $acte) {
+            if (str_contains($normaliser($acte->product_name), $attendu)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public function getAgeAttribute(): int
     {
         if (! $this->arrival_date) {
@@ -1254,7 +1300,40 @@ class Batch extends Model
         // Revenus enregistrés sur le lot (vente de réforme calculée à la clôture).
         $sellingRevenue = (float) ($this->total_revenue ?? 0);
 
-        // Coûts
+        return $sellingRevenue - $this->operating_cost - (float) ($this->total_acquisition_cost ?? 0);
+    }
+
+    /**
+     * COÛT D'EXPLOITATION DU LOT — déclaration UNIQUE, hors acquisition.
+     *
+     * Ce total était calculé DEUX fois, et les deux ne comptaient pas la même
+     * chose. La marge du lot retenait la consommation d'aliment valorisée, les
+     * achats non-aliment, les actes du registre PLUS le traitement des incidents
+     * sanitaires, les dépenses directes validées, les coûts additionnels et les
+     * charges d'eau/énergie. `Campaign::operating_cost` sommait, lui, les ACHATS
+     * d'aliment (tous confondus), les seuls actes du registre, les coûts
+     * additionnels et les charges — en laissant de côté :
+     *
+     *   • le traitement des INCIDENTS sanitaires, dont le commentaire de la
+     *     marge dit qu'il « ferme la boucle financière incident → marge ». Une
+     *     épidémie traitée à 2 000 000 amputait la marge du lot d'autant et le
+     *     coût de la campagne de zéro — exactement le défaut que PeriodCharges a
+     *     corrigé pour le résultat de la ferme ;
+     *   • les DÉPENSES DIRECTES validées rattachées au lot ;
+     *
+     * et en imputant l'aliment ACHETÉ plutôt que CONSOMMÉ, ce que la marge avait
+     * précisément cessé de faire (« l'aliment acheté mais non encore consommé
+     * reste un actif de stock plutôt qu'une charge du lot »).
+     *
+     * Deux écrans annonçaient donc deux coûts pour les mêmes lots. On garde la
+     * base de la marge — la seule qui soit défendable en gestion — et la
+     * campagne la lit désormais au lieu de la recopier.
+     *
+     * L'acquisition reste DEHORS : la campagne la présente sur sa propre ligne
+     * (`acquisition_cost`), et l'y inclure ici la compterait deux fois.
+     */
+    public function getOperatingCostAttribute(): float
+    {
         $feedCost = $this->feed_cogs;
         // Achats NON-aliment (médicaments, matériel…) : non captés par la
         // consommation, donc comptés au prix d'achat. Le tri s'appuie sur
@@ -1268,14 +1347,13 @@ class Batch extends Model
         // aucun double comptage). Ferme la boucle financière incident → marge.
         $healthCost = (float) $this->healthChecks()->sum('cost')
             + (float) $this->healthIncidents()->sum('treatment_cost');
-        $acquisitionCost = (float) ($this->total_acquisition_cost ?? 0);
         $additionalCosts = (float) ($this->additional_costs ?? 0);
         // Dépenses directes validées rattachées au lot (registre des dépenses).
         $directExpenses = (float) $this->expenses()->where('status', 'valide')->sum('amount');
         // Eau + énergie imputés au bâtiment sur la période du lot.
         $utilityCost = $this->utility_cost;
 
-        return $sellingRevenue - ($feedCost + $nonFeedPurchases + $healthCost + $acquisitionCost + $additionalCosts + $directExpenses + $utilityCost);
+        return $feedCost + $nonFeedPurchases + $healthCost + $additionalCosts + $directExpenses + $utilityCost;
     }
 
     /**

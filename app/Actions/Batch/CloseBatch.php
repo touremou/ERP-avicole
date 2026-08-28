@@ -12,7 +12,11 @@ use Illuminate\Support\Facades\DB;
  * Calcul de marge :
  * - Revenus = vente de réforme (effectif restant × prix de cession).
  *   Le CA œufs n'est pas rattaché au lot (stock mutualisé) : suivi au niveau ferme.
- * - Coûts = acquisition + alimentation + santé + coûts additionnels
+ * - Coûts = acquisition + `Batch::operating_cost` (aliment CONSOMMÉ, achats
+ *   non-aliment, actes du registre ET traitement des incidents, dépenses
+ *   directes validées, frais annexes, eau/énergie du bâtiment). La même
+ *   déclaration que la marge affichée sur la fiche du lot — cette action en
+ *   énumérait auparavant une version plus courte, et l'écrivait en base.
  * - Marge = Revenus - Coûts
  *
  * Gestion bâtiment (corrige S-07) :
@@ -72,10 +76,37 @@ class CloseBatch
              * EAU + ÉNERGIE entrent au passage dans la marge : l'écran les affichait
              * déjà dans les coûts connus, le calcul enregistré les ignorait.
              */
-            $feedCost = (float) $batch->feed_cogs;
-            $utilityCost = (float) $batch->utility_cost;
-            $healthCost = (float) $batch->healthChecks()->sum('cost');
-            $totalCost = $acquisitionCost + $feedCost + $healthCost + $utilityCost + $additionalCosts;
+            /*
+             * ─── ET LE COÛT COMPLET, PAS UNE QUATRIÈME VERSION ───
+             *
+             * Ce calcul énumérait ses postes à la main : aliment consommé, actes
+             * du registre, eau/énergie, frais annexes. Il manquait, par rapport à
+             * `Batch::operating_cost` que la fiche du lot affiche :
+             *
+             *   • le traitement des INCIDENTS sanitaires — le coût d'une
+             *     épidémie ;
+             *   • les DÉPENSES DIRECTES validées rattachées au lot ;
+             *   • les ACHATS NON-ALIMENT (médicaments, matériel), non captés par
+             *     la consommation.
+             *
+             * Et cette marge-là est ÉCRITE dans `batches.margin`, définitivement.
+             * Une bande clôturée après une épidémie traitée à 2 000 000 gardait
+             * donc une marge surévaluée d'autant — sur le chiffre même qui sert à
+             * fixer le prix de cession de la bande suivante.
+             *
+             * Le commentaire ci-dessus se félicitait d'avoir aligné l'écran et le
+             * système : « les deux passent désormais par la même déclaration ».
+             * C'était une TROISIÈME déclaration, pas celle du modèle.
+             *
+             * `additional_costs` est écrit AVANT la lecture : il peut être
+             * modifié dans le formulaire de clôture, et l'accesseur lit la
+             * colonne. Sans cette écriture préalable, la marge enregistrée
+             * retiendrait l'ancienne valeur — celle que le promoteur vient
+             * justement de corriger.
+             */
+            $batch->forceFill(['additional_costs' => $additionalCosts])->save();
+
+            $totalCost = $acquisitionCost + $batch->fresh()->operating_cost;
 
             // ─── MARGE ───
             $margin = $totalRevenue - $totalCost;

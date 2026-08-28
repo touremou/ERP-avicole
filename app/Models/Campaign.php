@@ -130,22 +130,30 @@ class Campaign extends Model
     }
 
     /**
-     * Coût aliment + santé + coûts additionnels + eau/énergie des lots liés.
+     * Coût d'exploitation de la campagne — LA MÊME DÉCLARATION QUE LA MARGE.
      *
-     * Somme sur les relations CHARGÉES (collections) et non via le query
-     * builder, pour profiter de l'eager loading (batches.feedPurchases,
-     * batches.healthChecks) et éviter un N+1 sur la liste des campagnes.
-     * Les coûts eau/énergie sont calculés par lot via utility_cost (lazily,
-     * 2 requêtes par lot) — acceptable sur des campagnes avec ≤ 20 lots.
+     * Ce total était recopié ici, et la copie avait divergé. Elle sommait les
+     * ACHATS d'aliment (tous confondus) et les seuls actes du registre
+     * sanitaire, en laissant de côté le traitement des INCIDENTS et les
+     * dépenses directes validées du lot.
+     *
+     * Une épidémie traitée à 2 000 000 amputait donc la marge du lot d'autant et
+     * le coût de la campagne de zéro — le défaut exact que `PeriodCharges` avait
+     * corrigé pour le résultat de la ferme, laissé intact à l'échelon
+     * intermédiaire. Deux écrans, deux coûts, pour les mêmes lots.
+     *
+     * `Batch::operating_cost` porte désormais la règle une seule fois. Le coût
+     * d'ACQUISITION reste sur sa ligne propre (`acquisition_cost`) : il n'entre
+     * pas dans l'exploitation, sans quoi `total_cost` le compterait deux fois.
+     *
+     * Sur le rendement : la marge lisait déjà `expenses()` et `healthIncidents()`
+     * par le query builder, donc deux requêtes de plus par lot. Sur des
+     * campagnes de ≤ 20 lots — la borne que ce fichier se donnait déjà pour
+     * `utility_cost` — c'est du même ordre, et l'exactitude prime.
      */
     public function getOperatingCostAttribute(): float
     {
-        return $this->batches->sum(function (Batch $b) {
-            return (float) $b->feedPurchases->sum('total_price')
-                 + (float) $b->healthChecks->sum('cost')
-                 + (float) ($b->additional_costs ?? 0)
-                 + (float) $b->utility_cost;
-        });
+        return $this->batches->sum(fn (Batch $b) => $b->operating_cost);
     }
 
     public function getTotalCostAttribute(): float
