@@ -65,6 +65,7 @@ class PayrollService
                 $daysLeave = 0;
                 $daysAbsent = 0;
                 $unpaidDays = 0;
+                $joursDeConge = [];
 
                 foreach ($leaves as $leave) {
                     // Chevauchement borné à la FENÊTRE CONTRACTUELLE : un congé qui
@@ -102,9 +103,25 @@ class PayrollService
                         min($leave->end_date->timestamp, $contract['end']->timestamp)
                     )->startOfDay();
 
-                    $overlapDays = $finChevauchement->lt($debutChevauchement)
-                        ? 0
-                        : (int) $debutChevauchement->diffInDays($finChevauchement) + 1;
+                    /*
+                     * EN JOURS OUVRÉS — le dimanche n'est pas un jour de congé.
+                     *
+                     * Ce décompte était CALENDAIRE, alors que la retenue qui en
+                     * découle vaut « salaire ÷ jours OUVRÉS × jours décomptés ».
+                     * Un congé qui enjambe un jour de repos facturait donc ce
+                     * repos au salarié, au taux d'une journée de travail.
+                     *
+                     * Mesuré : un sans-solde du lundi 3 au lundi 10 août 2026
+                     * (8 jours calendaires, 7 ouvrés) retenait 615 385 GNF au
+                     * lieu de 538 462 sur un salaire de 2 000 000 — 76 923 GNF
+                     * pour un dimanche que personne ne lui payait de travailler.
+                     *
+                     * `workingDaysBetween()` est la MÊME déclaration que celle
+                     * qui produit `workingDays`, le dénominateur de la retenue.
+                     * Numérateur et dénominateur comptent désormais la même
+                     * chose — c'était la seule façon que le rapport ait un sens.
+                     */
+                    $overlapDays = $this->workingDaysBetween($debutChevauchement, $finChevauchement);
 
                     if (in_array($leave->type, ['conge_annuel', 'maladie', 'maternite', 'formation'])) {
                         $daysLeave += $overlapDays;
@@ -114,18 +131,58 @@ class PayrollService
                             $unpaidDays += $overlapDays;
                         }
                     }
+
+                    // Les jours DÉJÀ décomptés au titre de ce congé, pour ne pas
+                    // les recompter au pointage (cf. plus bas).
+                    for ($j = $debutChevauchement->copy(); $j->lte($finChevauchement); $j->addDay()) {
+                        $joursDeConge[$j->toDateString()] = true;
+                    }
                 }
 
-                // Absences RÉELLEMENT pointées (statut « absent ») non justifiées :
-                // elles s'ajoutent aux absences et sont déduites (non payées). Les
-                // jours NON pointés sont présumés travaillés (bénéfice du doute),
-                // pour ne pas pénaliser un pointage incomplet. Les jours de congé
-                // sont pré-pointés « conge » (cf. AttendanceController), donc ils ne
-                // remontent pas ici en « absent » → pas de double comptage.
+                /*
+                 * ABSENCES POINTÉES — SAUF LES JOURS DÉJÀ COMPTÉS EN CONGÉ.
+                 *
+                 * Le commentaire d'origine tenait le raisonnement suivant : « les
+                 * jours de congé sont pré-pointés "conge" (cf.
+                 * AttendanceController), donc ils ne remontent pas ici en
+                 * "absent" → pas de double comptage ».
+                 *
+                 * Ce pré-pointage n'est qu'une VALEUR PAR DÉFAUT du formulaire.
+                 * Rien ne l'impose :
+                 *
+                 *   • le « verrou » de la grille web n'est qu'une mention
+                 *     textuelle — « · congé validé » — le champ reste modifiable ;
+                 *   • `RecordAttendance`, porte commune du web et du terrain,
+                 *     n'examine aucun congé et accepte « absent » sans réserve ;
+                 *   • la grille pré-remplit d'après `EmployeeLeave::approved()`
+                 *     = approuvé/en cours, quand la paie compte AUSSI les congés
+                 *     « terminé » : un pointage saisi après coup propose donc
+                 *     « présent » sur des jours que la paie décompte en congé.
+                 *
+                 * Mesuré : 5 jours de congé SANS SOLDE également pointés absents
+                 * donnaient 10 jours d'absence, 16 jours travaillés au lieu de
+                 * 21, et une retenue de 769 231 GNF au lieu de 384 615 sur un
+                 * salaire de 2 000 000. Le bulletin remis au salarié annonçait
+                 * « Absence non payée (10j) » pour un congé de cinq jours.
+                 *
+                 * C'est de l'argent retiré à quelqu'un. La paie ne peut pas
+                 * dépendre d'une valeur par défaut d'écran : elle écarte
+                 * elle-même les jours qu'elle a déjà comptés.
+                 *
+                 * Les jours NON pointés restent présumés travaillés (bénéfice du
+                 * doute), pour ne pas pénaliser un pointage incomplet.
+                 */
                 $pointedAbsent = EmployeeAttendance::where('employee_id', $emp->id)
                     ->whereDate('attendance_date', '>=', $contract['start']->toDateString())
                     ->whereDate('attendance_date', '<=', $contract['end']->toDateString())
                     ->where('status', 'absent')
+                    ->pluck('attendance_date')
+                    ->reject(fn ($jour) => isset($joursDeConge[Carbon::parse($jour)->toDateString()]))
+                    // Et pas davantage le JOUR DE REPOS : une absence pointée un
+                    // dimanche était retenue comme une journée de travail perdue.
+                    // Même raison que pour les congés — la retenue s'exprime en
+                    // jours ouvrés, elle ne peut pas en compter d'autres.
+                    ->reject(fn ($jour) => self::isRestDay(Carbon::parse($jour)))
                     ->count();
 
                 $daysAbsent += $pointedAbsent;
