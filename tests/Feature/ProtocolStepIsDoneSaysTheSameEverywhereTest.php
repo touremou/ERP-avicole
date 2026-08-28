@@ -90,7 +90,7 @@ function acteSanitaireDuLot(int $farmId, Batch $lot, string $produit, int $userI
         'batch_id'          => $lot->id,
         'product_name'      => $produit,
         'intervention_date' => today()->toDateString(),
-        'type'               => 'vaccination',
+        'type'               => 'Vaccin',
         'mode_administration' => 'eau_de_boisson',
         'user_id'            => $userId,
     ]);
