@@ -490,9 +490,27 @@ class Employee extends Model
 
     public const FIXED_TERM = ['CDD', 'Journalier'];
 
+    /**
+     * Historique des décisions de contrat — D'OÙ QU'ELLES AIENT ÉTÉ PRISES.
+     *
+     * Même règle que `leaves()` et `attendances()`. Un agent prêté reste
+     * visible depuis le site d'accueil (cf. `visibleInFarm`), dont le
+     * responsable peut donc décider d'une prolongation ou d'un préavis :
+     * l'événement porte alors le `farm_id` de CE site, et le dossier de l'agent
+     * — consulté depuis son site d'origine — n'en voyait plus rien.
+     *
+     * Ce n'est pas un détail d'affichage. La migration qui crée cette table dit
+     * ce qu'elle protège : « écraser contract_end_date à chaque prolongation
+     * effacerait l'historique : on ne saurait plus qu'un CDD a été prolongé
+     * trois fois, ce qui est précisément ce qu'un contrôle regarde ». Une trace
+     * conservée mais invisible ne prouve rien de plus qu'une trace absente —
+     * et elle est pire, car on la croit là.
+     */
     public function contractEvents(): HasMany
     {
-        return $this->hasMany(EmployeeContractEvent::class)->latest('decided_on');
+        return $this->hasMany(EmployeeContractEvent::class)
+            ->withoutGlobalScope(\App\Scopes\FarmScope::class)
+            ->latest('decided_on');
     }
 
     public function hasFixedTerm(): bool
