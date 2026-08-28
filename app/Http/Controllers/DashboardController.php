@@ -83,8 +83,22 @@ class DashboardController extends Controller
         // mixte. On se base sur l'effectif des lots assurant un suivi d'œufs.
         $hdp = 0;
         if ($canProduction) {
+            // EN ÂGE DE PONDRE, et pas seulement « suivi en œufs » : une
+            // poulette de 6 semaines gonflait le dénominateur et écrasait le
+            // taux de ponte des lots qui, eux, produisent. Même déclaration que
+            // la saisie de collecte et que le résumé quotidien.
+            //
+            // OU AYANT RÉELLEMENT PONDU : le numérateur compte TOUS les œufs du
+            // jour. Écarter du dénominateur un lot dont les œufs restent au
+            // numérateur gonflerait le taux — on remplacerait une sous-estimation
+            // par une surestimation, ce qui est pire : un HDP trop haut ne se
+            // remarque pas.
+            $pondeursDuJour = EggProduction::whereDate('production_date', $today)
+                ->pluck('batch_id')
+                ->all();
+
             $layingBirds = $allActiveBatches
-                ->filter(fn ($b) => $b->tracksEggs())
+                ->filter(fn ($b) => $b->canCollectEggs() || in_array($b->id, $pondeursDuJour, true))
                 ->sum('current_quantity');
             $hdp = $layingBirds > 0 ? ($totalEggsToday / $layingBirds) * 100 : 0;
         }

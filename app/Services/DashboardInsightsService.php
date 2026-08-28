@@ -136,13 +136,33 @@ class DashboardInsightsService
      */
     private function costPerEgg(Collection $activeBatches): ?float
     {
-        $layingIds = $activeBatches->filter(fn ($b) => $b->tracksEggs())->pluck('id')->all();
+        $start = now()->startOfMonth();
+        $end   = now()->endOfMonth();
+
+        // EN ÂGE DE PONDRE — ou ayant réellement pondu ce mois-ci.
+        //
+        // L'aliment d'une poulette qui ne pond pas encore venait grossir le
+        // numérateur sans rien ajouter au dénominateur : le prix de revient de
+        // l'œuf montait à cause de lots qui n'en produisent aucun. Le coût
+        // d'élevage des poulettes est un investissement de la future bande, pas
+        // une charge des œufs du mois.
+        //
+        // La seconde branche empêche l'excès inverse : un lot qui a des œufs
+        // consignés garde son coût EN FACE d'eux. Sans elle, on aurait retiré
+        // des œufs du dénominateur en gardant leur coût hors du numérateur —
+        // deux erreurs qui ne se compensent pas.
+        $pondeursDuMois = EggProduction::whereBetween('production_date', [$start, $end])
+            ->pluck('batch_id')
+            ->all();
+
+        $layingIds = $activeBatches
+            ->filter(fn ($b) => $b->canCollectEggs() || in_array($b->id, $pondeursDuMois, true))
+            ->pluck('id')
+            ->all();
+
         if (empty($layingIds)) {
             return null;
         }
-
-        $start = now()->startOfMonth();
-        $end   = now()->endOfMonth();
 
         $eggs = (int) EggProduction::whereIn('batch_id', $layingIds)
             ->whereBetween('production_date', [$start, $end])
