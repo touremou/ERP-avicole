@@ -31,9 +31,26 @@ use Illuminate\Support\Facades\DB;
  * fois, et une exploitation dont une partie des mouvements a abouti n'est pas
  * double-comptée.
  *
+ * ─── SITE PAR SITE ───
+ *
+ * `FarmScope` ne s'applique QUE si `session('current_farm_id')` est défini. En
+ * console il ne l'est pas : sans le poser, cette commande agrégeait les tris des
+ * QUATRE sites en un seul chiffre, les comparait aux entrées d'un seul article
+ * de stock — le premier trouvé — et écrivait le manque sur la ferme par défaut.
+ *
+ * Les œufs triés à Kindia et à Kérouané se seraient donc empilés sur le magasin
+ * d'un seul site, les autres restant vides. Sur une exploitation mono-site le
+ * résultat était juste, ce qui rendait le défaut invisible là où on le teste.
+ *
+ * On boucle donc sur les sites ACTIFS en posant la session, comme le font déjà
+ * `stocks:sync` et `maintenance:check` — dont le commentaire dit la même chose :
+ * « le scope ferme se règle sur la session, y compris en console : sans cela,
+ * chaque site verrait les lots de tous les autres ».
+ *
  * Usage :
  *   php artisan eggs:repair-stock            # SIMULATION — rien n'est écrit
  *   php artisan eggs:repair-stock --force    # applique les écarts
+ *   php artisan eggs:repair-stock --farm=3   # un seul site
  *
  * Convention partagée avec batches:rebuild-quantities, feed:recompute-costs et
  * stocks:sync : une commande qui réécrit des chiffres simule par défaut.
@@ -41,7 +58,8 @@ use Illuminate\Support\Facades\DB;
 class RepairEggStock extends Command
 {
     protected $signature = 'eggs:repair-stock
-                            {--force : APPLIQUER les écarts. Sans ce drapeau : simulation seule}';
+                            {--force : APPLIQUER les écarts. Sans ce drapeau : simulation seule}
+                            {--farm= : Limiter à un site (défaut : tous les sites actifs)}';
 
     protected $description = 'Reporte au magasin les tris d\'œufs qui n\'y sont jamais entrés';
 
@@ -53,8 +71,37 @@ class RepairEggStock extends Command
             $this->warn('SIMULATION — aucune écriture. Ajoutez --force pour appliquer.');
         }
 
-        $this->newLine();
+        $sites = $this->option('farm')
+            ? \App\Models\Farm::whereKey((int) $this->option('farm'))->get()
+            : \App\Models\Farm::active()->get();
 
+        if ($sites->isEmpty()) {
+            $this->error('Aucun site actif.');
+            return self::FAILURE;
+        }
+
+        $code = self::SUCCESS;
+
+        foreach ($sites as $site) {
+            $this->newLine();
+            $this->line("<options=bold>{$site->name}</>");
+
+            // Le scope ferme se règle sur la session, y compris en console : sans
+            // cela, les tris de tous les sites seraient additionnés et reportés
+            // sur le magasin d'un seul.
+            session(['current_farm_id' => $site->id]);
+
+            if ($this->reparerUnSite($simulation) === self::FAILURE) {
+                $code = self::FAILURE;
+            }
+        }
+
+        return $code;
+    }
+
+    /** La reprise pour le site courant (session déjà posée). */
+    private function reparerUnSite(bool $simulation): int
+    {
         $ecarts = $this->ecartsParArticle();
 
         if ($ecarts->isEmpty()) {
