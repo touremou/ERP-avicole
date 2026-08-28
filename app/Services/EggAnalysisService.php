@@ -29,11 +29,63 @@ class EggAnalysisService
         $yesterday = Carbon::yesterday();
         $dayBefore = Carbon::yesterday()->subDay();
 
-        // Lots pondeuses actifs
+        /*
+         * LES LOTS EN ÂGE DE PONDRE — et eux seuls.
+         *
+         * Cette sélection prenait TOUT lot de type « ponte », sans regarder son
+         * âge. Or une poulette n'entre en ponte qu'à 18 semaines environ
+         * (Batch::minLayingAgeDays(), déduit de la courbe de la souche). Un lot
+         * de 6 semaines est bien un lot de ponte : il ne pond pas pour autant.
+         *
+         * Conséquence, chaque matin, sur un élevage qui démarre son cheptel :
+         *
+         *   • « PAS DE COLLECTE » pour chaque lot trop jeune — alors que
+         *     l'application REFUSE d'enregistrer une collecte sur ces lots
+         *     (RecordEggCollection et StoreEggProductionRequest lisent tous deux
+         *     `minLayingAgeDays`). Le résumé reprochait de n'avoir pas fait ce
+         *     que le formulaire interdit de faire ;
+         *   • « HDP global : 0 % (1 491 poules) » — 1 491 sujets comptés comme
+         *     poules alors qu'aucun n'est en âge de pondre. Annoncer 0 % dit
+         *     « vos poules ont cessé de pondre » ; la vérité est « vous n'avez
+         *     pas encore de pondeuses » ;
+         *   • « Production totale (0 œufs) < 70 % de la moyenne 7j », en
+         *     sévérité CRITIQUE — une alerte sur un effondrement impossible.
+         *
+         * Trois fausses alertes par jour, sur le message que le promoteur lit
+         * depuis l'étranger. Une alerte critique quotidienne et fausse ne coûte
+         * pas seulement de l'attention : elle apprend à ne plus lire les autres.
+         *
+         * `canCollectEggs()` est la MÊME déclaration que celle qu'applique la
+         * saisie — « garde-fou partagé par la validation de collecte et la vue »,
+         * dit son commentaire. Le résumé était le seul écran à ne pas la lire.
+         *
+         * Un lot qui a ATTEINT l'âge de pondre et ne rend rien reste signalé :
+         * là, l'absence de collecte est une vraie anomalie.
+         *
+         * ─── ET UN LOT QUI A DES ŒUFS RESTE COMPTÉ, QUEL QUE SOIT SON ÂGE ───
+         *
+         * Le filtre sur le seul âge AURAIT MASQUÉ des œufs réellement
+         * enregistrés : une collecte saisie avant que ce garde-fou n'existe, une
+         * reprise de données, une souche précoce dont la norme n'est pas encore
+         * renseignée. Faire disparaître d'un rapport une production consignée
+         * serait un défaut PIRE que celui qu'on corrige — le premier fait du
+         * bruit, le second efface.
+         *
+         * La règle est donc : en âge de pondre, OU ayant réellement pondu. On ne
+         * se tait que sur les lots dont l'application elle-même refuse la
+         * collecte ET qui n'ont rien rendu.
+         */
+        $collectesDuJour = EggProduction::whereDate('production_date', $yesterday)
+            ->pluck('batch_id')
+            ->all();
+
         $layingBatches = Batch::active()
             ->byType('ponte')
             ->with('building')
-            ->get();
+            ->get()
+            ->filter(fn (Batch $batch) => $batch->canCollectEggs()
+                || in_array($batch->id, $collectesDuJour, true))
+            ->values();
 
         if ($layingBatches->isEmpty()) {
             return [
