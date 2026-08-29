@@ -118,7 +118,42 @@ class PeriodCharges
                 fn ($q) => $q->whereBetween('start_date', [$from, $to])
             )->sum('net_salary'),
 
-            'Eau' => (float) WaterReading::whereBetween('reading_date', [$from, $to])->sum('cost'),
+            /*
+             * EAU — L'ACHAT, PAS LA CONSOMMATION VALORISÉE.
+             *
+             * Cette ligne sommait TOUTES les lignes de `water_readings.cost`, sans
+             * distinguer deux natures que la table mélange :
+             *
+             *   • les RAVITAILLEMENTS (`is_refill`) portent le prix payé au
+             *     camion-citerne — un achat, donc une charge ;
+             *   • les RELEVÉS DE CONSOMMATION portent une valorisation calculée
+             *     par `RecordWaterReading` : litres ÷ 1000 × `energie.water_price_m3`
+             *     (paramètre semé à 5 000 GNF/m³, libellé « Prix eau SEEG »).
+             *
+             * Sur une citerne livrée par camion, les deux décrivent la MÊME eau :
+             * on l'achète, puis on la consomme. Les additionner comptait la
+             * dépense deux fois. C'est exactement le doublon que la ligne
+             * « Énergie » évite déjà en excluant les groupes électrogènes, dont
+             * le coût réel arrive par la ligne « Carburant ».
+             *
+             * ─── LA RÈGLE, ET ELLE EST STANDARD ───
+             *
+             * La charge naît de l'ACQUISITION. La valorisation d'une consommation
+             * interne est une clef de répartition analytique — utile pour imputer
+             * l'eau à un bâtiment, à un lot (cf. Batch::utility_cost) — jamais une
+             * seconde charge au compte de résultat.
+             *
+             * On retient donc :
+             *   • pour une source RAVITAILLÉE (citerne, camion) : ses appoints ;
+             *   • pour une source FACTURÉE (réseau SEEG, forage) : ses relevés de
+             *     consommation, car là le relevé EST la facture — personne ne
+             *     livre l'eau, on paie ce qu'on a tiré.
+             *
+             * Une citerne alimentée par un forage de l'exploitation n'a ni appoint
+             * facturé ni relevé compté : son eau ne coûte que l'énergie de la
+             * pompe, déjà portée par les lignes énergie et carburant.
+             */
+            'Eau' => self::waterCost($from, $to),
 
             // PAS de filtre `energy_sources.deleted_at` ICI, et c'est délibéré.
             // Supprimer une source ne doit pas RÉÉCRIRE le passé : le gasoil brûlé
@@ -147,6 +182,41 @@ class PeriodCharges
         }
 
         return $costs;
+    }
+
+    /**
+     * Sources d'eau dont l'eau s'ACHÈTE par livraison — leur charge est l'appoint.
+     *
+     * Les autres (réseau, forage) sont facturées à la consommation : le relevé
+     * y tient lieu de facture.
+     */
+    private const SOURCES_RAVITAILLEES = ['citerne', 'camion'];
+
+    /**
+     * COÛT DE L'EAU D'UNE PÉRIODE — cf. le commentaire de la ligne « Eau ».
+     *
+     * Deux natures dans la même table, et une seule doit compter par source :
+     * l'appoint payé pour ce qui est livré, le relevé pour ce qui est facturé au
+     * compteur. Les additionner comptait la même eau deux fois.
+     */
+    private static function waterCost(Carbon $from, Carbon $to): float
+    {
+        return (float) WaterReading::query()
+            ->join('water_sources', 'water_sources.id', '=', 'water_readings.water_source_id')
+            ->whereBetween('water_readings.reading_date', [$from, $to])
+            ->where(function ($q) {
+                // Source livrée : on ne retient QUE les ravitaillements.
+                $q->where(function ($w) {
+                    $w->whereIn('water_sources.type', self::SOURCES_RAVITAILLEES)
+                      ->where('water_readings.is_refill', true);
+                })
+                // Source facturée au compteur : on ne retient QUE la consommation.
+                ->orWhere(function ($w) {
+                    $w->whereNotIn('water_sources.type', self::SOURCES_RAVITAILLEES)
+                      ->where('water_readings.is_refill', false);
+                });
+            })
+            ->sum('water_readings.cost');
     }
 
     /**

@@ -24,6 +24,8 @@ export function MeterReadingScreen() {
   const [hours, setHours] = useState('')
   const [fuel, setFuel] = useState('')
   const [outage, setOutage] = useState('')
+  // kWh produits — facultatif : tous les groupes n'ont pas de compteur lisible.
+  const [kwh, setKwh] = useState('')
   // Eau
   const [volume, setVolume] = useState('')
   const [ph, setPh] = useState('')
@@ -59,6 +61,7 @@ export function MeterReadingScreen() {
           hours_run: Number(hours),
           fuel_consumed_liters: fuel !== '' ? Number(fuel) : null,
           outage_hours: outage !== '' ? Number(outage) : null,
+          kwh_produced: kwh !== '' ? Number(kwh) : null,
           notes: notes.trim() || null,
         },
         t('Relevé énergie :source — :h h', { source: energySource?.name ?? sourceId, h: Number(hours) }),
@@ -141,6 +144,9 @@ export function MeterReadingScreen() {
 
           <label htmlFor="outage">{t('Heures de coupure réseau — optionnel')}</label>
           <input id="outage" type="number" inputMode="decimal" min={0} max={24} step="0.1" value={outage} onChange={(e) => setOutage(e.target.value)} />
+
+          <label htmlFor="kwh">{t('kWh produits — si le groupe a un compteur')}</label>
+          <input id="kwh" type="number" inputMode="decimal" min={0} step="0.1" value={kwh} onChange={(e) => setKwh(e.target.value)} />
         </>
       ) : (
         <>

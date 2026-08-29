@@ -1197,6 +1197,29 @@ class Batch extends Model
     }
 
     /**
+     * KILOS CONSOMMÉS QUE PERSONNE N'A SU VALORISER.
+     *
+     * `feedConsumptionLedger()` valorise chaque pointage au coût figé le jour de
+     * la saisie, avec repli sur le CMP courant de l'article. Quand ni l'un ni
+     * l'autre n'existe — type d'aliment renommé, article supprimé, données
+     * antérieures au figeage — le coût unitaire vaut zéro, et ces kilos entrent
+     * dans `feed_cogs` pour RIEN.
+     *
+     * Le lot a bien mangé ; sa marge s'en trouve flattée, en silence.
+     *
+     * On ne fabrique PAS de prix de repli : un chiffre inventé serait pire qu'un
+     * chiffre absent, parce qu'il ne se voit pas. On expose la quantité non
+     * valorisée pour que l'écran de clôture puisse la dire — au même titre que
+     * l'aliment acheté mais jamais pointé, qu'il signale déjà.
+     */
+    public function unvaluedFeedKg(): float
+    {
+        return (float) $this->feedConsumptionLedger()
+            ->filter(fn ($ligne) => (float) $ligne->unit_cost <= 0)
+            ->sum('qty');
+    }
+
+    /**
      * Coût eau + énergie imputé à ce lot via le bâtiment qu'il occupe.
      *
      * Seuls les relevés taggés sur SON bâtiment comptent, sur sa période de
