@@ -77,6 +77,16 @@
                                                     {{ __("⚠️ Aucune consommation pointée, alors que :montant :devise d'aliment ont été achetés pour ce lot. La marge ci-dessous ignore cet aliment.", ['montant' => number_format($costs['feed_unlogged'], 0, ',', '.'), 'devise' => currency()]) }}
                                                 </p>
                                             @endif
+                                            @if(($costs['feed_unvalued_kg'] ?? 0) > 0)
+                                                {{-- Le pendant, plus sournois : la consommation EST pointée, mais
+                                                     ni coût figé ni article correspondant ne permettent de la
+                                                     chiffrer. Ces kilos comptent pour zéro dans le coût. On ne
+                                                     fabrique pas de prix de repli — un chiffre inventé ne se
+                                                     remarque pas, un chiffre annoncé manquant se corrige. --}}
+                                                <p class="text-[8px] font-black text-amber-600 mt-1">
+                                                    {{ __("⚠️ :kg kg pointés sans prix connu (type d'aliment absent du magasin) : ils comptent pour 0 dans le coût ci-contre.", ['kg' => number_format($costs['feed_unvalued_kg'], 1, ',', ' ')]) }}
+                                                </p>
+                                            @endif
                                         </div>
                                         <span class="text-sm font-black text-red-600">{{ number_format($costs['feed'], 0, ',', '.') }} {{ currency() }}</span>
                                     </div>

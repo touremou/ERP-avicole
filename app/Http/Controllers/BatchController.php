@@ -535,6 +535,20 @@ class BatchController extends Controller
         $feedPurchased = (float) $batch->feedPurchases()->sum('total_price');
         $feedUnlogged  = ($feedCost <= 0 && $feedPurchased > 0) ? $feedPurchased : 0.0;
 
+        /*
+         * L'ALIMENT POINTÉ MAIS JAMAIS VALORISÉ.
+         *
+         * Le pendant du cas ci-dessus, et il est plus sournois : ici la
+         * consommation EST enregistrée, mais ni coût figé ni article
+         * correspondant ne permettent de la chiffrer. Ces kilos entrent dans
+         * `feed_cogs` pour zéro — la marge est flattée sans qu'aucun écran ne
+         * le dise.
+         *
+         * On ne fabrique pas de prix de repli : un chiffre inventé ne se
+         * remarque pas, un chiffre annoncé manquant se corrige.
+         */
+        $feedUnvaluedKg = $batch->unvaluedFeedKg();
+
         // Données pour la vue
         $costs = [
             'acquisition'     => round($acquisitionCost),
@@ -549,6 +563,7 @@ class BatchController extends Controller
             'total_known'     => round($totalKnownCosts),
             'duration_days'   => $durationDays,
             'feed_unlogged'   => round($feedUnlogged),
+            'feed_unvalued_kg' => round($feedUnvaluedKg, 1),
         ];
 
         return view('batches.close', compact(
