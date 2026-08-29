@@ -370,7 +370,15 @@
                         <input type="number" name="fuel_consumed_liters" step="0.1" min="0" placeholder="{{ __('Carburant L (auto)') }}" class="bg-white border border-slate-100 rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
                         <input type="number" name="outage_hours" step="0.5" min="0" max="24" placeholder="{{ __('Coupures (h)') }}" class="bg-white border border-slate-100 rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
                     </div>
-                    <input type="number" name="cost" step="100" min="0" placeholder="{{ __('Coût') }} {{ currency() }} ({{ __('auto si vide') }})" class="w-full bg-white border border-slate-100 rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
+                    {{-- kWh PRODUITS : facultatif, car tous les groupes n'ont pas de
+                         compteur lisible. Le champ était validé par le contrôleur,
+                         sommé par UtilityService et affiché au tableau de bord —
+                         mais aucun formulaire ne le proposait. La tuile « Valeur
+                         produite » annonçait donc 0 en permanence. --}}
+                    <div class="grid grid-cols-2 gap-3">
+                        <input type="number" name="kwh_produced" step="0.1" min="0" placeholder="{{ __('kWh produits (si compteur)') }}" class="bg-white border border-slate-100 rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
+                        <input type="number" name="cost" step="100" min="0" placeholder="{{ __('Coût') }} {{ currency() }} ({{ __('auto si vide') }})" class="bg-white border border-slate-100 rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
+                    </div>
                     <button type="submit" class="w-full bg-amber-500 text-white py-3 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-amber-600 transition-all border-none cursor-pointer">
                         <i class="fa-solid fa-check mr-1"></i> {{ __("Enregistrer le relevé") }}
                     </button>

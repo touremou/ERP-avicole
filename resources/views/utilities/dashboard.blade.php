@@ -165,7 +165,13 @@
                         <p class="text-xl font-black text-slate-900">{{ number_format($data['energy']['total_cost']) }}</p>
                         <p class="text-[8px] text-slate-400">{{ currency() }}</p>
                     </div>
-                    @if(setting('energie.kwh_price_edg', 0) > 0)
+                    {{-- Affichée seulement si des kWh ont RÉELLEMENT été relevés.
+                         Le seul test du tarif ne suffisait pas : le paramètre est
+                         semé à 1 500 GNF/kWh, donc la tuile s'affichait toujours —
+                         et, faute de champ de saisie, annonçait 0 en permanence.
+                         Un indicateur qui ne peut pas varier n'informe pas : il
+                         apprend à ne plus regarder. --}}
+                    @if(setting('energie.kwh_price_edg', 0) > 0 && ($data['energy']['total_kwh'] ?? 0) > 0)
                     <div class="bg-emerald-50 p-5 rounded-[2rem] border border-emerald-100 shadow-sm text-center">
                         <p class="text-[8px] font-black text-emerald-500 uppercase tracking-widest mb-1">{{ __("Valeur produite (éq. EDG)") }}</p>
                         <p class="text-xl font-black text-emerald-600">{{ number_format($data['energy']['edg_value']) }}</p>
