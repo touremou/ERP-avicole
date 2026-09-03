@@ -34,8 +34,18 @@ class BillLivePurchase
 
         $cost = $reception->computePurchaseCost();
         if ($cost === null || $cost <= 0) {
-            // Achat au prix non renseigné : rien à facturer automatiquement —
-            // l'achat se saisit au bureau (module Achats) quand le prix est fixé.
+            /*
+             * Deux situations aboutissent ici, et aucune ne se facture :
+             *
+             *   • prix non renseigné — l'achat se saisit au bureau (module
+             *     Achats) quand il est fixé ;
+             *   • réception REFUSÉE au contrôle ante-mortem : la marchandise
+             *     repart chez l'éleveur, il n'y a rien à devoir.
+             *
+             * Le second cas produisait une facture au prix plein : cette action
+             * ne regardait que `origin === 'achat'`, jamais la décision du
+             * contrôle. Mesuré : 100 sujets refusés, facture de 2 000 000 GNF.
+             */
             return $reception;
         }
 
