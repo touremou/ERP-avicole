@@ -17,15 +17,29 @@ class BatchObserver
      * et devait donc pouvoir l'appeler lui aussi. Tant qu'elle vivait ici, le
      * geste quotidien — celui par lequel la mortalité arrive réellement — ne
      * déclenchait rien.
+     *
+     * ─── ON SURVEILLE LES MORTS, PAS L'EFFECTIF ───
+     *
+     * Ce hook se déclenchait sur `current_quantity`. Mais l'effectif baisse
+     * aussi de tout ce qui sort VIVANT — ventes de sujets vifs, expéditions,
+     * dispatch, abattoir, transferts. Vendre 400 sujets sur 1 000 levait donc
+     * une alerte de surmortalité à 40 %, sans un seul mort ; et le
+     * franchissement une fois consommé, la vraie dérive qui suivait ne pouvait
+     * plus alerter.
+     *
+     * La mortalité côté lot, c'est `qty_dead` — les morts à l'ARRIVAGE. Celles
+     * de l'élevage entrent par les pointages, qui appellent la règle eux-mêmes.
      */
     public function updated(Batch $batch): void
     {
-        if (! $batch->wasChanged('current_quantity')) {
+        if (! $batch->wasChanged('qty_dead')) {
             return;
         }
 
+        $delta = (int) $batch->qty_dead - (int) $batch->getOriginal('qty_dead');
+
         app(CumulativeMortalityAlert::class)
-            ->evaluate($batch, (int) $batch->getOriginal('current_quantity'));
+            ->evaluate($batch, max(0, $batch->total_mortality - $delta));
     }
 
     /**
