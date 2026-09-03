@@ -52,8 +52,10 @@ test('l\'alerte de l\'observer se déclenche au seuil cumulé édité', function
         'initial_quantity' => 100, 'current_quantity' => 100, 'qty_dead' => 0,
     ]);
 
-    // Franchit le seuil de 4 % (passe à 94 vivants = 6 % cumulé) → alerte admin.
-    $batch->update(['current_quantity' => 94]);
+    // Franchit le seuil de 4 % : 6 morts sur 100 mis en place = 5,66 % cumulé.
+    // (Le déclencheur était `current_quantity` — mais l'effectif baisse aussi
+    // des ventes et des transferts, qui ne tuent personne.)
+    $batch->update(['qty_dead' => 6]);
 
     Notification::assertSentTo($this->adminUser, IndustrialAlert::class);
 });
