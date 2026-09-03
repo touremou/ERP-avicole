@@ -188,7 +188,25 @@ test('sans --force, RIEN n’est écrit — pas même les effectifs', function (
 });
 
 test('avec --force, les EFFECTIFS sont rectifiés', function () {
-    $this->batch->update(['initial_quantity' => 1000, 'current_quantity' => 400]);
+    /*
+     * ─── CE TEST AFFIRMAIT UN AUTRE DÉFAUT ───
+     *
+     * Son jeu de données était « effectif 400, dix morts pointées » et attendait
+     * une remontée à 990 — la RÉSURRECTION des sujets vendus. Le calcul des
+     * pointages ignore les ventes : un effectif de 400 pour 1 000 sujets reçus
+     * s'explique normalement par 590 sujets vendus ou expédiés.
+     *
+     * Deux tests portaient ce même jeu de données fautif — celui-ci et
+     * `RewriteCommandSafetyTest`. Tous deux voulaient prouver que `--force`
+     * écrit vraiment, et tous deux ont choisi, sans le voir, un cas où la
+     * correction se trouve être une remontée. C'est pourquoi le défaut a
+     * survécu : la suite le protégeait à deux endroits.
+     *
+     * On garde l'intention avec la dérive que la commande a le DROIT de
+     * corriger : un effectif trop HAUT, une mortalité pointée mais jamais
+     * décomptée.
+     */
+    $this->batch->update(['initial_quantity' => 1000, 'current_quantity' => 1000]);
 
     \App\Models\DailyCheck::create([
         'farm_id' => $this->farm->id, 'batch_id' => $this->batch->id,

@@ -162,11 +162,28 @@ test('batches:rebuild-quantities NE corrige PAS sans --force', function () {
 });
 
 test('batches:rebuild-quantities corrige AVEC --force', function () {
-    // Le pendant indispensable : un garde-fou qui empêche aussi le cas voulu ne
-    // protège rien, il casse.
+    /*
+     * Le pendant indispensable : un garde-fou qui empêche aussi le cas voulu ne
+     * protège rien, il casse.
+     *
+     * ─── CE TEST AFFIRMAIT LE DÉFAUT ───
+     *
+     * Son jeu de données était « effectif 400, dix morts pointées » et attendait
+     * une remontée à 990. C'est la RÉSURRECTION : le calcul des pointages ignore
+     * les ventes, donc un effectif de 400 pour 1 000 sujets reçus s'explique
+     * normalement par 590 sujets vendus ou expédiés.
+     *
+     * Le test avait été écrit pour prouver que `--force` corrige — et son auteur
+     * a choisi, sans le voir, un cas où la correction se trouve être une
+     * remontée. C'est pourquoi le défaut a survécu : la suite le protégeait.
+     *
+     * On garde l'intention — vérifier que `--force` écrit vraiment — avec la
+     * dérive que la commande a le DROIT de corriger : un effectif trop HAUT, une
+     * mortalité pointée mais jamais décomptée.
+     */
     $batch = Batch::factory()->create([
         'farm_id' => $this->farm->id, 'status' => 'Actif',
-        'initial_quantity' => 1000, 'current_quantity' => 400,
+        'initial_quantity' => 1000, 'current_quantity' => 1000,
     ]);
 
     DailyCheck::create([
