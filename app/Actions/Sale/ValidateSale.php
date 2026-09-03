@@ -7,6 +7,7 @@ use App\Models\Stock;
 use App\Models\Batch;
 use App\Services\NotificationHub;
 use App\Services\StockIntegrationService;
+use App\Services\UnitConverter;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Exception;
@@ -107,10 +108,37 @@ class ValidateSale
             return;
         }
 
-        if ((float) $stock->current_quantity < (float) $item->quantity) {
+        /*
+         * ─── ON CONTRÔLE CE QU'ON VA RÉELLEMENT SORTIR ───
+         *
+         * Ce contrôle comparait `$item->quantity` — la quantité dans l'unité de
+         * SAISIE — à `$stock->current_quantity`, qui est dans l'unité PIVOT de
+         * la catégorie (KG pour l'aliment, Alvéole pour les œufs). Deux nombres
+         * dans deux unités, comparés directement. La sortie juste en dessous,
+         * elle, convertit. Le garde et le geste ne parlaient pas la même langue.
+         *
+         * Mesuré, dans les deux sens :
+         *
+         *   • 5 sacs d'aliment (250 kg) vendus sur 100 kg en stock : « 5 < 100 »
+         *     → contrôle PASSÉ, 250 kg sortis, stock plafonné à zéro. Une vente
+         *     de 150 kg qui n'existaient pas, validée sans un mot ;
+         *   • 300 œufs vendus à la pièce sur 20 alvéoles (600 œufs, largement
+         *     assez) : « 300 > 20 » → vente REFUSÉE.
+         *
+         * La conversion se fait donc UNE fois, et le même nombre sert au
+         * contrôle et au mouvement.
+         */
+        $needed = UnitConverter::toStockBase(
+            (float) $item->quantity,
+            $item->stockInputUnit(),
+            $stock->category,
+        );
+
+        if ((float) $stock->current_quantity + 0.0001 < $needed) {
             throw new Exception(
                 "Stock insuffisant pour '{$item->product_name}' : " .
-                "besoin {$item->quantity} {$item->unit}, disponible {$stock->current_quantity} {$stock->unit}."
+                "besoin {$item->quantity} {$item->unit} (= {$needed} {$stock->unit}), " .
+                "disponible {$stock->current_quantity} {$stock->unit}."
             );
         }
 
@@ -119,13 +147,25 @@ class ValidateSale
         // $stock->category) — et non des valeurs dérivées du product_type — afin
         // que findStock() retrouve exactement cet article, quelle que soit sa
         // catégorie (œufs, lait, aliment… mais aussi litière, matériel, etc.).
+        //
+        // `strictOut` : sans lui, une sortie plus grande que le stock est
+        // PLAFONNÉE à zéro, en silence — c'est ce plafonnement qui a absorbé les
+        // 150 kg manquants ci-dessus.
+        //
+        // Aucun test ne le tue, et c'est VOULU : le contrôle ci-dessus le rend
+        // inatteignable. Son propre contrat est couvert ailleurs
+        // (`CropMatterConservationTest`). Il est ici pour qu'une divergence
+        // future entre le contrôle et le mouvement s'ANNONCE au lieu de se
+        // dissoudre dans le stock — c'est-à-dire pour que le défaut corrigé ici
+        // ne puisse pas se reformer en silence.
         StockIntegrationService::syncMovement(
             $stock->item_name,
             $stock->category,
             (float) $item->quantity,
             'out',
             "Vente {$item->sale->reference} — Client: {$item->sale->client->name}",
-            $item->stockInputUnit()
+            $item->stockInputUnit(),
+            strictOut: true,
         );
     }
 
