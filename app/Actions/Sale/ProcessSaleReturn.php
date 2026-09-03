@@ -48,6 +48,10 @@ class ProcessSaleReturn
 
             $returnedValue = 0.0;
 
+            // Sous-total AVANT reprise, lu sur les lignes — c'est la référence
+            // du prorata de remise appliqué après la boucle.
+            $subtotalAvant = (float) $sale->items()->sum('total');
+
             foreach ($lines as $saleItemId => $qty) {
                 $qty = (float) $qty;
                 if ($qty <= 0) {
@@ -119,11 +123,54 @@ class ProcessSaleReturn
                 }
             }
 
-            // 4. Recalculer la vente (total = biens conservés).
+            /*
+             * 4. PRORATER LA REMISE EN FRANCS AVANT DE RECALCULER.
+             *
+             * `recalculateTotals()` réapplique `computeDiscount()`, qui rend la
+             * remise TELLE QUELLE quand elle est en francs (`amount`). Une
+             * remise consentie sur la commande entière était donc re-déduite en
+             * entier d'un sous-total réduit : le client rendait la marchandise
+             * et gardait toute la remise.
+             *
+             * Mesuré, sur 100 000 GNF de marchandise remisés de 20 000 :
+             *
+             *   • moitié rendue → total 30 000 au lieu de 40 000 ;
+             *   • 9 sur 10 rendus → sous-total 10 000, remise plafonnée à
+             *     10 000 : TOTAL ZÉRO. Le reste de la commande devenait gratuit,
+             *     et le remboursement égalait tout ce qui avait été encaissé.
+             *
+             * La remise en POURCENTAGE, elle, se proratait déjà d'elle-même
+             * (40 000 sur le même retour, ce qu'il faut) : les deux types de
+             * remise répondaient différemment au même geste.
+             *
+             * On aligne donc les francs sur le pourcentage — la remise suit la
+             * marchandise conservée. C'est la règle des avoirs : une reprise
+             * partielle reprend sa part de remise, elle ne la concentre pas sur
+             * ce qui reste.
+             *
+             * Écrit sur `discount_value` (et non contourné dans le calcul) pour
+             * que la vente PORTE la remise qu'elle applique — donc que des
+             * reprises successives se composent correctement, chacune sur l'état
+             * courant.
+             */
+            $subtotalApres = (float) $sale->items()->sum('total');
+
+            if ($sale->discount_type === 'amount'
+                && (float) $sale->discount_value > 0
+                && $subtotalAvant > 0) {
+                $sale->forceFill([
+                    'discount_value' => round(
+                        (float) $sale->discount_value * ($subtotalApres / $subtotalAvant),
+                        2
+                    ),
+                ])->save();
+            }
+
+            // 5. Recalculer la vente (total = biens conservés).
             $sale->recalculateTotals();
             $sale->refresh();
 
-            // 5. Rembourser le trop-perçu via un paiement NÉGATIF.
+            // 6. Rembourser le trop-perçu via un paiement NÉGATIF.
             $refund = round(max(0, $paidBefore - (float) $sale->total_amount), 2);
             if ($refund > 0) {
                 Payment::create([
