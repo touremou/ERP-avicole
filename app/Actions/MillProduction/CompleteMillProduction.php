@@ -125,27 +125,65 @@ class CompleteMillProduction
                 ? round($totalCost / $quantityProduced, 2)
                 : 0;
 
-            // ─── 3.bis GARDE-FOU VALORISATION ───
-            // Un coût de revient à 0 signifie que toutes les matières premières
-            // manquent de prix (unit_cost = 0). Sans ce garde-fou, le silo
-            // d'aliment fini serait crédité à 0 GNF/kg et chaque pointage de
-            // consommation ultérieur afficherait ALIMENT : 0 GNF même si des
-            // MP coûteuses ont bien été consommées.
-            if ($realCostPerKg <= 0) {
-                $unpricedMaterials = $production->formula->items
-                    ->filter(fn ($item) => $item->rawMaterial && (float) $item->rawMaterial->unit_cost <= 0)
-                    ->map(fn ($item) => $item->rawMaterial->name)
-                    ->values()
-                    ->all();
+            /*
+             * ─── 3.bis GARDE-FOU VALORISATION ───
+             *
+             * UNE SEULE matière sans prix suffit à fausser le coût de revient.
+             *
+             * Ce contrôle ne se déclenchait que si le coût TOTAL tombait à zéro —
+             * c'est-à-dire si TOUTES les matières manquaient de prix. Une formule
+             * dont une seule ligne n'était pas tarifée passait donc sans un mot.
+             *
+             * Mesuré : maïs 70 % à 3 000 GNF/kg, tourteau de soja 30 % sans prix.
+             * L'aliment entrait au silo à 2 100 GNF/kg au lieu de 3 600 — 42 % de
+             * sous-évaluation, sur une clôture ACCEPTÉE.
+             *
+             * ─── POURQUOI C'EST LA RACINE ───
+             *
+             * Ce coût fixe le CMP du silo d'aliment fini. Il devient donc le
+             * `feed_unit_cost` figé à chaque pointage de consommation, donc le
+             * `feed_cogs` de chaque bande qui en mange, donc sa marge, sa clôture,
+             * le coût de sa campagne et la ligne « Aliment » du compte de
+             * résultat. Une erreur ici se propage à tout ce qui chiffre l'élevage,
+             * et toujours dans le même sens : elle flatte.
+             *
+             * ─── ON REFUSE, ON N'ESTIME PAS ───
+             *
+             * C'est la règle industrielle : un mouvement d'inventaire ne se poste
+             * pas à un coût qu'on sait faux. Inventer un prix de repli rendrait le
+             * total « complet », donc invisible, donc jamais corrigé. Le message
+             * nomme les matières à tarifer et l'écran où le faire : le refus est
+             * actionnable, il ne bloque pas, il oriente.
+             *
+             * Un ingrédient ORPHELIN (matière supprimée du référentiel) tombe sous
+             * la même règle : sa part n'est ni déstockée ni valorisée — la formule
+             * ne décrit plus ce qu'on fabrique.
+             */
+            $sansPrix = $production->formula->items
+                ->filter(fn ($item) => $item->rawMaterial && (float) $item->rawMaterial->unit_cost <= 0)
+                ->map(fn ($item) => $item->rawMaterial->name)
+                ->values()
+                ->all();
 
-                if (! empty($unpricedMaterials)) {
-                    throw new \DomainException(
-                        "Clôture impossible : le coût de revient de l'aliment produit serait 0 GNF/kg. " .
-                        "Les matières premières suivantes n'ont pas de prix unitaire (unit_cost = 0) : " .
-                        implode(', ', $unpricedMaterials) .
-                        ". Renseignez les prix dans le module Provenderie > Matières Premières avant de relancer."
-                    );
-                }
+            if (! empty($sansPrix)) {
+                throw new \DomainException(
+                    "Clôture impossible : le coût de revient de l'aliment produit serait faussé. " .
+                    "Les matières premières suivantes n'ont pas de prix unitaire (unit_cost = 0) : " .
+                    implode(', ', $sansPrix) .
+                    ". Renseignez les prix dans le module Provenderie > Matières Premières avant de relancer."
+                );
+            }
+
+            $orphelins = $production->formula->items
+                ->filter(fn ($item) => ! $item->rawMaterial)
+                ->count();
+
+            if ($orphelins > 0) {
+                throw new \DomainException(
+                    "Clôture impossible : {$orphelins} ingrédient(s) de la formule « {$production->formula->name} » " .
+                    "renvoient à une matière première supprimée. Leur part n'est ni déstockée ni valorisée : " .
+                    "le coût de revient serait sous-évalué. Corrigez la formule avant de relancer."
+                );
             }
 
             // ─── 4. ENTRÉE STOCK ALIMENT FINI (valorisée au coût de revient) ───
