@@ -84,7 +84,31 @@ class SlaughterReception extends Model
 
     /**
      * Coût d'achat calculé selon la base (null si pas un achat ou pas de prix).
-     * Connu à l'arrivée : par sujet reçu, au kg vif pesé, ou forfait négocié.
+     *
+     * ─── ON NE PAIE QUE CE QU'ON GARDE ───
+     *
+     * Ce calcul retenait `received_quantity` — les sujets ARRIVÉS — sans jamais
+     * regarder ce que le contrôle ante-mortem en avait fait. Deux conséquences
+     * mesurées, sur un achat à 20 000 GNF le sujet :
+     *
+     *   • 100 sujets REFUSÉS et renvoyés à l'éleveur : facture de 2 000 000 au
+     *     lieu de zéro ;
+     *   • 100 reçus dont 30 rejetés : facture de 2 000 000 au lieu de 1 400 000.
+     *
+     * Dans les deux cas l'exploitation facture des sujets qu'elle a RENDUS.
+     * L'inspection ante-mortem sert précisément à refuser une marchandise ; la
+     * payer quand même vide le contrôle de son effet économique.
+     *
+     * ─── LES TROIS BASES ───
+     *
+     * `par_sujet` et `par_kg_vif` sont proportionnelles : elles se prorate au
+     * nombre RETENU. Le poids vif pesé porte sur le lot arrivé — faute de pesée
+     * individuelle, on l'impute au prorata des têtes, ce qui est la meilleure
+     * estimation disponible et non un chiffre inventé.
+     *
+     * `forfait` est un prix négocié pour la livraison : un rejet partiel ne le
+     * découpe pas — cela se renégocie entre l'éleveur et l'exploitation. Un
+     * refus TOTAL, lui, l'annule : il n'y a plus de livraison.
      */
     public function computePurchaseCost(): ?float
     {
@@ -92,11 +116,21 @@ class SlaughterReception extends Model
             return null;
         }
 
-        $unit = (float) $this->purchase_unit_price;
+        // Refus total : la marchandise repart, rien n'est dû.
+        if ($this->isRefused()) {
+            return 0.0;
+        }
+
+        $unit    = (float) $this->purchase_unit_price;
+        $retenus = $this->acceptedQuantity();
+        $recus   = max(0, (int) $this->received_quantity);
+
+        // Prorata des têtes retenues, pour les bases proportionnelles.
+        $part = $recus > 0 ? $retenus / $recus : 0.0;
 
         return round(match ($this->purchase_basis) {
-            'par_sujet'  => (float) $this->received_quantity * $unit,
-            'par_kg_vif' => (float) $this->total_live_weight_kg * $unit,
+            'par_sujet'  => (float) $retenus * $unit,
+            'par_kg_vif' => (float) $this->total_live_weight_kg * $part * $unit,
             'forfait'    => $unit,
             default      => 0.0,
         }, 2);
