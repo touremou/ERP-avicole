@@ -156,15 +156,31 @@ class SaleItem extends Model
      * Cette correspondance était recopiée à l'identique dans les trois actions
      * (validation, annulation, retour) : trois exemplaires d'une même table de
      * conversion, donc trois occasions de diverger.
+     *
+     * ─── « UNITÉ » N'EST PAS « KG » ───
+     *
+     * La pièce (`unite`, `piece`) tombait dans le `default => 'KG'`. Or c'est
+     * exactement l'unité que `UnitConverter::isEggPiece()` reconnaît pour
+     * diviser par le nombre d'œufs par alvéole : la table la connaissait, ce
+     * `match` la jetait.
+     *
+     * Conséquence, sur des œufs stockés en alvéoles : vendre 300 œufs à la
+     * pièce déclarait « 300 KG », donc — aucune conversion — 300 ALVÉOLES,
+     * soit 9 000 œufs sortis pour 300 vendus.
+     *
+     * Pour toute autre catégorie (litières, matériel, divers), la pièce ne se
+     * convertit pas : `toStockBase()` rend la quantité telle quelle, quelle que
+     * soit l'unité. Ce correctif n'y change donc rien.
      */
     public function stockInputUnit(): string
     {
         return match ($this->unit) {
-            'alveole' => 'Alvéole',
-            'sac'     => 'Sac',
-            'litre'   => 'Litre',
-            'tete'    => 'Tête',
-            default   => 'KG',
+            'alveole'        => 'Alvéole',
+            'sac'            => 'Sac',
+            'litre'          => 'Litre',
+            'tete'           => 'Tête',
+            'unite', 'piece' => 'Unité',
+            default          => 'KG',
         };
     }
 
