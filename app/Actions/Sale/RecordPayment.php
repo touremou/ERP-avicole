@@ -33,12 +33,13 @@ class RecordPayment
             }
 
             $amount = (float) $data['amount'];
-            $remaining = $sale->remaining_amount;
 
-            if ($amount > $remaining) {
-                throw new Exception(
-                    "Montant trop élevé : {$amount} GNF dépasse le reste dû ({$remaining} GNF)."
-                );
+            // Règle portée par le modèle (Sale::paymentRefusalReason), pour que
+            // ce chemin-ci et le règlement comptant de `CreateSale` — comptoir et
+            // synchro terrain — ne puissent pas diverger. C'était le cas : seul
+            // cet écran-ci l'appliquait.
+            if ($raison = $sale->paymentRefusalReason($amount)) {
+                throw new Exception($raison);
             }
 
             $payment = Payment::create([

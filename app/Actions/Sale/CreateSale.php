@@ -12,6 +12,7 @@ use App\Services\StockIntegrationService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 
 class CreateSale
 {
@@ -71,6 +72,30 @@ class CreateSale
 
             // ─── 4. PAIEMENT IMMÉDIAT (si cash) ───
             if (! empty($data['immediate_payment']) && $data['immediate_payment'] > 0) {
+                /*
+                 * ON N'ENCAISSE PAS PLUS QUE LE RESTE DÛ — la règle est celle de
+                 * `RecordPayment`, désormais portée par le modèle
+                 * (Sale::paymentRefusalReason) et lue par les deux encaisseurs.
+                 *
+                 * Ce chemin-ci écrivait le `Payment` directement, sans la poser.
+                 * Mesuré : vente de 100 000 GNF saisie avec 500 000 GNF comptant
+                 * → ACCEPTÉE, vente « soldée », 400 000 GNF en caisse contre
+                 * rien, solde client à −400 000. Le même montant, sur la même
+                 * vente, était refusé par l'autre chemin.
+                 *
+                 * `ValidationException` et non une exception nue : la faute de
+                 * frappe doit revenir en erreur de champ au comptoir, et la
+                 * synchro terrain la traite déjà comme un refus DÉFINITIF
+                 * (SyncController) — un rejeu ne la corrigerait pas.
+                 *
+                 * Les totaux sont arrêtés juste au-dessus (recalculateTotals),
+                 * remise, taxe et frais de livraison compris : c'est bien le dû
+                 * final qui borne l'encaissement.
+                 */
+                if ($raison = $sale->paymentRefusalReason((float) $data['immediate_payment'])) {
+                    throw ValidationException::withMessages(['immediate_payment' => $raison]);
+                }
+
                 Payment::create([
                     'sale_id'      => $sale->id,
                     'amount'       => $data['immediate_payment'],

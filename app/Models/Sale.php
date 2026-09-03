@@ -145,6 +145,41 @@ class Sale extends Model
         return $this->hasMany(PaymentReminder::class);
     }
 
+    /**
+     * Motif de refus d'un encaissement de $amount sur cette vente — null si ok.
+     *
+     * ─── UNE SEULE DÉCLARATION, DEUX ENCAISSEURS ───
+     *
+     * « On n'encaisse pas plus que le reste dû » était portée par `RecordPayment`
+     * seul — sous verrou, avec son message. Le second encaisseur,
+     * `CreateSale` (règlement comptant à la saisie), écrivait le `Payment`
+     * directement, sans jamais poser la question.
+     *
+     * Mesuré : une vente de 100 000 GNF saisie avec 500 000 GNF de règlement
+     * comptant est ACCEPTÉE — vente « soldée », 400 000 GNF entrés en caisse
+     * contre rien, et un solde client de −400 000 (un avoir que personne n'a
+     * accordé). Le même montant, sur la même vente, passé par `RecordPayment`
+     * est refusé.
+     *
+     * Ce chemin est celui du comptoir et celui de la SYNCHRO TERRAIN : la faute
+     * de frappe d'un technicien hors-ligne y arrive sans garde.
+     *
+     * L'application n'a pas de notion d'ACOMPTE client (aucun compte d'avances
+     * distinct) : un trop-perçu n'a donc nulle part où se loger honnêtement, et
+     * `RecordPayment` avait déjà tranché — on refuse. La règle est simplement
+     * remontée ici pour que les deux encaisseurs lisent la même.
+     */
+    public function paymentRefusalReason(float $amount): ?string
+    {
+        $remaining = $this->remaining_amount;
+
+        if ($amount > $remaining) {
+            return "Montant trop élevé : {$amount} GNF dépasse le reste dû ({$remaining} GNF).";
+        }
+
+        return null;
+    }
+
     // ─── ACCESSORS ───
 
     public function getRemainingAmountAttribute(): float
