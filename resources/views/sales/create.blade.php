@@ -39,7 +39,14 @@
                             <input type="date" name="sale_date" value="{{ old('sale_date', now()->toDateString()) }}" required class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black shadow-inner outline-none">
                         </div>
                     </div>
-                    <input type="hidden" name="tax_rate" :value="saleType === 'facture' ? 18 : 0">
+                    {{-- Taux lu dans les Réglages, comme le libellé juste au-dessus, le
+                         récapitulatif et la charge utile hors-ligne. Ce champ portait « 18 »
+                         en dur : le serveur n'accepte que 0 ou le taux réglé
+                         (StoreSaleRequest), donc sur une exploitation réglée à un autre taux
+                         la facturation en ligne était REFUSÉE — sur un champ caché,
+                         impossible à corriger depuis l'écran — alors que la même vente
+                         saisie hors-ligne passait. --}}
+                    <input type="hidden" name="tax_rate" :value="saleType === 'facture' ? {{ (float) setting('general.tva_rate', 18) }} : 0">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
                         <select name="delivery_mode" x-model="deliveryMode" class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black uppercase shadow-inner outline-none">
                             <option value="sur_place">{{ __("Sur place") }}</option>
@@ -296,7 +303,9 @@
                 return Math.min(d, this.subtotal);
             },
             get net() { return Math.max(0, this.subtotal - this.discount); },
-            get taxAmount() { return this.saleType==='facture' ? this.net*0.18 : 0; },
+            // Même taux que le libellé « TVA x% » affiché juste à côté : il
+            // annonçait le réglage pendant que ce calcul appliquait 18 en dur.
+            get taxAmount() { return this.saleType==='facture' ? this.net*{{ (float) setting('general.tva_rate', 18) }}/100 : 0; },
             get deliveryCost() { return this.deliveryMode==='livraison' ? (Number(this.deliveryFee)||0) : 0; },
             get totalTTC() { return this.net + this.taxAmount + this.deliveryCost; },
             get hasStockError() { return this.lines.some(l => l.max_qty > 0 && l.quantity > l.max_qty); },
