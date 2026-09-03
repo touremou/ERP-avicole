@@ -128,17 +128,30 @@ test('la PAIE ne déduit plus deux fois les mêmes journées', function () {
      * L'enjeu, mesuré de bout en bout : sans la garde, les deux absences
      * entraient toutes deux dans le calcul et la retenue doublait.
      */
-    saisirAbsence($this->employe->id, now()->startOfMonth()->addDays(9)->toDateString(),
-        now()->startOfMonth()->addDays(13)->toDateString());
+    /*
+     * DATES FIXES, et c'est nécessaire.
+     *
+     * Ce test calculait son intervalle depuis le début du MOIS COURANT
+     * (`startOfMonth()->addDays(9)` → `addDays(13)`). Cinq jours calendaires,
+     * dont le nombre de jours OUVRÉS dépend du jour de semaine où tombe le 1er :
+     * lancé un mois où l'intervalle enjambe un dimanche, il en compte quatre.
+     *
+     * La paie décompte désormais en jours ouvrés — le jour de repos n'est pas
+     * facturé au salarié. Le résultat de ce test variait donc d'un mois à
+     * l'autre, sans que rien ne change dans le code.
+     *
+     * Lundi 3 → vendredi 7 août 2026 : cinq jours ouvrés, quel que soit le jour
+     * où le test tourne.
+     */
+    saisirAbsence($this->employe->id, '2026-08-03', '2026-08-07');
 
-    saisirAbsence($this->employe->id, now()->startOfMonth()->addDays(11)->toDateString(),
-        now()->startOfMonth()->addDays(15)->toDateString()); // refusée
+    saisirAbsence($this->employe->id, '2026-08-05', '2026-08-11'); // refusée : recoupe
 
     $periode = PayrollPeriod::create([
-        'farm_id' => $this->farm->id, 'label' => 'Mois courant',
-        'year' => (int) now()->year, 'month' => (int) now()->month,
-        'start_date' => now()->startOfMonth()->toDateString(),
-        'end_date' => now()->endOfMonth()->toDateString(),
+        'farm_id' => $this->farm->id, 'label' => 'Août 2026',
+        'year' => 2026, 'month' => 8,
+        'start_date' => '2026-08-01',
+        'end_date' => '2026-08-31',
         'status' => 'brouillon',
     ]);
 

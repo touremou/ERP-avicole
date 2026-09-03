@@ -32,8 +32,20 @@ class ReopenBatch
         }
 
         return DB::transaction(function () use ($batch) {
-            // ─── Recalcul de l'effectif réel depuis les pointages ───
-            $result = $this->quantityService->rebuildForBatch($batch, dryRun: true);
+            /*
+             * RESTAURATION, pas réconciliation — d'où `allowRaise`.
+             *
+             * La clôture a mis `current_quantity` à ZÉRO. Le service, lui, ne
+             * remonte jamais un effectif par défaut : c'est ce qui empêche la
+             * tâche nocturne de ressusciter les sujets vendus. Sans ce drapeau,
+             * un lot rouvert resterait donc vide.
+             *
+             * Le chiffre restauré est un MAJORANT : il ne voit pas les ventes
+             * antérieures à la clôture. C'est acceptable ici et nulle part
+             * ailleurs — la réouverture est un acte délibéré, soumis au droit S,
+             * et celui qui la déclenche peut corriger l'effectif.
+             */
+            $result = $this->quantityService->rebuildForBatch($batch, dryRun: true, allowRaise: true);
             $restoredQuantity = $result['new_quantity'];
 
             // ─── Réouverture ───
