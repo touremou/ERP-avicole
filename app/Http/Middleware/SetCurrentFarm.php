@@ -12,10 +12,13 @@ use Symfony\Component\HttpFoundation\Response;
  * SetCurrentFarm — Définit la ferme active pour la requête en cours.
  *
  * Logique de résolution :
- * 1. Si ?farm_id=X dans l'URL → switch vers cette ferme (si autorisé)
- * 2. Si session('current_farm_id') existe → utiliser
- * 3. Sinon → ferme par défaut de l'utilisateur (is_default = true)
- * 4. Sinon → première ferme de l'utilisateur
+ * 1. Si session('current_farm_id') existe → utiliser
+ * 2. Sinon → ferme par défaut de l'utilisateur (is_default = true)
+ * 3. Sinon → première ferme de l'utilisateur
+ *
+ * CHANGER de site est un GESTE, pas un effet de bord : il passe par la route
+ * dédiée `farms.switch` (FarmController::switchFarm), la seule que les deux
+ * sélecteurs de l'interface utilisent.
  *
  * ENREGISTREMENT dans bootstrap/app.php :
  *   ->withMiddleware(function (Middleware $middleware) {
@@ -34,28 +37,46 @@ class SetCurrentFarm
 
         $user = Auth::user();
 
-        // 1. Switch de ferme via URL (?farm_id=X)
-        if ($request->has('farm_id')) {
-            $requestedFarmId = (int) $request->input('farm_id');
+        /*
+         * ─── CHANGER DE SITE EST UN GESTE, PAS UN EFFET DE BORD ───
+         *
+         * Ici se trouvait un « switch de ferme via URL (?farm_id=X) ». Mais
+         * `$request->has()` / `input()` lisent la requête ENTIÈRE — la chaîne de
+         * requête ET LE CORPS. N'importe quel formulaire portant un champ
+         * `farm_id` déplaçait donc l'utilisateur, en silence, avant même que le
+         * contrôleur ne s'exécute.
+         *
+         * Deux formulaires de l'application en portent un, et c'est le site de
+         * DESTINATION qu'ils nomment : « Muter vers un autre site » et « Mettre
+         * à disposition ».
+         *
+         * Mesuré : un administrateur sur le site 2 soumet une mutation vers le
+         * site 3 en oubliant la date. La mutation est REFUSÉE, l'agent ne bouge
+         * pas — et le site courant passe quand même à 3. Tous les écrans
+         * suivants (lots, stock, ventes, tableaux de bord) montrent l'autre
+         * site, à la suite d'une action que l'application vient de refuser.
+         *
+         * ─── ET C'ÉTAIT LA MOINS-DISANTE DE DEUX DÉCLARATIONS ───
+         *
+         * `FarmController::switchFarm` — la route dédiée `farms.switch`, celle
+         * que les DEUX sélecteurs de l'interface utilisent — porte la même règle
+         * en mieux : elle vérifie le rattachement, PUIS `Farm::isUsable()`, et
+         * refuse avec un message. Ce second contrôle avait été ajouté exprès,
+         * parce qu'« on pouvait basculer dans un site DÉSACTIVÉ ou même
+         * SUPPRIMÉ ». Ce bloc-ci l'ignorait : `?farm_id=` sur un site désactivé
+         * y basculait quand même, rouvrant précisément le trou refermé à côté.
+         *
+         * Aucune vue, aucune route ne fabrique d'URL `?farm_id=` : ce bloc
+         * n'avait pas d'appelant légitime — seulement des victimes.
+         */
 
-            // Vérifier que l'utilisateur a accès à cette ferme
-            $hasAccess = DB::table('farm_user')
-                ->where('user_id', $user->id)
-                ->where('farm_id', $requestedFarmId)
-                ->exists();
-
-            if ($hasAccess) {
-                session(['current_farm_id' => $requestedFarmId]);
-            }
-        }
-
-        // 2. Si pas encore de ferme en session → résoudre
+        // 1. Si pas encore de ferme en session → résoudre
         if (! session('current_farm_id')) {
             $this->resolveDefaultFarm($user);
         }
 
         /*
-         * 3. Partager la ferme courante — SI elle est encore utilisable.
+         * 2. Partager la ferme courante — SI elle est encore utilisable.
          *
          * C'était `Farm::withoutGlobalScopes()->find()`. Sur ce modèle, cet appel ne
          * retire que la protection des SUPPRESSIONS (Farm n'a pas de scope de ferme) :
@@ -79,7 +100,7 @@ class SetCurrentFarm
             view()->share('currentFarmId', $currentFarmId);
         }
 
-        // 4. Partager les fermes accessibles (pour le switcher)
+        // 3. Partager les fermes accessibles (pour le switcher)
         $userFarms = DB::table('farm_user')
             ->join('farms', 'farms.id', '=', 'farm_user.farm_id')
             ->where('farm_user.user_id', $user->id)
