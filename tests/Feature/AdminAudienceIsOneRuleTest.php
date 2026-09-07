@@ -64,6 +64,10 @@ beforeEach(function () {
         'building_id'      => $this->building->id,
         'initial_quantity' => 1000,
         'current_quantity' => 800,
+        // 200 morts À L'ARRIVAGE (20 %). Le décor n'avait qu'un effectif réduit
+        // — la baisse d'effectif n'est pas de la mortalité : elle vient aussi
+        // des ventes et des transferts.
+        'qty_dead'         => 200,
     ]);
 });
 
@@ -125,7 +129,8 @@ test('la surmortalité alerte réellement, repli compris', function () {
      */
     Notification::fake();
 
-    app(CumulativeMortalityAlert::class)->evaluate($this->lot->fresh(), 1000);
+    // Second argument : la mortalité AVANT l'écriture (et non l'effectif).
+    app(CumulativeMortalityAlert::class)->evaluate($this->lot->fresh(), 0);
 
     Notification::assertSentTo(
         Administrators::all(),

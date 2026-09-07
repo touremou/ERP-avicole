@@ -31,6 +31,9 @@ class DailyCheck extends Model
      */
     private static array $pendingDiffs = [];
 
+    /** Delta de MORTS d'une correction, même procédé (cf. alertOnMortality). */
+    private static array $pendingDeaths = [];
+
     protected $fillable = [
         'farm_id', 'batch_id', 'check_date',
         'mortality', 'feed_consumed', 'feed_type', 'feed_unit_cost', 'water_consumed',
@@ -145,6 +148,7 @@ class DailyCheck extends Model
             }
             static::autoCompleteTasks($check);
             static::checkDailyMortalitySpike($check);
+            static::alertOnMortality($check, static::deaths($check));
         });
 
         // Avant update → calculer le diff et le stocker dans le tableau statique
@@ -163,6 +167,14 @@ class DailyCheck extends Model
                 // JAMAIS dans les attributs Eloquent → jamais dans le SQL
                 static::$pendingDiffs[$check->id] = $diff;
             }
+
+            // Le delta de MORTS, mis de côté par le même procédé : il se lit
+            // avant l'écriture, et sert à l'alerte de mortalité cumulée après.
+            $deltaMorts = static::deaths($check) - static::deaths($check, original: true);
+
+            if ($deltaMorts !== 0) {
+                static::$pendingDeaths[$check->id] = $deltaMorts;
+            }
         });
 
         // Après update → appliquer le diff stocké
@@ -172,6 +184,12 @@ class DailyCheck extends Model
                 static::applyBatchImpact($check->batch_id, -$diff);
                 unset(static::$pendingDiffs[$check->id]);
             }
+
+            $deltaMorts = static::$pendingDeaths[$check->id] ?? 0;
+            if ($deltaMorts !== 0) {
+                static::alertOnMortality($check, $deltaMorts);
+                unset(static::$pendingDeaths[$check->id]);
+            }
         });
 
         // Suppression → restituer l'impact
@@ -180,6 +198,11 @@ class DailyCheck extends Model
             if ($impact !== 0) {
                 static::applyBatchImpact($check->batch_id, $impact);
             }
+
+            // Les morts de ce pointage disparaissent avec lui : le taux BAISSE.
+            // Aucun franchissement possible, mais l'appel garde les deux sens
+            // symétriques — comme la restitution d'effectif juste au-dessus.
+            static::alertOnMortality($check, -static::deaths($check));
         });
     }
 
@@ -204,24 +227,55 @@ class DailyCheck extends Model
                 Log::warning("[DailyCheck] Effectif négatif bloqué sur lot {$batch->code} (delta: {$delta}).");
             }
 
-            $previousQty = (int) $batch->current_quantity;
-
             // UPDATE direct : n'émet pas d'événements Eloquent → pas de boucle
             DB::table('batches')
                 ->where('id', $batchId)
                 ->update(['current_quantity' => $newQty, 'updated_at' => now()]);
-
-            // …et c'est précisément pour cela qu'il faut appeler l'alerte ICI.
-            // BatchObserver ne verra jamais cette écriture. Le pointage
-            // journalier étant LE chemin par lequel la mortalité entre dans le
-            // système, l'alerte de mortalité cumulée était muette sur le geste
-            // quotidien — et le restait ensuite définitivement, sa condition
-            // exigeant un franchissement que plus rien ne pouvait produire.
-            $batch->current_quantity = $newQty;
-
-            app(\App\Services\CumulativeMortalityAlert::class)
-                ->evaluate($batch, $previousQty);
         });
+    }
+
+    /**
+     * Alerte de mortalité cumulée, appelée par les trois hooks de ce modèle.
+     *
+     * ─── POURQUOI PAS DEPUIS `applyBatchImpact` ───
+     *
+     * L'appel vivait dans cette méthode-là, qui applique le delta d'EFFECTIF.
+     * Or ce delta mêle la mortalité, les mises en quarantaine, les retours de
+     * quarantaine et le tri : trois mouvements qui ne tuent personne y
+     * déclenchaient l'évaluation, et le taux se calculait sur la baisse
+     * d'effectif — donc sur eux aussi.
+     *
+     * L'alerte est ici rattachée à la seule grandeur dont elle parle : les
+     * morts. `BatchObserver` fait de même de son côté, sur `qty_dead`.
+     *
+     * BatchObserver ne verra jamais l'écriture d'effectif ci-dessus (requête
+     * directe, aucun événement) : c'est bien à ce modèle d'appeler la règle.
+     *
+     * @param  int  $deltaMorts  morts ajoutées par cette écriture (négatif si
+     *                           correction à la baisse ou suppression)
+     */
+    private static function alertOnMortality(DailyCheck $check, int $deltaMorts): void
+    {
+        if ($deltaMorts === 0) {
+            return;
+        }
+
+        $batch = \App\Models\Batch::find($check->batch_id);
+
+        if (! $batch) {
+            return;
+        }
+
+        app(\App\Services\CumulativeMortalityAlert::class)
+            ->evaluate($batch, max(0, $batch->total_mortality - $deltaMorts));
+    }
+
+    /** Morts portées par un pointage : troupeau + infirmerie (cf. total_mortality). */
+    private static function deaths(DailyCheck $check, bool $original = false): int
+    {
+        return $original
+            ? (int) $check->getOriginal('mortality') + (int) $check->getOriginal('mortality_infirmary')
+            : (int) $check->mortality + (int) $check->mortality_infirmary;
     }
 
     /**

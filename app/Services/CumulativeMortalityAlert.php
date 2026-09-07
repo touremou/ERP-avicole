@@ -43,19 +43,52 @@ class CumulativeMortalityAlert
     /**
      * Évalue le franchissement et alerte si la ligne rouge vient d'être passée.
      *
-     * @param  Batch  $batch             lot RAFRAÎCHI (effectif à jour)
-     * @param  int    $previousQuantity  effectif AVANT l'écriture
+     * ─── LA MORTALITÉ N'EST PAS LA BAISSE D'EFFECTIF ───
+     *
+     * Le taux se calculait `(initial − current) / initial` : la CHUTE
+     * D'EFFECTIF, pas les morts. Or l'effectif baisse aussi de tout ce qui sort
+     * vivant — ventes de sujets vifs, expéditions, dispatch de poussins, départs
+     * à l'abattoir, transferts entre lots.
+     *
+     * Mesuré, sur un lot de 1 000 sujets :
+     *
+     *   • 400 VENDUS, aucun mort → « Mortalité critique franchie : 40 % ».
+     *     Une fausse alerte, sur le canal le plus grave de l'élevage ;
+     *   • puis 80 morts RÉELS (8 %, largement au-dessus du seuil de 5 %) →
+     *     AUCUNE alerte. La condition exige un franchissement, et la vente avait
+     *     déjà mis le taux « précédent » au-dessus.
+     *
+     * Une vente allumait donc une fausse alarme, PUIS éteignait définitivement
+     * la vraie sur ce lot — exactement le piège auto-refermant que l'en-tête de
+     * ce fichier décrit pour le défaut d'origine, réintroduit par la grandeur
+     * mesurée.
+     *
+     * Le modèle déclarait déjà la bonne : `Batch::total_mortality`
+     * (qty_dead + Σ daily_checks.mortality + Σ mortality_infirmary) et le taux
+     * `Batch::mortality_rate` qui en découle. Il y avait deux définitions du
+     * « taux de mortalité cumulée » ; l'alerte lisait la mauvaise.
+     *
+     * @param  Batch  $batch              lot RAFRAÎCHI (mortalité à jour)
+     * @param  int    $previousMortality  mortalité cumulée AVANT l'écriture
      */
-    public function evaluate(Batch $batch, int $previousQuantity): void
+    public function evaluate(Batch $batch, int $previousMortality): void
     {
         if ($batch->status !== Batch::STATUS_ACTIF || $batch->initial_quantity <= 0) {
             return;
         }
 
+        // Même base que `Batch::mortality_rate` : les morts à l'arrivage ne sont
+        // pas dans l'effectif initial, elles s'ajoutent au dénominateur.
+        $base = (int) $batch->initial_quantity + (int) ($batch->qty_dead ?? 0);
+
+        if ($base <= 0) {
+            return;
+        }
+
         $threshold = Batch::cumulativeMortalityThreshold();
 
-        $current  = $this->rate($batch->initial_quantity, (int) $batch->current_quantity);
-        $previous = $this->rate($batch->initial_quantity, $previousQuantity);
+        $current  = (float) $batch->mortality_rate;      // la déclaration du modèle
+        $previous = $this->rate($base, $previousMortality);
 
         // Franchissement seulement : sans cette condition, chaque pointage
         // au-dessus du seuil rejouerait l'alerte tous les jours jusqu'à la
@@ -71,7 +104,7 @@ class CumulativeMortalityAlert
         rescue(
             fn () => app(NotificationHub::class)->alertMortality(
                 $batch,
-                max(0, $batch->initial_quantity - (int) $batch->current_quantity),
+                $batch->total_mortality,
                 $rate
             ),
             fn ($e) => Log::warning("[Mortalité cumulée] Diffusion échouée pour {$batch->code} : {$e->getMessage()}"),
@@ -81,9 +114,10 @@ class CumulativeMortalityAlert
         $this->notifyAdmins($batch, $rate);
     }
 
-    private function rate(int $initial, int $remaining): float
+    /** Taux de mortalité cumulée, même formule que `Batch::mortality_rate`. */
+    private function rate(int $base, int $mortality): float
     {
-        return (($initial - $remaining) / $initial) * 100;
+        return round(($mortality / $base) * 100, 2);
     }
 
     /**
@@ -114,8 +148,12 @@ class CumulativeMortalityAlert
                 'type'         => 'high_mortality',
                 'priority'     => 'high',
                 'title'        => 'Alerte de Surmortalité',
+                // On annonce les MORTS, pas l'effectif restant : celui-ci baisse
+                // aussi des ventes et des transferts, et l'ancien libellé
+                // « effectif : 600/1000 » invitait précisément à lire une vente
+                // comme une hécatombe.
                 'message'      => "Mortalité critique franchie sur le lot {$batch->code} : {$rate}% atteint "
-                                . "(effectif : {$batch->current_quantity}/{$batch->initial_quantity}).",
+                                . "({$batch->total_mortality} morts sur {$batch->initial_quantity} mis en place).",
                 'id_reference' => $batch->uuid,
             ];
 

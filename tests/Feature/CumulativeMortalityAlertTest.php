@@ -36,11 +36,21 @@ beforeEach(function () {
     // on ne saurait pas laquelle des deux a parlé.
     Setting::set('elevage.daily_mortality_alert_min', 100000);
 
+    /*
+     * 40 morts À L'ARRIVAGE, donc un lot déjà à 3,85 % — sous le seuil.
+     *
+     * Ce décor portait `current_quantity => 960` et rien d'autre, en appelant
+     * cela « 40 morts ». Il n'y en avait aucun : c'était une baisse d'effectif,
+     * exactement la grandeur que l'alerte confondait avec la mortalité. Le
+     * décor exprimait donc le défaut, et les tests qui s'appuyaient dessus le
+     * validaient. Les 40 morts sont désormais écrits là où le modèle les compte.
+     */
     $this->batch = Batch::factory()->create([
         'farm_id'          => $this->farm->id,
         'status'           => Batch::STATUS_ACTIF,
         'initial_quantity' => 1000,
-        'current_quantity' => 960,      // 4 % : sous le seuil
+        'current_quantity' => 960,
+        'qty_dead'         => 40,
     ]);
 });
 
@@ -106,11 +116,102 @@ test('l’alerte ne se répète pas à chaque pointage suivant', function () {
     expect($first)->toBe($perAdmin, 'Une alerte par administrateur, et une seule.');
 });
 
-test('le chemin Eloquent alerte toujours (vente, transfert, correction)', function () {
-    // L'ancien chemin ne doit pas avoir été perdu en déplaçant la règle.
-    $this->batch->update(['current_quantity' => 940]);   // 6 %
+test('le chemin Eloquent alerte sur les MORTS À L’ARRIVAGE', function () {
+    /*
+     * L'ancien chemin ne doit pas avoir été perdu en déplaçant la règle — mais
+     * il écoutait `current_quantity`, et ce test affirmait qu'une VENTE devait
+     * alerter. C'était le défaut érigé en attendu.
+     *
+     * Côté lot, la mortalité c'est `qty_dead` : les morts constatées à
+     * l'arrivage. 40 → 60 sur 1 000 mis en place fait 5,77 %.
+     */
+    $this->batch->update(['qty_dead' => 60]);
 
     expect(mortalityAlerts())->toBeGreaterThan(0);
+});
+
+test('une VENTE n’est pas une hécatombe', function () {
+    /*
+     * LE défaut, mesuré : vendre 400 sujets vifs sur 1 000 faisait tomber
+     * l'effectif à 600, et l'alerte annonçait « Mortalité critique franchie :
+     * 40 % » — sans un seul mort.
+     *
+     * L'effectif baisse de tout ce qui sort VIVANT : ventes, expéditions,
+     * dispatch de poussins, abattoir, transferts entre lots. Aucun de ces
+     * mouvements ne tue quoi que ce soit.
+     */
+    $this->batch->update(['current_quantity' => 600]);
+
+    expect(mortalityAlerts())->toBe(0);
+});
+
+test('une vente n’ÉTEINT pas l’alerte de la vraie dérive qui suit', function () {
+    /*
+     * LA borne qui donne au défaut sa gravité, et le piège auto-refermant que
+     * l'en-tête de ce fichier décrit pour le défaut d'origine :
+     *
+     * la condition exige un FRANCHISSEMENT. La vente ayant porté le taux
+     * « précédent » à 40 %, la mortalité réelle qui survenait ensuite ne pouvait
+     * plus rien franchir. Une vente allumait une fausse alarme PUIS rendait le
+     * lot définitivement muet.
+     */
+    $this->batch->update(['current_quantity' => 600]);   // 400 vendus
+
+    expect(mortalityAlerts())->toBe(0);
+
+    // Puis la vraie dérive : 40 morts à l'arrivage + 20 pointés = 6 %.
+    DailyCheck::create([
+        'farm_id'    => $this->farm->id,
+        'batch_id'   => $this->batch->id,
+        'user_id'    => $this->adminUser->id,
+        'check_date' => now()->toDateString(),
+        'mortality'  => 20,
+    ]);
+
+    expect(mortalityAlerts())->toBeGreaterThan(0);
+});
+
+test('les morts EN INFIRMERIE comptent aussi', function () {
+    /*
+     * L'autre moitié du défaut, et elle était totalement muette.
+     *
+     * Un sujet mort à l'infirmerie a déjà été retiré de l'effectif à son
+     * isolement : sa mort ne fait plus bouger `current_quantity` d'une unité.
+     * Sous l'ancienne règle — le taux lu sur la baisse d'effectif — ces morts-là
+     * ne pouvaient JAMAIS rien franchir, quel qu'en soit le nombre.
+     *
+     * `Batch::total_mortality` les compte pourtant explicitement : le modèle
+     * savait qu'un sujet mort en infirmerie est un sujet mort.
+     */
+    DailyCheck::create([
+        'farm_id'             => $this->farm->id,
+        'batch_id'            => $this->batch->id,
+        'user_id'             => $this->adminUser->id,
+        'check_date'          => now()->toDateString(),
+        'mortality'           => 0,
+        'mortality_infirmary' => 20,      // 40 + 20 = 60 morts → 5,77 %
+    ]);
+
+    expect(mortalityAlerts())->toBeGreaterThan(0);
+});
+
+test('une mise en QUARANTAINE n’alerte pas non plus', function () {
+    /*
+     * L'appel vivait dans `applyBatchImpact`, qui applique le delta d'effectif
+     * d'un pointage — mortalité, quarantaine, retours de quarantaine et tri
+     * confondus. Isoler des sujets malades les retire de l'effectif ; ils sont
+     * vivants, et c'est même la raison de les isoler.
+     */
+    DailyCheck::create([
+        'farm_id'           => $this->farm->id,
+        'batch_id'          => $this->batch->id,
+        'user_id'           => $this->adminUser->id,
+        'check_date'        => now()->toDateString(),
+        'mortality'         => 0,
+        'qty_quarantine_in' => 100,
+    ]);
+
+    expect(mortalityAlerts())->toBe(0);
 });
 
 test('la règle est déclarée UNE fois, et les deux chemins l’appellent', function () {
