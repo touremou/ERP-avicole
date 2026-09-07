@@ -27,8 +27,31 @@ class AbortIncubation
              * Uniquement pour l'INTERNE : des œufs achetés n'étaient jamais
              * entrés au magasin, les y ajouter créerait un stock qui n'a jamais
              * existé.
+             *
+             * ─── ET UNIQUEMENT SI LES ŒUFS SONT ENCORE DES ŒUFS ───
+             *
+             * « Les œufs n'ont pas été couvés » : la phrase ci-dessus énonce la
+             * condition, le code ne la posait pas. Aucun test sur le statut —
+             * seulement la provenance, qui reste vraie à vie.
+             *
+             * Or la même route sert DEUX gestes : la corbeille « Annuler
+             * définitivement ce cycle ? » d'un cycle en cours, et la corbeille
+             * « Supprimer cette archive ? » de l'HISTORIQUE, qui ne liste que des
+             * cycles CLOS (IncubationController::index).
+             *
+             * Mesuré : cycle de 900 œufs calibre L (30 alvéoles), miré à 800
+             * fertiles, éclos à 700 poussins. Magasin à 70 alvéoles. Supprimer
+             * l'archive le remonte à 100 — trente alvéoles d'œufs qui sont
+             * devenus des poussins, et qui depuis #305 sont VENDABLES.
+             *
+             * Une éclosion enregistrée consomme les œufs, quel qu'en soit le
+             * résultat : un cycle qui n'éclôt RIEN a perdu ses œufs, il ne les
+             * rend pas. C'est donc le statut qui tranche, pas le nombre de
+             * poussins.
              */
-            if ($incubation->source_type === 'internal' && $incubation->egg_grade) {
+            $encoreDesOeufs = $incubation->status !== 'clos';
+
+            if ($encoreDesOeufs && $incubation->source_type === 'internal' && $incubation->egg_grade) {
                 StockIntegrationService::syncMovement(
                     $incubation->egg_grade,
                     Stock::CAT_OEUFS,
