@@ -77,9 +77,14 @@ beforeEach(function () {
 /** Encaisse un montant en espèces sur une vente du jour. */
 function encaisser(int $farmId, int $clientId, int $userId, float $montant): Payment
 {
+    // Référence SÉQUENTIELLE : tirée au sort sur une colonne UNIQUE, elle
+    // finissait par se répéter et tuait le test en contrainte d'unicité,
+    // sans rapport avec ce qu'il vérifie.
+    static $sequence = 0;
+
     $vente = Sale::create([
         'farm_id' => $farmId, 'client_id' => $clientId,
-        'reference' => 'VTE-' . random_int(1000, 9999),
+        'reference' => sprintf('VTE-%05d', ++$sequence),
         'sale_date' => now()->toDateString(), 'status' => 'valide',
         'total_amount' => $montant, 'paid_amount' => 0, 'user_id' => $userId,
     ]);
@@ -93,8 +98,13 @@ function encaisser(int $farmId, int $clientId, int $userId, float $montant): Pay
 /** Paie une dépense en espèces, prise sur le tiroir. */
 function payerEnEspeces(int $farmId, int $userId, float $montant): Expense
 {
+    // Référence SÉQUENTIELLE : tirée au sort sur une colonne UNIQUE, elle
+    // finissait par se répéter et tuait le test en contrainte d'unicité,
+    // sans rapport avec ce qu'il vérifie.
+    static $sequence = 0;
+
     return Expense::create([
-        'farm_id' => $farmId, 'reference' => 'DEP-' . random_int(1000, 9999),
+        'farm_id' => $farmId, 'reference' => sprintf('DEP-%05d', ++$sequence),
         'category' => 'carburant', 'label' => 'Gasoil du jour', 'amount' => $montant,
         'expense_date' => now()->toDateString(), 'payment_method' => 'especes',
         'status' => 'valide', 'user_id' => $userId,

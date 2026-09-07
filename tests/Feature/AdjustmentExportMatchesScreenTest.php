@@ -60,12 +60,28 @@ beforeEach(function () {
     ]);
 });
 
-/** Un ajustement daté d'aujourd'hui sur l'article donné. */
+/**
+ * Un ajustement daté d'aujourd'hui sur l'article donné.
+ *
+ * RÉFÉRENCE SÉQUENTIELLE, ET C'EST NÉCESSAIRE.
+ *
+ * Elle était tirée au sort — `'AJU-' . random_int(1000, 9999)` — sur une colonne
+ * UNIQUE. Chaque test en crée quatre ou cinq : environ une exécution sur mille
+ * tombait sur deux fois le même numéro et mourait en
+ * `UniqueConstraintViolationException`, sans aucun rapport avec ce qu'elle
+ * teste. C'est arrivé sur la suite MySQL, après des dizaines de passages verts.
+ *
+ * Un test qui dépend du hasard ne dit plus rien du code qu'il garde : il se
+ * contente de faire du bruit assez rarement pour qu'on prenne l'habitude de le
+ * relancer.
+ */
 function ajustement(int $farmId, int $stockId, int $userId, string $type, string $motif = 'casse'): StockAdjustment
 {
+    static $sequence = 0;
+
     return StockAdjustment::create([
         'farm_id' => $farmId, 'stock_id' => $stockId, 'user_id' => $userId,
-        'reference' => 'AJU-' . random_int(1000, 9999),
+        'reference' => sprintf('AJU-%05d', ++$sequence),
         'type' => $type, 'reason' => $motif,
         'quantity_before' => 100, 'quantity_after' => 90, 'delta' => -10,
         'unit_cost' => 5_000, 'value_impact' => 50_000,
