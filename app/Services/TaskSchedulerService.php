@@ -25,8 +25,13 @@ class TaskSchedulerService
      */
     public function generateForDate(Carbon $date, ?int $farmId = null): array
     {
-        // Templates = globaux (pas de farm_id)
-        $templates = TaskTemplate::withoutGlobalScopes()->where('is_active', true)->get();
+        // Les modèles GLOBAUX (farm_id null, posés par les migrations) plus ceux
+        // de CETTE ferme. La règle vit sur le modèle : `TaskTemplate::forFarm`.
+        // Ce commentaire disait « Templates = globaux (pas de farm_id) » — le
+        // modèle porte pourtant `BelongsToFarm`, et un modèle créé depuis un
+        // écran reçoit le site courant. Le générateur appliquait donc chaque nuit
+        // les modèles d'un site aux autres.
+        $templates = TaskTemplate::forFarm($farmId)->where('is_active', true)->get();
 
         // Bâtiments et employés = filtrés par ferme.
         // On exclut les bâtiments virtuels (cf. Building::physical) et on

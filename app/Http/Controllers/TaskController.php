@@ -374,8 +374,11 @@ class TaskController extends Controller
     {
         if (Gate::denies('rh.M')) return back()->with('error', 'Non autorisé.');
 
-        // Templates = globaux (withoutGlobalScopes)
-        $templates = TaskTemplate::withoutGlobalScopes()
+        // Les modèles GLOBAUX plus ceux de ce site — même règle que le
+        // générateur (`TaskTemplate::forFarm`). Cet écran listait ceux de TOUS
+        // les sites : le responsable d'un site pouvait désactiver ou supprimer
+        // le modèle d'un autre.
+        $templates = TaskTemplate::forFarm($this->farmId())
             ->orderBy('category')->orderBy('scheduled_time')->get();
         $buildings = Building::physical()->orderBy('name')->get();
         $batchTypeOptions = TaskTemplate::batchTypeOptions();

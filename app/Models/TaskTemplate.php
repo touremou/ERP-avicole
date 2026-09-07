@@ -48,6 +48,39 @@ class TaskTemplate extends Model
     public function scopeActive($q) { return $q->where('is_active', true); }
 
     /**
+     * MODÈLES APPLICABLES À UNE FERME — déclaration UNIQUE.
+     *
+     * Un modèle sans `farm_id` est GLOBAL : c'est le cas des modèles posés par
+     * les migrations (« Alimentation matin », « Relevé eau »…), qui valent pour
+     * toute l'exploitation. Un modèle créé depuis un écran reçoit, lui, le site
+     * courant via `BelongsToFarm` : il appartient à ce site.
+     *
+     * Ses deux lecteurs lisaient `withoutGlobalScopes()` tout court — donc les
+     * modèles de TOUS les sites — sous un commentaire qui affirmait
+     * « Templates = globaux (pas de farm_id) », que le modèle contredit depuis
+     * qu'il porte le trait.
+     *
+     * Mesuré : un modèle quotidien créé sur le site A génère sa tâche sur le
+     * site B, tous les matins. Et l'écran des modèles du site B listait celui du
+     * site A, donc permettait de le désactiver ou de le supprimer pour l'autre.
+     *
+     * Sans ferme (installation mono-site, ou aucune ferme active), rien n'est
+     * filtré : c'est le comportement historique, et le seul qui ait un sens.
+     */
+    public function scopeForFarm($query, ?int $farmId)
+    {
+        $query->withoutGlobalScopes();
+
+        if (! $farmId) {
+            return $query;
+        }
+
+        return $query->where(
+            fn ($sub) => $sub->whereNull('farm_id')->orWhere('farm_id', $farmId)
+        );
+    }
+
+    /**
      * Options de « types de lots » proposées dans les formulaires de
      * template (filtre batch_types). Multi-espèces : on dérive la liste des
      * slugs DISTINCTS réellement présents dans production_types (ovins,
