@@ -72,19 +72,35 @@ class RecordDailyCheck
                 $this->checkFeedStock($feedType, $feedConsumed, $existing);
             }
 
-            // ─── Compensation stock si mise à jour ───
-            if ($existing && $feedConsumed > 0) {
-                // Restituer l'ancienne consommation
-                if ((float) $existing->feed_consumed > 0) {
-                    StockIntegrationService::syncMovement(
-                        $existing->feed_type,
-                        'conso',
-                        (float) $existing->feed_consumed,
-                        'in',
-                        "Correction pointage lot {$batch->code} (annulation ancienne conso)",
-                        'KG'
-                    );
-                }
+            /*
+             * ─── COMPENSATION STOCK SI MISE À JOUR ───
+             *
+             * La restitution de l'ANCIENNE consommation était conditionnée par
+             * `$feedConsumed > 0` — la NOUVELLE valeur. Corriger un pointage pour
+             * dire « en fait aucun aliment n'a été donné » (saisie sur le mauvais
+             * lot, ramassage annulé) ne restituait donc RIEN.
+             *
+             * Mesuré : 50 kg saisis puis corrigés à 0 laissent le magasin à 950
+             * au lieu de 1 000. Cinquante kilos sortis du stock, aucun mouvement
+             * pour les expliquer, et le pointage affiche 0 — l'écart devient
+             * introuvable. Corriger de 50 à 30 fonctionnait : le défaut ne
+             * frappait qu'à la borne du zéro, celle qu'on ne teste jamais.
+             *
+             * La restitution ne dépend que de ce qui avait été SORTI. C'est déjà
+             * ainsi que ce même bloc traite le fumier et l'eau, juste en dessous :
+             * ils passent l'ancien ET le nouveau et laissent le delta se calculer,
+             * zéro compris. Trois grandeurs corrigées au même endroit, une seule
+             * avec la mauvaise garde.
+             */
+            if ($existing && (float) $existing->feed_consumed > 0) {
+                StockIntegrationService::syncMovement(
+                    $existing->feed_type,
+                    'conso',
+                    (float) $existing->feed_consumed,
+                    'in',
+                    "Correction pointage lot {$batch->code} (annulation ancienne conso)",
+                    'KG'
+                );
             }
 
             // Fumier : quantités avant/après pour compensation (ramassage
