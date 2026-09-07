@@ -32,7 +32,7 @@
                         <div class="absolute top-6 right-6 z-20">
                             <div class="bg-white/20 backdrop-blur-md px-4 py-2 rounded-2xl border border-white/30 text-center shadow-lg">
                                 <span class="text-[7px] text-white uppercase font-black block leading-none opacity-80 mb-1">{{ __("Fiabilité") }}</span>
-                                <span class="text-sm font-black text-white italic leading-none">{{ round($incubator->avg_performance ?? $incubator->global_success_rate) }}%</span>
+                                <span class="text-sm font-black text-white italic leading-none">{{ round($incubator->global_success_rate) }}%</span>
                             </div>
                         </div>
 

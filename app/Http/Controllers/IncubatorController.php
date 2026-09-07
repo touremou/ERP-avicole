@@ -28,22 +28,35 @@ class IncubatorController extends Controller
             }], 'hatched_chicks')
             ->paginate((int) setting('general.items_per_page', 20));
 
-        // Injection des moyennes de performance
-        $incubators->getCollection()->transform(function($incubator) {
-            // Moyenne de réussite historique
-            // Par le MODÈLE, pas par DB::table() : Incubation a le trait SoftDeletes,
-            // et une requête brute ignore ce filtre. Une incubation supprimée tirait
-            // donc la performance affichée de l'incubateur — alors que le total
-            // produit juste au-dessus, calculé par Eloquent (withSum), l'excluait.
-            // Le même écran montrait ainsi une somme et une moyenne qui ne portaient
-            // pas sur les mêmes lignes.
-            $incubator->avg_performance = \App\Models\Incubation::where('incubator_id', $incubator->id)
-                ->where('status', 'clos')
-                ->avg('hatchability_rate') ?? 0;
-
-            return $incubator;
-        });
-
+        /*
+         * LA FIABILITÉ D'UNE MACHINE SE LIT PAR L'ACCESSEUR — PAS EN SQL.
+         *
+         * Ce bloc calculait `avg_performance` par un `avg('hatchability_rate')`
+         * de constructeur de requête : une moyenne SQL sur une COLONNE QUE
+         * PERSONNE N'ÉCRIT. `RecordHatching` croyait la remplir, mais elle est
+         * absente du `$fillable` d'`Incubation` et l'assignation était jetée en
+         * silence. La colonne vaut NULL pour tous les cycles de l'historique.
+         *
+         * Mesuré : cycle miré à 800 fertiles sur 900, éclos à 700 poussins.
+         * L'écran Couvoir affiche « Taux Éclosion 87,5 % » — il lit l'accesseur.
+         * Cet écran-ci, même machine, même cycle, affichait « Fiabilité 0 % ».
+         *
+         * Tous les autres lecteurs du taux moyennent une COLLECTION, donc
+         * passent par l'accesseur : `Incubator::global_success_rate`,
+         * `IncubationController` (machineStats, avg_fertility, avg_reussite),
+         * les vues, les journaux de synchro. Ce `avg()` en base était le seul à
+         * lire la colonne — et le seul à se tromper.
+         *
+         * Le correctif précédent sur ces trois lignes avait déjà déplacé le
+         * calcul de `DB::table()` vers le modèle, pour respecter la suppression
+         * douce. Il visait juste sur les LIGNES retenues et laissait intacte la
+         * colonne vide qu'il moyennait.
+         *
+         * `Incubator::global_success_rate` porte exactement cette règle, et son
+         * `$this->incubations()` — relation Eloquent sur un modèle SoftDeletes —
+         * écarte bien les cycles supprimés, comme le voulait ce correctif. La
+         * vue le lit désormais directement : une déclaration, un lecteur.
+         */
         return view('incubators.index', compact('incubators'));
     }
 

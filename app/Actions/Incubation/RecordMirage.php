@@ -15,12 +15,24 @@ class RecordMirage
             }
 
             $fertile = (int) $data['fertile_eggs'];
-            $rate = $incubation->eggs_count > 0 ? ($fertile / $incubation->eggs_count) * 100 : 0;
 
+            /*
+             * LE TAUX EST DÉRIVÉ, ON NE L'ÉCRIT PAS.
+             *
+             * Cette ligne écrivait `fertility_rate`. Elle n'écrivait rien :
+             * la colonne est absente du `$fillable` d'`Incubation`, et
+             * `update()` passe par `fill()`, qui jette sans un mot toute clé non
+             * listée. Le taux mesuré sortait NULL en base à chaque mirage.
+             *
+             * La déclaration vivante est l'accesseur
+             * `Incubation::getFertilityRateAttribute` (fertiles ÷ mis à couver),
+             * exposé par `$appends` : tous les écrans le lisent déjà. Stocker en
+             * plus une copie d'une valeur dérivée, c'est la faire diverger un
+             * jour — le défaut qu'on répare ailleurs dans ce module.
+             */
             $incubation->update([
-                'fertile_eggs'   => $fertile,
-                'fertility_rate' => $rate,
-                'status'         => 'mirage_fait',
+                'fertile_eggs' => $fertile,
+                'status'       => 'mirage_fait',
             ]);
 
             return $incubation->fresh();
