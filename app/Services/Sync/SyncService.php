@@ -755,7 +755,25 @@ class SyncService
         $data = $v->validated();
 
         return DB::transaction(function () use ($data) {
-            if (\App\Models\StockAdjustment::withoutGlobalScopes()->where('uuid', $data['uuid'])->exists()) {
+            /*
+             * ─── UN COMPTAGE CONFORME N'INSCRIVAIT SON UUID NULLE PART ───
+             *
+             * L'idempotence de cette opération reposait sur le seul ajustement
+             * créé. Or « aucun écart » est un succès qui ne CRÉE RIEN : l'uuid
+             * n'était donc enregistré nulle part, et un rejeu — coupure réseau,
+             * relance de la file — ré-exécutait le comptage.
+             *
+             * Mesuré : stock à 100 kg, comptage conforme à 100 → succès, rien
+             * d'écrit. Un achat entre ensuite 50 kg (stock 150). Le MÊME
+             * comptage rejoué trouve alors un écart de −50 et l'applique : le
+             * stock retombe à 100. Les 50 kg reçus entre les deux essais sont
+             * annulés, par une opération que le terrain croyait déjà passée.
+             *
+             * On regarde donc les deux traces possibles : le document, quand il
+             * y en a un, et le registre des opérations sans document.
+             */
+            if (\App\Models\StockAdjustment::withoutGlobalScopes()->where('uuid', $data['uuid'])->exists()
+                || \App\Models\SyncOperation::alreadyApplied('inventory_count.create', $data['uuid'])) {
                 return ['status' => 'already_synced'];
             }
 
@@ -769,8 +787,19 @@ class SyncService
                     $data['count_date'],
                 );
             } catch (\Illuminate\Validation\ValidationException $e) {
-                // « Aucun écart » : le comptage CONFIRME le stock — c'est un
-                // succès métier, pas une saisie à corriger.
+                /*
+                 * « Aucun écart » : le comptage CONFIRME le stock — c'est un
+                 * succès métier, pas une saisie à corriger.
+                 *
+                 * On l'inscrit au registre : c'est la seule trace que ce
+                 * comptage laissera, et donc la seule chose qui empêchera un
+                 * rejeu de le rejouer pour de bon. Écrire un ajustement à zéro
+                 * aurait été l'autre solution — mais `CreateStockAdjustment` le
+                 * refuse exprès, et un « ajustement » qui n'ajuste rien
+                 * encombrerait la démarque que ces écrans servent à suivre.
+                 */
+                \App\Models\SyncOperation::remember('inventory_count.create', $data['uuid']);
+
                 Log::info("Sync: comptage sans écart sur stock #{$data['stock_id']} (uuid: {$data['uuid']}).");
 
                 return ['status' => 'success', 'server_id' => null];
