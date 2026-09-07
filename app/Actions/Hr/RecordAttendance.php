@@ -34,9 +34,34 @@ class RecordAttendance
             foreach ($rows as $row) {
                 $employeeId = (int) ($row['employee_id'] ?? 0);
 
-                // Anti-injection : le pointage ne sort jamais du périmètre de la
-                // ferme courante (Employee est borné par BelongsToFarm).
-                if ($employeeId <= 0 || ! Employee::whereKey($employeeId)->exists()) {
+                /*
+                 * ─── LE PÉRIMÈTRE EST CELUI QUE L'ÉCRAN PROPOSE ───
+                 *
+                 * Ce garde interrogeait `Employee::whereKey(...)` tel quel, donc
+                 * sous le scope de ferme : « rattaché à ce site ». Les deux
+                 * écrans qui remplissent la grille — la grille web et le miroir
+                 * mobile — listent, eux, `assignableInCurrentFarm()`, qui repose
+                 * sur l'AFFECTATION datée et inclut donc les agents PRÊTÉS.
+                 *
+                 * L'agent prêté était donc proposé à la saisie, coché présent, et
+                 * sa ligne écartée en silence à l'enregistrement.
+                 *
+                 * Mesuré : grille de deux agents sur le site d'accueil, un local
+                 * et un prêté → `saved: 1, skipped: 1`, et aucune ligne pour le
+                 * prêté. L'écran annonçait « Présence enregistrée ».
+                 *
+                 * Le défaut « agent prêté » avait déjà été corrigé en deux temps
+                 * — rendre la fiche visible, puis l'agent désignable — et la
+                 * règle unique existe (`visibleInFarm`). Ce garde-ci était le
+                 * troisième endroit, celui qui ÉCRIT.
+                 *
+                 * On retient la visibilité et non `assignable` (qui exige en plus
+                 * « Actif ») : le rôle de ce garde est le PÉRIMÈTRE, pas le
+                 * statut. Sinon, corriger le pointage du matin pour un agent
+                 * suspendu l'après-midi deviendrait impossible.
+                 */
+                if ($employeeId <= 0
+                    || ! Employee::visibleInCurrentFarm()->whereKey($employeeId)->exists()) {
                     $skipped++;
                     continue;
                 }
