@@ -12,8 +12,6 @@ class RecordHatching
         return DB::transaction(function () use ($incubation, $data) {
             $hatched = (int) $data['hatched_chicks'];
             $fertile = (int) $incubation->fertile_eggs;
-            
-            $hatchabilityRate = $fertile > 0 ? ($hatched / $fertile) * 100 : 0;
 
             /*
              * UN CYCLE CLOS NE S'ÉCLÔT PAS UNE SECONDE FOIS.
@@ -34,11 +32,28 @@ class RecordHatching
                     . ($incubation->finished_at?->format('d/m/Y') ?? '—') . '.');
             }
 
+            /*
+             * LE TAUX EST DÉRIVÉ, ON NE L'ÉCRIT PAS.
+             *
+             * Cette écriture visait `hatchability_rate`. Elle n'écrivait rien :
+             * la colonne est absente du `$fillable` d'`Incubation`, et
+             * `update()` passe par `fill()`, qui jette sans un mot toute clé non
+             * listée. Le taux d'éclosion sortait NULL en base à chaque clôture.
+             *
+             * C'est exactement ce qui était arrivé à `finished_at` — « une
+             * écriture qui n'écrivait pas », dit le commentaire du `$fillable` —
+             * corrigé en ajoutant cette seule colonne à la liste. Les deux taux
+             * étaient dans le même cas, à trois lignes de là.
+             *
+             * On ne les ajoute pas pour autant : la déclaration vivante est
+             * l'accesseur `Incubation::getHatchabilityRateAttribute` (éclos ÷
+             * fertiles), exposé par `$appends`, que TOUS les écrans lisent déjà.
+             * Une valeur dérivée stockée en double finit par diverger.
+             */
             $incubation->update([
-                'hatched_chicks'    => $hatched,
-                'hatchability_rate' => $hatchabilityRate,
-                'status'            => 'clos',
-                'finished_at'       => now()
+                'hatched_chicks' => $hatched,
+                'status'         => 'clos',
+                'finished_at'    => now(),
             ]);
 
             /*
