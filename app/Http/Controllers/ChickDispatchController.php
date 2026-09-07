@@ -244,7 +244,40 @@ class ChickDispatchController extends Controller
             // ═══ STOCK → Ajouter au stock "Poussins d'un jour" ═══
             elseif ($dest === 'stock') {
                 try {
-                    // Construire les critères avec farm_id si applicable
+                    /*
+                     * ─── UN POUSSIN MIS EN STOCK VAUT CE QU'IL A COÛTÉ ───
+                     *
+                     * Les quatre destinations d'un dispatch partagent une seule
+                     * déclaration du coût d'un poussin : `chickUnitCost()`
+                     * (œufs + frais d'incubation ÷ poussins éclos). La branche
+                     * ÉLEVAGE l'applique — elle en fait le `buy_price_per_unit`
+                     * du lot de poussinière. Cette branche-ci ne l'appelait
+                     * jamais.
+                     *
+                     * Mesuré : cycle de 1 000 œufs à 500 GNF + 8 000 de frais,
+                     * 800 éclos → 635 GNF le poussin. 300 poussins mis en stock
+                     * valent 190 500 GNF ; l'article sortait à `last_unit_price`
+                     * ZÉRO, donc une valeur d'inventaire de 0 GNF.
+                     *
+                     * Deux lecteurs s'en servent : `Stock::total_value` et la
+                     * ventilation du tableau de bord — qui, elle, écarte même la
+                     * catégorie du camembert par son `filter(v > 0)`. Les
+                     * poussins disparaissaient donc de l'inventaire valorisé, au
+                     * lieu d'y figurer à un montant faux.
+                     *
+                     * ─── POURQUOI PASSER PAR LE SERVICE ───
+                     *
+                     * Ce bloc tenait le stock à la main — firstOrCreate,
+                     * increment, StockMovement — au lieu d'appeler
+                     * `StockIntegrationService::syncMovement()`, qui sait tenir
+                     * le COÛT MOYEN PONDÉRÉ via son argument `$unitCost`
+                     * (deux éclosions de coûts différents se mélangent
+                     * correctement). Recopier ce calcul ici en aurait fait une
+                     * seconde déclaration ; on délègue.
+                     *
+                     * L'article reste créé ici : `syncMovement` ne crée jamais
+                     * un article manquant — il rend `false` en le journalisant.
+                     */
                     $criteria = ['item_name' => 'Poussins d\'un jour', 'category' => 'produits_finis'];
                     $defaults = ['unit' => 'TETE', 'current_quantity' => 0, 'alert_threshold' => 0];
 
@@ -255,21 +288,38 @@ class ChickDispatchController extends Controller
                     }
 
                     $stock = Stock::withoutGlobalScopes()->firstOrCreate($criteria, $defaults);
-                    $stock->increment('current_quantity', $qty);
 
-                    // Mouvement de stock
-                    $movData = [
-                        'stock_id'     => $stock->id,
-                        'type'         => 'in',
-                        'quantity'     => $qty,
-                        'unit'         => 'TETE',
-                        'user_id'      => Auth::id(),
-                        'notes'        => "Éclosion {$incubation->code_incubation} — {$qty} poussins",
-                    ];
-                    if ($farmId && Schema::hasColumn('stock_movements', 'farm_id')) {
-                        $movData['farm_id'] = $farmId;
+                    $mouvement = \App\Services\StockIntegrationService::syncMovement(
+                        $stock->item_name,
+                        $stock->category,
+                        $qty,
+                        'in',
+                        "Éclosion {$incubation->code_incubation} — {$qty} poussins",
+                        'TETE',
+                        unitCost: $incubation->chickUnitCost(),
+                    );
+
+                    /*
+                     * Une mise en stock qui n'atteint pas le stock ne doit pas
+                     * être déclarée réussie : `syncMovement` rend `false` sans
+                     * lever quand l'article reste introuvable, et le dispatch
+                     * serait compté (chicks_dispatched) sans qu'un seul poussin
+                     * entre au magasin — le silence qui avait rendu tous les
+                     * tris invisibles (#296).
+                     *
+                     * Aucun test ne le tue, et c'est VOULU : le `firstOrCreate`
+                     * juste au-dessus garantit l'article, donc ce refus est
+                     * inatteignable aujourd'hui. Il est là pour que la
+                     * divergence entre les deux résolutions — celle qui crée
+                     * (hors scopes, farm_id explicite) et celle qui retrouve
+                     * (sous FarmScope) — s'annonce si elle apparaît, au lieu de
+                     * se dissoudre en poussins perdus.
+                     */
+                    if ($mouvement === false) {
+                        throw new \RuntimeException(
+                            "L'article « {$stock->item_name} » n'a pas pu être atteint au magasin."
+                        );
                     }
-                    StockMovement::create($movData);
 
                     $message = "{$qty} poussins ajoutés au stock (Poussins d'un jour)";
                 } catch (\Throwable $e) {
