@@ -203,6 +203,40 @@ class InstallController extends Controller
     {
         $alreadyInstalled = File::exists(storage_path('installed'));
 
+        /*
+         * ─── ON NE DÉCLARE PAS INSTALLÉ CE QUI NE L'EST PAS ───
+         *
+         * Cette étape est la SEULE du groupe à être hors de
+         * `redirect.if.installed` — délibérément, pour que la page de
+         * confirmation reste consultable une fois l'application installée. Mais
+         * elle ne fait pas que montrer une page : elle bascule le `.env` en
+         * production et POSE LE MARQUEUR d'installation.
+         *
+         * Sur une instance fraîchement déployée — donc publiquement joignable,
+         * c'est tout l'objet d'un assistant web — n'importe quel visiteur
+         * pouvait donc appeler `/install/finish` directement et marquer
+         * l'application « installée » : sans base configurée, sans migrations,
+         * sans compte administrateur.
+         *
+         * Et le marqueur referme la porte derrière lui : `redirect.if.installed`
+         * renvoie dès lors tout l'assistant vers `/login`, où aucun compte
+         * n'existe. L'installateur légitime est verrouillé dehors, et il faut
+         * aller supprimer `storage/installed` sur le serveur pour s'en sortir.
+         *
+         * La finalisation exige donc que l'installation soit RÉELLEMENT allée
+         * jusqu'au bout. Le témoin est le compte administrateur créé par l'étape
+         * précédente (`storeAdmin`, qui redirige ici) : il n'existe que si la
+         * base est configurée, migrée et peuplée. Une installation sans personne
+         * pour se connecter n'est pas une installation terminée.
+         */
+        if (! $alreadyInstalled && ! $this->adminAccountExists()) {
+            return redirect()->route('install.welcome')->with(
+                'error',
+                "L'installation n'est pas terminée : aucun compte administrateur n'existe encore. "
+                . 'Reprenez l’assistant depuis le début.'
+            );
+        }
+
         if (! $alreadyInstalled) {
             // Bascule en mode PRODUCTION au terme de l'installation : sans cela,
             // une instance déployée depuis .env.example tournerait avec
@@ -223,6 +257,26 @@ class InstallController extends Controller
     // ─────────────────────────────────────────────
     // HELPERS
     // ─────────────────────────────────────────────
+
+    /**
+     * Un administrateur peut-il se connecter ? Témoin d'une installation menée
+     * à son terme : le compte n'existe que si la base est configurée, migrée et
+     * peuplée par l'étape précédente.
+     *
+     * Toute panne de base signifie « pas installé » : sur une instance neuve,
+     * `.env` ne porte pas encore de connexion valable et la requête lève.
+     */
+    private function adminAccountExists(): bool
+    {
+        try {
+            $adminRoleId = Role::where('name', 'admin')->value('id');
+
+            return $adminRoleId !== null
+                && User::where('role_id', $adminRoleId)->exists();
+        } catch (\Throwable) {
+            return false;
+        }
+    }
 
     private function requirementChecks(): array
     {

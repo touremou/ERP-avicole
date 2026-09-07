@@ -49,8 +49,25 @@ beforeEach(function () {
     $this->setUpBaseData();
     $this->actingAs($this->adminUser);
 
+    /*
+     * EFFECTIF EXPLICITE, ET C'EST NÉCESSAIRE.
+     *
+     * `Batch::factory()` tire un effectif au hasard entre 500 et 5 000, et le
+     * bâtiment du harnais a une capacité de 5 000. Le dispatch vers l'élevage
+     * contrôle la place restante : au-delà de 4 700 sujets dans le lot source,
+     * les 300 poussins du test ne rentraient plus et la validation refusait.
+     *
+     * Le test échouait donc environ une fois sur seize, au gré du tirage — ce
+     * qu'il a fait sur le coureur MySQL de la CI après être passé deux fois en
+     * local et une fois sur le coureur sqlite. Un test qui dépend du hasard ne
+     * dit plus rien du code qu'il garde.
+     */
     $this->lot = Batch::factory()->create([
-        'farm_id' => $this->farm->id, 'building_id' => $this->building->id, 'status' => 'Actif',
+        'farm_id'          => $this->farm->id,
+        'building_id'      => $this->building->id,
+        'status'           => 'Actif',
+        'initial_quantity' => 100,
+        'current_quantity' => 100,
     ]);
 
     $this->couveuse = Incubator::create([
