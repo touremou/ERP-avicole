@@ -80,9 +80,13 @@ function effacerReglage(string $group, string $key): void
 /** Une vente à crédit du jour, non soldée. */
 function venteACredit(int $farmId, int $clientId, int $userId): Sale
 {
+    // Référence SÉQUENTIELLE : tirée au sort sur une colonne UNIQUE, elle
+    // finissait par se répéter et tuait le test en contrainte d'unicité,
+    // sans rapport avec ce qu'il vérifie.
+    static $sequence = 0;
     return Sale::create([
         'farm_id' => $farmId, 'client_id' => $clientId,
-        'reference' => 'VTE-' . random_int(1000, 9999),
+        'reference' => sprintf('VTE-%05d', ++$sequence),
         'sale_date' => today()->toDateString(), 'status' => 'valide',
         'total_amount' => 800_000, 'paid_amount' => 0,
         'payment_status' => 'impaye', 'user_id' => $userId,

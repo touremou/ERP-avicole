@@ -21,9 +21,13 @@ beforeEach(function () {
     $this->setUpBaseData();
 
     // Expédition « en route » avec 1 ligne, prête à réceptionner.
-    $this->makeDispatch = function (int $senderId, ?int $receiverId = null): array {
+    // Numéro SÉQUENTIEL : tiré au sort sur une colonne UNIQUE, il finissait par
+    // se répéter et tuait le test en contrainte d'unicité.
+    $numero = 0;
+
+    $this->makeDispatch = function (int $senderId, ?int $receiverId = null) use (&$numero): array {
         $dispatch = [
-            'dispatch_number' => 'EXP-2026-' . str_pad((string) random_int(1, 999999), 6, '0', STR_PAD_LEFT),
+            'dispatch_number' => sprintf('EXP-2026-%06d', ++$numero),
             'dispatched_by'   => $senderId,
             'driver_name'     => 'Chauffeur Test',
             'dispatch_date'   => now()->toDateString(),

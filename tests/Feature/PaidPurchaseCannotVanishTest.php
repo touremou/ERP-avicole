@@ -71,9 +71,13 @@ beforeEach(function () {
 /** Un achat validé, prêt à être réglé. */
 function achatValide(int $farmId, int $providerId, int $userId, float $montant = 5_000_000): SupplierInvoice
 {
+    // Référence SÉQUENTIELLE : tirée au sort sur une colonne UNIQUE, elle
+    // finissait par se répéter et tuait le test en contrainte d'unicité,
+    // sans rapport avec ce qu'il vérifie.
+    static $sequence = 0;
     $achat = SupplierInvoice::create([
         'farm_id' => $farmId, 'provider_id' => $providerId,
-        'reference' => 'ACH-' . random_int(1000, 9999),
+        'reference' => sprintf('ACH-%05d', ++$sequence),
         'invoice_date' => now()->toDateString(),
         'category' => 'aliment', 'label' => 'Aliment ponte 40 sacs',
         'total_amount' => $montant, 'status' => 'brouillon',

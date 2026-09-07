@@ -83,8 +83,26 @@ class AttendanceController extends Controller
 
         $result = app(RecordAttendance::class)->execute($date, $rows, Auth::id());
 
+        /*
+         * UNE LIGNE ÉCARTÉE NE DOIT PLUS ÊTRE MUETTE.
+         *
+         * `RecordAttendance` rend un compteur `skipped`, et les deux appelants
+         * le jetaient : l'écran annonçait « Présence enregistrée pour N
+         * employé(s) » sans dire qu'il en manquait. C'est ce silence qui a rendu
+         * invisible le rejet des agents prêtés — la grille se referme, tout a
+         * l'air normal, et la ligne n'existe pas.
+         *
+         * Le périmètre est désormais le bon ; ce message est là pour que la
+         * prochaine cause d'écartement se voie tout de suite.
+         */
+        $message = "Présence enregistrée pour {$result['saved']} employé(s).";
+
+        if ($result['skipped'] > 0) {
+            $message .= " {$result['skipped']} ligne(s) écartée(s) : agent hors du périmètre de ce site.";
+        }
+
         return redirect()->route('attendance.index', ['date' => $date])
-            ->with('success', "Présence enregistrée pour {$result['saved']} employé(s).");
+            ->with('success', $message);
     }
 
     /** Rapport de présence par employé sur une période. */

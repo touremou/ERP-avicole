@@ -52,9 +52,13 @@ beforeEach(function () {
 /** Dépense du 10 du mois dernier, dans l'état demandé. */
 function depense(int $farmId, int $userId, string $statut): Expense
 {
+    // Référence SÉQUENTIELLE : tirée au sort sur une colonne UNIQUE, elle
+    // finissait par se répéter et tuait le test en contrainte d'unicité,
+    // sans rapport avec ce qu'il vérifie.
+    static $sequence = 0;
     return Expense::create([
         'farm_id' => $farmId,
-        'reference' => 'DEP-' . random_int(1000, 9999),
+        'reference' => sprintf('DEP-%05d', ++$sequence),
         'category' => 'carburant',
         'label' => 'Gasoil groupe électrogène',
         'amount' => 2_000_000,

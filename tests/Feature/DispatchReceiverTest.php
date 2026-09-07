@@ -15,9 +15,14 @@ beforeEach(function () {
 /** Fabrique une expédition « expedie » avec une ligne non stockée (pas de déstockage). */
 function makeDispatch(int $farmId, int $dispatchedBy, ?int $receiverId = null): Dispatch
 {
+    // Référence SÉQUENTIELLE : tirée au sort sur une colonne UNIQUE, elle
+    // finissait par se répéter et tuait le test en contrainte d'unicité,
+    // sans rapport avec ce qu'il vérifie.
+    static $sequence = 0;
+
     $dispatch = Dispatch::create([
         'farm_id'              => $farmId,
-        'dispatch_number'      => 'EXP-2026-' . str_pad((string) random_int(1, 999999), 6, '0', STR_PAD_LEFT),
+        'dispatch_number'      => sprintf('EXP-2026-%06d', ++$sequence),
         'dispatched_by'        => $dispatchedBy,
         'intended_receiver_id' => $receiverId,
         'driver_name'          => 'Sory Camara',

@@ -70,9 +70,13 @@ beforeEach(function () {
 /** Vente de 5 000 000 GNF datée du 15 du mois dernier. */
 function venteDuMoisDernier(int $farmId, int $clientId, int $userId): Sale
 {
+    // Référence SÉQUENTIELLE : tirée au sort sur une colonne UNIQUE, elle
+    // finissait par se répéter et tuait le test en contrainte d'unicité,
+    // sans rapport avec ce qu'il vérifie.
+    static $sequence = 0;
     $vente = Sale::create([
         'farm_id' => $farmId, 'client_id' => $clientId,
-        'reference' => 'VTE-' . random_int(1000, 9999),
+        'reference' => sprintf('VTE-%05d', ++$sequence),
         'sale_date' => now()->subMonth()->startOfMonth()->addDays(14)->toDateString(),
         'status' => 'valide',
         'total_amount' => 5_000_000, 'paid_amount' => 0,

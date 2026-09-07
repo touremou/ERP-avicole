@@ -639,9 +639,25 @@ class SyncService
         $result = app(\App\Actions\Hr\RecordAttendance::class)
             ->execute($data['attendance_date'], $data['rows'], Auth::id());
 
-        Log::info("Sync: présence du {$data['attendance_date']} — {$result['saved']} employé(s) pointé(s).");
+        /*
+         * On REND le compteur d'écartés, on ne le jette plus.
+         *
+         * Le terrain recevait « success » avec le seul nombre d'enregistrés :
+         * une grille de dix agents dont trois écartés ressortait « réussie », et
+         * le téléphone retirait l'opération de sa file. Les trois pointages
+         * étaient perdus sans que personne ne l'apprenne — ni au champ, ni au
+         * bureau, ni à la paie qui les lit ensuite.
+         */
+        if ($result['skipped'] > 0) {
+            Log::warning(
+                "Sync: présence du {$data['attendance_date']} — {$result['skipped']} ligne(s) écartée(s) "
+                . "(agent hors du périmètre du site), {$result['saved']} enregistrée(s)."
+            );
+        } else {
+            Log::info("Sync: présence du {$data['attendance_date']} — {$result['saved']} employé(s) pointé(s).");
+        }
 
-        return ['status' => 'success', 'saved' => $result['saved']];
+        return ['status' => 'success', 'saved' => $result['saved'], 'skipped' => $result['skipped']];
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -2535,25 +2551,37 @@ class SyncService
      * règle de visibilité, deux implémentations. Cette fois elles se
      * contredisaient au point de rendre la fonction inutilisable.
      */
-    private function employeeExists(): \Illuminate\Validation\Rules\Exists
+    private function employeeExists(): \Closure
     {
-        $rule = Rule::exists('employees', 'id');
-        $farmId = session('current_farm_id');
-
-        if (! $farmId) {
-            return $rule;
-        }
-
-        return $rule->where(function ($query) use ($farmId) {
-            $query->where(function ($sub) use ($farmId) {
-                $sub->where('farm_id', $farmId)
-                    ->orWhereIn('user_id', function ($accounts) use ($farmId) {
-                        $accounts->select('user_id')->from('farm_user')->where('farm_id', $farmId);
-                    });
-            })
-            // Un dossier ARCHIVÉ ne doit pas revenir par cette porte.
-            ->whereNull('deleted_at');
-        });
+        /*
+         * ─── LA RÈGLE VIT SUR LE MODÈLE, ON NE LA RECOPIE PLUS ───
+         *
+         * Ce contrôle avait déjà été élargi une fois pour accepter les agents
+         * prêtés, en écrivant ici la définition de l'époque : « farm_id du
+         * dossier OU compte ayant accès au site via farm_user ».
+         *
+         * Mais `Employee::visibleInFarm` a depuis REMPLACÉ cette définition, et
+         * son commentaire dit pourquoi : « la règle se déduisait de deux faits
+         * sans rapport — le farm_id du dossier et l'accès du COMPTE à une autre
+         * ferme — c'est-à-dire d'un effet de bord que personne n'avait décidé.
+         * Une affectation, elle, se décide, se date et se termine. »
+         *
+         * La copie gelée ici est donc restée sur la règle abandonnée. Or prêter
+         * un AGENT ne donne aucun accès à son COMPTE : le miroir mobile le
+         * proposait par son affectation, et cette validation le refusait faute
+         * de ligne `farm_user`. Le refus portant sur une ligne de la grille, la
+         * FEUILLE ENTIÈRE tombait en `validation_failed` — donc au bac « À
+         * corriger », non rejouable, pour un agent parfaitement légitime.
+         *
+         * On délègue au modèle. La suppression douce reste écartée : le scope ne
+         * retire que le cadrage par ferme, pas SoftDeletes — un dossier archivé
+         * ne revient pas par cette porte.
+         */
+        return function (string $attribute, $value, \Closure $fail): void {
+            if (! \App\Models\Employee::visibleInCurrentFarm()->whereKey($value)->exists()) {
+                $fail(__("Cet employé ne travaille pas sur ce site."));
+            }
+        };
     }
 
     /**
