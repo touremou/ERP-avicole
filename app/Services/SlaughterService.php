@@ -105,6 +105,18 @@ class SlaughterService
                 }
             }
 
+            /*
+             * COHÉRENCE DES PESÉES — la règle vit sur le modèle
+             * (`SlaughterResult::weighingRefusals`), et ce service est la porte
+             * COMMUNE du bureau et du terrain. Elle n'était appliquée que dans
+             * le contrôleur web : la synchro acceptait donc plus de saisies
+             * sanitaires que de sujets abattus, et le calcul juste en dessous
+             * partait sur un effectif négatif.
+             */
+            if ($refusals = SlaughterResult::weighingRefusals($liveWeight, $carcassWeight, $actualQty, $condemned)) {
+                throw \Illuminate\Validation\ValidationException::withMessages($refusals);
+            }
+
             // Calculs
             $effectiveQty = $actualQty - $condemned;
             $yieldPercent = $liveWeight > 0 ? round(($carcassWeight / $liveWeight) * 100, 2) : 0;
