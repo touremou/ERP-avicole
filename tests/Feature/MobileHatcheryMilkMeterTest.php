@@ -136,10 +136,32 @@ test('le pull ne descend que les cycles OUVERTS', function () {
         ->and($codes)->not->toContain($closed->code_incubation);
 });
 
+/**
+ * Un lot CAPRIN LAITIER — espèce et type de production réels.
+ *
+ * Ces décors s'appelaient « CAPRIN-x » mais sortaient d'un `Batch::factory()`
+ * brut : espèce et type de production tirés au sort, donc un lot qui ne donne
+ * pas de lait. Le nom disait l'intention, les données ne la portaient pas — et
+ * la traite passait quand même, faute de contrôle côté terrain.
+ */
+function lotCaprinLaitier(string $code, int $effectif): Batch
+{
+    $chevre = \App\Models\Species::where('slug', 'chevre')->firstOrFail();
+
+    return Batch::factory()->create([
+        'code'               => $code,
+        'current_quantity'   => $effectif,
+        'qty_alive'          => $effectif,
+        'species_id'         => $chevre->id,
+        'production_type_id' => \App\Models\ProductionType::where('species_id', $chevre->id)
+            ->where('slug', 'laitiere')->value('id'),
+    ]);
+}
+
 // ─── Traite ───
 
 test('traite mobile : total maintenu (matin + soir) et valorisation', function () {
-    $batch = Batch::factory()->create(['code' => 'CAPRIN-1', 'current_quantity' => 40, 'qty_alive' => 40]);
+    $batch = lotCaprinLaitier('CAPRIN-1', 40);
 
     $res = $this->postJson('/api/v1/sync/push', ['operations' => [[
         'op_uuid' => (string) Str::uuid(), 'type' => 'milk_production.create',
@@ -160,7 +182,7 @@ test('traite mobile : total maintenu (matin + soir) et valorisation', function (
 });
 
 test('traite sans aucun litre → validation_failed', function () {
-    $batch = Batch::factory()->create(['code' => 'CAPRIN-2', 'current_quantity' => 10, 'qty_alive' => 10]);
+    $batch = lotCaprinLaitier('CAPRIN-2', 10);
 
     $res = $this->postJson('/api/v1/sync/push', ['operations' => [[
         'op_uuid' => (string) Str::uuid(), 'type' => 'milk_production.create',
@@ -176,7 +198,7 @@ test('traite sans aucun litre → validation_failed', function () {
 });
 
 test('traite : idempotence par uuid', function () {
-    $batch = Batch::factory()->create(['code' => 'CAPRIN-3', 'current_quantity' => 10, 'qty_alive' => 10]);
+    $batch = lotCaprinLaitier('CAPRIN-3', 10);
     $op = ['op_uuid' => (string) Str::uuid(), 'type' => 'milk_production.create',
         'payload' => ['uuid' => (string) Str::uuid(), 'batch_id' => $batch->id,
             'production_date' => now()->toDateString(), 'morning_liters' => 12, 'evening_liters' => 0]];
