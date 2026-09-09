@@ -425,16 +425,18 @@ class SlaughterController extends Controller
         // du total) provoque un rendement aberrant (> 999,99%) qui dépasse la
         // capacité de la colonne `carcass_yield_percent` et fait échouer
         // l'enregistrement avec une erreur SQL brute illisible pour l'utilisateur.
-        if ((float) $validated['total_carcass_weight_kg'] > (float) $validated['total_live_weight_kg']) {
-            return back()->withErrors([
-                'total_carcass_weight_kg' => "Alerte Système : le poids carcasse ({$validated['total_carcass_weight_kg']} kg) ne peut pas dépasser le poids vif ({$validated['total_live_weight_kg']} kg). Vérifiez les deux pesées.",
-            ])->withInput();
-        }
+        // Règle UNIQUE, portée par le modèle et appliquée aussi par le service
+        // partagé (donc par la synchro terrain, qui ne la connaissait pas). On
+        // la lit ici pour rendre les motifs CHAMP PAR CHAMP à la saisie.
+        $refusals = \App\Models\SlaughterResult::weighingRefusals(
+            (float) $validated['total_live_weight_kg'],
+            (float) $validated['total_carcass_weight_kg'],
+            (int) $validated['actual_quantity'],
+            (int) ($validated['condemned_count'] ?? 0),
+        );
 
-        if ((int) ($validated['condemned_count'] ?? 0) > (int) $validated['actual_quantity']) {
-            return back()->withErrors([
-                'condemned_count' => "Le nombre de saisies sanitaires ({$validated['condemned_count']}) ne peut pas dépasser le nombre de sujets abattus ({$validated['actual_quantity']}).",
-            ])->withInput();
+        if ($refusals) {
+            return back()->withErrors($refusals)->withInput();
         }
 
         try {
