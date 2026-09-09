@@ -811,6 +811,39 @@ class SlaughterController extends Controller
                     $stockData['farm_id'] = $farmId;
                 }
 
+                /*
+                 * ─── LE MAGASIN SE VALORISE AU COÛT, PAS AU PRIX DE VENTE ───
+                 *
+                 * `stocks.last_unit_price` est LE COÛT MOYEN PONDÉRÉ dans toute
+                 * l'application : `StockIntegrationService` le calcule ainsi à
+                 * chaque entrée, `UpdateStockAction` le nomme « le CMP, base de
+                 * valorisation », `PeriodCharges` et `Batch` le lisent comme un
+                 * coût. `Stock::total_value` en dérive la valeur d'inventaire.
+                 *
+                 * Ce transfert y écrivait `$product->unit_price` — le PRIX DE
+                 * VENTE. Le magasin valorisait donc la viande à ce qu'elle
+                 * rapportera, pendant que tout le reste est valorisé à ce qu'il
+                 * a coûté.
+                 *
+                 * Mesuré : 100 kg de poulet coûtant 22 000/kg à produire et
+                 * vendus 35 000/kg entraient à 3 500 000 GNF au lieu de
+                 * 2 200 000 — l'inventaire gonflé de la marge entière.
+                 *
+                 * Le modèle porte pourtant la bonne grandeur : `unit_cost`,
+                 * ajoutée précisément parce que « tout produit fini entrait en
+                 * stock à unit_price 0 », et tenue en coût moyen pondéré.
+                 *
+                 * ─── ET LE PRIX NE BOUGEAIT PLUS JAMAIS ───
+                 *
+                 * Il n'était posé que dans les défauts du `firstOrCreate`, donc
+                 * à la PREMIÈRE entrée. Un second transfert au coût de 30 000
+                 * laissait l'article à 35 000 : aucun coût moyen pondéré.
+                 *
+                 * On délègue donc à `StockIntegrationService`, qui tient ce
+                 * calcul — même remède que pour les poussins mis en stock.
+                 */
+                $coutDeRevient = (float) ($product->unit_cost ?? 0);
+
                 $stock = \App\Models\Stock::firstOrCreate(
                     $stockData,
                     [
@@ -818,26 +851,30 @@ class SlaughterController extends Controller
                         'unit'             => setting('general.weight_unit', 'KG'),
                         'current_quantity' => 0,
                         'alert_threshold'  => (int) setting('stocks.default_alert_threshold', 0),
-                        'last_unit_price'  => $product->unit_price ?? 0,
                     ]
                 );
 
-                $stock->increment('current_quantity', $qty);
+                $mouvement = \App\Services\StockIntegrationService::syncMovement(
+                    $stock->item_name,
+                    $stock->category,
+                    $qty,
+                    'in',
+                    "Transfert abattoir → magasin ({$product->product_name})",
+                    setting('general.weight_unit', 'KG'),
+                    unitCost: $coutDeRevient > 0 ? $coutDeRevient : null,
+                );
 
-                $movementData = [
-                    'stock_id'     => $stock->id,
-                    'type'         => 'in',
-                    'quantity'     => $qty,
-                    'unit'         => setting('general.weight_unit', 'KG'),
-                    'notes'        => "Transfert abattoir → magasin ({$product->product_name})",
-                    'user_id'      => \Illuminate\Support\Facades\Auth::id(),
-                ];
-
-                if ($farmId && \Illuminate\Support\Facades\Schema::hasColumn('stock_movements', 'farm_id')) {
-                    $movementData['farm_id'] = $farmId;
+                /*
+                 * `syncMovement` rend `false` sans lever quand l'article reste
+                 * introuvable : sans ce refus, on décrémenterait l'abattoir sans
+                 * que rien n'entre au magasin — la viande disparaîtrait entre les
+                 * deux registres.
+                 */
+                if ($mouvement === false) {
+                    throw new \Exception(
+                        "L'article « {$stock->item_name} » n'a pas pu être atteint au magasin."
+                    );
                 }
-
-                \App\Models\StockMovement::create($movementData);
 
                 $product->decrement('current_quantity_kg', $qty);
             });
