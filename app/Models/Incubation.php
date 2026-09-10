@@ -180,4 +180,41 @@ class Incubation extends Model
         return $query->where('status', '!=', 'clos')
                      ->where('hatch_date_expected', '<', now());
     }
+
+    /**
+     * Cycles CONCLUS depuis `$depuis` — mirage fait, ou éclosion close.
+     *
+     * Un cycle se date de son ÉVÉNEMENT, pas de sa dernière retouche. Les KPI du
+     * couvoir se bornaient sur `updated_at`, qui n'est la date de rien :
+     * `ChickDispatchController::refreshCounters()` réécrit la ligne à CHAQUE
+     * départ de poussins, et les départs s'étalent sur des semaines. Un cycle
+     * éclos il y a quarante jours, dont on sortait les derniers poussins le
+     * matin même, rentrait donc dans la fenêtre des trente jours avec la
+     * TOTALITÉ de son éclosion — le mois écoulé se voyait créditer des poussins
+     * nés le mois d'avant.
+     *
+     * Pour un cycle CLOS, cette date est `finished_at`, écrite par
+     * `RecordHatching`. C'est déjà celle que l'ERP lit partout ailleurs pour
+     * dater la production : la `birth_date` des poussins dispatchés, le
+     * « Produit le » de la traçabilité, et le mois du tableau de bord de la
+     * provenderie, qui pose la même question sur ses lots de fabrication.
+     *
+     * Pour un cycle MIRÉ, il n'y a rien à dater d'autre : il n'est pas fini, il
+     * n'a pas de `finished_at`, et sa dernière écriture EST son mirage. Le
+     * basculer lui aussi sur `finished_at` aurait vidé la fertilité moyenne
+     * sans un mot.
+     *
+     * Les lignes closes d'avant l'existence de la colonne retombent sur
+     * `updated_at`, comme le fait déjà la traçabilité.
+     */
+    public function scopeConcludedSince($query, $depuis)
+    {
+        return $query->where(fn ($q) => $q
+            ->where(fn ($clos) => $clos
+                ->where('status', 'clos')
+                ->whereRaw('COALESCE(finished_at, updated_at) >= ?', [$depuis]))
+            ->orWhere(fn ($mire) => $mire
+                ->where('status', 'mirage_fait')
+                ->where('updated_at', '>=', $depuis)));
+    }
 }
