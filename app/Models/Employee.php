@@ -314,6 +314,34 @@ class Employee extends Model
     }
 
     /**
+     * Agents que l'exploitation PAIE ce mois-ci.
+     *
+     * « Actif » ne suffit pas : approuver un congé bascule le statut RH en
+     * « Congé » (`PayrollController::applyLeaveApproval`), et la génération de
+     * paie ne regardait que « Actif ». Un agent en congé annuel approuvé le jour
+     * de la génération disparaissait donc de la paie — ni salaire, ni ligne de
+     * congé, ni comptage dans les indicateurs de la période, et aucun signal :
+     * le compteur `out_of_contract` ne se déclenche que hors contrat.
+     *
+     * Le service se contredisait lui-même : `generatePayroll` consacre soixante-
+     * dix lignes à décompter les congés d'un agent qui, en congé, n'entrait
+     * jamais dans sa boucle.
+     *
+     * Et la fenêtre était bien plus large qu'un mois : rien ne remet le statut à
+     * « Actif » tout seul. `endLeave` est un bouton « Retour » que quelqu'un doit
+     * cliquer, et aucune commande planifiée ne clôt les congés échus.
+     *
+     * Un congé payé n'est pas une situation d'emploi, c'est un état de présence
+     * temporaire. « Suspendu » et « Parti », eux, sont des situations d'emploi :
+     * ils restent hors paie, et savoir si une suspension disciplinaire est payée
+     * est une décision de l'exploitant, pas une règle qu'on pose ici.
+     */
+    public function scopeOnPayroll($query)
+    {
+        return $query->whereIn('status', ['Actif', 'Congé']);
+    }
+
+    /**
      * Employés descendus au terrain (M4) : uniquement les ACTIFS — un mobile
      * n'a pas à connaître les sortants, et la liste reste courte.
      *

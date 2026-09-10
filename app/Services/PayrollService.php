@@ -19,7 +19,9 @@ class PayrollService
      */
     public function generatePayroll(PayrollPeriod $period): array
     {
-        $employees = Employee::where('status', 'Actif')->get();
+        // Les agents que l'exploitation PAIE — « Actif » ET « Congé ». Règle
+        // unique : cf. Employee::scopeOnPayroll().
+        $employees = Employee::onPayroll()->get();
         $created = 0;
         $skipped = 0;
         $outOfContract = 0;
@@ -339,7 +341,8 @@ class PayrollService
          * Le périmètre reste celui de la ferme, par les EMPLOYÉS qu'elle paie
          * (la liste est déjà bornée par le scope sur `Employee`).
          */
-        $agents = Employee::where('status', 'Actif')->pluck('id');
+        // Même périmètre que la génération : les agents que la ferme paie.
+        $agents = Employee::onPayroll()->pluck('id');
 
         if ($agents->isEmpty()) {
             return 0;
