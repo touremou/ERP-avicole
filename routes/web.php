@@ -514,13 +514,39 @@ Route::middleware(['auth'])->group(function () {
         ->middlewareFor(['edit', 'update'], 'can:M')
         ->middlewareFor('destroy', 'can:S');
 
-    // ─── PROTOCOLES ───
-    Route::middleware(['auth', 'can:C'])->group(function () {
-        Route::get('/protocols/export/{protocol}', [ProtocolController::class, 'export'])->name('protocols.export');
-        Route::post('/protocols/import', [ProtocolController::class, 'import'])->name('protocols.import');
-        Route::post('/protocols/{protocol}/duplicate', [ProtocolController::class, 'duplicate'])->name('protocols.duplicate');
-        Route::post('/protocols/{protocol}/add-step', [ProtocolController::class, 'addStep'])->name('protocols.addStep');
-        Route::delete('/step/{step}', [ProtocolController::class, 'destroyStep'])->name('protocols.destroyStep');
+    /*
+     * ─── PROTOCOLES ───
+     *
+     * Chaque route porte le verrou de SON geste, celui que le contrôleur exige
+     * déjà : export = L (c'est une lecture), import/duplication = C, ajout
+     * d'étape = M (on modifie un protocole existant), suppression d'étape = S.
+     *
+     * Ces cinq routes étaient groupées derrière un `can:C` unique. Le verrou de
+     * route contredisait donc le contrôleur sur TROIS d'entre elles, et dans les
+     * deux sens :
+     *
+     *   • un rôle L+S — qui détient le droit de supprimer qu'exige
+     *     `destroyStep` — était REFUSÉ par la route, faute de C. La personne
+     *     autorisée à supprimer ne pouvait pas supprimer ;
+     *   • un rôle L seul ne pouvait pas EXPORTER un protocole, alors qu'exporter
+     *     est une lecture et que le contrôleur ne demande que L.
+     *
+     * Le groupe juste en dessous énonce pourtant la règle mot pour mot :
+     * « Verrou de route par verbe (défense en profondeur) : store = C, édition
+     * = M, suppression = S ». Elle valait pour la ressource, pas pour ces
+     * cinq-là.
+     */
+    Route::middleware('auth')->group(function () {
+        Route::get('/protocols/export/{protocol}', [ProtocolController::class, 'export'])
+            ->name('protocols.export')->middleware('can:L');
+        Route::post('/protocols/import', [ProtocolController::class, 'import'])
+            ->name('protocols.import')->middleware('can:C');
+        Route::post('/protocols/{protocol}/duplicate', [ProtocolController::class, 'duplicate'])
+            ->name('protocols.duplicate')->middleware('can:C');
+        Route::post('/protocols/{protocol}/add-step', [ProtocolController::class, 'addStep'])
+            ->name('protocols.addStep')->middleware('can:M');
+        Route::delete('/step/{step}', [ProtocolController::class, 'destroyStep'])
+            ->name('protocols.destroyStep')->middleware('can:S');
     });
 
     // Verrou de route par verbe (défense en profondeur) : store = C, édition = M,
