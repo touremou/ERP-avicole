@@ -47,6 +47,38 @@ class RecordDailyCheck
                 ->where('check_date', $data['check_date'])
                 ->first();
 
+            /*
+             * ─── ON NE RETIRE PAS PLUS DE SUJETS QU'IL N'Y EN A ───
+             *
+             * Cette règle vivait dans la seule `StoreDailyCheckRequest`, donc
+             * sur le chemin du bureau. Ce service est pourtant la porte COMMUNE
+             * du bureau et du terrain.
+             *
+             * Mesuré, par la synchro : 500 morts déclarés sur un lot de 100
+             * vivants → ACCEPTÉ. Le pointage garde « mortalité 500 », et
+             * `applyBatchImpact` plafonne l'effectif à zéro avec une simple
+             * ligne de journal — « Effectif négatif bloqué ». Le lot se retrouve
+             * vide, la mortalité cumulée du lot annonce 500 %, et l'alerte de
+             * surmortalité se déclenche sur un chiffre faux.
+             *
+             * Le bureau refuse exactement ces chiffres : « Impact total (500)
+             * dépasse l'effectif vivant (100). »
+             *
+             * On compare le DELTA d'impact : corriger un pointage existant ne
+             * doit être borné que par ce qu'il ajoute. Pour une saisie neuve,
+             * l'impact existant vaut zéro et la règle se réduit à celle du
+             * bureau.
+             */
+            $deltaImpact = DailyCheck::netImpactOf($data)
+                         - ($existing?->calculateNetImpact() ?? 0);
+
+            if ($deltaImpact > (int) $batch->current_quantity) {
+                throw ValidationException::withMessages([
+                    'mortality' => "Impact total ({$deltaImpact}) dépasse l'effectif vivant "
+                        . "({$batch->current_quantity}).",
+                ]);
+            }
+
             // ─── Cohérence INFIRMERIE : on ne peut pas sortir (rétablis) ni
             //     déclarer morts plus de sujets qu'il n'y en a d'isolés. Le
             //     solde disponible exclut le pointage en cours de correction.
