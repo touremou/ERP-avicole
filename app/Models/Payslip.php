@@ -32,13 +32,31 @@ class Payslip extends Model
 
     /**
      * Bulletin verrouillé : aucune modification de ligne (prime, déduction,
-     * heures sup.) n'est permise une fois le bulletin payé OU la période
-     * soldée. Garde-fou comptable : un bulletin payé est immuable.
+     * heures sup.) n'est permise une fois le bulletin payé, ou la période
+     * APPROUVÉE ou soldée. Garde-fou comptable : un bulletin payé est immuable.
+     *
+     * ─── POURQUOI « VALIDE » EN FAIT PARTIE ───
+     *
+     * Ce verrou ne connaissait que le PAIEMENT, et les trois écrivains de lignes
+     * (`addLine`, `recordOvertime`, `removeLine`) ne consultent que lui : le
+     * statut `valide` n'interdisait donc rien. Or `markPaid` dit en toutes
+     * lettres ce qu'approuver veut dire — « `validatePeriod` exige le droit
+     * `rh.S` (administrateur) : c'est le moment où quelqu'un approuve la paie
+     * AVANT QUE L'ARGENT SORTE ».
+     *
+     * Mesuré : une paie approuvée à 2 600 000 GNF passait à 3 600 000 par une
+     * prime ajoutée après coup en `rh.M`, puis réglée — `TreasuryPostingService`
+     * lit `net_salary` en direct. L'approbation `rh.S` portait sur un montant
+     * que `rh.M` pouvait changer derrière elle.
+     *
+     * Corriger une paie approuvée reste possible, mais par la porte de devant :
+     * `PayrollController::reopenPeriod` (rh.S, le rang de l'approbation) retire
+     * la signature et ramène la période en « calculée ».
      */
     public function isLocked(): bool
     {
         return $this->payment_status === 'paye'
-            || $this->period?->status === 'paye';
+            || in_array($this->period?->status, ['valide', 'paye'], true);
     }
 
     /**

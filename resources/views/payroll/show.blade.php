@@ -33,6 +33,19 @@
                         <button class="bg-emerald-600 text-white px-5 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-emerald-700 border-none cursor-pointer shadow-lg italic"><i class="fa-solid fa-check-double mr-1"></i> {{ __("Valider la période") }}</button>
                     </form>
                     @endif
+
+                    {{-- Rouvrir : la marche arrière de l'approbation, de même rang.
+                         Valider GÈLE les montants (primes, déductions, heures sup.
+                         et re-génération refusées). Sans cette porte, une paie
+                         approuvée portant une erreur serait incorrigible. Elle
+                         RETIRE la signature : on ne ré-horodate pas une
+                         validation, on en pose une neuve. --}}
+                    @if($period->status === 'valide')
+                    <form method="POST" action="{{ route('payroll.reopen', $period) }}"
+                          onsubmit="return confirm('{{ __('Rouvrir cette période ? La validation sera retirée et une nouvelle approbation sera nécessaire avant tout paiement.') }}')">@csrf
+                        <button class="bg-white border border-amber-200 text-amber-600 px-5 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-amber-50 cursor-pointer shadow-sm italic"><i class="fa-solid fa-lock-open mr-1"></i> {{ __("Rouvrir la période") }}</button>
+                    </form>
+                    @endif
                 @endcan
             </x-slot>
         </x-page-header>
@@ -125,7 +138,12 @@
 
                                         {{-- Marquer payé --}}
                                         @can('rh.M')
-                                            @if($slip->payment_status !== 'paye' && in_array($period->status, ['calcule', 'valide']))
+                                            {{-- Miroir EXACT du refus de `markPaid` : il exige
+                                                 ['valide','paye'], parce que « la validation par un
+                                                 administrateur précède le paiement ». Le bouton
+                                                 s'offrait dès « calculé » et retombait donc toujours
+                                                 sur ce refus. --}}
+                                            @if($slip->payment_status !== 'paye' && in_array($period->status, ['valide', 'paye']))
                                             <button @click="openPayModal({{ $slip->id }}, '{{ addslashes($slip->employee->first_name) }}', {{ $slip->net_salary }}, '{{ $slip->employee->orange_money_number ?? '' }}')"
                                                 class="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-500 hover:bg-emerald-100 hover:text-emerald-700 flex items-center justify-center border-none cursor-pointer transition-all" title="{{ __("Payer") }}">
                                                 <i class="fa-solid fa-money-bill text-[9px]"></i>

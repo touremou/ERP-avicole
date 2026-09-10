@@ -81,8 +81,27 @@ class PayrollController extends Controller
     {
         if (Gate::denies('rh.M')) return back()->with('error', 'Non autorisé.');
 
-        if ($period->status === 'paye') {
-            return back()->with('error', 'Cette période est déjà payée et verrouillée.');
+        /*
+         * UNE APPROBATION NE SE DÉFAIT PAS PAR EFFET DE BORD.
+         *
+         * Ce refus ne connaissait que « payé », et `PayrollService` réécrit le
+         * statut sans condition (`$period->update(['status' => 'calcule'])`).
+         * Une période VALIDÉE y redescendait donc en « calculée » en conservant
+         * `validated_by` et `validated_at` : une période « calculée » portant la
+         * signature d'un validateur, alors que `validatePeriod` déclare quinze
+         * lignes plus bas « on ne ré-horodate JAMAIS une validation ».
+         *
+         * L'écran cache bien le bouton hors brouillon, mais la route l'accepte :
+         * un retour arrière du navigateur ou un second onglet suffisait.
+         *
+         * Pour re-générer une paie approuvée, on la ROUVRE d'abord — `rh.S`, le
+         * rang de l'approbation, ce qui en retire la signature.
+         */
+        if (in_array($period->status, ['valide', 'paye'], true)) {
+            return back()->with('error', $period->status === 'paye'
+                ? 'Cette période est déjà payée et verrouillée.'
+                : "La période {$period->label} est validée : rouvrez-la (administrateur) "
+                    . 'avant de la re-générer — cela retire la validation.');
         }
 
         // BLOCAGE DOUX : une période sans AUCUN pointage produit la même paie
@@ -298,6 +317,47 @@ class PayrollController extends Controller
         ]);
 
         return back()->with('success', "Période {$period->label} validée.");
+    }
+
+    /**
+     * Retire l'approbation d'une période et la ramène en « calculée ».
+     *
+     * Approuver GÈLE les montants : `Payslip::isLocked()` refuse désormais toute
+     * prime, déduction ou heure supplémentaire sur une période validée, et
+     * `generate()` refuse de la recalculer. Sans marche arrière, une paie
+     * approuvée portant une erreur serait incorrigible — et la seule sortie
+     * serait justement la porte dérobée qu'on vient de fermer.
+     *
+     * Cette marche arrière est de MÊME RANG que l'approbation (`rh.S`) : si
+     * `rh.M` pouvait rouvrir, il retirerait la validation puis modifierait, et le
+     * verrou ne vaudrait pas plus qu'avant.
+     *
+     * Elle EFFACE la signature. C'est ce qui rend vraie la phrase de
+     * `validatePeriod` : on ne ré-horodate pas une validation — on la retire,
+     * puis on en pose une neuve, sur les montants qu'on approuve vraiment.
+     *
+     * Une période PAYÉE ne se rouvre pas : l'argent est sorti.
+     */
+    public function reopenPeriod(PayrollPeriod $period)
+    {
+        if (Gate::denies('rh.S')) return back()->with('error', 'Réouverture réservée aux administrateurs.');
+
+        if ($period->status !== 'valide') {
+            return back()->with('error',
+                "Seule une période validée peut être rouverte (statut actuel : {$period->status})."
+            );
+        }
+
+        $period->update([
+            'status'       => 'calcule',
+            'validated_by' => null,
+            'validated_at' => null,
+        ]);
+
+        return back()->with('success',
+            "Période {$period->label} rouverte : la validation a été retirée, les bulletins "
+            . 'sont de nouveau modifiables. Une nouvelle validation sera nécessaire avant paiement.'
+        );
     }
 
     // ─── CONGÉS ───
