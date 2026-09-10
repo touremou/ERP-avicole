@@ -12,7 +12,12 @@
     <div class="py-12 italic font-bold">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-3 gap-10">
             
-            {{-- FORMULAIRE D'AJOUT D'ÉTAPE (C) --}}
+            {{-- FORMULAIRE D'AJOUT D'ÉTAPE — droit M (on modifie un protocole
+                 existant), celui qu'exige ProtocolController::addStep.
+                 Ce commentaire annonçait « (C) » et aucune garde n'était posée :
+                 le formulaire s'affichait pour tout le monde, et l'envoi
+                 retombait sur « Action non autorisée ». --}}
+            @can('M')
             <div class="bg-white p-10 rounded-[3rem] shadow-sm border border-slate-100 h-fit sticky top-8 text-left">
                 <h3 class="text-[10px] font-black uppercase text-blue-600 mb-8 tracking-[0.2em] italic leading-none border-b border-slate-50 pb-4">{{ __("Ajouter une intervention") }}</h3>
                 
@@ -53,6 +58,7 @@
                     </button>
                 </form>
             </div>
+            @endcan
 
             {{-- LISTE DES ÉTAPES DU MODÈLE (L/S) --}}
             <div class="lg:col-span-2 space-y-6 text-left">
@@ -84,13 +90,16 @@
                             </div>
                         </div>
                         
-                        {{-- Permission S : Suppression --}}
+                        {{-- Permission S : Suppression. Le commentaire l'annonçait
+                             déjà ; la garde, elle, n'existait pas. --}}
+                        @can('S')
                         <form action="{{ route('protocols.destroyStep', $step->id) }}" method="POST" onsubmit="return confirm(@json(__('DÉCISION CRITIQUE : Supprimer définitivement cette étape du protocole master ?')))">
                             @csrf @method('DELETE')
                             <button class="opacity-100 can-hover:opacity-0 can-hover:group-hover:opacity-100 p-4 text-slate-300 hover:text-rose-600 transition-all border-none bg-transparent cursor-pointer transform translate-x-0 can-hover:translate-x-4 can-hover:group-hover:translate-x-0 duration-300">
                                 <i class="fa-solid fa-trash-can text-lg"></i>
                             </button>
                         </form>
+                        @endcan
                     </div>
                 @empty
                     <div class="p-24 border-4 border-dashed border-slate-100 rounded-[4rem] text-center bg-white/50 italic flex flex-col items-center justify-center">
