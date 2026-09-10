@@ -37,7 +37,7 @@ class PayrollService
 
                 // Calculer les jours
                 $totalDays = $period->start_date->diffInDays($period->end_date) + 1;
-                $weekends = $this->countWeekends($period->start_date, $period->end_date);
+                $weekends = self::countWeekends($period->start_date, $period->end_date);
                 $workingDays = $totalDays - $weekends;
 
                 // Jours réellement SOUS CONTRAT dans la période (embauche en cours
@@ -123,7 +123,7 @@ class PayrollService
                      * Numérateur et dénominateur comptent désormais la même
                      * chose — c'était la seule façon que le rapport ait un sens.
                      */
-                    $overlapDays = $this->workingDaysBetween($debutChevauchement, $finChevauchement);
+                    $overlapDays = self::workingDaysBetween($debutChevauchement, $finChevauchement);
 
                     if (in_array($leave->type, ['conge_annuel', 'maladie', 'maternite', 'formation'])) {
                         $daysLeave += $overlapDays;
@@ -288,7 +288,7 @@ class PayrollService
     /**
      * Compte les jours de repos hebdomadaire dans une période (cf. rh.rest_day).
      */
-    private function countWeekends(Carbon $start, Carbon $end): int
+    private static function countWeekends(Carbon $start, Carbon $end): int
     {
         $count = 0;
         $current = $start->copy();
@@ -356,7 +356,18 @@ class PayrollService
     }
 
     /** Jours ouvrés d'un intervalle (hors jour de repos hebdomadaire). */
-    private function workingDaysBetween(Carbon $start, Carbon $end): int
+    /**
+     * Jours OUVRÉS d'un intervalle — déclaration UNIQUE du coût en jours d'une
+     * absence, bâtie sur `isRestDay()` (donc sur le réglage `rh.rest_day`).
+     *
+     * Publique et statique parce que la PAIE n'est pas seule à devoir la lire :
+     * `PayrollController::storeLeave` comptait, lui, en jours CALENDAIRES pour
+     * fixer `days_count` et prélever le droit à congé. Un congé qui enjambait un
+     * dimanche coûtait donc huit jours de droit et n'en consommait que sept au
+     * bulletin — l'agent perdait un jour de congé que la paie ne lui avait jamais
+     * décompté, et les deux écrans annonçaient deux chiffres du même congé.
+     */
+    public static function workingDaysBetween(Carbon $start, Carbon $end): int
     {
         if ($start->gt($end)) {
             return 0;
@@ -364,7 +375,7 @@ class PayrollService
 
         $total = (int) $start->diffInDays($end) + 1;
 
-        return max(0, $total - $this->countWeekends($start, $end));
+        return max(0, $total - self::countWeekends($start, $end));
     }
 
     /**
@@ -393,6 +404,6 @@ class PayrollService
             return ['start' => null, 'end' => null, 'working_days' => 0];
         }
 
-        return ['start' => $start, 'end' => $end, 'working_days' => $this->workingDaysBetween($start, $end)];
+        return ['start' => $start, 'end' => $end, 'working_days' => self::workingDaysBetween($start, $end)];
     }
 }
