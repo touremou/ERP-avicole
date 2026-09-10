@@ -51,7 +51,35 @@ test('aucun réglage offert à l’écran n’est ignoré par le code', function
     // transaction un réglage `abattoir.reglage_totalement_inerte` que rien ne lit,
     // le test échoue en le nommant. Un garde-fou qu'on n'a pas vu échouer ne
     // prouve rien.
-    $haystack = '';
+    /*
+     * UN FICHIER À LA FOIS — le balayage ne tient plus tout le code en mémoire.
+     *
+     * Ce test concaténait l'INTÉGRALITÉ de app/, routes/, config/, des vues et de
+     * mobile/src dans une seule chaîne. La quantité grandit avec le dépôt : la
+     * suite a fini par mourir en « Allowed memory size of 536870912 bytes
+     * exhausted » au beau milieu de ce test — un échec qui ne dit rien du code
+     * qu'il garde, et qui serait retombé sur la CI de l'exploitation.
+     *
+     * Il n'a jamais eu besoin de tout tenir : il ne fait que des `str_contains`.
+     * On collecte donc les aiguilles d'abord, puis on lit chaque fichier une
+     * fois, en marquant celles qu'il contient. Mémoire bornée à un fichier, même
+     * garantie, et le dépôt peut grandir.
+     */
+    $settings = Setting::whereNull('farm_id')->orderBy('group')->orderBy('key')->get();
+
+    // Aiguilles par réglage : la clef pointée, et le nom seul s'il est assez
+    // distinctif (familles lues par un suffixe construit).
+    $needles = [];
+
+    foreach ($settings as $index => $setting) {
+        $needles[$index] = ["{$setting->group}.{$setting->key}"];
+
+        if (strlen($setting->key) >= 8) {
+            $needles[$index][] = $setting->key;
+        }
+    }
+
+    $found   = [];
     $scanned = 0;
 
     foreach (['app', 'routes', 'config', 'resources/views', 'mobile/src'] as $dir) {
@@ -65,7 +93,22 @@ test('aucun réglage offert à l’écran n’est ignoré par le code', function
             }
 
             $scanned++;
-            $haystack .= file_get_contents($file->getPathname());
+            $contenu = file_get_contents($file->getPathname());
+
+            foreach ($needles as $index => $aiguilles) {
+                if (isset($found[$index])) {
+                    continue;   // déjà trouvé : on ne rebalaye pas
+                }
+
+                foreach ($aiguilles as $aiguille) {
+                    if (str_contains($contenu, $aiguille)) {
+                        $found[$index] = true;
+                        break;
+                    }
+                }
+            }
+
+            unset($contenu);
         }
     }
 
@@ -87,22 +130,16 @@ test('aucun réglage offert à l’écran n’est ignoré par le code', function
      */
     $orphans = [];
 
-    foreach (Setting::whereNull('farm_id')->orderBy('group')->orderBy('key')->get() as $setting) {
-        $dotted = "{$setting->group}.{$setting->key}";
-
-        // 1. Clef complète — la forme la plus courante : setting('groupe.clef').
-        if (str_contains($haystack, $dotted)) {
+    foreach ($settings as $index => $setting) {
+        // 1. Clef complète — la forme la plus courante : setting('groupe.clef') ;
+        // 2. ou nom de clef SEUL, pour les familles lues par un suffixe construit
+        //    (TemperatureLog, Batch::dailyMortalityPhaseKey…) — on exige alors un
+        //    nom assez distinctif pour que la coïncidence soit improbable.
+        if (isset($found[$index])) {
             continue;
         }
 
-        // 2. Nom de clef SEUL — les familles lues par un suffixe construit
-        //    (TemperatureLog, Batch::dailyMortalityPhaseKey…). On exige un nom
-        //    suffisamment distinctif pour que la coïncidence soit improbable.
-        if (strlen($setting->key) >= 8 && str_contains($haystack, $setting->key)) {
-            continue;
-        }
-
-        $orphans[] = "{$dotted} — « {$setting->label} »";
+        $orphans[] = "{$setting->group}.{$setting->key} — « {$setting->label} »";
     }
 
     expect($orphans)->toBe([], "Réglages offerts à l’écran que RIEN ne lit :\n  " . implode("\n  ", $orphans));
