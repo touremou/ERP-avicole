@@ -131,11 +131,31 @@ class DailyCheck extends Model
 
     public function calculateNetImpact(): int
     {
+        return static::netImpactOf($this->only([
+            'mortality', 'qty_quarantine_in', 'qty_sorted_out', 'qty_quarantine_out',
+        ]));
+    }
+
+    /**
+     * IMPACT SUR L'EFFECTIF d'une saisie — déclaration UNIQUE de la formule.
+     *
+     * Sujets qui QUITTENT l'effectif vivant (morts, isolés à l'infirmerie,
+     * triés/réformés) moins ceux qui y REVIENNENT (rétablis).
+     *
+     * Cette formule vivait en deux exemplaires : ici sur l'instance, et
+     * recopiée à la main dans `StoreDailyCheckRequest` pour y contrôler
+     * l'effectif. Deux exemplaires d'un même calcul, donc deux occasions de
+     * diverger — et la validation du terrain, elle, n'en avait aucun.
+     *
+     * @param  array<string,mixed>  $data
+     */
+    public static function netImpactOf(array $data): int
+    {
         return (
-            (int) $this->mortality
-            + (int) $this->qty_quarantine_in
-            + (int) $this->qty_sorted_out
-        ) - (int) $this->qty_quarantine_out;
+            (int) ($data['mortality'] ?? 0)
+            + (int) ($data['qty_quarantine_in'] ?? 0)
+            + (int) ($data['qty_sorted_out'] ?? 0)
+        ) - (int) ($data['qty_quarantine_out'] ?? 0);
     }
 
     protected static function booted(): void

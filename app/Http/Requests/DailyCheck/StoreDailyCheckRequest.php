@@ -105,10 +105,10 @@ class StoreDailyCheckRequest extends FormRequest
             }
 
             // MortalitÃ© ne peut pas dÃ©passer l'effectif
-            $totalImpact = (int) $this->input('mortality', 0)
-                         + (int) $this->input('qty_quarantine_in', 0)
-                         + (int) $this->input('qty_sorted_out', 0)
-                         - (int) $this->input('qty_quarantine_out', 0);
+            // Formule UNIQUE, portée par le modèle : elle était recopiée ici,
+            // et le chemin du terrain n'en avait aucune (cf. RecordDailyCheck,
+            // qui applique désormais la même règle pour les deux portes).
+            $totalImpact = \App\Models\DailyCheck::netImpactOf($this->all());
 
             if ($totalImpact > $batch->current_quantity) {
                 $validator->errors()->add(
