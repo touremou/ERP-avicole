@@ -478,10 +478,34 @@
                             <div class="relative">
                                 <select name="incubator_id" required class="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 font-black text-xs italic shadow-sm outline-none focus:ring-2 focus:ring-blue-500/50 transition-all appearance-none cursor-pointer text-slate-700">
                                     <option value="">{{ __("Choisir machine...") }}</option>
+                                    {{-- L'INCUBATION MULTI-ÉTAGES EST LÉGITIME.
+
+                                         Cette liste désactivait la machine dès qu'un cycle
+                                         non clos s'y trouvait — un refus PUR, que la
+                                         validation serveur écarte explicitement :
+                                         « un incubateur accueille couramment plusieurs mises
+                                         à couver à des dates différentes (incubation
+                                         multi-étages). Refuser bloquerait une pratique
+                                         légitime ; ce qu'il faut empêcher, c'est le
+                                         DÉPASSEMENT. »
+
+                                         Mesuré : machine de 10 000 portant un cycle de
+                                         2 000 — donc 8 000 places libres. L'écran la rendait
+                                         `disabled`, quand le serveur acceptait sans broncher
+                                         un second cycle de 3 000. La machine restait
+                                         inutilisable trois semaines.
+
+                                         `remainingCapacity()` est la règle, et elle sert
+                                         déjà de borne à la validation et aux deux Actions qui
+                                         ne libèrent la machine que vide. On la lit ici plutôt
+                                         que d'en réécrire une variante. --}}
                                     @foreach($incubators as $incubator)
-                                        @php $isBusy = $incubator->incubations->contains(fn($inc) => $inc->status !== 'clos'); @endphp
-                                        <option value="{{ $incubator->id }}" {{ ($incubator->status == 'Maintenance' || $isBusy) ? 'disabled' : '' }}>
-                                            {{ $incubator->name }} (Cap. {{ number_format($incubator->capacity, 0, ',', ' ') }})
+                                        @php $reste = $incubator->remainingCapacity(); @endphp
+                                        <option value="{{ $incubator->id }}" {{ ($incubator->status == 'Maintenance' || $reste <= 0) ? 'disabled' : '' }}>
+                                            {{ $incubator->name }} ({{ __("reste :n / cap. :c", [
+                                                'n' => number_format($reste, 0, ',', ' '),
+                                                'c' => number_format($incubator->capacity, 0, ',', ' '),
+                                            ]) }})
                                         </option>
                                     @endforeach
                                 </select>
