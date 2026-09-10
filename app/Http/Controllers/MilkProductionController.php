@@ -158,39 +158,15 @@ class MilkProductionController extends Controller
     }
 
     /**
-     * Synchronise le stock "Lait" (Stock::CAT_LAIT) avec le delta de litres
-     * collectés (positif = entrée stock, négatif = sortie/correction).
-     * Crée l'article "Lait" au besoin (1ère collecte de la ferme).
+     * Entrée du lait au magasin — délègue à l'Action PARTAGÉE.
+     *
+     * Ce calcul vivait ici, en privé : le lait trait au CHAMP et poussé par la
+     * synchro n'entrait donc jamais au magasin. La règle vit maintenant dans
+     * `App\Actions\Milk\SyncMilkStock`, que les deux chemins appellent.
      */
     private function syncMilkStock(float $delta, string $batchCode, ?float $unitPrice = null): void
     {
-        $stock = Stock::firstOrCreate(
-            ['item_name' => 'Lait', 'category' => Stock::CAT_LAIT],
-            [
-                'unit'             => 'Litre',
-                'current_quantity' => 0,
-                'alert_threshold'  => (int) setting('stocks.default_alert_threshold', 0),
-                'unit_price'       => $unitPrice ?? 0,
-                'last_unit_price'  => $unitPrice ?? 0,
-            ]
-        );
-
-        // Cohérence de valorisation : le prix du stock « Lait » suit le prix
-        // de la dernière collecte (cours du lait volatil). On ne touche pas au
-        // prix sur une suppression ($unitPrice null).
-        if ($unitPrice !== null && $unitPrice > 0
-            && (float) $stock->unit_price !== $unitPrice) {
-            $stock->update(['unit_price' => $unitPrice, 'last_unit_price' => $unitPrice]);
-        }
-
-        if (abs($delta) < 0.001) {
-            return;
-        }
-
-        StockIntegrationService::syncMovement(
-            'Lait', Stock::CAT_LAIT, abs($delta), $delta > 0 ? 'in' : 'out',
-            "Collecte lait — lot {$batchCode}", 'Litre'
-        );
+        app(\App\Actions\Milk\SyncMilkStock::class)->execute($delta, $batchCode, $unitPrice);
     }
 
     private function validateData(Request $request, ?MilkProduction $existing = null): array

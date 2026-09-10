@@ -510,11 +510,50 @@ class SyncService
                 return ['status' => 'already_synced'];
             }
 
+            $batch = \App\Models\Batch::find($data['batch_id']);
+
+            /*
+             * ─── ON NE TRAIT PAS UN LOT QUI NE DONNE PAS DE LAIT ───
+             *
+             * L'écran du bureau refuse : « Le lot X n'est pas un lot laitier »,
+             * en lisant `Batch::tracksMilk()`. Ce chemin-ci ne posait pas la
+             * question : n'importe quel lot ACTIF — un lot de poulets de chair
+             * compris — pouvait recevoir une traite depuis le terrain, et la
+             * production laitière du troupeau s'en trouvait faussée.
+             */
+            if (! $batch || ! $batch->tracksMilk()) {
+                return $this->invalid([
+                    'batch_id' => [__("Le lot :code n'est pas un lot laitier.", [
+                        'code' => $batch?->code ?? $data['batch_id'],
+                    ])],
+                ]);
+            }
+
             $milk = \App\Models\MilkProduction::create($data + [
                 'morning_liters' => $data['morning_liters'] ?? 0,
                 'evening_liters' => $data['evening_liters'] ?? 0,
                 'recorded_by'    => Auth::id(),
             ]);
+
+            /*
+             * ─── UNE TRAITE COLLECTÉE EST UN PRODUIT VENDABLE ───
+             *
+             * L'écran du bureau crédite le magasin « Lait » à chaque collecte.
+             * Ce chemin-ci enregistrait la production et s'arrêtait là.
+             *
+             * Mesuré, sur la MÊME collecte de 70 litres à 8 000 GNF : saisie au
+             * bureau, 70 L entrent au magasin ; poussée par le terrain, le
+             * magasin reste VIDE. Le lait trait au champ n'existait donc que
+             * comme statistique — invendable, absent de la valeur d'inventaire,
+             * et invisible du magasinier qui a pourtant les bidons devant lui.
+             *
+             * Or la traite est précisément le geste qu'on saisit au troupeau.
+             */
+            app(\App\Actions\Milk\SyncMilkStock::class)->execute(
+                (float) $milk->total_liters,
+                $batch->code,
+                isset($data['unit_price']) ? (float) $data['unit_price'] : null,
+            );
 
             Log::info("Sync: traite lot #{$milk->batch_id} — {$milk->total_liters} L.");
 
