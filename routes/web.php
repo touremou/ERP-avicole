@@ -1192,6 +1192,10 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{period}', 'show')->name('show')->middleware('can:L');
         Route::post('/{period}/generate', 'generate')->name('generate')->middleware('can:M');
         Route::post('/{period}/validate', 'validatePeriod')->name('validate')->middleware('can:S');
+        // Retirer une approbation est du RANG de l'approbation : sous `can:M`,
+        // un responsable rouvrirait puis modifierait, et le gel des montants
+        // validés ne vaudrait pas plus que son absence.
+        Route::post('/{period}/reopen', 'reopenPeriod')->name('reopen')->middleware('can:S');
         Route::post('/payslip/{payslip}/line', 'addLine')->name('add-line')->middleware('can:M');
         Route::post('/payslip/{payslip}/overtime', 'recordOvertime')->name('overtime')->middleware('can:M');
         Route::delete('/line/{line}', 'removeLine')->name('remove-line')->middleware('can:M');
