@@ -1,5 +1,7 @@
 {{-- MODAL ACHAT DIRECT — Aligné sur le formulaire stocks.create --}}
-@can('elevage.C')
+{{-- Même verrou que le bouton qui l'ouvre et que la porte où elle envoie :
+     `feed-purchases.store` se résout en « provenderie », pas en « elevage ». --}}
+@can('provenderie.C')
 <div id="feedModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[110] hidden flex items-center justify-center p-4 sm:p-6"
     x-data="{
         cat: 'conso',
