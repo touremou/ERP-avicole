@@ -2403,6 +2403,29 @@ class SyncService
             }
 
             if ($task->status === 'fait') {
+                /*
+                 * REJEU DE MA PROPRE SÉQUENCE, PAS UN MANQUEMENT.
+                 *
+                 * La file du terrain pousse par lots et ne retire une opération
+                 * qu'après avoir lu son résultat : si la réponse se perd après
+                 * écriture, le lot [prise, clôture] repart ENTIER. La clôture
+                 * répond alors `already_synced` (trois lignes plus bas dans
+                 * `taskComplete`, et de même dans `taskRelease` — « rien à
+                 * libérer, déjà close ») ; la prise, elle, répondait `conflict`.
+                 *
+                 * Or `conflict` est définitif côté client : l'op sort de la file
+                 * vers le bac « À corriger », que l'ouvrier ne peut ni rejouer ni
+                 * corriger. Il y voyait un manquement pour une prise qui avait
+                 * RÉUSSI, sur une tâche qu'il venait lui-même de terminer.
+                 *
+                 * Si c'est MOI qui ai clos la tâche, ma prise fait partie de la
+                 * séquence déjà appliquée. Pour un AUTRE, le refus reste : c'est
+                 * le seul canal qui l'empêche de refaire un travail déjà fait.
+                 */
+                if ($task->completed_by === Auth::id()) {
+                    return ['status' => 'already_synced'];
+                }
+
                 return ['status' => 'conflict', 'message' => __('Tâche déjà terminée.')];
             }
 
