@@ -55,10 +55,11 @@ class IncubationController extends Controller
         // l'utilisateur n'est plus muette. Cf. Species::incubationDays().
         $incubationDurations = \App\Models\Species::incubationDurations();
 
-        // KPI 30 jours
-        $statsData = Incubation::where('updated_at', '>=', now()->subDays(30))
-            ->whereIn('status', ['mirage_fait', 'clos'])    // ← 'clos' pas 'termine'
-            ->get();
+        // KPI 30 jours — bornés sur la date de l'ÉVÉNEMENT (éclosion pour un
+        // cycle clos, mirage pour un cycle miré), et non sur `updated_at`, que
+        // chaque départ de poussins repoussait. Règle unique : cf.
+        // Incubation::scopeConcludedSince().
+        $statsData = Incubation::concludedSince(now()->subDays(30))->get();
 
         $machineStats = $incubators->map(function($incubator) {
             $done = $incubator->incubations->where('status', 'clos');
