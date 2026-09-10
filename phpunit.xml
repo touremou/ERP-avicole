@@ -18,8 +18,24 @@
         </include>
     </source>
     <php>
-        <!-- Suite complète en un seul process : le défaut 128 Mo est insuffisant. -->
-        <ini name="memory_limit" value="512M"/>
+        <!--
+            Suite complète en un seul process : le défaut 128 Mo est insuffisant.
+
+            512 Mo ne suffisent plus. Mesuré, moteur MySQL, sur les ~2 900 tests
+            en un process : l'empreinte part de 137 Mo et monte régulièrement
+            jusqu'au plafond, atteint aux tout derniers fichiers. Aucun fichier
+            n'en est responsable — le plus gros saut isolé vaut 24 Mo, le reste
+            est une croissance large et continue : c'est la taille de la suite,
+            qui grandit à chaque campagne d'audit.
+
+            Le symptôme est trompeur et mérite d'être écrit ici : la suite meurt
+            d'un `Allowed memory size exhausted` APRÈS avoir affiché des
+            centaines de tests verts, dans un fichier qui n'a rien fait de mal —
+            celui qui a eu le tort de démarrer le dernier. Et le moteur sqlite,
+            plus économe, passait au même moment : un rouge MySQL seul, sans
+            aucun test en échec, désigne d'abord ce plafond.
+        -->
+        <ini name="memory_limit" value="1G"/>
         <env name="APP_ENV" value="testing"/>
         <env name="APP_LOCALE" value="fr"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>

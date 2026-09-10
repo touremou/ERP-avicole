@@ -1050,6 +1050,31 @@ Route::middleware(['auth'])->group(function () {
     // S-18 corrigé : une seule route PUT (sémantiquement correct pour changement d'état)
     Route::put('/providers/{provider}/blacklist', [ProviderController::class, 'blacklist'])->name('providers.blacklist')->middleware('can:M');
 
+    // Référentiel des NORMES zootechniques : rattaché à l'ÉLEVAGE (il est
+    // consulté depuis les lots, « Référentiel Normes »), donc préfixe/nom
+    // batches.norms.* → fil d'Ariane « Lots › Normes » et retour vers les
+    // lots, et NON vers l'admin.
+    //
+    // VERROU PAR VERBE, et non par groupe. Hériter du `can:S` de
+    // l'administration verrouillait aussi la CONSULTATION : l'écran des lots
+    // offrait le bouton « Référentiel Normes » sous `@can('elevage.C')`, et
+    // le rôle à qui il l'offrait était refusé en cliquant dessus. Le lecteur,
+    // lui, voit déjà ces objectifs sur la fiche du lot — `BatchController::show`
+    // (can:L) bâtit la courbe de poids sur eux — mais ne pouvait pas ouvrir
+    // la table qui les porte, donc pas savoir contre quoi son lot est jugé.
+    //
+    // On applique la règle que ce fichier énonce plus haut : lecture = L,
+    // store = C, édition = M, suppression = S. L'IMPORT reste en S — c'est la
+    // règle déjà déclarée pour le référentiel normé voisin, et un CSV écrase
+    // des lignes existantes en masse.
+    Route::prefix('batches/norms')->name('batches.norms.')->controller(ProductionNormController::class)->group(function () {
+        Route::get('/', 'index')->name('index')->middleware('can:L');
+        Route::post('/import', 'import')->name('import')->middleware('can:S');
+        Route::post('/', 'store')->name('store')->middleware('can:C');
+        Route::put('/{norm}', 'update')->name('update')->middleware('can:M');
+        Route::delete('/{norm}', 'destroy')->name('destroy')->middleware('can:S');
+    });
+
     // ─── ADMINISTRATION (S requis) ───
     Route::middleware('can:S')->group(function () {
         Route::resource('users', UserController::class)->only(['index', 'store', 'destroy']);
@@ -1060,18 +1085,6 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/roles', [UserController::class, 'storeRole'])->name('roles.store');
         Route::delete('/roles/{role}', [UserController::class, 'destroyRole'])->name('roles.destroy');
         Route::post('/roles/module-matrix', [UserController::class, 'updateModuleMatrix'])->name('roles.update_module_matrix');
-
-        // Référentiel des NORMES zootechniques : rattaché à l'ÉLEVAGE (il est
-        // consulté depuis les lots, « Référentiel Normes »), donc préfixe/nom
-        // batches.norms.* → fil d'Ariane « Lots › Normes » et retour vers les
-        // lots, et NON vers l'admin. Gestion réservée aux admins (can:S, hérité).
-        Route::prefix('batches/norms')->name('batches.norms.')->controller(ProductionNormController::class)->group(function () {
-            Route::get('/', 'index')->name('index');
-            Route::post('/import', 'import')->name('import');
-            Route::post('/', 'store')->name('store');
-            Route::put('/{norm}', 'update')->name('update');
-            Route::delete('/{norm}', 'destroy')->name('destroy');
-        });
 
         // B-19 corrigé : ProductionNormController (pas NormController)
         Route::prefix('admin')->name('admin.')->group(function () {

@@ -282,7 +282,14 @@
                 </button>
 
                 <div id="manage-menu" class="hidden absolute right-0 top-full mt-2 w-64 bg-white rounded-2xl border border-slate-100 shadow-2xl z-50 p-2 text-left italic">
-                    @can('elevage.C')
+                    {{-- Le verrou du module de sa PORTE : `feed-purchases.store`
+                         porte un `can:C` nu, résolu en « provenderie » par le
+                         préfixe de route, et `StoreFeedPurchaseRequest` redemande
+                         le même droit. Sous `elevage.C`, le bouton s'offrait à
+                         qui la porte refuse, et se cachait à qui elle accepte —
+                         alors que le crayon et la corbeille du même achat, plus
+                         bas dans ce fichier, lisent déjà « provenderie ». --}}
+                    @can('provenderie.C')
                     <button type="button" onclick="document.getElementById('manage-menu').classList.add('hidden'); openFeedModal()"
                             class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-orange-50 hover:text-orange-600 transition-all border-none bg-transparent cursor-pointer text-left">
                         <i class="fa-solid fa-truck-ramp-box text-orange-400 w-4"></i> {{ __("Achat direct aliment") }}
