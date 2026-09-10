@@ -14,12 +14,19 @@
                 </a>
                 @endcan
 
-                {{-- PERMISSION C : CRÉATION D'UN NOUVEAU LOT --}}
-                @can('elevage.C')
+                {{-- PERMISSION L : CONSULTATION DU RÉFÉRENTIEL DES NORMES --}}
+                {{-- Le lien était rangé dans le bloc de CRÉATION ci-dessous, dont
+                     il ne fait pas partie : consulter les objectifs zootechniques
+                     est une lecture, et c'est le verrou que porte sa route. --}}
+                @can('elevage.L')
                 <a href="{{ route('batches.norms.index') }}" class="bg-white text-slate-600 border border-slate-200 px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-50 transition-all shadow-sm flex items-center italic">
                     <i class="fas fa-scroll mr-2 text-blue-500"></i>
                     {{ __("Référentiel Normes") }}
                 </a>
+                @endcan
+
+                {{-- PERMISSION C : CRÉATION D'UN NOUVEAU LOT --}}
+                @can('elevage.C')
                 <a href="{{ route('batches.create') }}" class="group bg-slate-900 text-white px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-600 transition-all shadow-xl shadow-slate-900/20 flex items-center italic">
                     <i class="fas fa-plus-circle mr-2 group-hover:rotate-90 transition-transform text-sm"></i>
                     {{ __("Nouvel Arrivage") }}
