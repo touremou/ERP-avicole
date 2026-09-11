@@ -391,7 +391,12 @@ class PayrollController extends Controller
         // annonceraient des congés introuvables en dessous.
         $kpi = [
             'pending'    => $scope(EmployeeLeave::query())->where('status', 'demande')->count(),
-            'on_leave'   => $scope(EmployeeLeave::query())->where('status', 'en_cours')->count(),
+            // « Qui est absent AUJOURD'HUI » — validé et couvrant la date. Ce
+            // compteur lisait `where('status', 'en_cours')`, valeur qu'aucun
+            // chemin de l'application n'écrit : il affichait 0 en permanence.
+            // Règle unique : cf. EmployeeLeave::scopeActiveOn(), jumeau requête
+            // d'isActiveOn().
+            'on_leave'   => $scope(EmployeeLeave::query())->activeOn(today())->count(),
             'this_month' => $scope(EmployeeLeave::query())->where('start_date', '>=', now()->startOfMonth())->count(),
         ];
 
