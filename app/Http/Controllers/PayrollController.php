@@ -436,7 +436,30 @@ class PayrollController extends Controller
             ))->withInput();
         }
 
-        $days = Carbon::parse($validated['start_date'])->diffInDays(Carbon::parse($validated['end_date'])) + 1;
+        /*
+         * EN JOURS OUVRÉS, comme la paie — le dimanche n'est pas un jour de congé.
+         *
+         * Ce décompte était CALENDAIRE, et `applyLeaveApproval` en retire autant
+         * du droit à congé annuel. La paie, elle, compte en jours ouvrés depuis
+         * qu'on l'y a corrigée : « le dimanche n'est pas un jour de congé ». Le
+         * raisonnement vaut mot pour mot ici — on ne prélève pas du droit à congé
+         * un jour que personne ne travaille.
+         *
+         * Mesuré : un congé du lundi 8 au lundi 15 juin 2026 (8 calendaires,
+         * 7 ouvrés) faisait passer le solde de 30 à 22, quand le bulletin ne
+         * portait que 7 jours de congé. L'agent perdait un jour de droit que la
+         * paie ne lui décomptait pas, et « Jours de congé utilisés » annonçait 8
+         * là où le bulletin montrait 7.
+         *
+         * `PayrollService::workingDaysBetween()` est la MÊME déclaration que
+         * celle dont la paie se sert, elle-même bâtie sur le réglage
+         * `rh.rest_day` : il n'y a toujours qu'un seul endroit qui dise quel jour
+         * est chômé.
+         */
+        $days = PayrollService::workingDaysBetween(
+            Carbon::parse($validated['start_date'])->startOfDay(),
+            Carbon::parse($validated['end_date'])->startOfDay(),
+        );
 
         // Habilité (RH / Manager / Admin = droit rh.S) : la saisie vaut
         // approbation immédiate. Sinon, c'est une simple demande à valider.
