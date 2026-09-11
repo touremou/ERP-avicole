@@ -8,8 +8,39 @@ use Tests\Helpers\AviSmartTestHelper;
 uses(Tests\TestCase::class, Illuminate\Foundation\Testing\RefreshDatabase::class, AviSmartTestHelper::class);
 
 beforeEach(function () {
+    /*
+     * HORLOGE FIGÉE SUR UN LUNDI — sinon ce fichier dépend du jour où la CI tourne.
+     *
+     * Les congés d'ici sont ancrés sur `now()` (« actif aujourd'hui »), et leur
+     * coût en jours se compte désormais en jours OUVRÉS : une fenêtre de trois
+     * jours civils vaut 3 jours ouvrés si elle part un lundi, et 2 si elle part
+     * un vendredi — elle enjambe alors le repos hebdomadaire.
+     *
+     * Ce fichier passait donc certains jours et échouait les autres, sans qu'une
+     * ligne de code ait changé entre-temps. On fige l'horloge sur un lundi : les
+     * ancrages `now()` redeviennent déterministes, et ce que le test mesure ne
+     * dépend plus du calendrier.
+     */
+    $this->travelTo(\Illuminate\Support\Carbon::parse('2026-06-08 08:00:00'));   // un lundi
+
     $this->setUpRbac();
-    $this->employee = Employee::factory()->create(['status' => 'Actif', 'annual_leave_balance' => 30]);
+
+    /*
+     * DATE D'EMBAUCHE EXPLICITE, et non tirée au sort.
+     *
+     * La factory tire une embauche au hasard sur deux ans, et la visibilité d'un
+     * agent tient à une AFFECTATION couvrant la date du jour
+     * (`Employee::scopeVisibleInFarm`). Avec l'horloge figée, une embauche tirée
+     * après cette date rendait l'agent invisible : `storeLeave` refusait « cet
+     * employé n'est pas rattaché à cette ferme », et le fichier échouait une fois
+     * sur deux — sur un décor, pas sur le code mesuré.
+     */
+    $this->employee = Employee::factory()->create([
+        'status'               => 'Actif',
+        'annual_leave_balance' => 30,
+        'hire_date'            => '2024-01-15',
+        'contract_end_date'    => null,
+    ]);
 });
 
 test('une saisie par un habilité (droit S) approuve directement le congé', function () {
@@ -115,7 +146,7 @@ test('on ne peut pas affecter une tâche à un employé en congé', function () 
 });
 
 test('la délégation réaffecte les tâches de l\'absent vers un collègue', function () {
-    $colleague = Employee::factory()->create(['status' => 'Actif']);
+    $colleague = Employee::factory()->create(['status' => 'Actif', 'hire_date' => '2024-01-15', 'contract_end_date' => null]);
 
     $leave = EmployeeLeave::create([
         'farm_id' => $this->farm->id, 'employee_id' => $this->employee->id,
@@ -142,7 +173,7 @@ test('un employé peut déléguer ses propres tâches en libre-service', functio
     $absentUser = \App\Models\User::factory()->create(['role_id' => $this->readonlyUser->role_id]);
     $this->employee->update(['user_id' => $absentUser->id]);
 
-    $colleague = Employee::factory()->create(['status' => 'Actif']);
+    $colleague = Employee::factory()->create(['status' => 'Actif', 'hire_date' => '2024-01-15', 'contract_end_date' => null]);
 
     $leave = EmployeeLeave::create([
         'farm_id' => $this->farm->id, 'employee_id' => $this->employee->id,
@@ -166,11 +197,11 @@ test('un employé peut déléguer ses propres tâches en libre-service', functio
 });
 
 test('un employé sans lien sur le congé ne peut pas déléguer les tâches d\'un autre', function () {
-    $otherEmployee = Employee::factory()->create(['status' => 'Actif']);
+    $otherEmployee = Employee::factory()->create(['status' => 'Actif', 'hire_date' => '2024-01-15', 'contract_end_date' => null]);
     $otherUser = \App\Models\User::factory()->create(['role_id' => $this->readonlyUser->role_id]);
     $otherEmployee->update(['user_id' => $otherUser->id]);
 
-    $colleague = Employee::factory()->create(['status' => 'Actif']);
+    $colleague = Employee::factory()->create(['status' => 'Actif', 'hire_date' => '2024-01-15', 'contract_end_date' => null]);
 
     $leave = EmployeeLeave::create([
         'farm_id' => $this->farm->id, 'employee_id' => $this->employee->id,
