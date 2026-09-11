@@ -60,7 +60,33 @@ class Payslip extends Model
     }
 
     /**
-     * Recalcule le net depuis les lignes.
+     * Recalcule le net depuis les lignes, ET les totaux de sa période.
+     *
+     * ─── POURQUOI LA PÉRIODE SUIT ICI ───
+     *
+     * `payroll_periods.total_net` est la somme des nets des bulletins, et n'était
+     * écrit que par `PayrollPeriod::recalculateTotals()` — dont l'unique appelant
+     * de toute l'application était la fin de `PayrollService::generatePayroll()`.
+     *
+     * Or trois gestes modifient un bulletin APRÈS la génération (`addLine`,
+     * `recordOvertime`, `removeLine`) et les trois n'appelaient que cette
+     * méthode-ci. Le bulletin bougeait, la période non — et les lecteurs ne
+     * lisent pas la même chose : la LISTE des périodes affiche la valeur stockée,
+     * le DÉTAIL et la comptabilité (`Accounting\PeriodCharges`) recalculent en
+     * direct.
+     *
+     * Mesuré : après une génération à 2 600 000 GNF, une prime de 500 000 laissait
+     * la liste à 2 600 000 et le détail à 3 100 000. L'écart était permanent et
+     * valait la somme de TOUTES les lignes saisies après la génération.
+     *
+     * La mise à jour est posée ICI, et non chez les trois appelants : un
+     * quatrième oublierait, comme ces trois-là ont oublié. Tout changement de net
+     * passe forcément par cette méthode.
+     *
+     * Coût : pendant la génération, `PayrollService` appelle `recalculate()` par
+     * bulletin, ce qui ajoute un agrégat par employé — quelques dizaines de
+     * requêtes, dans la transaction d'une opération mensuelle. Le prix d'une
+     * période dont les totaux ne peuvent pas mentir.
      */
     public function recalculate(): void
     {
@@ -72,5 +98,7 @@ class Payslip extends Model
             'total_deductions' => $deductions,
             'net_salary'       => $this->base_salary + $primes - $deductions,
         ]);
+
+        $this->period?->recalculateTotals();
     }
 }
