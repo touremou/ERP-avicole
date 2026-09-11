@@ -94,6 +94,38 @@ class EmployeeLeave extends Model
             && $date->between($this->start_date, $this->end_date); // inclusif par défaut
     }
 
+    /**
+     * Les congés EN COURS à cette date — le jumeau « requête » d'`isActiveOn()`.
+     *
+     * La vignette « En congé » de l'écran de gestion comptait `where('status',
+     * 'en_cours')`. Or `en_cours` n'est JAMAIS écrit : les seules écritures de
+     * statut de toute l'application sont `demande` et `approuve` (storeLeave,
+     * approveLeave), `refuse` (rejectLeave) et `termine` (endLeave), et aucune
+     * commande planifiée ne fait passer un congé d'« approuvé » à « en cours ».
+     * La vignette affichait donc 0 en permanence, pendant que la ligne juste en
+     * dessous était marquée approuvée, que la fiche de l'agent annonçait
+     * « Congé » et que la grille de pointage le pré-cochait « congé ».
+     *
+     * Les cinq autres lecteurs d'`en_cours` ne souffraient pas : ils le lisent
+     * toujours comme UN MEMBRE d'une liste (`['approuve', 'en_cours']`…) et se
+     * comportent exactement pareil sans lui. La vignette était la seule à le lire
+     * SEUL, donc la seule à dépendre d'une valeur morte.
+     *
+     * On n'invente pas pour autant la machine à états manquante : faire écrire
+     * `en_cours` par un traitement planifié changerait le comportement de ces
+     * cinq lecteurs pour régler un compteur. La question posée est « qui est
+     * absent à cette date », et `isActiveOn()` y répond déjà — validé, et
+     * couvrant la date. Ce scope dit la même chose en SQL.
+     */
+    public function scopeActiveOn($query, $date = null)
+    {
+        $jour = ($date ?: today())->toDateString();
+
+        return $query->approved()
+            ->whereDate('start_date', '<=', $jour)
+            ->whereDate('end_date', '>=', $jour);
+    }
+
     public function getTypeLabelAttribute(): string
     {
         return match($this->type) {
