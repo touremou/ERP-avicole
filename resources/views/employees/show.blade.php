@@ -352,10 +352,16 @@
 
                     {{-- CONGÉS ACTIFS --}}
                     @php
-                        $activeLeaves = \App\Models\EmployeeLeave::where('employee_id', $employee->id)
+                        // Par la relation de l'agent : un congé est classé au site
+                        // d'ORIGINE du dossier, et `Employee::leaves()` retire pour
+                        // cela le scope de ferme. Sous une requête filtrée, la carte
+                        // restait vide pour un agent PRÊTÉ consulté depuis son site
+                        // d'accueil — alors que son bulletin, lui, portait ses jours
+                        // de congé.
+                        $activeLeaves = $employee->leaves()
                             ->whereIn('status', ['approuve', 'en_cours'])
                             ->latest()->limit(3)->get();
-                        $pastLeaves = \App\Models\EmployeeLeave::where('employee_id', $employee->id)
+                        $pastLeaves = $employee->leaves()
                             ->where('status', 'termine')
                             ->latest()->limit(3)->get();
                     @endphp
