@@ -654,7 +654,23 @@ class PayrollController extends Controller
             ->orderByDesc('created_at')
             ->paginate((int) setting('general.items_per_page', 20));
 
-        $leaves = EmployeeLeave::where('employee_id', $employee->id)
+        /*
+         * PAR LA RELATION DE L'AGENT, pas par une requête filtrée par ferme.
+         *
+         * Un congé est classé au DOSSIER de l'agent, donc sur son site d'ORIGINE
+         * (`storeLeave` : 'farm_id' => $employee->farm_id) — décision métier qui
+         * permet à la paie, faite depuis ce site, de compter ses jours.
+         * `Employee::leaves()` en tire la conséquence et retire le scope de
+         * ferme ; la paie lit par là.
+         *
+         * Ces deux lectures-ci ne le faisaient pas. Pour un agent PRÊTÉ, consulté
+         * depuis son site d'accueil — le seul endroit d'où on le voit travailler
+         * — la même page affichait donc un bulletin portant 5 jours de congé, un
+         * total « Jours de congé utilisés » à 0, et une liste de congés vide.
+         * Deux blocs de la même page se contredisaient, et celui qui se taisait
+         * était celui qu'on consulte pour vérifier l'autre.
+         */
+        $leaves = $employee->leaves()
             ->orderByDesc('start_date')
             ->get();
 
@@ -663,7 +679,9 @@ class PayrollController extends Controller
             'total_primes'    => Payslip::where('employee_id', $employee->id)->sum('total_primes'),
             'total_deductions' => Payslip::where('employee_id', $employee->id)->sum('total_deductions'),
             'months_paid'     => Payslip::where('employee_id', $employee->id)->where('payment_status', 'paye')->count(),
-            'leave_days_used' => EmployeeLeave::where('employee_id', $employee->id)->whereIn('status', ['approuve', 'en_cours', 'termine'])->sum('days_count'),
+            // Même relation que la liste juste au-dessus, et que la paie : sans
+            // elle, ce total annonçait 0 pour un agent prêté.
+            'leave_days_used' => $employee->leaves()->whereIn('status', ['approuve', 'en_cours', 'termine'])->sum('days_count'),
         ];
 
         return view('employees.payroll-history', compact('employee', 'payslips', 'leaves', 'totals'));
