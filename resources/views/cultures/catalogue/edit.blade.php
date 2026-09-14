@@ -153,7 +153,10 @@
                     <p class="text-center text-slate-300 text-[10px] font-black uppercase italic py-6">{{ __("Aucune variété") }}</p>
                 @endforelse
 
-                @can('cultures.M')
+                {{-- AJOUT d'une variété : c'est une création. La route et
+                     `CropCatalogueController::storeVariety` exigent tous deux
+                     cultures.C ; l'écran demandait cultures.M. --}}
+                @can('cultures.C')
                 <form action="{{ route('crop-catalogue.varieties.store', $species) }}" method="POST" class="mt-6 pt-6 border-t border-slate-50 grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
                     @csrf
                     <div class="md:col-span-2">

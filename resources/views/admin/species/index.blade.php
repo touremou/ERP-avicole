@@ -108,7 +108,28 @@
                                      distingué d'un canard commun (28 j). Affichée
                                      pour les seules espèces qui pondent. --}}
                                 @if($sp->tracks_eggs)
-                                    @can('admin.M')
+                                    {{-- ARBITRAGE EN ATTENTE — on aligne sur la porte,
+                                         sans rien ouvrir ni fermer.
+
+                                         Trois déclarations, deux réponses :
+                                         `SpeciesController::updateIncubation` exige
+                                         admin.M (seule méthode du contrôleur à ne pas
+                                         exiger admin.S), et routes/web.php l'annonce —
+                                         « la seule donnée zootechnique que la ferme
+                                         doit pouvoir corriger sans nous ». Mais la
+                                         route hérite du groupe `can:S` de
+                                         l'administration, qui S'AJOUTE : le verrou
+                                         effectif est admin.S, et l'exception voulue
+                                         n'a jamais pris effet.
+
+                                         Sous admin.M, le champ s'offrait donc à des
+                                         comptes que la porte refuse : on tape 35 et
+                                         l'envoi échoue. On retire cette fausse
+                                         promesse en attendant la décision — ouvrir la
+                                         route à admin.M relèverait les droits d'un
+                                         référentiel partagé, ce qui appartient à
+                                         l'exploitant, pas à cette correction. --}}
+                                    @can('admin.S')
                                     <form method="POST" action="{{ route('admin.species.incubation', $sp) }}"
                                           class="flex items-center gap-2 mt-4">
                                         @csrf @method('PATCH')

@@ -62,16 +62,24 @@
                 </a>
                 @endif
                 @endif
-                @can('admin.S')
+                {{-- Chaque geste sous le droit de SA porte. Toute cette page
+                     gardait `admin.S` alors que le référentiel des normes est
+                     rattaché à l'ÉLEVAGE : depuis qu'elle se consulte en
+                     elevage.L, un titulaire d'elevage.C n'y voyait AUCUNE
+                     commande, et un admin.S sans droits élevage les voyait
+                     toutes échouer. --}}
                 <div class="lg:ml-auto flex flex-col gap-2 w-full sm:w-auto">
+                    @can('elevage.S')
                     <button @click="openImport = true" class="w-full bg-emerald-100 text-emerald-700 px-5 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-emerald-600 hover:text-white transition-all shadow-sm border border-emerald-200 cursor-pointer text-left sm:text-center">
                         <i class="fas fa-file-import mr-2"></i> {{ __("Import CSV") }}
                     </button>
+                    @endcan
+                    @can('elevage.C')
                     <button @click="resetNorm(); openAdd = true" class="w-full bg-slate-900 text-white px-5 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-blue-600 transition-all shadow-md border-none cursor-pointer text-left sm:text-center">
                         <i class="fas fa-plus-circle mr-2"></i> {{ __("Ajouter Norme") }}
                     </button>
+                    @endcan
                 </div>
-                @endcan
             </div>
 
             {{-- 2. TABLEAU DES NORMES (L) — vue bureau (≥ lg) --}}
@@ -164,18 +172,18 @@
                                 </p>
                             </div>
                         </div>
-                        @can('admin.S')
                         <div class="flex gap-2 shrink-0">
+                            @can('elevage.M')
                             <button @click="currentNorm = {{ $norm->toJson() }}; openEdit = true" class="w-10 h-10 bg-white border border-slate-200 text-slate-400 hover:text-blue-600 rounded-xl transition-all shadow-sm cursor-pointer">
                                 <i class="fas fa-pen-nib text-xs"></i>
                             </button>
-                            @can('admin.S')
+                            @endcan
+                            @can('elevage.S')
                             <button @click="currentNorm = {{ $norm->toJson() }}; openDelete = true" class="w-10 h-10 bg-white border border-slate-200 text-slate-400 hover:text-rose-600 rounded-xl transition-all shadow-sm cursor-pointer">
                                 <i class="fas fa-trash-can text-xs"></i>
                             </button>
                             @endcan
                         </div>
-                        @endcan
                     </div>
 
                     <div class="mt-5">
@@ -214,8 +222,11 @@
             </div>
         </div>
 
-        {{-- 3. MODALE UNIFIÉE (AJOUT/ÉDITION) --}}
-        @can('admin.S')
+        {{-- 3. MODALE UNIFIÉE (AJOUT/ÉDITION) — elle sert aux deux gestes,
+             dont les portes diffèrent (store = C, update = M) : l'un OU l'autre
+             droit ouvre la modale, et les boutons qui la déclenchent portent
+             chacun le sien. --}}
+        @canany(['elevage.C', 'elevage.M'])
         <div x-show="openAdd || openEdit" 
              x-transition.opacity 
              class="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/90 backdrop-blur-md" x-cloak>
@@ -297,9 +308,9 @@
                 </form>
             </div>
         </div>
-        @endcan
+        @endcanany
 
-        @can('admin.S')
+        @can('elevage.S')
         {{-- 4. MODALE SUPPRESSION --}}
         <div x-show="openDelete"
              x-transition.opacity
@@ -346,6 +357,10 @@
                     {{ __("Fichier .csv : week_number, phase_name, target_weight, target_laying_rate, target_feed_daily, target_water_daily, model_name") }}
                 </p>
                 
+                {{-- Le référentiel des normes est rattaché à l'ÉLEVAGE, pas à
+                     l'administration : sa route exige elevage.S. Sous admin.S, ce
+                     formulaire s'offrait à qui la porte refuse, et se cachait à
+                     qui elle accepte. --}}
                 <form action="{{ route('batches.norms.import') }}" method="POST" enctype="multipart/form-data" class="space-y-8">
                     @csrf
                     <input type="hidden" name="batch_type" value="{{ $type }}">

@@ -153,8 +153,14 @@
                             @endcan
                         </div>
 
-                        {{-- Permission S : Désactivation --}}
-                        @can('provenderie.S')
+                        {{-- Permission M : changement d'ÉTAT d'une machine.
+                             Le commentaire annonçait « S » et l'écran le posait,
+                             alors que `machines.status` exige provenderie.M —
+                             comme reset et toggle, ses voisins. Le responsable
+                             provenderie, qui détient ce droit, ne voyait donc pas
+                             le bouton ; seul S le voyait, et S sans M s'y faisait
+                             refuser. --}}
+                        @can('provenderie.M')
                         <form action="{{ route('machines.status', $machine->id) }}" method="POST">
                             @csrf @method('PUT')
                             <input type="hidden" name="status" value="{{ $machine->status === 'Désactivé' ? 'Opérationnel' : 'Désactivé' }}">
