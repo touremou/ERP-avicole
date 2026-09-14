@@ -125,6 +125,14 @@
                                 <a href="{{ route('protocols.show', $protocol->id) }}" title="{{ __('Details') }}" class="w-14 py-5 bg-slate-100 text-slate-400 rounded-[1.5rem] hover:bg-slate-600 hover:text-white transition-all shadow-sm flex items-center justify-center border-none cursor-pointer">
                                     <i class="fa-solid fa-info-circle text-sm"></i>
                                 </a>
+                                @endcan
+                                {{-- DUPLIQUER crée un protocole : la route et
+                                     `ProtocolController::duplicate` exigent tous
+                                     deux elevage.C. Ce geste était enfermé dans le
+                                     bloc `elevage.M` du bouton « Configurer », son
+                                     voisin — deux droits différents sous une seule
+                                     garde. --}}
+                                @can('elevage.C')
                                 <form action="{{ route('protocols.duplicate', $protocol->id) }}" method="POST" class="shrink-0">
                                     @csrf
                                     <button type="submit" title="{{ __('Dupliquer') }}" class="w-14 py-5 bg-slate-100 text-slate-400 rounded-[1.5rem] hover:bg-emerald-600 hover:text-white transition-all shadow-sm flex items-center justify-center border-none cursor-pointer">
