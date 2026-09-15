@@ -32,6 +32,12 @@ return Application::configure(basePath: dirname(__DIR__))
                 \App\Http\Middleware\EnsureAppIsInstalled::class,
             ],
             append: [
+                // Un compte suspendu n'a plus d'accès — à CHAQUE requête, et non
+                // au seul instant de la connexion. Avant celui-ci, suspendre un
+                // compte bloquait les connexions futures et laissait intact tout
+                // ce qui était déjà ouvert : la session du navigateur jusqu'à
+                // expiration du cookie, et le jeton du téléphone sans limite.
+                \App\Http\Middleware\EnsureAccountIsActive::class,
                 \App\Http\Middleware\SetCurrentFarm::class,
                 \App\Http\Middleware\SetUserLocale::class,
                 \App\Http\Middleware\EnsureLicensed::class,
@@ -39,6 +45,9 @@ return Application::configure(basePath: dirname(__DIR__))
         );
 
         $middleware->api(append: [
+            // Même règle au terrain : la révocation des jetons ferme la porte au
+            // moment du geste, celui-ci la garde fermée entre-temps.
+            \App\Http\Middleware\EnsureAccountIsActive::class,
             \App\Http\Middleware\SetUserLocale::class,
         ]);
     })

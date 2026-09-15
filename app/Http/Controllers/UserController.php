@@ -233,8 +233,25 @@ class UserController extends Controller
             return back()->with('error', 'Impossible de suspendre votre propre compte.');
         }
 
+        $suspension = $user->isActive();   // l'état AVANT bascule
+
         $user->update(['is_active' => ! $user->isActive()]);
         Cache::forget(self::CACHE_KEY . $user->id);
+
+        /*
+         * SUSPENDRE COUPE LES APPAREILS DÉJÀ APPAIRÉS.
+         *
+         * `is_active` ne bloquait que les connexions FUTURES : le jeton Sanctum
+         * déjà émis continuait de lire les référentiels et d'écrire par la file
+         * de synchronisation. Le téléphone d'un agent licencié restait donc
+         * pleinement opérationnel après la suspension.
+         *
+         * On ne rend rien à la réactivation : un jeton révoqué l'est pour de
+         * bon, et l'appareil se ré-appaire. C'est le propre d'une révocation.
+         */
+        if ($suspension) {
+            $user->tokens()->delete();
+        }
 
         return back()->with('success', $user->is_active
             ? "Accès de {$user->name} réactivé."
@@ -252,7 +269,17 @@ class UserController extends Controller
 
         $user->update(['password' => Hash::make($validated['password'])]);
 
-        return back()->with('success', "Mot de passe de {$user->name} réinitialisé.");
+        /*
+         * Un jeton ne dépend PAS du mot de passe : sans cette ligne, changer le
+         * mot de passe d'un compte compromis laissait l'appareil de l'intrus
+         * connecté et écrivant. C'est pourtant la raison même pour laquelle on
+         * réinitialise.
+         */
+        $user->tokens()->delete();
+
+        return back()->with('success',
+            "Mot de passe de {$user->name} réinitialisé. Ses appareils devront se reconnecter."
+        );
     }
 
     public function destroy(User $user)
@@ -265,6 +292,10 @@ class UserController extends Controller
 
         // Vider le cache avant suppression
         Cache::forget(self::CACHE_KEY . $user->id);
+
+        // Révoquer un accès doit valoir au moins autant que le suspendre : les
+        // jetons ne sont pas emportés par la suppression du modèle.
+        $user->tokens()->delete();
 
         $user->delete();
         return back()->with('success', 'Utilisateur révoqué.');
