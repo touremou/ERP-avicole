@@ -114,10 +114,24 @@ class AttendanceController extends Controller
 
         [$from, $to] = $this->resolvePeriod($request);
 
+        /*
+         * « Rien n'a été saisi » ne se déduit plus des chiffres du tableau.
+         *
+         * L'avertissement se déclenchait sur `$rows->sum('total') === 0`, ce qui
+         * marchait tant que `total` comptait les LIGNES saisies. Depuis que le
+         * dénominateur est le mois, `total` ne vaut jamais zéro sur une période
+         * réelle : la garde serait devenue muette sans que rien ne le signale.
+         *
+         * On dit donc la chose directement — aucun pointage n'existe sur la
+         * période — plutôt que de la déduire d'un total qui ne la porte plus.
+         */
+        $aucunPointage = ! EmployeeAttendance::between($from, $to)->exists();
+
         return view('attendance.report', [
-            'rows' => $this->buildReport($from, $to),
-            'from' => $from,
-            'to'   => $to,
+            'rows'          => $this->buildReport($from, $to),
+            'from'          => $from,
+            'to'            => $to,
+            'aucunPointage' => $aucunPointage,
         ]);
     }
 
@@ -134,7 +148,7 @@ class AttendanceController extends Controller
         return response()->streamDownload(function () use ($rows) {
             $out = fopen('php://output', 'w');
             fwrite($out, "\xEF\xBB\xBF"); // BOM UTF-8
-            \App\Support\CsvExport::putRow($out, ['Employé', 'Poste', 'Présent', 'Retard', 'Absent', 'Congé', 'Jours pointés', 'Taux présence %'], ';');
+            \App\Support\CsvExport::putRow($out, ['Employé', 'Poste', 'Présent', 'Retard', 'Absent', 'Congé', 'Jours ouvrés', 'Taux présence %'], ';');
             foreach ($rows as $r) {
                 \App\Support\CsvExport::putRow($out, [
                     $r['employee']->first_name . ' ' . $r['employee']->last_name,
@@ -182,23 +196,68 @@ class AttendanceController extends Controller
 
         $attendance = EmployeeAttendance::between($from, $to)->get()->groupBy('employee_id');
 
-        return $employees->map(function ($emp) use ($attendance) {
+        /*
+         * LE DÉNOMINATEUR EST LE MOIS, PAS LE NOMBRE DE LIGNES SAISIES.
+         *
+         * `$total` valait `array_sum($counts)` — la somme des pointages
+         * enregistrés. Le taux mesurait donc le zèle de saisie, pas la présence :
+         *
+         *   • 10 jours pointés sur 26, tous « présent »      → 100 %
+         *   • 26 jours pointés, 24 présents et 2 absents     →  92,3 %
+         *
+         * Le site qui pointe tous les jours et DÉCLARE ses absences affichait un
+         * taux plus bas que celui qui ne pointe qu'une fois sur trois. Un
+         * indicateur qui ne peut que monter quand on cesse de l'alimenter ne
+         * mesure rien — et c'est ce chiffre que le bureau regarde avant de
+         * valider une paie.
+         *
+         * La paie, elle, ne se pose pas la question : elle compte « jours ouvrés
+         * − congés − absences », les jours non pointés étant présumés travaillés.
+         * On lui emprunte son dénominateur, `PayrollService::workingDaysBetween()`,
+         * bâti sur le réglage `rh.rest_day` : les deux écrans répondent enfin à la
+         * même question.
+         *
+         * Les COLONNES du tableau ne changent pas : elles restent le décompte de
+         * ce qui a été saisi. Seuls le total, les jours travaillés et le taux
+         * s'expriment désormais en jours du mois.
+         */
+        $joursOuvres = \App\Services\PayrollService::workingDaysBetween(
+            \Carbon\Carbon::parse($from)->startOfDay(),
+            \Carbon\Carbon::parse($to)->startOfDay(),
+        );
+
+        return $employees->map(function ($emp) use ($attendance, $joursOuvres) {
             $records = $attendance->get($emp->id, collect());
+
             $counts = [
                 'present' => $records->where('status', 'present')->count(),
                 'retard'  => $records->where('status', 'retard')->count(),
                 'absent'  => $records->where('status', 'absent')->count(),
                 'conge'   => $records->where('status', 'conge')->count(),
             ];
-            $total  = array_sum($counts);
-            $worked = $counts['present'] + $counts['retard'];
+
+            // Un pointage posé un jour de repos ne retire pas une journée due —
+            // même règle que la retenue de paie, qui les écarte explicitement.
+            $surJourOuvre = fn (string $statut) => $records
+                ->where('status', $statut)
+                ->reject(fn ($r) => \App\Services\PayrollService::isRestDay(
+                    \Carbon\Carbon::parse($r->attendance_date)
+                ))
+                ->count();
+
+            $conges  = min($surJourOuvre('conge'), $joursOuvres);
+            $dus     = max(0, $joursOuvres - $conges);          // jours réellement dus
+            $absents = min($surJourOuvre('absent'), $dus);
+            $worked  = $dus - $absents;
 
             return [
                 'employee'      => $emp,
                 'counts'        => $counts,
-                'total'         => $total,
+                'total'         => $joursOuvres,
                 'worked'        => $worked,
-                'presence_rate' => $total > 0 ? round($worked / $total * 100, 1) : 0.0,
+                // Un mois entièrement en congé ne doit pas sortir à 0 % : il n'y
+                // avait aucune journée due, donc aucun manquement.
+                'presence_rate' => $dus > 0 ? round($worked / $dus * 100, 1) : 100.0,
             ];
         });
     }
