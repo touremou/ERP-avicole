@@ -194,11 +194,60 @@ class UserController extends Controller
         return back()->with('success', 'Nouveau grade ajouté.');
     }
 
+    /**
+     * Ce geste ferait-il disparaître le dernier administrateur ?
+     *
+     * `UserController` posait déjà deux garde-fous d'auto-destruction — « on ne
+     * suspend pas son propre compte », « on ne supprime pas son propre accès ».
+     * Il manquait la règle dont ils dérivent : l'exploitation garde TOUJOURS au
+     * moins un administrateur actif.
+     *
+     * Le super-administrateur est reconnu au nom de son rôle (`Gate::before`) :
+     * sans lui, plus personne ne passe `admin.S`, et TOUS les chemins de
+     * réparation l'exigent. L'installation ne serait plus administrable que par
+     * accès SQL direct — aucune commande de secours n'existe.
+     *
+     * @return string|null Le motif du refus, ou null si le geste est permis.
+     */
+    private function refusSiDernierAdministrateur(User $cible): ?string
+    {
+        if (! $cible->administersTheInstallation()) {
+            return null;   // retirer un non-administrateur ne coûte rien
+        }
+
+        if (User::administrators()->whereKeyNot($cible->id)->exists()) {
+            return null;   // il en reste au moins un autre
+        }
+
+        return "{$cible->name} est le dernier administrateur actif : lui retirer ce rôle "
+            . "rendrait l'installation inadministrable. Nommez d'abord un autre administrateur.";
+    }
+
     public function updateRole(Request $request, User $user)
     {
         if (Gate::denies('admin.S')) return back();
 
+        /*
+         * ON NE SE RÉTROGRADE PAS SOI-MÊME.
+         *
+         * Même garde-fou que pour la suspension et la suppression, et c'est ici
+         * le geste le PLUS exposé : la liste des comptes porte un menu déroulant
+         * de rôle sur chaque ligne, y compris la sienne, qui s'envoie au
+         * `change`. Une fausse manœuvre au clavier suffisait.
+         */
+        if (auth()->id() === $user->id) {
+            return back()->with('error',
+                'Impossible de changer votre propre rôle. Demandez-le à un autre administrateur.'
+            );
+        }
+
         $validated = $request->validate(['role_id' => 'required|exists:roles,id']);
+
+        if ($validated['role_id'] != $user->role_id
+            && $motif = $this->refusSiDernierAdministrateur($user)) {
+            return back()->with('error', $motif);
+        }
+
         $user->update(['role_id' => $validated['role_id']]);
 
         // Vider le cache de CET utilisateur
@@ -218,6 +267,13 @@ class UserController extends Controller
             'role_id' => ['required', 'exists:roles,id'],
         ]);
 
+        // Cette porte écrit `role_id` dans la même passe que le nom et l'e-mail :
+        // sans la même garde, la porte de devant serait fermée et celle-ci ouverte.
+        if ($validated['role_id'] != $user->role_id
+            && $motif = $this->refusSiDernierAdministrateur($user)) {
+            return back()->with('error', $motif);
+        }
+
         $user->update($validated);
         Cache::forget(self::CACHE_KEY . $user->id); // le rôle a pu changer
 
@@ -231,6 +287,12 @@ class UserController extends Controller
 
         if (auth()->id() === $user->id) {
             return back()->with('error', 'Impossible de suspendre votre propre compte.');
+        }
+
+        // Un autre compte porteur d'`admin.S` PAR LA MATRICE pouvait suspendre le
+        // dernier vrai administrateur — et se retrouver sans personne pour rouvrir.
+        if ($user->isActive() && $motif = $this->refusSiDernierAdministrateur($user)) {
+            return back()->with('error', $motif);
         }
 
         $suspension = $user->isActive();   // l'état AVANT bascule
@@ -288,6 +350,10 @@ class UserController extends Controller
 
         if (auth()->id() === $user->id) {
             return back()->with('error', 'Impossible de supprimer votre propre accès.');
+        }
+
+        if ($motif = $this->refusSiDernierAdministrateur($user)) {
+            return back()->with('error', $motif);
         }
 
         // Vider le cache avant suppression
