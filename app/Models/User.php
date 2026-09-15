@@ -94,6 +94,35 @@ class User extends Authenticatable
     }
 
     /**
+     * Ce compte peut-il administrer l'installation ?
+     *
+     * Le super-administrateur est reconnu au NOM de son rôle — c'est ce que fait
+     * `Gate::before` (`$user->userRole?->name === 'admin'`), et c'est ce bypass
+     * qui ouvre les chemins de réparation : gestion des comptes, création de
+     * rôles, matrice des modules, réglages, sauvegardes, fermes, corbeille.
+     *
+     * Un compte SUSPENDU ne compte pas : il ne se connecte plus. Le compter
+     * laisserait l'installation verrouillée en croyant la protéger.
+     */
+    public function administersTheInstallation(): bool
+    {
+        return $this->isActive() && ($this->userRole?->name ?? '') === 'admin';
+    }
+
+    /**
+     * Les comptes ACTIFS qui peuvent encore administrer l'installation.
+     *
+     * Déclaration unique de « qui reste aux commandes » : les trois gestes qui
+     * peuvent faire disparaître le dernier administrateur — rétrograder,
+     * suspendre, supprimer — la lisent tous les trois.
+     */
+    public function scopeAdministrators($query)
+    {
+        return $query->where('is_active', true)
+            ->whereHas('userRole', fn ($q) => $q->where('name', 'admin'));
+    }
+
+    /**
      * Fiche employé (RH) rattachée à ce compte de connexion, le cas échéant.
      */
     /**
