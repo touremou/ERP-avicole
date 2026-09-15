@@ -61,11 +61,58 @@ class UserController extends Controller
 
         $matrix = $request->input('module_perms', []);
 
-        return DB::transaction(function () use ($matrix) {
+        /*
+         * LA PORTÉE DE L'ÉDITION EST DÉCLARÉE PAR LE FORMULAIRE, PAS DÉDUITE
+         * DES CASES COCHÉES.
+         *
+         * Elle se déduisait de `array_keys($matrix)`. Or un navigateur n'envoie
+         * PAS les cases décochées : un rôle dont on décochait tout disparaissait
+         * entièrement de la charge, et échappait donc aux trois traitements à la
+         * fois — pas réécrit, pas remis à zéro, cache non purgé. Ses lignes
+         * restaient intactes en base.
+         *
+         * Mesuré : l'administrateur décoche les quatre cases de tous les modules
+         * pour un compte compromis, lit « Matrice des modules mise à jour. »,
+         * l'écran se rouvre avec les cases TOUJOURS COCHÉES, et le titulaire
+         * conserve tous ses droits. Ce n'est pas une latence de cinq minutes :
+         * tant qu'on ne laisse pas au moins une case, la révocation ne s'écrit
+         * jamais. Tout décocher pour TOUS les rôles ne faisait, lui, strictement
+         * rien.
+         *
+         * Une révocation PARTIELLE marchait, elle — c'est ce qui a rendu le
+         * défaut invisible : le geste courant donne le bon résultat.
+         *
+         * L'écran énonce désormais les rôles qu'il gouverne (`roles_affiches`),
+         * décochés compris. Un envoi sans cette portée est REFUSÉ plutôt que
+         * deviné : la deviner dans un sens laisse passer la faille, la deviner
+         * dans l'autre viderait la matrice d'un site sur une charge tronquée.
+         */
+        $portee = array_map('intval', (array) $request->input('roles_affiches', []));
+
+        if (! $portee) {
+            return back()->with('error',
+                "Formulaire incomplet : la liste des rôles à enregistrer n'a pas été transmise. "
+                . 'Rechargez l\'écran et recommencez — aucune modification n\'a été appliquée.'
+            );
+        }
+
+        // Identifiants bornés au réel : sans cela, une charge forgée créait des
+        // lignes `module_permissions` orphelines, et la remise à zéro portait sur
+        // des rôles inexistants.
+        $roleIds   = Role::whereIn('id', $portee)->pluck('id')->all();
+        $moduleIds = Module::pluck('id');
+
+        $matrix = array_intersect_key($matrix, array_flip($roleIds));
+
+        return DB::transaction(function () use ($matrix, $roleIds, $moduleIds) {
 
             // Mettre à jour les permissions cochées
             foreach ($matrix as $roleId => $modules) {
                 foreach ($modules as $moduleId => $perms) {
+                    if (! $moduleIds->contains((int) $moduleId)) {
+                        continue;
+                    }
+
                     ModulePermission::updateOrCreate(
                         ['role_id' => $roleId, 'module_id' => $moduleId],
                         [
@@ -77,10 +124,6 @@ class UserController extends Controller
                     );
                 }
             }
-
-            // Remettre à zéro les modules non cochés
-            $roleIds   = array_keys($matrix);
-            $moduleIds = Module::pluck('id');
 
             foreach ($roleIds as $roleId) {
                 foreach ($moduleIds as $moduleId) {

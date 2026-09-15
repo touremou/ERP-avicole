@@ -202,6 +202,22 @@
 
             <form action="{{ route('roles.update_module_matrix') }}" method="POST" class="flex-1 overflow-auto">
                 @csrf
+
+                {{-- LE FORMULAIRE DÉCLARE SA PORTÉE.
+
+                     Un navigateur n'envoie pas les cases DÉCOCHÉES : un rôle dont
+                     on décochait tout disparaissait entièrement de la charge. Le
+                     contrôleur, qui déduisait les rôles à traiter de
+                     `array_keys($matrix)`, ne le voyait donc plus — ni pour le
+                     réécrire, ni pour le remettre à zéro, ni pour purger son
+                     cache. La révocation totale ne s'écrivait jamais, et l'écran
+                     répondait « Matrice des modules mise à jour ».
+
+                     Ces champs disent quels rôles cet écran gouverne, y compris
+                     ceux dont plus aucune case n'est cochée. --}}
+                @foreach($roles as $role)
+                <input type="hidden" name="roles_affiches[]" value="{{ $role->id }}">
+                @endforeach
                 <div class="px-10 py-6 overflow-x-auto">
                     <table class="w-full border-collapse min-w-[800px]">
                         <thead class="sticky top-0 bg-white z-10">
