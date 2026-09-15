@@ -56,25 +56,46 @@ test('la grille pré-remplit « congé » pour un employé en congé validé', f
         ->assertSee('congé validé');
 });
 
-test('le rapport calcule le taux de présence (présents+retards / pointés)', function () {
-    $e = Employee::factory()->create(['status' => 'Actif']);
-    $statuses = ['present', 'present', 'retard', 'absent']; // 3 travaillés / 4 = 75 %
-    foreach ($statuses as $i => $st) {
+test('le rapport calcule le taux de présence (jours ouvrés − absences / jours dus)', function () {
+    /*
+     * Ce test portait l'ancienne règle jusque dans son titre : « présents+retards
+     * / POINTÉS ». Le dénominateur était le nombre de lignes saisies, si bien que
+     * le taux mesurait le zèle de saisie — dix jours pointés sur vingt-six, tous
+     * présents, sortaient à 100 %. Il est désormais le MOIS, comme en paie.
+     *
+     * L'intention du test ne change pas : le rapport calcule bien un taux, et il
+     * baisse quand on déclare une absence. Seule la grandeur mesurée est la
+     * bonne. Cf. PresenceRateHasTheMonthAsDenominatorTest pour le détail.
+     *
+     * Fenêtre FIXE : ancrée sur `now()`, elle contenait un nombre de jours
+     * ouvrés variable selon le jour de la semaine où la CI tournait.
+     */
+    $e = Employee::factory()->create([
+        'status' => 'Actif', 'hire_date' => '2024-01-15', 'contract_end_date' => null,
+    ]);
+
+    // Lundi 1er au vendredi 5 juin 2026 : 5 jours ouvrés.
+    $jours = ['2026-06-01' => 'present', '2026-06-02' => 'present',
+              '2026-06-03' => 'retard',  '2026-06-04' => 'absent'];
+
+    foreach ($jours as $date => $st) {
         EmployeeAttendance::create([
             'farm_id' => $this->farm->id, 'employee_id' => $e->id,
-            'attendance_date' => now()->subDays($i)->toDateString(), 'status' => $st,
+            'attendance_date' => $date, 'status' => $st,
         ]);
     }
 
     $resp = $this->actingAs($this->adminUser)->get(route('attendance.report', [
-        'from' => now()->subDays(10)->toDateString(), 'to' => now()->toDateString(),
+        'from' => '2026-06-01', 'to' => '2026-06-05',
     ]));
     $resp->assertOk();
 
     $row = collect($resp->viewData('rows'))->firstWhere(fn ($r) => $r['employee']->id === $e->id);
-    expect($row['worked'])->toBe(3)
-        ->and($row['total'])->toBe(4)
-        ->and($row['presence_rate'])->toBe(75.0);
+
+    // 5 jours ouvrés, 1 absence déclarée → 4 travaillés, 80 %.
+    expect($row['total'])->toBe(5)
+        ->and($row['worked'])->toBe(4)
+        ->and($row['presence_rate'])->toBe(80.0);
 });
 
 test('le rapport s\'exporte en CSV (employé + taux)', function () {
