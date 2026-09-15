@@ -2,12 +2,23 @@
 
 namespace App\Models;
 
+use App\Traits\AuditsChanges;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ModulePermission extends Model
 {
-    
+    /*
+     * JOURNALISÉ, comme l'est déjà `Role`.
+     *
+     * Cette table est la SOURCE DE VÉRITÉ des droits, et son unique éditeur ne
+     * laissait aucune trace : ni qui, ni quand, ni quoi. Une élévation de
+     * privilèges — s'attribuer la trésorerie, la paie, les sauvegardes — était
+     * donc indétectable après coup, alors que la modification d'un rôle, elle,
+     * était tracée. Les deux faces du même geste doivent laisser la même trace.
+     */
+    use AuditsChanges;
+
     protected $fillable = [
         'role_id', 'module_id',
         'can_read', 'can_create', 'can_modify', 'can_delete',

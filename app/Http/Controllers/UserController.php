@@ -104,6 +104,51 @@ class UserController extends Controller
 
         $matrix = array_intersect_key($matrix, array_flip($roleIds));
 
+        /*
+         * ON N'AUGMENTE PAS LES DROITS DE SON PROPRE RÔLE.
+         *
+         * L'éditeur exige `admin.S` — « Administration × S », le droit de gérer
+         * les comptes — et ne vérifiait nulle part que le rôle édité n'était pas
+         * celui de l'auteur. Un gestionnaire de comptes à qui l'on avait coché
+         * cette seule case ouvrait donc la matrice, cochait les soixante-huit
+         * cases de SON rôle, appliquait — et `clearCacheForRoles` purgeait son
+         * cache au passage, donc l'effet était immédiat. Trésorerie, paie, prix
+         * de vente, sauvegardes : tout s'ouvrait, à un compte à qui l'on n'avait
+         * confié que les comptes.
+         *
+         * On peut en revanche se RETIRER un droit : se restreindre soi-même ne
+         * présente aucun risque, et l'interdire empêcherait un administrateur de
+         * réduire sa propre surface. Une augmentation vient d'un autre
+         * administrateur — séparation des pouvoirs ordinaire.
+         *
+         * Le rôle nommé « admin » passe par `Gate::before` : ses pouvoirs ne
+         * viennent pas de la matrice et sa ligne y est décorative. La règle ne
+         * lui retire donc rien ; elle borne les rôles dont les droits viennent
+         * RÉELLEMENT d'ici.
+         */
+        $monRole = (int) (auth()->user()?->role_id ?? 0);
+
+        if ($monRole && isset($matrix[$monRole])) {
+            $deja = ModulePermission::where('role_id', $monRole)
+                ->get()->keyBy('module_id');
+
+            foreach ($matrix[$monRole] as $moduleId => $perms) {
+                $actuel = $deja->get((int) $moduleId);
+
+                $eleve = (isset($perms['L']) && ! ($actuel?->can_read))
+                      || (isset($perms['C']) && ! ($actuel?->can_create))
+                      || (isset($perms['M']) && ! ($actuel?->can_modify))
+                      || (isset($perms['S']) && ! ($actuel?->can_delete));
+
+                if ($eleve) {
+                    return back()->with('error',
+                        "Vous ne pouvez pas ajouter de droits à votre propre rôle. "
+                        . 'Demandez-le à un autre administrateur — vous pouvez en revanche vous en retirer.'
+                    );
+                }
+            }
+        }
+
         return DB::transaction(function () use ($matrix, $roleIds, $moduleIds) {
 
             // Mettre à jour les permissions cochées
