@@ -519,6 +519,29 @@ class Employee extends Model
     public const FIXED_TERM = ['CDD', 'Journalier'];
 
     /**
+     * Cet agent est-il PRÉSUMÉ PRÉSENT les jours non pointés ?
+     *
+     * Deux régimes, commandés par le type de contrat — et c'est la même règle
+     * vue des deux côtés : on enregistre ce qui s'écarte de l'ordinaire, et
+     * l'ordinaire n'est pas le même selon le contrat.
+     *
+     *   • CDI / CDD — présomption de PRÉSENCE. Le salarié est attendu tous les
+     *     jours ouvrés ; on déclare les ÉCARTS (absences, congés). C'est ce que
+     *     la paie fait depuis toujours, « bénéfice du doute » dit son commentaire.
+     *
+     *   • JOURNALIER — présomption d'ABSENCE. Il n'est pas attendu : il vient.
+     *     Seule une journée CONSTATÉE lui est due.
+     *
+     * `contract_type` existait depuis l'origine, avec ces trois valeurs, et
+     * n'était lu ni par la paie ni par le pointage : un journalier venu cinq
+     * jours touchait le mois entier.
+     */
+    public function isPresumedPresent(): bool
+    {
+        return $this->contract_type !== 'Journalier';
+    }
+
+    /**
      * Historique des décisions de contrat — D'OÙ QU'ELLES AIENT ÉTÉ PRISES.
      *
      * Même règle que `leaves()` et `attendances()`. Un agent prêté reste
