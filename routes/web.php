@@ -168,7 +168,7 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/{batch}', 'update')->name('update')->middleware('can:M');
         Route::get('/{batch}/close', 'showCloseForm')->name('close_form')->middleware('can:M');
         Route::put('/{batch}/close', 'close')->name('close')->middleware('can:M');
-        Route::put('/{batch}/reopen', 'reopen')->name('reopen')->middleware('can:M');
+        Route::put('/{batch}/reopen', 'reopen')->name('reopen')->middleware(['can:M', 'can:S']);
         Route::post('/{batch}/transfer', [BatchTransferController::class, 'transfer'])->name('transfer')->middleware('can:M');
 
         // S-16 corrigé : syncAllStocks est une opération admin (recalcule TOUS les lots)
@@ -204,7 +204,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/move', 'move')->name('move')->middleware('can:M');
 
         // S-16 corrigé : syncAll = opération de maintenance admin
-        Route::post('/sync-all', 'syncAll')->name('syncAll')->middleware('can:S');
+        Route::post('/sync-all', 'syncAll')->name('syncAll')->middleware(['can:S', 'can:M']);
 
         Route::get('/{id}/edit', 'edit')->name('edit')->middleware('can:M');
         Route::put('/{id}', 'update')->name('update')->middleware('can:M');
@@ -241,7 +241,7 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/', 'index')->name('index')->middleware('can:L');
             Route::post('/', 'store')->name('store')->middleware('can:C');
             Route::put('/{id}', 'update')->name('update')->middleware('can:M');
-            Route::put('/{id}/add-stock', 'updateStock')->name('update-stock')->middleware('can:M');
+            Route::put('/{id}/add-stock', 'updateStock')->name('update-stock')->middleware(['can:M', 'can:C']);
             Route::put('/{id}/remove-stock', 'removeStock')->name('remove-stock')->middleware('can:M');
             Route::put('/{id}/nutrition', 'updateNutrition')->name('nutrition')->middleware('can:M');
             Route::delete('/{id}', 'destroy')->name('destroy')->middleware('can:S');
@@ -450,7 +450,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{incubator}/edit', 'edit')->name('edit')->middleware('can:M');
         Route::put('/{incubator}', 'update')->name('update')->middleware('can:M');
         Route::delete('/{incubator}', 'destroy')->name('destroy')->middleware('can:S');
-        Route::post('/{incubator}/maintenance', 'addMaintenance')->name('maintenance.store')->middleware('can:C');
+        Route::post('/{incubator}/maintenance', 'addMaintenance')->name('maintenance.store')->middleware(['can:C', 'can:M']);
     });
 
     // ─── PRODUCTION ŒUFS ───
@@ -461,7 +461,7 @@ Route::middleware(['auth'])->group(function () {
         // Feuille de tournée multi-lots (déclarée AVANT les routes {eggProduction})
         Route::get('/tour', 'tour')->name('tour')->middleware('can:C');
         Route::post('/tour', 'tourStore')->name('tour.store')->middleware('can:C');
-        Route::get('/{eggProduction}/tri', 'tri')->name('tri')->middleware('can:L');
+        Route::get('/{eggProduction}/tri', 'tri')->name('tri')->middleware(['can:L', 'can:M']);
         Route::get('/{eggProduction}/label', [TraceabilityController::class, 'eggLabel'])->name('label')->middleware('can:L');
         Route::get('/{eggProduction}/edit', 'edit')->name('edit')->middleware('can:M');
         Route::put('/{eggProduction}', 'update')->name('update')->middleware('can:M');
@@ -471,7 +471,7 @@ Route::middleware(['auth'])->group(function () {
 
     // Câblée sur `store`, méthode inexistante : la seule action du contrôleur
     // s'appelle storeMovement(). Tout appel finissait en erreur serveur.
-    Route::post('/egg-movements/store', [EggMovementController::class, 'storeMovement'])->name('egg-movements.store')->middleware('can:C');
+    Route::post('/egg-movements/store', [EggMovementController::class, 'storeMovement'])->name('egg-movements.store')->middleware(['can:C', 'can:M']);
 
     // ─── COLLECTE DE LAIT (laiterie caprine) ───
     Route::prefix('milk-productions')->name('milk-productions.')->controller(MilkProductionController::class)->group(function () {
@@ -494,7 +494,7 @@ Route::middleware(['auth'])->group(function () {
 
         // Incidents sanitaires → HealthIncidentController dédié
         Route::get('/incidents', [\App\Http\Controllers\HealthIncidentController::class, 'index'])->name('incidents.index')->middleware('can:L');
-        Route::get('/incidents/create', [\App\Http\Controllers\HealthIncidentController::class, 'index'])->name('incidents.create')->middleware('can:C');
+        Route::get('/incidents/create', [\App\Http\Controllers\HealthIncidentController::class, 'index'])->name('incidents.create')->middleware(['can:C', 'can:L']);
         Route::get('/incidents/{incident}', [\App\Http\Controllers\HealthIncidentController::class, 'show'])->name('incidents.show')->where('incident', '[0-9]+')->middleware('can:L');
         Route::post('/incidents', [\App\Http\Controllers\HealthIncidentController::class, 'store'])->name('incidents.store')->middleware('can:C');
         Route::put('/incidents/{incident}/diagnose', [\App\Http\Controllers\HealthIncidentController::class, 'diagnose'])->name('incidents.diagnose')->middleware('can:M');
@@ -639,8 +639,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/health-incidents', 'healthIncidentsReport')->name('health_incidents');
         Route::get('/health-finance', 'healthFinancialReport')->name('health_finance');
         Route::get('/health-finance/pdf', 'healthFinancialReportPdf')->name('health_finance.pdf');
-        Route::get('/monthly', 'monthlyExpenses')->name('monthly');
-        Route::get('/monthly/pdf', 'monthlyExpensesPdf')->name('monthly.pdf');
+        Route::get('/monthly', 'monthlyExpenses')->name('monthly')->middleware('can:admin.L');
+        Route::get('/monthly/pdf', 'monthlyExpensesPdf')->name('monthly.pdf')->middleware('can:admin.L');
         Route::get('/gmq', 'gmqReport')->name('gmq');
         Route::get('/gmq/pdf', 'gmqReportPdf')->name('gmq.pdf');
         Route::get('/aquaculture', 'aquacultureReport')->name('aquaculture');
@@ -876,7 +876,7 @@ Route::middleware(['auth'])->group(function () {
         // Les garder en L laissait n'importe quel lecteur reconfigurer les
         // alertes de la ferme et vider le crédit de messagerie.
         Route::put('/preferences', 'updatePreferences')->name('preferences.update')->middleware('can:M');
-        Route::post('/test', 'sendTest')->name('test')->middleware('can:M');
+        Route::post('/test', 'sendTest')->name('test')->middleware(['can:M', 'can:S']);
         Route::post('/test-sms', 'sendTestSms')->name('test_sms')->middleware('can:M');
         Route::post('/test-mail', 'sendTestMail')->name('test_mail')->middleware('can:M');
         Route::get('/logs', 'logs')->name('logs')->middleware('can:S');
@@ -1094,7 +1094,7 @@ Route::middleware(['auth'])->group(function () {
             // Durée d'incubation : la seule donnée zootechnique que la ferme doit
             // pouvoir corriger sans nous (un canard de Barbarie incube 35 jours,
             // pas 28). Sans cette route, le référentiel restait en lecture seule.
-            Route::patch('/species/{species}/incubation', [SpeciesController::class, 'updateIncubation'])->name('species.incubation');
+            Route::patch('/species/{species}/incubation', [SpeciesController::class, 'updateIncubation'])->name('species.incubation')->middleware('can:M');
             Route::delete('/species/{species}', [SpeciesController::class, 'destroy'])->name('species.destroy');
         });
 
@@ -1250,8 +1250,8 @@ Route::middleware(['auth'])->group(function () {
 
     // ─── CORBEILLE ───
     Route::controller(TrashController::class)->group(function () {
-        Route::get('/trash', 'index')->name('trash.index')->middleware('can:L');
-        Route::post('/trash/restore/{type}/{id}', 'restore')->name('trash.restore')->middleware('can:M');
+        Route::get('/trash', 'index')->name('trash.index')->middleware(['can:L', 'can:S']);
+        Route::post('/trash/restore/{type}/{id}', 'restore')->name('trash.restore')->middleware(['can:M', 'can:S']);
         Route::delete('/trash/force-delete/{type}/{id}', 'forceDelete')->name('trash.forceDelete')->middleware('can:S');
         Route::delete('/trash/clear-all', 'clearAll')->name('trash.clearAll')->middleware('can:S');
     });
