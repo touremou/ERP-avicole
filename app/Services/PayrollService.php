@@ -206,8 +206,47 @@ class PayrollService
                 $daysAbsent += $pointedAbsent;
                 $unpaidDays += $pointedAbsent;
 
-                // Les jours travaillés se comptent DANS la fenêtre contractuelle.
-                $daysWorked = max(0, $contract['working_days'] - $daysLeave - $daysAbsent);
+                /*
+                 * DEUX RÉGIMES, COMMANDÉS PAR LE TYPE DE CONTRAT.
+                 *
+                 * La présomption de PRÉSENCE — « bénéfice du doute », les jours
+                 * non pointés comptés travaillés — est la bonne règle pour un CDI
+                 * ou un CDD : le salarié est attendu, et c'est l'ÉCART qu'on
+                 * déclare.
+                 *
+                 * Elle est fausse pour un JOURNALIER, dont la journée se
+                 * constate : il n'est pas attendu, il vient. Or `contract_type`
+                 * n'était lu NULLE PART, ni ici ni au pointage : un journalier
+                 * venu cinq jours sur vingt-six touchait le mois entier — vingt
+                 * et un jours payés à quelqu'un qui n'était pas là, et la fiche
+                 * annonçant « 26 jours travaillés ».
+                 *
+                 * Règle unique : cf. Employee::isPresumedPresent().
+                 */
+                if ($emp->isPresumedPresent()) {
+                    // Les jours travaillés se comptent DANS la fenêtre contractuelle.
+                    $daysWorked = max(0, $contract['working_days'] - $daysLeave - $daysAbsent);
+                } else {
+                    // JOURNALIER : seule une journée CONSTATÉE est due. Même
+                    // périmètre que les absences ci-dessus — par `attendances()`,
+                    // qui voit les pointages d'où qu'ils aient été saisis — et
+                    // même exclusion du jour de repos.
+                    $daysWorked = $emp->attendances()
+                        ->whereDate('attendance_date', '>=', $contract['start']->toDateString())
+                        ->whereDate('attendance_date', '<=', $contract['end']->toDateString())
+                        ->whereIn('status', EmployeeAttendance::WORKED)
+                        ->pluck('attendance_date')
+                        ->reject(fn ($jour) => self::isRestDay(Carbon::parse($jour)))
+                        ->count();
+
+                    $daysWorked = min($daysWorked, $contract['working_days']);
+
+                    // La retenue porte sur les journées NON VENUES, et remplace
+                    // celle des absences pointées : les compter toutes deux
+                    // déduirait deux fois la même journée.
+                    $unpaidDays = max(0, $contract['working_days'] - $daysWorked);
+                    $daysAbsent = 0;
+                }
 
                 // Créer la fiche
                 $payslip = Payslip::create([
@@ -245,12 +284,20 @@ class PayrollService
                     // On arrondit le MONTANT TOTAL de la déduction (et non le taux
                     // journalier) pour ne pas accumuler d'erreur de troncature.
                     $deduction = (int) round($emp->salary / $workingDays * $unpaidDays);
+
+                    // Un net amputé sans ligne pour l'expliquer est
+                    // incontrôlable : le motif dit lequel des deux régimes a
+                    // produit la retenue.
+                    [$label, $categorie] = $emp->isPresumedPresent()
+                        ? ["Absence non payée ({$unpaidDays}j)", 'absence']
+                        : ["Journées non travaillées ({$unpaidDays}j)", 'journees_non_travaillees'];
+
                     PayslipLine::create([
                         'payslip_id' => $payslip->id,
                         'type'       => 'deduction',
-                        'label'      => "Absence non payée ({$unpaidDays}j)",
+                        'label'      => $label,
                         'amount'     => $deduction,
-                        'category'   => 'absence',
+                        'category'   => $categorie,
                     ]);
                 }
 
