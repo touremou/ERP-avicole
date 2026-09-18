@@ -42,8 +42,33 @@ class AttendanceController extends Controller
             ->pluck('employee_id')->flip();
 
         $rows = $employees->map(function ($emp) use ($existing, $onLeave) {
+            /*
+             * LE DÉFAUT DE L'ÉCRAN SUIT LE RÉGIME DU CONTRAT.
+             *
+             * « Présent » était proposé à tout le monde. C'est le bon geste pour
+             * un CDI ou un CDD — ils sont attendus, l'opérateur ne coche que les
+             * écarts, et enregistrer sans rien changer dit la vérité.
+             *
+             * Pour un JOURNALIER, c'est l'inverse : il n'est pas attendu, il
+             * vient. L'opérateur cochait les trois venus ce matin et enregistrait
+             * — les sept autres partaient « présent » parce que c'est ce que
+             * l'écran proposait. Depuis que la paie lit ces journées, sept
+             * journées dues qu'aucune main n'avait voulu déclarer.
+             *
+             * Le geste CORRECT — ne rien toucher pour ceux qui ne sont pas venus —
+             * produisait donc le pire résultat possible.
+             *
+             * Un congé validé garde son pré-remplissage dans les deux régimes :
+             * c'est un fait déjà établi, pas une présomption. Et un pointage déjà
+             * saisi prime toujours, sans quoi rouvrir la grille effacerait le
+             * travail de la veille.
+             *
+             * Règle unique : cf. Employee::isPresumedPresent().
+             */
+            $defaut = $emp->isPresumedPresent() ? 'present' : 'absent';
+
             $status = $existing[$emp->id]->status
-                ?? ($onLeave->has($emp->id) ? 'conge' : 'present');
+                ?? ($onLeave->has($emp->id) ? 'conge' : $defaut);
 
             return [
                 'employee' => $emp,
