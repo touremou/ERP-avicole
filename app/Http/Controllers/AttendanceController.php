@@ -245,6 +245,34 @@ class AttendanceController extends Controller
                 ))
                 ->count();
 
+            /*
+             * LE RAPPORT SUIT LE MÊME RÉGIME QUE LA PAIE.
+             *
+             * Un JOURNALIER n'a pas de journée DUE : il a des journées
+             * CONSTATÉES. Lui appliquer le dénominateur du mois le faisait
+             * afficher « 26 jours travaillés » quand son bulletin en porte cinq
+             * — deux écrans du même mois, deux réponses, et c'est ce rapport que
+             * le bureau consulte avant de valider la paie.
+             *
+             * Son total est donc le nombre de journées qu'il a faites, et son
+             * taux n'a pas de dénominateur : on ne peut pas lui reprocher un jour
+             * qu'on ne lui devait pas. Le vrai renseignement, pour lui, est le
+             * NOMBRE — que la colonne porte déjà.
+             *
+             * Règle unique : cf. Employee::isPresumedPresent().
+             */
+            if (! $emp->isPresumedPresent()) {
+                $faites = $surJourOuvre('present') + $surJourOuvre('retard');
+
+                return [
+                    'employee'      => $emp,
+                    'counts'        => $counts,
+                    'total'         => $faites,
+                    'worked'        => $faites,
+                    'presence_rate' => 100.0,
+                ];
+            }
+
             $conges  = min($surJourOuvre('conge'), $joursOuvres);
             $dus     = max(0, $joursOuvres - $conges);          // jours réellement dus
             $absents = min($surJourOuvre('absent'), $dus);
