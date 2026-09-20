@@ -71,17 +71,50 @@
             @else
                 {{-- AUCUNE SESSION → ouverture --}}
                 @can('caisse.C')
-                <form method="POST" action="{{ route('cash-register.open') }}" class="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
+                @php
+                    /*
+                     * LE FOND D'OUVERTURE N'EST PAS UNE OPINION : le grand-livre
+                     * le connaît. Ce champ était codé en dur à zéro, et le
+                     * caissier tapait donc un nombre de mémoire — contre un
+                     * défaut faux dès la deuxième session.
+                     *
+                     * La clôture, elle, comparait le comptage au SOLDE DU
+                     * COMPTE. Les deux verdicts divergeaient exactement du
+                     * décalage entre le nombre tapé et ce solde : le lendemain
+                     * d'une clôture juste, tiroir intact, la caisse annonçait un
+                     * excédent égal à tout son contenu — alerte anti-
+                     * détournement comprise.
+                     *
+                     * On PROPOSE donc le solde. Le caissier garde la main : un
+                     * tiroir peut réellement différer, et c'est justement
+                     * l'événement qui mérite d'être saisi.
+                     */
+                    $soldesCaisse = $caisseAccounts->mapWithKeys(fn ($c) => [$c->id => (float) $c->current_balance]);
+                    $fondPropose  = (float) ($caisseAccounts->first()->current_balance ?? 0);
+                @endphp
+                <form method="POST" action="{{ route('cash-register.open') }}" class="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm"
+                      x-data="{ soldes: {{ $soldesCaisse->toJson() }}, fond: {{ $fondPropose }} }">
                     @csrf
                     <h3 class="text-[10px] font-black uppercase text-slate-500 tracking-widest mb-4"><i class="fa-solid fa-unlock mr-1"></i> {{ __("Ouvrir la caisse") }}</h3>
                     <label class="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">{{ __("Fond de caisse (espèces en début de journée)") }}</label>
                     <div class="flex gap-3">
-                        <input type="number" name="opening_float" min="0" step="1" value="0" required class="flex-1 bg-slate-50 border-none rounded-2xl p-4 text-lg font-black text-slate-800 shadow-inner outline-none text-right">
+                        <input type="number" name="opening_float" min="0" step="1" value="{{ $fondPropose }}" x-model.number="fond" required class="flex-1 bg-slate-50 border-none rounded-2xl p-4 text-lg font-black text-slate-800 shadow-inner outline-none text-right">
                         <button type="submit" class="bg-slate-900 text-white px-6 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-teal-600 transition-all border-none cursor-pointer">{{ __("Ouvrir") }}</button>
                     </div>
+                    @if($caisseAccounts->isNotEmpty())
+                    {{-- Le nombre que le système tient, en clair : le caissier compte
+                         son tiroir et voit tout de suite s'il s'en écarte. --}}
+                    <p class="text-[9px] font-black uppercase tracking-widest text-slate-400 mt-2 ml-1">
+                        {{ __("Solde au grand-livre") }} :
+                        <span class="text-slate-700" x-text="new Intl.NumberFormat('fr-FR').format(soldes[Object.keys(soldes)[0]] ?? 0) + ' GNF'"></span>
+                        <span x-show="fond !== (soldes[Object.keys(soldes)[0]] ?? 0)" class="text-amber-600 not-italic">
+                            — {{ __("écart d'ouverture saisi") }}
+                        </span>
+                    </p>
+                    @endif
                     @if($caisseAccounts->count() > 1)
                     <label class="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 mt-4 ml-1">{{ __("Compte de caisse") }}</label>
-                    <select name="treasury_account_id" class="w-full bg-slate-50 border-none rounded-2xl p-3 text-[11px] font-black uppercase text-slate-800 shadow-inner outline-none appearance-none cursor-pointer">
+                    <select name="treasury_account_id" x-on:change="fond = soldes[$event.target.value] ?? 0" class="w-full bg-slate-50 border-none rounded-2xl p-3 text-[11px] font-black uppercase text-slate-800 shadow-inner outline-none appearance-none cursor-pointer">
                         @foreach($caisseAccounts as $acc)<option value="{{ $acc->id }}">{{ $acc->name }}</option>@endforeach
                     </select>
                     @endif

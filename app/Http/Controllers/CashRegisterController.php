@@ -33,7 +33,16 @@ class CashRegisterController extends Controller
             'expectedNow'    => $open?->expectedCash(),
             'history'        => $history,
             'denominations'  => CashRegisterSession::DENOMINATIONS,
-            'caisseAccounts' => TreasuryAccount::active()->where('type', 'caisse')->orderBy('name')->get(['id', 'name']),
+            /*
+             * LE SOLDE VOYAGE AVEC LE COMPTE, et c'est le point du correctif.
+             *
+             * On ne chargeait que ['id', 'name'] : l'écran demandait au caissier
+             * le fond de caisse dans un champ codé en dur à zéro, sans jamais
+             * lui montrer le nombre que le système tient pourtant à jour — et
+             * s'en sert, dans la même requête, pour l'autre moitié du verdict.
+             */
+            'caisseAccounts' => TreasuryAccount::active()->where('type', 'caisse')
+                ->orderBy('name')->get(['id', 'name', 'current_balance']),
         ]);
     }
 
@@ -97,7 +106,39 @@ class CashRegisterController extends Controller
 
         $expected = $session->expectedCash();
 
-        DB::transaction(function () use ($session, $counted, $expected, $denoms, $data, $treasury) {
+        /*
+         * LE DÉSACCORD ENTRE LES DEUX VERDICTS, RENDU VISIBLE.
+         *
+         * La clôture produit deux écarts sur le même tiroir, dans la même
+         * requête, à partir de deux bases différentes :
+         *
+         *   • la SESSION      : difference = compté − expectedCash()
+         *                       (expectedCash part du fond TAPÉ à l'ouverture)
+         *   • la TRÉSORERIE   : delta      = compté − current_balance
+         *
+         * Par soustraction, ils divergent d'exactement :
+         *
+         *     delta − difference  =  expectedCash() − solde du compte
+         *                         =  fond tapé − solde à l'ouverture
+         *
+         * Ce décalage était absorbé en silence par l'écriture de clôture. La
+         * session pouvait annoncer un EXCÉDENT là où le grand-livre voyait un
+         * MANQUANT, sans que rien ne relève la contradiction — et c'est ce
+         * nombre-là, celui de la session, que porte l'alerte anti-détournement.
+         *
+         * L'écran propose désormais le solde à l'ouverture : accepté, les deux
+         * verdicts coïncident par construction. S'il est écarté — un tiroir
+         * peut réellement différer, et c'est l'événement à saisir — le décalage
+         * est NOMMÉ, ici et sur l'écriture.
+         */
+        $compteCaisse = $session->treasuryAccount
+            ?: TreasuryAccount::active()->where('type', 'caisse')->first();
+
+        $ecartOuverture = $compteCaisse
+            ? round($expected - (float) $compteCaisse->current_balance, 2)
+            : 0.0;
+
+        DB::transaction(function () use ($session, $counted, $expected, $denoms, $data, $treasury, $ecartOuverture) {
             $session->update([
                 'status'        => 'closed',
                 'closed_at'     => now(),
@@ -109,7 +150,7 @@ class CashRegisterController extends Controller
             ]);
 
             // Report en trésorerie : le compte Caisse suit le COMPTANT physique.
-            $this->syncTreasuryToCount($session, $counted, $treasury);
+            $this->syncTreasuryToCount($session, $counted, $treasury, $ecartOuverture);
         });
 
         /*
@@ -132,6 +173,21 @@ class CashRegisterController extends Controller
             ? 'Caisse clôturée — caisse juste.'
             : 'Caisse clôturée — écart de ' . money(abs($ecart)) . ($ecart > 0 ? ' (excédent).' : ' (manquant).');
 
+        // Le fond saisi s'écartait du grand-livre : on le dit, sans quoi l'écart
+        // ci-dessus se lit comme un écart de la journée alors qu'il vient d'avant.
+        if (abs($ecartOuverture) >= 0.01) {
+            $msg .= $ecartOuverture > 0
+                ? ' Écart d\'ouverture : le fond saisi dépassait le grand-livre de ' . money($ecartOuverture) . '.'
+                : ' Écart d\'ouverture : le fond saisi était inférieur au grand-livre de ' . money(abs($ecartOuverture)) . '.';
+        }
+
+        /*
+         * Le VERDICT reste celui de la session — c'est son écart à elle qui dit
+         * si la caisse est juste. Le décalage d'ouverture s'ajoute au texte sans
+         * teinter le message en rouge : à la toute première session, le fond
+         * physique entre légitimement au grand-livre, et transformer ce moment
+         * en alerte apprendrait à ignorer les vraies.
+         */
         return redirect()->route('cash-register.index')->with($ecart == 0 ? 'success' : 'error', $msg);
     }
 
@@ -143,8 +199,12 @@ class CashRegisterController extends Controller
      * clôture → zéro double comptage. Si aucun compte caisse n'est configuré, on
      * n'écrit rien (la session reste un outil de comptage autonome).
      */
-    private function syncTreasuryToCount(CashRegisterSession $session, float $counted, TreasuryService $treasury): void
-    {
+    private function syncTreasuryToCount(
+        CashRegisterSession $session,
+        float $counted,
+        TreasuryService $treasury,
+        float $ecartOuverture = 0.0
+    ): void {
         $account = $session->treasuryAccount
             ?: TreasuryAccount::active()->where('type', 'caisse')->first();
 
@@ -164,7 +224,10 @@ class CashRegisterController extends Controller
             [
                 'category'    => 'cloture_caisse',
                 'description' => 'Clôture caisse — comptant ' . money($counted)
-                                 . ((float) $session->difference != 0.0 ? ' (écart ' . money($session->difference) . ')' : ''),
+                                 . ((float) $session->difference != 0.0 ? ' (écart ' . money($session->difference) . ')' : '')
+                                 // Sans cette mention, l'écriture absorbait le décalage
+                                 // d'ouverture sans laisser de quoi le retrouver.
+                                 . (abs($ecartOuverture) >= 0.01 ? ' — dont écart d\'ouverture ' . money($ecartOuverture) : ''),
                 'reference'   => 'CAISSE-' . $session->id,
             ]
         );
