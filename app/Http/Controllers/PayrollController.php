@@ -12,6 +12,7 @@ use App\Services\PayrollService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
 class PayrollController extends Controller
@@ -262,12 +263,42 @@ class PayrollController extends Controller
             'payment_reference' => 'nullable|string|max:100',
         ]);
 
-        $payslip->update([
-            'payment_method'    => $validated['payment_method'],
-            'payment_reference' => $validated['payment_reference'] ?? null,
-            'payment_status'    => 'paye',
-            'paid_at'           => now(),
-        ]);
+        /*
+         * LES DEUX GARDES CI-DESSUS SONT EN CARTON EN PARALLÈLE.
+         *
+         * Elles lisent un bulletin SANS VERROU et HORS TRANSACTION : deux
+         * requêtes simultanées — un double-clic sur « Marquer payé » — les
+         * passent toutes les deux et marquent le bulletin deux fois. Le
+         * versement en trésorerie suit, deux fois, pour un salaire versé une.
+         *
+         * Même défaut, même remède que la validation de dépense, C1 et C3 :
+         * verrou → relecture verrouillante → contrôle → écriture, dans la
+         * transaction. Le re-contrôle sous verrou est ce qui sérialise
+         * réellement les deux requêtes.
+         */
+        $dejaRegle = DB::transaction(function () use ($payslip, $validated) {
+            $verrouille = Payslip::lockForUpdate()->findOrFail($payslip->id);
+
+            if ($verrouille->payment_status === 'paye') {
+                return true;
+            }
+
+            $verrouille->update([
+                'payment_method'    => $validated['payment_method'],
+                'payment_reference' => $validated['payment_reference'] ?? null,
+                'payment_status'    => 'paye',
+                'paid_at'           => now(),
+            ]);
+
+            return false;
+        });
+
+        if ($dejaRegle) {
+            return back()->with('error',
+                'Ce bulletin vient d\'être réglé par une autre saisie : le re-marquer'
+                . ' effacerait la trace du versement réel.'
+            );
+        }
 
         // Le salaire sort de la caisse : il doit s'y voir. Jamais bloquant —
         // perdre l'enregistrement d'un versement déjà effectué serait pire que

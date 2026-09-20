@@ -28,6 +28,23 @@ historiquement avalées) ; contrôle du moteur ajouté au runbook de déploiemen
 | **Correctif** | Résolution `Stock::lockForUpdate()` (et `Batch::lockForUpdate()` dans `destockBatch`) — contrôle sérialisé sous la transaction |
 | **Contre-preuve** | `SALE A: VALIDATED (0,18 s)` + `SALE B: REFUSED « Stock insuffisant … disponible 0 »` → **1 vente validée** ✅ |
 
+## C2 — Double validation d'une dépense → double décaissement (2026-09-20)
+
+| | |
+|---|---|
+| **Scénario** | 2 validations simultanées de la MÊME dépense espèces de 300 000 GNF (double-clic sur « Valider », ou re-POST après timeout 3G) |
+| **Preuve (avant)** | Sur 5 essais : **2 × DEUX écritures** → 600 000 GNF sortis pour 300 000, solde 9 400 000 au lieu de 9 700 000. 2 essais sauvés par un **interblocage InnoDB** (verrou partagé de clé étrangère sur `treasury_accounts`, puis `UPDATE` exclusif du solde) — le perdant recevait une `QueryException` brute, pas un refus métier. 1 essai sauvé par `alreadyPosted()` arrivé à temps. **Trois issues pour le même geste.** |
+| **Cause (deux étages)** | ① `ApproveExpense` contrôlait `status !== 'en_attente'` sur une dépense lue **sans verrou et hors transaction** — la garde en carton de la leçon n°1 ; ② `TreasuryPostingService::alreadyPosted()` est un `SELECT … EXISTS` joué **hors** de la transaction qui écrit, et la clé d'idempotence `(source_type, source_id)` ne portait qu'un index **SIMPLE** |
+| **Correctif** | ① `DB::transaction` + `Expense::lockForUpdate()` + re-contrôle **sous** le verrou (idem `PayrollController::markPaid`, qui avait la même faille) ; ② **index UNIQUE** `treasury_tx_source_unique (source_type, source_id)` — migration `2026_09_20_000001`, qui **dédoublonne d'abord et recrédite le compte** (un doublon avait déplacé le solde une seconde fois) ; ③ la violation d'unicité est **ravalée** dans `TreasuryPostingService` : pour le perdant de la course, « déjà comptabilisé » est la bonne réponse, pas une erreur 500 |
+| **Contre-preuve** | **10 essais sur 10** : `VALIDEE` + `REFUSEE « Seule une dépense en attente peut être validée. »` → **1 écriture, solde 9 700 000** à chaque fois ✅ (et le refus est désormais métier, plus un interblocage) |
+
+> **Pourquoi B2 était déclaré ✅ alors que ce trou existait.** `DatabaseConstraintGuardTest`
+> dérive sa liste du schéma — bonne idée — mais n'énumère que les tables portant une
+> colonne `uuid` (`if (! in_array('uuid', …)) continue;`). La clé d'idempotence de
+> `treasury_transactions` n'est pas un uuid : le garde-fou était **structurellement
+> aveugle** au seul cas qui manquait. Son propre commentaire dit pourtant que c'est
+> exactement le piège qu'il cherchait à supprimer.
+
 ## C3 — Double encaissement dépassant le dû
 
 | | |

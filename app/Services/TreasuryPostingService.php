@@ -7,6 +7,7 @@ use App\Models\Payment;
 use App\Models\TreasuryAccount;
 use App\Models\TreasuryTransaction;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -47,13 +48,13 @@ class TreasuryPostingService
         $direction = $amount >= 0 ? 'in' : 'out';
         $ref = $payment->sale?->reference;
 
-        return $this->service->record($account, $direction, abs($amount), [
+        return $this->ecrireUneSeuleFois(fn () => $this->service->record($account, $direction, abs($amount), [
             'date'        => optional($payment->payment_date)->toDateString() ?? now()->toDateString(),
             'category'    => $amount >= 0 ? 'vente' : 'remboursement',
             'description' => ($amount >= 0 ? 'Encaissement vente' : 'Remboursement vente') . ($ref ? " {$ref}" : ''),
             'reference'   => $payment->reference ?: $ref,
             'source'      => $payment,
-        ]);
+        ]));
     }
 
     /** Comptabilise une dépense VALIDÉE (sortie). Ignorée tant qu'elle n'est pas validée. */
@@ -78,13 +79,13 @@ class TreasuryPostingService
             return null;
         }
 
-        return $this->service->record($account, 'out', $amount, [
+        return $this->ecrireUneSeuleFois(fn () => $this->service->record($account, 'out', $amount, [
             'date'        => optional($expense->expense_date)->toDateString() ?? now()->toDateString(),
             'category'    => 'depense',
             'description' => 'Dépense ' . ($expense->label ?? $expense->reference ?? ''),
             'reference'   => $expense->reference,
             'source'      => $expense,
-        ]);
+        ]));
     }
 
     /** Comptabilise un règlement fournisseur (sortie ; avoir négatif → entrée). */
@@ -108,13 +109,13 @@ class TreasuryPostingService
         $direction = $amount >= 0 ? 'out' : 'in';
         $ref = $payment->invoice?->reference;
 
-        return $this->service->record($account, $direction, abs($amount), [
+        return $this->ecrireUneSeuleFois(fn () => $this->service->record($account, $direction, abs($amount), [
             'date'        => optional($payment->payment_date)->toDateString() ?? now()->toDateString(),
             'category'    => $amount >= 0 ? 'achat' : 'avoir_fournisseur',
             'description' => ($amount >= 0 ? 'Règlement fournisseur' : 'Avoir fournisseur') . ($ref ? " {$ref}" : ''),
             'reference'   => $payment->reference ?: $ref,
             'source'      => $payment,
-        ]);
+        ]));
     }
 
     /**
@@ -149,14 +150,14 @@ class TreasuryPostingService
 
         $employe = trim(($payslip->employee?->first_name ?? '') . ' ' . ($payslip->employee?->last_name ?? ''));
 
-        return $this->service->record($account, 'out', $amount, [
+        return $this->ecrireUneSeuleFois(fn () => $this->service->record($account, 'out', $amount, [
             'date'        => optional($payslip->paid_at)->toDateString() ?? now()->toDateString(),
             'category'    => 'salaire',
             'description' => 'Salaire ' . ($employe !== '' ? $employe : "bulletin #{$payslip->id}")
                 . ($payslip->period?->label ? " — {$payslip->period->label}" : ''),
             'reference'   => $payslip->payment_reference,
             'source'      => $payslip,
-        ]);
+        ]));
     }
 
     /**
@@ -212,6 +213,35 @@ class TreasuryPostingService
         return TreasuryTransaction::where('source_type', $source->getMorphClass())
             ->where('source_id', $source->getKey())
             ->exists();
+    }
+
+    /**
+     * ÉCRIT L'ÉCRITURE, ET NE LA COMPTE QU'UNE FOIS.
+     *
+     * `alreadyPosted()` est un `SELECT … EXISTS` joué HORS de la transaction qui
+     * écrit. En série il suffit ; en parallèle, deux requêtes le passent toutes
+     * les deux (prouvé par drill deux processus : deux écritures, 600 000 GNF
+     * sortis pour une dépense de 300 000). La vraie garantie est l'index UNIQUE
+     * sur `(source_type, source_id)`.
+     *
+     * L'index posé, le perdant de la course se voit refuser son INSERT. Ce refus
+     * n'est PAS une erreur à remonter : il dit exactement ce qu'on voulait — la
+     * pièce est déjà comptabilisée. On le ravale et on rend `null`, comme le
+     * ferait `alreadyPosted()` s'il avait vu la ligne à temps.
+     *
+     * Le faire ici, et non chez chaque appelant, est délibéré : quatre chemins
+     * postent (vente, dépense, règlement fournisseur, salaire), et les brancher
+     * un par un rouvrirait le trou au cinquième.
+     */
+    private function ecrireUneSeuleFois(callable $ecriture): ?TreasuryTransaction
+    {
+        try {
+            return $ecriture();
+        } catch (UniqueConstraintViolationException $e) {
+            Log::info('Trésorerie : écriture déjà comptabilisée par une requête concurrente — ignorée.');
+
+            return null;
+        }
     }
 
     /** Override explicite, sinon mapping mode→compte. */
