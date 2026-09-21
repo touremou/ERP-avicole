@@ -9,6 +9,7 @@
         unit: 'Sac',
         inputQty: 0,
         unitPrice: 0,
+        paymentMode: 'comptant',
         get availableUnits() {
             if (this.cat === 'conso') {
                 if (this.consoType === 'Aliment') return ['KG', 'Sac'];
@@ -113,10 +114,25 @@
                 {{-- 03b. RÈGLEMENT (comptant = soldé ; crédit = dette fournisseur) --}}
                 <div>
                     <label class="text-[9px] uppercase text-slate-400 ml-4 mb-2 block tracking-widest font-black">{{ __("Règlement") }}</label>
-                    <select name="payment_mode" class="w-full bg-slate-50 border-none rounded-xl p-4 font-black text-xs uppercase shadow-inner italic outline-none">
+                    <select name="payment_mode" class="w-full bg-slate-50 border-none rounded-xl p-4 font-black text-xs uppercase shadow-inner italic outline-none" x-model="paymentMode">
                         <option value="comptant">{{ __("Payé comptant (soldé)") }}</option>
                         <option value="credit">{{ __("À crédit (dette fournisseur)") }}</option>
                     </select>
+
+                    {{-- Un achat comptant sort l'argent d'une caisse. Avec plusieurs,
+                         c'est ici qu'on dit laquelle — sinon la sortie tombe toujours
+                         sur la première. À crédit, rien ne sort : le champ se retire. --}}
+                    @if(($treasuryAccounts ?? collect())->count() > 1)
+                    <div class="mt-3" x-show="paymentMode === 'comptant'" x-cloak>
+                        <label class="text-[9px] uppercase text-slate-400 ml-4 mb-2 block tracking-widest font-black">{{ __("Compte débité") }}</label>
+                        <select name="treasury_account_id" class="w-full bg-slate-50 border-none rounded-xl p-4 font-black text-xs uppercase shadow-inner italic outline-none">
+                            <option value="">{{ __("Auto (selon le mode)") }}</option>
+                            @foreach($treasuryAccounts as $acc)
+                                <option value="{{ $acc->id }}">{{ $acc->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    @endif
                 </div>
 
                 {{-- 04. QUANTITÉ + COÛT --}}

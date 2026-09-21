@@ -387,7 +387,14 @@ class BatchController extends Controller
             ];
         });
 
-        return view('batches.show', compact('batch', 'buildings', 'protocols', 'providers', 'stats', 'feedAdvice', 'batchAdvisories', 'feedAutonomy', 'normModels', 'weightCurve', 'feedStocks'));
+        /*
+         * Un achat d'aliment payé COMPTANT crée un règlement fournisseur, donc
+         * une sortie de trésorerie. Avec plusieurs caisses, il faut pouvoir dire
+         * laquelle a payé — sinon la sortie tombe toujours sur la première.
+         */
+        $treasuryAccounts = \App\Models\TreasuryAccount::active()->orderBy('name')->get(['id', 'name']);
+
+        return view('batches.show', compact('batch', 'buildings', 'protocols', 'providers', 'stats', 'feedAdvice', 'batchAdvisories', 'feedAutonomy', 'normModels', 'weightCurve', 'feedStocks', 'treasuryAccounts'));
     }
 
     /**

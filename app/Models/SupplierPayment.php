@@ -43,6 +43,12 @@ class SupplierPayment extends Model
         return $this->belongsTo(User::class, 'paid_by');
     }
 
+    /** Le compte de trésorerie d'où l'argent est sorti, quand il a été désigné. */
+    public function account(): BelongsTo
+    {
+        return $this->belongsTo(TreasuryAccount::class, 'treasury_account_id');
+    }
+
     public function getMethodLabelAttribute(): string
     {
         return self::METHODS[$this->method] ?? ucfirst((string) $this->method);

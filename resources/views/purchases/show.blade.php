@@ -70,6 +70,22 @@
                     </select>
                     <button type="submit" class="bg-emerald-600 text-white rounded-xl p-3 text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-all border-none cursor-pointer italic">{{ __("Régler") }}</button>
                 </div>
+                {{-- DE QUEL COMPTE SORT L'ARGENT. Même sélecteur que l'écran de
+                     dépense : « Auto » garde la résolution par le mode de paiement,
+                     qui suffit tant qu'il n'y a qu'une caisse. Avec deux, c'est ici
+                     qu'on dit laquelle a payé — sans quoi le décaissement tombe
+                     toujours sur la première. --}}
+                @if($treasuryAccounts->count() > 1)
+                <div class="mt-3">
+                    <label class="block text-[9px] font-black uppercase text-emerald-600/70 tracking-widest mb-2 ml-1">{{ __("Compte débité") }}</label>
+                    <select name="treasury_account_id" class="w-full bg-white border-none rounded-xl p-3 text-[10px] font-black uppercase outline-none">
+                        <option value="">{{ __("Auto (selon le mode)") }}</option>
+                        @foreach($treasuryAccounts as $acc)
+                            <option value="{{ $acc->id }}" {{ (int) old('treasury_account_id') === $acc->id ? 'selected' : '' }}>{{ $acc->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                @endif
             </form>
             @endif
             @endcan
@@ -83,11 +99,14 @@
                         <tr>
                             <td class="px-6 py-3 text-[10px] font-black text-slate-400">{{ $p->payment_date->format('d/m/Y') }}</td>
                             <td class="px-3 py-3 text-[10px] font-black text-slate-500 uppercase">{{ $p->method_label }}</td>
+                            {{-- Le compte réellement débité : sans cette colonne, désigner
+                                 un compte ne se vérifie nulle part. --}}
+                            <td class="px-3 py-3 text-[10px] font-bold text-slate-400 uppercase">{{ $p->account?->name ?? '—' }}</td>
                             <td class="px-3 py-3 text-[10px] font-bold text-slate-400">{{ $p->payer?->name }}</td>
                             <td class="px-6 py-3 text-right text-[11px] font-black {{ $p->amount < 0 ? 'text-rose-600' : 'text-emerald-600' }}">{{ number_format($p->amount, 0, ',', ' ') }}</td>
                         </tr>
                         @empty
-                        <tr><td colspan="4" class="px-6 py-8 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">{{ __("Aucun règlement.") }}</td></tr>
+                        <tr><td colspan="5" class="px-6 py-8 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">{{ __("Aucun règlement.") }}</td></tr>
                         @endforelse
                     </tbody>
                 </table>
