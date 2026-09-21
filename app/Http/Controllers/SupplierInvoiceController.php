@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Provider;
 use App\Models\SupplierInvoice;
 use App\Models\SupplierPayment;
+use App\Models\TreasuryAccount;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -105,9 +106,29 @@ class SupplierInvoiceController extends Controller
     {
         if (Gate::denies('depenses.L')) return back()->with('error', 'Accès restreint.');
 
-        $invoice->load(['provider', 'payments.payer', 'expense', 'user']);
+        $invoice->load(['provider', 'payments.payer', 'payments.account', 'expense', 'user']);
 
-        return view('purchases.show', compact('invoice'));
+        /*
+         * DE QUEL COMPTE SORT L'ARGENT — la question que cet écran ne posait pas.
+         *
+         * `supplier_payments.treasury_account_id` existe, et
+         * `TreasuryPostingService::resolveAccount()` le lit EN PRIORITÉ sur le
+         * mode de paiement. Mais aucun des chemins de règlement fournisseur ne
+         * le remplissait : colonne lue, jamais écrite.
+         *
+         * Les trois autres portes le proposent pourtant déjà — `CreateExpense`,
+         * `RecordPayment`, `CreateSale` acceptent toutes un compte explicite, et
+         * l'écran de dépense offre le même sélecteur « Auto (selon le mode) ».
+         * Le règlement fournisseur était le seul à ne pas le faire.
+         *
+         * Conséquence pour une ferme à deux caisses : le décaissement tombait
+         * toujours sur la PREMIÈRE caisse active, quelle que soit celle qui
+         * avait réellement payé. Les deux soldes étaient faux, en sens inverses,
+         * et aucun écran ne permettait de le dire.
+         */
+        $treasuryAccounts = TreasuryAccount::active()->orderBy('name')->get(['id', 'name']);
+
+        return view('purchases.show', compact('invoice', 'treasuryAccounts'));
     }
 
     /** Validation : poste la dépense miroir (coût au P&L, une seule fois). */
@@ -181,6 +202,9 @@ class SupplierInvoiceController extends Controller
             'payment_date' => 'required|date',
             'reference'    => 'nullable|string|max:255',
             'notes'        => 'nullable|string|max:500',
+            // Même contrat que StoreExpenseRequest et StorePaymentRequest : le
+            // compte est FACULTATIF, « vide » laissant la résolution par le mode.
+            'treasury_account_id' => 'nullable|exists:treasury_accounts,id',
         ]);
 
         $amount = round((float) $data['amount'], 2);
@@ -212,6 +236,7 @@ class SupplierInvoiceController extends Controller
                 'amount'              => $amount,
                 'payment_date'        => $data['payment_date'],
                 'method'              => $data['method'],
+                'treasury_account_id' => $data['treasury_account_id'] ?? null,
                 'reference'           => $data['reference'] ?? null,
                 'notes'               => $data['notes'] ?? null,
                 'paid_by'             => Auth::id(),

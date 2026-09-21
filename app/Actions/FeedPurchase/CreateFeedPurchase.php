@@ -148,6 +148,10 @@ class CreateFeedPurchase
                             'amount'              => $purchase->total_price,
                             'payment_date'        => $data['purchase_date'],
                             'method'              => 'especes',
+                            // La caisse qui a réellement payé, quand la ferme en a
+                            // plusieurs. Sans elle, la sortie tombe toujours sur la
+                            // première caisse active.
+                            'treasury_account_id' => $data['treasury_account_id'] ?? null,
                             'notes'               => "Réglé à l'achat (aliment)",
                             'paid_by'             => Auth::id(),
                         ]);
