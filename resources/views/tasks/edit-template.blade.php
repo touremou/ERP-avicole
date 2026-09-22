@@ -26,13 +26,23 @@
                             <label class="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">{{ __("Catégorie") }}</label>
                             @include('tasks.partials.category-select', ['selected' => $template->category])
                         </div>
-                        <div>
-                            <label class="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">{{ __("Fréquence") }}</label>
-                            <select name="frequency" class="w-full bg-slate-50 border-none rounded-xl p-3 text-xs font-black shadow-inner outline-none">
-                                @foreach(['quotidien' => __("Quotidien"), 'hebdo' => __("Hebdomadaire"), 'mensuel' => __("Mensuel")] as $k => $v)
-                                    <option value="{{ $k }}" {{ $template->frequency === $k ? 'selected' : '' }}>{{ $v }}</option>
-                                @endforeach
-                            </select>
+                        <div x-data="{ frequence: @js($template->frequency) }" class="contents">
+                            <div>
+                                <label class="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">{{ __("Fréquence") }}</label>
+                                <select name="frequency" x-model="frequence" class="w-full bg-slate-50 border-none rounded-xl p-3 text-xs font-black shadow-inner outline-none">
+                                    @foreach(['quotidien' => __("Quotidien"), 'hebdo' => __("Hebdomadaire"), 'mensuel' => __("Mensuel")] as $k => $v)
+                                        <option value="{{ $k }}" {{ $template->frequency === $k ? 'selected' : '' }}>{{ $v }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            {{-- Le jour du mois : exigé pour un modèle mensuel, sans quoi
+                                 il ne se déclenche jamais. --}}
+                            <div x-show="frequence === 'mensuel'" x-cloak>
+                                <label class="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">{{ __("Jour du mois") }}</label>
+                                <input type="number" name="day_of_month" min="1" max="31"
+                                       value="{{ old('day_of_month', $template->day_of_month ?: 1) }}"
+                                       class="w-full bg-slate-50 border-none rounded-xl p-3 text-xs font-black shadow-inner outline-none text-center">
+                            </div>
                         </div>
                     </div>
 

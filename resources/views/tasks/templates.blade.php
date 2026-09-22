@@ -28,14 +28,24 @@
                             </div>
                         </div>
 
-                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4" x-data="{ frequence: 'quotidien' }">
                             <div>
                                 <label class="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">{{ __("Fréquence") }}</label>
-                                <select name="frequency" required class="w-full bg-slate-50 border-none rounded-xl p-3 text-xs font-black shadow-inner outline-none">
+                                <select name="frequency" required x-model="frequence" class="w-full bg-slate-50 border-none rounded-xl p-3 text-xs font-black shadow-inner outline-none">
                                     <option value="quotidien">{{ __("Quotidien") }}</option>
                                     <option value="hebdo">{{ __("Hebdomadaire") }}</option>
                                     <option value="mensuel">{{ __("Mensuel") }}</option>
                                 </select>
+                            </div>
+                            {{-- LE JOUR DU MOIS. Sans lui, un modèle « Mensuel » ne se
+                                 déclenche JAMAIS : shouldRunOnDay compare le jour du
+                                 calendrier à null, faux les 31 jours du mois. On le
+                                 demande donc dès que la fréquence l'exige. --}}
+                            <div x-show="frequence === 'mensuel'" x-cloak>
+                                <label class="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">{{ __("Jour du mois") }}</label>
+                                <input type="number" name="day_of_month" min="1" max="31" value="{{ old('day_of_month', 1) }}"
+                                       class="w-full bg-slate-50 border-none rounded-xl p-3 text-xs font-black shadow-inner outline-none text-center">
+                                <p class="text-[7px] font-bold text-slate-400 mt-1 italic">{{ __("29 à 31 : ramené au dernier jour des mois plus courts.") }}</p>
                             </div>
                             <div>
                                 <label class="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">{{ __("Heure") }}</label>

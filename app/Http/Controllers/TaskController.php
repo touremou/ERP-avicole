@@ -400,6 +400,15 @@ class TaskController extends Controller
             // Saisonnalité (S1) : aucun mois coché = toute l'année.
             'months'           => 'nullable|array',
             'months.*'         => 'integer|min:1|max:12',
+            /*
+             * UN MODÈLE MENSUEL SANS JOUR NE SE DÉCLENCHE JAMAIS.
+             *
+             * `shouldRunOnDay` compare `$date->day === $this->day_of_month` :
+             * avec `null`, c'est faux les 31 jours du mois, indéfiniment. Le
+             * formulaire proposait « Mensuel » et ne demandait pas le jour —
+             * la tâche était créée, active, et invisible pour toujours.
+             */
+            'day_of_month'     => 'required_if:frequency,mensuel|nullable|integer|min:1|max:31',
             'scheduled_time'   => 'nullable',
             'duration_minutes' => 'required|integer|min:5|max:480',
             'priority'         => 'required|in:basse,normale,haute,critique',
@@ -437,6 +446,7 @@ class TaskController extends Controller
             'frequency'        => $validated['frequency'],
             'days_of_week'     => $validated['days_of_week'] ?? null,
             'months'           => $validated['months'] ?? null,
+            'day_of_month'     => $validated['frequency'] === 'mensuel' ? $validated['day_of_month'] : null,
             'scheduled_time'   => $validated['scheduled_time'] ?? null,
             'duration_minutes' => $validated['duration_minutes'],
             'priority'         => $validated['priority'],
@@ -474,6 +484,21 @@ class TaskController extends Controller
             'frequency'        => 'required|in:quotidien,hebdo,mensuel,ponctuel',
             'days_of_week'     => 'nullable|array',
             'days_of_week.*'   => 'integer|min:1|max:7',
+            /*
+             * LES MOIS ÉTAIENT PROPOSÉS PAR L'ÉCRAN ET IGNORÉS PAR LA PORTE.
+             *
+             * `edit-template.blade.php` rend douze cases `months[]`, pré-cochées
+             * depuis le modèle. La création les enregistre ; la MODIFICATION ne
+             * les validait ni ne les écrivait. Décocher « saison des pluies »
+             * puis enregistrer ne changeait rien, sans le moindre message.
+             *
+             * La saisonnalité ne pouvait donc se régler qu'à la création, et
+             * jamais se corriger — alors que c'est précisément un réglage qu'on
+             * ajuste après une première saison.
+             */
+            'months'           => 'nullable|array',
+            'months.*'         => 'integer|min:1|max:12',
+            'day_of_month'     => 'required_if:frequency,mensuel|nullable|integer|min:1|max:31',
             'scheduled_time'   => 'nullable',
             'duration_minutes' => 'required|integer|min:5|max:480',
             'priority'         => 'required|in:basse,normale,haute,critique',
@@ -502,6 +527,8 @@ class TaskController extends Controller
             'category'         => $validated['category'],
             'frequency'        => $validated['frequency'],
             'days_of_week'     => $validated['days_of_week'] ?? null,
+            'months'           => $validated['months'] ?? null,
+            'day_of_month'     => $validated['frequency'] === 'mensuel' ? $validated['day_of_month'] : null,
             'scheduled_time'   => $validated['scheduled_time'] ?? null,
             'duration_minutes' => $validated['duration_minutes'],
             'priority'         => $validated['priority'],
