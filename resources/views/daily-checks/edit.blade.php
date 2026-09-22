@@ -287,6 +287,22 @@
                         </div>
                         @endif
 
+                        {{-- ÉTAT SANITAIRE — corrigeable, comme il est déclarable.
+                             Le pointage du jour est UNIQUE par lot : sans ce champ,
+                             une alerte mal saisie le matin ne pouvait plus être
+                             rectifiée, et c'est elle que l'historique du lot expose
+                             à l'application mobile. Pré-sélectionné sur la valeur
+                             enregistrée : ré-enregistrer sans y toucher ne change
+                             rien. --}}
+                        <div class="w-full md:w-72 mb-6">
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 italic tracking-widest leading-none">{{ __("État Sanitaire Global") }}</label>
+                            <select name="health_status" class="w-full p-4 bg-slate-50 border-none rounded-2xl font-black text-xs uppercase focus:ring-2 focus:ring-blue-500 shadow-inner appearance-none transition-all cursor-pointer italic text-left">
+                                @foreach(['Normal' => '🟢 Normal (RAS)', 'Alerte' => '🟡 Alerte (Surveillance)', 'Critique' => '🔴 Critique (Urgence)'] as $v => $libelle)
+                                    <option value="{{ $v }}" {{ old('health_status', $check->health_status) === $v ? 'selected' : '' }}>{{ $libelle }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
                         <textarea name="observations" rows="3" class="w-full bg-slate-50 rounded-[2rem] p-6 outline-none focus:bg-white border-2 border-transparent focus:border-blue-500 font-bold text-slate-600 transition shadow-inner text-xs uppercase italic"
                                   placeholder="{{ __('JUSTIFICATION OBLIGATOIRE DE LA RECTIFICATION (qui, pourquoi, source de données...)') }}">{{ old('observations', $check->observations) }}</textarea>
                         <p class="text-[8px] text-slate-300 font-black uppercase tracking-widest mt-2 italic leading-none">
