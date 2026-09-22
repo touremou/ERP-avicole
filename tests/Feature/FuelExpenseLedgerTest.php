@@ -71,8 +71,17 @@ test('modifier un achat répercute le montant sur la dépense liée', function (
 
     $purchase = FuelPurchase::withoutGlobalScopes()->latest('id')->first();
 
+    /*
+     * La charge utile porte AUSSI la cuve et la date : le formulaire les rend
+     * en champs `required` pré-remplis, donc le navigateur les envoie toujours.
+     * Les omettre ici ne passait que parce que le contrôleur les ignorait — le
+     * défaut corrigé par ailleurs. L'intention de ce test — la répercussion du
+     * montant, sans doublon de dépense — est inchangée.
+     */
     $this->actingAs($this->manager)->put(route('utilities.fuel.update', $purchase), [
-        'quantity_liters' => 80, 'unit_price' => 1000,
+        'energy_source_id' => $this->source->id,
+        'purchase_date'    => now()->toDateString(),
+        'quantity_liters'  => 80, 'unit_price' => 1000,
     ])->assertSessionHasNoErrors();
 
     $expense = Expense::withoutGlobalScopes()->find($purchase->expense_id);
