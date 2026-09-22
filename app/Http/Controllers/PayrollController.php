@@ -655,14 +655,107 @@ class PayrollController extends Controller
         );
     }
 
+    /**
+     * RETOUR ANTICIPÉ — l'agent rentre avant la fin de son congé.
+     *
+     * Cette méthode posait `status = 'termine'` et n'en tirait AUCUNE
+     * conséquence. Elle laissait donc la date de fin, le décompte et le solde
+     * décrire un congé qui n'a pas eu lieu.
+     *
+     * ─── MESURÉ ───
+     *
+     * Un congé annuel du 8 au 22 juin — quinze jours calendaires, TREIZE
+     * ouvrés — fait passer le solde de 30 à 17. L'agent est rappelé et revient
+     * le 10, après DEUX jours ouvrés :
+     *
+     *   • son solde reste à 17 — les ONZE jours non pris sont perdus ;
+     *   • `end_date` annonce toujours le 22 et `days_count` toujours 13 ;
+     *   • il ne peut pas REPOSER ces jours : `overlapping()` compte « termine »
+     *     parmi les statuts qui occupent le calendrier, et le congé occupe
+     *     encore sa durée d'origine. Il est bloqué par son propre congé ;
+     *   • la paie compte TREIZE jours de congé (`['approuve','en_cours',
+     *     'termine']`) sur des jours qu'il a travaillés.
+     *
+     * ─── ET UN CONTRÔLE QUI SAUTAIT ───
+     *
+     * Aucune garde de statut : « terminer » une demande JAMAIS APPROUVÉE la
+     * faisait passer à « termine ». Or approuver exige `rh.S`, terminer se
+     * contente de `rh.M` — et la paie compte « termine ». Un gestionnaire
+     * pouvait donc faire reconnaître un congé sans l'approbation que le système
+     * présente comme le point de contrôle, et sans rien prélever du solde,
+     * puisque le décompte n'a lieu qu'à l'approbation.
+     *
+     * ─── LA RÈGLE POSÉE ───
+     *
+     * On ne termine que ce qui est EN COURS, et on enregistre ce qui s'est
+     * réellement passé : la fin au dernier jour réellement absent, le décompte
+     * recalculé par la MÊME déclaration que la paie
+     * (`PayrollService::workingDaysBetween`), et les jours non pris RENDUS —
+     * symétrique exact de `applyLeaveApproval`.
+     */
     public function endLeave(EmployeeLeave $leave)
     {
         if (Gate::denies('rh.M')) return back()->with('error', 'Non autorisé.');
 
-        $leave->update(['status' => 'termine']);
-        $leave->employee->update(['status' => 'Actif']);
+        if (! in_array($leave->status, ['approuve', 'en_cours'], true)) {
+            return back()->with('error',
+                "Seul un congé approuvé peut être clos par un retour : celui-ci est « {$leave->status} »."
+                . ' Une demande se refuse ou s\'approuve, elle ne se termine pas.'
+            );
+        }
 
-        return back()->with('success', "{$leave->employee->first_name} est de retour.");
+        // Un congé qui n'a pas commencé s'annule ; le clore poserait un jour
+        // d'absence que personne n'a pris.
+        if ($leave->start_date->copy()->startOfDay()->gt(today())) {
+            return back()->with('error',
+                'Ce congé ne commence que le ' . $leave->start_date->format('d/m/Y')
+                . " : il n'y a pas de retour à enregistrer."
+            );
+        }
+
+        $rendus = DB::transaction(function () use ($leave) {
+            $decompteAvant = (int) $leave->days_count;
+
+            /*
+             * Le dernier jour réellement absent est HIER — l'agent est là
+             * aujourd'hui. Borné au premier jour du congé : rentrer le jour même
+             * de son départ enregistre cette journée-là, et jamais moins.
+             */
+            $finReelle = today()->subDay()->max($leave->start_date->copy()->startOfDay());
+
+            $decompteApres = PayrollService::workingDaysBetween(
+                $leave->start_date->copy()->startOfDay(),
+                $finReelle->copy()->startOfDay(),
+            );
+
+            $leave->update([
+                'status'     => 'termine',
+                'end_date'   => $finReelle->toDateString(),
+                'days_count' => $decompteApres,
+            ]);
+
+            $leave->employee?->update(['status' => 'Actif']);
+
+            // Symétrique d'`applyLeaveApproval` : elle ne prélève que sur le
+            // congé annuel, on ne rend que là.
+            $rendus = max(0, $decompteAvant - $decompteApres);
+
+            if ($rendus > 0 && $leave->type === 'conge_annuel'
+                && \Illuminate\Support\Facades\Schema::hasColumn('employees', 'annual_leave_balance')) {
+                $leave->employee?->increment('annual_leave_balance', $rendus);
+            }
+
+            return $rendus;
+        });
+
+        $message = "{$leave->employee->first_name} est de retour.";
+
+        if ($rendus > 0) {
+            $message .= " {$rendus} jour" . ($rendus > 1 ? 's' : '') . ' non pris'
+                . ($rendus > 1 ? ' rendus' : ' rendu') . ' à son solde de congés.';
+        }
+
+        return back()->with('success', $message);
     }
 
     /**
