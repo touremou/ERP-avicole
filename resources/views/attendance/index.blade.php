@@ -29,14 +29,26 @@
                 <div class="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden divide-y divide-slate-50">
                     @forelse($rows as $row)
                         @php $emp = $row['employee']; @endphp
-                        <div class="flex items-center justify-between gap-4 p-5">
+                        <div class="flex items-center justify-between gap-4 p-5"
+                             x-data="{ statut: @js($row['status']) }">
                             <div class="min-w-0">
                                 <p class="text-xs font-black text-slate-800 uppercase truncate">{{ $emp->first_name }} {{ $emp->last_name }}</p>
                                 <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest">{{ $emp->job_title ?? '—' }}
                                     @if($row['locked'])<span class="text-amber-500 ml-1">· {{ __("congé validé") }}</span>@endif
                                 </p>
                             </div>
-                            <select name="status[{{ $emp->id }}]" @class([
+                            {{-- HEURE D'ARRIVÉE — la pièce qui justifie un « retard ».
+                                 Pré-remplie de ce qui est enregistré : ré-enregistrer la
+                                 grille sans y toucher ne doit rien effacer, surtout pas une
+                                 heure relevée au téléphone. Elle se retire pour un absent
+                                 ou un congé — quelqu'un qui n'est pas venu n'a pas d'heure
+                                 d'arrivée ; le serveur applique la même règle. --}}
+                            <input type="time" name="check_in_time[{{ $emp->id }}]"
+                                   value="{{ $row['check_in'] }}"
+                                   x-show="['present','retard'].includes(statut)" x-cloak
+                                   title="{{ __('Heure d’arrivée') }}"
+                                   class="shrink-0 w-24 p-3 rounded-xl font-black text-[10px] bg-slate-50 text-slate-600 shadow-inner outline-none border-none">
+                            <select name="status[{{ $emp->id }}]" x-model="statut" @class([
                                 'shrink-0 w-36 p-3 rounded-xl font-black text-[10px] uppercase shadow-inner outline-none appearance-none cursor-pointer border-none',
                                 'bg-emerald-50 text-emerald-700' => $row['status'] === 'present',
                                 'bg-amber-50 text-amber-700' => $row['status'] === 'retard',
