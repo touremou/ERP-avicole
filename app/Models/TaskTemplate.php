@@ -278,7 +278,25 @@ class TaskTemplate extends Model
         return match($this->frequency) {
             'quotidien'  => $this->days_of_week === null || in_array($date->dayOfWeekIso, $this->days_of_week ?? []),
             'hebdo'      => in_array($date->dayOfWeekIso, $this->days_of_week ?? []),
-            'mensuel'    => $date->day === $this->day_of_month,
+            /*
+             * MENSUEL — LE JOUR DEMANDÉ, RAMENÉ AU MOIS QUI EXISTE.
+             *
+             * Deux façons de ne jamais se déclencher tenaient dans cette seule
+             * comparaison `$date->day === $this->day_of_month` :
+             *
+             *   • `day_of_month` À NULL. Le formulaire proposait « Mensuel » et
+             *     ne demandait pas le jour : la tâche naissait active et muette,
+             *     fausse les 31 jours du mois, indéfiniment. Le formulaire
+             *     l'exige désormais ; les modèles créés AVANT retombent sur le
+             *     1er — ils ont été voulus mensuels, les laisser invisibles
+             *     serait leur préférer le défaut ;
+             *
+             *   • LE 29, LE 30, LE 31. Un inventaire réglé au 31 sautait
+             *     février, avril, juin, septembre et novembre — cinq mois sur
+             *     douze, sans rien dire. On ramène donc le jour demandé au
+             *     dernier jour du mois : « le 31 » veut dire « le dernier ».
+             */
+            'mensuel'    => $date->day === min($this->day_of_month ?: 1, $date->daysInMonth),
             // 'ponctuel' : JAMAIS auto-généré, et c'est voulu. Une récolte ne se
             // planifie pas au calendrier : elle vient de l'itinéraire technique
             // (étape « recolte » en jours après semis), via
