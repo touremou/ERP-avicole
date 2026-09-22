@@ -53,6 +53,30 @@ class StoreDailyCheckRequest extends FormRequest
             'qty_sorted_out'    => 'nullable|integer|min:0',
             'treatment_type'    => 'nullable|string|max:255',
             'treatment_name'    => 'nullable|string|max:255',
+            /*
+             * L'ÉTAT SANITAIRE DÉCLARÉ PAR L'OPÉRATEUR — jeté par le bureau.
+             *
+             * L'écran de pointage rend `<select name="health_status" required>`
+             * et fait choisir entre Normal, Alerte et Critique. Cette règle
+             * n'existait pas : `$request->validated()` ne rendait donc jamais le
+             * champ, et la colonne retombait sur son défaut « Normal ».
+             *
+             * Mesuré — un technicien déclarant « Critique » sur un lot :
+             *   • par le BUREAU  : pointage créé, health_status = « Normal »,
+             *     sans le moindre message. L'alerte est effacée en silence ;
+             *   • par le TERRAIN : health_status = « Critique ».
+             *
+             * Le même geste, deux portes, deux réponses contraires — et c'est le
+             * bureau qui perd l'alarme. `SyncService` affirme pourtant en
+             * commentaire que « health_status est obligatoire côté web » et
+             * complète par défaut à ce titre : la supposition était fausse.
+             *
+             * `nullable` et non `required` : la colonne porte son propre défaut
+             * (« Normal »), et plusieurs chemins de service créent un pointage
+             * sans se prononcer. Ce qui manquait, ce n'était pas une exigence —
+             * c'était d'ÉCOUTER la réponse quand elle est donnée.
+             */
+            'health_status'     => 'nullable|in:Normal,Alerte,Critique',
             'observations'      => 'nullable|string|max:2000',
             'litter_changed'    => 'nullable|boolean',
             'manure_collected_kg' => 'nullable|numeric|min:0|max:100000',

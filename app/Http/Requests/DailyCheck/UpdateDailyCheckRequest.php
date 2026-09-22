@@ -47,6 +47,11 @@ class UpdateDailyCheckRequest extends FormRequest
             'qty_sorted_out'     => 'nullable|integer|min:0',
             'treatment_type'     => 'nullable|string|max:255',
             'treatment_name'     => 'nullable|string|max:255',
+            // Même règle que la création : un état sanitaire qu'on peut
+            // déclarer mais jamais corriger serait un piège — d'autant que le
+            // pointage du jour est unique par lot, donc la correction passe
+            // FORCÉMENT par ici.
+            'health_status'      => 'nullable|in:Normal,Alerte,Critique',
             'observations'       => 'nullable|string|max:2000',
             'litter_changed'     => 'nullable|boolean',
             'manure_collected_kg' => 'nullable|numeric|min:0|max:100000',
