@@ -31,6 +31,22 @@ Schedule::command('farm:release-buildings')->daily();
 // idempotente, et elle écrit en direct sans réveiller l'observer.
 Schedule::command('batches:rebuild-quantities --force')->daily();
 
+/*
+ * CONTRÔLE HEBDOMADAIRE DE LA TRÉSORERIE — SANS --force, DÉLIBÉRÉMENT.
+ *
+ * Elle CONSTATE : écritures dont la pièce a disparu, doublons de clé, soldes
+ * stockés qui s'écartent du grand-livre. Tout ce qu'elle trouve part au journal
+ * (Log::warning), donc à la surveillance.
+ *
+ * Elle ne corrige pas toute seule, et c'est le point : contre-passer une
+ * écriture, c'est décider qu'un mouvement d'argent n'a pas eu lieu. Ce geste
+ * demande un œil humain — à l'inverse de `batches:rebuild-quantities --force`,
+ * qui dérive d'un registre complet et ne fait que recalculer.
+ *
+ * Correction : php artisan treasury:repair-balances --force
+ */
+Schedule::command('treasury:repair-balances')->weeklyOn(1, '06:00');
+
 Schedule::command('tasks:generate')->dailyAt('05:00');
 
 // Verrou anti-doublon : libère les prises de tâche abandonnées (timeout).
