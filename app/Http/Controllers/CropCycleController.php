@@ -709,6 +709,29 @@ class CropCycleController extends Controller
             'unit_cost' => 'nullable|numeric|min:0',
             'total_cost' => 'nullable|numeric|min:0',
             'input_date' => 'required|date',
+            /*
+             * LE DÉLAI AVANT RÉCOLTE — LA PORTE QUI RESTAIT SOURDE.
+             *
+             * `preharvest_days` est validé à la création (web, mobile, import)
+             * depuis qu'un audit a corrigé son rejet silencieux : le docblock de
+             * `PhytoWithdrawalService` dit que « le stockage est corrigé ».
+             * L'ÉCRAN DE MODIFICATION, lui, n'avait jamais été repris.
+             *
+             * Le formulaire rend pourtant le champ, pré-rempli de la valeur
+             * enregistrée. Le technicien qui reprend la notice d'un produit et
+             * corrige le délai voyait « Intrant mis à jour. » — et rien n'était
+             * écrit.
+             *
+             * Mesuré : traitement phyto saisi sans délai, corrigé à 21 jours par
+             * l'écran → `preharvest_days` reste null, et
+             * `activePreharvestInterval()` ne bloque toujours pas la récolte.
+             * L'écran confirmait une correction de sécurité alimentaire qu'il
+             * n'avait pas faite, et la récolte sous résidus restait permise.
+             *
+             * Même règle que `storeInput` et que le terrain hors-ligne : une
+             * seule déclaration du délai, trois portes qui l'appliquent.
+             */
+            'preharvest_days' => 'nullable|integer|min:0|max:365',
             'provider_id' => 'nullable|exists:providers,id',
             'notes' => 'nullable|string|max:500',
         ]);
