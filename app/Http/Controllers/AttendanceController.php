@@ -70,9 +70,32 @@ class AttendanceController extends Controller
             $status = $existing[$emp->id]->status
                 ?? ($onLeave->has($emp->id) ? 'conge' : $defaut);
 
+            /*
+             * L'HEURE D'ARRIVÉE, RENDUE À L'ÉCRAN QUI LA SAISIT.
+             *
+             * La colonne existait, le terrain hors-ligne la remplissait
+             * (`SyncService::attendanceCreate` la valide, `RecordAttendance` la
+             * persiste) — et AUCUN écran ne la montrait ni ne permettait de la
+             * saisir. Une heure relevée au téléphone n'était donc lisible nulle
+             * part, et un « retard » enregistré au bureau restait une mention
+             * sans la pièce qui la justifie.
+             *
+             * Elle est PRÉ-REMPLIE de ce qui est enregistré : la grille se
+             * ré-enregistre telle quelle des dizaines de fois par mois, et un
+             * champ vide renverrait « pas d'heure » — effaçant en silence ce que
+             * le terrain avait relevé. C'est la même exigence que le défaut de
+             * statut : ce que l'écran propose doit dire la vérité sur ce
+             * qu'enregistrer va produire.
+             *
+             * La colonne est de type `time` : MySQL rend « 08:30:00 », un
+             * champ <input type="time"> attend « 08:30 ».
+             */
+            $heure = $existing[$emp->id]->check_in_time ?? null;
+
             return [
                 'employee' => $emp,
                 'status'   => $status,
+                'check_in' => $heure ? substr((string) $heure, 0, 5) : null,
                 'locked'   => $onLeave->has($emp->id) && ! isset($existing[$emp->id]), // congé non encore pointé
             ];
         });
@@ -93,17 +116,33 @@ class AttendanceController extends Controller
         }
 
         $data = $request->validate([
-            'date'           => ['required', 'date', 'before_or_equal:today'],
-            'status'         => ['required', 'array'],
-            'status.*'       => ['in:' . implode(',', array_keys(EmployeeAttendance::STATUSES))],
+            'date'             => ['required', 'date', 'before_or_equal:today'],
+            'status'           => ['required', 'array'],
+            'status.*'         => ['in:' . implode(',', array_keys(EmployeeAttendance::STATUSES))],
+            // Même contrat que le terrain hors-ligne, qui l'acceptait déjà :
+            // une heure ou rien, jamais une chaîne libre.
+            'check_in_time'    => ['nullable', 'array'],
+            'check_in_time.*'  => ['nullable', 'date_format:H:i'],
         ]);
 
         $date = $data['date'];
 
         // La règle de pointage vit dans l'Action, partagée avec le terrain
         // hors-ligne (SyncService::attendanceCreate) : une seule vérité.
+        $heures = $data['check_in_time'] ?? null;
+
         $rows = collect($data['status'])
-            ->map(fn ($status, $employeeId) => ['employee_id' => (int) $employeeId, 'status' => $status])
+            ->map(function ($status, $employeeId) use ($heures) {
+                $ligne = ['employee_id' => (int) $employeeId, 'status' => $status];
+
+                // La clé n'est transmise QUE si la grille l'a envoyée : absente,
+                // elle ne vaut pas effacement de ce qui a été relevé ailleurs.
+                if ($heures !== null) {
+                    $ligne['check_in_time'] = $heures[$employeeId] ?? null;
+                }
+
+                return $ligne;
+            })
             ->values()->all();
 
         $result = app(RecordAttendance::class)->execute($date, $rows, Auth::id());

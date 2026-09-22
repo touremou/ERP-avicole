@@ -71,7 +71,28 @@ class RecordAttendance
                     'recorded_by' => $userId,
                 ];
 
-                if (array_key_exists('check_in_time', $row)) {
+                /*
+                 * ─── UNE HEURE D'ARRIVÉE POUR QUELQU'UN QUI N'EST PAS VENU
+                 *     EST UNE CONTRADICTION ───
+                 *
+                 * Le statut commande. Sans cette règle, changer « retard » en
+                 * « absent » laissait derrière lui l'heure d'arrivée qui avait
+                 * justifié le retard : la ligne disait à la fois qu'il n'était
+                 * pas venu et à quelle heure il était arrivé.
+                 *
+                 * Elle est posée ICI, dans la source partagée, et non dans la
+                 * grille web : le terrain hors-ligne écrit par la même porte, et
+                 * une règle posée d'un seul côté serait fausse de l'autre.
+                 *
+                 * La clé ABSENTE ne vaut pas effacement : la grille web la
+                 * transmet toujours (pré-remplie de ce qui est enregistré, pour
+                 * que ré-enregistrer sans y toucher ne change rien), mais un
+                 * client qui ne la connaît pas ne doit pas effacer une heure
+                 * saisie au téléphone.
+                 */
+                if (! in_array($row['status'], EmployeeAttendance::WORKED, true)) {
+                    $attributes['check_in_time'] = null;
+                } elseif (array_key_exists('check_in_time', $row)) {
                     $attributes['check_in_time'] = $row['check_in_time'] ?: null;
                 }
 
