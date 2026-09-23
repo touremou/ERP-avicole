@@ -631,7 +631,28 @@ class UtilityController extends Controller
         $litres  = (float) $purchase->quantity_liters;
 
         DB::transaction(function () use ($purchase, $cuveId, $litres) {
-            $purchase->expense?->delete(); // retire aussi l'écriture du registre des dépenses
+            /*
+             * LA DÉPENSE S'ANNULE — ELLE NE S'EFFACE PAS.
+             *
+             * On appelait `$purchase->expense?->delete()`, c'est-à-dire le geste
+             * que `ExpenseController::destroy` REFUSE, et pour une raison qu'il
+             * écrit en toutes lettres : « Une dépense validée ne se supprime pas
+             * — elle s'annule. […] L'annulation garde la pièce, sa trace et son
+             * motif ; la suppression efface tout. » `ValidatedExpenseCannotBeDeletedTest`
+             * fige ce refus.
+             *
+             * La garde vit sur le contrôleur des dépenses ; en appelant le
+             * modèle directement, ce chemin-ci passait à côté — et la dépense
+             * d'un achat de carburant est TOUJOURS validée, puisque
+             * `syncLedgerExpense()` la crée ainsi. Le geste interdit par une
+             * porte était donc accompli par une autre, sur chaque suppression.
+             *
+             * Après annulation, le registre garde la pièce : son libellé, son
+             * montant, sa date, son fournisseur, sa référence de reçu. Le coût
+             * quitte le compte de résultat — c'est le but — mais il reste
+             * possible de répondre à « qu'est-ce qui a été annulé, et quand ».
+             */
+            $purchase->expense?->update(['status' => 'annule']);
             $purchase->delete();
 
             if ($cuveId && $cuve = EnergySource::find($cuveId)) {
@@ -641,6 +662,6 @@ class UtilityController extends Controller
             }
         });
 
-        return back()->with('success', 'Achat et dépense liée supprimés.');
+        return back()->with('success', 'Achat supprimé — la dépense liée est annulée et reste au registre.');
     }
 }

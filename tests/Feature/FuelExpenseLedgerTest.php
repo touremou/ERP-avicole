@@ -91,7 +91,22 @@ test('modifier un achat répercute le montant sur la dépense liée', function (
     expect(Expense::withoutGlobalScopes()->where('category', 'carburant')->count())->toBe(1);
 });
 
-test('supprimer un achat supprime la dépense liée', function () {
+test('supprimer un achat ANNULE la dépense liée, sans la retirer du registre', function () {
+    /*
+     * CE TEST A CHANGÉ D'INTENTION, DÉLIBÉRÉMENT.
+     *
+     * Il figeait le soft-delete de la dépense : traçable en base, mais SORTIE du
+     * registre — invisible à qui consulte les dépenses. `ExpenseController::destroy`
+     * refuse pourtant ce geste sur une dépense validée, et prescrit l'annulation :
+     * « L'annulation garde la pièce, sa trace et son motif. » La dépense d'un achat
+     * de carburant est toujours validée ; la règle s'appliquait donc, et ce chemin
+     * passait à côté en appelant le modèle directement.
+     *
+     * La pièce reste désormais VISIBLE au registre, au statut « annule ». L'effet
+     * comptable est le même — la charge quitte le P&L, qui ne compte que les
+     * dépenses validées — mais on peut encore répondre à « qu'est-ce qui a été
+     * annulé, pour combien, chez qui ».
+     */
     $this->actingAs($this->manager)->post(route('utilities.fuel.store'), [
         'energy_source_id' => $this->source->id,
         'purchase_date'    => now()->toDateString(),
@@ -104,9 +119,12 @@ test('supprimer un achat supprime la dépense liée', function () {
     $this->actingAs($this->manager)->delete(route('utilities.fuel.destroy', $purchase))
         ->assertSessionHasNoErrors();
 
-    // Dépense soft-deletée → retirée du registre (et donc du P&L), mais traçable.
-    expect(Expense::withoutGlobalScopes()->find($expenseId)->trashed())->toBeTrue()
-        ->and(Expense::where('id', $expenseId)->exists())->toBeFalse();
+    $expense = Expense::withoutGlobalScopes()->find($expenseId);
+
+    expect($expense)->not->toBeNull()
+        ->and($expense->trashed())->toBeFalse()      // plus de soft-delete
+        ->and($expense->status)->toBe('annule')      // mais hors du P&L
+        ->and((float) Expense::withoutGlobalScopes()->validated()->sum('amount'))->toBe(0.0);
 });
 
 test('le rapport de résultat ne compte le gasoil qu\'une seule fois', function () {
