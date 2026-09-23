@@ -612,9 +612,33 @@ class UtilityController extends Controller
     {
         if (Gate::denies('ressources.S')) return back()->with('error', 'Suppression réservée aux administrateurs.');
 
-        DB::transaction(function () use ($purchase) {
+        /*
+         * SUPPRIMER UN PLEIN LAISSAIT SES LITRES DANS LA CUVE.
+         *
+         * `storeFuelPurchase` CRÉDITE `current_fuel_level` du volume acheté.
+         * La suppression retirait l'achat et sa dépense, et ne rendait rien :
+         * la cuve continuait d'annoncer un carburant dont plus aucune pièce ne
+         * justifie l'entrée.
+         *
+         * Mesuré : un plein de 100 L supprimé laisse la cuve à 100 L. Et ce
+         * solde n'est pas décoratif — il porte l'autonomie du tableau de bord
+         * et l'alerte « commander du carburant », qui ne partira donc pas.
+         *
+         * C'est le pendant exact de la régularisation posée à la MODIFICATION :
+         * un geste qui défait un achat doit défaire ce que l'achat avait fait.
+         */
+        $cuveId  = (int) $purchase->energy_source_id;
+        $litres  = (float) $purchase->quantity_liters;
+
+        DB::transaction(function () use ($purchase, $cuveId, $litres) {
             $purchase->expense?->delete(); // retire aussi l'écriture du registre des dépenses
             $purchase->delete();
+
+            if ($cuveId && $cuve = EnergySource::find($cuveId)) {
+                $cuve->update([
+                    'current_fuel_level' => max(0, (float) $cuve->current_fuel_level - $litres),
+                ]);
+            }
         });
 
         return back()->with('success', 'Achat et dépense liée supprimés.');
