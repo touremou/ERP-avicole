@@ -500,7 +500,26 @@ class UtilityController extends Controller
     {
         if (Gate::denies('ressources.M')) return back()->with('error', 'Action non autorisée.');
 
+        /*
+         * LA CUVE ET LA DATE ÉTAIENT PROPOSÉES PAR L'ÉCRAN ET JETÉES PAR LA PORTE.
+         *
+         * `edit-fuel.blade.php` rend `energy_source_id` en select REQUIRED et
+         * `purchase_date` en date REQUIRED. Ni l'un ni l'autre n'était validé
+         * ici : `$request->validate()` ne les rendait pas, et `update()` ne
+         * pouvait donc pas les écrire.
+         *
+         * Mesuré — un plein saisi sur le mauvais groupe et à la mauvaise date,
+         * corrigé par l'écran : la réponse est « Achat carburant mis à jour. »
+         * et RIEN ne change. Ni la cuve, ni la date, ni la dépense liée —
+         * `syncLedgerExpense()` bâtit son libellé sur le nom de la source et sa
+         * `expense_date` sur la date d'achat, donc le coût reste imputé au
+         * mauvais groupe électrogène ET au mauvais mois du compte de résultat.
+         *
+         * L'écran de correction étant le seul recours, l'erreur était définitive.
+         */
         $validated = $request->validate([
+            'energy_source_id'  => 'required|exists:energy_sources,id',
+            'purchase_date'     => 'required|date|before_or_equal:today',
             'quantity_liters'   => 'required|numeric|min:1',
             'unit_price'        => 'required|numeric|min:0',
             'supplier'          => 'nullable|string|max:255',
@@ -510,12 +529,83 @@ class UtilityController extends Controller
 
         $validated['total_cost'] = (float) $validated['quantity_liters'] * (float) $validated['unit_price'];
 
-        DB::transaction(function () use ($purchase, $validated) {
+        // Ce que cet achat avait crédité, et à qui : il faut le rendre avant de
+        // créditer autrement (cf. `regulariserLaCuve`).
+        $ancienneSource = (int) $purchase->energy_source_id;
+        $ancienVolume   = (float) $purchase->quantity_liters;
+
+        DB::transaction(function () use ($purchase, $validated, $ancienneSource, $ancienVolume) {
             $purchase->update($validated);
+
+            $this->regulariserLaCuve(
+                $ancienneSource,
+                $ancienVolume,
+                (int) $validated['energy_source_id'],
+                (float) $validated['quantity_liters'],
+                $purchase
+            );
+
             $purchase->syncLedgerExpense(); // répercute le nouveau montant sur la dépense liée
         });
 
         return redirect()->route('utilities.fuel.index')->with('success', 'Achat carburant mis à jour.');
+    }
+
+    /**
+     * REND À L'ANCIENNE CUVE CE QUE L'ACHAT LUI AVAIT CRÉDITÉ, PUIS CRÉDITE LA
+     * NOUVELLE DU NOUVEAU VOLUME.
+     *
+     * `current_fuel_level` n'est pas un calcul : c'est un SOLDE COURANT, crédité
+     * par les achats et débité par les relevés de consommation
+     * (`RecordEnergyReading`). Il porte l'autonomie affichée au tableau de bord
+     * et l'alerte « commander du carburant ».
+     *
+     * La correction d'un achat ne le touchait PAS — défaut antérieur, mesuré :
+     * un plein de 100 L corrigé à 150 L laissait la cuve à 100. Le stock
+     * physique annoncé était faux de la différence, et l'alerte de niveau bas
+     * avec lui.
+     *
+     * Ouvrir le changement de CUVE sans cette régularisation aurait aggravé les
+     * choses : l'achat serait parti sur le Caterpillar en laissant ses litres
+     * crédités au Perkins. Une seule règle couvre les deux — c'est le motif de
+     * régularisation par delta que `UpdateFeedPurchase` applique déjà au stock
+     * d'aliment.
+     *
+     * Le plafond de cuve est appliqué comme à la création : on ne déclare pas
+     * plus que ce que la cuve peut contenir.
+     */
+    private function regulariserLaCuve(
+        int $ancienneSourceId,
+        float $ancienVolume,
+        int $nouvelleSourceId,
+        float $nouveauVolume,
+        FuelPurchase $purchase
+    ): void {
+        if ($ancienneSourceId && $ancienne = EnergySource::find($ancienneSourceId)) {
+            $ancienne->update([
+                'current_fuel_level' => max(0, (float) $ancienne->current_fuel_level - $ancienVolume),
+            ]);
+        }
+
+        $nouvelle = EnergySource::find($nouvelleSourceId);
+        if (! $nouvelle) {
+            return;
+        }
+
+        /*
+         * L'ancienne et la nouvelle cuve peuvent être la MÊME — corriger un
+         * volume sans changer de groupe est le cas courant. C'est l'ORDRE qui
+         * le rend juste : le débit ci-dessus est écrit avant que `find()` ne
+         * relise la cuve, donc le niveau lu porte déjà la restitution.
+         */
+        $niveau = (float) $nouvelle->current_fuel_level + $nouveauVolume;
+
+        if ($nouvelle->fuel_tank_capacity && $niveau > (float) $nouvelle->fuel_tank_capacity) {
+            $niveau = (float) $nouvelle->fuel_tank_capacity;
+        }
+
+        $nouvelle->update(['current_fuel_level' => $niveau]);
+        $purchase->update(['fuel_level_after' => $niveau]);
     }
 
     public function destroyFuelPurchase(FuelPurchase $purchase)
