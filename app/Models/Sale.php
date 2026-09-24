@@ -129,12 +129,49 @@ class Sale extends Model
     }
 
     /**
+     * DÉLAI DE PAIEMENT — déclaration UNIQUE.
+     *
+     * Trois lecteurs, deux défauts : `scopeOverdue` et `getDueDateAttribute`
+     * lisaient `setting('ventes.payment_delay_days', 30)`, la facture imprimée
+     * lisait le même réglage avec un défaut de ZÉRO.
+     *
+     * Tant que le réglage est renseigné, les trois s'accordent. Quand il ne
+     * l'est pas — installation fraîche, ou case vidée à l'écran, cas désormais
+     * traité comme une absence (cf. `Setting::get`) — ils divergent de trente
+     * jours.
+     *
+     * Mesuré, sur une facture du 1er juin impayée :
+     *
+     *   • la facture REMISE AU CLIENT ne porte AUCUNE échéance : le bloc est
+     *     conditionné à `$delai > 0`, et le défaut local valait 0 ;
+     *   • le système, lui, fixe l'échéance au 1er juillet, compte « 1 jour de
+     *     retard » dès le 2, et fait entrer la vente dans `scopeOverdue` —
+     *     donc dans les relances automatiques du matin.
+     *
+     * Le client est relancé pour un retard mesuré contre une échéance qu'on ne
+     * lui a jamais communiquée.
+     *
+     * Le défaut retenu est TRENTE : c'est celui des deux lecteurs qui portent la
+     * règle métier — l'échéance et le retard. Le zéro de la vue n'était pas un
+     * autre délai, c'était sa façon de dire « rien à imprimer » ; cette
+     * intention reste servie par la condition `> 0`, qui n'a pas bougé.
+     *
+     * Même remède que `Building::sanitaryBreakDays()`, pour la même raison : un
+     * réglage lu à plusieurs endroits n'a de sens que s'il n'est DÉCLARÉ qu'à un
+     * seul.
+     */
+    public static function paymentDelayDays(): int
+    {
+        return (int) setting('ventes.payment_delay_days', 30);
+    }
+
+    /**
      * Ventes en RETARD de paiement : impayées et dont l'échéance
      * (date de vente + délai de paiement paramétré) est dépassée.
      */
     public function scopeOverdue($query, ?int $delayDays = null)
     {
-        $delayDays = $delayDays ?? (int) setting('ventes.payment_delay_days', 30);
+        $delayDays = $delayDays ?? self::paymentDelayDays();
 
         return $query->unpaid()
             ->whereDate('sale_date', '<=', today()->subDays($delayDays));
@@ -195,7 +232,7 @@ class Sale extends Model
     /** Échéance = date de vente + délai de paiement paramétré. */
     public function getDueDateAttribute(): \Illuminate\Support\Carbon
     {
-        return $this->sale_date->copy()->addDays((int) setting('ventes.payment_delay_days', 30));
+        return $this->sale_date->copy()->addDays(self::paymentDelayDays());
     }
 
     /** Jours de retard (positif si échéance dépassée, 0 sinon). */
