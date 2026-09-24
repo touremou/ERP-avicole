@@ -268,7 +268,16 @@ test('une base INJOIGNABLE veut dire « pas installée »', function () {
      * « installée », l'assistant refuserait de s'ouvrir précisément là où il
      * est nécessaire — et il n'y aurait aucun moyen d'entrer.
      */
+    /*
+     * Les clés étrangères sont désactivées le temps du retrait : `users` est
+     * référencée par `farm_user`, et MySQL refuse — « Cannot drop table users
+     * referenced by a foreign key constraint ». SQLite, lui, laissait faire.
+     * Le premier jet de ce test passait donc sur un moteur et cassait sur
+     * l'autre : c'est la CI de parité prod qui l'a dit.
+     */
+    Schema::disableForeignKeyConstraints();
     Schema::drop('users');
+    Schema::enableForeignKeyConstraints();
 
     expect(InstallationState::estInstallee())->toBeFalse();
 });
