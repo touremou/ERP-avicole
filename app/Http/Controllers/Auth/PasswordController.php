@@ -24,6 +24,11 @@ class PasswordController extends Controller
             'password' => Hash::make($validated['password']),
         ]);
 
+        // Un jeton ne dépend pas du mot de passe : sans ceci, le téléphone
+        // d'un intrus continuait d'écrire après le changement. Même règle que
+        // `UserController::resetPassword`, qui la portait seul.
+        $request->user()->revoquerLesAppareils();
+
         return back()->with('status', 'password-updated');
     }
 }

@@ -48,6 +48,11 @@ class NewPasswordController extends Controller
                     'remember_token' => Str::random(60),
                 ])->save();
 
+                // LE parcours « j'ai été piraté » : c'est ici qu'un jeton
+                // laissé vivant coûte le plus cher. `remember_token` ne coupe
+                // que les cookies « se souvenir de moi », jamais les appareils.
+                $user->revoquerLesAppareils();
+
                 event(new PasswordReset($user));
             }
         );

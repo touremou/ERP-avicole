@@ -173,6 +173,10 @@ class AuthController extends Controller
 
         $user->update(['password' => Hash::make($request->input('password'))]);
 
+        // Les AUTRES appareils tombent ; celui qui fait la demande reste, parce
+        // qu'il est le seul dont on sache qu'il a le nouveau mot de passe.
+        $user->revoquerLesAppareils($request->user()->currentAccessToken()?->id);
+
         return response()->json(['message' => __('Mot de passe mis à jour.')]);
     }
 
