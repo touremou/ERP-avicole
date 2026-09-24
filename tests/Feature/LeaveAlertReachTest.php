@@ -145,7 +145,8 @@ test('aucune notification de congé ne contourne la chaîne de canaux', function
             $reflection->getEndLine() - $reflection->getStartLine() + 1
         ));
 
-        expect($body)->not->toContain('$this->whatsapp->send(', "{$method} contourne broadcast()")
+        expect(str_contains($body, '$this->whatsapp->send('))
+            ->toBeFalse("{$method} contourne broadcast()")
             ->and($body)->toContain('broadcast(');
     }
 
