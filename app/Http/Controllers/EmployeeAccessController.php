@@ -188,6 +188,12 @@ class EmployeeAccessController extends Controller
 
             case 'deactivate':
                 $user->update(['is_active' => false]);
+                // Même règle que la suspension dans `UserController::toggleActive` :
+                // `EnsureAccountIsActive` refuse les jetons tant que le compte est
+                // coupé, mais ils REVIVAIENT à la réactivation — celui d'un
+                // téléphone perdu compris. « Un jeton révoqué l'est pour de bon,
+                // et l'appareil se ré-appaire. »
+                $user->revoquerLesAppareils();
                 $message = "Accès désactivé pour {$user->name}.";
                 break;
 
@@ -220,6 +226,11 @@ class EmployeeAccessController extends Controller
 
         $tempPassword = Str::password(10, true, true, false);
         $user->update(['password' => Hash::make($tempPassword)]);
+
+        // Jumeau exact de `UserController::resetPassword`, qui révoque — même
+        // geste, autre écran. Sans ceci, réinitialiser le mot de passe d'un
+        // employé depuis l'espace RH laissait ses appareils connectés.
+        $user->revoquerLesAppareils();
 
         Log::info("Mot de passe réinitialisé pour user #{$user->id} ({$user->email}).");
 

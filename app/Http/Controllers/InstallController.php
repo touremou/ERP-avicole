@@ -195,6 +195,11 @@ class InstallController extends Controller
                 'email'    => $data['admin_email'],
                 'password' => Hash::make($data['admin_password']),
             ]);
+
+            // Un compte REPRIS ne garde pas les appareils de son titulaire
+            // précédent. Sans objet sur une installation neuve (aucun jeton),
+            // mais c'est la règle de toute réécriture de mot de passe.
+            $admin->revoquerLesAppareils();
         } else {
             User::create([
                 'name'     => $data['admin_name'],

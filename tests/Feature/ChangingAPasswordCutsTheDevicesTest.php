@@ -5,7 +5,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 
-uses(Tests\TestCase::class, Illuminate\Foundation\Testing\RefreshDatabase::class);
+uses(Tests\TestCase::class, Illuminate\Foundation\Testing\RefreshDatabase::class, Tests\Helpers\AviSmartTestHelper::class);
 
 /*
  * CHANGER SON MOT DE PASSE NE COUPAIT AUCUN APPAREIL.
@@ -199,24 +199,142 @@ test('garder la MÊME adresse ne la dé-vérifie pas — la borne', function () 
         ->and($user->fresh()->email_verified_at)->not->toBeNull();
 });
 
-test('la règle est DÉCLARÉE une fois, et les quatre portes l’appellent', function () {
-    /*
-     * La garde qui empêche la dispersion de revenir. Elle a vécu un an dans un
-     * seul contrôleur, en commentaire explicatif, pendant que trois autres
-     * portes l'ignoraient.
-     */
-    $portes = [
-        'app/Http/Controllers/Auth/PasswordController.php',
-        'app/Http/Controllers/Auth/NewPasswordController.php',
-        'app/Http/Controllers/Api/AuthController.php',
-    ];
+/** Un employé et le compte qui lui est lié, avec ses deux appareils. */
+function employeAvecSonCompte(int $fermeId): array
+{
+    [$compte] = compteAvecDeuxAppareils();
 
-    foreach ($portes as $porte) {
-        expect(str_contains(file_get_contents(base_path($porte)), 'revoquerLesAppareils'))
-            ->toBeTrue("{$porte} ne révoque pas les appareils");
+    $employe = \App\Models\Employee::factory()->create([
+        'farm_id' => $fermeId, 'user_id' => $compte->id, 'status' => 'Actif',
+    ]);
+
+    return [$employe, $compte];
+}
+
+test('espace RH : réinitialiser le mot de passe d’un employé coupe ses appareils', function () {
+    /*
+     * Jumeau exact de `UserController::resetPassword` — même geste, autre
+     * écran —, et le seul des deux qui ne révoquait pas. La garde par liste
+     * manuelle ne le connaissait pas.
+     */
+    $this->setUpRbac();
+    [$employe, $compte] = employeAvecSonCompte($this->farm->id);
+
+    $this->actingAs($this->adminUser)
+        ->put(route('employees.access.password', $employe))
+        ->assertSessionHas('temp_password');
+
+    expect(jetonsRestants($compte))->toBe(0);
+});
+
+test('espace RH : couper l’accès coupe les appareils — et ils ne REVIVENT pas', function () {
+    /*
+     * `EnsureAccountIsActive` refusait bien les jetons tant que le compte était
+     * coupé. Mais ils n'étaient pas supprimés : RÉACTIVER le compte les rendait
+     * valides, celui d'un téléphone perdu compris. C'est précisément le cas que
+     * `UserController::toggleActive` écarte — « un jeton révoqué l'est pour de
+     * bon, et l'appareil se ré-appaire ».
+     */
+    $this->setUpRbac();
+    [$employe, $compte] = employeAvecSonCompte($this->farm->id);
+    $this->actingAs($this->adminUser);
+
+    $this->put(route('employees.access.update', $employe), ['action' => 'deactivate']);
+    expect($compte->fresh()->is_active)->toBeFalse()
+        ->and(jetonsRestants($compte))->toBe(0);
+
+    $this->put(route('employees.access.update', $employe), ['action' => 'activate']);
+    expect($compte->fresh()->is_active)->toBeTrue()
+        ->and(jetonsRestants($compte))->toBe(0);   // rien n'est revenu
+});
+
+test('espace RH : changer le RÔLE ne coupe rien — la borne', function () {
+    /*
+     * LA borne. Un changement de rôle n'est pas une mesure de sécurité contre
+     * l'appareil : les droits sont relus à chaque requête (et leur cache est
+     * vidé, ligne `Cache::forget`). Déconnecter l'employé pour une promotion
+     * serait une gêne sans gain.
+     */
+    $this->setUpRbac();
+    [$employe, $compte] = employeAvecSonCompte($this->farm->id);
+
+    $this->actingAs($this->adminUser)
+        ->put(route('employees.access.update', $employe), [
+            'action' => 'role', 'role_id' => $this->operatorUser->role_id,
+        ]);
+
+    expect(jetonsRestants($compte))->toBe(2);
+});
+
+test('TOUTE réécriture d’un mot de passe existant coupe les appareils — trouvée dans le code, pas listée', function () {
+    /*
+     * La garde qui empêche la dispersion de revenir — et elle a déjà échoué une
+     * fois sous sa forme précédente.
+     *
+     * Elle énumérait les portes À LA MAIN : profil web, lien e-mail, mobile, et
+     * l'écran des utilisateurs. Elle en a manqué DEUX, que l'audit du lendemain
+     * a trouvées dans `EmployeeAccessController` — la réinitialisation depuis
+     * l'espace RH, jumelle exacte de celle de l'écran des utilisateurs. Une liste
+     * tenue à la main vieillit en silence : c'est le défaut même qu'elle était
+     * censée surveiller.
+     *
+     * Elle contrôlait aussi le FICHIER, pas la méthode : un fichier qui révoque
+     * dans une méthode passait, quelle que soit l'autre.
+     *
+     * Celle-ci parcourt le code par réflexion, méthode par méthode, et exige
+     * une révocation partout où un mot de passe EXISTANT est réécrit
+     * (`->update([... 'password'` ou `->forceFill([... 'password'`). Les
+     * CRÉATIONS de compte (`::create`) sont hors champ : un compte neuf n'a
+     * encore aucun appareil.
+     */
+    // On s'arrête à `])` — la FERMETURE de l'appel —, pas au premier `]`.
+    // La première version s'arrêtait au premier `]` : elle ne voyait donc pas
+    // `storeAdmin`, dont le tableau commence par `$data['admin_name']`. C'est
+    // le compteur ci-dessous qui l'a trahie — cinq portes au lieu de six.
+    $reecriture = "/(?:->update|->forceFill)\\(\\s*\\[(?:(?!\\]\\s*\\)).){0,600}?'password'\\s*=>/s";
+
+    $examinees = [];
+    $fautives  = [];
+
+    $fichiers = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(app_path()));
+
+    foreach ($fichiers as $fichier) {
+        if ($fichier->getExtension() !== 'php') {
+            continue;
+        }
+
+        $classe = 'App\\' . str_replace(['/', '.php'], ['\\', ''],
+            substr($fichier->getPathname(), strlen(app_path()) + 1));
+
+        if (! class_exists($classe)) {
+            continue;
+        }
+
+        foreach ((new ReflectionClass($classe))->getMethods() as $methode) {
+            if ($methode->getFileName() !== $fichier->getPathname()) {
+                continue;   // méthode héritée : examinée chez son parent
+            }
+
+            $lignes = file($methode->getFileName());
+            $corps  = implode('', array_slice($lignes, $methode->getStartLine() - 1,
+                $methode->getEndLine() - $methode->getStartLine() + 1));
+
+            if (! preg_match($reecriture, $corps)) {
+                continue;
+            }
+
+            $nom = class_basename($classe) . '::' . $methode->getName();
+            $examinees[] = $nom;
+
+            if (! str_contains($corps, 'revoquerLesAppareils') && ! str_contains($corps, 'tokens()->delete()')) {
+                $fautives[] = $nom;
+            }
+        }
     }
 
-    // La porte historique, elle, révoque déjà — par son propre appel.
-    expect(str_contains(file_get_contents(base_path('app/Http/Controllers/UserController.php')), 'tokens()->delete()'))
-        ->toBeTrue();
+    // Garde-fou du garde-fou : sans portes trouvées, la garde passerait en
+    // n'ayant rien contrôlé. Il y en a au moins six aujourd'hui.
+    expect(count($examinees))->toBeGreaterThanOrEqual(6);
+
+    expect($fautives)->toBe([], 'réécrit un mot de passe sans couper les appareils : ' . implode(', ', $fautives));
 });
