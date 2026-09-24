@@ -13,12 +13,27 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules;
+use App\Support\DependencyGuard;
 use Illuminate\Support\Facades\Cache;
 
 class UserController extends Controller
 {
     // ─── CLÉ DE CACHE (doit être identique à AppServiceProvider) ───
     private const CACHE_KEY = 'rbac_perms_';
+
+    /**
+     * Ce qui appartient au COMPTE et s'en va avec lui.
+     *
+     * Volontairement court : `cascadeBlockers` dérive tout le reste du schéma,
+     * donc une table ajoutée demain et oubliée ici BLOQUERA la suppression au
+     * lieu d'être détruite en silence. C'est le sens prudent.
+     */
+    private const REGLAGES_PERSONNELS = [
+        'farm_user',
+        'notification_preferences',
+        'dashboard_configurations',
+        'push_subscriptions',
+    ];
 
     public function index()
     {
@@ -399,6 +414,42 @@ class UserController extends Controller
 
         if ($motif = $this->refusSiDernierAdministrateur($user)) {
             return back()->with('error', $motif);
+        }
+
+        /*
+         * RÉVOQUER UN ACCÈS NE DOIT PAS EFFACER CE QUE LA PERSONNE A COMPTÉ.
+         *
+         * `User` n'a PAS de SoftDeletes : ce `delete()` est physique, et les
+         * clés étrangères partent alors en cascade. Parmi les cinq enfants de
+         * `users`, quatre sont des réglages personnels — affectation au site,
+         * préférences de notification, tableau de bord, abonnement push — qui
+         * doivent bien s'en aller. Le cinquième est
+         * `cash_register_sessions` : la CLÔTURE DE CAISSE.
+         *
+         * Mesuré : un caissier ouvre la caisse, la clôture avec un comptage de
+         * 60 000 GNF et un ÉCART de 60 000. On révoque son accès :
+         *
+         *   • la session disparaît — comptage, théorique, écart, coupures,
+         *     tout ;
+         *   • l'écriture « clôture de caisse » de 60 000, elle, RESTE au
+         *     grand-livre, désormais sans rien pour l'expliquer.
+         *
+         * C'est le registre anti-fraude. Le scénario qui fait mal s'écrit tout
+         * seul : un caissier part — ou est remercié À CAUSE d'un écart — et le
+         * geste qui clôt son accès détruit la pièce qui l'établissait.
+         *
+         * Le dépôt a déjà le remède et le formule deux fois : « Désactivez-le
+         * plutôt pour préserver l'historique » (compte de trésorerie),
+         * « Impossible de supprimer un article possédant un historique »
+         * (stock). `toggleActive` existe, révoque les jetons, et conserve tout.
+         */
+        if ($obstacles = DependencyGuard::cascadeBlockers($user, self::REGLAGES_PERSONNELS)) {
+            return back()->with('error', sprintf(
+                "L'accès de %s ne peut pas être supprimé : cela effacerait %s. "
+                . "Désactivez le compte — l'accès est révoqué et l'historique préservé.",
+                $user->name,
+                DependencyGuard::describe($obstacles),
+            ));
         }
 
         // Vider le cache avant suppression

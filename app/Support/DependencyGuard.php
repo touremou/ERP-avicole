@@ -81,6 +81,75 @@ class DependencyGuard
         return $blockers;
     }
 
+    /**
+     * CE QUI SERAIT DÉTRUIT — pas seulement ce qui pointe ici.
+     *
+     * `blockers()` compte TOUTE référence, et c'est la bonne question pour un
+     * lot ou un employé : leurs dépendants doivent tous survivre.
+     *
+     * Pour un COMPTE UTILISATEUR, elle est trop large. Les cent soixante-treize
+     * clés `SET NULL` de cette base — l'auteur d'un pointage, d'une dépense —
+     * laissent l'enregistrement intact et n'ont donc rien à empêcher ; et
+     * plusieurs enfants en CASCADE sont des réglages PERSONNELS, qui doivent
+     * partir avec le compte. Appliquer `blockers()` tel quel rendrait tout
+     * utilisateur indéboulonnable, ce qui reviendrait à supprimer la
+     * fonctionnalité plutôt qu'à la corriger.
+     *
+     * On ne demande donc que ce qui compte pour une suppression PHYSIQUE : quels
+     * enregistrements la cascade EFFACERAIT.
+     *
+     * ─── L'INVERSION QUI REND CETTE GARDE SÛRE ───
+     *
+     * On énumère les tables SANS IMPORTANCE, et on dérive tout le reste du
+     * schéma. Une table ajoutée demain et oubliée ici BLOQUERA la suppression —
+     * le sens prudent — au lieu d'être silencieusement détruite. C'est la même
+     * raison qui fait que `LABELS`, plus bas, n'est qu'une courtoisie
+     * d'affichage et jamais la liste de ce qui bloque.
+     *
+     * @param  array<int, string>  $sansImportance  tables dont la perte est voulue
+     * @return array<string, int>  table => nombre de lignes qui disparaîtraient
+     */
+    public static function cascadeBlockers(Model $item, array $sansImportance = []): array
+    {
+        $table = $item->getTable();
+        $key   = $item->getKey();
+
+        $blockers = [];
+
+        foreach (Schema::getTableListing() as $autre) {
+            $nom = str_contains($autre, '.') ? substr($autre, strrpos($autre, '.') + 1) : $autre;
+
+            if ($nom === $table || in_array($nom, $sansImportance, true)) {
+                continue;
+            }
+
+            foreach (Schema::getForeignKeys($nom) as $fk) {
+                if (($fk['foreign_table'] ?? null) !== $table) {
+                    continue;
+                }
+
+                // Seule la CASCADE détruit. `SET NULL` et `RESTRICT` laissent
+                // l'enregistrement en place — il n'y a rien à protéger.
+                if (strtolower((string) ($fk['on_delete'] ?? '')) !== 'cascade') {
+                    continue;
+                }
+
+                $colonnes = $fk['columns'] ?? [];
+                if (count($colonnes) !== 1) {
+                    continue;
+                }
+
+                $nombre = DB::table($nom)->where($colonnes[0], $key)->count();
+
+                if ($nombre > 0) {
+                    $blockers[$nom] = ($blockers[$nom] ?? 0) + $nombre;
+                }
+            }
+        }
+
+        return $blockers;
+    }
+
     /** Phrase lisible : ce qui empêche la suppression, et en quelle quantité. */
     public static function describe(array $blockers): string
     {
@@ -118,5 +187,6 @@ class DependencyGuard
         'slaughter_orders'      => 'ordres d\'abattage',
         'incubations'           => 'incubations',
         'dispatches'            => 'expéditions',
+        'cash_register_sessions' => 'clôtures de caisse',
     ];
 }
