@@ -32,7 +32,7 @@ class ProtocolController extends Controller
 
         // Types de production de toutes les espèces, pour le sélecteur
         // "Type d'élevage" du modal de création (espèces non-volailles incluses).
-        $productionTypes = ProductionType::active()->with('species')->orderBy('species_id')->get();
+        $productionTypes = ProductionType::offrables();
 
         return view('protocols.index', compact('protocols', 'productionTypes'));
     }
@@ -76,7 +76,9 @@ class ProtocolController extends Controller
 
         $protocol->load('steps');
         $normModels = ProductionNorm::select('model_name', 'batch_type')->distinct()->get();
-        $productionTypes = ProductionType::active()->with('species')->orderBy('species_id')->get();
+        // Idem : le type que ce protocole vise reste proposé, espèce
+        // désactivée ou non — on ne réécrit pas ce qui existe.
+        $productionTypes = ProductionType::offrables($protocol->type);
 
         return view('protocols.edit', compact('protocol', 'normModels', 'productionTypes'));
     }

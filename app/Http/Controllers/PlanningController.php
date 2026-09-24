@@ -60,7 +60,7 @@ class PlanningController extends Controller
             ->select('species_id', 'model_name', 'batch_type')->distinct()->orderBy('model_name')->get();
         $protocols = Protocol::orderBy('name')->get();
         // Types de production de toutes les espèces actives (planification multiespèces).
-        $productionTypes = ProductionType::active()->with('species')->orderBy('species_id')->get();
+        $productionTypes = ProductionType::offrables();
 
         return view('planning.create', compact('buildings', 'providers', 'normModels', 'protocols', 'productionTypes'));
     }

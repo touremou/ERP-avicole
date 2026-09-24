@@ -30,9 +30,16 @@ class ProductionNormController extends Controller
      */
     public function index(Request $request)
     {
-        // Onglets : tous les types de production déclarés au référentiel
-        // (+ valeurs historiques volaille pour compatibilité ascendante)
-        $batchTypes = ProductionType::pluck('slug')
+        // Onglets : les types de production UTILISABLES (donc dont l'espèce est
+        // active — cf. ProductionType::scopeActive), plus ceux qui portent déjà
+        // des normes, plus les valeurs historiques volaille.
+        //
+        // Le second terme n'est pas une précaution : retirer l'onglet d'un type
+        // qui porte des normes les rendrait inatteignables — on aurait caché la
+        // donnée au lieu de masquer un choix. Même règle que
+        // `Building::typesFiltrables()`.
+        $batchTypes = ProductionType::active()->pluck('slug')
+            ->merge(ProductionNorm::distinct()->pluck('batch_type'))
             ->merge(['chair', 'ponte', 'poussiniere', 'reproducteur'])
             ->unique()
             ->sortBy(fn ($slug) => array_search($slug, array_keys(self::TYPE_META)) ?: 99)
@@ -62,8 +69,11 @@ class ProductionNormController extends Controller
                     ->orderBy('week_number')
                     ->get();
 
-        // Espèces proposées pour rattacher explicitement une souche.
-        $species = Species::orderBy('sort_order')->orderBy('name_fr')->get();
+        // Espèces proposées pour rattacher explicitement une souche : les
+        // ACTIVES. Cet écran est l'un de ceux que `SpeciesController::toggle`
+        // annonce masquer (« création de lot, normes, POS… ») et il offrait
+        // encore les espèces désactivées.
+        $species = Species::active()->orderBy('sort_order')->orderBy('name_fr')->get();
 
         return view('admin.norms.index', compact('norms', 'type', 'batchTypes', 'species', 'models', 'model'));
     }
