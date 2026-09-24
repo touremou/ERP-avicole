@@ -72,7 +72,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { token } = await api.login(email, password, deviceName)
     await setMeta('token', token)
 
-    const fresh = await api.me()
+    // La connexion se fait en DEUX appels, et le jeton est déjà rangé quand le
+    // second part. Si `me` échoue — abonnement échu (402), erreur serveur,
+    // réseau qui tombe entre les deux —, le téléphone gardait un jeton sans
+    // profil : ni connecté, ni vraiment déconnecté. On rend donc le jeton avant
+    // de laisser l'erreur remonter jusqu'à l'écran de connexion, qui en affiche
+    // le motif (« Abonnement expiré… » pour un 402).
+    let fresh: MeResponse
+    try {
+      fresh = await api.me()
+    } catch (e) {
+      await clearSession()
+      throw e
+    }
 
     // CHANGEMENT DE COMPTE : on purge les miroirs PERSONNELS du précédent —
     // alertes et tâches assignées. Il les voyait sinon s'afficher chez le suivant,
