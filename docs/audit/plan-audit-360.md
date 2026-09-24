@@ -113,7 +113,7 @@ Chaque ligne des grilles = **Point de contrôle | Méthode de vérification | Cr
 | C1 | **Vente simultanée du dernier article** (2 caissiers) | Test parallèle (2 process artisan / k6) sur staging | 1 vente passe, l'autre échoue proprement ; stock jamais négatif (lock ✅ + contrainte CHECK/logique) | ✅ `lockForUpdate` ; ❓ test parallèle réel |
 | C2 | **Double soumission web** (double-clic, timeout réseau 3G puis re-POST) | Soumettre 2× le même form (ventes, dépenses, pointage) | Doublon bloqué par contrainte unique (B2) ou jeton d'idempotence ; message clair, pas de 500 | ⚠️ dépend de B2 — **bloquant** |
 | C3 | **Paiement concurrent sur la même facture** (dépassement du dû) | 2 paiements parallèles > solde | Verrou sur la facture ; total encaissé ≤ dû | ❓ |
-| C4 | **Replay de la file offline** (sync) | Rejouer le même lot d'opérations `uuid` | `already_synced`, zéro double comptage (`synced_uuids` ✅) | ✅ conception ; ❓ test de charge |
+| C4 | **Replay de la file offline** (sync) | Rejouer le même lot d'opérations `uuid` | `already_synced`, zéro double comptage (`synced_uuids` ✅) | ✅ drill 2026-09-24 — zéro double comptage confirmé ; **statut du perdant corrigé** (cf. drills §C4) |
 | C5 | **Capacité bâtiment** (2 lots créés en même temps) | Test parallèle sur `CreateBatch` (lock bâtiment ✅) | Capacité jamais dépassée | ✅ lock ; ❓ test |
 
 ### 2.3 Traçabilité (Audit Trail)
