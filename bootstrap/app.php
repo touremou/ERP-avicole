@@ -49,6 +49,19 @@ return Application::configure(basePath: dirname(__DIR__))
             // moment du geste, celui-ci la garde fermée entre-temps.
             \App\Http\Middleware\EnsureAccountIsActive::class,
             \App\Http\Middleware\SetUserLocale::class,
+            // L'ÉCHÉANCE D'ABONNEMENT NE S'ARRÊTAIT QU'AU BUREAU.
+            //
+            // Ce middleware n'était posé que sur le groupe web : l'abonnement
+            // échu verrouillait l'écran du bureau pendant que l'application
+            // terrain continuait de synchroniser ventes et stocks, sans terme.
+            // `allowsModule()`, seul contrôle de licence de l'API, lit la liste
+            // des modules sans jamais regarder l'échéance.
+            //
+            // L'intention était écrite deux fois : le middleware porte une
+            // branche `api/*` → 402 qu'aucune requête ne pouvait atteindre, et
+            // ApiLicenseLockTest annonce « le paywall ne doit pas pouvoir être
+            // contourné via la PWA ». Inactif tant que la licence n'est pas armée.
+            \App\Http\Middleware\EnsureLicensed::class,
         ]);
     })
         ->withExceptions(function (Exceptions $exceptions) {
