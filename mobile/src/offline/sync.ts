@@ -244,10 +244,16 @@ export async function syncNow(): Promise<void> {
     // Réseau tombé en plein cycle : l'outbox est intacte, on retentera.
     // On garde la RAISON exacte pour la révéler au tap du badge.
     if (e instanceof ApiError) {
+      // 402 a son message, comme 401 : l'agent de terrain n'a pas à déchiffrer
+      // un code HTTP. Et il doit savoir l'essentiel — ses saisies ne sont PAS
+      // perdues : le push a échoué AVANT le traitement par opération, la file
+      // est intacte, elle partira au renouvellement.
       lastError =
         e.status === 401
           ? 'Session expirée — reconnectez-vous (Mon espace → Se déconnecter).'
-          : `Réponse serveur ${e.status} : ${e.message}`
+          : e.status === 402
+            ? 'Abonnement expiré — vos saisies restent sur ce téléphone et partiront au renouvellement.'
+            : `Réponse serveur ${e.status} : ${e.message}`
     } else {
       lastError = "Échec réseau : le téléphone n'a pas pu joindre le serveur (erp.biocrest.fr). Vérifiez la connexion / le certificat."
     }

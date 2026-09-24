@@ -27,7 +27,17 @@ class EnsureLicensed
         }
 
         // Routes toujours accessibles (sinon boucle de redirection).
-        if ($request->routeIs('license.*', 'login', 'logout', 'password.*', 'install.*', 'trace.*')
+        //
+        // `api.v1.auth.logout` y figure pour la même raison que `logout` côté
+        // web : se déconnecter n'est pas un service sous abonnement, et un
+        // appareil dont l'abonnement est échu doit pouvoir rendre son jeton.
+        //
+        // La CONNEXION de l'API, elle, n'a pas besoin d'y être : elle n'est pas
+        // authentifiée, et la garde ci-dessous laisse déjà passer toute requête
+        // sans utilisateur. Je l'avais d'abord ajoutée ici ; aucune mutation ne
+        // la tuait, et c'est ainsi qu'elle s'est révélée superflue.
+        if ($request->routeIs('license.*', 'login', 'logout', 'password.*', 'install.*', 'trace.*',
+                'api.v1.auth.logout')
             || $request->is('up')) {
             return $next($request);
         }
