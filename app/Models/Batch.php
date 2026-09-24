@@ -442,22 +442,22 @@ class Batch extends Model
             // 2. Depuis les settings (rétrocompat poulet + nouvelles espèces via settings)
             $days = match (strtolower($this->type ?? 'chair')) {
                 'chair' => match ($this->species?->slug) {
-                    'dinde'  => (int) setting('elevage.cycle_dinde_chair', 120),
-                    'caille' => (int) setting('elevage.cycle_caille_chair', 42),
-                    default  => (int) setting('elevage.cycle_chair', 45),
+                    'dinde'  => self::cycleJours('elevage.cycle_dinde_chair'),
+                    'caille' => self::cycleJours('elevage.cycle_caille_chair'),
+                    default  => self::cycleJours('elevage.cycle_chair'),
                 },
                 'ponte' => match ($this->species?->slug) {
-                    'caille' => (int) setting('elevage.cycle_caille_ponte', 240),
-                    default  => (int) setting('elevage.cycle_ponte', 540),
+                    'caille' => self::cycleJours('elevage.cycle_caille_ponte'),
+                    default  => self::cycleJours('elevage.cycle_ponte'),
                 },
-                'poussiniere'              => (int) setting('elevage.cycle_poussiniere', 90),
+                'poussiniere'              => self::cycleJours('elevage.cycle_poussiniere'),
                 'repro', 'reproducteur'    => match ($this->species?->slug) {
-                    'mouton' => (int) setting('elevage.cycle_ovin_reproducteur', 180),
-                    default  => (int) setting('elevage.cycle_reproducteur', 450),
+                    'mouton' => self::cycleJours('elevage.cycle_ovin_reproducteur'),
+                    default  => self::cycleJours('elevage.cycle_reproducteur'),
                 },
-                'laitiere'                 => (int) setting('elevage.cycle_caprin_lait', 210),
-                'engraissement'            => (int) setting('elevage.cycle_ovin_engraissement', 90),
-                default                    => 45,
+                'laitiere'                 => self::cycleJours('elevage.cycle_caprin_lait'),
+                'engraissement'            => self::cycleJours('elevage.cycle_ovin_engraissement'),
+                default                    => self::CYCLE_DEFAUTS['elevage.cycle_chair'],
             };
         }
 
@@ -465,6 +465,47 @@ class Batch extends Model
         $arrivee = Carbon::parse($this->arrival_date);
 
         $this->expected_end_date = $fin->lessThan($arrivee) ? $arrivee : $fin;
+    }
+
+
+    /**
+     * DURÉE DE CYCLE — déclaration UNIQUE du repli.
+     *
+     * `elevage.cycle_chair` était lu à deux endroits avec deux replis : 45 ici,
+     * 42 dans l'écran de création d'un plan de bande. Et la migration qui SÈME
+     * ce réglage livre 42 — le 45 d'ici ne correspondait donc à rien : ni à la
+     * valeur livrée, ni à celle qu'annonce l'écran.
+     *
+     * Tant que le réglage est renseigné, les deux s'accordent. Vidé à l'écran
+     * des Réglages — cas désormais traité comme une absence (cf. `Setting::get`)
+     * — le planning propose l'abattage à J+42 pendant que la bande, elle, porte
+     * une fin de cycle à J+45. Trois jours d'écart sur la seule date que les
+     * deux écrans servent à donner.
+     *
+     * Les replis vivent donc ici, une fois, et l'écran les lit. Ils reprennent
+     * les valeurs SEMÉES par les migrations : un repli qui contredit ce qui est
+     * livré est un troisième chiffre de plus, pas une sécurité.
+     *
+     * Même remède que `Building::sanitaryBreakDays()` et
+     * `Sale::paymentDelayDays()`, pour la même raison.
+     */
+    public const CYCLE_DEFAUTS = [
+        'elevage.cycle_chair'               => 42,
+        'elevage.cycle_dinde_chair'         => 120,
+        'elevage.cycle_caille_chair'        => 42,
+        'elevage.cycle_ponte'               => 540,
+        'elevage.cycle_caille_ponte'        => 240,
+        'elevage.cycle_poussiniere'         => 90,
+        'elevage.cycle_reproducteur'        => 450,
+        'elevage.cycle_ovin_reproducteur'   => 180,
+        'elevage.cycle_caprin_lait'         => 210,
+        'elevage.cycle_ovin_engraissement'  => 90,
+    ];
+
+    /** Durée de cycle réglée pour cette clef, ou son repli déclaré ci-dessus. */
+    public static function cycleJours(string $cle): int
+    {
+        return (int) setting($cle, self::CYCLE_DEFAUTS[$cle] ?? 42);
     }
 
     /** Retourne le label de l'espèce (avec fallback sur type legacy pour le poulet) */

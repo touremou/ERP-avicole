@@ -235,11 +235,14 @@
 @include('batches.partials.building-compatibility')
 
 <script>
+// Les replis viennent de `Batch::cycleJours()` : l'écran doit annoncer la
+// durée que la bande appliquera. Les redéclarer ici, c'est le défaut qu'on
+// vient de corriger — le planning disait J+42 quand la bande portait J+45.
 const CYCLES = {
-    chair: {{ setting('elevage.cycle_chair', 42) }},
-    ponte: {{ setting('elevage.cycle_ponte', 540) }},
-    poussiniere: {{ setting('elevage.cycle_poussiniere', 90) }},
-    reproducteur: {{ setting('elevage.cycle_reproducteur', 450) }}
+    chair: {{ \App\Models\Batch::cycleJours('elevage.cycle_chair') }},
+    ponte: {{ \App\Models\Batch::cycleJours('elevage.cycle_ponte') }},
+    poussiniere: {{ \App\Models\Batch::cycleJours('elevage.cycle_poussiniere') }},
+    reproducteur: {{ \App\Models\Batch::cycleJours('elevage.cycle_reproducteur') }}
    };
 const CYCLE_LABELS = { chair: 'Abattage', ponte: 'Réforme', poussiniere: 'Transfert', reproducteur: 'Réforme' };
 
