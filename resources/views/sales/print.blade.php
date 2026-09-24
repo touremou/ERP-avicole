@@ -64,7 +64,10 @@
             <div class="ref">{{ $sale->reference }}</div>
             <div class="type">{{ $docLabel }}</div>
             <div class="date">{{ __("Date") }} : {{ $sale->sale_date->translatedFormat('d F Y') }}</div>
-            @php($delai = (int) setting('ventes.payment_delay_days', 0))
+            {{-- Déclaration UNIQUE du délai : la facture doit annoncer l'échéance que
+                 le système appliquera, sinon le client est relancé contre une date
+                 qu'il n'a jamais reçue. --}}
+            @php($delai = \App\Models\Sale::paymentDelayDays())
             @if($delai > 0)
                 <div class="date">{{ __("Échéance") }} : {{ $sale->sale_date->copy()->addDays($delai)->translatedFormat('d F Y') }}</div>
             @endif
