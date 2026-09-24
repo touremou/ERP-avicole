@@ -31,17 +31,13 @@
                         <div>
                             <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 tracking-widest leading-none">{{ __("Vocation Technique") }}</label>
                             <select name="type" required class="w-full p-4 bg-slate-50 rounded-2xl border-none font-black text-blue-600 shadow-inner appearance-none focus:ring-2 focus:ring-blue-500 italic cursor-pointer outline-none">
-                                <option value="mixte" {{ old('type') == 'mixte' ? 'selected' : '' }}>{{ __("🔄 Mixte (TOUT TYPE)") }}</option>
-                                <option value="chair" {{ old('type') == 'chair' ? 'selected' : '' }}>{{ __("🍗 Poulet de chair") }}</option>
-                                <option value="ponte" {{ old('type') == 'ponte' ? 'selected' : '' }}>{{ __("🥚 Pondeuses") }}</option>
-                                <option value="poussiniere" {{ old('type') == 'poussiniere' ? 'selected' : '' }}>{{ __("🐣 Poussinière") }}</option>
-                                <option value="reproducteur" {{ old('type') == 'reproducteur' ? 'selected' : '' }}>{{ __("🧬 Reproducteurs") }}</option>
-                                <option value="bergerie" {{ old('type') == 'bergerie' ? 'selected' : '' }}>{{ __("🐑 Bergerie (Ovins)") }}</option>
-                                <option value="chevrerie" {{ old('type') == 'chevrerie' ? 'selected' : '' }}>{{ __("🐐 Chèvrerie (Caprins)") }}</option>
-                                <option value="etable" {{ old('type') == 'etable' ? 'selected' : '' }}>{{ __("🐄 Étable (Bovins)") }}</option>
-                                <option value="bassin" {{ old('type') == 'bassin' ? 'selected' : '' }}>{{ __("🐟 Bassin (Pisciculture)") }}</option>
-                                <option value="lapiniere" {{ old('type') == 'lapiniere' ? 'selected' : '' }}>{{ __("🐇 Lapinière") }}</option>
-                                <option value="porcherie" {{ old('type') == 'porcherie' ? 'selected' : '' }}>{{ __("🐷 Porcherie") }}</option>
+                                {{-- Habitats dérivés des espèces actives (Paramètres › Espèces).
+                                     Cette liste était écrite en dur ici, dans la fiche de
+                                     modification, dans la barre de filtres et dans les deux
+                                     FormRequests. Déclaration unique : Building::TYPES. --}}
+                                @foreach(\App\Models\Building::typesSaisissables() as $cle => $habitat)
+                                    <option value="{{ $cle }}" {{ old('type') == $cle ? 'selected' : '' }}>{{ $habitat['icon'] }} {{ __($habitat['label']) }}</option>
+                                @endforeach
                             </select>
                         </div>
 

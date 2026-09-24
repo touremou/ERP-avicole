@@ -52,6 +52,123 @@ class Building extends Model
     ];
 
     /**
+     * CE QU'UN BÂTIMENT PEUT ABRITER — déclaration UNIQUE, et RELIÉE AUX ESPÈCES.
+     *
+     * Cette liste était écrite cinq fois : la barre de filtres de l'index, le
+     * sélecteur de création, celui de modification, et les deux règles `in:`
+     * des FormRequests. Elles DIVERGEAIENT déjà — la barre de filtres ignorait
+     * `etable`. Un bâtiment d'étable pouvait donc se créer, mais aucun filtre ne
+     * le retrouvait : il n'existait que sous « Tous ».
+     *
+     * ─── ET SURTOUT : ELLE IGNORAIT LES ESPÈCES ───
+     *
+     * `SpeciesController::toggle` annonce exactement ce qu'il fait : « Désactiver
+     * la masque des sélecteurs (création de lot, normes, POS…) ». Les bâtiments
+     * n'avaient jamais été raccordés. Une ferme qui ne fait que de la volaille
+     * désactivait porc, lapin, bovins — et se voyait toujours proposer porcherie,
+     * lapinière et étable, au filtre comme au formulaire.
+     *
+     * Chaque habitat déclare donc ce qui le justifie : une FAMILLE (les quatre
+     * stades avicoles ne tiennent qu'à la volaille, quelle que soit l'espèce) ou
+     * des ESPÈCES nommées. `mixte` n'en dépend d'aucune : il accueille tout, et
+     * reste offert même sur une ferme qui n'a encore rien activé — sans quoi
+     * l'écran pourrait ne proposer aucun type du tout.
+     *
+     * @var array<string, array{icon: string, label: string, court?: string, family?: string, species?: array<int, string>}>
+     */
+    public const TYPES = [
+        'mixte'        => ['icon' => '🔄', 'label' => 'Mixte (tout type)',       'court' => 'Mixte'],
+        'poussiniere'  => ['icon' => '🐣', 'label' => 'Poussinière',             'court' => 'Poussinières', 'family' => 'volaille'],
+        'chair'        => ['icon' => '🍗', 'label' => 'Poulet de chair',         'court' => 'Chair',        'family' => 'volaille'],
+        'ponte'        => ['icon' => '🥚', 'label' => 'Pondeuses',               'court' => 'Ponte',        'family' => 'volaille'],
+        'reproducteur' => ['icon' => '🧬', 'label' => 'Reproducteurs',           'court' => 'Repro',        'family' => 'volaille'],
+        'bergerie'     => ['icon' => '🐑', 'label' => 'Bergerie (ovins)',        'court' => 'Bergerie',     'species' => ['mouton']],
+        'chevrerie'    => ['icon' => '🐐', 'label' => 'Chèvrerie (caprins)',     'court' => 'Chèvrerie',    'species' => ['chevre']],
+        'etable'       => ['icon' => '🐄', 'label' => 'Étable (bovins)',         'court' => 'Étable',       'species' => ['vache']],
+        'bassin'       => ['icon' => '🐟', 'label' => 'Bassin (pisciculture)',   'court' => 'Bassin',       'family' => 'aquaculture'],
+        'lapiniere'    => ['icon' => '🐇', 'label' => 'Lapinière',               'court' => 'Lapinière',    'species' => ['lapin']],
+        'porcherie'    => ['icon' => '🐷', 'label' => 'Porcherie',               'court' => 'Porcherie',    'species' => ['porc']],
+    ];
+
+    /**
+     * Les habitats que les espèces ACTIVES justifient.
+     *
+     * @return array<string, array<string, mixed>>  type => déclaration
+     */
+    public static function typesActifs(): array
+    {
+        $actives = \App\Models\Species::query()
+            ->where('is_active', true)
+            ->get(['slug', 'family']);
+
+        $familles = $actives->pluck('family')->unique()->all();
+        $especes  = $actives->pluck('slug')->all();
+
+        return array_filter(self::TYPES, function (array $regle) use ($familles, $especes) {
+            // Ni famille ni espèce déclarée : habitat universel (« mixte »).
+            if (! isset($regle['family']) && ! isset($regle['species'])) {
+                return true;
+            }
+
+            if (isset($regle['family']) && in_array($regle['family'], $familles, true)) {
+                return true;
+            }
+
+            return (bool) array_intersect($regle['species'] ?? [], $especes);
+        });
+    }
+
+    /**
+     * Les habitats que la BARRE DE FILTRES doit proposer.
+     *
+     * On ajoute aux habitats actifs ceux que le parc porte DÉJÀ. Une espèce
+     * désactivée dont les bâtiments subsistent doit rester filtrable : sans
+     * cela, ces bâtiments resteraient visibles sous « Tous » sans qu'aucun
+     * filtre ne puisse les isoler — on aurait remplacé un filtre de trop par un
+     * filtre manquant.
+     *
+     * Un type inconnu du registre s'affiche tel quel plutôt que de disparaître :
+     * un bâtiment ne doit jamais devenir introuvable parce que son libellé
+     * manque.
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    public static function typesFiltrables(): array
+    {
+        $types = self::typesActifs();
+
+        foreach (self::physical()->distinct()->pluck('type') as $porte) {
+            if ($porte && ! isset($types[$porte])) {
+                $types[$porte] = self::TYPES[$porte] ?? ['icon' => '🏠', 'label' => $porte, 'court' => $porte];
+            }
+        }
+
+        return array_replace(array_intersect_key(self::TYPES, $types), $types);
+    }
+
+    /**
+     * Les habitats qu'un FORMULAIRE peut offrir.
+     *
+     * Le type COURANT reste offert même si son espèce a été désactivée depuis :
+     * sans lui, rouvrir la fiche d'une bergerie existante en changerait
+     * silencieusement la nature au premier enregistrement. C'est la même règle
+     * que partout ailleurs ici — désactiver masque pour la suite, sans réécrire
+     * ce qui existe.
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    public static function typesSaisissables(?string $courant = null): array
+    {
+        $types = self::typesActifs();
+
+        if ($courant && ! isset($types[$courant])) {
+            $types[$courant] = self::TYPES[$courant] ?? ['icon' => '🏠', 'label' => $courant, 'court' => $courant];
+        }
+
+        return array_replace(array_intersect_key(self::TYPES, $types), $types);
+    }
+
+    /**
      * Durée standard du vide sanitaire (jours) avant réutilisation.
      *
      * REPLI SEULEMENT. La durée qui gouverne réellement est celle réglée dans
