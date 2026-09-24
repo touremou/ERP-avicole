@@ -286,6 +286,11 @@
         const stocks = @json($formattedStocks);
         const batchList = @json($formattedBatches);
         const catMap = @json(\App\Models\Stock::PRODUCT_TYPE_TO_CATEGORY);
+        // Les types adossés au stock viennent de PHP : cette liste était
+        // recopiée à la main plus bas, et une septième catégorie vendable
+        // l'aurait laissée en arrière — la ligne se serait affichée sans
+        // sélecteur d'article. Déclaration unique : SaleItem::STOCK_TYPES.
+        const stockTypes = @json(\App\Models\SaleItem::STOCK_TYPES);
         const catalog = {{ Illuminate\Support\Js::from($catalog) }};
 
         return {
@@ -316,7 +321,7 @@
             // Stock::CAT_PRODUITS_FINIS par l'abattoir/découpe et les
             // poussins d'un jour) : ils se sélectionnent depuis le stock,
             // au même titre que oeufs/aliment/materiel.
-            isStockType(t) { return ['oeufs','lait','aliment','produits_finis','materiel','litieres'].includes(t); },
+            isStockType(t) { return stockTypes.includes(t); },
             isBatchType(t) { return ['animal_vif','carcasse'].includes(t); },
             isManualType(t) { return ['fumier','autre'].includes(t); },
             unitChoices(t) {
