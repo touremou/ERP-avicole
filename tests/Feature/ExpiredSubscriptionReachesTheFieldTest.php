@@ -41,9 +41,11 @@ uses(Tests\TestCase::class, Illuminate\Foundation\Testing\RefreshDatabase::class
  * Rien tant que la licence n'est pas ARMÉE (clé publique + enforcement) : c'est
  * l'état par défaut, et une borne ci-dessous le garde.
  *
- * Une fois armée, un téléphone qui détient des saisies hors ligne ne pourra
- * plus les pousser après la période de grâce. C'est précisément ce que la
- * grâce existe pour couvrir, et c'est dit plutôt que tu : un test l'établit.
+ * Une fois armée, un téléphone ne peut plus POUSSER après la période de grâce
+ * — mais ses saisies ne sont PAS perdues. Vérifié dans le client
+ * (`mobile/src/offline/sync.ts`) : le push échoue sur le 402 AVANT tout
+ * traitement par opération, la file reste intacte, et elle part au
+ * renouvellement. J'avais d'abord écrit l'inverse, avant d'avoir lu le client.
  */
 
 /** Licence signée, valable ce nombre de jours. */
@@ -149,11 +151,18 @@ test('une révocation à distance tombe AUSSI sur le terrain', function () {
     tirerLesReferentiels($this)->assertStatus(402);
 });
 
-test('s’authentifier reste possible, abonnement échu ou non', function () {
+test('le point de CONNEXION répond, abonnement échu ou non', function () {
     /*
-     * Même exemption que `login` côté web. Sans elle, l'application ne pourrait
-     * pas distinguer « abonnement échu » de « mauvais mot de passe » ou de
-     * « serveur injoignable » : tout lui répondrait pareil.
+     * Ce test prouve ce qu'il prouve, et pas davantage : le point `auth/login`
+     * répond — il n'est pas authentifié, et la garde « aucun utilisateur » le
+     * laisse passer.
+     *
+     * Il ne prouve PAS que l'application se connecte. Le client enchaîne
+     * `login` puis `me` (`mobile/src/app/AuthContext.tsx`), et `me`, lui, est
+     * sous abonnement : sur une licence échue, l'agent est arrêté à l'écran de
+     * connexion avec le motif « Abonnement expiré… ». C'est voulu — c'est la
+     * sortie la plus claire pour le terrain. Ce test portait d'abord le nom
+     * « s'authentifier reste possible », qui laissait croire le contraire.
      */
     $this->travel(30 + 8)->days();
 
@@ -191,9 +200,12 @@ test('pousser une file hors ligne est refusé aussi — conséquence DITE, pas t
     /*
      * Ce test n'éprouve pas une garde : il ÉTABLIT une conséquence, pour
      * qu'elle ne soit découverte par personne au pire moment. Après la grâce,
-     * un téléphone qui détient des saisies non poussées ne peut plus les
-     * pousser. C'est cohérent avec le verrou — c'est aussi ce qui fait de la
-     * période de grâce le moment de vider les files.
+     * le push répond 402 d'un bloc.
+     *
+     * Côté téléphone, les saisies sont TENUES, pas perdues : le client échoue
+     * avant le traitement par opération, la file reste en attente, et
+     * l'agent lit « vos saisies restent sur ce téléphone et partiront au
+     * renouvellement ».
      */
     $this->travel(30 + 8)->days();
 
