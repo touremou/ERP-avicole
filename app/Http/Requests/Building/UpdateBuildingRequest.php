@@ -22,7 +22,14 @@ class UpdateBuildingRequest extends FormRequest
         // et corrompt la requête SQL générée).
         return [
             'name'                    => ['required', 'string', 'max:255', Rule::unique('buildings', 'name')->ignore($this->route('building'))],
-            'type'                    => ['required', 'in:poussiniere,chair,ponte,reproducteur,mixte,bergerie,chevrerie,etable,bassin,lapiniere,porcherie'],
+            // Même liste que le sélecteur, y compris le type COURANT : une
+            // bergerie dont l'espèce a été désactivée doit rester
+            // enregistrable telle quelle, sinon toute modification de sa
+            // capacité serait refusée sur un champ que l'utilisateur n'a pas
+            // touché. Cf. Building::typesSaisissables().
+            'type'                    => ['required', Rule::in(array_keys(
+                Building::typesSaisissables($this->route('building')?->type)
+            ))],
             'surface'                 => ['required', 'numeric', 'min:1'],
             'capacity'                => ['required', 'integer', 'min:1'],
             'status'                  => ['required', Rule::in(Building::STATUSES)],

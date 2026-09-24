@@ -17,16 +17,18 @@
             {{-- SYSTÈME DE FILTRES --}}
             <div class="flex flex-wrap gap-2 mb-10 bg-white p-2 rounded-3xl border border-slate-100 shadow-sm w-fit mx-auto md:mx-0">
                 <button onclick="filterB('all')" class="btn-f px-6 py-3 rounded-2xl text-[9px] font-black uppercase bg-slate-900 text-white transition-all cursor-pointer border-none" id="f-all">{{ __("Tous") }}</button>
-                <button onclick="filterB('mixte')" class="btn-f px-6 py-3 rounded-2xl text-[9px] font-black uppercase text-blue-600 hover:bg-slate-50 transition-all cursor-pointer border-none bg-transparent" id="f-mixte">🔄 {{ __("Mixte") }}</button>
-                <button onclick="filterB('poussiniere')" class="btn-f px-6 py-3 rounded-2xl text-[9px] font-black uppercase text-slate-400 hover:bg-slate-50 transition-all cursor-pointer border-none bg-transparent" id="f-poussiniere">🐣 {{ __("Poussinières") }}</button>
-                <button onclick="filterB('chair')" class="btn-f px-6 py-3 rounded-2xl text-[9px] font-black uppercase text-slate-400 hover:bg-slate-50 transition-all cursor-pointer border-none bg-transparent" id="f-chair">🍗 {{ __("Chair") }}</button>
-                <button onclick="filterB('ponte')" class="btn-f px-6 py-3 rounded-2xl text-[9px] font-black uppercase text-slate-400 hover:bg-slate-50 transition-all cursor-pointer border-none bg-transparent" id="f-ponte">🥚 {{ __("Ponte") }}</button>
-                <button onclick="filterB('reproducteur')" class="btn-f px-6 py-3 rounded-2xl text-[9px] font-black uppercase text-slate-400 hover:bg-slate-50 transition-all cursor-pointer border-none bg-transparent" id="f-reproducteur">🧬 {{ __("Repro") }}</button>
-                <button onclick="filterB('bergerie')" class="btn-f px-6 py-3 rounded-2xl text-[9px] font-black uppercase text-slate-400 hover:bg-slate-50 transition-all cursor-pointer border-none bg-transparent" id="f-bergerie">🐑 {{ __("Bergerie") }}</button>
-                <button onclick="filterB('chevrerie')" class="btn-f px-6 py-3 rounded-2xl text-[9px] font-black uppercase text-slate-400 hover:bg-slate-50 transition-all cursor-pointer border-none bg-transparent" id="f-chevrerie">🐐 {{ __("Chèvrerie") }}</button>
-                <button onclick="filterB('bassin')" class="btn-f px-6 py-3 rounded-2xl text-[9px] font-black uppercase text-slate-400 hover:bg-slate-50 transition-all cursor-pointer border-none bg-transparent" id="f-bassin">🐟 {{ __("Bassin") }}</button>
-                <button onclick="filterB('lapiniere')" class="btn-f px-6 py-3 rounded-2xl text-[9px] font-black uppercase text-slate-400 hover:bg-slate-50 transition-all cursor-pointer border-none bg-transparent" id="f-lapiniere">🐇 {{ __("Lapinière") }}</button>
-                <button onclick="filterB('porcherie')" class="btn-f px-6 py-3 rounded-2xl text-[9px] font-black uppercase text-slate-400 hover:bg-slate-50 transition-all cursor-pointer border-none bg-transparent" id="f-porcherie">🐷 {{ __("Porcherie") }}</button>
+                {{--
+                    Les habitats proposés SUIVENT les espèces actives (Paramètres ›
+                    Espèces) : cette barre était écrite en dur, et proposait porcherie
+                    ou lapinière à une ferme qui n'élève que de la volaille. Elle
+                    oubliait aussi « Étable », qu'aucun filtre ne pouvait donc isoler.
+                    Déclaration unique : App\Models\Building::TYPES.
+                --}}
+                @foreach(\App\Models\Building::typesFiltrables() as $cle => $habitat)
+                    <button onclick="filterB('{{ $cle }}')"
+                            class="btn-f px-6 py-3 rounded-2xl text-[9px] font-black uppercase {{ $cle === 'mixte' ? 'text-blue-600' : 'text-slate-400' }} hover:bg-slate-50 transition-all cursor-pointer border-none bg-transparent"
+                            id="f-{{ $cle }}">{{ $habitat['icon'] }} {{ __($habitat['court'] ?? $habitat['label']) }}</button>
+                @endforeach
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" id="buildingContainer">

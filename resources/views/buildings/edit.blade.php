@@ -48,17 +48,12 @@
                             </div>
                         @else
                             <select name="type" class="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-orange-500 outline-none font-black text-slate-700 appearance-none shadow-inner uppercase text-[10px] italic cursor-pointer">
-                                <option value="mixte" {{ old('type', $building->type) == 'mixte' ? 'selected' : '' }}>🔄 {{ __("Mixte (TOUT TYPE)") }}</option>
-                                <option value="poussiniere" {{ old('type', $building->type) == 'poussiniere' ? 'selected' : '' }}>🐣 {{ __("Poussinière") }}</option>
-                                <option value="chair" {{ old('type', $building->type) == 'chair' ? 'selected' : '' }}>🍗 {{ __("Poulet de chair") }}</option>
-                                <option value="ponte" {{ old('type', $building->type) == 'ponte' ? 'selected' : '' }}>🥚 {{ __("Pondeuses") }}</option>
-                                <option value="reproducteur" {{ old('type', $building->type) == 'reproducteur' ? 'selected' : '' }}>🧬 {{ __("Reproducteurs") }}</option>
-                                <option value="bergerie" {{ old('type', $building->type) == 'bergerie' ? 'selected' : '' }}>🐑 {{ __("Bergerie (Ovins)") }}</option>
-                                <option value="chevrerie" {{ old('type', $building->type) == 'chevrerie' ? 'selected' : '' }}>🐐 {{ __("Chèvrerie (Caprins)") }}</option>
-                                <option value="etable" {{ old('type', $building->type) == 'etable' ? 'selected' : '' }}>🐄 {{ __("Étable (Bovins)") }}</option>
-                                <option value="bassin" {{ old('type', $building->type) == 'bassin' ? 'selected' : '' }}>🐟 {{ __("Bassin (Pisciculture)") }}</option>
-                                <option value="lapiniere" {{ old('type', $building->type) == 'lapiniere' ? 'selected' : '' }}>🐇 {{ __("Lapinière") }}</option>
-                                <option value="porcherie" {{ old('type', $building->type) == 'porcherie' ? 'selected' : '' }}>🐷 {{ __("Porcherie") }}</option>
+                                {{-- Habitats dérivés des espèces actives ; le type COURANT reste
+                                     offert même si son espèce a été désactivée depuis, sinon rouvrir
+                                     la fiche en changerait la nature. Cf. Building::TYPES. --}}
+                                @foreach(\App\Models\Building::typesSaisissables($building->type) as $cle => $habitat)
+                                    <option value="{{ $cle }}" {{ old('type', $building->type) == $cle ? 'selected' : '' }}>{{ $habitat['icon'] }} {{ __($habitat['label']) }}</option>
+                                @endforeach
                             </select>
                         @endif
                     </div>
