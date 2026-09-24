@@ -26,6 +26,8 @@ use App\Models\Stock;
 use App\Models\StockMovement;
 use App\Services\SlaughterService;
 use Carbon\Carbon;
+use Illuminate\Database\DetectsConcurrencyErrors;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -57,6 +59,8 @@ use Illuminate\Validation\Rule;
  */
 class SyncService
 {
+    use DetectsConcurrencyErrors;
+
     /**
      * Avance d'horloge tolérée sur un horodatage déclaré par le terrain.
      *
@@ -138,7 +142,99 @@ class SyncService
             return ['status' => 'validation_failed', 'message' => __("Type d'opération inconnu : :type", ['type' => $type])];
         }
 
+        return $this->rejouableUneFois($method, $payload);
+    }
+
+    /**
+     * REJEU CONCURRENT : le perdant de la course a droit à la VRAIE réponse.
+     *
+     * Chaque gardien d'idempotence de ce service est un `SELECT … EXISTS` —
+     * une lecture NON verrouillante. Deux rejeux strictement simultanés de la
+     * même opération le passent donc tous les deux, et c'est l'index UNIQUE
+     * qui tranche : un gagnant, un perdant qui remonte une
+     * `UniqueConstraintViolationException` ou une `DeadlockException` brute.
+     *
+     * L'invariant métier TIENT — le drill C4 le prouve : rien n'est jamais
+     * compté deux fois. Ce qui ne tient pas, c'est la RÉPONSE. Le contrôleur
+     * ravale ces exceptions en statut `error`, le seul que le contrat client
+     * (docs/mobile/phase-0-spec.md §4.2) ne définit pas : l'opération reste
+     * dans l'outbox, son compteur de tentatives monte, et c'est ce compteur qui
+     * l'envoie au bac « À corriger ». Une opération PARFAITEMENT APPLIQUÉE est
+     * ainsi présentée au terrain comme à ressaisir.
+     *
+     * Le dépôt a déjà tranché ce point une fois, dans `TreasuryPostingService`
+     * (drill C2) : « pour le perdant de la course, "déjà comptabilisé" est la
+     * bonne réponse, pas une erreur ». On généralise ici, à la porte d'entrée.
+     *
+     * ─── POURQUOI ON REJOUE, ET POURQUOI ON ATTEND AVANT ───
+     *
+     * On ne devine pas quelle clef a claqué : on REJOUE l'opération. Tout
+     * handler commence par son contrôle d'idempotence ; au passage suivant, la
+     * ligne du gagnant est committée, le contrôle la voit, et la réponse rendue
+     * est `already_synced` — celle qui était due.
+     *
+     * Le délai n'est pas une précaution de principe, il est MESURÉ. Rejouer
+     * immédiatement échouait encore une fois sur trois au drill, et la sonde a
+     * dit pourquoi : la première exception est souvent un INTERBLOCAGE, pas un
+     * doublon. InnoDB sacrifie l'un des deux — mais le survivant, lui, n'a
+     * PAS encore committé. Le perdant relisait donc une base où le gagnant
+     * n'était pas encore arrivé (`total=0` à la sonde), réinsérait, et se
+     * heurtait cette fois au doublon pour de bon. On laisse au gagnant le temps
+     * d'atterrir, par paliers courts.
+     *
+     * Rejouer est sûr précisément parce que ces opérations sont idempotentes :
+     * c'est la propriété que tout ce service existe pour garantir. Et si la
+     * collision n'était PAS un rejeu — deux opérations distinctes butant sur
+     * une même contrainte métier — les passages suivants échouent de la même
+     * façon, et l'erreur remonte comme avant : on n'invente pas un succès.
+     */
+    private const REJEU_PALIERS_MS = [40, 120, 300];
+
+    private function rejouableUneFois(string $method, array $payload): array
+    {
+        foreach (self::REJEU_PALIERS_MS as $attente) {
+            try {
+                return $this->{$method}($payload);
+            } catch (\Throwable $e) {
+                if (! $this->estUneCourse($e)) {
+                    throw $e;
+                }
+
+                Log::info("Sync: rejeu concurrent sur {$method} — nouvelle lecture de l'idempotence dans {$attente} ms.");
+                usleep($attente * 1000);
+            }
+        }
+
+        // Dernier essai : ce qu'il renvoie — réponse ou exception — fait foi.
         return $this->{$method}($payload);
+    }
+
+    /**
+     * Cette exception est-elle la marque d'une COURSE, et non d'une panne ?
+     *
+     * Deux issues, et il faut les deux : l'index unique qui tranche
+     * (`UniqueConstraintViolationException`), et l'interblocage InnoDB, qui au
+     * drill s'est révélé le plus fréquent des deux.
+     *
+     * L'interblocage se présente sous deux visages selon la profondeur de
+     * transaction — `DeadlockException` quand il survient dans une transaction
+     * IMBRIQUÉE (le cas courant ici : un handler ouvre la sienne, l'Action
+     * qu'il appelle ouvre la sienne), une `QueryException` en 40001 quand la
+     * transaction est de premier niveau. Ne reconnaître que le premier visage
+     * laisserait passer les handlers qui délèguent directement à l'Action.
+     *
+     * On ne réécrit pas cette reconnaissance : `causedByConcurrencyError` est
+     * celle que le framework applique à ses PROPRES rejeux de transaction
+     * (`ManagesTransactions`). Une liste de codes tenue ici en doublon finirait
+     * par diverger de celle qui fait foi — et elle couvre DÉJÀ les deux visages :
+     * `DeadlockException` n'est construite par le framework qu'après ce même
+     * contrôle, et porte le message d'origine. Un `instanceof` de plus ici ne
+     * gardait rien ; aucune mutation ne le tuait, et il est parti.
+     */
+    private function estUneCourse(\Throwable $e): bool
+    {
+        return $e instanceof UniqueConstraintViolationException
+            || $this->causedByConcurrencyError($e);
     }
 
     // ─────────────────────────────────────────────────────────────
