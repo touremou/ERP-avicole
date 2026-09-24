@@ -218,7 +218,7 @@ class InstallController extends Controller
      */
     public function finish()
     {
-        $alreadyInstalled = InstallationState::estInstallee();
+        $alreadyInstalled = InstallationState::marqueurPose();
 
         /*
          * ─── ON NE DÉCLARE PAS INSTALLÉ CE QUI NE L'EST PAS ───

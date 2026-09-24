@@ -78,16 +78,40 @@ class InstallationState
      */
     public static function estInstallee(): bool
     {
+        if (self::marqueurPose()) {
+            return true;
+        }
+
+        try {
+            return self::administrateurReelExiste();
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
+    /**
+     * LE MARQUEUR A-T-IL ÉTÉ POSÉ ? — question DIFFÉRENTE de la précédente.
+     *
+     * `estInstallee()` répond « cet assistant a-t-il encore le droit de
+     * tourner ? » et compte l'administrateur réel parmi ses témoins.
+     * Celle-ci répond « la finalisation a-t-elle déjà eu lieu ? ».
+     *
+     * Les confondre coûte cher, et je l'ai fait avant que la suite ne me
+     * l'apprenne : `finish()` teste ce témoin pour savoir s'il doit encore
+     * POSER le marqueur. Branché sur `estInstallee()`, il trouvait « déjà
+     * installé » dès que l'étape précédente venait de créer l'administrateur
+     * RÉEL — et sautait donc son propre travail. Une installation neuve
+     * s'achevait sans marqueur, et surtout sans la bascule du `.env` en
+     * production : `APP_DEBUG` serait resté à `true`.
+     */
+    public static function marqueurPose(): bool
+    {
         if (File::exists(self::fichierMarqueur())) {
             return true;
         }
 
         try {
-            if (Setting::get(self::CLEF)) {
-                return true;
-            }
-
-            return self::administrateurReelExiste();
+            return (bool) Setting::get(self::CLEF);
         } catch (\Throwable) {
             return false;
         }

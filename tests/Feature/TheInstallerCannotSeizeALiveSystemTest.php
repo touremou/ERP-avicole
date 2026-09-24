@@ -238,6 +238,29 @@ test('la liste des comptes semés est lue CHEZ LE SEMEUR', function () {
     expect($source)->not->toContain('@avismart.com');
 });
 
+test('la finalisation pose le marqueur EN BASE, pas seulement sur disque', function () {
+    /*
+     * Ce que tout le remède vise : c'est ce marqueur-là qui survivra au
+     * prochain reprovisionnement de `storage/`.
+     *
+     * Ce test garde aussi une DISTINCTION que j'avais d'abord ratée, et que la
+     * suite complète m'a apprise : « cet assistant a-t-il le droit de
+     * tourner ? » et « la finalisation a-t-elle déjà eu lieu ? » ne sont PAS la
+     * même question. Branchée sur la première, la finalisation se croyait déjà
+     * faite dès que l'étape précédente avait créé l'administrateur réel — elle
+     * sautait donc la pose du marqueur ET la bascule du `.env` en production,
+     * laissant `APP_DEBUG` à `true` sur une installation neuve.
+     */
+    administrateurReel();
+
+    expect(InstallationState::marqueurPose())->toBeFalse();   // rien encore
+
+    $this->get(route('install.finish'))->assertOk();
+
+    expect(Setting::get(InstallationState::CLEF))->not->toBeNull()
+        ->and(File::exists(InstallationState::fichierMarqueur()))->toBeTrue();
+});
+
 test('une base INJOIGNABLE veut dire « pas installée »', function () {
     /*
      * LA borne inverse, et elle est vitale : sur une instance neuve, `.env` ne
