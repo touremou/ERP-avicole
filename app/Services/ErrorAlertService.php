@@ -243,7 +243,7 @@ class ErrorAlertService
     private static function buildAlertMessage(Throwable $e): string
     {
         $farmName = \App\Models\Setting::companyName();
-        $url = request()?->fullUrl() ?? 'CLI';
+        $url = self::urlSansSecret();
         $user = auth()?->user()?->name ?? 'Anonyme';
 
         // Raccourcir le chemin du fichier
@@ -265,5 +265,29 @@ class ErrorAlertService
         $lines[] = "Consultez les logs pour le détail complet.";
 
         return implode("\n", $lines);
+    }
+
+    /**
+     * L'URL de la requête en échec, SANS ce qui peut y voyager de secret.
+     *
+     * L'alerte part vers WhatsApp — hors de l'application, sur un téléphone.
+     * Elle portait `fullUrl()`, chaîne de requête comprise, et une URL peut
+     * transporter un titre d'accès : le jeton de réinitialisation est DANS le
+     * chemin (`/reset-password/{token}`, valable une heure), et un lien signé
+     * porte sa signature en paramètre (`?signature=`).
+     *
+     * On garde ce qui aide à diagnostiquer — le chemin — et on retire le reste.
+     * Le détail complet reste dans les journaux du serveur, qui ne quittent pas
+     * la machine.
+     */
+    private static function urlSansSecret(): string
+    {
+        $request = request();
+
+        if (! $request) {
+            return 'CLI';
+        }
+
+        return preg_replace('#(/reset-password/)[^/?]+#', '$1•••', $request->url());
     }
 }

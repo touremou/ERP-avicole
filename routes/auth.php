@@ -39,7 +39,10 @@ Route::middleware('guest')->group(function () {
     Route::get('forgot-password', [PasswordResetLinkController::class, 'create'])
         ->name('password.request');
 
+    // Limité : sans plafond, ce formulaire se laissait interroger adresse après
+    // adresse — le délai par compte ne vaut que pour les comptes EXISTANTS.
     Route::post('forgot-password', [PasswordResetLinkController::class, 'store'])
+        ->middleware('throttle:6,1')
         ->name('password.email');
 
     Route::get('reset-password/{token}', [NewPasswordController::class, 'create'])
