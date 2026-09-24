@@ -207,6 +207,10 @@ test('la déclaration est UNIQUE : plus aucun écran ne porte sa propre liste', 
             file_get_contents($fichier),
         );
 
-        expect($sansCommentaires)->not->toContain('lapiniere', "liste en dur dans {$fichier}");
+        // `toContain` est VARIADIQUE : le message passé en second argument
+        // devenait un second motif à chercher, jamais présent — la garde
+        // passait donc toujours. Trouvé par test mutant sur une garde voisine.
+        expect(str_contains($sansCommentaires, 'lapiniere'))
+            ->toBeFalse("liste en dur dans {$fichier}");
     }
 });
