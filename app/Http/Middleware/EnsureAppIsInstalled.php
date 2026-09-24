@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\InstallationState;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -18,6 +19,20 @@ use Symfony\Component\HttpFoundation\Response;
  * Compatibilité ascendante : une installation existante (table `users`
  * déjà peuplée) est automatiquement considérée comme installée — le
  * marqueur est créé au premier accès, sans passer par l'assistant.
+ *
+ * ─── DEUXIÈME LECTEUR DE LA MÊME QUESTION ───
+ *
+ * Ce middleware et `RedirectIfInstalled` répondent tous deux à « cette
+ * application est-elle installée ? ». Ils le faisaient chacun à leur façon :
+ * l'un par `file_exists`, l'autre — depuis que le marqueur peut vivre en base —
+ * par `InstallationState`. Deux réponses possibles à une même question, c'est
+ * la forme exacte des défauts que cet audit poursuit ; et celle-ci était de mon
+ * fait, pour n'avoir corrigé qu'une des deux portes.
+ *
+ * Les deux lisent désormais la même déclaration. Le marqueur recréé au premier
+ * accès est posé EN BASE autant que sur disque : un hôte qui a perdu son
+ * `storage/` cesse ainsi définitivement de pouvoir rouvrir l'assistant, au lieu
+ * de dépendre d'une course entre le premier visiteur légitime et un autre.
  */
 class EnsureAppIsInstalled
 {
@@ -38,12 +53,13 @@ class EnsureAppIsInstalled
             return $next($request);
         }
 
-        if (file_exists(storage_path('installed'))) {
+        if (InstallationState::marqueurPose()) {
             return $next($request);
         }
 
         if ($this->tableExists('users') && DB::table('users')->exists()) {
-            @file_put_contents(storage_path('installed'), now()->toDateTimeString());
+            InstallationState::marquerInstallee();
+
             return $next($request);
         }
 
