@@ -39,7 +39,7 @@ class FormulaController extends Controller
         $materials = RawMaterial::where('is_active', true)->orderBy('name')->get();
         $norms = FoodNorm::active()->orderBy('name')->get();
         // Types de production de toutes les espèces (cible multiespèces de l'aliment).
-        $productionTypes = ProductionType::active()->with('species')->orderBy('species_id')->get();
+        $productionTypes = ProductionType::offrables();
 
         return view('provenderie.formulas.create', compact('materials', 'norms', 'productionTypes'));
     }
@@ -77,7 +77,10 @@ class FormulaController extends Controller
 
         $formula->load('items.rawMaterial');
         $rawMaterials = RawMaterial::orderBy('name')->get();
-        $productionTypes = ProductionType::active()->with('species')->orderBy('species_id')->get();
+        // Le type COURANT reste offert même si son espèce a été désactivée
+        // depuis : sans lui, le sélecteur retomberait en silence sur un autre
+        // et la formule changerait de destination au premier enregistrement.
+        $productionTypes = ProductionType::offrables($formula->production_type_id);
         // L'écran d'OPTIMISATION était le seul sans cibles à l'écran : on y
         // travaillait à l'aveugle alors que la création, elle, les affichait.
         $norms = FoodNorm::active()->orderBy('name')->get();
