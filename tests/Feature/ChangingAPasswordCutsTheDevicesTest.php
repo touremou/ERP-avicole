@@ -149,6 +149,56 @@ test('un mot de passe REFUSÉ ne coupe rien — la borne', function () {
         ->and(jetonsRestants($user))->toBe(2);
 });
 
+test('changer son adresse depuis le MOBILE la dé-vérifie, comme sur le web', function () {
+    /*
+     * La porte voisine, et le même écart : `ProfileController::update` remet
+     * `email_verified_at` à null quand l'adresse change ; l'API ne le faisait
+     * pas. Une adresse saisie depuis le téléphone restait marquée « vérifiée »
+     * alors que personne ne l'avait vérifiée.
+     *
+     * Sans conséquence aujourd'hui — le middleware `verified` du groupe
+     * tableau de bord est INERTE, `User` n'implémentant pas `MustVerifyEmail`
+     * — mais c'est l'écart qui mordrait le jour où la vérification serait
+     * activée : les comptes passés par le mobile seraient les seuls jamais
+     * contrôlés. Activer la vérification reste une décision d'exploitation.
+     */
+    $user = User::factory()->create([
+        'password' => Hash::make('ancien-mdp'),
+        'email_verified_at' => now(),
+    ]);
+
+    $jeton = $user->createToken('telephone')->plainTextToken;
+
+    $this->withHeader('Authorization', "Bearer {$jeton}")
+        ->patchJson('/api/v1/auth/profile', [
+            'name'  => $user->name,
+            'email' => 'nouvelle@adresse.test',
+        ])->assertOk();
+
+    expect($user->fresh()->email)->toBe('nouvelle@adresse.test')
+        ->and($user->fresh()->email_verified_at)->toBeNull();
+});
+
+test('garder la MÊME adresse ne la dé-vérifie pas — la borne', function () {
+    // Corriger son nom ou sa langue ne doit pas invalider une adresse dont
+    // personne n'a changé un caractère.
+    $user = User::factory()->create([
+        'password' => Hash::make('ancien-mdp'),
+        'email_verified_at' => now(),
+    ]);
+
+    $jeton = $user->createToken('telephone')->plainTextToken;
+
+    $this->withHeader('Authorization', "Bearer {$jeton}")
+        ->patchJson('/api/v1/auth/profile', [
+            'name'  => 'Nom Corrigé',
+            'email' => $user->email,
+        ])->assertOk();
+
+    expect($user->fresh()->name)->toBe('Nom Corrigé')
+        ->and($user->fresh()->email_verified_at)->not->toBeNull();
+});
+
 test('la règle est DÉCLARÉE une fois, et les quatre portes l’appellent', function () {
     /*
      * La garde qui empêche la dispersion de revenir. Elle a vécu un an dans un
