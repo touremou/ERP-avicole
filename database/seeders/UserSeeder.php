@@ -65,12 +65,27 @@ class UserSeeder extends Seeder
     /**
      * Comptes de test : email => [name, role name].
      */
-    private const USERS = [
+    public const USERS = [
         'admin@avismart.com'      => ['Admin AviSmart', 'admin'],
         'technicien@avismart.com' => ['Technicien AviSmart', 'technicien'],
         'vendeur@avismart.com'    => ['Vendeur AviSmart', 'vendeur'],
         'ouvrier@avismart.com'    => ['Ouvrier AviSmart', 'ouvrier'],
     ];
+
+    /**
+     * Les adresses des comptes SEMÉS — lues par l'assistant d'installation
+     * pour distinguer un administrateur de démonstration d'un vrai.
+     *
+     * Exposées ici plutôt que recopiées là-bas : une seconde liste finirait par
+     * diverger de celle qui fait foi, et c'est exactement ce qui est arrivé à
+     * `InstallController::storeAdmin`, resté sur « admin@admin.com ».
+     *
+     * @return array<int, string>
+     */
+    public static function emailsDeDemonstration(): array
+    {
+        return array_keys(self::USERS);
+    }
 
     public function run(): void
     {

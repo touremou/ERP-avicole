@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Role;
 use App\Models\Setting;
+use App\Support\InstallationState;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
@@ -156,6 +157,22 @@ class InstallController extends Controller
      */
     public function storeAdmin(Request $request)
     {
+        /*
+         * LA PORTE QUI FAIT LE DÉGÂT SE GARDE ELLE-MÊME.
+         *
+         * Le middleware couvre déjà cette route ; ce contrôle est le second
+         * verrou, sur le geste qui REPREND le compte administrateur — nom,
+         * e-mail et mot de passe réécrits. Une règle qui ne tient qu'à un
+         * middleware tient à ce que personne ne déplace la route ; celle-ci
+         * tient à l'étape elle-même.
+         */
+        if (InstallationState::estInstallee()) {
+            return redirect('/login')->with(
+                'error',
+                __('Cette application est déjà installée : l’assistant ne peut pas reprendre le compte administrateur.'),
+            );
+        }
+
         $data = $request->validate([
             'company_name'          => ['required', 'string', 'max:255'],
             'admin_name'            => ['required', 'string', 'max:255'],
@@ -201,7 +218,7 @@ class InstallController extends Controller
      */
     public function finish()
     {
-        $alreadyInstalled = File::exists(storage_path('installed'));
+        $alreadyInstalled = InstallationState::estInstallee();
 
         /*
          * ─── ON NE DÉCLARE PAS INSTALLÉ CE QUI NE L'EST PAS ───
@@ -248,7 +265,10 @@ class InstallController extends Controller
             ]);
             Artisan::call('config:clear');
 
-            File::put(storage_path('installed'), now()->toDateTimeString());
+            // Marqueur POSÉ AUSSI EN BASE : il voyage alors avec les données
+            // qu'il décrit, et survit au reprovisionnement de `storage/` qui
+            // rouvrait l'assistant sur une base pleine.
+            InstallationState::marquerInstallee();
         }
 
         return view('install.finish', compact('alreadyInstalled'));
