@@ -139,12 +139,32 @@ class AuthController extends Controller
             'locale' => ['nullable', 'in:fr,en'],
         ]);
 
-        $user->update([
+        $user->fill([
             'name'           => $data['name'],
             'email'          => $data['email'],
             'whatsapp_phone' => $data['phone'] ?? null,
             'locale'         => $data['locale'] ?? $user->locale,
         ]);
+
+        /*
+         * UNE ADRESSE CHANGÉE N'EST PLUS UNE ADRESSE VÉRIFIÉE.
+         *
+         * `ProfileController::update` — la porte WEB du même geste — remet
+         * `email_verified_at` à null quand l'adresse change. Celle-ci ne le
+         * faisait pas : une adresse saisie depuis le téléphone restait marquée
+         * « vérifiée » alors que personne ne l'avait vérifiée.
+         *
+         * Sans conséquence AUJOURD'HUI — le middleware `verified` posé sur le
+         * groupe du tableau de bord est inerte, `User` n'implémentant pas
+         * `MustVerifyEmail` — mais c'est précisément le genre d'écart qui mord
+         * le jour où la vérification est activée : les comptes passés par le
+         * mobile seraient les seuls à ne jamais avoir été contrôlés.
+         */
+        if ($user->isDirty('email')) {
+            $user->email_verified_at = null;
+        }
+
+        $user->save();
 
         return response()->json([
             'user'        => $this->userPayload($user->fresh()),
@@ -172,6 +192,10 @@ class AuthController extends Controller
         }
 
         $user->update(['password' => Hash::make($request->input('password'))]);
+
+        // Les AUTRES appareils tombent ; celui qui fait la demande reste, parce
+        // qu'il est le seul dont on sache qu'il a le nouveau mot de passe.
+        $user->revoquerLesAppareils($request->user()->currentAccessToken()?->id);
 
         return response()->json(['message' => __('Mot de passe mis à jour.')]);
     }

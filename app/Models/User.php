@@ -325,4 +325,46 @@ class User extends Authenticatable
 
         return 'dashboard';
     }
+
+    /**
+     * COUPER LES APPAREILS APRÈS UN CHANGEMENT DE MOT DE PASSE — déclaration UNIQUE.
+     *
+     * Un jeton Sanctum ne dépend PAS du mot de passe : il survit à son
+     * changement. `UserController::resetPassword` le dit déjà, mot pour mot —
+     * « sans cette ligne, changer le mot de passe d'un compte compromis
+     * laissait l'appareil de l'intrus connecté et écrivant. C'est pourtant la
+     * raison même pour laquelle on réinitialise » — et révoque.
+     *
+     * Cette règle n'était appliquée QU'À CETTE PORTE-LÀ, celle où un
+     * administrateur agit pour quelqu'un d'autre. Les trois portes où
+     * l'utilisateur change SON PROPRE mot de passe ne révoquaient rien :
+     *
+     *   • le profil web (`PasswordController::update`) ;
+     *   • le lien de réinitialisation par e-mail (`NewPasswordController`) ;
+     *   • l'application mobile (`Api\AuthController::updatePassword`).
+     *
+     * La dernière est la pire : c'est le parcours « j'ai été piraté ». Mesuré,
+     * avant correction, sur les trois : le jeton de l'intrus répondait encore
+     * 200 sur `/api/v1/auth/me` après le changement.
+     *
+     * ─── CE QUE CELA NE FAIT PAS ───
+     *
+     * Les sessions de NAVIGATEUR ouvertes ailleurs ne sont pas coupées : cela
+     * demanderait le middleware `AuthenticateSession`, qui n'est pas enregistré
+     * et dont l'activation déconnecte les utilisateurs de façon visible. C'est
+     * une décision d'exploitation, pas une correction silencieuse.
+     *
+     * @param  int|null  $saufJetonId  le jeton COURANT, quand le changement
+     *                                 vient de l'appareil lui-même : le
+     *                                 déconnecter au moment où il obéit serait
+     *                                 hostile, et sans gain — c'est le seul
+     *                                 appareil dont on sait qu'il a le nouveau
+     *                                 mot de passe.
+     */
+    public function revoquerLesAppareils(?int $saufJetonId = null): void
+    {
+        $this->tokens()
+            ->when($saufJetonId, fn ($q) => $q->where('id', '!=', $saufJetonId))
+            ->delete();
+    }
 }

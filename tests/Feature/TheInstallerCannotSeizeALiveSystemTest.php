@@ -261,6 +261,33 @@ test('la finalisation pose le marqueur EN BASE, pas seulement sur disque', funct
         ->and(File::exists(InstallationState::fichierMarqueur()))->toBeTrue();
 });
 
+test('les DEUX portes lisent la même déclaration', function () {
+    /*
+     * Une correction incomplète est une divergence de plus.
+     *
+     * Deux middlewares répondent à « cette application est-elle installée ? » :
+     * `RedirectIfInstalled` ferme l'assistant, `EnsureAppIsInstalled` y renvoie
+     * tant que rien n'est fait. N'avoir corrigé que le premier laissait le
+     * second sur `file_exists` — deux réponses possibles à une même question,
+     * c'est-à-dire le défaut que tout cet audit poursuit, cette fois de mon
+     * fait.
+     *
+     * La garde est posée sur la SOURCE : aucune des deux portes ne doit
+     * interroger le disque en direct.
+     */
+    foreach (['RedirectIfInstalled', 'EnsureAppIsInstalled'] as $porte) {
+        $source = file_get_contents(app_path("Http/Middleware/{$porte}.php"));
+
+        $sansCommentaires = preg_replace(['#/\*.*?\*/#s', '#//[^\n]*#'], '', $source);
+
+        expect(str_contains($sansCommentaires, "storage_path('installed')"))
+            ->toBeFalse("{$porte} lit le disque au lieu de la déclaration unique");
+
+        expect(str_contains($sansCommentaires, 'InstallationState::'))
+            ->toBeTrue("{$porte} n’interroge pas la déclaration unique");
+    }
+});
+
 test('une base INJOIGNABLE veut dire « pas installée »', function () {
     /*
      * LA borne inverse, et elle est vitale : sur une instance neuve, `.env` ne
