@@ -60,6 +60,7 @@ class InstallationDiagnostic extends Command
         $this->line('');
         $this->line('<options=bold>DIAGNOSTIC DE L’INSTALLATION</> — lecture seule, rien n’est modifié.');
 
+        $this->checkProductionMode();
         $this->checkOutboundChannels();
         $this->checkAccountsAndSites();
         $this->checkCriticalSettings();
@@ -68,6 +69,44 @@ class InstallationDiagnostic extends Command
         $this->checkScheduler();
 
         return $this->render();
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    //  0. LE MODE DÉBOGAGE EST-IL COUPÉ ?
+    // ─────────────────────────────────────────────────────────────
+    /**
+     * Le plan d'audit classe ce point « bloquant trivial mais fatal si oublié »
+     * (S10), et rien ne le vérifiait.
+     *
+     * `.env.example` est livré avec `APP_DEBUG=true` et `APP_ENV=local`. La
+     * finalisation de l'assistant bascule les deux ; mais un déploiement qui ne
+     * passe pas par elle — `.env` recopié à la main, archive déposée par la
+     * CI/CD — les garde tels quels. En débogage, la page d'erreur de Laravel
+     * affiche à tout visiteur qui déclenche une erreur la trace de la pile, les
+     * chemins du serveur et les variables d'environnement, identifiants de base
+     * de données compris.
+     *
+     * On ne se fie PAS à `APP_ENV=production` pour décider qu'on est en service :
+     * un `.env.example` recopié dit justement `local`. Le témoin est celui de
+     * l'assistant — cette installation est-elle en service ?
+     */
+    private function checkProductionMode(): void
+    {
+        if (! \App\Support\InstallationState::estInstallee()) {
+            return;   // installation en cours : le débogage y est légitime
+        }
+
+        if ((bool) config('app.debug')) {
+            $this->blocking('Débogage', 'APP_DEBUG est ACTIF sur une installation en service : toute erreur affiche au visiteur la trace, les chemins du serveur et les variables d’environnement — identifiants de base de données compris.',
+                'Dans .env : APP_DEBUG=false, puis `php artisan config:clear` (et `config:cache` si le cache de configuration est utilisé).');
+        } else {
+            $this->healthy('Débogage', 'Mode débogage coupé : les erreurs ne révèlent rien au visiteur.');
+        }
+
+        app()->environment('production')
+            ? $this->healthy('Environnement', 'APP_ENV=production.')
+            : $this->attention('Environnement', 'APP_ENV vaut « ' . app()->environment() . ' » sur une installation en service : performances et garde-fous de production dégradés.',
+                'Dans .env : APP_ENV=production, puis `php artisan config:clear`.');
     }
 
     // ─────────────────────────────────────────────────────────────

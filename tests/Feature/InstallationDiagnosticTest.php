@@ -389,3 +389,57 @@ test('une copie hors site est reconnue', function () {
 
     expect(runDiagnostic()[1])->toContain('Copie sur 2 destination(s)');
 });
+
+// ─── S10 : LE MODE DÉBOGAGE SUR UNE INSTALLATION EN SERVICE ───
+//
+// Le plan d'audit le classe « bloquant trivial mais fatal si oublié », et le
+// diagnostic ne le regardait pas. `.env.example` est livré en débogage ; un
+// déploiement qui ne passe pas par la finalisation de l'assistant le garde tel
+// quel — et la page d'erreur de Laravel affiche alors à tout visiteur les
+// variables d'environnement, identifiants de base de données compris.
+
+test('débogage ACTIF sur une installation en service : BLOQUANT, code de sortie non nul', function () {
+    config()->set('app.debug', true);
+
+    [$code, $sortie] = runDiagnostic();
+
+    // C'est LA ligne du débogage qui doit être bloquante. La première version
+    // de ce test vérifiait « BLOQUANT » quelque part dans la sortie et un code
+    // non nul : d'autres contrôles sont déjà bloquants dans l'environnement de
+    // test, si bien que rétrograder le débogage en simple « attention » ne
+    // cassait rien. Le test mutant l'a montré.
+    $ligne = collect(explode("\n", $sortie))
+        ->first(fn ($l) => str_contains($l, 'APP_DEBUG est ACTIF'));
+
+    expect($ligne)->not->toBeNull()
+        ->and($ligne)->toContain('BLOQUANT')
+        ->and($code)->not->toBe(0);
+});
+
+test('débogage coupé : le diagnostic le dit au vert', function () {
+    config()->set('app.debug', false);
+
+    [, $sortie] = runDiagnostic();
+
+    expect($sortie)->toContain('Mode débogage coupé')
+        ->and($sortie)->not->toContain('APP_DEBUG est ACTIF');
+});
+
+test('une installation EN COURS n’est pas reprise sur son débogage — la borne', function () {
+    /*
+     * LA borne. Pendant l'assistant, le débogage est légitime : c'est lui qui
+     * dit pourquoi une migration échoue. Le signaler BLOQUANT sur une base
+     * encore vide ferait crier le diagnostic au moment même où l'on installe.
+     *
+     * « En service » se lit sur le témoin de l'assistant — et non sur
+     * `APP_ENV=production`, qu'un `.env.example` recopié ne porte justement pas.
+     */
+    \App\Models\User::query()->delete();   // plus d'administrateur réel
+    config()->set('app.debug', true);
+
+    expect(\App\Support\InstallationState::estInstallee())->toBeFalse();
+
+    [, $sortie] = runDiagnostic();
+
+    expect($sortie)->not->toContain('APP_DEBUG est ACTIF');
+});
