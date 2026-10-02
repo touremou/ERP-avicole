@@ -1,6 +1,6 @@
 <x-install-layout :step="4">
     <h2>{{ __("Compte administrateur & entreprise") }}</h2>
-    <p class="help">{{ __("Configurez le compte administrateur principal. Le compte de démonstration") }} <code>admin@admin.com / password</code> {{ __("sera remplacé par celui-ci.") }}</p>
+    <p class="help">{{ __("Créez le compte administrateur principal. Les comptes de démonstration créés à l’étape précédente — tous au mot de passe public « password » — seront supprimés à la validation de cette étape.") }}</p>
 
     @if ($errors->any())
         <div class="alert alert-error">
@@ -40,11 +40,6 @@
                 <label for="admin_password_confirmation">{{ __("Confirmation") }}</label>
                 <input type="password" name="admin_password_confirmation" id="admin_password_confirmation">
             </div>
-        </div>
-
-        <div class="field checkbox-row">
-            <input type="checkbox" name="remove_demo_account" id="remove_demo_account" value="1" checked>
-            <label for="remove_demo_account" style="margin:0;">{{ __("Supprimer le compte de démonstration") }} <code>user@users.com</code></label>
         </div>
 
         <div class="actions">

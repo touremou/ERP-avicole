@@ -133,14 +133,20 @@ Tâches planifiées (cron) — **indispensable** (sauvegardes, alertes, `license
 
 ## 4. Assistant d'installation `/install`
 
-Au premier accès sans compte en base, l'assistant guide :
+Au premier accès d'une application non installée, l'assistant guide :
 1. **Prérequis** — vérifie PHP, extensions (dont `sodium`), dossiers en écriture.
 2. **Base de données** — teste la connexion, écrit `DB_*` + `APP_KEY`, crée la
    base MySQL si absente.
-3. **Migrations + seed** de référence (espèces, normes, modules…).
-4. **Compte administrateur** — remplace `admin@admin.com`.
-5. **Finalisation** — pose `storage/installed`, bascule `.env` en
-   `APP_ENV=production` / `APP_DEBUG=false`, et `/install` devient inaccessible.
+3. **Migrations + seed** de référence (espèces, normes, modules…) et comptes
+   de démonstration, tous au mot de passe public `password`.
+4. **Compte administrateur** — crée **votre** compte (une adresse de
+   démonstration est refusée) et **supprime tous les comptes de démonstration**.
+5. **Finalisation** — bascule `.env` en `APP_ENV=production` /
+   `APP_DEBUG=false`, pose le marqueur d'installation sur disque **et en base**,
+   et `/install` devient inaccessible.
+
+Ensuite, **avant toute mise en service**, suivre la liste de contrôle
+[`ops/mise-en-production.md`](ops/mise-en-production.md).
 
 ---
 
@@ -253,6 +259,7 @@ composer install --no-dev --optimize-autoloader
 npm ci && npm run build
 php artisan migrate --force      # migrations idempotentes
 php artisan optimize:clear && php artisan optimize
+php artisan avismart:diagnostic  # contrôle en lecture seule : 0 bloquant attendu
 ```
 
 ---
@@ -276,3 +283,6 @@ php artisan optimize:clear && php artisan optimize
 | Quota SMS épuisé | Réémettre avec `--sms=` plus élevé (le compteur repart à l'activation). |
 | Images/QR absents | Extension `gd` manquante ; `php artisan storage:link`. |
 | 419 / sessions | `APP_KEY` absente (`php artisan key:generate`) ; HTTPS/cookies. |
+| Comptes de démonstration signalés par le diagnostic | Installation antérieure au correctif de l'assistant : les supprimer dans *Admin › Utilisateurs* (ils ont tous le mot de passe public `password`). |
+| `/install` renvoie vers la connexion alors que la base est vide | Marqueur `storage/installed` livré par erreur dans l'archive : `rm -f storage/installed && php artisan optimize:clear`. Sur une base **non vide**, l'assistant reste fermé à dessein. |
+| L'application terrain répond « Abonnement expiré » | Licence armée et échue, grâce passée (API en 402) : renouveler ; les saisies restent sur le téléphone en attendant. |

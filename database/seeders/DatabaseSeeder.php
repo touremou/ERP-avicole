@@ -35,16 +35,10 @@ class DatabaseSeeder extends Seeder
             ['display_name' => 'Ouvrier', 'label' => 'Ouvrier', 'icon' => '👷', 'permissions' => ['L']]
         );
 
-        // Comptes par défaut
-        User::firstOrCreate(
-            ['email' => 'admin@admin.com'],
-            ['name' => 'Admin AviSmart', 'password' => Hash::make('password'), 'role_id' => $admin->id]
-        );
-
-        User::firstOrCreate(
-            ['email' => 'user@users.com'],
-            ['name' => 'User AviSmart', 'password' => Hash::make('password'), 'role_id' => $ouvrier->id]
-        );
+        // Les comptes de démonstration — `admin@admin.com` et `user@users.com`
+        // compris — sont tous déclarés dans UserSeeder::USERS, appelé plus haut.
+        // Ils étaient créés ici aussi, hors de la liste que l'assistant lit :
+        // cf. le commentaire de UserSeeder::USERS.
 
         // Bâtiment de démonstration
         Building::firstOrCreate(

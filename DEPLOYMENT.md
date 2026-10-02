@@ -28,14 +28,15 @@ php artisan storage:link                # lien public/storage (le service /media
 
 Démarrer ensuite le serveur web et ouvrir l'application dans un navigateur :
 l'**assistant d'installation** (`/install`) prend le relais automatiquement
-au premier accès tant qu'aucun compte n'existe en base. Il vérifie les
+au premier accès tant que l'application n'est pas installée. Il vérifie les
 prérequis serveur, configure la connexion base de données (écrit `DB_*` et
 `APP_KEY` dans `.env`, crée la base MySQL si elle n'existe pas), exécute
-`migrate` + le seed de référence (espèces, normes, modules…), puis crée le
-compte administrateur (remplace `admin@admin.com`) et propose de supprimer le
-compte de démonstration `user@users.com`.
+`migrate` + le seed de référence (espèces, normes, modules, **comptes de
+démonstration au mot de passe `password`**), puis crée **votre** compte
+administrateur et **supprime tous les comptes de démonstration**.
 
-Une fois l'assistant terminé, le marqueur `storage/installed` est posé,
+Une fois l'assistant terminé, le marqueur d'installation est posé **sur disque
+(`storage/installed`) et en base**,
 l'assistant **bascule automatiquement `.env` en `APP_ENV=production` /
 `APP_DEBUG=false`** (plus de fuite de stack-traces) et `/install` redevient
 inaccessible.
@@ -77,8 +78,23 @@ le groupe de paramètres « Numérotation ».
 > `php artisan migrate --force` et `php artisan db:seed --force` (les
 > paramètres `settings` sont créés par la migration
 > `2026_06_05_000001_create_settings_table.php`, pas par un seeder dédié).
-> Créer ensuite `storage/installed` manuellement pour empêcher l'accès à
-> `/install`, et changer le mot de passe du compte `admin@admin.com`.
+> Créer ensuite **votre** administrateur, **supprimer tous les comptes de
+> démonstration** (le seed en crée six, tous au mot de passe public
+> `password`, dont deux administrateurs) et poser le marqueur d'installation —
+> sur disque **et** en base :
+>
+> ```bash
+> php artisan tinker --execute="
+> \$r = App\Models\Role::where('name','admin')->firstOrFail();
+> App\Models\User::create(['name'=>'VOTRE_NOM','email'=>'VOTRE_EMAIL','password'=>bcrypt('MOT_DE_PASSE_FORT'),'role_id'=>\$r->id,'is_active'=>true]);
+> App\Models\User::whereIn('email', Database\Seeders\UserSeeder::emailsDeDemonstration())->get()->each->delete();
+> App\Support\InstallationState::marquerInstallee();
+> "
+> php artisan avismart:diagnostic   # doit indiquer 0 bloquant
+> ```
+>
+> `touch storage/installed` seul ne suffit pas : le fichier ne voyage pas avec
+> l'application, le marqueur en base si.
 
 ## 3. Optimisations production (à relancer à chaque déploiement)
 
@@ -103,7 +119,8 @@ php artisan event:cache
 - [ ] Rate-limiting actif sur les routes d'authentification (`throttle`)
 - [ ] Route `/register` désactivée ou réservée aux administrateurs si l'auto-inscription n'est pas souhaitée
 - [ ] Sauvegardes base de données automatisées (quotidiennes minimum)
-- [ ] Comptes par défaut / de démonstration supprimés (géré par l'assistant `/install` : remplace `admin@admin.com` et propose de supprimer `user@users.com`)
+- [ ] Aucun compte de démonstration au mot de passe public : l'assistant `/install` les supprime tous ; pour une installation antérieure ou faite en ligne de commande, `php artisan avismart:diagnostic` les signale (BLOQUANT)
+- [ ] Liste de contrôle complète de mise en production suivie et signée : [`docs/ops/mise-en-production.md`](docs/ops/mise-en-production.md)
 
 ## 5. Tâches planifiées (cron)
 

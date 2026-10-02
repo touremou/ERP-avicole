@@ -333,8 +333,13 @@ test('TOUTE réécriture d’un mot de passe existant coupe les appareils — tr
     }
 
     // Garde-fou du garde-fou : sans portes trouvées, la garde passerait en
-    // n'ayant rien contrôlé. Il y en a au moins six aujourd'hui.
-    expect(count($examinees))->toBeGreaterThanOrEqual(6);
+    // n'ayant rien contrôlé. Il y en a cinq aujourd'hui.
+    //
+    // Il y en avait six : `InstallController::storeAdmin` RÉÉCRIVAIT le mot de
+    // passe d'un compte de démonstration pour en faire le vrai administrateur.
+    // Il le CRÉE désormais, et supprime tous les comptes de démonstration —
+    // ce n'est plus une réécriture, la porte sort légitimement du compte.
+    expect(count($examinees))->toBeGreaterThanOrEqual(5);
 
     expect($fautives)->toBe([], 'réécrit un mot de passe sans couper les appareils : ' . implode(', ', $fautives));
 });

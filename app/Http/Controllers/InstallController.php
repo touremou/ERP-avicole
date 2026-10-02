@@ -9,6 +9,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
 
@@ -173,12 +174,17 @@ class InstallController extends Controller
             );
         }
 
+        $demo = \Database\Seeders\UserSeeder::emailsDeDemonstration();
+
         $data = $request->validate([
-            'company_name'          => ['required', 'string', 'max:255'],
-            'admin_name'            => ['required', 'string', 'max:255'],
-            'admin_email'           => ['required', 'email', 'max:255'],
-            'admin_password'        => ['required', 'string', 'min:8', 'confirmed'],
-            'remove_demo_account'   => ['nullable', 'boolean'],
+            'company_name'   => ['required', 'string', 'max:255'],
+            'admin_name'     => ['required', 'string', 'max:255'],
+            // Une adresse de démonstration ne peut pas devenir celle du vrai
+            // administrateur : elle est publique, avec son mot de passe.
+            'admin_email'    => ['required', 'email', 'max:255', \Illuminate\Validation\Rule::notIn($demo)],
+            'admin_password' => ['required', 'string', 'min:8', 'confirmed'],
+        ], [
+            'admin_email.not_in' => __('Cette adresse est celle d’un compte de démonstration : choisissez la vôtre.'),
         ]);
 
         $adminRole = Role::firstOrCreate(
@@ -186,32 +192,37 @@ class InstallController extends Controller
             ['display_name' => 'Administrateur', 'label' => 'Administrateur', 'icon' => '👑', 'permissions' => ['L', 'C', 'M', 'S']]
         );
 
-        $admin = User::where('email', 'admin@admin.com')->first()
-            ?? User::where('role_id', $adminRole->id)->first();
-
-        if ($admin) {
-            $admin->update([
-                'name'     => $data['admin_name'],
-                'email'    => $data['admin_email'],
-                'password' => Hash::make($data['admin_password']),
-            ]);
-
-            // Un compte REPRIS ne garde pas les appareils de son titulaire
-            // précédent. Sans objet sur une installation neuve (aucun jeton),
-            // mais c'est la règle de toute réécriture de mot de passe.
-            $admin->revoquerLesAppareils();
-        } else {
+        /*
+         * LE VRAI ADMINISTRATEUR EST CRÉÉ, ET TOUS LES COMPTES DE DÉMONSTRATION
+         * PARTENT — sans case à cocher.
+         *
+         * L'étape 3 sème SIX comptes au mot de passe « password »
+         * (`UserSeeder::USERS`). Cette étape en reprenait un pour en faire le
+         * vrai administrateur, et n'en supprimait qu'un autre — et seulement si
+         * la case restait cochée. Mesuré sur le VRAI semeur : cinq comptes au
+         * mot de passe public survivaient à l'installation, dont
+         * `admin@avismart.com`, ADMINISTRATEUR. Quiconque a lu le dépôt pouvait
+         * se connecter en administrateur sur une installation de production.
+         *
+         * Il n'y a pas de bonne raison de garder en production un compte dont
+         * le mot de passe est publié : la suppression n'est plus optionnelle.
+         * Pour une formation, on crée de vrais comptes avec de vrais mots de
+         * passe, depuis l'écran des utilisateurs.
+         */
+        DB::transaction(function () use ($data, $adminRole, $demo) {
             User::create([
-                'name'     => $data['admin_name'],
-                'email'    => $data['admin_email'],
-                'password' => Hash::make($data['admin_password']),
-                'role_id'  => $adminRole->id,
+                'name'      => $data['admin_name'],
+                'email'     => $data['admin_email'],
+                'password'  => Hash::make($data['admin_password']),
+                'role_id'   => $adminRole->id,
+                'is_active' => true,
             ]);
-        }
 
-        if ($request->boolean('remove_demo_account')) {
-            User::where('email', 'user@users.com')->delete();
-        }
+            User::whereIn('email', $demo)->get()->each(function (User $compte) {
+                $compte->revoquerLesAppareils();
+                $compte->delete();
+            });
+        });
 
         Setting::set('general.company_name', $data['company_name']);
 
