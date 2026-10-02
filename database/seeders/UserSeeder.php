@@ -63,22 +63,37 @@ class UserSeeder extends Seeder
     ];
 
     /**
-     * Comptes de test : email => [name, role name].
+     * Comptes de démonstration : email => [name, role name]. Mot de passe :
+     * « password ». Déclaration UNIQUE de TOUS les comptes semés.
+     *
+     * `admin@admin.com` et `user@users.com` étaient créés à part, par
+     * `DatabaseSeeder`. La liste ci-dessous, que l'assistant d'installation lit
+     * pour reconnaître un compte de démonstration, ne les connaissait donc pas,
+     * avec deux conséquences mesurées sur le VRAI semeur :
+     *
+     *   • l'assistant prenait `admin@admin.com` pour un administrateur RÉEL et
+     *     se fermait à l'étape 4 — une installation neuve ne pouvait plus se
+     *     terminer (régression introduite par #390, dont le test de borne
+     *     n'utilisait pas ce semeur) ;
+     *   • seul un compte était supprimé à la fin de l'installation : cinq
+     *     comptes au mot de passe « password » restaient, dont
+     *     `admin@avismart.com`, ADMINISTRATEUR.
      */
     public const USERS = [
+        'admin@admin.com'         => ['Admin AviSmart', 'admin'],
+        'user@users.com'          => ['User AviSmart', 'ouvrier'],
         'admin@avismart.com'      => ['Admin AviSmart', 'admin'],
         'technicien@avismart.com' => ['Technicien AviSmart', 'technicien'],
         'vendeur@avismart.com'    => ['Vendeur AviSmart', 'vendeur'],
         'ouvrier@avismart.com'    => ['Ouvrier AviSmart', 'ouvrier'],
     ];
 
+    /** Le mot de passe de tous les comptes de démonstration. */
+    public const MOT_DE_PASSE_DEMO = 'password';
+
     /**
-     * Les adresses des comptes SEMÉS — lues par l'assistant d'installation
-     * pour distinguer un administrateur de démonstration d'un vrai.
-     *
-     * Exposées ici plutôt que recopiées là-bas : une seconde liste finirait par
-     * diverger de celle qui fait foi, et c'est exactement ce qui est arrivé à
-     * `InstallController::storeAdmin`, resté sur « admin@admin.com ».
+     * Les adresses de TOUS les comptes semés — lues par l'assistant
+     * d'installation et par le diagnostic, jamais recopiées ailleurs.
      *
      * @return array<int, string>
      */
@@ -131,7 +146,7 @@ class UserSeeder extends Seeder
                 ['email' => $email],
                 [
                     'name'      => $displayName,
-                    'password'  => Hash::make('password'),
+                    'password'  => Hash::make(self::MOT_DE_PASSE_DEMO),
                     'role_id'   => $role?->id,
                     'is_active' => true,
                 ]

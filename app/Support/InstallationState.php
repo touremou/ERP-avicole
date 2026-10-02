@@ -122,9 +122,15 @@ class InstallationState
      *
      * La liste des comptes semés se lit chez le semeur : la recopier ici en
      * ferait une seconde déclaration, qui finirait par diverger de celle qui
-     * fait foi — le défaut que tout cet audit poursuit. `storeAdmin` en porte
-     * d'ailleurs une troisième, périmée : il cherche « admin@admin.com » et
-     * supprime « user@users.com », deux adresses que le semeur ne crée plus.
+     * fait foi — le défaut que tout cet audit poursuit.
+     *
+     * C'est d'ailleurs arrivé, et à moi : `admin@admin.com` et `user@users.com`
+     * étaient semés par `DatabaseSeeder`, HORS de la liste lue ici. Ce filet
+     * prenait donc `admin@admin.com` pour un administrateur réel, et fermait
+     * l'assistant à l'étape 4 d'une installation neuve. Mon test de borne ne
+     * l'a pas vu : il posait un compte de démonstration à la main au lieu de
+     * lancer le vrai semeur. Tous les comptes semés sont désormais déclarés
+     * dans `UserSeeder::USERS`, et une garde le vérifie sur le vrai semeur.
      */
     public static function administrateurReelExiste(): bool
     {

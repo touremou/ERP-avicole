@@ -167,10 +167,17 @@ test('UNE INSTALLATION NEUVE reste possible — la borne essentielle', function 
      * À l'étape 4 d'une installation légitime, `db:seed` a DÉJÀ créé un
      * administrateur de démonstration. Une garde posée sur « un admin existe »
      * aurait verrouillé toute installation neuve juste avant la fin.
+     *
+     * Ce test posait ici UN compte de démonstration, à la main. Il passait —
+     * pendant qu'une vraie installation se verrouillait à l'étape 4, parce que
+     * le vrai semeur crée aussi `admin@admin.com`, que le filet ne connaissait
+     * pas. Une borne éprouvée sur un décor n'est pas une borne : il lance
+     * désormais le VRAI semeur de l'étape 3.
      */
-    administrateurSeme();
+    $this->seed(\Database\Seeders\DatabaseSeeder::class);
 
     $this->get(route('install.welcome'))->assertOk();
+    $this->get(route('install.admin'))->assertOk();
 
     reprendreLeCompteAdministrateur($this);
 

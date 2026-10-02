@@ -103,6 +103,30 @@ class InstallationDiagnostic extends Command
             $this->healthy('Débogage', 'Mode débogage coupé : les erreurs ne révèlent rien au visiteur.');
         }
 
+        /*
+         * COMPTES DE DÉMONSTRATION AU MOT DE PASSE PUBLIC.
+         *
+         * Jusqu'à leur correction, l'assistant laissait survivre à
+         * l'installation cinq des six comptes semés — dont `admin@avismart.com`,
+         * ADMINISTRATEUR — tous au mot de passe « password », publié dans le
+         * dépôt. L'assistant corrigé les supprime ; une installation faite AVANT
+         * peut encore les porter, et c'est ici qu'elle l'apprend.
+         *
+         * Un compte de démonstration dont le mot de passe a été CHANGÉ n'est pas
+         * signalé : c'est un compte gardé délibérément.
+         */
+        $exposes = \App\Models\User::query()
+            ->whereIn('email', \Database\Seeders\UserSeeder::emailsDeDemonstration())
+            ->get()
+            ->filter(fn ($u) => \Illuminate\Support\Facades\Hash::check(
+                \Database\Seeders\UserSeeder::MOT_DE_PASSE_DEMO, $u->password))
+            ->pluck('email');
+
+        $exposes->isEmpty()
+            ? $this->healthy('Comptes de démonstration', 'Aucun compte de démonstration au mot de passe public.')
+            : $this->blocking('Comptes de démonstration', 'Compte(s) de démonstration ENCORE au mot de passe public « password » : ' . $exposes->implode(', ') . '. N’importe qui ayant lu le dépôt peut s’y connecter.',
+                'Admin › Utilisateurs : supprimez ces comptes (ou, à défaut, désactivez-les et changez leur mot de passe).');
+
         app()->environment('production')
             ? $this->healthy('Environnement', 'APP_ENV=production.')
             : $this->attention('Environnement', 'APP_ENV vaut « ' . app()->environment() . ' » sur une installation en service : performances et garde-fous de production dégradés.',
