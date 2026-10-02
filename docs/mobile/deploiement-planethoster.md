@@ -438,19 +438,27 @@ nano .env        # DB_DATABASE / DB_USERNAME / DB_PASSWORD ; DB_HOST=localhost
 php artisan config:clear
 php artisan migrate:fresh --force --seed     # base pilote vide → repart propre
 ```
-Créer l'admin sans l'assistant :
+Créer l'admin sans l'assistant, **supprimer tous les comptes de démonstration**
+(le `--seed` en crée six, tous au mot de passe public `password`, dont deux
+administrateurs) et poser le marqueur d'installation sur disque **et en base** :
 ```bash
 php artisan tinker --execute="
-\$r = App\Models\Role::firstOrCreate(['name'=>'admin'],['display_name'=>'Administrateur','label'=>'Administrateur','icon'=>'👑','permissions'=>['L','C','M','S']]);
-App\Models\User::updateOrCreate(['email'=>'ADMIN_EMAIL'],['name'=>'Admin','password'=>bcrypt('MDP_FORT'),'role_id'=>\$r->id]);
-App\Models\User::where('email','user@users.com')->delete();
+\$r = App\Models\Role::where('name','admin')->firstOrFail();
+App\Models\User::create(['name'=>'Admin','email'=>'ADMIN_EMAIL','password'=>bcrypt('MDP_FORT'),'role_id'=>\$r->id,'is_active'=>true]);
+App\Models\User::whereIn('email', Database\Seeders\UserSeeder::emailsDeDemonstration())->get()->each->delete();
+App\Support\InstallationState::marquerInstallee();
 "
-# Basculer en production + poser le marqueur d'installation
+# Basculer en production
 sed -i 's/^APP_ENV=.*/APP_ENV=production/'   .env
 sed -i 's/^APP_DEBUG=.*/APP_DEBUG=false/'    .env
-touch storage/installed
 php artisan optimize
+php artisan avismart:diagnostic   # doit indiquer 0 bloquant
 ```
+
+> L'ancienne version de cette procédure ne supprimait que `user@users.com` :
+> cinq comptes au mot de passe public survivaient, dont `admin@avismart.com`,
+> **administrateur**. Une installation faite avec elle doit passer
+> `php artisan avismart:diagnostic`, qui les signale.
 
 ### 11.5 — SSH : port 5022, et `scp -P` majuscule
 

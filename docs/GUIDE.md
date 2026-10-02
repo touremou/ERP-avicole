@@ -11,7 +11,9 @@ Ce guide couvre trois volets :
 3. **[Utilisation par module](#3-utilisation-par-module)** — fonctionnement de chaque module métier.
 
 Le détail des optimisations de production, de la checklist de sécurité et de
-la procédure de sauvegarde se trouve dans [`DEPLOYMENT.md`](DEPLOYMENT.md).
+la procédure de sauvegarde se trouve dans [`DEPLOYMENT.md`](../DEPLOYMENT.md).
+La liste de contrôle de **mise en production** est dans
+[`ops/mise-en-production.md`](ops/mise-en-production.md).
 
 ---
 
@@ -36,22 +38,42 @@ npm ci && npm run build
 php artisan storage:link
 ```
 
-Ouvrir ensuite l'application dans un navigateur : tant qu'aucun compte
-n'existe en base, **toutes les pages redirigent vers l'assistant
+Ouvrir ensuite l'application dans un navigateur : tant que l'application
+n'est pas installée, **toutes les pages redirigent vers l'assistant
 d'installation `/install`**, qui enchaîne 5 étapes :
 
 1. **Prérequis** — vérification de la version PHP, des extensions et des permissions d'écriture (`storage/`, `bootstrap/cache/`, `.env`).
 2. **Base de données** — choix MySQL ou SQLite, test de connexion, écriture des variables `DB_*` dans `.env` (et génération d'`APP_KEY` si absente). La base MySQL est créée si elle n'existe pas.
-3. **Migrations** — création des tables + chargement des données de référence (espèces, normes zootechniques, modules, paramètres).
-4. **Administrateur** — nom de l'entreprise, compte administrateur (remplace le compte de démonstration `admin@admin.com`) et suppression optionnelle du second compte de démonstration `user@users.com`.
-5. **Terminé** — pose du marqueur `storage/installed` ; `/install` devient inaccessible.
+3. **Migrations** — création des tables + chargement des données de référence (espèces, normes zootechniques, modules, paramètres) **et de comptes de démonstration**, tous au mot de passe public `password`.
+4. **Administrateur** — nom de l'entreprise et **votre** compte administrateur (une adresse de démonstration est refusée). À la validation, **tous les comptes de démonstration sont supprimés** : aucun compte au mot de passe public ne survit à l'installation.
+5. **Terminé** — bascule de `.env` en `APP_ENV=production` / `APP_DEBUG=false`, et pose du marqueur d'installation **sur disque (`storage/installed`) et en base** ; `/install` devient inaccessible.
 
-> Une installation existante (table `users` déjà peuplée) est reconnue
-> automatiquement : le marqueur est posé au premier accès sans repasser par
-> l'assistant. Pour installer 100 % en ligne de commande, voir
-> [`DEPLOYMENT.md` §2](DEPLOYMENT.md).
+> **Pourquoi le marqueur est aussi en base** : `storage/` ne voyage pas avec
+> l'application (le déploiement l'exclut). Un nouvel hôte branché sur une base
+> existante n'a donc pas le fichier ; c'est le marqueur en base — et la
+> présence d'un administrateur réel — qui gardent alors l'assistant fermé.
+>
+> Une installation existante est reconnue automatiquement : le marqueur est
+> posé au premier accès sans repasser par l'assistant. Pour installer 100 %
+> en ligne de commande, voir [`DEPLOYMENT.md` §2](../DEPLOYMENT.md).
 
 ### 1.3 Mise en production
+
+**Avant la toute première mise en production, suivre la liste de contrôle
+[`ops/mise-en-production.md`](ops/mise-en-production.md)** (configuration,
+base InnoDB, diagnostic, remise en ordre des données, sauvegarde restaurée,
+recette, signatures).
+
+Pour vérifier une installation à tout moment — lecture seule, rien n'est
+modifié :
+
+```bash
+php artisan avismart:diagnostic     # code de sortie non nul s'il y a un point BLOQUANT
+```
+
+Il signale notamment le mode débogage resté actif, les comptes de
+démonstration encore au mot de passe public, les canaux d'alerte muets, les
+sauvegardes et le planificateur.
 
 À chaque déploiement :
 
@@ -69,20 +91,40 @@ Et une seule fois, le cron du planificateur :
 
 ### 1.4 Tâches planifiées
 
+Le planificateur (`schedule:run`, lancé chaque minute par le cron ci-dessus)
+porte **25 tâches** ; `php artisan schedule:list` les affiche toutes avec leur
+prochaine exécution. Les plus importantes :
+
 | Commande | Horaire | Rôle |
 |----------|---------|------|
-| `farm:release-buildings` | quotidien (minuit) | Libère les bâtiments dont le vide sanitaire de 14 jours est terminé |
-| `stocks:sync` | quotidien (minuit) | Synchronise les stocks de sujets et d'œufs (calibres & pertes) |
-| `tasks:generate` | 05:00 | Génère les tâches quotidiennes depuis les templates actifs |
-| `avismart:daily-summary` | paramétrable (`whatsapp.daily_summary_hour`, défaut 07:00) | Envoie le résumé quotidien WhatsApp aux abonnés |
+| `backup:clean` / `backup:run` | 01:30 / 02:00 | Purge puis sauvegarde nocturne (base + fichiers) |
+| `avismart:check-backups` | 03:00 | Alerte si la dernière sauvegarde manque ou est trop ancienne |
+| `farm:release-buildings` | quotidien | Libère les bâtiments dont le vide sanitaire est terminé (durée : `elevage.sanitary_break_days`, 14 j par défaut) |
+| `batches:rebuild-quantities --force` | quotidien | Recalcule les effectifs vivants des lots depuis les pointages |
+| `tasks:generate` | 05:00 | Génère les tâches quotidiennes depuis les modèles actifs |
+| `avismart:daily-summary` | `whatsapp.daily_summary_hour` (défaut 07:00) | Résumé quotidien WhatsApp aux abonnés |
+| `sales:payment-reminders` | 09:00 | Relance des factures échues |
+| `treasury:repair-balances` | lundi 06:00 | **Rapport seul** : compare les soldes au grand-livre, ne corrige rien |
+
+> Sans le cron, **aucune** de ces tâches ne tourne — sauvegardes comprises.
+> `avismart:diagnostic` signale un planificateur muet.
 
 ### 1.5 Mode hors-ligne
 
-Si la base MySQL devient inaccessible, l'application bascule en **mode
-offline** : consultation et saisie (L/C) restent possibles côté navigateur
-(IndexedDB), puis les données sont synchronisées au retour du serveur via le
-module de synchronisation (`/sync`). Les opérations de modification et de
-suppression (M/S) sont bloquées tant que la base est indisponible.
+Deux outils, pour deux situations :
+
+- **Application terrain** (`mobile/`, cf. §1.7) — l'outil prévu pour travailler
+  sans réseau. Chaque saisie part dans une **file locale** et porte un
+  identifiant unique créé à la saisie : au retour du réseau, un rejeu ne peut
+  pas l'enregistrer deux fois. Une saisie refusée par le serveur (droit
+  manquant, stock insuffisant, jour déjà pointé…) sort de la file vers le bac
+  **« À corriger »**, avec le motif.
+- **Navigateur** — si la base devient inaccessible, l'application web passe en
+  mode dégradé : consultation et saisie (L/C) restent possibles, modification
+  et suppression (M/S) sont bloquées. Les créations de lots, pointages,
+  collectes d'œufs, mouvements de stock, ventes et dépenses saisis ainsi sont
+  mis en file dans le
+  navigateur et envoyés au serveur (`/api/sync/*`) au retour de la connexion.
 
 ### 1.6 Application installable (PWA)
 
@@ -98,25 +140,33 @@ d'adresse). Le service worker existant assure le repli hors-ligne (§1.5).
   servi dynamiquement sur `/manifest.webmanifest`.
 - **HTTPS est obligatoire** pour l'installation PWA (hors `localhost`).
 
-### 1.7 API mobile (v1)
+### 1.7 API mobile (v1) et application terrain
 
-Une API REST authentifiée par **tokens Sanctum** est exposée sous `/api/v1`
-pour la future application mobile native (opérations terrain). Les
-permissions L/C/M/S et la matrice Modules × Rôles s'appliquent exactement
-comme sur le web (FormRequests et Actions métier partagés).
+L'application terrain (`mobile/`, React, installable en PWA)
+parle à une API REST sous `/api/v1`, authentifiée par **jetons Sanctum** (un
+jeton par appareil). Les permissions L/C/M/S et la matrice Modules × Rôles
+s'appliquent exactement comme sur le web.
 
 | Méthode | Endpoint | Rôle |
 |---|---|---|
-| `POST` | `/api/v1/auth/login` | Obtenir un token (`email`, `password`, `device_name`) — limité à 10 essais/min |
-| `GET` | `/api/v1/auth/me` | Profil de l'utilisateur connecté |
-| `POST` | `/api/v1/auth/logout` | Révoquer le token de l'appareil courant |
-| `GET` | `/api/v1/batches` | Lots actifs (`?status=all` pour tout) |
-| `GET` | `/api/v1/batches/{id}` | Détail d'un lot + dernier pointage |
-| `POST` | `/api/v1/daily-checks` | Pointage journalier (mortalité, aliment, eau…) |
-| `POST` | `/api/v1/egg-productions` | Collecte d'œufs (cumul par jour, taux de ponte recalculé) |
+| `POST` | `/api/v1/auth/login` | Obtenir un jeton (`email`, `password`, `device_name`) — limité à 10 essais/min |
+| `GET` | `/api/v1/auth/me` | Profil, permissions et ferme courante |
+| `POST` | `/api/v1/auth/logout` | Rendre le jeton de l'appareil |
+| `PATCH` | `/api/v1/auth/password` | Changer son mot de passe (voir §2.1) |
+| `GET` | `/api/v1/sync/pull` | Référentiels à jour (lots, stocks, clients, employés…), filtrés par droits |
+| `POST` | `/api/v1/sync/push` | **Toutes les saisies terrain** : une file d'opérations typées (`daily_check.create`, `egg_collection.create`, `sale.create`, `expense.create`, `stock_movement.create`…) |
+| `GET` | `/api/v1/batches`, `/api/v1/tasks`, `/api/v1/me/week`, `/api/v1/*/today` | Consultations |
 
-Toutes les routes (hors login) exigent le header `Authorization: Bearer <token>`.
-Les tokens sont révocables individuellement (table `personal_access_tokens`).
+Le détail de l'idempotence et des statuts renvoyés par `sync/push`
+(`success`, `already_synced`, `conflict`, `validation_failed`,
+`permission_denied`) est décrit dans [`mobile/phase-0-spec.md`](mobile/phase-0-spec.md).
+
+Toutes les routes (hors connexion) exigent `Authorization: Bearer <jeton>`.
+
+> **Abonnement** : quand le système de licence est armé et l'abonnement échu
+> (période de grâce passée), l'API répond **402** — comme le web renvoie vers
+> l'écran d'activation. L'application terrain l'affiche à l'agent ; ses saisies
+> non envoyées **restent sur le téléphone** et partiront au renouvellement.
 
 ### 1.8 Langue
 
@@ -139,18 +189,38 @@ définies dans `config/app.php` (`supported_locales`).
 
 ### 2.1 Utilisateurs, rôles et permissions
 
-Le contrôle d'accès combine deux niveaux :
+Le contrôle d'accès repose sur la **matrice Modules × Rôles**
+(`Admin > Rôles & permissions`) : pour chaque rôle et chaque module, quatre
+droits L/C/M/S (Lire, Créer, Modifier, Supprimer). **Elle fait seule
+autorité** : un module non coché, c'est aucun accès — il n'y a pas de repli
+sur un droit global.
 
-- **Permissions globales L/C/M/S** (Lire, Créer, Modifier, Supprimer) portées par le rôle de l'utilisateur. Quatre rôles de base : `admin` (tout), `manager` (L/C/M), `operator` (L/C), `viewer` (L).
-- **Matrice Modules × Rôles** (`Admin > Rôles & permissions`) : dès qu'un rôle dispose d'une matrice configurée, **elle fait seule autorité, module par module** — y compris pour restreindre (ex. : un opérateur limité à la lecture du module Élevage). Les rôles sans matrice retombent sur le comportement global L/C/M/S.
-
-L'administrateur (`admin`) bénéficie d'un bypass complet. Le cache des
-permissions est de 5 minutes : un changement de matrice peut mettre jusqu'à
-5 minutes à se propager (ou `php artisan cache:clear` pour l'appliquer
-immédiatement).
+Quatre rôles sont créés à l'installation, que l'on peut ajuster ou compléter :
+`admin` (L/C/M/S), `technicien` (L/C/M), `vendeur` (L/C), `ouvrier` (L).
+L'administrateur (`admin`) bénéficie d'un accès complet. Les droits sont mis
+en cache 5 minutes ; `php artisan cache:clear` applique un changement
+immédiatement.
 
 Chaque employé peut recevoir un **compte de connexion** lié à sa fiche
 (`Annuaire > Employés > Accès`), avec rôle et statut actif/inactif.
+
+**Sécurité des comptes — ce qui se passe, et quand :**
+
+| Geste | Effet sur les appareils (application terrain) |
+|---|---|
+| L'utilisateur change **son** mot de passe (web ou application) | Ses **autres** appareils sont déconnectés ; celui qui fait la demande reste connecté |
+| Réinitialisation par lien « mot de passe oublié » | **Tous** ses appareils sont déconnectés |
+| Un administrateur réinitialise le mot de passe (Utilisateurs **ou** Espace RH) | **Tous** ses appareils sont déconnectés |
+| Un administrateur **suspend** le compte | Tous ses appareils sont déconnectés, et **le restent** à la réactivation : chaque appareil devra se reconnecter |
+
+> Les sessions ouvertes dans un **navigateur** ne sont pas coupées par un
+> changement de mot de passe. Le formulaire « mot de passe oublié » répond de
+> la même façon que l'adresse existe ou non, et il est limité à 6 demandes
+> par minute.
+
+**Supprimer ou suspendre ?** La suppression d'un compte est **refusée** dès
+qu'elle emporterait des enregistrements (par exemple ses clôtures de caisse) :
+on **suspend** alors le compte, ce qui coupe l'accès en gardant l'historique.
 
 ### 2.2 Multi-ferme / multi-site
 
@@ -161,9 +231,10 @@ stocks, ventes…) sont cloisonnées par ferme (`farm_id`).
 
 ### 2.3 Paramètres système
 
-`Paramètres` (réservé admin) expose 13 groupes : Général, Élevage,
-Production, Pisciculture, Provenderie, Abattoir, Couvoir, Planning, Énergie,
-WhatsApp, RH & Paie, Stocks, Ventes.
+`Paramètres` (réservé admin) regroupe les réglages par domaine : Général,
+Élevage, Production, Pisciculture, Provenderie, Abattoir, Couvoir, Cultures,
+Planning, Énergie, WhatsApp, RH & Paie, Stocks, Ventes, Numérotation,
+Étiquettes…
 
 **Principe : tout paramètre visible s'applique réellement.** Chaque clé est
 consommée par le code (voir l'audit complet dans
@@ -180,6 +251,16 @@ Le cache des paramètres a un TTL d'une heure ; toute modification via
 l'interface le vide automatiquement. Après une modification directe en base :
 `php artisan cache:clear`.
 
+**Espèces** (`Paramètres > Espèces`) : désactiver une espèce la retire de
+**tous les choix à venir** — création de lot, types de bâtiment, types de
+production (formules d'aliment, plans de bande, protocoles), normes. Elle ne
+réécrit rien de ce qui existe : un bâtiment, une formule ou un
+protocole déjà rattachés gardent leur type et restent filtrables. Une espèce
+qui a encore des lots actifs ne peut pas être désactivée.
+
+> Ce réglage s'applique à **toutes les fermes** de l'installation (il n'est
+> pas, aujourd'hui, propre à un site).
+
 ### 2.4 Notifications WhatsApp
 
 `config/whatsapp.php` + groupe de paramètres WhatsApp. Drivers disponibles :
@@ -191,10 +272,13 @@ journalisé dans le centre de notifications.
 
 ### 2.5 Corbeille et intégrité
 
-Les suppressions passent par une **corbeille** (`Admin > Corbeille`,
-soft-delete) avec restauration. Des garde-fous d'intégrité empêchent les
-suppressions destructrices : stock avec historique de mouvements, formule
-déjà produite, lot parent référencé, etc.
+Les suppressions de bâtiments, fournisseurs, employés et lots passent par
+une **corbeille** (`Admin > Corbeille`) avec restauration. La **suppression
+définitive** depuis la corbeille est **refusée** tant que l'élément porte un
+historique — pointages, bulletins de paie, ventes, etc. —, et le refus dit
+ce qui serait emporté. D'autres garde-fous empêchent les suppressions
+destructrices ailleurs : article de stock avec historique de mouvements,
+formule déjà produite, compte utilisateur portant des clôtures de caisse.
 
 ---
 
@@ -202,8 +286,11 @@ déjà produite, lot parent référencé, etc.
 
 ### 3.1 Parc (bâtiments)
 
-Référentiel des bâtiments : capacité, surface, type (chair/ponte…), statut
-(Vide, Occupé, Vide sanitaire). Le vide sanitaire de 14 jours est levé
+Référentiel des bâtiments : capacité, surface, type (chair, ponte,
+poussinière, bergerie, porcherie…), statut (Vide, Disponible, Occupé, En
+désinfection, Maintenance). Les **types proposés suivent les espèces actives**
+(§2.3) ; `Mixte` est toujours proposé. Le vide sanitaire — durée réglable
+(`elevage.sanitary_break_days`, 14 jours par défaut) — est levé
 automatiquement chaque nuit (`farm:release-buildings`).
 
 ### 3.2 Élevage (lots)

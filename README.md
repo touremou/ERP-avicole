@@ -14,6 +14,7 @@ mobile money, notifications WhatsApp/SMS, traçabilité par QR code.
 | Installer (local / en ligne) + vendre une instance | [docs/INSTALLATION.md](docs/INSTALLATION.md) |
 | Utiliser les modules métier | [docs/GUIDE.md](docs/GUIDE.md) |
 | Déployer & exploiter en production | [DEPLOYMENT.md](DEPLOYMENT.md) |
+| **Ouvrir en production** (liste à cocher et signer) | [docs/ops/mise-en-production.md](docs/ops/mise-en-production.md) |
 | Serveur de licence (fournisseur) | [license-server/README.md](license-server/README.md) |
 
 ## Démarrage express (local)
@@ -27,7 +28,8 @@ php artisan migrate --seed
 php artisan serve                     # http://127.0.0.1:8000
 ```
 
-Au premier accès sans compte, l'assistant **`/install`** prend le relais
+Au premier accès, tant que l'application n'est pas installée, l'assistant
+**`/install`** prend le relais
 (prérequis, base de données, compte admin). Détails :
 [docs/INSTALLATION.md](docs/INSTALLATION.md).
 
