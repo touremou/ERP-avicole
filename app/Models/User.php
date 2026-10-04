@@ -361,6 +361,39 @@ class User extends Authenticatable
      *                                 appareil dont on sait qu'il a le nouveau
      *                                 mot de passe.
      */
+    /**
+     * SUSPEND l'accès suite au DÉPART de l'agent (dossier RH « Parti » ou
+     * archivé) : connexion fermée, appareils révoqués — la même suspension que
+     * celle de la gestion des comptes (`UserController::toggleActive`).
+     *
+     * Le dernier administrateur actif n'est JAMAIS suspendu par ce chemin : la
+     * fausse manœuvre d'un dossier RH ne doit pas rendre l'installation
+     * inadministrable. On le signale au journal à la place.
+     *
+     * @return bool vrai si le compte a été suspendu
+     */
+    public function suspendreSuiteAuDepart(): bool
+    {
+        if (! $this->isActive()) {
+            return false;
+        }
+
+        if ($this->administersTheInstallation()
+            && ! static::administrators()->whereKeyNot($this->id)->exists()) {
+            \Illuminate\Support\Facades\Log::warning(
+                "Départ RH de {$this->email} : dernier administrateur actif, accès CONSERVÉ."
+            );
+
+            return false;
+        }
+
+        $this->update(['is_active' => false]);
+        $this->revoquerLesAppareils();
+        \Illuminate\Support\Facades\Cache::forget("rbac_perms_{$this->id}");
+
+        return true;
+    }
+
     public function revoquerLesAppareils(?int $saufJetonId = null): void
     {
         $this->tokens()

@@ -256,6 +256,7 @@ les mots de passe existants restent valides.
 | Réinitialisation par lien « mot de passe oublié » | **Tous** ses appareils sont déconnectés |
 | Un administrateur réinitialise le mot de passe (Utilisateurs **ou** Espace RH) | **Tous** ses appareils sont déconnectés |
 | Un administrateur **suspend** le compte | Tous ses appareils sont déconnectés, et **le restent** à la réactivation : chaque appareil devra se reconnecter |
+| Le dossier RH de l'agent passe à **« Parti »**, ou est **archivé** | Son compte est **suspendu** comme ci-dessus — sauf s'il est le dernier administrateur actif (l'accès est alors conservé et l'événement journalisé). Une réembauche se rouvre à la main |
 
 > Les sessions ouvertes dans un **navigateur** ne sont pas coupées par un
 > changement de mot de passe. Le formulaire « mot de passe oublié » répond de
