@@ -1,5 +1,6 @@
 // resources/js/offline-db.js
 import Dexie from 'dexie';
+import { contexteCourant } from './sync-outcome';
 
 export const db = new Dexie('AviSmartOffline');
 
@@ -48,6 +49,25 @@ db.version(8).stores({
 });
 
 /**
+ * MARQUE D'AUTEUR ET DE SITE, posée à la saisie — à un seul endroit.
+ *
+ * Six écrans écrivent dans ces files ; un crochet Dexie les couvre tous, y
+ * compris ceux à venir. Seules les saisies EN ATTENTE (is_synced 0) sont
+ * marquées : les lots redescendus du serveur ne sont pas des saisies.
+ * Pourquoi : cf. `poussableIci` dans sync-outcome.js.
+ */
+const FILES_DE_SAISIE = ['batches', 'daily_checks', 'egg_productions', 'stock_movements', 'sales', 'expenses'];
+
+for (const nom of FILES_DE_SAISIE) {
+    db[nom].hook('creating', (_cle, saisie) => {
+        if (saisie.is_synced !== 0) return;
+        const { auteur_id, ferme_id } = contexteCourant();
+        if (saisie.auteur_id == null && auteur_id) saisie.auteur_id = auteur_id;
+        if (saisie.ferme_id == null && ferme_id) saisie.ferme_id = ferme_id;
+    });
+}
+
+/**
  * Aspire les référentiels du serveur vers le miroir local (IndexedDB).
  * Appelée au chargement (si en ligne) et après chaque synchro réussie.
  */
@@ -70,8 +90,11 @@ export async function refreshLocalData() {
             const batches = await batchesRes.json();
             const serverUuids = new Set((batches || []).map(b => b.uuid));
 
+            // `=== 1` (synchronisé) et non `!== 0` : un lot REFUSÉ (is_synced 2)
+            // n'est pas sur le serveur, et doit rester visible jusqu'à ce que
+            // l'opérateur le retire lui-même (cf. sync-outcome.js).
             await db.batches
-                .filter(b => b.is_synced !== 0 && !serverUuids.has(b.uuid))
+                .filter(b => b.is_synced === 1 && !serverUuids.has(b.uuid))
                 .delete();
 
             if (batches && batches.length > 0) {
@@ -98,6 +121,12 @@ export async function refreshLocalData() {
                 if (data && data.length > 0) {
                     await item.table.bulkAdd(data);
                 }
+            } else if (response.status === 401 || response.status === 403) {
+                // Le compte connecté n'a PAS accès à ce référentiel. Le miroir
+                // gardait pourtant celui du compte précédent sur ce navigateur
+                // — l'annuaire du personnel, les téléphones des fournisseurs.
+                // Ce que le serveur refuse ne reste pas en cache.
+                await item.table.clear();
             }
         }
 
