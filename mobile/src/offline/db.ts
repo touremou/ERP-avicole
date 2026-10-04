@@ -65,6 +65,18 @@ export interface OutboxEntry {
    * Optionnel : les entrées créées avant ce champ n'en ont pas.
    */
   user_id?: number
+  /**
+   * SITE de la saisie (ferme active au moment de la saisie).
+   *
+   * Le serveur écrit sur la ferme désignée par l'en-tête X-Farm-Id de la
+   * requête. Sans cette marque, une saisie faite sur le site A puis poussée
+   * après une bascule vers B partait sous l'en-tête de B : une dépense, un
+   * relevé sans lot atterrissaient sur le mauvais site. Chaque saisie part
+   * désormais sous l'en-tête de SON site.
+   *
+   * Optionnel : entrées antérieures, ou aucune ferme choisie (ferme par défaut).
+   */
+  farm_id?: number
 }
 
 export interface MyRecord {

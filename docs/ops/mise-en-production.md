@@ -25,9 +25,9 @@ demande en plus, au minimum :
 - un **test d'intrusion par un tiers indépendant** — l'audit interne a trouvé des
   défauts jusque dans ses propres correctifs ; une revue extérieure est nécessaire ;
 - l'**activation du système de licence** (inactif par défaut — cf. [`INSTALLATION.md` §5](../INSTALLATION.md)) ;
-- des **tests automatisés pour l'application mobile**, qui n'en a aucun aujourd'hui
-  (seul le contrôle de types du build la vérifie), y compris pour la
-  synchronisation hors-ligne ;
+- des **tests automatisés pour l'application mobile**, qui n'en a presque aucun
+  aujourd'hui (le contrôle de types du build, et quelques fonctions pures de la
+  file d'envoi) — ni ses écrans ni sa synchronisation hors-ligne de bout en bout ;
 - la conformité hors code : protection des données personnelles (loi guinéenne
   L/2016/037), contrats et conditions de vente, support, facturation.
 

@@ -126,10 +126,12 @@ export const api = {
   revokeDevice: (id: number) =>
     request<{ message: string }>(`/devices/${id}`, { method: 'DELETE' }),
 
-  syncPush: (operations: PushOperation[]) =>
+  /** `farmId` : le site OÙ les saisies ont été faites, pas le site actif. */
+  syncPush: (operations: PushOperation[], farmId?: number) =>
     request<PushResponse>('/sync/push', {
       method: 'POST',
       body: JSON.stringify({ operations }),
+      ...(farmId ? { headers: { 'X-Farm-Id': String(farmId) } } : {}),
     }),
 
   syncPull: (since: string | null) =>
