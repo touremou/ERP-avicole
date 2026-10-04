@@ -138,6 +138,26 @@ Deux outils, pour deux situations :
   collectes d'œufs, mouvements de stock, ventes et dépenses saisis ainsi sont
   mis en file dans le
   navigateur et envoyés au serveur (`/api/sync/*`) au retour de la connexion.
+  Une saisie que le serveur **refuse** (données invalides, droit retiré, stock
+  insuffisant, jour déjà pointé…) n'est ni perdue ni renvoyée sans fin : un
+  **bandeau rouge** la montre avec son motif, et l'opérateur la retire
+  (« Compris, retirer ») une fois ressaisie ou corrigée.
+
+**Appareil partagé, plusieurs sites.** Le serveur enregistre une saisie au nom
+du compte qui l'envoie, sur le site désigné par la requête. Chaque saisie
+hors-ligne — sur le navigateur comme dans l'application terrain — est donc
+marquée, au moment où elle est faite, de **son auteur** et de **son site** :
+
+- elle n'est envoyée que lorsque **son auteur** est connecté : celle d'un
+  magasinier ne part jamais sous la session du comptable qui se connecte après
+  lui sur le même poste. En attendant, elle reste en file, intacte (le
+  navigateur l'indique par un bandeau orange) ;
+- elle est enregistrée sur **le site où elle a été saisie**, même si l'on a
+  changé de site entre-temps (application terrain : envoi sous l'en-tête de ce
+  site ; navigateur : envoi au retour de l'auteur sur ce site).
+
+Les saisies faites avant cette règle ne portent pas de marque : elles partent
+comme auparavant.
 
 ### 1.6 Application installable (PWA)
 

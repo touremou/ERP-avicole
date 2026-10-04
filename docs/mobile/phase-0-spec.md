@@ -173,12 +173,13 @@ Envoie la **file d'outbox** en lot. Chaque opération est typée et idempotente.
 ```
 DB "erp-mobile" (versionnée)
 ├─ ref_batches, ref_buildings, ref_clients, ref_products, ref_stocks   // miroir (clé = id serveur, index uuid)
-├─ outbox            // { op_uuid (pk), type, payload, client_updated_at, status, attempts, last_error }
+├─ outbox            // { op_uuid (pk), type, payload, client_updated_at, status, attempts, last_error, user_id, farm_id }
 ├─ my_records        // pointages/collectes/ventes locales pour affichage immédiat (optimistic)
 └─ meta              // { key, value } : last_pull_at, token (sécurisé), me (user/role/perms/scope)
 ```
 - **Écriture optimiste** : la saisie crée la ligne dans `my_records` + une entrée `outbox` (status `pending`), l'UI réagit immédiatement (offline).
 - **Sync** : au retour réseau (ou bouton manuel) → `push` (vider outbox, traiter statuts) puis `pull(since=last_pull_at)` → appliquer upserts/deletes → `last_pull_at = server_time`.
+- **Auteur et site** : chaque entrée d'outbox porte `user_id` (compte connecté) et `farm_id` (site actif) **à la mise en file**. Le push ne prend que les entrées du compte connecté (téléphone partagé) et envoie **un lot par site**, sous l'en-tête `X-Farm-Id` de ce site (`lotsParSite`, `src/offline/lots.ts`) — et non celui du site actif au moment de l'envoi. Entrées sans marque : envoyées comme avant.
 - **Retries** : backoff sur `pending` (attempts++), `conflict`/`validation_failed` → status `review` (sortie de la file, visible dans un bac « À corriger »).
 - **Gate hors-ligne** : l'UI lit `meta.me.permissions` pour masquer/désactiver les actions interdites ; le serveur revérifie au push (défense en profondeur).
 

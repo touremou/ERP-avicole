@@ -1,6 +1,6 @@
 // resources/js/sync-engine.js
 import { db, refreshLocalData } from './offline-db';
-import { issueDeSynchro, rangerSaisie, REFUSEE, EN_ATTENTE, contexteCourant, poussableIci, corpsAEnvoyer } from './sync-outcome';
+import { issueDeSynchro, rangerSaisie, REFUSEE, EN_ATTENTE, contexteCourant, poussableIci, corpsAEnvoyer, traduire } from './sync-outcome';
 
 /**
  * Écouteur d'événement réseau
@@ -159,14 +159,13 @@ async function afficherRefus() {
         const attente = document.createElement('p');
         attente.id = 'saisies-autre-compte';
         attente.style.cssText = 'margin:0 0 .5rem;color:#9a3412;';
-        attente.textContent = `${enAttenteAilleurs} saisie(s) hors-ligne d’un autre compte ou d’un autre site attendent sur ce navigateur. `
-            + 'Elles partiront quand leur auteur se reconnectera sur le site où il les a saisies.';
+        attente.textContent = traduire(':n saisie(s) hors-ligne d’un autre compte ou d’un autre site attendent sur ce navigateur. Elles partiront quand leur auteur se reconnectera sur le site où il les a saisies.', { n: enAttenteAilleurs });
         bandeau.appendChild(attente);
     }
 
     if (refus.length > 0) {
         const titre = document.createElement('strong');
-        titre.textContent = `${refus.length} saisie(s) hors-ligne refusée(s) par le serveur — à ressaisir ou à corriger :`;
+        titre.textContent = traduire(':n saisie(s) hors-ligne refusée(s) par le serveur — à ressaisir ou à corriger :', { n: refus.length });
         bandeau.appendChild(titre);
     }
 
@@ -176,10 +175,10 @@ async function afficherRefus() {
         const item = document.createElement('li');
         item.style.cssText = 'display:flex;justify-content:space-between;gap:.5rem;padding:.25rem 0;border-top:1px solid #fecdd3;';
         const texte = document.createElement('span');
-        texte.textContent = `${r.libelle} — ${r.motif || 'refusée'}`;   // textContent : le motif vient du serveur, jamais injecté en HTML
+        texte.textContent = `${traduire(r.libelle)} — ${r.motif || traduire('refusée')}`;   // textContent : le motif vient du serveur, jamais injecté en HTML
         const retirer = document.createElement('button');
         retirer.type = 'button';
-        retirer.textContent = 'Compris, retirer';
+        retirer.textContent = traduire('Compris, retirer');
         retirer.style.cssText = 'white-space:nowrap;font-weight:700;color:#be123c;background:none;border:none;cursor:pointer;';
         retirer.addEventListener('click', async () => { await r.table.delete(r.uuid); afficherRefus(); });
         item.append(texte, retirer);

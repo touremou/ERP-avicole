@@ -1,4 +1,16 @@
 /**
+ * TRADUCTION, selon la convention de l'application : la clé EST le texte
+ * français (`__()` côté Blade, `lang/en.json`). Le layout dépose les textes de
+ * ce moteur, déjà traduits dans la langue de l'utilisateur, dans
+ * `window.AVISMART_TEXTES` ; hors navigateur ou sans eux, le français fait foi.
+ * Remplacements à la Laravel : `:n`, `:status`…
+ */
+export function traduire(fr, remplacements = {}) {
+    const t = globalThis.AVISMART_TEXTES?.[fr] ?? fr;
+    return Object.entries(remplacements).reduce((acc, [k, v]) => acc.replaceAll(`:${k}`, String(v)), t);
+}
+
+/**
  * QUE FAIRE D'UNE SAISIE HORS-LIGNE, SELON LA RÉPONSE DU SERVEUR ?
  *
  * Fonction PURE — ni DOM, ni Dexie — pour pouvoir être éprouvée sans
@@ -41,7 +53,7 @@ export function issueDeSynchro(statutHttp, corps) {
             case 'already_synced':
                 return { etat: 'synchronise', motif: null };
             case 'conflict':
-                return { etat: 'refuse', motif: body.message || 'Refusée par le serveur.' };
+                return { etat: 'refuse', motif: body.message || traduire('Refusée par le serveur.') };
             case 'error':
                 return { etat: 'reessayer', motif: null };
             default:
@@ -53,16 +65,16 @@ export function issueDeSynchro(statutHttp, corps) {
     }
 
     if (statutHttp === 403) {
-        return { etat: 'refuse', motif: body.message || 'Droit insuffisant pour enregistrer cette saisie.' };
+        return { etat: 'refuse', motif: body.message || traduire('Droit insuffisant pour enregistrer cette saisie.') };
     }
 
     if (statutHttp === 422) {
         const premiere = Object.values(body.errors ?? {}).flat()[0];
-        return { etat: 'refuse', motif: premiere || body.message || 'Données invalides.' };
+        return { etat: 'refuse', motif: premiere || body.message || traduire('Données invalides.') };
     }
 
     // Tout autre 4xx est un refus définitif : le renvoyer ne le changera pas.
-    return { etat: 'refuse', motif: body.message || `Refusée par le serveur (HTTP ${statutHttp}).` };
+    return { etat: 'refuse', motif: body.message || traduire('Refusée par le serveur (HTTP :status).', { status: statutHttp }) };
 }
 
 /**

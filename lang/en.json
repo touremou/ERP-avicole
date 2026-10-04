@@ -3337,5 +3337,18 @@
     "Cycle d'incubation introuvable dans cette ferme.": "Incubation cycle not found in this farm.",
     "Œufs fertiles (:n) supérieurs aux œufs mis à couver (:total).": "Fertile eggs (:n) exceed eggs set (:total).",
     "Poussins éclos (:n) supérieurs aux œufs fertiles (:fertile) — faites d'abord le mirage.": "Chicks hatched (:n) exceed fertile eggs (:fertile) — do the candling first.",
-    "Renseignez au moins une traite (matin ou soir).": "Enter at least one milking (morning or evening)."
+    "Renseignez au moins une traite (matin ou soir).": "Enter at least one milking (morning or evening).",
+    ":n saisie(s) hors-ligne refusée(s) par le serveur — à ressaisir ou à corriger :": ":n offline entry(ies) refused by the server — to re-enter or correct:",
+    ":n saisie(s) hors-ligne d’un autre compte ou d’un autre site attendent sur ce navigateur. Elles partiront quand leur auteur se reconnectera sur le site où il les a saisies.": ":n offline entry(ies) from another account or another site are waiting in this browser. They will be sent when their author logs back in on the site where they were entered.",
+    "Compris, retirer": "Got it, remove",
+    "refusée": "refused",
+    "pointage": "daily check",
+    "collecte d’œufs": "egg collection",
+    "mouvement de stock": "stock movement",
+    "vente": "sale",
+    "dépense": "expense",
+    "Refusée par le serveur.": "Refused by the server.",
+    "Droit insuffisant pour enregistrer cette saisie.": "Insufficient permission to record this entry.",
+    "Données invalides.": "Invalid data.",
+    "Refusée par le serveur (HTTP :status).": "Refused by the server (HTTP :status)."
 }

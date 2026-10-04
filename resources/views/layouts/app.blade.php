@@ -7,6 +7,8 @@
         {{-- Auteur et site des saisies hors-ligne (cf. resources/js/sync-outcome.js). --}}
         <meta name="avismart-user" content="{{ auth()->id() }}">
         <meta name="avismart-farm" content="{{ session('current_farm_id') }}">
+        {{-- Textes du moteur hors-ligne, traduits (cf. App\Support\OfflineSyncTexts). --}}
+        <script>window.AVISMART_TEXTES = @json(\App\Support\OfflineSyncTexts::traduits());</script>
 
         <title>{{ setting('general.company_name', 'AviSmart') }}</title>
 
