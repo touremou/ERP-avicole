@@ -60,6 +60,21 @@ class Employee extends Model
             ]);
         });
 
+        // UN AGENT PARTI N'A PLUS ACCÈS. Le dossier RH passait à « Parti », ou
+        // était archivé, pendant que son compte de connexion restait ouvert : le
+        // bureau l'acceptait, et son téléphone continuait de synchroniser. La
+        // règle vit ici, et non dans un écran, pour qu'aucun chemin (fiche,
+        // archivage, import) ne puisse l'oublier.
+        static::updated(function ($employee) {
+            if ($employee->wasChanged('status') && $employee->status === 'Parti') {
+                $employee->user?->suspendreSuiteAuDepart();
+            }
+        });
+
+        static::deleted(function ($employee) {
+            $employee->user?->suspendreSuiteAuDepart();
+        });
+
         // Le dossier peut encore être déplacé directement (import, correction).
         // On garde l'affectation principale ALIGNÉE, sinon la fiche dirait un
         // site et les sélecteurs un autre — la divergence qu'on vient d'éteindre.
