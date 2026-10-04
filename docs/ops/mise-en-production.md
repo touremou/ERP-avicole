@@ -95,6 +95,37 @@ d'un `.env` de développement) :
 - [ ] `php artisan migrate --force` passé ; les caches régénérés
       (`config:cache`, `route:cache`, `view:cache`, `event:cache`).
 
+**Si cette installation a servi aux essais ou à la formation** — à faire **avant**
+le diagnostic, et **uniquement avant toute vraie facture** :
+
+- [ ] **Données de démonstration** — ce que le système a semé (comptes de
+      démonstration, « Bâtiment A », culture de démonstration) :
+
+      ```bash
+      php artisan avismart:remove-demo-data          # liste ce qui partirait
+      php artisan avismart:remove-demo-data --force  # retire
+      ```
+
+      Un élément qui porte un historique réel — un lot dans « Bâtiment A », un
+      vrai cycle sur une parcelle — est **gardé**, et la commande dit pourquoi.
+- [ ] **Données de test** — les saisies d'essai (lots, pointages, ventes,
+      dépenses, trésorerie, paie…). Les bâtiments, employés, clients,
+      fournisseurs, articles de stock, la configuration et les comptes sont
+      **gardés** :
+
+      ```bash
+      php artisan avismart:reset-test-data                                  # simulation : LIRE le rapport
+      php artisan avismart:reset-test-data --force --confirmer="Nom exact de l'entreprise"
+      ```
+
+      La commande prend une **sauvegarde de la base juste avant** et s'arrête si
+      elle échoue. ⚠️ **La numérotation des factures repart de 1** : c'est voulu
+      avant la mise en service, et c'est pourquoi on ne la lance **jamais**
+      après avoir remis de vraies factures.
+- [ ] Après la remise à zéro : **inventaire d'ouverture** des stocks et des
+      matières premières, **niveaux réels** des cuves et citernes, **compteurs**
+      des groupes et machines, **soldes d'ouverture** des comptes de trésorerie.
+
 ## 5. ⛔ Diagnostic
 
 ```bash

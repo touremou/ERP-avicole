@@ -75,6 +75,19 @@ Il signale notamment le mode débogage resté actif, les comptes de
 démonstration encore au mot de passe public, les canaux d'alerte muets, les
 sauvegardes et le planificateur.
 
+**Repartir propre après des essais** (en ligne de commande, simulation par
+défaut — `--force` pour appliquer) :
+
+| Commande | Ce qu'elle retire | Ce qu'elle garde |
+|---|---|---|
+| `avismart:remove-demo-data` | Ce que le système a **semé** : comptes de démonstration, « Bâtiment A », culture de démonstration | Tout élément reconnu qui porte un historique réel |
+| `avismart:reset-test-data` | Tous les **mouvements** : lots, pointages, ventes, dépenses, trésorerie, paie… | Configuration, comptes, bâtiments, employés, clients, fournisseurs, articles de stock — leurs soldes et quantités remis d'aplomb |
+
+La remise à zéro exige le nom exact de l'entreprise et prend une sauvegarde
+juste avant. **La numérotation des factures repart de 1 : ne jamais la lancer
+après avoir remis de vraies factures.** Pas de bouton dans l'interface, à
+dessein : un geste irréversible demande un accès au serveur.
+
 À chaque déploiement :
 
 ```bash
