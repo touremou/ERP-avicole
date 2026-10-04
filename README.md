@@ -28,10 +28,11 @@ php artisan migrate --seed
 php artisan serve                     # http://127.0.0.1:8000
 ```
 
-Au premier accès, tant que l'application n'est pas installée, l'assistant
-**`/install`** prend le relais
-(prérequis, base de données, compte admin). Détails :
-[docs/INSTALLATION.md](docs/INSTALLATION.md).
+`migrate --seed` crée des **comptes de démonstration** au mot de passe public
+`password` : ils ne valent pas installation. Au premier accès, l'assistant
+**`/install`** prend donc le relais (prérequis, base de données, compte
+administrateur) ; il crée **votre** administrateur et supprime ces comptes.
+Détails : [docs/INSTALLATION.md](docs/INSTALLATION.md).
 
 ## Monétisation (abonnement)
 
@@ -48,5 +49,9 @@ activation → renouvellement → révocation) :
 php artisan test
 ```
 
-CI : `.github/workflows/ci.yml` (migrations sur base fraîche + suite de tests,
-incluant l'interopérabilité serveur de licence ↔ ERP).
+CI : `.github/workflows/ci.yml` — migrations sur base fraîche, suite PHP sur
+SQLite **et** MySQL 8 (dont l'interopérabilité serveur de licence ↔ ERP), tests
+JavaScript de la synchronisation hors-ligne
+(`node --test 'resources/js/tests/*.test.js'`) et tests de l'application
+terrain (`node --experimental-strip-types --test 'mobile/tests/*.test.mjs'`),
+sous Node 22.

@@ -153,6 +153,10 @@ class UserSeeder extends Seeder
             );
         }
 
-        $this->command?->info('UserSeeder : 4 rôles et 4 comptes de test prêts (mot de passe : password).');
+        $this->command?->info(sprintf(
+            'UserSeeder : %d comptes de démonstration prêts (mot de passe public : %s) — l’assistant /install les supprime.',
+            count(self::USERS),
+            self::MOT_DE_PASSE_DEMO,
+        ));
     }
 }

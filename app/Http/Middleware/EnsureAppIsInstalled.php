@@ -5,7 +5,6 @@ namespace App\Http\Middleware;
 use App\Support\InstallationState;
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -16,9 +15,10 @@ use Symfony\Component\HttpFoundation\Response;
  * Exclut les routes /install/* et /up (health check) pour éviter les
  * boucles de redirection, ainsi que l'environnement de test.
  *
- * Compatibilité ascendante : une installation existante (table `users`
- * déjà peuplée) est automatiquement considérée comme installée — le
- * marqueur est créé au premier accès, sans passer par l'assistant.
+ * Compatibilité ascendante : une installation existante (un administrateur
+ * RÉEL, pas un compte de démonstration) est automatiquement considérée comme
+ * installée — le marqueur est créé au premier accès, sans passer par
+ * l'assistant.
  *
  * ─── DEUXIÈME LECTEUR DE LA MÊME QUESTION ───
  *
@@ -57,7 +57,18 @@ class EnsureAppIsInstalled
             return $next($request);
         }
 
-        if ($this->tableExists('users') && DB::table('users')->exists()) {
+        // Compatibilité ascendante : une exploitation déjà en service (un VRAI
+        // administrateur) reçoit son marqueur au premier accès.
+        //
+        // « Un compte existe » ne suffit PLUS. `migrate --seed` crée six comptes
+        // de démonstration au mot de passe public `password`, dont deux
+        // administrateurs : ce middleware déclarait alors l'application
+        // installée et posait le marqueur, si bien que l'assistant — qui crée
+        // l'administrateur réel et SUPPRIME ces comptes (#396) — ne s'ouvrait
+        // jamais. L'assistant, lui, ne tenait pas cette base pour installée
+        // (`estInstallee`) : deux réponses à la même question. Les deux portes
+        // lisent désormais la même règle.
+        if ($this->tableExists('users') && InstallationState::estInstallee()) {
             InstallationState::marquerInstallee();
 
             return $next($request);
