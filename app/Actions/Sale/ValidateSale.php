@@ -39,7 +39,7 @@ class ValidateSale
             // Le crédit examiné est ce qui restera dû sur CETTE vente, une fois
             // déduits les règlements déjà encaissés dessus.
             $sale->loadMissing('client');
-            $reste = (float) $sale->total_amount - (float) $sale->payments()->sum('amount');
+            $reste = round((float) $sale->total_amount - (float) $sale->payments()->sum('amount'), 2);
 
             if ($sale->client && $raison = $sale->client->creditRefusalReason($reste)) {
                 throw new Exception("Vente {$sale->reference} : {$raison}");

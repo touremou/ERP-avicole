@@ -221,7 +221,7 @@ class Sale extends Model
 
     public function getRemainingAmountAttribute(): float
     {
-        return max(0, (float) $this->total_amount - (float) $this->paid_amount);
+        return round(max(0, (float) $this->total_amount - (float) $this->paid_amount), 2);
     }
 
     public function getIsPaidAttribute(): bool
@@ -317,12 +317,18 @@ class Sale extends Model
      */
     public function refreshPaymentStatus(): void
     {
-        $totalPaid = $this->payments()->sum('amount');
+        // AU CENTIME. Sur SQLite, une colonne DECIMAL est un flottant :
+        // 10,10 + 20,20 y vaut 30,299999999999997. Comparée brute, une vente de
+        // 30,30 réglée en deux fois restait « partiel » à vie — pendant que son
+        // reste dû, lui, valait 0 et refusait tout nouveau règlement. Même règle
+        // que les factures fournisseurs (SupplierInvoice::getPaidAmountAttribute).
+        $totalPaid = round((float) $this->payments()->sum('amount'), 2);
+        $total     = round((float) $this->total_amount, 2);
 
         $status = match (true) {
-            $totalPaid <= 0                          => 'impaye',
-            $totalPaid >= (float) $this->total_amount => 'solde',
-            default                                   => 'partiel',
+            $totalPaid <= 0      => 'impaye',
+            $totalPaid >= $total => 'solde',
+            default              => 'partiel',
         };
 
         $this->update([
