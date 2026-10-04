@@ -4,11 +4,35 @@
  * le partage système (WhatsApp, e-mail, Drive…) quand il est disponible.
  */
 
+/**
+ * Caractères qui font d'une cellule une FORMULE dans un tableur — la même
+ * liste que le serveur (app/Support/CsvExport.php).
+ *
+ * Le serveur neutralisait déjà ses exports ; ceux du terrain, non. Or ces
+ * journaux portent des textes saisis par n'importe quel utilisateur (nom de
+ * client, libellé d'article, description d'écriture) : « =HYPERLINK(…) » en
+ * tête s'exécutait à l'ouverture dans Excel ou LibreOffice, chez le
+ * gestionnaire à qui le technicien partage le fichier. Un libellé légitime
+ * (« -20 % remise ») déclenche la même chose.
+ */
+const PREFIXES_DANGEREUX = ['=', '+', '-', '@', '\t', '\r']
+
+/**
+ * Rend une cellule inoffensive sans la déformer : seul un TEXTE commençant
+ * par un préfixe dangereux reçoit une apostrophe. Les nombres restent des
+ * nombres — les préfixer casserait les totaux de la feuille.
+ */
+export function neutraliser(value: string | number | null | undefined): string {
+  if (typeof value === 'number') return String(value)
+  const s = String(value ?? '')
+  return PREFIXES_DANGEREUX.some((p) => s.startsWith(p)) ? "'" + s : s
+}
+
 /** Construit un CSV (séparateur « ; », BOM UTF-8 ajouté à l'export). */
 export function toCsv(headers: string[], rows: (string | number | null | undefined)[][]): string {
   const escape = (value: string | number | null | undefined): string => {
-    const s = String(value ?? '')
-    return /[";\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s
+    const s = neutraliser(value)
+    return /[";\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s
   }
   return [headers, ...rows].map((row) => row.map(escape).join(';')).join('\r\n')
 }

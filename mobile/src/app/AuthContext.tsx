@@ -14,6 +14,7 @@ import {
 } from 'react'
 import { api, clearSession } from '../api/client'
 import { clearPersonalData, db, getMeta, setMeta } from '../offline/db'
+import { miroirAReconstruire, type ProprietaireMiroir } from '../offline/miroir'
 import { adoptProfileLocale } from '../i18n'
 import type { MeResponse, PermissionLevel } from '../api/types'
 
@@ -97,6 +98,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await clearPersonalData()
     }
 
+    // LE MIROIR DE RÉFÉRENCE suit la même règle, et pour une raison de plus :
+    // un pull incrémental n'efface pas ce que le nouveau compte n'a pas le droit
+    // de voir (cf. miroirAReconstruire). Compte ou site différent → bootstrap.
+    // Lu sur sa PROPRE marque : `me`, effacé par une déconnexion propre, ne dit
+    // plus qui était là.
+    const compte = { user_id: fresh.user.id, farm_id: fresh.scope.farm_id ?? null }
+    if (miroirAReconstruire(await getMeta<ProprietaireMiroir>('mirror_owner'), compte)) {
+      await db.meta.delete('last_pull_at')
+    }
+    await setMeta('mirror_owner', compte)
+
     await setMeta('me', fresh)
     if (fresh.scope.farm_id) await setMeta('farm_id', fresh.scope.farm_id)
     await adoptProfileLocale(fresh.user.locale)
@@ -111,9 +123,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     await clearSession()
 
-    // Les données de RÉFÉRENCE restent (le suivant travaille sur la même ferme).
     // Les miroirs personnels partent : alertes et tâches assignées, retéléchargés
-    // à la première synchronisation du suivant.
+    // à la première synchronisation du suivant. Le référentiel sera reconstruit
+    // par un bootstrap complet (last_pull_at effacé ci-dessous) — et, pour les
+    // départs SANS déconnexion (application tuée, jeton révoqué), la connexion
+    // suivante le reconstruit si le compte ou le site change (offline/miroir.ts).
     //
     // L'historique et l'outbox restent, marqués de leur auteur : on ne détruit pas
     // du travail de terrain, et il n'est montré qu'à celui qui l'a saisi.
