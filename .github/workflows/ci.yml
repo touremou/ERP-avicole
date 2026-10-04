@@ -38,6 +38,13 @@ jobs:
         # attrape les composants/props cassés sans attendre qu'un test rende la vue.
         run: php artisan view:cache
 
+      - name: Setup Node
+        # Node 22 : `--experimental-strip-types` (tests de l'application terrain,
+        # écrite en TypeScript) et les motifs de `node --test`.
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
       - name: Install & build front-end assets
         run: |
           npm ci
@@ -47,6 +54,11 @@ jobs:
         # `node --test`, sans dépendance. Verrouille ce que devient une saisie
         # hors-ligne selon la réponse du serveur : le moteur web en perdait.
         run: node --test 'resources/js/tests/*.test.js'
+
+      - name: Mobile app tests (pure offline logic)
+        # Les modules PURS de l'application terrain, sans navigateur ni
+        # dépendance. Les écrans et Dexie n'ont toujours pas de tests.
+        run: node --experimental-strip-types --test 'mobile/tests/*.test.mjs'
 
       - name: Validate migrations on a fresh database
         # Garantit que toute la chaîne de migrations s'applique proprement.

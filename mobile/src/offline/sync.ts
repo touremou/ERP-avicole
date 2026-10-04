@@ -14,6 +14,7 @@
  *   error (5xx serveur) → RESTE pending, retenté au prochain cycle (backoff)
  */
 import { api, ApiError } from '../api/client'
+import { lotsParSite } from './lots'
 import { db, getMeta, setMeta, session, type OutboxEntry } from './db'
 import { validateOp, OpValidationError } from './opRules'
 import { allows, OP_ACCESS, OpForbiddenError } from './access'
@@ -169,6 +170,8 @@ export async function enqueue(
   // marque, « Mon activité » montrait l'historique du technicien précédemment
   // connecté, et une saisie non poussée partait sous le jeton du suivant.
   const authorId = (await session.me())?.user.id
+  // SITE de la saisie : elle partira sous SON en-tête, même après une bascule.
+  const farmId = (await db.meta.get('farm_id'))?.value as number | undefined
 
   await db.transaction('rw', db.outbox, db.my_records, async () => {
     await db.outbox.add({
@@ -181,6 +184,7 @@ export async function enqueue(
       last_error: null,
       server_errors: null,
       user_id: authorId,
+      farm_id: farmId,
     })
     await db.my_records.add({
       uuid: opUuid,
@@ -317,11 +321,13 @@ async function pushOutbox(): Promise<void> {
   // On ne pousse que les ops prêtes (photo substituée ou sans photo).
   const ready = pending.filter((e) => !blocked.has(e.op_uuid))
 
-  // Lots de 50 (le serveur accepte max 100) pour borner la taille de requête.
-  for (let i = 0; i < ready.length; i += 50) {
-    const batch = ready.slice(i, i + 50)
+  // Lots de 50 (le serveur accepte max 100) pour borner la taille de requête,
+  // UN SITE PAR LOT : chaque saisie part sous l'en-tête du site où elle a été
+  // faite (cf. OutboxEntry.farm_id), pas celui du site actif.
+  for (const batch of lotsParSite(ready, 50)) {
     const response = await api.syncPush(
       batch.map(({ op_uuid, type, payload }) => ({ op_uuid, type, payload })),
+      batch[0].farm_id,
     )
 
     for (const result of response.results) {
