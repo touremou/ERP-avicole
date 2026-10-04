@@ -33,6 +33,15 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        // Sauvegarde préalable de `avismart:reset-test-data`. Liaison plutôt
+        // qu'appel direct : les tests la remplacent pour éprouver le refus en
+        // cas d'échec. `backup:run` rend FAILURE quand la sauvegarde échoue.
+        $this->app->bind(\App\Console\Commands\ResetTestData::SAUVEGARDE, fn () => fn (): bool =>
+            \Illuminate\Support\Facades\Artisan::call('backup:run', [
+                '--only-db' => true, '--disable-notifications' => true,
+            ]) === 0
+        );
+
         Auth::provider('offline_eloquent', function ($app, array $config) {
             return new OfflineUserProvider($app['hash'], $config['model']);
         });
