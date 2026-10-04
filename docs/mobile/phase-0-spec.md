@@ -31,6 +31,8 @@ Checklist :
 
 ## 1. État de l'existant (ne pas réinventer)
 
+> **Instantané d'avant la phase 0.** Depuis, toute la synchronisation passe par `App\Services\Sync\SyncService` (`POST /api/v1/sync/push`, et `/api/sync/*` pour le navigateur) ; `FieldOperationController` et les routes `daily-checks` / `egg-productions` de l'API v1 n'existent plus.
+
 - **Auth API** : `routes/api.php` v1, Sanctum, `POST /api/v1/auth/login` (email + password + `device_name`, `throttle:10,1`), `auth/me`, `auth/logout`.
 - **Endpoints terrain** : `GET /api/v1/batches`, `GET /api/v1/batches/{batch}`, `POST /api/v1/daily-checks`, `POST /api/v1/egg-productions` (via `Api\FieldOperationController`).
 - **Moteur de réconciliation** : `app/Http/Controllers/SyncController.php` couvre déjà batch, pointage, collecte d'œufs, mouvement stock, vente, dépense — avec **UUID idempotent** + **Last-Write-Wins** + Gates + statuts brouillon. ⚠️ **Non routé** et **double partiellement** `FieldOperationController`.
@@ -208,5 +210,5 @@ Arborescence : voir `mobile/src/{app,features,offline,api,ui,platform}` (cf. dis
 ## 9. Hypothèses & questions ouvertes
 - Durée de vie du token (long-lived + révocation serveur, recommandé terrain) à confirmer.
 - Volume du bootstrap `pull` (pagination `cursor` prévue) — dimensionner par ferme.
-- Langue : FR uniquement en P0 (i18n prête mais non priorisée).
+- Langue : bilingue fr/en (dictionnaire `mobile/src/i18n`, couverture anglaise vérifiée par `mobile/tests/i18n.test.mjs`).
 - Hébergement de la PWA : sous-domaine `app.*` (statique) à provisionner.

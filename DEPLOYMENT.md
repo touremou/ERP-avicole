@@ -12,7 +12,7 @@
   - `sodium` est **obligatoire** : il vérifie la signature des licences d'abonnement (activation hors-ligne).
   - Recommandées (non bloquantes, vérifiées par l'assistant) : `opcache`, `bcmath`, `pcntl`, `exif`.
 - MySQL 8 / MariaDB 10.6+ (ou SQLite pour une petite installation)
-- Composer 2, Node 18+ (build des assets)
+- Composer 2, Node 22 ou 20.19+ (build des assets — Vite 7 l'exige)
 - HTTPS (certificat valide) + reverse proxy correctement configuré — requis
   aussi pour l'installation en application mobile (PWA, voir guide §1.6)
 
@@ -334,13 +334,17 @@ MAIL_HOST=smtp.votre-fournisseur.com
 MAIL_PORT=587
 MAIL_USERNAME=xxxxx
 MAIL_PASSWORD=xxxxx
-MAIL_ENCRYPTION=tls
 MAIL_FROM_ADDRESS="erp@votre-domaine.com"
 MAIL_FROM_NAME="${APP_NAME}"
 ```
+- Le chiffrement est **déduit du port** (465 → ssl, 587 → tls) :
+  `MAIL_ENCRYPTION` n'est lu par rien. `MAIL_SCHEME` seulement pour un serveur
+  non standard (cf. `.env.production.example`).
 - `MAIL_MAILER=log` envoie vers `storage/logs/laravel.log` (utile en dév).
 - Les alertes e-mail sont **mises en file** (`QUEUE_CONNECTION`) : en production,
-  faire tourner un worker (`php artisan queue:work`) ou la planif `schedule:run`.
+  faire tourner un worker (`php artisan queue:work`, ou sur mutualisé la ligne
+  cron `queue:work --stop-when-empty` du §11.C). `schedule:run` seul ne vide
+  **pas** la file : aucune tâche planifiée ne lance `queue:work`.
   Le **bouton de test e-mail** envoie en synchrone et remonte directement les
   erreurs SMTP.
 - Les alertes **critiques** sont aussi poussées à l'**E-mail admin** (Réglages ›
@@ -401,7 +405,7 @@ côté Laravel). Détails : `docs/mobile/deploiement-staging.md`.
 |---|---|---|
 | PHP + extensions §1 | **8.3+** | `php -v` puis `php -m \| grep -E 'gd\|sodium\|intl'` |
 | Composer | 2.x | `composer -V` |
-| Node.js | 18+ (20 recommandé) | `node -v` |
+| Node.js | 22 (ou 20.19+) | `node -v` |
 | Git | — | `git --version` |
 
 Pas de MySQL requis : **SQLite** suffit en local (`DB_CONNECTION=sqlite` est
@@ -472,7 +476,7 @@ sudo apt install -y php8.3-fpm php8.3-mysql php8.3-mbstring php8.3-gd php8.3-int
                     php8.3-zip php8.3-curl php8.3-xml php8.3-bcmath
 # sodium est inclus dans php8.3-common ; vérifier : php -m | grep sodium
 # Composer 2 : https://getcomposer.org/download/
-# Node 20 (build des assets uniquement) : https://github.com/nodesource/distributions
+# Node 22, ou 20.19+ (build des assets uniquement) : https://github.com/nodesource/distributions
 ```
 
 Base de données (l'assistant sait la créer si l'utilisateur MySQL a le droit
@@ -626,8 +630,8 @@ Let's Encrypt) est disponible dans le panneau (N0C chez PlanetHoster).
   deviennent pénibles.
 - Une **base MySQL + utilisateur** créés depuis le panneau (noter hôte —
   souvent `localhost` —, nom, utilisateur, mot de passe).
-- Sur votre **poste local** : PHP 8.3, Composer, Node 20 (pour préparer
-  l'archive).
+- Sur votre **poste local** : PHP 8.3, Composer, Node 22 (ou 20.19+) pour
+  préparer l'archive.
 
 #### Application web
 

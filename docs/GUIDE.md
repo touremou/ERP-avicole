@@ -25,7 +25,7 @@ La liste de contrôle de **mise en production** est dans
 |-----------|---------|
 | PHP | 8.3+ avec `pdo_mysql` (ou `pdo_sqlite`), `mbstring`, `gd`, `intl`, `zip`, `curl`, `xml`, `ctype`, `fileinfo`, `tokenizer`, `openssl` |
 | Base de données | MySQL 8 / MariaDB 10.6+ (SQLite possible pour une petite installation) |
-| Outils de build | Composer 2, Node 18+ |
+| Outils de build | Composer 2, Node 22 (ou 20.19+) |
 | Serveur web | Nginx/Apache + HTTPS (certificat valide) |
 
 ### 1.2 Première installation (assistant web)
@@ -206,8 +206,13 @@ Toutes les routes (hors connexion) exigent `Authorization: Bearer <jeton>`.
 L'application est en **français par défaut** (`APP_LOCALE=fr`), y compris les
 messages de validation, d'authentification et de pagination
 (`lang/fr/*.php`, générés depuis [laravel-lang](https://github.com/Laravel-Lang/lang)).
-Les fichiers anglais (`lang/en/*.php`) et `lang/fr.json` (traduction des
-chaînes `__('...')` de l'interface d'authentification Breeze) sont fournis.
+L'interface est **entièrement bilingue** français / anglais : `lang/en.json`
+traduit chaque texte (la clé est le texte français), et
+`EveryInterfaceTextIsTranslatedTest` fait échouer la CI si un texte d'interface
+n'a pas sa traduction anglaise, ou si une traduction perd un paramètre
+(`:name`…). Les messages Laravel anglais sont dans `lang/en/*.php`. L'application
+terrain a son propre dictionnaire (`mobile/src/i18n/en.ts`), contrôlé de la même
+façon par `mobile/tests/i18n.test.mjs`.
 
 Chaque utilisateur peut choisir **sa propre langue** (Français/English)
 dans `Profil > Informations du profil > Langue` : le choix est enregistré

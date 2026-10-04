@@ -84,4 +84,4 @@ php artisan tinker --execute="App\Models\TelemetrySensor::create(['sensor_id' =>
 | `telemetry.min_interval_seconds` | 300 | Intervalle minimal persisté (s) |
 | `telemetry.calibration_gap_c` | 2 | Écart manuel/capteur déclenchant l'alerte |
 
-Tests : `tests/Feature/TelemetryIngestionTest.php` (8).
+Tests : `tests/Feature/TelemetryIngestionTest.php`.

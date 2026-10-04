@@ -28,7 +28,7 @@ révocation).
 
 - **PHP 8.3+** avec : `pdo_mysql` (ou `pdo_sqlite`), `mbstring`, `gd`, `intl`,
   `zip`, `curl`, `xml`, `ctype`, `fileinfo`, `tokenizer`, `openssl`, **`sodium`**.
-- **Composer 2**, **Node 18+** (build des assets).
+- **Composer 2**, **Node 22** ou 20.19+ (build des assets — Vite 7 l'exige).
 - **MySQL 8 / MariaDB 10.6+** (ou SQLite pour une petite installation).
 - En ligne : **HTTPS** (certificat valide) + reverse proxy correct.
 
@@ -65,9 +65,11 @@ php artisan serve
 # → http://127.0.0.1:8000
 ```
 
-Au premier accès, si aucun compte n'existe, l'**assistant `/install`** prend le
-relais (voir §4). Sinon, connectez-vous avec le compte seedé puis changez le
-mot de passe.
+Au premier accès, tant qu'aucun **administrateur réel** n'existe,
+l'**assistant `/install`** prend le relais (voir §4) — y compris après
+`migrate --seed` : les comptes de démonstration (mot de passe public
+`password`) ne valent pas installation. L'assistant crée votre administrateur
+et les supprime.
 
 ---
 

@@ -41,7 +41,7 @@ CSRF cross-site à gérer.
    > REX §11.4 pour la voie CLI de secours.)
 3. **SSH** : *N0C → Accès SSH* → activer (fortement recommandé — sans SSH,
    `composer`/`artisan` deviennent pénibles via le gestionnaire de fichiers).
-4. **Sur votre poste** : PHP 8.3, Composer, Node 20 (pour préparer les
+4. **Sur votre poste** : PHP 8.3, Composer, Node 22 ou 20.19+ (pour préparer les
    archives — on ne compile RIEN sur le serveur).
 
 ---
