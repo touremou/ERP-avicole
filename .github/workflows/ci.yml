@@ -43,6 +43,11 @@ jobs:
           npm ci
           npm run build
 
+      - name: JavaScript tests (offline sync decisions)
+        # `node --test`, sans dépendance. Verrouille ce que devient une saisie
+        # hors-ligne selon la réponse du serveur : le moteur web en perdait.
+        run: node --test 'resources/js/tests/*.test.js'
+
       - name: Validate migrations on a fresh database
         # Garantit que toute la chaîne de migrations s'applique proprement.
         env:

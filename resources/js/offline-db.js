@@ -70,8 +70,11 @@ export async function refreshLocalData() {
             const batches = await batchesRes.json();
             const serverUuids = new Set((batches || []).map(b => b.uuid));
 
+            // `=== 1` (synchronisé) et non `!== 0` : un lot REFUSÉ (is_synced 2)
+            // n'est pas sur le serveur, et doit rester visible jusqu'à ce que
+            // l'opérateur le retire lui-même (cf. sync-outcome.js).
             await db.batches
-                .filter(b => b.is_synced !== 0 && !serverUuids.has(b.uuid))
+                .filter(b => b.is_synced === 1 && !serverUuids.has(b.uuid))
                 .delete();
 
             if (batches && batches.length > 0) {

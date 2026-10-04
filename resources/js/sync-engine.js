@@ -1,5 +1,6 @@
 // resources/js/sync-engine.js
 import { db, refreshLocalData } from './offline-db';
+import { issueDeSynchro, rangerSaisie, REFUSEE } from './sync-outcome';
 
 /**
  * Écouteur d'événement réseau
@@ -32,9 +33,17 @@ async function syncBatches() {
                 body: JSON.stringify(batch)
             });
 
-            if (!response.ok) throw new Error(`Erreur serveur: ${response.status}`);
+            const result = await response.json().catch(() => ({}));
 
-            const result = await response.json();
+            // Refus définitif (422, 403…) : sort de la file, reste visible.
+            if (!response.ok) {
+                const issue = issueDeSynchro(response.status, result);
+                if (issue.etat === 'refuse') {
+                    await marquerRefusee(db.batches, batch.uuid, issue.motif);
+                    continue;
+                }
+                throw new Error(`Erreur serveur: ${response.status}`);
+            }
 
             if (result.status === 'success') {
                 await db.batches.update(batch.uuid, { is_synced: 1 });
@@ -51,203 +60,109 @@ async function syncBatches() {
 }
 
 /**
- * 2. Synchronisation des Suivis Journaliers (Daily Checks)
+ * Pousse une file locale, saisie par saisie, et range chacune selon la réponse.
+ *
+ * Remplace cinq fonctions quasi identiques qui décidaient chacune à sa façon —
+ * et perdaient chacune des saisies (cf. `sync-outcome.js`). La décision est
+ * désormais UNE fonction pure, éprouvée hors navigateur.
  */
-async function syncDailyChecks() {
+async function pousserFile(table, url, libelle) {
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-    const unsyncedChecks = await db.daily_checks.where('is_synced').equals(0).toArray();
+    const enAttente = await table.where('is_synced').equals(0).toArray();
 
-    if (unsyncedChecks.length === 0) return;
+    if (enAttente.length === 0) return;
 
-    console.log(`📤 Moteur de synchro : ${unsyncedChecks.length} pointage(s) en attente...`);
+    console.log(`📤 Moteur de synchro : ${enAttente.length} ${libelle}(s) en attente...`);
 
-    for (const check of unsyncedChecks) {
+    for (const saisie of enAttente) {
+        let statut = 0;
+        let corps = {};
+
         try {
-            const response = await fetch('/api/sync/daily-checks', {
+            const response = await fetch(url, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': csrfToken,
                     'X-Requested-With': 'XMLHttpRequest'
                 },
-                body: JSON.stringify(check)
+                body: JSON.stringify(saisie)
             });
-
-            if (response.ok) {
-                await db.daily_checks.update(check.uuid, { is_synced: 1 });
-                console.log(`📊 Pointage du ${check.check_date} synchronisé.`);
-            } else {
-                throw new Error(`Statut HTTP: ${response.status}`);
-            }
+            statut = response.status;
+            corps = await response.json().catch(() => ({}));
         } catch (error) {
-            console.error(`❌ Erreur synchro pointage journalier:`, error);
+            // Réseau tombé : statut 0, on réessaiera au prochain retour en ligne.
+            console.error(`❌ Erreur réseau sur ${libelle}:`, error);
+        }
+
+        const issue = await rangerSaisie(table, saisie.uuid, statut, corps);
+
+        if (issue.etat === 'refuse') {
+            console.warn(`⚠️ ${libelle} refusée par le serveur : ${issue.motif}`);
         }
     }
 }
 
-/**
- * 3. Synchronisation des Collectes d'œufs (Egg Productions)
- */
-async function syncEggProductions() {
-    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-    const unsynced = await db.egg_productions.where('is_synced').equals(0).toArray();
-
-    if (unsynced.length === 0) return;
-
-    console.log(`📤 Moteur de synchro : ${unsynced.length} collecte(s) d'œufs en attente...`);
-
-    for (const collection of unsynced) {
-        try {
-            const response = await fetch('/api/sync/egg-collections', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken,
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                body: JSON.stringify(collection)
-            });
-
-            if (!response.ok) throw new Error(`Statut HTTP: ${response.status}`);
-
-            const result = await response.json();
-
-            if (result.status === 'success' || result.status === 'already_synced') {
-                await db.egg_productions.update(collection.uuid, { is_synced: 1 });
-                console.log(`🥚 Collecte du ${collection.production_date} synchronisée (${result.status}).`);
-            } else if (result.status === 'conflict') {
-                // Jour déjà trié côté serveur : on retire la collecte locale obsolète.
-                console.warn(`⚠️ Collecte ${collection.production_date} en conflit : ${result.message}`);
-                await db.egg_productions.update(collection.uuid, { is_synced: 1 });
-            }
-        } catch (error) {
-            console.error(`❌ Erreur synchro collecte d'œufs:`, error);
-        }
-    }
+/** Une saisie refusée sort de la file, mais reste — avec son motif. */
+async function marquerRefusee(table, uuid, motif) {
+    console.warn(`⚠️ Saisie refusée par le serveur : ${motif}`);
+    await table.update(uuid, { is_synced: REFUSEE, refus_motif: motif, refus_le: new Date().toISOString() });
 }
 
-/**
- * 4. Synchronisation des Mouvements de stock (entrée / sortie / ajustement)
- */
-async function syncStockMovements() {
-    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-    const unsynced = await db.stock_movements.where('is_synced').equals(0).toArray();
-
-    if (unsynced.length === 0) return;
-
-    console.log(`📤 Moteur de synchro : ${unsynced.length} mouvement(s) de stock en attente...`);
-
-    for (const movement of unsynced) {
-        try {
-            const response = await fetch('/api/sync/stock-movements', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken,
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                body: JSON.stringify(movement)
-            });
-
-            if (!response.ok) throw new Error(`Statut HTTP: ${response.status}`);
-
-            const result = await response.json();
-
-            if (result.status === 'success' || result.status === 'already_synced') {
-                await db.stock_movements.update(movement.uuid, { is_synced: 1 });
-                console.log(`📦 Mouvement stock #${movement.stock_id} (${movement.type}) synchronisé (${result.status}).`);
-            } else if (result.status === 'conflict') {
-                // Sortie refusée (stock insuffisant au moment de la synchro) :
-                // on retire le mouvement local pour ne pas boucler indéfiniment.
-                console.warn(`⚠️ Mouvement stock #${movement.stock_id} en conflit : ${result.message}`);
-                await db.stock_movements.update(movement.uuid, { is_synced: 1 });
-            }
-        } catch (error) {
-            console.error(`❌ Erreur synchro mouvement de stock:`, error);
-        }
-    }
-}
+/** Les files de saisies hors-ligne, dans l'ordre de synchronisation. */
+const FILES = [
+    { table: () => db.daily_checks,    url: '/api/sync/daily-checks',    libelle: 'pointage' },
+    { table: () => db.egg_productions, url: '/api/sync/egg-collections', libelle: 'collecte d’œufs' },
+    { table: () => db.stock_movements, url: '/api/sync/stock-movements', libelle: 'mouvement de stock' },
+    { table: () => db.sales,           url: '/api/sync/sales',           libelle: 'vente' },
+    { table: () => db.expenses,        url: '/api/sync/expenses',        libelle: 'dépense' },
+];
 
 /**
- * 5. Synchronisation des Ventes rapides (saisies hors-ligne)
+ * LE BANDEAU DES SAISIES REFUSÉES.
+ *
+ * Sans lui, un refus restait une ligne de console. L'opérateur croyait sa
+ * sortie de stock ou sa vente enregistrée. Il voit désormais ce qui a été
+ * refusé et pourquoi, et retire lui-même chaque ligne une fois traitée.
  */
-async function syncSales() {
-    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-    const unsynced = await db.sales.where('is_synced').equals(0).toArray();
-
-    if (unsynced.length === 0) return;
-
-    console.log(`📤 Moteur de synchro : ${unsynced.length} vente(s) rapide(s) en attente...`);
-
-    for (const sale of unsynced) {
-        try {
-            const response = await fetch('/api/sync/sales', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken,
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                body: JSON.stringify(sale)
-            });
-
-            if (!response.ok) throw new Error(`Statut HTTP: ${response.status}`);
-
-            const result = await response.json();
-
-            if (result.status === 'success' || result.status === 'already_synced') {
-                await db.sales.update(sale.uuid, { is_synced: 1 });
-                console.log(`🧾 Vente ${sale.uuid} synchronisée (${result.status}${result.reference ? ' → ' + result.reference : ''}).`);
-            } else if (result.status === 'conflict') {
-                // Vente refusée côté serveur : on la marque traitée pour ne pas boucler.
-                console.warn(`⚠️ Vente ${sale.uuid} en conflit : ${result.message}`);
-                await db.sales.update(sale.uuid, { is_synced: 1 });
-            }
-        } catch (error) {
-            console.error(`❌ Erreur synchro vente rapide:`, error);
-        }
+async function afficherRefus() {
+    const refus = [];
+    for (const { table, libelle } of [{ table: () => db.batches, libelle: 'lot' }, ...FILES]) {
+        const lignes = await table().where('is_synced').equals(REFUSEE).toArray();
+        lignes.forEach(l => refus.push({ table: table(), uuid: l.uuid, libelle, motif: l.refus_motif }));
     }
-}
 
-/**
- * 6. Synchronisation des Dépenses (saisies hors-ligne)
- */
-async function syncExpenses() {
-    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-    const unsynced = await db.expenses.where('is_synced').equals(0).toArray();
+    document.getElementById('saisies-refusees')?.remove();
+    if (refus.length === 0) return;
 
-    if (unsynced.length === 0) return;
+    const bandeau = document.createElement('div');
+    bandeau.id = 'saisies-refusees';
+    bandeau.setAttribute('role', 'alert');
+    bandeau.style.cssText = 'position:fixed;bottom:1rem;left:1rem;right:1rem;z-index:9999;max-width:40rem;margin:auto;'
+        + 'background:#fff1f2;border:2px solid #f43f5e;border-radius:1rem;padding:1rem;font-size:0.85rem;'
+        + 'box-shadow:0 10px 25px rgba(0,0,0,.15);max-height:50vh;overflow:auto;';
 
-    console.log(`📤 Moteur de synchro : ${unsynced.length} dépense(s) en attente...`);
+    const titre = document.createElement('strong');
+    titre.textContent = `${refus.length} saisie(s) hors-ligne refusée(s) par le serveur — à ressaisir ou à corriger :`;
+    bandeau.appendChild(titre);
 
-    for (const expense of unsynced) {
-        try {
-            const response = await fetch('/api/sync/expenses', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken,
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                body: JSON.stringify(expense)
-            });
-
-            if (!response.ok) throw new Error(`Statut HTTP: ${response.status}`);
-
-            const result = await response.json();
-
-            if (result.status === 'success' || result.status === 'already_synced') {
-                await db.expenses.update(expense.uuid, { is_synced: 1 });
-                console.log(`🧾 Dépense ${expense.uuid} synchronisée (${result.status}${result.reference ? ' → ' + result.reference : ''}).`);
-            } else if (result.status === 'conflict') {
-                // Dépense refusée côté serveur : on la marque traitée pour ne pas boucler.
-                console.warn(`⚠️ Dépense ${expense.uuid} en conflit : ${result.message}`);
-                await db.expenses.update(expense.uuid, { is_synced: 1 });
-            }
-        } catch (error) {
-            console.error(`❌ Erreur synchro dépense:`, error);
-        }
+    const liste = document.createElement('ul');
+    liste.style.cssText = 'margin:.5rem 0 0;padding:0;list-style:none;';
+    for (const r of refus) {
+        const item = document.createElement('li');
+        item.style.cssText = 'display:flex;justify-content:space-between;gap:.5rem;padding:.25rem 0;border-top:1px solid #fecdd3;';
+        const texte = document.createElement('span');
+        texte.textContent = `${r.libelle} — ${r.motif || 'refusée'}`;   // textContent : le motif vient du serveur, jamais injecté en HTML
+        const retirer = document.createElement('button');
+        retirer.type = 'button';
+        retirer.textContent = 'Compris, retirer';
+        retirer.style.cssText = 'white-space:nowrap;font-weight:700;color:#be123c;background:none;border:none;cursor:pointer;';
+        retirer.addEventListener('click', async () => { await r.table.delete(r.uuid); afficherRefus(); });
+        item.append(texte, retirer);
+        liste.appendChild(item);
     }
+    bandeau.appendChild(liste);
+    document.body.appendChild(bandeau);
 }
 
 /**
@@ -257,17 +172,18 @@ export async function syncData() {
     try {
         // Ordre strict : d'abord les parents (lots), puis les enfants (pointages, collectes)
         await syncBatches();
-        await syncDailyChecks();
-        await syncEggProductions();
-        await syncStockMovements();
-        await syncSales();
-        await syncExpenses();
+        for (const { table, url, libelle } of FILES) {
+            await pousserFile(table(), url, libelle);
+        }
     } catch (globalError) {
         console.error("❌ Erreur critique dans le cycle de synchronisation :", globalError);
     }
 
     // Rafraîchit le miroir local (référentiels + lots) une fois la file vidée.
     await refreshLocalData();
+
+    // Ce qui a été refusé doit SE VOIR — cf. sync-outcome.js.
+    try { await afficherRefus(); } catch (e) { console.error(e); }
 
     // Rafraîchissement visuel de l'interface si la fonction existe
     if (typeof loadOfflineContent === 'function') {
