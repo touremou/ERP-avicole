@@ -95,12 +95,22 @@ class SetCurrentFarm
             $currentFarmId = session('current_farm_id');
         }
 
-        if ($currentFarmId) {
-            view()->share('currentFarm', \App\Models\Farm::find($currentFarmId));
-            view()->share('currentFarmId', $currentFarmId);
-        }
-
-        // 3. Partager les fermes accessibles (pour le switcher)
+        /*
+         * 3. …ET si le compte y est ENCORE RATTACHÉ.
+         *
+         * Le contrôle ci-dessus vérifiait que le site existait toujours, jamais
+         * que l'utilisateur y avait toujours sa place. Retiré d'un site par un
+         * administrateur, un compte qui y était basculé continuait d'en lire et
+         * d'en modifier les données jusqu'à l'expiration de sa session. Le
+         * terrain, lui, relit le rattachement à chaque requête
+         * (SetApiFarmContext) : le bureau suit la même règle.
+         *
+         * Ne s'applique qu'aux comptes RATTACHÉS à des sites (multi-sites) : un
+         * compte sans aucun rattachement relève du fonctionnement mono-ferme, où
+         * la session fait foi — comme le terrain, qui n'adopte l'en-tête que
+         * pour un compte rattaché. Limite connue : un compte retiré de TOUS ses
+         * sites retombe dans ce régime et n'est pas sorti du dernier.
+         */
         $userFarms = DB::table('farm_user')
             ->join('farms', 'farms.id', '=', 'farm_user.farm_id')
             ->where('farm_user.user_id', $user->id)
@@ -108,6 +118,22 @@ class SetCurrentFarm
             ->whereNull('farms.deleted_at')
             ->select('farms.*', 'farm_user.is_default', 'farm_user.is_owner')
             ->get();
+
+        $rattache = DB::table('farm_user')->where('user_id', $user->id)->exists();
+
+        if ($currentFarmId && $rattache
+            && ! $userFarms->pluck('id')->map(fn ($id) => (int) $id)->contains((int) $currentFarmId)) {
+            session()->forget('current_farm_id');
+            $this->resolveDefaultFarm($user);
+            $currentFarmId = session('current_farm_id');
+        }
+
+        if ($currentFarmId) {
+            view()->share('currentFarm', \App\Models\Farm::find($currentFarmId));
+            view()->share('currentFarmId', $currentFarmId);
+        }
+
+        // 3. Partager les fermes accessibles (pour le switcher)
 
         view()->share('userFarms', $userFarms);
         view()->share('isMultiFarm', $userFarms->count() > 1);
