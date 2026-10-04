@@ -242,6 +242,12 @@ immédiatement.
 Chaque employé peut recevoir un **compte de connexion** lié à sa fiche
 (`Annuaire > Employés > Accès`), avec rôle et statut actif/inactif.
 
+**Mot de passe** : au moins **8 caractères, avec des lettres et des chiffres**.
+La règle est la même partout où un mot de passe se choisit — profil,
+réinitialisation, création de compte par un administrateur, assistant
+d'installation, application terrain. Elle s'applique au prochain changement :
+les mots de passe existants restent valides.
+
 **Sécurité des comptes — ce qui se passe, et quand :**
 
 | Geste | Effet sur les appareils (application terrain) |

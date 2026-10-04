@@ -96,8 +96,8 @@ function reprendreLeCompteAdministrateur(object $test)
         'company_name'                => 'Pirate SARL',
         'admin_name'                  => 'Pirate',
         'admin_email'                 => 'pirate@example.com',
-        'admin_password'              => 'motdepasse-pirate',
-        'admin_password_confirmation' => 'motdepasse-pirate',
+        'admin_password'              => 'motdepasse-pirate9',
+        'admin_password_confirmation' => 'motdepasse-pirate9',
     ]);
 }
 
@@ -110,7 +110,7 @@ test('un visiteur anonyme ne reprend PLUS le compte administrateur', function ()
     reprendreLeCompteAdministrateur($this);
 
     expect($patron->fresh()->email)->toBe('patron@ferme.gn')
-        ->and(Hash::check('motdepasse-pirate', $patron->fresh()->password))->toBeFalse();
+        ->and(Hash::check('motdepasse-pirate9', $patron->fresh()->password))->toBeFalse();
 });
 
 test('et l’exploitant peut toujours entrer chez lui', function () {
@@ -184,7 +184,7 @@ test('UNE INSTALLATION NEUVE reste possible — la borne essentielle', function 
     $admin = User::where('email', 'pirate@example.com')->first();
 
     expect($admin)->not->toBeNull()
-        ->and(Hash::check('motdepasse-pirate', $admin->password))->toBeTrue();
+        ->and(Hash::check('motdepasse-pirate9', $admin->password))->toBeTrue();
 });
 
 test('une base VIDE laisse évidemment l’assistant s’ouvrir', function () {

@@ -49,6 +49,20 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // ─── UNE SEULE RÈGLE DE MOT DE PASSE ───
+        // L'application terrain exigeait 8 caractères AVEC lettres et chiffres ;
+        // le web (profil, réinitialisation, création de compte) appelait
+        // `Password::defaults()` sans l'avoir jamais réglé — 8 caractères, rien
+        // d'autre — et l'assistant d'installation tenait sa propre règle. Un
+        // utilisateur pouvait donc choisir au bureau « password », le mot de
+        // passe public des comptes de démonstration, que le téléphone lui aurait
+        // refusé. Toutes les portes lisent désormais celle-ci, la plus stricte
+        // des trois. (Pas de `uncompromised()` : il interroge un service en
+        // ligne, et l'installation doit fonctionner sans réseau.)
+        \Illuminate\Validation\Rules\Password::defaults(
+            fn () => \Illuminate\Validation\Rules\Password::min(8)->letters()->numbers()
+        );
+
         // ─── CONFIGURATION E-MAIL DEPUIS LES RÉGLAGES ───
         // WhatsApp et SMS se réglaient déjà dans l'application ; l'e-mail exigeait
         // un accès SSH et l'édition du .env. Un réglage qui demande un terminal
