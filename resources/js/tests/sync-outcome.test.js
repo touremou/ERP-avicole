@@ -96,3 +96,24 @@ test('une panne n’ÉCRIT RIEN : la saisie reste en attente, donc sera renvoyé
 
     assert.equal(table.ecrit.u3, undefined);
 });
+
+// ─── Traduction : la clé est le texte français ───
+
+import { traduire } from '../sync-outcome.js';
+
+test('sans textes traduits, le français fait foi, remplacements compris', () => {
+    delete globalThis.AVISMART_TEXTES;
+    assert.equal(traduire('Refusée par le serveur (HTTP :status).', { status: 404 }), 'Refusée par le serveur (HTTP 404).');
+});
+
+test('avec les textes du layout, la langue de l’utilisateur l’emporte', () => {
+    globalThis.AVISMART_TEXTES = { ':n saisie(s) hors-ligne refusée(s) par le serveur — à ressaisir ou à corriger :': ':n offline entry(ies) refused by the server — to re-enter or correct:' };
+    try {
+        assert.equal(
+            traduire(':n saisie(s) hors-ligne refusée(s) par le serveur — à ressaisir ou à corriger :', { n: 3 }),
+            '3 offline entry(ies) refused by the server — to re-enter or correct:',
+        );
+    } finally {
+        delete globalThis.AVISMART_TEXTES;
+    }
+});
