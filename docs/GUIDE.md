@@ -260,7 +260,9 @@ les mots de passe existants restent valides.
 > Les sessions ouvertes dans un **navigateur** ne sont pas coupées par un
 > changement de mot de passe. Le formulaire « mot de passe oublié » répond de
 > la même façon que l'adresse existe ou non, et il est limité à 6 demandes
-> par minute.
+> par minute. La même limite s'applique partout où le mot de passe **actuel**
+> est vérifié : changement de mot de passe (web et application), confirmation,
+> suppression de son compte — le septième essai dans la minute est refusé.
 
 **Supprimer ou suspendre ?** La suppression d'un compte est **refusée** dès
 qu'elle emporterait des enregistrements (par exemple ses clôtures de caisse) :

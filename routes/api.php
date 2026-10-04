@@ -42,7 +42,12 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::post('/auth/logout', [AuthController::class, 'logout'])->name('auth.logout');
         // Gestion du profil depuis « Mon espace » (mobile).
         Route::patch('/auth/profile', [AuthController::class, 'updateProfile'])->name('auth.profile.update');
-        Route::patch('/auth/password', [AuthController::class, 'updatePassword'])->name('auth.password.update');
+        // Vérifie le mot de passe actuel : bornée comme la connexion. Un jeton
+        // dérobé (téléphone perdu, déverrouillé) permettait sinon de deviner le
+        // mot de passe à volonté, puis de s'en servir au bureau.
+        Route::patch('/auth/password', [AuthController::class, 'updatePassword'])
+            ->middleware('throttle:6,1')
+            ->name('auth.password.update');
         Route::post('/auth/avatar', [AuthController::class, 'updateAvatar'])->name('auth.avatar.update');
         Route::delete('/auth/avatar', [AuthController::class, 'deleteAvatar'])->name('auth.avatar.delete');
 
