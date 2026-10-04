@@ -4,6 +4,9 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
+        {{-- Auteur et site des saisies hors-ligne (cf. resources/js/sync-outcome.js). --}}
+        <meta name="avismart-user" content="{{ auth()->id() }}">
+        <meta name="avismart-farm" content="{{ session('current_farm_id') }}">
 
         <title>{{ setting('general.company_name', 'AviSmart') }}</title>
 

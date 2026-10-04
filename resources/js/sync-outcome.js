@@ -65,6 +65,49 @@ export function issueDeSynchro(statutHttp, corps) {
     return { etat: 'refuse', motif: body.message || `Refusée par le serveur (HTTP ${statutHttp}).` };
 }
 
+/**
+ * À QUI APPARTIENT UNE SAISIE EN FILE — et peut-on la pousser MAINTENANT ?
+ *
+ * Le serveur écrit toujours au nom de l'utilisateur AUTHENTIFIÉ, sur la ferme
+ * ACTIVE de sa session. Or le navigateur d'un poste de bureau ou d'une
+ * tablette de ferme passe de main en main, et l'on change de site en cours de
+ * journée. Sans marque, la file partait telle quelle sous la session suivante :
+ *   • la dépense saisie par le magasinier était enregistrée au nom du
+ *     comptable qui se connectait après lui ;
+ *   • une dépense sans lot, un lot créé hors-ligne, atterrissaient sur le site
+ *     où l'on venait de basculer — pas sur celui où ils avaient été saisis.
+ *
+ * L'application terrain marque l'auteur depuis longtemps (`myPendingOperations`
+ * dans mobile/src/offline/sync.ts). Le web suit la même règle, et y ajoute le
+ * site : une saisie d'un autre compte ou d'un autre site RESTE en file, intacte,
+ * et partira quand son auteur se reconnectera sur ce site. On ne détruit pas
+ * du travail de terrain.
+ *
+ * Les saisies sans marque (antérieures à ce correctif) sont poussées : elles
+ * précèdent la notion d'auteur, et les bloquer les condamnerait.
+ */
+export function contexteCourant(doc = globalThis.document) {
+    const lire = (nom) => {
+        const v = doc?.querySelector?.(`meta[name="${nom}"]`)?.getAttribute('content');
+        return v ? Number(v) : null;
+    };
+    return { auteur_id: lire('avismart-user'), ferme_id: lire('avismart-farm') };
+}
+
+export function poussableIci(saisie, contexte) {
+    // Personne de connecté (page de connexion) : on ne pousse rien.
+    if (!contexte?.auteur_id) return false;
+    if (saisie.auteur_id != null && saisie.auteur_id !== contexte.auteur_id) return false;
+    if (saisie.ferme_id != null && contexte.ferme_id != null && saisie.ferme_id !== contexte.ferme_id) return false;
+    return true;
+}
+
+/** Ce qui part au serveur : la saisie, sans les marques propres au navigateur. */
+export function corpsAEnvoyer(saisie) {
+    const { auteur_id, ferme_id, refus_motif, refus_le, ...corps } = saisie;
+    return corps;
+}
+
 /** Valeurs de `is_synced` dans les files locales. */
 export const EN_ATTENTE = 0;
 export const SYNCHRONISEE = 1;

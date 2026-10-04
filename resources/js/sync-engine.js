@@ -1,6 +1,6 @@
 // resources/js/sync-engine.js
 import { db, refreshLocalData } from './offline-db';
-import { issueDeSynchro, rangerSaisie, REFUSEE } from './sync-outcome';
+import { issueDeSynchro, rangerSaisie, REFUSEE, EN_ATTENTE, contexteCourant, poussableIci, corpsAEnvoyer } from './sync-outcome';
 
 /**
  * Écouteur d'événement réseau
@@ -15,7 +15,9 @@ window.addEventListener('online', () => {
  */
 async function syncBatches() {
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-    const unsyncedBatches = await db.batches.where('is_synced').equals(0).toArray();
+    const contexte = contexteCourant();
+    const unsyncedBatches = (await db.batches.where('is_synced').equals(EN_ATTENTE).toArray())
+        .filter(b => poussableIci(b, contexte));
 
     if (unsyncedBatches.length === 0) return;
 
@@ -30,7 +32,7 @@ async function syncBatches() {
                     'X-CSRF-TOKEN': csrfToken,
                     'X-Requested-With': 'XMLHttpRequest'
                 },
-                body: JSON.stringify(batch)
+                body: JSON.stringify(corpsAEnvoyer(batch))
             });
 
             const result = await response.json().catch(() => ({}));
@@ -68,7 +70,10 @@ async function syncBatches() {
  */
 async function pousserFile(table, url, libelle) {
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-    const enAttente = await table.where('is_synced').equals(0).toArray();
+    // Seulement les saisies du compte connecté, sur le site actif.
+    const contexte = contexteCourant();
+    const enAttente = (await table.where('is_synced').equals(EN_ATTENTE).toArray())
+        .filter(s => poussableIci(s, contexte));
 
     if (enAttente.length === 0) return;
 
@@ -86,7 +91,7 @@ async function pousserFile(table, url, libelle) {
                     'X-CSRF-TOKEN': csrfToken,
                     'X-Requested-With': 'XMLHttpRequest'
                 },
-                body: JSON.stringify(saisie)
+                body: JSON.stringify(corpsAEnvoyer(saisie))
             });
             statut = response.status;
             corps = await response.json().catch(() => ({}));
@@ -127,24 +132,43 @@ const FILES = [
  */
 async function afficherRefus() {
     const refus = [];
+    let enAttenteAilleurs = 0;
+    const contexte = contexteCourant();
     for (const { table, libelle } of [{ table: () => db.batches, libelle: 'lot' }, ...FILES]) {
         const lignes = await table().where('is_synced').equals(REFUSEE).toArray();
         lignes.forEach(l => refus.push({ table: table(), uuid: l.uuid, libelle, motif: l.refus_motif }));
+
+        if (contexte.auteur_id) {
+            enAttenteAilleurs += (await table().where('is_synced').equals(EN_ATTENTE).toArray())
+                .filter(l => !poussableIci(l, contexte)).length;
+        }
     }
 
     document.getElementById('saisies-refusees')?.remove();
-    if (refus.length === 0) return;
+    if (refus.length === 0 && enAttenteAilleurs === 0) return;
 
     const bandeau = document.createElement('div');
     bandeau.id = 'saisies-refusees';
     bandeau.setAttribute('role', 'alert');
     bandeau.style.cssText = 'position:fixed;bottom:1rem;left:1rem;right:1rem;z-index:9999;max-width:40rem;margin:auto;'
-        + 'background:#fff1f2;border:2px solid #f43f5e;border-radius:1rem;padding:1rem;font-size:0.85rem;'
+        + (refus.length ? 'background:#fff1f2;border:2px solid #f43f5e;' : 'background:#fff7ed;border:2px solid #fb923c;') + 'border-radius:1rem;padding:1rem;font-size:0.85rem;'
         + 'box-shadow:0 10px 25px rgba(0,0,0,.15);max-height:50vh;overflow:auto;';
 
-    const titre = document.createElement('strong');
-    titre.textContent = `${refus.length} saisie(s) hors-ligne refusée(s) par le serveur — à ressaisir ou à corriger :`;
-    bandeau.appendChild(titre);
+    // Gardées, pas perdues : on dit pourquoi elles ne partent pas.
+    if (enAttenteAilleurs > 0) {
+        const attente = document.createElement('p');
+        attente.id = 'saisies-autre-compte';
+        attente.style.cssText = 'margin:0 0 .5rem;color:#9a3412;';
+        attente.textContent = `${enAttenteAilleurs} saisie(s) hors-ligne d’un autre compte ou d’un autre site attendent sur ce navigateur. `
+            + 'Elles partiront quand leur auteur se reconnectera sur le site où il les a saisies.';
+        bandeau.appendChild(attente);
+    }
+
+    if (refus.length > 0) {
+        const titre = document.createElement('strong');
+        titre.textContent = `${refus.length} saisie(s) hors-ligne refusée(s) par le serveur — à ressaisir ou à corriger :`;
+        bandeau.appendChild(titre);
+    }
 
     const liste = document.createElement('ul');
     liste.style.cssText = 'margin:.5rem 0 0;padding:0;list-style:none;';
