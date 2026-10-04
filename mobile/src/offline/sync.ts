@@ -585,6 +585,9 @@ async function refreshTasks(): Promise<void> {
 export async function switchFarm(farmId: number): Promise<void> {
   await setMeta('farm_id', farmId)
   await db.meta.delete('last_pull_at') // → prochain pull = bootstrap complet
+  // Le miroir appartient désormais à ce site (cf. offline/miroir.ts).
+  const owner = await getMeta<{ user_id: number; farm_id: number | null }>('mirror_owner')
+  if (owner) await setMeta('mirror_owner', { ...owner, farm_id: farmId })
   await db.transaction(
     'rw',
     [

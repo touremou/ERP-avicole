@@ -269,8 +269,10 @@ export async function setMeta(key: string, value: unknown): Promise<void> {
  * effacer ne coûte rien et évite qu'ils s'affichent à quelqu'un d'autre.
  *
  * CE QUI RESTE, et pourquoi :
- *   • le référentiel (ref_*) — il n'est pas personnel, et le serveur en borne
- *     déjà l'accès ; le purger obligerait à retélécharger la ferme entière ;
+ *   • le référentiel (ref_*) — il n'est pas vidé ICI : il est reconstruit par
+ *     un bootstrap complet dès que le compte ou le site change
+ *     (cf. offline/miroir.ts), ce qui couvre aussi les départs sans
+ *     déconnexion ;
  *   • l'HISTORIQUE de saisie (my_records) — il n'existe QUE localement, rien ne
  *     le retélécharge. L'effacer priverait le technicien de son propre journal à
  *     son retour. Chaque ligne portant son auteur, elle n'est de toute façon
