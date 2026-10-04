@@ -204,3 +204,27 @@ test('un lot NON branché au stock reste sans effet à la correction', function 
     expect(quantiteStock('Manioc frais', Stock::CAT_RECOLTES))->toBe(500.0)
         ->and(quantiteStock('Gari', Stock::CAT_PRODUITS_FINIS))->toBe(0.0);
 });
+
+/*
+ * LA CORRECTION SUIT LA RÈGLE DE LA CRÉATION.
+ *
+ * La création refuse de consommer plus que le stock (sortie stricte). La
+ * correction, elle, plafonnait à zéro en silence : la fiche affichait une
+ * consommation que le stock n'avait jamais pu fournir. Même règle désormais,
+ * et le refus annule la correction ENTIÈRE.
+ */
+test('corriger au-delà du stock disponible est REFUSÉ, et rien ne bouge', function () {
+    // 300 kg en stock + 200 rendus = 500 disponibles ; 600 demandés.
+    corrigerLot(CropTransformation::first(), 600, 100)
+        ->assertSessionHasErrors('input_quantity');
+
+    expect((float) CropTransformation::first()->input_quantity)->toBe(200.0)
+        ->and(quantiteStock('Manioc frais', Stock::CAT_RECOLTES))->toBe(300.0)
+        ->and(quantiteStock('Gari', Stock::CAT_PRODUITS_FINIS))->toBe(60.0);
+});
+
+test('corriger jusqu’à tout le disponible passe — la borne', function () {
+    corrigerLot(CropTransformation::first(), 500, 100)->assertSessionHasNoErrors();
+
+    expect(quantiteStock('Manioc frais', Stock::CAT_RECOLTES))->toBe(0.0);
+});

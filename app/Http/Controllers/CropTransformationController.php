@@ -186,7 +186,14 @@ class CropTransformationController extends Controller
         $input = (float) $validated['input_quantity'];
         $validated['yield_percent'] = $input > 0 ? round((float) $validated['output_quantity'] / $input * 100, 2) : 0;
 
-        $cropTransformation->update($validated);
+        // Une seule transaction : si la correction demande plus de matière que
+        // le stock n'en a (sortie stricte de l'observateur), RIEN n'est gardé —
+        // ni la fiche corrigée, ni la quantité d'origine déjà rendue au stock.
+        try {
+            \Illuminate\Support\Facades\DB::transaction(fn () => $cropTransformation->update($validated));
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return back()->withInput()->withErrors(['input_quantity' => collect($e->errors())->flatten()->first()]);
+        }
 
         return redirect()->route('crop-transformations.show', $cropTransformation)
             ->with('success', 'Transformation mise à jour.');
