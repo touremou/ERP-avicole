@@ -182,7 +182,7 @@ class InstallController extends Controller
             // Une adresse de démonstration ne peut pas devenir celle du vrai
             // administrateur : elle est publique, avec son mot de passe.
             'admin_email'    => ['required', 'email', 'max:255', \Illuminate\Validation\Rule::notIn($demo)],
-            'admin_password' => ['required', 'string', 'min:8', 'confirmed'],
+            'admin_password' => ['required', 'string', 'confirmed', \Illuminate\Validation\Rules\Password::defaults()],
         ], [
             'admin_email.not_in' => __('Cette adresse est celle d’un compte de démonstration : choisissez la vôtre.'),
         ]);

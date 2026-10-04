@@ -242,6 +242,12 @@ immédiatement.
 Chaque employé peut recevoir un **compte de connexion** lié à sa fiche
 (`Annuaire > Employés > Accès`), avec rôle et statut actif/inactif.
 
+**Mot de passe** : au moins **8 caractères, avec des lettres et des chiffres**.
+La règle est la même partout où un mot de passe se choisit — profil,
+réinitialisation, création de compte par un administrateur, assistant
+d'installation, application terrain. Elle s'applique au prochain changement :
+les mots de passe existants restent valides.
+
 **Sécurité des comptes — ce qui se passe, et quand :**
 
 | Geste | Effet sur les appareils (application terrain) |
@@ -254,7 +260,9 @@ Chaque employé peut recevoir un **compte de connexion** lié à sa fiche
 > Les sessions ouvertes dans un **navigateur** ne sont pas coupées par un
 > changement de mot de passe. Le formulaire « mot de passe oublié » répond de
 > la même façon que l'adresse existe ou non, et il est limité à 6 demandes
-> par minute.
+> par minute. La même limite s'applique partout où le mot de passe **actuel**
+> est vérifié : changement de mot de passe (web et application), confirmation,
+> suppression de son compte — le septième essai dans la minute est refusé.
 
 **Supprimer ou suspendre ?** La suppression d'un compte est **refusée** dès
 qu'elle emporterait des enregistrements (par exemple ses clôtures de caisse) :

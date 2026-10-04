@@ -129,7 +129,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::controller(ProfileController::class)->group(function () {
         Route::get('/profile', 'edit')->name('profile.edit');
         Route::patch('/profile', 'update')->name('profile.update');
-        Route::delete('/profile', 'destroy')->name('profile.destroy');
+        // Exige le mot de passe : bornée comme la connexion (cf. routes/auth.php).
+        Route::delete('/profile', 'destroy')->middleware('throttle:6,1')->name('profile.destroy');
         // Photo de profil partagée avec le mobile (même champ users.avatar_path).
         Route::post('/profile/avatar', 'updateAvatar')->name('profile.avatar.update');
         Route::delete('/profile/avatar', 'destroyAvatar')->name('profile.avatar.destroy');

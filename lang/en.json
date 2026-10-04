@@ -4998,5 +4998,6 @@
     "Surface semée (:req ha) dépasse le disponible sur la parcelle (:rem ha restant).": "Sown area (:req ha) exceeds what is available on the plot (:rem ha remaining).",
     "La récolte du :date a déjà été transformée — sa matière est engagée.": "The :date harvest has already been processed — its material is committed.",
     "Le lot « :label » est clos (:status) — aucun contrôle possible.": "Batch “:label” is closed (:status) — no inspection possible.",
-    ":name est en congé le :date — choisissez un collègue disponible.": ":name is on leave on :date — choose an available colleague."
+    ":name est en congé le :date — choisissez un collègue disponible.": ":name is on leave on :date — choose an available colleague.",
+    "Au moins 8 caractères, avec lettres et chiffres.": "At least 8 characters, with letters and numbers."
 }

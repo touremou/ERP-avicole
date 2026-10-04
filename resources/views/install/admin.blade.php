@@ -34,7 +34,7 @@
             <div class="field">
                 <label for="admin_password">{{ __("Mot de passe") }}</label>
                 <input type="password" name="admin_password" id="admin_password">
-                <div class="help">{{ __("8 caractères minimum.") }}</div>
+                <div class="help">{{ __("Au moins 8 caractères, avec lettres et chiffres.") }}</div>
             </div>
             <div class="field">
                 <label for="admin_password_confirmation">{{ __("Confirmation") }}</label>
