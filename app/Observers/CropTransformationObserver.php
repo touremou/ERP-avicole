@@ -93,10 +93,17 @@ class CropTransformationObserver
             $qty  = (float) $transformation->input_quantity;
 
             if ($name !== '' && $qty > 0) {
+                // STRICT, comme à la création (RecordCropTransformation) : la
+                // correction ne peut pas consommer plus que le stock, ancienne
+                // quantité rendue comprise. Non stricte, elle plafonnait à zéro
+                // en silence — la transformation disait avoir consommé une
+                // matière qui n'est jamais sortie du stock. Le refus annule la
+                // correction entière (transaction du contrôleur).
                 StockIntegrationService::syncMovement(
                     $name, Stock::CAT_RECOLTES, $qty, 'out',
                     "Correction transformation {$label} (nouvelle valeur)",
-                    $transformation->input_unit ?: 'kg'
+                    $transformation->input_unit ?: 'kg',
+                    strictOut: true,
                 );
             }
         }
