@@ -165,7 +165,8 @@ class ChickDispatchController extends Controller
                      */
                     'birth_date'             => optional($incubation->finished_at)->toDateString()
                         ?? now()->toDateString(),
-                    'expected_end_date'      => now()->addDays(90),
+                    // expected_end_date : calculée par la bande à sa création
+                    // (Batch::cycleDays). Les 90 jours écrits ici étaient écrasés.
                     'avg_weight_start'       => 0,
                     'planned_density'        => 0,
                     'arrival_mortality_rate' => 0,

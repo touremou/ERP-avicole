@@ -145,11 +145,10 @@
                     <tbody class="divide-y divide-slate-50">
                         @forelse($batches as $batch)
                         @php
-                            $arrival = \Carbon\Carbon::parse($batch->arrival_date)->startOfDay();
-                            $days = (int) $arrival->diffInDays(now()->startOfDay());
-                            $maxDays = $batch->productionType?->cycle_days_default ?? match($batch->type) {
-                                'chair' => 45, 'ponte' => 540, 'poussiniere' => 140, 'reproducteur' => 450, default => 45,
-                            };
+                            // Âge depuis la NAISSANCE et durée de la bande (souche, sinon type) :
+                            // les mêmes que sa fiche et sa date de fin (Batch::cycleDays).
+                            $days = (int) $batch->age;
+                            $maxDays = max(1, $batch->cycleDays());
                             $percent = min(round(($days / $maxDays) * 100), 100);
                             $survivalRate = $batch->initial_quantity > 0 ? ($batch->current_quantity / $batch->initial_quantity) * 100 : 100;
                         @endphp
