@@ -237,7 +237,7 @@ class BatchController extends Controller
         // species_id permet de filtrer les souches par espèce côté client.
         $normModels  = ProductionNorm::with('species:id,slug')
             ->select('species_id', 'model_name', 'batch_type')->distinct()->get();
-        $protocols   = Protocol::all();
+        $protocols   = Protocol::with('species:id,slug')->get();
         $employees   = Employee::assignableInCurrentFarm()->orderBy('last_name')->get();
         $providers   = Provider::where('status', 'Actif')->orderBy('name')->get();
         $activeSpecies = Species::active()->with('productionTypes:id,species_id,slug,name_fr,cycle_days_default,kpi_primary')

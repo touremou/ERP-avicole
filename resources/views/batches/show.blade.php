@@ -1135,7 +1135,8 @@
                             <label class="block text-[10px] font-black text-blue-500 uppercase mb-3 ml-2 italic">{{ __("Nouveau Programme") }}</label>
                             <select name="new_protocol_id" id="protocol-select" required class="w-full p-5 bg-slate-100 rounded-[2rem] border-none shadow-inner font-black text-blue-600 italic uppercase text-xs appearance-none">
                                 <option value="" data-type="all">{{ __("-- Appliquer Protocole --") }}</option>
-                                @foreach($protocols as $protocol)
+                                {{-- Protocoles de l'espèce de la bande (Protocol::convientA). --}}
+                                @foreach($protocols->filter(fn ($p) => $p->convientA(null, $batch->species_id)) as $protocol)
                                     <option value="{{ $protocol->id }}" data-type="{{ $protocol->type }}">{{ $protocol->name }}</option>
                                 @endforeach
                             </select>

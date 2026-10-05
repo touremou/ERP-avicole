@@ -32,10 +32,26 @@ use Illuminate\Support\Facades\DB;
  */
 class ProductionNormSeeder extends Seeder
 {
+    /**
+     * Durée de cycle propre à une souche (jours), quand elle diffère nettement
+     * de celle du type de production. Les autres souches suivent leur type
+     * (cf. ProductionNorm::cycleDaysFor) ; l'exploitant règle les siennes dans
+     * le référentiel des normes.
+     */
+    public const CYCLES = [
+        'Poulet local Cou Nu' => 112,   // 16 semaines (fin de sa courbe)
+        'Dinde BUT 6'         => 140,   // 20 semaines (fin de sa courbe)
+    ];
+
     public function run(): void
     {
         // Repère espèce par slug pour rattacher chaque souche.
         $speciesBySlug = Species::pluck('id', 'slug');
+
+        // Durées de cycle saisies par l'exploitant : la purge ci-dessous les
+        // effacerait. On les garde, et elles priment sur les valeurs livrées.
+        $dureesSaisies = DB::table('production_norms')->whereNotNull('cycle_days')
+            ->pluck('cycle_days', 'model_name')->all();
 
         // Purge : repart d'un référentiel propre (table de référence, pas de
         // données opérationnelles). Élimine doublons et model_name legacy.
@@ -66,6 +82,7 @@ class ProductionNormSeeder extends Seeder
         foreach ($rows as $row) {
             $slug = ProductionNorm::guessSpeciesSlug($row['model_name']);
             $row['species_id'] = $slug ? ($speciesBySlug[$slug] ?? null) : null;
+            $row['cycle_days'] = $dureesSaisies[$row['model_name']] ?? self::CYCLES[$row['model_name']] ?? null;
 
             ProductionNorm::create($row);
         }

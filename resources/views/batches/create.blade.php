@@ -100,6 +100,7 @@
                                         @foreach($protocols as $protocol)
                                             <option value="{{ $protocol->id }}" 
                                                     data-type="{{ $protocol->type }}" 
+                                                    data-species="{{ $protocol->species?->slug ?? '' }}" 
                                                     class="protocol-option bg-slate-900 text-white uppercase italic text-[11px]">
                                                 📜 {{ strtoupper($protocol->name) }}
                                             </option>
@@ -380,11 +381,18 @@
             });
         }
 
-        // Filtrage Protocoles
+        // Filtrage Protocoles : même TYPE et même ESPÈCE (un protocole sans
+        // espèce est générique) — Protocol::convientA, que le serveur applique
+        // aussi. Le type seul offrait « Prophylaxie Dinde » à un poulet de chair.
         if (protocolSelector) {
+            const speciesSlug = getCurrentSpeciesSlug();
             protocolSelector.querySelectorAll('.protocol-option').forEach(opt => {
-                opt.style.display = (opt.dataset.type === selectedType) ? 'block' : 'none';
+                const ok = opt.dataset.type === selectedType
+                    && (speciesSlug === "" || !opt.dataset.species || opt.dataset.species === speciesSlug);
+                opt.style.display = ok ? 'block' : 'none';
+                opt.disabled = !ok;
             });
+            if (protocolSelector.selectedOptions[0]?.disabled) protocolSelector.value = "";
         }
 
         // UI Reproducteurs

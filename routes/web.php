@@ -1072,6 +1072,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/', 'index')->name('index')->middleware('can:L');
         Route::post('/import', 'import')->name('import')->middleware('can:S');
         Route::post('/', 'store')->name('store')->middleware('can:C');
+        // AVANT `/{norm}`, qui capturerait sinon « strain-cycle ».
+        Route::put('/strain-cycle', 'updateStrainCycle')->name('strain_cycle')->middleware('can:M');
         Route::put('/{norm}', 'update')->name('update')->middleware('can:M');
         Route::delete('/{norm}', 'destroy')->name('destroy')->middleware('can:S');
     });

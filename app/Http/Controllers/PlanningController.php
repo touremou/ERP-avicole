@@ -57,7 +57,7 @@ class PlanningController extends Controller
         // species_id (+ relation) permet de filtrer les souches par espèce ET
         // par type côté client, comme au lancement d'un lot (cf. BatchController).
         $normModels = ProductionNorm::with('species:id,slug')
-            ->select('species_id', 'model_name', 'batch_type')->distinct()->orderBy('model_name')->get();
+            ->select('species_id', 'model_name', 'batch_type', 'cycle_days')->distinct()->orderBy('model_name')->get();
         $protocols = Protocol::orderBy('name')->get();
         // Types de production de toutes les espèces actives (planification multiespèces).
         $productionTypes = ProductionType::offrables();
@@ -85,10 +85,21 @@ class PlanningController extends Controller
         ]);
 
         $arrivalDate = Carbon::parse($validated['planned_arrival_date']);
-        // Cycle issu du type de production choisi (sinon repli legacy par slug).
-        $cycleOverride = ($validated['production_type_id'] ?? null)
-            ? ProductionType::find($validated['production_type_id'])?->cycle_days_default
-            : null;
+        // Cycle : durée propre à la souche, sinon celle du type de production
+        // (sinon repli legacy par slug) — la règle de Batch::calculateExpectedEndDate,
+        // pour que la planification annonce la fin que la bande appliquera.
+        $cycleOverride = \App\Models\ProductionNorm::cycleDaysFor($validated['model_name'] ?? null)
+            ?? (($validated['production_type_id'] ?? null)
+                ? ProductionType::find($validated['production_type_id'])?->cycle_days_default
+                : null);
+
+        // Protocole : même espèce et même type que la bande (cf. Protocol::convientA).
+        if (($validated['protocol_id'] ?? null)
+            && ! Protocol::find($validated['protocol_id'])->convientA($validated['batch_type'], $validated['species_id'] ?? null)) {
+            return back()->withErrors([
+                'protocol_id' => __("Ce protocole de prophylaxie ne correspond pas à l'espèce ou au type d'élevage choisi."),
+            ])->withInput();
+        }
         $dates = PlannedBatch::calculateDates($validated['batch_type'], $arrivalDate, $cycleOverride);
 
         $building = Building::find($validated['building_id']);
