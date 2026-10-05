@@ -75,7 +75,10 @@ class ProductionNormController extends Controller
         // encore les espèces désactivées.
         $species = Species::active()->orderBy('sort_order')->orderBy('name_fr')->get();
 
-        return view('admin.norms.index', compact('norms', 'type', 'batchTypes', 'species', 'models', 'model'));
+        // Durée de cycle propre à la souche filtrée (null = celle du type).
+        $strainCycle = $model !== '' ? ProductionNorm::cycleDaysFor($model) : null;
+
+        return view('admin.norms.index', compact('norms', 'type', 'batchTypes', 'species', 'models', 'model', 'strainCycle'));
     }
 
     /**
@@ -107,6 +110,28 @@ class ProductionNormController extends Controller
         );
 
         return back()->with('success', 'Référentiel mis à jour avec succès.');
+    }
+
+    /**
+     * DURÉE DE CYCLE D'UNE SOUCHE — réglée une fois pour toute la souche.
+     *
+     * La durée est portée par chaque ligne hebdomadaire de la souche : on les
+     * met TOUTES à jour ensemble, sans quoi deux semaines d'une même souche
+     * pourraient annoncer deux fins de bande. Vide = la souche suit la durée de
+     * son type de production. Lue par ProductionNorm::cycleDaysFor (bande,
+     * planification, écran).
+     */
+    public function updateStrainCycle(Request $request)
+    {
+        $data = $request->validate([
+            'model_name' => ['required', 'string', \Illuminate\Validation\Rule::exists('production_norms', 'model_name')],
+            'cycle_days' => 'nullable|integer|min:1|max:3650',
+        ]);
+
+        ProductionNorm::where('model_name', $data['model_name'])
+            ->update(['cycle_days' => $data['cycle_days'] ?? null]);
+
+        return back()->with('success', __('Durée de cycle de la souche mise à jour.'));
     }
 
     /**

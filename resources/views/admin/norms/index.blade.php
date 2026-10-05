@@ -57,6 +57,18 @@
                     <i class="fas fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none text-[9px]"></i>
                 </div>
                 @if($model !== '')
+                {{-- Durée de cycle PROPRE à la souche : fixe la fin des bandes de
+                     cette souche (bande, planification). Vide = durée du type. --}}
+                @can('elevage.M')
+                <form method="POST" action="{{ route('batches.norms.strain_cycle') }}" class="flex items-center gap-2">
+                    @csrf @method('PUT')
+                    <input type="hidden" name="model_name" value="{{ $model }}">
+                    <label class="text-[9px] font-black uppercase tracking-widest text-slate-500">{{ __("Durée de cycle (jours)") }}</label>
+                    <input type="number" name="cycle_days" min="1" max="3650" value="{{ $strainCycle }}" placeholder="{{ __('du type') }}"
+                           class="w-24 bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-black text-slate-700">
+                    <button type="submit" class="bg-indigo-600 text-white px-3 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest border-none cursor-pointer">{{ __("Enregistrer") }}</button>
+                </form>
+                @endcan
                 <a href="?type={{ $type }}" class="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-rose-500 hover:text-rose-700 transition-colors no-underline">
                     <i class="fas fa-times-circle"></i> {{ __("Réinitialiser") }}
                 </a>

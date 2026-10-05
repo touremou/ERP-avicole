@@ -83,6 +83,14 @@ class TransferBatchRequest extends FormRequest
                 return;
             }
 
+            // Protocole de la nouvelle phase : de la MÊME ESPÈCE que la bande
+            // (Protocol::convientA ; la phase n'est pas toujours un type de
+            // production, seul l'espèce est donc vérifiée ici).
+            $protocol = \App\Models\Protocol::find($this->input('new_protocol_id'));
+            if ($protocol && ! $protocol->convientA(null, $batch->species_id)) {
+                $validator->errors()->add('new_protocol_id', __("Ce protocole de prophylaxie ne correspond pas à l'espèce ou au type d'élevage de la bande."));
+            }
+
             $targetBuilding = Building::find($this->input('target_building_id'));
             if (! $targetBuilding) {
                 return; // L'erreur 'exists' couvre déjà

@@ -16,6 +16,7 @@ class ProductionNorm extends Model
         'week_number',
         'phase_name',
         'model_name', // Ajout crucial pour identifier la souche (Ross, ISA, etc.)
+        'cycle_days', // Durée de cycle PROPRE à la souche (null = celle du type de production)
         'target_weight',
         'target_feed_daily',
         'target_water_daily',
@@ -47,6 +48,25 @@ class ProductionNorm extends Model
         return $query->where(function ($q) use ($speciesId) {
             $q->whereNull('species_id')->orWhere('species_id', $speciesId);
         });
+    }
+
+    /**
+     * DURÉE DE CYCLE D'UNE SOUCHE, en jours — ou null si elle n'en déclare pas.
+     *
+     * LA règle, lue par toutes les portes qui calculent une fin de bande : la
+     * bande elle-même (Batch::calculateExpectedEndDate), la planification côté
+     * serveur (PlanningController) et l'écran de planification. Une souche sans
+     * durée laisse le type de production faire foi, comme avant.
+     */
+    public static function cycleDaysFor(?string $modelName): ?int
+    {
+        if (! $modelName) {
+            return null;
+        }
+
+        $days = static::where('model_name', $modelName)->whereNotNull('cycle_days')->value('cycle_days');
+
+        return $days ? (int) $days : null;
     }
 
     /**

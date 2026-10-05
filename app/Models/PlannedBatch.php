@@ -75,8 +75,15 @@ class PlannedBatch extends Model
 
         $endDate = $arrivalDate->copy()->addDays($cycleDays);
         $voidStart = $endDate->copy()->addDay();
-        $voidEnd = $voidStart->copy()->addDays(self::SANITARY_VOID_DAYS);
-        $orderDeadline = $arrivalDate->copy()->subDays(self::CHICK_ORDER_LEAD_DAYS);
+        // Les RÉGLAGES, comme l'écran — et non des constantes. L'écran lisait
+        // `Building::sanitaryBreakDays()` et `planning.order_lead_days` ; le
+        // serveur, lui, appliquait toujours 21 et 56 jours. Un vide sanitaire
+        // réglé à 14 jours s'affichait, puis la planification enregistrée (et
+        // son contrôle de conflit de bâtiment) en comptait 21.
+        // N jours de vide à partir de $voidStart inclus : dernier jour = début + N − 1,
+        // bâtiment libre le lendemain — le décompte de l'écran.
+        $voidEnd = $voidStart->copy()->addDays(\App\Models\Building::sanitaryBreakDays() - 1);
+        $orderDeadline = $arrivalDate->copy()->subDays((int) setting('planning.order_lead_days', self::CHICK_ORDER_LEAD_DAYS));
 
         return [
             'planned_end_date'    => $endDate,

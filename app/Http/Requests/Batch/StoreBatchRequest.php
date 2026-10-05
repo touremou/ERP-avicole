@@ -87,6 +87,13 @@ class StoreBatchRequest extends FormRequest
                     "Incompatibilité : type de lot '{$targetType}', bâtiment de type '{$targetBuilding->type}'."
                 );
             }
+
+            // Protocole : même espèce et même type (Protocol::convientA) — la règle
+            // que l'écran applique en filtrant, tenue ici aussi.
+            $protocol = $this->filled('protocol_id') ? \App\Models\Protocol::find($this->input('protocol_id')) : null;
+            if ($protocol && ! $protocol->convientA($targetType, $species?->id)) {
+                $validator->errors()->add('protocol_id', __("Ce protocole de prophylaxie ne correspond pas à l'espèce ou au type d'élevage de la bande."));
+            }
         });
     }
 

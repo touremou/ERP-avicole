@@ -243,7 +243,9 @@
                             </h3>
                             <select name="protocol_id" class="w-full p-5 bg-white/5 border border-white/10 rounded-2xl font-black text-blue-400 outline-none italic appearance-none shadow-2xl">
                                 <option value="" class="bg-slate-900 text-slate-500">-- AUCUN PROTOCOLE --</option>
-                                @foreach($protocols as $protocol)
+                                {{-- Protocoles de l'espèce et du type de la bande (Protocol::convientA),
+                                     plus le protocole actuel s'il ne l'est plus : on n'efface pas un choix. --}}
+                                @foreach($protocols->filter(fn ($p) => $p->convientA($batch->type, $batch->species_id) || (int) $p->id === (int) $batch->protocol_id) as $protocol)
                                     <option value="{{ $protocol->id }}" 
                                         data-type="{{ $protocol->type }}" 
                                         {{ old('protocol_id', $batch->protocol_id) == $protocol->id ? 'selected' : '' }} 

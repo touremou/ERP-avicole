@@ -4999,5 +4999,11 @@
     "La récolte du :date a déjà été transformée — sa matière est engagée.": "The :date harvest has already been processed — its material is committed.",
     "Le lot « :label » est clos (:status) — aucun contrôle possible.": "Batch “:label” is closed (:status) — no inspection possible.",
     ":name est en congé le :date — choisissez un collègue disponible.": ":name is on leave on :date — choose an available colleague.",
-    "Au moins 8 caractères, avec lettres et chiffres.": "At least 8 characters, with letters and numbers."
+    "Au moins 8 caractères, avec lettres et chiffres.": "At least 8 characters, with letters and numbers.",
+    ":n jours": ":n days",
+    "Ce protocole de prophylaxie ne correspond pas à l'espèce ou au type d'élevage de la bande.": "This prophylaxis protocol does not match the batch's species or production type.",
+    "Ce protocole de prophylaxie ne correspond pas à l'espèce ou au type d'élevage choisi.": "This prophylaxis protocol does not match the selected species or production type.",
+    "Durée de cycle de la souche mise à jour.": "Strain cycle length updated.",
+    "Durée de cycle (jours)": "Cycle length (days)",
+    "du type": "from type"
 }

@@ -357,6 +357,12 @@ dinde), ruminants (caprin lait, ovin, dont objectif Tabaski avec poids cible
 Protocoles de soins par espèce (vaccins, traitements, rappels), événements
 de santé par lot, coûts vétérinaires intégrés au rapport santé-finance.
 
+Chaque protocole porte son **espèce**, déduite de sa souche (ou de son nom) à
+l'enregistrement ; sans espèce reconnue, il est **générique**. À la création,
+à la modification, au transfert et à la planification d'une bande, seuls les
+protocoles de **son espèce et de son type** sont proposés — et le serveur refuse
+les autres : la « Prophylaxie Dinde » n'est plus proposée pour un poulet de chair.
+
 ### 3.4 Production (œufs & lait)
 
 - **Œufs** : saisie journalière par lot avec calibres pilotés par `production.egg_grades`, taux de ponte comparé à la courbe de référence, badge Montée/Pic/Post-pic (`production.peak_laying_week`), mouvements d'œufs (casse, conso, incubation) synchronisés avec les stocks.
@@ -417,6 +423,15 @@ Planification des bandes (calendrier d'occupation des bâtiments, lots
 planifiés par espèce) et **tâches opérationnelles** générées chaque matin
 depuis des templates (vaccinations, pesées, nettoyages…), assignables aux
 employés.
+
+**Durée de cycle.** La fin d'une bande (abattage, réforme, transfert) suit la
+durée **propre à sa souche** quand elle en a une, sinon celle de son type de
+production. Livrées : poulet local Cou Nu 112 jours, dinde BUT 6 140 jours ;
+les autres souches suivent leur type (poulet de chair : 45 jours). Pour régler
+la durée d'une souche : *Lots › Normes*, filtrer sur la souche, champ « Durée de
+cycle (jours) » — elle vaut pour toute la souche, et la planification comme la
+bande l'appliquent. La planification utilise aussi les réglages du **vide
+sanitaire** et du **délai de commande** affichés à l'écran.
 
 ### 3.13 RH & paie
 

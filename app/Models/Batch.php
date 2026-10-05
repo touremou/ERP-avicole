@@ -355,7 +355,9 @@ class Batch extends Model
         });
 
         static::updating(function (Batch $batch) {
-            if ($batch->isDirty(['arrival_date', 'production_type_id'])) {
+            // Tout ce dont dépend la fin : la souche (sa durée propre) et la
+            // naissance (point d'ancrage du cycle) comptent autant que l'arrivée.
+            if ($batch->isDirty(['arrival_date', 'birth_date', 'production_type_id', 'model_name'])) {
                 $batch->calculateExpectedEndDate();
             }
         });
@@ -415,7 +417,8 @@ class Batch extends Model
 
     /**
      * Calcule la date de fin prévisionnelle.
-     * Priorité : production_type.cycle_days_default → type legacy → settings → 45j.
+     * Priorité : souche (ProductionNorm::cycleDaysFor) → production_type.cycle_days_default
+     * → type legacy → settings → 45j.
      */
     public function calculateExpectedEndDate(): void
     {
@@ -435,8 +438,15 @@ class Batch extends Model
          */
         $ancrage = $this->birth_date ?? $this->arrival_date;
 
+        // 0. Durée PROPRE à la souche, quand elle en déclare une. Sans elle, la
+        //    fin ne dépendait que du type : Ross 308 et poulet local Cou Nu
+        //    (16 semaines) finissaient le même jour. Même règle que la
+        //    planification (ProductionNorm::cycleDaysFor).
+        if ($strainDays = \App\Models\ProductionNorm::cycleDaysFor($this->model_name)) {
+            $days = $strainDays;
+        }
         // 1. Depuis le type de production (table production_types) — source de vérité multiespèces
-        if ($this->production_type_id && $this->productionType?->cycle_days_default) {
+        elseif ($this->production_type_id && $this->productionType?->cycle_days_default) {
             $days = $this->productionType->cycle_days_default;
         } else {
             // 2. Depuis les settings (rétrocompat poulet + nouvelles espèces via settings)

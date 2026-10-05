@@ -52,11 +52,11 @@
 
                                 <div>
                                     <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-1 italic leading-none">{{ __("Souche / Race (Référentiel)") }}</label>
-                                    <select name="model_name" id="model_selector"
+                                    <select name="model_name" id="model_selector" onchange="calculateAll(); calculateDates()"
                                             class="w-full p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-indigo-500 outline-none font-black text-indigo-600 shadow-inner appearance-none italic">
                                         <option value="">{{ __("-- Sélectionner la souche --") }}</option>
                                         @foreach($normModels as $norm)
-                                            <option value="{{ $norm->model_name }}" data-type="{{ $norm->batch_type }}" data-species="{{ $norm->species?->slug ?? '' }}" class="model-opt" style="display: none;">
+                                            <option value="{{ $norm->model_name }}" data-type="{{ $norm->batch_type }}" data-species="{{ $norm->species?->slug ?? '' }}" data-cycle="{{ $norm->cycle_days ?? '' }}" class="model-opt" style="display: none;">
                                                 {{ $norm->model_name }}
                                             </option>
                                         @endforeach
@@ -70,7 +70,7 @@
                                             class="w-full p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-indigo-500 outline-none font-black text-indigo-600 shadow-inner appearance-none italic">
                                         <option value="">{{ __("-- Optionnel --") }}</option>
                                         @foreach($protocols as $protocol)
-                                            <option value="{{ $protocol->id }}" data-type="{{ $protocol->type }}" class="protocol-option">
+                                            <option value="{{ $protocol->id }}" data-type="{{ $protocol->type }}" data-species-id="{{ $protocol->species_id ?? '' }}" class="protocol-option">
                                                 📜 {{ strtoupper($protocol->name) }}
                                             </option>
                                         @endforeach
@@ -194,7 +194,7 @@
                                     <p class="text-sm font-black text-slate-900" id="dt_end">—</p>
                                 </div>
                                 <div class="bg-white p-4 rounded-2xl flex justify-between items-center">
-                                    <div><p class="text-[8px] font-black text-blue-500 uppercase">{{ __("Vide sanitaire") }}</p><p class="text-[8px] text-slate-400">{{ __("21 jours") }}</p></div>
+                                    <div><p class="text-[8px] font-black text-blue-500 uppercase">{{ __("Vide sanitaire") }}</p><p class="text-[8px] text-slate-400">{{ __(":n jours", ['n' => \App\Models\Building::sanitaryBreakDays()]) }}</p></div>
                                     <p class="text-sm font-black text-slate-900" id="dt_void">—</p>
                                 </div>
                                 <div class="bg-white p-4 rounded-2xl flex justify-between items-center">
@@ -248,9 +248,12 @@ const CYCLE_LABELS = { chair: 'Abattage', ponte: 'Réforme', poussiniere: 'Trans
 
 function el(id) { return document.getElementById(id); }
 
-// Cycle (jours) du type de production sélectionné — piloté par les données
-// (cycle_days_default), plus de table figée volaille.
+// Cycle (jours) : celui de la SOUCHE choisie si elle en déclare un, sinon celui
+// du type de production — la règle de ProductionNorm::cycleDaysFor, appliquée à
+// l'identique par la bande (Batch::calculateExpectedEndDate) et par le serveur.
 function selectedCycle() {
+    const souche = el('model_selector').selectedOptions[0];
+    if (souche && souche.value && souche.dataset.cycle) return parseInt(souche.dataset.cycle);
     const opt = el('breeding_type').selectedOptions[0];
     return opt && opt.dataset.cycle ? parseInt(opt.dataset.cycle) : 42;
 }
@@ -288,10 +291,17 @@ function runFilters() {
     });
     if (el('building_id').selectedOptions[0]?.disabled) el('building_id').value = "";
 
-    // Filtrage protocoles
+    // Filtrage protocoles : même TYPE et même ESPÈCE (un protocole sans espèce
+    // est générique) — cf. Protocol::convientA, que le serveur applique aussi.
+    // Le type seul offrait « Prophylaxie Dinde » à un poulet de chair.
+    const speciesId = sel?.dataset.speciesId || "";
     document.querySelectorAll('.protocol-option').forEach(opt => {
-        opt.style.display = (!type || opt.dataset.type === type) ? '' : 'none';
+        const ok = (!type || opt.dataset.type === type)
+            && (!speciesId || !opt.dataset.speciesId || opt.dataset.speciesId === speciesId);
+        opt.style.display = ok ? '' : 'none';
+        opt.disabled = !ok;
     });
+    if (el('protocol_selector').selectedOptions[0]?.disabled) el('protocol_selector').value = "";
 
     // Reproducteurs : afficher mâles/femelles
     const isRepro = type === 'reproducteur';
