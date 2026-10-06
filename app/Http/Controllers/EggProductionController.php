@@ -199,16 +199,14 @@ class EggProductionController extends Controller
             ->where('production_date', $yesterday)->get()->keyBy('batch_id');
 
         $lines = $batches->map(function (Batch $batch) use ($todayRows, $yesterdayRows) {
-            $norm = \App\Models\ProductionNorm::where('batch_type', $batch->type)
-                ->where('model_name', $batch->model_name)
-                ->where('week_number', (int) ceil($batch->age / 7))
-                ->first();
+            // Cible interpolée sur la courbe du lot (ProductionNorm::cibleA).
+            $cible = \App\Models\ProductionNorm::cibleA($batch);
 
             return [
                 'batch'          => $batch,
                 'existing'       => $todayRows->get($batch->id),
                 'yesterday_rate' => $yesterdayRows->get($batch->id)?->laying_rate,
-                'target_rate'    => (float) ($norm->target_laying_rate ?? 0),
+                'target_rate'    => (float) ($cible['laying'] ?? 0),
                 'quarantined'    => (bool) $batch->is_under_quarantine,
             ];
         });

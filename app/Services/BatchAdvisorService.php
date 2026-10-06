@@ -161,7 +161,7 @@ class BatchAdvisorService
         // 1c. Guide de souche détaillé (fiche officielle : programme lumineux,
         //     températures bâtiment, uniformité du lot). Silencieux pour les
         //     souches sans fiche enrichie — aucune colonne, aucun bruit.
-        $guideWeek = max(1, (int) ceil($batch->age / 7));
+        $guideWeek = $batch->semaineDAge();
         $guideNorm = \App\Models\ProductionNorm::where('batch_type', $batch->type)
             ->where('model_name', $batch->model_name)
             ->where('week_number', $guideWeek)
@@ -309,95 +309,16 @@ class BatchAdvisorService
     // INTERNES
     // ──────────────────────────────────────────────
 
-    /**
-     * Courbe de normes applicable au lot, triée par semaine.
-     * Priorité à la souche (model_name) ; repli sur espèce + type ; puis type.
-     */
+    /** Courbe de normes du lot — UNE déclaration (ProductionNorm::courbePour). */
     private function normCurve(Batch $batch): Collection
     {
-        if ($batch->model_name) {
-            $byModel = ProductionNorm::where('model_name', $batch->model_name)
-                ->orderBy('week_number')->get();
-            if ($byModel->isNotEmpty()) {
-                return $byModel;
-            }
-        }
-
-        $query = ProductionNorm::query()->where('batch_type', $batch->type);
-        if ($batch->species_id) {
-            $query->where(function ($q) use ($batch) {
-                $q->whereNull('species_id')->orWhere('species_id', $batch->species_id);
-            });
-        }
-
-        return $query->orderBy('week_number')->get();
+        return ProductionNorm::courbePour($batch);
     }
 
-    /**
-     * Interpole linéairement le barème (poids/aliment/eau/ponte) à une semaine.
-     * Hors bornes : valeurs de la première / dernière ligne (extrapolation plate).
-     *
-     * @return array{weight: ?float, feed: ?float, water: ?float, laying: ?float, phase: ?string}
-     */
+    /** Interpolation à une semaine — UNE déclaration (ProductionNorm::interpoler). */
     private function interpolate(Collection $curve, int $week): array
     {
-        $lower = null;
-        $upper = null;
-
-        foreach ($curve as $row) {
-            if ($row->week_number <= $week) {
-                $lower = $row;
-            }
-            if ($row->week_number >= $week && $upper === null) {
-                $upper = $row;
-            }
-        }
-
-        // Avant la première semaine connue.
-        if ($lower === null) {
-            $first = $curve->first();
-            return $this->pack($first, $first->phase_name);
-        }
-
-        // Au-delà de la dernière, ou pile sur un palier.
-        if ($upper === null || $lower->week_number === $upper->week_number) {
-            return $this->pack($lower, $lower->phase_name);
-        }
-
-        $span = $upper->week_number - $lower->week_number;
-        $t = $span > 0 ? ($week - $lower->week_number) / $span : 0;
-
-        return [
-            'weight' => $this->lerp($lower->target_weight, $upper->target_weight, $t),
-            'feed'   => $this->lerp($lower->target_feed_daily, $upper->target_feed_daily, $t),
-            'water'  => $this->lerp($lower->target_water_daily, $upper->target_water_daily, $t),
-            'laying' => $this->lerp($lower->target_laying_rate, $upper->target_laying_rate, $t),
-            // Phase = celle du palier dont on est le plus proche.
-            'phase'  => $t < 0.5 ? $lower->phase_name : $upper->phase_name,
-        ];
-    }
-
-    /** @return array{weight: ?float, feed: ?float, water: ?float, laying: ?float, phase: ?string} */
-    private function pack(ProductionNorm $row, ?string $phase): array
-    {
-        return [
-            'weight' => $row->target_weight !== null ? (float) $row->target_weight : null,
-            'feed'   => $row->target_feed_daily !== null ? (float) $row->target_feed_daily : null,
-            'water'  => $row->target_water_daily !== null ? (float) $row->target_water_daily : null,
-            'laying' => $row->target_laying_rate !== null ? (float) $row->target_laying_rate : null,
-            'phase'  => $phase,
-        ];
-    }
-
-    private function lerp($a, $b, float $t): ?float
-    {
-        if ($a === null && $b === null) {
-            return null;
-        }
-        $a = (float) ($a ?? $b);
-        $b = (float) ($b ?? $a);
-
-        return $a + ($b - $a) * $t;
+        return ProductionNorm::interpoler($curve, $week);
     }
 
     /**
