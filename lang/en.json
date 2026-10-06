@@ -5012,5 +5012,10 @@
     "Résumé quotidien (:h)": "Daily summary (:h)",
     "Cet aliment est destiné à un autre type d'élevage que ce lot.": "This feed is intended for another production type than this batch.",
     "Ce type de production appartient à une autre espèce.": "This production type belongs to another species.",
-    "Cette souche appartient à une autre espèce.": "This strain belongs to another species."
+    "Cette souche appartient à une autre espèce.": "This strain belongs to another species.",
+    "Volaille": "Poultry",
+    "Petit Ruminant": "Small ruminants",
+    "Grand Ruminant": "Cattle",
+    "Porcin": "Pigs",
+    "Lapins": "Rabbits"
 }

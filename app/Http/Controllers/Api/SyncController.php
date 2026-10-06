@@ -204,6 +204,11 @@ class SyncController extends Controller
             'gate'    => 'abattoir.L',
             'columns' => ['id', 'order_number', 'batch_id', 'planned_date', 'planned_quantity',
                           'status', 'closed_at', 'requested_by', 'executed_by', 'updated_at'],
+            // Morceaux de découpe de l'ESPÈCE abattue (recette active, sinon
+            // nomenclature) : l'écran terrain proposait les morceaux de volaille
+            // — ailes et cuisses — pour un ordre d'ovins.
+            'append'  => ['cuts'],
+            'with'    => ['batch.species'],
         ],
         'formulas' => [
             'model'   => \App\Models\Formula::class,

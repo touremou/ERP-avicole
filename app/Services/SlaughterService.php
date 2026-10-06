@@ -727,13 +727,50 @@ class SlaughterService
     }
 
     /**
+     * RENDEMENT CARCASSE PAR FAMILLE D'ESPÈCES, chacune jugée sur SES bornes
+     * (ButcheryNomenclature::carcassYieldForSpecies, celles du contrôle à
+     * l'enregistrement d'un abattage).
+     *
+     * Le tableau de bord moyennait toutes les espèces puis jugeait ce chiffre
+     * sur les bornes de la VOLAILLE (70 / 65 %) : des ovins à 48 %, normaux,
+     * mettaient la tuile au rouge.
+     *
+     * @return array<string, array{label: string, avg: float, count: int, target_min: int, target_max: int, alert_min: int, status: string}>
+     */
+    private function rendementParFamille($results): array
+    {
+        return $results
+            ->groupBy(fn ($r) => ButcheryNomenclature::familyFor($r->order?->batch?->species))
+            ->map(function ($groupe) {
+                $espece = $groupe->first()->order?->batch?->species;
+                $bornes = ButcheryNomenclature::carcassYieldForSpecies($espece);
+                $moyenne = round((float) $groupe->avg('carcass_yield_percent'), 1);
+
+                return [
+                    'label'      => __($espece?->family_label ?? 'Volaille'),
+                    'avg'        => $moyenne,
+                    'count'      => $groupe->count(),
+                    'target_min' => $bornes['target_min'],
+                    'target_max' => $bornes['target_max'],
+                    'alert_min'  => $bornes['alert_min'],
+                    'status'     => match (true) {
+                        $moyenne >= $bornes['target_min'] => 'ok',
+                        $moyenne >= $bornes['alert_min']  => 'attention',
+                        default                           => 'alerte',
+                    },
+                ];
+            })
+            ->all();
+    }
+
+    /**
      * KPI abattoir sur une période.
      */
     public function getKPI(int $days = 30): array
     {
         $from = now()->subDays($days);
 
-        $results = SlaughterResult::where('execution_date', '>=', $from)->get();
+        $results = SlaughterResult::where('execution_date', '>=', $from)->with('order.batch.species')->get();
         $orders = SlaughterOrder::where('status', 'termine')->where('actual_date', '>=', $from)->get();
 
         $totalSlaughtered = $orders->sum('actual_quantity');
@@ -753,6 +790,7 @@ class SlaughterService
             'total_live_kg'      => round($totalLiveKg, 1),
             'total_carcass_kg'   => round($totalCarcassKg, 1),
             'avg_yield'          => round($avgYield, 1),
+            'yield_by_family'    => $this->rendementParFamille($results),
             'total_condemned'    => $totalCondemned,
             'condemnation_rate'  => $totalSlaughtered > 0 ? round(($totalCondemned / $totalSlaughtered) * 100, 2) : 0,
             'avg_cutting_loss'   => round($avgCuttingLoss, 1),

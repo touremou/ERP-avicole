@@ -13,9 +13,10 @@ import { enqueue } from '../../offline/sync'
 import { t } from '../../i18n'
 import type { RefSlaughterOrder } from '../../api/types'
 
-// Coupes standards volaille (miroir de config/butchery.php — le serveur reste
-// l'autorité : recette active OU nomenclature, codes libres via « autre »).
-const CUTS = [
+// Coupes volaille : REPLI seulement, pour un serveur qui ne sert pas encore
+// les morceaux de l'espèce avec l'ordre (RefSlaughterOrder.cuts). Elles étaient
+// proposées pour TOUTE espèce — des ailes pour un ordre d'ovins.
+const CUTS_VOLAILLE = [
   { code: 'cuisse',   label: '🍗 Cuisses',          destination: 'stock_frais', default: true },
   { code: 'aile',     label: '🪽 Ailes',            destination: 'stock_frais', default: true },
   { code: 'poitrine', label: '🥩 Poitrine/Blancs',  destination: 'stock_frais', default: true },
@@ -26,6 +27,16 @@ const CUTS = [
   { code: 'dechet',   label: '🗑️ Déchets (os, parures)', destination: 'dechet', default: false },
 ] as const
 
+const DECHET = { code: 'dechet', label: '🗑️ Déchets (os, parures)', destination: 'dechet', default: false }
+
+type Cut = { code: string; label: string; destination: string; default: boolean }
+
+/** Morceaux de l'ordre choisi : ceux de son espèce, servis par le serveur. */
+function cutsFor(order: RefSlaughterOrder | undefined): Cut[] {
+  const base: Cut[] = order?.cuts?.length ? order.cuts : [...CUTS_VOLAILLE]
+  return base.some((c) => c.code === DECHET.code) ? base : [...base, DECHET]
+}
+
 type Line = { code: string; label: string; destination: string; kg: string }
 
 export function CuttingScreen() {
@@ -35,8 +46,16 @@ export function CuttingScreen() {
   const [orderId, setOrderId] = useState('')
   const [inputKg, setInputKg] = useState('')
   const [lines, setLines] = useState<Line[]>(
-    CUTS.filter((c) => c.default).map((c) => ({ code: c.code, label: c.label, destination: c.destination, kg: '' })),
+    cutsFor(undefined).filter((c) => c.default).map((c) => ({ code: c.code, label: c.label, destination: c.destination, kg: '' })),
   )
+  const CUTS = cutsFor(orders.find((o) => String(o.id) === orderId))
+
+  // Changer d'ordre — donc possiblement d'espèce — repart des morceaux de CETTE espèce.
+  function choisirOrdre(id: string) {
+    setOrderId(id)
+    const cuts = cutsFor(orders.find((o) => String(o.id) === id))
+    setLines(cuts.filter((c) => c.default).map((c) => ({ code: c.code, label: c.label, destination: c.destination, kg: '' })))
+  }
   const [saved, setSaved] = useState(false)
 
   useEffect(() => {
@@ -117,7 +136,7 @@ export function CuttingScreen() {
       <h2>✂️ {t('Atelier de découpe')}</h2>
 
       <label htmlFor="order">{t("Ordre d'abattage (terminé)")}</label>
-      <select id="order" required value={orderId} onChange={(e) => setOrderId(e.target.value)}>
+      <select id="order" required value={orderId} onChange={(e) => choisirOrdre(e.target.value)}>
         <option value="">{t('Sélectionner…')}</option>
         {orders.map((o) => (
           <option key={o.id} value={o.id}>{o.order_number} · {o.planned_date}</option>
