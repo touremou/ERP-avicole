@@ -386,7 +386,7 @@ class SlaughterController extends Controller
             'total_carcass_weight_kg' => 'required|numeric|min:0.1',
             'condemned_count'         => 'nullable|integer|min:0',
             'condemned_reason'        => 'nullable|string|max:500',
-            'execution_date'          => 'required|date',
+            'execution_date'          => 'required|date|before_or_equal:today',
             'inspector_notes'         => 'nullable|string|max:1000',
             // Anti-corvée : le CCP 3 se saisit ICI, dans le même geste que
             // l'abattage (sinon : second écran + alerte « CCP 3 manquant »
@@ -546,7 +546,7 @@ class SlaughterController extends Controller
 
         $validated = $request->validate([
             'total_input_kg'          => 'required|numeric|min:0.1',
-            'session_date'            => 'required|date',
+            'session_date'            => 'required|date|before_or_equal:today',
             'products'                => 'required|array|min:1',
             'products.*.type'         => 'required|in:' . implode(',', $allowedTypes),
             'products.*.name'         => 'required|string|max:255',
@@ -676,7 +676,7 @@ class SlaughterController extends Controller
             'type'            => ['required', \Illuminate\Validation\Rule::in(array_keys(\App\Models\Transformation::TYPES))],
             'input_kg'        => 'required|numeric|min:0.1',
             'output_kg'       => 'nullable|numeric|min:0',
-            'production_date' => 'required|date',
+            'production_date' => 'required|date|before_or_equal:today',
             'expiry_date'     => 'nullable|date|after:production_date',
             'cost'            => 'nullable|numeric|min:0',
             'notes'           => 'nullable|string|max:500',

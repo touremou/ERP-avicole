@@ -201,7 +201,7 @@
                                 <option value="virement">{{ __("Virement") }}</option>
                                 <option value="cheque">{{ __("Chèque") }}</option>
                             </select>
-                            <input type="date" name="payment_date" value="{{ now()->toDateString() }}" required
+                            <input type="date" max="{{ today()->toDateString() }}" name="payment_date" value="{{ now()->toDateString() }}" required
                                 class="bg-white border-none rounded-2xl p-3 text-[10px] font-black shadow-sm outline-none">
                         </div>
                         @if(!empty($treasuryAccounts) && $treasuryAccounts->isNotEmpty())

@@ -199,7 +199,7 @@ class SupplierInvoiceController extends Controller
         $data = $request->validate([
             'amount'       => 'required|numeric|not_in:0',
             'method'       => 'required|in:especes,mobile_money,virement,cheque',
-            'payment_date' => 'required|date',
+            'payment_date' => 'required|date|before_or_equal:today',
             'reference'    => 'nullable|string|max:255',
             'notes'        => 'nullable|string|max:500',
             // Même contrat que StoreExpenseRequest et StorePaymentRequest : le

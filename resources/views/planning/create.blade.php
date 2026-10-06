@@ -79,7 +79,7 @@
 
                                 <div>
                                     <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-1 italic leading-none">{{ __("Date d'arrivée prévue") }} *</label>
-                                    <input type="date" name="planned_arrival_date" id="arrival_date" value="{{ old('planned_arrival_date') }}" required onchange="calculateDates()"
+                                    <input type="date" min="{{ today()->toDateString() }}" name="planned_arrival_date" id="arrival_date" value="{{ old('planned_arrival_date') }}" required onchange="calculateDates()"
                                            class="w-full p-4 bg-slate-50 rounded-2xl border-none font-black text-slate-700 shadow-inner italic">
                                 </div>
                             </div>

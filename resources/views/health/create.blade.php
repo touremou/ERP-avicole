@@ -42,7 +42,7 @@
                     {{-- DATE DE L'ACTE --}}
                     <div class="space-y-3">
                         <label class="text-[10px] font-black text-slate-400 uppercase ml-2 italic tracking-widest">{{ __("Date d'intervention") }} <span class="text-red-500">*</span></label>
-                        <input type="date" name="intervention_date" id="intervention_date" value="{{ old('intervention_date', $prefill_date ?? date('Y-m-d')) }}"
+                        <input type="date" max="{{ today()->toDateString() }}" name="intervention_date" id="intervention_date" value="{{ old('intervention_date', $prefill_date ?? date('Y-m-d')) }}"
                                oninput="checkExpiry()"
                                class="w-full p-5 bg-slate-50 border-none rounded-2xl font-black text-center shadow-inner focus:ring-4 focus:ring-blue-500/10 transition italic" required>
                     </div>

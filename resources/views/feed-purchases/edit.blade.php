@@ -69,7 +69,7 @@
                     {{-- DATE ACHAT (M) --}}
                     <div class="space-y-3">
                         <label class="block text-[10px] font-black text-slate-400 uppercase ml-2 italic tracking-widest">{{ __("Date de l'opération") }}</label>
-                        <input type="date" name="purchase_date" 
+                        <input type="date" max="{{ today()->toDateString() }}" name="purchase_date" 
                             value="{{ \Carbon\Carbon::parse($feedPurchase->purchase_date)->format('Y-m-d') }}" 
                             class="w-full bg-slate-50 border-none rounded-2xl p-5 text-sm font-black shadow-inner italic text-slate-800 focus:ring-4 focus:ring-blue-500/10 transition-all">
                     </div>

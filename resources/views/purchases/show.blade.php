@@ -61,7 +61,7 @@
                 <h3 class="text-[10px] font-black uppercase text-emerald-600 tracking-widest mb-4">{{ __("Enregistrer un règlement") }}</h3>
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
                     <input type="number" name="amount" required min="1" max="{{ $invoice->remaining_amount }}" step="1" value="{{ $invoice->remaining_amount }}" placeholder="{{ __('Montant') }}" class="bg-white border-none rounded-xl p-3 text-[11px] font-black outline-none text-right text-emerald-600">
-                    <input type="date" name="payment_date" required value="{{ now()->toDateString() }}" class="bg-white border-none rounded-xl p-3 text-[10px] font-black outline-none">
+                    <input type="date" max="{{ today()->toDateString() }}" name="payment_date" required value="{{ now()->toDateString() }}" class="bg-white border-none rounded-xl p-3 text-[10px] font-black outline-none">
                     <select name="method" required class="bg-white border-none rounded-xl p-3 text-[10px] font-black uppercase outline-none">
                         <option value="especes">{{ __("Espèces") }}</option>
                         <option value="mobile_money">{{ __("Mobile Money") }}</option>

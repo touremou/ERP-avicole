@@ -71,7 +71,7 @@
                         </select>
                     </div>
                     <input type="number" name="amount" required min="1" step="1" placeholder="{{ __('Montant') }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black shadow-inner outline-none text-right">
-                    <input type="date" name="date" value="{{ now()->toDateString() }}" max="{{ date('Y-m-d') }}" required class="w-full bg-slate-50 border-none rounded-2xl p-3 text-xs font-black shadow-inner outline-none">
+                    <input type="date" max="{{ today()->toDateString() }}" name="date" value="{{ now()->toDateString() }}" max="{{ date('Y-m-d') }}" required class="w-full bg-slate-50 border-none rounded-2xl p-3 text-xs font-black shadow-inner outline-none">
                     <button type="submit" {{ $accounts->count() < 2 ? 'disabled' : '' }} class="w-full bg-slate-900 text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-600 transition-all border-none cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">{{ __("Transférer") }}</button>
                     @if($accounts->count() < 2)<p class="text-[8px] text-slate-400 uppercase tracking-widest text-center">{{ __("Il faut au moins 2 comptes.") }}</p>@endif
                 </form>

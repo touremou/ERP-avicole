@@ -17,7 +17,7 @@
                     </div>
                     <div>
                         <label class="text-[10px] uppercase text-slate-400 ml-2">{{ __("Date *") }}</label>
-                        <input type="date" name="purchase_date" value="{{ $purchase->purchase_date->format('Y-m-d') }}" required class="w-full bg-white border-none rounded-2xl p-4 shadow-sm outline-none">
+                        <input type="date" max="{{ today()->toDateString() }}" name="purchase_date" value="{{ $purchase->purchase_date->format('Y-m-d') }}" required class="w-full bg-white border-none rounded-2xl p-4 shadow-sm outline-none">
                     </div>
                     <div>
                         <label class="text-[10px] uppercase text-slate-400 ml-2">{{ __("Quantité (L) *") }}</label>

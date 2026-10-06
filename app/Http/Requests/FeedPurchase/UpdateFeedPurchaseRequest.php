@@ -19,7 +19,7 @@ class UpdateFeedPurchaseRequest extends FormRequest
             'quantity'      => 'required|numeric|min:0.001',
             'unit_price'    => 'required|numeric|min:0', // Montant total payé
             'supplier'      => 'nullable|string|max:255',
-            'purchase_date' => 'required|date',
+            'purchase_date' => 'required|date|before_or_equal:today',
             'metadata'      => 'nullable|array',
         ];
     }

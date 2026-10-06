@@ -453,7 +453,7 @@
                 @csrf
                 <div class="col-span-2 md:col-span-1">
                     <label class="block text-[8px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Date *") }}</label>
-                    <input type="date" name="reading_date" value="{{ now()->toDateString() }}" required class="w-full bg-slate-50 border-none rounded-2xl p-3 font-black text-slate-800 shadow-inner italic text-[11px]">
+                    <input type="date" max="{{ today()->toDateString() }}" name="reading_date" value="{{ now()->toDateString() }}" required class="w-full bg-slate-50 border-none rounded-2xl p-3 font-black text-slate-800 shadow-inner italic text-[11px]">
                 </div>
                 <div class="col-span-2">
                     <label class="block text-[8px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Parcelle") }}</label>

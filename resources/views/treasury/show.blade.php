@@ -72,7 +72,7 @@
                         <option value="out">↓ {{ __("Sortie") }}</option>
                     </select>
                     <input type="number" name="amount" required min="1" step="1" placeholder="{{ __('Montant') }}" class="bg-slate-50 border-none rounded-2xl p-3 text-xs font-black shadow-inner outline-none text-right">
-                    <input type="date" name="date" value="{{ now()->toDateString() }}" max="{{ date('Y-m-d') }}" required class="bg-slate-50 border-none rounded-2xl p-3 text-xs font-black shadow-inner outline-none">
+                    <input type="date" max="{{ today()->toDateString() }}" name="date" value="{{ now()->toDateString() }}" max="{{ date('Y-m-d') }}" required class="bg-slate-50 border-none rounded-2xl p-3 text-xs font-black shadow-inner outline-none">
                     <button type="submit" class="bg-slate-900 text-white py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-600 transition-all border-none cursor-pointer">{{ __("Enregistrer") }}</button>
                 </div>
                 <input type="text" name="description" placeholder="{{ __('Description (ex. apport associé, retrait, frais bancaires…)') }}" class="w-full mt-3 bg-slate-50 border-none rounded-2xl p-3 text-[10px] font-black shadow-inner outline-none uppercase italic">

@@ -208,7 +208,7 @@
 
                                 <div>
                                     <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 italic leading-none">Date d'arrivée</label>
-                                    <input type="date" name="arrival_date" value="{{ old('arrival_date', $batch->arrival_date ? $batch->arrival_date->format('Y-m-d') : '') }}" required
+                                    <input type="date" max="{{ today()->toDateString() }}" name="arrival_date" id="arrival_date" value="{{ old('arrival_date', $batch->arrival_date ? $batch->arrival_date->format('Y-m-d') : '') }}" required
                                            class="w-full p-5 bg-slate-50 rounded-2xl border-none font-black text-slate-700 shadow-inner italic leading-none text-center text-sm">
                                 </div>
 
@@ -218,7 +218,7 @@
                                      d'arrivée, et se corrige ici. --}}
                                 <div>
                                     <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 italic leading-none">Date de naissance / éclosion</label>
-                                    <input type="date" name="birth_date" value="{{ old('birth_date', $batch->birth_date ? $batch->birth_date->format('Y-m-d') : '') }}"
+                                    <input type="date" max="{{ today()->toDateString() }}" name="birth_date" id="birth_date" value="{{ old('birth_date', $batch->birth_date ? $batch->birth_date->format('Y-m-d') : '') }}"
                                            class="w-full p-5 bg-slate-50 rounded-2xl border-none font-black text-slate-700 shadow-inner italic leading-none text-center text-sm">
                                     <p class="text-[9px] text-slate-400 uppercase italic font-black mt-2 ml-1 leading-snug">
                                         Âge actuel : {{ $batch->age }} j
@@ -346,5 +346,20 @@
                 });
             });
         });
+    </script>
+    <script>
+        // Né au plus tard le jour de son arrivée : le calendrier n'offre pas de
+        // date de naissance postérieure (même règle que le serveur).
+        (function () {
+            const arrivee = document.getElementById('arrival_date');
+            const naissance = document.getElementById('birth_date');
+            if (!arrivee || !naissance) return;
+            const borner = () => {
+                naissance.max = arrivee.value || arrivee.max;
+                if (naissance.value && arrivee.value && naissance.value > arrivee.value) naissance.value = arrivee.value;
+            };
+            arrivee.addEventListener('input', borner);
+            borner();
+        })();
     </script>
 </x-app-layout>

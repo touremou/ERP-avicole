@@ -593,7 +593,7 @@
 
                         <div class="space-y-2 relative z-10">
                             <label class="text-[10px] font-black text-blue-400 uppercase italic ml-2 block text-center tracking-widest">{{ __("Lancement") }}</label>
-                            <input type="date" name="start_date" value="{{ date('Y-m-d') }}" required class="w-full bg-white/10 border border-white/5 rounded-2xl py-4 sm:py-6 px-2 font-black text-sm sm:text-lg italic shadow-inner text-center text-white outline-none focus:bg-white/20 focus:border-blue-500/50 transition-all">
+                            <input type="date" max="{{ today()->toDateString() }}" name="start_date" value="{{ date('Y-m-d') }}" required class="w-full bg-white/10 border border-white/5 rounded-2xl py-4 sm:py-6 px-2 font-black text-sm sm:text-lg italic shadow-inner text-center text-white outline-none focus:bg-white/20 focus:border-blue-500/50 transition-all">
                         </div>
 
                         <div class="space-y-2 relative z-10 col-span-2 sm:col-span-1">

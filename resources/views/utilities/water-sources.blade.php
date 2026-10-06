@@ -102,7 +102,7 @@
                                         <div class="grid grid-cols-2 gap-3">
                                             <div>
                                                 <label class="text-[8px] font-black text-slate-400 uppercase tracking-widest">{{ __('Date') }}</label>
-                                                <input type="date" name="refill_date" required value="{{ now()->toDateString() }}" max="{{ now()->toDateString() }}" class="w-full bg-slate-50 border border-slate-100 rounded-xl p-3 text-[10px] font-black shadow-inner outline-none">
+                                                <input type="date" max="{{ today()->toDateString() }}" name="refill_date" required value="{{ now()->toDateString() }}" max="{{ now()->toDateString() }}" class="w-full bg-slate-50 border border-slate-100 rounded-xl p-3 text-[10px] font-black shadow-inner outline-none">
                                             </div>
                                             <div>
                                                 <label class="text-[8px] font-black text-slate-400 uppercase tracking-widest">{{ __('Coût') }}</label>
@@ -211,7 +211,7 @@
                                 <option value="{{ $ws->id }}">{{ $ws->name }}</option>
                             @endforeach
                         </select>
-                        <input type="date" name="reading_date" value="{{ now()->toDateString() }}" required class="bg-white border border-slate-100 rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
+                        <input type="date" max="{{ today()->toDateString() }}" name="reading_date" value="{{ now()->toDateString() }}" required class="bg-white border border-slate-100 rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
                     </div>
                     @if($buildings->count())
                     <select name="building_id" class="w-full bg-white border border-slate-100 rounded-xl p-3 text-[10px] font-black uppercase shadow-sm outline-none">

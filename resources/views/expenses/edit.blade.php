@@ -52,7 +52,7 @@
                         <div class="grid grid-cols-2 gap-6">
                             <div class="space-y-2">
                                 <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Date") }} *</label>
-                                <input type="date" name="expense_date" value="{{ old('expense_date', $expense->expense_date->format('Y-m-d')) }}" max="{{ now()->format('Y-m-d') }}" required
+                                <input type="date" max="{{ today()->toDateString() }}" name="expense_date" value="{{ old('expense_date', $expense->expense_date->format('Y-m-d')) }}" max="{{ now()->format('Y-m-d') }}" required
                                     class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black shadow-inner outline-none">
                             </div>
                             <div class="space-y-2">

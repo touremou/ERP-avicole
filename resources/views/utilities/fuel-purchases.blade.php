@@ -38,7 +38,7 @@
                         </div>
                         <div class="space-y-2">
                             <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Date *") }}</label>
-                            <input type="date" name="purchase_date" value="{{ now()->toDateString() }}" required
+                            <input type="date" max="{{ today()->toDateString() }}" name="purchase_date" value="{{ now()->toDateString() }}" required
                                 class="w-full bg-white border-none rounded-2xl p-4 text-xs font-black shadow-sm outline-none">
                         </div>
                     </div>

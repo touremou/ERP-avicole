@@ -199,7 +199,7 @@
                         {{-- DATE DE CLÔTURE --}}
                         <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm text-left">
                             <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2 mb-2 block">Date de clôture</label>
-                            <input type="date" name="closing_date" value="{{ date('Y-m-d') }}" required
+                            <input type="date" max="{{ today()->toDateString() }}" name="closing_date" value="{{ date('Y-m-d') }}" required
                                 class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black shadow-inner outline-none">
                         </div>
 

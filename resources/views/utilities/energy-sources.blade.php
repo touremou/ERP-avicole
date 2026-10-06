@@ -355,7 +355,7 @@
                                 <option value="{{ $es->id }}">{{ $es->name }} ({{ $es->type_label }})</option>
                             @endforeach
                         </select>
-                        <input type="date" name="reading_date" value="{{ now()->toDateString() }}" required class="bg-white border border-slate-100 rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
+                        <input type="date" max="{{ today()->toDateString() }}" name="reading_date" value="{{ now()->toDateString() }}" required class="bg-white border border-slate-100 rounded-xl p-3 text-[10px] font-black shadow-sm outline-none">
                     </div>
                     @if($buildings->count())
                     <select name="building_id" class="w-full bg-white border border-slate-100 rounded-xl p-3 text-[10px] font-black uppercase shadow-sm outline-none">
