@@ -416,6 +416,68 @@ class Batch extends Model
     }
 
     /**
+     * DURÉE DU CYCLE DE CETTE BANDE, en jours — UNE déclaration.
+     *
+     * Lue par la fin prévisionnelle (calculateExpectedEndDate), la phase
+     * d'aliment présélectionnée (feedPreselectPhase) et les barres
+     * d'avancement des écrans. Chacun recalculait la sienne sur le seul type de
+     * production : une fois la fin calée sur la souche (#408), un poulet local
+     * Cou Nu (112 j) finissait au jour 112 mais s'affichait « 100 % » au jour 45
+     * et passait en aliment de finition au jour 27.
+     *
+     * Priorité : souche (ProductionNorm::cycleDaysFor) → réglage piscicole de
+     * l'espèce → type de production → réglages historiques par type → 45 j.
+     */
+    public function cycleDays(): int
+    {
+        // 0. Durée PROPRE à la souche, quand elle en déclare une. Sans elle, la
+        //    fin ne dépendait que du type : Ross 308 et poulet local Cou Nu
+        //    (16 semaines) finissaient le même jour. Même règle que la
+        //    planification (ProductionNorm::cycleDaysFor).
+        if ($strainDays = \App\Models\ProductionNorm::cycleDaysFor($this->model_name)) {
+            return $strainDays;
+        }
+
+        // 0 bis. Durée de grossissement réglée par espèce piscicole (Réglages ›
+        //    Pisciculture). Le rapport piscicole la lisait seul ; la fin de la
+        //    bande l'ignorait.
+        $reglagePiscicole = [
+            'tilapia' => 'pisciculture.cycle_tilapia',
+            'carpe'   => 'pisciculture.cycle_carpe',
+        ][$this->species?->slug] ?? null;
+
+        if ($reglagePiscicole && ($fish = (int) setting($reglagePiscicole, 0)) > 0) {
+            return $fish;
+        }
+
+        // 1. Depuis le type de production (table production_types) — source de vérité multiespèces
+        if ($this->production_type_id && $this->productionType?->cycle_days_default) {
+            return (int) $this->productionType->cycle_days_default;
+        }
+
+        // 2. Depuis les settings (rétrocompat poulet + nouvelles espèces via settings)
+        return match (strtolower($this->type ?? 'chair')) {
+            'chair' => match ($this->species?->slug) {
+                'dinde'  => self::cycleJours('elevage.cycle_dinde_chair'),
+                'caille' => self::cycleJours('elevage.cycle_caille_chair'),
+                default  => self::cycleJours('elevage.cycle_chair'),
+            },
+            'ponte' => match ($this->species?->slug) {
+                'caille' => self::cycleJours('elevage.cycle_caille_ponte'),
+                default  => self::cycleJours('elevage.cycle_ponte'),
+            },
+            'poussiniere'              => self::cycleJours('elevage.cycle_poussiniere'),
+            'repro', 'reproducteur'    => match ($this->species?->slug) {
+                'mouton' => self::cycleJours('elevage.cycle_ovin_reproducteur'),
+                default  => self::cycleJours('elevage.cycle_reproducteur'),
+            },
+            'laitiere'                 => self::cycleJours('elevage.cycle_caprin_lait'),
+            'engraissement'            => self::cycleJours('elevage.cycle_ovin_engraissement'),
+            default                    => self::CYCLE_DEFAUTS['elevage.cycle_chair'],
+        };
+    }
+
+    /**
      * Calcule la date de fin prévisionnelle.
      * Priorité : souche (ProductionNorm::cycleDaysFor) → production_type.cycle_days_default
      * → type legacy → settings → 45j.
@@ -438,38 +500,7 @@ class Batch extends Model
          */
         $ancrage = $this->birth_date ?? $this->arrival_date;
 
-        // 0. Durée PROPRE à la souche, quand elle en déclare une. Sans elle, la
-        //    fin ne dépendait que du type : Ross 308 et poulet local Cou Nu
-        //    (16 semaines) finissaient le même jour. Même règle que la
-        //    planification (ProductionNorm::cycleDaysFor).
-        if ($strainDays = \App\Models\ProductionNorm::cycleDaysFor($this->model_name)) {
-            $days = $strainDays;
-        }
-        // 1. Depuis le type de production (table production_types) — source de vérité multiespèces
-        elseif ($this->production_type_id && $this->productionType?->cycle_days_default) {
-            $days = $this->productionType->cycle_days_default;
-        } else {
-            // 2. Depuis les settings (rétrocompat poulet + nouvelles espèces via settings)
-            $days = match (strtolower($this->type ?? 'chair')) {
-                'chair' => match ($this->species?->slug) {
-                    'dinde'  => self::cycleJours('elevage.cycle_dinde_chair'),
-                    'caille' => self::cycleJours('elevage.cycle_caille_chair'),
-                    default  => self::cycleJours('elevage.cycle_chair'),
-                },
-                'ponte' => match ($this->species?->slug) {
-                    'caille' => self::cycleJours('elevage.cycle_caille_ponte'),
-                    default  => self::cycleJours('elevage.cycle_ponte'),
-                },
-                'poussiniere'              => self::cycleJours('elevage.cycle_poussiniere'),
-                'repro', 'reproducteur'    => match ($this->species?->slug) {
-                    'mouton' => self::cycleJours('elevage.cycle_ovin_reproducteur'),
-                    default  => self::cycleJours('elevage.cycle_reproducteur'),
-                },
-                'laitiere'                 => self::cycleJours('elevage.cycle_caprin_lait'),
-                'engraissement'            => self::cycleJours('elevage.cycle_ovin_engraissement'),
-                default                    => self::CYCLE_DEFAUTS['elevage.cycle_chair'],
-            };
-        }
+        $days = $this->cycleDays();
 
         $fin = Carbon::parse($ancrage)->addDays($days);
         $arrivee = Carbon::parse($this->arrival_date);
@@ -800,8 +831,8 @@ class Batch extends Model
      * Phase d'aliment à présélectionner dans le Daily Check selon l'âge du lot.
      *
      * Secteurs de croissance (Chair, Engraissement, Grossissement, Alevinage) :
-     * seuils calés sur la durée de cycle réelle de l'espèce
-     * (production_types.cycle_days_default × fractions, cf.
+     * seuils calés sur la durée de cycle de la bande
+     * (cycleDays() × fractions, cf.
      * FEED_GROWOUT_FRACTIONS). Secteurs physiologiques ou cycle inconnu : repli
      * sur les seuils fixes (cf. FEED_AGE_THRESHOLDS).
      */
@@ -810,8 +841,9 @@ class Batch extends Model
         $sector = $this->feedSector();
         $phases = $this->feedPhases();
 
-        // Secteurs de croissance : seuils proportionnels au cycle de l'espèce.
-        $cycle = (int) ($this->productionType?->cycle_days_default ?? 0);
+        // Secteurs de croissance : seuils proportionnels au cycle DE LA BANDE —
+        // celui de sa souche s'il en a un (cycleDays), comme sa date de fin.
+        $cycle = $this->cycleDays();
         if ($cycle > 0 && isset(self::FEED_GROWOUT_FRACTIONS[$sector])) {
             foreach (self::FEED_GROWOUT_FRACTIONS[$sector] as $index => $fraction) {
                 if ($ageInDays <= $fraction * $cycle) {

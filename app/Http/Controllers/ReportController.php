@@ -1070,10 +1070,6 @@ class ReportController extends Controller
         // Cibles pisciculture (paramétrables — § Pisciculture des réglages)
         $survivalTarget = (float) setting('pisciculture.taux_survie_cible', 85);
         $fcTarget       = (float) setting('pisciculture.fc_cible', 1.5);
-        $cycleDurations = [
-            'tilapia' => (int) setting('pisciculture.cycle_tilapia', 0),
-            'carpe'   => (int) setting('pisciculture.cycle_carpe', 0),
-        ];
 
         $query = \App\Models\Batch::with(['species', 'building', 'productionType', 'dailyChecks' => function($q) {
                 $q->orderBy('check_date')->with('extension');
@@ -1090,7 +1086,7 @@ class ReportController extends Controller
 
         $batches = $query->orderByDesc('arrival_date')->get();
 
-        $batchStats = $batches->map(function($batch) use ($survivalTarget, $fcTarget, $cycleDurations) {
+        $batchStats = $batches->map(function($batch) use ($survivalTarget, $fcTarget) {
             $checks = $batch->dailyChecks->filter(fn($c) => $c->extension !== null)->values();
 
             $series = [
@@ -1121,12 +1117,11 @@ class ReportController extends Controller
             $biomassGain = (float) ($lastExt?->biomass_kg ?? 0) - (float) ($firstExt?->biomass_kg ?? 0);
             $fcReal      = $biomassGain > 0 ? round($totalFeed / $biomassGain, 2) : null;
 
-            // Cycle cible (durée de grossissement) selon l'espèce, repli sur le type de production
-            $cycleDays = $cycleDurations[$batch->species?->slug] ?? 0;
-            if ($cycleDays <= 0) {
-                $cycleDays = (int) ($batch->productionType?->cycle_days_default ?? 0);
-            }
-            $daysRemaining = $cycleDays > 0 ? $cycleDays - $batch->age : null;
+            // Jours restants : jusqu'à la fin que la BANDE porte (souche, sinon type —
+            // Batch::cycleDays), et non une durée recalculée à part pour ce rapport.
+            $daysRemaining = $batch->expected_end_date
+                ? (int) today()->diffInDays($batch->expected_end_date, false)
+                : null;
 
             return [
                 'batch'           => $batch,

@@ -503,7 +503,8 @@
                 </div>
                 <div class="w-full h-3 bg-slate-100 rounded-full overflow-hidden flex shadow-inner">
                     @php
-                        $maxDays = $batch->productionType?->cycle_days_default ?? ($isChair ? 45 : 540);
+                        // La durée que la bande applique à sa fin (souche, sinon type) — cf. Batch::cycleDays.
+                        $maxDays = max(1, $batch->cycleDays());
                         $progress = min(($batchAge / $maxDays) * 100, 100);
                     @endphp
                     <div class="h-full bg-blue-600 transition-all duration-1000 shadow-lg" style="width: {{ $progress }}%"></div>

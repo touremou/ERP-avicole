@@ -189,9 +189,6 @@ class PlanningController extends Controller
                     return back()->withErrors(['employee_id' => 'Responsable obligatoire.'])->withInput();
                 }
 
-                // Cycle : priorité au type de production (multiespèces), repli legacy.
-                $cycleDays = (int) ($plan->productionType?->cycle_days_default
-                    ?? setting("elevage.cycle_{$plan->batch_type}", 42));
                 $batchPrefix = setting("elevage.batch_prefix_{$plan->batch_type}", 'LOT');
 
                 $batch = Batch::create([
@@ -212,7 +209,9 @@ class PlanningController extends Controller
                     'qty_dead'               => $qtyDead,
                     'arrival_mortality_rate' => $totalReceived > 0 ? round(($qtyDead / $totalReceived) * 100, 2) : 0,
                     'arrival_date'           => now()->toDateString(),
-                    'expected_end_date'      => now()->addDays($cycleDays),
+                    // expected_end_date : calculée par la bande elle-même à sa création
+                    // (Batch::calculateExpectedEndDate → cycleDays : souche, sinon type).
+                    // Une valeur ici était écrasée — et sur le seul type, elle trompait.
                     'buy_price_per_unit'     => $validated['buy_price_per_unit'] ?? 0,
                     'total_acquisition_cost' => $totalReceived * ($validated['buy_price_per_unit'] ?? 0),
                     'status'                 => 'Actif',
