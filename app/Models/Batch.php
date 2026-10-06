@@ -890,7 +890,19 @@ class Batch extends Model
             return $phases[count(self::FEED_GROWOUT_FRACTIONS[$sector]) - 1] ?? null;
         }
 
-        // Secteurs physiologiques (ponte, repro, laitière) ou cycle inconnu.
+        // Ponte : bornes rapportées à l'âge d'entrée en ponte de la souche (comme
+        // la phase de vie) — la caille pond dès 35 j, la poule vers 126.
+        if ($sector === 'Ponte' && $this->tracksEggs()) {
+            $ponte = max(1, $this->minLayingAgeDays());
+
+            return $phases[match (true) {
+                $ageInDays <= intdiv($ponte, 3) => 0,
+                $ageInDays <= $ponte            => 1,
+                default                         => 2,
+            }] ?? null;
+        }
+
+        // Secteurs physiologiques (repro, laitière) ou cycle inconnu.
         foreach (self::FEED_AGE_THRESHOLDS[$sector] ?? [] as [$maxAge, $phaseIndex]) {
             if ($ageInDays <= $maxAge) {
                 return $phases[$phaseIndex] ?? null;
@@ -1216,15 +1228,29 @@ class Batch extends Model
     /**
      * Phase actuelle basée sur l'âge et le type.
      */
+    /**
+     * PHASE DE VIE de la bande — calée sur SA durée et SON âge de ponte.
+     *
+     * Elle se lisait sur des âges fixes de poulet pour toutes les espèces et
+     * souches : un poulet local Cou Nu (112 j) affiché « Finition » au jour 30,
+     * une dinde (140 j) au jour 29, une caille déjà en ponte (semaine 6)
+     * affichée « Croissance ». Désormais :
+     *   • chair : fractions de la durée de la bande (Batch::cycleDays), les
+     *     mêmes que l'aliment présélectionné (FEED_GROWOUT_FRACTIONS) ;
+     *   • ponte / reproducteurs AVICOLES : bornes rapportées à l'âge d'entrée
+     *     en ponte de la souche (minLayingAgeDays) — 126 j pour la poule comme
+     *     avant, 35 j pour la caille ; un reproducteur non avicole (bélier)
+     *     n'a plus de « pré-ponte ».
+     */
     public function getCurrentPhaseAttribute(): string
     {
-        $ageDays = $this->age;
+        $ageDays = (int) $this->age;
         $type = strtolower($this->type ?? 'chair');
 
-        return match ($type) {
-            'chair' => $this->getBroilerPhase($ageDays),
-            'ponte', 'repro', 'reproducteur' => $this->getLayerPhase($ageDays),
-            'poussiniere' => $ageDays <= 42 ? 'Démarrage' : 'Croissance',
+        return match (true) {
+            $type === 'chair' => $this->getBroilerPhase($ageDays),
+            in_array($type, ['ponte', 'repro', 'reproducteur'], true) && $this->tracksEggs() => $this->getLayerPhase($ageDays),
+            $type === 'poussiniere' => $ageDays <= 42 ? 'Démarrage' : 'Croissance',
             default => 'Production',
         };
     }
@@ -1626,7 +1652,10 @@ class Batch extends Model
     public function dailyMortalityThreshold(): float
     {
         $flat = (float) setting('elevage.daily_mortality_alert_pct', 0.5);
-        $key = self::dailyMortalityPhaseKey($this->feedSector(), (int) ($this->age ?? 0));
+        // Fin de croissance du chair : la borne de la phase de vie (fraction de la
+        // durée de la bande), et non 28 j pour toutes les souches.
+        $finCroissance = (int) floor(self::FEED_GROWOUT_FRACTIONS['Chair'][1] * max(1, $this->cycleDays()));
+        $key = self::dailyMortalityPhaseKey($this->feedSector(), (int) ($this->age ?? 0), $finCroissance);
 
         // Valeur BRUTE : le cast numérique des réglages transforme une chaîne
         // vide en 0, ce qui ferait passer « pas de seuil pour cette phase » pour
@@ -1641,11 +1670,13 @@ class Batch extends Model
      * Dérivée du SECTEUR d'aliment (cf. feedSector()) — la même notion de phase
      * que celle qui pilote déjà l'alimentation, et non un second découpage.
      */
-    public static function dailyMortalityPhaseKey(string $sector, int $age): string
+    public static function dailyMortalityPhaseKey(string $sector, int $age, int $finCroissance = 28): string
     {
         return match (true) {
+            // La première semaine reste fixe : sa mortalité tient à l'éclosion,
+            // pas à la durée de la souche.
             $sector === 'Chair' && $age <= 7  => 'mortality_pct_chair_demarrage',
-            $sector === 'Chair' && $age <= 28 => 'mortality_pct_chair_croissance',
+            $sector === 'Chair' && $age <= $finCroissance => 'mortality_pct_chair_croissance',
             $sector === 'Chair'               => 'mortality_pct_chair_finition',
             $sector === 'Ponte' && $age <= 42 => 'mortality_pct_ponte_poulette',
             $sector === 'Ponte'               => 'mortality_pct_ponte_production',
@@ -1721,18 +1752,24 @@ class Batch extends Model
 
     private function getBroilerPhase(int $days): string
     {
-        if ($days <= 14) return 'Démarrage';
-        if ($days <= 28) return 'Croissance';
+        [$demarrage, $croissance] = self::FEED_GROWOUT_FRACTIONS['Chair'];
+        $cycle = max(1, $this->cycleDays());
+
+        if ($days <= $demarrage * $cycle) return 'Démarrage';
+        if ($days <= $croissance * $cycle) return 'Croissance';
 
         return 'Finition';
     }
 
+    /** Bornes d'un lot de ponte, rapportées à SON âge d'entrée en ponte. */
     private function getLayerPhase(int $days): string
     {
-        if ($days <= 42) return 'Démarrage';
-        if ($days <= 126) return 'Croissance';
-        if ($days <= 147) return 'Pré-Ponte';
-        if ($days <= 500) return 'Ponte';
+        $ponte = max(1, $this->minLayingAgeDays());   // 126 j poule, 35 j caille
+
+        if ($days <= intdiv($ponte, 3)) return 'Démarrage';
+        if ($days <= $ponte) return 'Croissance';
+        if ($days <= $ponte + intdiv($ponte, 6)) return 'Pré-Ponte';
+        if ($days <= $this->cycleDays()) return 'Ponte';
 
         return 'Réforme';
     }
