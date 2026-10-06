@@ -40,7 +40,11 @@ export function NewBatchScreen() {
   const [providers, setProviders] = useState<RefProvider[]>([])
 
   const [buildingId, setBuildingId] = useState('')
+  // IDENTIFIANT du type de production choisi — et non son slug : « chair »
+  // désigne aussi bien le poulet que la dinde ou la caille, et le serveur
+  // enregistrait le lot sans type ni espèce (traité en poulet de chair).
   const [type, setType] = useState('')
+  const typeChoisi = productionTypes.find((pt) => String(pt.id) === type)
   const [initialQuantity, setInitialQuantity] = useState(0)
   const [deadOnArrival, setDeadOnArrival] = useState(0)
   const [arrivalDate, setArrivalDate] = useState(new Date().toISOString().slice(0, 10))
@@ -81,7 +85,7 @@ export function NewBatchScreen() {
    * l'autre. Le code reste une étiquette lisible pour l'humain.
    */
   const suggestedCode = useMemo(() => {
-    const slug = productionTypes.find((pt) => pt.slug === type)?.slug ?? 'lot'
+    const slug = productionTypes.find((pt) => String(pt.id) === type)?.slug ?? 'lot'
     const stamp = arrivalDate.replaceAll('-', '').slice(2)
 
     return `${slug.slice(0, 3).toUpperCase()}-${stamp}`
@@ -115,7 +119,9 @@ export function NewBatchScreen() {
       {
         uuid,
         code: effectiveCode,
-        type,
+        // Le slug reste envoyé pour un serveur plus ancien ; l'identifiant fait foi.
+        type: typeChoisi?.slug ?? '',
+        production_type_id: typeChoisi ? typeChoisi.id : null,
         building_id: Number(buildingId),
         initial_quantity: initialQuantity,
         // L'effectif VIVANT à l'arrivée : les sujets morts au transport sont
@@ -182,7 +188,7 @@ export function NewBatchScreen() {
       <select id="type" value={type} onChange={(e) => setType(e.target.value)} required>
         <option value="">{t('— Choisir —')}</option>
         {productionTypes.map((pt) => (
-          <option key={pt.id} value={pt.slug}>
+          <option key={pt.id} value={String(pt.id)}>
             {pt.name_fr}
           </option>
         ))}

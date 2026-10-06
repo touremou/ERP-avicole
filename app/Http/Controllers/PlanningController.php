@@ -93,6 +93,16 @@ class PlanningController extends Controller
                 ? ProductionType::find($validated['production_type_id'])?->cycle_days_default
                 : null);
 
+        // Espèce, type de production et souche se tiennent (BatchIdentity).
+        $incoherences = \App\Support\BatchIdentity::erreurs(
+            ($validated['species_id'] ?? null) ? (int) $validated['species_id'] : null,
+            ($validated['production_type_id'] ?? null) ? (int) $validated['production_type_id'] : null,
+            $validated['model_name'] ?? null,
+        );
+        if ($incoherences) {
+            return back()->withErrors($incoherences)->withInput();
+        }
+
         // Protocole : même espèce et même type que la bande (cf. Protocol::convientA).
         if (($validated['protocol_id'] ?? null)
             && ! Protocol::find($validated['protocol_id'])->convientA($validated['batch_type'], $validated['species_id'] ?? null)) {

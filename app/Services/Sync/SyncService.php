@@ -279,6 +279,12 @@ class SyncService
 
         $data = $v->validated();
         $data['feed_type'] = $data['feed_type'] ?? '';
+
+        // Aliment : celui du secteur du lot (Batch::accepteAliment), comme au bureau.
+        $lot = Batch::withoutGlobalScopes()->find($data['batch_id']);
+        if ($lot && ! $lot->accepteAliment($data['feed_type'])) {
+            return $this->invalid(['feed_type' => [__("Cet aliment est destiné à un autre type d'élevage que ce lot.")]]);
+        }
         // health_status est obligatoire côté web : on garantit une valeur par
         // défaut sûre si le terrain ne l'a pas renseigné (RAS).
         $data['health_status'] = $data['health_status'] ?? 'Normal';
@@ -1267,12 +1273,32 @@ class SyncService
     //  Gates ALIGNÉS sur le module réel (elevage.*, plus admin.* — audit A2).
     // ─────────────────────────────────────────────────────────────
 
+    /**
+     * Type de production d'un ancien client qui n'envoie que le slug : le type
+     * ACTIF de ce slug s'il est unique, sinon celui du poulet (espèce historique
+     * de l'application) — jamais « aucun type ».
+     */
+    private function typeDeProductionDuSlug(string $slug): \App\Models\ProductionType
+    {
+        $actifs = \App\Models\ProductionType::active()->where('slug', $slug)->get();
+
+        return $actifs->count() === 1
+            ? $actifs->first()
+            : \App\Models\ProductionType::resolveOrCreate($slug, null);
+    }
+
     private function batchUpsert(array $payload): array
     {
         $v = Validator::make($payload, [
             'uuid'                   => 'required|uuid',
             'code'                   => 'required|string|max:50',
             'type'                   => 'required|string',
+            // Le TYPE DE PRODUCTION exact (et donc l'espèce). Le slug « type »
+            // seul était ambigu (« chair » : poulet, dinde, caille…) et
+            // n'était même pas enregistré : un lot de PONDEUSES mis en lot au
+            // terrain arrivait sans type ni espèce, traité en poulet de chair.
+            'production_type_id'     => 'nullable|integer|exists:production_types,id',
+            'species_id'             => 'nullable|integer|exists:species,id',
             'building_id'            => ['required', 'integer', $this->farmScopedExists('buildings')],
             'initial_quantity'       => 'required|integer|min:1',
             'current_quantity'       => 'required|integer|min:0',
@@ -1294,6 +1320,20 @@ class SyncService
         }
 
         $validated = $v->validated();
+
+        // Type de production : l'identifiant envoyé fait foi ; à défaut (ancien
+        // client), le slug — le type actif s'il est unique, sinon celui du poulet.
+        $productionType = ($validated['production_type_id'] ?? null)
+            ? \App\Models\ProductionType::find($validated['production_type_id'])
+            : $this->typeDeProductionDuSlug($validated['type']);
+
+        if (($validated['species_id'] ?? null)
+            && $erreurs = \App\Support\BatchIdentity::erreurs((int) $validated['species_id'], $productionType->id, null)) {
+            return $this->invalid(array_map(fn ($m) => [$m], $erreurs));
+        }
+
+        $validated['production_type_id'] = $productionType->id;
+        $validated['species_id'] = $productionType->species_id;
 
         $serverBatch = Batch::withoutGlobalScopes()->where('uuid', $validated['uuid'])->first();
 
@@ -1321,7 +1361,8 @@ class SyncService
                 ['uuid' => $validated['uuid']],
                 [
                     'code'                   => $validated['code'],
-                    'type'                   => $validated['type'],
+                    'production_type_id'     => $validated['production_type_id'],
+                    'species_id'             => $validated['species_id'],
                     'building_id'            => $validated['building_id'],
                     'initial_quantity'       => $validated['initial_quantity'],
                     'current_quantity'       => $validated['current_quantity'],

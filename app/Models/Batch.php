@@ -657,6 +657,17 @@ class Batch extends Model
      */
     public const DEFAULT_MIN_LAYING_AGE_DAYS = 126; // 18 semaines : entrée en pré-ponte
 
+    /**
+     * SEMAINE D'ÂGE de la bande (1 = jours 1 à 7) — UNE règle, celle des
+     * courbes de normes (ceil(âge / 7), au moins 1). L'analyse HDP comptait en
+     * floor : six jours sur sept, elle jugeait la ponte sur la norme de la
+     * semaine PRÉCÉDENTE.
+     */
+    public function semaineDAge(): int
+    {
+        return max(1, (int) ceil((int) $this->age / 7));
+    }
+
     public function minLayingAgeDays(): int
     {
         // Type de norme : on retombe sur « ponte » pour tout lot suivi en œufs
@@ -671,17 +682,21 @@ class Batch extends Model
             $base->where('batch_type', $type);
         }
 
-        // Priorité à la souche du lot (maturité propre à l'espèce/souche).
+        // Priorité à la souche du lot (maturité propre à l'espèce/souche) —
+        // nom EXACT : « LIKE %Lohmann% » appariait Lohmann Brown ET Lohmann LSL.
         if ($this->model_name) {
             $strainWeek = (clone $base)
-                ->where('model_name', 'LIKE', "%{$this->model_name}%")
+                ->where('model_name', $this->model_name)
                 ->min('week_number');
             if ($strainWeek) {
                 return max(0, ((int) $strainWeek - 1) * 7);
             }
         }
 
-        $typeWeek = $base->min('week_number');
+        // Repli : les normes de SON espèce (ou génériques). Sans ce filtre, le
+        // minimum de toutes les espèces l'emportait — la caille pond dès la
+        // semaine 6 : une poulette de 5 semaines se voyait autoriser la collecte.
+        $typeWeek = $base->forSpecies($this->species_id)->min('week_number');
         if ($typeWeek) {
             return max(0, ((int) $typeWeek - 1) * 7);
         }
@@ -825,6 +840,27 @@ class Batch extends Model
     public function feedPhases(): array
     {
         return self::FEED_PHASES[$this->feedSector()];
+    }
+
+    /**
+     * CET ALIMENT CONVIENT-IL À CETTE BANDE ? — lu par le pointage du bureau ET
+     * par la synchronisation terrain.
+     *
+     * Un nom de phase STANDARD d'un autre secteur est refusé : « Ponte 1 (Pic
+     * de ponte) » était accepté pour un lot de poulets de chair, et sortait du
+     * stock de pondeuses. Un nom LIBRE (aliment maison, provende achetée sous
+     * sa marque) reste accepté — le terrain choisit parmi tout le stock.
+     */
+    public function accepteAliment(?string $feedType): bool
+    {
+        $feedType = trim((string) $feedType);
+        if ($feedType === '') {
+            return true;
+        }
+
+        $phaseStandard = collect(self::FEED_PHASES)->flatten()->contains($feedType);
+
+        return ! $phaseStandard || in_array($feedType, $this->feedPhases(), true);
     }
 
     /**

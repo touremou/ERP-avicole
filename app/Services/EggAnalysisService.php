@@ -119,7 +119,8 @@ class EggAnalysisService
             // là-dessus. Il se comptait depuis l'ARRIVÉE, et sans le « + 1 » de
             // l'accesseur : des poulettes reçues en âge de pondre étaient jugées
             // contre la semaine 1 de leur propre courbe.
-            $ageWeeks = $batch->arrival_date ? (int) floor($batch->age / 7) : null;
+            // Semaine d'âge : la règle des courbes (Batch::semaineDAge), non un floor.
+            $ageWeeks = $batch->arrival_date ? $batch->semaineDAge() : null;
 
             // ─── IRRÉGULARITÉ 1 : PAS DE COLLECTE ───
             if (! $collection) {
@@ -186,7 +187,7 @@ class EggAnalysisService
             }
 
             // ─── IRRÉGULARITÉ 3 : HDP SOUS LA NORME ───
-            $normHdp = $this->getNormHdp($batch->model_name, $ageWeeks);
+            $normHdp = $ageWeeks ? (\App\Models\ProductionNorm::cibleA($batch, $ageWeeks)['laying'] ?? null) : null;
             if ($normHdp && $hdp < ($normHdp * 0.85)) {
                 $irregularities[] = [
                     'type'     => 'hdp_below_norm',
@@ -309,20 +310,5 @@ class EggAnalysisService
         $lines[] = "";
 
         return implode("\n", $lines);
-    }
-
-    /**
-     * Récupère la norme HDP pour un modèle et un âge donnés.
-     */
-    private function getNormHdp(?string $modelName, ?int $ageWeeks): ?float
-    {
-        if (! $modelName || ! $ageWeeks) return null;
-
-        $norm = ProductionNorm::where('model_name', 'LIKE', "%{$modelName}%")
-            ->where('batch_type', 'ponte')
-            ->where('week_number', $ageWeeks)
-            ->first();
-
-        return $norm?->target_laying_rate;
     }
 }

@@ -98,6 +98,15 @@ class UpdateBatchRequest extends FormRequest
                 );
             }
 
+            // Espèce, type de production et souche se tiennent (BatchIdentity).
+            foreach (\App\Support\BatchIdentity::erreurs(
+                $species?->id,
+                $this->filled('production_type_id') ? (int) $this->input('production_type_id') : $batch?->production_type_id,
+                $this->input('model_name', $batch?->model_name),
+            ) as $champ => $message) {
+                $validator->errors()->add($champ, $message);
+            }
+
             // Protocole : même espèce et même type (Protocol::convientA).
             $protocol = $this->filled('protocol_id') ? \App\Models\Protocol::find($this->input('protocol_id')) : null;
             if ($protocol && ! $protocol->convientA($targetType ?: $batch?->type, $species?->id)) {

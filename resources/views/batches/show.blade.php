@@ -5,7 +5,7 @@
 
         // Accessors du model (PAS de requêtes SQL ici)
         $batchAge = $batch->age;
-        $currentWeek = ceil($batchAge / 7);
+        $currentWeek = $batch->semaineDAge();
 
         // Stats de Ponte (une seule requête via collection eager-loaded)
         $prodToday = $batch->eggProductions->where('production_date', $today)->first();
@@ -35,15 +35,15 @@
         $prevWeight = $prevCheck ? ($prevCheck->avg_weight * 1000) : 0;
         $weightGain = ($currentWeight > 0 && $prevWeight > 0) ? ($currentWeight - $prevWeight) : 0;
 
-        // Normes (une seule requête, acceptable)
-        $norm = \App\Models\ProductionNorm::where('batch_type', $batch->type)
-                    ->where('week_number', $currentWeek)
-                    ->where('model_name', $batch->model_name)
-                    ->first();
+        // Cibles INTERPOLÉES sur la courbe du lot (ProductionNorm::cibleA), comme le
+        // conseiller affiché sur cette même page. La recherche à la semaine exacte
+        // rendait 0 entre deux paliers de la courbe : barre de poids verte quel
+        // que soit le poids.
+        $cible = \App\Models\ProductionNorm::cibleA($batch, $currentWeek);
 
         $currentPhase = $batch->current_phase;
-        $targetWeight = $norm->target_weight ?? 0;
-        $targetLayingRate = $norm->target_laying_rate ?? 0;
+        $targetWeight = $cible['weight'] ?? 0;
+        $targetLayingRate = $cible['laying'] ?? 0;
 
         // Ovins (pas de norme ProductionNorm) : cible de poids = poids de vente Tabaski.
         $tabaskiTarget = null;
