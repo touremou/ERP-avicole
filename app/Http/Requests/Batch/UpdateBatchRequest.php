@@ -49,7 +49,7 @@ class UpdateBatchRequest extends FormRequest
             'protocol_id'        => 'nullable|integer|exists:protocols,id',
             'allocated_surface'  => 'nullable|numeric|min:0.1',
             'buy_price_per_unit' => 'required|numeric|min:0',
-            'arrival_date'       => 'required|date',
+            'arrival_date'       => 'required|date|before_or_equal:today',
             'birth_date'       => 'nullable|date|before_or_equal:arrival_date',
             'status'             => ['required', Rule::in(Batch::EDITABLE_STATUSES)],
             'observations'       => 'nullable|string|max:2000',

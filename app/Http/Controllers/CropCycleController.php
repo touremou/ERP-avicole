@@ -477,7 +477,7 @@ class CropCycleController extends Controller
         }
 
         $validated = $request->validate([
-            'harvest_date' => 'required|date',
+            'harvest_date' => 'required|date|before_or_equal:today',
             'quantity' => 'required|numeric|min:0.001',
             'unit' => 'nullable|string|max:20',
             'net_weight_kg' => 'nullable|numeric|min:0',
@@ -516,7 +516,7 @@ class CropCycleController extends Controller
             'unit' => 'nullable|string|max:20',
             'unit_cost' => 'nullable|numeric|min:0',
             'total_cost' => 'nullable|numeric|min:0',
-            'input_date' => 'required|date',
+            'input_date' => 'required|date|before_or_equal:today',
             // Délai avant récolte (DAR) de la notice : bloque la récolte tant
             // qu'il court. Absent de la validation web jusqu'ici, il ne pouvait
             // donc pas être saisi au bureau — seul le mobile l'envoyait.
@@ -610,7 +610,7 @@ class CropCycleController extends Controller
         }
 
         $validated = $request->validate([
-            'harvest_date' => 'required|date',
+            'harvest_date' => 'required|date|before_or_equal:today',
             'quantity' => 'required|numeric|min:0.001',
             'unit' => 'nullable|string|max:20',
             'net_weight_kg' => 'nullable|numeric|min:0',
@@ -708,7 +708,7 @@ class CropCycleController extends Controller
             'unit' => 'nullable|string|max:20',
             'unit_cost' => 'nullable|numeric|min:0',
             'total_cost' => 'nullable|numeric|min:0',
-            'input_date' => 'required|date',
+            'input_date' => 'required|date|before_or_equal:today',
             /*
              * LE DÉLAI AVANT RÉCOLTE — LA PORTE QUI RESTAIT SOURDE.
              *

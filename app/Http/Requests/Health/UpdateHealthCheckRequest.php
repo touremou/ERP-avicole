@@ -23,10 +23,11 @@ class UpdateHealthCheckRequest extends FormRequest
     {
         return [
             'batch_id'            => ['required', 'exists:batches,id'],
-            // On retire 'before_or_equal:today' ici pour permettre de corriger
-            // la date d'une intervention très ancienne si besoin — mais jamais
-            // avant l'arrivée du lot (âge négatif incohérent).
-            'intervention_date'   => ['required', 'date', new AfterBatchArrival],
+            // Corriger la date d'une intervention ancienne reste possible ;
+            // la reporter dans le FUTUR ne l'est pas, pas plus qu'à la saisie
+            // (une intervention future n'a pas eu lieu : c'est un rappel du
+            // plan de prophylaxie). Jamais avant l'arrivée du lot non plus.
+            'intervention_date'   => ['required', 'date', 'before_or_equal:today', new AfterBatchArrival],
             'type'                => ['required', 'in:Vaccin,Traitement,Vitamine,Désinfection'],
             'product_name'        => ['required', 'string', 'max:255'],
             'batch_number'        => ['nullable', 'string', 'max:100'],

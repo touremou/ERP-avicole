@@ -28,7 +28,7 @@
                                 </div>
                                 <div class="space-y-2">
                                     <label class="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">{{ __("Date de réception *") }}</label>
-                                    <input type="date" name="reception_date" value="{{ old('reception_date', now()->toDateString()) }}" max="{{ now()->toDateString() }}" required class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black shadow-inner outline-none">
+                                    <input type="date" max="{{ today()->toDateString() }}" name="reception_date" value="{{ old('reception_date', now()->toDateString()) }}" max="{{ now()->toDateString() }}" required class="w-full bg-slate-50 border-none rounded-2xl p-4 text-xs font-black shadow-inner outline-none">
                                 </div>
                             </div>
 

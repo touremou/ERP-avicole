@@ -49,7 +49,7 @@
                     </div>
                     <div>
                         <label class="block text-[9px] font-black text-slate-400 uppercase ml-2 mb-1 italic">{{ __("Date d'application *") }}</label>
-                        <input type="date" name="input_date" value="{{ old('input_date', now()->toDateString()) }}" required class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic">
+                        <input type="date" max="{{ today()->toDateString() }}" name="input_date" value="{{ old('input_date', now()->toDateString()) }}" required class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic">
                     </div>
                     {{-- DÉLAI AVANT RÉCOLTE (DAR) — mis en avant dès qu'il s'agit d'un
                          produit phytosanitaire : c'est lui qui bloquera la récolte

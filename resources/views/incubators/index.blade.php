@@ -147,7 +147,7 @@
                                         @csrf
                                         <div class="space-y-2">
                                             <label class="text-[9px] font-black text-slate-400 uppercase italic ml-2">{{ __("Date d'intervention") }}</label>
-                                            <input type="date" name="maintenance_date" value="{{ date('Y-m-d') }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black italic text-sm outline-none shadow-inner">
+                                            <input type="date" max="{{ today()->toDateString() }}" name="maintenance_date" value="{{ date('Y-m-d') }}" class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black italic text-sm outline-none shadow-inner">
                                         </div>
 
                                         <div class="space-y-2">

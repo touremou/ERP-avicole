@@ -190,7 +190,7 @@ class DispatchController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'reception_date'              => 'required|date',
+            'reception_date'              => 'required|date|before_or_equal:today',
             'reception_time'              => 'nullable|date_format:H:i',
             'notes'                       => 'nullable|string|max:1000',
             'items'                       => 'required|array|min:1',

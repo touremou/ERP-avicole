@@ -72,7 +72,7 @@
                     <div class="grid grid-cols-2 gap-6">
                         <div>
                             <label class="text-[10px] uppercase text-slate-400 ml-2">{{ __("Date d'achat") }}</label>
-                            <input type="date" name="purchase_date" value="{{ old('purchase_date', optional($source->purchase_date)->toDateString()) }}" class="w-full bg-white border-none rounded-2xl p-4 text-sm shadow-sm outline-none">
+                            <input type="date" max="{{ today()->toDateString() }}" name="purchase_date" value="{{ old('purchase_date', optional($source->purchase_date)->toDateString()) }}" class="w-full bg-white border-none rounded-2xl p-4 text-sm shadow-sm outline-none">
                         </div>
                         <div>
                             <label class="text-[10px] uppercase text-slate-400 ml-2">{{ __("Prix d'achat") }} ({{ currency() }})</label>

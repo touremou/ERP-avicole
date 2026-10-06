@@ -111,7 +111,7 @@
 
                     <div>
                         <label class="block text-[9px] font-black text-amber-500 uppercase ml-2 mb-1 italic">{{ __("Échéance de détention") }}</label>
-                        <input type="date" name="hold_until" value="{{ old('hold_until') }}"
+                        <input type="date" min="{{ today()->addDay()->toDateString() }}" name="hold_until" value="{{ old('hold_until') }}"
                                class="w-full bg-amber-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic">
                         <p class="text-[8px] font-bold text-slate-400 uppercase ml-2 mt-1 italic">{{ __("Au-delà : vendre ou déclasser. Sans date, le lot se garde jusqu'au rebut") }}</p>
                     </div>

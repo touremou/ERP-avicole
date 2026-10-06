@@ -240,6 +240,7 @@ export function NewBatchScreen() {
         id="arrival"
         type="date"
         value={arrivalDate}
+        max={new Date().toISOString().slice(0, 10)}
         onChange={(e) => {
           setArrivalDate(e.target.value)
           if (!birthTouched) setBirthDate(e.target.value)

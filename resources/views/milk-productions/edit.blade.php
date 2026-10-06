@@ -21,7 +21,7 @@
                 <div class="bg-white p-10 rounded-[3rem] shadow-sm border border-slate-100 space-y-8">
                     <div>
                         <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-1 italic">{{ __("Date de collecte *") }}</label>
-                        <input type="date" name="production_date" value="{{ old('production_date', $milk->production_date->toDateString()) }}" max="{{ now()->toDateString() }}" required
+                        <input type="date" max="{{ today()->toDateString() }}" name="production_date" value="{{ old('production_date', $milk->production_date->toDateString()) }}" max="{{ now()->toDateString() }}" required
                                class="w-full p-4 bg-slate-50 rounded-2xl border-none font-black text-slate-700 shadow-inner italic outline-none">
                     </div>
 

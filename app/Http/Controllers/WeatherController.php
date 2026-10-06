@@ -65,7 +65,7 @@ class WeatherController extends Controller
 
         $validated = $request->validate([
             'plot_id'         => 'nullable|exists:plots,id',
-            'reading_date'    => 'required|date',
+            'reading_date'    => 'required|date|before_or_equal:today',
             'temperature_min' => 'nullable|numeric|min:-10|max:60',
             'temperature_max' => 'nullable|numeric|min:-10|max:60',
             'humidity_pct'    => 'nullable|numeric|min:0|max:100',
@@ -133,7 +133,7 @@ class WeatherController extends Controller
 
         $validated = $request->validate([
             'plot_id'         => 'nullable|exists:plots,id',
-            'reading_date'    => 'required|date',
+            'reading_date'    => 'required|date|before_or_equal:today',
             'temperature_min' => 'nullable|numeric|min:-10|max:60',
             'temperature_max' => 'nullable|numeric|min:-10|max:60',
             'humidity_pct'    => 'nullable|numeric|min:0|max:100',

@@ -171,7 +171,7 @@
 
                                 <div>
                                     <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 italic leading-none">{{ __("Date d'arrivée") }}</label>
-                                    <input type="date" name="arrival_date" id="arrival_date" value="{{ old('arrival_date', date('Y-m-d')) }}" required
+                                    <input type="date" max="{{ today()->toDateString() }}" name="arrival_date" id="arrival_date" value="{{ old('arrival_date', date('Y-m-d')) }}" required
                                            class="w-full p-5 bg-slate-50 rounded-2xl border-none font-black text-slate-700 shadow-inner italic leading-none">
                                 </div>
 
@@ -185,7 +185,7 @@
                                      poussin d'un jour ne demande aucune réflexion. --}}
                                 <div>
                                     <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 italic leading-none">{{ __("Date de naissance / éclosion") }}</label>
-                                    <input type="date" name="birth_date" id="birth_date" value="{{ old('birth_date', date('Y-m-d')) }}"
+                                    <input type="date" max="{{ today()->toDateString() }}" name="birth_date" id="birth_date" value="{{ old('birth_date', date('Y-m-d')) }}"
                                            class="w-full p-5 bg-slate-50 rounded-2xl border-none font-black text-slate-700 shadow-inner italic leading-none">
                                     <p class="text-[9px] text-slate-400 uppercase italic font-black mt-2 ml-1 leading-snug">
                                         {{ __("Sur le bon du couvoir. Laisser égale à l'arrivée pour des sujets d'un jour.") }}
@@ -673,11 +673,20 @@
             const naissance = document.getElementById('birth_date');
             if (!arrivee || !naissance) return;
 
+            // Né au plus tard le jour de son arrivée : le calendrier n'offre
+            // pas de date de naissance postérieure (même règle que le serveur).
+            const borner = () => {
+                naissance.max = arrivee.value || arrivee.max;
+                if (naissance.value && arrivee.value && naissance.value > arrivee.value) naissance.value = arrivee.value;
+            };
+
             let touchee = false;
             naissance.addEventListener('input', () => { touchee = true; });
             arrivee.addEventListener('input', () => {
                 if (!touchee) naissance.value = arrivee.value;
+                borner();
             });
+            borner();
         })();
     </script>
 </x-app-layout>

@@ -54,7 +54,7 @@
 
                             <div>
                                 <label class="block text-[10px] font-black text-slate-400 uppercase mb-3 ml-2 italic tracking-widest leading-none">{{ __("Date de l'acte effectif") }}</label>
-                                <input type="date" name="intervention_date" value="{{ old('intervention_date', $health->intervention_date->format('Y-m-d')) }}" required
+                                <input type="date" max="{{ today()->toDateString() }}" name="intervention_date" value="{{ old('intervention_date', $health->intervention_date->format('Y-m-d')) }}" required
                                        class="w-full p-5 bg-slate-50 rounded-2xl border-none font-black text-slate-700 shadow-inner italic focus:ring-4 focus:ring-blue-500/10 transition">
                             </div>
                         </div>
