@@ -16,9 +16,10 @@ class UpdateStockAction
             $unit = $data['unit'];
             $alertThreshold = (float) $data['alert_threshold'];
 
+            // Au poids de sac réglé, comme à la création (cf. CreateStockAction).
             if ($unit === 'Sac' && $stock->category === Stock::CAT_CONSO) {
-                $newQuantity *= 50;
-                $alertThreshold *= 50;
+                $newQuantity = \App\Services\UnitConverter::sacksToKg($newQuantity);
+                $alertThreshold = \App\Services\UnitConverter::sacksToKg($alertThreshold);
                 $unit = 'KG';
             }
 

@@ -210,7 +210,10 @@
                         <div>
                             <h4 class="text-[10px] font-black uppercase text-slate-800 tracking-widest mb-1 italic">{{ __("Dernière désinfection") }}</h4>
                             <p class="text-xs font-bold text-slate-500 italic m-0">
-                                {{ $building->updated_at->format('d/m/Y') }} — {{ __("État certifié conforme pour l'entrée d'un nouveau lot après vide sanitaire de 14 jours.") }}
+                                {{-- La VRAIE date de désinfection et la VRAIE durée du vide
+                                     (Building::sanitaryBreakDays) — et non la dernière
+                                     modification de la fiche et « 14 jours » écrits en dur. --}}
+                                {{ $building->disinfection_started_at?->format('d/m/Y') ?? '—' }} — {{ __("Entrée d'un nouveau lot possible après un vide sanitaire de :n jours.", ['n' => \App\Models\Building::sanitaryBreakDays()]) }}
                             </p>
                         </div>
                     </div>

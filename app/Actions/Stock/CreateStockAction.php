@@ -15,11 +15,14 @@ class CreateStockAction
             $quantity = $data['current_quantity'] ?? 0;
             $alertThreshold = $data['alert_threshold'];
 
-            // Règle métier : Conversion Sac -> KG
+            // Règle métier : Conversion Sac -> KG, au poids de sac RÉGLÉ
+            // (UnitConverter::bagWeight) — et non 50 kg en dur : avec des sacs
+            // de 25 kg, « 10 sacs » entraient 500 kg, que la fiche de stock
+            // affichait ensuite comme 20 sacs.
             if ($unit === 'Sac' && $data['category'] === Stock::CAT_CONSO) {
-                $quantity *= 50;
-                $alertThreshold *= 50;
-                $unit = 'KG'; 
+                $quantity = \App\Services\UnitConverter::sacksToKg((float) $quantity);
+                $alertThreshold = \App\Services\UnitConverter::sacksToKg((float) $alertThreshold);
+                $unit = 'KG';
             }
 
             // Le prix saisi initialise AUSSI le coût moyen pondéré (last_unit_price) :

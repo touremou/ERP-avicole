@@ -248,7 +248,25 @@ class Sale extends Model
      */
     public function recalculateTotals(): void
     {
-        $subtotal = round((float) $this->items()->sum('total'), 2);
+        $totaux = $this->totauxPour((float) $this->items()->sum('total'));
+
+        $this->update($totaux);
+    }
+
+    /**
+     * LES TOTAUX D'UNE VENTE, pour un sous-total donné — UNE formule.
+     *
+     * Lue par la vente enregistrée (recalculateTotals) ET par le contrôle de
+     * plafond crédit À LA CRÉATION (totalProjete). Ce contrôle-là sommait les
+     * seules lignes, sans TVA, remise, livraison ni arrondi : une facture à 18 %
+     * passait en brouillon puis butait sur le plafond à la validation, et une
+     * vente remisée était refusée à tort à la création.
+     *
+     * @return array{subtotal: float, discount_amount: float, tax_amount: float, total_amount: float, rounding_adjustment: float}
+     */
+    public function totauxPour(float $subtotal): array
+    {
+        $subtotal = round($subtotal, 2);
 
         // Remise globale appliquée au sous-total (jamais > sous-total).
         $discount = $this->computeDiscount($subtotal);
@@ -268,13 +286,34 @@ class Sale extends Model
         // plus d'écart ni de dette fantôme entre la vente et l'encaissement.
         $total = cash_round($rawTotal);
 
-        $this->update([
+        return [
             'subtotal'            => $subtotal,
             'discount_amount'     => $discount,
             'tax_amount'          => $taxAmount,
             'total_amount'        => $total,
             'rounding_adjustment' => round($total - $rawTotal, 2),
+        ];
+    }
+
+    /**
+     * Total payable qu'aura une vente À CRÉER (données de CreateSale), avant
+     * même qu'elle existe — mêmes champs que CreateSale, même formule
+     * (totauxPour).
+     */
+    public static function totalProjete(array $data): float
+    {
+        $projet = new static([
+            'discount_type'  => $data['discount_type'] ?? 'none',
+            'discount_value' => $data['discount_value'] ?? 0,
+            'tax_rate'       => $data['tax_rate'] ?? 0,
+            'delivery_fee'   => ($data['delivery_mode'] ?? 'sur_place') === 'livraison'
+                ? max(0, (float) ($data['delivery_fee'] ?? 0)) : 0,
         ]);
+
+        $subtotal = collect($data['items'] ?? [])
+            ->sum(fn ($i) => round((float) ($i['quantity'] ?? 0) * (float) ($i['unit_price'] ?? 0), 2));
+
+        return $projet->totauxPour((float) $subtotal)['total_amount'];
     }
 
     /** Libellé humain du type de document (facture / BL / ticket comptant). */

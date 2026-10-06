@@ -5005,5 +5005,9 @@
     "Ce protocole de prophylaxie ne correspond pas à l'espèce ou au type d'élevage choisi.": "This prophylaxis protocol does not match the selected species or production type.",
     "Durée de cycle de la souche mise à jour.": "Strain cycle length updated.",
     "Durée de cycle (jours)": "Cycle length (days)",
-    "du type": "from type"
+    "du type": "from type",
+    "Les poussins doivent être commandés au moins :n jours avant l'arrivée prévue.": "Chicks must be ordered at least :n days before the planned arrival.",
+    "Cumul > :pct%": "Cumulative > :pct%",
+    "Entrée d'un nouveau lot possible après un vide sanitaire de :n jours.": "A new batch can enter after a :n-day sanitary break.",
+    "Résumé quotidien (:h)": "Daily summary (:h)"
 }

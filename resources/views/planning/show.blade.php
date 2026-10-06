@@ -107,7 +107,7 @@
                         <i class="fa-solid fa-forward-step"></i> {{ __("Prochaine étape") }}
                     </h3>
                     <p class="text-[9px] text-blue-700 mb-6 normal-case">
-                        {{ __("Les poussins doivent être commandés au moins 8 semaines avant l'arrivée prévue.") }}
+                        {{ __("Les poussins doivent être commandés au moins :n jours avant l'arrivée prévue.", ['n' => (int) setting('planning.order_lead_days', \App\Models\PlannedBatch::CHICK_ORDER_LEAD_DAYS)]) }}
                         @if($plan->is_overdue)
                             <span class="text-red-600 font-black"> ⚠ {{ __("La date de commande est dépassée de") }} {{ $plan->chick_order_deadline->diffInDays(now()) }} {{ __("jours !") }}</span>
                         @else

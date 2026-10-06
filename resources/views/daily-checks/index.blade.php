@@ -55,8 +55,9 @@
                             <td class="px-8 py-6 text-center">
                                 <span @class([
                                     'text-lg font-black italic',
-                                    'text-red-600 animate-pulse' => $check->mortality > ($check->batch->current_quantity * 0.01),
-                                    'text-slate-800' => $check->mortality > 0 && $check->mortality <= ($check->batch->current_quantity * 0.01),
+                                    {{-- La règle de l'alerte (DailyCheck::depasseLeSeuilDeMortalite), et non 1 % en dur. --}}
+                                    'text-red-600 animate-pulse' => $check->depasseLeSeuilDeMortalite(),
+                                    'text-slate-800' => $check->mortality > 0 && ! $check->depasseLeSeuilDeMortalite(),
                                     'text-slate-300' => $check->mortality == 0
                                 ])>
                                     {{ $check->mortality }}

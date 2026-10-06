@@ -10,15 +10,23 @@ import { useNavigate } from 'react-router-dom'
 import { db } from '../../offline/db'
 import { enqueue } from '../../offline/sync'
 import { lastPayloadOf } from '../../offline/prefill'
+import { useAuth } from '../../app/AuthContext'
 import { NumberStepper } from '../../ui/NumberStepper'
 import { t } from '../../i18n'
 import type { RefEmployee, RefFormula, RefMillMachine } from '../../api/types'
 
-/** Miroir de UnitConverter::sacksToKg (1 sac = 50 kg). */
-const KG_PER_BAG = 50
+/**
+ * Poids d'un sac : celui RÉGLÉ au serveur (UnitConverter::bagWeight, servi par
+ * /auth/me). Il était écrit en dur à 50 kg : avec des sacs de 25 kg, l'écran
+ * annonçait 1 000 kg planifiés pour un ordre enregistré à 500 kg.
+ * 50 kg seulement en repli, pour un serveur plus ancien.
+ */
+const KG_PER_BAG_REPLI = 50
 
 export function MillStartScreen() {
   const navigate = useNavigate()
+  const { me } = useAuth()
+  const kgPerBag = Number(me?.settings?.feed_bag_weight) || KG_PER_BAG_REPLI
 
   const [formulas, setFormulas] = useState<RefFormula[]>([])
   const [machines, setMachines] = useState<RefMillMachine[]>([])
@@ -50,7 +58,7 @@ export function MillStartScreen() {
     setMachineIds((prev) => (prev.includes(id) ? prev.filter((m) => m !== id) : [...prev, id]))
   }
 
-  const totalKg = nbBags * KG_PER_BAG
+  const totalKg = nbBags * kgPerBag
   const canSubmit = Boolean(formulaId) && Boolean(supervisorId) && machineIds.length > 0 && nbBags > 0
 
   async function onSubmit(event: FormEvent) {
