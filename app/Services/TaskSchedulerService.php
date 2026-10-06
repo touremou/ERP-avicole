@@ -63,11 +63,15 @@ class TaskSchedulerService
 
                 if ($tpl->per_building) {
                     foreach ($activeBuildings as $building) {
-                        if ($tpl->batch_types) {
+                        if ($tpl->batch_types || $tpl->species_families) {
+                            // Type de production ET famille d'espèce : « reproducteur »
+                            // vaut pour la poule comme pour le bélier — l'œuf à
+                            // retourner ne concerne que la première.
                             $hasBatchType = Batch::where('building_id', $building->id)
                                 ->active()
                                 ->live()
-                                ->whereHas('productionType', fn ($q) => $q->whereIn('slug', $tpl->batch_types))
+                                ->when($tpl->batch_types, fn ($q) => $q->whereHas('productionType', fn ($p) => $p->whereIn('slug', $tpl->batch_types)))
+                                ->when($tpl->species_families, fn ($q) => $q->whereHas('species', fn ($s) => $s->whereIn('family', $tpl->species_families)))
                                 ->exists();
                             if (! $hasBatchType) continue;
                         }

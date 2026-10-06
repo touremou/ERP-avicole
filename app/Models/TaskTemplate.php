@@ -18,7 +18,7 @@ class TaskTemplate extends Model
     protected $fillable = [
         'farm_id', 'name', 'category', 'description', 'icon', 'color',
         'frequency', 'days_of_week', 'day_of_month', 'months', 'scheduled_time',
-        'duration_minutes', 'target_type', 'per_building', 'batch_types',
+        'duration_minutes', 'target_type', 'per_building', 'batch_types', 'species_families',
         'plot_types', 'priority', 'is_active', 'is_pool',
         'proof_type', 'proof_label', 'proof_unit',
     ];
@@ -27,6 +27,7 @@ class TaskTemplate extends Model
         'days_of_week'  => 'array',
         'months'        => 'array',
         'batch_types'   => 'array',
+        'species_families' => 'array',   // familles d'espèces visées (vide = toutes)
         'plot_types'    => 'array',
         'per_building'  => 'boolean',
         'is_active'     => 'boolean',
