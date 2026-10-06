@@ -109,7 +109,15 @@ test('un client créé à la CAISSE reçoit le plafond de crédit par défaut', 
 test('la liste colore en rouge exactement les pointages qui déclenchent l’alerte', function () {
     Setting::set('elevage.daily_mortality_alert_pct', 0.5);
     Setting::set('elevage.daily_mortality_alert_min', 3);
-    $bande = Batch::factory()->create(['current_quantity' => 1000, 'initial_quantity' => 1000]);
+    // Bande DÉTERMINÉE : poulet de chair de 20 jours (phase croissance, seuil
+    // 0,5 %). Le seuil dépend de la phase : une bande au type et à l'âge tirés
+    // au hasard (démarrage ≤ J7 : seuil 1,0 %) rendait ce test aléatoire.
+    $bande = Batch::factory()->create([
+        'current_quantity' => 1000, 'initial_quantity' => 1000,
+        'production_type_id' => \App\Models\ProductionType::resolveOrCreate('chair', null)->id,
+        'arrival_date' => now()->subDays(20), 'birth_date' => null,
+    ]);
+    Setting::set('elevage.mortality_pct_chair_croissance', 0.5);
 
     // 8 morts sur 1 000 = 0,8 % : alerte (≥ 0,5 %), et la liste disait « normal » (< 1 %).
     $pic = new DailyCheck(['batch_id' => $bande->id, 'mortality' => 8, 'check_date' => now()]);
