@@ -123,14 +123,22 @@
                     <p class="text-[8px] text-slate-400">{{ __(":days derniers jours", ['days' => setting('abattoir.kpi_days', 30)]) }}</p>
                 </div>
 
-                {{-- ⚙️ PARAMÉTRAGE DYNAMIQUE : Seuils Rendement --}}
-                <div @class(['p-5 rounded-[2rem] border shadow-sm text-center',
-                    'bg-emerald-50 border-emerald-200' => $kpi['avg_yield'] >= setting('abattoir.yield_target_min', 70),
-                    'bg-amber-50 border-amber-200' => $kpi['avg_yield'] >= setting('abattoir.yield_alert_min', 65) && $kpi['avg_yield'] < setting('abattoir.yield_target_min', 70),
-                    'bg-red-50 border-red-200' => $kpi['avg_yield'] < setting('abattoir.yield_alert_min', 65)])>
-                    <p class="text-[8px] font-black uppercase tracking-widest mb-1 {{ $kpi['avg_yield'] >= setting('abattoir.yield_target_min', 70) ? 'text-emerald-500' : 'text-amber-500' }}">{{ __("Rendement carcasse") }}</p>
-                    <p class="text-2xl font-black {{ $kpi['avg_yield'] >= setting('abattoir.yield_target_min', 70) ? 'text-emerald-600' : 'text-amber-600' }}">{{ $kpi['avg_yield'] }}%</p>
-                    <p class="text-[8px] text-slate-400">{{ __("norme") }} : {{ setting('abattoir.yield_target_min', 70) }}-{{ setting('abattoir.yield_target_max', 75) }}%</p>
+                {{-- Rendement carcasse PAR FAMILLE, chacune sur SES bornes
+                     (SlaughterService::rendementParFamille). La moyenne toutes
+                     espèces, jugée sur les bornes volaille, mettait au rouge des
+                     ovins à 48 % — un rendement normal pour eux. --}}
+                @php $rendements = $kpi['yield_by_family'] ?: ['volaille' => ['label' => __('Volaille'), 'avg' => 0, 'count' => 0, 'target_min' => (int) setting('abattoir.yield_target_min', 70), 'target_max' => (int) setting('abattoir.yield_target_max', 75), 'alert_min' => (int) setting('abattoir.yield_alert_min', 65), 'status' => 'alerte']]; @endphp
+                <div class="p-5 rounded-[2rem] border border-slate-100 shadow-sm text-center bg-white space-y-2">
+                    <p class="text-[8px] font-black uppercase tracking-widest mb-1 text-slate-400">{{ __("Rendement carcasse") }}</p>
+                    @foreach($rendements as $r)
+                        <div @class(['rounded-xl px-2 py-1',
+                            'bg-emerald-50 text-emerald-600' => $r['status'] === 'ok',
+                            'bg-amber-50 text-amber-600' => $r['status'] === 'attention',
+                            'bg-red-50 text-red-600' => $r['status'] === 'alerte'])>
+                            <p class="text-xl font-black">{{ $r['avg'] }}%</p>
+                            <p class="text-[8px] text-slate-500">{{ $r['label'] }} — {{ __("norme") }} : {{ $r['target_min'] }}-{{ $r['target_max'] }}%</p>
+                        </div>
+                    @endforeach
                 </div>
 
                 <div class="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm text-center">

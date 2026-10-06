@@ -728,6 +728,11 @@ export interface RefSlaughterOrder {
   requested_by: number | null
   executed_by: number | null
   updated_at: string
+  /**
+   * Morceaux de découpe de l'ESPÈCE abattue (SlaughterOrder::getCutsAttribute).
+   * Absent d'un serveur plus ancien : repli sur les morceaux de volaille.
+   */
+  cuts?: { code: string; label: string; destination: string; default: boolean }[]
 }
 
 /** Éleveurs livreurs pour la réception du vif (CCP 1). */

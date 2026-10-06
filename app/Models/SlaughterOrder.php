@@ -57,6 +57,23 @@ class SlaughterOrder extends Model
     public const CLOSURE_CONFIRMATIONS = ['waste_evacuated', 'zone_cleaned', 'marche_avant'];
 
     public function batch(): BelongsTo { return $this->belongsTo(Batch::class); }
+
+    /**
+     * Morceaux de découpe proposés pour cet ordre — ceux de l'ESPÈCE du lot
+     * (ButcheryNomenclature::effectiveCutsForSpecies, comme l'écran du bureau).
+     * Servis au terrain, qui n'a pas la nomenclature.
+     *
+     * @return array<int, array{code: string, label: string, destination: string, default: bool}>
+     */
+    public function getCutsAttribute(): array
+    {
+        return collect(\App\Services\ButcheryNomenclature::effectiveCutsForSpecies($this->batch?->species))
+            ->map(fn ($c) => [
+                'code' => $c['code'], 'label' => $c['label'],
+                'destination' => $c['destination'], 'default' => (bool) ($c['default'] ?? false),
+            ])
+            ->values()->all();
+    }
     public function client(): BelongsTo { return $this->belongsTo(Client::class); }
     public function requester(): BelongsTo { return $this->belongsTo(User::class, 'requested_by'); }
     public function executor(): BelongsTo { return $this->belongsTo(User::class, 'executed_by'); }
