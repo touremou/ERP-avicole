@@ -83,6 +83,11 @@ class TransferBatchRequest extends FormRequest
                 return;
             }
 
+            // Nouvelle souche éventuelle : de l'espèce de la bande (BatchIdentity).
+            foreach (\App\Support\BatchIdentity::erreurs($batch->species_id, null, $this->input('model_name')) as $champ => $message) {
+                $validator->errors()->add($champ, $message);
+            }
+
             // Protocole de la nouvelle phase : de la MÊME ESPÈCE que la bande
             // (Protocol::convientA ; la phase n'est pas toujours un type de
             // production, seul l'espèce est donc vérifiée ici).

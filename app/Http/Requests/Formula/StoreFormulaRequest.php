@@ -39,6 +39,16 @@ class StoreFormulaRequest extends FormRequest
     public function withValidator($validator): void
     {
         $validator->after(function ($validator) {
+            // Le type de production appartient à l'espèce choisie (BatchIdentity) :
+            // une formule « poulet » ne peut pas porter le type « Dinde de chair ».
+            foreach (\App\Support\BatchIdentity::erreurs(
+                $this->filled('species_id') ? (int) $this->input('species_id') : null,
+                $this->filled('production_type_id') ? (int) $this->input('production_type_id') : null,
+                null,
+            ) as $champ => $message) {
+                $validator->errors()->add($champ, $message);
+            }
+
             $ingredients = $this->input('ingredients', []);
             $total = collect($ingredients)
                 ->filter(fn($i) => isset($i['percentage']) && $i['percentage'] !== '' && $i['percentage'] !== null)

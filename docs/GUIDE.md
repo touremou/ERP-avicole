@@ -424,6 +424,13 @@ planifiés par espèce) et **tâches opérationnelles** générées chaque matin
 depuis des templates (vaccinations, pesées, nettoyages…), assignables aux
 employés.
 
+**Cohérence d'une bande.** Le serveur refuse — au bureau comme au terrain —
+un type de production ou une souche d'une **autre espèce** que la bande (un
+poulet avec le type « Dinde de chair » ou la souche « Dinde BUT 6 »), et, au
+pointage, un **aliment standard d'un autre secteur** (« Ponte 1 » pour des
+poulets de chair) ; un aliment au nom libre reste accepté. La mise en lot du
+terrain enregistre le **type de production exact** choisi (donc l'espèce).
+
 **Durée de cycle.** La fin d'une bande (abattage, réforme, transfert) suit la
 durée **propre à sa souche** quand elle en a une, sinon celle de son type de
 production. Livrées : poulet local Cou Nu 112 jours, dinde BUT 6 140 jours ;

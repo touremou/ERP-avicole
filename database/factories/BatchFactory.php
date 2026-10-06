@@ -21,11 +21,14 @@ class BatchFactory extends Factory
         return [
             'uuid'                   => (string) Str::uuid(),
             'code'                   => 'LOT-' . fake()->unique()->numerify('####'),
-            'production_type_id'     => fn () => ProductionType::resolveOrCreate(
-                fake()->randomElement(['chair', 'ponte', 'reproducteur']),
-                null
-            )->id,
-            'model_name'             => fake()->randomElement(['Cobb500', 'Ross308', 'ISA Brown', 'Lohmann']),
+            // Une bande COHÉRENTE par défaut : poulet de chair, souche de chair.
+            // Le type était tiré au hasard (chair/ponte/reproducteur) avec une
+            // souche au hasard (dont des pondeuses) : un test qui pointait de
+            // l'aliment « Chair » passait ou échouait selon le tirage, et le lot
+            // n'avait aucune cohérence espèce/type/souche. Un test qui veut une
+            // autre production la demande explicitement.
+            'production_type_id'     => fn () => ProductionType::resolveOrCreate('chair', null)->id,
+            'model_name'             => 'Ross308',
             'building_id'            => Building::factory(),
             'employee_id'            => Employee::factory(),
             'provider_id'            => Provider::factory(),

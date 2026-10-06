@@ -828,6 +828,27 @@ class Batch extends Model
     }
 
     /**
+     * CET ALIMENT CONVIENT-IL À CETTE BANDE ? — lu par le pointage du bureau ET
+     * par la synchronisation terrain.
+     *
+     * Un nom de phase STANDARD d'un autre secteur est refusé : « Ponte 1 (Pic
+     * de ponte) » était accepté pour un lot de poulets de chair, et sortait du
+     * stock de pondeuses. Un nom LIBRE (aliment maison, provende achetée sous
+     * sa marque) reste accepté — le terrain choisit parmi tout le stock.
+     */
+    public function accepteAliment(?string $feedType): bool
+    {
+        $feedType = trim((string) $feedType);
+        if ($feedType === '') {
+            return true;
+        }
+
+        $phaseStandard = collect(self::FEED_PHASES)->flatten()->contains($feedType);
+
+        return ! $phaseStandard || in_array($feedType, $this->feedPhases(), true);
+    }
+
+    /**
      * Phase d'aliment à présélectionner dans le Daily Check selon l'âge du lot.
      *
      * Secteurs de croissance (Chair, Engraissement, Grossissement, Alevinage) :

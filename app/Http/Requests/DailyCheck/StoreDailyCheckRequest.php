@@ -118,6 +118,10 @@ class StoreDailyCheckRequest extends FormRequest
     {
         $validator->after(function ($validator) {
             $batch = Batch::find($this->input('batch_id'));
+
+            if ($batch && ! $batch->accepteAliment($this->input('feed_type'))) {
+                $validator->errors()->add('feed_type', __("Cet aliment est destiné à un autre type d'élevage que ce lot."));
+            }
             if (! $batch) {
                 return;
             }
