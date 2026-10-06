@@ -354,7 +354,10 @@ class PosController extends Controller
             'category'  => $data['category'] ?? 'detaillant',
             'type'      => $data['type'] ?? 'particulier',
             'status'    => 'actif',
-            'credit_limit' => 0,
+            // Le plafond PAR DÉFAUT réglé (ventes.credit_limit_default), comme le
+            // formulaire du bureau le pré-remplit. 0 vaut « sans plafond » : un
+            // client créé à la caisse pouvait ensuite prendre du crédit sans limite.
+            'credit_limit' => (float) setting('ventes.credit_limit_default', 0),
             'balance'      => 0,
         ]);
 

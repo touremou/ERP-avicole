@@ -48,6 +48,10 @@ export interface MeResponse {
     currency?: string
     /** Coupure de caisse (0 = pas d'arrondi). Cf. cash_round() côté serveur. */
     cash_rounding?: number
+    /** Poids d'un sac d'aliment, kg (UnitConverter::bagWeight). */
+    feed_bag_weight?: number
+    /** Seuil d'alerte de mortalité cumulée, % (Batch::cumulativeMortalityThreshold). */
+    cumulative_mortality_alert_pct?: number
     /**
      * Catégories de tâche, SERVIES par le serveur (TaskTemplate::CATEGORIES).
      *

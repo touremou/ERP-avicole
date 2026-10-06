@@ -92,6 +92,12 @@ class AuthController extends Controller
         return [
             'currency'      => (string) setting('general.currency', 'GNF'),
             'cash_rounding' => (int) setting('ventes.cash_rounding', 0),
+            // Poids d'un sac d'aliment (UnitConverter::bagWeight) : l'écran
+            // provenderie comptait 50 kg en dur, le serveur le réglage.
+            'feed_bag_weight' => \App\Services\UnitConverter::bagWeight(),
+            // Seuil d'alerte de mortalité CUMULÉE (Batch::cumulativeMortalityThreshold) :
+            // l'historique de bande surlignait au-delà de 5 % en dur.
+            'cumulative_mortality_alert_pct' => \App\Models\Batch::cumulativeMortalityThreshold(),
 
             // CATÉGORIES DE TÂCHE — servies, pas dupliquées.
             //

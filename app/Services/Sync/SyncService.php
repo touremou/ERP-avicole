@@ -1193,8 +1193,8 @@ class SyncService
             // plafond — sinon un simple rejeu réseau la ferait « échouer » après
             // coup.
             $client = \App\Models\Client::find($validated['client_id']);
-            $newCredit = collect($validated['items'])->sum(fn ($i) => $i['quantity'] * $i['unit_price'])
-                - ($validated['immediate_payment'] ?? 0);
+            // Le total que la vente PORTERA (Sale::totalProjete), comme la validation.
+            $newCredit = Sale::totalProjete($validated) - (float) ($validated['immediate_payment'] ?? 0);
 
             if ($client && $raison = $client->creditRefusalReason((float) $newCredit)) {
                 return $this->invalid(['client_id' => [$raison]]);

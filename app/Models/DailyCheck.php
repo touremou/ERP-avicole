@@ -345,31 +345,48 @@ class DailyCheck extends Model
      * décès isolé. L'envoi est isolé (rescue) : une panne de notification ne
      * casse jamais la saisie du pointage.
      */
+    /**
+     * CE POINTAGE DÉPASSE-T-IL LE SEUIL DE MORTALITÉ QUOTIDIENNE ? — UNE règle.
+     *
+     * Lue par l'alerte (checkDailyMortalitySpike) ET par la liste des
+     * pointages, qui colorait en rouge au-delà de 1 % de l'effectif courant :
+     * l'alerte partait à 0,8 % pendant que la liste affichait la journée en
+     * noir — l'alerte paraissait fausse.
+     *
+     * Double garde : un MINIMUM de morts (elevage.daily_mortality_alert_min)
+     * ET un taux quotidien au-delà du seuil de la phase du lot.
+     */
+    public function depasseLeSeuilDeMortalite(?Batch $batch = null): bool
+    {
+        $deaths = (int) $this->mortality;
+        if ($deaths <= 0 || $deaths < (int) setting('elevage.daily_mortality_alert_min', 3)) {
+            return false;
+        }
+
+        $batch ??= $this->batch;
+        if (! $batch) {
+            return false;
+        }
+
+        // Taux et seuil viennent du lot : une seule mesure, un seul seuil — et
+        // celui-ci dépend de la PHASE, car 0,8 %/jour est normal à J3 sur des
+        // poussins de chair et alarmant en finition.
+        return $batch->dailyMortalityRate($this) >= $batch->dailyMortalityThreshold();
+    }
+
     protected static function checkDailyMortalitySpike(self $check): void
     {
-        $deaths = (int) $check->mortality;
-        if ($deaths <= 0) {
-            return;
-        }
-
-        $minDeaths = (int) setting('elevage.daily_mortality_alert_min', 3);
-        if ($deaths < $minDeaths) {
-            return;
-        }
-
         $batch = Batch::with('building')->find($check->batch_id);
         if (! $batch || $batch->status !== Batch::STATUS_ACTIF) {
             return;
         }
 
-        // Taux et seuil viennent du lot : une seule mesure, un seul seuil — et
-        // celui-ci dépend désormais de la PHASE, car 0,8 %/jour est normal à J3
-        // sur des poussins de chair et alarmant en finition.
-        $dailyRate = $batch->dailyMortalityRate($check);
-
-        if ($dailyRate < $batch->dailyMortalityThreshold()) {
+        if (! $check->depasseLeSeuilDeMortalite($batch)) {
             return;
         }
+
+        $deaths = (int) $check->mortality;
+        $dailyRate = $batch->dailyMortalityRate($check);
 
         rescue(
             fn () => app(\App\Services\NotificationHub::class)->alertDailyMortalitySpike($batch, $deaths, $dailyRate),

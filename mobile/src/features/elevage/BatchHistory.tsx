@@ -8,6 +8,7 @@ import { useEffect, useState } from 'react'
 import { api } from '../../api/client'
 import { getMeta, setMeta } from '../../offline/db'
 import { t } from '../../i18n'
+import { useAuth } from '../../app/AuthContext'
 import type { BatchHistoryResponse, BatchCheck } from '../../api/types'
 
 function nf(value: number): string {
@@ -45,6 +46,9 @@ function WeightSparkline({ checks }: { checks: BatchCheck[] }) {
 }
 
 export function BatchHistory({ batchId }: { batchId: number }) {
+  // Seuil RÉGLÉ au serveur (Batch::cumulativeMortalityThreshold), 5 % en repli.
+  const { me } = useAuth()
+  const seuilMortalite = Number(me?.settings?.cumulative_mortality_alert_pct) || 5
   const [data, setData] = useState<BatchHistoryResponse | null>(null)
   const [offline, setOffline] = useState(false)
   const cacheKey = `batch_history_${batchId}`
@@ -87,7 +91,7 @@ export function BatchHistory({ batchId }: { batchId: number }) {
           <div className="kpi"><div className="kpi-val">{b.latest_weight}</div><div className="kpi-lab">{t('Poids kg')}</div></div>
         )}
         <div className="kpi"><div className="kpi-val">{nf(b.total_mortality)}</div><div className="kpi-lab">{t('Morts cumul')}</div></div>
-        <div className={`kpi ${b.mortality_rate > 5 ? 'kpi--alert' : ''}`}><div className="kpi-val">{b.mortality_rate}%</div><div className="kpi-lab">{t('Taux mort.')}</div></div>
+        <div className={`kpi ${b.mortality_rate > seuilMortalite ? 'kpi--alert' : ''}`}><div className="kpi-val">{b.mortality_rate}%</div><div className="kpi-lab">{t('Taux mort.')}</div></div>
       </div>
 
       {data.checks.some((c) => c.weight != null) && (

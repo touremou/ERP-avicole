@@ -236,7 +236,7 @@
                                                 <a href="{{ route('batches.show', $batch->id) }}" 
                                                    class="flex items-center justify-between p-3 bg-white rounded-xl border border-amber-100 hover:border-amber-300 transition-all no-underline group">
                                                     <span class="text-[10px] font-black text-slate-800 uppercase">{{ $batch->code }}</span>
-                                                    <span class="text-[8px] font-black text-amber-600 uppercase">{{ __("Cumul > 5%") }}</span>
+                                                    <span class="text-[8px] font-black text-amber-600 uppercase">{{ __("Cumul > :pct%", ['pct' => \App\Models\Batch::cumulativeMortalityThreshold()]) }}</span>
                                                 </a>
                                             @endforeach
                                         </div>

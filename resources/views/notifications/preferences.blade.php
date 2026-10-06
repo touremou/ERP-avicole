@@ -155,7 +155,7 @@
                     <div class="space-y-4">
                         @php
                             $notifTypes = [
-                                ['name' => 'daily_summary', 'label' => __("Résumé quotidien (7h)"), 'desc' => __("Mortalité nuit, stocks, CA veille, tâches du jour"), 'icon' => 'fa-sun', 'color' => 'amber'],
+                                ['name' => 'daily_summary', 'label' => __("Résumé quotidien (:h)", ['h' => \App\Models\Setting::hour('whatsapp.daily_summary_hour', '07:00')]), 'desc' => __("Mortalité nuit, stocks, CA veille, tâches du jour"), 'icon' => 'fa-sun', 'color' => 'amber'],
                                 ['name' => 'alert_mortality', 'label' => __("Alertes mortalité"), 'desc' => __("Pic de mortalité au-delà du seuil normal"), 'icon' => 'fa-skull', 'color' => 'red'],
                                 ['name' => 'alert_stock', 'label' => __("Alertes stock"), 'desc' => __("Rupture ou stock sous le seuil d'alerte"), 'icon' => 'fa-boxes-stacked', 'color' => 'orange'],
                                 ['name' => 'alert_energy', 'label' => __("Alertes eau & énergie"), 'desc' => __("Carburant bas, citerne basse, maintenance groupe"), 'icon' => 'fa-bolt', 'color' => 'cyan'],

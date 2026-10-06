@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Sale;
 
 use App\Models\Client;
+use App\Models\Sale;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Gate;
 
@@ -61,8 +62,9 @@ class StoreSaleRequest extends FormRequest
             // diverger — c'était le cas, et seul cet écran-ci l'appliquait.
             $client = Client::find($this->client_id);
             if ($client) {
-                $total = collect($this->items)->sum(fn ($i) => ($i['quantity'] ?? 0) * ($i['unit_price'] ?? 0));
-                $newCredit = $total - ($this->immediate_payment ?? 0);
+                // Le total que la vente PORTERA (TVA, remise, livraison, arrondi —
+                // Sale::totalProjete), le même que la validation contrôlera.
+                $newCredit = Sale::totalProjete($this->all()) - (float) ($this->immediate_payment ?? 0);
 
                 if ($raison = $client->creditRefusalReason((float) $newCredit)) {
                     $validator->errors()->add('client_id', $raison);

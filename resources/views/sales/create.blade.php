@@ -233,6 +233,7 @@
                             <div class="flex justify-between" x-show="discount > 0"><span class="text-rose-300 font-black text-[10px] uppercase">{{ __("Remise") }}</span><span class="font-black text-rose-300" x-text="'− ' + formatGNF(discount)"></span></div>
                             <div class="flex justify-between" x-show="saleType === 'facture'"><span class="text-slate-400 font-black text-[10px] uppercase">{{ __("TVA :rate%", ['rate' => setting('general.tva_rate', 18)]) }}</span><span class="font-black" x-text="formatGNF(taxAmount)"></span></div>
                             <div class="flex justify-between" x-show="deliveryCost > 0"><span class="text-slate-400 font-black text-[10px] uppercase">{{ __("Livraison") }}</span><span class="font-black" x-text="'+ ' + formatGNF(deliveryCost)"></span></div>
+                            <div class="flex justify-between" x-show="roundingAdjustment !== 0"><span class="text-slate-400 font-black text-[10px] uppercase">{{ __("Arrondi caisse") }}</span><span class="font-black" x-text="(roundingAdjustment > 0 ? '+ ' : '− ') + formatGNF(Math.abs(roundingAdjustment))"></span></div>
                             <div class="border-t border-slate-700 pt-3 flex justify-between"><span class="text-emerald-400 font-black text-[10px] uppercase">{{ __("Total TTC") }}</span><span class="font-black text-2xl" x-text="formatGNF(totalTTC)"></span></div>
                             <div class="border-t border-slate-700 pt-3 flex justify-between" x-show="immediatePayment > 0"><span class="text-amber-400 font-black text-[10px] uppercase">{{ __("Reste dû") }}</span><span class="font-black text-lg text-amber-400" x-text="formatGNF(Math.max(0, totalTTC - immediatePayment))"></span></div>
                         </div>
@@ -310,9 +311,19 @@
             get net() { return Math.max(0, this.subtotal - this.discount); },
             // Même taux que le libellé « TVA x% » affiché juste à côté : il
             // annonçait le réglage pendant que ce calcul appliquait 18 en dur.
-            get taxAmount() { return this.saleType==='facture' ? this.net*{{ (float) setting('general.tva_rate', 18) }}/100 : 0; },
+            get taxAmount() { return this.saleType==='facture' ? Math.round(this.net*{{ (float) setting('general.tva_rate', 18) }}/100 * 100) / 100 : 0; },
             get deliveryCost() { return this.deliveryMode==='livraison' ? (Number(this.deliveryFee)||0) : 0; },
-            get totalTTC() { return this.net + this.taxAmount + this.deliveryCost; },
+            // Le TOTAL PAYABLE, calculé comme Sale::recalculateTotals : montant brut
+            // au centime, puis ramené à la coupure de caisse (cash_round, réglage
+            // ventes.cash_rounding) — comme le fait déjà la caisse (POS). Sans
+            // arrondi, l'écran annonçait 55 100 pour une facture de 55 000, et un
+            // règlement de 55 100 était refusé comme trop-perçu.
+            get rawTotal() { return Math.round((this.net + this.taxAmount + this.deliveryCost) * 100) / 100; },
+            get totalTTC() {
+                const step = {{ (int) setting('ventes.cash_rounding', 0) }};
+                return step > 0 ? Math.round(this.rawTotal / step) * step : this.rawTotal;
+            },
+            get roundingAdjustment() { return Math.round((this.totalTTC - this.rawTotal) * 100) / 100; },
             get hasStockError() { return this.lines.some(l => l.max_qty > 0 && l.quantity > l.max_qty); },
             getStocks(type) { return stocks.filter(s => s.category === (catMap[type]||type) && s.current_quantity > 0); },
             // ─── Catégories de lignes (multiespèces) ───
@@ -487,7 +498,9 @@
                     client_id: parseInt(this.clientId, 10),
                     sale_date: saleDate,
                     type: this.saleType,
-                    tax_rate: this.saleType === 'facture' ? {{ (int) setting('general.tva_rate', 18) }} : 0,
+                    // (float), comme l'affichage et l'envoi en ligne : un taux à virgule
+                    // (7,5 %) partait tronqué (7) par la file hors-ligne.
+                    tax_rate: this.saleType === 'facture' ? {{ (float) setting('general.tva_rate', 18) }} : 0,
                     discount_type: this.discountType,
                     discount_value: this.discountType === 'none' ? 0 : (parseFloat(this.discountValue) || 0),
                     notes: notes,
