@@ -18,9 +18,10 @@ uses(TestCase::class, RefreshDatabase::class, AviSmartTestHelper::class);
  *   • UNITÉS : elle proposait « Boîte », « Flacon », « Pcs », « Paquet » ; le
  *     serveur n'acceptait que « Sac, KG, Litre, Unité, Boite ». Un vaccin acheté
  *     en boîtes était refusé…
- *   • … EN SILENCE : seule une erreur de prix ou de quantité rouvrait la
- *     modale. Un refus d'unité laissait l'utilisateur sur la fiche, sans un mot,
- *     l'achat perdu ;
+ *   • … HORS DE LA MODALE : seule une erreur de prix ou de quantité la
+ *     rouvrait. Un refus d'unité ramenait sur la fiche, modale fermée, saisie
+ *     perdue, avec pour seule trace un bandeau de 8 secondes « Le champ unit
+ *     est invalide » ;
  *   • CATÉGORIE : catégorie et nature n'étaient pas transmises (retirées « pour
  *     éviter le crash SQL » d'une colonne `metadata` qui existe depuis). Un
  *     vaccin, des copeaux, une mangeoire entraient au stock comme ALIMENT — et
