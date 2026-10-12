@@ -102,6 +102,7 @@
                         @include('provenderie.formulas.partials.nutrient-bars', [
                             'comparison' => $comparison,
                             'dark' => true,
+                            'estimates' => $formula->referenceIngredients(),
                         ])
                     </div>
                 </div>

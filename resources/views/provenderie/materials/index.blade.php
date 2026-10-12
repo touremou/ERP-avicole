@@ -78,7 +78,12 @@
                         </div>
 
                         <h3 class="text-2xl font-black text-slate-900 uppercase italic tracking-tighter mb-1 leading-none">{{ $material->name }}</h3>
-                        <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-6 italic leading-none">{{ __("Unité") }} : {{ strtoupper($material->unit) }}</p>
+                        <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-6 italic leading-none">{{ __("Unité") }} : {{ strtoupper($material->unit) }}
+                            @if($material->nutrition_source === \App\Models\RawMaterial::SOURCE_REFERENCE)
+                                {{-- Teneurs de la table livrée : des estimations, pas une analyse. --}}
+                                <span class="ml-2 px-2 py-0.5 rounded-md bg-sky-50 text-sky-600 normal-case not-italic" title="{{ __('Teneurs issues des tables de composition : remplacez-les par votre analyse.') }}">{{ __('Valeurs de référence') }}</span>
+                            @endif
+                        </p>
 
                         <div class="space-y-3">
                             <div class="flex justify-between items-end leading-none">
@@ -292,6 +297,9 @@
                 </div>
                 <p class="text-[9px] font-bold text-slate-400 uppercase italic leading-snug text-center">
                     {{ __("Laissez vide une teneur non analysée : l'analyse d'une formule le signalera au lieu de conclure à une carence. Saisissez 0 quand l'ingrédient n'en contient pas (le sel n'apporte pas d'énergie).") }}
+                </p>
+                <p class="text-[9px] font-bold text-sky-600 uppercase italic leading-snug text-center">
+                    {{ __("Les matières livrées portent des valeurs de référence (tables de composition). Enregistrer votre analyse les remplace.") }}
                 </p>
                 <button type="submit" class="w-full bg-slate-900 text-white font-black py-5 rounded-2xl shadow-xl italic uppercase">{{ __("Enregistrer Valeurs") }}</button>
             </form>

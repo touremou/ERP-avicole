@@ -12,6 +12,14 @@ class RawMaterial extends Model
 {
     use HasFactory, BelongsToFarm;
 
+    /**
+     * D'où viennent les teneurs : la table de RÉFÉRENCE livrée (estimations,
+     * ReferentialSeeder::MATIERES) ou une SAISIE au laboratoire (analyse,
+     * fiche fournisseur). Une saisie n'est jamais écrasée par la référence.
+     */
+    public const SOURCE_REFERENCE = 'reference';
+    public const SOURCE_SAISIE    = 'saisie';
+
     protected $fillable = [
         'farm_id',
         'name', 
@@ -25,6 +33,7 @@ class RawMaterial extends Model
         'methionine_rate',
         'calcium_rate',
         'phosphorus_rate',
+        'nutrition_source',
         'alert_threshold', 
         'is_active'
     ];

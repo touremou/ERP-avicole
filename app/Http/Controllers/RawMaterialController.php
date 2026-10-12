@@ -85,6 +85,10 @@ class RawMaterialController extends Controller
         $validated['alert_threshold'] = $validated['alert_threshold'] ?? 100;
         $validated['is_active']       = true;
 
+        // Teneurs saisies à la création : ce sont celles de la ferme.
+        $saisies = collect($this->nutrientColumns())->contains(fn ($c) => ($validated[$c] ?? null) !== null);
+        $validated['nutrition_source'] = $saisies ? RawMaterial::SOURCE_SAISIE : null;
+
         RawMaterial::create($validated);
 
         return back()->with('success', "Ingrédient '{$validated['name']}' ajouté au référentiel.");
@@ -112,6 +116,14 @@ class RawMaterialController extends Controller
         ], $this->nutrientRules()), [
             'name.unique' => 'Une matière première porte déjà ce nom.',
         ]);
+
+        // Une teneur modifiée ici est une saisie : la valeur de référence
+        // (estimation de la table livrée) cède la place.
+        $teneursModifiees = collect($this->nutrientColumns())->contains(fn ($c) => array_key_exists($c, $validated)
+            && ($validated[$c] === null ? $material->{$c} !== null : (float) $validated[$c] !== (float) $material->{$c}));
+        if ($teneursModifiees) {
+            $validated['nutrition_source'] = RawMaterial::SOURCE_SAISIE;
+        }
 
         $material->update($validated);
 
@@ -210,7 +222,8 @@ class RawMaterialController extends Controller
         ));
 
         $material = RawMaterial::findOrFail($id);
-        $material->update($request->only($this->nutrientColumns()));
+        // L'analyse du laboratoire remplace les valeurs de référence.
+        $material->update($request->only($this->nutrientColumns()) + ['nutrition_source' => RawMaterial::SOURCE_SAISIE]);
 
         return back()->with('success', "Valeurs nutritionnelles de {$material->name} mises à jour.");
     }
