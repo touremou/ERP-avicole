@@ -42,7 +42,7 @@
                                 <a href="{{ route('utilities.water.sources.edit', $source->id) }}" class="w-6 h-6 rounded-lg bg-slate-100 text-slate-400 hover:bg-blue-500 hover:text-white flex items-center justify-center transition-all shadow-sm" title="{{ __('Modifier') }}">
                                     <i class="fa-solid fa-pen text-[9px]"></i>
                                 </a>
-                                <form method="POST" action="{{ route('utilities.water.sources.destroy', $source->id) }}" onsubmit="return confirm('{{ __("Êtes-vous sûr de vouloir supprimer définitivement cette source d'eau ?") }}');">
+                                <form method="POST" action="{{ route('utilities.water.sources.destroy', $source->id) }}" onsubmit="return confirm(@js(__("Êtes-vous sûr de vouloir supprimer définitivement cette source d'eau ?")));">
                                     @csrf @method('DELETE')
                                     <button type="submit" class="w-6 h-6 rounded-lg bg-slate-100 text-slate-400 hover:bg-red-500 hover:text-white flex items-center justify-center transition-all shadow-sm border-none cursor-pointer" title="{{ __('Supprimer') }}">
                                         <i class="fa-solid fa-trash text-[9px]"></i>

@@ -18,7 +18,7 @@
                          qu'en réponse au premier refus. --}}
                     @if(session('confirm_no_attendance_period') == $period->id)
                     <form method="POST" action="{{ route('payroll.generate', $period) }}"
-                          onsubmit="return confirm('{{ __('Générer la paie sans aucun pointage ? Tous les jours seront payés comme travaillés.') }}')">@csrf
+                          onsubmit="return confirm(@js(__('Générer la paie sans aucun pointage ? Tous les jours seront payés comme travaillés.')))">@csrf
                         <input type="hidden" name="confirm_no_attendance" value="1">
                         <button class="bg-amber-500 text-white px-5 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-amber-600 border-none cursor-pointer shadow-lg italic"><i class="fa-solid fa-triangle-exclamation mr-1"></i> {{ __("Générer sans pointage") }}</button>
                     </form>
@@ -42,7 +42,7 @@
                          validation, on en pose une neuve. --}}
                     @if($period->status === 'valide')
                     <form method="POST" action="{{ route('payroll.reopen', $period) }}"
-                          onsubmit="return confirm('{{ __('Rouvrir cette période ? La validation sera retirée et une nouvelle approbation sera nécessaire avant tout paiement.') }}')">@csrf
+                          onsubmit="return confirm(@js(__('Rouvrir cette période ? La validation sera retirée et une nouvelle approbation sera nécessaire avant tout paiement.')))">@csrf
                         <button class="bg-white border border-amber-200 text-amber-600 px-5 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-amber-50 cursor-pointer shadow-sm italic"><i class="fa-solid fa-lock-open mr-1"></i> {{ __("Rouvrir la période") }}</button>
                     </form>
                     @endif

@@ -11,7 +11,7 @@
 
                 {{-- BOUTON VIDER TOUT --}}
                 @if($employees->count() > 0 || $buildings->count() > 0 || $providers->count() > 0)
-                    <form action="{{ route('trash.clearAll') }}" method="POST" onsubmit="return confirm('{{ __("⚠️ ACTION IRRÉVERSIBLE : Voulez-vous vraiment supprimer DÉFINITIVEMENT tous les éléments de la corbeille ?") }}');">
+                    <form action="{{ route('trash.clearAll') }}" method="POST" onsubmit="return confirm(@js(__("⚠️ ACTION IRRÉVERSIBLE : Voulez-vous vraiment supprimer DÉFINITIVEMENT tous les éléments de la corbeille ?")));">
                         @csrf
                         @method('DELETE')
                         <button type="submit" class="flex items-center gap-3 px-6 py-4 bg-slate-900 text-rose-500 rounded-2xl text-[10px] font-black uppercase italic tracking-widest hover:bg-rose-600 hover:text-white transition-all shadow-2xl group border-none cursor-pointer">

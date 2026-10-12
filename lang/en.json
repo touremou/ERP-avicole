@@ -5028,5 +5028,6 @@
     "Remplacez-les par vos analyses au laboratoire.": "Replace them with your laboratory analyses.",
     "Teneurs issues des tables de composition : remplacez-les par votre analyse.": "Contents taken from composition tables: replace them with your analysis.",
     "Valeurs de référence": "Reference values",
-    "Les matières livrées portent des valeurs de référence (tables de composition). Enregistrer votre analyse les remplace.": "Supplied materials carry reference values (composition tables). Saving your analysis replaces them."
+    "Les matières livrées portent des valeurs de référence (tables de composition). Enregistrer votre analyse les remplace.": "Supplied materials carry reference values (composition tables). Saving your analysis replaces them.",
+    "Surface non renseignée": "Floor area not entered"
 }

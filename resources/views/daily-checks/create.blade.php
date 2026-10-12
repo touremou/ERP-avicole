@@ -78,7 +78,7 @@
                                     <p class="text-xl font-black uppercase italic mt-1 leading-none tracking-tighter">{{ $todayStep->action_name }}</p>
                                 </div>
                             </div>
-                            <button type="button" onclick="fillTreatment('{{ $todayStep->type }}', '{{ $todayStep->action_name }}')" 
+                            <button type="button" onclick="fillTreatment(@js($todayStep->type), @js($todayStep->action_name))" 
                                     class="px-8 py-3 bg-white text-indigo-700 rounded-xl text-[10px] font-black uppercase hover:bg-emerald-400 hover:text-white transition shadow-xl italic tracking-widest leading-none">
                                 {{ __("Appliquer") }}
                             </button>

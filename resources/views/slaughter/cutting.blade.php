@@ -62,7 +62,7 @@
                                     <label class="text-[8px] font-black uppercase text-slate-400">{{ __("Poids (kg)") }}</label>
                                     <input type="number" :name="'products['+i+'][kg]'" x-model.number="p.kg" step="0.1" min="0" class="w-full bg-white border-none rounded-xl p-3 text-sm font-black shadow-sm outline-none text-center">
                                     {{-- RECETTE : rendement attendu de la ligne → attendu ≈ x kg pour l'entrée saisie --}}
-                                    <p class="text-[8px] font-black m-0 mt-1 text-center" x-show="expectedKg(p) !== null" :class="deviationClass(p)" x-text="'≈ ' + (expectedKg(p) ?? 0).toFixed(1) + ' kg ' + '{{ __('attendu') }}'"></p>
+                                    <p class="text-[8px] font-black m-0 mt-1 text-center" x-show="expectedKg(p) !== null" :class="deviationClass(p)" x-text="'≈ ' + (expectedKg(p) ?? 0).toFixed(1) + ' kg ' + @js(__('attendu'))"></p>
                                 </div>
                                 <div class="col-span-1">
                                     <label class="text-[8px] font-black uppercase text-slate-400">{{ __("Pièces") }}</label>

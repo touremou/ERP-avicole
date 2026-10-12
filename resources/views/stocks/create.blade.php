@@ -6,7 +6,7 @@
     {{-- Initialisation AlpineJS --}}
     <div class="py-12 italic font-bold text-left" 
          x-data="{ 
-            cat: '{{ $category ?? 'oeufs' }}',
+            cat: @js($category ?? 'oeufs'),
             consoType: 'Aliment',
             poultryType: 'Chair',
             get units() {

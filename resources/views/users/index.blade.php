@@ -95,7 +95,7 @@
                                         <form action="{{ route('users.toggle_active', $user->id) }}" method="POST" class="inline">
                                             @csrf @method('PATCH')
                                             @if($user->isActive())
-                                                <button onclick="return confirm('{{ __("Suspendre cet accès ? L'utilisateur ne pourra plus se connecter.") }}')"
+                                                <button onclick="return confirm(@js(__("Suspendre cet accès ? L'utilisateur ne pourra plus se connecter.")))"
                                                     class="w-9 h-9 inline-flex items-center justify-center rounded-xl text-slate-300 hover:text-amber-600 hover:bg-amber-50 transition-all border-none bg-transparent cursor-pointer" title="{{ __('Suspendre') }}">
                                                     <i class="fas fa-ban text-xs"></i>
                                                 </button>
@@ -107,7 +107,7 @@
                                         </form>
 
                                         {{-- Supprimer --}}
-                                        <form action="{{ route('users.destroy', $user->id) }}" method="POST" onsubmit="return confirm('{{ __("Supprimer cet accès ?") }}')" class="inline">
+                                        <form action="{{ route('users.destroy', $user->id) }}" method="POST" onsubmit="return confirm(@js(__("Supprimer cet accès ?")))" class="inline">
                                             @csrf @method('DELETE')
                                             <button class="w-9 h-9 inline-flex items-center justify-center rounded-xl text-slate-300 hover:text-rose-600 hover:bg-rose-50 transition-all border-none bg-transparent cursor-pointer" title="{{ __('Supprimer') }}">
                                                 <i class="fas fa-trash-can text-xs"></i>
@@ -330,7 +330,7 @@
                             
                             {{-- BOUTON SUPPRIMER (Uniquement si 0 membre) --}}
                             @if($role->users_count == 0)
-                                <button type="submit" form="delete-role-{{ $role->id }}" onclick="return confirm('{{ __("Confirmer la suppression définitive de ce rôle ?") }}')"
+                                <button type="submit" form="delete-role-{{ $role->id }}" onclick="return confirm(@js(__("Confirmer la suppression définitive de ce rôle ?")))"
                                         class="w-6 h-6 flex items-center justify-center bg-red-50 text-red-500 hover:bg-red-500 hover:text-white rounded-lg transition-all cursor-pointer border-none outline-none" title="{{ __('Supprimer ce rôle vide') }}">
                                     <i class="fas fa-trash-can text-[10px]"></i>
                                 </button>

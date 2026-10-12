@@ -69,7 +69,7 @@
                 </div>
                 <div class="flex items-center justify-between pt-4 border-t border-slate-50">
                     <form action="{{ route('crop-calendar-events.destroy', $event) }}" method="POST" class="inline"
-                          onsubmit="return confirm('{{ __('Supprimer cet événement ?') }}')">
+                          onsubmit="return confirm(@js(__('Supprimer cet événement ?')))">
                         @csrf
                         @method('DELETE')
                         @can('cultures.S')

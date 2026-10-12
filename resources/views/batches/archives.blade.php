@@ -107,7 +107,7 @@
                                     <div class="flex justify-end gap-2 items-center">
                                         {{-- PERMISSION M : RÉOUVERTURE DU LOT --}}
                                         @can('elevage.M')
-                                            <form action="{{ route('batches.reopen', $batch->id) }}" method="POST" onsubmit="return confirm('{{ __("Réouvrir ce lot ? Le bâtiment redeviendra occupé.") }}')">
+                                            <form action="{{ route('batches.reopen', $batch->id) }}" method="POST" onsubmit="return confirm(@js(__("Réouvrir ce lot ? Le bâtiment redeviendra occupé.")))">
                                                 @csrf
                                                 @method('PUT')
                                                 <button type="submit" class="p-2 text-orange-400 hover:text-orange-600 transition" title="{{ __("Réouvrir le lot") }}">

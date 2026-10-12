@@ -50,7 +50,7 @@
 
                     @can('tresorerie.S')
                     <div class="pt-4 border-t border-slate-100">
-                        <form method="POST" action="{{ route('treasury.account.destroy', $account) }}" onsubmit="return confirm('{{ __('Supprimer définitivement ce compte ? (impossible s\'il porte des mouvements)') }}')">
+                        <form method="POST" action="{{ route('treasury.account.destroy', $account) }}" onsubmit="return confirm(@js(__('Supprimer définitivement ce compte ? (impossible s\'il porte des mouvements)')))">
                             @csrf @method('DELETE')
                             <button type="submit" class="text-[9px] font-black uppercase tracking-widest text-rose-500 hover:text-rose-700 bg-transparent border-none cursor-pointer p-0"><i class="fa-solid fa-trash-can mr-1"></i> {{ __("Supprimer ce compte") }}</button>
                             <p class="text-[8px] text-slate-400 mt-1 italic">{{ __("Un compte avec mouvements ne peut pas être supprimé — désactivez-le plutôt.") }}</p>

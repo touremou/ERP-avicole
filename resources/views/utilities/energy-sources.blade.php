@@ -68,7 +68,7 @@
                                 <a href="{{ route('utilities.energy.sources.edit', $source->id) }}" class="w-8 h-8 rounded-xl bg-white/50 text-slate-400 hover:bg-blue-500 hover:text-white flex items-center justify-center transition-all shadow-sm" title="{{ __('Modifier') }}">
                                     <i class="fa-solid fa-pen text-[10px]"></i>
                                 </a>
-                                <form method="POST" action="{{ route('utilities.energy.sources.destroy', $source->id) }}" onsubmit="return confirm('{{ __("Êtes-vous sûr de vouloir supprimer définitivement cette source d'énergie ?") }}');">
+                                <form method="POST" action="{{ route('utilities.energy.sources.destroy', $source->id) }}" onsubmit="return confirm(@js(__("Êtes-vous sûr de vouloir supprimer définitivement cette source d'énergie ?")));">
                                     @csrf @method('DELETE')
                                     <button type="submit" class="w-8 h-8 rounded-xl bg-white/50 text-slate-400 hover:bg-red-500 hover:text-white flex items-center justify-center transition-all shadow-sm border-none cursor-pointer" title="{{ __('Supprimer') }}">
                                         <i class="fa-solid fa-trash text-[10px]"></i>

@@ -15,7 +15,7 @@
                 </div>
             @endif
 
-            <form action="{{ route('crop-cycles.harvests.store', $cycle) }}" method="POST" x-data="{ sync: false, unit: '{{ old('unit', 'kg') }}', dest: '{{ old('destination', 'vente') }}',
+            <form action="{{ route('crop-cycles.harvests.store', $cycle) }}" method="POST" x-data="{ sync: false, unit: @js(old('unit', 'kg')), dest: @js(old('destination', 'vente')),
                           get held() { return this.dest !== 'vente' },
                           get needsWeight() { return this.held && this.unit.trim().toLowerCase() !== 'kg' } }" class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm space-y-6">
                 @csrf

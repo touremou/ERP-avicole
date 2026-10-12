@@ -15,7 +15,7 @@
                 </div>
             @endif
 
-            <form action="{{ route('crop-cycles.harvests.update', [$cycle, $harvest]) }}" method="POST" x-data="{ unit: '{{ old('unit', $harvest->unit) }}', dest: '{{ old('destination', $harvest->destination ?? 'vente') }}',
+            <form action="{{ route('crop-cycles.harvests.update', [$cycle, $harvest]) }}" method="POST" x-data="{ unit: @js(old('unit', $harvest->unit)), dest: @js(old('destination', $harvest->destination ?? 'vente')),
                           get held() { return this.dest !== 'vente' } }" class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm space-y-6">
                 @csrf @method('PUT')
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">

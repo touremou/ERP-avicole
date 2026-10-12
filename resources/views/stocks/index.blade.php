@@ -3,7 +3,7 @@
         <x-page-header :title="__('Inventaire Global')" :subtitle="__('Gestion des stocks multi-catégories')" icon="fa-boxes-stacked" accent="orange">
             <x-slot name="actions">
                 @can('logistique.M')
-                <a href="{{ route('stocks.export', ['category' => request('category', 'oeufs')]) }}" class="bg-white border border-slate-200 px-5 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest text-slate-600 hover:bg-slate-50 transition-all no-underline flex items-center gap-2">
+                <a href="{{ route('stocks.export', ['category' => $category]) }}" class="bg-white border border-slate-200 px-5 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest text-slate-600 hover:bg-slate-50 transition-all no-underline flex items-center gap-2">
                     <i class="fa-solid fa-file-excel text-emerald-500"></i> {{ __("Export") }}
                 </a>
                 @endcan
@@ -16,7 +16,7 @@
         </x-page-header>
     </x-slot>
 
-    <div class="py-10" x-data="{ activeTab: '{{ request('category', 'oeufs') }}' }">
+    <div class="py-10" x-data="{ activeTab: @js($category) }">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 italic font-bold text-left">
 
             <x-flash />
@@ -32,16 +32,16 @@
                        @click="activeTab = '{{ $catKey }}'"
                        @class([
                            'px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all no-underline flex items-center gap-3 shrink-0',
-                           "bg-{$cat['color']}-500 text-white shadow-lg" => request('category', 'oeufs') === $catKey,
-                           "bg-white text-slate-500 border border-slate-100 hover:bg-{$cat['color']}-50 hover:text-{$cat['color']}-600" => request('category', 'oeufs') !== $catKey,
+                           "bg-{$cat['color']}-500 text-white shadow-lg" => $category === $catKey,
+                           "bg-white text-slate-500 border border-slate-100 hover:bg-{$cat['color']}-50 hover:text-{$cat['color']}-600" => $category !== $catKey,
                        ])>
                         <i class="fa-solid {{ $cat['icon'] }}"></i>
                         {{ __($cat['label']) }}
                         @php $catCount = \App\Models\Stock::where('category', $catKey)->count(); @endphp
                         <span @class([
                             'text-[8px] px-2 py-0.5 rounded-full font-black',
-                            'bg-white/20' => request('category', 'oeufs') === $catKey,
-                            'bg-slate-100' => request('category', 'oeufs') !== $catKey,
+                            'bg-white/20' => $category === $catKey,
+                            'bg-slate-100' => $category !== $catKey,
                         ])>{{ $catCount }}</span>
                     </a>
                 @endforeach
@@ -49,7 +49,7 @@
 
             {{-- LOGIQUE DE SOUS-CATÉGORIES --}}
             @php
-                $currentCategory = request('category', 'oeufs');
+                $currentCategory = $category;
                 $sections = [];
 
                 if ($currentCategory === 'conso') {

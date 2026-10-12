@@ -130,9 +130,9 @@
                                      honoré partout (sélecteur de site, vue consolidée,
                                      contrôles planifiés) ; aucun écran ne l'écrivait. --}}
                                 <form method="POST" action="{{ route('farms.toggleActive', $farm) }}" class="inline"
-                                      onsubmit="return confirm('{{ $farm->is_active
+                                      onsubmit="return confirm(@js($farm->is_active
                                           ? __('Désactiver ce site ? Il quitte les sélecteurs ; rien n\'est supprimé.')
-                                          : __('Réactiver ce site ?') }}')">
+                                          : __('Réactiver ce site ?')))">
                                     @csrf @method('PATCH')
                                     <button class="text-[8px] font-black uppercase tracking-widest border-none bg-transparent cursor-pointer {{ $farm->is_active ? 'text-amber-600 hover:text-amber-800' : 'text-emerald-600 hover:text-emerald-800' }}">
                                         <i class="fa-solid {{ $farm->is_active ? 'fa-pause' : 'fa-play' }} mr-1"></i>
@@ -147,7 +147,7 @@
                                      que d'exister et de refuser. --}}
                                 @if($farm->isEmpty() && $farms->count() > 1)
                                 <form method="POST" action="{{ route('farms.destroy', $farm) }}" class="inline"
-                                      onsubmit="return confirm('{{ __('Supprimer définitivement ce site vide ?') }}')">
+                                      onsubmit="return confirm(@js(__('Supprimer définitivement ce site vide ?')))">
                                     @csrf @method('DELETE')
                                     <button class="text-[8px] font-black text-red-500 uppercase tracking-widest hover:text-red-700 border-none bg-transparent cursor-pointer">
                                         <i class="fa-solid fa-trash mr-1"></i> {{ __("Supprimer") }}

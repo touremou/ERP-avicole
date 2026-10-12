@@ -5,7 +5,7 @@
 
     {{-- Initialisation AlpineJS --}}
     <div class="py-12 italic font-bold text-left" x-data="{ 
-        cat: '{{ $stock->category }}', 
+        cat: @js($stock->category), 
         qty: {{ old('current_quantity', $stock->current_quantity) }},
         unit: '{{ $stock->unit }}',
         consoType: '{{ $stock->getMeta('conso_type', 'Aliment') }}',

@@ -155,7 +155,7 @@
             @if($editable)
                 {{-- Report mois-à-mois : recopie les budgets du mois précédent --}}
                 <form method="POST" action="{{ route('budgets.copy-previous') }}" class="mt-3 flex justify-start"
-                      onsubmit="return confirm('{{ __('Reporter les budgets du mois précédent sur ce mois ? Les montants existants seront remplacés.') }}');">
+                      onsubmit="return confirm(@js(__('Reporter les budgets du mois précédent sur ce mois ? Les montants existants seront remplacés.')));">
                     @csrf
                     <input type="hidden" name="year" value="{{ $year }}">
                     <input type="hidden" name="month" value="{{ $month }}">

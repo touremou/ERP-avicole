@@ -15,7 +15,7 @@
                     </a>
                 @endif
                 @if($expense->status !== 'annule')
-                    <form method="POST" action="{{ route('expenses.cancel', $expense) }}" onsubmit="return confirm('{{ __("Annuler cette dépense ? Elle sera exclue des résultats.") }}');">
+                    <form method="POST" action="{{ route('expenses.cancel', $expense) }}" onsubmit="return confirm(@js(__("Annuler cette dépense ? Elle sera exclue des résultats.")));">
                         @csrf @method('PUT')
                         <button type="submit" class="bg-white text-rose-600 border border-rose-200 px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-rose-50 transition-all shadow-sm italic cursor-pointer">
                             <i class="fa-solid fa-ban mr-1"></i> {{ __("Annuler") }}
@@ -94,7 +94,7 @@
             </div>
 
             @can('depenses.S')
-            <form method="POST" action="{{ route('expenses.destroy', $expense) }}" onsubmit="return confirm('{{ __("Supprimer définitivement cette dépense ?") }}');" class="text-right">
+            <form method="POST" action="{{ route('expenses.destroy', $expense) }}" onsubmit="return confirm(@js(__("Supprimer définitivement cette dépense ?")));" class="text-right">
                 @csrf @method('DELETE')
                 <button type="submit" class="text-[9px] font-black text-slate-400 uppercase tracking-widest hover:text-rose-600 border-none bg-transparent cursor-pointer italic">
                     <i class="fa-solid fa-trash mr-1"></i> {{ __("Supprimer cette dépense") }}
