@@ -252,7 +252,7 @@ class Building extends Model
      */
     public function waterSource(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
-        return $this->belongsTo(WaterSource::class);
+        return $this->belongsTo(WaterSource::class)->withTrashed();
     }
 
     /**

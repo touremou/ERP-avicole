@@ -31,12 +31,12 @@ class EggMovement extends Model
 
     public function batch(): BelongsTo
     {
-        return $this->belongsTo(Batch::class);
+        return $this->belongsTo(Batch::class)->withTrashed();
     }
 
     public function stock(): BelongsTo
     {
-        return $this->belongsTo(Stock::class);
+        return $this->belongsTo(Stock::class)->withTrashed();
     }
 
     public function user(): BelongsTo

@@ -50,7 +50,7 @@ class MillProduction extends Model
 
     public function supervisor(): BelongsTo
     {
-        return $this->belongsTo(Employee::class, 'supervisor_id');
+        return $this->belongsTo(Employee::class, 'supervisor_id')->withTrashed();
     }
 
     public function user(): BelongsTo

@@ -51,7 +51,7 @@ class Product extends Model
     /** Article de stock physique lié (optionnel) : sa vente décrémente ce stock. */
     public function stock(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
-        return $this->belongsTo(Stock::class);
+        return $this->belongsTo(Stock::class)->withTrashed();
     }
 
     /** Quantité disponible (du stock lié), ou null si l'article n'est pas suivi en stock. */

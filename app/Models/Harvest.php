@@ -131,7 +131,7 @@ class Harvest extends Model
 
     public function cropCycle(): BelongsTo
     {
-        return $this->belongsTo(CropCycle::class);
+        return $this->belongsTo(CropCycle::class)->withTrashed();
     }
 
 

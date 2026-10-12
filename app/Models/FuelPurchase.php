@@ -27,12 +27,12 @@ class FuelPurchase extends Model
 
     public function source(): BelongsTo
     {
-        return $this->belongsTo(EnergySource::class, 'energy_source_id');
+        return $this->belongsTo(EnergySource::class, 'energy_source_id')->withTrashed();
     }
 
     public function building(): BelongsTo
     {
-        return $this->belongsTo(Building::class);
+        return $this->belongsTo(Building::class)->withTrashed();
     }
 
     public function user(): BelongsTo
@@ -52,7 +52,7 @@ class FuelPurchase extends Model
      */
     public function expense(): BelongsTo
     {
-        return $this->belongsTo(Expense::class);
+        return $this->belongsTo(Expense::class)->withTrashed();
     }
 
     /** Crée (ou met à jour) la dépense carburant liée à cet achat. */

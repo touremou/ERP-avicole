@@ -36,7 +36,7 @@ class CropCalendarEvent extends Model
 
     public function cropCycle(): BelongsTo
     {
-        return $this->belongsTo(CropCycle::class);
+        return $this->belongsTo(CropCycle::class)->withTrashed();
     }
 
     // ─── SCOPES ───

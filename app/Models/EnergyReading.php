@@ -36,12 +36,12 @@ class EnergyReading extends Model
 
     public function source(): BelongsTo
     {
-        return $this->belongsTo(EnergySource::class, 'energy_source_id');
+        return $this->belongsTo(EnergySource::class, 'energy_source_id')->withTrashed();
     }
 
     public function building(): BelongsTo
     {
-        return $this->belongsTo(Building::class);
+        return $this->belongsTo(Building::class)->withTrashed();
     }
 
     public function user(): BelongsTo

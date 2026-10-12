@@ -77,7 +77,7 @@ class Transformation extends Model
     public function operator(): BelongsTo { return $this->belongsTo(User::class, 'operator_id'); }
 
     /** Ordre d'abattage d'origine (traçabilité en cascade) — nullable. */
-    public function slaughterOrder(): BelongsTo { return $this->belongsTo(SlaughterOrder::class); }
+    public function slaughterOrder(): BelongsTo { return $this->belongsTo(SlaughterOrder::class)->withTrashed(); }
 
     public function getTypeLabelAttribute(): string
     {

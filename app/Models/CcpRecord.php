@@ -43,7 +43,7 @@ class CcpRecord extends Model
 
     public function slaughterOrder(): BelongsTo
     {
-        return $this->belongsTo(SlaughterOrder::class);
+        return $this->belongsTo(SlaughterOrder::class)->withTrashed();
     }
 
     public function operator(): BelongsTo

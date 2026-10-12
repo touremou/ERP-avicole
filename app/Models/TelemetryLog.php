@@ -28,8 +28,8 @@ class TelemetryLog extends Model
         'recorded_at' => 'datetime',
     ];
 
-    public function building(): BelongsTo { return $this->belongsTo(Building::class); }
-    public function batch(): BelongsTo { return $this->belongsTo(Batch::class); }
+    public function building(): BelongsTo { return $this->belongsTo(Building::class)->withTrashed(); }
+    public function batch(): BelongsTo { return $this->belongsTo(Batch::class)->withTrashed(); }
 
     public function scopePending($q) { return $q->where('status', self::STATUS_PENDING); }
 }

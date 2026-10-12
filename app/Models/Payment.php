@@ -22,7 +22,7 @@ class Payment extends Model
 
     public function sale(): BelongsTo
     {
-        return $this->belongsTo(Sale::class);
+        return $this->belongsTo(Sale::class)->withTrashed();
     }
 
     public function receiver(): BelongsTo

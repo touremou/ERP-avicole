@@ -29,7 +29,7 @@ class CropProtocolItem extends Model
 
     public function protocol(): BelongsTo
     {
-        return $this->belongsTo(CropProtocol::class, 'crop_protocol_id');
+        return $this->belongsTo(CropProtocol::class, 'crop_protocol_id')->withTrashed();
     }
 
     /**

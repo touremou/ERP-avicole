@@ -72,7 +72,7 @@ class TaskAssignment extends Model
 
     public function cropCycle(): BelongsTo
     {
-        return $this->belongsTo(CropCycle::class);
+        return $this->belongsTo(CropCycle::class)->withTrashed();
     }
 
     /** Étape d'itinéraire technique dont cette tâche est la matérialisation (S1). */
@@ -84,7 +84,7 @@ class TaskAssignment extends Model
     /** Lot en conservation dont cette tâche est le contrôle périodique (T2). */
     public function storedLot(): BelongsTo
     {
-        return $this->belongsTo(StoredLot::class);
+        return $this->belongsTo(StoredLot::class)->withTrashed();
     }
 
     /**
@@ -162,9 +162,9 @@ class TaskAssignment extends Model
     }
 
     public function template(): BelongsTo { return $this->belongsTo(TaskTemplate::class, 'task_template_id'); }
-    public function building(): BelongsTo { return $this->belongsTo(Building::class); }
-    public function plot(): BelongsTo { return $this->belongsTo(\App\Models\Plot::class); }
-    public function batch(): BelongsTo { return $this->belongsTo(Batch::class); }
+    public function building(): BelongsTo { return $this->belongsTo(Building::class)->withTrashed(); }
+    public function plot(): BelongsTo { return $this->belongsTo(\App\Models\Plot::class)->withTrashed(); }
+    public function batch(): BelongsTo { return $this->belongsTo(Batch::class)->withTrashed(); }
     public function completedByUser(): BelongsTo { return $this->belongsTo(User::class, 'completed_by'); }
 
     // Scopes

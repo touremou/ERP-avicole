@@ -21,6 +21,6 @@ class ProtocolStep extends Model
 
     public function protocol(): BelongsTo
     {
-        return $this->belongsTo(Protocol::class);
+        return $this->belongsTo(Protocol::class)->withTrashed();
     }
 }

@@ -53,7 +53,7 @@ class StockAdjustment extends Model
 
     public function stock(): BelongsTo
     {
-        return $this->belongsTo(Stock::class);
+        return $this->belongsTo(Stock::class)->withTrashed();
     }
 
     public function user(): BelongsTo

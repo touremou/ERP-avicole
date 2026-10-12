@@ -56,7 +56,7 @@ class SlaughterOrder extends Model
     /** Confirmations OBLIGATOIRES de la checklist de clôture (déchets + HACCP). */
     public const CLOSURE_CONFIRMATIONS = ['waste_evacuated', 'zone_cleaned', 'marche_avant'];
 
-    public function batch(): BelongsTo { return $this->belongsTo(Batch::class); }
+    public function batch(): BelongsTo { return $this->belongsTo(Batch::class)->withTrashed(); }
 
     /**
      * Morceaux de découpe proposés pour cet ordre — ceux de l'ESPÈCE du lot
@@ -74,7 +74,7 @@ class SlaughterOrder extends Model
             ])
             ->values()->all();
     }
-    public function client(): BelongsTo { return $this->belongsTo(Client::class); }
+    public function client(): BelongsTo { return $this->belongsTo(Client::class)->withTrashed(); }
     public function requester(): BelongsTo { return $this->belongsTo(User::class, 'requested_by'); }
     public function executor(): BelongsTo { return $this->belongsTo(User::class, 'executed_by'); }
     public function result(): HasOne { return $this->hasOne(SlaughterResult::class); }
@@ -116,7 +116,7 @@ class SlaughterOrder extends Model
     /** RG-07 : façon = produits propriété du client, hors stock vendable. */
     public function isFacon(): bool { return $this->service_type === 'facon'; }
 
-    public function serviceSale(): BelongsTo { return $this->belongsTo(Sale::class, 'service_sale_id'); }
+    public function serviceSale(): BelongsTo { return $this->belongsTo(Sale::class, 'service_sale_id')->withTrashed(); }
 
     public function getAvgLiveWeightAttribute(): ?float
     {

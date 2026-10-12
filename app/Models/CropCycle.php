@@ -88,19 +88,19 @@ class CropCycle extends Model
 
     public function plot(): BelongsTo
     {
-        return $this->belongsTo(Plot::class);
+        return $this->belongsTo(Plot::class)->withTrashed();
     }
 
     public function campaign(): BelongsTo
     {
-        return $this->belongsTo(CropCampaign::class, 'campaign_id');
+        return $this->belongsTo(CropCampaign::class, 'campaign_id')->withTrashed();
     }
 
 
     /** Protocole / itinéraire technique rattaché (optionnel). */
     public function protocol(): BelongsTo
     {
-        return $this->belongsTo(CropProtocol::class, 'crop_protocol_id');
+        return $this->belongsTo(CropProtocol::class, 'crop_protocol_id')->withTrashed();
     }
 
     public function harvests(): HasMany

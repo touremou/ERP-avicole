@@ -23,7 +23,7 @@ class CuttingSession extends Model
         'loss_percent'    => 'decimal:2',
     ];
 
-    public function order(): BelongsTo { return $this->belongsTo(SlaughterOrder::class, 'slaughter_order_id'); }
+    public function order(): BelongsTo { return $this->belongsTo(SlaughterOrder::class, 'slaughter_order_id')->withTrashed(); }
     public function operator(): BelongsTo { return $this->belongsTo(User::class, 'operator_id'); }
     public function products(): HasMany { return $this->hasMany(CutProduct::class); }
 

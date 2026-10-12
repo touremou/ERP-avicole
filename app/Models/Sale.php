@@ -46,13 +46,13 @@ class Sale extends Model
 
     public function client(): BelongsTo
     {
-        return $this->belongsTo(Client::class);
+        return $this->belongsTo(Client::class)->withTrashed();
     }
 
     /** Vendeur (employé) à qui la vente POS est attribuée nominativement. */
     public function sellerEmployee(): BelongsTo
     {
-        return $this->belongsTo(Employee::class, 'seller_employee_id');
+        return $this->belongsTo(Employee::class, 'seller_employee_id')->withTrashed();
     }
 
     public function user(): BelongsTo

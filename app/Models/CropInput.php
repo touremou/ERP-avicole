@@ -109,12 +109,12 @@ class CropInput extends Model
 
     public function cropCycle(): BelongsTo
     {
-        return $this->belongsTo(CropCycle::class);
+        return $this->belongsTo(CropCycle::class)->withTrashed();
     }
 
     public function provider(): BelongsTo
     {
-        return $this->belongsTo(Provider::class);
+        return $this->belongsTo(Provider::class)->withTrashed();
     }
 
     // ─── ACCESSEURS ───

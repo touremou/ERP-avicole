@@ -46,10 +46,10 @@ class PlannedBatch extends Model
     public const SANITARY_VOID_DAYS = 21;
     public const CHICK_ORDER_LEAD_DAYS = 56; // 8 semaines
 
-    public function building(): BelongsTo { return $this->belongsTo(Building::class); }
-    public function provider(): BelongsTo { return $this->belongsTo(Provider::class); }
+    public function building(): BelongsTo { return $this->belongsTo(Building::class)->withTrashed(); }
+    public function provider(): BelongsTo { return $this->belongsTo(Provider::class)->withTrashed(); }
     public function creator(): BelongsTo { return $this->belongsTo(User::class, 'created_by'); }
-    public function actualBatch(): BelongsTo { return $this->belongsTo(Batch::class, 'actual_batch_id'); }
+    public function actualBatch(): BelongsTo { return $this->belongsTo(Batch::class, 'actual_batch_id')->withTrashed(); }
 
     public function scopeUpcoming($query) { return $query->where('status', 'planifie')->where('planned_arrival_date', '>', now())->orderBy('planned_arrival_date'); }
     public function scopeOverdue($query) { return $query->where('status', 'planifie')->where('chick_order_deadline', '<', now()); }

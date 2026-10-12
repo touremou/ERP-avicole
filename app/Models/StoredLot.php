@@ -64,9 +64,9 @@ class StoredLot extends Model
 
     // ─── RELATIONS ───
 
-    public function stock(): BelongsTo { return $this->belongsTo(Stock::class); }
-    public function harvest(): BelongsTo { return $this->belongsTo(Harvest::class); }
-    public function transformation(): BelongsTo { return $this->belongsTo(CropTransformation::class, 'crop_transformation_id'); }
+    public function stock(): BelongsTo { return $this->belongsTo(Stock::class)->withTrashed(); }
+    public function harvest(): BelongsTo { return $this->belongsTo(Harvest::class)->withTrashed(); }
+    public function transformation(): BelongsTo { return $this->belongsTo(CropTransformation::class, 'crop_transformation_id')->withTrashed(); }
 
     public function checks(): HasMany
     {

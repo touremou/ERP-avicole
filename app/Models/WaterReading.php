@@ -42,12 +42,12 @@ class WaterReading extends Model
 
     public function source(): BelongsTo
     {
-        return $this->belongsTo(WaterSource::class, 'water_source_id');
+        return $this->belongsTo(WaterSource::class, 'water_source_id')->withTrashed();
     }
 
     public function building(): BelongsTo
     {
-        return $this->belongsTo(Building::class);
+        return $this->belongsTo(Building::class)->withTrashed();
     }
 
     public function user(): BelongsTo

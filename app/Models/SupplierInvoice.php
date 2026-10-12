@@ -41,7 +41,7 @@ class SupplierInvoice extends Model
 
     public function provider(): BelongsTo
     {
-        return $this->belongsTo(Provider::class);
+        return $this->belongsTo(Provider::class)->withTrashed();
     }
 
     public function payments(): HasMany
@@ -51,7 +51,7 @@ class SupplierInvoice extends Model
 
     public function expense(): BelongsTo
     {
-        return $this->belongsTo(Expense::class);
+        return $this->belongsTo(Expense::class)->withTrashed();
     }
 
     public function feedPurchase(): BelongsTo

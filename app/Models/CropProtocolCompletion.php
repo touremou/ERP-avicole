@@ -30,17 +30,17 @@ class CropProtocolCompletion extends Model
 
     public function cropInput(): BelongsTo
     {
-        return $this->belongsTo(CropInput::class, 'crop_input_id');
+        return $this->belongsTo(CropInput::class, 'crop_input_id')->withTrashed();
     }
 
     public function consumedStock(): BelongsTo
     {
-        return $this->belongsTo(Stock::class, 'consumed_stock_id');
+        return $this->belongsTo(Stock::class, 'consumed_stock_id')->withTrashed();
     }
 
     public function cycle(): BelongsTo
     {
-        return $this->belongsTo(CropCycle::class, 'crop_cycle_id');
+        return $this->belongsTo(CropCycle::class, 'crop_cycle_id')->withTrashed();
     }
 
     public function item(): BelongsTo
