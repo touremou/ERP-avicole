@@ -601,7 +601,7 @@
                 newMortality = maxAllowed;
                 el('mortality-error-banner').classList.remove('hidden');
                 el('mortality-error-msg').innerText =
-                    `{{ __("Mortalité plafonnée à") }} ${maxAllowed} {{ __("(effectif actuel + mortalité originale).") }}`;
+                    `${@js(__("Mortalité plafonnée à"))} ${maxAllowed} ${@js(__("(effectif actuel + mortalité originale)."))}`;
             } else {
                 el('mortality-error-banner').classList.add('hidden');
             }
