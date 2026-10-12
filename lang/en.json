@@ -5022,5 +5022,6 @@
     "Ouvrir le laboratoire": "Open the laboratory",
     "Votre session a pris fin. Reconnectez-vous : vous reviendrez à la page demandée.": "Your session has ended. Sign in again: you will return to the page you asked for.",
     "La page était restée ouverte trop longtemps : rien n'a été enregistré. Vérifiez la saisie et renvoyez-la.": "The page had been left open too long: nothing was saved. Check your entry and send it again.",
-    "Votre session a pris fin : la saisie n'a pas été enregistrée. Reconnectez-vous, vous reviendrez sur la page.": "Your session has ended: the entry was not saved. Sign in again and you will return to the page."
+    "Votre session a pris fin : la saisie n'a pas été enregistrée. Reconnectez-vous, vous reviendrez sur la page.": "Your session has ended: the entry was not saved. Sign in again and you will return to the page.",
+    "Boîte": "Box"
 }
