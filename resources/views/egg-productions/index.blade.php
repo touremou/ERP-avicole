@@ -251,7 +251,7 @@
                                                     <a href="{{ route('egg-productions.tri', $prod->id) }}" class="w-6 h-6 md:w-7 md:h-7 rounded-md md:rounded-lg bg-blue-50 text-blue-500 flex items-center justify-center hover:bg-blue-500 hover:text-white transition-all shadow-sm shadow-blue-100 no-underline"><i class="fa-solid fa-scale-balanced text-[8px] md:text-[9px]"></i></a>
                                                 @endcan
                                                 @can('production.S')
-                                                    <form action="{{ route('egg-productions.destroy', $prod->id) }}" method="POST" onsubmit="return confirm(@json(__('Attention : Annuler le flux ?')))" class="m-0">
+                                                    <form action="{{ route('egg-productions.destroy', $prod->id) }}" method="POST" onsubmit="return confirm(@js(__('Attention : Annuler le flux ?')))" class="m-0">
                                                         @csrf @method('DELETE')
                                                         <button type="submit" class="w-6 h-6 md:w-7 md:h-7 text-red-200 hover:text-red-500 transition-colors flex items-center justify-center outline-none bg-transparent border-none cursor-pointer"><i class="fa-solid fa-trash-can text-[8px] md:text-[9px]"></i></button>
                                                     </form>

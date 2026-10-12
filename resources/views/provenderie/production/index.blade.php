@@ -121,7 +121,7 @@
                                         
                                         {{-- Permission M : Finalisation de la production --}}
                                         @can('provenderie.M')
-                                        <form action="{{ route('production.complete', $prod->id) }}" method="POST" onsubmit="return confirm(@json(__('Confirmer la fin de production ? Le stock sera mis à jour.')))">
+                                        <form action="{{ route('production.complete', $prod->id) }}" method="POST" onsubmit="return confirm(@js(__('Confirmer la fin de production ? Le stock sera mis à jour.')))">
                                             @csrf
                                             @method('PUT')
                                             <button type="submit" class="text-[9px] font-black text-white uppercase italic tracking-widest bg-emerald-500 px-5 py-2 rounded-xl hover:bg-emerald-600 transition-all shadow-xl active:scale-95">

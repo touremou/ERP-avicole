@@ -56,7 +56,7 @@
 
                     <div class="pt-10 space-y-4">
                         <button type="submit" 
-                                onclick="return confirm(@json(__('🚨 ACTION CRITIQUE : Confirmez-vous l\'alignement du stock système sur le stock physique ?')))"
+                                onclick="return confirm(@js(__('🚨 ACTION CRITIQUE : Confirmez-vous l\'alignement du stock système sur le stock physique ?')))"
                                 class="w-full bg-slate-900 text-white py-8 rounded-[3rem] font-black uppercase italic shadow-2xl hover:bg-red-600 active:scale-95 transition-all flex items-center justify-center gap-4 group border-none cursor-pointer">
                             <span class="tracking-[0.2em] text-xs">{{ __("Écraser & Synchroniser l'Inventaire") }}</span>
                             <i class="fa-solid fa-rotate animate-spin-slow group-hover:rotate-180 transition-transform"></i>

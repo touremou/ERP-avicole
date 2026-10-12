@@ -990,7 +990,7 @@ class SyncService
             'quantity'      => 'required|numeric|min:0.001',
             // Montant TOTAL payé (cohérent avec le web : unit_price = total).
             'unit_price'    => 'required|numeric|min:0',
-            'unit'          => 'required|in:Sac,KG,Litre,Unité,Boite',
+            'unit'          => ['required', \Illuminate\Validation\Rule::in(\App\Models\FeedPurchase::UNITES)],
             'supplier'      => 'nullable|string|max:255',
             'payment_mode'  => 'nullable|in:comptant,credit',
             'metadata'      => 'nullable|array',

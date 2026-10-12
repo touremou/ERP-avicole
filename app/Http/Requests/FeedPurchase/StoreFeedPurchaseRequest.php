@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests\FeedPurchase;
 
+use App\Models\FeedPurchase;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Gate;
 
 class StoreFeedPurchaseRequest extends FormRequest
@@ -25,8 +27,12 @@ class StoreFeedPurchaseRequest extends FormRequest
             // Le compte d'où sort l'argent d'un achat COMPTANT. Facultatif :
             // vide = résolution par le mode de paiement, comme partout ailleurs.
             'treasury_account_id' => 'nullable|exists:treasury_accounts,id',
-            'unit'          => 'required|string|in:Sac,KG,Litre,Unité,Boite',
+            'unit'          => ['required', 'string', Rule::in(FeedPurchase::UNITES)],
+            // Catégorie et nature : un vaccin acheté ici entrait au stock comme
+            // ALIMENT (catégorie et nature n'étaient pas transmises).
+            'category'      => ['nullable', Rule::in(FeedPurchase::CATEGORIES)],
             'metadata'      => 'nullable|array',
+            'metadata.conso_type' => ['nullable', Rule::in(FeedPurchase::NATURES)],
         ];
     }
 }

@@ -26,7 +26,7 @@
                             <i class="fas fa-check-circle mr-2"></i> {{ __("Réactiver") }}
                         </button>
                     @else
-                        <button type="submit" onclick="return confirm(@json(__('Placer ce partenaire sur liste noire ?')))"
+                        <button type="submit" onclick="return confirm(@js(__('Placer ce partenaire sur liste noire ?')))"
                                 class="bg-orange-50 text-orange-600 border border-orange-100 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase shadow-sm hover:bg-orange-600 hover:text-white transition flex items-center tracking-widest italic">
                             <i class="fas fa-ban mr-2"></i> {{ __("Blacklister") }}
                         </button>
@@ -52,7 +52,7 @@
                         </div>
                     @else
                         <form action="{{ route('providers.destroy', $provider->id) }}" method="POST" 
-                              onsubmit="return confirm(@json(__('Confirmer l\'archivage ? L\'historique sera conservé dans la corbeille.')));" class="inline">
+                              onsubmit="return confirm(@js(__('Confirmer l\'archivage ? L\'historique sera conservé dans la corbeille.')));" class="inline">
                             @csrf @method('DELETE')
                             <button type="submit" class="bg-red-50 text-red-600 border border-red-100 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase shadow-sm hover:bg-red-600 hover:text-white transition flex items-center tracking-widest italic">
                                 <i class="fas fa-archive mr-2"></i> {{ __("Désactiver") }}

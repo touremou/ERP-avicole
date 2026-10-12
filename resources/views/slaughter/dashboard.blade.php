@@ -188,7 +188,7 @@
                                 </button>
                                 @if($order->status === 'planifie')
                                 <form action="{{ route('slaughter.orders.cancel', $order) }}" method="POST"
-                                      onsubmit="return confirm(@json(__('Annuler cet ordre d\'abattage ?')))">
+                                      onsubmit="return confirm(@js(__('Annuler cet ordre d\'abattage ?')))">
                                     @csrf @method('PATCH')
                                     <button type="submit" class="bg-white text-slate-400 border border-slate-200 px-3 py-2 rounded-xl font-black text-[8px] uppercase tracking-widest hover:text-red-600 hover:border-red-200 transition-colors cursor-pointer"
                                             title="{{ __('Annuler l\'ordre (planifié uniquement)') }}">
@@ -369,7 +369,7 @@
                 <h3 class="text-lg font-black text-emerald-600 uppercase tracking-tighter mb-2">🔓 {{ __("Libération d'un lot bloqué") }}</h3>
                 <p class="text-[9px] text-slate-500 mb-4 normal-case" x-text="releaseNumber + {{ Js::from(__(' — décision réservée au niveau qualité, tracée au registre.')) }}"></p>
                 <form :action="'/slaughter/orders/' + releaseId + '/release'" method="POST"
-                      onsubmit="return confirm(@json(__('CONFIRMATION FINALE : libérer ce lot et le réintégrer au circuit ?')))">
+                      onsubmit="return confirm(@js(__('CONFIRMATION FINALE : libérer ce lot et le réintégrer au circuit ?')))">
                     @csrf @method('PATCH')
                     <div class="p-4 bg-emerald-50 rounded-2xl mb-4">
                         <p class="text-[9px] font-black text-emerald-700 m-0"><i class="fa-solid fa-triangle-exclamation mr-1"></i> {{ __("Le lot réintègre le circuit (abattage, découpe, stock). Assurez-vous que la non-conformité est levée.") }}</p>

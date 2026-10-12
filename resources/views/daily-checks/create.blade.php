@@ -240,7 +240,7 @@
                                 @if(($iotTemp ?? null) !== null)
                                     @if($iotTemp['count'] > 0)
                                     <button type="button"
-                                        onclick="applyIotTemp({{ $iotTemp['temp_min'] }}, {{ $iotTemp['temp_max'] }}, @json($iotTemp['sensor']))"
+                                        onclick="applyIotTemp({{ $iotTemp['temp_min'] }}, {{ $iotTemp['temp_max'] }}, @js($iotTemp['sensor']))"
                                         title="{{ __('Relevés capteur du bâtiment aujourd\'hui (:n mesures) — la saisie manuelle prime en cas de désaccord', ['n' => $iotTemp['count']]) }}"
                                         class="w-full flex items-center justify-center gap-1 px-2 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 rounded-xl border border-emerald-400/20 transition cursor-pointer">
                                         <span class="text-[8px] font-black text-emerald-300 uppercase tracking-widest italic"><i class="fa-solid fa-microchip mr-1"></i>{{ __('Capteur') }} {{ number_format($iotTemp['temp_min'], 1) }}–{{ number_format($iotTemp['temp_max'], 1) }} °C</span>

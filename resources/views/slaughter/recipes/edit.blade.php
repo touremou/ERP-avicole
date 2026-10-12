@@ -99,7 +99,7 @@
 
             {{-- Formulaires de suppression HORS du formulaire principal (HTML valide). --}}
             @foreach($recipe->lines as $line)
-            <form id="delete-line-{{ $line->id }}" method="POST" action="{{ route('slaughter.recipes.lines.destroy', [$recipe, $line]) }}" onsubmit="return confirm(@json(__('Retirer ce morceau de la recette ?')))">
+            <form id="delete-line-{{ $line->id }}" method="POST" action="{{ route('slaughter.recipes.lines.destroy', [$recipe, $line]) }}" onsubmit="return confirm(@js(__('Retirer ce morceau de la recette ?')))">
                 @csrf @method('DELETE')
             </form>
             @endforeach

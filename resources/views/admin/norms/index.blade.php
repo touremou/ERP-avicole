@@ -251,7 +251,7 @@
                 </button>
 
                 <h3 class="text-2xl md:text-3xl font-black text-slate-900 uppercase italic tracking-tighter mb-8 md:mb-10 leading-none pr-10"
-                    x-text="openEdit ? @json(__('Audit & Mise à jour')) : @json(__('Initialiser une Norme'))"></h3>
+                    x-text="openEdit ? @js(__('Audit & Mise à jour')) : @js(__('Initialiser une Norme'))"></h3>
                 
                 <form :action="openEdit ? '{{ url('batches/norms') }}/' + currentNorm.id : '{{ route('batches.norms.store') }}'" method="POST" class="space-y-8">
                     @csrf
@@ -316,7 +316,7 @@
                     </div>
 
                     <button type="submit" class="w-full bg-slate-900 text-white py-6 rounded-3xl text-[11px] font-black uppercase tracking-[0.3em] hover:bg-blue-600 transition shadow-2xl border-none cursor-pointer italic"
-                            x-text="openEdit ? @json(__('ACTUALISER LE RÉFÉRENTIEL')) : @json(__('ENREGISTRER LA NORME'))"></button>
+                            x-text="openEdit ? @js(__('ACTUALISER LE RÉFÉRENTIEL')) : @js(__('ENREGISTRER LA NORME'))"></button>
                 </form>
             </div>
         </div>

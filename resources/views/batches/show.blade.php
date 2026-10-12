@@ -884,7 +884,7 @@
                                                 <a href="{{ route('feed-purchases.edit', $purchase->id) }}" class="text-slate-300 hover:text-blue-600 transition"><i class="fa-solid fa-pen-to-square"></i></a>
                                                 @endcan
                                                 @can('provenderie.S')
-                                                <form action="{{ route('feed-purchases.destroy', $purchase->id) }}" method="POST" onsubmit="return confirm(@json(__('Annuler cet achat ?')))">
+                                                <form action="{{ route('feed-purchases.destroy', $purchase->id) }}" method="POST" onsubmit="return confirm(@js(__('Annuler cet achat ?')))">
                                                     @csrf @method('DELETE')
                                                     <button type="submit" class="text-slate-300 hover:text-red-500 transition"><i class="fa-solid fa-trash-can"></i></button>
                                                 </form>
@@ -1042,7 +1042,7 @@
                                         <a href="{{ route('daily-checks.edit', $check->id) }}" class="text-slate-300 hover:text-blue-500 transition"><i class="fa-solid fa-pen-to-square text-[10px]"></i></a>
                                         @endcan
                                         @can('elevage.S')
-                                        <form action="{{ route('daily-checks.destroy', $check->id) }}" method="POST" onsubmit="return confirm(@json(__('Supprimer ?')))">
+                                        <form action="{{ route('daily-checks.destroy', $check->id) }}" method="POST" onsubmit="return confirm(@js(__('Supprimer ?')))">
                                             @csrf @method('DELETE')
                                             <button type="submit" class="text-slate-300 hover:text-red-500 transition"><i class="fa-solid fa-trash-can text-[10px]"></i></button>
                                         </form>
@@ -1245,7 +1245,7 @@
             @endif
 
             // 2. GESTION DES ERREURS D'ACHAT DIRECT (Rouvre la modale si échec de validation)
-            @if($errors->has('unit_price') || $errors->has('quantity'))
+            @if($errors->hasAny(['feed_type', 'quantity', 'unit', 'unit_price', 'supplier', 'category', 'metadata.conso_type', 'purchase_date', 'treasury_account_id']))
                 openFeedModal();
             @endif
 
