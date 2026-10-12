@@ -59,4 +59,23 @@
             </div>
         </div>
     @endforeach
+
+    {{-- QUOI SAISIR POUR LEVER « NON ANALYSÉ ». La liste n'était qu'une
+         infobulle — invisible au doigt sur un téléphone. On nomme les
+         ingrédients sans teneur, et on mène au laboratoire. --}}
+    @php
+        $aRenseigner = collect($keys)
+            ->map(fn ($k) => $comparison[$k] ?? null)
+            ->filter(fn ($row) => $row && ! $row['complete'])
+            ->flatMap(fn ($row) => $row['missing'])
+            ->unique()->values();
+    @endphp
+    @if($aRenseigner->isNotEmpty())
+        <p class="text-[9px] normal-case not-italic font-bold leading-snug pt-1 {{ $dark ? 'text-amber-200/80' : 'text-amber-700' }}">
+            {{ __('Teneurs à renseigner pour :') }} {{ $aRenseigner->take(6)->implode(', ') }}{{ $aRenseigner->count() > 6 ? '…' : '' }}.
+            @if(\Illuminate\Support\Facades\Route::has('raw-materials.index'))
+                <a href="{{ route('raw-materials.index') }}" class="underline {{ $dark ? 'text-amber-200' : 'text-amber-800' }}">{{ __('Ouvrir le laboratoire') }}</a>
+            @endif
+        </p>
+    @endif
 </div>

@@ -92,7 +92,11 @@ class RawMaterial extends Model
      */
     public function getNutritionalSummaryAttribute(): string
     {
-        return "{$this->name} ({$this->energy_kcal} kcal | {$this->protein_rate}% Prot.)";
+        // Une teneur vide est « non analysée » : on l'écrit « — », pas « % ».
+        $em = $this->energy_kcal ?? '—';
+        $pb = $this->protein_rate !== null ? "{$this->protein_rate}%" : '—';
+
+        return "{$this->name} ({$em} kcal | {$pb} Prot.)";
     }
 
     // -----------------------
