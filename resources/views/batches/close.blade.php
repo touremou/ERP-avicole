@@ -19,7 +19,7 @@
             @endif
 
             @can('elevage.M')
-            <form action="{{ route('batches.close', $batch->id) }}" method="POST" onsubmit="return confirm('{{ __("Confirmer la clôture ? Le bâtiment passera en désinfection.") }}');">
+            <form action="{{ route('batches.close', $batch->id) }}" method="POST" onsubmit="return confirm(@js(__("Confirmer la clôture ? Le bâtiment passera en désinfection.")));">
                 @csrf @method('PUT')
 
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">

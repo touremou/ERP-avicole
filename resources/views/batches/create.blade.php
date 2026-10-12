@@ -645,7 +645,7 @@
             opt.textContent = t.name_fr;
             opt.dataset.cycleDays = t.cycle_days_default;
             opt.dataset.ptId = t.id;
-            if ('{{ old('type') }}' === t.slug) opt.selected = true;
+            if (@js(old('type')) === t.slug) opt.selected = true;
             typeSelect.appendChild(opt);
         });
 

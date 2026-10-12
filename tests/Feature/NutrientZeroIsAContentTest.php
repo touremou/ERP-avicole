@@ -71,25 +71,29 @@ test('une ration ordinaire, sur le référentiel livré, est enfin confrontée �
 
     // Le sel et les coquilles n'apportent ni énergie, ni protéine, ni lysine :
     // ce 0 est une teneur, pas une lacune.
-    foreach (['em', 'pb', 'lys', 'ca'] as $nutriment) {
+    // Méthionine et phosphore viennent des valeurs de référence livrées
+    // (cf. ReferenceNutrientValuesTest) : les six lignes sont confrontées.
+    foreach (['em', 'pb', 'lys', 'meth', 'ca', 'p'] as $nutriment) {
         expect($analyse[$nutriment]['complete'])->toBeTrue("{$nutriment} devrait être analysé")
             ->and($analyse[$nutriment]['ratio'])->not->toBeNull();
     }
-
-    // Méthionine et phosphore ne sont pas livrés (« pas de valeurs inventées ») :
-    // ils restent à saisir — et l'écran dit lesquels.
-    expect($analyse['meth']['complete'])->toBeFalse()
-        ->and($analyse['meth']['missing'])->toContain('Maïs jaune');
 });
 
 test('la fiche NOMME les ingrédients à renseigner et mène au laboratoire', function () {
     semerLeReferentiel($this->farm->id);
     $formule = rationVolaille();
 
+    // Un ingrédient de la ferme, jamais analysé.
+    $maison = RawMaterial::create([
+        'name' => 'Prémélange maison', 'unit' => 'kg', 'stock_qty' => 0, 'unit_cost' => 1000,
+        'alert_threshold' => 10, 'is_active' => true,
+    ]);
+    $formule->items()->create(['raw_material_id' => $maison->id, 'percentage' => 1, 'quantity_kg' => 10]);
+
     $page = $this->get(route('formulas.show', $formule))->assertOk()->getContent();
 
     expect($page)->toContain('Teneurs à renseigner pour :')
-        ->and($page)->toContain('Maïs jaune')
+        ->and($page)->toContain('Prémélange maison')
         ->and($page)->toContain(route('raw-materials.index'));
 });
 
@@ -127,6 +131,7 @@ test('la reprise des données : un 0 ancien redevient « non analysé », sauf l
 
     expect($maison->fresh()->energy_kcal)->toBeNull()
         ->and((float) matiereLivree('Sel')->energy_kcal)->toBe(0.0)
-        // La méthionine n'a jamais été livrée : son 0 n'est réel nulle part.
+        // La méthionine n'était pas livrée à l'époque de cette reprise : son 0
+        // n'y était réel nulle part (2026_10_13 la remplit ensuite).
         ->and(matiereLivree('Sel')->methionine_rate)->toBeNull();
 });

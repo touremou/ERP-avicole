@@ -11,7 +11,7 @@
             {{-- BOUTON + FORMULAIRE CRÉATION --}}
             <div class="mb-6">
                 <button @click="showForm = !showForm" class="w-full bg-white border-2 border-dashed border-slate-200 hover:border-indigo-400 rounded-2xl p-4 text-[10px] font-black text-slate-400 hover:text-indigo-600 uppercase tracking-widest transition-all cursor-pointer" :class="showForm && 'border-indigo-400 text-indigo-600'">
-                    <i class="fa-solid fa-plus mr-2"></i> <span x-text="showForm ? '{{ __("Masquer le formulaire") }}' : '{{ __("Créer un nouveau template") }}'"></span>
+                    <i class="fa-solid fa-plus mr-2"></i> <span x-text="showForm ? @js(__("Masquer le formulaire")) : @js(__("Créer un nouveau template"))"></span>
                 </button>
 
                 <div x-show="showForm" x-collapse class="mt-4">
@@ -266,7 +266,7 @@
                                     </button>
                                 </form>
                                 @can('rh.S')
-                                <form method="POST" action="{{ route('tasks.templates.destroy', $tpl) }}" onsubmit="return confirm('{{ __("Supprimer ce template ?") }}')">@csrf @method('DELETE')
+                                <form method="POST" action="{{ route('tasks.templates.destroy', $tpl) }}" onsubmit="return confirm(@js(__("Supprimer ce template ?")))">@csrf @method('DELETE')
                                     <button class="w-7 h-7 rounded-lg bg-transparent text-slate-200 hover:text-red-500 flex items-center justify-center border-none cursor-pointer transition-all" title="{{ __("Supprimer") }}"><i class="fa-solid fa-trash-can text-[8px]"></i></button>
                                 </form>
                                 @endcan

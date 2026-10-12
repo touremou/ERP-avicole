@@ -41,7 +41,7 @@
                 @can('rh.M')
                 @if($assignment->type !== 'mutation')
                 <form method="POST" action="{{ route('employees.assignment.end', $assignment) }}"
-                      onsubmit="return confirm('{{ __('Mettre fin à cette mise à disposition aujourd\'hui ?') }}')">@csrf
+                      onsubmit="return confirm(@js(__('Mettre fin à cette mise à disposition aujourd\'hui ?')))">@csrf
                     <button class="text-[8px] font-black text-red-500 bg-red-50 px-3 py-1.5 rounded-lg border-none cursor-pointer uppercase hover:bg-red-100">{{ __("Clore") }}</button>
                 </form>
                 @endif

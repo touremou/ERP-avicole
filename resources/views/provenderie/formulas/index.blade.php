@@ -84,6 +84,7 @@
                                     @include('provenderie.formulas.partials.nutrient-bars', [
                                         'comparison' => $comparison,
                                         'only' => ['em', 'pb'],
+                                        'estimates' => $formula->referenceIngredients(),
                                     ])
                                     @unless($matchedNorm)
                                         <p class="mt-3 text-[8px] font-black uppercase italic text-amber-600 leading-tight">

@@ -395,9 +395,13 @@ d'aliment externes passent par `feed-purchases`.
   pas de teneur saisie pour ce nutriment ; la fiche nomme ces ingrédients et
   mène au **laboratoire** (Matières premières → analyse). Au laboratoire, une
   teneur **vide** = non analysée ; **0** = l'ingrédient n'en contient pas (le
-  sel n'apporte pas d'énergie). Méthionine et phosphore ne sont pas livrés avec
-  le référentiel : ils restent à saisir d'après vos analyses ou fiches
-  fournisseur.
+  sel n'apporte pas d'énergie).
+- **Valeurs de référence** : les matières livrées portent les six teneurs des
+  tables de composition (INRA-CIRAD-AFZ / Feedipedia, valeurs typiques ;
+  phosphore **total**). Ce sont des estimations : la matière porte le badge
+  « Valeurs de référence » et la fiche d'une formule dit qu'elle est calculée
+  dessus. Enregistrer votre analyse au laboratoire les remplace ; un nouveau
+  passage du semeur ne l'écrase jamais.
 - **Achat direct depuis la fiche lot** (menu Gérer) : aliment, santé, hygiène,
   litières ou matériel, chacun entre au stock dans SA catégorie. Les unités
   proposées sont celles que le serveur accepte (`FeedPurchase::UNITES`) ; un

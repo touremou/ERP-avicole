@@ -329,7 +329,7 @@
                 },
                 get tierLabel() {
                     const c = this.clients.find(x => String(x.id) === String(this.clientId));
-                    return c ? c.name : '{{ __('Comptoir') }}';
+                    return c ? c.name : @js(__('Comptoir'));
                 },
                 // Prix appliqué : tarif du client (si chargé) sinon prix par défaut de l'article.
                 priceFor(p) {

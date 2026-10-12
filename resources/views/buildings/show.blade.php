@@ -100,7 +100,7 @@
                             </div>
                             <div class="flex justify-between items-center p-4 bg-slate-50 rounded-2xl shadow-inner">
                                 <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest italic">{{ __("Densité Max") }}</span>
-                                <span class="text-slate-700">{{ round($building->capacity / ($building->surface ?: 1), 1) }} {{ __("suj/m²") }}</span>
+                                <span class="text-slate-700">{{ $building->max_density !== null ? $building->max_density . ' ' . __("suj/m²") : __('Surface non renseignée') }}</span>
                             </div>
                         </div>
                     </div>

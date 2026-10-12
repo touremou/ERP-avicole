@@ -25,7 +25,7 @@
                 @can('rh.S')
                 @php $isLocked = $employee->batches()->where('status', 'Actif')->exists(); @endphp
                 @if(!$isLocked)
-                <form action="{{ route('employees.destroy', $employee) }}" method="POST" onsubmit="return confirm('{{ __("Archiver cet employé ?") }}')">
+                <form action="{{ route('employees.destroy', $employee) }}" method="POST" onsubmit="return confirm(@js(__("Archiver cet employé ?")))">
                     @csrf @method('DELETE')
                     <button class="bg-red-50 border border-red-100 px-4 py-2 rounded-xl text-[9px] font-black uppercase text-red-500 hover:bg-red-600 hover:text-white transition shadow-sm italic border-none cursor-pointer">
                         <i class="fas fa-archive mr-1"></i> {{ __("Archiver") }}
@@ -182,7 +182,7 @@
                                         </button>
                                     </form>
                                     @endif
-                                    <form method="POST" action="{{ route('employees.access.password', $employee) }}" class="flex-1" onsubmit="return confirm('{{ __("Réinitialiser le mot de passe ?") }}');">
+                                    <form method="POST" action="{{ route('employees.access.password', $employee) }}" class="flex-1" onsubmit="return confirm(@js(__("Réinitialiser le mot de passe ?")));">
                                         @csrf @method('PUT')
                                         <button type="submit" class="w-full bg-white border border-slate-200 text-slate-600 px-3 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-slate-900 hover:text-white transition cursor-pointer">
                                             <i class="fa-solid fa-key mr-1"></i> {{ __("Nouveau mot de passe") }}

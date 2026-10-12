@@ -105,7 +105,7 @@
                             // annoncer une.
                             $seuilCcp3 = \App\Actions\Slaughter\RecordCcp::seuil('ccp3_core_temp_max');
                         @endphp
-                        <div class="mt-6 p-5 bg-rose-50/60 border border-rose-100 rounded-[2rem]" x-data="{ ccp3: '{{ old('ccp3_core_temp') }}' }">
+                        <div class="mt-6 p-5 bg-rose-50/60 border border-rose-100 rounded-[2rem]" x-data="{ ccp3: @js(old('ccp3_core_temp')) }">
                             <p class="text-[9px] font-black uppercase tracking-widest text-rose-600 mb-3"><i class="fa-solid fa-shield-halved mr-1"></i> {{ __("CCP 3 — T° à cœur après refroidissement (recommandé)") }}</p>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div class="space-y-2">

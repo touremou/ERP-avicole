@@ -22,7 +22,7 @@
                 
                 {{-- Permission S : Suppression (Destructive) --}}
                 @can('logistique.S')
-                <form action="{{ route('stocks.destroy', $stock->id) }}" method="POST" onsubmit="return confirm('{{ __("🚨 Action Irréversible : Supprimer cet article et purger tout son historique ?") }}');">
+                <form action="{{ route('stocks.destroy', $stock->id) }}" method="POST" onsubmit="return confirm(@js(__("🚨 Action Irréversible : Supprimer cet article et purger tout son historique ?")));">
                     @csrf @method('DELETE')
                     <button type="submit" class="bg-rose-50 text-rose-500 border border-rose-100 px-5 py-3 rounded-2xl text-[10px] font-black uppercase italic hover:bg-rose-500 hover:text-white transition-all shadow-sm">
                         <i class="fa-solid fa-trash-can mr-2"></i> {{ __("Supprimer") }}

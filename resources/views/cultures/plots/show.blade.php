@@ -9,7 +9,7 @@
                 @endcan
                 @can('cultures.S')
                 @if(!$plot->isOccupied())
-                <form action="{{ route('plots.destroy', $plot) }}" method="POST" onsubmit="return confirm('{{ __('Supprimer cette parcelle ?') }}')">
+                <form action="{{ route('plots.destroy', $plot) }}" method="POST" onsubmit="return confirm(@js(__('Supprimer cette parcelle ?')))">
                     @csrf
                     @method('DELETE')
                     <button type="submit" class="text-rose-500 hover:text-rose-700 px-3 py-2.5 font-black text-[9px] uppercase tracking-widest italic transition">

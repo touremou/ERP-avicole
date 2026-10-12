@@ -45,3 +45,13 @@ test('le compte à rebours du vide sanitaire suit la date de désinfection, pas 
         ->assertOk()
         ->assertSee('Vide Sanitaire');
 });
+
+test('un bâtiment SANS surface affiche sa fiche (densité « non renseignée », pas une erreur 500)', function () {
+    // La surface castée en décimal arrive en chaîne « 0.00 », vraie pour PHP :
+    // `capacity / (surface ?: 1)` divisait par zéro.
+    $sansSurface = \App\Models\Building::factory()->create(['surface' => 0, 'capacity' => 2000]);
+
+    $this->get(route('buildings.show', $sansSurface))
+        ->assertOk()
+        ->assertSee(__('Surface non renseignée'));
+});

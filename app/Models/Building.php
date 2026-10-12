@@ -369,6 +369,19 @@ class Building extends Model
     /**
      * Densité actuelle (Sujets au m²)
      */
+    /**
+     * DENSITÉ MAXIMALE (sujets/m² à pleine capacité), ou null sans surface.
+     *
+     * La fiche calculait `capacity / (surface ?: 1)` : la surface, castée en
+     * décimal, arrive en CHAÎNE « 0.00 » — vraie pour PHP — et le repli ne
+     * jouait jamais. Un bâtiment sans surface renseignée rendait sa fiche en
+     * erreur 500 (division par zéro).
+     */
+    public function getMaxDensityAttribute(): ?float
+    {
+        return (float) $this->surface > 0 ? round($this->capacity / (float) $this->surface, 1) : null;
+    }
+
     public function getCurrentDensityAttribute(): float
     {
         $activeBatch = $this->batches()->active()->first();

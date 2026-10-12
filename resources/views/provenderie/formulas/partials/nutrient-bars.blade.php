@@ -7,6 +7,7 @@
     @param array $comparison  cf. Formula::nutritionalComparison()
     @param array $only        clefs de nutriments à afficher (toutes par défaut)
     @param bool  $dark        variante sur fond sombre
+    @param array $estimates   ingrédients sur valeurs de RÉFÉRENCE (Formula::referenceIngredients())
 --}}
 @php
     $keys = $only ?? array_keys($comparison);
@@ -70,6 +71,15 @@
             ->flatMap(fn ($row) => $row['missing'])
             ->unique()->values();
     @endphp
+    {{-- Valeurs de référence : un équilibre « au vert » calculé sur des
+         estimations de table ne doit pas passer pour une mesure. --}}
+    @if(! empty($estimates))
+        <p class="text-[9px] normal-case not-italic font-bold leading-snug pt-1 {{ $dark ? 'text-sky-200/80' : 'text-sky-700' }}">
+            <i class="fa-solid fa-book-open mr-1"></i>{{ __('Calcul sur valeurs de référence (estimations) pour :') }} {{ collect($estimates)->take(6)->implode(', ') }}{{ count($estimates) > 6 ? '…' : '' }}.
+            {{ __('Remplacez-les par vos analyses au laboratoire.') }}
+        </p>
+    @endif
+
     @if($aRenseigner->isNotEmpty())
         <p class="text-[9px] normal-case not-italic font-bold leading-snug pt-1 {{ $dark ? 'text-amber-200/80' : 'text-amber-700' }}">
             {{ __('Teneurs à renseigner pour :') }} {{ $aRenseigner->take(6)->implode(', ') }}{{ $aRenseigner->count() > 6 ? '…' : '' }}.

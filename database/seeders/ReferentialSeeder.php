@@ -44,63 +44,88 @@ class ReferentialSeeder extends Seeder
     // 1. MATIÈRES PREMIÈRES (ingrédients d'aliment)
     // ─────────────────────────────────────────────
     /**
-     * Matières premières livrées : [nom, unité, EM kcal/kg, PB %, Lys %, Ca %,
-     * coût GNF/kg]. Un 0 y est une teneur RÉELLE (le sel n'apporte ni énergie
-     * ni protéine) ; méthionine et phosphore n'y figurent pas : ils restent
-     * « non analysés » jusqu'à saisie au laboratoire.
+     * Matières premières livrées, VALEURS DE RÉFÉRENCE (tables de composition
+     * INRA-CIRAD-AFZ / Feedipedia, valeurs typiques, « tel quel ») :
      *
-     * Publique : la migration qui distingue « 0 » de « non analysé » lit cette
-     * même table pour reconnaître les vrais zéros.
+     *   [nom, unité, EM kcal/kg, PB %, Lys %, Ca %, coût GNF/kg, Méth %, P total %]
+     *
+     * Ce sont des ESTIMATIONS : la composition réelle d'un tourteau ou d'un son
+     * local varie d'un lot à l'autre. Elles permettent de confronter une formule
+     * à sa norme dès l'installation ; une analyse saisie au laboratoire les
+     * remplace (`nutrition_source` passe de « reference » à « saisie ») et n'est
+     * jamais écrasée par ce semeur.
+     *
+     * Le phosphore est TOTAL, comme les cibles des normes (poulet démarrage
+     * 0,70 %) et comme ce que rend une analyse. Le CMV dépend du fabricant :
+     * ses valeurs sont les plus incertaines de la table.
+     *
+     * Un 0 y est une teneur RÉELLE (le sel n'apporte ni énergie ni protéine).
+     * Publique : les migrations de reprise lisent cette même table.
      */
     public const MATIERES = [
         // Céréales et sous-produits
-        ['Maïs jaune',        'kg', 3350, 8.0,  0.25, 0.02, 3000],
-        ['Son de blé',        'kg', 1300, 15.0, 0.60, 0.10, 2000],
-        ['Son de riz',        'kg', 2900, 12.0, 0.50, 0.07, 1500],
-        ['Manioc (cossettes)',    'kg', 3200, 3.0,  0.10, 0.10, 1800],
+        ['Maïs jaune',                    'kg', 3350, 8.0,  0.25, 0.02, 3000,  0.18, 0.26],
+        ['Son de blé',                    'kg', 1300, 15.0, 0.60, 0.10, 2000,  0.23, 1.00],
+        ['Son de riz',                    'kg', 2900, 12.0, 0.50, 0.07, 1500,  0.25, 1.40],
+        ['Manioc (cossettes)',            'kg', 3200, 3.0,  0.10, 0.10, 1800,  0.03, 0.10],
 
-        // Sources Protéiques (Végétales & Animales)
-        ['Tourteau d\'arachide',  'kg', 2600, 45.0, 1.50, 0.20, 4500],
-        ['Tourteau de soja',      'kg', 2400, 46.0, 2.90, 0.30, 6000],
-        ['Tourteau de palmiste',  'kg', 2200, 15.0, 0.50, 0.25, 2000], // Très utilisé en AO
-        ['Graines de coton',      'kg', 2800, 22.0, 0.90, 0.15, 2500], // Ruminants
-        ['Farine de poisson',     'kg', 2800, 60.0, 4.80, 5.00, 9000],
-        ['Farine de sang',        'kg', 3200, 80.0, 7.00, 0.30, 8000],
+        // Sources protéiques (végétales & animales)
+        ['Tourteau d\'arachide',          'kg', 2600, 45.0, 1.50, 0.20, 4500,  0.50, 0.60],
+        ['Tourteau de soja',              'kg', 2400, 46.0, 2.90, 0.30, 6000,  0.64, 0.62],
+        ['Tourteau de palmiste',          'kg', 2200, 15.0, 0.50, 0.25, 2000,  0.28, 0.55], // Très utilisé en AO
+        ['Graines de coton',              'kg', 2800, 22.0, 0.90, 0.15, 2500,  0.32, 0.60], // Ruminants
+        ['Farine de poisson',             'kg', 2800, 60.0, 4.80, 5.00, 9000,  1.65, 2.80],
+        ['Farine de sang',                'kg', 3200, 80.0, 7.00, 0.30, 8000,  0.95, 0.25],
 
-        // Minéraux et Additifs
-        ['Coquilles / Calcaire',  'kg', 0,    0.0,  0.0,  38.0, 800],
-        ['Phosphate bicalcique',  'kg', 0,    0.0,  0.0,  24.0, 5000],
-        ['Poudre d\'os',          'kg', 0,    12.0, 0.0,  28.0, 3000],
-        ['Sel',               'kg', 0,    0.0,  0.0,  0.0,  500],
-        ['CMV (compl. minéral vitaminé)', 'kg', 0, 0.0, 0.0, 12.0, 8000],
+        // Minéraux et additifs
+        ['Coquilles / Calcaire',          'kg', 0,    0.0,  0.0,  38.0, 800,   0.0,  0.02],
+        ['Phosphate bicalcique',          'kg', 0,    0.0,  0.0,  24.0, 5000,  0.0,  18.0],
+        ['Poudre d\'os',                  'kg', 0,    12.0, 0.0,  28.0, 3000,  0.10, 13.0],
+        ['Sel',                           'kg', 0,    0.0,  0.0,  0.0,  500,   0.0,  0.0],
+        ['CMV (compl. minéral vitaminé)', 'kg', 0,    0.0,  0.0,  12.0, 8000,  0.0,  6.0],
 
-        // Fibres, Énergie liquide et Ruminants
-        ['Drêche de brasserie',   'kg', 2000, 25.0, 0.80, 0.30, 1200],
-        ['Fourrage / Foin',       'kg', 1800, 10.0, 0.40, 0.50, 500],
-        ['Luzerne déshydratée',   'kg', 1500, 16.0, 0.70, 1.40, 2500],
-        ['Huile de palme',        'kg', 8800, 0.0,  0.0,  0.0,  10000],
-        ['Mélasse',           'kg', 2500, 3.0,  0.0,  0.80, 1500], // Énergie ruminants/porcs
+        // Fibres, énergie liquide et ruminants
+        ['Drêche de brasserie',           'kg', 2000, 25.0, 0.80, 0.30, 1200,  0.45, 0.55],
+        ['Fourrage / Foin',               'kg', 1800, 10.0, 0.40, 0.50, 500,   0.15, 0.22],
+        ['Luzerne déshydratée',           'kg', 1500, 16.0, 0.70, 1.40, 2500,  0.24, 0.25],
+        ['Huile de palme',                'kg', 8800, 0.0,  0.0,  0.0,  10000, 0.0,  0.0],
+        ['Mélasse',                       'kg', 2500, 3.0,  0.0,  0.80, 1500,  0.02, 0.08], // Énergie ruminants/porcs
+    ];
+
+    /** Colonne de chaque teneur dans une ligne de MATIERES. */
+    public const COLONNES_DE_LA_TABLE = [
+        'energy_kcal' => 2, 'protein_rate' => 3, 'lysine_rate' => 4, 'calcium_rate' => 5,
+        'methionine_rate' => 7, 'phosphorus_rate' => 8,
     ];
 
     private function seedRawMaterials(): void
     {
-        $materials = self::MATIERES;
+        foreach (self::MATIERES as $ligne) {
+            [$name, $unit, , , , , $cost] = $ligne;
 
-        foreach ($materials as [$name, $unit, $em, $pb, $lys, $ca, $cost]) {
-            RawMaterial::updateOrCreate(
-                ['name' => $name],
-                [
-                    'farm_id'         => $this->farmId,
-                    'unit'            => $unit,
-                    'energy_kcal'     => $em,
-                    'protein_rate'    => $pb,
-                    'lysine_rate'     => $lys,
-                    'calcium_rate'    => $ca,
-                    'unit_cost'       => $cost,
-                    'alert_threshold' => 100, // Augmenté pour éviter trop d'alertes
-                    'is_active'       => true,
-                ]
-            );
+            // Le nom est unique pour toute l'installation : on cherche hors
+            // portée de ferme, sinon une matière d'une autre ferme passerait
+            // inaperçue et sa recréation heurterait l'index unique.
+            $material = RawMaterial::withoutGlobalScopes()->firstOrNew(['name' => $name]);
+            $material->fill([
+                'farm_id'         => $material->farm_id ?? $this->farmId,
+                'unit'            => $unit,
+                'unit_cost'       => $material->exists ? $material->unit_cost : $cost,
+                'alert_threshold' => $material->alert_threshold ?? 100,
+                'is_active'       => true,
+            ]);
+
+            // Une analyse saisie au laboratoire n'est jamais écrasée par la
+            // référence : on ne remplit que ce qui est vide, ou encore issu de
+            // la table.
+            if ($material->nutrition_source !== RawMaterial::SOURCE_SAISIE) {
+                foreach (self::COLONNES_DE_LA_TABLE as $colonne => $position) {
+                    $material->{$colonne} = $ligne[$position];
+                }
+                $material->nutrition_source = RawMaterial::SOURCE_REFERENCE;
+            }
+
+            $material->save();
         }
     }
 

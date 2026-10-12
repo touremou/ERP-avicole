@@ -122,7 +122,7 @@
                                 <i class="fa-solid fa-phone mr-2"></i> {{ __("Marquer comme Commandé") }}
                             </button>
                         </form>
-                        <form method="POST" action="{{ route('planning.status', $plan) }}" onsubmit="return confirm('{{ __("Annuler cette planification ?") }}')">
+                        <form method="POST" action="{{ route('planning.status', $plan) }}" onsubmit="return confirm(@js(__("Annuler cette planification ?")))">
                             @csrf @method('PUT')
                             <input type="hidden" name="status" value="annule">
                             <button type="submit" class="bg-white text-red-500 px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-red-50 transition-all border border-red-200 cursor-pointer">
@@ -148,7 +148,7 @@
                                 <i class="fa-solid fa-rocket"></i> {{ __("Activer la bande & Créer le lot") }}
                             </a>
                         @endcan
-                        <form method="POST" action="{{ route('planning.status', $plan) }}" onsubmit="return confirm('{{ __("Annuler cette commande ?") }}')">
+                        <form method="POST" action="{{ route('planning.status', $plan) }}" onsubmit="return confirm(@js(__("Annuler cette commande ?")))">
                             @csrf @method('PUT')
                             <input type="hidden" name="status" value="annule">
                             <button type="submit" class="bg-white text-red-500 px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-red-50 transition-all border border-red-200 cursor-pointer">
@@ -176,7 +176,7 @@
                     </a>
                     @endif
 
-                    <form method="POST" action="{{ route('planning.status', $plan) }}" onsubmit="return confirm('{{ __("Confirmer la fin de cette bande ? Le lot sera clôturé.") }}')">
+                    <form method="POST" action="{{ route('planning.status', $plan) }}" onsubmit="return confirm(@js(__("Confirmer la fin de cette bande ? Le lot sera clôturé.")))">
                         @csrf @method('PUT')
                         <input type="hidden" name="status" value="termine">
                         <button type="submit" class="bg-slate-900 text-white px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-800 transition-all border-none cursor-pointer shadow-lg">

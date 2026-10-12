@@ -213,6 +213,22 @@ class Formula extends Model
     }
 
     /**
+     * Ingrédients du mélange dont les teneurs viennent de la table de
+     * RÉFÉRENCE (estimations) et non d'une analyse : l'écran le dit, pour
+     * qu'un équilibre « au vert » ne passe pas pour une mesure.
+     *
+     * @return list<string>
+     */
+    public function referenceIngredients(): array
+    {
+        return $this->items
+            ->filter(fn ($item) => (float) $item->percentage > 0
+                && $item->rawMaterial?->nutrition_source === RawMaterial::SOURCE_REFERENCE)
+            ->map(fn ($item) => $item->rawMaterial->name)
+            ->unique()->values()->all();
+    }
+
+    /**
      * Confrontation mélange / norme, nutriment par nutriment.
      *
      * @return array<string, array{label:string, unit:string, decimals:int, real:float,

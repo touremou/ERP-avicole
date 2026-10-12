@@ -197,7 +197,7 @@
                                         {{-- PRÉAVIS --}}
                                         <form method="POST" action="{{ route('employees.contracts.notice', $employee) }}"
                                               class="bg-white p-5 rounded-[1.5rem] border border-rose-100 space-y-3"
-                                              onsubmit="return confirm('{{ __('Émettre le préavis de fin de contrat ?') }}')">
+                                              onsubmit="return confirm(@js(__('Émettre le préavis de fin de contrat ?')))">
                                             @csrf
                                             <p class="text-[9px] font-black text-rose-600 uppercase tracking-widest">{{ __("Émettre le préavis") }}</p>
                                             <input type="date" name="last_day"
