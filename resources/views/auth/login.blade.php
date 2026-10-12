@@ -1,6 +1,11 @@
 <x-guest-layout>
     <!-- Session Status -->
     <x-auth-session-status class="mb-4" :status="session('status')" />
+    {{-- Le motif d'une déconnexion forcée (compte suspendu) arrive en `error` :
+         l'écran ne montrait que `status`, et l'on était renvoyé ici sans raison. --}}
+    @if (session('error'))
+        <div class="mb-4 font-medium text-sm text-red-600">{{ session('error') }}</div>
+    @endif
 
     <form method="POST" action="{{ route('login') }}">
         @csrf
