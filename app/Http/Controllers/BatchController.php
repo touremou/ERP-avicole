@@ -500,7 +500,7 @@ class BatchController extends Controller
          */
         $energyCost   = (float) $batch->utility_cost;
         $durationDays = $batch->arrival_date
-            ? \Carbon\Carbon::parse($batch->arrival_date)->diffInDays(now())
+            ? max(0, \App\Support\Jours::entre($batch->arrival_date))
             : 0;
 
         /*

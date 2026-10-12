@@ -997,7 +997,7 @@
                     </thead>
                     <tbody class="divide-y divide-slate-50 text-[10px]">
                         @foreach($batch->dailyChecks->sortByDesc('check_date') as $check)
-                            @php $checkAge = \Carbon\Carbon::parse($batch->arrival_date)->diffInDays($check->check_date) + 1; @endphp
+                            @php $checkAge = $batch->ageLe($check->check_date); @endphp
                             <tr class="hover:bg-slate-50/80 transition-all">
                                 <td class="px-6 py-5">
                                     <p class="font-black text-slate-800 text-sm leading-none">{{ $check->check_date->format('d/m/y') }}</p>
