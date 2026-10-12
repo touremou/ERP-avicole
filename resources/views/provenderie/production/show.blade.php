@@ -14,7 +14,7 @@
                     {{-- Permission M : Clôture de la production --}}
                     @can('provenderie.M')
                         @if($production->status === 'Planifié' || $production->status === 'En cours')
-                            <form action="{{ route('production.complete', $production->id) }}" method="POST" onsubmit="return confirm(@json(__('Confirmer la fin du mélange ? Les stocks et compteurs machines seront mis à jour.')))">
+                            <form action="{{ route('production.complete', $production->id) }}" method="POST" onsubmit="return confirm(@js(__('Confirmer la fin du mélange ? Les stocks et compteurs machines seront mis à jour.')))">
                                 @csrf
                                 @method('PUT')
                                 <button type="submit" class="bg-emerald-500 text-white px-8 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-emerald-500/20 hover:bg-emerald-600 transition-all">
@@ -23,7 +23,7 @@
                             </form>
                             {{-- Annulation : libère la machine si l'OP ne sera pas mené à terme
                                  (sans elle, la machine resterait engagée indéfiniment). --}}
-                            <form action="{{ route('production.cancel', $production->id) }}" method="POST" onsubmit="return confirm(@json(__('Annuler cet ordre et libérer la/les machine(s) ? Aucun stock n\'est consommé tant que l\'OP n\'est pas clôturé.')))">
+                            <form action="{{ route('production.cancel', $production->id) }}" method="POST" onsubmit="return confirm(@js(__('Annuler cet ordre et libérer la/les machine(s) ? Aucun stock n\'est consommé tant que l\'OP n\'est pas clôturé.')))">
                                 @csrf
                                 @method('PUT')
                                 <button type="submit" class="bg-white text-rose-600 border border-rose-200 px-6 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-50 transition-all">

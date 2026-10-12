@@ -4706,7 +4706,6 @@
     "Un préavis a déjà été émis le :date.": "A notice was already issued on :date.",
     "Un rappel s'affichera :days jours avant l'échéance pour prolonger ou émettre le préavis.": "A reminder will be shown :days days before the due date to extend or issue the notice.",
     "Une ou plusieurs MP n'ont pas de prix renseigné. La clôture de cette production sera bloquée : renseignez le prix dans Provenderie > Matières Premières.": "One or more raw materials have no price set. Closing this production will be blocked: set the price in Feed Mill > Raw Materials.",
-    "Une teneur laissée à 0 est considérée « non analysée » : l'analyse d'une formule le signalera au lieu de conclure à une carence.": "A content left at 0 is considered “not analysed”: formula analysis will flag it instead of concluding a deficiency.",
     "Uniformité": "Uniformity",
     "Uniformité (%)": "Uniformity (%)",
     "Unité *": "Unit *",
@@ -5017,5 +5016,12 @@
     "Petit Ruminant": "Small ruminants",
     "Grand Ruminant": "Cattle",
     "Porcin": "Pigs",
-    "Lapins": "Rabbits"
+    "Lapins": "Rabbits",
+    "Laissez vide une teneur non analysée : l'analyse d'une formule le signalera au lieu de conclure à une carence. Saisissez 0 quand l'ingrédient n'en contient pas (le sel n'apporte pas d'énergie).": "Leave a content blank when it has not been analysed: formula analysis will flag it instead of concluding a deficiency. Enter 0 when the ingredient contains none (salt provides no energy).",
+    "Teneurs à renseigner pour :": "Contents to enter for:",
+    "Ouvrir le laboratoire": "Open the laboratory",
+    "Votre session a pris fin. Reconnectez-vous : vous reviendrez à la page demandée.": "Your session has ended. Sign in again: you will return to the page you asked for.",
+    "La page était restée ouverte trop longtemps : rien n'a été enregistré. Vérifiez la saisie et renvoyez-la.": "The page had been left open too long: nothing was saved. Check your entry and send it again.",
+    "Votre session a pris fin : la saisie n'a pas été enregistrée. Reconnectez-vous, vous reviendrez sur la page.": "Your session has ended: the entry was not saved. Sign in again and you will return to the page.",
+    "Boîte": "Box"
 }

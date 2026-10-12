@@ -40,7 +40,7 @@
     }
 @endphp
 
-<a href="{{ $href }}"
+<a href="{{ $href }}" data-back="page"
    {{ $attributes->merge(['class' => 'w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-900 hover:text-white transition-all no-underline shrink-0']) }}
    title="{{ $label ?? __('Retour') }}">
     <i class="fa-solid fa-arrow-left"></i>

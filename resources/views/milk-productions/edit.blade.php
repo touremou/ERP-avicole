@@ -76,7 +76,7 @@
             </form>
 
             @can('production.S')
-            <form method="POST" action="{{ route('milk-productions.destroy', $milk) }}" class="mt-4" onsubmit="return confirm(@json(__('Supprimer cette collecte ?')));">
+            <form method="POST" action="{{ route('milk-productions.destroy', $milk) }}" class="mt-4" onsubmit="return confirm(@js(__('Supprimer cette collecte ?')));">
                 @csrf @method('DELETE')
                 <button type="submit" class="w-full bg-white border border-red-100 text-red-400 font-black py-4 rounded-[2rem] hover:bg-red-500 hover:text-white transition-all uppercase tracking-[0.2em] text-[9px] italic border-none cursor-pointer">
                     <i class="fa-solid fa-trash mr-1"></i> {{ __("Supprimer cette collecte") }}

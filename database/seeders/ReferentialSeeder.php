@@ -43,38 +43,48 @@ class ReferentialSeeder extends Seeder
     // ─────────────────────────────────────────────
     // 1. MATIÈRES PREMIÈRES (ingrédients d'aliment)
     // ─────────────────────────────────────────────
+    /**
+     * Matières premières livrées : [nom, unité, EM kcal/kg, PB %, Lys %, Ca %,
+     * coût GNF/kg]. Un 0 y est une teneur RÉELLE (le sel n'apporte ni énergie
+     * ni protéine) ; méthionine et phosphore n'y figurent pas : ils restent
+     * « non analysés » jusqu'à saisie au laboratoire.
+     *
+     * Publique : la migration qui distingue « 0 » de « non analysé » lit cette
+     * même table pour reconnaître les vrais zéros.
+     */
+    public const MATIERES = [
+        // Céréales et sous-produits
+        ['Maïs jaune',        'kg', 3350, 8.0,  0.25, 0.02, 3000],
+        ['Son de blé',        'kg', 1300, 15.0, 0.60, 0.10, 2000],
+        ['Son de riz',        'kg', 2900, 12.0, 0.50, 0.07, 1500],
+        ['Manioc (cossettes)',    'kg', 3200, 3.0,  0.10, 0.10, 1800],
+
+        // Sources Protéiques (Végétales & Animales)
+        ['Tourteau d\'arachide',  'kg', 2600, 45.0, 1.50, 0.20, 4500],
+        ['Tourteau de soja',      'kg', 2400, 46.0, 2.90, 0.30, 6000],
+        ['Tourteau de palmiste',  'kg', 2200, 15.0, 0.50, 0.25, 2000], // Très utilisé en AO
+        ['Graines de coton',      'kg', 2800, 22.0, 0.90, 0.15, 2500], // Ruminants
+        ['Farine de poisson',     'kg', 2800, 60.0, 4.80, 5.00, 9000],
+        ['Farine de sang',        'kg', 3200, 80.0, 7.00, 0.30, 8000],
+
+        // Minéraux et Additifs
+        ['Coquilles / Calcaire',  'kg', 0,    0.0,  0.0,  38.0, 800],
+        ['Phosphate bicalcique',  'kg', 0,    0.0,  0.0,  24.0, 5000],
+        ['Poudre d\'os',          'kg', 0,    12.0, 0.0,  28.0, 3000],
+        ['Sel',               'kg', 0,    0.0,  0.0,  0.0,  500],
+        ['CMV (compl. minéral vitaminé)', 'kg', 0, 0.0, 0.0, 12.0, 8000],
+
+        // Fibres, Énergie liquide et Ruminants
+        ['Drêche de brasserie',   'kg', 2000, 25.0, 0.80, 0.30, 1200],
+        ['Fourrage / Foin',       'kg', 1800, 10.0, 0.40, 0.50, 500],
+        ['Luzerne déshydratée',   'kg', 1500, 16.0, 0.70, 1.40, 2500],
+        ['Huile de palme',        'kg', 8800, 0.0,  0.0,  0.0,  10000],
+        ['Mélasse',           'kg', 2500, 3.0,  0.0,  0.80, 1500], // Énergie ruminants/porcs
+    ];
+
     private function seedRawMaterials(): void
     {
-        // [nom, unité, EM kcal/kg, PB %, Lys %, Ca %, coût GNF/kg]
-        $materials = [
-            // Céréales et sous-produits
-            ['Maïs jaune',            'kg', 3350, 8.0,  0.25, 0.02, 3000],
-            ['Son de blé',            'kg', 1300, 15.0, 0.60, 0.10, 2000],
-            ['Son de riz',            'kg', 2900, 12.0, 0.50, 0.07, 1500],
-            ['Manioc (cossettes)',    'kg', 3200, 3.0,  0.10, 0.10, 1800],
-
-            // Sources Protéiques (Végétales & Animales)
-            ['Tourteau d\'arachide',  'kg', 2600, 45.0, 1.50, 0.20, 4500],
-            ['Tourteau de soja',      'kg', 2400, 46.0, 2.90, 0.30, 6000],
-            ['Tourteau de palmiste',  'kg', 2200, 15.0, 0.50, 0.25, 2000], // Très utilisé en AO
-            ['Graines de coton',      'kg', 2800, 22.0, 0.90, 0.15, 2500], // Ruminants
-            ['Farine de poisson',     'kg', 2800, 60.0, 4.80, 5.00, 9000],
-            ['Farine de sang',        'kg', 3200, 80.0, 7.00, 0.30, 8000],
-
-            // Minéraux et Additifs
-            ['Coquilles / Calcaire',  'kg', 0,    0.0,  0.0,  38.0, 800],
-            ['Phosphate bicalcique',  'kg', 0,    0.0,  0.0,  24.0, 5000],
-            ['Poudre d\'os',          'kg', 0,    12.0, 0.0,  28.0, 3000],
-            ['Sel',                   'kg', 0,    0.0,  0.0,  0.0,  500],
-            ['CMV (compl. minéral vitaminé)', 'kg', 0, 0.0, 0.0, 12.0, 8000],
-
-            // Fibres, Énergie liquide et Ruminants
-            ['Drêche de brasserie',   'kg', 2000, 25.0, 0.80, 0.30, 1200],
-            ['Fourrage / Foin',       'kg', 1800, 10.0, 0.40, 0.50, 500],
-            ['Luzerne déshydratée',   'kg', 1500, 16.0, 0.70, 1.40, 2500],
-            ['Huile de palme',        'kg', 8800, 0.0,  0.0,  0.0,  10000],
-            ['Mélasse',               'kg', 2500, 3.0,  0.0,  0.80, 1500], // Énergie ruminants/porcs
-        ];
+        $materials = self::MATIERES;
 
         foreach ($materials as [$name, $unit, $em, $pb, $lys, $ca, $cost]) {
             RawMaterial::updateOrCreate(

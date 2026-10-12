@@ -144,7 +144,9 @@ test('le COÛT ÉNERGIE reste compté depuis l’ARRIVÉE — et c’est voulu',
      */
     $code = file_get_contents(base_path('app/Http/Controllers/BatchController.php'));
 
-    expect(str_contains($code, "Carbon::parse(\$batch->arrival_date)->diffInDays(now())"))
+    // En jours ENTIERS de calendrier (Jours::entre) : Carbon 3 rendait ici un
+    // décimal, affiché tel quel à la clôture (« 0.81J »).
+    expect(str_contains($code, "Jours::entre(\$batch->arrival_date)"))
         ->toBeTrue('La durée de présence doit rester ancrée sur l’arrivée.');
 });
 

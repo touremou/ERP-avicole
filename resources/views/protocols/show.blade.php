@@ -93,7 +93,7 @@
                         {{-- Permission S : Suppression. Le commentaire l'annonçait
                              déjà ; la garde, elle, n'existait pas. --}}
                         @can('S')
-                        <form action="{{ route('protocols.destroyStep', $step->id) }}" method="POST" onsubmit="return confirm(@json(__('DÉCISION CRITIQUE : Supprimer définitivement cette étape du protocole master ?')))">
+                        <form action="{{ route('protocols.destroyStep', $step->id) }}" method="POST" onsubmit="return confirm(@js(__('DÉCISION CRITIQUE : Supprimer définitivement cette étape du protocole master ?')))">
                             @csrf @method('DELETE')
                             <button class="opacity-100 can-hover:opacity-0 can-hover:group-hover:opacity-100 p-4 text-slate-300 hover:text-rose-600 transition-all border-none bg-transparent cursor-pointer transform translate-x-0 can-hover:translate-x-4 can-hover:group-hover:translate-x-0 duration-300">
                                 <i class="fa-solid fa-trash-can text-lg"></i>

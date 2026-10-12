@@ -1110,13 +1110,27 @@ class Batch extends Model
          * Repli sur `arrival_date` quand la naissance n'est pas renseignée : c'est
          * le comportement historique, à la journée près, pour les lots antérieurs.
          */
-        $start = Carbon::parse($this->birth_date ?? $this->arrival_date)->startOfDay();
-
         $end = ($this->status === self::STATUS_TERMINE && $this->closing_date)
-            ? Carbon::parse($this->closing_date)->startOfDay()
-            : now()->startOfDay();
+            ? $this->closing_date
+            : now();
 
-        return (int) $start->diffInDays($end) + 1;
+        return $this->ageLe($end);
+    }
+
+    /**
+     * ÂGE DES SUJETS À UNE DATE DONNÉE (J1 = jour de naissance) — la même
+     * règle que `age`, pour un pointage passé. L'historique de la fiche
+     * comptait ses « Jour N » depuis l'ARRIVÉE pendant que l'en-tête comptait
+     * depuis la naissance : un lot reçu à 16 semaines affichait J-112 en haut
+     * et « Jour 1 » sur sa première ligne.
+     */
+    public function ageLe(\DateTimeInterface|string $date): int
+    {
+        if (! $this->arrival_date) {
+            return 0;
+        }
+
+        return \App\Support\Jours::entre($this->birth_date ?? $this->arrival_date, $date) + 1;
     }
 
     /**

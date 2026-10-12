@@ -39,7 +39,7 @@
                             <a href="{{ route('products.edit', $product) }}" class="text-[9px] font-black text-blue-600 uppercase tracking-widest no-underline hover:text-blue-800"><i class="fa-solid fa-pen mr-1"></i>{{ __('Modifier') }}</a>
                             @endcan
                             @can('commerce.S')
-                            <form action="{{ route('products.destroy', $product) }}" method="POST" onsubmit="return confirm(@json(__('Supprimer cet article ?')))" class="inline">
+                            <form action="{{ route('products.destroy', $product) }}" method="POST" onsubmit="return confirm(@js(__('Supprimer cet article ?')))" class="inline">
                                 @csrf @method('DELETE')
                                 <button class="text-[9px] font-black text-rose-400 uppercase tracking-widest hover:text-rose-600 bg-transparent border-none cursor-pointer"><i class="fa-solid fa-trash-can mr-1"></i>{{ __('Suppr.') }}</button>
                             </form>

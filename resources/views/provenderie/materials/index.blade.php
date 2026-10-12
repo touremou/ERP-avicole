@@ -209,7 +209,7 @@
                                 {{ __($editNutrient['label']) }} <span class="opacity-40 normal-case">{{ $editNutrient['unit'] }}</span>
                             </label>
                             <input type="number" step="{{ $editNutrient['decimals'] > 0 ? '0.' . str_repeat('0', $editNutrient['decimals'] - 1) . '1' : '1' }}"
-                                   min="0" placeholder="0" name="{{ $editNutrient['material'] }}"
+                                   min="0" placeholder="{{ __('Non analysé') }}" name="{{ $editNutrient['material'] }}"
                                    data-edit-field="{{ $editNutrient['material'] }}"
                                    class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-slate-800 shadow-inner italic text-center">
                         </div>
@@ -284,14 +284,14 @@
                                 {{ __($labNutrient['label']) }} <span class="opacity-40 normal-case">{{ $labNutrient['unit'] }}</span>
                             </label>
                             <input type="number" step="{{ $labNutrient['decimals'] > 0 ? '0.' . str_repeat('0', $labNutrient['decimals'] - 1) . '1' : '1' }}"
-                                   min="0" placeholder="0" name="{{ $labNutrient['material'] }}"
+                                   min="0" placeholder="{{ __('Non analysé') }}" name="{{ $labNutrient['material'] }}"
                                    id="labo_{{ $labKey }}" data-labo-field="{{ $labNutrient['material'] }}"
                                    class="w-full bg-slate-50 border-none rounded-2xl p-4 font-black text-lg text-center italic shadow-inner">
                         </div>
                     @endforeach
                 </div>
                 <p class="text-[9px] font-bold text-slate-400 uppercase italic leading-snug text-center">
-                    {{ __("Une teneur laissée à 0 est considérée « non analysée » : l'analyse d'une formule le signalera au lieu de conclure à une carence.") }}
+                    {{ __("Laissez vide une teneur non analysée : l'analyse d'une formule le signalera au lieu de conclure à une carence. Saisissez 0 quand l'ingrédient n'en contient pas (le sel n'apporte pas d'énergie).") }}
                 </p>
                 <button type="submit" class="w-full bg-slate-900 text-white font-black py-5 rounded-2xl shadow-xl italic uppercase">{{ __("Enregistrer Valeurs") }}</button>
             </form>
@@ -364,8 +364,10 @@
             el('edit_threshold').value = material.alert_threshold;
             el('edit_stock_qty').value = material.stock_qty;
             el('edit_unit_cost').value = material.unit_cost;
+            // Une teneur VIDE reste vide (« non analysé ») : la préremplir à 0
+            // la déclarerait analysée et nulle.
             document.querySelectorAll('#edit_form [data-edit-field]').forEach(function (input) {
-                input.value = material[input.dataset.editField] ?? 0;
+                input.value = material[input.dataset.editField] ?? '';
             });
             el('modalEditMaterial').classList.remove('hidden');
         }
@@ -389,7 +391,7 @@
             // Champs dérivés de FoodNorm::NUTRIENTS : un nutriment ajouté au
             // référentiel apparaît ici sans retoucher ce script.
             document.querySelectorAll('#labo_form [data-labo-field]').forEach(function (input) {
-                input.value = material[input.dataset.laboField] ?? 0;
+                input.value = material[input.dataset.laboField] ?? '';
             });
 
             el('modalLabo').classList.remove('hidden');

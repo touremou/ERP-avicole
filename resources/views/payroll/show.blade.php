@@ -185,7 +185,7 @@
         {{-- MODAL AJOUT PRIME/DÉDUCTION --}}
         <div x-show="lineModal" x-transition class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" x-cloak>
             <div class="bg-white rounded-2xl w-full max-w-md p-8 text-left font-bold italic" @click.outside="lineModal = false">
-                <h3 class="text-lg font-black text-slate-800 uppercase tracking-tighter mb-4" x-text="@json(__("Prime/Déduction")) + ' — ' + lineEmployee"></h3>
+                <h3 class="text-lg font-black text-slate-800 uppercase tracking-tighter mb-4" x-text="@js(__("Prime/Déduction")) + ' — ' + lineEmployee"></h3>
                 <form :action="'/payroll/payslip/' + lineSlipId + '/line'" method="POST" class="space-y-4">
                     @csrf
                     <div class="grid grid-cols-2 gap-3">
@@ -213,7 +213,7 @@
         {{-- MODAL HEURES SUPPLÉMENTAIRES --}}
         <div x-show="overtimeModal" x-transition class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" x-cloak>
             <div class="bg-white rounded-2xl w-full max-w-md p-8 text-left font-bold italic" @click.outside="overtimeModal = false">
-                <h3 class="text-lg font-black text-amber-600 uppercase tracking-tighter mb-2" x-text="'⏱ ' + @json(__("Heures sup.")) + ' — ' + otEmployee"></h3>
+                <h3 class="text-lg font-black text-amber-600 uppercase tracking-tighter mb-2" x-text="'⏱ ' + @js(__("Heures sup.")) + ' — ' + otEmployee"></h3>
                 {{-- « 26 j × 8 h » était écrit EN DUR, alors que la base mensuelle est un réglage
                      (rh.monthly_hours) qui entre réellement dans le calcul du taux horaire. Une
                      exploitation passant à 173 h/mois lisait donc, sur l'écran même de la paie,

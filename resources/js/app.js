@@ -8,6 +8,10 @@ import '@fontsource/figtree/600.css';
 
 import Alpine from 'alpinejs';
 import './sync-engine';
+import { brancherRetour } from './back-navigation';
+
+// Les flèches « Retour » (`a[data-back]`) ramènent à la page précédente.
+brancherRetour();
 
 window.Alpine = Alpine;
 

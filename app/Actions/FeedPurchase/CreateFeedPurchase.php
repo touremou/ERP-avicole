@@ -23,15 +23,26 @@ class CreateFeedPurchase
         $purchase = DB::transaction(function () use ($data) {
             $batch = Batch::findOrFail($data['batch_id']);
             $metadata = $data['metadata'] ?? [];
-            $consoType = $metadata['conso_type'] ?? 'Aliment';
+
+            // Catégorie de stock RÉELLE de l'achat. Tout entrait en « conso » de
+            // nature « Aliment » : un vaccin, des copeaux ou une mangeoire
+            // achetés depuis la fiche apparaissaient parmi les aliments.
+            $category  = $data['category'] ?? Stock::CAT_CONSO;
+            $consoType = $category === Stock::CAT_CONSO ? ($metadata['conso_type'] ?? 'Aliment') : null;
+            $metadata  = array_filter(['conso_type' => $consoType, 'category' => $category] + $metadata, fn ($v) => $v !== null);
+            $data['metadata'] = $metadata;
+
+            // Un sac ne se convertit en kilos que pour l'ALIMENT : un sac de
+            // copeaux n'est pas un sac d'aliment de 50 kg.
+            $enSacsDAliment = $category === Stock::CAT_CONSO && UnitConverter::isSac($data['unit']);
 
             // 1. GESTION DYNAMIQUE DU RÉFÉRENTIEL STOCK
             $stockRef = trim($data['feed_type']);
             $stockItem = Stock::firstOrCreate(
-                ['item_name' => $stockRef, 'category' => 'conso'],
+                ['item_name' => $stockRef, 'category' => $category],
                 [
                     'feed_type'        => $stockRef,
-                    'unit'             => ($data['unit'] === 'Sac') ? 'KG' : $data['unit'],
+                    'unit'             => $enSacsDAliment ? 'KG' : $data['unit'],
                     'current_quantity' => 0,
                     'alert_threshold'  => 100,
                     'metadata'         => [
@@ -67,19 +78,17 @@ class CreateFeedPurchase
             // de moitié. Le stock était gonflé du double et le CMP sous-évalué —
             // donc le coût de revient de chaque bande nourrie sur ce stock.
             $bagWeight       = UnitConverter::bagWeight($metadata['bag_weight'] ?? null);
-            $normalizedQty   = ($data['unit'] === 'Sac')
-                ? (float) $data['quantity'] * $bagWeight
-                : (float) $data['quantity'];
+            $normalizedQty   = UnitConverter::toStockBase((float) $data['quantity'], $data['unit'], $category, $bagWeight);
             $costPerPivotKg  = $normalizedQty > 0
                 ? (float) $purchase->total_price / $normalizedQty
                 : 0.0;
 
             $synced = StockIntegrationService::syncMovement(
                 $purchase->feed_type,
-                'conso',
+                $category,
                 (float)$data['quantity'],
                 'in',
-                "Ravitaillement {$data['unit']} - Lot {$batch->code} ({$consoType})",
+                "Ravitaillement {$data['unit']} - Lot {$batch->code} (" . ($consoType ?? $category) . ")",
                 $data['unit'],
                 $costPerPivotKg,
                 false,

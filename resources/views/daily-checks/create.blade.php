@@ -52,8 +52,17 @@
                 @endif
 
                 @php
-                    $age = \Carbon\Carbon::parse($batch->arrival_date)->diffInDays(now()) + 1;
-                    $todayStep = $batch->protocol ? $batch->protocol->steps->where('day_number', $age)->first() : null;
+                    /*
+                     * L'âge et le soin du jour : les déclarations du modèle, comme
+                     * la fiche lot. Recalculé ici depuis l'arrivée, l'âge était
+                     * DÉCIMAL (Carbon 3 : 1.81… à 19 h) et ne tombait jamais sur
+                     * le J entier d'une étape — la bannière ne s'affichait pas.
+                     */
+                    $age = $batch->age;
+                    $todayStep = $batch->protocol
+                        ? $batch->protocol->steps->first(fn ($s) => $batch->protocolStepDue((int) $s->day_number)?->isToday()
+                            && ! $batch->protocolStepDone($s, $batch->healthChecks))
+                        : null;
                 @endphp
 
                 @if($todayStep)
@@ -231,7 +240,7 @@
                                 @if(($iotTemp ?? null) !== null)
                                     @if($iotTemp['count'] > 0)
                                     <button type="button"
-                                        onclick="applyIotTemp({{ $iotTemp['temp_min'] }}, {{ $iotTemp['temp_max'] }}, @json($iotTemp['sensor']))"
+                                        onclick="applyIotTemp({{ $iotTemp['temp_min'] }}, {{ $iotTemp['temp_max'] }}, @js($iotTemp['sensor']))"
                                         title="{{ __('Relevés capteur du bâtiment aujourd\'hui (:n mesures) — la saisie manuelle prime en cas de désaccord', ['n' => $iotTemp['count']]) }}"
                                         class="w-full flex items-center justify-center gap-1 px-2 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 rounded-xl border border-emerald-400/20 transition cursor-pointer">
                                         <span class="text-[8px] font-black text-emerald-300 uppercase tracking-widest italic"><i class="fa-solid fa-microchip mr-1"></i>{{ __('Capteur') }} {{ number_format($iotTemp['temp_min'], 1) }}–{{ number_format($iotTemp['temp_max'], 1) }} °C</span>
@@ -441,7 +450,7 @@
                         @php
                             $lastCheck = $batch->dailyChecks()->latest('check_date')->first();
                             $prevWeight = $lastCheck?->avg_weight ?? $batch->avg_weight_start;
-                            $daysSinceLast = $lastCheck ? now()->diffInDays($lastCheck->check_date) : $batch->age;
+                            $daysSinceLast = $lastCheck ? \App\Support\Jours::entre($lastCheck->check_date) : $batch->age;
                         @endphp
                         @if($prevWeight && $daysSinceLast > 0)
                         <div class="mt-4 p-4 bg-white rounded-2xl border border-emerald-100">

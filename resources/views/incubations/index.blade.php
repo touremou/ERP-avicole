@@ -273,7 +273,7 @@
                                 </a>
                             @endif
 
-                            <form action="{{ route('incubations.destroy', $inc->id) }}" method="POST" onsubmit="return confirm(@json(__("DÉCISION CRITIQUE : Annuler définitivement ce cycle ?")))">
+                            <form action="{{ route('incubations.destroy', $inc->id) }}" method="POST" onsubmit="return confirm(@js(__("DÉCISION CRITIQUE : Annuler définitivement ce cycle ?")))">
                                 @csrf @method('DELETE')
                                 <button type="submit" aria-label="{{ __('Supprimer') }}" class="text-slate-200 hover:text-rose-500 transition-all hover:scale-110 border-none bg-transparent cursor-pointer text-xl leading-none">
                                     🗑️
@@ -370,7 +370,7 @@
 
                                                             {{-- SUPPRIMER --}}
                                                             @can('production.S')
-                                                            <form action="{{ route('incubations.destroy', $item->id) }}" method="POST" onsubmit="return confirm(@json(__("Supprimer cette archive ?")))">
+                                                            <form action="{{ route('incubations.destroy', $item->id) }}" method="POST" onsubmit="return confirm(@js(__("Supprimer cette archive ?")))">
                                                                 @csrf @method('DELETE')
                                                                 <button type="submit" class="text-slate-200 hover:text-rose-500 transition-all border-none bg-transparent cursor-pointer">
                                                                     <i class="fa-solid fa-trash-can text-sm"></i>

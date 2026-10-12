@@ -19,7 +19,7 @@ class FeedPurchaseController extends Controller
     {
         try {
             $purchase = $createPurchase->execute($request->validated());
-            $consoType = $purchase->metadata['conso_type'] ?? 'Aliment';
+            $consoType = $purchase->metadata['conso_type'] ?? 'Article';
             
             return back()->with('success', "✅ {$consoType} ajouté au stock et affecté au lot {$purchase->batch->code}.");
         } catch (Exception $e) {

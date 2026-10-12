@@ -170,7 +170,7 @@
                                          contredire. --}}
                                     <p class="mt-1 text-[7px] font-black uppercase italic leading-none text-right"
                                        :class="line.manual_price ? 'text-blue-500' : 'text-slate-400'"
-                                       x-text="line.manual_price ? @json(__('Prix saisi manuellement')) : line.price_origin"></p>
+                                       x-text="line.manual_price ? @js(__('Prix saisi manuellement')) : line.price_origin"></p>
                                 </div>
                                 <div class="col-span-1 text-center">
                                     <button type="button" @click="removeLine(index)" x-show="lines.length > 1" class="text-red-400 hover:text-red-600 border-none bg-transparent cursor-pointer mt-4"><i class="fa-solid fa-trash"></i></button>

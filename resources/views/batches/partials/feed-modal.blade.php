@@ -10,21 +10,25 @@
         inputQty: 0,
         unitPrice: 0,
         paymentMode: 'comptant',
+        {{-- Unités : sous-ensembles de FeedPurchase::UNITES, la liste que le
+             serveur accepte. La modale offrait « Boîte », « Pcs »… qu'il
+             refusait : l'achat disparaissait sans message. --}}
         get availableUnits() {
             if (this.cat === 'conso') {
                 if (this.consoType === 'Aliment') return ['KG', 'Sac'];
-                /* ALIGNEMENT STRICT AVEC LE STOCK GLOBAL */
-                return ['Unité', 'Litre', 'Boîte', 'Flacon']; 
+                return ['Unité', 'Litre', 'Boite', 'Flacon'];
             }
-            if (this.cat === 'litieres') return ['Sac'];
-            if (this.cat === 'materiels') return ['Pcs', 'Unité', 'Boîte', 'Paquet'];
+            if (this.cat === 'litieres') return ['Sac', 'Unité'];
+            if (this.cat === 'materiels') return ['Unité', 'Boite', 'Paquet'];
             return ['Unité'];
         },
+        unitLabels: @js(['Boite' => __('Boîte')]),
+        get isFeed() { return this.cat === 'conso' && this.consoType === 'Aliment'; },
         get finalQuantity() {
-            return (this.unit === 'Sac' && this.consoType === 'Aliment') ? (this.inputQty * {{ setting('general.feed_bag_weight', 50) }}) : this.inputQty;
+            return (this.unit === 'Sac' && this.isFeed) ? (this.inputQty * {{ (float) setting('general.feed_bag_weight', 50) }}) : this.inputQty;
         },
         get finalUnit() {
-            return (this.unit === 'Sac' && this.consoType === 'Aliment') ? 'KG' : this.unit;
+            return (this.unit === 'Sac' && this.isFeed) ? 'KG' : this.unit;
         },
         get computedUnitPrice() {
             return this.finalQuantity > 0 ? Math.round(this.unitPrice / this.finalQuantity) : 0;
@@ -32,9 +36,9 @@
     }"
     x-init="$watch('consoType', value => {
         if(value === 'Aliment') unit = 'Sac';
-        else if(value === 'Santé') unit = 'Boîte';
+        else if(value === 'Santé') unit = 'Boite';
         else if(value === 'Hygiène') unit = 'Litre';
-    })">
+    }); $watch('cat', () => { if (! availableUnits.includes(unit)) unit = availableUnits[0]; })">
 
     <div class="bg-white w-full max-w-2xl rounded-[3rem] shadow-2xl overflow-hidden relative" @click.away="closeFeedModal()">
 
@@ -56,8 +60,22 @@
                 <input type="hidden" name="purchase_date" value="{{ date('Y-m-d') }}">
                 <input type="hidden" name="unit" :value="finalUnit">
                 <input type="hidden" name="quantity" :value="finalQuantity">
-                
-                {{-- NOTE : Les name="metadata..." ont été retirés pour éviter le crash SQL --}}
+                {{-- Catégorie et nature : la colonne `metadata` existe désormais
+                     (migration 2026_06_27) ; sans elles, tout achat entrait au
+                     stock comme aliment. --}}
+                <input type="hidden" name="category" :value="cat">
+                <template x-if="cat === 'conso'">
+                    <input type="hidden" name="metadata[conso_type]" :value="consoType">
+                </template>
+
+                {{-- Un refus du serveur s'affiche ICI : la modale se rouvre dessus. --}}
+                @if($errors->hasAny(['feed_type', 'quantity', 'unit', 'unit_price', 'supplier', 'category', 'metadata.conso_type', 'purchase_date', 'treasury_account_id']))
+                    <div class="p-4 bg-red-50 border border-red-200 rounded-2xl text-[10px] font-black text-red-600 normal-case not-italic">
+                        @foreach(['feed_type', 'quantity', 'unit', 'unit_price', 'supplier', 'category', 'metadata.conso_type', 'purchase_date', 'treasury_account_id'] as $champ)
+                            @error($champ) <p class="m-0">{{ $message }}</p> @enderror
+                        @endforeach
+                    </div>
+                @endif
 
                 {{-- 00. CATÉGORIE --}}
                 <div class="bg-slate-50 p-5 rounded-[2rem] border border-slate-100">
@@ -138,7 +156,7 @@
                 {{-- 04. QUANTITÉ + COÛT --}}
                 <div class="grid grid-cols-2 gap-4">
                     <div class="bg-slate-50 p-5 rounded-[2rem] border border-slate-100">
-                        <label class="text-[8px] uppercase text-slate-400 mb-2 block font-black italic tracking-widest text-center" x-text="@json(__('Quantité en ')) + unit"></label>
+                        <label class="text-[8px] uppercase text-slate-400 mb-2 block font-black italic tracking-widest text-center" x-text="@js(__('Quantité en ')) + (unitLabels[unit] ?? unit)"></label>
                         <input type="number" x-model.number="inputQty" step="0.01" min="0.01" required
                             class="w-full bg-white border-none rounded-xl p-3 text-center font-black text-xl text-blue-600 shadow-sm outline-none">
 
@@ -147,12 +165,12 @@
                             <template x-for="u in availableUnits" :key="u">
                                 <button type="button" @click="unit = u"
                                     :class="unit === u ? 'bg-slate-900 text-white shadow-md' : 'text-slate-400 hover:bg-slate-100'"
-                                    class="flex-1 py-1.5 rounded-md text-[8px] font-black uppercase transition-all mx-0.5 border-none cursor-pointer" x-text="u"></button>
+                                    class="flex-1 py-1.5 rounded-md text-[8px] font-black uppercase transition-all mx-0.5 border-none cursor-pointer" x-text="unitLabels[u] ?? u"></button>
                             </template>
                         </div>
 
                         {{-- Conversion Sac → KG --}}
-                        <template x-if="unit === 'Sac' && consoType === 'Aliment' && inputQty > 0">
+                        <template x-if="unit === 'Sac' && isFeed && inputQty > 0">
                             <div class="text-center mt-3 bg-emerald-50 p-2 rounded-lg">
                                 <p class="text-[8px] font-black text-emerald-600">
                                     <i class="fa-solid fa-scale-balanced mr-1"></i> = <span x-text="finalQuantity"></span> KG
@@ -167,7 +185,7 @@
                             class="w-full bg-white/10 border-none rounded-xl p-3 text-center font-black text-white text-xl shadow-inner outline-none focus:ring-2 focus:ring-emerald-500" placeholder="0">
                         <template x-if="computedUnitPrice > 0">
                             <p class="text-[8px] text-emerald-400 text-center mt-2 font-black">
-                                = <span x-text="computedUnitPrice.toLocaleString('fr-FR')"></span> {{ currency() }}/<span x-text="finalUnit"></span>
+                                = <span x-text="computedUnitPrice.toLocaleString('fr-FR')"></span> {{ currency() }}/<span x-text="unitLabels[finalUnit] ?? finalUnit"></span>
                             </p>
                         </template>
                     </div>
@@ -176,8 +194,8 @@
                 {{-- RÉSUMÉ --}}
                 <div x-show="inputQty > 0 && unitPrice > 0" class="p-4 bg-blue-50 rounded-2xl border border-blue-200 text-center">
                     <p class="text-[8px] font-black text-blue-600 uppercase tracking-widest">
-                        <span x-text="inputQty"></span> <span x-text="unit"></span>
-                        <template x-if="unit === 'Sac'"><span> (<span x-text="finalQuantity"></span> KG)</span></template>
+                        <span x-text="inputQty"></span> <span x-text="unitLabels[unit] ?? unit"></span>
+                        <template x-if="unit === 'Sac' && isFeed"><span> (<span x-text="finalQuantity"></span> KG)</span></template>
                         →
                         <span x-text="unitPrice.toLocaleString('fr-FR')"></span> {{ currency() }}
                         → {{ __("Imputé au lot") }} {{ $batch->code }}

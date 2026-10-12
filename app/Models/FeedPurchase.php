@@ -11,6 +11,23 @@ class FeedPurchase extends Model
 {
     use HasFactory, BelongsToFarm;
 
+    /**
+     * UNITÉS D'ACHAT — une déclaration, lue par la modale « Achat direct », la
+     * requête web et la synchronisation terrain.
+     *
+     * La modale proposait « Boîte », « Flacon », « Pcs », « Paquet » ; le
+     * serveur n'acceptait que « Sac, KG, Litre, Unité, Boite ». Un achat de
+     * vaccin en boîtes était refusé — et, l'erreur restant dans la modale
+     * fermée, la saisie disparaissait sans un mot.
+     */
+    public const UNITES = ['Sac', 'KG', 'Litre', 'Unité', 'Boite', 'Flacon', 'Paquet'];
+
+    /** Catégories de stock qu'un achat direct peut alimenter. */
+    public const CATEGORIES = ['conso', 'litieres', 'materiels'];
+
+    /** Nature d'un consommable (catégorie « conso »). */
+    public const NATURES = ['Aliment', 'Santé', 'Hygiène'];
+
     protected $fillable = [
         'farm_id',
         'uuid',

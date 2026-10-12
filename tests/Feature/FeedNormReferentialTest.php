@@ -134,8 +134,10 @@ test('une teneur NON analysée n’est pas prise pour une carence', function () 
     // Le défaut le plus visible : la lysine n'était saisissable nulle part, donc
     // toujours à 0, et la fiche affichait « 0 / 1,30 % » en rouge sur toutes les
     // formules de l'application.
+    // Non analysé = VIDE (null). Un 0 est une teneur réelle (cf. le test
+    // NutrientZeroIsAContentTest).
     norm('chair');
-    $formula = formulaOf('chair', material('Maïs sans analyse AA', ['lysine_rate' => 0]));
+    $formula = formulaOf('chair', material('Maïs sans analyse AA', ['lysine_rate' => null]));
 
     $comparison = $formula->nutritionalComparison();
 
@@ -154,7 +156,7 @@ test('un ingrédient à 0 % ne bloque pas la comparaison', function () {
     norm('chair');
     $formula = formulaOf('chair', material('Maïs'));
     $formula->items()->create([
-        'raw_material_id' => material('Additif non analysé', ['lysine_rate' => 0])->id,
+        'raw_material_id' => material('Additif non analysé', ['lysine_rate' => null])->id,
         'percentage' => 0, 'quantity_kg' => 0,
     ]);
 

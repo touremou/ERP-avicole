@@ -57,7 +57,7 @@
                             </a>
                             @endcan
                             @can('elevage.S')
-                            <form action="{{ route('protocols.destroy', $protocol->id) }}" method="POST" onsubmit="return confirm(@json(__('ALERTE : Supprimer ce standard master ?')))">
+                            <form action="{{ route('protocols.destroy', $protocol->id) }}" method="POST" onsubmit="return confirm(@js(__('ALERTE : Supprimer ce standard master ?')))">
                                 @csrf @method('DELETE')
                                 <button type="submit" class="w-11 h-11 bg-white text-rose-600 rounded-2xl hover:bg-rose-600 hover:text-white transition-all flex items-center justify-center shadow-xl border-none cursor-pointer">
                                     <i class="fa-solid fa-trash-can text-sm"></i>

@@ -23,6 +23,19 @@ return Application::configure(basePath: dirname(__DIR__))
             'farm.api' => \App\Http\Middleware\SetApiFarmContext::class,
         ]);
 
+        // SESSION TERMINÉE : l'écran de connexion le DIT. Une session expirée
+        // (inactivité) renvoyait à la connexion sans un mot — au moment, le plus
+        // souvent, où l'on validait un filtre d'une touche Entrée : « l'appli se
+        // déconnecte quand j'appuie sur Entrée ». Après reconnexion, `intended`
+        // ramène à la page demandée.
+        $middleware->redirectGuestsTo(function (Request $request) {
+            if ($request->hasSession() && ! $request->expectsJson()) {
+                $request->session()->flash('status', __('Votre session a pris fin. Reconnectez-vous : vous reviendrez à la page demandée.'));
+            }
+
+            return route('login');
+        });
+
         // NOTE : un seul appel à ->withMiddleware() doit configurer le
         // groupe "web" — chaque appel écrase entièrement les groupes définis
         // par les appels précédents (setMiddlewareGroups remplace, ne fusionne
@@ -110,6 +123,28 @@ return Application::configure(basePath: dirname(__DIR__))
             }
 
             return redirect()->back()->with('error', '🔒 ACCÈS REFUSÉ : Privilèges insuffisants pour cette opération.');
+        });
+
+        // Filet « page expirée » (419) : jeton périmé — page restée ouverte, ou
+        // session terminée pendant la saisie. L'écran brut « Page Expired »
+        // laissait croire à une panne et perdait la saisie sans le dire.
+        $exceptions->render(function (\Symfony\Component\HttpKernel\Exception\HttpException $e, $request) {
+            if ($e->getStatusCode() !== 419 || $request->expectsJson() || $request->is('api/*')) {
+                return null;
+            }
+
+            $retour = url()->previous();
+
+            if (auth()->check()) {
+                return redirect()->to($retour)
+                    ->withInput($request->except(['_token', 'password', 'password_confirmation', 'current_password']))
+                    ->with('error', __("La page était restée ouverte trop longtemps : rien n'a été enregistré. Vérifiez la saisie et renvoyez-la."));
+            }
+
+            $request->session()->put('url.intended', $retour);
+
+            return redirect()->route('login')
+                ->with('status', __("Votre session a pris fin : la saisie n'a pas été enregistrée. Reconnectez-vous, vous reviendrez sur la page."));
         });
 
         // Filet 2 : Intercepte les abort(403) et middleware 'can'

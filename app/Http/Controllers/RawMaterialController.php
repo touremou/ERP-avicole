@@ -77,17 +77,13 @@ class RawMaterialController extends Controller
             'name.unique' => 'Une matière première porte déjà ce nom.',
         ]);
 
-        // Valeurs par défaut pour les colonnes NOT NULL. Une teneur laissée vide
-        // vaut 0 = « non analysé » : l'analyse d'une formule le signalera au lieu
-        // de conclure à une carence (cf. Formula::nutrientCoverage()).
+        // Valeurs par défaut pour les colonnes NOT NULL. Une teneur laissée VIDE
+        // reste vide = « non analysé » ; un 0 saisi est une teneur réelle (le sel
+        // n'apporte pas d'énergie). Cf. Formula::nutrientCoverage().
         $validated['stock_qty']       = $validated['stock_qty'] ?? 0;
         $validated['unit_cost']       = $validated['unit_cost'] ?? 0;
         $validated['alert_threshold'] = $validated['alert_threshold'] ?? 100;
         $validated['is_active']       = true;
-
-        foreach ($this->nutrientColumns() as $column) {
-            $validated[$column] = $validated[$column] ?? 0;
-        }
 
         RawMaterial::create($validated);
 

@@ -331,6 +331,11 @@ formule déjà produite, compte utilisateur portant des clôtures de caisse.
 
 ## 3. Utilisation par module
 
+**Navigation.** La flèche « Retour » d'une page ramène à la page d'où l'on
+vient (avec ses filtres), tant que c'est une page de l'application. Elle ne
+revient pas sur un formulaire qu'on vient d'enregistrer ; ouverte dans un
+nouvel onglet, elle mène à la liste parente.
+
 ### 3.1 Parc (bâtiments)
 
 Référentiel des bâtiments : capacité, surface, type (chair, ponte,
@@ -383,6 +388,20 @@ Matières premières (achats, stocks), **formules** par espèce, productions
 d'aliment (consommation de matières → production de sacs), machines et
 maintenance. Une formule déjà produite ne peut pas être supprimée. Les achats
 d'aliment externes passent par `feed-purchases`.
+
+- **Équilibre nutritionnel vs norme** : chaque formule est confrontée à la norme
+  de son espèce/phase sur six nutriments (EM, PB, lysine, méthionine, calcium,
+  phosphore). Une ligne « Non analysé » signifie qu'un ingrédient du mélange n'a
+  pas de teneur saisie pour ce nutriment ; la fiche nomme ces ingrédients et
+  mène au **laboratoire** (Matières premières → analyse). Au laboratoire, une
+  teneur **vide** = non analysée ; **0** = l'ingrédient n'en contient pas (le
+  sel n'apporte pas d'énergie). Méthionine et phosphore ne sont pas livrés avec
+  le référentiel : ils restent à saisir d'après vos analyses ou fiches
+  fournisseur.
+- **Achat direct depuis la fiche lot** (menu Gérer) : aliment, santé, hygiène,
+  litières ou matériel, chacun entre au stock dans SA catégorie. Les unités
+  proposées sont celles que le serveur accepte (`FeedPurchase::UNITES`) ; un
+  refus s'affiche dans la fenêtre d'achat.
 
 ### 3.7 Stocks & logistique anti-fraude
 

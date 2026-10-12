@@ -199,7 +199,9 @@ class Formula extends Model
 
             $contributors++;
 
-            if ((float) ($item->rawMaterial->{$column} ?? 0) <= 0) {
+            // VIDE = non analysé. Un 0 est une teneur réelle : le sel
+            // n'apporte pas d'énergie, et le dire ne doit pas bloquer l'analyse.
+            if ($item->rawMaterial?->{$column} === null) {
                 $missing[] = $item->rawMaterial->name ?? '—';
             }
         }

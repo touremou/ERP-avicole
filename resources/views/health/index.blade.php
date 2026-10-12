@@ -219,7 +219,7 @@
                                             <i class="fa-solid fa-pen-nib text-xs"></i>
                                         </a>
                                         @can('elevage.S')
-                                        <form action="{{ route('health.destroy', $check->id) }}" method="POST" onsubmit="return confirm(@json(__("ALERTE SÉCURITÉ : Supprimer cet acte sanitaire ?")))">
+                                        <form action="{{ route('health.destroy', $check->id) }}" method="POST" onsubmit="return confirm(@js(__("ALERTE SÉCURITÉ : Supprimer cet acte sanitaire ?")))">
                                             @csrf @method('DELETE')
                                             <button type="submit" class="w-10 h-10 flex items-center justify-center rounded-xl bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white transition-all border-none outline-none shadow-sm shadow-rose-100 cursor-pointer">
                                                 <i class="fa-solid fa-trash-can text-xs"></i>

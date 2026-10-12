@@ -58,7 +58,7 @@
                             </button>
                         </form>
 
-                        <form action="{{ route('notifications.templates.reset', $model->id) }}" method="POST" class="mt-2 text-right" onsubmit="return confirm(@json(__('Restaurer le texte d\'origine ?')))">
+                        <form action="{{ route('notifications.templates.reset', $model->id) }}" method="POST" class="mt-2 text-right" onsubmit="return confirm(@js(__('Restaurer le texte d\'origine ?')))">
                             @csrf @method('PUT')
                             <button type="submit" class="text-[10px] font-black text-slate-400 hover:text-rose-500 uppercase tracking-widest transition">
                                 <i class="fa-solid fa-rotate-left mr-1"></i> {{ __('Réinitialiser') }}
