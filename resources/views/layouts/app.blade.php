@@ -9,6 +9,11 @@
         <meta name="avismart-farm" content="{{ session('current_farm_id') }}">
         {{-- Textes du moteur hors-ligne, traduits (cf. App\Support\OfflineSyncTexts). --}}
         <script>window.AVISMART_TEXTES = @json(\App\Support\OfflineSyncTexts::traduits());</script>
+        {{-- Saisie refusée dans une fenêtre modale : la rouvrir, remplie
+             (resources/js/modal-reopen.js). --}}
+        @if($errors->any() && old('_modale'))
+            <script>window.AVISMART_MODALE = @js(['id' => old('_modale'), 'action' => old('_action'), 'old' => session()->getOldInput()]);</script>
+        @endif
 
         <title>{{ setting('general.company_name', 'AviSmart') }}</title>
 

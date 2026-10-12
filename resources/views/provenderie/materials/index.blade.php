@@ -134,7 +134,7 @@
 
     {{-- MODALS : Identiques à vos structures originales mais avec classes CSS uniformisées --}}
     {{-- MODAL AJOUT --}}
-    <div id="modalAddMaterial" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div id="modalAddMaterial" data-modale class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-lg rounded-[3.5rem] shadow-2xl p-10 italic relative overflow-hidden">
             <h3 class="text-2xl font-black text-slate-900 uppercase italic tracking-tighter mb-8">{{ __("Nouveau Composant") }}</h3>
             <form action="{{ route('raw-materials.store') }}" method="POST" class="space-y-5 text-left relative">
@@ -165,7 +165,7 @@
     </div>
 
     {{-- 📝 MODAL ÉDITION --}}
-    <div id="modalEditMaterial" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div id="modalEditMaterial" data-modale class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-lg rounded-[3.5rem] shadow-2xl p-10 italic relative overflow-hidden">
             {{-- Bouton Fermer (X) --}}
             <button onclick="el('modalEditMaterial').classList.add('hidden')" class="absolute top-8 right-8 text-slate-300 hover:text-slate-900 transition-colors">
@@ -230,7 +230,7 @@
     </div>
 
     {{-- 📉 MODAL SORTIE (PERTE / VENTE) --}}
-    <div id="modalLoss" class="fixed inset-0 bg-slate-900/90 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+    <div id="modalLoss" data-modale class="fixed inset-0 bg-slate-900/90 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-md rounded-[3.5rem] shadow-2xl p-10 italic relative overflow-hidden text-left">
             <button onclick="el('modalLoss').classList.add('hidden')" class="absolute top-8 right-8 text-slate-300 hover:text-slate-900 transition-colors">
                 <i class="fa-solid fa-xmark text-xl"></i>
@@ -267,7 +267,7 @@
     </div>
 
     {{-- 🔬 MODAL LABO --}}
-    <div id="modalLabo" class="fixed inset-0 bg-slate-900/90 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+    <div id="modalLabo" data-modale class="fixed inset-0 bg-slate-900/90 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-md rounded-[3.5rem] shadow-2xl p-10 italic relative overflow-hidden text-left">
             {{-- Bouton Fermer (X) --}}
             <button onclick="el('modalLabo').classList.add('hidden')" class="absolute top-8 right-8 text-slate-300 hover:text-slate-900 transition-colors">
@@ -313,7 +313,7 @@
          au module Dépenses. L'écran le dit désormais — il annonçait
          « Réception » et « Montant Facturé », ce qui laissait croire que la
          contrepartie financière était faite. --}}
-    <div id="modalReorder" class="fixed inset-0 bg-slate-900/90 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+    <div id="modalReorder" data-modale class="fixed inset-0 bg-slate-900/90 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-lg rounded-[3.5rem] shadow-2xl p-10 relative italic text-left overflow-hidden">
             <button onclick="document.getElementById('modalReorder').classList.add('hidden')" class="absolute top-8 right-8 text-slate-300 hover:text-slate-900 transition-colors">
                 <i class="fa-solid fa-xmark text-xl"></i>

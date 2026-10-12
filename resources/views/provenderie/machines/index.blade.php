@@ -184,7 +184,7 @@
     {{-- MODALES (AJOUT, EDIT, MAINTENANCE) : Protégées par les permissions correspondantes --}}
     {{-- MODALE AJOUTER --}}
      @can('provenderie.C')
-    <div id="modal-add" class="fixed inset-0 bg-slate-900/90 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
+    <div id="modal-add" data-modale class="fixed inset-0 bg-slate-900/90 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-[3rem] p-10 max-w-lg w-full shadow-2xl overflow-hidden text-left">
             <h3 class="text-2xl font-black text-slate-900 uppercase italic tracking-tighter mb-8">{{ __("Nouvelle Machine") }}</h3>
             <form action="{{ route('machines.store') }}" method="POST" class="space-y-6">
@@ -218,7 +218,7 @@
 
     {{-- MODALE MODIFIER --}}
      @can('provenderie.M')
-    <div id="modal-edit" class="fixed inset-0 bg-slate-900/90 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
+    <div id="modal-edit" data-modale class="fixed inset-0 bg-slate-900/90 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-[3rem] p-10 max-w-lg w-full shadow-2xl overflow-hidden text-left">
             <h3 class="text-2xl font-black text-slate-900 uppercase italic tracking-tighter mb-8">{{ __("Modifier Machine") }}</h3>
             <form id="form-edit-machine" method="POST" class="space-y-6">
@@ -252,7 +252,7 @@
 
     {{-- MODALE MAINTENANCE --}}
      @can('provenderie.M')
-    <div id="modal-maintenance" class="fixed inset-0 bg-slate-900/90 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
+    <div id="modal-maintenance" data-modale class="fixed inset-0 bg-slate-900/90 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-[3rem] p-10 max-w-lg w-full shadow-2xl text-left">
             <h3 class="text-2xl font-black text-slate-900 uppercase italic tracking-tighter mb-2">{{ __("Clôturer Révision") }}</h3>
             <p id="maint-machine-name" class="text-[10px] font-bold text-emerald-500 uppercase mb-8 italic tracking-widest"></p>
