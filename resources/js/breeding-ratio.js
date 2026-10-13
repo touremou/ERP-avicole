@@ -28,19 +28,37 @@ export function jugerRatio(males, femelles, ref) {
         return { etat: 'inconnu', pourcentage, texte: traduire('Pas de référence pour cette espèce'), conseil: null };
     }
 
-    // Mâles conseillés pour ces femelles : de f × min % à f × max %.
-    const conseilMin = Math.max(1, Math.ceil(f * ref.min / 100));
-    const conseilMax = Math.max(conseilMin, Math.floor(f * ref.max / 100));
-    const conseil = conseilMin === conseilMax
-        ? traduire('Conseillé : :min :male(s) pour :f :femelles', { min: conseilMin, male: ref.male, f, femelles: ref.femelles })
-        : traduire('Conseillé : :min à :max :male(s) pour :f :femelles', { min: conseilMin, max: conseilMax, male: ref.male, f, femelles: ref.femelles });
+    // On juge le NOMBRE DE MÂLES, pas le pourcentage. La référence se lit
+    // « 1 bélier pour 25 à 40 brebis » ; en pourcentage (2,5–4 %), 1 bélier
+    // pour 19 brebis faisait 5,3 % — « trop de mâles » — et le conseil
+    // répétait la saisie : on ne peut pas avoir moins d'UN mâle.
+    const { minMales, maxMales } = malesConseilles(f, ref);
+    const reference = traduire('Référence : 1 :male pour :a à :b :femelles', {
+        male: ref.male, a: arrondi(100 / ref.max), b: arrondi(100 / ref.min), femelles: ref.femelles,
+    });
+    const nombre = minMales === maxMales ? String(minMales) : traduire(':min à :max', { min: minMales, max: maxMales });
+    const conseil = `${reference} — ${traduire('pour :f :femelles : :n :male(s)', { f, femelles: ref.femelles, n: nombre, male: ref.male })}`;
 
     if (m === 0) return { etat: 'aucun_male', pourcentage, texte: traduire('Aucun mâle'), conseil };
-    if (pourcentage > ref.max) return { etat: 'trop', pourcentage, texte: traduire('Trop de mâles'), conseil };
-    if (pourcentage < ref.min) return { etat: 'peu', pourcentage, texte: traduire('Pas assez de mâles'), conseil };
+    if (m > maxMales) return { etat: 'trop', pourcentage, texte: traduire('Trop de mâles'), conseil };
+    if (m < minMales) return { etat: 'peu', pourcentage, texte: traduire('Pas assez de mâles'), conseil };
 
     return { etat: 'ok', pourcentage, texte: traduire('Conforme'), conseil };
 }
+
+/**
+ * Mâles conseillés pour `f` femelles : chaque mâle sert entre 100/max et
+ * 100/min femelles (bélier : 25 à 40 brebis). Au moins un mâle.
+ */
+export function malesConseilles(femelles, ref) {
+    const parMaleMax = 100 / ref.min;   // le plus de femelles qu'un mâle peut servir
+    const parMaleMin = 100 / ref.max;   // le moins qu'il doit servir
+    const minMales = Math.max(1, Math.ceil(femelles / parMaleMax - 1e-9));
+    const maxMales = Math.max(minMales, Math.floor(femelles / parMaleMin + 1e-9));
+    return { minMales, maxMales };
+}
+
+const arrondi = (n) => String(Math.round(n * 10) / 10).replace('.', ',');
 
 /** « 1 bélier pour 2,5 brebis » — la lecture d'éleveur du même rapport. */
 export function lectureEleveur(males, femelles, ref) {
@@ -71,7 +89,8 @@ export function afficherRatio(doc, males, femelles, ref) {
 
     if (el('ratio_display')) el('ratio_display').innerText = verdict.pourcentage === null ? '—' : `${String(verdict.pourcentage).replace('.', ',')} %`;
     if (el('ratio_reading')) el('ratio_reading').innerText = lectureEleveur(males, femelles, ref);
-    if (el('ratio_advice')) el('ratio_advice').innerText = verdict.etat === 'ok' ? '' : (verdict.conseil ?? '');
+    // La référence de l'espèce s'affiche toujours — conforme ou non.
+    if (el('ratio_advice')) el('ratio_advice').innerText = verdict.conseil ?? '';
     if (el('ratio_status')) {
         el('ratio_status').innerText = verdict.texte;
         el('ratio_status').className = `px-4 py-2 rounded-xl text-[9px] font-black uppercase italic tracking-widest ${COULEURS[verdict.etat]}`;
