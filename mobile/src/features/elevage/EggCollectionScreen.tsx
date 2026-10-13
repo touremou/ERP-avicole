@@ -80,7 +80,7 @@ export function EggCollectionScreen() {
     <form className="screen" onSubmit={onSubmit}>
       <h2>🥚 {t('Collecte')} — {batch.code}</h2>
       <p className="muted">
-        {batch.current_quantity} {t('pondeuses')} · {new Date().toLocaleDateString(dateLocale())}
+        {batch.effectif_pondeur ?? batch.current_quantity} {t('pondeuses')} · {new Date().toLocaleDateString(dateLocale())}
       </p>
 
       <NumberStepper label={t('Œufs ramassés (ce passage)')} value={totalEggs} onChange={setTotalEggs} min={0} step={10} />

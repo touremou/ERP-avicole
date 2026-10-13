@@ -715,6 +715,29 @@ class Batch extends Model
     }
 
     /**
+     * EFFECTIF PONDEUR — les poules, pas les coqs.
+     *
+     * Le taux de ponte se rapporte aux femelles. Collecte, analyse, tableau de
+     * bord et liste divisaient par l'effectif VIVANT : pour un lot de
+     * reproducteurs (100 poules + 10 coqs), 90 œufs faisaient 82 % au lieu de
+     * 90 %, et le garde-fou « 1 œuf par sujet » laissait passer 110 œufs.
+     * L'effectif vivant est réparti selon la proportion de femelles à la mise
+     * en place ; un lot sans mâles déclarés reste entier.
+     */
+    public function effectifPondeur(): int
+    {
+        $vivants = (int) $this->current_quantity;
+        $males = (int) $this->qty_males;
+        $femelles = (int) $this->qty_females;
+
+        if ($males <= 0 || $femelles <= 0) {
+            return $vivants;
+        }
+
+        return (int) round($vivants * $femelles / ($males + $femelles));
+    }
+
+    /**
      * SEMAINE D'ÂGE de la bande (1 = jours 1 à 7) — UNE règle, celle des
      * courbes de normes (ceil(âge / 7), au moins 1). L'analyse HDP comptait en
      * floor : six jours sur sept, elle jugeait la ponte sur la norme de la
@@ -1033,6 +1056,45 @@ class Batch extends Model
         ')->first();
 
         return max(0, (int) $sums->q_in - (int) $sums->q_out - (int) $sums->q_dead);
+    }
+
+    /**
+     * GMQ — GAIN MOYEN QUOTIDIEN (g/jour). Une déclaration, lue par la fiche,
+     * le rapport GMQ, le tableau de bord et l'API du terrain.
+     *
+     * Deux définitions coexistaient : (dernière pesée − première pesée) / jours
+     * ENTRE les pesées au bureau ; (dernière pesée − poids d'arrivée) / ÂGE du
+     * lot pour le terrain. Depuis que l'âge part de la naissance, un bélier de
+     * deux ans ayant pris 3 kg en 30 jours affichait 4 g/j au téléphone.
+     *
+     * Origine : la première pesée (la règle du bureau, inchangée) ; le poids à
+     * l'arrivée ne sert que s'il n'y a qu'UNE pesée. Fin : la dernière pesée.
+     * Jours de calendrier entre les deux. Null sans deux points distincts.
+     *
+     * @param iterable<object{check_date: mixed, avg_weight: mixed}>|null $pesees
+     *        pesées déjà chargées (évite une requête par lot dans les agrégats)
+     */
+    public function gmq(?iterable $pesees = null): ?float
+    {
+        $points = collect($pesees ?? ($this->relationLoaded('dailyChecks') ? $this->dailyChecks : $this->dailyChecks()->get()))
+            ->filter(fn ($c) => (float) ($c->avg_weight ?? 0) > 0)
+            ->sortBy(fn ($c) => Carbon::parse($c->check_date)->timestamp)
+            ->map(fn ($c) => [Carbon::parse($c->check_date)->startOfDay(), (float) $c->avg_weight])
+            ->values();
+
+        if ($points->count() === 1 && (float) $this->avg_weight_start > 0 && $this->arrival_date) {
+            $points->prepend([Carbon::parse($this->arrival_date)->startOfDay(), (float) $this->avg_weight_start]);
+        }
+
+        if ($points->count() < 2) {
+            return null;
+        }
+
+        [$debut, $poidsDebut] = $points->first();
+        [$fin, $poidsFin] = $points->last();
+        $jours = \App\Support\Jours::entre($debut, $fin);
+
+        return $jours >= 1 ? round(($poidsFin - $poidsDebut) * 1000 / $jours, 1) : null;
     }
 
     /**

@@ -290,6 +290,10 @@ export interface RefBatch {
   updated_at: string
   /** Calculé serveur : le lot est en âge/phase de collecte d'œufs (règle de souche). */
   can_collect_eggs?: boolean
+  /** Taux de mortalité du serveur (Batch::mortality_rate), en %. */
+  mortality_rate?: number | null
+  /** Poules du lot (sans les coqs d'un lot de reproducteurs) — Batch::effectifPondeur. */
+  effectif_pondeur?: number | null
 }
 
 export interface RefBuilding {

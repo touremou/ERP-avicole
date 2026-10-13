@@ -69,14 +69,13 @@ class BatchController extends Controller
                 'health'     => $c->health_status,
             ]);
 
-        // GMQ (g/jour) : gain entre le poids de départ et le dernier poids pesé,
-        // rapporté à l'âge du lot. Null si données insuffisantes.
         $weighed = $checks->filter(fn ($c) => $c['weight'] !== null && $c['weight'] > 0);
         $startWeight = $batch->avg_weight_start ? (float) $batch->avg_weight_start : ($weighed->first()['weight'] ?? null);
         $latestWeight = $weighed->last()['weight'] ?? null;
-        $gmq = ($startWeight && $latestWeight && $batch->age > 0)
-            ? round((($latestWeight - $startWeight) * 1000) / $batch->age, 1)
-            : null;
+
+        // GMQ (g/jour) : la règle de la fiche (Batch::gmq). Divisé par l'ÂGE
+        // ici, il s'effondrait pour un animal acheté adulte.
+        $gmq = $batch->gmq();
 
         return response()->json([
             'batch' => [

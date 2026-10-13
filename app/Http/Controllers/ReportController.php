@@ -1005,7 +1005,8 @@ class ReportController extends Controller
             if ($checks->count() < 2) {
                 return [
                     'batch'        => $batch,
-                    'gmq'          => null,
+                    // Poids d'arrivée + une pesée suffisent (Batch::gmq).
+                    'gmq'          => $batch->gmq($checks),
                     'gmq_series'   => [],
                     'start_weight' => $batch->avg_weight_start,
                     'last_weight'  => $checks->last()?->avg_weight,
@@ -1016,8 +1017,7 @@ class ReportController extends Controller
 
             $first = $checks->first();
             $last  = $checks->last();
-            $days  = max(1, \Carbon\Carbon::parse($first->check_date)->diffInDays($last->check_date));
-            $gmq   = round((($last->avg_weight - $first->avg_weight) * 1000) / $days); // g/jour
+            $gmq   = $batch->gmq($checks);   // g/jour — une règle : Batch::gmq
 
             // Series for sparkline: [date => weight]
             $series = $checks->mapWithKeys(fn($c) => [

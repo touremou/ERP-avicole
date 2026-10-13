@@ -66,8 +66,11 @@ test('la fiche renvoie indicateurs + historique des pointages', function () {
         ->and($json['batch']['latest_weight'])->toEqual(1.2)
         ->and($json['checks'])->toHaveCount(2);
 
-    // GMQ = (1.200 - 0.040) kg * 1000 / 21 j ≈ 55.2 g/j.
-    expect((float) $json['batch']['gmq'])->toEqual(55.2);
+    // GMQ : la règle de la fiche (Batch::gmq) — (1,200 − 0,500) kg sur les
+    // 10 jours entre les deux pesées = 70 g/j. Le terrain divisait le gain
+    // depuis l'arrivée par l'ÂGE du lot (55,2 ici) : depuis que l'âge part de
+    // la naissance, ce calcul s'effondrait pour un animal acheté adulte.
+    expect((float) $json['batch']['gmq'])->toEqual(70.0);
 });
 
 test('la fiche est refusée sans droit elevage.L (403)', function () {
@@ -80,4 +83,16 @@ test('la fiche est refusée sans droit elevage.L (403)', function () {
     Sanctum::actingAs($orphan);
 
     $this->getJson("/api/v1/batches/{$this->batch->id}/history")->assertStatus(403);
+});
+
+test('le GMQ d’un animal acheté adulte ne se divise pas par son âge', function () {
+    // Bélier de deux ans, 3 kg pris en 30 jours : 100 g/j — et non 4 g/j.
+    $belier = Batch::factory()->create([
+        'farm_id' => $this->farm->id, 'arrival_date' => now()->subDays(40)->toDateString(),
+        'birth_date' => now()->subYears(2)->toDateString(), 'avg_weight_start' => 0,
+    ]);
+    DailyCheck::create(['farm_id' => $this->farm->id, 'batch_id' => $belier->id, 'check_date' => now()->subDays(30)->toDateString(), 'mortality' => 0, 'avg_weight' => 32.0, 'health_status' => 'Normal']);
+    DailyCheck::create(['farm_id' => $this->farm->id, 'batch_id' => $belier->id, 'check_date' => now()->toDateString(), 'mortality' => 0, 'avg_weight' => 35.0, 'health_status' => 'Normal']);
+
+    expect($belier->fresh()->gmq())->toBe(100.0);
 });

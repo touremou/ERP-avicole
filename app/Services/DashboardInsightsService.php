@@ -103,15 +103,11 @@ class DashboardInsightsService
                 $totalFeedCost += (float) ($feed->feed_cost ?? 0);
             }
 
-            // GMQ : gain quotidien entre 1ʳᵉ et dernière pesée (g/j).
-            if ($w && $w->count() >= 2) {
-                $first = $w->first();
-                $last  = $w->last();
-                $days  = Carbon::parse($first->check_date)->diffInDays(Carbon::parse($last->check_date));
-                $gain  = ((float) $last->avg_weight - (float) $first->avg_weight) * 1000; // g
-                if ($days > 0 && $gain > 0) {
-                    $gmqValues[] = $gain / $days;
-                }
+            // GMQ : la règle de la fiche (Batch::gmq), sur les pesées déjà
+            // chargées — on n'agrège que les gains positifs.
+            $gmqLot = $batch->gmq($w ?? []);
+            if ($gmqLot !== null && $gmqLot > 0) {
+                $gmqValues[] = $gmqLot;
             }
         }
 

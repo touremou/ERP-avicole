@@ -56,8 +56,11 @@ export function BatchScreen() {
     ) + 1,
   )
   const ageWeeks = Math.floor(ageDays / 7)
+  // Le taux du SERVEUR (Batch::mortality_rate : toutes pertes / effectif
+  // livré). Le calcul local ne voyait que les morts du transport. Repli sur
+  // l'ancien calcul tant que le référentiel n'est pas resynchronisé.
   const mortalityRate =
-    batch.initial_quantity > 0 ? (batch.qty_dead / batch.initial_quantity) * 100 : 0
+    batch.mortality_rate ?? (batch.initial_quantity > 0 ? (batch.qty_dead / batch.initial_quantity) * 100 : 0)
 
   return (
     <div className="screen">

@@ -43,10 +43,10 @@
                 $reste = max(0, $building->capacity - $occupation);
                 $percent = ($building->capacity > 0) ? ($occupation / $building->capacity) * 100 : 0;
 
-                $totalInitial = $activeBatches->sum('initial_quantity');
-                $totalMorts = $activeBatches->sum(function($batch) {
-                    return ($batch->qty_dead ?? 0) + $batch->dailyChecks->sum('mortality');
-                });
+                // Même définition que Batch::mortality_rate, agrégée : toutes les
+                // pertes (transport, troupeau, infirmerie) sur l'effectif livré.
+                $totalInitial = $activeBatches->sum(fn ($batch) => $batch->initial_quantity + ($batch->qty_dead ?? 0));
+                $totalMorts = $activeBatches->sum(fn ($batch) => $batch->total_mortality);
                 $tauxMortalite = ($totalInitial > 0) ? ($totalMorts / $totalInitial) * 100 : 0;
 
                 $statusLabel = __("Repos / Disponible");
@@ -171,7 +171,10 @@
                                 </thead>
                                 <tbody class="divide-y divide-slate-50 text-left">
                                     @forelse($building->batches->sortByDesc('arrival_date') as $batch)
-                                        @php $batchMortality = ($batch->initial_quantity > 0) ? (($batch->qty_dead + $batch->dailyChecks->sum('mortality')) / $batch->initial_quantity) * 100 : 0; @endphp
+                                        {{-- Le taux du lot : Batch::mortality_rate, le même que sa fiche et les
+     rapports. Recalculé ici, il oubliait la mortalité en infirmerie et
+     n'avait pas le même dénominateur — deux taux pour un même lot. --}}
+                                        @php $batchMortality = $batch->mortality_rate; @endphp
                                         <tr class="group hover:bg-slate-50 transition-colors cursor-pointer" onclick="window.location='{{ route('batches.show', $batch->id) }}'">
                                             <td class="py-5">
                                                 <p class="font-black text-slate-800 uppercase tracking-tighter group-hover:text-blue-600 m-0">{{ $batch->code }}</p>

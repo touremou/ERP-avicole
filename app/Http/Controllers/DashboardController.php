@@ -99,7 +99,7 @@ class DashboardController extends Controller
 
             $layingBirds = $allActiveBatches
                 ->filter(fn ($b) => $b->canCollectEggs() || in_array($b->id, $pondeursDuJour, true))
-                ->sum('current_quantity');
+                ->sum(fn ($b) => $b->effectifPondeur());   // les poules, pas les coqs
             $hdp = $layingBirds > 0 ? ($totalEggsToday / $layingBirds) * 100 : 0;
         }
 

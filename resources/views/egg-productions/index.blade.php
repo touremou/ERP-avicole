@@ -131,7 +131,7 @@
                                     $passagesCount = $todayRecord ? 1 + substr_count($todayRecord->observations ?? '', '[Nouveau passage]') : 0;
                                     $isGraded = $todayRecord ? $todayRecord->is_graded : false;
                                     $totalDayEggs = $todayRecord ? $todayRecord->total_eggs_collected : 0;
-                                    $hdp = $b->current_quantity > 0 ? round(($totalDayEggs / $b->current_quantity) * 100, 1) : 0;
+                                    $hdp = $b->effectifPondeur() > 0 ? round(($totalDayEggs / $b->effectifPondeur()) * 100, 1) : 0;
                                     $currentWeek = ceil($b->age / 7);
                                     $peakWeek = (int) setting('production.peak_laying_week', 28);
                                     $weekDiff = $currentWeek - $peakWeek;
