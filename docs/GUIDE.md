@@ -361,6 +361,7 @@ dinde), ruminants (caprin lait, ovin, dont objectif Tabaski avec poids cible
 
 - **Suivi quotidien** (`daily-checks`) : mortalité, consommation aliment/eau, pesées, observations. Les extensions par espèce (lait, GMQ…) s'affichent selon le type de lot.
 - La **date de fin prévisionnelle** est calculée depuis la norme zootechnique du type de production, à défaut depuis les paramètres `elevage.cycle_*`.
+- **Depuis quand se compte le cycle.** Volaille et **engraissement** des ovins, caprins, porcs et lapins : depuis la **naissance** (le cycle est un âge — 52 semaines pour un agneau Djallonké, 24 pour un porc Large White ; courbes de normes par semaine d'âge). Poissons, laitières, reproducteurs adultes et bovins : depuis l'**arrivée** (le cycle est une durée). Renseignez la date de naissance des animaux achetés âgés, même approximative.
 - KPI sur fiche lot : taux de mortalité, indice de consommation (cibles `provenderie.fc_target_*`), GMQ (cibles `elevage.gmq_cible_*`), poids moyen.
 - **Dates d'un fait constaté** (arrivée, naissance, suivi, soin, vente, paiement, dépense, récolte, relevé, abattage…) : le calendrier ne propose pas de date future, et la naissance d'un lot ne peut pas dépasser son arrivée. Le serveur — web comme synchronisation terrain — refuse de même une date future. Les dates de **planification** (arrivée planifiée, échéance de contrat, conservation) ne proposent à l'inverse que l'avenir.
 - **Transferts de lots** entre bâtiments et **campagnes saisonnières** (Tabaski, Ramadan) pour piloter des objectifs de vente datés.

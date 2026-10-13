@@ -5,7 +5,7 @@
 
         // Accessors du model (PAS de requêtes SQL ici)
         $batchAge = $batch->age;
-        $currentWeek = $batch->semaineDAge();
+        $currentWeek = $batch->semaineDuCycle();
 
         // Stats de Ponte (une seule requête via collection eager-loaded)
         $prodToday = $batch->eggProductions->where('production_date', $today)->first();

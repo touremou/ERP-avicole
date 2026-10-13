@@ -48,7 +48,9 @@ class BatchAdvisorService
      */
     public function recommendation(Batch $batch): ?array
     {
-        $week = max(1, (int) ceil($batch->age / 7));
+        // La ligne de la courbe : semaine du CYCLE (âge pour la volaille et
+        // l'engraissement des mammifères ; depuis l'arrivée sinon).
+        $week = $batch->semaineDuCycle();
 
         $curve = $this->normCurve($batch);
         if ($curve->isEmpty()) {
@@ -520,9 +522,10 @@ class BatchAdvisorService
 
         $curve = $this->normCurve($batch);
 
-        // Origine d'âge : même référence que le calendrier sanitaire du show.
-        $start = $batch->transfer_date ?? $batch->start_date ?? $batch->arrival_date;
-        $start = $start ? \Carbon\Carbon::parse($start)->startOfDay() : null;
+        // Origine de la courbe : celle du cycle (Batch::debutDuCycle). Cette
+        // courbe avait sa propre origine (transfert, sinon début, sinon
+        // arrivée) — une troisième, pour la même cible que la fiche.
+        $start = $batch->debutDuCycle();
 
         $labels = $actual = $target = [];
         $hasActual = $hasTarget = false;
@@ -543,7 +546,7 @@ class BatchAdvisorService
             $tg = null;
             if ($curve->isNotEmpty()) {
                 $ageDays = $start
-                    ? max(0, (int) $start->diffInDays(\Carbon\Carbon::parse($check->check_date)))
+                    ? max(0, \App\Support\Jours::entre($start, $check->check_date))
                     : $i;
                 $week  = max(1, (int) ceil(($ageDays + 1) / 7));
                 $tw    = $this->interpolate($curve, $week)['weight'];
