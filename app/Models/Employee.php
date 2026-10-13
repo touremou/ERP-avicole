@@ -114,7 +114,7 @@ class Employee extends Model
 
     public function assignedBuilding(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\Building::class, 'assigned_building_id');
+        return $this->belongsTo(\App\Models\Building::class, 'assigned_building_id')->withTrashed();
     }
 
     /**

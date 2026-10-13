@@ -23,6 +23,6 @@ class CropRecipeItem extends Model
 
     public function recipe(): BelongsTo
     {
-        return $this->belongsTo(CropRecipe::class, 'crop_recipe_id');
+        return $this->belongsTo(CropRecipe::class, 'crop_recipe_id')->withTrashed();
     }
 }

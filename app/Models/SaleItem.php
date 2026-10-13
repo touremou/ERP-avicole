@@ -24,7 +24,7 @@ class SaleItem extends Model
 
     public function sale(): BelongsTo
     {
-        return $this->belongsTo(Sale::class);
+        return $this->belongsTo(Sale::class)->withTrashed();
     }
 
     /**
@@ -39,12 +39,12 @@ class SaleItem extends Model
 
     public function stock(): BelongsTo
     {
-        return $this->belongsTo(Stock::class, 'product_id');
+        return $this->belongsTo(Stock::class, 'product_id')->withTrashed();
     }
 
     public function batch(): BelongsTo
     {
-        return $this->belongsTo(Batch::class);
+        return $this->belongsTo(Batch::class)->withTrashed();
     }
 
     /**

@@ -126,7 +126,7 @@
     </div>
 
     {{-- 📘 MODAL RÉFÉRENTIEL NUTRITIONNEL --}}
-    <div id="modalNormes" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div id="modalNormes" data-modale class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-4xl rounded-[3rem] shadow-2xl p-10 animate-in fade-in zoom-in duration-300 italic overflow-hidden relative">
             <div class="flex justify-between items-center mb-8 border-b border-slate-50 pb-6">
                 <h3 class="text-2xl font-black text-slate-900 uppercase italic tracking-tighter leading-none">{{ __("Normes de Fabrication") }}</h3>

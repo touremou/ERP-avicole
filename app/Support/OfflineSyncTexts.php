@@ -33,6 +33,16 @@ final class OfflineSyncTexts
         'Droit insuffisant pour enregistrer cette saisie.',
         'Données invalides.',
         'Refusée par le serveur (HTTP :status).',
+        // Proportion de reproducteurs (resources/js/breeding-ratio.js)
+        'En attente...',
+        'Pas de référence pour cette espèce',
+        'Conseillé : :min :male(s) pour :f :femelles',
+        'Conseillé : :min à :max :male(s) pour :f :femelles',
+        'Aucun mâle',
+        'Trop de mâles',
+        'Pas assez de mâles',
+        'Conforme',
+        '1 :male pour :n :femelles',
     ];
 
     /** @return array<string, string> texte français => texte dans la langue courante */

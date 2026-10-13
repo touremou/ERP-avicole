@@ -66,7 +66,7 @@ class CropTransformation extends Model
 
     public function cropCycle(): BelongsTo
     {
-        return $this->belongsTo(CropCycle::class);
+        return $this->belongsTo(CropCycle::class)->withTrashed();
     }
 
     /**
@@ -76,12 +76,12 @@ class CropTransformation extends Model
      */
     public function harvest(): BelongsTo
     {
-        return $this->belongsTo(Harvest::class);
+        return $this->belongsTo(Harvest::class)->withTrashed();
     }
 
     public function recipe(): BelongsTo
     {
-        return $this->belongsTo(CropRecipe::class, 'crop_recipe_id');
+        return $this->belongsTo(CropRecipe::class, 'crop_recipe_id')->withTrashed();
     }
 
 

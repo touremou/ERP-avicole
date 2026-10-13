@@ -88,7 +88,7 @@ class SlaughterResult extends Model
 
     public function order(): BelongsTo
     {
-        return $this->belongsTo(SlaughterOrder::class, 'slaughter_order_id');
+        return $this->belongsTo(SlaughterOrder::class, 'slaughter_order_id')->withTrashed();
     }
 
     public function getYieldStatusAttribute(): string

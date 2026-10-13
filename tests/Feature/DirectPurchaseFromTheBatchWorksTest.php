@@ -87,7 +87,8 @@ test('dix sacs de copeaux restent dix sacs de LITIÈRE — pas 500 kg d’alimen
 });
 
 test('chaque unité proposée par la modale est acceptée par le serveur', function () {
-    $modale = file_get_contents(resource_path('views/batches/partials/feed-modal.blade.php'));
+    // Les commentaires Blade (qui racontent ce défaut) ne comptent pas.
+    $modale = preg_replace('/\{\{--.*?--\}\}/s', '', file_get_contents(resource_path('views/batches/partials/feed-modal.blade.php')));
     preg_match('/get availableUnits\(\) \{(.*?)\n        \},/s', $modale, $bloc);
     preg_match_all("/'([^']+)'/", $bloc[1], $valeurs);
 
@@ -113,4 +114,21 @@ test('un refus du serveur rouvre la modale et s’y affiche', function () {
         ->and($page)->toContain(__('validation.in', ['attribute' => 'unit']));
 
     expect(FeedPurchase::count())->toBe(0);
+});
+
+test('la fenêtre s’ouvre depuis le menu « Gérer » : pas de fermeture « au clic extérieur »', function () {
+    /*
+     * Signalé deux fois : « le modal d'achat rapide ne s'ouvre toujours pas ».
+     * La boîte portait `@click.away="closeFeedModal()"`. Le clic du menu ouvrait
+     * la fenêtre (onclick, synchrone), puis ce même clic remontait au document :
+     * Alpine y voyait un clic HORS de la boîte, désormais visible, et la
+     * refermait aussitôt. Rejoué dans Chromium avec un VRAI clic (les essais
+     * précédents appelaient openFeedModal() directement — et passaient).
+     * La fenêtre se ferme désormais au clic sur son FOND (@click.self).
+     */
+    // Les commentaires Blade (qui racontent ce défaut) ne comptent pas.
+    $modale = preg_replace('/\{\{--.*?--\}\}/s', '', file_get_contents(resource_path('views/batches/partials/feed-modal.blade.php')));
+
+    expect($modale)->not->toMatch('/@click\.(away|outside)|x-on:click\.(away|outside)/')
+        ->and($modale)->toContain('@click.self="closeFeedModal()"');
 });

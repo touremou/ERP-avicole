@@ -78,7 +78,7 @@ class DailyCheck extends Model
 
     public function batch(): BelongsTo
     {
-        return $this->belongsTo(Batch::class);
+        return $this->belongsTo(Batch::class)->withTrashed();
     }
 
     public function extension(): \Illuminate\Database\Eloquent\Relations\HasOne

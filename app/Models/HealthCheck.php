@@ -113,7 +113,7 @@ class HealthCheck extends Model
 
     public function batch(): BelongsTo
     {
-        return $this->belongsTo(Batch::class);
+        return $this->belongsTo(Batch::class)->withTrashed();
     }
 
     // -----------------------

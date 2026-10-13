@@ -3,6 +3,7 @@
      `feed-purchases.store` se résout en « provenderie », pas en « elevage ». --}}
 @can('provenderie.C')
 <div id="feedModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[110] hidden flex items-center justify-center p-4 sm:p-6"
+    @click.self="closeFeedModal()"
     x-data="{
         cat: 'conso',
         consoType: 'Aliment',
@@ -40,7 +41,12 @@
         else if(value === 'Hygiène') unit = 'Litre';
     }); $watch('cat', () => { if (! availableUnits.includes(unit)) unit = availableUnits[0]; })">
 
-    <div class="bg-white w-full max-w-2xl rounded-[3rem] shadow-2xl overflow-hidden relative" @click.away="closeFeedModal()">
+    {{-- Fermeture au clic sur le FOND (@click.self ci-dessus), pas « hors de la
+         boîte » : `@click.away` voyait le clic du menu « Achat direct » qui
+         venait d'ouvrir la fenêtre — la boîte, désormais visible, recevait un
+         clic « extérieur » et se refermait aussitôt. La fenêtre ne s'ouvrait
+         jamais depuis le menu. --}}
+    <div class="bg-white w-full max-w-2xl rounded-[3rem] shadow-2xl overflow-hidden relative">
 
         {{-- EN-TÊTE --}}
         <div class="px-10 py-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">

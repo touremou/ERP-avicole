@@ -152,23 +152,23 @@ class Batch extends Model
 
     public function building(): BelongsTo
     {
-        return $this->belongsTo(Building::class);
+        return $this->belongsTo(Building::class)->withTrashed();
     }
 
     public function provider(): BelongsTo
     {
-        return $this->belongsTo(Provider::class);
+        return $this->belongsTo(Provider::class)->withTrashed();
     }
 
 
     public function protocol(): BelongsTo
     {
-        return $this->belongsTo(Protocol::class);
+        return $this->belongsTo(Protocol::class)->withTrashed();
     }
 
     public function currentProtocol(): BelongsTo
     {
-        return $this->belongsTo(Protocol::class, 'current_protocol_id');
+        return $this->belongsTo(Protocol::class, 'current_protocol_id')->withTrashed();
     }
 
     public function parentBatch(): BelongsTo
@@ -331,7 +331,7 @@ class Batch extends Model
 
     public function campaign(): BelongsTo
     {
-        return $this->belongsTo(Campaign::class);
+        return $this->belongsTo(Campaign::class)->withTrashed();
     }
 
     // ═══════════════════════════════════════════════

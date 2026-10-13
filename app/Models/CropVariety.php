@@ -29,6 +29,6 @@ class CropVariety extends Model
 
     public function species(): BelongsTo
     {
-        return $this->belongsTo(CropSpecies::class, 'crop_species_id');
+        return $this->belongsTo(CropSpecies::class, 'crop_species_id')->withTrashed();
     }
 }

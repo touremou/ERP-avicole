@@ -97,16 +97,7 @@
 
                             {{-- REPRODUCTEURS : Mâles + Femelles --}}
                             <div id="repro_fields" class="hidden mb-8 p-8 bg-indigo-50 rounded-[2.5rem] border border-indigo-100">
-                                <div class="flex items-center justify-between p-4 bg-white/50 rounded-2xl border border-indigo-100 mb-6">
-                                    <div class="flex items-center gap-3">
-                                        <div class="p-3 bg-indigo-500 rounded-xl text-white"><i class="fa-solid fa-venus-mars"></i></div>
-                                        <div>
-                                            <p class="text-[8px] font-black uppercase text-slate-400 leading-none mb-1">{{ __("Ratio de Coquage") }}</p>
-                                            <p class="text-xl font-black text-indigo-600 leading-none" id="ratio_display">0%</p>
-                                        </div>
-                                    </div>
-                                    <div id="ratio_status" class="px-4 py-2 rounded-xl text-[9px] font-black uppercase italic tracking-widest bg-slate-100 text-slate-400">{{ __("En attente...") }}</div>
-                                </div>
+                                @include('batches.partials.breeding-ratio', ['classe' => 'mb-6'])
                                 <div class="grid grid-cols-2 gap-8">
                                     <div>
                                         <label class="block text-[10px] font-black text-indigo-500 uppercase mb-2 ml-1 italic">{{ __("Nombre de Mâles") }}</label>
@@ -265,6 +256,8 @@ function runFilters() {
     const sel = el('breeding_type').selectedOptions[0];
     const speciesSlug = sel?.dataset.speciesSlug || "";
     el('species_id_hidden').value = sel?.dataset.speciesId || "";
+    // L'espèce change la référence de la proportion de reproducteurs.
+    window.afficherRatioReproducteurs?.(parseInt(el('qty_males')?.value) || 0, parseInt(el('qty_females')?.value) || 0, speciesSlug);
     el('production_type_id_hidden').value = sel?.dataset.ptId || "";
 
     // Filtrage souches : par type d'élevage ET par espèce (une souche sans
@@ -319,14 +312,9 @@ function updateReproTotal() {
     const f = parseInt(el('qty_females')?.value) || 0;
     el('planned_qty').value = m + f;
 
-    // Ratio
-    if (f > 0) {
-        const ratio = (m / f * 100).toFixed(1);
-        el('ratio_display').innerText = ratio + "%";
-        const status = el('ratio_status');
-        if (ratio >= {{ setting('elevage.mating_ratio_min', 8) }} && ratio <= {{ setting('elevage.mating_ratio_max', 12) }}) { status.innerText = "✅ Optimal"; status.className = "px-4 py-2 rounded-xl text-[9px] font-black uppercase italic tracking-widest bg-emerald-100 text-emerald-600"; }
-        else { status.innerText = "⚠️ Hors norme"; status.className = "px-4 py-2 rounded-xl text-[9px] font-black uppercase italic tracking-widest bg-amber-100 text-amber-600"; }
-    }
+    // Proportion de reproducteurs, jugée selon l'espèce du type choisi (et non
+    // plus sur la norme du poulet pour toutes les espèces).
+    window.afficherRatioReproducteurs?.(m, f, el('breeding_type')?.selectedOptions[0]?.dataset.speciesSlug || '');
     calculateAll();
 }
 

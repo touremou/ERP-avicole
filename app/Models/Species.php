@@ -22,6 +22,70 @@ class Species extends Model
     ];
 
     /**
+     * PROPORTION DE REPRODUCTEURS — mâles pour 100 femelles, par espèce.
+     *
+     * La création de bande appelait ce rapport « ratio de coquage » et ne le
+     * jugeait jamais (« En attente… » restait affiché) ; la planification le
+     * jugeait sur UN seul réglage, celui du poulet (8–12 %), pour toutes les
+     * espèces : 1 bélier pour 30 brebis (3,3 %) y était « trop peu de mâles »,
+     * 4 béliers pour 10 brebis (40 %) passait inaperçu à la création.
+     *
+     * [min %, max %, le mâle, les femelles] — valeurs de conduite usuelles en
+     * monte naturelle. Le poulet garde le réglage de la ferme
+     * (`elevage.mating_ratio_min` / `_max`).
+     */
+    public const RATIOS_REPRODUCTEURS = [
+        'poulet'  => [8,   12,   'coq',       'poules'],
+        'dinde'   => [8,   12,   'dindon',    'dindes'],
+        'pintade' => [17,  25,   'mâle',      'pintades'],
+        'caille'  => [33,  50,   'mâle',      'cailles'],
+        'canard'  => [12,  20,   'canard',    'canes'],
+        'pigeon'  => [90,  110,  'mâle',      'femelles'],
+        'mouton'  => [2.5, 4,    'bélier',    'brebis'],
+        'chevre'  => [3,   5,    'bouc',      'chèvres'],
+        'vache'   => [2.5, 4,    'taureau',   'vaches'],
+        'porc'    => [4,   7,    'verrat',    'truies'],
+        'lapin'   => [10,  12.5, 'mâle',      'lapines'],
+        'tilapia' => [33,  50,   'mâle',      'femelles'],
+        'carpe'   => [100, 200,  'mâle',      'femelles'],
+        'silure'  => [80,  120,  'mâle',      'femelles'],
+    ];
+
+    /**
+     * La référence de l'espèce, ou null si elle n'en a pas.
+     *
+     * @return array{min: float, max: float, male: string, femelles: string}|null
+     */
+    /**
+     * Les références de toutes les espèces, par slug — posées une fois sur les
+     * écrans qui saisissent des reproducteurs (resources/js/breeding-ratio.js).
+     *
+     * @return array<string, array{min: float, max: float, male: string, femelles: string}>
+     */
+    public static function ratiosParSlug(): array
+    {
+        return collect(array_keys(self::RATIOS_REPRODUCTEURS))
+            ->mapWithKeys(fn (string $slug) => [$slug => (new self(['slug' => $slug]))->ratioReproducteurs()])
+            ->all();
+    }
+
+    public function ratioReproducteurs(): ?array
+    {
+        $ref = self::RATIOS_REPRODUCTEURS[$this->slug] ?? null;
+        if (! $ref) {
+            return null;
+        }
+
+        [$min, $max, $male, $femelles] = $ref;
+        if ($this->slug === 'poulet') {
+            $min = (float) setting('elevage.mating_ratio_min', $min);
+            $max = (float) setting('elevage.mating_ratio_max', $max);
+        }
+
+        return ['min' => (float) $min, 'max' => (float) $max, 'male' => __($male), 'femelles' => __($femelles)];
+    }
+
+    /**
      * Durée d'incubation en jours — SOURCE UNIQUE.
      *
      * Le nombre vivait en trois endroits qui pouvaient se contredire : un tableau

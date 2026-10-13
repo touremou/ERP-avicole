@@ -59,7 +59,7 @@ class StoredLotCheck extends Model
         'market_price'       => 'decimal:2',
     ];
 
-    public function storedLot(): BelongsTo { return $this->belongsTo(StoredLot::class); }
+    public function storedLot(): BelongsTo { return $this->belongsTo(StoredLot::class)->withTrashed(); }
     public function recorder(): BelongsTo { return $this->belongsTo(User::class, 'recorded_by'); }
 
     public function getConditionLabelAttribute(): string

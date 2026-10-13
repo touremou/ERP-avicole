@@ -22,7 +22,7 @@ class DispatchItem extends Model
 
     public function dispatch(): BelongsTo
     {
-        return $this->belongsTo(Dispatch::class);
+        return $this->belongsTo(Dispatch::class)->withTrashed();
     }
 
     public function receptionItem(): HasOne
@@ -32,12 +32,12 @@ class DispatchItem extends Model
 
     public function stock(): BelongsTo
     {
-        return $this->belongsTo(Stock::class, 'product_id');
+        return $this->belongsTo(Stock::class, 'product_id')->withTrashed();
     }
 
     public function batch(): BelongsTo
     {
-        return $this->belongsTo(Batch::class);
+        return $this->belongsTo(Batch::class)->withTrashed();
     }
 
     // Taxonomie alignée sur SaleItem (multiespèces) + catégories de stock

@@ -46,9 +46,9 @@ class HealthIncident extends Model
     ];
 
     // ─── RELATIONS ───
-    public function building(): BelongsTo { return $this->belongsTo(Building::class); }
-    public function batch(): BelongsTo { return $this->belongsTo(Batch::class); }
-    public function dailyCheck(): BelongsTo { return $this->belongsTo(DailyCheck::class); } // pointage d'origine
+    public function building(): BelongsTo { return $this->belongsTo(Building::class)->withTrashed(); }
+    public function batch(): BelongsTo { return $this->belongsTo(Batch::class)->withTrashed(); }
+    public function dailyCheck(): BelongsTo { return $this->belongsTo(DailyCheck::class)->withTrashed(); } // pointage d'origine
     public function user(): BelongsTo { return $this->belongsTo(User::class); }            // déclarant
     public function diagnosedBy(): BelongsTo { return $this->belongsTo(User::class, 'diagnosed_by'); }
     public function resolvedBy(): BelongsTo { return $this->belongsTo(User::class, 'resolved_by'); }

@@ -327,6 +327,13 @@ ce qui serait emporté. D'autres garde-fous empêchent les suppressions
 destructrices ailleurs : article de stock avec historique de mouvements,
 formule déjà produite, compte utilisateur portant des clôtures de caisse.
 
+Mettre à la corbeille un bâtiment, un employé, un fournisseur ou un client
+n'efface pas l'historique qui les cite : la fiche d'un lot clôturé, une vente
+ancienne, un relevé continuent d'afficher leur bâtiment, leur client… même
+archivés. (Un élément n'est mis à la corbeille que s'il ne sert plus à rien
+d'**actif** : un bâtiment occupé, un fournisseur d'une bande en cours sont
+refusés.)
+
 ---
 
 ## 3. Utilisation par module

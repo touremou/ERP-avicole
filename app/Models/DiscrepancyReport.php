@@ -28,7 +28,7 @@ class DiscrepancyReport extends Model
 
     public function dispatch(): BelongsTo
     {
-        return $this->belongsTo(Dispatch::class);
+        return $this->belongsTo(Dispatch::class)->withTrashed();
     }
 
     public function reception(): BelongsTo

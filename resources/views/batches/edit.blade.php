@@ -143,19 +143,7 @@
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
                                 {{-- Section reproducteurs (mâles/femelles) --}}
                                 <div id="repro_fields" class="{{ !$isRepro ? 'hidden' : '' }} col-span-2 grid grid-cols-2 gap-8 mb-4 p-8 bg-indigo-50 rounded-[2.5rem] border border-indigo-100 italic">
-                                    <div class="col-span-2 flex items-center justify-between p-4 bg-white/50 rounded-2xl border border-indigo-100 shadow-sm">
-                                        <div class="flex items-center gap-3">
-                                            <div class="p-3 bg-indigo-500 rounded-xl text-white shadow-lg">
-                                                <i class="fa-solid fa-venus-mars"></i>
-                                            </div>
-                                            <div>
-                                                <p class="text-[8px] font-black uppercase text-slate-400 leading-none mb-1">{{ __("Ratio de Coquage") }}</p>
-                                                <p class="text-xl font-black text-indigo-600 leading-none" id="ratio_display">
-                                                    {{ $batch->qty_females > 0 ? number_format(($batch->qty_males / $batch->qty_females) * 100, 1) : 0 }}%
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
+                                    @include('batches.partials.breeding-ratio', ['classe' => 'col-span-2'])
                                     <div>
                                         <label class="block text-[10px] font-black text-indigo-500 uppercase mb-2 ml-1 italic leading-none">{{ __("Nombre de Mâles") }}</label>
                                         <input type="number" min="0" name="qty_males" id="qty_males" value="{{ old('qty_males', $batch->qty_males ?? 0) }}"
@@ -334,17 +322,14 @@
             typeSelector?.addEventListener('change', runFilters);
             runFilters();
 
-            // Ratio reproducteurs
-            document.querySelectorAll('.repro-input').forEach(input => {
-                input.addEventListener('input', function() {
-                    const m = parseInt(document.getElementById('qty_males')?.value) || 0;
-                    const f = parseInt(document.getElementById('qty_females')?.value) || 0;
-                    const display = document.getElementById('ratio_display');
-                    if (display && f > 0) {
-                        display.innerText = (m / f * 100).toFixed(1) + '%';
-                    }
-                });
-            });
+            // Proportion de reproducteurs, jugée selon l'espèce de la bande.
+            const especeDeLaBande = @js($batch->species?->slug);
+            const jugerRatio = () => window.afficherRatioReproducteurs?.(
+                parseInt(document.getElementById('qty_males')?.value) || 0,
+                parseInt(document.getElementById('qty_females')?.value) || 0,
+                especeDeLaBande);
+            document.querySelectorAll('.repro-input').forEach(input => input.addEventListener('input', jugerRatio));
+            jugerRatio();
         });
     </script>
     <script>

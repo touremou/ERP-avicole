@@ -54,6 +54,9 @@ return Application::configure(basePath: dirname(__DIR__))
                 \App\Http\Middleware\SetCurrentFarm::class,
                 \App\Http\Middleware\SetUserLocale::class,
                 \App\Http\Middleware\EnsureLicensed::class,
+                // Un fetch d'arrière-plan ne consomme pas les messages flashés
+                // destinés à la page suivante.
+                \App\Http\Middleware\KeepFlashForBackgroundRequests::class,
             ],
         );
 

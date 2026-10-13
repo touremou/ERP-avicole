@@ -37,7 +37,7 @@ class WeatherReading extends Model
 
     public function plot(): BelongsTo
     {
-        return $this->belongsTo(Plot::class);
+        return $this->belongsTo(Plot::class)->withTrashed();
     }
 
     /** Relevés d'un mois donné (format Y-m). */

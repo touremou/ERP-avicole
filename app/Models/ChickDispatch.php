@@ -22,13 +22,13 @@ class ChickDispatch extends Model
         'total_amount'  => 'float',
     ];
 
-    public function incubation(): BelongsTo { return $this->belongsTo(Incubation::class); }
-    public function batch(): BelongsTo { return $this->belongsTo(Batch::class); }
-    public function client(): BelongsTo { return $this->belongsTo(Client::class); }
+    public function incubation(): BelongsTo { return $this->belongsTo(Incubation::class)->withTrashed(); }
+    public function batch(): BelongsTo { return $this->belongsTo(Batch::class)->withTrashed(); }
+    public function client(): BelongsTo { return $this->belongsTo(Client::class)->withTrashed(); }
     public function dispatcher(): BelongsTo { return $this->belongsTo(User::class, 'dispatched_by'); }
 
     /** La vente engendrée par un dispatch « vente » — null pour les autres destinations. */
-    public function sale(): BelongsTo { return $this->belongsTo(Sale::class); }
+    public function sale(): BelongsTo { return $this->belongsTo(Sale::class)->withTrashed(); }
 
     public function getDestinationLabelAttribute(): string
     {

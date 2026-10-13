@@ -127,20 +127,7 @@
                             
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-8 text-left">
                                 <div id="repro_fields" class="hidden col-span-2 grid grid-cols-2 gap-8 mb-8 p-8 bg-indigo-50 rounded-[2.5rem] border border-indigo-100 italic">
-                                    <div class="col-span-2 flex items-center justify-between p-4 bg-white/50 rounded-2xl border border-indigo-100">
-                                        <div class="flex items-center gap-3">
-                                            <div class="p-3 bg-indigo-500 rounded-xl text-white">
-                                                <i class="fa-solid fa-venus-mars"></i>
-                                            </div>
-                                            <div>
-                                                <p class="text-[8px] font-black uppercase text-slate-400 leading-none mb-1">{{ __("Ratio de Coquage") }}</p>
-                                                <p class="text-xl font-black text-indigo-600 leading-none" id="ratio_display">0%</p>
-                                            </div>
-                                        </div>
-                                        <div id="ratio_status" class="px-4 py-2 rounded-xl text-[9px] font-black uppercase italic tracking-widest bg-slate-100 text-slate-400">
-                                            {{ __("En attente...") }}
-                                        </div>
-                                    </div>
+                                    @include('batches.partials.breeding-ratio', ['classe' => 'col-span-2'])
                                     <div>
                                         <label class="block text-[10px] font-black text-indigo-500 uppercase mb-2 ml-1 italic leading-none">{{ __("Nombre de Mâles") }}</label>
                                         <input type="number" min="0" name="qty_males" id="qty_males" value="0" oninput="updateTotalQty()"
@@ -398,6 +385,8 @@
         // UI Reproducteurs
         if (selectedType === 'reproducteur') {
             reproFields?.classList.remove('hidden');
+            // Changer d'espèce change la référence : on rejuge.
+            window.afficherRatioReproducteurs?.(parseInt(el('qty_males')?.value) || 0, parseInt(el('qty_females')?.value) || 0, getCurrentSpeciesSlug());
             if (qtyAliveInput) { qtyAliveInput.readOnly = true; qtyAliveInput.classList.add('bg-slate-100'); }
         } else {
             reproFields?.classList.add('hidden');
@@ -478,11 +467,8 @@
         const f = parseInt(el('qty_females')?.value) || 0;
         if (el('qty_alive')) el('qty_alive').value = m + f;
         
-        // Calcul du ratio pour les reproducteurs
-        if (f > 0) {
-            const ratio = (m / f * 100).toFixed(1);
-            if(el('ratio_display')) el('ratio_display').innerText = ratio + "%";
-        }
+        // Proportion de reproducteurs, jugée selon l'espèce choisie.
+        window.afficherRatioReproducteurs?.(m, f, getCurrentSpeciesSlug());
         calculateAll();
     }
     async function fillFormFromIndexedDB() {

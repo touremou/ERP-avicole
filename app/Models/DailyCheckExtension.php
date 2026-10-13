@@ -30,7 +30,7 @@ class DailyCheckExtension extends Model
 
     public function dailyCheck(): BelongsTo
     {
-        return $this->belongsTo(DailyCheck::class);
+        return $this->belongsTo(DailyCheck::class)->withTrashed();
     }
 
     /**

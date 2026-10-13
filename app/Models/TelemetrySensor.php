@@ -24,5 +24,5 @@ class TelemetrySensor extends Model
         'last_seen_at' => 'datetime',
     ];
 
-    public function building(): BelongsTo { return $this->belongsTo(Building::class); }
+    public function building(): BelongsTo { return $this->belongsTo(Building::class)->withTrashed(); }
 }
