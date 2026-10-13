@@ -7,7 +7,11 @@
  */
 export function traduire(fr, remplacements = {}) {
     const t = globalThis.AVISMART_TEXTES?.[fr] ?? fr;
-    return Object.entries(remplacements).reduce((acc, [k, v]) => acc.replaceAll(`:${k}`, String(v)), t);
+    // Clés les plus LONGUES d'abord, comme Laravel : sinon `:f` mord dans
+    // `:femelles` (« 10emelles »).
+    return Object.entries(remplacements)
+        .sort(([a], [b]) => b.length - a.length)
+        .reduce((acc, [k, v]) => acc.replaceAll(`:${k}`, String(v)), t);
 }
 
 /**
