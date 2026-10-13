@@ -480,9 +480,9 @@ class ProductionNormSeeder extends Seeder
     private function poultryBreeders(): array
     {
         return [
-            $this->norm('reproducteur', 1, 'Croissance', 'Bélier Djallonké',  35000, 1500, 5000, 0),
-            $this->norm('reproducteur', 1, 'Croissance', 'Bouc Sahélien',     40000, 1400, 4500, 0),
-            $this->norm('reproducteur', 1, 'Croissance', 'Lapin Californien', 4500,  200,  450,  0),
+            $this->norm('reproducteur', 1, 'Entretien', 'Bélier Djallonké',  35000, 1500, 5000, 0),
+            $this->norm('reproducteur', 1, 'Entretien', 'Bouc Sahélien',     40000, 1400, 4500, 0),
+            $this->norm('reproducteur', 1, 'Entretien', 'Lapin Californien', 4500,  200,  450,  0),
         ];
     }
 

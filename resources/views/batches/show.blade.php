@@ -556,21 +556,30 @@
                     </span>
                 </div>
 
-                {{-- Dosage recommandé --}}
+                {{-- Dosage recommandé. Unités lisibles pour TOUTES les espèces :
+                     « 35,000 g » pour un bélier, « 1,472 g/sujet » de ration —
+                     au-delà de 1 000 g on passe aux kilos, de 1 000 ml aux litres. --}}
+                @php
+                    $masse  = fn ($g) => $g >= 1000 ? [number_format($g / 1000, $g >= 10000 ? 0 : 1), 'kg'] : [number_format($g, 0), 'g'];
+                    $volume = fn ($ml) => $ml >= 1000 ? [number_format($ml / 1000, 1), 'L'] : [number_format($ml, 0), 'ml'];
+                    [$poidsCible, $poidsUnite] = $masse($feedAdvice['per_subject']['weight_target_g']);
+                    [$alimSujet, $alimUnite]   = $masse($feedAdvice['per_subject']['feed_g']);
+                    [$eauSujet, $eauUnite]     = $volume($feedAdvice['per_subject']['water_ml']);
+                @endphp
                 <div class="grid grid-cols-2 md:grid-cols-4 {{ !empty($feedAutonomy) ? 'lg:grid-cols-5' : '' }} gap-4 mb-4">
                     <div class="bg-orange-50 border border-orange-100 rounded-[1.5rem] p-4 text-center">
                         <p class="text-[8px] font-black text-orange-400 uppercase tracking-widest italic mb-1">{{ __("Aliment / lot / jour") }}</p>
                         <h4 class="text-2xl font-black text-orange-600 tracking-tighter italic">{{ number_format($feedAdvice['total']['feed_kg'], 1) }}<small class="text-[10px] ml-1 opacity-60">kg</small></h4>
-                        <p class="text-[8px] font-black text-slate-400 uppercase mt-1">{{ number_format($feedAdvice['per_subject']['feed_g'], 0) }} g/{{ __("sujet") }}</p>
+                        <p class="text-[8px] font-black text-slate-400 uppercase mt-1">{{ $alimSujet }} {{ $alimUnite }}/{{ __("sujet") }}</p>
                     </div>
                     <div class="bg-blue-50 border border-blue-100 rounded-[1.5rem] p-4 text-center">
                         <p class="text-[8px] font-black text-blue-400 uppercase tracking-widest italic mb-1">{{ __("Eau / lot / jour") }}</p>
                         <h4 class="text-2xl font-black text-blue-600 tracking-tighter italic">{{ number_format($feedAdvice['total']['water_l'], 1) }}<small class="text-[10px] ml-1 opacity-60">L</small></h4>
-                        <p class="text-[8px] font-black text-slate-400 uppercase mt-1">{{ number_format($feedAdvice['per_subject']['water_ml'], 0) }} ml/{{ __("sujet") }}</p>
+                        <p class="text-[8px] font-black text-slate-400 uppercase mt-1">{{ $eauSujet }} {{ $eauUnite }}/{{ __("sujet") }}</p>
                     </div>
                     <div class="bg-slate-50 border border-slate-100 rounded-[1.5rem] p-4 text-center">
                         <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest italic mb-1">{{ __("Poids cible") }}</p>
-                        <h4 class="text-2xl font-black text-slate-800 tracking-tighter italic">{{ number_format($feedAdvice['per_subject']['weight_target_g']) }}<small class="text-[10px] ml-1 opacity-50">g</small></h4>
+                        <h4 class="text-2xl font-black text-slate-800 tracking-tighter italic">{{ $poidsCible }}<small class="text-[10px] ml-1 opacity-50">{{ $poidsUnite }}</small></h4>
                         <p class="text-[8px] font-black text-slate-400 uppercase mt-1">S-{{ $feedAdvice['week'] }} · {{ $feedAdvice['phase'] }}</p>
                     </div>
                     <div class="bg-emerald-50 border border-emerald-100 rounded-[1.5rem] p-4 text-center">

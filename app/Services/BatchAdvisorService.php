@@ -459,13 +459,20 @@ class BatchAdvisorService
             ->where('unit', 'KG')
             ->where('current_quantity', '>', 0);
 
+        // Seuls les aliments QUE CE LOT PEUT MANGER. Le repli prenait tout le
+        // stock « conso » en kilos : l'autonomie d'une bande de béliers se
+        // calculait sur l'aliment des poulets (et les produits de santé vendus
+        // au kilo). Même règle que le pointage : Batch::accepteAliment().
+        $mangeable = fn (Stock $stock) => $stock->isFeed()
+            && $batch->accepteAliment($stock->feed_type ?? $stock->item_name);
+
         if ($feedType) {
-            $matched = (clone $baseQuery)->where('feed_type', $feedType)->get();
+            $matched = (clone $baseQuery)->where('feed_type', $feedType)->get()->filter($mangeable);
             if ($matched->isEmpty()) {
-                $matched = $baseQuery->get();
+                $matched = $baseQuery->get()->filter($mangeable);
             }
         } else {
-            $matched = $baseQuery->get();
+            $matched = $baseQuery->get()->filter($mangeable);
         }
 
         if ($matched->isEmpty()) {

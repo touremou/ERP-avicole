@@ -36,8 +36,9 @@ final class OfflineSyncTexts
         // Proportion de reproducteurs (resources/js/breeding-ratio.js)
         'En attente...',
         'Pas de référence pour cette espèce',
-        'Conseillé : :min :male(s) pour :f :femelles',
-        'Conseillé : :min à :max :male(s) pour :f :femelles',
+        'Référence : 1 :male pour :a à :b :femelles',
+        ':min à :max',
+        'pour :f :femelles : :n :male(s)',
         'Aucun mâle',
         'Trop de mâles',
         'Pas assez de mâles',

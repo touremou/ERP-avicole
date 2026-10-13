@@ -5032,8 +5032,6 @@
     "Surface non renseignée": "Floor area not entered",
     "Proportion mâles / femelles": "Male / female ratio",
     "Pas de référence pour cette espèce": "No reference for this species",
-    "Conseillé : :min :male(s) pour :f :femelles": "Recommended: :min :male(s) for :f :femelles",
-    "Conseillé : :min à :max :male(s) pour :f :femelles": "Recommended: :min to :max :male(s) for :f :femelles",
     "Aucun mâle": "No male",
     "Trop de mâles": "Too many males",
     "Pas assez de mâles": "Not enough males",
@@ -5056,5 +5054,9 @@
     "vaches": "cows",
     "verrat": "boar",
     "truies": "sows",
-    "lapines": "does"
+    "lapines": "does",
+    "Référence : 1 :male pour :a à :b :femelles": "Reference: 1 :male for :a to :b :femelles",
+    ":min à :max": ":min to :max",
+    "pour :f :femelles : :n :male(s)": "for :f :femelles: :n :male(s)",
+    "Ces animaux n'arrivent pas à un jour d'âge : indiquez leur date de naissance, même approximative — l'âge, les normes et les rations en dépendent.": "These animals do not arrive at one day old: enter their date of birth, even approximate — age, norms and rations depend on it."
 }

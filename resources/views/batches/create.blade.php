@@ -38,7 +38,7 @@
                                             class="w-full p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-blue-500 outline-none font-black text-slate-700 shadow-inner appearance-none italic">
                                         <option value="">{{ __("-- Espèce --") }}</option>
                                         @foreach($activeSpecies as $sp)
-                                        <option value="{{ $sp->id }}" data-slug="{{ $sp->slug }}"
+                                        <option value="{{ $sp->id }}" data-slug="{{ $sp->slug }}" data-family="{{ $sp->family }}"
                                             {{ old('species_id') == $sp->id ? 'selected' : '' }}>
                                             {{ $sp->icon }} {{ $sp->name_fr }}
                                         </option>
@@ -175,7 +175,8 @@
                                     <input type="date" max="{{ today()->toDateString() }}" name="birth_date" id="birth_date" value="{{ old('birth_date', date('Y-m-d')) }}"
                                            class="w-full p-5 bg-slate-50 rounded-2xl border-none font-black text-slate-700 shadow-inner italic leading-none">
                                     <p class="text-[9px] text-slate-400 uppercase italic font-black mt-2 ml-1 leading-snug">
-                                        {{ __("Sur le bon du couvoir. Laisser égale à l'arrivée pour des sujets d'un jour.") }}
+                                        <span id="birth_hint_jour">{{ __("Sur le bon du couvoir. Laisser égale à l'arrivée pour des sujets d'un jour.") }}</span>
+                                        <span id="birth_hint_age" class="hidden">{{ __("Ces animaux n'arrivent pas à un jour d'âge : indiquez leur date de naissance, même approximative — l'âge, les normes et les rations en dépendent.") }}</span>
                                     </p>
                                 </div>
                             </div>
@@ -666,13 +667,30 @@
                 if (naissance.value && arrivee.value && naissance.value > arrivee.value) naissance.value = arrivee.value;
             };
 
-            let touchee = false;
-            naissance.addEventListener('input', () => { touchee = true; });
-            arrivee.addEventListener('input', () => {
-                if (!touchee) naissance.value = arrivee.value;
+            // La naissance ne suit l'arrivée que pour des sujets d'UN JOUR :
+            // volaille hors reproducteurs. Un bélier, une truie, des
+            // reproducteurs arrivent adultes — préremplie à l'arrivée, leur
+            // date de naissance les faisait naître le jour même (« S-1 »).
+            const sujetsDUnJour = () => {
+                const opt = document.getElementById('species_selector')?.selectedOptions[0];
+                const famille = opt?.dataset.family || 'volaille';
+                return famille === 'volaille' && document.getElementById('breeding_type')?.value !== 'reproducteur';
+            };
+            const appliquer = () => {
+                const unJour = sujetsDUnJour();
+                document.getElementById('birth_hint_jour')?.classList.toggle('hidden', !unJour);
+                document.getElementById('birth_hint_age')?.classList.toggle('hidden', unJour);
+                if (!touchee) naissance.value = unJour ? arrivee.value : '';
                 borner();
-            });
-            borner();
+            };
+
+            // Une date renvoyée par le serveur (formulaire refusé) a été saisie.
+            let touchee = @js(old('birth_date') !== null);
+            naissance.addEventListener('input', () => { touchee = true; });
+            arrivee.addEventListener('input', appliquer);
+            document.getElementById('species_selector')?.addEventListener('change', () => setTimeout(appliquer, 0));
+            document.getElementById('breeding_type')?.addEventListener('change', appliquer);
+            appliquer();
         })();
     </script>
 </x-app-layout>
