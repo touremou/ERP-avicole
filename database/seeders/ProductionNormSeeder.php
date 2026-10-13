@@ -46,6 +46,15 @@ class ProductionNormSeeder extends Seeder
         'Chèvre du Sahel'     => 364,   // 52 semaines
         'Lapin Néo-Zélandais' => 77,    // 11 semaines
         'Porc Large White'    => 168,   // 24 semaines
+        // Fin de courbe = fin de cycle (le type en disait une autre).
+        'Canard de Pékin'     => 49,    // 7 semaines (le type : 70 j)
+        'Pintade locale'      => 98,    // 14 semaines (le type : 100 j)
+        'Caille de chair'     => 42,    // 6 semaines
+        'Reproducteur chair (poule)' => 448, // 64 semaines
+        'Pintade pondeuse locale'    => 364, // 52 semaines
+        'Pigeonneau de chair'        => 28,  // 4 semaines
+        'Bovin N\'Dama'       => 364,   // 52 semaines (le type : 270 j)
+        'Zébu Gobra'          => 364,
     ];
 
     public function run(): void
@@ -62,7 +71,28 @@ class ProductionNormSeeder extends Seeder
         // données opérationnelles). Élimine doublons et model_name legacy.
         DB::table('production_norms')->delete();
 
-        $rows = array_merge(
+        $rows = $this->lignes();
+
+        foreach ($rows as $row) {
+            $slug = ProductionNorm::guessSpeciesSlug($row['model_name']);
+            $row['species_id'] = $slug ? ($speciesBySlug[$slug] ?? null) : null;
+            $row['cycle_days'] = $dureesSaisies[$row['model_name']] ?? self::CYCLES[$row['model_name']] ?? null;
+
+            ProductionNorm::create($row);
+        }
+
+        $this->command?->info('ProductionNormSeeder : ' . count($rows) . ' normes zootechniques consolidées.');
+    }
+
+    /**
+     * Toutes les lignes livrées — publique : les migrations de reprise lisent
+     * cette même déclaration plutôt qu'une copie.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function lignes(): array
+    {
+        return array_merge(
             $this->broilerRoss308(),
             $this->broilerCobb500(),
             $this->localChicken(),
@@ -71,6 +101,7 @@ class ProductionNormSeeder extends Seeder
             $this->layerLohmannBrown(),
             $this->layerLohmannLSL(),
             $this->quail(),
+            $this->otherPoultry(),
             $this->brooding(),
             $this->guineaFowl(),
             $this->duck(),
@@ -83,16 +114,6 @@ class ProductionNormSeeder extends Seeder
             $this->fishGrowout(),
             $this->fishFry(),
         );
-
-        foreach ($rows as $row) {
-            $slug = ProductionNorm::guessSpeciesSlug($row['model_name']);
-            $row['species_id'] = $slug ? ($speciesBySlug[$slug] ?? null) : null;
-            $row['cycle_days'] = $dureesSaisies[$row['model_name']] ?? self::CYCLES[$row['model_name']] ?? null;
-
-            ProductionNorm::create($row);
-        }
-
-        $this->command?->info('ProductionNormSeeder : ' . count($rows) . ' normes zootechniques consolidées.');
     }
 
     /**
@@ -368,6 +389,55 @@ class ProductionNormSeeder extends Seeder
             $this->norm('ponte', 4, 'Croissance', $m, 150, 22, 44, 0),
             $this->norm('ponte', 6, 'Ponte',      $m, 200, 28, 56, 50),
             $this->norm('ponte', 8, 'Ponte',      $m, 220, 30, 60, 85),
+            // Plateau puis déclin de ponte : la courbe s'arrêtait à 8 semaines
+            // pour un cycle de 240 jours (34 semaines).
+            $this->norm('ponte', 20, 'Ponte',     $m, 230, 32, 64, 80),
+            $this->norm('ponte', 34, 'Ponte',     $m, 230, 32, 64, 65),
+
+            // Caille de CHAIR (type « Caille de Chair », 42 j) : aucune courbe
+            // n'existait — la bande recevait le barème générique.
+            $this->norm('chair', 1, 'Démarrage',  'Caille de chair', 30,  6,  12),
+            $this->norm('chair', 3, 'Croissance', 'Caille de chair', 120, 18, 36),
+            $this->norm('chair', 5, 'Finition',   'Caille de chair', 200, 26, 52),
+            $this->norm('chair', 6, 'Finition',   'Caille de chair', 220, 28, 56),
+        ];
+    }
+
+    /**
+     * Types sans courbe jusqu'ici — repères PROPOSÉS (à caler sur le guide de
+     * la souche dès réception) :
+     *   • reproducteur chair (poule, cycle 450 j ≈ 64 sem.) : croissance
+     *     rationnée, entrée en ponte vers 25 semaines ;
+     *   • pintade pondeuse (365 j) : croissance jusqu'à 26 sem., saison de ponte ;
+     *   • pigeonneau de chair (28 j) : nourri par ses parents — la « ration »
+     *     est la part des parents qui lui revient.
+     * Le dindon reproducteur reste sans courbe : pas de repère fiable ici.
+     */
+    private function otherPoultry(): array
+    {
+        $rp = 'Reproducteur chair (poule)';
+        $pp = 'Pintade pondeuse locale';
+        $pg = 'Pigeonneau de chair';
+        return [
+            $this->norm('reproducteur', 1,  'Démarrage',  $rp, 120,  25,  50,  0),
+            $this->norm('reproducteur', 10, 'Croissance', $rp, 1100, 55,  110, 0),
+            $this->norm('reproducteur', 20, 'Croissance', $rp, 2200, 110, 220, 0),
+            $this->norm('reproducteur', 25, 'Ponte',      $rp, 3000, 150, 300, 5),
+            $this->norm('reproducteur', 30, 'Ponte',      $rp, 3500, 165, 330, 80),
+            $this->norm('reproducteur', 45, 'Ponte',      $rp, 3900, 160, 320, 75),
+            $this->norm('reproducteur', 64, 'Ponte',      $rp, 4100, 155, 310, 55),
+
+            $this->norm('ponte', 4,  'Démarrage',  $pp, 500,  45,  90,  0),
+            $this->norm('ponte', 12, 'Croissance', $pp, 1300, 80,  160, 0),
+            $this->norm('ponte', 26, 'Croissance', $pp, 1600, 100, 200, 0),
+            $this->norm('ponte', 30, 'Ponte',      $pp, 1650, 110, 220, 30),
+            $this->norm('ponte', 40, 'Ponte',      $pp, 1700, 115, 230, 45),
+            $this->norm('ponte', 52, 'Ponte',      $pp, 1700, 110, 220, 35),
+
+            $this->norm('chair', 1, 'Démarrage',  $pg, 150, 30, 60),
+            $this->norm('chair', 2, 'Croissance', $pg, 350, 50, 100),
+            $this->norm('chair', 3, 'Croissance', $pg, 500, 60, 120),
+            $this->norm('chair', 4, 'Finition',   $pg, 550, 60, 120),
         ];
     }
 
@@ -376,14 +446,23 @@ class ProductionNormSeeder extends Seeder
     // ─────────────────────────────────────────────────────────────
 
     /** Poussinière : référence générique d'élevage du poussin (0-4 sem.). */
+    /**
+     * Poussinière : ÉLEVAGE DE POULETTES jusqu'au transfert en ponte (13 sem.,
+     * cycle du type : 90 j). La courbe s'arrêtait à 4 semaines, avec des
+     * poids de poulet de chair (1,1 kg à 28 j) — pour un type de 90 jours.
+     * Repères proposés, proches des guides de poulettes brunes.
+     */
     private function brooding(): array
     {
         $m = 'Poussin Standard';
         return [
-            $this->norm('poussiniere', 1, 'Démarrage',  $m, 160,  22, 45),
-            $this->norm('poussiniere', 2, 'Démarrage',  $m, 400,  45, 90),
-            $this->norm('poussiniere', 3, 'Croissance', $m, 750,  70, 135),
-            $this->norm('poussiniere', 4, 'Croissance', $m, 1100, 95, 180),
+            $this->norm('poussiniere', 1,  'Démarrage',  $m, 65,   10, 20),
+            $this->norm('poussiniere', 2,  'Démarrage',  $m, 120,  17, 34),
+            $this->norm('poussiniere', 4,  'Croissance', $m, 270,  28, 56),
+            $this->norm('poussiniere', 6,  'Croissance', $m, 450,  38, 76),
+            $this->norm('poussiniere', 8,  'Croissance', $m, 650,  47, 94),
+            $this->norm('poussiniere', 10, 'Croissance', $m, 840,  52, 104),
+            $this->norm('poussiniere', 13, 'Finition',   $m, 1080, 60, 120),
         ];
     }
 
@@ -396,6 +475,7 @@ class ProductionNormSeeder extends Seeder
             $this->norm('chair', 4,  'Croissance', $m, 500,  45, 90),
             $this->norm('chair', 8,  'Croissance', $m, 1100, 75, 150),
             $this->norm('chair', 12, 'Finition',   $m, 1400, 85, 170),
+            $this->norm('chair', 14, 'Finition',   $m, 1500, 90, 180),
         ];
     }
 
@@ -468,23 +548,41 @@ class ProductionNormSeeder extends Seeder
     {
         $m = 'Chèvre Saanen';
         return [
-            $this->norm('laitiere', 1,  'Croissance', $m, 18000, 700,  3000, 0),
-            $this->norm('laitiere', 40, 'Finition',   $m, 60000, 2000, 8000, 0),
+            // Une bande LAITIÈRE est un troupeau adulte en lactation (cycle du
+            // type : 210 j, compté depuis l'arrivée). La courbe décrivait la
+            // croissance d'un chevreau (18 kg → 60 kg). Repères de lactation
+            // proposés : ration MS, eau majorée par la production de lait.
+            $this->norm('laitiere', 1,  'Début de lactation', $m, 60000, 2200, 9000, 0),
+            $this->norm('laitiere', 8,  'Pic de lactation',   $m, 60000, 2600, 11000, 0),
+            $this->norm('laitiere', 30, 'Fin de lactation',   $m, 62000, 2000, 8000, 0),
         ];
     }
 
-    /** Bovins : engraissement N'Dama (viande) + vache laitière métisse. */
+    /**
+     * Bovins : engraissement N'Dama (viande) + vache laitière métisse.
+     *
+     * Ration en MATIÈRE SÈCHE, comme les petits ruminants — décision de
+     * l'exploitation. Elle était exprimée en fourrage frais (12 kg/j pour un
+     * veau de 80 kg, 15 % du poids vif) pendant que moutons et chèvres
+     * l'étaient en matière sèche (~4 %) : deux échelles sous la même
+     * étiquette « ration ». Valeurs PROPOSÉES : ingestion de MS ≈ 3 % du poids
+     * vif chez le jeune, 2,6–2,7 % à l'engraissement, 3 % chez la vache en
+     * lactation ; eau ≈ 10–12 % du poids vif (15 % en lactation).
+     */
     private function cattle(): array
     {
         return [
             // Bovin N'Dama (race locale trypanotolérante, engraissement viande)
-            $this->norm('engraissement', 1,  'Croissance', 'Bovin N\'Dama', 80000,  12000, 25000, 0),
-            $this->norm('engraissement', 26, 'Croissance', 'Bovin N\'Dama', 180000, 22000, 40000, 0),
-            $this->norm('engraissement', 52, 'Finition',   'Bovin N\'Dama', 280000, 28000, 50000, 0),
+            $this->norm('engraissement', 1,  'Croissance', 'Bovin N\'Dama', 80000,  2400, 10000, 0),
+            $this->norm('engraissement', 26, 'Croissance', 'Bovin N\'Dama', 180000, 4900, 22000, 0),
+            $this->norm('engraissement', 52, 'Finition',   'Bovin N\'Dama', 280000, 7300, 32000, 0),
 
             // Vache laitière métisse (croissance → lactation)
-            $this->norm('laitiere', 1,  'Croissance', 'Vache Laitière (Métis)', 90000,  13000, 30000, 0),
-            $this->norm('laitiere', 52, 'Finition',   'Vache Laitière (Métis)', 400000, 35000, 70000, 0),
+            // Vache laitière métisse : troupeau EN LACTATION (cycle du type :
+            // 305 j depuis l'arrivée), et non la croissance d'un veau.
+            $this->norm('laitiere', 1,  'Début de lactation', 'Vache Laitière (Métis)', 400000, 11000, 55000, 0),
+            $this->norm('laitiere', 8,  'Pic de lactation',   'Vache Laitière (Métis)', 400000, 13000, 70000, 0),
+            $this->norm('laitiere', 43, 'Fin de lactation',   'Vache Laitière (Métis)', 420000, 10500, 50000, 0),
         ];
     }
 
@@ -493,9 +591,9 @@ class ProductionNormSeeder extends Seeder
     {
         $m = 'Zébu Gobra';
         return [
-            $this->norm('engraissement', 1,  'Croissance', $m, 90000,  14000, 28000, 0),
-            $this->norm('engraissement', 26, 'Croissance', $m, 220000, 26000, 45000, 0),
-            $this->norm('engraissement', 52, 'Finition',   $m, 350000, 32000, 60000, 0),
+            $this->norm('engraissement', 1,  'Croissance', $m, 90000,  2700, 11000, 0),
+            $this->norm('engraissement', 26, 'Croissance', $m, 220000, 5900, 26000, 0),
+            $this->norm('engraissement', 52, 'Finition',   $m, 350000, 8800, 40000, 0),
         ];
     }
 
@@ -506,6 +604,11 @@ class ProductionNormSeeder extends Seeder
             $this->norm('reproducteur', 1, 'Entretien', 'Bélier Djallonké',  35000, 1500, 5000, 0),
             $this->norm('reproducteur', 1, 'Entretien', 'Bouc Sahélien',     40000, 1400, 4500, 0),
             $this->norm('reproducteur', 1, 'Entretien', 'Lapin Californien', 4500,  200,  450,  0),
+            // Types « Truie Reproductrice » et « Taureau Reproducteur » : aucune
+            // courbe jusqu'ici. Adultes, ration d'entretien/gestation (MS pour
+            // le taureau).
+            $this->norm('reproducteur', 1, 'Entretien', 'Truie Large White', 200000, 2500, 15000, 0),
+            $this->norm('reproducteur', 1, 'Entretien', 'Taureau N\'Dama',   350000, 8500, 40000, 0),
         ];
     }
 
