@@ -188,3 +188,40 @@ test('la saisie au BUREAU reste inchangée — non-régression', function () {
     expect((float) articleLait()->current_quantity)->toBe(40.0)
         ->and((float) articleLait()->last_unit_price)->toBe(9_000.0);
 });
+
+test('la traite du SOIR, envoyée après celle du matin, complète la fiche du jour', function () {
+    /*
+     * Une fiche par lot et par jour (contrainte unique). Le terrain en créait
+     * une à chaque traite : la seconde butait sur la contrainte — « erreur
+     * interne », rejouée sans fin, lait du soir jamais compté.
+     */
+    $matin = app(SyncService::class)->handle('milk_production.create', [
+        'uuid' => (string) Str::uuid(), 'batch_id' => $this->lotLaitier->id,
+        'production_date' => today()->toDateString(), 'morning_liters' => 40, 'unit_price' => 8_000,
+    ]);
+    $soir = app(SyncService::class)->handle('milk_production.create', [
+        'uuid' => (string) Str::uuid(), 'batch_id' => $this->lotLaitier->id,
+        'production_date' => today()->toDateString(), 'evening_liters' => 30, 'unit_price' => 8_000,
+    ]);
+
+    $fiche = MilkProduction::withoutGlobalScopes()->where('batch_id', $this->lotLaitier->id)->sole();
+
+    expect($matin['status'])->toBe('success')->and($soir['status'])->toBe('success')
+        ->and((float) $fiche->morning_liters)->toBe(40.0)
+        ->and((float) $fiche->evening_liters)->toBe(30.0)
+        ->and((float) articleLait()->current_quantity)->toBe(70.0);
+});
+
+test('une traite du terrain après une saisie au BUREAU le même jour : fusion, stock à la différence', function () {
+    $this->post(route('milk-productions.store'), [
+        'batch_id' => $this->lotLaitier->id, 'production_date' => today()->toDateString(),
+        'morning_liters' => 40, 'evening_liters' => 0, 'unit_price' => 8_000,
+    ])->assertSessionHas('success');
+
+    // Le terrain corrige le matin (42) et ajoute le soir (30).
+    $resultat = pousserTraite($this->lotLaitier->id, matin: 42, soir: 30);
+
+    expect($resultat['status'])->toBe('success')
+        ->and(MilkProduction::withoutGlobalScopes()->where('batch_id', $this->lotLaitier->id)->count())->toBe(1)
+        ->and((float) articleLait()->current_quantity)->toBe(72.0);
+});

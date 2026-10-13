@@ -631,6 +631,45 @@ class SyncService
                 ]);
             }
 
+            /*
+             * ─── UNE FICHE PAR LOT ET PAR JOUR — COMME AU BUREAU ───
+             *
+             * La table porte une contrainte unique (lot, jour), et le bureau
+             * met à jour la fiche du jour. Le terrain en CRÉAIT une à chaque
+             * traite : la traite du soir après celle du matin (ou une traite
+             * saisie au bureau puis au terrain) butait sur la contrainte —
+             * « erreur interne », rejouée sans fin, lait jamais compté.
+             *
+             * On fusionne : les traites ENVOYÉES remplacent celles du jour, les
+             * autres restent ; le magasin reçoit la DIFFÉRENCE. Un rejeu
+             * renvoie les mêmes valeurs : différence nulle, idempotent.
+             */
+            $duJour = \App\Models\MilkProduction::where('batch_id', $data['batch_id'])
+                ->whereDate('production_date', $data['production_date'])
+                ->lockForUpdate()->first();
+
+            if ($duJour) {
+                $avant = (float) $duJour->total_liters;
+                $duJour->update(array_filter([
+                    'morning_liters'  => $data['morning_liters'] ?? null,
+                    'evening_liters'  => $data['evening_liters'] ?? null,
+                    'unit_price'      => $data['unit_price'] ?? null,
+                    'milking_females' => $data['milking_females'] ?? null,
+                    'notes'           => $data['notes'] ?? null,
+                ], fn ($v) => $v !== null) + ['recorded_by' => Auth::id()]);
+
+                $ecart = (float) $duJour->total_liters - $avant;
+                if (abs($ecart) > 0.0001) {
+                    app(\App\Actions\Milk\SyncMilkStock::class)->execute(
+                        $ecart, $batch->code, isset($data['unit_price']) ? (float) $data['unit_price'] : null,
+                    );
+                }
+
+                Log::info("Sync: traite fusionnée à la fiche du jour, lot #{$duJour->batch_id} — {$duJour->total_liters} L.");
+
+                return ['status' => 'success', 'server_id' => $duJour->id];
+            }
+
             $milk = \App\Models\MilkProduction::create($data + [
                 'morning_liters' => $data['morning_liters'] ?? 0,
                 'evening_liters' => $data['evening_liters'] ?? 0,
