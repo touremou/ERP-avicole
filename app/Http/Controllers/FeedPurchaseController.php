@@ -46,9 +46,14 @@ class FeedPurchaseController extends Controller
 
         $batch = $feedPurchase->batch;
 
-        if (! $batch) {
+        // La relation rend aussi une bande ARCHIVÉE (l'historique garde son
+        // parent) : rectifier l'achat d'une bande à la corbeille modifierait
+        // le stock et le coût d'un lot qu'on a retiré — on le refuse.
+        if (! $batch || $batch->trashed()) {
             return redirect()->route('batches.index')
-                ->with('error', 'Cet achat n\'est rattaché à aucune bande : rectification impossible.');
+                ->with('error', $batch
+                    ? 'La bande de cet achat est à la corbeille : restaurez-la pour rectifier l\'achat.'
+                    : 'Cet achat n\'est rattaché à aucune bande : rectification impossible.');
         }
 
         // Même source que le formulaire de création (cf. BatchController) : une
