@@ -47,7 +47,10 @@ class SyncController extends Controller
                           'employee_id', 'initial_quantity', 'current_quantity', 'qty_dead', 'arrival_date', 'birth_date', 'updated_at'],
             // Attribut dérivé (calculé serveur) : le terrain ne peut pas
             // reproduire la règle d'éligibilité ponte (normes de souche, âge).
-            'append'  => ['can_collect_eggs'],
+            // + le TAUX DE MORTALITÉ du serveur (Batch::mortality_rate) : le
+            // terrain affichait « morts du transport / effectif », une troisième
+            // définition — ni celle de la fiche, ni celle des rapports.
+            'append'  => ['can_collect_eggs', 'mortality_rate'],
         ],
         'buildings' => [
             'model'   => Building::class,

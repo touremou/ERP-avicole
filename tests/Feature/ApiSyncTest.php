@@ -508,6 +508,18 @@ test('pull expose production_types et production_type_id sur les lots', function
     expect($response->json('entities.batches.upserts.0'))->toHaveKey('production_type_id');
 });
 
+test('pull sert le taux de mortalité du serveur avec chaque lot', function () {
+    // Le terrain affichait « morts du transport / effectif » — une troisième
+    // définition. Il reçoit désormais celle de la fiche et des rapports.
+    Sanctum::actingAs($this->manager);
+
+    $lot = collect($this->getJson('/api/v1/sync/pull')->assertOk()->json('entities.batches.upserts'))->first();
+    $modele = App\Models\Batch::withoutGlobalScopes()->find($lot['id']);
+
+    expect($lot)->toHaveKey('mortality_rate')
+        ->and((float) $lot['mortality_rate'])->toBe((float) $modele->mortality_rate);
+});
+
 test('pull sert la FAMILLE d’espèce des types : le terrain sait qui arrive à un jour', function () {
     // Le formulaire terrain recopiait l'arrivée dans la naissance pour toutes
     // les espèces : des béliers adultes y « naissaient » le jour de leur

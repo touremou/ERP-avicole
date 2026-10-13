@@ -385,7 +385,7 @@ async function pushOutbox(): Promise<void> {
 // (ex. water_sources) : un pull delta (`updated_at > since`) ne rapatrie jamais
 // les enregistrements PRÉEXISTANTS d'une entité nouvelle, donc on force un
 // bootstrap complet (since=null) une fois quand la version change.
-const PULL_SCHEMA = 5 // 5 : famille d’espèce servie avec les types de production
+const PULL_SCHEMA = 6 // 6 : taux de mortalité (serveur) servi avec les lots
 
 async function pullDelta(): Promise<void> {
   // Nouvelle entité côté serveur → on repart d'un bootstrap complet une fois.
