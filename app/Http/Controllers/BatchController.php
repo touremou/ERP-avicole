@@ -313,14 +313,7 @@ class BatchController extends Controller
 
         // GMQ stats (ruminants, porcins, lapins)
         if ($batch->isGmqTracked()) {
-            $checksWithWeight = $batch->dailyChecks->filter(fn($c) => $c->avg_weight > 0)->values();
-            $gmq = null;
-            if ($checksWithWeight->count() >= 2) {
-                $first = $checksWithWeight->first();
-                $last  = $checksWithWeight->last();
-                $days  = max(1, \Carbon\Carbon::parse($first->check_date)->diffInDays($last->check_date));
-                $gmq   = round((($last->avg_weight - $first->avg_weight) * 1000) / $days);
-            }
+            $gmq = $batch->gmq($batch->dailyChecks);   // une règle : Batch::gmq
             $totalBorn   = $batch->dailyChecks->sum(fn($c) => $c->extension?->qty_born ?? 0);
             $totalWeaned = $batch->dailyChecks->sum(fn($c) => $c->extension?->qty_weaned ?? 0);
             $birthEvents = $batch->dailyChecks->filter(fn($c) => ($c->extension?->qty_born ?? 0) > 0)->count();

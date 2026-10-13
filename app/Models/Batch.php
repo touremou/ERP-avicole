@@ -1036,6 +1036,45 @@ class Batch extends Model
     }
 
     /**
+     * GMQ — GAIN MOYEN QUOTIDIEN (g/jour). Une déclaration, lue par la fiche,
+     * le rapport GMQ, le tableau de bord et l'API du terrain.
+     *
+     * Deux définitions coexistaient : (dernière pesée − première pesée) / jours
+     * ENTRE les pesées au bureau ; (dernière pesée − poids d'arrivée) / ÂGE du
+     * lot pour le terrain. Depuis que l'âge part de la naissance, un bélier de
+     * deux ans ayant pris 3 kg en 30 jours affichait 4 g/j au téléphone.
+     *
+     * Origine : la première pesée (la règle du bureau, inchangée) ; le poids à
+     * l'arrivée ne sert que s'il n'y a qu'UNE pesée. Fin : la dernière pesée.
+     * Jours de calendrier entre les deux. Null sans deux points distincts.
+     *
+     * @param iterable<object{check_date: mixed, avg_weight: mixed}>|null $pesees
+     *        pesées déjà chargées (évite une requête par lot dans les agrégats)
+     */
+    public function gmq(?iterable $pesees = null): ?float
+    {
+        $points = collect($pesees ?? ($this->relationLoaded('dailyChecks') ? $this->dailyChecks : $this->dailyChecks()->get()))
+            ->filter(fn ($c) => (float) ($c->avg_weight ?? 0) > 0)
+            ->sortBy(fn ($c) => Carbon::parse($c->check_date)->timestamp)
+            ->map(fn ($c) => [Carbon::parse($c->check_date)->startOfDay(), (float) $c->avg_weight])
+            ->values();
+
+        if ($points->count() === 1 && (float) $this->avg_weight_start > 0 && $this->arrival_date) {
+            $points->prepend([Carbon::parse($this->arrival_date)->startOfDay(), (float) $this->avg_weight_start]);
+        }
+
+        if ($points->count() < 2) {
+            return null;
+        }
+
+        [$debut, $poidsDebut] = $points->first();
+        [$fin, $poidsFin] = $points->last();
+        $jours = \App\Support\Jours::entre($debut, $fin);
+
+        return $jours >= 1 ? round(($poidsFin - $poidsDebut) * 1000 / $jours, 1) : null;
+    }
+
+    /**
      * Taux de mortalité cumulé (%).
      *
      * Base de calcul : mortalité totale / (initial_quantity + qty_dead)
