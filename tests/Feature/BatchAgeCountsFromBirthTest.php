@@ -246,6 +246,10 @@ test('le TERRAIN peut la transmettre hors ligne', function () {
         'is_default' => true, 'is_owner' => false, 'created_at' => now(), 'updated_at' => now(),
     ]);
 
+    // Des pondeuses dans un bâtiment qui les accepte : le terrain applique
+    // désormais la compatibilité bâtiment/type du web.
+    $this->building->update(['type' => 'mixte']);
+
     $reponse = $this->postJson('/api/v1/sync/push', [
         'operations' => [[
             'op_uuid' => (string) Str::uuid(),
