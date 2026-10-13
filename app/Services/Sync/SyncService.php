@@ -2360,12 +2360,16 @@ class SyncService
 
         $v = Validator::make($payload, [
             'uuid'         => 'required|uuid',
-            'zone'         => 'required|string|max:100',
+            // Les zones du PLAN de nettoyage, comme au web. Une zone libre
+            // (« salle d'abattage ») n'était jamais reconnue comme faite :
+            // l'alerte « zone non nettoyée » ne s'éteignait pas.
+            'zone'         => 'required|in:' . implode(',', array_keys(\App\Models\CleaningLog::ZONES)),
             'product_used' => 'required|string|max:100',
             'dosage'       => 'nullable|string|max:50',
             'notes'        => 'nullable|string|max:1000',
             'photo_path'   => 'nullable|string|max:255',
-            'done_at'      => 'required|date',
+            // Pas dans le futur — à la dérive d'horloge du téléphone près.
+            'done_at'      => 'required|date|before_or_equal:' . self::CLOCK_SKEW_TOLERANCE,
         ]);
 
         if ($v->fails()) {
@@ -2412,7 +2416,8 @@ class SyncService
             'quantity_kg'        => 'required|numeric|min:0.01',
             'destination'        => 'required|in:' . implode(',', array_keys(\App\Models\SlaughterByproduct::DESTINATIONS)),
             'notes'              => 'nullable|string|max:1000',
-            'collected_at'       => 'required|date',
+            // Pas dans le futur — à la dérive d'horloge du téléphone près.
+            'collected_at'       => 'required|date|before_or_equal:' . self::CLOCK_SKEW_TOLERANCE,
         ]);
 
         if ($v->fails()) {

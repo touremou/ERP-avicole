@@ -366,6 +366,27 @@ test('cleaning_log.create enregistre le nettoyage, idempotent, viewer refusé', 
     expect($denied->json('results.0.status'))->toBe('permission_denied');
 });
 
+test('cleaning_log.create : une zone hors du plan, ou une date future, est refusée comme au web', function () {
+    // Une zone libre n'était jamais reconnue comme nettoyée : l'alerte « zone
+    // non nettoyée » ne s'éteignait pas.
+    Sanctum::actingAs($this->manager);
+    $base = ['product_used' => 'Détergent', 'done_at' => now()->toIso8601String()];
+
+    $horsPlan = $this->postJson('/api/v1/sync/push', haccpOps([['type' => 'cleaning_log.create',
+        'payload' => $base + ['uuid' => (string) Str::uuid(), 'zone' => "salle d'abattage"]]]))->assertOk();
+    $futur = $this->postJson('/api/v1/sync/push', haccpOps([['type' => 'cleaning_log.create',
+        'payload' => ['uuid' => (string) Str::uuid(), 'zone' => 'sols_siphons', 'product_used' => 'Détergent',
+            'done_at' => now()->addDay()->toIso8601String()]]]))->assertOk();
+    // Quelques minutes d'avance d'horloge du téléphone restent tolérées.
+    $derive = $this->postJson('/api/v1/sync/push', haccpOps([['type' => 'cleaning_log.create',
+        'payload' => ['uuid' => (string) Str::uuid(), 'zone' => 'sols_siphons', 'product_used' => 'Détergent',
+            'done_at' => now()->addMinutes(3)->toIso8601String()]]]))->assertOk();
+
+    expect($horsPlan->json('results.0.status'))->toBe('validation_failed')
+        ->and($futur->json('results.0.status'))->toBe('validation_failed')
+        ->and($derive->json('results.0.status'))->toBe('success');
+});
+
 // ─── SOUS-PRODUITS (E9) ───
 
 test('byproduct.create enregistre le sous-produit, idempotent', function () {
