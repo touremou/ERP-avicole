@@ -41,6 +41,11 @@ class ProductionNormSeeder extends Seeder
     public const CYCLES = [
         'Poulet local Cou Nu' => 112,   // 16 semaines (fin de sa courbe)
         'Dinde BUT 6'         => 140,   // 20 semaines (fin de sa courbe)
+        // Engraissement des mammifères, en ÂGE à la vente (courbes par âge).
+        'Mouton Djallonké'    => 364,   // 52 semaines
+        'Chèvre du Sahel'     => 364,   // 52 semaines
+        'Lapin Néo-Zélandais' => 77,    // 11 semaines
+        'Porc Large White'    => 168,   // 24 semaines
     ];
 
     public function run(): void
@@ -418,25 +423,43 @@ class ProductionNormSeeder extends Seeder
     // MAMMIFÈRES — repères jeune → marché/adulte
     // ─────────────────────────────────────────────────────────────
 
-    /** Ovins, caprins (engraissement), lapins et porcs : 2 repères chacun. */
+    /**
+     * ENGRAISSEMENT DES OVINS, CAPRINS, LAPINS ET PORCS — courbes par ÂGE.
+     *
+     * Ces courbes comptaient leurs semaines depuis l'ARRIVÉE (semaine 1 = un
+     * agneau de 12 kg, porc de 20 kg) : depuis que l'âge part de la naissance,
+     * un agneau acheté à 3 mois sautait en fin de courbe. Ré-exprimées en
+     * semaines D'ÂGE — décision de l'exploitation, valeurs PROPOSÉES (repères
+     * usuels en élevage tropical, à ajuster dans Admin › Normes) :
+     *
+     *   [semaine d'âge, phase, poids g, ration g/j, eau ml/j]
+     *   - Mouton Djallonké : race naine trypanotolérante, ~25–30 kg à 12 mois ;
+     *   - Chèvre du Sahel : ~30–35 kg à 12 mois ;
+     *   - Lapin Néo-Zélandais : sevrage 5 sem., abattage ~2,5 kg à 11 sem. ;
+     *   - Porc Large White : sevrage 4 sem., ~100 kg à 24 sem.
+     *
+     * Ration = ration totale (fourrage + concentré, matière sèche) pour les
+     * ruminants ; aliment complet pour porc et lapin.
+     */
     private function sheepGoatRabbitPig(): array
     {
         return [
-            // Mouton Djallonké (engraissement)
-            $this->norm('engraissement', 1,  'Croissance', 'Mouton Djallonké', 12000, 600,  2500),
-            $this->norm('engraissement', 12, 'Finition',   'Mouton Djallonké', 30000, 1400, 4500),
+            $this->norm('engraissement', 13, 'Croissance', 'Mouton Djallonké', 10000, 400,  1500),
+            $this->norm('engraissement', 26, 'Croissance', 'Mouton Djallonké', 18000, 800,  3000),
+            $this->norm('engraissement', 52, 'Finition',   'Mouton Djallonké', 28000, 1300, 4500),
 
-            // Chèvre du Sahel (engraissement)
-            $this->norm('engraissement', 1,  'Croissance', 'Chèvre du Sahel', 12000, 550,  2500),
-            $this->norm('engraissement', 12, 'Finition',   'Chèvre du Sahel', 32000, 1300, 4000),
+            $this->norm('engraissement', 13, 'Croissance', 'Chèvre du Sahel', 12000, 450,  1500),
+            $this->norm('engraissement', 26, 'Croissance', 'Chèvre du Sahel', 20000, 850,  2500),
+            $this->norm('engraissement', 52, 'Finition',   'Chèvre du Sahel', 32000, 1300, 4000),
 
-            // Lapin Néo-Zélandais (engraissement)
-            $this->norm('engraissement', 1,  'Croissance', 'Lapin Néo-Zélandais', 700,  60,  120),
-            $this->norm('engraissement', 10, 'Finition',   'Lapin Néo-Zélandais', 2500, 150, 350),
+            $this->norm('engraissement', 5,  'Croissance', 'Lapin Néo-Zélandais', 900,  80,  200),
+            $this->norm('engraissement', 8,  'Croissance', 'Lapin Néo-Zélandais', 1800, 130, 350),
+            $this->norm('engraissement', 11, 'Finition',   'Lapin Néo-Zélandais', 2500, 160, 450),
 
-            // Porc Large White (engraissement)
-            $this->norm('engraissement', 1,  'Croissance', 'Porc Large White', 20000,  900,  4000),
-            $this->norm('engraissement', 22, 'Finition',   'Porc Large White', 100000, 2800, 9000),
+            $this->norm('engraissement', 4,  'Démarrage',  'Porc Large White', 7000,   300,  1000),
+            $this->norm('engraissement', 10, 'Croissance', 'Porc Large White', 25000,  1100, 4000),
+            $this->norm('engraissement', 16, 'Croissance', 'Porc Large White', 55000,  2000, 6000),
+            $this->norm('engraissement', 24, 'Finition',   'Porc Large White', 100000, 2800, 9000),
         ];
     }
 

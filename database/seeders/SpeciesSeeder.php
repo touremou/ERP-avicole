@@ -67,11 +67,11 @@ class SpeciesSeeder extends Seeder
                 ['slug'=>'chair',        'name_fr'=>'Canard de Chair',     'metrics_enabled'=>$metricsBase, 'kpi_primary'=>'fcr','cycle_days_default'=>70],
             ],
             'mouton'  => [
-                ['slug'=>'engraissement','name_fr'=>'Ovin Engraissement',  'metrics_enabled'=>$metricsRumin,'kpi_primary'=>'gmq','cycle_days_default'=>90],
+                ['slug'=>'engraissement','name_fr'=>'Ovin Engraissement',  'metrics_enabled'=>$metricsRumin,'kpi_primary'=>'gmq','cycle_days_default'=>364],
                 ['slug'=>'reproducteur', 'name_fr'=>'Ovin Reproducteur',   'metrics_enabled'=>$metricsRumin,'kpi_primary'=>'gmq','cycle_days_default'=>180],
             ],
             'chevre'  => [
-                ['slug'=>'engraissement','name_fr'=>'Caprin Engraissement','metrics_enabled'=>$metricsRumin,'kpi_primary'=>'gmq','cycle_days_default'=>90],
+                ['slug'=>'engraissement','name_fr'=>'Caprin Engraissement','metrics_enabled'=>$metricsRumin,'kpi_primary'=>'gmq','cycle_days_default'=>364],
                 ['slug'=>'laitiere',     'name_fr'=>'Chèvre Laitière',     'metrics_enabled'=>$metricsLait, 'kpi_primary'=>'hdp_lait','cycle_days_default'=>210],
                 ['slug'=>'reproducteur', 'name_fr'=>'Bouc Reproducteur',   'metrics_enabled'=>$metricsRumin,'kpi_primary'=>'gmq','cycle_days_default'=>180],
             ],
@@ -91,11 +91,11 @@ class SpeciesSeeder extends Seeder
                 ['slug'=>'grossissement','name_fr'=>'Silure Grossissement','metrics_enabled'=>$metricsAqua,'kpi_primary'=>'survie','cycle_days_default'=>150],
             ],
             'lapin'   => [
-                ['slug'=>'engraissement','name_fr'=>'Lapin Engraissement', 'metrics_enabled'=>$metricsRumin,'kpi_primary'=>'gmq','cycle_days_default'=>70],
+                ['slug'=>'engraissement','name_fr'=>'Lapin Engraissement', 'metrics_enabled'=>$metricsRumin,'kpi_primary'=>'gmq','cycle_days_default'=>77],
                 ['slug'=>'reproducteur', 'name_fr'=>'Lapin Reproducteur',  'metrics_enabled'=>$metricsRumin,'kpi_primary'=>'gmq','cycle_days_default'=>365],
             ],
             'porc'    => [
-                ['slug'=>'engraissement','name_fr'=>'Porc Engraissement',  'metrics_enabled'=>$metricsRumin,'kpi_primary'=>'gmq','cycle_days_default'=>150],
+                ['slug'=>'engraissement','name_fr'=>'Porc Engraissement',  'metrics_enabled'=>$metricsRumin,'kpi_primary'=>'gmq','cycle_days_default'=>168],
                 ['slug'=>'reproducteur', 'name_fr'=>'Truie Reproductrice', 'metrics_enabled'=>$metricsRumin,'kpi_primary'=>'gmq','cycle_days_default'=>365],
             ],
         ];

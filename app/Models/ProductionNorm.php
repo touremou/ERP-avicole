@@ -167,7 +167,7 @@ class ProductionNorm extends Model
     {
         $courbe = static::courbePour($batch);
 
-        return $courbe->isEmpty() ? null : static::interpoler($courbe, $week ?? $batch->semaineDAge());
+        return $courbe->isEmpty() ? null : static::interpoler($courbe, $week ?? $batch->semaineDuCycle());
     }
 
     /**

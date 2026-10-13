@@ -498,11 +498,13 @@ class Batch extends Model
          * son cycle théorique donnerait une fin déjà passée, qui ferait clignoter
          * tous les écrans de planning. On la ramène alors au jour de l'arrivée.
          */
-        $ancrage = $this->birth_date ?? $this->arrival_date;
+        // Naissance pour un cycle exprimé en âge, arrivée pour une durée
+        // (cf. cycleCompteDepuisLaNaissance).
+        $ancrage = $this->debutDuCycle();
 
         $days = $this->cycleDays();
 
-        $fin = Carbon::parse($ancrage)->addDays($days);
+        $fin = $ancrage->copy()->addDays($days);
         $arrivee = Carbon::parse($this->arrival_date);
 
         $this->expected_end_date = $fin->lessThan($arrivee) ? $arrivee : $fin;
@@ -656,6 +658,61 @@ class Batch extends Model
      * en pré-ponte (cf. getLayerPhase) si aucune norme n'est renseignée.
      */
     public const DEFAULT_MIN_LAYING_AGE_DAYS = 126; // 18 semaines : entrée en pré-ponte
+
+    /**
+     * DEPUIS QUAND SE COMPTENT LE CYCLE ET LA COURBE DE NORMES ?
+     *
+     * Deux conventions coexistaient sans être dites :
+     *   • la VOLAILLE arrive à un jour : cycle (45 j de chair) et courbes sont
+     *     des âges — naissance et arrivée se confondent ;
+     *   • les mammifères et les poissons arrivaient avec des DURÉES depuis
+     *     l'arrivée — 90 j d'embouche, 180 j de reproducteur, 305 j de
+     *     lactation, grossissement piscicole.
+     * Le code comptait tout depuis la naissance : un agneau né cinq mois avant
+     * son arrivée avait une fin « naissance + 90 j », déjà passée, ramenée au
+     * jour de l'arrivée — la bande était échue en arrivant.
+     *
+     * Décision de l'exploitation : l'ENGRAISSEMENT des ovins, caprins, porcs et
+     * lapins passe en âge (courbes et cycle ré-exprimés depuis la naissance,
+     * cf. ProductionNormSeeder). Le reste — poissons, laitières, reproducteurs
+     * adultes, bovins — se compte depuis l'arrivée.
+     */
+    public function cycleCompteDepuisLaNaissance(): bool
+    {
+        if ($this->isVolaille()) {
+            return true;
+        }
+
+        return $this->type === 'engraissement'
+            && in_array($this->species?->family, ['petit_ruminant', 'porcin', 'lagomorphe'], true);
+    }
+
+    /** Premier jour du cycle : la naissance (si le cycle est un âge) ou l'arrivée. */
+    public function debutDuCycle(): ?Carbon
+    {
+        $debut = $this->cycleCompteDepuisLaNaissance()
+            ? ($this->birth_date ?? $this->arrival_date)
+            : $this->arrival_date;
+
+        return $debut ? Carbon::parse($debut)->startOfDay() : null;
+    }
+
+    /**
+     * Semaine du cycle à une date (aujourd'hui, ou la clôture d'une bande
+     * terminée) : la ligne de la courbe de normes qui s'applique. Pour la
+     * volaille, c'est la semaine d'âge.
+     */
+    public function semaineDuCycle(\DateTimeInterface|string|null $date = null): int
+    {
+        $debut = $this->debutDuCycle();
+        if (! $debut) {
+            return 1;
+        }
+
+        $fin = $date ?? (($this->status === self::STATUS_TERMINE && $this->closing_date) ? $this->closing_date : now());
+
+        return max(1, (int) ceil((\App\Support\Jours::entre($debut, $fin) + 1) / 7));
+    }
 
     /**
      * SEMAINE D'ÂGE de la bande (1 = jours 1 à 7) — UNE règle, celle des
