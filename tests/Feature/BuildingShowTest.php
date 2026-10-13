@@ -55,3 +55,24 @@ test('un bâtiment SANS surface affiche sa fiche (densité « non renseignée »
         ->assertOk()
         ->assertSee(__('Surface non renseignée'));
 });
+
+test('le taux de mortalité d’un lot est le même sur la fiche bâtiment que sur sa fiche', function () {
+    // La fiche bâtiment recalculait le taux à sa façon — sans la mortalité en
+    // infirmerie, et sur un autre dénominateur que Batch::mortality_rate.
+    $batiment = \App\Models\Building::factory()->create(['type' => 'mixte', 'capacity' => 2000]);
+    $lot = \App\Models\Batch::factory()->create([
+        'building_id' => $batiment->id, 'status' => 'Actif',
+        'initial_quantity' => 1000, 'current_quantity' => 950, 'qty_dead' => 20,
+    ]);
+    \App\Models\DailyCheck::factory()->create([
+        'batch_id' => $lot->id, 'check_date' => today()->toDateString(),
+        'mortality' => 30, 'mortality_infirmary' => 10,
+    ]);
+
+    $attendu = number_format($lot->fresh()->mortality_rate, 1);   // (20+30+10)/(1000+20) = 5,9 %
+
+    $page = $this->get(route('buildings.show', $batiment))->assertOk()->getContent();
+
+    expect($attendu)->toBe('5.9')
+        ->and($page)->toContain($attendu);
+});
