@@ -568,7 +568,7 @@
                 @endphp
                 <div class="grid grid-cols-2 md:grid-cols-4 {{ !empty($feedAutonomy) ? 'lg:grid-cols-5' : '' }} gap-4 mb-4">
                     <div class="bg-orange-50 border border-orange-100 rounded-[1.5rem] p-4 text-center">
-                        <p class="text-[8px] font-black text-orange-400 uppercase tracking-widest italic mb-1">{{ __("Aliment / lot / jour") }}</p>
+                        <p class="text-[8px] font-black text-orange-400 uppercase tracking-widest italic mb-1">{{ $batch->species?->isRuminant() ? __("Ration (MS) / lot / jour") : __("Aliment / lot / jour") }}</p>
                         <h4 class="text-2xl font-black text-orange-600 tracking-tighter italic">{{ number_format($feedAdvice['total']['feed_kg'], 1) }}<small class="text-[10px] ml-1 opacity-60">kg</small></h4>
                         <p class="text-[8px] font-black text-slate-400 uppercase mt-1">{{ $alimSujet }} {{ $alimUnite }}/{{ __("sujet") }}</p>
                     </div>

@@ -5058,5 +5058,6 @@
     "Référence : 1 :male pour :a à :b :femelles": "Reference: 1 :male for :a to :b :femelles",
     ":min à :max": ":min to :max",
     "pour :f :femelles : :n :male(s)": "for :f :femelles: :n :male(s)",
-    "Ces animaux n'arrivent pas à un jour d'âge : indiquez leur date de naissance, même approximative — l'âge, les normes et les rations en dépendent.": "These animals do not arrive at one day old: enter their date of birth, even approximate — age, norms and rations depend on it."
+    "Ces animaux n'arrivent pas à un jour d'âge : indiquez leur date de naissance, même approximative — l'âge, les normes et les rations en dépendent.": "These animals do not arrive at one day old: enter their date of birth, even approximate — age, norms and rations depend on it.",
+    "Ration (MS) / lot / jour": "Ration (DM) / batch / day"
 }

@@ -473,18 +473,28 @@ class ProductionNormSeeder extends Seeder
         ];
     }
 
-    /** Bovins : engraissement N'Dama (viande) + vache laitière métisse. */
+    /**
+     * Bovins : engraissement N'Dama (viande) + vache laitière métisse.
+     *
+     * Ration en MATIÈRE SÈCHE, comme les petits ruminants — décision de
+     * l'exploitation. Elle était exprimée en fourrage frais (12 kg/j pour un
+     * veau de 80 kg, 15 % du poids vif) pendant que moutons et chèvres
+     * l'étaient en matière sèche (~4 %) : deux échelles sous la même
+     * étiquette « ration ». Valeurs PROPOSÉES : ingestion de MS ≈ 3 % du poids
+     * vif chez le jeune, 2,6–2,7 % à l'engraissement, 3 % chez la vache en
+     * lactation ; eau ≈ 10–12 % du poids vif (15 % en lactation).
+     */
     private function cattle(): array
     {
         return [
             // Bovin N'Dama (race locale trypanotolérante, engraissement viande)
-            $this->norm('engraissement', 1,  'Croissance', 'Bovin N\'Dama', 80000,  12000, 25000, 0),
-            $this->norm('engraissement', 26, 'Croissance', 'Bovin N\'Dama', 180000, 22000, 40000, 0),
-            $this->norm('engraissement', 52, 'Finition',   'Bovin N\'Dama', 280000, 28000, 50000, 0),
+            $this->norm('engraissement', 1,  'Croissance', 'Bovin N\'Dama', 80000,  2400, 10000, 0),
+            $this->norm('engraissement', 26, 'Croissance', 'Bovin N\'Dama', 180000, 4900, 22000, 0),
+            $this->norm('engraissement', 52, 'Finition',   'Bovin N\'Dama', 280000, 7300, 32000, 0),
 
             // Vache laitière métisse (croissance → lactation)
-            $this->norm('laitiere', 1,  'Croissance', 'Vache Laitière (Métis)', 90000,  13000, 30000, 0),
-            $this->norm('laitiere', 52, 'Finition',   'Vache Laitière (Métis)', 400000, 35000, 70000, 0),
+            $this->norm('laitiere', 1,  'Croissance', 'Vache Laitière (Métis)', 90000,  2700, 11000, 0),
+            $this->norm('laitiere', 52, 'Finition',   'Vache Laitière (Métis)', 400000, 12000, 60000, 0),
         ];
     }
 
@@ -493,9 +503,9 @@ class ProductionNormSeeder extends Seeder
     {
         $m = 'Zébu Gobra';
         return [
-            $this->norm('engraissement', 1,  'Croissance', $m, 90000,  14000, 28000, 0),
-            $this->norm('engraissement', 26, 'Croissance', $m, 220000, 26000, 45000, 0),
-            $this->norm('engraissement', 52, 'Finition',   $m, 350000, 32000, 60000, 0),
+            $this->norm('engraissement', 1,  'Croissance', $m, 90000,  2700, 11000, 0),
+            $this->norm('engraissement', 26, 'Croissance', $m, 220000, 5900, 26000, 0),
+            $this->norm('engraissement', 52, 'Finition',   $m, 350000, 8800, 40000, 0),
         ];
     }
 
