@@ -85,7 +85,7 @@ class ProductionNorm extends Model
             'pintade' => ['pintade'],
             'canard'  => ['canard'],
             'pigeon'  => ['pigeon', 'goliath'],
-            'poulet'  => ['poule', 'poulet', 'ross', 'cobb', 'isa', 'lohmann', 'pondeuse', 'cou nu'],
+            'poulet'  => ['poule', 'poulet', 'ross', 'cobb', 'isa', 'lohmann', 'pondeuse', 'cou nu', 'poussin'],
             'mouton'  => ['mouton', 'bélier', 'belier', 'djallonké', 'djallonke'],
             'chevre'  => ['chèvre', 'chevre', 'bouc', 'maradi', 'saanen', 'sahel'],
             'lapin'   => ['lapin'],
